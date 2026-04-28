@@ -70,8 +70,11 @@ export class EdgeRuntimeSyncService {
     models: readonly LocalModelProfile[],
     request: OfflineExecutionRequest,
   ): EdgeNodeAttemptReceiptView {
-    if (profile.riskLevel === "medium" || (profile.riskLevel != null && profile.riskLevel !== "low")) {
-      throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_risk");
+    if (profile.riskLevel === "high" || (profile.riskLevel != null && profile.riskLevel !== "low" && profile.riskLevel !== "medium")) {
+      throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_or_medium_risk");
+    }
+    if (profile.deviceId == null || profile.offlineMaxDuration == null || profile.keyLease == null) {
+      throw new Error("edge_runtime.missing_required_profile_fields:deviceId_offlineMaxDuration_keyLease_required");
     }
     const createdAt = request.createdAt ?? nowIso();
     const record = buildOfflineExecutionRecord(profile.edgeNodeId, request.taskId, createdAt);

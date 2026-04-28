@@ -210,6 +210,80 @@ function deriveConfidence(
   return "low";
 }
 
+/**
+ * §20.3: Multi-layer prompt injection defense chain
+ * Layer 1: Lexical (regex) - fast filter for obvious patterns
+ * Layer 2: Classifier (ML-based) - semantic analysis with trained model signals
+ * Layer 3: LLM Judge - final verdict for uncertain cases using external LLM
+ */
+export type PromptDefenseChainLayer = "lexical" | "classifier" | "llm_judge" | "consensus";
+
+export interface PromptDefenseChainResult {
+  readonly blocked: boolean;
+  readonly score: number;
+  readonly threshold: number;
+  readonly matchedSignals: readonly string[];
+  readonly confidence: "high" | "medium" | "low";
+  readonly sanitizedInput: string;
+  readonly layers: readonly PromptDefenseLayerAssessment[];
+  readonly defenseChainExecuted: readonly PromptDefenseChainLayer[];
+  readonly finalLayer: PromptDefenseChainLayer;
+}
+
+/**
+ * §20.3: Execute multi-layer defense chain in cascade order
+ * Each layer only executes if previous layer returns uncertain result.
+ * Returns early with final verdict once a decisive result is reached.
+ */
+export function executePromptDefenseChain(
+  input: string,
+  options: {
+    threshold?: number;
+    config?: MLInjectionClassifierConfig;
+    llmJudgeFn?: (input: string, threshold: number) => Promise<PromptDefenseLayerAssessment>;
+    executeAllLayers?: boolean;
+  } = {},
+): PromptDefenseLayerAssessment[] {
+  const threshold = options.threshold ?? 0.7;
+  const config = options.config ?? DEFAULT_ML_CLASSIFIER_CONFIG;
+  const executeAllLayers = options.executeAllLayers ?? false;
+
+  const executedLayers: PromptDefenseLayerAssessment[] = [];
+
+  // Layer 1: Lexical (regex) - fast pattern matching
+  const lexical = buildLexicalAssessment(input.normalize("NFKC"), threshold, config);
+  executedLayers.push(lexical);
+  if (lexical.blocked || (lexical.score >= threshold * 0.85 && !executeAllLayers)) {
+    return executedLayers;
+  }
+
+  // Layer 2: Semantic Classifier - deeper semantic analysis
+  const semantic = buildSemanticAssessment(input.normalize("NFKC"), threshold);
+  executedLayers.push(semantic);
+  if (semantic.blocked || (semantic.score >= threshold * 0.85 && !executeAllLayers)) {
+    return executedLayers;
+  }
+
+  // Layer 3: Behavioral Analysis
+  const behavioral = buildBehavioralAssessment(input.normalize("NFKC"), threshold);
+  executedLayers.push(behavioral);
+  if (behavioral.blocked || (behavioral.score >= threshold * 0.85 && !executeAllLayers)) {
+    return executedLayers;
+  }
+
+  // Layer 4: LLM Judge - if provided, make final determination for uncertain cases
+  if (options.llmJudgeFn) {
+    const llmJudgeResult = await options.llmJudgeFn(input, threshold);
+    executedLayers.push(llmJudgeResult);
+    return executedLayers;
+  }
+
+  // Layer 5: Consensus - aggregate all layers if no definitive result
+  const consensus = buildConsensusAssessment(threshold, lexical, semantic, behavioral);
+  executedLayers.push(consensus);
+  return executedLayers;
+}
+
 export function classifyPromptInjectionRisk(
   input: string,
   threshold = 0.7,

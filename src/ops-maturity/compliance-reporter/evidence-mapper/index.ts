@@ -1,6 +1,10 @@
 export interface EvidenceReference {
   readonly evidenceId: string;
   readonly evidenceType: string;
+  readonly controlId?: string;
+  readonly freshness?: string;
+  readonly owner?: string;
+  readonly exception?: string;
 }
 
 export interface EvidenceCoverageSummary {

@@ -1,7 +1,10 @@
 import { setTimeout as delay } from "node:timers/promises";
 
-import { ValidationError } from "../../contracts/errors.js";
+import { AppError, ValidationError } from "../../contracts/errors.js";
 import { GrpcAdapterService, type GrpcCallResponse } from "../../interface/api/grpc-adapter-service.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export type AdapterProtocol = "rest" | "grpc" | "mq";
 
@@ -156,6 +159,33 @@ export class AdapterExecutor {
       }
     }
 
+    // Retry exhaustion: emit proper error events per §12.1
+    const errorCode = lastError instanceof Error ? lastError.message : String(lastError);
+    logger.error("adapter_executor:retry_exhausted", {
+      adapterId,
+      action: request.action,
+      attempts: maxAttempts,
+      errorCode,
+      taskId: request.context.taskId,
+      tenantId: request.context.tenantId,
+    });
+
+    // Emit incident/error event for retry exhaustion
+    logger.log({
+      level: "error",
+      message: `adapter_executor:retry_exhausted`,
+      crosscuttingFabric: "reliability",
+      data: {
+        adapterId,
+        action: request.action,
+        attempts: maxAttempts,
+        errorCode,
+        taskId: request.context.taskId,
+        tenantId: request.context.tenantId,
+        correlationId: request.context.correlationId,
+      },
+    });
+
     return {
       adapterId,
       protocol: descriptor.protocol,
@@ -164,7 +194,10 @@ export class AdapterExecutor {
       attempts: attempt,
       durationMs: Date.now() - startedAt,
       output: {
-        error: lastError instanceof Error ? lastError.message : String(lastError),
+        error: errorCode,
+        error_code: "RETRY_EXHAUSTED",
+        attempts,
+        lastError: lastError instanceof Error ? lastError.message : String(lastError),
       },
     };
   }

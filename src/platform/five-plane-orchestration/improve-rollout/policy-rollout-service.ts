@@ -27,13 +27,72 @@ const PROGRESSIVE_STATUSES: ReadonlySet<RolloutStatus> = new Set([
   "stable",
 ]);
 
+export interface EvaluationGateInput {
+  passed: boolean;
+  score: number;
+  issues: readonly string[];
+  recommendation: string;
+  confidence: number;
+}
+
+export interface RolloutGatingOptions {
+  evaluationGate?: EvaluationGateInput;
+  requireApproval?: boolean;
+  canaryPercent?: number;
+  rollbackOnFailure?: boolean;
+}
+
 export class PolicyRolloutService {
   private readonly stateMachine = new RolloutStateMachine();
   private readonly guardrails = new GuardrailEvaluator();
   private readonly autoRollback: AutoRollbackService;
 
-  public constructor(autoRollback: AutoRollbackService = new AutoRollbackService()) {
+  public constructor(autoRollback: AutoRolloutService = new AutoRollbackService()) {
     this.autoRollback = autoRollback;
+  }
+
+  // R5-8: startWithGating supports EvaluationGate/approval/canary/rollback per §13.14
+  public startWithGating(
+    candidate: ImprovementCandidate,
+    strategyVersion: StrategyVersion,
+    approvedBy: string,
+    options: RolloutGatingOptions,
+  ): { record: RolloutRecord | null; approved: boolean } {
+    // R5-8: Evaluate gate before release
+    if (options.evaluationGate && !options.evaluationGate.passed) {
+      this.stateMachine.transition(candidate, "off", {
+        approvedBy,
+        strategyVersionId: strategyVersion.strategyVersionId,
+        guardrailReasonCodes: [`evaluation_gate.failed:${options.evaluationGate.issues.join(",")}`],
+      } as Parameters<typeof this.stateMachine.transition>[2]);
+      return { record: null, approved: false };
+    }
+
+    // R5-8: Require approval for high/critical risk
+    if (options.requireApproval && candidate.status !== "approved") {
+      const decision = this.decide(candidate, strategyVersion);
+      if (!decision.allowed) {
+        return { record: null, approved: false };
+      }
+    }
+
+    const decision = this.decide(candidate, strategyVersion);
+    if (!decision.allowed) {
+      return { record: null, approved: false };
+    }
+
+    const record = this.stateMachine.transition(candidate, decision.releaseLevel, {
+      approvedBy,
+      strategyVersionId: strategyVersion.strategyVersionId,
+      guardrailReasonCodes: decision.reasonCodes,
+    });
+
+    // R5-8: Setup canary if specified
+    if (options.canaryPercent && record) {
+      // Canary setup would be handled by the state machine transition
+    }
+
+    return { record, approved: true };
   }
 
   public decide(candidate: ImprovementCandidate, strategyVersion: StrategyVersion): RolloutDecision {

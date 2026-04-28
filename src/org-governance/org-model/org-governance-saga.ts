@@ -195,11 +195,16 @@ export class OrgGovernanceSaga {
   public executeWithReceipt(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaReceipt {
     const result = this.execute(sagaId, steps);
 
-    const preparedByPhase = buildPhaseMap(result.executionLog, "prepared");
-    const committedByPhase = buildPhaseMap(result.executionLog, "committed");
-    const compensatedByPhase = buildPhaseMap(result.executionLog, "compensated");
+    const enrichedLog = result.executionLog.map((entry) => {
+      const step = steps.find((s) => s.stepId === entry.stepId);
+      return { ...entry, phase: step?.phase ?? "domain" };
+    });
 
-    const failedPhaseEntry = result.executionLog.find((entry) => entry.outcome === "failed");
+    const preparedByPhase = buildPhaseMap(enrichedLog, "prepared");
+    const committedByPhase = buildPhaseMap(enrichedLog, "committed");
+    const compensatedByPhase = buildPhaseMap(enrichedLog, "compensated");
+
+    const failedPhaseEntry = enrichedLog.find((entry) => entry.outcome === "failed");
     const failedPhase: OrgGovernancePhase | null = failedPhaseEntry
       ? steps.find((s) => s.stepId === failedPhaseEntry.stepId)?.phase ?? null
       : null;
@@ -212,16 +217,13 @@ export class OrgGovernanceSaga {
       committedByPhase,
       compensatedByPhase,
       failedPhase,
-      executionLog: result.executionLog.map((entry) => {
-        const step = steps.find((s) => s.stepId === entry.stepId);
-        return { ...entry, phase: step?.phase ?? "domain" };
-      }),
+      executionLog: enrichedLog,
     };
   }
 }
 
 function buildPhaseMap(
-  log: readonly { stepId: string; outcome: string; targetOrgNodeId: string }[],
+  log: readonly { stepId: string; outcome: string; targetOrgNodeId: string; phase: OrgGovernancePhase }[],
   outcomeFilter: string,
 ): Readonly<Record<OrgGovernancePhase, readonly string[]>> {
   const phaseMap: Record<OrgGovernancePhase, string[]> = {
@@ -231,5 +233,10 @@ function buildPhaseMap(
     domain: [],
     agent: [],
   };
+  for (const entry of log) {
+    if (entry.outcome === outcomeFilter) {
+      phaseMap[entry.phase].push(entry.targetOrgNodeId);
+    }
+  }
   return phaseMap;
 }

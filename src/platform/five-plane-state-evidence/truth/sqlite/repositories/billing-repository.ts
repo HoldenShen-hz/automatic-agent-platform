@@ -304,9 +304,10 @@ export class BillingRepository {
     this.conn
       .prepare(
         `INSERT INTO usage_events (
-          usage_id, account_id, subject_id, workspace_id, tenant_id, task_id, execution_id,
-          metric_type, quantity, source, unit_price_usd, captured_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          usage_id, account_id, subject_id, workspace_id, tenant_id, task_id, harness_run_id,
+          node_run_id, attempt_id, execution_id, step_id, metric_type, quantity, source,
+          unit_price_usd, captured_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         event.usageId,
@@ -315,7 +316,11 @@ export class BillingRepository {
         event.workspaceId,
         event.tenantId,
         event.taskId,
+        event.harnessRunId ?? null,
+        event.nodeRunId ?? null,
+        event.attemptId ?? null,
         event.executionId,
+        event.stepId,
         event.metricType,
         event.quantity,
         event.source,
@@ -658,7 +663,11 @@ export class BillingRepository {
          workspace_id AS workspaceId,
          tenant_id AS tenantId,
          task_id AS taskId,
+         harness_run_id AS harnessRunId,
+         node_run_id AS nodeRunId,
+         attempt_id AS attemptId,
          execution_id AS executionId,
+         step_id AS stepId,
          metric_type AS metricType,
          quantity,
          source,

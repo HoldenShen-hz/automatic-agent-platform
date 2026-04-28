@@ -15,19 +15,25 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 export interface DebugSnapshot {
   snapshotId: string;
   taskId: string;
-  executionId: string;
-  stepId: string;
+  harnessRunId: string;
+  nodeRunId: string;
   timestamp: string;
   variablesJson: string;
   stackTrace: string | null;
   eventIndex: number;
+  /** @deprecated use nodeRunId */
+  stepId?: string;
+  /** @deprecated use harnessRunId */
+  executionId?: string;
 }
 
 export interface ReplayCursor {
   taskId: string;
-  executionId: string;
+  harnessRunId: string;
   fromEventIndex: number;
   toEventIndex: number;
+  /** @deprecated use harnessRunId */
+  executionId?: string;
 }
 
 export interface VariableState {
@@ -47,12 +53,14 @@ export interface ReplayState {
 export interface TimeTravelDebugSession {
   sessionId: string;
   taskId: string;
-  executionId: string;
+  harnessRunId: string;
   breakpoints: readonly string[];
   snapshots: readonly DebugSnapshot[];
   currentEventIndex: number;
   startedAt: string;
   endedAt: string | null;
+  /** @deprecated use harnessRunId */
+  executionId?: string;
 }
 
 export interface TimeTravelDebugVariableEnvelope {
@@ -60,11 +68,13 @@ export interface TimeTravelDebugVariableEnvelope {
 }
 
 export interface TimeTravelDebugEvent {
-  readonly stepId?: string | null;
+  readonly nodeRunId?: string | null;
   readonly timestamp?: string | null;
   readonly variables?: Readonly<Record<string, unknown>> | null;
   readonly stackTrace?: string | null;
   readonly scope?: VariableState["scope"] | null;
+  /** @deprecated use nodeRunId */
+  readonly stepId?: string | null;
 }
 
 export interface TimeTravelDebugServiceOptions {
@@ -102,12 +112,13 @@ export class TimeTravelDebugService {
     this.maxSnapshotsPerSession = options.maxSnapshotsPerSession ?? 100;
   }
 
-  public createSession(taskId: string, executionId: string): TimeTravelDebugSession {
+  public createSession(taskId: string, harnessRunId: string): TimeTravelDebugSession {
     this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),
       taskId,
-      executionId,
+      harnessRunId,
+      executionId: harnessRunId, // deprecated alias
       breakpoints: [],
       snapshots: [],
       currentEventIndex: 0,
@@ -118,30 +129,30 @@ export class TimeTravelDebugService {
     return session;
   }
 
-  public setBreakpoints(sessionId: string, stepIds: readonly string[]): void {
+  public setBreakpoints(sessionId: string, nodeRunIds: readonly string[]): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
-    session.breakpoints = [...stepIds];
+    session.breakpoints = [...nodeRunIds];
   }
 
-  public loadEventStore(executionId: string, events: readonly TimeTravelDebugEvent[]): void {
+  public loadEventStore(harnessRunId: string, events: readonly TimeTravelDebugEvent[]): void {
     const boundedEvents = events.length > this.maxEventsPerExecution
       ? events.slice(events.length - this.maxEventsPerExecution)
       : [...events];
-    this.eventStore.set(executionId, boundedEvents);
+    this.eventStore.set(harnessRunId, boundedEvents);
   }
 
   public replayToCursor(sessionId: string, toEventIndex: number): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = this.eventStore.get(session.harnessRunId) ?? [];
     const currentIndex = session.currentEventIndex;
 
     for (let i = currentIndex; i < Math.min(toEventIndex, events.length); i++) {
       const event = events[i]!;
-      const stepId = String(event.stepId ?? "");
-      if (session.breakpoints.includes(stepId)) {
+      const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
+      if (session.breakpoints.includes(nodeRunId)) {
         this.captureSnapshot(session, event, i);
         session.currentEventIndex = i + 1;
         return this.buildReplayState(session, session.currentEventIndex, true);
@@ -156,16 +167,16 @@ export class TimeTravelDebugService {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = this.eventStore.get(session.harnessRunId) ?? [];
     if (session.currentEventIndex >= events.length) {
       return this.buildReplayState(session, session.currentEventIndex, false);
     }
 
     const event = events[session.currentEventIndex]!;
-    const stepId = String(event.stepId ?? "");
+    const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
     session.currentEventIndex++;
 
-    const reachedBreakpoint = session.breakpoints.includes(stepId);
+    const reachedBreakpoint = session.breakpoints.includes(nodeRunId);
     if (reachedBreakpoint) {
       this.captureSnapshot(session, event, session.currentEventIndex - 1);
     }
@@ -173,28 +184,28 @@ export class TimeTravelDebugService {
     return this.buildReplayState(session, session.currentEventIndex, reachedBreakpoint);
   }
 
-  public jumpToStep(sessionId: string, stepId: string): ReplayState | null {
+  public jumpToStep(sessionId: string, nodeRunId: string): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
-    const events = this.eventStore.get(session.executionId) ?? [];
-    const targetIndex = events.findIndex((e) => String(e.stepId) === stepId);
+    const events = this.eventStore.get(session.harnessRunId) ?? [];
+    const targetIndex = events.findIndex((e) => String(e.nodeRunId ?? e.stepId) === nodeRunId);
     if (targetIndex === -1) return null;
 
     session.currentEventIndex = targetIndex + 1;
     return this.buildReplayState(session, session.currentEventIndex, false);
   }
 
-  public getSnapshot(sessionId: string, stepId: string): DebugSnapshot | null {
+  public getSnapshot(sessionId: string, nodeRunId: string): DebugSnapshot | null {
     const sessionSnapshots = this.snapshots.get(sessionId) ?? [];
-    return sessionSnapshots.find((s) => s.stepId === stepId) ?? null;
+    return sessionSnapshots.find((s) => s.nodeRunId === nodeRunId || s.stepId === nodeRunId) ?? null;
   }
 
   public getVariableState(sessionId: string, atEventIndex: number): readonly VariableState[] {
     const session = this.sessions.get(sessionId);
     if (!session) return [];
 
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = this.eventStore.get(session.harnessRunId) ?? [];
     const variables: VariableState[] = [];
 
     for (let i = 0; i <= atEventIndex && i < events.length; i++) {
@@ -223,11 +234,14 @@ export class TimeTravelDebugService {
 
   private captureSnapshot(session: TimeTravelDebugSession, event: TimeTravelDebugEvent, eventIndex: number): void {
     const vars = readVariables(event);
+    const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
     const snapshot: DebugSnapshot = {
       snapshotId: newId("snap"),
       taskId: session.taskId,
-      executionId: session.executionId,
-      stepId: String(event.stepId ?? ""),
+      harnessRunId: session.harnessRunId,
+      executionId: session.harnessRunId, // deprecated alias
+      nodeRunId,
+      stepId: nodeRunId, // deprecated alias
       timestamp: String(event.timestamp ?? nowIso()),
       variablesJson: JSON.stringify(vars),
       stackTrace: event.stackTrace ?? null,
@@ -249,13 +263,14 @@ export class TimeTravelDebugService {
     currentEventIndex: number,
     reachedBreakpoint: boolean,
   ): ReplayState {
-    const events = this.eventStore.get(session.executionId) ?? [];
+    const events = this.eventStore.get(session.harnessRunId) ?? [];
     const variables = this.getVariableState(session.sessionId, currentEventIndex);
 
     return {
       cursor: {
         taskId: session.taskId,
-        executionId: session.executionId,
+        harnessRunId: session.harnessRunId,
+        executionId: session.harnessRunId, // deprecated alias
         fromEventIndex: session.currentEventIndex,
         toEventIndex: currentEventIndex,
       },

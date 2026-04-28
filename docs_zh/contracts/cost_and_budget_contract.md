@@ -49,10 +49,12 @@
 
 ## 4. CostEvent 最小字段
 
-- `task_id`
-- `harness_run_id?`
+- `cost_event_id`
+- `harness_run_id` — 关联 HarnessRun，架构 §18 以 HarnessRun 为预算主体
 - `node_run_id?`
 - `attempt_id?`
+- `budget_reservation_id?` — 关联 BudgetReservation，架构 §18.3 要求 reserve-before-execute 链接
+- `task_id?` — 兼容查询入口；非 truth 主键
 - `session_id?`
 - `agent_id?`
 - `stage?`
@@ -62,6 +64,9 @@
 - `output_tokens`
 - `cost_usd`
 - `created_at`
+- `provider_request_id?`
+- `budget_scope`
+- `pricing_version`
 
 ## 5. 行为约束
 
@@ -124,6 +129,7 @@
 - skill 缓存命中时不产生模型调用成本，但缓存存储和查找的计算成本不计入 token 预算。
 - compaction 成本若使 run 超过 `max_cost_usd`，应触发与普通模型调用相同的阈值动作（告警、审批或熔断），不得静默放行。
 - CostEvent 的 `budget_scope` 字段必须区分上述场景，使成本报告可按来源维度聚合。
+- 隐式成本归因必须使用 canonical 标识符：`harness_run_id / node_run_id / attempt_id`，不得使用废弃的 `execution_id`。
 
 补充说明：
 

@@ -16,14 +16,25 @@ import { BudgetAllocator } from "../../execution/budget-allocator.js";
 
 /**
  * Budget policy defining cost limits and warning thresholds.
+ * §18: Implements three-level budget hierarchy - platform/pack/step
  */
 export interface BudgetPolicy {
+  /** Task-level budget limit */
   maxTaskCostUsd: number;
+  /** Pack-level budget limit (aggregated task group) */
+  maxPackCostUsd: number;
+  /** Platform-level budget limit (global) */
+  maxPlatformCostUsd: number;
+  /** Legacy daily cost limit (deprecated, use maxPlatformCostUsd) */
   maxDailyCostUsd: number;
+  /** Legacy monthly cost limit (deprecated, use maxPlatformCostUsd) */
   maxMonthlyCostUsd: number;
   warnAtRatio: number;
   mode: "supervised" | "auto" | "full-auto";
 }
+
+/** Budget scope levels per §18 hierarchy */
+export type BudgetScope = "task" | "pack" | "platform";
 
 /**
  * Result of a budget evaluation.
@@ -38,7 +49,13 @@ export interface BudgetGuardResult {
 export interface ExecutionChainBudgetSpend {
   readonly currentTaskCostUsd: number;
   readonly nextEstimatedCostUsd: number;
+  /** Current pack-level accumulated cost */
+  readonly currentPackCostUsd: number;
+  /** Current platform-level accumulated cost */
+  readonly currentPlatformCostUsd: number;
+  /** Legacy daily cost (deprecated) */
   readonly currentDailyCostUsd: number;
+  /** Legacy monthly cost (deprecated) */
   readonly currentMonthlyCostUsd: number;
 }
 
@@ -113,12 +130,17 @@ export class BudgetGuard {
     spend: ExecutionChainBudgetSpend;
   }): BudgetGuardCascadeResult {
     const next = input.spend.nextEstimatedCostUsd;
+    // §18: Three-level budget hierarchy - task/pack/platform
     const projectedTask = input.spend.currentTaskCostUsd + next;
+    const projectedPack = input.spend.currentPackCostUsd + next;
+    const projectedPlatform = input.spend.currentPlatformCostUsd + next;
     const projectedDaily = input.spend.currentDailyCostUsd + next;
     const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
 
     const checks = [
       { scope: "task" as const, projected: projectedTask, limit: input.policy.maxTaskCostUsd },
+      { scope: "pack" as const, projected: projectedPack, limit: input.policy.maxPackCostUsd },
+      { scope: "platform" as const, projected: projectedPlatform, limit: input.policy.maxPlatformCostUsd },
       { scope: "daily" as const, projected: projectedDaily, limit: input.policy.maxDailyCostUsd },
       { scope: "monthly" as const, projected: projectedMonthly, limit: input.policy.maxMonthlyCostUsd },
     ];
@@ -130,6 +152,8 @@ export class BudgetGuard {
       0,
       Math.min(
         input.policy.maxTaskCostUsd - projectedTask,
+        input.policy.maxPackCostUsd - projectedPack,
+        input.policy.maxPlatformCostUsd - projectedPlatform,
         input.policy.maxDailyCostUsd - projectedDaily,
         input.policy.maxMonthlyCostUsd - projectedMonthly,
       ),
@@ -144,8 +168,8 @@ export class BudgetGuard {
         projectedTaskCostUsd: projectedTask,
         projectedDailyCostUsd: projectedDaily,
         projectedMonthlyCostUsd: projectedMonthly,
-        violatedScope: violation.scope,
-        warningScopes,
+        violatedScope: violation.scope as "task" | "daily" | "monthly" | null,
+        warningScopes: warningScopes as readonly ("task" | "daily" | "monthly")[],
       };
     }
 
@@ -158,7 +182,7 @@ export class BudgetGuard {
       projectedDailyCostUsd: projectedDaily,
       projectedMonthlyCostUsd: projectedMonthly,
       violatedScope: null,
-      warningScopes,
+      warningScopes: warningScopes as readonly ("task" | "daily" | "monthly")[],
     };
   }
 

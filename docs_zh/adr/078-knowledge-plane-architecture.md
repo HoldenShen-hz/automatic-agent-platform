@@ -84,14 +84,16 @@ interface RetrievalHit {
 | `standard` | <500ms P99 | 关键词 + 语义向量混合 |
 | `deep` | <2000ms | 全部索引 + 跨 namespace |
 
-### 5. 4 级信任模型
+### 5. 4 级信任模型（v4.3 §10 风险模型）
 
-| 信任级别 | 来源 | 用途 |
-|---------|------|------|
-| `verified` | 人工审核过的内容 | 生产决策 |
-| `reviewed` | LearningObjectValidator 验证 | 改进候选 |
-| `inferred` | 系统推断 | 建议/参考 |
-| `untrusted` | 未验证来源 | 仅展示 |
+| 信任级别 | 来源 | inherent_risk | trust_score | 用途 |
+|---------|------|--------------|-------------|------|
+| `verified` | 人工审核过的内容 | low | +0.4 | 生产决策 |
+| `reviewed` | LearningObjectValidator 验证 | medium | +0.2 | 改进候选 |
+| `inferred` | 系统推断 | high | 0.0 | 建议/参考 |
+| `untrusted` | 未验证来源 | critical | -0.3 | 仅展示 |
+
+trust_score = baseline(0.5) + trust_delta，低于阈值的内容被标记为不可引用。inherent_risk 和 trust_score 分离确保信任评估不隐式降低风险。
 
 ### 6. KnowledgeNamespace 治理
 

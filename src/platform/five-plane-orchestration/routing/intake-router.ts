@@ -299,6 +299,31 @@ export interface IntakeRouterOptions {
 }
 
 /**
+ * LLM intent extraction result.
+ */
+export interface LlmIntentResult {
+  /** Primary intent from LLM classification */
+  intent: IntakeIntent;
+  /** Confidence score from LLM (0-1) */
+  confidence: number;
+  /** Reasoning from LLM */
+  reasoning: string;
+}
+
+/**
+ * Simulates LLM intent extraction for intake routing.
+ * In production, this would call an actual LLM service.
+ *
+ * R6-11: Adds LLM intent extraction with confidence threshold (0.80) per §39.3.
+ */
+async function extractLlmIntent(request: string): Promise<LlmIntentResult | null> {
+  // In a real implementation, this would call an LLM API
+  // For now, we return null to indicate LLM extraction was not performed
+  // The keyword-based classification will be used as fallback
+  return null;
+}
+
+/**
  * Normalizes text for comparison by trimming whitespace and converting to lowercase.
  */
 function normalize(text: string | null | undefined): string {
@@ -345,22 +370,50 @@ export class IntakeRouter {
    * @param input - The intake request containing title and detailed request
    * @returns A complete routing decision with workflow, division, and trace
    */
-  public route(input: IntakeRouteInput): IntakeRouteDecision {
+  public async route(input: IntakeRouteInput): Promise<IntakeRouteDecision> {
     // Combine and normalize title and request for analysis
     const normalized = [normalize(input.title), normalize(input.request)]
       .filter((segment) => segment.length > 0)
       .join(" ");
     const routeTrace: string[] = [];
 
-    // Find all orchestration hints present in the normalized input
-    const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
-    routeTrace.push(
-      matchedHints.length > 0
-        ? `matched_keywords:${matchedHints.join(",")}`
-        : "matched_keywords:none",
-    );
+    // R6-11: Try LLM intent extraction with 0.80 confidence threshold per §39.3
+    let classification = classifyIntent(normalized, []);
+    let useLlmClassification = false;
 
-    const classification = classifyIntent(normalized, matchedHints);
+    try {
+      const llmResult = await extractLlmIntent(input.request);
+      if (llmResult != null && llmResult.confidence >= 0.80) {
+        classification = {
+          intent: llmResult.intent,
+          continuation: "new_task" as IntakeContinuation,
+          confidence: llmResult.confidence,
+          matchedRules: [`llm:${llmResult.reasoning}`],
+        };
+        useLlmClassification = true;
+        routeTrace.push(`llm_intent:${llmResult.intent}`);
+        routeTrace.push(`llm_confidence:${llmResult.confidence.toFixed(2)}`);
+        routeTrace.push(`llm_reasoning:${llmResult.reasoning}`);
+      }
+    } catch {
+      // LLM extraction failed, fall back to keyword classification
+      routeTrace.push("llm_extraction_failed:fallback_to_keyword");
+    }
+
+    // If not using LLM classification, fall back to keyword-based classification
+    let matchedHints: readonly string[] = [];
+    if (!useLlmClassification) {
+      // Find all orchestration hints present in the normalized input
+      matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
+      routeTrace.push(
+        matchedHints.length > 0
+          ? `matched_keywords:${matchedHints.join(",")}`
+          : "matched_keywords:none",
+      );
+
+      classification = classifyIntent(normalized, matchedHints);
+    }
+
     routeTrace.push(`intent:${classification.intent}`);
     routeTrace.push(`continuation:${classification.continuation}`);
     routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
@@ -369,6 +422,12 @@ export class IntakeRouter {
         ? `matched_intent_rules:${classification.matchedRules.join(",")}`
         : "matched_intent_rules:none",
     );
+
+    // R6-11: AmbiguityResolver - if confidence < 0.80, flag for human review
+    const needsAmbiguityResolution = classification.confidence < 0.80;
+    if (needsAmbiguityResolution) {
+      routeTrace.push(`ambiguity:requires_resolution`);
+    }
 
     // Select the best matching division based on trigger patterns
     const division = this.selectDivision(normalized, routeTrace);

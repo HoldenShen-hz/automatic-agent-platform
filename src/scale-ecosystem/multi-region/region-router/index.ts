@@ -21,6 +21,6 @@ export type RegionDescriptor = z.input<typeof RegionDescriptorSchema>;
 
 export function selectPreferredRegion(regions: readonly RegionDescriptor[]): RegionDescriptor | null {
   return regions
-    .filter((item) => (item.residencyAllowed ?? true) && (item.status ?? "active") !== "disabled")
+    .filter((item) => (item.residencyAllowed ?? true) && (item.status ?? "active") !== "draining")
     .sort((left, right) => (left.latencyScore ?? 0) - (right.latencyScore ?? 0))[0] ?? null;
 }

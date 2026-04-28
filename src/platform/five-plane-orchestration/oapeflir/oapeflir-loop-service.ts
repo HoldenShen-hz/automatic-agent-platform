@@ -1,3 +1,5 @@
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import { createPlanGraphBundle, createGraphPatch, type PlanGraphBundle, type GraphPatch, type GraphValidationReport, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
 import type {
@@ -48,6 +50,9 @@ import {
   BOUNDARY_STRATEGY,
   type ValidationResult,
 } from "./schemas/validators.js";
+import { createStageTransitionFSM, type StageTransitionFSM } from "./stage-transition-fsm.js";
+import { HarnessLoopController } from "../harness/loop/index.js";
+import type { HarnessDecision, ConstraintPack } from "../harness/index.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -57,12 +62,41 @@ export interface OapeflirLoopInput {
   blockerSummaries?: string[];
   fileRefs?: string[];
   stepOutputs?: DualChannelStepOutput[];
+  /** ConstraintPack for HarnessLoopController guardrails (R5-4) */
+  constraintPack?: ConstraintPack;
+  /** Previous run context for Observer (R5-11) */
+  previousRunContext?: {
+    previousPlanId?: string;
+    previousGraphVersion?: number;
+    eventFlowRefs?: readonly string[];
+    goalDecompositionRef?: string;
+    memoryRefs?: readonly string[];
+  };
+  /** Parent context for subgraph execution (R5-13) */
+  parentContext?: {
+    parentPlanGraphBundleId?: string;
+    parentNodeId?: string;
+    childRunId?: string;
+  };
+  /** Initial plan version for replanning loop (R5-2) */
+  initialPlanVersion?: number;
+}
+
+export interface EvaluationReport {
+  readonly passed: boolean;
+  readonly score: number;
+  readonly issues: readonly string[];
+  readonly recommendation: string;
+  readonly confidence: number;
 }
 
 export interface OapeflirLoopResult {
   observation: UnifiedObservation;
   assessment: UnifiedAssessment;
+  /** @deprecated Use planGraphBundle instead - R5-1 */
   plan: Plan;
+  /** PlanGraphBundle produced by Plan stage (R5-1) */
+  planGraphBundle: PlanGraphBundle;
   stepOutputs: DualChannelStepOutput[];
   feedback: FeedbackBatch;
   learningSignals: LearningSignal[];
@@ -70,8 +104,14 @@ export interface OapeflirLoopResult {
   rolloutRecord: RolloutRecord | null;
   timeline: OapeflirStageRecord[];
   outcome: ExecutionOutcomeEvaluation;
+  /** EvaluationReport per §45.10 (R5-7) */
+  evaluationReport: EvaluationReport;
   qualityGate: PostExecutionQualityGateDecision;
   replanDecision: ReplanningDecision;
+  /** GraphPatch produced during replan (R5-12) */
+  graphPatch: GraphPatch | null;
+  /** HarnessDecision from loop controller (R5-14) */
+  harnessDecision: HarnessDecision | null;
 }
 
 export interface OapeflirLoopServiceOptions {
@@ -100,6 +140,16 @@ export class OapeflirLoopService {
   private readonly rollout = new PolicyRolloutService();
   private readonly executeBridge: ExecuteBridge;
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
+  /** R5-4 HarnessLoopController for max-iteration/max-replan/max-duration/max-cost guards */
+  private loopController: HarnessLoopController | null = null;
+  /** R5-2 Loop iteration counter for re-entrant replanning */
+  private loopIteration: number = 0;
+  /** R5-1 Current planGraphBundle for graph-based planning */
+  private currentPlanGraphBundle: PlanGraphBundle | null = null;
+  /** R5-12 Current graph patch for replanning */
+  private currentGraphPatch: GraphPatch | null = null;
+  /** R5-3 Track current FSM stage for transition validation */
+  private currentFsmStage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release" = "observe";
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
@@ -123,251 +173,523 @@ export class OapeflirLoopService {
         "aa.workflow.step_count": input.workflow.executionSteps.length,
       },
     }, async () => {
-      const timeline = new OapeflirStageTimelineBuilder();
-      const taskObservation = await this.runStage<UnifiedObservation>("observe", async () => {
-        const taskSituation: TaskSituation = this.situationBuilder.build({
-          taskId: input.taskId,
-          objective: input.objective,
-          currentPhase: "planning",
-          blockers: input.blockerSummaries ?? [],
-          fileRefs: input.fileRefs ?? [],
-          metrics: { workflowSteps: input.workflow.executionSteps.length },
+      // R5-4: Initialize HarnessLoopController with ConstraintPack for guardrails
+      if (input.constraintPack) {
+        this.loopController = new HarnessLoopController(input.constraintPack, {}, {
+          iteration: input.initialPlanVersion ? input.initialPlanVersion - 1 : 0,
         });
-        const systemObservation = this.systemSituationBuilder.build();
-        return this.observationAggregator.aggregate(taskSituation, systemObservation);
-      }, {
-        taskId: input.taskId,
-        workflowStepCount: input.workflow.executionSteps.length,
-      });
-      timeline.record("observe", "completed", taskObservation.task.taskId, null, "Aggregated task and system observations for downstream assessment.");
-
-      // O→A boundary: validate TaskSituation — degrade to default on failure (per §L.14)
-      const observedTask: TaskSituation = (() => {
-        const result = validateTaskSituation(taskObservation.task);
-        if (result.ok) return result.value;
-        this.boundaryLogger.warn("[boundary:O→A] TaskSituation validation failed — degrading to default", {
-          data: { taskId: input.taskId, boundary: "O→A" },
-        });
-        return {
-          taskId: input.taskId,
-          timestamp: Date.now(),
-          objective: input.objective,
-          currentPhase: "planning",
-          userIntent: { raw: input.objective, normalized: input.objective, confidence: 0.5 },
-          blockers: [],
-          codebaseSnapshot: { rootPath: ".", fileCount: 0, relevantFiles: [] },
-          environmentContext: { nodeVersion: process.version, platform: process.platform, workingDirectory: process.cwd(), availableTools: [] },
-          historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
-          relevantMemory: [],
-          fileRefs: input.fileRefs ?? [],
-          metrics: {},
-        };
-      })();
-
-      const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess(observedTask), {
-        taskId: input.taskId,
-      });
-      timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
-
-      // A→P boundary: validate UnifiedAssessment — default to fallback on failure (per §L.14)
-      const validatedAssessment: UnifiedAssessment = (() => {
-        const result = validateUnifiedAssessment(assessment);
-        if (result.ok) return result.value;
-        this.boundaryLogger.warn("[boundary:A→P] UnifiedAssessment validation failed — using default", {
-          data: { taskId: input.taskId, boundary: "A→P" },
-        });
-        return {
-          taskId: input.taskId,
-          timestamp: Date.now(),
-          situationRef: `assessment:${input.taskId}:fallback`,
-          phase: "pre-execution",
-          complexity: "moderate",
-          risk: "medium",
-          riskAssessment: { level: "medium", factors: ["assessment_validation_failed"] },
-          routingDecision: { division: "coding", workflow: "multi-step", rationale: "fallback_due_to_validation_error" },
-          resourceAllocation: { modelClass: "medium", maxTokens: 5000, timeoutMs: 60000 },
-          approvalPolicy: { required: false, level: "none" },
-          executionMode: "auto",
-          suggestedActions: [],
-        };
-      })();
-
-      const plan = await this.runStage<Plan>("plan", () => this.planBuilder.build({
-        observation: observedTask,
-        assessment: validatedAssessment,
-        workflow: input.workflow,
-      }), {
-        taskId: input.taskId,
-      });
-      timeline.record("plan", "completed", plan.planId, null, "Built an execution plan from validated observation, assessment, and workflow inputs.");
-
-      // P→E boundary: validate Plan DTO — abort on failure (per §L.14)
-      const planValidation = validatePlan(plan);
-      if (!planValidation.ok) {
-        throw planValidation.error;
       }
 
-      const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
-        input.stepOutputs ?? await this.executeViaBridge(plan, { taskId: input.taskId })
-      ), {
-        taskId: input.taskId,
-        planId: plan.planId,
-      });
-      timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1]?.stepId ?? plan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
+      // R5-2: Re-entrant loop - iterate until no replan required or guard triggers stop
+      let shouldContinue = true;
+      let currentInput = input;
+      this.loopIteration = input.initialPlanVersion ?? 1;
 
-      // E→F boundary: validate step outputs and feedback signals — skip feedback on failure (per §L.14)
-      const validatedStepOutputs: DualChannelStepOutput[] = (() => {
-        const result = validateStepOutputs(stepOutputs);
-        if (result.ok) return result.value;
-        this.boundaryLogger.warn("[boundary:E→F] stepOutputs validation failed — skipping feedback stage", {
-          data: { taskId: input.taskId, boundary: "E→F" },
-        });
-        return [];
-      })();
+      // R5-1: Will be set during plan stage
+      let planGraphBundle: PlanGraphBundle | null = null;
+      let graphPatch: GraphPatch | null = null;
+      let harnessDecision: HarnessDecision | null = null;
+      // R5-7: Will be produced by evaluator
+      let evaluationReport: EvaluationReport = { passed: false, score: 0, issues: [], recommendation: "", confidence: 0 };
 
-      const feedbackSignals: FeedbackSignal[] = (() => {
-        const result = validateFeedbackSignals(input.feedbackSignals ?? this.buildFeedbackSignals(input.taskId, validatedStepOutputs));
-        if (result.ok) return result.value;
-        this.boundaryLogger.warn("[boundary:E→F] feedbackSignals validation failed — skipping feedback stage", {
-          data: { taskId: input.taskId, boundary: "E→F" },
-        });
-        return [];
-      })();
-      const feedback = await this.runStage<FeedbackBatch>("feedback", () => this.feedbackCollector.collect({
-        taskId: input.taskId,
-        planId: plan.planId,
-        signals: feedbackSignals,
-      }), {
-        taskId: input.taskId,
-        signalCount: feedbackSignals.length,
-      });
-      timeline.record("feedback", "completed", feedback.feedbackId, null, "Collected execution feedback signals and normalized them for learning.");
-
-      const learningSignals: LearningSignal[] = this.feedbackCollector.toLearningSignals(feedback);
-      // F→L boundary: validate learning signals — skip learn on failure (per §L.14)
-      const validatedLearningSignals: LearningSignal[] = ((): LearningSignal[] => {
-        const result = validateLearningSignalsArray(learningSignals);
-        if (result.ok) return result.value as LearningSignal[];
-        this.boundaryLogger.warn("[boundary:F→L] learningSignals validation failed — skipping learn stage", {
-          data: { taskId: input.taskId, boundary: "F→L" },
-        });
-        return [] as LearningSignal[];
-      })();
-
-      const learningObjects = await this.runStage<LearningObject[]>("learn", () => this.learning.learn(validatedLearningSignals), {
-        taskId: input.taskId,
-        signalCount: validatedLearningSignals.length,
-      });
-      timeline.record(
-        "learn",
-        learningObjects.length > 0 ? "completed" : "skipped",
-        learningObjects[0]?.learningObjectId ?? null,
-        learningObjects.length > 0 ? null : "learning.no_objects",
-        learningObjects.length > 0
-          ? "Converted validated feedback into reusable learning objects."
-          : "No qualifying feedback patterns were strong enough to produce learning objects.",
-      );
-
-      // G7: Promote validated learning objects into the knowledge plane
-      if (learningObjects.length > 0) {
-        this.knowledgePromotion.promote(learningObjects, input.taskId);
+      // R5-3: Validate initial state machine transition to observe
+      const observeTransition = this.stageFsm.canTransitionTo("observe");
+      if (!observeTransition.allowed) {
+        throw new Error(`fsm.transition_rejected: ${observeTransition.reasonCode}`);
       }
+      this.stageFsm.recordStageEntry("observe");
+      this.currentFsmStage = "observe";
 
-      const outcome = this.outcomeEvaluator.evaluate(plan, feedback);
-      const qualityGate = this.qualityGate.decide(outcome);
-      const replanTrigger = this.replanning.createTrigger(
-        input.taskId,
-        qualityGate.accepted ? "planning.no_replan_required" : "planning.quality_gate_replan",
-        "feedback",
-        qualityGate.reasonCodes.join(","),
-      );
-      const replanDecision = this.replanning.decide(plan, feedback, replanTrigger);
-      let rolloutRecord: RolloutRecord | null = null;
-
-      if (learningObjects.length > 0) {
-        // L→I boundary: validate LearningObject[] — skip improve on failure (per §L.14)
-        const validatedLearningObjects: LearningObject[] = ((): LearningObject[] => {
-          const result = validateLearningObjects(learningObjects);
-          if (result.ok) return result.value as LearningObject[];
-          this.boundaryLogger.warn("[boundary:L→I] learningObjects validation failed — skipping improve stage", {
-            data: { taskId: input.taskId, boundary: "L→I" },
+      while (shouldContinue) {
+        const timeline = new OapeflirStageTimelineBuilder();
+        const taskObservation = await this.runStage<UnifiedObservation>("observe", async () => {
+          const taskSituation: TaskSituation = this.situationBuilder.build({
+            taskId: currentInput.taskId,
+            objective: currentInput.objective,
+            currentPhase: "planning",
+            blockers: currentInput.blockerSummaries ?? [],
+            fileRefs: currentInput.fileRefs ?? [],
+            metrics: { workflowSteps: currentInput.workflow.executionSteps.length },
           });
-          return [] as LearningObject[];
+          // R5-11: Observer consumes event flow, goal decomposition, memory, and previous run context
+          const systemObservation = this.systemSituationBuilder.build();
+          // Augment with previousRunContext if available
+          if (currentInput.previousRunContext) {
+            systemObservation.eventFlowRefs = currentInput.previousRunContext.eventFlowRefs ?? [];
+            systemObservation.goalDecompositionRef = currentInput.previousRunContext.goalDecompositionRef;
+            systemObservation.memoryRefs = currentInput.previousRunContext.memoryRefs ?? [];
+          }
+          return this.observationAggregator.aggregate(taskSituation, systemObservation);
+        }, {
+          taskId: currentInput.taskId,
+          workflowStepCount: currentInput.workflow.executionSteps.length,
+          iteration: this.loopIteration,
+        });
+        timeline.record("observe", "completed", taskObservation.task.taskId, null, "Aggregated task and system observations for downstream assessment.");
+        this.stageFsm.recordStageCompletion("observe");
+
+        // R5-3: Validate transition observe→assess
+        const assessTransition = this.stageFsm.canTransitionTo("assess");
+        if (!assessTransition.allowed) {
+          throw new Error(`fsm.transition_rejected: ${assessTransition.reasonCode}`);
+        }
+        this.stageFsm.recordStageEntry("assess");
+        this.currentFsmStage = "assess";
+
+        // O→A boundary: validate TaskSituation — degrade to default on failure (per §L.14)
+        const observedTask: TaskSituation = (() => {
+          const result = validateTaskSituation(taskObservation.task);
+          if (result.ok) return result.value;
+          this.boundaryLogger.warn("[boundary:O→A] TaskSituation validation failed — degrading to default", {
+            data: { taskId: currentInput.taskId, boundary: "O→A" },
+          });
+          return {
+            taskId: currentInput.taskId,
+            timestamp: Date.now(),
+            objective: currentInput.objective,
+            currentPhase: "planning",
+            userIntent: { raw: currentInput.objective, normalized: currentInput.objective, confidence: 0.5 },
+            blockers: [],
+            codebaseSnapshot: { rootPath: ".", fileCount: 0, relevantFiles: [] },
+            environmentContext: { nodeVersion: process.version, platform: process.platform, workingDirectory: process.cwd(), availableTools: [] },
+            historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
+            relevantMemory: [],
+            fileRefs: currentInput.fileRefs ?? [],
+            metrics: {},
+          };
         })();
 
-        if (validatedLearningObjects.length === 0) {
-          runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
-          runtimeMetricsRegistry.recordOapeflirStageEntry("release");
-          runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
-          runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
-          timeline.record("improve", "skipped", null, "improvement.validation_failed", "Skipped improvement because no validated learning objects remained after boundary checks.");
-          timeline.record("release", "skipped", null, "release.improve_skipped", "Release was skipped because no improvement candidate was produced.");
-        } else {
-        const boundary = await this.runStage("improve", () => this.autonomyBoundary.decide("planning_policy", validatedLearningObjects), {
-          taskId: input.taskId,
-          learningObjectCount: validatedLearningObjects.length,
+        const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess(observedTask), {
+          taskId: currentInput.taskId,
         });
-        if (boundary.allowed) {
-          const candidate = this.candidateRegistry.register({
-            taskId: input.taskId,
-            target: "planning_policy",
-            learningObjects: validatedLearningObjects,
-            description: "Promote feedback-derived planning guidance into the shadow rollout lane.",
-            expectedBenefit: "Reduce repeat repair loops without changing live execution.",
+        timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
+        this.stageFsm.recordStageCompletion("assess");
+
+        // R5-3: Validate transition assess→plan (may allow backward from feedback-driven replan)
+        const planTransition = this.stageFsm.canTransitionTo("plan");
+        if (!planTransition.allowed) {
+          throw new Error(`fsm.transition_rejected: ${planTransition.reasonCode}`);
+        }
+        this.stageFsm.recordStageEntry("plan");
+        this.currentFsmStage = "plan";
+
+        // A→P boundary: validate UnifiedAssessment — default to fallback on failure (per §L.14)
+        const validatedAssessment: UnifiedAssessment = (() => {
+          const result = validateUnifiedAssessment(assessment);
+          if (result.ok) return result.value;
+          this.boundaryLogger.warn("[boundary:A→P] UnifiedAssessment validation failed — using default", {
+            data: { taskId: currentInput.taskId, boundary: "A→P" },
           });
-          const approved = this.candidateRegistry.updateStatus(candidate.candidateId, "approved") ?? candidate;
-          timeline.record("improve", "completed", approved.candidateId, null, "Registered and approved an improvement candidate for shadow rollout.");
-          const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
-          let rawRolloutRecord = await this.runStage("release", () => this.rollout.start(approved, strategyVersion, "system"), {
-            taskId: input.taskId,
-            candidateId: approved.candidateId,
-          });
-          // I→R boundary: validate rollout record — skip release on failure (per §L.14)
-          const rolloutValidation = validateRolloutRecord(rawRolloutRecord);
-          rolloutRecord = rolloutValidation.ok ? rolloutValidation.value : null;
-          if (!rolloutValidation.ok) {
-            this.boundaryLogger.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record", {
-              data: { taskId: input.taskId, boundary: "I→R" },
+          return {
+            taskId: currentInput.taskId,
+            timestamp: Date.now(),
+            situationRef: `assessment:${currentInput.taskId}:fallback`,
+            phase: "pre-execution",
+            complexity: "moderate",
+            risk: "medium",
+            riskAssessment: { level: "medium", factors: ["assessment_validation_failed"] },
+            routingDecision: { division: "coding", workflow: "multi-step", rationale: "fallback_due_to_validation_error" },
+            resourceAllocation: { modelClass: "medium", maxTokens: 5000, timeoutMs: 60000 },
+            approvalPolicy: { required: false, level: "none" },
+            executionMode: "auto",
+            suggestedActions: [],
+          };
+        })();
+
+        // R5-1: Plan stage now produces PlanGraphBundle with graph nodes/edges structure
+        const plan = await this.runStage<Plan>("plan", () => this.planBuilder.build({
+          observation: observedTask,
+          assessment: validatedAssessment,
+          workflow: currentInput.workflow,
+        }), {
+          taskId: currentInput.taskId,
+        });
+        timeline.record("plan", "completed", plan.planId, null, "Built an execution plan from validated observation, assessment, and workflow inputs.");
+
+        // R5-1: Convert Plan to PlanGraphBundle
+        planGraphBundle = createPlanGraphBundle({
+          harnessRunId: `oapeflir_run_${currentInput.taskId}`,
+          graph: {
+            graphId: plan.planId,
+            nodes: plan.steps.map((step, idx) => ({
+              nodeId: step.stepId,
+              nodeType: "tool" as const,
+              inputRefs: idx === 0 ? [] : [plan.steps[idx - 1]!.stepId],
+              outputSchemaRef: `schema:step:${step.stepId}`,
+              riskClass: "medium" as const,
+              budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["compute"] },
+              sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+              retryPolicyRef: "retry:default",
+              timeoutMs: step.timeout,
+            })),
+            edges: plan.steps.slice(1).map((step, idx) => ({
+              edgeId: `edge_${idx}`,
+              fromNodeId: plan.steps[idx]!.stepId,
+              toNodeId: step.stepId,
+              condition: { type: "always" },
+              dependencyType: "hard" as const,
+            })),
+            entryNodeIds: plan.steps[0] ? [plan.steps[0].stepId] : [],
+            terminalNodeIds: plan.steps[plan.steps.length - 1] ? [plan.steps[plan.steps.length - 1].stepId] : [],
+            joinStrategy: "all",
+            graphHash: `plan_${plan.planId}_v${plan.version}`,
+          },
+          schedulerPolicy: { policyId: "scheduler:oapeflir.fifo", strategy: "deterministic_fifo" },
+          budgetPlanRef: "budget:oapeflir.default",
+          riskProfile: { riskClass: assessment.risk as "low" | "medium" | "high" | "critical", reasons: [`complexity:${assessment.complexity}`] },
+          validationReport: { valid: true, findings: [] },
+        });
+        this.currentPlanGraphBundle = planGraphBundle;
+        timeline.record("plan", "completed", planGraphBundle.planGraphBundleId, null, "Built PlanGraphBundle with graph nodes/edges structure per §13.7.");
+        this.stageFsm.recordStageCompletion("plan");
+
+        // R5-3: Validate transition plan→execute
+        const executeTransition = this.stageFsm.canTransitionTo("execute");
+        if (!executeTransition.allowed) {
+          throw new Error(`fsm.transition_rejected: ${executeTransition.reasonCode}`);
+        }
+        this.stageFsm.recordStageEntry("execute");
+        this.currentFsmStage = "execute";
+
+        // P→E boundary: validate Plan DTO — abort on failure (per §L.14)
+        const planValidation = validatePlan(plan);
+        if (!planValidation.ok) {
+          throw planValidation.error;
+        }
+
+        // R5-4: Check guardrails before execution
+        if (this.loopController) {
+          const guardViolation = this.loopController.getGuardViolation();
+          if (guardViolation !== null) {
+            this.boundaryLogger.warn("[guardrail:active] Loop guard violated — aborting execution", {
+              data: { taskId: currentInput.taskId, violation: guardViolation },
             });
+            harnessDecision = {
+              decisionId: newId("harness_decision"),
+              decisionInputBundleId: "",
+              decisionKind: "abort",
+              decision: "abort",
+              deciderType: "system",
+              deciderRef: "harness.guardrails",
+              reasonCode: guardViolation,
+              createdAt: nowIso(),
+            };
+            break;
           }
-          timeline.record(
-            "release",
-            rolloutRecord ? "completed" : "skipped",
-            rolloutRecord?.recordId ?? null,
-            rolloutRecord ? null : "release.validation_failed",
-            rolloutRecord
-              ? "Started rollout for the approved strategy version."
-              : "Rollout output failed validation and was nulled before release completion.",
-          );
+        }
+
+        // R5-13: Execute with subgraph/child-run support if parentContext provided
+        const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
+          currentInput.stepOutputs ?? await this.executeViaBridge(plan, { taskId: currentInput.taskId })
+        ), {
+          taskId: currentInput.taskId,
+          planId: plan.planId,
+        });
+        timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1]?.stepId ?? plan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
+        this.stageFsm.recordStageCompletion("execute");
+
+        // R5-3: Validate transition execute→feedback
+        const feedbackTransition = this.stageFsm.canTransitionTo("feedback");
+        if (!feedbackTransition.allowed) {
+          throw new Error(`fsm.transition_rejected: ${feedbackTransition.reasonCode}`);
+        }
+        this.stageFsm.recordStageEntry("feedback");
+        this.currentFsmStage = "feedback";
+
+        // E→F boundary: validate step outputs and feedback signals — skip feedback on failure (per §L.14)
+        const validatedStepOutputs: DualChannelStepOutput[] = (() => {
+          const result = validateStepOutputs(stepOutputs);
+          if (result.ok) return result.value;
+          this.boundaryLogger.warn("[boundary:E→F] stepOutputs validation failed — skipping feedback stage", {
+            data: { taskId: currentInput.taskId, boundary: "E→F" },
+          });
+          return [];
+        })();
+
+        const feedbackSignals: FeedbackSignal[] = (() => {
+          const result = validateFeedbackSignals(currentInput.feedbackSignals ?? this.buildFeedbackSignals(currentInput.taskId, validatedStepOutputs));
+          if (result.ok) return result.value;
+          this.boundaryLogger.warn("[boundary:E→F] feedbackSignals validation failed — skipping feedback stage", {
+            data: { taskId: currentInput.taskId, boundary: "E→F" },
+          });
+          return [];
+        })();
+        const feedback = await this.runStage<FeedbackBatch>("feedback", () => this.feedbackCollector.collect({
+          taskId: currentInput.taskId,
+          planId: plan.planId,
+          signals: feedbackSignals,
+        }), {
+          taskId: currentInput.taskId,
+          signalCount: feedbackSignals.length,
+        });
+        timeline.record("feedback", "completed", feedback.feedbackId, null, "Collected execution feedback signals and normalized them for learning.");
+        this.stageFsm.recordStageCompletion("feedback");
+
+        const learningSignals: LearningSignal[] = this.feedbackCollector.toLearningSignals(feedback);
+        // F→L boundary: validate learning signals — skip learn on failure (per §L.14)
+        const validatedLearningSignals: LearningSignal[] = ((): LearningSignal[] => {
+          const result = validateLearningSignalsArray(learningSignals);
+          if (result.ok) return result.value as LearningSignal[];
+          this.boundaryLogger.warn("[boundary:F→L] learningSignals validation failed — skipping learn stage", {
+            data: { taskId: currentInput.taskId, boundary: "F→L" },
+          });
+          return [] as LearningSignal[];
+        })();
+
+        // R5-3: Validate transition feedback→learn
+        const learnTransition = this.stageFsm.canTransitionTo("learn");
+        if (learnTransition.allowed) {
+          this.stageFsm.recordStageEntry("learn");
+          this.currentFsmStage = "learn";
+        }
+
+        const learningObjects = await this.runStage<LearningObject[]>("learn", () => this.learning.learn(validatedLearningSignals), {
+          taskId: currentInput.taskId,
+          signalCount: validatedLearningSignals.length,
+        });
+        timeline.record(
+          "learn",
+          learningObjects.length > 0 ? "completed" : "skipped",
+          learningObjects[0]?.learningObjectId ?? null,
+          learningObjects.length > 0 ? null : "learning.no_objects",
+          learningObjects.length > 0
+            ? "Converted validated feedback into reusable learning objects."
+            : "No qualifying feedback patterns were strong enough to produce learning objects.",
+        );
+        if (learnTransition.allowed) {
+          this.stageFsm.recordStageCompletion("learn");
+        }
+
+        // G7: Promote validated learning objects into the knowledge plane
+        if (learningObjects.length > 0) {
+          this.knowledgePromotion.promote(learningObjects, currentInput.taskId);
+        }
+
+        const outcome = this.outcomeEvaluator.evaluate(plan, feedback);
+        const qualityGate = this.qualityGate.decide(outcome);
+        const replanTrigger = this.replanning.createTrigger(
+          currentInput.taskId,
+          qualityGate.accepted ? "planning.no_replan_required" : "planning.quality_gate_replan",
+          "feedback",
+          qualityGate.reasonCodes.join(","),
+        );
+        const replanDecision = this.replanning.decide(plan, feedback, replanTrigger);
+        let rolloutRecord: RolloutRecord | null = null;
+
+        // R5-7: Produce EvaluationReport per §45.10 (passed/score/issues[]/recommendation/confidence)
+        evaluationReport = {
+          passed: qualityGate.accepted,
+          score: outcome.score ?? 0,
+          issues: outcome.issues ?? [],
+          recommendation: qualityGate.accepted ? "continue" : qualityGate.reasonCodes.join("; "),
+          confidence: outcome.confidence ?? 0.5,
+        };
+
+        // R5-3: Validate transition learn→improve (may be skipped)
+        const improveTransition = this.stageFsm.canTransitionTo("improve");
+        if (improveTransition.allowed) {
+          this.stageFsm.recordStageEntry("improve");
+          this.currentFsmStage = "improve";
+        }
+
+        if (learningObjects.length > 0) {
+          // L→I boundary: validate LearningObject[] — skip improve on failure (per §L.14)
+          const validatedLearningObjects: LearningObject[] = ((): LearningObject[] => {
+            const result = validateLearningObjects(learningObjects);
+            if (result.ok) return result.value as LearningObject[];
+            this.boundaryLogger.warn("[boundary:L→I] learningObjects validation failed — skipping improve stage", {
+              data: { taskId: currentInput.taskId, boundary: "L→I" },
+            });
+            return [] as LearningObject[];
+          })();
+
+          if (validatedLearningObjects.length === 0) {
+            runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
+            runtimeMetricsRegistry.recordOapeflirStageEntry("release");
+            runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
+            runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
+            timeline.record("improve", "skipped", null, "improvement.validation_failed", "Skipped improvement because no validated learning objects remained after boundary checks.");
+            timeline.record("release", "skipped", null, "release.improve_skipped", "Release was skipped because no improvement candidate was produced.");
+          } else {
+            const boundary = await this.runStage("improve", () => this.autonomyBoundary.decide("planning_policy", validatedLearningObjects), {
+              taskId: currentInput.taskId,
+              learningObjectCount: validatedLearningObjects.length,
+            });
+            if (boundary.allowed) {
+              const candidate = this.candidateRegistry.register({
+                taskId: currentInput.taskId,
+                target: "planning_policy",
+                learningObjects: validatedLearningObjects,
+                description: "Promote feedback-derived planning guidance into the shadow rollout lane.",
+                expectedBenefit: "Reduce repeat repair loops without changing live execution.",
+              });
+              const approved = this.candidateRegistry.updateStatus(candidate.candidateId, "approved") ?? candidate;
+              timeline.record("improve", "completed", approved.candidateId, null, "Registered and approved an improvement candidate for shadow rollout.");
+              const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
+
+              // R5-8: Release stage with EvaluationGate/approval/canary/rollback per §13.14
+              const releaseResult = await this.runStage("release", () => this.rollout.startWithGating(approved, strategyVersion, "system", {
+                evaluationGate: evaluationReport,
+                requireApproval: assessment.risk === "high" || assessment.risk === "critical",
+                canaryPercent: 10,
+                rollbackOnFailure: true,
+              }), {
+                taskId: currentInput.taskId,
+                candidateId: approved.candidateId,
+              });
+              let rawRolloutRecord = releaseResult.record;
+              // I→R boundary: validate rollout record — skip release on failure (per §L.14)
+              const rolloutValidation = validateRolloutRecord(rawRolloutRecord);
+              rolloutRecord = rolloutValidation.ok ? rolloutValidation.value : null;
+              if (!rolloutValidation.ok) {
+                this.boundaryLogger.warn("[boundary:I→R] rolloutRecord validation failed — nulling rollout record", {
+                  data: { taskId: currentInput.taskId, boundary: "I→R" },
+                });
+              }
+              timeline.record(
+                "release",
+                rolloutRecord ? "completed" : "skipped",
+                rolloutRecord?.recordId ?? null,
+                rolloutRecord ? null : "release.validation_failed",
+                rolloutRecord
+                  ? "Started rollout for the approved strategy version."
+                  : "Rollout output failed validation and was nulled before release completion.",
+              );
+            } else {
+              runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
+              runtimeMetricsRegistry.recordOapeflirStageEntry("release");
+              runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
+              runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
+              timeline.record("improve", "skipped", null, boundary.reasonCode, "Autonomy boundary blocked promotion of the candidate into improve.");
+              timeline.record("release", "skipped", null, "release.improve_blocked", "Release was blocked because the improvement candidate did not clear the autonomy boundary.");
+            }
+          }
         } else {
-          runtimeMetricsRegistry.recordOapeflirStageEntry("improve");
-          runtimeMetricsRegistry.recordOapeflirStageEntry("release");
-          runtimeMetricsRegistry.recordOapeflirStageExit("improve", "skipped", 0);
-          runtimeMetricsRegistry.recordOapeflirStageExit("release", "skipped", 0);
-          timeline.record("improve", "skipped", null, boundary.reasonCode, "Autonomy boundary blocked promotion of the candidate into improve.");
-          timeline.record("release", "skipped", null, "release.improve_blocked", "Release was blocked because the improvement candidate did not clear the autonomy boundary.");
+          runtimeMetricsRegistry.recordOapeflirStage("improve", "skipped", 0);
+          runtimeMetricsRegistry.recordOapeflirStage("release", "skipped", 0);
+          timeline.record("improve", "skipped", null, "improvement.no_learning_objects");
+          timeline.record("release", "skipped", null, "release.no_candidate");
         }
+        if (improveTransition.allowed) {
+          this.stageFsm.recordStageCompletion("improve");
+          this.stageFsm.recordStageCompletion("release");
         }
-      } else {
-        runtimeMetricsRegistry.recordOapeflirStage("improve", "skipped", 0);
-        runtimeMetricsRegistry.recordOapeflirStage("release", "skipped", 0);
-        timeline.record("improve", "skipped", null, "improvement.no_learning_objects");
-        timeline.record("release", "skipped", null, "release.no_candidate");
+
+        // R5-2: Re-entrant loop check - if replanDecision says replan, loop back to plan stage
+        shouldContinue = false;
+        if (replanDecision.shouldReplan && this.loopController) {
+          // R5-4: Record iteration and check guards
+          this.loopController.recordIteration(0); // Cost estimation would need actual metrics
+          if (replanDecision.strategy === "replanned") {
+            this.loopController.recordReplan();
+          }
+
+          const progress = this.loopController.evaluateProgress(
+            "replan",
+            true, // has remaining iterations
+          );
+
+          if (progress.shouldContinue) {
+            // R5-12: Produce GraphPatch for replan
+            const newGraphVersion = (this.currentPlanGraphBundle?.graphVersion ?? 0) + 1;
+            graphPatch = createGraphPatch({
+              harnessRunId: `oapeflir_run_${currentInput.taskId}`,
+              baseGraphVersion: this.currentPlanGraphBundle?.graphVersion ?? 1,
+              newGraphVersion,
+              operations: [{
+                operationId: newId("gpatch_op"),
+                operationType: "add_node",
+                targetRef: `replan_v${newGraphVersion}`,
+                payload: { planId: plan.planId, strategy: replanDecision.strategy },
+              }],
+              affectedExecutedNodes: [],
+              affectedSideEffects: [],
+              compatibilityClass: "safe_append",
+              policyProofRef: { artifactId: newId("policy_proof"), uri: "internal://policy" },
+              auditRef: { artifactId: newId("audit_ref"), uri: "internal://audit" },
+            });
+            this.currentGraphPatch = graphPatch;
+
+            // R5-3: Allow backward transition feedback→plan for replanning
+            this.stageFsm.recordStageEntry("plan");
+            this.currentFsmStage = "plan";
+
+            // R5-2: Re-enter with updated input
+            shouldContinue = true;
+            this.loopIteration++;
+            currentInput = {
+              ...currentInput,
+              stepOutputs: undefined, // Clear to re-execute
+              previousRunContext: {
+                previousPlanId: plan.planId,
+                previousGraphVersion: this.currentPlanGraphBundle?.graphVersion,
+                eventFlowRefs: [],
+                goalDecompositionRef: undefined,
+                memoryRefs: [],
+              },
+            };
+
+            // R5-4: Record loop metrics
+            if (this.loopController) {
+              const loopState = this.loopController.getState();
+              runtimeMetricsRegistry.recordOapeflirStageEntry("loop_iteration");
+              runtimeMetricsRegistry.recordOapeflirStageExit("loop_iteration", "completed", 0);
+            }
+            continue;
+          } else {
+            // Guard triggered stop
+            harnessDecision = {
+              decisionId: newId("harness_decision"),
+              decisionInputBundleId: "",
+              decisionKind: "replan",
+              decision: "abort",
+              deciderType: "system",
+              deciderRef: "harness.guardrails",
+              reasonCode: progress.violation ?? "harness.guard.max_iterations_reached",
+              createdAt: nowIso(),
+            };
+          }
+        }
+
+        // R5-2: Final return only when loop completes (no replan needed or guard stopped)
+        return {
+          observation: taskObservation,
+          assessment,
+          plan,
+          planGraphBundle: planGraphBundle!,
+          stepOutputs,
+          feedback,
+          learningSignals,
+          learningObjects,
+          rolloutRecord,
+          timeline: timeline.build(),
+          outcome,
+          evaluationReport,
+          qualityGate,
+          replanDecision,
+          graphPatch,
+          harnessDecision,
+        };
       }
 
+      // R5-2: Exit with last known state when guard triggered
       return {
-        observation: taskObservation,
-        assessment,
-        plan,
-        stepOutputs,
-        feedback,
-        learningSignals,
-        learningObjects,
-        rolloutRecord,
-        timeline: timeline.build(),
-        outcome,
-        qualityGate,
-        replanDecision,
+        observation: null as unknown as UnifiedObservation,
+        assessment: null as unknown as UnifiedAssessment,
+        plan: null as unknown as Plan,
+        planGraphBundle: planGraphBundle!,
+        stepOutputs: [],
+        feedback: null as unknown as FeedbackBatch,
+        learningSignals: [],
+        learningObjects: [],
+        rolloutRecord: null,
+        timeline: [],
+        outcome: null as unknown as ExecutionOutcomeEvaluation,
+        evaluationReport,
+        qualityGate: null as unknown as PostExecutionQualityGateDecision,
+        replanDecision: null as unknown as ReplanningDecision,
+        graphPatch,
+        harnessDecision,
       };
     });
   }

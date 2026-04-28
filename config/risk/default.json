@@ -1,5 +1,6 @@
 {
-  "$schema": "../../../src/platform/contracts/types/schemas/config-schema.ts",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Canonical risk configuration aligned with §28 Event Registry and DLQ model",
   "riskCategories": [
     "operational",
     "financial",
@@ -9,20 +10,13 @@
     "strategic"
   ],
   "factorWeights": {
-    "stepTypeRisk": 3,
     "targetSystemRisk": 4,
     "dataClassRisk": 3,
     "blastRadius": 2,
     "priorFailureRate": 2,
     "confidence": 1
   },
-  "stepTypeRiskValues": {
-    "read": 1,
-    "write": 3,
-    "delete": 5,
-    "external_call": 4
-  },
-  "targetSystemRiskValues": {
+  "systemRiskValues": {
     "internal": 1,
     "staging": 2,
     "production": 5
@@ -75,6 +69,7 @@
       "autoExecute": false,
       "logLevel": "error",
       "requiresApproval": true,
+      "approvalType": "standard",
       "sideEffect": "restricted",
       "evidenceLevel": "full"
     },
@@ -85,6 +80,60 @@
       "approvalType": "break_glass",
       "sideEffect": "prohibited",
       "evidenceLevel": "legal"
+    }
+  },
+  "eventRegistry": {
+    "namespace": "platform.risk",
+    "tier1Events": [
+      "risk.assessment.completed",
+      "risk.level.changed",
+      "risk.breach.detected"
+    ],
+    "dlqModel": {
+      "enabled": true,
+      "maxRetries": 3,
+      "retryBackoffMs": 5000,
+      "deadLetterActions": [
+        "alert",
+        "block_execution",
+        "require_approval"
+      ]
+    }
+  },
+  "autonomyRiskCaps": {
+    "critical": "manual",
+    "high": "semi_auto",
+    "medium": "supervised",
+    "low": "full_auto"
+  },
+  "domainRiskDefaults": {
+    "healthcare": {
+      "riskLevel": "critical",
+      "maxAutonomy": "manual",
+      "advisoryOnly": true,
+      "humanAccountable": true,
+      "deterministicHotPathOnly": true
+    },
+    "quant_trading": {
+      "riskLevel": "high",
+      "maxAutonomy": "supervised",
+      "advisoryOnly": false,
+      "humanAccountable": true,
+      "deterministicHotPathOnly": true
+    },
+    "financial_services": {
+      "riskLevel": "high",
+      "maxAutonomy": "supervised",
+      "advisoryOnly": false,
+      "humanAccountable": true,
+      "deterministicHotPathOnly": false
+    },
+    "legal": {
+      "riskLevel": "high",
+      "maxAutonomy": "supervised",
+      "advisoryOnly": false,
+      "humanAccountable": true,
+      "deterministicHotPathOnly": false
     }
   }
 }

@@ -77,19 +77,19 @@ function defaultOperatorActions(attentionQueue: readonly AttentionItem[]): reado
     {
       actionId: "open_approvals",
       label: "Open Approval Queue",
-      route: "/console/approvals",
+      route: "/workbench/approvals",
       requiredRole: "viewer",
     },
     {
       actionId: "open_stability",
       label: "Open Stability Panel",
-      route: "/console/stability",
+      route: "/workbench/stability",
       requiredRole: "operator",
     },
     {
       actionId: hasCriticalAttention ? "open_takeover_console" : "open_task_board",
       label: hasCriticalAttention ? "Open Takeover Console" : "Open Task Board",
-      route: hasCriticalAttention ? "/console/admin/tasks" : "/console",
+      route: hasCriticalAttention ? "/workbench/takeover" : "/workbench/tasks",
       requiredRole: hasCriticalAttention ? "admin" : "operator",
     },
   ];

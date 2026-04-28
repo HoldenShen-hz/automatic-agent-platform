@@ -53,7 +53,7 @@ const STAGE_ORDER: readonly OapeflirStage[] = OAPEFLIR_STAGES;
 const VALID_PREDECESSORS: ReadonlyMap<OapeflirStage, readonly OapeflirStage[]> = new Map([
   ["observe", []],
   ["assess", ["observe"]],
-  ["plan", ["assess"]],
+  ["plan", ["assess", "feedback"]],
   ["execute", ["plan"]],
   ["feedback", ["execute"]],
   ["learn", ["feedback"]],
@@ -120,6 +120,18 @@ export class StageTransitionFSM {
     }
 
     if (targetIndex < currentIndex) {
+      // §45.7/§13.4: Allow backward transitions for feedback-driven replanning
+      // A feedback signal may require returning to an earlier stage (e.g., feedback→plan)
+      const isFeedbackDrivenReplan = (currentStage === "feedback" || currentStage === "learn" || currentStage === "improve" || currentStage === "release")
+        && (targetStage === "plan" || targetStage === "assess" || targetStage === "execute");
+      if (isFeedbackDrivenReplan) {
+        return {
+          allowed: true,
+          targetStage,
+          reasonCode: "fsm.feedback_driven_replan",
+          reasonCodes: [`fsm.feedback_driven_replan: ${currentStage} → ${targetStage} for replanning`],
+        };
+      }
       return {
         allowed: false,
         targetStage,

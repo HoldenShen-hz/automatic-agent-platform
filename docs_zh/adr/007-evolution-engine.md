@@ -19,9 +19,9 @@
 - Release 在当前 phase1-4 仅允许 `off / suggest / shadow` 三档，不直接开放 canary/staged。
 - 任何变更都必须可回滚、可审计、可灰度、可暂停。
 
-## Supervisor 角色
+## HarnessRuntime 生命周期控制
 
-Supervisor 不只是监控器，还承担治理职责：
+v4.3 §45 将所有生命周期控制收口到 HarnessRuntime：
 
 - 管理 Agent 生命周期。
 - 跟踪心跳、上下文占用、工具调用和资源使用。

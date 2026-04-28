@@ -118,8 +118,7 @@ export class UxEventTrackingService {
 
     if (this.eventPublisher) {
       this.eventPublisher.publish({
-        // Cast to any to bypass strict event type checking - events are forwarded to analytics pipeline
-        eventType: "test:many_events" as any,
+        eventType: trackEntry.eventType,
         sessionId: trackEntry.sessionId,
         taskId: trackEntry.taskId,
         payload: {
@@ -133,7 +132,7 @@ export class UxEventTrackingService {
           interactionType: trackEntry.interactionType,
           eventType: trackEntry.eventType,
           metadata: (p.metadata as Record<string, string>) ?? {},
-        } as any,
+        },
       });
     }
 

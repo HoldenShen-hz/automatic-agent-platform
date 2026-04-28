@@ -15,7 +15,8 @@ export {
   SKILL_GOVERNANCE_FOUNDATION_SQL,
   TASK_TENANT_SCOPE_SQL,
   BILLING_COLLECTION_FOUNDATION_SQL,
-  PRODUCT_GOVERNANCE_TENANT_SCOPE_SQL
+  PRODUCT_GOVERNANCE_TENANT_SCOPE_SQL,
+  BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL,
 };
 
 const TENANT_DATA_NAMESPACE_FOUNDATION_SQL = `
@@ -583,4 +584,16 @@ CREATE TABLE IF NOT EXISTS dlq_records (
 CREATE INDEX IF NOT EXISTS idx_dlq_records_status ON dlq_records(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dlq_records_consumer ON dlq_records(consumer_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dlq_records_source_event ON dlq_records(source_event_id);
+`;
+
+export const BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL = `
+ALTER TABLE usage_events ADD COLUMN harness_run_id TEXT NULL;
+ALTER TABLE usage_events ADD COLUMN node_run_id TEXT NULL;
+ALTER TABLE usage_events ADD COLUMN attempt_id TEXT NULL;
+ALTER TABLE usage_events ADD COLUMN step_id TEXT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_usage_events_harness_run_captured_at
+  ON usage_events(harness_run_id, captured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_events_node_run_captured_at
+  ON usage_events(node_run_id, captured_at DESC);
 `;

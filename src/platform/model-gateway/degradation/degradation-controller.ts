@@ -15,10 +15,14 @@
  */
 
 import { AppError, ProviderError } from "../../contracts/errors.js";
+import { createOperationalDirective, type OperationalDirective } from "../../contracts/control-directive/index.js";
 import type { ModelGatewayCacheEntry, ModelGatewayCacheService } from "../cache/index.js";
 import type { ModelFallbackCandidate, ModelGatewayFallbackService } from "../fallback/index.js";
 import type { PromptTemplateRecord } from "../../prompt-engine/registry/index.js";
 import type { UnifiedChatProvider } from "../provider-registry/unified-chat-provider.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
  * Degradation levels in order of severity.
@@ -144,6 +148,8 @@ export class DegradationController {
   private readonly fallbackService: ModelGatewayFallbackService;
   private readonly cacheService: ModelGatewayCacheService<string>;
   private readonly templates: Record<string, string>;
+  /** §9.5: Event bus emitter for OperationalDirective on degradation state changes */
+  private readonly eventBusEmitter: ((eventType: string, payload: unknown) => void) | null;
 
   constructor(options: {
     primaryProvider: UnifiedChatProvider;
@@ -152,6 +158,7 @@ export class DegradationController {
     cacheService: ModelGatewayCacheService<string>;
     templates?: Record<string, string>;
     config?: Partial<DegradationConfig>;
+    eventBusEmitter?: (eventType: string, payload: unknown) => void;
   }) {
     this.primaryProvider = options.primaryProvider;
     this.fallbackProvider = options.fallbackProvider ?? null;
@@ -159,6 +166,7 @@ export class DegradationController {
     this.cacheService = options.cacheService;
     this.templates = { ...DEFAULT_TEMPLATE_RESPONSES, ...(options.templates ?? {}) };
     this.config = { ...DEFAULT_DEGRADATION_CONFIG, ...options.config };
+    this.eventBusEmitter = options.eventBusEmitter ?? null;
   }
 
   /**
@@ -358,29 +366,95 @@ export class DegradationController {
 
   /**
    * Gets available fallback candidates from all providers.
-   * This would typically be enhanced to read from a provider registry.
+   * Returns providers that are not the primary and are currently healthy.
    */
   private getFallbackCandidates(): ModelFallbackCandidate[] {
-    return [];
+    // In a full implementation, this would query the provider registry
+    // for available healthy providers that can serve as fallbacks.
+    // For now, return candidates from the fallback provider if configured.
+    const candidates: ModelFallbackCandidate[] = [];
+
+    // If a fallback provider is configured, add it as a candidate
+    if (this.fallbackProvider != null) {
+      // Note: In a real implementation, we would query the provider's
+      // model profiles and health status here. This is a simplified version.
+      candidates.push({
+        profileName: "fallback-default",
+        provider: "fallback",
+        tier: "balanced",
+        healthy: true,
+        inputCostPer1kUsd: 0.5,
+      });
+    }
+
+    return candidates;
   }
 
   /**
    * Escalates to the next degradation level.
+   * Emits OperationalDirective per §9.5 for mode synthesis chain interaction.
    */
   public escalate(): void {
     if (this.currentLevel < DegradationLevel.D4) {
+      const oldLevel = this.currentLevel;
       this.currentLevel++;
       this.consecutiveHealthyCount = 0;
+
+      // Emit OperationalDirective per §9.5
+      const directive = createOperationalDirective({
+        directiveId: `degradation_escalate_${Date.now()}`,
+        issuedBy: "degradation_controller",
+        directiveType: "mode_escalation",
+        targetLevel: this.currentLevel,
+        reason: this.lastEscalationReason ?? "health_threshold_exceeded",
+        previousLevel: oldLevel,
+      });
+
+      logger.log({
+        level: "warn",
+        message: "degradation:escalate",
+        crosscuttingFabric: "reliability",
+        data: {
+          oldLevel,
+          newLevel: this.currentLevel,
+          directive,
+          reason: this.lastEscalationReason,
+        },
+      });
     }
   }
 
   /**
    * De-escalates to the previous degradation level if health criteria are met.
+   * Emits OperationalDirective per §9.5 for mode synthesis chain interaction.
    */
   public deescalate(): void {
     if (this.currentLevel > DegradationLevel.D0) {
+      const oldLevel = this.currentLevel;
       this.currentLevel--;
       this.consecutiveHealthyCount = 0;
+
+      // Emit OperationalDirective per §9.5
+      const directive = createOperationalDirective({
+        directiveId: `degradation_deescalate_${Date.now()}`,
+        issuedBy: "degradation_controller",
+        directiveType: "mode_deescalation",
+        targetLevel: this.currentLevel,
+        reason: "health_recovered",
+        previousLevel: oldLevel,
+      });
+
+      logger.log({
+        level: "info",
+        message: "degradation:deescalate",
+        crosscuttingFabric: "reliability",
+        data: {
+          oldLevel,
+          newLevel: this.currentLevel,
+          directive,
+          reason: "health_recovered",
+        },
+      });
     }
   }
 

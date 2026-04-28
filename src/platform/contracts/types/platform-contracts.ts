@@ -101,6 +101,8 @@ export interface RequestEnvelope<TPayload = unknown> {
   readonly metadata: Readonly<Record<string, string>>;
 }
 
+// SideEffectRecord is defined in executable-contracts with 16 states (canonical per §4)
+// SideEffectExpectation is retained locally for platform-level use
 export interface SideEffectExpectation {
   readonly effectId: string;
   readonly category: "read" | "write" | "notification" | "artifact" | "external_api";
@@ -109,14 +111,7 @@ export interface SideEffectExpectation {
   readonly reversible: boolean;
 }
 
-export interface SideEffectRecord {
-  readonly effectId: string;
-  readonly category: SideEffectExpectation["category"];
-  readonly targetRef: string;
-  readonly status: "proposed" | "approved" | "reserved" | "committing" | "committed" | "confirming" | "confirmed" | "ambiguous" | "manual_review_required" | "reconciling" | "compensation_required" | "compensating" | "compensated" | "failed" | "revoked" | "expired" | "rolled_back";
-  readonly summary?: string;
-  readonly evidenceRef?: string;
-}
+// Note: SideEffectRecord with 16 states is canonical in executable-contracts
 
 export interface ExecutionPlanBudget {
   readonly maxSteps: number;
@@ -136,14 +131,20 @@ export type StateCommandType =
   | "write_checkpoint"
   | "store_artifact";
 
+/**
+ * @deprecated StateCommand is deprecated per §5.3. Use inter-plane commands from executable-contracts instead.
+ * This interface is retained for legacy adapter compatibility only.
+ */
 export interface StateCommand<TPayload = unknown> {
   readonly commandId: string;
   readonly traceId: string;
   readonly principal: PlatformPrincipal;
+  readonly leaseId: string;
+  readonly fencingToken: string;
+  readonly event: string;
   readonly type: StateCommandType;
   readonly aggregateId: string;
   readonly expectedVersion: number;
-  readonly fencingToken: string;
   readonly payload: TPayload;
 }
 
@@ -221,13 +222,19 @@ export function createRequestEnvelope<TPayload>(input: {
   };
 }
 
+/**
+ * @deprecated StateCommand factory is deprecated per §5.3.
+ * Use inter-plane commands from executable-contracts instead.
+ */
 export function createStateCommand<TPayload>(input: {
   traceId: string;
   principal: PlatformPrincipal;
+  leaseId: string;
+  fencingToken: string;
+  event: string;
   type: StateCommandType;
   aggregateId: string;
   expectedVersion: number;
-  fencingToken: string;
   payload: TPayload;
   commandId?: string;
 }): StateCommand<TPayload> {
@@ -235,10 +242,12 @@ export function createStateCommand<TPayload>(input: {
     commandId: input.commandId ?? newId("statecmd"),
     traceId: input.traceId,
     principal: input.principal,
+    leaseId: input.leaseId,
+    fencingToken: input.fencingToken,
+    event: input.event,
     type: input.type,
     aggregateId: input.aggregateId,
     expectedVersion: input.expectedVersion,
-    fencingToken: input.fencingToken,
     payload: input.payload,
   };
 }

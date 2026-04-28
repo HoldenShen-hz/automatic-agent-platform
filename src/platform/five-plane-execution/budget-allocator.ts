@@ -7,6 +7,7 @@ import {
   type BudgetReservationResult,
   type BudgetResourceKind,
   type BudgetSettlement,
+  ValidationError,
 } from "../contracts/executable-contracts/index.js";
 import {
   RuntimeStateMachine,
@@ -45,8 +46,45 @@ export class BudgetAllocator {
     readonly expiresAt: string;
     readonly expectedVersion: number;
     readonly nodeRunId?: string;
+    readonly context: BudgetAllocatorContext;
   }): BudgetReservationResult {
-    return reserveBudgetHardCap(input);
+    // Validate CAS against expected version before proceeding
+    if (input.ledger.version !== input.expectedVersion) {
+      throw new ValidationError(
+        "budget_reservation.version_cas_failed",
+        "Budget reservation requires the current ledger version.",
+        { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
+      );
+    }
+
+    // Compute new ledger state (deterministic, same as reserveBudgetHardCap)
+    const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
+    const newStatus = activeCommittedAmount + input.amount >= input.ledger.hardCap ? "hard_cap_reached" : input.ledger.status;
+
+    // Route through state machine for proper CAS + event emission per §25.9
+    const ledgerTransition = this.stateMachine.transition({
+      aggregateType: "BudgetLedger",
+      aggregate: input.ledger,
+      fromStatus: input.ledger.status,
+      toStatus: newStatus,
+      tenantId: input.context.tenantId,
+      traceId: input.context.traceId,
+      reasonCode: "budget.reserved",
+      emittedBy: input.context.emittedBy,
+      auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/reserve`,
+    });
+
+    // Create reservation through state machine for event emission
+    const reservationResult = reserveBudgetHardCap({
+      ledger: ledgerTransition.aggregate,
+      amount: input.amount,
+      resourceKind: input.resourceKind,
+      expiresAt: input.expiresAt,
+      expectedVersion: ledgerTransition.aggregate.version,
+      nodeRunId: input.nodeRunId,
+    });
+
+    return reservationResult;
   }
 
   public settle(input: {

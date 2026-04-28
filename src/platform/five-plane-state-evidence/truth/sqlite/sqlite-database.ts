@@ -660,6 +660,34 @@ CREATE INDEX IF NOT EXISTS idx_memories_layer_scope_created_at
   ON memories(memory_layer, scope, created_at DESC);
 `);
         return true;
+      case 43:
+        this.ensureColumn(
+          "usage_events",
+          "harness_run_id",
+          "ALTER TABLE usage_events ADD COLUMN harness_run_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "usage_events",
+          "node_run_id",
+          "ALTER TABLE usage_events ADD COLUMN node_run_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "usage_events",
+          "attempt_id",
+          "ALTER TABLE usage_events ADD COLUMN attempt_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "usage_events",
+          "step_id",
+          "ALTER TABLE usage_events ADD COLUMN step_id TEXT NULL;",
+        );
+        this.connection.exec(`
+CREATE INDEX IF NOT EXISTS idx_usage_events_harness_run_captured_at
+  ON usage_events(harness_run_id, captured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_events_node_run_captured_at
+  ON usage_events(node_run_id, captured_at DESC);
+`);
+        return true;
       case 24:
         this.connection.exec(`
 CREATE TABLE IF NOT EXISTS organizations (

@@ -12,7 +12,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
-import type { SandboxModeLike } from "../../control-plane/iam/sandbox-policy.js";
+import type { SandboxMode } from "../../control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -34,7 +34,7 @@ export interface BrowserExecutionContext {
   tenantId: string | null;
   correlationId: string;
   sessionId: string | null;
-  sandboxTier: SandboxModeLike;
+  sandboxTier: SandboxMode;
 }
 
 export interface BrowserExecutionResult {

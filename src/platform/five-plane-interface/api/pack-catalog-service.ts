@@ -1,6 +1,6 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import { normalizeSandboxMode, type SandboxModeLike } from "../../control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxMode } from "../../control-plane/iam/sandbox-policy.js";
 
 export interface PackCatalogEntry {
   readonly packId: string;
@@ -9,7 +9,7 @@ export interface PackCatalogEntry {
   readonly domainId: string;
   readonly description: string;
   readonly lifecycleStage: "draft" | "review" | "approved" | "published" | "deprecated" | "archived";
-  readonly sandboxTier: SandboxModeLike;
+  readonly sandboxTier: SandboxMode;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly createdBy: string;
@@ -26,7 +26,7 @@ export interface CreatePackCatalogInput {
   readonly domainId: string;
   readonly description?: string;
   readonly createdBy: string;
-  readonly sandboxTier?: PackCatalogEntry["sandboxTier"];
+  readonly sandboxTier?: string;
   readonly riskCount?: number;
   readonly dependencyCount?: number;
   readonly pluginCount?: number;

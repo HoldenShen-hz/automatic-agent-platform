@@ -20,6 +20,13 @@ export const ACPMessageSchema = z.object({
   messageType: ACPMessageTypeSchema,
   correlation_id: z.string(),
   parent_run_id: z.string(),
+  // §19.1 required delegation fields
+  delegationId: z.string().optional(),
+  childRunId: z.string().optional(),
+  capabilityIntersection: z.array(z.string()).optional(),
+  budgetCap: z.number().min(0).optional(),
+  dataBoundary: z.string().optional(),
+  deadline: z.string().optional(),
   depth: z.number().int().min(0).max(255),
   sender_agent_id: z.string(),
   receiver_agent_id: z.string(),

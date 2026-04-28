@@ -12,6 +12,7 @@ export * from "./monitoring/index.js";
 export * from "./multimodal/index.js";
 export * from "./ops-maturity-baseline-catalog.js";
 export * from "./ops-maturity-bootstrap.js";
+export * from "./ops-maturity-score.js";
 export * from "./platform-ops-agent/index.js";
 export * from "./version-management/index.js";
 export * from "./workflow-debugger/index.js";

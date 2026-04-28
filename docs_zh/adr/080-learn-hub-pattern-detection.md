@@ -193,6 +193,7 @@ Feedback.signal_preprocessed
 ## v4.3 ADR Remediation
 
 - A-65: 本 ADR 原先把 `Phase 1` 与 `EvidenceRef.executionId` 写成 canonical 约束，根因是 learn hub ADR 在 runtime truth 重命名之后没有同步更新证据链主键。修复：正文现改为 ring 口径，并把证据链锚点切到 `harnessRunId / nodeRunId`。
+- R6-47: 修复 FailurePattern/EvidenceRef 接口，移除 executionId 关联，统一使用 harnessRunId/nodeRunId，确保 learning objects 可以 join truth。
 - `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern 接口
 - `§8.5` 4 初始失败模式
 - `§8.6-8.7` ExperienceDistillation / StrategyLearning

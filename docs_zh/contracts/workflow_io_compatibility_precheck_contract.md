@@ -22,8 +22,9 @@ Phase 1a / 1b 的最小预检目标是：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `workflow_id` | `string` | workflow ID |
-| `step_id` | `string` | 当前步骤 |
+| `harness_run_id` | `string` | HarnessRun ID |
+| `plan_graph_bundle_id` | `string` | PlanGraphBundle ID |
+| `node_run_id` | `string` | 当前 NodeRun ID |
 | `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 当前闭环阶段 |
 | `compatible` | `boolean` | 是否兼容 |
 | `missing_keys` | `string[]` | 缺失关键输入 |
@@ -31,6 +32,11 @@ Phase 1a / 1b 的最小预检目标是：
 | `schema_version` | `string?` | 参与比较的 schema 版本 |
 | `reason_code` | `string?` | 不兼容原因码 |
 | `checked_at` | `timestamp` | 检查时间 |
+
+规则：
+
+- `harness_run_id` / `plan_graph_bundle_id` / `node_run_id` 为 canonical 关联键。
+- `workflow_id` / `step_id` 为 legacy 查询键，仅用于兼容接口。
 
 ## 4. 预检内容
 
@@ -41,6 +47,8 @@ Phase 1a / 1b 的最小预检目标是：
 - 上一步输出 schema version 是否与下一步声明兼容
 - 引用的 tool / role 是否可用
 - OAPEFLIR stage 转换是否合法
+- PlanGraphBundle 节点是否可执行
+- NodeRun 输入/输出与 PlanGraph schema 是否匹配
 - 若声明 `knowledge_namespace`，其 namespace 是否存在且允许访问
 - 若声明 plugin / domain tool bundle 引用，是否已注册且与 domain 匹配
 

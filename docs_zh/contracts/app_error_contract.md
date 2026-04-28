@@ -37,7 +37,6 @@
 | `task_id?` | `string` | 关联任务（兼容投影） |
 | `harness_run_id?` | `string` | 关联 HarnessRun |
 | `node_run_id?` | `string` | 关联 NodeRun |
-| `execution_id?` | `string` | legacy execution 投影键 |
 | `caused_by?` | `string` | 上游错误码或异常引用 |
 | `occurred_at` | `timestamp` | 发生时间 |
 

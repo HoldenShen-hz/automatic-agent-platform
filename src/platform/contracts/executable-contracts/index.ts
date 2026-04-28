@@ -361,12 +361,17 @@ export interface AppErrorRef {
 
 export interface NodeAttemptReceipt {
   readonly nodeAttemptReceiptId: string;
+  readonly harnessRunId: string;
+  readonly planGraphId: string;
+  readonly graphVersion: number;
   readonly nodeAttemptId: string;
   readonly nodeRunId: string;
   readonly receiptKind: "tool" | "llm" | "hitl" | "subgraph" | "evaluator" | "router";
   readonly status: "succeeded" | "failed" | "partial" | "blocked";
+  readonly duration: number;
   readonly outputRef?: ArtifactRef;
   readonly error?: AppErrorRef;
+  readonly errorDetail?: string;
   readonly sideEffectRefs: readonly string[];
   readonly budgetSettlementRefs: readonly string[];
   readonly evidenceRefs: readonly ArtifactRef[];
@@ -559,8 +564,9 @@ export interface HumanResponsibilityRecord {
 
 export interface EventEnvelope<TPayload extends JsonValue = JsonValue> {
   readonly eventId: string;
+  readonly runId: string;
   readonly eventType: string;
-  readonly eventVersion: string;
+  readonly schemaVersion: number;
   readonly aggregateType: string;
   readonly aggregateId: string;
   readonly aggregateSeq: number;
@@ -570,7 +576,7 @@ export interface EventEnvelope<TPayload extends JsonValue = JsonValue> {
   readonly correlationId?: string;
   readonly payloadHash: string;
   readonly payload: TPayload;
-  readonly replayBehavior?: EventReplayBehavior;
+  readonly replayBehavior: EventReplayBehavior;
   readonly sourceOfTruth?: EventSourceOfTruth;
   readonly schemaOwner?: string;
   readonly consumerContractTests?: readonly string[];
@@ -907,11 +913,16 @@ export function createAttemptLineage(input: {
 export function createNodeAttemptReceipt(input: {
   nodeAttemptId: string;
   nodeRunId: string;
+  harnessRunId: string;
+  planGraphId: string;
+  graphVersion: number;
   receiptKind: NodeAttemptReceipt["receiptKind"];
   status: NodeAttemptReceipt["status"];
+  duration: number;
   nodeAttemptReceiptId?: string;
   outputRef?: ArtifactRef;
   error?: AppErrorRef;
+  errorDetail?: string;
   sideEffectRefs?: readonly string[];
   budgetSettlementRefs?: readonly string[];
   evidenceRefs?: readonly ArtifactRef[];
@@ -921,10 +932,15 @@ export function createNodeAttemptReceipt(input: {
     nodeAttemptReceiptId: input.nodeAttemptReceiptId ?? newId("nreceipt"),
     nodeAttemptId: input.nodeAttemptId,
     nodeRunId: input.nodeRunId,
+    harnessRunId: input.harnessRunId,
+    planGraphId: input.planGraphId,
+    graphVersion: input.graphVersion,
     receiptKind: input.receiptKind,
     status: input.status,
+    duration: input.duration,
     ...(input.outputRef != null ? { outputRef: input.outputRef } : {}),
     ...(input.error != null ? { error: input.error } : {}),
+    ...(input.errorDetail != null ? { errorDetail: input.errorDetail } : {}),
     sideEffectRefs: input.sideEffectRefs ?? [],
     budgetSettlementRefs: input.budgetSettlementRefs ?? [],
     evidenceRefs: input.evidenceRefs ?? [],
@@ -1256,10 +1272,11 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
   aggregateId: string;
   aggregateSeq: number;
   tenantId: string;
+  runId: string;
   traceId: string;
   payload: TPayload;
   eventId?: string;
-  eventVersion?: string;
+  schemaVersion?: number;
   causationId?: string;
   correlationId?: string;
   payloadHash?: string;
@@ -1271,8 +1288,9 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
   assertPlatformEventType(input.eventType);
   return {
     eventId: input.eventId ?? newId("evt"),
+    runId: input.runId,
     eventType: input.eventType,
-    eventVersion: input.eventVersion ?? CONTRACT_SCHEMA_VERSION,
+    schemaVersion: input.schemaVersion ?? 1,
     aggregateType: input.aggregateType,
     aggregateId: input.aggregateId,
     aggregateSeq: input.aggregateSeq,
@@ -1296,11 +1314,12 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
   aggregateId: string;
   aggregateSeq: number;
   tenantId: string;
+  runId: string;
   traceId: string;
   payload: TPayload;
   derivedFromEventIds: readonly string[];
   eventId?: string;
-  eventVersion?: string;
+  schemaVersion?: number;
   causationId?: string;
   correlationId?: string;
   payloadHash?: string;
@@ -1318,8 +1337,9 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
   }
   return {
     eventId: input.eventId ?? newId("evt"),
+    runId: input.runId,
     eventType: input.eventType,
-    eventVersion: input.eventVersion ?? CONTRACT_SCHEMA_VERSION,
+    schemaVersion: input.schemaVersion ?? 1,
     aggregateType: input.aggregateType,
     aggregateId: input.aggregateId,
     aggregateSeq: input.aggregateSeq,

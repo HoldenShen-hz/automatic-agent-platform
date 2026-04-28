@@ -4,29 +4,45 @@
       "domainId": "coding",
       "name": "Coding",
       "description": "Coding workflows, tools, and plugin bindings.",
-      "version": 1,
+      "version": "1.0.0",
+      "riskSpec": {
+        "advisoryOnly": false,
+        "humanAccountable": false,
+        "deterministicHotPathOnly": false
+      },
       "workflows": [
         {
           "workflowId": "coding-default",
           "name": "Coding Default Workflow",
           "triggerConditions": {},
-          "steps": [
-            {
-              "stepName": "analyze",
-              "toolHints": ["repo_map", "static_analysis"],
-              "modelHints": {
-                "preferredModel": "MiniMax-M2.7"
-              },
-              "outputSchema": null,
-              "retryPolicy": {
-                "maxRetries": 1,
-                "backoffMs": 250
-              },
-              "requiresReview": false,
-              "timeoutMs": 60000,
-              "dependsOn": []
-            }
-          ]
+          "planGraph": {
+            "graphId": "graph:coding:default",
+            "nodes": [
+              {
+                "nodeId": "node:coding:analyze",
+                "nodeType": "llm",
+                "inputRefs": ["task:${taskId}"],
+                "outputSchemaRef": "schema:coding.analyze",
+                "riskClass": "low",
+                "budgetIntent": {
+                  "amount": 0.1,
+                  "currency": "USD",
+                  "resourceKinds": ["token"]
+                },
+                "sideEffectProfile": {
+                  "mayCommitExternalEffect": false,
+                  "reversible": true
+                },
+                "retryPolicyRef": "retry:coding.default",
+                "timeoutMs": 60000
+              }
+            ],
+            "edges": [],
+            "entryNodeIds": ["node:coding:analyze"],
+            "terminalNodeIds": ["node:coding:analyze"],
+            "joinStrategy": "all",
+            "graphHash": "coding-default-workflow-hash"
+          }
         }
       ],
       "toolBundles": [
@@ -95,7 +111,7 @@
         },
         "securityLevel": "standard"
       },
-      "status": "testing",
+      "status": "active",
       "externalAdapters": ["github"],
       "pluginBindings": [
         {

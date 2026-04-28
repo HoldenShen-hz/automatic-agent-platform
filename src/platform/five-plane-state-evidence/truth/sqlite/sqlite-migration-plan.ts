@@ -49,6 +49,7 @@ import {
   EVENT_DEAD_LETTERS_SQL,
   SESSION_EVENTS_SQL,
   DLQ_RECORDS_SQL,
+  BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL,
 } from "./sqlite-migration-runtime-part3.js";
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
@@ -339,6 +340,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(40, "0040_session_events", SESSION_EVENTS_SQL),
   defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
   defineMigration(42, "0042_outbox_schema", OUTBOX_SCHEMA_SQL),
+  defineMigration(43, "0043_billing_usage_event_canonical_attribution", BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL),
 ] as const;
 
 /**

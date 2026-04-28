@@ -21,6 +21,7 @@ import {
   type TopologyValidatorConfig,
 } from "./topology-validator.js";
 import { CollaborationProtocolService, type ACPMessage, type InvariantContext } from "./collaboration-protocol/index.js";
+import { CallDepthBudget } from "./call-depth-budget.js";
 import type {
   AgentContext,
   DelegationSpec,
@@ -54,6 +55,9 @@ export class DelegationManagerService {
   private static readonly ALLOWED_STATUS_TRANSITIONS: Readonly<Record<DelegationStatus, readonly DelegationStatus[]>> = {
     pending: ["active", "completed", "failed", "cancelled", "expired", "timed_out"],
     pending_approval: ["active", "cancelled", "expired", "timed_out"],
+    discovery: ["bid", "awarded", "cancelled"],
+    bid: ["awarded", "cancelled"],
+    awarded: ["active", "cancelled"],
     active: ["completed", "failed", "cancelled", "expired", "timed_out"],
     completed: [],
     failed: [],
@@ -64,6 +68,7 @@ export class DelegationManagerService {
 
   private readonly topologyValidator: TopologyValidator;
   private readonly collaborationProtocol: CollaborationProtocolService;
+  private readonly callDepthBudget: CallDepthBudget;
   private readonly defaultTimeout: number;
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
@@ -82,6 +87,7 @@ export class DelegationManagerService {
     };
     this.topologyValidator = createTopologyValidator(config);
     this.collaborationProtocol = new CollaborationProtocolService();
+    this.callDepthBudget = new CallDepthBudget();
     this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
     this.delegationStore = new Map();
     this.chainStore = new Map();
@@ -143,6 +149,20 @@ export class DelegationManagerService {
     parent: AgentContext,
     spec: DelegationSpec,
   ): AwaitableDelegationHandle {
+    // Step 0: Call depth budget evaluation - R5-47
+    const depthDecision = this.callDepthBudget.evaluate({
+      currentCallDepth: parent.delegationDepth,
+      goalDecompositionDepth: parent.delegationDepth,
+      delegationDepth: parent.delegationDepth,
+    });
+    if (!depthDecision.allowed) {
+      throw new ValidationError(
+        "delegation.call_depth_exceeded",
+        `Call depth ${depthDecision.effectiveCallDepth} exceeds maximum ${depthDecision.maxCallDepth}`,
+        { details: { effectiveCallDepth: depthDecision.effectiveCallDepth, maxCallDepth: depthDecision.maxCallDepth } },
+      );
+    }
+
     // Step 1: Topology validation
     this.validateTopology(parent, spec);
 
@@ -418,10 +438,13 @@ export class DelegationManagerService {
     parentPermissions: PermissionSet,
     requiredPermissions: PermissionSet,
   ): PermissionSet {
+    // §19: Permissions must be narrowed via intersection, not replacement
+    // Child can only request resources that parent already has
+    const allowedResources = requiredPermissions.resources.length > 0
+      ? parentPermissions.resources.filter((resource) => requiredPermissions.resources.includes(resource))
+      : parentPermissions.resources;
     return {
-      resources: requiredPermissions.resources.length > 0
-        ? requiredPermissions.resources
-        : parentPermissions.resources,
+      resources: allowedResources,
       actions: this.intersectActions(parentPermissions.actions, requiredPermissions.actions),
       constraints: {
         ...parentPermissions.constraints,

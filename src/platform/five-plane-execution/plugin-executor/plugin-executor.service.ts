@@ -27,7 +27,6 @@ import {
   normalizeSandboxMode,
   type SandboxPolicy,
   type SandboxMode,
-  type SandboxModeLike,
 } from "../../control-plane/iam/sandbox-policy.js";
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -46,7 +45,11 @@ export interface ExecutionContext {
   taskId: string;
   tenantId: string | null;
   correlationId: string;
-  sandboxTier: SandboxModeLike;
+  sandboxTier: SandboxMode;
+}
+
+export interface ExecutionContextInput extends Omit<ExecutionContext, "sandboxTier"> {
+  sandboxTier: string;
 }
 
 export interface ExecutionResult {
@@ -249,10 +252,14 @@ export class PluginExecutorService {
   public async execute(
     pluginId: string,
     action: string,
-    context: ExecutionContext,
+    context: ExecutionContextInput,
     params: Record<string, unknown>,
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
+    const normalizedContext: ExecutionContext = {
+      ...context,
+      sandboxTier: normalizeSandboxMode(context.sandboxTier),
+    };
     const instance = this.plugins.get(pluginId);
 
     if (!instance) {
@@ -281,7 +288,7 @@ export class PluginExecutorService {
 
     // Get timeout from manifest
     const timeout = instance.manifest.sandbox?.timeoutMs ?? 5000;
-    const sandboxTier = normalizeSandboxMode(context.sandboxTier);
+    const sandboxTier = normalizedContext.sandboxTier;
 
     // Create sandbox policy based on tier
     const pluginSandboxPolicy = this.createPluginSandbox(
@@ -310,13 +317,13 @@ export class PluginExecutorService {
     try {
       // Execute with timeout constraint
       const output = await this.executeWithTimeout(
-        () => this.invokePluginAction(instance.hooks, action, params, { ...context, sandboxTier }, scopedSandbox),
+        () => this.invokePluginAction(instance.hooks, action, params, normalizedContext, scopedSandbox),
         timeout,
       );
 
       // Write execution result to artifact store as evidence
       const artifactRef = await this.writeExecutionArtifact(
-        context,
+        normalizedContext,
         pluginId,
         action,
         output,
@@ -359,7 +366,7 @@ export class PluginExecutorService {
 
       // Write error artifact
       const errorArtifactRef = await this.writeExecutionArtifact(
-        context,
+        normalizedContext,
         pluginId,
         action,
         { error: result.error },

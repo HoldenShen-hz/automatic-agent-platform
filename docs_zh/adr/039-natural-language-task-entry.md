@@ -29,16 +29,17 @@ interface DetectedIntent {
 }
 ```
 
-### 6 种 intent_type
+### 5 种 intent_type
 
 | 类型 | 说明 |
 |------|------|
 | create_task | 创建任务 |
 | query_status | 查询状态 |
 | modify_task | 修改任务 |
-| cancel_task | 取消任务 |
 | create_goal | 创建目标 |
 | decompress_goal | 分解目标 |
+
+注：cancel_task 已从 §6.3 移除，调用方必须使用 abort/pause/panic kill 等语义替代。
 
 ### RiskPreview
 

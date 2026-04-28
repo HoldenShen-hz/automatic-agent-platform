@@ -242,16 +242,21 @@ export class AsyncBillingRepository {
   public async insertUsageEvent(event: UsageEventRecord): Promise<void> {
     await this.conn.execute(
       `INSERT INTO usage_events (
-        usage_id, account_id, subject_id, workspace_id, tenant_id, task_id, execution_id,
-        metric_type, quantity, source, unit_price_usd, captured_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        usage_id, account_id, subject_id, workspace_id, tenant_id, task_id, harness_run_id,
+        node_run_id, attempt_id, execution_id, step_id, metric_type, quantity, source,
+        unit_price_usd, captured_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
       event.usageId,
       event.accountId,
       event.subjectId,
       event.workspaceId,
       event.tenantId,
       event.taskId,
+      event.harnessRunId ?? null,
+      event.nodeRunId ?? null,
+      event.attemptId ?? null,
       event.executionId,
+      event.stepId,
       event.metricType,
       event.quantity,
       event.source,

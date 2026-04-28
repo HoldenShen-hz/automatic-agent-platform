@@ -26,12 +26,12 @@ export interface CostAttributionRecord {
   readonly subjectId: string;
   readonly costType: "llm" | "tool" | "compute" | "storage" | "egress" | "humanReview" | "total";
   readonly amountUsd: number;
-  readonly llmCostUsd?: number;
-  readonly toolCostUsd?: number;
-  readonly computeCostUsd?: number;
-  readonly storageCostUsd?: number;
-  readonly egressCostUsd?: number;
-  readonly humanReviewCostUsd?: number;
+  readonly llmCostUsd: number;
+  readonly toolCostUsd: number;
+  readonly computeCostUsd: number;
+  readonly storageCostUsd: number;
+  readonly egressCostUsd: number;
+  readonly humanReviewCostUsd: number;
   readonly qualityRisk?: "low" | "medium" | "high";
   readonly decisionRef: string;
   readonly modelRef?: string;

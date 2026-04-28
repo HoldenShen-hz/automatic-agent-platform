@@ -151,7 +151,9 @@ interface PresentedOutput {
 }
 ```
 
-`NodeAttemptReceipt` 至少要携带：`harnessRunId`、`planGraphBundleId`、`graphVersion`、`nodeRunId`、`nodeAttemptId`、`status`、`outputRef?`、`evidenceRefs[]`。
+`NodeAttemptReceipt` 必须携带：`harnessRunId`、`planGraphBundleId`、`graphVersion`、`nodeRunId`、`nodeAttemptId`、`status`、`outputRef?`、`evidenceRefs[]`。
+
+**废弃警告**：`DualChannelStepOutput` 已被废弃，不得作为 Plugin 边界类型传递。必须使用 `NodeAttemptReceipt` 作为 present() 的唯一输入类型。
 
 ## 3. ExternalAdapterPlugin（8 种适配类型）
 

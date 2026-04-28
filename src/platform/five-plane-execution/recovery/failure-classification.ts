@@ -2,13 +2,24 @@
  * Failure Classification - L1/L2/L3 Failure Categories
  *
  * Classifies agent failures into levels to determine appropriate
- * remediation strategy.
+ * remediation strategy. Supports both coding-agent specific errors
+ * and generic platform errors per §9.6 exception classification.
  */
 
 export type FailureLevel = 'L1' | 'L2' | 'L3';
 
 export type FailureCategory =
-  // L1: Auto-repairable
+  // Platform-level exceptions (generic)
+  | 'resource_exhausted'
+  | 'timeout_exceeded'
+  | 'dependency_unavailable'
+  | 'quota_exceeded'
+  | 'rate_limit_exceeded'
+  | 'circuit_breaker_open'
+  | 'concurrency_limit_exceeded'
+  | 'validation_error'
+  | 'state_transition_error'
+  // L1: Auto-repairable (coding-agent + generic)
   | 'schema_error'
   | 'type_error'
   | 'unit_test_failure'
@@ -24,7 +35,12 @@ export type FailureCategory =
   | 'high_risk_operation'
   | 'migration_failure'
   | 'deployment_failure'
-  | 'security_policy_violation';
+  | 'security_policy_violation'
+  // Platform-level L3 escalations
+  | 'deadlock_detected'
+  | 'data_inconsistency'
+  | 'governance_policy_violation'
+  | 'budget_exceeded';
 
 export interface FailureContext {
   /** Failure category */
@@ -47,10 +63,96 @@ export interface FailureContext {
 
   /** Repair budget consumed */
   repairBudgetUsed: number;
+
+  /** Whether this is a platform-level exception (vs coding-agent) */
+  isPlatformException: boolean;
 }
 
 export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext, 'repairBudgetUsed'>> = {
-  // L1: Auto-repairable failures
+  // Platform-level L1: Auto-repairable generic errors
+  resource_exhausted: {
+    category: 'resource_exhausted',
+    level: 'L1',
+    description: 'System resource (memory, disk, CPU) exhausted',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  timeout_exceeded: {
+    category: 'timeout_exceeded',
+    level: 'L1',
+    description: 'Operation exceeded configured timeout',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  dependency_unavailable: {
+    category: 'dependency_unavailable',
+    level: 'L1',
+    description: 'Required dependency service unavailable',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  quota_exceeded: {
+    category: 'quota_exceeded',
+    level: 'L1',
+    description: 'Resource quota limit reached',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  rate_limit_exceeded: {
+    category: 'rate_limit_exceeded',
+    level: 'L1',
+    description: 'API rate limit exceeded',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  circuit_breaker_open: {
+    category: 'circuit_breaker_open',
+    level: 'L1',
+    description: 'Circuit breaker prevented request',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  concurrency_limit_exceeded: {
+    category: 'concurrency_limit_exceeded',
+    level: 'L1',
+    description: 'Concurrency limit reached for resource',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  validation_error: {
+    category: 'validation_error',
+    level: 'L1',
+    description: 'Input validation failed',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+  state_transition_error: {
+    category: 'state_transition_error',
+    level: 'L1',
+    description: 'Invalid state transition attempted',
+    autoRepairable: true,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: false,
+    isPlatformException: true,
+  },
+
+  // L1: Auto-repairable failures (coding-agent specific)
   schema_error: {
     category: 'schema_error',
     level: 'L1',
@@ -58,6 +160,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   type_error: {
     category: 'type_error',
@@ -66,6 +169,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   unit_test_failure: {
     category: 'unit_test_failure',
@@ -74,6 +178,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   lint_error: {
     category: 'lint_error',
@@ -82,6 +187,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   simple_logic_bug: {
     category: 'simple_logic_bug',
@@ -90,6 +196,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
 
   // L2: Model upgrade required
@@ -100,6 +207,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   review_validate_conflict: {
     category: 'review_validate_conflict',
@@ -108,6 +216,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
   planning_inconsistency: {
     category: 'planning_inconsistency',
@@ -116,6 +225,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: true,
     requiresHumanEscalation: false,
+    isPlatformException: false,
   },
 
   // L3: Human escalation required
@@ -126,6 +236,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   secret_exposure: {
     category: 'secret_exposure',
@@ -134,6 +245,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   high_risk_operation: {
     category: 'high_risk_operation',
@@ -142,6 +254,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   migration_failure: {
     category: 'migration_failure',
@@ -150,6 +263,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: true,
   },
   deployment_failure: {
     category: 'deployment_failure',
@@ -158,6 +272,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: false,
   },
   security_policy_violation: {
     category: 'security_policy_violation',
@@ -166,8 +281,148 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: false,
     requiresModelUpgrade: false,
     requiresHumanEscalation: true,
+    isPlatformException: true,
+  },
+
+  // Platform-level L3 escalations
+  deadlock_detected: {
+    category: 'deadlock_detected',
+    level: 'L3',
+    description: 'Deadlock detected in resource contention',
+    autoRepairable: false,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: true,
+    isPlatformException: true,
+  },
+  data_inconsistency: {
+    category: 'data_inconsistency',
+    level: 'L3',
+    description: 'Data inconsistency detected between systems',
+    autoRepairable: false,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: true,
+    isPlatformException: true,
+  },
+  governance_policy_violation: {
+    category: 'governance_policy_violation',
+    level: 'L3',
+    description: 'Governance policy violation detected',
+    autoRepairable: false,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: true,
+    isPlatformException: true,
+  },
+  budget_exceeded: {
+    category: 'budget_exceeded',
+    level: 'L3',
+    description: 'Budget limit exceeded during execution',
+    autoRepairable: false,
+    requiresModelUpgrade: false,
+    requiresHumanEscalation: true,
+    isPlatformException: true,
   },
 };
+
+/**
+ * Classifies an error code into a failure category using pattern matching.
+ * Supports both platform-level error codes and coding-agent error codes.
+ */
+export function classifyErrorCode(errorCode: string | null): FailureCategory {
+  if (errorCode == null) {
+    return 'validation_error';
+  }
+
+  const normalized = errorCode.toLowerCase().replace(/[._-]/g, '_');
+
+  // Platform-level patterns
+  if (normalized.includes('resource_exhaust') || normalized.includes('out_of_memory') || normalized.includes('memory')) {
+    return 'resource_exhausted';
+  }
+  if (normalized.includes('timeout') || normalized.includes('timed_out')) {
+    return 'timeout_exceeded';
+  }
+  if (normalized.includes('dependency') && (normalized.includes('unavailable') || normalized.includes('not_found'))) {
+    return 'dependency_unavailable';
+  }
+  if (normalized.includes('quota') || normalized.includes('limit_reached') || normalized.includes('cap_reached')) {
+    return 'quota_exceeded';
+  }
+  if (normalized.includes('rate_limit') || normalized.includes('too_many_requests')) {
+    return 'rate_limit_exceeded';
+  }
+  if (normalized.includes('circuit_breaker') || normalized.includes('breaker')) {
+    return 'circuit_breaker_open';
+  }
+  if (normalized.includes('concurrency') || normalized.includes('parallel')) {
+    return 'concurrency_limit_exceeded';
+  }
+  if (normalized.includes('validation') || normalized.includes('invalid_input')) {
+    return 'validation_error';
+  }
+  if (normalized.includes('state_transition') || normalized.includes('invalid_state')) {
+    return 'state_transition_error';
+  }
+  if (normalized.includes('deadlock')) {
+    return 'deadlock_detected';
+  }
+  if (normalized.includes('data_inconsist') || normalized.includes('mismatch')) {
+    return 'data_inconsistency';
+  }
+  if (normalized.includes('governance') || normalized.includes('policy_violation')) {
+    return 'governance_policy_violation';
+  }
+  if (normalized.includes('budget') || normalized.includes('cost_exceed')) {
+    return 'budget_exceeded';
+  }
+
+  // Coding-agent specific patterns (E7/E8/EC classification)
+  if (errorCode.startsWith('E7')) {
+    return 'concurrency_limit_exceeded'; // E7 = LockingError
+  }
+  if (errorCode.startsWith('E8')) {
+    return 'resource_exhausted'; // E8 = MemoryError
+  }
+  if (errorCode.startsWith('EC')) {
+    return 'state_transition_error'; // EC = RuntimeError
+  }
+
+  // L1 coding patterns
+  if (normalized.includes('schema') || normalized.includes('parse')) {
+    return 'schema_error';
+  }
+  if (normalized.includes('type') && normalized.includes('error')) {
+    return 'type_error';
+  }
+  if (normalized.includes('test') && (normalized.includes('fail') || normalized.includes('error'))) {
+    return 'unit_test_failure';
+  }
+  if (normalized.includes('lint')) {
+    return 'lint_error';
+  }
+
+  // L3 patterns
+  if (normalized.includes('forbidden') || normalized.includes('access_denied')) {
+    return 'forbidden_path';
+  }
+  if (normalized.includes('secret') || normalized.includes('credential') || normalized.includes('api_key')) {
+    return 'secret_exposure';
+  }
+  if (normalized.includes('high_risk') || normalized.includes('dangerous')) {
+    return 'high_risk_operation';
+  }
+  if (normalized.includes('migration') || normalized.includes('schema_change')) {
+    return 'migration_failure';
+  }
+  if (normalized.includes('deploy') || normalized.includes('rollback')) {
+    return 'deployment_failure';
+  }
+  if (normalized.includes('security') || normalized.includes('policy')) {
+    return 'security_policy_violation';
+  }
+
+  // Default to validation error for unknown codes
+  return 'validation_error';
+}
 
 export function classifyFailure(
   category: FailureCategory,
@@ -177,6 +432,14 @@ export function classifyFailure(
     ...FAILURE_CLASSIFICATION[category],
     repairBudgetUsed,
   };
+}
+
+export function classifyFailureFromErrorCode(
+  errorCode: string | null,
+  repairBudgetUsed: number
+): FailureContext {
+  const category = classifyErrorCode(errorCode);
+  return classifyFailure(category, repairBudgetUsed);
 }
 
 export function shouldEscalate(failure: FailureContext, maxRepairRounds: number): boolean {

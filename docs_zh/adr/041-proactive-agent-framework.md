@@ -29,10 +29,12 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 
 | Action 类型 | 说明 |
 |-------------|------|
-| create_task | 创建任务 |
+| create_task | 创建任务（须经 §5.3 intake pipeline） |
 | create_goal | 创建目标 |
 | suggest_to_user | 向用户建议 |
 | update_dashboard | 更新看板 |
+
+注：create_task 必须经 §5.3 intake pipeline（TaskDraft → ConfirmedTaskSpec → RequestEnvelope），不得直接创建任务绕过管道。
 
 ### 触发风暴保护（4 层）
 

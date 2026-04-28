@@ -103,11 +103,14 @@ interface PluginRegistryService {
 
 ## 来源章节
 
-- `§B` Plugin SPI 接口定义
-- `§B.2-B.5` 4 大核心接口
-- `§B.7` ExternalAdapterPlugin
-- `§B.11` Plugin 生命周期状态机
-- `§G.1-G.2` Per-domain tool bundles & 8 adapters
+注：v4.3 迁移后，原 §B/§G 附录已重构为模块化 contract 文档。本 ADR 相关内容现分布于以下 contract 文档：
+
+v4.3 有效引用：
+- `docs_zh/contracts/plugin_spi_contract.md` Plugin SPI 核心接口
+- `docs_zh/contracts/plugin_spi_contract.md §2.4` 4 大核心接口
+- `docs_zh/contracts/plugin_spi_contract.md §2.7` ExternalAdapterPlugin
+- `docs_zh/contracts/plugin_spi_contract.md §2.11` Plugin 生命周期状态机
+- `docs_zh/contracts/marketplace_contract.md §2` Per-domain tool bundles
 
 ## v4.3 ADR Remediation
 

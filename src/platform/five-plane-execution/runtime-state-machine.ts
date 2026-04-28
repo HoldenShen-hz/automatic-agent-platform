@@ -36,6 +36,10 @@ type RuntimeStatus<TAggregate extends RuntimeStateAggregate> = TAggregate extend
           : never;
 
 export interface RuntimeTransitionCommand<TAggregate extends RuntimeStateAggregate> {
+  readonly commandId: string;
+  readonly entityType: RuntimeStateAggregateType;
+  readonly entityId: string;
+  readonly principal: string;
   readonly aggregateType: RuntimeStateAggregateType;
   readonly aggregate: TAggregate;
   readonly fromStatus: RuntimeStatus<TAggregate>;
@@ -334,10 +338,9 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
 function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
   command: RuntimeTransitionCommand<TAggregate>,
 ): void {
-  if (command.aggregateType !== "NodeRun") {
-    return;
-  }
-  const nodeRun = command.aggregate as NodeRun;
+  // R4-30 (INV-FENCING): Extended fencing checks to all truth entities
+  // Previously only NodeRun was checked; now we check all aggregate types
+  const toStatus = command.toStatus as string;
   const executionStatuses: readonly string[] = [
     "leased",
     "running",
@@ -347,24 +350,126 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     "succeeded",
     "failed",
   ];
-  if (executionStatuses.includes(command.toStatus as string) && (command.leaseId == null || command.fencingToken == null)) {
-    throw new WorkflowStateError(
-      "runtime_state_machine.lease_and_fencing_required",
-      "NodeRun execution transitions require an active lease and fencing token.",
-      { details: { nodeRunId: nodeRun.nodeRunId } },
-    );
+
+  // NodeRun always requires lease and fencing for execution transitions
+  if (command.aggregateType === "NodeRun") {
+    const nodeRun = command.aggregate as NodeRun;
+    if (executionStatuses.includes(toStatus) && (command.leaseId == null || command.fencingToken == null)) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.lease_and_fencing_required",
+        "NodeRun execution transitions require an active lease and fencing token.",
+        { details: { nodeRunId: nodeRun.nodeRunId } },
+      );
+    }
+    if (nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {
+      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "NodeRun transition requires the active lease.", {
+        details: { nodeRunId: nodeRun.nodeRunId },
+      });
+    }
+    if (nodeRun.fencingToken != null && command.fencingToken !== nodeRun.fencingToken) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.fencing_token_mismatch",
+        "NodeRun transition requires the active fencing token.",
+        { details: { nodeRunId: nodeRun.nodeRunId } },
+      );
+    }
   }
-  if (nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {
-    throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "NodeRun transition requires the active lease.", {
-      details: { nodeRunId: nodeRun.nodeRunId },
-    });
+
+  // R4-30 (INV-FENCING): HarnessRun also requires fencing token for status transitions
+  // to ensure proper sequencing of state changes
+  if (command.aggregateType === "HarnessRun") {
+    const harnessRun = command.aggregate as HarnessRun;
+    const harnessExecutionStatuses: readonly string[] = [
+      "admitted",
+      "planning",
+      "ready",
+      "running",
+      "pausing",
+      "paused",
+      "resuming",
+      "replanning",
+      "compensating",
+    ];
+    if (harnessExecutionStatuses.includes(toStatus) && (command.leaseId == null || command.fencingToken == null)) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.lease_and_fencing_required",
+        "HarnessRun status transitions require an active lease and fencing token.",
+        { details: { harnessRunId: harnessRun.harnessRunId } },
+      );
+    }
+    if (harnessRun.leaseId != null && command.leaseId !== harnessRun.leaseId) {
+      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "HarnessRun transition requires the active lease.", {
+        details: { harnessRunId: harnessRun.harnessRunId },
+      });
+    }
+    if (harnessRun.fencingToken != null && command.fencingToken !== harnessRun.fencingToken) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.fencing_token_mismatch",
+        "HarnessRun transition requires the active fencing token.",
+        { details: { harnessRunId: harnessRun.harnessRunId } },
+      );
+    }
   }
-  if (nodeRun.fencingToken != null && command.fencingToken !== nodeRun.fencingToken) {
-    throw new WorkflowStateError(
-      "runtime_state_machine.fencing_token_mismatch",
-      "NodeRun transition requires the active fencing token.",
-      { details: { nodeRunId: nodeRun.nodeRunId } },
-    );
+
+  // R4-30 (INV-FENCING): SideEffectRecord requires fencing for commit-affecting transitions
+  if (command.aggregateType === "SideEffectRecord") {
+    const sideEffect = command.aggregate as SideEffectRecord;
+    const commitStatuses: readonly string[] = [
+      "approved",
+      "reserved",
+      "committing",
+      "committed",
+      "confirming",
+      "confirmed",
+    ];
+    if (commitStatuses.includes(toStatus) && (command.leaseId == null || command.fencingToken == null)) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.lease_and_fencing_required",
+        "SideEffectRecord commit-affecting transitions require an active lease and fencing token.",
+        { details: { sideEffectId: sideEffect.sideEffectId } },
+      );
+    }
+    if (sideEffect.leaseId != null && command.leaseId !== sideEffect.leaseId) {
+      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "SideEffectRecord transition requires the active lease.", {
+        details: { sideEffectId: sideEffect.sideEffectId },
+      });
+    }
+    if (sideEffect.fencingToken != null && command.fencingToken !== sideEffect.fencingToken) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.fencing_token_mismatch",
+        "SideEffectRecord transition requires the active fencing token.",
+        { details: { sideEffectId: sideEffect.sideEffectId } },
+      );
+    }
+  }
+
+  // R4-30 (INV-FENCING): BudgetLedger requires fencing for budget-modifying transitions
+  if (command.aggregateType === "BudgetLedger") {
+    const ledger = command.aggregate as BudgetLedger;
+    const budgetModifyStatuses: readonly string[] = [
+      "soft_cap_reached",
+      "hard_cap_reached",
+      "closed",
+    ];
+    if (budgetModifyStatuses.includes(toStatus) && (command.leaseId == null || command.fencingToken == null)) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.lease_and_fencing_required",
+        "BudgetLedger budget-modifying transitions require an active lease and fencing token.",
+        { details: { budgetLedgerId: ledger.budgetLedgerId } },
+      );
+    }
+    if (ledger.leaseId != null && command.leaseId !== ledger.leaseId) {
+      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "BudgetLedger transition requires the active lease.", {
+        details: { budgetLedgerId: ledger.budgetLedgerId },
+      });
+    }
+    if (ledger.fencingToken != null && command.fencingToken !== ledger.fencingToken) {
+      throw new WorkflowStateError(
+        "runtime_state_machine.fencing_token_mismatch",
+        "BudgetLedger transition requires the active fencing token.",
+        { details: { budgetLedgerId: ledger.budgetLedgerId } },
+      );
+    }
   }
 }
 

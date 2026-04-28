@@ -71,12 +71,16 @@
 - `task_id?`
 - `harness_run_id?`
 - `node_run_id?`
-- `execution_id?`（legacy query key）
 - `action`
 - `resource_ref`
 - `decision_ref?`
 - `version_ref?`
 - `created_at`
+
+规则：
+
+- `harness_run_id` / `node_run_id` 为 canonical 关联键，用于谱系追踪。
+- `execution_id` 为 legacy 查询键，仅用于向后兼容，不得作为新增审计记录的主关联字段。
 
 ## 6. 数据保留分层
 

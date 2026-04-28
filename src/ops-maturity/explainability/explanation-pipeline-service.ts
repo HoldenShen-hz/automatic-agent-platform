@@ -60,13 +60,25 @@ function uniqueStrings(values: readonly string[]): string[] {
 export class ExplanationPipelineService {
   private cache: Record<string, ExplanationCacheEntry> = {};
 
-  public generate(request: ExplanationRequest, depth: ExplanationDepth = "L2"): ExplanationBundle {
+  public generate(
+    request: ExplanationRequest,
+    depth: ExplanationDepth = "L2",
+    options?: {
+      readonly alternatives?: readonly string[];
+      readonly confidence?: number;
+      readonly decisionInputRef?: string;
+      readonly versionLockRef?: string;
+      readonly visibilityLabels?: readonly string[];
+      readonly oapeflirProjection?: string;
+    },
+  ): ExplanationBundle {
     const stageId = request.stageId ?? request.stage ?? "unknown";
     const allowedCategories = new Set(request.allowedEvidenceCategories ?? request.evidence.map((item) => item.category));
     const visibleEvidence = request.evidence.filter((item) => allowedCategories.has(item.category));
     const hiddenEvidence = request.evidence.filter((item) => !allowedCategories.has(item.category));
     const evidenceRefs = collectExplanationEvidenceIds(visibleEvidence);
     const redactedEvidenceRefs = collectExplanationEvidenceIds(hiddenEvidence);
+    const renderedExplanation = renderStageExplanation(stageId, request.summary, evidenceRefs, request.decision);
     const rationale: StageRationale = {
       rationaleId: newId("rationale"),
       taskId: request.taskId,
@@ -76,6 +88,12 @@ export class ExplanationPipelineService {
       decisionFactors: uniqueStrings(request.decisionFactors),
       evidenceRefs,
       riskNotes: uniqueStrings(request.riskNotes),
+      alternatives: options?.alternatives,
+      confidence: options?.confidence,
+      decisionInputRef: options?.decisionInputRef,
+      versionLockRef: options?.versionLockRef,
+      visibilityLabels: options?.visibilityLabels,
+      renderedExplanation,
       generatedAt: request.generatedAt ?? nowIso(),
     };
     const causalSummary = buildCausalChainSummary(request.causalLinks ?? []);

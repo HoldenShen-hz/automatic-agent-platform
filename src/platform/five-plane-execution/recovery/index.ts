@@ -14,3 +14,4 @@ export * from './failure-classification.js';
 export * from './repair-pipeline.js';
 export * from './exception-recovery-types.js';
 export * from './exception-recovery-config-loader.js';
+export { type RecoveryCadence, type RecoveryReport } from "../../contracts/types/recovery-cadence.js";

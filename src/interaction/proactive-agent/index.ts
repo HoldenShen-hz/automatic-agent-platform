@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { resolveTriggerActionMode } from "./trigger-engine/index.js";
 
 export interface ProactiveTrigger {
   readonly triggerId: string;
@@ -313,13 +314,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
-    const actionMode = state.trigger.action.requireConfirmation
-      ? "suggest"
-      : state.trigger.riskLevel === "critical"
-        ? "silent_record"
-        : state.trigger.action.actionType === "update_dashboard"
-          ? "silent_record"
-          : "auto_execute";
+    const actionMode = resolveTriggerActionMode(
+      state.trigger.action.requireConfirmation,
+      state.trigger.riskLevel,
+    );
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
 
     return {

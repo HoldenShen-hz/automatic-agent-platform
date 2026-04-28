@@ -141,7 +141,7 @@ flowchart TD
 | `queue_name` | `string` | 目标队列 |
 | `required_capabilities` | `string[]` | worker 必需能力 |
 | `dispatch_target` | `any \| local_only \| prefer_remote \| require_remote` | 调度目标策略 |
-| `required_isolation_level` | `standard \| hardened \| strict` | 最低隔离等级要求 |
+| `required_isolation_level` | `read_only \| workspace_write \| scoped_external_access \| restricted_exec` | 最低隔离等级要求 |
 | `required_repo_version?` | `string` | 要求 worker 代码版本匹配 |
 | `dispatch_after` | `timestamp?` | 最早派发时间 |
 | `attempt_no` | `integer` | 该票据关联的尝试次数 |
@@ -163,13 +163,14 @@ flowchart TD
 
 ### 8.2 Isolation Level 语义
 
-Worker 隔离等级有序排列：`standard (0) < hardened (1) < strict (2)`。
+Worker 隔离等级有序排列：`read_only (0) < workspace_write (1) < scoped_external_access (2) < restricted_exec (3)`。
 
 | 等级 | 含义 |
 | --- | --- |
-| `standard` | 标准沙箱 |
-| `hardened` | 加固沙箱（额外网络/文件系统限制） |
-| `strict` | 严格隔离（最小权限） |
+| `read_only` | 只读沙箱，禁止写操作 |
+| `workspace_write` | 标准沙箱，允许工作区写操作 |
+| `scoped_external_access` | 受限外部访问（额外网络/文件系统限制） |
+| `restricted_exec` | 严格隔离（最小权限） |
 
 规则：
 
@@ -266,7 +267,7 @@ execution plane 完成单次 attempt 后，truth 输出必须先落 `NodeAttempt
 - `last_heartbeat_at`
 - `max_concurrency`
 - `queue_affinity?`
-- `isolation_level` (`standard | hardened | strict`)
+- `isolation_level` (`read_only | workspace_write | scoped_external_access | restricted_exec`)
 - `saturation`（负载饱和度）
 - `repo_version?`
 - `remote_session_status?`（`connecting | connected | reconnecting | degraded | failed | viewer_only`）

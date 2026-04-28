@@ -38,7 +38,7 @@
 
 代码结构应围绕职责边界展开：
 
-- `core/`：运行时、工具、provider、session、storage、安全、supervisor、memory。
+- `platform/`：运行时、工具、provider、session、storage、安全、supervisor、memory（v4.3 §35 canonical）。
 - `divisions/`：事业部定义与角色 prompt。
 - `tools/`：内置工具、协作工具和专用工具。
 - `gateway/`：多渠道接入。
@@ -58,7 +58,7 @@ Phase 1-2 采用 SQLite，但必须承认其边界：
 为了支撑恢复，至少需要：
 
 - 任务表。
-- workflow_state。
+- harness_runs（v4.3 §35 canonical）。
 - workflow_step_outputs。
 - sessions / messages。
 - events。

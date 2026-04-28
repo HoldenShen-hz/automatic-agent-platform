@@ -108,9 +108,14 @@ const SESSION_TRANSITIONS: Record<SessionStatus, readonly SessionStatus[]> = {
  * succeeded, failed, cancelled, or superseded (by a newer execution).
  */
 const EXECUTION_TRANSITIONS: Record<ExecutionStatus, readonly ExecutionStatus[]> = {
-  created: ["prechecking", "executing", "cancelled", "failed"],
-  prechecking: ["executing", "blocked", "cancelled", "failed"],
-  executing: ["blocked", "succeeded", "failed", "cancelled"],
+  created: ["queued", "prechecking", "executing", "dispatching", "cancelled", "failed"],
+  queued: ["dispatching", "prechecking", "executing", "cancelled", "failed"],
+  dispatching: ["prechecking", "executing", "paused", "recovering", "cancelled", "failed"],
+  prechecking: ["executing", "blocked", "paused", "recovering", "cancelled", "failed"],
+  executing: ["blocked", "succeeded", "failed", "cancelled", "paused", "recovering"],
+  paused: ["resuming", "recovering", "timed_out", "failed", "cancelled"],
+  recovering: ["ready", "executing", "failed", "cancelled", "timed_out"],
+  timed_out: ["resuming", "failed", "cancelled"],
   blocked: ["prechecking", "executing", "cancelled", "failed", "superseded"],
   succeeded: [],
   failed: [],
@@ -498,32 +503,53 @@ class TaskTerminalTransitionService {
     executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
 
     this.repository.updateTaskOutput(input.taskId, input.taskOutputJson, input.context.occurredAt);
-    this.repository.updateTaskStatus(
+    const taskAffected = this.repository.updateTaskStatusCas(
       input.taskId,
+      input.currentTaskStatus,
       input.terminalStatus,
       input.context.occurredAt,
       input.terminalStatus === "failed" ? input.context.reasonCode : null,
       input.context.occurredAt,
     );
+    if (taskAffected === 0) {
+      throw new Error(`task.transition_cas_failed:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`);
+    }
     const currentWorkflow = this.repository.getWorkflowState(input.taskId);
     const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
 
-    this.repository.updateWorkflowState(
+    const workflowAffected = this.repository.updateWorkflowStateCas(
       input.taskId,
+      currentWorkflow?.currentStepIndex ?? 0,
+      input.currentWorkflowStatus,
       workflowTerminal,
       terminalStepIndex,
       input.outputsJson,
       input.context.occurredAt,
     );
-    this.repository.updateSessionStatus(input.sessionId, sessionTerminal, input.context.occurredAt);
-    this.repository.updateExecutionStatus(
+    if (workflowAffected === 0) {
+      throw new Error(`workflow.transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`);
+    }
+    const sessionAffected = this.repository.updateSessionStatusCas(
+      input.sessionId,
+      input.currentSessionStatus,
+      sessionTerminal,
+      input.context.occurredAt,
+    );
+    if (sessionAffected === 0) {
+      throw new Error(`session.transition_cas_failed:${input.sessionId}:${input.currentSessionStatus}->${sessionTerminal}`);
+    }
+    const executionAffected = this.repository.updateExecutionStatusCas(
       input.executionId,
+      input.currentExecutionStatus,
       executionTerminal,
       input.context.occurredAt,
       null,
       input.context.occurredAt,
       input.terminalStatus === "failed" ? input.context.reasonCode : null,
     );
+    if (executionAffected === 0) {
+      throw new Error(`execution.transition_cas_failed:${input.executionId}:${input.currentExecutionStatus}->${executionTerminal}`);
+    }
     this.repository.createTier1StatusEvent({
       taskId: input.taskId,
       executionId: input.executionId,

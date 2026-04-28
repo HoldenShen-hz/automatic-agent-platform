@@ -19,13 +19,27 @@ export interface WebSocketClient {
   readonly clientId: string;
   readonly principal: string;
   readonly tenantId: string;
-  readonly subscribedDashboards: readonly string[];
+  readonly subscribedChannels: readonly ChannelSubscription[];
   readonly createdAt: string;
   isConnected: boolean;
 }
 
+export type DashboardPushMessageType =
+  | "task.status_changed"
+  | "task.created"
+  | "task.completed"
+  | "task.failed"
+  | "approval.requested"
+  | "approval.resolved"
+  | "incident.opened"
+  | "incident.resolved"
+  | "system.health_changed"
+  | "dashboard_snapshot"
+  | "connection_ack"
+  | "error";
+
 export interface DashboardPushMessage {
-  readonly type: "dashboard_delta" | "dashboard_snapshot" | "connection_ack" | "error";
+  readonly type: DashboardPushMessageType;
   readonly clientId: string;
   readonly timestamp: string;
   readonly payload: unknown;
@@ -47,11 +61,30 @@ const DEFAULT_CONFIG: WebSocketServerConfig = {
 // WebSocket Connection State
 // ─────────────────────────────────────────────────────────────────────────────
 
+// UI spec channel-based subscription model: global/task:{id}/approvals/admin
+export type DashboardChannel =
+  | "global"
+  | "task"
+  | "approvals"
+  | "admin";
+
+export interface ChannelSubscription {
+  readonly channel: DashboardChannel;
+  readonly filterId?: string; // For "task" channel: taskId; for others: undefined
+}
+
+function channelToKey(channel: DashboardChannel, filterId?: string): string {
+  if (channel === "task" && filterId) {
+    return `task:${filterId}`;
+  }
+  return channel;
+}
+
 interface ConnectionState {
   clientId: string;
   principal: string;
   tenantId: string;
-  subscribedDashboards: Set<string>;
+  subscribedChannels: ChannelSubscription[];
   isConnected: boolean;
   lastActivityAt: string;
   heartbeatTimer: ReturnType<typeof setInterval> | null;
@@ -64,7 +97,7 @@ interface ConnectionState {
 export class DashboardWebSocketServer {
   private readonly config: WebSocketServerConfig;
   private readonly connections = new Map<string, ConnectionState>();
-  private readonly dashboardSubscribers = new Map<string, Set<string>>();
+  private readonly channelSubscribers = new Map<string, Set<string>>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private deltaHandler: ((delta: DashboardDelta, clientIds: readonly string[]) => void) | null = null;
 
@@ -104,13 +137,13 @@ export class DashboardWebSocketServer {
   /**
  * Registers a new client connection.
  *
- * @param dashboardIds - Dashboards the client wants to subscribe to
+ * @param channels - Channel-based subscriptions per UI spec (global/task:{id}/approvals/admin)
  * @param principal - Principal ID for authentication (required by §11.1)
  * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
  * @returns Client ID and acknowledgment message
  */
 public registerClient(
-  dashboardIds: readonly string[],
+  channels: readonly ChannelSubscription[],
   principal: string,
   tenantId: string,
 ): { clientId: string; ack: DashboardPushMessage } {
@@ -127,7 +160,7 @@ public registerClient(
     clientId,
     principal,
     tenantId,
-    subscribedDashboards: new Set(dashboardIds),
+    subscribedChannels: [...channels],
     isConnected: true,
     lastActivityAt: nowIso(),
     heartbeatTimer: null,
@@ -135,18 +168,20 @@ public registerClient(
 
   this.connections.set(clientId, connection);
 
-  for (const dashboardId of dashboardIds) {
-    if (!this.dashboardSubscribers.has(dashboardId)) {
-      this.dashboardSubscribers.set(dashboardId, new Set());
+  // Register channel subscriptions
+  for (const subscription of channels) {
+    const key = channelToKey(subscription.channel, subscription.filterId);
+    if (!this.channelSubscribers.has(key)) {
+      this.channelSubscribers.set(key, new Set());
     }
-    this.dashboardSubscribers.get(dashboardId)!.add(clientId);
+    this.channelSubscribers.get(key)!.add(clientId);
   }
 
   const ack = this.createMessage("connection_ack", clientId, {
     clientId,
     principal,
     tenantId,
-    subscribedDashboards: dashboardIds,
+    subscribedChannels: channels,
     serverTime: nowIso(),
   });
 
@@ -162,13 +197,14 @@ public registerClient(
     const connection = this.connections.get(clientId);
     if (!connection) return;
 
-    // Remove from dashboard subscriptions
-    for (const dashboardId of connection.subscribedDashboards) {
-      const subscribers = this.dashboardSubscribers.get(dashboardId);
+    // Remove from channel subscriptions
+    for (const subscription of connection.subscribedChannels) {
+      const key = channelToKey(subscription.channel, subscription.filterId);
+      const subscribers = this.channelSubscribers.get(key);
       if (subscribers) {
         subscribers.delete(clientId);
         if (subscribers.size === 0) {
-          this.dashboardSubscribers.delete(dashboardId);
+          this.channelSubscribers.delete(key);
         }
       }
     }
@@ -182,31 +218,33 @@ public registerClient(
   }
 
   /**
-   * Updates subscriptions for a client.
+   * Updates channel subscriptions for a client.
    *
    * @param clientId - Client ID
-   * @param dashboardIds - New dashboard IDs to subscribe to
+   * @param channels - New channel subscriptions
    * @returns true if successful
    */
-  public updateSubscriptions(clientId: string, dashboardIds: readonly string[]): boolean {
+  public updateSubscriptions(clientId: string, channels: readonly ChannelSubscription[]): boolean {
     const connection = this.connections.get(clientId);
     if (!connection) return false;
 
     // Remove from old subscriptions
-    for (const dashboardId of connection.subscribedDashboards) {
-      const subscribers = this.dashboardSubscribers.get(dashboardId);
+    for (const subscription of connection.subscribedChannels) {
+      const key = channelToKey(subscription.channel, subscription.filterId);
+      const subscribers = this.channelSubscribers.get(key);
       if (subscribers) {
         subscribers.delete(clientId);
       }
     }
 
     // Add to new subscriptions
-    connection.subscribedDashboards = new Set(dashboardIds);
-    for (const dashboardId of dashboardIds) {
-      if (!this.dashboardSubscribers.has(dashboardId)) {
-        this.dashboardSubscribers.set(dashboardId, new Set());
+    connection.subscribedChannels = [...channels];
+    for (const subscription of channels) {
+      const key = channelToKey(subscription.channel, subscription.filterId);
+      if (!this.channelSubscribers.has(key)) {
+        this.channelSubscribers.set(key, new Set());
       }
-      this.dashboardSubscribers.get(dashboardId)!.add(clientId);
+      this.channelSubscribers.get(key)!.add(clientId);
     }
 
     connection.lastActivityAt = nowIso();
@@ -215,6 +253,7 @@ public registerClient(
 
   /**
    * Pushes a dashboard delta to all relevant clients.
+   * Maps delta change types to domain event types per UI spec.
    *
    * @param delta - Dashboard delta to push
    * @returns Number of clients that received the push
@@ -240,8 +279,11 @@ public registerClient(
       }
     }
 
-    // Create push message
-    const message = this.createMessage("dashboard_delta", "", {
+    // Map change types to domain event types per UI spec
+    const domainEventType = this.mapChangeTypeToDomainEvent(delta.changes);
+
+    // Create push message with domain event type
+    const message = this.createMessage(domainEventType, "", {
       delta,
       affectedMetrics: delta.affectedMetrics,
     });
@@ -258,6 +300,27 @@ public registerClient(
     }
 
     return sentCount;
+  }
+
+  private mapChangeTypeToDomainEvent(changes: readonly DashboardDelta["changes"]): DashboardPushMessageType {
+    if (changes.length === 0) return "dashboard_snapshot";
+    const firstChange = changes[0];
+    switch (firstChange.changeType) {
+      case "task_created":
+        return "task.created";
+      case "task_completed":
+        return "task.completed";
+      case "task_failed":
+        return "task.failed";
+      case "incident_opened":
+        return "incident.opened";
+      case "incident_resolved":
+        return "incident.resolved";
+      case "system_health_changed":
+        return "system.health_changed";
+      default:
+        return "task.status_changed";
+    }
   }
 
   /**
@@ -302,7 +365,7 @@ public registerClient(
       clientId: conn.clientId,
       principal: conn.principal,
       tenantId: conn.tenantId,
-      subscribedDashboards: [...conn.subscribedDashboards],
+      subscribedChannels: conn.subscribedChannels,
       createdAt: conn.lastActivityAt,
       isConnected: conn.isConnected,
     }));
@@ -328,6 +391,29 @@ public registerClient(
    */
   public setDeltaHandler(handler: (delta: DashboardDelta, clientIds: readonly string[]) => void): void {
     this.deltaHandler = handler;
+  }
+
+  /**
+   * Integrates with a DashboardProjectionService to auto-push deltas.
+   *
+   * @param projectionService - The projection service to integrate with
+   * @returns Cleanup function to remove integration
+   */
+  public integrateWithProjectionService(
+    projectionService: { processProjectionUpdate: (record: unknown) => DashboardDelta | null; consumePendingDeltas: () => readonly DashboardDelta[] },
+  ): () => void {
+    // Start polling for deltas
+    const pollInterval = setInterval(() => {
+      const deltas = projectionService.consumePendingDeltas();
+      for (const delta of deltas) {
+        this.handleProjectionDelta(delta);
+      }
+    }, 100);
+
+    // Return cleanup function
+    return () => {
+      clearInterval(pollInterval);
+    };
   }
 
   /**
@@ -365,12 +451,48 @@ public registerClient(
   private findAffectedClientIds(delta: DashboardDelta): string[] {
     const clientIds = new Set<string>();
 
-    for (const metric of delta.affectedMetrics) {
-      const clients = this.dashboardSubscribers.get(metric);
+    // Route to channel subscribers based on change type
+    for (const change of delta.changes) {
+      let channel: DashboardChannel;
+      let filterId: string | undefined;
+
+      switch (change.changeType) {
+        case "task_created":
+        case "task_updated":
+          channel = "task";
+          filterId = change.entityId;
+          break;
+        case "task_completed":
+        case "task_failed":
+          channel = "task";
+          filterId = change.entityId;
+          break;
+        case "incident_opened":
+        case "incident_resolved":
+          channel = "admin";
+          break;
+        case "system_health_changed":
+          channel = "global";
+          break;
+        default:
+          // Push to global for other changes
+          channel = "global";
+      }
+
+      const key = channelToKey(channel, filterId);
+      const clients = this.channelSubscribers.get(key);
       if (clients) {
         for (const clientId of clients) {
           clientIds.add(clientId);
         }
+      }
+    }
+
+    // Also push to "all" global subscribers
+    const globalClients = this.channelSubscribers.get("global");
+    if (globalClients) {
+      for (const clientId of globalClients) {
+        clientIds.add(clientId);
       }
     }
 

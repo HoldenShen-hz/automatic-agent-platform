@@ -41,12 +41,17 @@ export interface DecayConfig {
 
 /**
  * Default decay configs per layer
+ *
+ * §29.2: Working and procedural memory MUST NOT be dropped silently.
+ * - Working memory: halfLifeSeconds = Infinity (no decay)
+ * - Procedural memory: halfLifeSeconds = Infinity (no decay)
+ * Only session, episodic, semantic layers have active decay.
  */
 export const DEFAULT_DECAY_CONFIGS: Record<SixLayerMemoryType, DecayConfig> = {
   working: {
-    halfLifeSeconds: 300, // 5 minutes
-    minFreshness: 0.1,
-    decayRateMultiplier: 1.0,
+    halfLifeSeconds: Number.POSITIVE_INFINITY, // §29.2: No decay - working memory must not be dropped
+    minFreshness: 1.0,
+    decayRateMultiplier: 0.0,
     accessBoostFactor: 0.1,
   },
   session: {
@@ -68,9 +73,9 @@ export const DEFAULT_DECAY_CONFIGS: Record<SixLayerMemoryType, DecayConfig> = {
     accessBoostFactor: 0.03,
   },
   procedural: {
-    halfLifeSeconds: 2592000, // 30 days
-    minFreshness: 0.3,
-    decayRateMultiplier: 0.2,
+    halfLifeSeconds: Number.POSITIVE_INFINITY, // §29.2: No decay - procedural memory must not be dropped
+    minFreshness: 1.0,
+    decayRateMultiplier: 0.0,
     accessBoostFactor: 0.02,
   },
   meta: {

@@ -35,9 +35,12 @@ interface GlobalCircuitBreaker {
   state: 'closed' | 'open' | 'half_open';
   threshold: number;       // 失败率阈值
   window_ms: number;      // 统计窗口
-  open_duration_ms: number; // 熔断持续时间
+  // 注意：open_duration_ms 不表示 TTL 自动释放
+  // Panic 恢复必须通过 §60.3 PlatformResumeDirective 且满足双人审批
 }
 ```
+
+**恢复规则**：Platform Panic 默认无限期生效，`reconfirmationAfterSeconds` 只触发重新确认、升级提醒和证据快照刷新，不得自动解除熔断。恢复必须通过 §60.3 `PlatformResumeDirective` 且满足双人审批。
 
 ### 恢复流程
 

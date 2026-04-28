@@ -23,6 +23,12 @@
 | `id` | `string` | 事件唯一 ID |
 | `type` | `string` | 事件类型 |
 | `tier` | `tier1 \| tier2 \| tier3` | 可靠性等级 |
+| `schema_version` | `string?` | payload schema 版本，用于版本化演化 |
+| `idempotency_key` | `string?` | 幂等键，防止重复投递 |
+| `causation_id` | `string?` | 触发此事件的父事件 ID |
+| `partition_key` | `string?` | 分区键，用于有序处理与隔离 |
+| `ttl` | `number?` | 存活时间（秒），过期后不得消费 |
+| `payload_hash` | `string?` | payload 内容哈希，用于完整性校验 |
 | `task_id` | `string?` | 关联任务 |
 | `session_id` | `string?` | 关联会话 |
 | `loop_iteration` | `integer?` | OAPEFLIR 第几轮 |
@@ -35,6 +41,12 @@
 
 - `EventEnvelope` 只描述事件本体，不承载某个消费者的消费状态。
 - 多消费者确认必须通过独立的 ack 记录表达，不能复用单个 `consumed_at` 字段。
+- `schema_version` 用于事件 schema 的版本化演进，消费者须按版本兼容规则处理。
+- `idempotency_key` 须在 producer 端保证唯一性，broker 须按幂等规则去重。
+- `causation_id` 用于事件溯源，追踪因果链。
+- `partition_key` 用于保证同一 key 的事件有序处理，支持并行度控制。
+- `ttl` 到期事件须直接丢弃，不得进入消费路径。
+- `payload_hash` 须在 producer 端计算 SHA-256，消费者须校验完整性。
 
 ## 4. `EventConsumerAck` 最小字段
 
@@ -72,8 +84,23 @@
 
 Ring 1 之后仍保留的稳定事件类型至少包括：
 
+- `platform.harness.run.created`
+- `platform.harness.run.started`
+- `platform.harness.run.status_changed`
+- `platform.harness.run.completed`
+- `platform.harness.run.failed`
+- `platform.harness.run.aborted`
+- `platform.node.run.created`
+- `platform.node.run.started`
+- `platform.node.run.status_changed`
+- `platform.node.run.completed`
+- `platform.node.run.failed`
+- `platform.node.run.output_recorded`
+- `platform.task.created`
 - `platform.task.status_changed`
-- `platform.node.completed`
+- `platform.budget.reservation_created`
+- `platform.budget.reservation_released`
+- `platform.budget.exhausted`
 - `approval.requested`
 - `approval.resolved`
 - `feedback.signal_received`

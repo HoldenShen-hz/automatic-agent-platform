@@ -70,6 +70,11 @@ export interface RecordUsageInput {
   /** @deprecated legacy projection identifier; use nodeRunId */
   stepId?: string | null;
   metricType: BillingMetricType;
+  /** Multi-dimensional usage dimensions for granular tracking per §53.2 */
+  metricDimensions?: ReadonlyArray<{
+    readonly dimensionKey: string;
+    readonly dimensionValue: string;
+  }>;
   quantity: number;
   source: BillingUsageSource;
   capturedAt?: string;
@@ -90,6 +95,8 @@ export interface RecordUsageResult {
   budgetReservation?: BudgetReservation;
   budgetSettlement?: BudgetSettlement;
   budgetLedger?: BudgetLedger;
+  /** Multi-dimensional quota counters updated per §53.2 */
+  dimensionQuotaCounters?: ReadonlyArray<QuotaCounterRecord>;
 }
 
 export interface BillingAccountSummary {

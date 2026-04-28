@@ -69,11 +69,48 @@ export interface DetectedIntent {
     | "task_query"
     | "task_modify"
     | "status_inquiry"
-    | "approval_action";
+    | "approval_action"
+    | "why"; // §39: explanation query type
   readonly domainHint: string | null;
   readonly entities: readonly ExtractedEntity[];
   readonly urgency: "low" | "normal" | "high" | "critical";
   readonly confidence: number;
+}
+
+/**
+ * §39.2: Independent risk classification as admission gate.
+ * Risk classification runs BEFORE intent processing as a separate stage.
+ */
+function classifyRisk(message: string): RiskPreview {
+  const normalized = message.toLowerCase();
+  const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const high = HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const riskFactors: string[] = [];
+  const sideEffects: string[] = [];
+
+  if (critical) {
+    riskFactors.push("请求涉及破坏性或生产级变更");
+  } else if (high) {
+    riskFactors.push("请求可能影响线上系统、审批流或成本");
+  }
+  if (/(budget|cost|费用|预算|price|价格)/i.test(message)) {
+    sideEffects.push("可能改变成本或预算分配");
+  }
+  if (/(deploy|release|publish|发布|上线)/i.test(message)) {
+    sideEffects.push("可能影响运行中的环境或用户体验");
+  }
+  if (/(delete|drop|remove|删除|清空)/i.test(message)) {
+    sideEffects.push("可能移除已有数据或配置");
+  }
+
+  return {
+    overallRisk: critical ? "critical" : high ? "high" : "low",
+    riskFactors,
+    reversible: !irreversible,
+    sideEffects,
+    approvalNeeded: critical || high,
+  };
 }
 
 export interface IntentParseResult {
@@ -156,18 +193,26 @@ export interface ClarificationState {
   readonly state: "none" | "required" | "blocked";
   readonly reasonCodes: readonly string[];
   readonly questions: readonly string[];
+  readonly rounds: number;
+  readonly maxRounds: number;
 }
+
+const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
 
 export interface UserConfirmationReceipt {
   readonly confirmationId: string;
   readonly required: boolean;
-  readonly state: "not_required" | "pending_user_confirmation";
+  readonly state: "not_required" | "pending_user_confirmation" | "confirmed";
   readonly reasonCodes: readonly string[];
   readonly summary: string;
+  readonly scope?: string;
+  readonly timestamp?: string;
+  readonly riskPreviewVersion?: string;
+  readonly actor?: string;
 }
 
 export interface TaskBuildResult {
-  readonly requestEnvelope: RequestEnvelope;
+  readonly requestEnvelope: RequestEnvelope | null;
   readonly riskPreview: RiskPreview;
   readonly costEstimate: CostEstimate;
   readonly confirmationRequired: boolean;
@@ -337,6 +382,9 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     case "clarify":
     case "chitchat":
       return "status_inquiry";
+    case "why":
+    case "explain":
+      return "why"; // §39: explanation query type
     default:
       return "task_query";
   }
@@ -624,6 +672,8 @@ export class NlEntryService implements NlEntryPort {
     });
     const entities = extractEntities(request.message);
     const securityFindings = detectPromptInjection(request.message);
+    // §39.2: Independent risk classification as admission gate (BEFORE intent processing)
+    const riskPreview = classifyRisk(request.message);
     const detectedIntent: DetectedIntent = {
       intentType: mapIntentType(route.classification.intent),
       domainHint: route.divisionId,
@@ -654,6 +704,8 @@ export class NlEntryService implements NlEntryPort {
         ...(slotConfidence < SLOT_CONFIDENCE_THRESHOLD ? ["nl_gateway.slot_confidence_low"] : []),
       ],
       questions: clarificationQuestions,
+      rounds: 0,
+      maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS,
     };
 
     return {
@@ -719,37 +771,64 @@ export class NlEntryService implements NlEntryPort {
       summary: humanSummary,
     };
 
-    return {
-      requestEnvelope: createRequestEnvelope<NlRequestPayload>({
-        principal: createPlatformPrincipal({
-          actorId: request.userId,
+    // §39.2: Only emit RequestEnvelope after TaskSpec is confirmed
+    // When confirmation is pending, return null requestEnvelope to prevent premature execution
+    if (confirmationRequired && detailed.clarificationState.rounds >= DEFAULT_MAX_CLARIFICATION_ROUNDS) {
+      // Exceeded max clarification rounds - block the request
+      return {
+        requestEnvelope: null,
+        riskPreview,
+        costEstimate,
+        confirmationRequired: true,
+        humanSummary,
+        taskDraft,
+        clarificationState: {
+          ...detailed.clarificationState,
+          state: "blocked" as const,
+          reasonCodes: [...detailed.clarificationState.reasonCodes, "nl_gateway.max_clarification_rounds_exceeded"],
+        },
+        confirmationReceipt: {
+          ...confirmationReceipt,
+          state: "pending_user_confirmation" as const,
+        },
+        conversationState: "Clarifying",
+      };
+    }
+    const requestEnvelope: RequestEnvelope | null = confirmationRequired
+      ? null
+      : createRequestEnvelope<NlRequestPayload>({
+          principal: createPlatformPrincipal({
+            actorId: request.userId,
+            tenantId: request.tenantId,
+            roles: ["requester"],
+            authMethod: "nl_entry",
+          }),
           tenantId: request.tenantId,
-          roles: ["requester"],
-          authMethod: "nl_entry",
-        }),
-        tenantId: request.tenantId,
-        payload: {
-          userId: request.userId,
-          title: deriveTitle(request.message),
-          request: request.message,
-          locale: detailed.locale,
-          channel: request.channel ?? null,
-          divisionId: detailed.suggestedDivisionId,
-          workflowId: detailed.suggestedWorkflowId,
-          intent: primaryIntent.intentType,
-          continuation: detailed.continuation,
-          entities: primaryIntent.entities,
-          confirmationRequired,
-          generatedSummary: humanSummary,
-        },
-        metadata: {
-          source: "nl_entry",
-          confirmationRequired,
-          divisionId: detailed.suggestedDivisionId,
-          workflowId: detailed.suggestedWorkflowId,
-          locale: detailed.locale,
-        },
-      }),
+          payload: {
+            userId: request.userId,
+            title: deriveTitle(request.message),
+            request: request.message,
+            locale: detailed.locale,
+            channel: request.channel ?? null,
+            divisionId: detailed.suggestedDivisionId,
+            workflowId: detailed.suggestedWorkflowId,
+            intent: primaryIntent.intentType,
+            continuation: detailed.continuation,
+            entities: primaryIntent.entities,
+            confirmationRequired,
+            generatedSummary: humanSummary,
+          },
+          metadata: {
+            source: "nl_entry",
+            confirmationRequired,
+            divisionId: detailed.suggestedDivisionId,
+            workflowId: detailed.suggestedWorkflowId,
+            locale: detailed.locale,
+          },
+        });
+
+    return {
+      requestEnvelope,
       riskPreview,
       costEstimate,
       confirmationRequired,

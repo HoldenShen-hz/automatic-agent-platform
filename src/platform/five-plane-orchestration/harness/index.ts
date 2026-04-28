@@ -180,7 +180,19 @@ export interface HarnessDecision {
   readonly createdAt: string;
 }
 
-export interface HarnessRun {
+/**
+ * @deprecated HarnessRun is deprecated per §5.5. Use CanonicalHarnessRun from executable-contracts.
+ * This alias exists for internal runtime state management only.
+ * Runtime execution uses NodeRun references, not embedded HarnessStep.
+ */
+export type HarnessRun = CanonicalHarnessRun;
+
+/**
+ * HarnessRunRuntimeState - internal runtime state for Harness execution.
+ * Per §5.5, steps are semantic projections - use nodeRunIds for canonical execution references.
+ * This type is NOT exported from the public API - only for internal harness implementation.
+ */
+export interface HarnessRunRuntimeState {
   readonly harnessRunId: string;
   readonly runId: string;
   readonly tenantId: string;
@@ -201,10 +213,16 @@ export interface HarnessRun {
   readonly domainId: string;
   readonly constraintPack: ConstraintPack;
   readonly planGraphBundle: PlanGraphBundle;
+  /**
+   * @deprecated HarnessStep is semantic projection per §5.5. Use nodeRunIds instead.
+   * Kept for legacy adapter compatibility only.
+   */
   readonly steps: readonly HarnessStep[];
+  /** @deprecated Use nodeRunIds per §5.5 */
+  readonly nodeRunIds: readonly string[];
   readonly maxIterations: number;
   readonly currentIteration: number;
-  readonly status: HarnessRunStatus;
+  readonly status: CanonicalHarnessRunStatus;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly completedAt: string | null;
@@ -226,6 +244,29 @@ export interface HarnessRun {
     readonly maxIterations: number;
     readonly maxCost: number;
     readonly maxDurationMs: number;
+  };
+}
+
+/**
+ * Adapter: Convert internal HarnessRunRuntimeState to canonical HarnessRun.
+ * This extracts only the canonical fields for external consumption.
+ */
+export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalHarnessRun {
+  return {
+    harnessRunId: state.harnessRunId,
+    tenantId: state.tenantId,
+    confirmedTaskSpecId: state.confirmedTaskSpecId,
+    requestEnvelopeId: state.requestEnvelopeId,
+    requestHash: state.requestHash,
+    status: state.status,
+    constraintPackRef: state.constraintPackRef,
+    versionLockId: state.versionLockId,
+    planGraphBundleId: state.planGraphBundle.planGraphBundleId,
+    budgetLedgerId: state.budgetLedgerId,
+    currentSeq: state.currentSeq,
+    createdAt: state.createdAt,
+    updatedAt: state.updatedAt,
+    terminalAt: state.completedAt ?? undefined,
   };
 }
 
@@ -382,7 +423,7 @@ export class HarnessRuntimeService {
     domainId: string;
     constraintPack: ConstraintPack;
     planGraphBundle?: PlanGraphBundle;
-  }): HarnessRun {
+  }): HarnessRunRuntimeState {
     const runId = newId("harness_run");
     const budgetLedger = createBudgetLedger({
       tenantId: "tenant:local",
@@ -390,7 +431,7 @@ export class HarnessRuntimeService {
       currency: "USD",
       hardCap: input.constraintPack.budget.maxCost,
     });
-    const run: HarnessRun = {
+    const run: HarnessRunRuntimeState = {
       harnessRunId: runId,
       runId,
       tenantId: "tenant:local",
@@ -411,6 +452,7 @@ export class HarnessRuntimeService {
         constraintPack: input.constraintPack,
       }),
       steps: [],
+      nodeRunIds: [],
       maxIterations: input.constraintPack.budget.maxSteps,
       currentIteration: 0,
       status: "created",
@@ -444,15 +486,16 @@ export class HarnessRuntimeService {
   }
 
   public appendStep(
-    run: HarnessRun,
+    run: HarnessRunRuntimeState,
     input: {
       role: HarnessRole;
       stage: string;
       inputs: Readonly<Record<string, unknown>>;
       outputs: Readonly<Record<string, unknown>>;
       iteration?: number;
+      nodeRunId?: string;
     },
-  ): HarnessRun {
+  ): HarnessRunRuntimeState {
     const completedAt = nowIso();
     const iteration = input.iteration ?? Math.max(run.currentIteration, 1);
     const step: HarnessStep = {
@@ -469,6 +512,7 @@ export class HarnessRuntimeService {
     return {
       ...run,
       steps: [...run.steps, step],
+      nodeRunIds: input.nodeRunId != null ? [...run.nodeRunIds, input.nodeRunId] : run.nodeRunIds,
       currentIteration: Math.max(run.currentIteration, iteration),
       timeline: [
         ...run.timeline,
@@ -476,14 +520,14 @@ export class HarnessRuntimeService {
           eventId: newId("timeline"),
           runId: run.runId,
           type: "step_completed",
-          payload: { stepId: step.stepId, role: step.role, stage: step.stage, iteration },
+          payload: { stepId: step.stepId, role: step.role, stage: step.stage, iteration, nodeRunId: input.nodeRunId },
           recordedAt: nowIso(),
         },
       ],
     };
   }
 
-  public captureContextSnapshot(run: HarnessRun): ContextSnapshot {
+  public captureContextSnapshot(run: HarnessRunRuntimeState): ContextSnapshot {
     return {
       snapshotId: newId("ctx_snapshot"),
       runId: run.runId,
@@ -499,11 +543,11 @@ export class HarnessRuntimeService {
     return this.contextAssembler.assemble(sources, tokenBudget);
   }
 
-  public snapshotContext(run: HarnessRun, context: HarnessContext): ContextSnapshot {
+  public snapshotContext(run: HarnessRunRuntimeState, context: HarnessContext): ContextSnapshot {
     return this.contextAssembler.snapshot(run, context);
   }
 
-  public sleep(run: HarnessRun, reason: string, resumeAt: string): HarnessRun {
+  public sleep(run: HarnessRunRuntimeState, reason: string, resumeAt: string): HarnessRunRuntimeState {
     const paused = this.pauseRun(this.ensureRunning(run), "sleep");
     return {
       ...paused,
@@ -528,7 +572,7 @@ export class HarnessRuntimeService {
     };
   }
 
-  public recover(run: HarnessRun): HarnessRun {
+  public recover(run: HarnessRunRuntimeState): HarnessRunRuntimeState {
     const paused = run.status === "completed" || run.status === "failed" || run.status === "aborted"
       ? {
         ...run,
@@ -559,7 +603,7 @@ export class HarnessRuntimeService {
     };
   }
 
-  public resume(run: HarnessRun): HarnessRun {
+  public resume(run: HarnessRunRuntimeState): HarnessRunRuntimeState {
     const resumed = run.status === "paused"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.resume"), "running", "harness.resumed")
       : this.transitionRunStatus(this.ensureRunning(run), "running", "harness.resume_noop");
@@ -571,7 +615,7 @@ export class HarnessRuntimeService {
     };
   }
 
-  public openHitlReview(run: HarnessRun, reason: string, evidenceRefs: readonly string[]): HarnessRun {
+  public openHitlReview(run: HarnessRunRuntimeState, reason: string, evidenceRefs: readonly string[]): HarnessRunRuntimeState {
     const paused = this.pauseRun(this.ensureRunning(run), "hitl");
     return {
       ...paused,
@@ -595,7 +639,7 @@ export class HarnessRuntimeService {
     };
   }
 
-  public resolveHitlReview(run: HarnessRun, resolution: "approved" | "rejected", actorId: string): HarnessRun {
+  public resolveHitlReview(run: HarnessRunRuntimeState, resolution: "approved" | "rejected", actorId: string): HarnessRunRuntimeState {
     if (run.hitlRequest == null) {
       throw new Error(`harness.hitl.request_not_found_for_run:${run.runId}`);
     }
@@ -621,21 +665,21 @@ export class HarnessRuntimeService {
     };
   }
 
-  public listTimeline(run: HarnessRun): readonly HarnessTimelineEvent[] {
+  public listTimeline(run: HarnessRunRuntimeState): readonly HarnessTimelineEvent[] {
     return run.timeline;
   }
 
-  public writeMemory(run: HarnessRun, namespace: Parameters<HarnessMemoryManager["write"]>[0], key: string, value: unknown): void {
+  public writeMemory(run: HarnessRunRuntimeState, namespace: Parameters<HarnessMemoryManager["write"]>[0], key: string, value: unknown): void {
     const scopeId = namespace === "run" ? run.runId : namespace === "domain" ? run.domainId : "global";
     this.memoryManager.write(namespace, scopeId, key, value);
   }
 
-  public readMemory(run: HarnessRun, namespace: Parameters<HarnessMemoryManager["read"]>[0], key: string): unknown {
+  public readMemory(run: HarnessRunRuntimeState, namespace: Parameters<HarnessMemoryManager["read"]>[0], key: string): unknown {
     const scopeId = namespace === "run" ? run.runId : namespace === "domain" ? run.domainId : "global";
     return this.memoryManager.read(namespace, scopeId, key);
   }
 
-  public assertInvariants(run: HarnessRun): { violations: string[] } {
+  public assertInvariants(run: HarnessRunRuntimeState): { violations: string[] } {
     const violations: string[] = [];
     const iterationCount = run.loopMetrics?.iterationCount ?? run.currentIteration;
     const replanCount = run.loopMetrics?.replanCount ?? 0;
@@ -716,7 +760,7 @@ export class HarnessRuntimeService {
     return { violations };
   }
 
-  public evaluateRun(run: HarnessRun) {
+  public evaluateRun(run: HarnessRunRuntimeState) {
     return this.evalRunService.evaluate(run);
   }
 
@@ -724,17 +768,17 @@ export class HarnessRuntimeService {
     return new AsyncHarnessService(this);
   }
 
-  public persistRun(run: HarnessRun) {
+  public persistRun(run: HarnessRunRuntimeState) {
     this.ensureInvariantSafe(run);
     return this.durableService.persist(run);
   }
 
-  public checkpointRun(run: HarnessRun): string {
+  public checkpointRun(run: HarnessRunRuntimeState): string {
     this.ensureInvariantSafe(run);
     return this.durableService.checkpoint(run);
   }
 
-  public restoreRun(runId: string): HarnessRun | null {
+  public restoreRun(runId: string): HarnessRunRuntimeState | null {
     const run = this.durableService.restore(runId);
     if (run) {
       this.ensureInvariantSafe(run);
@@ -742,7 +786,7 @@ export class HarnessRuntimeService {
     return run;
   }
 
-  public restoreFromCheckpoint(checkpointRef: string): HarnessRun | null {
+  public restoreFromCheckpoint(checkpointRef: string): HarnessRunRuntimeState | null {
     const run = this.durableService.restoreFromCheckpoint(checkpointRef);
     if (run) {
       this.ensureInvariantSafe(run);
@@ -750,15 +794,15 @@ export class HarnessRuntimeService {
     return run;
   }
 
-  public handleFailure(run: HarnessRun, failure: HarnessFailureType): HarnessRun {
+  public handleFailure(run: HarnessRunRuntimeState, failure: HarnessFailureType): HarnessRunRuntimeState {
     return this.recoveryController.handleFailure(run, failure);
   }
 
   private appendTimelineEvent(
-    run: HarnessRun,
+    run: HarnessRunRuntimeState,
     type: HarnessTimelineEvent["type"],
     payload: Readonly<Record<string, unknown>>,
-  ): HarnessRun {
+  ): HarnessRunRuntimeState {
     return {
       ...run,
       timeline: [
@@ -778,6 +822,7 @@ export class HarnessRuntimeService {
     evaluatorScore: number;
     requiresHuman?: boolean;
     maxIterationsReached?: boolean;
+    riskScore?: number;
   }): HarnessDecision {
     let action: HarnessDecisionAction = "accept";
     const reasonCodes: string[] = [];
@@ -788,6 +833,9 @@ export class HarnessRuntimeService {
     } else if (input.requiresHuman) {
       action = "escalate_to_human";
       reasonCodes.push("harness.human_required");
+    } else if (input.riskScore !== undefined && input.riskScore > 0.8) {
+      action = "downgrade_mode";
+      reasonCodes.push("harness.risk_high_downgrade");
     } else if (input.evaluatorScore < 0.5) {
       action = "replan";
       reasonCodes.push("harness.eval_below_replan_threshold");
@@ -998,7 +1046,7 @@ export class HarnessRuntimeService {
     }
   }
 
-  private ensureRunning(run: HarnessRun): HarnessRun {
+  private ensureRunning(run: HarnessRunRuntimeState): HarnessRunRuntimeState {
     if (run.status === "running") {
       return run;
     }
@@ -1021,7 +1069,7 @@ export class HarnessRuntimeService {
     return current;
   }
 
-  private pauseRun(run: HarnessRun, reason: HarnessRun["pauseReason"]): HarnessRun {
+  private pauseRun(run: HarnessRunRuntimeState, reason: HarnessRunRuntimeState["pauseReason"]): HarnessRunRuntimeState {
     const pausing = run.status === "running"
       ? this.transitionRunStatus(run, "pausing", `harness.pause.${reason ?? "generic"}`)
       : run;
@@ -1035,10 +1083,10 @@ export class HarnessRuntimeService {
   }
 
   private transitionRunStatus(
-    run: HarnessRun,
+    run: HarnessRunRuntimeState,
     toStatus: CanonicalHarnessRunStatus,
     reasonCode: string,
-  ): HarnessRun {
+  ): HarnessRunRuntimeState {
     if (run.status === toStatus) {
       return run;
     }
@@ -1093,7 +1141,7 @@ export class HarnessRuntimeService {
     };
   }
 
-  private ensureInvariantSafe(run: HarnessRun): void {
+  private ensureInvariantSafe(run: HarnessRunRuntimeState): void {
     const result = this.assertInvariants(run);
     if (result.violations.length > 0) {
       throw new Error(`harness.invariant_violation:${result.violations.join(",")}`);

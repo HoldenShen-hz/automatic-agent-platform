@@ -2,8 +2,8 @@ import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type EvalDatasetStage = "observe" | "assess" | "plan" | "feedback";
-export type EvalDatasetStatus = "draft" | "active" | "archived";
-export type EvalCasePriority = "critical" | "standard";
+export type EvalDatasetStatus = "draft" | "active" | "deprecated" | "archived";
+export type EvalCasePriority = "critical" | "high" | "medium" | "standard";
 export type QualityCriterionType =
   | "exact_match"
   | "contains"
@@ -14,6 +14,14 @@ export type QualityCriterionType =
 export type EvalRunPhase = "offline" | "canary";
 export type EvalDatasetGateDecision = "promote" | "hold" | "rollback";
 export type JudgeProfileStatus = "ready" | "cooldown" | "disabled";
+
+/** §21.5: Risk-level minimum sample requirements per architecture */
+export const EVAL_RISK_LEVEL_MIN_SAMPLES: Record<EvalCasePriority, number> = {
+  critical: 200,
+  high: 100,
+  medium: 50,
+  standard: 20,
+} as const;
 
 export interface EvalDatasetQualityCriterion {
   criterionId: string;
@@ -173,6 +181,22 @@ export class EvalDatasetJudgeService {
     const now = nowIso();
     const cases = input.cases.map((item) => normalizeCase(item));
     ensureUniqueIds(cases.map((item) => item.caseId), "eval_dataset.case_id_duplicate", "Evaluation dataset case IDs must be unique.");
+
+    // §21.5: Validate minimum sample sizes per risk level
+    const casesByPriority = new Map<EvalCasePriority, number>();
+    for (const c of cases) {
+      casesByPriority.set(c.priority, (casesByPriority.get(c.priority) ?? 0) + 1);
+    }
+    for (const [priority, count] of casesByPriority) {
+      const minRequired = EVAL_RISK_LEVEL_MIN_SAMPLES[priority];
+      if (count < minRequired) {
+        throw new ValidationError(
+          `eval_dataset.insufficient_samples:${priority}`,
+          `Evaluation dataset must have at least ${minRequired} ${priority} priority cases, got ${count}.`,
+        );
+      }
+    }
+
     const record: EvalDatasetRecord = {
       datasetId,
       name: normalizeRequired(input.name, "name"),

@@ -46,6 +46,7 @@ export interface ApprovalAmountSnapshot {
 export interface ApprovalRouteSnapshot {
   readonly snapshotId: string;
   readonly createdAt: string;
+  readonly expiresAt: string;
   readonly orgVersion: string;
   readonly policyVersion: string;
   readonly requesterId: string;
@@ -70,6 +71,7 @@ export interface ApprovalRouteSnapshot {
 export interface ApprovalRouteDecision {
   readonly matchedOrgNodeId: string;
   readonly approverChain: readonly string[];
+  readonly approvalSteps: readonly ApprovalStepRequirement[];
   readonly delegated: boolean;
   readonly routingStrategy: "org_chart" | "amount_based";
   readonly routeSnapshot: ApprovalRouteSnapshot;
@@ -86,6 +88,84 @@ export interface AmountThresholdRule {
 export interface RoutingStrategy {
   readonly strategyId: ApprovalRouteDecision["routingStrategy"];
   selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null;
+}
+
+export interface ParallelApproverGroup {
+  readonly groupId: string;
+  readonly approverIds: readonly string[];
+  readonly requiredCount: number;
+  readonly timeoutMinutes?: number;
+}
+
+export interface ApprovalStepRequirement {
+  readonly stepId: string;
+  readonly approverIds: readonly string[];
+  readonly requiredApprovals: number;
+  readonly stepType: "sequential" | "parallel" | "any";
+  readonly dependsOnSteps?: readonly string[];
+}
+
+export function buildParallelSignoffGroups(
+  approverChain: readonly string[],
+  nodes: readonly OrgNode[],
+  orgNodeId: string,
+): ParallelApproverGroup[] {
+  if (approverChain.length <= 1) {
+    return [];
+  }
+  const firstApprover = approverChain[0];
+  const remainingApprovers = approverChain.slice(1);
+  const firstApproverNode = nodes.find((n) => n.ownerUserIds.includes(firstApprover));
+  const isFirstManager = firstApproverNode?.orgNodeId === orgNodeId
+    || firstApproverNode?.parentOrgNodeId !== null;
+  if (!isFirstManager) {
+    return [{
+      groupId: `parallel:${orgNodeId}`,
+      approverIds: remainingApprovers,
+      requiredCount: 1,
+      timeoutMinutes: 30,
+    }];
+  }
+  const groups: ParallelApproverGroup[] = [];
+  for (let i = 0; i < remainingApprovers.length; i += 3) {
+    const batch = remainingApprovers.slice(i, i + 3);
+    groups.push({
+      groupId: `parallel:${orgNodeId}:${i}`,
+      approverIds: batch,
+      requiredCount: 1,
+      timeoutMinutes: 30,
+    });
+  }
+  return groups;
+}
+
+export function resolveApprovalSteps(
+  approverChain: readonly string[],
+  nodes: readonly OrgNode[],
+  orgNodeId: string,
+): ApprovalStepRequirement[] {
+  const groups = buildParallelSignoffGroups(approverChain, nodes, orgNodeId);
+  if (groups.length === 0) {
+    return approverChain.map((approverId, idx) => ({
+      stepId: `step:${idx}`,
+      approverIds: [approverId] as readonly string[],
+      requiredApprovals: 1,
+      stepType: "sequential" as const,
+      dependsOnSteps: idx > 0 ? [`step:${idx - 1}`] as readonly string[] : undefined,
+    }));
+  }
+  const steps: ApprovalStepRequirement[] = [];
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i];
+    steps.push({
+      stepId: `parallel_step:${i}`,
+      approverIds: group.approverIds,
+      requiredApprovals: group.requiredCount,
+      stepType: "parallel",
+      dependsOnSteps: i > 0 ? [`step:${i - 1}`, `parallel_step:${i - 1}`] as readonly string[] : undefined,
+    });
+  }
+  return steps;
 }
 
 export class OrgChartRoutingStrategy implements RoutingStrategy {
@@ -115,7 +195,7 @@ export function resolveAmountRoute(
   rules: readonly AmountThresholdRule[],
 ): OrgNode | null {
   const normalizedAmount = normalizeApprovalAmount(request);
-  const matchedRule = rules.find((item) => normalizedAmount.amountCny < normalizeThresholdCny(item)) ?? null;
+  const matchedRule = rules.find((item) => normalizedAmount.amountCny < normalizeThresholdCny(item, normalizedAmount.fxSnapshot ?? undefined)) ?? null;
   if (!matchedRule) {
     return nodes.find((item) => item.nodeType === "company") ?? null;
   }
@@ -190,6 +270,7 @@ function isInSameApprovalChain(
     return false;
   }
 
+  // Direct parent-child relationships
   if (requesterNode.parentOrgNodeId === approverNode.orgNodeId) {
     return true;
   }
@@ -197,6 +278,7 @@ function isInSameApprovalChain(
     return true;
   }
 
+  // Check if approver is in requester's upward chain (requester → ancestor → ...)
   let currentNode = requesterNode;
   while (currentNode.parentOrgNodeId != null) {
     const parentNode = nodes.find((item) => item.orgNodeId === currentNode.parentOrgNodeId) ?? null;
@@ -205,6 +287,18 @@ function isInSameApprovalChain(
       return true;
     }
     currentNode = parentNode;
+  }
+
+  // Check if requester is in approver's upward chain (approver → ancestor → ...)
+  // This catches mutual approval: A is downstream of B and B is downstream of A in same chain
+  let approverCurrentNode = approverNode;
+  while (approverCurrentNode.parentOrgNodeId != null) {
+    const approverParentNode = nodes.find((item) => item.orgNodeId === approverCurrentNode.parentOrgNodeId) ?? null;
+    if (approverParentNode == null) break;
+    if (approverParentNode.ownerUserIds.includes(requesterId)) {
+      return true;
+    }
+    approverCurrentNode = approverParentNode;
   }
 
   return false;
@@ -232,9 +326,13 @@ export function resolveApprovalRoute(
   const legalEntityApprovalRoles = requiresLegalEntityApproval(requesterBoundary, matchedBoundary)
     ? getLegalEntityApprovalRoles(requesterBoundary, matchedBoundary)
     : [];
+  const approvalSteps = resolveApprovalSteps(approverChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
+  const nowIso = amount.fxSnapshot?.capturedAt ?? new Date().toISOString();
+  const expiresAtIso = new Date(Date.parse(nowIso) + 30 * 60 * 1000).toISOString();
   const routeSnapshot: ApprovalRouteSnapshot = {
     snapshotId: `approval_route_snapshot:${request.requesterId}:${matched?.orgNodeId ?? request.orgNodeId}:${strategy.strategyId}`,
     createdAt: amount.fxSnapshot?.capturedAt ?? "1970-01-01T00:00:00.000Z",
+    expiresAt: expiresAtIso,
     orgVersion: request.orgVersion,
     policyVersion: request.policyVersion,
     requesterId: request.requesterId,
@@ -258,6 +356,7 @@ export function resolveApprovalRoute(
   return {
     matchedOrgNodeId: matched?.orgNodeId ?? request.orgNodeId,
     approverChain,
+    approvalSteps,
     delegated: delegatedChain.some((item, index) => item !== ownerChain[index]),
     routingStrategy: strategy.strategyId,
     routeSnapshot,
@@ -306,11 +405,20 @@ export function revalidateApprovalRoute(
   };
 }
 
-function normalizeThresholdCny(rule: AmountThresholdRule): number {
+function normalizeThresholdCny(
+  rule: AmountThresholdRule,
+  fxSnapshot?: ApprovalFxSnapshot,
+): number {
   if (rule.maxAmountCny != null) {
     return rule.maxAmountCny;
   }
   if (rule.maxAmountUsd != null) {
+    if (fxSnapshot != null && fxSnapshot.baseCurrency.toUpperCase() === "USD") {
+      return rule.maxAmountUsd * fxSnapshot.rate;
+    }
+    if (fxSnapshot != null && fxSnapshot.baseCurrency.toUpperCase() !== "CNY") {
+      return rule.maxAmountUsd * fxSnapshot.rate;
+    }
     return rule.maxAmountUsd * 7.2;
   }
   return Number.POSITIVE_INFINITY;

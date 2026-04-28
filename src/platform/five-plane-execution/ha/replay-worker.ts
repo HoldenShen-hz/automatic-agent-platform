@@ -63,10 +63,16 @@ export class ReplayWorker implements RecoveryWorker {
       // R4-29 (INV-REPLAY-001): Evaluate replay operations through ReplayBoundaryGuard
       // to ensure replay never produces real side effects
       const replayMode: ReplayMode = this.replayPolicy.mode === "trace_only" ? "trace_replay" : "reexecution_replay";
+
+      // R4-29: ReplaySandboxPolicy implementation - determine hasRealSideEffect based on policy
+      // In trace_only mode, we never produce real side effects (read-only replay)
+      // In isolated_sandbox mode, we still don't produce real side effects unless explicitly allowed
       const operations: ReplayOperation[] = taskIds.map((taskId) => ({
         operationId: taskId,
         resourceKind: "tool" as const,
-        hasRealSideEffect: false, // ReplayWorker never has real side effects
+        // R4-29: hasRealSideEffect is determined by replay policy, not hardcoded
+        // The replay service produces effects that we must track for reconciliation
+        hasRealSideEffect: this.replayPolicy.allowRealSideEffects && replayMode === "reexecution_replay",
         tombstoneReplay: false,
       }));
       const boundaryDecision = this.boundaryGuard.evaluate(replayMode, operations);

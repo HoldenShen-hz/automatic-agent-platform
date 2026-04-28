@@ -146,6 +146,8 @@ Phase 1a / 1b 建议至少维护：
 | `compaction_id` | `string` | 压缩记录 ID |
 | `session_id` | `string` | 所属会话 |
 | `task_id` | `string` | 所属任务 |
+| `harness_run_id?` | `string` | 关联 HarnessRun（canonical） |
+| `node_run_id?` | `string` | 关联 NodeRun（canonical） |
 | `stage` | `trim \| summarize` | 所处阶段 |
 | `source_message_ids` | `string[]` | 被覆盖消息 |
 | `summary_ref` | `string?` | 摘要引用 |

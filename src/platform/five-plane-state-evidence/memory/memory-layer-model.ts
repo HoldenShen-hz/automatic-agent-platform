@@ -28,6 +28,39 @@ export type HierarchicalMemoryLayer =
  */
 export type LegacyMemoryLayer = HierarchicalMemoryLayer;
 
+/**
+ * §29.2: ContextTruncationReport - Required when memory is evicted.
+ * "Facts cannot be silently discarded, compression requires loss report"
+ */
+export interface ContextTruncationReport {
+  readonly layer: HierarchicalMemoryLayer;
+  readonly evictedRecords: readonly EvictedMemoryRecord[];
+  readonly totalEvicted: number;
+  readonly evictedSizeBytes: number;
+  readonly reason: EvictionReason;
+  readonly timestamp: string;
+}
+
+export interface EvictedMemoryRecord {
+  readonly recordId: string;
+  readonly scope: string;
+  readonly key: string;
+  readonly createdAt: string;
+  readonly lastAccessedAt: string | null;
+  readonly ttlMs: number;
+  readonly priority: number;
+  readonly qualityScore: number | null;
+  readonly importanceScore: number | null;
+}
+
+export type EvictionReason =
+  | "lru_eviction"
+  | "stale_expired"
+  | "size_limit_exceeded"
+  | "manual_truncation"
+  | "quality_below_threshold"
+  | "trust_below_threshold";
+
 export interface LayerPromotionRule {
   from: HierarchicalMemoryLayer;
   to: HierarchicalMemoryLayer;
@@ -362,5 +395,39 @@ export function cloneMemoryWithLayer(memory: MemoryRecord, layer: HierarchicalMe
   return {
     ...memory,
     scope: layer === "project" ? "project" : layer,
+  };
+}
+
+/**
+ * Creates a ContextTruncationReport when records are evicted from a layer.
+ * §29.2: "Facts cannot be silently discarded, compression requires loss report"
+ */
+export function createContextTruncationReport(
+  layer: HierarchicalMemoryLayer,
+  evictedRecords: MemoryRecord[],
+  reason: EvictionReason,
+): ContextTruncationReport {
+  const evicted: EvictedMemoryRecord[] = evictedRecords.map((record) => ({
+    recordId: record.id,
+    scope: record.scope,
+    key: record.key,
+    createdAt: record.createdAt,
+    lastAccessedAt: record.lastAccessedAt ?? null,
+    ttlMs: getLayerTtlConfig(record.scope as HierarchicalMemoryLayer)?.defaultTtlMs ?? 0,
+    priority: getEvictionPriority(record),
+    qualityScore: record.qualityScore ?? null,
+    importanceScore: record.importanceScore ?? null,
+  }));
+
+  // Estimate size: assume average record is ~2KB
+  const estimatedSizeBytes = evictedRecords.length * 2048;
+
+  return {
+    layer,
+    evictedRecords: evicted,
+    totalEvicted: evictedRecords.length,
+    evictedSizeBytes: estimatedSizeBytes,
+    reason,
+    timestamp: new Date().toISOString(),
   };
 }

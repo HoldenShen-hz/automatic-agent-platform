@@ -159,6 +159,204 @@ export interface TypedEventPayloadMap {
   };
   // Circuit breaker state change events per §9.4
   "circuit_breaker:state_changed": CircuitBreakerStateChangePayload;
+  // §28 Canonical platform events - harness run (R5-41)
+  "platform.harness_run.status_changed": {
+    status: string;
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.created": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.admitted": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.planning": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.ready": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.pausing": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.replanning": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.compensating": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.aborted": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.harness_run.completed": {
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  // §28 Canonical platform events - node run (R5-41)
+  "platform.node_run.status_changed": {
+    status: string;
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.created": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.admitted": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.planning": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.ready": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.pausing": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.replanning": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.completed": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.failed": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.compensating": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.node_run.skipped": {
+    runId: string;
+    nodeId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  // §28 Canonical platform events - side effect (R5-41)
+  "platform.side_effect.status_changed": {
+    status: string;
+    runId: string;
+    sideEffectId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.side_effect.triggered": {
+    runId: string;
+    sideEffectId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.side_effect.completed": {
+    runId: string;
+    sideEffectId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.side_effect.failed": {
+    runId: string;
+    sideEffectId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  // §28 Canonical platform events - budget (R5-41)
+  "platform.budget.status_changed": {
+    status: string;
+    budgetId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.budget.reserved": {
+    budgetId: string;
+    amount: number;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.budget.actualized": {
+    budgetId: string;
+    amount: number;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.budget.exceeded": {
+    budgetId: string;
+    limit: number;
+    actual: number;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "platform.budget_reconciliation.status_changed": {
+    status: string;
+    reconciliationId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  // §28 OAPEFLIR events (R5-41)
+  "oapeflir.view.run_lifecycle": {
+    stage: string;
+    runId: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "oapeflir.decision.recorded": {
+    runId: string;
+    decision: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
+  "oapeflir.phase.transition": {
+    runId: string;
+    fromPhase: string;
+    toPhase: string;
+    taskId?: string | null;
+    occurredAt?: string | null;
+  };
   // Performance test event types - used for benchmarks only
   "perf:test_event": Record<string, unknown>;
   "perf:burst_event": Record<string, unknown>;

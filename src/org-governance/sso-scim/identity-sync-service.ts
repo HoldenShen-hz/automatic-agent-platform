@@ -183,17 +183,54 @@ export class IdentitySyncService {
       } satisfies AgentFreezeDirective];
     });
 
+    // Process DLQ records with retry/backoff and generate reconciliation report
+    const nowIso = new Date().toISOString();
+    const periodStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { processedRecords, retryQueue } = this.processDlqWithRetry(dlqRecords, nowIso);
+    const reconciliationReport = this.generateDailyReconciliation(
+      processedRecords,
+      periodStart,
+      nowIso,
+    );
+
     return {
       oidcAuthorizationUrl: buildOidcAuthorizationUrl(oidc, newId("oidc_state")),
       samlAudience: buildSamlAudience(saml),
       appliedScimEvents,
       activeSubjects: [...this.activeSubjects].sort(),
-      dlqRecords,
+      dlqRecords: processedRecords,
       conflictReports,
       sessionRevocationPlans,
       agentFreezeDirectives,
-      reconciliationReport: null,
+      reconciliationReport,
     };
+  }
+
+  public processDlqWithRetry(
+    dlqRecords: readonly IdentitySyncDlqRecord[],
+    nowIso: string,
+  ): { processedRecords: IdentitySyncDlqRecord[]; retryQueue: IdentitySyncDlqRecord[] } {
+    const processedRecords: IdentitySyncDlqRecord[] = [];
+    const retryQueue: IdentitySyncDlqRecord[] = [];
+
+    for (const record of dlqRecords) {
+      if (record.retryCount >= 3) {
+        // Max retries reached, keep in DLQ but mark as exhausted
+        processedRecords.push({ ...record, nextRetryAt: null });
+        continue;
+      }
+
+      const shouldRetry = record.nextRetryAt == null || record.nextRetryAt <= nowIso;
+      if (shouldRetry) {
+        const updated = this.retryDlqRecord(record, nowIso);
+        processedRecords.push(updated);
+        retryQueue.push(updated);
+      } else {
+        processedRecords.push(record);
+      }
+    }
+
+    return { processedRecords, retryQueue };
   }
 
   public retryDlqRecord(dlqRecord: IdentitySyncDlqRecord, nowIso: string): IdentitySyncDlqRecord {

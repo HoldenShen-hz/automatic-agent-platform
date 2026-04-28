@@ -47,10 +47,8 @@ const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
  * - restricted_exec: Execution is constrained by executor policy rather than broad path roots
  */
 export type SandboxMode = "read_only" | "workspace_write" | "scoped_external_access" | "restricted_exec";
-export type SandboxModeLike = SandboxMode | string;
 
 const SANDBOX_MODE_ALIASES = {
-  none: "read_only",
   process: "read_only",
   container: "workspace_write",
   scoped_external_access: "scoped_external_access",
@@ -59,7 +57,7 @@ const SANDBOX_MODE_ALIASES = {
   restricted_exec: "restricted_exec",
 } as const satisfies Record<string, SandboxMode>;
 
-export function normalizeSandboxMode(mode: SandboxModeLike | null | undefined): SandboxMode {
+export function normalizeSandboxMode(mode: string | null | undefined): SandboxMode {
   if (mode == null) {
     return "read_only";
   }

@@ -143,7 +143,7 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
   ["active", ["paused", "deprecated"]],
   ["paused", ["active", "deprecated", "canary"]],
   ["deprecated", ["archived", "active"]],
-  ["archived", ["removed"]],
+  ["archived", ["removed", "active"]],
   ["removed", []],
 ]);
 

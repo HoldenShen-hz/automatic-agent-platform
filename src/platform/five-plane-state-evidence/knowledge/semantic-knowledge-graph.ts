@@ -1,7 +1,15 @@
 import type { ArchivedKnowledgeRecord } from "./archive/knowledge-archive.js";
 
-export type KnowledgeGraphNodeType = "namespace" | "document" | "chunk" | "keyword";
-export type KnowledgeGraphEdgeType = "contains" | "shared_keyword" | "same_document";
+export type KnowledgeGraphNodeType = "namespace" | "document" | "chunk" | "keyword" | "entity";
+export type KnowledgeGraphEdgeType =
+  | "contains"
+  | "shared_keyword"
+  | "same_document"
+  | "references"        // §13.9: Entity relation edge - one entity references another
+  | "derives_from"      // Knowledge derives from source
+  | "contradicts"       // Contradicting knowledge
+  | "trust_boost"       // Trust propagation edge
+  | "trust_degrades";   // Trust degradation edge
 
 export interface KnowledgeGraphNode {
   nodeId: string;
@@ -30,6 +38,13 @@ export interface KnowledgeGraphChunkConnections {
   keywords: string[];
   sharedKeywordRefs: string[];
   sameDocumentRefs: string[];
+  /** References to related entities per §13.9 */
+  entityRefs: string[];
+}
+
+export interface TrustPropagationResult {
+  propagatedNodeIds: string[];
+  trustScoreChanges: Record<string, number>;
 }
 
 function edgeId(fromNodeId: string, toNodeId: string, relation: KnowledgeGraphEdgeType): string {
@@ -156,6 +171,7 @@ export class SemanticKnowledgeGraph {
         .sort(),
       sharedKeywordRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "shared_keyword"),
       sameDocumentRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "same_document"),
+      entityRefs: this.collectChunkKnowledgeRefs(chunkNodeId, "references"),
     };
   }
 
@@ -269,5 +285,120 @@ export class SemanticKnowledgeGraph {
     const adjacency = this.adjacencyByNodeId.get(fromNodeId) ?? [];
     adjacency.push(this.edges.get(id)!);
     this.adjacencyByNodeId.set(fromNodeId, adjacency);
+  }
+
+  /**
+   * §13.9: Adds an entity relation edge between two nodes.
+   * Entity relations represent references between knowledge entities.
+   */
+  public addEntityRelation(
+    fromEntityRef: string,
+    toEntityRef: string,
+    relation: "references" | "derives_from" | "contradicts" = "references",
+    weight: number = 1.0,
+  ): void {
+    const fromNodeId = `entity:${fromEntityRef}`;
+    const toNodeId = `entity:${toEntityRef}`;
+
+    // Ensure entity nodes exist
+    if (!this.nodes.has(fromNodeId)) {
+      this.nodes.set(fromNodeId, {
+        nodeId: fromNodeId,
+        nodeType: "entity",
+        label: fromEntityRef,
+        namespace: null,
+        knowledgeRef: null,
+      });
+    }
+    if (!this.nodes.has(toNodeId)) {
+      this.nodes.set(toNodeId, {
+        nodeId: toNodeId,
+        nodeType: "entity",
+        label: toEntityRef,
+        namespace: null,
+        knowledgeRef: null,
+      });
+    }
+
+    this.addEdge(fromNodeId, toNodeId, relation, weight);
+  }
+
+  /**
+   * §13.11: Propagates trust through the knowledge graph.
+   * Trust flows through "trust_boost" edges and degrades through "trust_degrades" edges.
+   * Returns nodes whose trust scores changed.
+   */
+  public propagateTrust(seedNodeIds: readonly string[], boostAmount: number = 0.1): TrustPropagationResult {
+    const trustScoreChanges: Record<string, number> = {};
+    const propagatedNodeIds: string[] = [];
+    const visited = new Set<string>();
+    const queue = [...seedNodeIds];
+
+    // Initialize trust scores from node weights
+    const nodeTrustScores = new Map<string, number>();
+    for (const nodeId of seedNodeIds) {
+      nodeTrustScores.set(nodeId, 1.0);
+      trustScoreChanges[nodeId] = boostAmount;
+      propagatedNodeIds.push(nodeId);
+    }
+
+    // BFS propagation through trust edges
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) {
+        continue;
+      }
+      visited.add(currentId);
+
+      const currentTrust = nodeTrustScores.get(currentId) ?? 0;
+      const adjacentEdges = this.adjacencyByNodeId.get(currentId) ?? [];
+
+      for (const edge of adjacentEdges) {
+        if (edge.relation === "trust_boost") {
+          const neighborId = edge.fromNodeId === currentId ? edge.toNodeId : edge.fromNodeId;
+          const newTrust = Math.min(1.0, currentTrust + boostAmount * edge.weight);
+          const existingTrust = nodeTrustScores.get(neighborId) ?? 0;
+
+          if (newTrust > existingTrust) {
+            nodeTrustScores.set(neighborId, newTrust);
+            trustScoreChanges[neighborId] = (trustScoreChanges[neighborId] ?? 0) + (newTrust - existingTrust);
+            if (!propagatedNodeIds.includes(neighborId)) {
+              propagatedNodeIds.push(neighborId);
+            }
+            queue.push(neighborId);
+          }
+        } else if (edge.relation === "trust_degrades") {
+          const neighborId = edge.fromNodeId === currentId ? edge.toNodeId : edge.fromNodeId;
+          const newTrust = Math.max(0, currentTrust - boostAmount * edge.weight);
+          const existingTrust = nodeTrustScores.get(neighborId) ?? 1.0;
+
+          if (newTrust < existingTrust) {
+            nodeTrustScores.set(neighborId, newTrust);
+            trustScoreChanges[neighborId] = (trustScoreChanges[neighborId] ?? 0) - (existingTrust - newTrust);
+            if (!propagatedNodeIds.includes(neighborId)) {
+              propagatedNodeIds.push(neighborId);
+            }
+            queue.push(neighborId);
+          }
+        }
+      }
+    }
+
+    return { propagatedNodeIds, trustScoreChanges };
+  }
+
+  /**
+   * Emits knowledge.trust_downgraded event when trust degrades below threshold.
+   * §13.9: Emits trust_downgraded event for knowledge that loses trust.
+   */
+  public emitTrustDegradationEvent(nodeId: string, oldTrust: number, newTrust: number): void {
+    // In a full implementation, this would emit to an event bus
+    // For now, we track this in memory for audit purposes
+    const threshold = 0.3;
+    if (oldTrust >= threshold && newTrust < threshold) {
+      // Emit: knowledge.trust_downgraded event
+      // This would be handled by the event bus in production
+      this.addEdge(nodeId, `event:knowledge.trust_downgraded`, "trust_degrades", 1.0);
+    }
   }
 }

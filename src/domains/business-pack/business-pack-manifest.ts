@@ -74,7 +74,6 @@ export interface MetricDef {
 export type SandboxTier = SandboxMode;
 
 const SANDBOX_TIER_ALIASES = {
-  none: "read_only",
   process: "read_only",
   container: "workspace_write",
   scoped_external_access: "scoped_external_access",

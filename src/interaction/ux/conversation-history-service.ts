@@ -235,20 +235,17 @@ export class ConversationHistoryService {
       return [];
     }
 
-    // §9.1: Query-level tenant isolation should be implemented at the memory service layer.
-    // The memory service recall() method should support tenantId filtering in its query.
-    // Currently tenant isolation is enforced via client-side post-filter below,
-    // but the memory service should be extended to support query-level tenant filtering.
+    // §9.1: Query-level tenant isolation - pass tenantId to memory service for filtering
     const memories = await this.memoryService.recall({
       scopes: [this.defaultScope],
+      tenantId, // Query-level tenant isolation per §9.1
     });
 
     const userSessions: ConversationSessionRecord[] = [];
 
     for (const memory of memories) {
       const session = this.tryDeserializeSession(memory.contentJson);
-      // §9.1: Client-side filter - this should be moved to query-level filtering
-      // when MemoryRecallQuery supports tenantId filter
+      // Additional safety filter - memory service should have filtered by tenantId already
       if (session && session.userId === userId && session.tenantId === tenantId) {
         userSessions.push(session);
       }

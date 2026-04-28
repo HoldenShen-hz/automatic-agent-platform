@@ -77,6 +77,19 @@ export interface PolicyStrictnessResult {
   readonly reason: string;
 }
 
+export interface PolicyStrictnessComparator {
+  compare(left: Readonly<Record<string, unknown>>, right: Readonly<Record<string, unknown>>): PolicyStrictnessResult;
+}
+
+export class DefaultPolicyStrictnessComparator implements PolicyStrictnessComparator {
+  public compare(
+    left: Readonly<Record<string, unknown>>,
+    right: Readonly<Record<string, unknown>>,
+  ): PolicyStrictnessResult {
+    return comparePolicyStrictness(left, right);
+  }
+}
+
 export function comparePolicyStrictness(
   left: Readonly<Record<string, unknown>>,
   right: Readonly<Record<string, unknown>>,

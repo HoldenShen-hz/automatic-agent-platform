@@ -1,3 +1,4 @@
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { applyInteractionTemplate, type InteractionTemplate } from "./template-engine/index.js";
 import { canAdvanceWizard, type WizardSession, type WizardStep } from "./wizard/index.js";
 import type {
@@ -37,6 +38,53 @@ export interface WorkflowBuilderSaveReview {
     readonly nodeIds: readonly string[];
     readonly score: number;
   };
+}
+
+// REST API request/response types for CRUD + validate + publish
+export interface CreateWorkflowRequest {
+  readonly name: string;
+  readonly description?: string;
+  readonly nodes: readonly { nodeId: string; label: string; componentId?: string }[];
+  readonly edges: readonly { fromNodeId: string; toNodeId: string }[];
+  readonly divisionId?: string;
+  readonly tenantId?: string;
+}
+
+export interface UpdateWorkflowRequest {
+  readonly workflowId: string;
+  readonly name?: string;
+  readonly description?: string;
+  readonly nodes?: readonly { nodeId: string; label: string; componentId?: string }[];
+  readonly edges?: readonly { fromNodeId: string; toNodeId: string }[];
+}
+
+export interface ValidateWorkflowRequest {
+  readonly nodes: readonly { nodeId: string; label: string }[];
+  readonly edges: readonly { fromNodeId: string; toNodeId: string }[];
+}
+
+export interface PublishWorkflowRequest {
+  readonly workflowId: string;
+  readonly version?: string;
+}
+
+export interface WorkflowResponse {
+  readonly workflowId: string;
+  readonly name: string;
+  readonly description: string;
+  readonly status: "draft" | "published" | "archived";
+  readonly nodeCount: number;
+  readonly edgeCount: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly publishedAt: string | null;
+}
+
+export interface ValidationResponse {
+  readonly valid: boolean;
+  readonly messages: readonly string[];
+  readonly warnings: readonly string[];
+  readonly errors: readonly string[];
 }
 
 function categorizeComponents(components: readonly DraggableComponent[]): ComponentCategory[] {

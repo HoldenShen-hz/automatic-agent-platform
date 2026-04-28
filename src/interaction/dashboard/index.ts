@@ -115,6 +115,12 @@ export interface DashboardAggregationServiceOptions {
   readonly activeGoals?: readonly { goalId: string; progressPercent: number }[];
   readonly suggestions?: readonly AttentionItem[];
   readonly metricRegistry?: readonly MetricRegistryEntry[];
+  readonly projectionService?: DashboardProjectionService;
+}
+
+export interface DashboardProjectionService {
+  processProjectionUpdate(record: { projectionName: string; entityRef: string; state: Record<string, unknown> }): { deltaId: string; timestamp: string; changes: readonly { changeType: string; entityId: string; previousValue: unknown; newValue: unknown }[]; affectedMetrics: readonly string[] } | null;
+  consumePendingDeltas(): readonly { deltaId: string; timestamp: string; changes: readonly { changeType: string; entityId: string; previousValue: unknown; newValue: unknown }[]; affectedMetrics: readonly string[] }[];
 }
 
 export interface MetricRegistryEntry {
@@ -202,6 +208,7 @@ export class DashboardAggregationService implements DashboardPort {
   private readonly activeGoals: readonly { goalId: string; progressPercent: number }[];
   private readonly suggestions: readonly AttentionItem[];
   private readonly metricRegistry: readonly MetricRegistryEntry[];
+  private readonly projectionService: DashboardProjectionService | undefined;
 
   public constructor(private readonly options: DashboardAggregationServiceOptions) {
     this.now = options.currentTime ?? (() => new Date().toISOString());
@@ -210,6 +217,7 @@ export class DashboardAggregationService implements DashboardPort {
     this.activeGoals = options.activeGoals ?? [];
     this.suggestions = options.suggestions ?? [];
     this.metricRegistry = options.metricRegistry ?? DEFAULT_METRIC_REGISTRY;
+    this.projectionService = options.projectionService;
   }
 
   public async getSnapshot(): Promise<DashboardSnapshot> {

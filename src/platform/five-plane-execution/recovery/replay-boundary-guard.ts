@@ -1,4 +1,4 @@
-export type ReplayMode = "trace_replay" | "reexecution_replay";
+export type ReplayMode = "trace_replay" | "reexecution_replay" | "projection_replay";
 
 export interface ReplayOperation {
   readonly operationId: string;

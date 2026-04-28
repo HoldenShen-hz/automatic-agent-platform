@@ -6,6 +6,7 @@
  */
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { globalCircuitBreakerEventBus } from "./circuit-breaker-event-bus.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -91,8 +92,8 @@ export class CircuitBreaker {
   private nextAttemptAt: number | null = null;
   private readonly onStateChange: ((payload: CircuitBreakerStateChangePayload) => void) | undefined;
 
-  // Track failures within monitoring window for rate-based decisions
   private readonly failureTimestamps: number[] = [];
+  private readonly successTimestamps: number[] = [];
 
   constructor(options: CircuitBreakerOptions) {
     this.name = options.name;
@@ -130,10 +131,7 @@ export class CircuitBreaker {
    * Record a successful call.
    */
   onSuccess(): void {
-    const now = Date.now();
-    this.lastSuccessAt = now;
-    this.successes++;
-    this.consecutiveFailures = 0;
+    this.onSuccessInternal();
 
     if (this.state === "half_open") {
       this.consecutiveSuccesses++;
@@ -160,16 +158,9 @@ export class CircuitBreaker {
    * Record a failed call.
    */
   onFailure(): void {
-    const now = Date.now();
-    this.lastFailureAt = now;
-    this.failures++;
-    this.consecutiveFailures++;
-    this.consecutiveSuccesses = 0;
+    this.onFailureInternal();
 
     // Track failure for rate-based opening
-    this.failureTimestamps.push(now);
-    this.pruneFailureTimestamps(now);
-
     if (this.state === "closed") {
       // Open circuit if failure threshold reached or failure rate is high
       if (
@@ -274,7 +265,7 @@ export class CircuitBreaker {
       this.halfOpenInFlight = 0;
     }
 
-    // Emit state change event per §9.4
+    // Emit state change event per §9.4 - emit to event bus AND call callback
     const payload: CircuitBreakerStateChangePayload = {
       circuitName: this.name,
       oldState,
@@ -283,6 +274,7 @@ export class CircuitBreaker {
       occurredAt: new Date().toISOString(),
     };
     this.onStateChange?.(payload);
+    globalCircuitBreakerEventBus.emitStateChange(payload);
 
     logger.log({
       level: "info",
@@ -297,26 +289,52 @@ export class CircuitBreaker {
   }
 
   /**
-   * Calculate failure rate within monitoring window.
+   * Calculate failure rate within monitoring window as a percentage (0-1).
+   * Formula: (failures_in_window / total_requests_in_window) = percentage
+   * Uses time-bucketed approach for accurate rate calculation.
    */
   private getRecentFailureRate(): number {
-    this.pruneFailureTimestamps(Date.now());
+    const now = Date.now();
+    this.pruneFailureTimestamps(now);
+    this.pruneSuccessTimestamps(now);
     const recentFailures = this.failureTimestamps.length;
-    const windowSeconds = this.monitorWindowMs / 1000;
-    // Approximate rate: failures per second * window
-    // If we have 3 failures in 60s, rate is low
-    // If we have 30 failures in 60s, rate is high
-    return Math.min(1, (recentFailures / windowSeconds) * 10); // Normalize to 0-1
+    const recentSuccesses = this.successTimestamps.length;
+    // Calculate total requests in window based on successes + failures in window
+    const totalRequests = recentSuccesses + recentFailures;
+    if (totalRequests === 0) {
+      return 0;
+    }
+    // Failure rate as a percentage: failures / total requests
+    return Math.min(1, recentFailures / totalRequests);
   }
 
   /**
    * Remove old failure timestamps outside monitoring window.
    */
-  private pruneFailureTimestamps(now: number): void {
+  private pruneSuccessTimestamps(now: number): void {
     const cutoff = now - this.monitorWindowMs;
-    while (this.failureTimestamps.length > 0 && this.failureTimestamps[0]! < cutoff) {
-      this.failureTimestamps.shift();
+    while (this.successTimestamps.length > 0 && this.successTimestamps[0]! < cutoff) {
+      this.successTimestamps.shift();
     }
+  }
+
+  private onSuccessInternal(): void {
+    const now = Date.now();
+    this.lastSuccessAt = now;
+    this.successes++;
+    this.consecutiveFailures = 0;
+    this.successTimestamps.push(now);
+    this.pruneSuccessTimestamps(now);
+  }
+
+  private onFailureInternal(): void {
+    const now = Date.now();
+    this.lastFailureAt = now;
+    this.failures++;
+    this.consecutiveFailures++;
+    this.consecutiveSuccesses = 0;
+    this.failureTimestamps.push(now);
+    this.pruneFailureTimestamps(now);
   }
 }
 

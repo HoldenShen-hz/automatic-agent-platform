@@ -39,15 +39,27 @@
 | --- | --- | --- | --- | --- | --- |
 | `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | 是 | 是 |
 | `platform.task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | 是 | 是 |
-| `platform.harness.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.node.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
-| `platform.harness.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.harness.run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.harness.run.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.harness.run.status_changed` | `tier1` | harness runtime | gateway, observability, recovery scan | 是 | 是 |
+| `platform.harness.run.completed` | `tier1` | harness runtime | supervisor, transition service, observability | 是 | 是 |
+| `platform.harness.run.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.harness.run.aborted` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.node.run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.node.run.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.node.run.status_changed` | `tier1` | harness runtime | orchestrator, observability, recovery scan | 是 | 是 |
+| `platform.node.run.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
+| `platform.node.run.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.node.run.output_recorded` | `tier1` | harness runtime | orchestrator, observability | 是 | 是 |
+| `platform.budget.reservation_created` | `tier1` | budget allocator | runtime, observability | 是 | 是 |
+| `platform.budget.reservation_released` | `tier1` | budget allocator | runtime, observability | 是 | 是 |
+| `platform.budget.exhausted` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
 | `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
 | `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
-| `execution.blocked` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
-| `execution.succeeded` | `tier1` | runtime | transition service, observability | 是 | 是 |
-| `execution.failed` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
-| `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
+| `improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
+| `release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
 | `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | 否 | 建议 |
@@ -55,10 +67,6 @@
 | `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
 | `learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |
 | `improve.candidate_proposed` | `tier2` | improve hub | observability, inspect projection | 否 | 建议 |
-| `improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
-| `release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
 | `loop.iteration_completed` | `tier2` | oapeflir loop service | observability, inspect projection | 否 | 建议 |
 | `gateway.message_received` | `tier2` | gateway adapter | runtime, observability | 否 | 建议 |
 | `gateway.message_sent` | `tier2` | gateway adapter | observability | 否 | 否 |
@@ -68,30 +76,30 @@
 | `stream.chunk_emitted` | `tier3` | gateway streaming bridge | UI / channel client | 否 | 否 |
 | `heartbeat.sampled` | `tier3` | supervisor / runtime | observability | 否 | 否 |
 | `dispatch:ticket_created` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
-| `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | ��议 |
+| `dispatch:ticket_claimed` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:decision_recorded` | `tier2` | execution dispatch service | inspect_projection | 否 | 建议 |
 | `dispatch:ticket_reconciled` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
 | `dispatch:ticket_requeued` | `tier2` | execution dispatch reconciliation service | inspect_projection | 否 | 否 |
-| `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | ��议 |
+| `worker:claim_accepted` | `tier2` | execution worker handshake service | inspect_projection | 否 | 建议 |
 | `worker:claim_rejected` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:heartbeat_recorded` | `tier2` | execution worker handshake service | inspect_projection | 否 | 否 |
 | `worker:writeback_recorded` | `tier2` | execution worker writeback service | inspect_projection | 否 | 建议 |
 | `worker:writeback_rejected` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `worker:lease_released_after_writeback` | `tier2` | execution worker writeback service | inspect_projection | 否 | 否 |
 | `takeover:session_opened` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
-| `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | ��议 |
-| `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建��� |
-| `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建�� |
+| `takeover:action_applied` | `tier2` | human takeover service | inspect_projection | 否 | 建议 |
+| `recovery:repair_applied` | `tier2` | runtime repair service | inspect_projection | 否 | 建议 |
+| `recovery:decision_recorded` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |
 | `recovery:dead_lettered` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 建议 |
 | `recovery:cancelled` | `tier2` | runtime recovery decision service | inspect_projection | 否 | 否 |
 | `skill:execution_started` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
-| `skill:cache_miss` | `tier2` | skill execution service | inspect_projection | 否 | �� |
+| `skill:cache_miss` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:cache_hit` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:cache_stored` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:step_started` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:retry_scheduled` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:step_succeeded` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
-| `skill:step_failed` | `tier2` | skill execution service | inspect_projection | ��� | 否 |
+| `skill:step_failed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 | `skill:execution_completed` | `tier2` | skill execution service | inspect_projection | 否 | 否 |
 
 ## 5. 消费者规范

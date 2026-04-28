@@ -34,11 +34,13 @@ interface SelfOpsAgent {
 
 | 能力 | 触发条件 | 执行操作 |
 |------|----------|----------|
-| restart_service | 服务无响应 | 重启服务 |
+| restart_service | 服务无响应 | 通过 HarnessRuntime 重启服务 |
 | clear_cache | 缓存命中率低 | 清理缓存 |
-| scale_up | 负载高 | 增加 Worker |
-| scale_down | 负载低 | 减少 Worker |
+| scale_up | 负载高 | 通过 HarnessRuntime 增加 Worker |
+| scale_down | 负载低 | 通过 HarnessRuntime 减少 Worker |
 | rotate_secrets | 密钥即将过期 | 轮换密钥 |
+
+所有直接执行操作需通过 HarnessRuntime + PlanGraphBundle 上下文，确保操作可审计、可回滚。
 
 ### 权限边界
 
@@ -77,3 +79,7 @@ interface SelfOpsAgent {
 ## 来源章节
 
 - `§69` 平台自运维 Agent 架构
+
+## v4.3 ADR Remediation
+
+- R6-54: 修复 OpsCapability 缺少 HarnessRuntime 上下文。ADR-069 原先描述 restart_service/scale_up_down 为直接执行操作，但没有 HarnessRuntime+PlanGraphBundle 上下文会导致操作无法审计和回滚。修复：添加 HarnessRuntime 作为所有直接执行操作的上下文载体。

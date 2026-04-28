@@ -277,7 +277,7 @@ export class ExecutionDispatchService {
       );
       let eligibleWorkers = selection.workers;
       let preemptionTrace: DispatchDecisionTrace["preemption"] = null;
-      if (eligibleWorkers.length === 0 && ticket.priority === "urgent") {
+      if (eligibleWorkers.length === 0 && ticket.priority === "critical") {
         const preemption = this.preemption.preemptForUrgentTicket({
           ticket,
           dispatchTarget,

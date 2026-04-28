@@ -57,6 +57,7 @@ import {
   removeExecutionId,
   toWorkerStatus,
 } from "./utils.js";
+import { MIN_LEASE_TTL_MS, MAX_LEASE_TTL_MS } from "./types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 export type {
@@ -130,6 +131,15 @@ export class ExecutionLeaseService {
           outcome: "blocked",
           reasonCode: "active_lease_exists",
           lease: activeLease,
+        };
+      }
+
+      // Enforce TTL bounds (§8.3)
+      if (input.ttlMs < MIN_LEASE_TTL_MS || input.ttlMs > MAX_LEASE_TTL_MS) {
+        return {
+          outcome: "blocked",
+          reasonCode: "ttl_out_of_bounds",
+          lease: null,
         };
       }
 
@@ -628,6 +638,26 @@ export class ExecutionLeaseService {
         return {
           allowed: false,
           reasonCode: "worker_mismatch",
+          authoritativeFencingToken,
+          activeLeaseId: activeLease.id,
+        };
+      }
+
+      // Check if lease has expired
+      if (Date.parse(activeLease.expiresAt) < Date.parse(occurredAt)) {
+        this.insertLeaseAudit({
+          executionId: activeLease.executionId,
+          leaseId: activeLease.id,
+          workerId: input.workerId,
+          fencingToken: input.fencingToken,
+          eventType: "stale_write_rejected",
+          reasonCode: "lease_expired",
+          recordedAt: occurredAt,
+        });
+
+        return {
+          allowed: false,
+          reasonCode: "lease_expired",
           authoritativeFencingToken,
           activeLeaseId: activeLease.id,
         };

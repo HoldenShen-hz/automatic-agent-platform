@@ -81,11 +81,32 @@
   - `Queues`
   - `Feature Flags`
   - `Capability / Entitlement`
+- `Extended`（按需启用）
+  - `Plugin Management`
+  - `Domain Registry`
+  - `SLA Configuration`
+  - `Connector Catalog`
+  - `Agent Lifecycle`
+  - `Learning Hub`
+- `Shared Features`
+  - `Prompt Library`
+  - `Template Builder`
+  - `Evaluation Harness`
+  - `Workflow Debugger`
+  - `Cost Dashboard`
+  - `Edge Runtime`
+  - `Multi-Region`
+  - `Compliance Reporter`
+  - `Chaos Engineering`
+  - `Capacity Planner`
+  - `Workflow Debugger`
+  - `Platform Ops Agent`
 
 规则：
 
 - 当前阶段不要求一次性铺满所有页面。
 - 但导航分组应从一开始按能力域组织，而不是页面墙式平铺。
+- Extended 和 Shared Features 为按需启用的扩展模块，根据部署规模逐步启用。
 
 ## 4. 首页排序规则
 
@@ -111,10 +132,8 @@ Console 首页应按以下优先级组织：
 
 最小字段：
 
-- `task_id`
-- `task_status`
-- `current_step`
-- `current_execution`
+- `harness_run_id`
+- `NodeRun` 列表（含 node_id/status/input/output）
 - `blocked_reason?`
 - `latest_tool_call?`
 - `latest_decision?`
@@ -132,17 +151,16 @@ Console 首页应按以下优先级组织：
 
 最小字段：
 
-- `workflow_id`
-- `workflow_status`
-- `steps`
-- `current_step_index`
+- `harness_run_id`
+- `plan_graph`（含 nodes/edges 图结构）
+- `NodeRun` 列表（含 node_id/status/attempts）
 - `dependency_state`
 - `approval_nodes`
 - `evidence_refs`
 
 最小动作：
 
-- 查看 step output
+- 查看 node output
 - 查看 dependency / blocked state
 - 打开 recovery history
 - 查看 compensation / replay 证据
@@ -201,9 +219,9 @@ Console 首页应按以下优先级组织：
 
 最小动作：
 
-- `retry_step`
-- `skip_step`
-- `override_step_output`
+- `retry_node_run`
+- `skip_node_run`
+- `override_node_output`
 - `switch_worker`
 - `manual_cancel`
 - `mark_unrecoverable`

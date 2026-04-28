@@ -8,22 +8,36 @@ export const KnowledgeShareGrantSchema = z.object({
   requesterOrgNodeId: z.string().min(1),
   purpose: z.string().min(1),
   expiresAt: z.string().min(1),
+  transformMode: z.enum(["summary", "field_filter"]).optional(),
+  allowedFieldKeys: z.array(z.string()).optional(),
 });
 
 export type KnowledgeShareGrant = z.infer<typeof KnowledgeShareGrantSchema>;
+
+export interface CrossBoundaryTransformResult {
+  readonly mode: "summary" | "field_filter";
+  readonly allowedFieldKeys?: readonly string[] | undefined;
+}
 
 export function evaluateKnowledgeShare(
   boundary: KnowledgeBoundary,
   requesterOrgNodeId: string,
   grants: readonly KnowledgeShareGrant[],
   nowIso: string,
-): boolean {
+): CrossBoundaryTransformResult | null {
   const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
   if (boundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
-    return true;
+    return { mode: "summary", allowedFieldKeys: undefined };
   }
-  return grants.some((item) =>
+  const matchingGrant = grants.find((item) =>
     item.boundaryId === boundary.boundaryId
-    && ((item as { requesterOrgNodeId?: string }).requesterOrgNodeId ?? (item as { grantedToOrgNodeId?: string }).grantedToOrgNodeId) === requesterOrgNodeId
+    && item.requesterOrgNodeId === requesterOrgNodeId
     && (item.expiresAt == null || item.expiresAt >= nowIso));
+  if (matchingGrant != null) {
+    return {
+      mode: matchingGrant.transformMode ?? "summary",
+      allowedFieldKeys: matchingGrant.allowedFieldKeys ?? undefined,
+    };
+  }
+  return null;
 }

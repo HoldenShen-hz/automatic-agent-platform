@@ -262,6 +262,14 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    if (lease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
+        lease,
+      };
+    }
+
     this.store.worker.closeExecutionLease({
       leaseId: input.leaseId,
       status: "released",
@@ -499,6 +507,6 @@ export class ExecutionLeaseServiceAsync {
     reasonCode: string | null;
     recordedAt: string;
   }): void {
-    this.store.worker.insertLeaseAudit(audit as any);
+    this.store.worker.insertLeaseAudit(audit as import("../../contracts/types/domain/lease-types.js").LeaseAuditRecord);
   }
 }

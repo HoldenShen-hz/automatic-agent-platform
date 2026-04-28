@@ -55,26 +55,28 @@ Reduce lateral proliferation of result objects through unified result envelope:
 
 ## 4A. Builder Semantics
 
-### 4A.1 Task Result Builder
+### 4A.1 HarnessRun Result Builder
 
-`buildTaskResultEnvelope(task, stepOutputs, artifacts)` projects task status to result envelope:
+`buildHarnessRunResultEnvelope(harnessRun, nodeRunResults, planGraphBundle, artifacts)` projects HarnessRun status to result envelope:
 
-- `done` -> `success`, `failed | cancelled` -> `error`, others -> `partial`
-- If task has no output, no step output, no artifact, return `null` (do not generate empty envelope).
-- `human_summary` extraction priority: `outputJson.summary` -> `outputJson.humanSummary` -> `outputJson.result` -> last step's summary -> task title.
-- `error.message` extraction priority: `outputJson.error.message` (deep path) -> `outputJson.summary` -> `task.title`.
-- `metrics` aggregates all step's `tokenCost` and `durationMs`.
-- If task / workflow has recorded `current_stage` or `loop_iteration`, result envelope must project the same named field.
+- `completed` -> `success`, `failed` -> `error`, `aborted` -> `error`, others -> `partial`
+- If HarnessRun has no node runs, no output, no artifact, return `null` (do not generate empty envelope).
+- `human_summary` extraction priority: `nodeRunResults[].summary` -> `planGraphBundle.metadata.summary` -> HarnessRun goal -> harnessRunId.
+- `error.message` extraction priority: last failed NodeRun error message -> HarnessRun failure reason -> harnessRunId.
+- `metrics` aggregates all NodeRun durationMs, tokenCost, and computeCost.
+- Result envelope must project `harness_run_id`, `node_run_ids[]`, and `plan_graph_bundle_id` when present.
+- If HarnessRun has recorded `current_stage` or `loop_iteration`, result envelope must project the same named field.
 
-### 4A.2 Step Result Builder
+### 4A.2 NodeRun Result Builder
 
-`buildStepResultEnvelope(stepOutput, artifacts)` projects step output to result envelope:
+`buildNodeRunResultEnvelope(nodeRun, stepOutputs, artifacts)` projects NodeRun output to result envelope:
 
-- `succeeded` -> `success`, `failed` -> `error`, others -> `partial`
-- `warnings` source: append warnings, validation failures, validation warnings when step status is `partial_success`.
-- If step output has declared `stage`, result envelope must pass through that `stage`.
+- `completed` -> `success`, `failed` -> `error`, others -> `partial`
+- `warnings` source: append warnings, validation failures, validation warnings when NodeRun status is `partial_success`.
+- If NodeRun output has declared `stage`, result envelope must pass through that `stage`.
+- Must include `node_run_id` and `harness_run_id` as correlation fields.
 
-### 4A.4 Feedback Result Builder
+### 4A.3 Feedback Result Builder
 
 `buildFeedbackResultEnvelope(feedbackSignals, artifacts)` at minimum should:
 

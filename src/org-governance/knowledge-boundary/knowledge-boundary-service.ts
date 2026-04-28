@@ -94,12 +94,13 @@ export class KnowledgeBoundaryService {
       dynamicPolicyReasons,
     );
     const tenantAllowed = this.evaluateTenantScope(input.boundary.tenantId ?? null, input.tenantId ?? null);
+    const shareTransform = evaluateKnowledgeShare(input.boundary, input.requesterOrgNodeId, input.grants, occurredAt);
     const allowed = chineseWallDecision.allowed
       && dynamicPolicyAllowed
       && tenantAllowed
       && (
         canAccessKnowledgeBoundary(input.boundary, input.requesterOrgNodeId)
-        || evaluateKnowledgeShare(input.boundary, input.requesterOrgNodeId, input.grants, occurredAt)
+        || shareTransform !== null
       );
     const log: KnowledgeAccessLogRecord = {
       recordId: `knowledge_access_${input.boundary.boundaryId}_${input.requesterId}_${occurredAt}`,

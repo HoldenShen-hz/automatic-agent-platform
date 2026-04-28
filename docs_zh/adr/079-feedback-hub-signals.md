@@ -29,10 +29,9 @@ OAPEFLIR Execute 阶段输出的 `DualChannelStepOutput` 需要被 Feedback Hub 
 ```typescript
 interface FeedbackSignal {
   signalId: string;
-  taskId: string;
-  harnessRunId: string;
-  nodeRunId?: string;
-  receiptId?: string;
+  harnessRunId: string;             // v4.3 canonical: 关联 truth 主键
+  nodeRunId?: string;               // v4.3 canonical: 节点级别关联
+  receiptId?: string;              // v4.3 canonical: 步骤收据
   kind: FeedbackSignalKind;        // 20+ enum 值
   source: FeedbackSourceType;
   payload: unknown;                // 源特定数据
@@ -67,9 +66,8 @@ type FeedbackSignalKind =
 ```typescript
 interface Feedback {
   feedbackId: string;
-  taskId: string;
-  harnessRunId: string;
-  nodeRunId?: string;
+  harnessRunId: string;             // v4.3 canonical: truth 主键
+  nodeRunId?: string;               // v4.3 canonical: 节点级别关联
   signals: FeedbackSignal[];       // 关联的信号列表
   aggregated: boolean;
   processedAt?: string;
@@ -80,6 +78,7 @@ interface Feedback {
 ## v4.3 ADR Remediation
 
 - A-67: 本 ADR 原先把 `executionId` 作为 Feedback/Signal 主链键，根因是 feedback hub 在旧 execution 语义下建模，后续没有把信号链更新到 `NodeAttemptReceipt`。修复：正文现把信号锚点切到 `harnessRunId / nodeRunId / receiptId`。
+- R6-46: 修复 FeedbackSignal 接口，移除 taskId 关联键，统一使用 harnessRunId/nodeRunId 作为 correlation keys，确保 learning objects 可以 join truth。
 
 ### 4. 信号预处理器（SignalPreprocessor）
 

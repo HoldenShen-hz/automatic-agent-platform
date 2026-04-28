@@ -209,3 +209,342 @@ test("validateEventPayload rejects subtask payload missing both stepId and subta
     }
   );
 });
+
+test("R5-34 platform namespace events are registered and accessible", () => {
+  const platformEvents = [
+    "platform.harness_run.status_changed",
+    "platform.node_run.status_changed",
+    "platform.side_effect.status_changed",
+    "platform.budget_ledger.status_changed",
+    "platform.budget_reservation.status_changed",
+    "platform.graph_scheduler.decision_recorded",
+  ];
+
+  for (const event of platformEvents) {
+    assert.equal(hasEventSchema(event), true, `${event} should be registered`);
+  }
+});
+
+test("platform.harness_run.status_changed has correct metadata per R5-34", () => {
+  const schema = getEventSchema("platform.harness_run.status_changed");
+  const metadata = getEventReplayMetadata("platform.harness_run.status_changed");
+
+  assert.equal(schema.producer, "runtime-state-machine");
+  assert.equal(schema.tier, "tier_1");
+  assert.equal(metadata.replayable, true);
+  assert.equal(metadata.sideEffectSafeToReplay, true);
+  assert.equal(metadata.replayBehavior, "replay_as_fact");
+  assert.equal(metadata.sourceOfTruth, "platform");
+});
+
+test("platform.node_run.status_changed has correct metadata per R5-34", () => {
+  const schema = getEventSchema("platform.node_run.status_changed");
+  const metadata = getEventReplayMetadata("platform.node_run.status_changed");
+
+  assert.equal(schema.producer, "runtime-state-machine");
+  assert.equal(schema.tier, "tier_1");
+  assert.equal(metadata.replayable, true);
+  assert.equal(metadata.sideEffectSafeToReplay, true);
+  assert.equal(metadata.replayBehavior, "replay_as_fact");
+});
+
+test("platform.side_effect.status_changed has skip_side_effect behavior per R5-34", () => {
+  const schema = getEventSchema("platform.side_effect.status_changed");
+  const metadata = getEventReplayMetadata("platform.side_effect.status_changed");
+
+  assert.equal(schema.producer, "side-effect-manager");
+  assert.equal(metadata.sideEffectSafeToReplay, false);
+  assert.equal(metadata.replayBehavior, "skip_side_effect");
+});
+
+test("platform.budget_ledger and budget_reservation events are replayable", () => {
+  const events = ["platform.budget_ledger.status_changed", "platform.budget_reservation.status_changed"];
+
+  for (const event of events) {
+    const metadata = getEventReplayMetadata(event);
+    assert.equal(metadata.replayable, true, `${event} should be replayable`);
+    assert.equal(metadata.sideEffectSafeToReplay, true, `${event} should be safe to replay`);
+  }
+});
+
+test("platform.graph_scheduler.decision_recorded is replayable per R5-34", () => {
+  const schema = getEventSchema("platform.graph_scheduler.decision_recorded");
+  const metadata = getEventReplayMetadata("platform.graph_scheduler.decision_recorded");
+
+  assert.equal(schema.producer, "graph-scheduler");
+  assert.equal(metadata.replayable, true);
+  assert.equal(metadata.replayBehavior, "simulate_projection");
+  assert.equal(metadata.sourceOfTruth, "projection");
+});
+
+test("oapeflir.view.run_lifecycle has simulation replay behavior", () => {
+  const schema = getEventSchema("oapeflir.view.run_lifecycle");
+  const metadata = getEventReplayMetadata("oapeflir.view.run_lifecycle");
+
+  assert.equal(metadata.replayBehavior, "simulate_projection");
+  assert.equal(metadata.sourceOfTruth, "projection");
+});
+
+test("all platform namespace events use backward_compatible_additive policy", () => {
+  const platformEvents = [
+    "platform.harness_run.status_changed",
+    "platform.node_run.status_changed",
+    "platform.side_effect.status_changed",
+    "platform.budget_ledger.status_changed",
+    "platform.budget_reservation.status_changed",
+    "platform.graph_scheduler.decision_recorded",
+    "oapeflir.view.run_lifecycle",
+  ];
+
+  for (const event of platformEvents) {
+    const schema = getEventSchema(event);
+    assert.equal(schema.compatibilityPolicy, "backward_compatible_additive", `${event} should use backward_compatible_additive`);
+  }
+});
+
+test("platform events have inspect_projection consumer when source is projection", () => {
+  const schema = getEventSchema("oapeflir.view.run_lifecycle");
+  assert.ok(schema.consumers.includes("oapeflir_projection"));
+});
+
+test("platform events have truth_projector and audit_projection consumers when source is platform", () => {
+  const schema = getEventSchema("platform.harness_run.status_changed");
+  assert.ok(schema.consumers.includes("truth_projector"));
+  assert.ok(schema.consumers.includes("audit_projection"));
+});
+
+test("R5-34 consumer contract tests are defined for platform events", () => {
+  const eventsWithContractTests = [
+    "platform.harness_run.status_changed",
+    "platform.node_run.status_changed",
+    "platform.side_effect.status_changed",
+    "platform.budget_ledger.status_changed",
+    "platform.budget_reservation.status_changed",
+    "platform.graph_scheduler.decision_recorded",
+  ];
+
+  for (const event of eventsWithContractTests) {
+    const metadata = getEventReplayMetadata(event);
+    assert.ok(metadata.consumerContractTests.length > 0, `${event} should have consumer contract tests`);
+  }
+});
+
+test("validateEventPayload accepts valid decision:requested payload", () => {
+  const validPayload = {
+    approvalId: "approval-123",
+    taskId: "task-456",
+    executionId: "exec-789",
+    sourceAgentId: "agent-1",
+    reason: "policy.high_risk",
+    riskLevel: "high",
+    options: ["approve", "deny"],
+    timeoutPolicy: "reject",
+    createdAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("decision:requested", validPayload);
+  assert.equal(result.approvalId, "approval-123");
+  assert.equal(result.reason, "policy.high_risk");
+});
+
+test("validateEventPayload accepts valid decision:responded payload", () => {
+  const validPayload = {
+    approvalId: "approval-123",
+    decisionType: "confirmed",
+    selectedOptionId: "option-1",
+    confirmed: true,
+    respondedBy: "user-1",
+    respondedAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("decision:responded", validPayload);
+  assert.equal(result.confirmed, true);
+});
+
+test("validateEventPayload accepts valid cost:limit_reached payload", () => {
+  const validPayload = {
+    budgetId: "budget-123",
+    currentCostUsd: 150.5,
+    limitUsd: 100.0,
+    occurredAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("cost:limit_reached", validPayload);
+  assert.equal(result.currentCostUsd, 150.5);
+  assert.equal(result.limitUsd, 100.0);
+});
+
+test("validateEventPayload accepts valid knowledge:chunk_indexed payload", () => {
+  const validPayload = {
+    namespace: "coding",
+    documentId: "doc-123",
+    chunkId: "chunk-456",
+    trustLevel: "high",
+    keywordCount: 50,
+    relationCount: 10,
+    occurredAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("knowledge:chunk_indexed", validPayload);
+  assert.equal(result.namespace, "coding");
+});
+
+test("validateEventPayload accepts valid domain:registered payload", () => {
+  const validPayload = {
+    domainId: "domain-123",
+    status: "active",
+    capabilityCount: 5,
+    pluginCount: 3,
+    occurredAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("domain:registered", validPayload);
+  assert.equal(result.status, "active");
+});
+
+test("validateEventPayload accepts valid plugin:invocation_started payload", () => {
+  const validPayload = {
+    pluginId: "plugin-123",
+    domainId: "coding",
+    spiType: "retriever",
+    phase: "invoke",
+    invocationId: "inv-456",
+    lifecycleState: "active",
+    runtimeIsolation: "serialized",
+    activeInvocationCount: 1,
+    queuedInvocationCount: 0,
+    occurredAt: "2026-04-28T00:00:00.000Z",
+    status: "started",
+  };
+
+  const result = validateEventPayload("plugin:invocation_started", validPayload);
+  assert.equal(result.invocationId, "inv-456");
+});
+
+test("validateEventPayload accepts valid learning:knowledge_promoted payload", () => {
+  const validPayload = {
+    learningObjectId: "lo-123",
+    learningType: "snippet",
+    documentId: "doc-456",
+    namespace: "coding",
+    trustLevel: "high",
+    promotedCount: 5,
+    occurredAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("learning:knowledge_promoted", validPayload);
+  assert.equal(result.promotedCount, 5);
+});
+
+test("validateEventPayload rejects invalid decision:requested payload", () => {
+  const invalidPayload = { reason: "missing approvalId" };
+  assert.throws(
+    () => validateEventPayload("decision:requested", invalidPayload),
+    (error: any) => error.code === "event.payload_invalid"
+  );
+});
+
+test("validateEventPayload rejects invalid cost:limit_reached payload", () => {
+  const invalidPayload = { currentCostUsd: "not-a-number" };
+  assert.throws(
+    () => validateEventPayload("cost:limit_reached", invalidPayload),
+    (error: any) => error.code === "event.payload_invalid"
+  );
+});
+
+test("getEventReplayMetadata throws for unknown event type", () => {
+  assert.throws(
+    () => getEventReplayMetadata("unknown:event"),
+    (error: any) => error.code === "event.replay_metadata_missing"
+  );
+});
+
+test("event schema buildPayloadSchemaRef creates correct URI format", () => {
+  const schema = getEventSchema("task:status_changed");
+  assert.equal(schema.payloadSchemaRef, "event://task/status_changed/v1");
+});
+
+test("event schema buildPayloadSchemaRef handles multi-segment event types", () => {
+  const schema = getEventSchema("platform.harness_run.status_changed");
+  assert.equal(schema.payloadSchemaRef, "event://platform/harness_run/status_changed/v1");
+});
+
+test("getEventSchema returns tier_1 for platform namespace events", () => {
+  const schema = getEventSchema("platform.harness_run.status_changed");
+  assert.equal(schema.tier, "tier_1");
+});
+
+test("dispatch tier 2 events have inspect_projection consumer", () => {
+  const dispatchEvents = [
+    "dispatch:ticket_created",
+    "dispatch:ticket_claimed",
+    "dispatch:decision_recorded",
+    "dispatch:execution_preempted",
+    "dispatch:ticket_reconciled",
+    "dispatch:ticket_requeued",
+    "dispatch:ticket_rebuilt",
+  ];
+
+  for (const event of dispatchEvents) {
+    const consumers = getRegisteredConsumers(event);
+    assert.ok(consumers.includes("inspect_projection"), `${event} should have inspect_projection consumer`);
+  }
+});
+
+test("worker tier 2 events have inspect_projection consumer", () => {
+  const workerEvents = [
+    "worker:claim_accepted",
+    "worker:claim_rejected",
+    "worker:heartbeat_recorded",
+    "worker:writeback_recorded",
+    "worker:writeback_rejected",
+    "worker:lease_released_after_writeback",
+  ];
+
+  for (const event of workerEvents) {
+    const consumers = getRegisteredConsumers(event);
+    assert.ok(consumers.includes("inspect_projection"), `${event} should have inspect_projection consumer`);
+  }
+});
+
+test("recovery tier 2 events have inspect_projection consumer", () => {
+  const recoveryEvents = [
+    "recovery:repair_applied",
+    "recovery:decision_recorded",
+    "recovery:dead_lettered",
+    "recovery:cancelled",
+  ];
+
+  for (const event of recoveryEvents) {
+    const consumers = getRegisteredConsumers(event);
+    assert.ok(consumers.includes("inspect_projection"), `${event} should have inspect_projection consumer`);
+  }
+});
+
+test("takeover tier 2 events have inspect_projection consumer", () => {
+  const takeoverEvents = ["takeover:session_opened", "takeover:action_applied"];
+
+  for (const event of takeoverEvents) {
+    const consumers = getRegisteredConsumers(event);
+    assert.ok(consumers.includes("inspect_projection"), `${event} should have inspect_projection consumer`);
+  }
+});
+
+test("skill tier 2 events have inspect_projection consumer", () => {
+  const skillEvents = [
+    "skill:execution_started",
+    "skill:cache_miss",
+    "skill:cache_hit",
+    "skill:cache_stored",
+    "skill:step_started",
+    "skill:retry_scheduled",
+    "skill:step_succeeded",
+    "skill:step_failed",
+    "skill:execution_completed",
+  ];
+
+  for (const event of skillEvents) {
+    const consumers = getRegisteredConsumers(event);
+    assert.ok(consumers.includes("inspect_projection"), `${event} should have inspect_projection consumer`);
+  }
+});

@@ -15,6 +15,9 @@
 ```typescript
 interface ModelRouteRequest {
   requestId: string;
+  harnessRunId: string | null;    // canonical 执行关联
+  nodeRunId: string | null;       // canonical 节点关联
+  attemptId: string | null;        // canonical attempt 关联
   taskId: string | null;
   sessionId: string | null;
   tenantId: string | null;

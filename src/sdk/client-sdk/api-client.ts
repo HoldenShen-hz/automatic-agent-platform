@@ -2,9 +2,26 @@
  * @fileoverview Client SDK - Extended API Client
  *
  * Implements §22.1 Client SDK: API client with retry, pagination, and error handling.
+ * §5.2 requires all inter-plane messages with schemaVersion/commandId/correlationId/signature
+ * wrapped in a ContractEnvelope.
  */
 
 import { ValidationError } from "../../platform/contracts/errors.js";
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import type { PrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
+
+// §5.2 ContractEnvelope - required wrapper for all inter-plane messages
+export interface ContractEnvelope<TPayload = unknown> {
+  readonly envelopeId: string;
+  readonly schemaVersion: string;
+  readonly commandId: string;
+  readonly correlationId: string;
+  readonly signature: string | null;
+  readonly principal: PrincipalRef;
+  readonly timestamp: string;
+  readonly payload: TPayload;
+  readonly metadata: Readonly<Record<string, string>>;
+}
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -280,4 +297,296 @@ export function encodeCursor(pagination: PaginationSpec): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// §5.2 ContractEnvelope factory and utilities
+
+/**
+ * Create a ContractEnvelope wrapping a payload with required metadata.
+ * All inter-plane messages must use this wrapper per §5.2.
+ */
+export function createContractEnvelope<TPayload>(input: {
+  payload: TPayload;
+  principal: PrincipalRef;
+  schemaVersion?: string;
+  commandId?: string;
+  correlationId?: string;
+  signature?: string | null;
+  metadata?: Readonly<Record<string, string>>;
+}): ContractEnvelope<TPayload> {
+  return {
+    envelopeId: newId("env"),
+    schemaVersion: input.schemaVersion ?? "v4.3",
+    commandId: input.commandId ?? newId("cmd"),
+    correlationId: input.correlationId ?? newId("corr"),
+    signature: input.signature ?? null,
+    principal: input.principal,
+    timestamp: nowIso(),
+    payload: input.payload,
+    metadata: input.metadata ?? {},
+  };
+}
+
+/**
+ * Wrap a payload in a ContractEnvelope with system-generated metadata.
+ */
+export function wrapInContractEnvelope<TPayload>(
+  payload: TPayload,
+  principal: PrincipalRef,
+  options?: {
+    schemaVersion?: string;
+    commandId?: string;
+    correlationId?: string;
+    signature?: string | null;
+    metadata?: Readonly<Record<string, string>>;
+  },
+): ContractEnvelope<TPayload> {
+  return createContractEnvelope({
+    payload,
+    principal,
+    ...options,
+  });
+}
+
+/**
+ * Unwrap a ContractEnvelope to access its payload.
+ */
+export function unwrapContractEnvelope<TPayload>(
+  envelope: ContractEnvelope<TPayload>,
+): TPayload {
+  return envelope.payload;
+}
+
+// §6/§28 Typed event subscription API for client SDK
+
+/**
+ * Event subscription options.
+ */
+export interface EventSubscriptionOptions {
+  /** Consumer ID for this subscription */
+  consumerId: string;
+  /** Event types to subscribe to */
+  eventTypes: readonly string[];
+  /** Polling interval in ms (default 100) */
+  pollIntervalMs?: number;
+}
+
+/**
+ * Event subscription handle for managing subscription lifecycle.
+ */
+export interface EventSubscription {
+  /** Unique subscription ID */
+  readonly subscriptionId: string;
+  /** Consumer ID used when creating this subscription */
+  readonly consumerId: string;
+  /** Event types this subscription is subscribed to */
+  readonly eventTypes: readonly string[];
+  /** Whether the subscription is currently active */
+  readonly active: boolean;
+  /** Unsubscribe and clean up resources */
+  unsubscribe(): void;
+}
+
+/**
+ * PlatformFactEvent - canonical platform fact event per §5.2
+ */
+export interface PlatformFactEvent<TPayload = unknown> {
+  readonly eventId: string;
+  readonly runId: string;
+  readonly eventType: string;
+  readonly schemaVersion: number;
+  readonly aggregateType: string;
+  readonly aggregateId: string;
+  readonly aggregateSeq: number;
+  readonly tenantId: string;
+  readonly traceId: string;
+  readonly causationId?: string;
+  readonly correlationId?: string;
+  readonly payloadHash: string;
+  readonly payload: TPayload;
+  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
+  readonly sourceOfTruth?: "platform" | "projection";
+  readonly occurredAt: string;
+}
+
+/**
+ * ProjectionUpdate - run lifecycle projection update per §6
+ */
+export interface ProjectionUpdate {
+  readonly projectionId: string;
+  readonly projectionType: string;
+  readonly version: number;
+  readonly timestamp: string;
+  readonly sourceEvents: readonly string[];
+  readonly patch: Readonly<Record<string, unknown>>;
+  readonly metadata: {
+    readonly rebuiltAt?: string | undefined;
+    readonly triggeredBy: string;
+    readonly idempotencyKey: string;
+  };
+}
+
+/**
+ * TypedEventSubscriber - provides typed event subscription API.
+ * Used for subscribing to PlatformFactEvent/ProjectionUpdate/run lifecycle events per §6/§28.
+ */
+export interface TypedEventSubscriber {
+  /**
+   * Subscribe to specific event types with a handler.
+   * @param consumerId - Unique consumer identifier
+   * @param eventTypes - Array of event type strings to subscribe to
+   * @param handler - Callback function for matching events
+   * @returns Subscription handle for managing lifecycle
+   */
+  subscribe(
+    consumerId: string,
+    eventTypes: readonly string[],
+    handler: (event: PlatformFactEvent | ProjectionUpdate) => void | Promise<void>,
+  ): EventSubscription;
+
+  /**
+   * Subscribe to run lifecycle events (created/updated/completed/failed).
+   * @param consumerId - Unique consumer identifier
+   * @param runId - Harness run ID to track
+   * @param handler - Callback for run lifecycle events
+   * @returns Subscription handle
+   */
+  subscribeToRunLifecycle(
+    consumerId: string,
+    runId: string,
+    handler: (event: PlatformFactEvent) => void | Promise<void>,
+  ): EventSubscription;
+
+  /**
+   * Unsubscribe a consumer from all events.
+   * @param consumerId - Consumer ID to unsubscribe
+   */
+  unsubscribe(consumerId: string): void;
+
+  /**
+   * Get pending events for a consumer.
+   * @param consumerId - Consumer ID
+   * @returns Array of pending events
+   */
+  getPendingEvents(consumerId: string): readonly (PlatformFactEvent | ProjectionUpdate)[];
+
+  /**
+   * Deliver pending events to a specific consumer.
+   * @param consumerId - Consumer ID
+   * @returns Number of events delivered
+   */
+  deliverPending(consumerId: string): Promise<number>;
+}
+
+/**
+ * Create a typed event subscriber for the client SDK.
+ * Note: Actual implementation requires a connection to the platform event bus.
+ * This creates a local event bus adapter for client-side subscription management.
+ */
+export function createEventSubscriber(
+  eventBus: {
+    publish: (event: { eventType: string; payload: unknown }) => void;
+    subscribe: (consumerId: string, handler: (event: { eventType: string; payloadJson: string }) => void) => void;
+    unsubscribe: (consumerId: string) => void;
+    pendingForConsumer: (consumerId: string) => Array<{ eventType: string; payloadJson: string }>;
+    deliverPending: (consumerId: string) => Promise<number>;
+  },
+): TypedEventSubscriber {
+  const subscriptions = new Map<string, ReturnType<typeof setTimeout>>();
+
+  function parsePayload<T>(payloadJson: string): T {
+    try {
+      return JSON.parse(payloadJson) as T;
+    } catch {
+      return {} as T;
+    }
+  }
+
+  return {
+    subscribe(
+      consumerId: string,
+      eventTypes: readonly string[],
+      handler: (event: PlatformFactEvent | ProjectionUpdate) => void | Promise<void>,
+    ): EventSubscription {
+      const accepted = new Set(eventTypes);
+      eventBus.subscribe(consumerId, (event) => {
+        if (accepted.has(event.eventType)) {
+          const payload = parsePayload<PlatformFactEvent | ProjectionUpdate>(event.payloadJson);
+          handler(payload);
+        }
+      });
+      return {
+        subscriptionId: `sub:${consumerId}:${Date.now()}`,
+        consumerId,
+        eventTypes,
+        active: true,
+        unsubscribe() {
+          eventBus.unsubscribe(consumerId);
+          const timer = subscriptions.get(consumerId);
+          if (timer) {
+            clearInterval(timer);
+            subscriptions.delete(consumerId);
+          }
+        },
+      };
+    },
+
+    subscribeToRunLifecycle(
+      consumerId: string,
+      runId: string,
+      handler: (event: PlatformFactEvent) => void | Promise<void>,
+    ): EventSubscription {
+      const runLifecycleEvents = [
+        "platform.harness_run.status_changed",
+        "platform.node_run.status_changed",
+        "platform.side_effect.status_changed",
+        "platform.budget_ledger.status_changed",
+        "platform.budget_reservation.status_changed",
+      ];
+      const accepted = new Set(runLifecycleEvents);
+      eventBus.subscribe(consumerId, (event) => {
+        if (accepted.has(event.eventType)) {
+          const payload = parsePayload<PlatformFactEvent>(event.payloadJson);
+          const runPayload = payload as unknown as { runId?: string };
+          if (runPayload?.runId === runId) {
+            handler(payload);
+          }
+        }
+      });
+      return {
+        subscriptionId: `sub:run:${consumerId}:${runId}:${Date.now()}`,
+        consumerId,
+        eventTypes: runLifecycleEvents,
+        active: true,
+        unsubscribe() {
+          eventBus.unsubscribe(consumerId);
+          const timer = subscriptions.get(consumerId);
+          if (timer) {
+            clearInterval(timer);
+            subscriptions.delete(consumerId);
+          }
+        },
+      };
+    },
+
+    unsubscribe(consumerId: string): void {
+      eventBus.unsubscribe(consumerId);
+      const timer = subscriptions.get(consumerId);
+      if (timer) {
+        clearInterval(timer);
+        subscriptions.delete(consumerId);
+      }
+    },
+
+    getPendingEvents(consumerId: string): readonly (PlatformFactEvent | ProjectionUpdate)[] {
+      return eventBus.pendingForConsumer(consumerId).map((event) => ({
+        ...event,
+        payload: parsePayload<PlatformFactEvent["payload"]>(event.payloadJson),
+      })) as readonly (PlatformFactEvent | ProjectionUpdate)[];
+    },
+
+    async deliverPending(consumerId: string): Promise<number> {
+      return eventBus.deliverPending(consumerId);
+    },
+  };
 }

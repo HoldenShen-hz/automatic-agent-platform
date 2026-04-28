@@ -13,7 +13,7 @@ export type Timestamp = string;
 // Task-related primitives
 // ---------------------------------------------------------------------------
 
-export type TaskPriority = "low" | "normal" | "high" | "urgent";
+export type TaskPriority = "low" | "normal" | "high" | "critical";
 export type TaskSource = "user" | "perception" | "system";
 export type BudgetScope =
   | "task_execution"

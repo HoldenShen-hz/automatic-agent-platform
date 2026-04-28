@@ -121,12 +121,14 @@ flowchart TD
 - `size_bytes`
 - `checksum`
 - `created_at`
-- `source_execution_id?`
+- `source_harness_run_id?`
+- `source_node_run_id?`
 
 规则：
 
 - transaction 层只能保存 `ArtifactRef`，不能回灌 artifact 本体。
 - artifact ref 必须稳定、可校验、可追溯。
+- `source_harness_run_id` / `source_node_run_id` 为 canonical 关联键，`source_execution_id` 为 legacy 查询键，仅做兼容投影。`
 
 ## 10. `AnalyticsFact` 最小字段
 

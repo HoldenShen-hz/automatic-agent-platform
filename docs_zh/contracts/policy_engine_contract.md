@@ -27,11 +27,11 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `decision_id` | `string` | 决策请求 ID |
-| `task_id` | `string` | 当前任务 |
-| `harness_run_id` | `string?` | 当前 HarnessRun |
+| `harness_run_id` | `string` | 当前 HarnessRun（canonical 主键） |
 | `node_run_id` | `string?` | 当前 NodeRun |
 | `attempt_id` | `string?` | 当前 NodeAttempt |
-| `execution_id` | `string?` | legacy execution 投影引用 |
+| `task_id` | `string?` | 当前任务（legacy projection 引用） |
+| `execution_id` | `string?` | legacy execution 投影引用（仅兼容，不作为主键） |
 | `session_id` | `string?` | 当前会话 |
 | `subject_type` | `user \| agent \| system` | 请求主体 |
 | `subject_id` | `string` | 主体 ID |
@@ -45,6 +45,8 @@
 
 规则：
 
+- `harness_run_id / node_run_id / attempt_id` 是 canonical 关联键，不得使用废弃的 `execution_id` 作为主键。
+- `execution_id` 仅作为 legacy projection 用于适配旧系统。
 - `mode` 必须使用架构定义的 8 种规范模式；`supervised / auto / full-auto` 只允许作为 legacy 输入并在入口归一化。
 - 降级模式必须被策略显式理解，而不是由调用方用布尔组合私自推断。
 - `stage_view_ref` 只提供解释上下文，运行模式裁决仍以 `OperationalDirective`、风险分类、预算和 policy 规则为准。

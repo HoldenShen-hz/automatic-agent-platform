@@ -652,13 +652,72 @@ export class WorkerRegistryService {
    * Lists workers whose heartbeat is stale (older than heartbeatTtlMs).
    *
    * @param now - Current timestamp to compare against
-   * @param heartbeatTtlMs - Maximum age of a heartbeat in milliseconds
+   * @param heartbeatTtlMs - Maximum age of a heartbeat in milliseconds (default: 30000ms per §14)
    * @returns Array of stale worker views
    */
-  public listStaleWorkers(now: string, heartbeatTtlMs: number): RegisteredWorkerView[] {
+  public listStaleWorkers(now: string, heartbeatTtlMs: number = 30_000): RegisteredWorkerView[] {
     return this.store
       .listStaleWorkerSnapshots(minusMs(now, heartbeatTtlMs))
       .map((record) => this.toView(record));
+  }
+
+  /**
+   * Detects workers with stale heartbeats and triggers recovery actions.
+   * Per §14: gap > 30s should trigger worker_heartbeat_missing event + lease_reclaim.
+   *
+   * @param now - Current timestamp to compare against
+   * @param heartbeatTtlMs - Maximum age of a heartbeat in milliseconds (default: 30000ms)
+   * @returns Array of stale worker IDs that were processed
+   */
+  public detectStaleHeartbeats(
+    now: string,
+    heartbeatTtlMs: number = 30_000,
+  ): readonly string[] {
+    const staleWorkers = this.listStaleWorkers(now, heartbeatTtlMs);
+    const processedWorkerIds: string[] = [];
+
+    for (const worker of staleWorkers) {
+      // R6-10: Emit worker_heartbeat_missing event for stale worker
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: null,
+        executionId: null,
+        eventType: "worker.heartbeat_missing",
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          workerId: worker.workerId,
+          lastHeartbeatAt: worker.lastHeartbeatAt,
+          stalenessMs: Date.parse(now) - Date.parse(worker.lastHeartbeatAt),
+          thresholdMs: heartbeatTtlMs,
+          currentStatus: worker.status,
+        }),
+        traceId: null,
+        createdAt: now,
+      });
+
+      // R6-10: Trigger lease_reclaim for affected executions
+      const affectedExecutions = worker.runningExecutionIds;
+      for (const executionId of affectedExecutions) {
+        this.store.event.insertEvent({
+          id: newId("evt"),
+          taskId: null,
+          executionId,
+          eventType: "execution.lease_reclaim",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            workerId: worker.workerId,
+            reason: "worker_heartbeat_stale",
+            stalenessMs: Date.parse(now) - Date.parse(worker.lastHeartbeatAt),
+          }),
+          traceId: null,
+          createdAt: now,
+        });
+      }
+
+      processedWorkerIds.push(worker.workerId);
+    }
+
+    return processedWorkerIds;
   }
 
   /**

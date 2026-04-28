@@ -50,10 +50,11 @@ interface EdgeRuntime {
 
 | 策略 | 说明 |
 |------|------|
-| last_write_wins | 最后写入胜出 |
-| server_wins | 服务端优先 |
-| merge | 合并冲突 |
+| server_wins | 服务端优先（truth/budget/side effect 域必须使用单 leader 写入） |
+| merge | 合并冲突（非关键统计场景可使用 CRDT） |
 | manual | 人工解决 |
+
+**约束**：根据 §25.11，truth / budget / side effect 数据必须单 leader 写入，不允许 last_write_wins 策略；CRDT 仅用于非关键统计场景。
 
 ## 后果
 

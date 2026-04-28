@@ -85,7 +85,7 @@ export function evaluateMultiDimensionalQuota(
 
   for (const dim of dimensionKeys) {
     const requestedVal = requested[dim];
-    const hardLimit = hardLimits[dim];
+    const hardLimit = hardLimits[dim] ?? 0;
     const softLimit = hardLimit * 0.8;
     if (requestedVal > hardLimit) {
       failedDimensions.push(dim);

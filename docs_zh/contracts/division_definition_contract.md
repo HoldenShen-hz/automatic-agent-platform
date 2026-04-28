@@ -36,10 +36,14 @@
 | `plugin_refs` | `string[]?` | 允许加载的 plugin 引用 |
 | `knowledge_namespace` | `string?` | 该 division 的知识命名空间 |
 | `roles` | `RoleRef[]` | 角色定义列表 |
-| `default_plan_blueprint_ref` | `string` | 默认 PlanGraph/blueprint 引用 |
-| `orchestration_plan_blueprint_ref` | `string?` | 多步编排 blueprint 引用 |
-| `default_workflow` | `string?` | legacy loader alias |
-| `orchestration_workflow` | `string?` | legacy loader alias |
+| `default_plan_blueprint_ref` | `string` | **canonical** PlanGraphBundle blueprint 引用 |
+| `orchestration_plan_blueprint_ref` | `string?` | **canonical** 多步编排 PlanGraphBundle blueprint 引用 |
+| `default_workflow` | `string?` | **废弃** legacy loader alias，仅用于旧数据兼容 |
+| `orchestration_workflow` | `string?` | **废弃** legacy loader alias，仅用于旧数据兼容 |
+
+规则：
+- `default_plan_blueprint_ref` 与 `orchestration_plan_blueprint_ref` 是 canonical 引用，必须指向 `PlanGraphBundle`。
+- `default_workflow` / `orchestration_workflow` 仅保留向后兼容作用，不得作为新设计的数据主键。
 
 ## 3. Trigger 规则
 

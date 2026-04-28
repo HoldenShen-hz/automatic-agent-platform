@@ -1,6 +1,6 @@
 # ADR-033 分阶段落地路线
 
-- 状态：Accepted
+- 状态：Superseded by ADR-070
 - 决策日期：2026-04-17
 
 ## 背景

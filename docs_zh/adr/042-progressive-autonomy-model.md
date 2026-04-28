@@ -13,11 +13,10 @@
 
 | 等级 | 名称 | 权限 |
 |------|------|------|
-| 0 | supervised | 完全人工监督 |
-| 1 | assisted | 辅助建议 |
-| 2 | partial_auto | 部分自动化 |
-| 3 | high_auto | 高度自动化 |
-| 4 | full_auto | 完全自动化 |
+| 0 | suggestion | 仅提供建议，需人工确认 |
+| 1 | supervised | 完全人工监督执行 |
+| 2 | semi_auto | 半自动，可自动执行但需人工监督 |
+| 3 | full_auto | 完全自动化 |
 
 规则：
 

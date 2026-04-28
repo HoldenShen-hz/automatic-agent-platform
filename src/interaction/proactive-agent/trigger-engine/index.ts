@@ -5,7 +5,8 @@ export function resolveTriggerActionMode(requireConfirmation: boolean, riskLevel
   if (riskLevel === "critical") {
     return "silent_record";
   }
-  if (riskLevel === "high") {
+  // §41.1: medium/high risk proactive actions cannot auto_execute
+  if (riskLevel === "high" || riskLevel === "medium") {
     return "suggest";
   }
   return "auto_execute";

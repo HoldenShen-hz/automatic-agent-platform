@@ -36,6 +36,8 @@ interface KnowledgeSource {
   sourceId: string;
   type: 'user_input' | 'system_generated' | 'external_api' | 'file_import';
   uri: string;
+  harnessRunId?: string;     // canonical execution context
+  nodeRunId?: string;        // canonical node context
   trustLevel: TrustLevel;
   ingestedAt: string;
 }
@@ -188,14 +190,20 @@ interface RetrievalHit {
 }
 ```
 
-## 6. 4 级信任模型
+## 6. 4 级信任模型（对齐 §29 知识边界规则）
 
-| 信任级别 | 来源 | 用途 |
-|---------|------|------|
-| `verified` | 人工审核过的内容 | 生产决策 |
-| `reviewed` | LearningObjectValidator 验证 | 改进候选 |
-| `inferred` | 系统推断 | 建议/参考 |
-| `untrusted` | 未验证来源 | 仅展示 |
+| 信任级别 | 来源 | 用途 | §29 对应 |
+|---------|------|------|---------|
+| `verified` | 人工审核过的内容 | 生产决策 | Knowledge boundary §29.3 允许 high-risk 域使用 |
+| `reviewed` | LearningObjectValidator 验证 | 改进候选 | §29.2 TrustLevel 传播规则 |
+| `inferred` | 系统推断 | 建议/参考 | §29.1 默认信任级别 |
+| `untrusted` | 未验证来源 | 仅展示 | §29.3 禁止用于 critical 域 |
+
+约束：
+
+- TrustLevel 必须在 intake 时确定，不得降级传播（§29.2）。
+- `verified` 内容可用于 high/critical 风险域决策；`untrusted` 不得用于生产（§29.3）。
+- Knowledge boundary 检查需在 query 时验证 TrustLevel 与 domain risk 匹配。
 
 ## 7. Learn→Knowledge 集成
 

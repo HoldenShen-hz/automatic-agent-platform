@@ -17,7 +17,7 @@
 | Gate 1 | 开发完成 | ≥5 few-shot + eval ≥20 条 |
 | Gate 2 | 测试通过 | 覆盖率 ≥80% |
 | Gate 3 | 认证通过 | Prompt Injection 100% |
-| Gate 4 | 金丝雀发布 | CANARY_5 → CANARY_20 → CANARY_50 → CANARY_100 |
+| Gate 4 | 金丝雀发布 | canary_5 → partial_25 → 50 → 75 → stable |
 
 ### Gate 1 详细要求
 
@@ -37,18 +37,14 @@
 
 ### Canary 发布配置
 
-```typescript
-const CANARY_STAGES = [5, 20, 50, 100];  // 百分比
-const DEFAULT_CANARY_PERCENT = 10;         // 默认 10%
-```
-
-### Drift Detection Rollout
+参考 [ADR-075 六级受控发布与 Rollout 状态机](./075-controlled-rollout-release.md) 的 canonical rollout states：
 
 | 阶段 | 流量 |
 |------|------|
-| shadow | 0% |
-| canary | 5% |
-| partial | 25% |
+| canary_5 | 5% |
+| partial_25 | 25% |
+| 50 | 50% |
+| 75 | 75% |
 | stable | 100% |
 
 ## 后果
@@ -72,3 +68,7 @@ const DEFAULT_CANARY_PERCENT = 10;         // 默认 10%
 ## 来源章节
 
 - `§38` 业务域接入 Runbook
+
+## v4.3 ADR Remediation
+
+- R6-49: 修复 canary stage 定义冲突。ADR-038 原先定义 CANARY_5/20/50/100 与 ADR-075 canonical rollout states (canary_5/partial_25/50/75/stable) 冲突。修复：统一引用 ADR-075 的 canonical 定义。

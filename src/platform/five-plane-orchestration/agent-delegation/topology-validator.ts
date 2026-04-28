@@ -15,7 +15,9 @@ import type { DelegationOptions } from "./delegation-types.js";
 // Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const DEFAULT_MAX_DEPTH = 3;
+// §19.2: Global call depth hard cap is 8 (not 3)
+// All call depth calculations must use summation, not Math.max()
+export const DEFAULT_MAX_DEPTH = 8;
 export const DEFAULT_MAX_FANOUT = 10;
 
 export interface TopologyValidatorConfig {

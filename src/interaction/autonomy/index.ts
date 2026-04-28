@@ -50,6 +50,12 @@ export interface CapabilityTrustScore {
   readonly lastIncidentAgeDays: number | null;
   /** Severity of the most recent incident (P0=P0, P1=P1, etc.) */
   readonly lastIncidentSeverity?: IncidentSeverity;
+  /** §42.2: Timestamp of last incident (for time-window incident-free checks) */
+  readonly lastIncidentTimestamp?: string | null;
+  /** §42.2: Number of cost overruns (for 200% demotion rule) */
+  readonly costOverruns: number;
+  /** §42.3: Days since last execution (for trust decay and suggestion demotion) */
+  readonly lastExecutionAgeDays: number | null;
 }
 
 export interface AgentTrustProfile {
@@ -106,12 +112,29 @@ export class TrustDecayWorker {
       readonly decayRate?: number;
     },
   ): AgentTrustProfile {
+    // §42.3: 180d no-execution -> suggestion demotion
+    // If a capability has had no executions for 180+ days, demote to suggestion
+    const updatedScores = profile.capabilityScores.map((item) => {
+      let newTrustScore = applyTrustDecay(item.truckScore, options.inactiveDays, options.decayRate);
+
+      // §42.3: 180 days no-execution triggers suggestion demotion
+      if (options.inactiveDays >= 180 && item.totalExecutions > 0) {
+        // After 180 days of inactivity, demote to suggestion level
+        // The trust score will be heavily decayed anyway
+        return {
+          ...item,
+          trustScore: Math.min(newTrustScore, 200), // Cap at suggestion-level trust
+        };
+      }
+      return {
+        ...item,
+        trustScore: newTrustScore,
+      };
+    });
+
     return {
       ...profile,
-      capabilityScores: profile.capabilityScores.map((item) => ({
-        ...item,
-        trustScore: applyTrustDecay(item.trustScore, options.inactiveDays, options.decayRate),
-      })),
+      capabilityScores: updatedScores,
       lastEvaluation: nowIso(),
     };
   }
@@ -126,6 +149,14 @@ export interface AutonomyEvaluationOptions {
   minVolumeForDemotion?: number;
   highRiskDomainIds?: readonly string[];
   resolveDomainRiskSpec?: (domainId: string) => DomainRiskSpec | null;
+  /** §42.2: Promotion time windows - incident-free periods required for promotion */
+  promotionTimeWindows?: {
+    toSupervisedDays?: number;   // 30d default
+    toSemiAutoDays?: number;     // 60d default
+    toFullAutoDays?: number;     // 90d default
+  };
+  /** §42.2: Cost overrun demotion threshold (default 2.0 = 200%) */
+  costOverrunDemotionThreshold?: number;
 }
 
 const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
@@ -136,6 +167,14 @@ const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
   minVolumeForDemotion: 3,
   highRiskDomainIds: ["medical", "healthcare", "financial-services", "finance-accounting", "quant-trading", "legal"],
   resolveDomainRiskSpec,
+  // §42.2: Promotion time windows (incident-free periods)
+  promotionTimeWindows: {
+    toSupervisedDays: 30,
+    toSemiAutoDays: 60,
+    toFullAutoDays: 90,
+  },
+  // §42.2: Cost overrun demotion at 200%
+  costOverrunDemotionThreshold: 2.0,
 };
 
 function successRate(score: CapabilityTrustScore): number {
@@ -147,24 +186,25 @@ function overrideRate(score: CapabilityTrustScore): number {
 }
 
 function trustLevelFromScore(score: number): TrustLevel {
-  if (score >= 95) return "fully_trusted";
-  if (score >= 85) return "trusted";
-  if (score >= 70) return "semi_trusted";
-  if (score >= 50) return "supervised";
-  if (score >= 30) return "probation";
+  if (score >= 950) return "fully_trusted";
+  if (score >= 850) return "trusted";
+  if (score >= 700) return "semi_trusted";
+  if (score >= 500) return "supervised";
+  if (score >= 300) return "probation";
   return "untrusted";
 }
 
 function scoreCapability(score: CapabilityTrustScore): number {
   const success = successRate(score);
-  const overridePenalty = overrideRate(score) * 20;
-  const incidentPenalty = score.incidents * 15;
-  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
+  const overridePenalty = overrideRate(score) * 200;
+  const incidentPenalty = score.incidents * 150;
+  const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
+  // §42.1: TrustScore range 0-1000 (expanded from 0-100)
   return Math.max(
     0,
     Math.min(
-      100,
-      Math.round(success * 100 - overridePenalty - incidentPenalty + volumeBonus),
+      1000,
+      Math.round(success * 1000 - overridePenalty - incidentPenalty + volumeBonus),
     ),
   );
 }

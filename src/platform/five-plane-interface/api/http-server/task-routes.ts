@@ -61,10 +61,10 @@ interface PaginationCursor {
 
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   return [
-    // ── v1 ───────────────────────────────────────────────────────────────────
+    // ── api/v1 ───────────────────────────────────────────────────────────────────
     {
       method: "GET",
-      pathname: "/v1/tasks",
+      pathname: "/api/v1/tasks",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = principal.tenantId != null
@@ -85,7 +85,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/workflows",
+      pathname: "/api/v1/workflows",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = principal.tenantId != null
@@ -110,11 +110,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 4) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Task route");
+        const taskId = validateTaskId(segments[3], "Task route");
         const cockpit = deps.missionControlService.getTaskCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -130,15 +130,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const { segments } = ctx.route;
         if (
-          segments[0] !== "v1"
-          || segments[1] !== "tasks"
-          || segments.length !== 4
-          || segments[3] !== "events"
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "tasks"
+          || segments.length !== 5
+          || segments[4] !== "events"
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Task events route");
+        const taskId = validateTaskId(segments[3], "Task events route");
         const cockpit = deps.missionControlService.getTaskCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -193,7 +194,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     // ── Task Write Operations ─────────────────────────────────────────────────
     {
       method: "POST",
-      pathname: "/v1/tasks",
+      pathname: "/api/v1/tasks",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));

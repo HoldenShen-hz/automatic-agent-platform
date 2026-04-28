@@ -13,7 +13,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
-import type { SandboxModeLike } from "../../control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxMode } from "../../control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -49,7 +49,11 @@ export interface SubWorkflowContext {
   correlationId: string;
   /** @deprecated compatibility alias; use parentNodeRunId */
   parentExecutionId: string | null;
-  sandboxTier: SandboxModeLike;
+  sandboxTier: SandboxMode;
+}
+
+export interface SubWorkflowContextInput extends Omit<SubWorkflowContext, "sandboxTier"> {
+  sandboxTier: string;
 }
 
 export interface SubWorkflowDefinition {
@@ -161,7 +165,7 @@ export class SubWorkflowExecutor {
    */
   public createWorkflow(
     definition: SubWorkflowDefinition,
-    context: SubWorkflowContext,
+    context: SubWorkflowContextInput,
   ): string {
     if (context.parentExecutionId && context.parentExecutionId.split(":").length >= this.maxNestedDepth) {
       throw new ValidationError(
@@ -195,7 +199,10 @@ export class SubWorkflowExecutor {
     const execution: WorkflowExecution = {
       executionId,
       definition,
-      context,
+      context: {
+        ...context,
+        sandboxTier: normalizeSandboxMode(context.sandboxTier),
+      },
       status: "created",
       steps,
       stepOrder,

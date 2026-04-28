@@ -46,6 +46,8 @@ import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-ser
 import type { WorkflowCrashInjection } from "../recovery/workflow-crash-simulator.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
+import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
+import type { BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import {
   AdmissionController,
   type AdmissionBackpressureSnapshot,

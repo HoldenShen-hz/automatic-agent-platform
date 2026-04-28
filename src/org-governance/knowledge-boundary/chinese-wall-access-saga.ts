@@ -27,7 +27,7 @@ export interface ChineseWallAccessSagaReceipt {
   readonly executionLog: readonly {
     readonly stepId: string;
     readonly action: ChineseWallAccessStep["action"];
-    readonly outcome: "committed" | "compensated" | "audited" | "failed";
+    readonly outcome: "prepared" | "committed" | "compensated" | "audited" | "failed";
   }[];
 }
 

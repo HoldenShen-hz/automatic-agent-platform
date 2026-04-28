@@ -244,6 +244,14 @@ export interface EventRecord {
   payloadJson: string;
   traceId: string | null;
   createdAt: Timestamp;
+  // §28.1 required fields for replay ordering and audit
+  schemaVersion: string | null;
+  aggregateId: string | null;
+  runId: string | null;
+  sequence: number | null;
+  replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
+  principal: string | null;
+  evidenceRefs: readonly string[];
 }
 
 /**

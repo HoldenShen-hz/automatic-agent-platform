@@ -36,6 +36,10 @@ export interface PlannedTask {
   readonly constraintEnvelope?: GoalConstraintEnvelope;
   /** @deprecated Use dependencyGraph instead - explicit depends_on for DAG scheduling */
   readonly dependsOn?: readonly string[];
+  /** Delegation depth for this task (for anti-multiplication guard, per §19.2) */
+  readonly delegationDepth?: number;
+  /** Whether this task has been split from a parent goal (anti-multiplication guard) */
+  readonly isSubdelegation?: boolean;
 }
 
 export interface TaskDependency {
@@ -72,6 +76,7 @@ export type GoalLifecycleState =
   | "draft"
   | "decomposing"
   | "decomposed"
+  | "partially_completed" // §40.5: goal partially completed (some subtasks done)
   | "executing"
   | "completed"
   | "failed"
@@ -79,6 +84,10 @@ export type GoalLifecycleState =
 
 export interface GoalConstraintEnvelope {
   readonly budgetLimitUsd: number | null;
+  /** §40.2: Budget proportionally allocated to subtasks */
+  readonly budgetAllocations?: readonly { taskId: string; budgetUsd: number; riskMultiplier: number }[];
+  /** §40.2: Risk propagation to subtasks */
+  readonly riskPropagation?: readonly { taskId: string; riskLevel: "low" | "medium" | "high" | "critical" }[];
   readonly riskTolerance: "low" | "medium" | "high";
   readonly requiresApproval: boolean;
   readonly requiredPermissions: readonly string[];
@@ -128,6 +137,10 @@ export interface GoalDecompositionServiceOptions {
   readonly maxDepth?: number;
   /** Current decomposition depth (used internally, do not set manually) */
   readonly currentDepth?: number;
+  /** Maximum delegation chain depth (default: 3 per §19.2) */
+  readonly maxDelegationDepth?: number;
+  /** Global call depth hard cap (default: 8 per §19.2) */
+  readonly callDepth?: number;
   readonly budgetControl?: {
     readonly policy: BudgetPolicy;
     readonly currentTaskCostUsd?: number;
@@ -154,6 +167,10 @@ const DEFAULT_COST_ESTIMATE: CostEstimate = {
 
 /** Default maximum decomposition depth to prevent infinite recursion */
 const DEFAULT_MAX_DEPTH = 5;
+/** Default maximum delegation chain depth (per §19.2) */
+const DEFAULT_MAX_DELEGATION_DEPTH = 3;
+/** Default global call depth hard cap (per §19.2) */
+const DEFAULT_CALL_DEPTH = 8;
 const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
 const HIGH_RISK_KEYWORDS = [
   "deploy",
@@ -270,12 +287,58 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   public async decompose(goalInput: Goal | string): Promise<GoalDecomposition> {
     const maxDepth = this.options.maxDepth ?? DEFAULT_MAX_DEPTH;
     const currentDepth = this.options.currentDepth ?? 0;
+    const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
+    const callDepth = this.options.callDepth ?? DEFAULT_CALL_DEPTH;
     const maxDepthReached = currentDepth >= maxDepth;
 
+    // §19.2: Enforce delegation chain depth limit and global call_depth hard cap
+    if (currentDepth > maxDelegationDepth) {
+      throw new Error(`goal_decomposer.delegation_depth_exceeded: max=${maxDelegationDepth}, current=${currentDepth}`);
+    }
+    if (currentDepth > callDepth) {
+      throw new Error(`goal_decomposer.call_depth_exceeded: max=${callDepth}, current=${currentDepth}`);
+    }
+
     const goal = normalizeGoal(goalInput);
-    const constraintEnvelope = parseConstraintEnvelope(goal);
+    const rawConstraintEnvelope = parseConstraintEnvelope(goal);
     const matchedTemplate = this.detectTemplate(goal.description);
     let tasks = this.buildTasks(goal, matchedTemplate);
+
+    // §40.2: Proportional budget allocation to subtasks
+    // Distribute the goal's budget proportionally based on task costs and risk levels
+    const riskMultiplierMap: Record<string, number> = {
+      low: 1.0,
+      medium: 1.5,
+      high: 2.0,
+      critical: 3.0,
+    };
+    const totalCost = tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0);
+    const budgetAllocations = rawConstraintEnvelope.budgetLimitUsd != null
+      ? tasks.map((task) => {
+          const proportion = totalCost > 0 ? task.estimatedCost.estimatedCostUsd / totalCost : 1 / tasks.length;
+          const riskMultiplier = riskMultiplierMap[task.constraintEnvelope?.riskTolerance ?? "medium"] ?? 1.5;
+          return {
+            taskId: task.taskId,
+            budgetUsd: Number((rawConstraintEnvelope.budgetLimitUsd * proportion).toFixed(4)),
+            riskMultiplier,
+          };
+        })
+      : [];
+
+    // §40.2: Risk propagation to subtasks
+    const riskPropagation = tasks.map((task) => {
+      const taskRisk = task.constraintEnvelope?.riskTolerance ?? "medium";
+      return {
+        taskId: task.taskId,
+        riskLevel: taskRisk as "low" | "medium" | "high" | "critical",
+      };
+    });
+
+    const constraintEnvelope: GoalConstraintEnvelope = {
+      ...rawConstraintEnvelope,
+      budgetAllocations,
+      riskPropagation,
+    };
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
     let decompositionStrategy: GoalDecomposition["decompositionStrategy"] =
       matchedTemplate == null
@@ -509,9 +572,15 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     return dependencies;
   }
 
-  private makeTask(domainId: string, description: string, goal: Goal, estimatedDuration: string): PlannedTask {
+  private makeTask(domainId: string, description: string, goal: Goal, estimatedDuration: string, options?: { delegationDepth?: number; isSubdelegation?: boolean }): PlannedTask {
     const estimatedCost = this.options.costEstimator?.estimate(domainId) ?? DEFAULT_COST_ESTIMATE;
     const constraintEnvelope = parseConstraintEnvelope(goal);
+    const delegationDepth = options?.delegationDepth ?? 0;
+    const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
+
+    // §19.2: Anti-multiplication guard - prevent re-delegating already-delegated tasks
+    const isSubdelegation = (options?.isSubdelegation ?? false) || delegationDepth >= maxDelegationDepth;
+
     return {
       taskId: `${goal.goalId}:${domainId}:${description.slice(0, 12)}`,
       domainId,
@@ -527,6 +596,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       estimatedDuration,
       estimatedCost,
       constraintEnvelope,
+      delegationDepth,
+      isSubdelegation,
     };
   }
 

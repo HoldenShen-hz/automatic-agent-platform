@@ -28,18 +28,17 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2. 新模块测试矩阵
+### 2. 新模块测试矩阵（v4.3 runtime 模块结构）
 
 | 模块 | 单元测试 | 集成测试 | Golden | 安全 | 预估用例 |
 |------|---------|---------|--------|------|---------|
-| `agent-loop/` | run() 循环完整性, assess, handoff | 8 阶段联调 | O→A→P→E→F happy path | handoff 信息泄露 | ~120 |
-| `planning/` | plan-builder, DAG validator, replanning, strategy selector | plan→execute 集成 | linear plan happy path | — | ~80 |
-| `feedback/` | signal-preprocessor (去重/关联/过滤), collector, event-consumer | feedback→learning 传递 | — | — | ~60 |
-| `learning/` | 4 detector, learning-object-validator, experience-distillation | learn→improve 传递 | failure pattern golden | — | ~80 |
-| `improvement/` | rollout-state-machine, rollout-scheduler, auto-rollback, guardrail | rollout 完整流程 | canary→stable golden | autonomy boundary | ~100 |
-| `knowledge/` | knowledge-plane-service, retrieval, vector-store, ingestion-pipeline | 摄取→检索 E2E | retrieval accuracy golden | source pollution | ~150 |
-| `domain-registry/` | plugin-spi-registry, plugin-runtime-host, domain-registry-service | 插件加载→执行 | — | config injection | ~100 |
-| `plugins/` | github-adapter, basic-planner, coding-retriever | 插件注册→调用 | — | — | ~40 |
+| `platform/interface/` | API gateway, ingress, scheduler | 8 阶段联调 | O→A→P→E→F happy path | handoff 信息泄露 | ~120 |
+| `platform/control-plane/` | IAM, config-center, approval-center | control-plane→orchestration | linear plan happy path | — | ~80 |
+| `platform/orchestration/` | OAPEFLIR, routing, planner, HITL | plan→execute 集成 | — | autonomy boundary | ~60 |
+| `platform/execution/` | dispatcher, execution-engine, recovery, worker-pool | execution→state-evidence | failure pattern golden | — | ~80 |
+| `platform/state-evidence/` | truth, events, checkpoints, artifacts | truth→events 传递 | canary→stable golden | source pollution | ~100 |
+| `domains/` | domain-registry, plugin-spi | 插件加载→执行 | retrieval accuracy golden | config injection | ~150 |
+| `interaction/` | NL entry, goal decomposition | 摄取→检索 E2E | — | — | ~40 |
 | **合计** | | | | | **~730** |
 
 ### 3. E2E 测试设计（5 个核心测试）

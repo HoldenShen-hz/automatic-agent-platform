@@ -47,6 +47,17 @@ Proposed → Accepted → Superseded
 3. **Superseded ADR 必须包含交叉引用**，指向取代它的 ADR
 4. **每个 ADR 必须包含来源章节**，关联到 platform-architecture.md 的具体节号
 
+### v4.3 迁移例外条款
+
+v4.3 架构迁移期间，ADR Remediation 过程需要对已冻结 ADR 进行直接修改，以纠正与 canonical 架构的冲突。
+
+此例外条款仅适用于 v4.3 迁移窗口期，迁移完成后恢复标准冻结规则。
+
+v4.3 迁移修改的 ADR 须在 "v4.3 ADR Remediation" 小节记录：
+- 修改原因（根因分析）
+- 具体修复内容
+- 与 canonical 架构的对齐确认
+
 ### ADR 必需字段
 
 每个 ADR 必须包含：

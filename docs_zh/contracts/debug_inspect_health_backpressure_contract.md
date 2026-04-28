@@ -60,9 +60,9 @@
 ### 3.2 `TaskInspectView`
 
 - `task`
-- `harness_run?`
+- `harness_run`
 - `node_runs[]`
-- `legacy_workflow_projection?`
+- `plan_graph_bundle?`
 - `approvals[]`
 - `sessions[]`
 - `recent_events[]`
@@ -75,6 +75,12 @@
 - `learning_objects[]?`
 - `improvement_candidates[]?`
 - `rollout_records[]?`
+
+规则：
+
+- 主键关联：`task` -> `harness_run` -> `node_runs[]` 为 canonical 主链。
+- `legacy_workflow_projection` 仅用于向后兼容 legacy 工具和仪表盘，不得作为新增功能的主数据源。
+- `executions[]` 已废弃（legacy），仅保留兼容别名。
 
 ### 3.3 `DebugDump`
 
@@ -150,19 +156,26 @@ Phase 1b 增强：
 - `GET /tasks/:taskId/inspect`
 - `GET /harness-runs/:harnessRunId/inspect`
 - `GET /node-runs/:nodeRunId/inspect`
-- `GET /executions/:executionId/inspect` (legacy compat alias)
+- `GET /executions/:executionId/inspect` (legacy compat alias, deprecated)
 - `GET /approvals/:approvalId/inspect`
 - `GET /rollouts/:rolloutId/inspect`
 - `GET /knowledge/:namespace/inspect`
 - `GET /tasks/:taskId/oapeflir-timeline`
 
+规则：
+
+- `/harness-runs/:harnessRunId/inspect` 为 canonical 主端点，返回 HarnessRun 完整轨迹。
+- `/node-runs/:nodeRunId/inspect` 返回单个 NodeRun 的输入/输出/状态快照。
+- `/executions/:executionId/inspect` 仅保留 legacy 兼容，映射到对应 harness_run_id 查询。
+
 ### 5.2 查询要求
 
 - `task inspect` 应可还原 task 的主状态、harness run、node run、审批、会话和事件尾部
+- `harness run inspect` 应展示 HarnessRun 的完整轨迹：plan_graph_bundle、node_runs[] 状态序列、current_stage、loop_iteration、feedback/learn/improve/release 引用
 - `task inspect` 应能展示当前 `stage`、`loop_iteration`、最近 feedback / learn / improve / release 引用
 - inspect 输出必须优先读 authoritative store，而不是只依赖内存状态
 - inspect 查询不得改变业务状态
-- 若存在恢复或接管历史，inspect 应展示最近一次恢复决定、触发原因和当前活跃 execution 所有权
+- 若存在恢复或接管历史，inspect 应展示最近一次恢复决定、触发原因和当前活跃 node_runs 所有权
 - `oapeflir-timeline` 应能按时间顺序返回每轮 stage 状态、关键 evidence ref、审批 gate 和 rollout 动作
 - rollout inspect 必须可还原 rollout level、status、metrics、approval、rollback lineage
 - knowledge inspect 属于扩展入口；未启用 Knowledge Plane 时应返回明确的 `not_enabled`，而不是 404 伪装资源不存在

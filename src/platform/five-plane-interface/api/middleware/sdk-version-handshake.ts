@@ -23,6 +23,7 @@ export class SdkVersionHandshakeService {
   public evaluate(request: SdkVersionHandshakeRequest): SdkVersionHandshakeDecision {
     const sdkVersion = this.header(request.headers, "x-sdk-version");
     const contractVersion = this.header(request.headers, "x-contract-version");
+    const platformMinVersion = this.header(request.headers, "x-platform-min-version");
     const warnings: string[] = [];
 
     if (contractVersion != null && contractVersion !== this.policy.contractVersion) {
@@ -36,6 +37,17 @@ export class SdkVersionHandshakeService {
         reasonCode: "sdk.upgrade_required",
         responseHeaders: this.buildHeaders("upgrade_required"),
         warnings,
+      };
+    }
+
+    // §24: platform_min_version compatibility check
+    if (platformMinVersion != null && this.compareSemver(platformMinVersion, this.policy.platformVersion) > 0) {
+      return {
+        accepted: false,
+        statusCode: 426,
+        reasonCode: "sdk.platform_incompatible",
+        responseHeaders: this.buildHeaders("platform_incompatible"),
+        warnings: [...warnings, `platform_min_version=${platformMinVersion};platform_version=${this.policy.platformVersion}`],
       };
     }
 

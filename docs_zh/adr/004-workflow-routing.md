@@ -54,18 +54,19 @@
 
 ## Workflow 数据传递
 
-工作流中的 `input: "{user_stories}"` 不是字符串替换，而是运行时绑定：
+v4.3 §5.5 废弃了 WorkflowState/StepOutput，数据传递改用 NodeRun/HarnessRun 模型：
 
-- `WorkflowState` 保存步骤输出和当前索引。
-- 每个步骤完成后产出结构化 `StepOutput`。
-- 下游步骤通过 output key 读取上游结果。
-- 大体积结果进入 artifact store，只在状态里保存引用。
+- `HarnessRun` 是顶层执行容器，包含多个 `NodeRun`。
+- 每个 `NodeRun` 代表图中的一个节点执行，产出 `NodeAttemptReceipt`。
+- 节点间数据传递通过 `NodeAttemptReceipt.output` 和 artifact store 引用。
+- 上游 `NodeRun` 完成后，通过 PlanGraphBundle / GraphPatch 将结果注入下游上下文。
 
 关键要求：
 
 - 输出在写入前必须通过 schema 验证。
 - 缺失关键字段时允许有限重试。
 - partial success 应被显式记录，交由 precondition 决定是否继续。
+- 废弃 WorkflowState/StepOutput，仅在兼容投影视图中保留。
 
 ## 路由原则
 

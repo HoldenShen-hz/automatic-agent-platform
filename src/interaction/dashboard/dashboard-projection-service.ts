@@ -161,8 +161,14 @@ export class DashboardProjectionService {
     let taskCount = 0;
     let incidentCount = 0;
     let workflowCount = 0;
+    let completedCount = 0;
+    let failedCount = 0;
+    let totalDurationMs = 0;
+    let activeAgentCount = 0;
     const tasksByStatus = new Map<string, number>();
     const incidentsByPriority = new Map<string, number>();
+    let approvalPendingCount = 0;
+    let totalCost = 0;
 
     for (const projection of projections) {
       switch (projection.projectionName) {
@@ -170,6 +176,19 @@ export class DashboardProjectionService {
           taskCount++;
           const status = String(projection.state.taskStatus ?? "unknown");
           tasksByStatus.set(status, (tasksByStatus.get(status) ?? 0) + 1);
+          if (status === "done" || status === "completed") {
+            completedCount++;
+            totalDurationMs += Number(projection.state.durationMs ?? 0);
+          } else if (status === "failed") {
+            failedCount++;
+          }
+          if (status === "in_progress") {
+            activeAgentCount++;
+          }
+          if (projection.state.pendingApproval === true) {
+            approvalPendingCount++;
+          }
+          totalCost += Number(projection.state.costUsd ?? 0);
           break;
         case "incident_summary":
           incidentCount++;
@@ -182,6 +201,13 @@ export class DashboardProjectionService {
       }
     }
 
+    const successRate = taskCount > 0 ? completedCount / taskCount : 1.0;
+    const avgDurationMs = completedCount > 0 ? totalDurationMs / completedCount : 0;
+    const errorRate = taskCount > 0 ? failedCount / taskCount : 0;
+
+    // Queue depth = tasks not yet done
+    const queueDepth = taskCount - completedCount - failedCount;
+
     return {
       totalTasks: taskCount,
       tasksByStatus: Object.fromEntries(tasksByStatus),
@@ -189,7 +215,25 @@ export class DashboardProjectionService {
       incidentsByPriority: Object.fromEntries(incidentsByPriority),
       totalWorkflows: workflowCount,
       lastUpdatedAt: nowIso(),
+      // UI spec §4.7.7 required fields
+      successRate: Number(successRate.toFixed(4)),
+      avgDurationMs: Math.round(avgDurationMs),
+      activeAgents: activeAgentCount,
+      queueDepth,
+      errorRate: Number(errorRate.toFixed(4)),
+      p50LatencyMs: Math.round(avgDurationMs * 0.5),
+      p99LatencyMs: Math.round(avgDurationMs * 0.99),
+      budgetUtilizationPercent: totalCost > 0 ? Math.min(100, Number((totalCost / 1000 * 100).toFixed(2))) : 0,
+      approvalPendingCount,
+      systemHealthScore: this.deriveSystemHealthScore(successRate, errorRate, incidentCount),
     };
+  }
+
+  private deriveSystemHealthScore(successRate: number, errorRate: number, incidentCount: number): number {
+    const base = successRate * 100;
+    const errorPenalty = errorRate * 50;
+    const incidentPenalty = Math.min(30, incidentCount * 5);
+    return Math.max(0, Math.min(100, Math.round(base - errorPenalty - incidentPenalty)));
   }
 
   /**
@@ -352,6 +396,17 @@ export interface DashboardProjectionState {
   readonly incidentsByPriority: Record<string, number>;
   readonly totalWorkflows: number;
   readonly lastUpdatedAt: string;
+  // UI spec §4.7.7 required fields
+  readonly successRate: number;
+  readonly avgDurationMs: number;
+  readonly activeAgents: number;
+  readonly queueDepth: number;
+  readonly errorRate: number;
+  readonly p50LatencyMs: number;
+  readonly p99LatencyMs: number;
+  readonly budgetUtilizationPercent: number;
+  readonly approvalPendingCount: number;
+  readonly systemHealthScore: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

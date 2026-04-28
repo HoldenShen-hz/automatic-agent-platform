@@ -68,6 +68,14 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   public transition<TAggregate extends RuntimeStateAggregate>(
     command: RuntimeTransitionCommand<TAggregate>,
   ): RuntimeTransitionResult<TAggregate> {
+    // §25.3: Lease/fencing validation for HarnessRun transitions
+    if (command.aggregateType === "HarnessRun") {
+      const harnessRun = this.getHarnessRun(getAggregateId(command.aggregateType, command.aggregate as RuntimeStateAggregate) as string);
+      if (harnessRun != null) {
+        this.validateLease(harnessRun);
+      }
+    }
+
     return this.transaction(() => {
       const stored = this.getRequiredAggregate(command.aggregateType, getAggregateId(command.aggregateType, command.aggregate));
       const result = this.stateMachine.transition({
@@ -154,6 +162,12 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     };
   }
 
+  // §25.6: transaction() uses in-memory clone-and-rollback for atomicity.
+// NOTE: This is NOT crash-safe because there's no actual database commit.
+  // If the process crashes between state mutation and outbox flush, events are lost.
+  // For production, replace with proper database transaction (BEGIN/COMMIT/ROLLBACK).
+  // The pattern here ensures atomicity within the operation, but crash recovery
+  // requires external persistence (e.g., write-ahead log, journal, or DB transaction).
   private transaction<TResult>(operation: () => TResult): TResult {
     const before = cloneState(this.state);
     try {
@@ -240,6 +254,28 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     this.state.events.push(normalizedEvent);
     this.state.outbox.push(normalizedEvent);
     return normalizedEvent;
+  }
+
+  // §25.3: Lease/fencing validation for HarnessRun
+  private validateLease(harnessRun: HarnessRun): void {
+    if (harnessRun.lease != null) {
+      const now = Date.now();
+      const leaseExpiry = new Date(harnessRun.lease.expiresAt).getTime();
+      if (now > leaseExpiry) {
+        throw new ValidationError(
+          "runtime_truth_repository.lease_expired",
+          `HarnessRun ${harnessRun.harnessRunId} has expired lease`,
+          { details: { harnessRunId: harnessRun.harnessRunId, leaseExpiresAt: harnessRun.lease.expiresAt } },
+        );
+      }
+      if (harnessRun.lease.ownerId !== harnessRun.ownedBy) {
+        throw new ValidationError(
+          "runtime_truth_repository.lease_fencing_violation",
+          `HarnessRun ${harnessRun.harnessRunId} lease owner mismatch`,
+          { details: { leaseOwner: harnessRun.lease.ownerId, ownedBy: harnessRun.ownedBy } },
+        );
+      }
+    }
   }
 }
 

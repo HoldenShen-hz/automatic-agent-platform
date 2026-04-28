@@ -65,12 +65,17 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   tools?: ChatTool[];
   toolChoice?: "auto" | "none";
-  traceId?: string;
-  tenantId?: string | null;
+  /** §15.2: Required - trace ID for request correlation */
+  traceId: string;
+  /** §15.2: Required - tenant ID for multi-tenant isolation */
+  tenantId: string | null;
   principalId?: string | null;
-  costTag?: string;
+  /** §15.2: Required - cost tag for chargeback attribution */
+  costTag: string;
   abortSignal?: AbortSignal;
   validatePartialChunk?: (chunk: ChatCompletionResult, isFinal: boolean) => void;
+  /** §15.4: Streaming budget real-time control - called with cumulative cost after each chunk */
+  streamingBudgetTrack?: (cumulativeCostUsd: number, chunk: ChatCompletionResult) => void;
   /** Policy outcome for audit logging per §11.1-11.2 */
   policyOutcome?: "approved" | "denied" | "flagged" | null;
 }
@@ -328,15 +333,54 @@ export class UnifiedChatProvider {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
     const { provider, service } = this.getProviderForModel(request.model);
+    // §15.4: Track cumulative streaming cost for real-time budget control with abort capability
+    let cumulativeCostUsd = 0;
+    const estimatedCostPerToken = 0.00001; // Estimated cost per token for streaming budget tracking
+    const maxStreamingBudgetUsd = 0.10; // §15.4: Default max streaming budget per request
+    const internalAbortController = new AbortController();
+    const activeSignal = request.abortSignal
+      ? (request.abortSignal.aborted ? request.abortSignal : internalAbortController.signal)
+      : internalAbortController.signal;
+
+    // Proxy external abort signal to internal controller for coordinated abort
+    if (request.abortSignal && !request.abortSignal.aborted) {
+      request.abortSignal.addEventListener("abort", () => {
+        internalAbortController.abort();
+      }, { once: true });
+    }
+
+    const trackStreamingBudget = (chunk: ChatCompletionResult) => {
+      if (request.streamingBudgetTrack) {
+        const tokenCount = chunk.usage?.totalTokens ?? 0;
+        cumulativeCostUsd += tokenCount * estimatedCostPerToken;
+        request.streamingBudgetTrack(cumulativeCostUsd, chunk);
+      }
+      // §15.4: Abort streaming if cumulative cost exceeds budget threshold
+      if (cumulativeCostUsd > maxStreamingBudgetUsd) {
+        internalAbortController.abort();
+      }
+    };
+
+    const validatePartialChunk = (chunk: ChatCompletionResult, isFinal: boolean) => {
+      // §15.4: Partial response validation - ensure chunk has required structure
+      if (!chunk.id || !chunk.model) {
+        internalAbortController.abort();
+        return;
+      }
+      request.validatePartialChunk?.(chunk, isFinal);
+    };
 
     switch (provider) {
       case "anthropic": {
         const anthropicService = service as AnthropicChatService;
+        const anthropicRequest = this.toAnthropicRequest(request);
+        anthropicRequest.signal = activeSignal;
         await anthropicService.createStreamingChatCompletion(
-          this.toAnthropicRequest(request),
+          anthropicRequest,
           (chunk, isFinal) => {
             const normalized = this.normalizeAnthropicResult(chunk, provider);
-            request.validatePartialChunk?.(normalized, isFinal);
+            trackStreamingBudget(normalized);
+            validatePartialChunk(normalized, isFinal);
             onChunk(normalized, isFinal);
           },
         );
@@ -344,11 +388,14 @@ export class UnifiedChatProvider {
       }
       case "openai": {
         const openaiService = service as OpenAIChatService;
+        const openaiRequest = this.toOpenAIRequest(request);
+        openaiRequest.signal = activeSignal;
         await openaiService.createStreamingChatCompletion(
-          this.toOpenAIRequest(request),
+          openaiRequest,
           (chunk, isFinal) => {
             const normalized = this.normalizeOpenAIResult(chunk, provider);
-            request.validatePartialChunk?.(normalized, isFinal);
+            trackStreamingBudget(normalized);
+            validatePartialChunk(normalized, isFinal);
             onChunk(normalized, isFinal);
           },
         );
@@ -356,11 +403,14 @@ export class UnifiedChatProvider {
       }
       case "minimax": {
         const minimaxService = service as MiniMaxChatService;
+        const minimaxRequest = this.toMiniMaxRequest(request);
+        minimaxRequest.signal = activeSignal;
         await minimaxService.createStreamingChatCompletion(
-          this.toMiniMaxRequest(request),
+          minimaxRequest,
           (chunk) => {
             const normalized = this.normalizeMiniMaxResult(chunk, provider);
-            request.validatePartialChunk?.(normalized, false);
+            trackStreamingBudget(normalized);
+            validatePartialChunk(normalized, false);
             onChunk(normalized, false);
           },
         );
@@ -383,10 +433,11 @@ export class UnifiedChatProvider {
       ...(options.system !== undefined ? { system: options.system } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.topP !== undefined ? { topP: options.topP } : {}),
-      ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
-      ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
-      ...(options.principalId !== undefined ? { principalId: options.principalId } : {}),
-      ...(options.costTag !== undefined ? { costTag: options.costTag } : {}),
+      // §15.2: Required fields
+      traceId: options.traceId ?? `trace-${Date.now()}`,
+      tenantId: options.tenantId ?? null,
+      principalId: options.principalId ?? null,
+      costTag: options.costTag ?? "default",
       ...(options.abortSignal !== undefined ? { abortSignal: options.abortSignal } : {}),
       ...(options.policyOutcome !== undefined ? { policyOutcome: options.policyOutcome } : {}),
       maxTokens: options.maxTokens ?? 512,
@@ -432,6 +483,10 @@ export class UnifiedChatProvider {
     if (request.toolChoice !== undefined) {
       result.tool_choice = request.toolChoice;
     }
+    // §12.7: Propagate traceId/spanId for chain continuity
+    if (request.traceId) {
+      (result as unknown as Record<string, unknown>).traceId = request.traceId;
+    }
     return result;
   }
 
@@ -464,6 +519,10 @@ export class UnifiedChatProvider {
     if (request.toolChoice !== undefined) {
       result.tool_choice = request.toolChoice;
     }
+    // §12.7: Propagate traceId/spanId for chain continuity
+    if (request.traceId) {
+      (result as unknown as Record<string, unknown>).traceId = request.traceId;
+    }
     return result;
   }
 
@@ -495,6 +554,10 @@ export class UnifiedChatProvider {
     }
     if (request.toolChoice !== undefined) {
       result.tool_choice = request.toolChoice;
+    }
+    // §12.7: Propagate traceId/spanId for chain continuity
+    if (request.traceId) {
+      (result as unknown as Record<string, unknown>).traceId = request.traceId;
     }
     return result;
   }
