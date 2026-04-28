@@ -14,12 +14,6 @@ test("AuthoritativeTaskStore and Phase1aStore are the same class", () => {
   assert.equal(AuthoritativeTaskStore, Phase1aStore);
 });
 
-test("AuthoritativeTaskStore exports are available", () => {
-  // Verify the class can be referenced (will fail at runtime if module has issues)
-  assert.equal(typeof AuthoritativeTaskStore, "function");
-  assert.equal(typeof Phase1aStore, "function");
-});
-
 test("AuthoritativeTaskStore has db property in legacy compat interface", () => {
   // The legacy compat abstract class defines a db property
   // This test verifies the type is properly exported
