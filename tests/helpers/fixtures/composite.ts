@@ -16,6 +16,8 @@ import type {
 import type {
   HarnessRun,
   PlanGraphBundle,
+  PlanNode,
+  PlanEdge,
   NodeRun,
   BudgetLedger,
   BudgetReservation,
@@ -306,17 +308,6 @@ export function createCompleteHarnessRun(
     status,
     planGraphBundleId: planGraphBundle.planGraphBundleId,
   });
-
-  const budgetLedger = createMinimalBudgetLedger(harnessRunId);
-
-  const nodeRuns = nodes.map((node) =>
-    createMinimalNodeRun(harnessRunId, planGraphBundle.planGraphBundleId, {
-      nodeId: node.nodeId,
-    }),
-  );
-
-  return { harnessRun, planGraphBundle, budgetLedger, nodeRuns };
-}
 
   const budgetLedger = createMinimalBudgetLedger(harnessRunId);
 

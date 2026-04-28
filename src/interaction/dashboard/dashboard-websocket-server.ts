@@ -329,7 +329,7 @@ public registerClient(
     return sentCount;
   }
 
-  private mapChangeTypeToDomainEvent(changes: readonly DashboardDelta["changes"]): DashboardPushMessageType {
+  private mapChangeTypeToDomainEvent(changes: readonly DashboardChange[]): DashboardPushMessageType {
     if (changes.length === 0) return "dashboard_snapshot";
     const firstChange = changes[0];
     switch (firstChange.changeType) {

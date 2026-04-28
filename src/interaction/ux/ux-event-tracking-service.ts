@@ -104,6 +104,22 @@ interface BaseUxPayload {
   eventId: string;
 }
 
+// Mapping from internal UxEventType to canonical platform.ux.* event types
+const UX_TO_PLATFORM_EVENT_MAP: Record<UxEventType, PlatformUxEventType> = {
+  "ux:button_click": "platform.ux.button_click",
+  "ux:form_submit": "platform.ux.form_submit",
+  "ux:navigation": "platform.ux.navigation",
+  "ux:wizard_step": "platform.ux.wizard_step",
+  "ux:workflow_build": "platform.ux.workflow_build",
+  "ux:dashboard_view": "platform.ux.dashboard_view",
+  "ux:search_query": "platform.ux.search_query",
+  "ux:filter_apply": "platform.ux.filter_apply",
+  "ux:export_action": "platform.ux.export_action",
+  "ux:share_action": "platform.ux.share_action",
+  "ux:onboarding_complete": "platform.ux.onboarding_complete",
+  "ux:feedback_submit": "platform.ux.feedback_submit",
+};
+
 export class UxEventTrackingService {
   private readonly eventPublisher: TypedEventPublisher | null;
   private readonly abTestAssignments = new Map<string, ABTestAssignment>();
@@ -111,6 +127,13 @@ export class UxEventTrackingService {
 
   public constructor(eventPublisher?: TypedEventPublisher) {
     this.eventPublisher = eventPublisher ?? null;
+  }
+
+  /**
+   * Maps internal UxEventType to canonical platform.ux.* event type per §5.4
+   */
+  private toPlatformEventType(eventType: UxEventType): PlatformUxEventType {
+    return UX_TO_PLATFORM_EVENT_MAP[eventType] ?? "platform.ux.button_click";
   }
 
   public trackEvent<T extends UxEventType>(
@@ -136,8 +159,10 @@ export class UxEventTrackingService {
     this.eventLog.push(trackEntry);
 
     if (this.eventPublisher) {
+      // Use canonical platform.ux.* event type per §5.4
+      const platformEventType = this.toPlatformEventType(eventType);
       this.eventPublisher.publish({
-        eventType: trackEntry.eventType,
+        eventType: platformEventType,
         sessionId: trackEntry.sessionId,
         taskId: trackEntry.taskId,
         payload: {

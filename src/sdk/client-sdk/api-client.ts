@@ -404,7 +404,7 @@ export interface PlatformFactEvent<TPayload = unknown> {
   readonly correlationId?: string;
   readonly payloadHash: string;
   readonly payload: TPayload;
-  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
+  readonly replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden";
   readonly sourceOfTruth?: "platform" | "projection";
   readonly occurredAt: string;
 }

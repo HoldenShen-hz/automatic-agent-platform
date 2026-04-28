@@ -421,3 +421,169 @@ test("StructuredLogger.closeTransports calls close on closeable transports", asy
 
   assert.equal(closeCalled, true);
 });
+
+// R4-43 crosscutting_fabric field tests - reliability/security/governance classification
+test("StructuredLogger.log accepts crosscutting_fabric field with reliability category", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.log({
+    level: "info",
+    message: "reliability event",
+    crosscuttingFabric: "reliability",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "reliability");
+});
+
+test("StructuredLogger.log accepts crosscutting_fabric field with security category", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.log({
+    level: "warn",
+    message: "security event",
+    crosscuttingFabric: "security",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "security");
+});
+
+test("StructuredLogger.log accepts crosscutting_fabric field with governance category", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.log({
+    level: "info",
+    message: "governance event",
+    crosscuttingFabric: "governance",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "governance");
+});
+
+test("StructuredLogger.log preserves crosscuttingFabric in log entry", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.log({
+    level: "error",
+    message: "compliance check",
+    crosscuttingFabric: "governance",
+    data: { policyId: "pol_123" },
+  });
+
+  assert.equal(entry.crosscuttingFabric, "governance");
+  assert.deepEqual(entry.data, { policyId: "pol_123" });
+  assert.deepEqual(entry.structuredPayload, { policyId: "pol_123" });
+});
+
+test("StructuredLogger.debug with crosscuttingFabric reliability classification", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.debug("circuit breaker tripped", {
+    crosscuttingFabric: "reliability",
+    circuitId: "cb_1",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "reliability");
+  assert.equal(entry.level, "debug");
+  assert.deepEqual(entry.data?.crosscuttingFabric, "reliability");
+});
+
+test("StructuredLogger.warn with crosscuttingFabric security classification", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.warn("authentication failure", {
+    crosscuttingFabric: "security",
+    userId: "user_456",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "security");
+  assert.equal(entry.level, "warn");
+  assert.deepEqual(entry.data?.crosscuttingFabric, "security");
+});
+
+test("StructuredLogger.error with crosscuttingFabric governance classification", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.error("policy violation detected", {
+    crosscuttingFabric: "governance",
+    violationType: "data_access",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "governance");
+  assert.equal(entry.level, "error");
+});
+
+test("StructuredLogger crosscuttingFabric is preserved in recent entries", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  logger.log({ level: "info", message: "reliable operation", crosscuttingFabric: "reliability" });
+  logger.log({ level: "warn", message: "auth issue", crosscuttingFabric: "security" });
+  logger.log({ level: "info", message: "policy check", crosscuttingFabric: "governance" });
+
+  const recent = logger.recent(3);
+  assert.equal(recent[0]?.crosscuttingFabric, "reliability");
+  assert.equal(recent[1]?.crosscuttingFabric, "security");
+  assert.equal(recent[2]?.crosscuttingFabric, "governance");
+});
+
+test("StructuredLogger recentByTask preserves crosscuttingFabric", () => {
+  const logger = new StructuredLogger({ retentionLimit: 100 });
+  logger.log({
+    level: "error",
+    message: "task failure",
+    taskId: "task_abc",
+    crosscuttingFabric: "reliability",
+  });
+
+  const taskLogs = logger.recentByTask("task_abc");
+  assert.equal(taskLogs.length, 1);
+  assert.equal(taskLogs[0]?.crosscuttingFabric, "reliability");
+});
+
+test("StructuredLogger log entry with plane and crosscuttingFabric together", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    planeSourceFile: "/workspace/src/platform/execution/runners/task-executor.ts",
+  });
+  const entry = logger.log({
+    level: "info",
+    message: "execution completed",
+    crosscuttingFabric: "reliability",
+    taskId: "task_xyz",
+  });
+
+  assert.equal(entry.plane, "P4");
+  assert.equal(entry.crosscuttingFabric, "reliability");
+  assert.equal(entry.service, "task-executor");
+});
+
+test("StructuredLogger clear preserves crosscuttingFabric for new entries", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  logger.log({ level: "info", message: "msg1", crosscuttingFabric: "security" });
+  logger.clear();
+
+  const entry = logger.info("after clear");
+  assert.equal(entry.crosscuttingFabric, undefined);
+});
+
+test("StructuredLogger getEntries (backward compat) includes crosscuttingFabric", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  logger.log({ level: "info", message: "test", crosscuttingFabric: "governance" });
+
+  const entries = logger.getEntries();
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.crosscuttingFabric, "governance");
+});
+
+test("StructuredLogger transport receives entry with crosscuttingFabric", () => {
+  let receivedEntry: any = null;
+  const transport = {
+    name: "test-transport",
+    write: (entry: any) => {
+      receivedEntry = entry;
+    },
+  };
+
+  StructuredLogger.addTransport(transport as any);
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  logger.log({
+    level: "info",
+    message: "transport test",
+    crosscuttingFabric: "security",
+  });
+
+  assert.equal(receivedEntry?.crosscuttingFabric, "security");
+
+  StructuredLogger.removeTransport("test-transport");
+});

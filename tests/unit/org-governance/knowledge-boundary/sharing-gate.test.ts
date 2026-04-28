@@ -179,7 +179,7 @@ test("evaluateKnowledgeShare allows multiple grants, returns first matching", ()
       requesterOrgNodeId: "dept_hr",
       purpose: "audit",
       expiresAt: "2026-04-25T00:00:00.000Z",
-      transformMode: "field_filter",
+      transformMode: "field_filter" as const,
       allowedFieldKeys: ["secret"],
     },
   ];

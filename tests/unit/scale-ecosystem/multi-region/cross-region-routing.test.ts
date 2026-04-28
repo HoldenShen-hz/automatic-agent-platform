@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { CrossRegionRoutingService, type CrossRegionRouteRequest } from "../../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
-import { selectPreferredRegion } from "../../../../../src/scale-ecosystem/multi-region/region-router/index.js";
+import { CrossRegionRoutingService, type CrossRegionRouteRequest } from "../../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
+import { selectPreferredRegion } from "../../../../src/scale-ecosystem/multi-region/region-router/index.js";
 
 function createTestRegion(overrides: Partial<{
   regionId: string;

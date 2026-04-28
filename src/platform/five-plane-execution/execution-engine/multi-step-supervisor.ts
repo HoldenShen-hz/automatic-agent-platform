@@ -207,10 +207,30 @@ export async function executeStepLoop(
     }
 
     stepCompleted = false;
+    // R4-32 (INV-APPROVAL): Risk-proportional approval - use ApprovalPolicyEngine
+    const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
     for (let attempt = 1; attempt <= step.maxAttempts; attempt += 1) {
       executionAttemptCounter += 1;
       const executionId = newId("exec");
       const executionNow = nowIso();
+
+      // R4-32 (INV-APPROVAL): Evaluate risk-proportional approval using PolicyEngine
+      const approvalContext: ApprovalPolicyContext = {
+        decisionId: `approval_${executionId}`,
+        taskId,
+        executionId,
+        sessionId,
+        subjectType: "agent",
+        subjectId: step.agentId,
+        action: "invoke_tool",
+        riskCategory: "cost_sensitive", // Default risk category
+        mode: "auto", // Default mode for multi-step
+        stage: "execute",
+        estimatedCostUsd: execution.budgetUsdLimit,
+        metadata: { roleId: step.roleId, stepId: step.stepId },
+      };
+      const approvalResult = approvalEngine.evaluate(approvalContext);
+
       const execution: ExecutionRecord = {
         id: executionId,
         taskId,
@@ -225,7 +245,9 @@ export async function executeStepLoop(
         attempt: executionAttemptCounter,
         timeoutMs: step.timeoutMs,
         budgetUsdLimit: 1,
-        requiresApproval: 0,
+        // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
+        // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
+        requiresApproval: approvalResult.requiresApproval ? 1 : 0,
         sandboxMode: "workspace_write",
         allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
         allowedPathsJson: JSON.stringify([]),

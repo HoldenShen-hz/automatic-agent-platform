@@ -1349,7 +1349,7 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
     ...(input.correlationId != null ? { correlationId: input.correlationId } : {}),
     payloadHash: input.payloadHash ?? newId("payloadhash"),
     payload: input.payload,
-    replayBehavior: input.replayBehavior ?? "simulate_projection",
+    replayBehavior: input.replayBehavior ?? "simulate",
     sourceOfTruth: "projection",
     schemaOwner: input.schemaOwner ?? "oapeflir-projection",
     consumerContractTests: input.consumerContractTests ?? [],
