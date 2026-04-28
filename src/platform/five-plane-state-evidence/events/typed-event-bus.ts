@@ -357,6 +357,139 @@ export interface TypedEventPayloadMap {
     taskId?: string | null;
     occurredAt?: string | null;
   };
+  // §5.4 Canonical UX event taxonomy - platform.ux.* namespace
+  "platform.ux.button_click": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.form_submit": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.navigation": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.wizard_step": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.workflow_build": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.dashboard_view": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.search_query": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.filter_apply": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.export_action": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.share_action": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.onboarding_complete": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
+  "platform.ux.feedback_submit": {
+    eventId: string;
+    userId: string;
+    sessionId: string | null;
+    taskId: string | null;
+    abTestGroup: string | null;
+    elementId: string | null;
+    interactionType: string;
+    metadata: Record<string, string>;
+    occurredAt: string;
+  };
   // Performance test event types - used for benchmarks only
   "perf:test_event": Record<string, unknown>;
   "perf:burst_event": Record<string, unknown>;

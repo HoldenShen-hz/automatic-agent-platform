@@ -198,19 +198,19 @@
 
 ### 2.6 HIGH — workflow_debugger_contract 完全基于废弃模型
 
-| Contract                               | 问题                                                                                                         |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `workflow_debugger_contract.md` (全文) | 用 workflow_id/step_selector 作为 breakpoint 锚点；无 HarnessRun/NodeRun/PlanGraph 引用；无 v4.3 remediation |
+| Contract                               | 问题                                                                                                         | 状态   | 修复说明                                                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `workflow_debugger_contract.md` (全文) | 用 workflow_id/step_selector 作为 breakpoint 锚点；无 HarnessRun/NodeRun/PlanGraph 引用；无 v4.3 remediation | 已修复 | 根因：contract 基于废弃 workflow 调试器原型。修复：全文迁移到 HarnessRun/NodeRun/PlanGraph 语义；新增完整模型定义及 remediation 说明 |
 
 ### 2.7 MED — 其他 Contract 问题
 
 | Contract                                              | 问题                                                                                        |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `admin_console_and_human_takeover_contract.md:§4`     | Human takeover 用 step 语义，不要求 RuntimeStateMachine.transition()，无 budget reservation |
-| `agent_definition_lifecycle_contract.md:§3`           | lifecycle_state 迁移无 RuntimeStateMachine enforcement                                      |
-| `division_definition_contract.md:§2`                  | default_workflow/orchestration_workflow 作为 canonical reference                            |
-| `sla_tier_contract.md`                                | 无 HarnessRun/NodeRun 集成点，无 v4.3 remediation                                           |
-| `knowledge_boundary_and_federated_search_contract.md` | FederatedSearchRequest 缺 harnessRunId/nodeRunId 审计链                                     |
+| `admin_console_and_human_takeover_contract.md:§4` | Human takeover 用 step 语义，不要求 RuntimeStateMachine.transition()，无 budget reservation | 已修复 | 根因：takeover contract 未对齐 state machine。修复：§4 现强制所有状态变更必须通过 RuntimeStateMachine.transition() 并要求 budget reservation |
+| `agent_definition_lifecycle_contract.md:§3` | lifecycle_state 迁移无 RuntimeStateMachine enforcement | 已修复 | 根因：lifecycle contract 只给状态枚举，未定义受控迁移路径。修复：§3 现明确 lifecycle_state 变更必须通过 RuntimeStateMachine.transition() 执行 |
+| `division_definition_contract.md:§2` | default_workflow/orchestration_workflow 作为 canonical reference | 已修复 | 根因：contract 使用废弃 workflow 引用。修复：§2 现以 default_plan_blueprint_ref/orchestration_plan_blueprint_ref 为 canonical，旧 workflow 键仅保留兼容别名 |
+| `sla_tier_contract.md` | 无 HarnessRun/NodeRun 集成点，无 v4.3 remediation | 已修复 | 根因：SLA contract 未对齐 v4.3。修复：新增 §4A 明确集成字段表，要求 SLA 证据回链到 HarnessRun/NodeRun/NodeAttemptReceipt |
+| `knowledge_boundary_and_federated_search_contract.md` | FederatedSearchRequest 缺 harnessRunId/nodeRunId 审计链 | 已修复 | 根因：search request 缺少审计字段。修复：FederatedSearchRequest 现包含 requester_tenant_id/harness_run_id/node_run_id 审计链字段 |
 | `execution_plane_contract.md:§17`                     | 引用不存在的 governance_control_plane_contract.md                                           |
 
 ---
@@ -466,15 +466,15 @@
 
 | #     | 严重度 | 文件                                               | 问题                                                                                                                                                |
 | ----- | ------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R3-65 | HIGH   | typed_event_bus_contract.md                        | OAPEFLIR 事件 payload 全部用 task_id/workflow_id/execution_id；§5.5 要求 harnessRunId/nodeRunId/planGraphId                                         |
-| R3-66 | HIGH   | typed_event_bus_contract.md                        | PlanCreatedPayload 用 step_count 暗示线性步骤；§5 要求 PlanGraph(图结构)                                                                            |
-| R3-67 | HIGH   | typed_event_bus_contract.md                        | ExecutionCompletedPayload 定义 execution_id/outcome/output_refs 为执行结果模型；与 §5 NodeAttemptReceipt(receiptId/nodeRunId/attemptId/status) 冲突 |
-| R3-68 | HIGH   | explainability_and_stage_rationale_contract.md     | StageRationale 仅 7字段；§59.3 要求 11字段(缺 rationaleId/decisionInputRef/versionLockRef/visibilityLabels/confidence/alternatives)                 |
-| R3-69 | HIGH   | workflow_debugger_contract.md                      | BreakpointDefinition 用 workflow_id/step_selector；§5.5 应为 harnessRunId/nodeRunId                                                                 |
+| R3-65 | HIGH   | typed_event_bus_contract.md                        | OAPEFLIR 事件 payload 全部用 task_id/workflow_id/execution_id；§5.5 要求 harnessRunId/nodeRunId/planGraphId                                         | 已修复 | 根因：早期事件设计未接入 v4.3 运行链标识体系。修复：3A 节所有 payload 类型现以 harnessRunId/nodeRunId/planGraphId 为权威锚点 |
+| R3-66 | HIGH   | typed_event_bus_contract.md                        | PlanCreatedPayload 用 step_count 暗示线性步骤；§5 要求 PlanGraph(图结构)                                                                            | 已修复 | 根因：payload 使用线性模型。修复：用 nodeCount + edgeCount 取代 step_count，显式表达图结构 |
+| R3-67 | HIGH   | typed_event_bus_contract.md                        | ExecutionCompletedPayload 定义 execution_id/outcome/output_refs 为执行结果模型；与 §5 NodeAttemptReceipt(receiptId/nodeRunId/attemptId/status) 冲突 | 已修复 | 根因：payload 使用废弃 execution 模型。修复：现使用 NodeAttemptReceipt 模型字段 |
+| R3-68 | HIGH   | explainability_and_stage_rationale_contract.md     | StageRationale 仅 7字段；§59.3 要求 11字段(缺 rationaleId/decisionInputRef/versionLockRef/visibilityLabels/confidence/alternatives)                 | 已修复 | 根因：stage rationale 缺少架构要求字段。修复：现扩展到 14 字段，含 rationaleId/decisionInputRef/versionLockRef/visibilityLabels/confidence/alternatives |
+| R3-69 | HIGH   | workflow_debugger_contract.md                      | BreakpointDefinition 用 workflow_id/step_selector；§5.5 应为 harnessRunId/nodeRunId                                                                 | 已修复 | 根因：contract 基于废弃模型。修复：全文迁移到 harness_run_id/node_run_id/node_selector 锚点 |
 | R3-70 | HIGH   | startup_consistency_and_recovery_drill_contract.md | 一致性矩阵用 current_step_index/workflow_state；应为 HarnessRun.status/NodeRun.status/PlanGraph                                                     |
 | R3-71 | MEDIUM | budget-ledger-contract.md                          | BudgetReservation.resourceKind 枚举缺 §18 要求的 storage/bandwidth/memory                                                                           |
 | R3-72 | MEDIUM | naming_and_engineering_boundary_contract.md        | §2 列 WorkflowExecutor 为 canonical 工程名；§5 canonical 入口为 HarnessRuntime                                                                      |
-| R3-73 | MEDIUM | admin_console_and_human_takeover_contract.md       | takeover 操作用步骤语言(修改下一步/跳过某步/重试某步)；§5.5 操作粒度为 NodeRun                                                                      |
+| R3-73 | MEDIUM | admin_console_and_human_takeover_contract.md       | takeover 操作用步骤语言(修改下一步/跳过某步/重试某步)；§5.5 操作粒度为 NodeRun                                                                      | 已修复 | 根因：takeover contract 未对齐 state machine。修复：§4 现锚定到 HarnessRun/NodeRun/NodeAttempt，强制状态迁移与预算预留走正式控制链 |
 | R3-74 | MEDIUM | nl_entry_and_goal_decomposition_contract.md        | IntentParseResult 含 suggested_workflow_id；§5 所有执行为 HarnessRun，NL 应建议 domain/pack/recipe                                                  |
 | R3-75 | MEDIUM | typed_event_bus_contract.md                        | OAPEFLIR payload 缺 derivedFromEventId；event-envelope-contract §4 要求声明 derivation source                                                       |
 | R3-76 | MEDIUM | governance_control_plane_contract.md               | §15A release_transition_gate 值 off/suggest/shadow 与 §61.3 lifecycle 9态不映射                                                                     |

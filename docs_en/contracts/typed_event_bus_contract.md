@@ -32,157 +32,183 @@ Requirements:
 
 - All OAPEFLIR hub events must have both schema ref and stable TypeScript payload type name.
 - If `stage` exists, must come from canonical OAPEFLIR stage enumeration, not consumer-defined tags.
+- **v4.3 Mandatory Rule**: OAPEFLIR event payloads must use `harnessRunId`, `nodeRunId`, `planGraphId` as runtime chain anchors; use of deprecated `task_id`, `workflow_id`, `execution_id` as primary key fields is prohibited.
 
 ## 3A. OAPEFLIR Event Payload Types
 
-Phase 1-4 loop events must provide typed payloads, corresponding to ADR-079 and ADR-080:
+Phase 1-4 loop events must provide typed payloads, corresponding to ADR-079 and ADR-080. **All payloads must use canonical runtime chain identifiers**: `harnessRunId` / `nodeRunId` / `planGraphId`.
 
 ### 3A.1 Observe Hub Events
 
 `ObserveSignalsCollectedPayload`
 
-- `task_id`
-- `workflow_id?`
-- `loop_iteration`
-- `signal_count`
-- `source_refs`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `nodeRunId?` — optional node identifier
+- `planGraphId?` — optional plan graph identifier
+- `loopIteration` — loop iteration number
+- `signalCount` — signal count
+- `sourceRefs` — source reference list
+- `traceId` — trace ID
 
 `UnifiedObservationCreatedPayload`
 
-- `task_id`
-- `observation_id`
-- `situation_snapshot`
-- `metrics`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `observationId` — observation record ID
+- `situationSnapshot` — situation snapshot
+- `metrics` — metrics data
+- `traceId` — trace ID
+- `nodeRunId?` — optional node identifier
+- `planGraphId?` — optional plan graph identifier
 
 ### 3A.2 Assess Hub Events
 
 `AssessmentCompletedPayload`
 
-- `task_id`
-- `assessment_id`
-- `complexity`
-- `risk_level`
-- `confidence`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `assessmentId` — assessment ID
+- `complexity` — complexity level
+- `riskLevel` — risk level
+- `confidence` — confidence
+- `traceId` — trace ID
+- `nodeRunId?` — optional node identifier
 
 ### 3A.3 Plan Hub Events
 
-`PlanCreatedPayload`
+`PlanCreatedPayload` — **graph structure replaces linear steps**
 
-- `task_id`
-- `plan_id`
-- `version`
-- `strategy`
-- `step_count`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `planGraphId` — **canonical** PlanGraph identifier (formerly plan_id)
+- `planVersion` — plan version (formerly version)
+- `strategy` — planning strategy
+- `nodeCount` — graph node count (replaces `step_count`)
+- `edgeCount` — graph edge count
+- `traceId` — trace ID
+- `loopIteration?` — loop iteration
+
+**Rule**: `step_count` is deprecated. PlanCreatedPayload must use `nodeCount` + `edgeCount` to represent graph structure, reflecting PlanGraph's graph-based semantics.
 
 `ReplanTriggeredPayload`
 
-- `task_id`
-- `plan_id`
-- `old_version`
-- `new_version`
-- `trigger_type`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `planGraphId` — plan graph ID (formerly plan_id)
+- `baseGraphVersion` — base graph version (formerly old_version)
+- `newGraphVersion` — new graph version (formerly new_version)
+- `triggerType` — trigger type
+- `traceId` — trace ID
+- `nodeRunId?` — optional node identifier
 
 ### 3A.4 Execute Hub Events
 
-`ExecutionCompletedPayload`
+`ExecutionCompletedPayload` — **NodeAttemptReceipt model replaces old execution model**
 
-- `task_id`
-- `execution_id`
-- `outcome`
-- `output_refs`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `nodeRunId` — NodeRun identifier (formerly execution_id)
+- `attemptId` — attempt ID
+- `receiptId` — NodeAttemptReceipt ID
+- `attemptStatus` — attempt status (replaces outcome)
+- `outputRefs?` — output reference list
+- `traceId` — trace ID
+- `planGraphId?` — optional plan graph identifier
+
+**Rule**: Old `execution_id` / `outcome` fields are deprecated. ExecutionCompletedPayload must use the NodeAttemptReceipt model with `nodeRunId` + `attemptId` + `attemptStatus`, consistent with `node-run-attempt-receipt-contract.md` §5.
 
 ### 3A.5 Feedback Hub Events (ADR-079)
 
 `FeedbackCollectedPayload`
 
-- `task_id`
-- `feedback_id`
-- `signal_count`
-- `sources`
-- `trace_id`
+- `harnessRunId` — canonical runtime chain anchor
+- `nodeRunId?` — optional node identifier
+- `feedbackId` — feedback ID
+- `signalCount` — signal count
+- `sources` — source list
+- `traceId` — trace ID
+- `planGraphId?` — optional plan graph identifier
 
 `FeedbackLearningSignalPayload`
 
-- `signal_id`
-- `task_id`
-- `learning_signal_id`
-- `type`
-- `confidence`
-- `source_signals`
-- `trace_id`
+- `signalId` — signal ID (canonical)
+- `harnessRunId` — canonical runtime chain anchor
+- `learningSignalId` — learning signal ID
+- `type` — signal type
+- `confidence` — confidence
+- `sourceSignals` — source signal list
+- `traceId` — trace ID
+- `nodeRunId?` — optional node identifier
 
 ### 3A.6 Learn Hub Events (ADR-080)
 
 `LearningArtifactCreatedPayload`
 
-- `learning_object_id`
-- `kind`
-- `confidence`
-- `evidence_count`
-- `trace_id`
+- `learningObjectId` — learning object ID
+- `kind` — object type
+- `confidence` — confidence
+- `evidenceCount` — evidence count
+- `traceId` — trace ID
+- `harnessRunId?` — optional runtime chain anchor
+- `planGraphId?` — optional plan graph identifier
 
 `LearningObjectPromotedPayload`
 
-- `learning_object_id`
-- `from_status`
-- `to_status`
-- `namespace`
-- `trust_level`
-- `trace_id`
+- `learningObjectId` — learning object ID
+- `fromStatus` — original status
+- `toStatus` — new status
+- `namespace` — namespace
+- `trustLevel` — trust level
+- `traceId` — trace ID
+- `harnessRunId?` — optional runtime chain anchor
 
 ### 3A.7 Improve Hub Events (ADR-075)
 
 `ImprovementCandidateCreatedPayload`
 
-- `candidate_id`
-- `learning_object_id`
-- `priority`
-- `target_scope`
-- `trace_id`
+- `candidateId` — candidate ID
+- `learningObjectId` — learning object ID
+- `priority` — priority
+- `targetScope` — target scope
+- `traceId` — trace ID
+- `harnessRunId?` — optional runtime chain anchor
 
 `ImprovementPromotedPayload`
 
-- `candidate_id`
-- `from_level`
-- `to_level`
-- `triggered_by`
-- `duration_minutes`
-- `trace_id`
+- `candidateId` — candidate ID
+- `fromLevel` — original level
+- `toLevel` — new level
+- `triggeredBy` — triggered by
+- `durationMinutes` — duration in minutes
+- `traceId` — trace ID
+- `harnessRunId?` — optional runtime chain anchor
 
 `ImprovementAutoRollbackPayload`
 
-- `candidate_id`
-- `from_level`
-- `to_level`
-- `trigger`
-- `metrics_snapshot`
-- `trace_id`
+- `candidateId` — candidate ID
+- `fromLevel` — original level
+- `toLevel` — new level
+- `trigger` — trigger reason
+- `metricsSnapshot` — metrics snapshot
+- `traceId` — trace ID
+- `harnessRunId?` — optional runtime chain anchor
 
-### 3A.8 Release Events
+### 3A.8 Release Hub Events
 
 `ReleaseRolloutStartedPayload`
 
-- `task_id`
-- `rollout_id`
-- `loop_iteration`
-- `strategy_version`
-- `level` (`L0` | `L1` | `L2` | `L3` | `L4` | `L5`)
-- `triggered_by`
+- `harnessRunId` — canonical runtime chain anchor
+- `rolloutId` — rollout ID
+- `loopIteration` — loop iteration
+- `strategyVersion` — strategy version
+- `level` (`L0` | `L1` | `L2` | `L3` | `L4` | `L5`) — release level
+- `triggeredBy` — triggered by
+- `tier?` — SLA tier (if any)
 
 `ReleaseRolloutCompletedPayload`
 
-- `rollout_id`
-- `candidate_id`
-- `final_level`
-- `total_duration_minutes`
-- `final_metrics`
-- `trace_id`
+- `rolloutId` — rollout ID
+- `candidateId` — candidate ID
+- `finalLevel` — final level
+- `totalDurationMinutes` — total duration in minutes
+- `finalMetrics` — final metrics
+- `traceId` — trace ID
+- `harnessRunId?` — optional runtime chain anchor
 
 Rules:
 
@@ -197,23 +223,23 @@ If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is
 
 `PluginIsolationEventPayload`
 
-- `plugin_id`
-- `spi_type`
+- `pluginId`
+- `spiType`
 - `phase`
-- `reason_code`
-- `lifecycle_state`
-- `occurred_at`
+- `reasonCode`
+- `lifecycleState`
+- `occurredAt`
 
 `PluginInvocationEventPayload`
 
-- `plugin_id`
-- `spi_type`
+- `pluginId`
+- `spiType`
 - `phase`
-- `invocation_id`
+- `invocationId`
 - `status`
-- `occurred_at`
-- `duration_ms?`
-- `reason_code?`
+- `occurredAt`
+- `durationMs?`
+- `reasonCode?`
 
 Supplementary rules:
 
@@ -233,6 +259,23 @@ Supplementary rules:
 - This contract defines the type-freezing layer on top of it.
 - Transport upgrades must not break typed event contract.
 
+## 5.5 v4.3 Canonical Runtime Chain Identifiers
+
+**Mandatory Requirement**: All OAPEFLIR event payloads must use `harnessRunId` as the top-level anchor. Use of `task_id`, `workflow_id`, `execution_id` as primary keys is prohibited.
+
+| Deprecated Field | Canonical Replacement |
+| --- | --- |
+| `task_id` | `harnessRunId` |
+| `workflow_id` | `planGraphId` |
+| `execution_id` | `nodeRunId` + `attemptId` |
+| `step_count` | `nodeCount` + `edgeCount` (PlanGraph graph structure) |
+
 ## 6. Closure Conclusion
 
 Typed Event Bus is not another bus, but stronger schema and compatibility guarantees for the existing event system.
+
+## v4.3 Contract Remediation
+
+- R2-67 / T-67: OAPEFLIR event payloads originally used `task_id`/`workflow_id`/`execution_id`. The root cause was early event design did not connect to v4.3 runtime chain identifier system. Fix: Section 3A now uses `harnessRunId`/`nodeRunId`/`planGraphId` as authoritative anchors throughout; deprecated fields are retained only as backward-compatibility notes.
+- R2-68 / T-68: `PlanCreatedPayload` used `step_count` implying linear steps, conflicting with §5 PlanGraph graph structure. Fix: This document now uses `nodeCount` + `edgeCount` instead of `step_count`, explicitly expressing graph structure.
+- R2-69 / T-69: `ExecutionCompletedPayload` defined old execution model (execution_id/outcome), conflicting with §5 NodeAttemptReceipt (receiptId/nodeRunId/attemptId/status). Fix: This document now uses NodeAttemptReceipt model fields.

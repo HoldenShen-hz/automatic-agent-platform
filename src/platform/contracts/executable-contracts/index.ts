@@ -687,6 +687,7 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
   artifactRefs?: readonly ArtifactRef[];
   requestId?: string;
   requestHash?: string;
+  priority?: number;
   submittedAt?: string;
 }): RequestEnvelope {
   return {
@@ -696,6 +697,7 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
     principal: input.confirmedTaskSpec.principal,
     traceId: input.confirmedTaskSpec.traceId,
     idempotencyKey: input.confirmedTaskSpec.idempotencyKey,
+    priority: input.priority ?? 0,
     requestHash: input.requestHash ?? newId("reqhash"),
     constraintPackRef: input.confirmedTaskSpec.constraintPackRef,
     budgetIntent: input.budgetIntent,

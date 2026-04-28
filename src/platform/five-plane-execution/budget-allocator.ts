@@ -64,6 +64,10 @@ export class BudgetAllocator {
 
     // Route through state machine for proper CAS + event emission per §25.9
     const ledgerTransition = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetLedger",
+      entityId: input.ledger.budgetLedgerId,
+      principal: input.context.emittedBy,
       aggregateType: "BudgetLedger",
       aggregate: input.ledger,
       fromStatus: input.ledger.status,
@@ -106,6 +110,10 @@ export class BudgetAllocator {
       input.actualAmount <= input.reservation.amount &&
       input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
     const reservation = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: input.reservation.budgetReservationId,
+      principal: input.context.emittedBy,
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
@@ -145,6 +153,10 @@ export class BudgetAllocator {
       settlementKind: "release_unused",
     });
     const reservation = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetReservation",
+      entityId: input.reservation.budgetReservationId,
+      principal: input.context.emittedBy,
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
       fromStatus: input.reservation.status,

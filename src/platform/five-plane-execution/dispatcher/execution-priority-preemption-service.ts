@@ -118,7 +118,7 @@ function parseJsonArray(value: string): string[] {
 /** Maps task priority to a numeric rank for comparison (higher = more urgent). */
 function priorityRank(priority: TaskPriority): number {
   switch (priority) {
-    case "urgent":
+    case "critical":
       return 4;
     case "high":
       return 3;
@@ -188,10 +188,11 @@ export class ExecutionPriorityPreemptionService {
    * updates workflow state for recovery, and emits preemption events.
    */
   public preemptForUrgentTicket(input: PriorityPreemptionRequest): PriorityPreemptionDecision {
-    if (input.ticket.priority !== "urgent") {
+    // R6-8: Use canonical "critical" priority instead of legacy "urgent"
+    if (input.ticket.priority !== "critical") {
       return {
         outcome: "not_preempted",
-        trace: this.buildTrace(input.ticket.priority, null, null, "ticket_not_urgent"),
+        trace: this.buildTrace(input.ticket.priority, null, null, "ticket_not_critical"),
       };
     }
 
@@ -388,7 +389,7 @@ export class ExecutionPriorityPreemptionService {
 
     const latestTicket = this.store.worker.listExecutionTicketsByExecution(execution.id).at(-1) ?? null;
     const candidatePriority = resolveCandidatePriority(task.priority, latestTicket);
-    if (candidatePriority === "urgent") {
+    if (candidatePriority === "critical") {
       return null;
     }
 
@@ -498,7 +499,7 @@ export class ExecutionPriorityPreemptionService {
         }),
       lastErrorCode: existing?.lastErrorCode ?? null,
       retryCount: existing?.retryCount ?? Math.max(candidate.execution.attempt - 1, 0),
-      progressMessage: `preempted by urgent dispatch at ${candidate.recoveryStepId}`,
+      progressMessage: `preempted by critical dispatch at ${candidate.recoveryStepId}`,
       startedAt: existing?.startedAt ?? candidate.execution.startedAt ?? candidate.execution.createdAt,
       createdAt: existing?.createdAt ?? occurredAt,
       updatedAt: occurredAt,

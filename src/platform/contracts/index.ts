@@ -44,7 +44,6 @@ export {
 // Re-export canonical RequestEnvelope (from executable-contracts) as PlatformRequestEnvelope
 export {
   type RequestEnvelope as PlatformRequestEnvelope,
-  createRequestEnvelope as createPlatformRequestEnvelope,
 } from "./executable-contracts/index.js";
 
 // -----------------------------------------------------------------------------

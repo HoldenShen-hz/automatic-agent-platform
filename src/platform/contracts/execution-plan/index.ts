@@ -20,8 +20,8 @@ export {
 } from "../executable-contracts/index.js";
 
 /**
- * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
- * This type is retained for legacy adapter compatibility only.
+ * @deprecated ExecutionPlanStep is deprecated per §4.4. Use PlanGraphBundle/PlanNode from executable-contracts instead.
+ * This interface is retained for legacy adapter compatibility only.
  */
 export interface ExecutionPlanStep {
   stepId: string;

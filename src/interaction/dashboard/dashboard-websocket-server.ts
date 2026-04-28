@@ -9,7 +9,7 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import type { DashboardDelta, DashboardChange } from "./dashboard-projection-service.js";
+import type { DashboardDelta } from "./dashboard-projection-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -135,58 +135,80 @@ export class DashboardWebSocketServer {
   }
 
   /**
- * Registers a new client connection.
- *
- * @param channels - Channel-based subscriptions per UI spec (global/task:{id}/approvals/admin)
- * @param principal - Principal ID for authentication (required by §11.1)
- * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
- * @returns Client ID and acknowledgment message
- */
-public registerClient(
-  channels: readonly ChannelSubscription[],
-  principal: string,
-  tenantId: string,
-): { clientId: string; ack: DashboardPushMessage } {
-  if (this.connections.size >= this.config.maxClients) {
-    const errorAck = this.createMessage("error", "", {
-      error: "max_clients_reached",
-      message: `Maximum ${this.config.maxClients} clients allowed`,
-    });
-    return { clientId: "", ack: errorAck };
-  }
-
-  const clientId = newId("wsclient");
-  const connection: ConnectionState = {
-    clientId,
-    principal,
-    tenantId,
-    subscribedChannels: [...channels],
-    isConnected: true,
-    lastActivityAt: nowIso(),
-    heartbeatTimer: null,
-  };
-
-  this.connections.set(clientId, connection);
-
-  // Register channel subscriptions
-  for (const subscription of channels) {
-    const key = channelToKey(subscription.channel, subscription.filterId);
-    if (!this.channelSubscribers.has(key)) {
-      this.channelSubscribers.set(key, new Set());
+   * Validates authentication credentials for client registration.
+   * @param principal - Principal ID
+   * @param tenantId - Tenant ID
+   * @throws Error if credentials are invalid
+   */
+  private validateCredentials(principal: string, tenantId: string): void {
+    if (!principal || typeof principal !== "string" || principal.trim().length === 0) {
+      throw new Error("dashboard.auth: Principal is required for authentication");
     }
-    this.channelSubscribers.get(key)!.add(clientId);
+    if (!tenantId || typeof tenantId !== "string" || tenantId.trim().length === 0) {
+      throw new Error("dashboard.auth: Tenant ID is required for multi-tenant isolation");
+    }
+    // Validate format (basic validation - in production this would call IAM service)
+    if (principal.length > 256 || tenantId.length > 256) {
+      throw new Error("dashboard.auth: Invalid credential format");
+    }
   }
 
-  const ack = this.createMessage("connection_ack", clientId, {
-    clientId,
-    principal,
-    tenantId,
-    subscribedChannels: channels,
-    serverTime: nowIso(),
-  });
+  /**
+   * Registers a new client connection.
+   *
+   * @param channels - Channel-based subscriptions per UI spec (global/task:{id}/approvals/admin)
+   * @param principal - Principal ID for authentication (required by §11.1)
+   * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
+   * @returns Client ID and acknowledgment message
+   */
+  public registerClient(
+    channels: readonly ChannelSubscription[],
+    principal: string,
+    tenantId: string,
+  ): { clientId: string; ack: DashboardPushMessage } {
+    // Authenticate per §11.1
+    this.validateCredentials(principal, tenantId);
 
-  return { clientId, ack };
-}
+    if (this.connections.size >= this.config.maxClients) {
+      const errorAck = this.createMessage("error", "", {
+        error: "max_clients_reached",
+        message: `Maximum ${this.config.maxClients} clients allowed`,
+      });
+      return { clientId: "", ack: errorAck };
+    }
+
+    const clientId = newId("wsclient");
+    const connection: ConnectionState = {
+      clientId,
+      principal,
+      tenantId,
+      subscribedChannels: [...channels],
+      isConnected: true,
+      lastActivityAt: nowIso(),
+      heartbeatTimer: null,
+    };
+
+    this.connections.set(clientId, connection);
+
+    // Register channel subscriptions
+    for (const subscription of channels) {
+      const key = channelToKey(subscription.channel, subscription.filterId);
+      if (!this.channelSubscribers.has(key)) {
+        this.channelSubscribers.set(key, new Set());
+      }
+      this.channelSubscribers.get(key)!.add(clientId);
+    }
+
+    const ack = this.createMessage("connection_ack", clientId, {
+      clientId,
+      principal,
+      tenantId,
+      subscribedChannels: channels,
+      serverTime: nowIso(),
+    });
+
+    return { clientId, ack };
+  }
 
   /**
    * Unregisters a client connection.
@@ -254,7 +276,6 @@ public registerClient(
   /**
    * Pushes a dashboard delta to all relevant clients.
    * Maps delta change types to domain event types per UI spec.
-   * Routes based on channel-based subscription model.
    *
    * @param delta - Dashboard delta to push
    * @returns Number of clients that received the push
@@ -262,35 +283,9 @@ public registerClient(
   public pushDelta(delta: DashboardDelta): number {
     const affectedClients = new Set<string>();
 
-    // Map change types to channel-based routing per UI spec
-    for (const change of delta.changes) {
-      let channel: DashboardChannel;
-      let filterId: string | undefined;
-
-      switch (change.changeType) {
-        case "task_created":
-        case "task_updated":
-          channel = "task";
-          filterId = change.entityId;
-          break;
-        case "task_completed":
-        case "task_failed":
-          channel = "task";
-          filterId = change.entityId;
-          break;
-        case "incident_opened":
-        case "incident_resolved":
-          channel = "admin";
-          break;
-        case "system_health_changed":
-          channel = "global";
-          break;
-        default:
-          channel = "global";
-      }
-
-      const key = channelToKey(channel, filterId);
-      const clients = this.channelSubscribers.get(key);
+    // Find all clients subscribed to affected metrics
+    for (const metric of delta.affectedMetrics) {
+      const clients = this.dashboardSubscribers.get(metric);
       if (clients) {
         for (const clientId of clients) {
           affectedClients.add(clientId);
@@ -298,10 +293,10 @@ public registerClient(
       }
     }
 
-    // Also push to clients subscribed to global channel
-    const globalClients = this.channelSubscribers.get("global");
-    if (globalClients) {
-      for (const clientId of globalClients) {
+    // Also push to clients subscribed to "all" dashboards
+    const allClients = this.dashboardSubscribers.get("*");
+    if (allClients) {
+      for (const clientId of allClients) {
         affectedClients.add(clientId);
       }
     }
@@ -329,7 +324,7 @@ public registerClient(
     return sentCount;
   }
 
-  private mapChangeTypeToDomainEvent(changes: readonly DashboardChange[]): DashboardPushMessageType {
+  private mapChangeTypeToDomainEvent(changes: readonly DashboardDelta["changes"]): DashboardPushMessageType {
     if (changes.length === 0) return "dashboard_snapshot";
     const firstChange = changes[0];
     switch (firstChange.changeType) {
