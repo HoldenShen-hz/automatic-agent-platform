@@ -16,7 +16,7 @@ import type {
   DelegationOptions,
 } from "../../../../../src/platform/orchestration/agent-delegation/delegation-types.js";
 
-test("AgentContext structure", () => {
+test("AgentContext structure uses canonical sandbox tiers", () => {
   const ctx: AgentContext = {
     agentId: "agent-001",
     agentType: "orchestrator",
@@ -28,13 +28,13 @@ test("AgentContext structure", () => {
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-001",
     tenantId: null,
   };
   assert.equal(ctx.agentId, "agent-001");
   assert.equal(ctx.delegationDepth, 0);
-  assert.equal(ctx.sandboxTier, "none");
+  assert.equal(ctx.sandboxTier, "read_only");
 });
 
 test("AgentContext accepts canonical sandboxTier values", () => {

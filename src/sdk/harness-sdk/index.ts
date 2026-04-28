@@ -113,6 +113,18 @@ export class HarnessSdk {
     return this.runtime.evaluateRun(run);
   }
 
+  public traceReplay(runOrId: string, _traceEvents: readonly HarnessTimelineEvent[]): HarnessRun | null {
+    // traceReplay placeholder - HarnessRuntimeService.replayFromTrace not yet implemented
+    return this.runtime.restoreRun(runOrId);
+  }
+
+  public sideEffectReconciliation(runOrId: HarnessRun | string): HarnessRun {
+    // sideEffectReconciliation placeholder - HarnessRuntimeService.reconcileSideEffects not yet implemented
+    const run = this.requireRun(runOrId);
+    this.runtime.persistRun(run);
+    return run;
+  }
+
   private requireRun(runOrId: HarnessRun | string): HarnessRun {
     if (typeof runOrId !== "string") {
       return runOrId;

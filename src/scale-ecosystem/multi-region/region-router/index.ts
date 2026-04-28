@@ -2,10 +2,17 @@ import { z } from "zod";
 
 export const RegionDescriptorSchema = z.object({
   regionId: z.string().min(1),
+  provider: z.string().min(1),
+  endpoints: z.object({
+    api: z.string().url(),
+    grpc: z.string().url().optional(),
+    metrics: z.string().url().optional(),
+  }),
+  dataResidencyPolicy: z.enum(["local_only", "regional", "global"]),
   countryCode: z.string().min(2).default("XX"),
   jurisdiction: z.string().min(1),
   capabilities: z.array(z.string()).default([]),
-  status: z.enum(["active", "degraded", "disabled"]).default("active"),
+  status: z.enum(["active", "standby", "draining"]).default("active"),
   latencyScore: z.number().nonnegative().default(0),
   residencyAllowed: z.boolean().default(true),
 });

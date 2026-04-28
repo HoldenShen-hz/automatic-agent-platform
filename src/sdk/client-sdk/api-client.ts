@@ -13,6 +13,9 @@ export interface ApiClientConfig {
   bearerToken?: string;
   timeoutMs?: number;
   maxRetries?: number;
+  platformVersion?: string;
+  sdkVersion?: string;
+  contractVersion?: string;
 }
 
 export interface ApiRequestSpec {
@@ -83,6 +86,9 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
   }
   return {
     authorization: `Bearer ${config.bearerToken.trim()}`,
+    ...(config.platformVersion ? { "X-Platform-Version": config.platformVersion } : {}),
+    ...(config.sdkVersion ? { "X-SDK-Version": config.sdkVersion } : {}),
+    ...(config.contractVersion ? { "X-Contract-Version": config.contractVersion } : {}),
   };
 }
 

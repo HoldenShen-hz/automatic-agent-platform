@@ -23,7 +23,7 @@ function createMockContext(overrides: Partial<AgentContext> = {}): AgentContext 
       actions: ["read", "write"],
       constraints: {},
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "corr_1",
     tenantId: "tenant_1",
     ...overrides,

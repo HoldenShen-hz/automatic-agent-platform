@@ -33,7 +33,7 @@ function createParentContext(overrides: Partial<AgentContext> = {}): AgentContex
         allowedDomains: ["api.example.com"],
       },
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "test-correlation",
     tenantId: "tenant-1",
     ...overrides,

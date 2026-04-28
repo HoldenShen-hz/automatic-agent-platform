@@ -21,6 +21,7 @@ export interface ExplanationRequest {
 }
 
 export interface StageRationale {
+  readonly rationaleId: string;
   readonly taskId: string;
   readonly stageId: string;
   readonly decision: ExplanationRequest["decision"];
@@ -28,6 +29,12 @@ export interface StageRationale {
   readonly decisionFactors: readonly string[];
   readonly evidenceRefs: readonly string[];
   readonly riskNotes: readonly string[];
+  readonly alternatives?: readonly string[];
+  readonly confidence?: number;
+  readonly decisionInputRef?: string;
+  readonly versionLockRef?: string;
+  readonly visibilityLabels?: readonly string[];
+  readonly renderedExplanation?: string;
   readonly generatedAt: string;
 }
 
@@ -61,6 +68,7 @@ export class ExplanationPipelineService {
     const evidenceRefs = collectExplanationEvidenceIds(visibleEvidence);
     const redactedEvidenceRefs = collectExplanationEvidenceIds(hiddenEvidence);
     const rationale: StageRationale = {
+      rationaleId: newId("rationale"),
       taskId: request.taskId,
       stageId,
       decision: request.decision ?? "accept",

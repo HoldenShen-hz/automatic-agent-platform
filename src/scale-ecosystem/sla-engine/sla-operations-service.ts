@@ -2,6 +2,8 @@ import { detectSlaBreach, type SlaCommitment, type SlaObservation } from "./brea
 import { allocateReservedCapacity, type ReservedCapacityAllocation } from "./resource-allocator/index.js";
 import { resolveHighestPriorityTier, type SlaTier } from "./tier-resolver/index.js";
 
+export type WorkflowClass = "deterministic" | "llm_assisted" | "hitl_waiting";
+
 export interface SlaTierProfile extends SlaTier {
   readonly targetLatencyMs: number;
   readonly targetSuccessRate: number;
@@ -26,6 +28,7 @@ export interface SlaBreachRecord {
 export interface SlaOperationsRequest {
   readonly tiers: readonly SlaTierProfile[];
   readonly selectedTierId?: string | null;
+  readonly workflowClass: WorkflowClass;
   readonly observation: SlaObservation;
   readonly reservedCapacityPlan?: readonly ReservedCapacityAllocation[];
   readonly totalCapacityUnits: number;
@@ -41,6 +44,7 @@ export interface SlaOperationsDecision {
   readonly penaltyDecisions: readonly SlaPenaltyDecision[];
   readonly starvationProtected: boolean;
   readonly preemptionCapApplied: boolean;
+  readonly workflowClass: WorkflowClass;
 }
 
 export interface SlaEscalationAction {
@@ -54,6 +58,12 @@ export interface SlaPenaltyDecision {
   readonly penaltyType: "credit" | "capacity_boost" | "contract_review";
   readonly severity: "warning" | "critical";
 }
+
+const WORKFLOW_CLASS_LATENCY_MULTIPLIER: Record<WorkflowClass, number> = {
+  deterministic: 0.5,
+  llm_assisted: 1.5,
+  hitl_waiting: 2.0,
+};
 
 export class SlaOperationsService {
   public evaluate(request: SlaOperationsRequest): SlaOperationsDecision {
@@ -78,11 +88,14 @@ export class SlaOperationsService {
         penaltyDecisions: [],
         starvationProtected: true,
         preemptionCapApplied: false,
+        workflowClass: request.workflowClass,
       };
     }
 
+    const latencyMultiplier = WORKFLOW_CLASS_LATENCY_MULTIPLIER[request.workflowClass];
+    const adjustedMaxLatency = (selectedTier.targetLatencyMs ?? 1000) * latencyMultiplier;
     const commitment: SlaCommitment = {
-      maxLatencyMs: selectedTier.targetLatencyMs ?? 1000,
+      maxLatencyMs: adjustedMaxLatency,
       minSuccessRate: selectedTier.targetSuccessRate ?? 0.99,
       maxQueueWaitMs: selectedTier.maxQueueWaitMs ?? 3000,
     };
@@ -123,6 +136,7 @@ export class SlaOperationsService {
       penaltyDecisions,
       starvationProtected,
       preemptionCapApplied,
+      workflowClass: request.workflowClass,
     };
   }
 }

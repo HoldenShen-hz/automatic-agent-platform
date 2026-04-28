@@ -148,6 +148,9 @@ test("SubWorkflowExecutor.executeWorkflow() completes workflow", async () => {
   const result = await executor.executeWorkflow(executionId);
 
   assert.equal(result.status, "completed");
+  assert.equal(result.executionId, executionId);
+  assert.equal(result.harnessRunId, context.executionId);
+  assert.equal(result.planGraphBundleId, "wf-1");
   assert.equal(result.workflowId, "wf-1");
   // Verify via getSteps that steps are completed
   const steps = executor.getSteps(executionId);
@@ -170,6 +173,19 @@ test("SubWorkflowExecutor.executeWorkflow() marks steps as completed", async () 
   assert.equal(step!.status, "completed");
   assert.ok(step!.output);
   assert.ok(step!.completedAt);
+  assert.equal(step!.nodeId, "step-1");
+});
+
+test("SubWorkflowExecutor resolves nodeId and legacy stepId to the same step", () => {
+  const executor = new SubWorkflowExecutor();
+  const context = createTestContext();
+  const definition = createWorkflowDefinition("wf-node", [
+    createStepDefinition("legacy-step", "Named Step", "action-1", { nodeId: "node-primary" }),
+  ]);
+
+  const executionId = executor.createWorkflow(definition, context);
+  assert.equal(executor.getStep(executionId, "legacy-step")?.nodeId, "node-primary");
+  assert.equal(executor.getStep(executionId, "node-primary")?.stepId, "legacy-step");
 });
 
 test("SubWorkflowExecutor.executeWorkflow() fails for unknown workflow", async () => {

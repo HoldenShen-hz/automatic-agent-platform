@@ -24,7 +24,7 @@ function createParentContext(overrides: Partial<AgentContext> = {}): AgentContex
         allowedDomains: ["api.example.com", "cdn.example.com"],
       },
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "test-correlation",
     tenantId: "tenant-1",
     ...overrides,
@@ -68,7 +68,7 @@ test("ContextIsolator.isolate() creates child context with correct depth", () =>
 
 test("ContextIsolator.isolate() inherits sandbox tier from parent", () => {
   const isolator = createContextIsolator();
-  const parent = createParentContext({ sandboxTier: "container" });
+  const parent = createParentContext({ sandboxTier: "workspace_write" });
   const spec = createDelegationSpec();
 
   const result = isolator.isolate(parent, spec);
@@ -88,7 +88,7 @@ test("ContextIsolator.isolate() preserves tenant context", () => {
 
 test("ContextIsolator.isolate() uses SANDBOXED level for container parent", () => {
   const isolator = createContextIsolator();
-  const parent = createParentContext({ sandboxTier: "container" });
+  const parent = createParentContext({ sandboxTier: "workspace_write" });
   const spec = createDelegationSpec();
 
   const result = isolator.isolate(parent, spec);
@@ -100,7 +100,7 @@ test("ContextIsolator.isolate() uses PARTIAL level when permission ratio is mode
   const isolator = createContextIsolator();
   const parent = createParentContext({
     delegationDepth: 0,
-    sandboxTier: "process",
+    sandboxTier: "read_only",
     permissions: {
       resources: ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10"],
       actions: ["a1", "a2", "a3", "a4", "a5"],

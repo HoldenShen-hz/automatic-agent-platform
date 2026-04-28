@@ -1,7 +1,86 @@
+/**
+ * platform-contracts.ts
+ *
+ * Central platform-level contract definitions.
+ * Canonical types are exported from executable-contracts/ or their respective directories.
+ * This file provides platform-level aggregation and deprecated legacy type stubs.
+ */
+
 import { ValidationError } from "../errors.js";
-import type { PlanStep } from "../../orchestration/oapeflir/types/plan.js";
-import type { SideEffectStatus } from "../executable-contracts/index.js";
 import { newId, nowIso } from "./ids.js";
+
+// =============================================================================
+// Re-exports from executable-contracts (canonical types per §4)
+// =============================================================================
+
+// PlanGraphBundle - canonical P3→P4 execution contract (re-exported for convenience)
+export {
+  type PlanGraphBundle,
+  type PlanGraph,
+  type PlanNode,
+  type PlanEdge,
+  type GraphValidationReport,
+  type GraphPatch,
+  type GraphPatchOperation,
+  type ReadyNodeSchedulingPolicy,
+  createPlanGraphBundle,
+  createGraphPatch,
+} from "../executable-contracts/index.js";
+
+// NodeAttemptReceipt - canonical P4→P3 execution receipt (re-exported for convenience)
+export {
+  type NodeAttemptReceipt,
+  type AppErrorRef,
+  createNodeAttemptReceipt,
+} from "../executable-contracts/index.js";
+
+// =============================================================================
+// Re-exports from control-directive (canonical directives per §4.3)
+// =============================================================================
+
+// OperationalDirective and DecisionDirective - canonical P2→P3/P4 directives
+export {
+  type OperationalDirectiveType,
+  type OperationalDirectiveScope,
+  type OperationalDirective,
+  type DecisionDirectiveType,
+  type DecisionDirectiveScope,
+  type DecisionDirective,
+  createOperationalDirective,
+  createDecisionDirective,
+  // Legacy - deprecated
+  type ControlDirectiveKind,
+  type ControlDirective,
+  createControlDirective,
+} from "../control-directive/index.js";
+
+// =============================================================================
+// Re-exports from execution-plan (deprecated legacy types)
+// =============================================================================
+
+// Legacy ExecutionPlan - deprecated, use PlanGraphBundle instead
+export {
+  // Legacy - deprecated
+  type ExecutionPlan,
+  type ExecutionPlanStep,
+  createExecutionPlan,
+} from "../execution-plan/index.js";
+
+// =============================================================================
+// Re-exports from execution-receipt (deprecated legacy types)
+// =============================================================================
+
+// Legacy ExecutionReceipt - deprecated, use NodeAttemptReceipt instead
+export {
+  // Legacy - deprecated
+  type ExecutionReceipt,
+  type ExecutionReceiptStatus,
+  createExecutionReceipt,
+} from "../execution-receipt/index.js";
+
+// =============================================================================
+// Platform-Level Contract Types
+// =============================================================================
 
 export interface PlatformPrincipal {
   readonly actorId: string;
@@ -22,30 +101,6 @@ export interface RequestEnvelope<TPayload = unknown> {
   readonly metadata: Readonly<Record<string, string>>;
 }
 
-export type ControlDirectiveType =
-  | "mode_switch"
-  | "pause"
-  | "resume"
-  | "rollback"
-  | "quota_adjust"
-  | "kill";
-
-export interface ControlDirectiveScope {
-  readonly tenantId?: string;
-  readonly workflowId?: string;
-  readonly workerId?: string;
-}
-
-export interface ControlDirective<TParams extends Record<string, unknown> = Record<string, unknown>> {
-  readonly directiveId: string;
-  readonly type: ControlDirectiveType;
-  readonly targetScope: ControlDirectiveScope;
-  readonly issuedBy: PlatformPrincipal;
-  readonly reason: string;
-  readonly params: TParams;
-  readonly expiresAt?: string;
-}
-
 export interface SideEffectExpectation {
   readonly effectId: string;
   readonly category: "read" | "write" | "notification" | "artifact" | "external_api";
@@ -58,7 +113,7 @@ export interface SideEffectRecord {
   readonly effectId: string;
   readonly category: SideEffectExpectation["category"];
   readonly targetRef: string;
-  readonly status: SideEffectStatus | "rolled_back";
+  readonly status: "proposed" | "approved" | "reserved" | "committing" | "committed" | "confirming" | "confirmed" | "ambiguous" | "manual_review_required" | "reconciling" | "compensation_required" | "compensating" | "compensated" | "failed" | "revoked" | "expired" | "rolled_back";
   readonly summary?: string;
   readonly evidenceRef?: string;
 }
@@ -69,34 +124,10 @@ export interface ExecutionPlanBudget {
   readonly maxCost: number;
 }
 
-export interface ExecutionPlan {
-  readonly planId: string;
-  readonly traceId: string;
-  readonly principal: PlatformPrincipal;
-  readonly workflowRunId: string;
-  readonly steps: readonly PlanStep[];
-  readonly fallbackStrategy: "retry" | "replan" | "escalate" | "abort";
-  readonly approvalGates: readonly string[];
-  readonly sideEffectExpectations: readonly SideEffectExpectation[];
-  readonly budget: ExecutionPlanBudget;
-  readonly createdAt: string;
-}
-
 export interface ExecutionReceiptErrorDetail {
   readonly code: string;
   readonly message: string;
   readonly retryable: boolean;
-}
-
-export interface ExecutionReceipt {
-  readonly receiptId: string;
-  readonly planId: string;
-  readonly stepId: string;
-  readonly status: "succeeded" | "failed" | "timeout" | "cancelled" | "awaiting_approval";
-  readonly durationMs: number;
-  readonly sideEffects: readonly SideEffectRecord[];
-  readonly evidenceRefs: readonly string[];
-  readonly errorDetail?: ExecutionReceiptErrorDetail;
 }
 
 export type StateCommandType =
@@ -115,6 +146,35 @@ export interface StateCommand<TPayload = unknown> {
   readonly fencingToken: string;
   readonly payload: TPayload;
 }
+
+export interface EvidenceRecord {
+  readonly recordId: string;
+  readonly traceId: string;
+  readonly principal: PlatformPrincipal;
+  readonly category: "decision" | "execution" | "approval" | "audit" | "compliance";
+  readonly targetRef: string;
+  readonly content: unknown;
+  readonly timestamp: string;
+  readonly metadata: Readonly<Record<string, string>>;
+}
+
+export interface ProjectionUpdate {
+  readonly projectionId: string;
+  readonly projectionType: string;
+  readonly version: number;
+  readonly timestamp: string;
+  readonly sourceEvents: readonly string[];
+  readonly patch: Readonly<Record<string, unknown>>;
+  readonly metadata: {
+    readonly rebuiltAt?: string | undefined;
+    readonly triggeredBy: string;
+    readonly idempotencyKey: string;
+  };
+}
+
+// =============================================================================
+// Factory Functions
+// =============================================================================
 
 function stringifyRecord(input?: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> {
   if (input == null) {
@@ -161,58 +221,6 @@ export function createRequestEnvelope<TPayload>(input: {
   };
 }
 
-export function createControlDirective<TParams extends Record<string, unknown>>(input: {
-  type: ControlDirectiveType;
-  targetScope?: ControlDirectiveScope;
-  issuedBy: PlatformPrincipal;
-  reason: string;
-  params?: TParams;
-  directiveId?: string;
-  expiresAt?: string;
-}): ControlDirective<TParams> {
-  void input;
-  throw new ValidationError(
-    "platform_contracts.legacy_control_directive_forbidden",
-    "Legacy ControlDirective factory is disabled. Use executable-contracts or governance plane directives.",
-  );
-}
-
-export function createExecutionPlan(input: {
-  traceId: string;
-  principal: PlatformPrincipal;
-  workflowRunId: string;
-  steps: readonly PlanStep[];
-  fallbackStrategy?: ExecutionPlan["fallbackStrategy"];
-  approvalGates?: readonly string[];
-  sideEffectExpectations?: readonly SideEffectExpectation[];
-  budget: ExecutionPlanBudget;
-  planId?: string;
-  createdAt?: string;
-}): ExecutionPlan {
-  void input;
-  throw new ValidationError(
-    "platform_contracts.legacy_execution_plan_forbidden",
-    "Legacy ExecutionPlan factory is disabled. Use PlanGraphBundle from executable-contracts.",
-  );
-}
-
-export function createExecutionReceipt(input: {
-  planId: string;
-  stepId: string;
-  status: ExecutionReceipt["status"];
-  durationMs: number;
-  sideEffects?: readonly SideEffectRecord[];
-  evidenceRefs?: readonly string[];
-  errorDetail?: ExecutionReceiptErrorDetail;
-  receiptId?: string;
-}): ExecutionReceipt {
-  void input;
-  throw new ValidationError(
-    "platform_contracts.legacy_execution_receipt_forbidden",
-    "Legacy ExecutionReceipt factory is disabled. Use NodeAttemptReceipt from executable-contracts.",
-  );
-}
-
 export function createStateCommand<TPayload>(input: {
   traceId: string;
   principal: PlatformPrincipal;
@@ -232,31 +240,6 @@ export function createStateCommand<TPayload>(input: {
     expectedVersion: input.expectedVersion,
     fencingToken: input.fencingToken,
     payload: input.payload,
-  };
-}
-
-export interface EvidenceRecord {
-  readonly recordId: string;
-  readonly traceId: string;
-  readonly principal: PlatformPrincipal;
-  readonly category: "decision" | "execution" | "approval" | "audit" | "compliance";
-  readonly targetRef: string;
-  readonly content: unknown;
-  readonly timestamp: string;
-  readonly metadata: Readonly<Record<string, string>>;
-}
-
-export interface ProjectionUpdate {
-  readonly projectionId: string;
-  readonly projectionType: string;
-  readonly version: number;
-  readonly timestamp: string;
-  readonly sourceEvents: readonly string[];
-  readonly patch: Readonly<Record<string, unknown>>;
-  readonly metadata: {
-    readonly rebuiltAt?: string | undefined;
-    readonly triggeredBy: string;
-    readonly idempotencyKey: string;
   };
 }
 

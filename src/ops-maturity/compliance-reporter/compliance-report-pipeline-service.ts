@@ -50,6 +50,42 @@ export interface ComplianceReportHumanSignoff {
   readonly status: "signed" | "signoff_overdue" | "not_attested_expired";
 }
 
+export interface ControlCoverageReport {
+  readonly controlId: string;
+  readonly framework: string;
+  readonly coverageRatio: number;
+  readonly coveredEvidenceTypes: readonly string[];
+  readonly missingEvidenceTypes: readonly string[];
+  readonly freshness: string;
+  readonly owner: string;
+  readonly exception?: string;
+}
+
+export interface GapAnalysisResult {
+  readonly controlId: string;
+  readonly gapSeverity: "low" | "medium" | "high" | "critical";
+  readonly missingEvidence: readonly string[];
+  readonly recommendation: string;
+}
+
+export class GapAnalyzerService {
+  public analyze(controls: readonly string[], evidenceMap: Readonly<Record<string, readonly string[]>>): GapAnalysisResult[] {
+    const results: GapAnalysisResult[] = [];
+    for (const controlId of controls) {
+      const evidenceTypes = evidenceMap[controlId] ?? [];
+      const missingEvidence = evidenceTypes.length === 0 ? [controlId] : [];
+      const gapSeverity: GapAnalysisResult["gapSeverity"] = missingEvidence.length > 0 ? "high" : "low";
+      results.push({
+        controlId,
+        gapSeverity,
+        missingEvidence,
+        recommendation: missingEvidence.length > 0 ? `Missing evidence for control ${controlId}` : "Control satisfied",
+      });
+    }
+    return results;
+  }
+}
+
 export class ComplianceReportPipelineService {
   private readonly templates: readonly ComplianceReportTemplateDefinition[];
   private readonly accessLog = new Map<string, ComplianceReportAccessReceipt[]>();

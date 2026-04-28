@@ -17,6 +17,8 @@ import type { DashboardDelta } from "./dashboard-projection-service.js";
 
 export interface WebSocketClient {
   readonly clientId: string;
+  readonly principal: string;
+  readonly tenantId: string;
   readonly subscribedDashboards: readonly string[];
   readonly createdAt: string;
   isConnected: boolean;
@@ -47,6 +49,8 @@ const DEFAULT_CONFIG: WebSocketServerConfig = {
 
 interface ConnectionState {
   clientId: string;
+  principal: string;
+  tenantId: string;
   subscribedDashboards: Set<string>;
   isConnected: boolean;
   lastActivityAt: string;
@@ -98,46 +102,56 @@ export class DashboardWebSocketServer {
   }
 
   /**
-   * Registers a new client connection.
-   *
-   * @param dashboardIds - Dashboards the client wants to subscribe to
-   * @returns Client ID and acknowledgment message
-   */
-  public registerClient(dashboardIds: readonly string[]): { clientId: string; ack: DashboardPushMessage } {
-    if (this.connections.size >= this.config.maxClients) {
-      const errorAck = this.createMessage("error", "", {
-        error: "max_clients_reached",
-        message: `Maximum ${this.config.maxClients} clients allowed`,
-      });
-      return { clientId: "", ack: errorAck };
-    }
-
-    const clientId = newId("wsclient");
-    const connection: ConnectionState = {
-      clientId,
-      subscribedDashboards: new Set(dashboardIds),
-      isConnected: true,
-      lastActivityAt: nowIso(),
-      heartbeatTimer: null,
-    };
-
-    this.connections.set(clientId, connection);
-
-    for (const dashboardId of dashboardIds) {
-      if (!this.dashboardSubscribers.has(dashboardId)) {
-        this.dashboardSubscribers.set(dashboardId, new Set());
-      }
-      this.dashboardSubscribers.get(dashboardId)!.add(clientId);
-    }
-
-    const ack = this.createMessage("connection_ack", clientId, {
-      clientId,
-      subscribedDashboards: dashboardIds,
-      serverTime: nowIso(),
+ * Registers a new client connection.
+ *
+ * @param dashboardIds - Dashboards the client wants to subscribe to
+ * @param principal - Principal ID for authentication (required by §11.1)
+ * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
+ * @returns Client ID and acknowledgment message
+ */
+public registerClient(
+  dashboardIds: readonly string[],
+  principal: string,
+  tenantId: string,
+): { clientId: string; ack: DashboardPushMessage } {
+  if (this.connections.size >= this.config.maxClients) {
+    const errorAck = this.createMessage("error", "", {
+      error: "max_clients_reached",
+      message: `Maximum ${this.config.maxClients} clients allowed`,
     });
-
-    return { clientId, ack };
+    return { clientId: "", ack: errorAck };
   }
+
+  const clientId = newId("wsclient");
+  const connection: ConnectionState = {
+    clientId,
+    principal,
+    tenantId,
+    subscribedDashboards: new Set(dashboardIds),
+    isConnected: true,
+    lastActivityAt: nowIso(),
+    heartbeatTimer: null,
+  };
+
+  this.connections.set(clientId, connection);
+
+  for (const dashboardId of dashboardIds) {
+    if (!this.dashboardSubscribers.has(dashboardId)) {
+      this.dashboardSubscribers.set(dashboardId, new Set());
+    }
+    this.dashboardSubscribers.get(dashboardId)!.add(clientId);
+  }
+
+  const ack = this.createMessage("connection_ack", clientId, {
+    clientId,
+    principal,
+    tenantId,
+    subscribedDashboards: dashboardIds,
+    serverTime: nowIso(),
+  });
+
+  return { clientId, ack };
+}
 
   /**
    * Unregisters a client connection.
@@ -286,6 +300,8 @@ export class DashboardWebSocketServer {
   public getConnectedClients(): WebSocketClient[] {
     return [...this.connections.values()].map((conn) => ({
       clientId: conn.clientId,
+      principal: conn.principal,
+      tenantId: conn.tenantId,
       subscribedDashboards: [...conn.subscribedDashboards],
       createdAt: conn.lastActivityAt,
       isConnected: conn.isConnected,

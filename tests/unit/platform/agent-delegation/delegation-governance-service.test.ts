@@ -21,7 +21,7 @@ function createMockParentContext(overrides: Partial<AgentContext> = {}): AgentCo
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
     ...overrides,

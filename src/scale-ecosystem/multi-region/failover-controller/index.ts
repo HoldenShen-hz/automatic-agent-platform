@@ -12,6 +12,13 @@ export interface RegionFailoverDecision {
   readonly shouldFailover: boolean;
   readonly targetRegionId: string | null;
   readonly rationale: string;
+  readonly fencingEpoch: number;
+}
+
+let fencingEpochCounter = 0;
+
+export function getNextFencingEpoch(): number {
+  return ++fencingEpochCounter;
 }
 
 export function resolveRegionFailover(input: RegionFailoverInput): RegionFailoverDecision {
@@ -28,6 +35,7 @@ export function resolveRegionFailover(input: RegionFailoverInput): RegionFailove
       shouldFailover: false,
       targetRegionId: null,
       rationale: degraded ? "multi_region.no_candidate_available" : "multi_region.primary_within_threshold",
+      fencingEpoch: getNextFencingEpoch(),
     };
   }
 
@@ -42,5 +50,6 @@ export function resolveRegionFailover(input: RegionFailoverInput): RegionFailove
       : latencyBreached
         ? "multi_region.primary_latency_breached"
         : "multi_region.primary_error_rate_breached",
+    fencingEpoch: getNextFencingEpoch(),
   };
 }

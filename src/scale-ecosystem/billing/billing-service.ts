@@ -336,34 +336,57 @@ export class BillingService {
       recordedAt: capturedAt,
     };
 
-    // Persist all records atomically
-    this.db.transaction(() => {
-      this.store.billing.insertUsageEvent(usageEvent);
-      if (quotaCounter != null) {
-        this.store.billing.upsertQuotaCounter(quotaCounter);
-      }
-      this.store.billing.insertLedgerEntry(ledgerEntry);
-    });
+    let budgetSettlement:
+      | ReturnType<typeof createBudgetSettlement>
+      | undefined;
+    let settledBudget:
+      | ReturnType<BudgetAllocator["settle"]>
+      | null = null;
 
-    const budgetSettlement = reservedBudget == null
-      ? undefined
-      : createBudgetSettlement({
-        budgetReservationId: reservedBudget.reservation.budgetReservationId,
-        actualAmount: ledgerEntry.amountUsd,
-        settlementKind: "final",
+    try {
+      // Persist all records atomically
+      this.db.transaction(() => {
+        this.store.billing.insertUsageEvent(usageEvent);
+        if (quotaCounter != null) {
+          this.store.billing.upsertQuotaCounter(quotaCounter);
+        }
+        this.store.billing.insertLedgerEntry(ledgerEntry);
       });
-    const settledBudget = reservedBudget == null
-      ? null
-      : this.budgetAllocator.settle({
-        ledger: reservedBudget.ledger,
-        reservation: reservedBudget.reservation,
-        actualAmount: ledgerEntry.amountUsd,
-        context: {
-          tenantId: input.budgetControl!.tenantId,
-          traceId: input.budgetControl!.traceId,
-          emittedBy: input.budgetControl!.emittedBy,
-        },
-      });
+
+      budgetSettlement = reservedBudget == null
+        ? undefined
+        : createBudgetSettlement({
+          budgetReservationId: reservedBudget.reservation.budgetReservationId,
+          actualAmount: ledgerEntry.amountUsd,
+          settlementKind: "final",
+        });
+      settledBudget = reservedBudget == null
+        ? null
+        : this.budgetAllocator.settle({
+          ledger: reservedBudget.ledger,
+          reservation: reservedBudget.reservation,
+          actualAmount: ledgerEntry.amountUsd,
+          context: {
+            tenantId: input.budgetControl!.tenantId,
+            traceId: input.budgetControl!.traceId,
+            emittedBy: input.budgetControl!.emittedBy,
+          },
+        });
+    } catch (error) {
+      if (reservedBudget != null) {
+        this.budgetAllocator.release({
+          ledger: reservedBudget.ledger,
+          reservation: reservedBudget.reservation,
+          reasonCode: "budget.billing_usage_record_failed",
+          context: {
+            tenantId: input.budgetControl!.tenantId,
+            traceId: input.budgetControl!.traceId,
+            emittedBy: input.budgetControl!.emittedBy,
+          },
+        });
+      }
+      throw error;
+    }
 
     return {
       usageEvent,

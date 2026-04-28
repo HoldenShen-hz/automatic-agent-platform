@@ -5,7 +5,7 @@
  */
 
 import { ValidationError } from "../../platform/contracts/errors.js";
-import { normalizeSandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
 export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
@@ -24,8 +24,13 @@ export interface PluginResourceLimits {
 }
 
 export interface PluginSecurityConfig {
-  sandboxTier: SandboxModeLike;
+  sandboxTier: SandboxMode;
   egressDomains: string[];
+}
+
+export interface PluginSecurityInput {
+  sandboxTier?: SandboxModeLike;
+  egressDomains?: string[];
 }
 
 export interface PluginDefinition {
@@ -59,7 +64,7 @@ export interface DefinePluginOptions {
   capabilities?: PluginCapability[];
   resourceLimits?: PluginResourceLimits;
   dependencies?: string[];
-  security?: PluginSecurityConfig;
+  security?: PluginSecurityInput;
   spiTypes?: PluginType[];
   domainIds?: string[];
   sbomRef?: string | null;

@@ -124,6 +124,44 @@ export class RuntimeMetricsRegistry {
     this.observeHistogram("llm_total_seconds", { model, provider }, totalSeconds);
   }
 
+  // §12.4 harness.* metrics - wire up missing canonical metrics
+
+  public recordHarnessRunDuration(runId: string, durationMs: number, status: string): void {
+    this.observeHistogram("harness_run_duration_ms", { runId, status }, durationMs);
+    this.incrementCounter("harness_run_total", { runId, status }, 1);
+  }
+
+  public recordHarnessStepCount(runId: string, stepCount: number): void {
+    this.setGauge("harness_step_count", { runId }, stepCount);
+  }
+
+  public recordHarnessBudgetConsumed(runId: string, budgetId: string, consumedUnits: number, totalUnits: number): void {
+    this.observeHistogram("harness_budget_consumed_units", { runId, budgetId }, consumedUnits);
+    this.setGauge("harness_budget_total_units", { runId, budgetId }, totalUnits);
+    const utilizationPercent = totalUnits > 0 ? (consumedUnits / totalUnits) * 100 : 0;
+    this.setGauge("harness_budget_utilization_percent", { runId, budgetId }, utilizationPercent);
+  }
+
+  public recordHarnessExecutionLatency(runId: string, executionId: string, latencyMs: number): void {
+    this.observeHistogram("harness_execution_latency_ms", { runId }, latencyMs);
+  }
+
+  public recordHarnessTaskStarted(runId: string, taskId: string): void {
+    this.incrementCounter("harness_task_started_total", { runId }, 1);
+  }
+
+  public recordHarnessTaskCompleted(runId: string, taskId: string, status: string): void {
+    this.incrementCounter("harness_task_completed_total", { runId, status }, 1);
+  }
+
+  public recordHarnessPluginInvoked(runId: string, pluginId: string, success: boolean): void {
+    this.incrementCounter("harness_plugin_invoked_total", { runId, pluginId, success: String(success) }, 1);
+  }
+
+  public recordHarnessPolicyDecision(runId: string, policyType: string, outcome: string): void {
+    this.incrementCounter("harness_policy_decision_total", { runId, policyType, outcome }, 1);
+  }
+
   public recordKnowledgeQuery(operation: string, durationMs: number, result: string): void {
     this.observeHistogram("knowledge_query_duration_ms", { operation }, durationMs);
     this.incrementCounter("knowledge_query_total", { operation, result }, 1);

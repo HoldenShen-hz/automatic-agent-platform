@@ -24,12 +24,14 @@ export type CostSubjectType = "task" | "workflow" | "agent" | "model" | "domain"
 export interface CostAttributionRecord {
   readonly subjectType: CostSubjectType;
   readonly subjectId: string;
-  readonly costType: "model" | "tool" | "storage" | "runtime" | "network";
+  readonly costType: "llm" | "tool" | "compute" | "storage" | "egress" | "humanReview" | "total";
   readonly amountUsd: number;
-  readonly humanReviewCostUsd?: number;
-  readonly egressCostUsd?: number;
+  readonly llmCostUsd?: number;
+  readonly toolCostUsd?: number;
   readonly computeCostUsd?: number;
   readonly storageCostUsd?: number;
+  readonly egressCostUsd?: number;
+  readonly humanReviewCostUsd?: number;
   readonly qualityRisk?: "low" | "medium" | "high";
   readonly decisionRef: string;
   readonly modelRef?: string;
@@ -130,7 +132,7 @@ export class CostOptimizationService {
     baseRisk: CostOptimizationRecommendation["riskLevel"],
   ): CostOptimizationRecommendation["riskLevel"] {
     const records = this.records.filter((item) => item.subjectId === subjectId);
-    if (records.some((item) => item.subjectType === "model" && item.costType === "model")) {
+    if (records.some((item) => item.subjectType === "model" && item.costType === "llm")) {
       return baseRisk === "low" ? "medium" : baseRisk;
     }
     return baseRisk;

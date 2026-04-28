@@ -4,7 +4,7 @@
  * Implements §22.4 Plugin lifecycle: PluginContext for runtime context injection.
  */
 
-import { normalizeSandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 export interface PluginContextConfig {
   pluginId: string;
@@ -22,6 +22,10 @@ export interface PluginContextConfig {
   };
 }
 
+type NormalizedPluginContextConfig = Omit<Required<PluginContextConfig>, "sandboxTier"> & {
+  sandboxTier: SandboxMode;
+};
+
 export interface ContextValue {
   key: string;
   value: unknown;
@@ -35,7 +39,7 @@ export interface ContextValue {
  */
 export class PluginContext {
   private readonly values: Map<string, ContextValue> = new Map();
-  private readonly config: Required<PluginContextConfig>;
+  private readonly config: NormalizedPluginContextConfig;
 
   constructor(config: PluginContextConfig) {
     if (!config.pluginId?.trim()) {
@@ -96,7 +100,7 @@ export class PluginContext {
   /**
    * Get the sandbox tier.
    */
-  get sandboxTier(): string {
+  get sandboxTier(): SandboxMode {
     return this.config.sandboxTier;
   }
 

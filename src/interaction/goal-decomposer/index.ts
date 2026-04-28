@@ -283,9 +283,6 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         : matchedTemplate === "generic_multi_step"
           ? "hybrid"
           : "template";
-    let llmBudgetLedgerId: string | undefined;
-    let llmBudgetReservationId: string | undefined;
-    let llmReservedBudgetUsd: number | null = null;
     let budgetBlockedLlmPlan = false;
 
     if ((matchedTemplate == null || matchedTemplate === "generic_multi_step")
@@ -294,7 +291,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       try {
         if (this.options.budgetControl != null) {
           const guard = new BudgetGuard();
-          const reserved = guard.reserveExecutionChainBudget({
+          const evaluated = guard.evaluateExecutionChain({
             policy: this.options.budgetControl.policy,
             spend: {
               currentTaskCostUsd: this.options.budgetControl.currentTaskCostUsd ?? 0,
@@ -302,18 +299,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
               currentMonthlyCostUsd: this.options.budgetControl.currentMonthlyCostUsd ?? 0,
               nextEstimatedCostUsd: this.options.budgetControl.estimatedLlmPlanCostUsd ?? 0.25,
             },
-            tenantId: this.options.budgetControl.tenantId,
-            harnessRunId: this.options.budgetControl.harnessRunId,
-            traceId: this.options.budgetControl.traceId,
-            emittedBy: this.options.budgetControl.emittedBy,
-            ...(this.options.budgetControl.ledger != null ? { ledger: this.options.budgetControl.ledger } : {}),
-            ...(this.options.budgetControl.resourceKind != null ? { resourceKind: this.options.budgetControl.resourceKind } : {}),
-            ...(this.options.budgetControl.expiresAt != null ? { expiresAt: this.options.budgetControl.expiresAt } : {}),
           });
-          llmBudgetLedgerId = reserved.ledger.budgetLedgerId;
-          llmBudgetReservationId = reserved.reservation?.budgetReservationId;
-          llmReservedBudgetUsd = reserved.reservation?.amount ?? null;
-          budgetBlockedLlmPlan = !reserved.allowed;
+          budgetBlockedLlmPlan = !evaluated.allowed;
         }
         if (budgetBlockedLlmPlan) {
           throw new Error("goal_decomposer.budget_reservation_required");
@@ -374,9 +361,6 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       state: "ready_for_planner",
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
-      ...(llmBudgetLedgerId != null ? { budgetLedgerId: llmBudgetLedgerId } : {}),
-      ...(llmBudgetReservationId != null ? { budgetReservationId: llmBudgetReservationId } : {}),
-      ...(llmReservedBudgetUsd != null ? { reservedBudgetUsd: llmReservedBudgetUsd } : {}),
     };
 
     return {

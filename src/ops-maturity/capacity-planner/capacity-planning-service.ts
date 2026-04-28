@@ -158,7 +158,7 @@ export class CapacityPlanningService {
       budgetHeadroomPercent: Math.max(0, 100 - Math.max(0, estimatedCostDeltaPercent)),
       approvalCapacityNeeded: sloRisk === "high" ? 2 : 1,
       providerQuotaPressure: forecast.confidenceInterval.high,
-      regionFailoverReservePercent: 15,
+      regionFailoverReservePercent: this.computeDynamicFailoverReserve(sloRisk === "high" ? "gold" : sloRisk === "medium" ? "silver" : "bronze"),
     };
   }
 
@@ -200,5 +200,13 @@ export class CapacityPlanningService {
 
   private signalKey(resourceType: string, regionId?: string): string {
     return `${resourceType}:${regionId ?? "global"}`;
+  }
+
+  private computeDynamicFailoverReserve(slaTier: "gold" | "silver" | "bronze"): number {
+    switch (slaTier) {
+      case "gold": return 30;
+      case "silver": return 20;
+      case "bronze": return 15;
+    }
   }
 }

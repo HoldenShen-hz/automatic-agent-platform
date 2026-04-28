@@ -16,7 +16,7 @@ function createTestContext(overrides: Partial<AgentContext> = {}): AgentContext 
       actions: ["action-1", "action-2"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: null,
     ...overrides,

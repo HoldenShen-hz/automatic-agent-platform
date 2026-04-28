@@ -33,6 +33,7 @@ import { getActiveTelemetryContext } from "./otel-tracer.js";
 
 export type StructuredPlane = "P1" | "P2" | "P3" | "P4" | "P5" | "X1";
 export type StructuredLogLevel = "debug" | "info" | "warn" | "error" | "fatal";
+export type CrosscuttingFabricCategory = "reliability" | "security" | "governance";
 
 /**
  * Structured log entry with level, message, optional correlation IDs
@@ -44,6 +45,7 @@ export interface StructuredLogEntry {
   message: string;
   service: string;
   plane?: StructuredPlane;
+  crosscuttingFabric?: CrosscuttingFabricCategory;
   taskId?: string;
   agentId?: string;
   sessionId?: string;
@@ -87,6 +89,7 @@ type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "
   service?: string;
   timestamp?: string;
   structuredPayload?: Record<string, unknown>;
+  crosscuttingFabric?: CrosscuttingFabricCategory;
 };
 
 /**

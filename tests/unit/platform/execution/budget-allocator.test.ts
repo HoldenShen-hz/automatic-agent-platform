@@ -76,3 +76,35 @@ test("BudgetAllocator rejects settlement that exceeds the hard cap or reservatio
       error.code === "runtime_state_machine.budget_hard_cap_not_satisfied",
   );
 });
+
+test("BudgetAllocator can release a reservation when execution never starts", () => {
+  const allocator = new BudgetAllocator();
+  const ledger = createBudgetLedger({
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 100,
+    version: 0,
+  });
+
+  const reserved = allocator.reserve({
+    ledger,
+    amount: 25,
+    resourceKind: "tool",
+    expiresAt: "2026-04-27T01:00:00.000Z",
+    expectedVersion: 0,
+  });
+  const released = allocator.release({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    context: {
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "budget-allocator",
+    },
+  });
+
+  assert.equal(released.reservation.aggregate.status, "released");
+  assert.equal(released.ledger.reservedAmount, 0);
+  assert.equal(released.ledger.releasedAmount, 25);
+});

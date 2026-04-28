@@ -16,6 +16,7 @@ import { OpenAIChatService, type OpenAIFunction, type OpenAIChatCompletionResult
 import { MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
 import { AppError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { HashEmbeddingProvider, MiniMaxEmbeddingProvider, OpenAIEmbeddingProvider, type EmbeddingProvider } from "../../state-evidence/knowledge/indexing/embedding-provider.js";
 
@@ -66,9 +67,12 @@ export interface ChatCompletionRequest {
   toolChoice?: "auto" | "none";
   traceId?: string;
   tenantId?: string | null;
+  principalId?: string | null;
   costTag?: string;
   abortSignal?: AbortSignal;
   validatePartialChunk?: (chunk: ChatCompletionResult, isFinal: boolean) => void;
+  /** Policy outcome for audit logging per §11.1-11.2 */
+  policyOutcome?: "approved" | "denied" | "flagged" | null;
 }
 
 export interface CompletionOptions {
@@ -79,8 +83,10 @@ export interface CompletionOptions {
   maxTokens?: number;
   traceId?: string;
   tenantId?: string | null;
+  principalId?: string | null;
   costTag?: string;
   abortSignal?: AbortSignal;
+  policyOutcome?: "approved" | "denied" | "flagged" | null;
 }
 
 export type ChatProviderType = "anthropic" | "openai" | "minimax";
@@ -267,6 +273,17 @@ export class UnifiedChatProvider {
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
 
+    // Audit logging per §11.1-11.2: log principal/tenantId/policyOutcome for all LLM calls
+    const logger_1 = new StructuredLogger({ retentionLimit: 100 });
+    logger_1.info("llm:request_started", {
+      model: request.model,
+      provider,
+      tenantId: request.tenantId,
+      principalId: request.principalId,
+      policyOutcome: request.policyOutcome,
+      traceId: request.traceId,
+    });
+
     let result: ChatCompletionResult;
     switch (provider) {
       case "anthropic": {
@@ -368,8 +385,10 @@ export class UnifiedChatProvider {
       ...(options.topP !== undefined ? { topP: options.topP } : {}),
       ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
       ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
+      ...(options.principalId !== undefined ? { principalId: options.principalId } : {}),
       ...(options.costTag !== undefined ? { costTag: options.costTag } : {}),
       ...(options.abortSignal !== undefined ? { abortSignal: options.abortSignal } : {}),
+      ...(options.policyOutcome !== undefined ? { policyOutcome: options.policyOutcome } : {}),
       maxTokens: options.maxTokens ?? 512,
     });
     return result.content;

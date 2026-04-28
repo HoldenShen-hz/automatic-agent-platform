@@ -44,6 +44,24 @@ test("workflowTimelineProjectionHandler initializes state correctly", () => {
   assert.equal(state.startedAt, "2026-04-19T10:00:00.000Z");
 });
 
+test("workflowTimelineProjectionHandler prefers canonical planGraphBundleId, harnessRunId, and nodeId", () => {
+  const event = makeEvent(
+    "evt_canonical",
+    "platform.node_run.status_changed",
+    "task_1",
+    '{"planGraphBundleId":"bundle_1","harnessRunId":"hrun_1","nodeId":"node_1","toStatus":"completed"}',
+  );
+
+  const state = workflowTimelineProjectionHandler(null, event) as unknown as WorkflowTimelineState;
+
+  assert.equal(state.planGraphBundleId, "bundle_1");
+  assert.equal(state.harnessRunId, "hrun_1");
+  assert.equal(state.workflowId, "bundle_1");
+  assert.equal(state.executionId, "hrun_1");
+  assert.equal(state.events[0]!.nodeId, "node_1");
+  assert.equal(state.completedSteps["node_1"], "2026-04-19T10:00:00.000Z");
+});
+
 test("workflowTimelineProjectionHandler handles workflow_run.created", () => {
   const event = makeEvent(
     "evt_wf_created",

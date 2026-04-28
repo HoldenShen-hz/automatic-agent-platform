@@ -21,7 +21,13 @@ export interface MultimodalInputPart {
   readonly partId: string;
   readonly type: string;
   readonly contentRef: string;
-  readonly provenance?: string;
+  readonly provenance?: {
+    readonly c2pa?: string;
+    readonly watermark?: string;
+    readonly hash?: string;
+    readonly license?: string;
+  };
+  readonly artifactRef?: string;
   readonly safetyLabels?: readonly string[];
   readonly mimeType?: string;
   readonly costKey?: string;
@@ -59,6 +65,9 @@ export interface MultimodalSafetyFinding {
   readonly severity: "low" | "medium" | "high";
   readonly reasonCode: string;
   readonly blocked: boolean;
+  readonly confidence?: number;
+  readonly policyDecision?: string;
+  readonly appealPath?: string;
 }
 
 export interface MultimodalGatewayResult {

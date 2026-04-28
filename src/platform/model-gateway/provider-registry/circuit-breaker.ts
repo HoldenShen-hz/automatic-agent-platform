@@ -10,6 +10,24 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
+ * Circuit breaker state change event payload.
+ */
+export interface CircuitBreakerStateChangePayload {
+  circuitName: string;
+  oldState: CircuitBreakerState;
+  newState: CircuitBreakerState;
+  nextAttemptAt: number | null;
+  occurredAt: string;
+}
+
+/**
+ * Circuit breaker events for event bus emission.
+ */
+export const CIRCUIT_BREAKER_EVENTS = {
+  STATE_CHANGED: "circuit_breaker:state_changed",
+} as const;
+
+/**
  * Circuit breaker states.
  */
 export type CircuitBreakerState = "closed" | "open" | "half_open";
@@ -28,6 +46,8 @@ export interface CircuitBreakerOptions {
   halfOpenSuccessThreshold?: number;
   /** Monitor window in ms for failure rate calculation (default: 60000) */
   monitorWindowMs?: number;
+  /** Optional callback for state change events per §9.4 */
+  onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
 }
 
 /**
@@ -69,6 +89,7 @@ export class CircuitBreaker {
   private lastFailureAt: number | null = null;
   private lastSuccessAt: number | null = null;
   private nextAttemptAt: number | null = null;
+  private readonly onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
 
   // Track failures within monitoring window for rate-based decisions
   private readonly failureTimestamps: number[] = [];
@@ -79,6 +100,7 @@ export class CircuitBreaker {
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
+    this.onStateChange = options.onStateChange;
   }
 
   /**
@@ -251,6 +273,16 @@ export class CircuitBreaker {
       this.failureTimestamps.length = 0;
       this.halfOpenInFlight = 0;
     }
+
+    // Emit state change event per §9.4
+    const payload: CircuitBreakerStateChangePayload = {
+      circuitName: this.name,
+      oldState,
+      newState,
+      nextAttemptAt: this.nextAttemptAt,
+      occurredAt: new Date().toISOString(),
+    };
+    this.onStateChange?.(payload);
 
     logger.log({
       level: "info",

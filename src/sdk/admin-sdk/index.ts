@@ -29,4 +29,20 @@ export class AdminSdk {
   public abortHarnessRun<T>(runId: string, reason?: string) {
     return this.client.abortHarnessRun<T>(runId, reason);
   }
+
+  public triggerPanic<T>(body: unknown) {
+    return this.client.post<T>("/panic/trigger", body);
+  }
+
+  public resumePanic<T>(scope: string, body: unknown) {
+    return this.client.post<T>(`/panic/${encodeURIComponent(scope)}/resume`, body);
+  }
+
+  public manageAgentLifecycle<T>(agentId: string, action: string, body?: unknown) {
+    return this.client.post<T>(`/agents/${encodeURIComponent(agentId)}/${action}`, body ?? {});
+  }
+
+  public rotateSecrets<T>(body: unknown) {
+    return this.client.post<T>("/secrets/rotate", body);
+  }
 }

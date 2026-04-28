@@ -283,7 +283,7 @@ function createTestAgentContext(overrides: Partial<AgentContext> = {}): AgentCon
       actions: ["action-read"],
       constraints: {},
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "test-corr",
     tenantId: "tenant-1",
     ...overrides,

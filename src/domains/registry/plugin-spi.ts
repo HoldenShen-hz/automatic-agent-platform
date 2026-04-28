@@ -9,7 +9,7 @@ export interface MachineOutput {
   nodeRunId?: string | null;
   attemptId?: string | null;
   /** @deprecated legacy projection identifier; use nodeId/nodeRunId */
-  stepId: string;
+  stepId?: string | null;
   outputRef: string | null;
   payload: Record<string, unknown>;
 }
@@ -139,7 +139,8 @@ export interface DomainValidatorPlugin extends PluginLifecycleHooks {
   capabilityIds?: readonly string[];
   validate(output: {
     nodeId?: string;
-    stepId: string;
+    /** @deprecated legacy projection identifier; use nodeId */
+    stepId?: string;
     machineOutput: MachineOutput;
     contract: Record<string, unknown>;
   }): Promise<{
@@ -161,7 +162,7 @@ export interface DomainPlannerPlugin extends PluginLifecycleHooks {
   }): Promise<{
     planGraphBundleId?: string;
     /** @deprecated legacy projection identifier; use planGraphBundleId */
-    workflowId: string;
+    workflowId?: string;
     overrides: Partial<StepTemplateConfig>[];
     rationale: string;
   } | null>;

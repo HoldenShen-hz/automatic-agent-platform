@@ -12,6 +12,7 @@ export interface LlmPlan {
 }
 
 export interface LlmPlanGenerator {
+  readonly managesBudgetReservations?: boolean;
   generate(goal: Goal): Promise<LlmPlan>;
 }
 
@@ -46,9 +47,11 @@ interface SerializablePlan {
 
 export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   private readonly model: string;
+  public readonly managesBudgetReservations: boolean;
 
   public constructor(private readonly options: UnifiedChatPlanGeneratorOptions) {
     this.model = options.model ?? "gpt-4o-mini";
+    this.managesBudgetReservations = options.budgetControl != null;
   }
 
   public async generate(goal: Goal): Promise<LlmPlan> {
@@ -63,58 +66,74 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         expectedVersion: this.options.budgetControl.ledger.version,
       });
 
-    const response = await this.options.provider.complete(this.buildPrompt(goal), {
-      model: this.model,
-      system:
-        "You are a goal decomposition planner. Return strict JSON only with tasks and dependencyGraph. No markdown.",
-      temperature: 0.1,
-      maxTokens: 1200,
-      ...(this.options.budgetControl?.traceId !== undefined ? { traceId: this.options.budgetControl.traceId } : {}),
-      ...(this.options.budgetControl?.tenantId !== undefined ? { tenantId: this.options.budgetControl.tenantId } : {}),
-      costTag: "goal_decomposer.llm_plan",
-    });
-    if (reservedBudget != null) {
-      allocator.settle({
-        ledger: reservedBudget.ledger,
-        reservation: reservedBudget.reservation,
-        actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
-        context: {
-          tenantId: this.options.budgetControl!.tenantId,
-          traceId: this.options.budgetControl!.traceId,
-          emittedBy: this.options.budgetControl!.emittedBy,
-        },
+    try {
+      const response = await this.options.provider.complete(this.buildPrompt(goal), {
+        model: this.model,
+        system:
+          "You are a goal decomposition planner. Return strict JSON only with tasks and dependencyGraph. No markdown.",
+        temperature: 0.1,
+        maxTokens: 1200,
+        ...(this.options.budgetControl?.traceId !== undefined ? { traceId: this.options.budgetControl.traceId } : {}),
+        ...(this.options.budgetControl?.tenantId !== undefined ? { tenantId: this.options.budgetControl.tenantId } : {}),
+        costTag: "goal_decomposer.llm_plan",
       });
-    }
+      const parsed = this.parsePlan(response);
+      if (reservedBudget != null) {
+        allocator.settle({
+          ledger: reservedBudget.ledger,
+          reservation: reservedBudget.reservation,
+          actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
+          context: {
+            tenantId: this.options.budgetControl!.tenantId,
+            traceId: this.options.budgetControl!.traceId,
+            emittedBy: this.options.budgetControl!.emittedBy,
+          },
+        });
+      }
 
-    const parsed = this.parsePlan(response);
-    return {
-      tasks: parsed.tasks.map((task, index) => ({
-        taskId: `${goal.goalId}:llm:${index + 1}`,
-        domainId: task.domainId,
-        description: task.description,
-        inputs: {
-          goalDescription: goal.description,
-          successCriteria: goal.successCriteria,
-          constraints: goal.constraints,
-          deadline: goal.deadline ?? null,
-        },
-        expectedOutputs: task.expectedOutputs,
-        delegationMode: task.delegationMode,
-        estimatedDuration: task.estimatedDuration,
-        estimatedCost: {
-          estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
-          confidence: "low",
-          sampleCount: 0,
-          divisionId: null,
-          basedOn: "default",
-        },
-      })),
-      dependencyGraph: parsed.dependencyGraph.map((edge) => ({
-        ...edge,
-        fromTask: this.normalizeTaskReference(goal.goalId, edge.fromTask),
-        toTask: this.normalizeTaskReference(goal.goalId, edge.toTask),
-      })),
-    };
+      return {
+        tasks: parsed.tasks.map((task, index) => ({
+          taskId: `${goal.goalId}:llm:${index + 1}`,
+          domainId: task.domainId,
+          description: task.description,
+          inputs: {
+            goalDescription: goal.description,
+            successCriteria: goal.successCriteria,
+            constraints: goal.constraints,
+            deadline: goal.deadline ?? null,
+          },
+          expectedOutputs: task.expectedOutputs,
+          delegationMode: task.delegationMode,
+          estimatedDuration: task.estimatedDuration,
+          estimatedCost: {
+            estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
+            confidence: "low",
+            sampleCount: 0,
+            divisionId: null,
+            basedOn: "default",
+          },
+        })),
+        dependencyGraph: parsed.dependencyGraph.map((edge) => ({
+          ...edge,
+          fromTask: this.normalizeTaskReference(goal.goalId, edge.fromTask),
+          toTask: this.normalizeTaskReference(goal.goalId, edge.toTask),
+        })),
+      };
+    } catch (error) {
+      if (reservedBudget != null) {
+        allocator.release({
+          ledger: reservedBudget.ledger,
+          reservation: reservedBudget.reservation,
+          reasonCode: "budget.goal_decomposer_llm_plan_failed",
+          context: {
+            tenantId: this.options.budgetControl!.tenantId,
+            traceId: this.options.budgetControl!.traceId,
+            emittedBy: this.options.budgetControl!.emittedBy,
+          },
+        });
+      }
+      throw error;
+    }
   }
 
   private buildPrompt(goal: Goal): string {

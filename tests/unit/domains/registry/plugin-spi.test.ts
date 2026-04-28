@@ -64,7 +64,7 @@ test("plugin spi interfaces support minimal mock implementations", async () => {
   assert.equal(retrievalResults.length, 1);
   assert.equal(retrievalResults[0]!.knowledgeRef, "knowledge:chunk_1");
   assert.equal(retrievalResults[0]!.score, 0.9);
-  assert.equal((await validator.validate({ stepId: "step_1", machineOutput: { stepId: "step_1", outputRef: null, payload: {} }, contract: {} })).valid, true);
+  assert.equal((await validator.validate({ nodeId: "node_1", machineOutput: { nodeId: "node_1", stepId: "step_1", outputRef: null, payload: {} }, contract: {} })).valid, true);
   assert.equal(await planner.suggestWorkflow({
     taskId: "task_1",
     intent: "fix bug",
@@ -139,6 +139,7 @@ test("DomainPlannerPlugin suggests workflow when appropriate", async () => {
     spiType: "planner",
     async suggestWorkflow() {
       return {
+        planGraphBundleId: "bundle_coding_refactor",
         workflowId: "suggested_wf",
         overrides: [],
         rationale: "complex task detected",
@@ -167,6 +168,7 @@ test("DomainPlannerPlugin suggests workflow when appropriate", async () => {
       suggestedActions: [],
     },
   });
+  assert.equal(result?.planGraphBundleId, "bundle_coding_refactor");
   assert.equal(result?.workflowId, "suggested_wf");
   assert.equal(result?.rationale, "complex task detected");
 });

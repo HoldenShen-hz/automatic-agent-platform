@@ -1,8 +1,21 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 
+// =============================================================================
+// Re-export canonical NodeAttemptReceipt from executable-contracts
+// =============================================================================
+export {
+  type NodeAttemptReceipt,
+  type AppErrorRef,
+  createNodeAttemptReceipt,
+} from "../executable-contracts/index.js";
+
 export type ExecutionReceiptStatus = "accepted" | "started" | "completed" | "failed" | "cancelled";
 
+/**
+ * @deprecated ExecutionReceipt is deprecated per §4.5. Use NodeAttemptReceipt from executable-contracts instead.
+ * This type is retained for legacy adapter compatibility only.
+ */
 export interface ExecutionReceipt {
   receiptId: string;
   planId: string;
@@ -16,6 +29,10 @@ export interface ExecutionReceipt {
   createdAt: string;
 }
 
+/**
+ * @deprecated ExecutionReceipt factory is deprecated per §4.5.
+ * Use NodeAttemptReceipt from executable-contracts instead.
+ */
 export function createExecutionReceipt(input: Omit<ExecutionReceipt, "receiptId" | "createdAt"> & {
   receiptId?: string;
   createdAt?: string;

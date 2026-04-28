@@ -200,6 +200,33 @@ test("BudgetAllocator.settle transitions reservation to settled status", () => {
   assert.equal(settled.reservation.aggregate.status, "settled");
 });
 
+test("BudgetAllocator.release transitions reservation to released status", () => {
+  const allocator = new BudgetAllocator();
+  const ledger = createTestLedger();
+  const reserved = allocator.reserve({
+    ledger,
+    amount: 35,
+    resourceKind: "tool",
+    expiresAt: "2026-04-27T01:00:00.000Z",
+    expectedVersion: 0,
+  });
+
+  const released = allocator.release({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    context: {
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "test",
+    },
+  });
+
+  assert.equal(released.reservation.aggregate.status, "released");
+  assert.equal(released.ledger.reservedAmount, 0);
+  assert.equal(released.ledger.releasedAmount, 35);
+  assert.equal(released.ledger.version, reserved.ledger.version + 1);
+});
+
 test("BudgetAllocator.settle updates ledger accounting correctly with exact amount", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();

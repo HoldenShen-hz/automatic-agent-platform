@@ -1,6 +1,28 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 
+// =============================================================================
+// Re-export canonical PlanGraphBundle from executable-contracts
+// =============================================================================
+export {
+  type PlanGraphBundle,
+  type PlanGraph,
+  type PlanNode,
+  type PlanEdge,
+  type GraphValidationReport,
+  type GraphRiskFinding,
+  type GraphWorstPathAnalysis,
+  type GraphPatch,
+  type GraphPatchOperation,
+  type ReadyNodeSchedulingPolicy,
+  createPlanGraphBundle,
+  createGraphPatch,
+} from "../executable-contracts/index.js";
+
+/**
+ * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
+ * This type is retained for legacy adapter compatibility only.
+ */
 export interface ExecutionPlanStep {
   stepId: string;
   title: string;
@@ -9,6 +31,10 @@ export interface ExecutionPlanStep {
   requiresApproval: boolean;
 }
 
+/**
+ * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
+ * This interface is retained for legacy adapter compatibility only.
+ */
 export interface ExecutionPlan {
   planId: string;
   taskId: string;
@@ -18,6 +44,10 @@ export interface ExecutionPlan {
   createdAt: string;
 }
 
+/**
+ * @deprecated ExecutionPlan factory is deprecated per §4.4.
+ * Use PlanGraphBundle from executable-contracts instead.
+ */
 export function createExecutionPlan(input: Omit<ExecutionPlan, "planId" | "createdAt"> & {
   planId?: string;
   createdAt?: string;

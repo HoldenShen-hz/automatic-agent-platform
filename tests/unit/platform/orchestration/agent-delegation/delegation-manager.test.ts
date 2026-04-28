@@ -21,7 +21,7 @@ function createParentContext(overrides: Partial<AgentContext> = {}): AgentContex
       actions: ["action-read", "action-write"],
       constraints: {},
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "test-correlation",
     tenantId: "tenant-1",
     ...overrides,

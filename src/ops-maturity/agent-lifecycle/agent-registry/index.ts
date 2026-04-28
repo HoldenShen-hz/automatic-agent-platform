@@ -12,6 +12,7 @@ export const AgentLifecycleStateSchema = z.enum([
   "paused",
   "deprecated",
   "archived",
+  "removed",
 ]);
 
 export type AgentLifecycleState = z.infer<typeof AgentLifecycleStateSchema>;
@@ -138,11 +139,12 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
   ["draft", ["testing"]],
   ["testing", ["staging", "draft"]],
   ["staging", ["canary", "testing"]],
-  ["canary", ["active", "staging"]],
+  ["canary", ["active", "staging", "paused"]],
   ["active", ["paused", "deprecated"]],
-  ["paused", ["active", "deprecated"]],
+  ["paused", ["active", "deprecated", "canary"]],
   ["deprecated", ["archived", "active"]],
-  ["archived", []],
+  ["archived", ["removed"]],
+  ["removed", []],
 ]);
 
 /**

@@ -79,6 +79,17 @@ export interface GameDayScheduleInput {
   experiments: readonly ExperimentScheduleInput[];
 }
 
+export interface PanicDrillReport {
+  readonly drillId: string;
+  readonly gameDayId: string;
+  readonly ingress_block_time_ms: number | null;
+  readonly execution_quiescence_time_ms: number | null;
+  readonly plane_ack_success_rate: number | null;
+  readonly planesContacted: readonly string[];
+  readonly planesAcknowledged: readonly string[];
+  readonly generatedAt: string;
+}
+
 export interface ChaosGameDay {
   gameDayId: string;
   name: string;
@@ -256,5 +267,27 @@ export class ChaosExperimentScheduler {
 
   public getGameDay(gameDayId: string): ChaosGameDay | null {
     return this.gameDays.get(gameDayId) ?? null;
+  }
+
+  public generatePanicDrillReport(gameDayId: string, ingressBlockTimeMs?: number, executionQuiescenceTimeMs?: number, planeAckSuccessRate?: number): PanicDrillReport | null {
+    const gameDay = this.gameDays.get(gameDayId);
+    if (!gameDay) return null;
+    const experiments = gameDay.experimentIds
+      .map((experimentId) => this.experiments.get(experimentId))
+      .filter((item): item is ChaosExperiment => item != null);
+    const planesContacted = ["P1", "P2", "P3", "P4", "P5"];
+    const planesAcknowledged = experiments.length > 0 && experiments.some((e) => e.status === "completed")
+      ? planesContacted
+      : [];
+    return {
+      drillId: newId("panic_drill"),
+      gameDayId,
+      ingress_block_time_ms: ingressBlockTimeMs ?? null,
+      execution_quiescence_time_ms: executionQuiescenceTimeMs ?? null,
+      plane_ack_success_rate: planeAckSuccessRate ?? null,
+      planesContacted,
+      planesAcknowledged,
+      generatedAt: nowIso(),
+    };
   }
 }

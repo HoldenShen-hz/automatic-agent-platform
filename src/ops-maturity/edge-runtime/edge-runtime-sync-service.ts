@@ -7,14 +7,18 @@ import { orderEdgeSyncQueue } from "./sync-queue/index.js";
 
 export interface EdgeRuntimeProfile {
   readonly edgeNodeId: string;
+  readonly deviceId?: string;
   readonly capabilities: readonly string[];
   readonly connectivityMode: "offline" | "intermittent" | "online";
   readonly maxLocalRetentionHours: number;
+  readonly offlineMaxDuration?: number;
+  readonly keyLease?: string;
   readonly allowedModels: readonly string[];
   readonly syncPolicy: {
     readonly allowRestrictedDataUpload: boolean;
     readonly requireOrdering: boolean;
   };
+  readonly riskLevel?: "low" | "medium";
 }
 
 export interface OfflineExecutionRequest {
@@ -38,8 +42,9 @@ export interface SyncEnvelope {
 
 export interface ConflictResolutionDecision {
   readonly envelopeId: string;
-  readonly resolution: "accept_edge" | "accept_cloud" | "merge" | "reject";
+  readonly resolution: "accept_central" | "accept_cloud" | "merge" | "reject";
   readonly rationale: string;
+  readonly incidentId?: string;
 }
 
 export interface EdgeNodeAttemptReceiptView {
@@ -65,6 +70,9 @@ export class EdgeRuntimeSyncService {
     models: readonly LocalModelProfile[],
     request: OfflineExecutionRequest,
   ): EdgeNodeAttemptReceiptView {
+    if (profile.riskLevel === "medium" || (profile.riskLevel != null && profile.riskLevel !== "low")) {
+      throw new Error("edge_runtime.risk_level_not_allowed:edge_execution_requires_low_risk");
+    }
     const createdAt = request.createdAt ?? nowIso();
     const record = buildOfflineExecutionRecord(profile.edgeNodeId, request.taskId, createdAt);
     const model = selectEdgeLocalModel(
@@ -142,11 +150,14 @@ export class EdgeRuntimeSyncService {
 
       const cloudDigest = cloudPayloadDigests[envelope.recordId];
       if (cloudDigest != null && cloudDigest !== envelope.payloadDigest) {
-        acceptedEnvelopeIds.push(envelope.envelopeId);
+        // Central wins policy: reject edge version, generate incident for human review
+        const incidentId = newId("edge_conflict");
+        rejectedEnvelopeIds.push(envelope.envelopeId);
         decisions.push({
           envelopeId: envelope.envelopeId,
-          resolution: "merge",
-          rationale: "edge.sync_conflict_merge_required",
+          resolution: "accept_central",
+          rationale: "edge.sync_central_wins_policy:conflict_requires_human_review",
+          incidentId,
         });
         continue;
       }
@@ -154,8 +165,8 @@ export class EdgeRuntimeSyncService {
       acceptedEnvelopeIds.push(envelope.envelopeId);
       decisions.push({
         envelopeId: envelope.envelopeId,
-        resolution: "accept_edge",
-        rationale: "edge.sync_accept_edge",
+        resolution: "accept_central",
+        rationale: "edge.sync_central_wins_policy:accepted",
       });
     }
 

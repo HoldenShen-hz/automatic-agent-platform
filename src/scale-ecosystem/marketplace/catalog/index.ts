@@ -1,16 +1,19 @@
 import { z } from "zod";
 
 export const MarketplaceCatalogEntrySchema = z.object({
-  listingId: z.string().min(1),
+  entryId: z.string().min(1),
+  packId: z.string().min(1).optional(),
   publisherId: z.string().min(1).default("unknown_publisher"),
   title: z.string().min(1),
   artifactType: z.enum(["pack", "plugin", "connector", "template"]).default("pack"),
   artifactRef: z.string().min(1).default("artifact://unknown"),
   pricingModel: z.enum(["free", "enterprise_included", "paid"]).default("free"),
+  rating: z.number().min(0).max(5).optional().default(0),
+  installCount: z.number().int().nonnegative().optional().default(0),
   capabilities: z.array(z.string()).default([]),
   version: z.string().min(1).default("0.0.0"),
   dependencies: z.array(z.object({
-    listingId: z.string().min(1),
+    entryId: z.string().min(1),
     versionRange: z.string().min(1),
     optional: z.boolean().default(false),
   })).default([]),
@@ -19,7 +22,7 @@ export const MarketplaceCatalogEntrySchema = z.object({
     supportedArtifactTypes: z.array(z.string()).default([]),
   }).default({}),
   trustLevel: z.enum(["internal", "verified", "community", "unknown"]).default("unknown"),
-  reviewStatus: z.enum(["draft", "submitted", "certified"]).default("draft"),
+  certificationStatus: z.enum(["uncertified", "self_certified", "third_party_certified", "platform_certified"]).default("uncertified"),
   lifecycleState: z.enum(["active", "deprecated", "sunset", "removed"]).default("active"),
   qualityMetrics: z.object({
     reliabilityScore: z.number().min(0).max(1).default(0),
@@ -57,20 +60,20 @@ export function validateListingDependencies(
   entry: MarketplaceCatalogEntry,
   availableEntries: readonly MarketplaceCatalogEntry[],
 ): ListingCompatibilityCheck {
-  const availableById = new Map(availableEntries.map((item) => [item.listingId, item]));
+  const availableById = new Map(availableEntries.map((item) => [item.entryId, item]));
   const missingDependencies: string[] = [];
   const incompatibilities: string[] = [];
   for (const dependency of entry.dependencies) {
-    const target = availableById.get(dependency.listingId);
+    const target = availableById.get(dependency.entryId);
     if (target == null) {
       if (!dependency.optional) {
-        missingDependencies.push(dependency.listingId);
+        missingDependencies.push(dependency.entryId);
       }
       continue;
     }
     if (entry.compatibility.supportedArtifactTypes.length > 0
       && !entry.compatibility.supportedArtifactTypes.includes(target.artifactType)) {
-      incompatibilities.push(`artifact_type:${dependency.listingId}`);
+      incompatibilities.push(`artifact_type:${dependency.entryId}`);
     }
   }
   return {

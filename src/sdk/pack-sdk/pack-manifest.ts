@@ -37,6 +37,10 @@ export interface BusinessPackManifest {
     supportedDomainSpecVersions?: string[];
     requiresActiveDomain?: boolean;
   };
+  sdk_semver?: string;
+  platform_min_version?: string;
+  platform_max_version?: string;
+  contract_test_generator?: string;
 }
 
 export function validateBusinessPackManifest(

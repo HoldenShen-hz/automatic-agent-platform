@@ -22,6 +22,9 @@ export interface PlatformPanicDirective {
   readonly issuedAt: string;
   readonly freezeModes: readonly PanicFreezeMode[];
   readonly requiredApprovers: readonly string[];
+  readonly severity: "full" | "partial";
+  readonly reconfirmationAfterSeconds?: number;
+  readonly rollbackStrategy?: "automatic" | "manual" | "none";
   readonly allowList?: readonly string[];
 }
 
@@ -120,6 +123,9 @@ export class PlatformPanicService {
       issuedAt,
       freezeModes: request.freezeModes ?? defaultFreezeModes(request.reasonCode),
       requiredApprovers: normalizeRequiredApprovers(request),
+      severity: (request.severity as "full" | "partial") ?? "full",
+      reconfirmationAfterSeconds: 300,
+      rollbackStrategy: "manual",
       ...(request.allowList != null ? { allowList: request.allowList } : {}),
     };
     const panicPlanes = ["P1", "P2", "P3", "P4", "P5"] as const;

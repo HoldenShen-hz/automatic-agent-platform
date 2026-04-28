@@ -10,6 +10,11 @@ export type OpsMaturityLevel = "observe_only" | "suggest_only" | "supervised_exe
 export type OpsRiskLevel = "low" | "medium" | "high";
 export type OpsApprovalStatus = "not_required" | "pending" | "approved";
 
+export interface OpsDataBoundary {
+  readonly allowedPayloadTypes: readonly ("platform_metrics" | "platform_logs" | "platform_config")[];
+  readonly businessPayloadAllowed: boolean;
+}
+
 export interface OpsAgentDefinition {
   readonly agentId: string;
   readonly specialty: string;
@@ -17,6 +22,7 @@ export interface OpsAgentDefinition {
   readonly requiredApprovals: readonly string[];
   readonly maxAutonomyLevel: OpsMaturityLevel;
   readonly evidenceRequirements: readonly string[];
+  readonly ops_data_boundary?: OpsDataBoundary;
 }
 
 export interface OpsProposalInput {
