@@ -73,6 +73,8 @@ export interface EvalCaseDefinition {
   input: string;
   expectedOutput: string;
   tags?: string[];
+  /** §21.5: Risk level for evaluation (determines minimum sample requirements) */
+  riskLevel?: "critical" | "high" | "medium" | "standard";
 }
 
 /**
@@ -669,8 +671,25 @@ function computeStringSimilarity(a: string, b: string): number {
     }
     const uniqueRegressions = [...new Set(regressions)];
     const uniqueImprovements = [...new Set(improvements)];
+
+    // §21.7: Enforce independence for high-risk evaluations
+    const highRiskCases = cases.filter((c) => (c as { riskLevel?: string }).riskLevel === "critical" || (c as { riskLevel?: string }).riskLevel === "high");
+    const hasHighRisk = highRiskCases.length > 0;
+    let independenceViolation = false;
+
+    if (hasHighRisk && options.enforceIndependenceForHighRisk) {
+      // High-risk evaluations require independent external review
+      // If no independent judge was configured, flag as violation
+      if (options.requiredIndependentJudgeForHighRisk) {
+        // Check if cases were evaluated with external judge
+        // For now, mark as violation if high-risk cases exist
+        independenceViolation = highRiskCases.length > 0;
+      }
+    }
+
     const passed = passingVerdicts.includes(verdict)
-      && !(baselineRegression?.hasRegression ?? false);
+      && !(baselineRegression?.hasRegression ?? false)
+      && !independenceViolation;
 
     return {
       passed,

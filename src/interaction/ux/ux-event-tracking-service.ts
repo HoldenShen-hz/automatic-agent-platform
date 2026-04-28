@@ -6,10 +6,29 @@
  * publishes interaction events to the event bus for analytics.
  *
  * §44 UX Workflow - A/B Testing Framework + User Event Tracking
+ *
+ * Event Taxonomy (per §5.4 standard event taxonomy):
+ * - All UX events use canonical platform.ux.* namespace
+ * - Internal UxEventType maps to platform.ux.* event types
  */
 
 import { TypedEventBusPublisher, type TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+
+// Canonical UX event types using platform.ux.* namespace per §5.4
+export type PlatformUxEventType =
+  | "platform.ux.button_click"
+  | "platform.ux.form_submit"
+  | "platform.ux.navigation"
+  | "platform.ux.wizard_step"
+  | "platform.ux.workflow_build"
+  | "platform.ux.dashboard_view"
+  | "platform.ux.search_query"
+  | "platform.ux.filter_apply"
+  | "platform.ux.export_action"
+  | "platform.ux.share_action"
+  | "platform.ux.onboarding_complete"
+  | "platform.ux.feedback_submit";
 
 export interface UxEventTrack {
   readonly eventId: string;

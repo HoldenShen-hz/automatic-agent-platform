@@ -42,10 +42,19 @@ export class ReplayBoundaryGuard {
       };
     }
 
-    // projection_replay: allows all operations including real side effects and tombstones,
-    // as it only projects/replays the trace without actual side effects
+    // projection_replay: allows projection operations for speculative/assertion/reconciliation
+    // per §28.5, but blocks real side effects on non-projection operations
     if (mode === "projection_replay") {
-      return { allowed: true, reasonCode: "replay.allowed", blockedOperationIds: [] };
+      const blockedNonProjections = operations
+        .filter((operation) => operation.resourceKind !== "projection" && operation.hasRealSideEffect)
+        .map((operation) => operation.operationId);
+      if (blockedNonProjections.length > 0) {
+        return {
+          allowed: false,
+          reasonCode: "replay.real_side_effect_blocked",
+          blockedOperationIds: blockedNonProjections,
+        };
+      }
     }
 
     return { allowed: true, reasonCode: "replay.allowed", blockedOperationIds: [] };

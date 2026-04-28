@@ -406,7 +406,7 @@ test("BillingService recordUsage preserves canonical runtime attribution and mir
   assert.equal(result.usageEvent.harnessRunId, "harness-run-001");
   assert.equal(result.usageEvent.nodeRunId, "node-run-001");
   assert.equal(result.usageEvent.attemptId, "attempt-001");
-  assert.equal(result.usageEvent.executionId, "harness-run-001");
+  assert.equal(result.usageEvent.executionId, null);
   assert.equal(result.usageEvent.stepId, "node-run-001");
 });
 

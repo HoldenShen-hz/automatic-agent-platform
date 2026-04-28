@@ -593,7 +593,7 @@ test("BillingRepository insertUsageEvent and listUsageEventsForAccount round-tri
       harnessRunId: "harness-run-001",
       nodeRunId: "node-run-001",
       attemptId: "attempt-001",
-      executionId: "execution-legacy-001",
+      executionId: null,
       stepId: "step-legacy-001",
       metricType: "task_execution",
       quantity: 5,
@@ -610,7 +610,7 @@ test("BillingRepository insertUsageEvent and listUsageEventsForAccount round-tri
     assert.equal(usageEvents[0]?.harnessRunId, "harness-run-001");
     assert.equal(usageEvents[0]?.nodeRunId, "node-run-001");
     assert.equal(usageEvents[0]?.attemptId, "attempt-001");
-    assert.equal(usageEvents[0]?.executionId, "execution-legacy-001");
+    assert.equal(usageEvents[0]?.executionId, null);
     assert.equal(usageEvents[0]?.stepId, "step-legacy-001");
   } finally {
     cleanupPath(workspace);

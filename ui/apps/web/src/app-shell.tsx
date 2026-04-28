@@ -98,11 +98,20 @@ function AppFrame({ features }: { features: readonly FeatureModule[] }): ReactEl
       <main style={{ padding: 24 }}>
         <SystemStatusBar status={systemStatus} />
         <Routes>
-          {features.map((feature) => (
-            <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path)} path={feature.route.path} />
-          ))}
-          <Route element={renderGuardedFeature(features, features[0]!.route.path)} path="*" />
-        </Routes>
+        {/* §4.4.1 L2-L5 nested drill-down routes */}
+        {features.map((feature) => (
+          <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path)} path={feature.route.path}>
+            {/* L3-L5 nested child routes per §4.4.1 */}
+            <Route index element={null} />
+            <Route path="evidence" element={null} />
+            <Route path="logs" element={null} />
+            <Route path="debug" element={null} />
+            <Route path="metrics" element={null} />
+            <Route path="settings" element={null} />
+          </Route>
+        ))}
+        <Route element={renderGuardedFeature(features, features[0]!.route.path)} path="*" />
+      </Routes>
       </main>
     </div>
   );

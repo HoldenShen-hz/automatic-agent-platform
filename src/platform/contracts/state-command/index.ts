@@ -100,4 +100,4 @@ export interface ArtifactWriteCommand {
   readonly createdAt: string;
 }
 
-export type EventReplayBehavior = "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
+export type EventReplayBehavior = "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden";

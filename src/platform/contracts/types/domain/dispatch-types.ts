@@ -136,4 +136,9 @@ export interface DispatchDecisionTrace {
     reasonCode: string | null;
   } | null;
   evaluations: DispatchWorkerEvaluation[];
+  // R6-7: §14.9 scheduler event fields
+  readySet?: readonly string[];
+  selectedNodeIds?: readonly string[];
+  orderingPolicyVersion?: string;
+  workerPoolSnapshotRef?: string;
 }

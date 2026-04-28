@@ -266,12 +266,11 @@ export function createCompleteHarnessRun(
 } {
   const { status = "created", nodeIds = ["init", "process", "final"] } = options;
 
-  const planGraphBundle = createMinimalPlanGraphBundle(harnessRunId);
-
+  // Build nodes and edges for the graph
   const nodes = nodeIds.map((nodeId, idx) => ({
     nodeId,
     nodeType: "tool" as const,
-    inputRefs: idx > 0 ? [nodeIds[idx - 1]] : [],
+    inputRefs: idx > 0 ? [nodeIds[idx - 1]] : ([] as readonly string[]),
     outputSchemaRef: "schema://test",
     riskClass: "low" as const,
     budgetIntent: { amount: 100, currency: "USD", resourceKinds: ["token"] as const },
@@ -280,16 +279,26 @@ export function createCompleteHarnessRun(
     timeoutMs: 30000,
   }));
 
-  planGraphBundle.graph.nodes.forEach((_, idx) => {
-    if (idx < planGraphBundle.graph.nodes.length) {
-      // Rebuild graph with custom nodes
-    }
-  });
+  const edges = nodeIds.slice(1).map((nodeId, idx) => ({
+    edgeId: `edge-${nodeIds[idx]}-${nodeId}`,
+    fromNodeId: nodeIds[idx],
+    toNodeId: nodeId,
+    condition: true as const,
+    dependencyType: "hard" as const,
+  }));
 
-  // Override with custom node IDs
-  planGraphBundle.graph.nodes = nodes.map((n) => ({ ...n }));
-  planGraphBundle.graph.entryNodeIds = [nodeIds[0]];
-  planGraphBundle.graph.terminalNodeIds = [nodeIds[nodeIds.length - 1]];
+  // Build graph directly with the correct structure
+  const graph = {
+    graphId: `graph-${harnessRunId}`,
+    nodes: nodes as readonly import("../../src/platform/contracts/executable-contracts/index.js").PlanNode[],
+    edges: edges as readonly import("../../src/platform/contracts/executable-contracts/index.js").PlanEdge[],
+    entryNodeIds: [nodeIds[0]] as readonly string[],
+    terminalNodeIds: [nodeIds[nodeIds.length - 1]] as readonly string[],
+    joinStrategy: "all" as const,
+    graphHash: `hash-${harnessRunId}`,
+  };
+
+  const planGraphBundle = createMinimalPlanGraphBundle(harnessRunId);
 
   const harnessRun = createMinimalHarnessRun({
     harnessRunId,
@@ -297,6 +306,17 @@ export function createCompleteHarnessRun(
     status,
     planGraphBundleId: planGraphBundle.planGraphBundleId,
   });
+
+  const budgetLedger = createMinimalBudgetLedger(harnessRunId);
+
+  const nodeRuns = nodes.map((node) =>
+    createMinimalNodeRun(harnessRunId, planGraphBundle.planGraphBundleId, {
+      nodeId: node.nodeId,
+    }),
+  );
+
+  return { harnessRun, planGraphBundle, budgetLedger, nodeRuns };
+}
 
   const budgetLedger = createMinimalBudgetLedger(harnessRunId);
 

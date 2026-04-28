@@ -299,7 +299,10 @@ export class BillingService {
       harnessRunId: input.harnessRunId ?? input.executionId ?? null,
       nodeRunId: input.nodeRunId ?? input.stepId ?? null,
       attemptId: input.attemptId ?? null,
-      executionId: input.executionId ?? input.harnessRunId ?? null,
+      // Legacy executionId is still persisted as a compatibility projection,
+      // but it must not be synthesized from canonical HarnessRun ids because
+      // the old column keeps legacy FK semantics in existing stores.
+      executionId: input.executionId ?? null,
       stepId: input.stepId ?? input.nodeRunId ?? null,
       metricType,
       quantity,

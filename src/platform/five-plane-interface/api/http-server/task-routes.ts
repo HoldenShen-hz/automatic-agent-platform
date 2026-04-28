@@ -230,13 +230,14 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         return buildJsonResponse(ctx.requestId, 201, cockpit);
       },
     },
+    // ── Task Write Operations (R5-39: fixed to use /api/v1 prefix) ────────────
     {
       method: "PATCH",
       pathname: null,
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 3) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
@@ -273,7 +274,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "v1" || segments[1] !== "tasks" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 3) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");

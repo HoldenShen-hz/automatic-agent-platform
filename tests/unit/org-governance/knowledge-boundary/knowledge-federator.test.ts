@@ -22,7 +22,7 @@ function controlledBoundary(
     namespaceIds: [],
     accessPolicy: "controlled",
     auditOnAccess: true,
-    allowedOrgNodeIds,
+    allowedOrgNodeIds: [...allowedOrgNodeIds],
     fieldAllowlist: [],
   };
 }

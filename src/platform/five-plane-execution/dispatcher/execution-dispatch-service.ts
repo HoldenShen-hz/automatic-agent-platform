@@ -423,7 +423,86 @@ export class ExecutionDispatchService {
           });
         }
 
-        const remoteBlockReason =
+        // R6-5: Emergency lane for critical priority NodeRuns
+        if (ticket.priority === "critical") {
+          // Critical NodeRun needs independent channel - try emergency worker pool
+          const emergencyWorkers = this.workers.listWorkers().filter(
+            (w) => w.status === "idle" && w.placement === "local" && w.availableSlots > 0,
+          );
+          if (emergencyWorkers.length > 0) {
+            const emergencyWorker = emergencyWorkers[0]!;
+            const lease = this.leases.acquireLease({
+              executionId: ticket.executionId,
+              workerId: emergencyWorker.workerId,
+              ttlMs: options.leaseTtlMs,
+              queueName: "emergency_lane",
+              occurredAt,
+            });
+            if (lease.outcome === "granted" && lease.lease) {
+              // Dispatch via emergency lane
+              this.db.transaction(() => {
+                this.store.worker.claimExecutionTicket({
+                  ticketId: ticket.id,
+                  assignedWorkerId: emergencyWorker.workerId,
+                  leaseId: lease.lease.id,
+                  claimedAt: occurredAt,
+                });
+              });
+              this.store.event.insertEvent({
+                id: newId("evt"),
+                taskId: ticket.taskId,
+                executionId: ticket.executionId,
+                eventType: "dispatch.emergency_lane_used",
+                eventTier: "tier_2",
+                payloadJson: JSON.stringify({
+                  ticketId: ticket.id,
+                  workerId: emergencyWorker.workerId,
+                  leaseId: lease.lease.id,
+                }),
+                traceId: null,
+                createdAt: occurredAt,
+              });
+              return {
+                outcome: "dispatched",
+                reasonCode: "dispatch.emergency_lane",
+                ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
+                worker: emergencyWorker,
+                leaseId: lease.lease.id,
+                trace: this.recordDecisionEvent(ticket, occurredAt, {
+                  dispatchTarget,
+                  remoteAvailability: null,
+                  requiredIsolationLevel,
+                  requiredRepoVersion,
+                  preferredWorkerId: options.preferredWorkerId ?? null,
+                  requiredCapabilities,
+                  outcome: "dispatched",
+                  reasonCode: "dispatch.emergency_lane",
+                  selectedWorkerId: emergencyWorker.workerId,
+                  leaseId: lease.lease.id,
+                  fallbackApplied: true,
+                  preemption: preemptionTrace,
+                  evaluations,
+                }),
+              };
+            }
+          }
+          // R6-6: No emergency worker available - DLQ integration
+          this.store.event.insertEvent({
+            id: newId("evt"),
+            taskId: ticket.taskId,
+            executionId: ticket.executionId,
+            eventType: "dispatch.dlq_enqueue",
+            eventTier: "tier_2",
+            payloadJson: JSON.stringify({
+              ticketId: ticket.id,
+              reason: "no_emergency_worker_available",
+              priority: "critical",
+            }),
+            traceId: null,
+            createdAt: occurredAt,
+          });
+        }
+
         const remoteBlockReason =
           dispatchTarget === "require_remote"
             ? remoteTrustReason
