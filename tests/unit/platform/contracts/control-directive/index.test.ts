@@ -1,3 +1,9 @@
+/**
+ * @deprecated This test suite validates the deprecated ControlDirective contract.
+ * Per R6-29, these tests verify the legacy contract is properly blocked.
+ * New tests should use OperationalDirective/DecisionDirective from executable-contracts instead.
+ */
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -13,7 +19,11 @@ test("ControlDirectiveKind accepts the canonical directive kinds", () => {
   assert.equal(kinds.length, 5);
 });
 
-test("createControlDirective builds a canonical directive object", () => {
+/**
+ * @deprecated createControlDirective is deprecated per §4.3.
+ * Use createOperationalDirective or createDecisionDirective instead.
+ */
+test("createControlDirective fails fast because ControlDirective is no longer canonical", () => {
   assert.throws(
     () =>
       createControlDirective({
@@ -25,7 +35,8 @@ test("createControlDirective builds a canonical directive object", () => {
         executionId: "execution-1",
         metadata: { source: "console" },
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 

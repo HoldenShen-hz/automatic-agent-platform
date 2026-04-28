@@ -209,12 +209,15 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly dailyTriggerUsage = new Map<string, number>();
   private readonly budgetPoolsByDomain: Readonly<Record<string, ProactiveBudgetPool>>;
   private readonly incidents: ProactiveIncident[] = [];
+  /** §42.5: Current autonomy level for trigger-autonomy linkage */
+  private readonly currentAutonomyLevel: "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
 
   public constructor(options: ProactiveAgentServiceOptions = {}) {
     this.declaredTriggerIdsByDomain = options.declaredTriggerIdsByDomain ?? {};
     this.maxConsecutiveFailures = options.maxConsecutiveFailures ?? 3;
     this.dailyTriggerBudgetByDomain = options.dailyTriggerBudgetByDomain ?? {};
     this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
+    this.currentAutonomyLevel = options.currentAutonomyLevel ?? "supervised";
   }
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
@@ -316,10 +319,25 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (dailyBudget != null) {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
-    const actionMode = resolveTriggerActionMode(
-      state.trigger.action.requireConfirmation,
-      state.trigger.riskLevel,
-    );
+
+    // §41.1: Require confirmation for medium+ risk triggers
+    // §42.5: Autonomy level must be semi_auto+ for auto_execution of medium+ risk
+    let actionMode: TriggerFireDecision["actionMode"];
+    if (state.trigger.riskLevel === "critical") {
+      actionMode = "silent_record";
+    } else if (state.trigger.riskLevel === "high" || state.trigger.riskLevel === "medium") {
+      // Medium/high risk: require confirmation unless autonomy level is high enough
+      const canAutoExecute = this.currentAutonomyLevel === "full_auto";
+      actionMode = state.trigger.action.requireConfirmation || !canAutoExecute
+        ? "suggest"
+        : "auto_execute";
+    } else {
+      // Low risk: use standard logic
+      actionMode = resolveTriggerActionMode(
+        state.trigger.action.requireConfirmation,
+        state.trigger.riskLevel,
+      );
+    }
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
 
     return {

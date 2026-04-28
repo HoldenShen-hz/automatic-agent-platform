@@ -46,20 +46,9 @@ export type HarnessDecisionAction =
   | "revoke_approval"
   | "pause_for_external"
   | "require_revalidation";
-export type HarnessRunStatus =
-  | "created"
-  | "admitted"
-  | "planning"
-  | "ready"
-  | "running"
-  | "pausing"
-  | "paused"
-  | "resuming"
-  | "replanning"
-  | "compensating"
-  | "completed"
-  | "failed"
-  | "aborted";
+
+// R6-13: Re-export canonical HarnessRunStatus to consolidate to single interface
+export type HarnessRunStatus = CanonicalHarnessRunStatus;
 
 export interface ConstraintPack {
   readonly policyIds: readonly string[];

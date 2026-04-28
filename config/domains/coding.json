@@ -1,12 +1,83 @@
 {
   "domainId": "coding",
-  "phase": "9a",
+  "ringId": "ring1",
   "divisionId": "engineering_ops",
   "latencyTier": "near_realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "low",
+    "maxAutonomyLevel": "full_auto"
+  },
+  "riskSpec": {
+    "advisoryOnly": false,
+    "humanAccountable": false,
+    "deterministicHotPathOnly": false
+  },
   "workflowProfile": {
     "workflowId": "coding.primary",
     "rollout": "baseline"
   },
+  "workflows": [
+    {
+      "workflowId": "coding.primary",
+      "name": "Coding Primary Workflow",
+      "triggerConditions": {
+        "domainId": "coding"
+      },
+      "planGraph": {
+        "graphId": "graph:coding:primary",
+        "nodes": [
+          {
+            "nodeId": "node:coding:analyze",
+            "nodeType": "llm",
+            "inputRefs": ["task:${taskId}"],
+            "outputSchemaRef": "schema:coding.analyze",
+            "riskClass": "low",
+            "budgetIntent": {
+              "amount": 0.1,
+              "currency": "USD",
+              "resourceKinds": ["token"]
+            },
+            "sideEffectProfile": {
+              "mayCommitExternalEffect": false,
+              "reversible": true
+            },
+            "retryPolicyRef": "retry:coding.default",
+            "timeoutMs": 60000
+          },
+          {
+            "nodeId": "node:coding:execute",
+            "nodeType": "tool",
+            "inputRefs": ["node:coding:analyze.output"],
+            "outputSchemaRef": "schema:coding.execute",
+            "riskClass": "medium",
+            "budgetIntent": {
+              "amount": 0.05,
+              "currency": "USD",
+              "resourceKinds": ["tool"]
+            },
+            "sideEffectProfile": {
+              "mayCommitExternalEffect": true,
+              "reversible": false
+            },
+            "retryPolicyRef": "retry:coding.default",
+            "timeoutMs": 120000
+          }
+        ],
+        "edges": [
+          {
+            "edgeId": "edge:coding:analyze-to-execute",
+            "sourceNodeId": "node:coding:analyze",
+            "targetNodeId": "node:coding:execute",
+            "condition": "always"
+          }
+        ],
+        "entryNodeIds": ["node:coding:analyze"],
+        "terminalNodeIds": ["node:coding:execute"],
+        "joinStrategy": "all",
+        "graphHash": "sha256:coding-primary-v1"
+      }
+    }
+  ],
   "toolProfile": {
     "requiredTools": [
       "repo_map",

@@ -102,10 +102,11 @@ interface DomainPlannerPlugin {
   // 为特定 domain 生成计划
   plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>;
 
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期（canonical hook 名称）
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface UnifiedAssessment {

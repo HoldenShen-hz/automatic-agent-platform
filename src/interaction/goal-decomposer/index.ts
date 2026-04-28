@@ -236,9 +236,10 @@ function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPrevi
   };
 }
 
-function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
+function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[]): GoalConstraintEnvelope {
   const rawConstraints = [goal.description, ...goal.constraints].join(" ");
   const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(rawConstraints);
+  const budgetLimitUsd = budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!);
   const requiredPermissions = [
     ...( /(deploy|release|publish|上线|发布)/i.test(rawConstraints) ? ["deployment:write"] : []),
     ...( /(delete|drop|remove|删除|清空)/i.test(rawConstraints) ? ["destructive:write"] : []),
@@ -247,8 +248,41 @@ function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
     ...( /(dashboard|report|报表|roi|分析)/i.test(rawConstraints) ? ["analytics"] : []),
     ...( /(approval|审批)/i.test(rawConstraints) ? ["approval_workflow"] : []),
   ];
+
+  // §40.2: Proportional budget allocation to subtasks
+  const budgetAllocations: GoalConstraintEnvelope["budgetAllocations"] = tasks && tasks.length > 0 && budgetLimitUsd != null
+    ? tasks.map((task, index) => {
+        // Proportional allocation based on estimated cost ratio
+        const taskCostRatio = task.estimatedCost.estimatedCostUsd > 0
+          ? task.estimatedCost.estimatedCostUsd / tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0)
+          : 1 / tasks.length;
+        const taskBudget = Number((budgetLimitUsd * taskCostRatio).toFixed(4));
+        // Risk multiplier: critical=2.0, high=1.5, medium=1.2, low=1.0
+        const riskMultiplier = task.constraintEnvelope?.riskTolerance === "critical" ? 2.0
+          : task.constraintEnvelope?.riskTolerance === "high" ? 1.5
+          : task.constraintEnvelope?.riskTolerance === "medium" ? 1.2
+          : 1.0;
+        return { taskId: task.taskId, budgetUsd: taskBudget, riskMultiplier };
+      })
+    : undefined;
+
+  // §40.2: Risk propagation to subtasks
+  const goalRisk: "low" | "medium" | "high" | "critical" =
+    goal.priority === "critical" ? "critical"
+    : goal.priority === "high" ? "high"
+    : HIGH_RISK_KEYWORDS.some(k => rawConstraints.toLowerCase().includes(k)) ? "high"
+    : "medium";
+  const riskPropagation: GoalConstraintEnvelope["riskPropagation"] = tasks && tasks.length > 0
+    ? tasks.map(task => ({
+        taskId: task.taskId,
+        riskLevel: task.constraintEnvelope?.riskTolerance ?? goalRisk,
+      }))
+    : undefined;
+
   return {
-    budgetLimitUsd: budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!),
+    budgetLimitUsd,
+    budgetAllocations,
+    riskPropagation,
     riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
     requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
     requiredPermissions,

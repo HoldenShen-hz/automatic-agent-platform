@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../helpers/integration-context.js";
 import { runMultiStepOrchestration, executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";

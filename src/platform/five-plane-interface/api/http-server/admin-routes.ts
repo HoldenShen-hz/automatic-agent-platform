@@ -7,7 +7,7 @@
  * - GET /v1/admin/control-plane/load-balancing
  * - POST /v1/admin/control-plane/load-balancing/select
  * - GET /v1/admin/workers
- * - POST /v1/admin/config (also PUT per R5-36)
+ * - POST /v1/admin/config (R5-36)
  * - PUT /v1/admin/config (R5-36)
  * - GET /v1/admin/rollouts
  * - GET /v1/admin/tenants

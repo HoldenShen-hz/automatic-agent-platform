@@ -12,6 +12,15 @@ import type { MemoryRecord, MemorySourceTrustLevel } from "../../platform/contra
 import type { MemoryService } from "../../platform/state-evidence/memory/index.js";
 import type { DetectedIntent } from "../nl-gateway/index.js";
 
+// UI spec R7-27: nl.clarification_needed event type for real-time WS push
+export interface ClarificationNeededEvent {
+  readonly type: "nl.clarification_needed";
+  readonly sessionId: string;
+  readonly turnId: string;
+  readonly prompt: string;
+  readonly timestamp: string;
+}
+
 /**
  * Conversation turn record
  */

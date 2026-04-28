@@ -38,6 +38,14 @@ export function resolveEscalationApprover(
     return rule.escalateToApproverId;
   }
   if (rule.escalateToParentManager) {
+    const escalationPath = traverseOrgHierarchyForEscalation(
+      context.currentApproverId,
+      context.orgNodeId,
+      nodes,
+    );
+    if (escalationPath.length > 0) {
+      return escalationPath[0];
+    }
     const currentNode = nodes.find((n) => n.orgNodeId === context.orgNodeId);
     if (currentNode?.parentOrgNodeId != null) {
       const parentNode = nodes.find((n) => n.orgNodeId === currentNode.parentOrgNodeId);

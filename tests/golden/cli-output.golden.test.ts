@@ -11,7 +11,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, join } from "node:path";
+import { join } from "node:path";
+import { existsSync } from "node:fs";
 
 import { assertGolden } from "../helpers/golden.js";
 import { createTempWorkspace, cleanupPath } from "../helpers/fs.js";

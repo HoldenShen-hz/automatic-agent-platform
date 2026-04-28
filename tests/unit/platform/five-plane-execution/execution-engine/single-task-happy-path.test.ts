@@ -25,7 +25,7 @@ test("runSingleTaskExecution creates task in queued status", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -54,7 +54,7 @@ test("runSingleTaskExecution creates workflow and execution records", async () =
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -83,7 +83,7 @@ test("runSingleTaskExecution creates session record with streaming status", asyn
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -111,7 +111,7 @@ test("runSingleTaskExecution writes step output artifact", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -141,7 +141,7 @@ test("runSingleTaskExecution uses synthetic output when stepOutputOverride provi
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const customResult = "Custom synthetic result";
     const result = await runSingleTaskExecution({
@@ -172,7 +172,7 @@ test("runSingleTaskExecution transitions through all lifecycle states", async ()
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     // This test verifies the happy path completes without error
     const result = await runSingleTaskExecution({
@@ -202,7 +202,7 @@ test("runSingleTaskExecution handles tenantId option", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -231,7 +231,7 @@ test("runSingleTaskExecution includes cost record in snapshot", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -263,7 +263,7 @@ test("runSingleTaskExecution enforces budget reservation (INV-BUDGET-001)", asyn
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -297,7 +297,7 @@ test("runSingleTaskExecution creates precheck record before execution", async ()
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
@@ -329,7 +329,7 @@ test("runSingleTaskExecution handles admission with backpressure snapshot", asyn
   const dbPath = await createTempDbPath();
 
   try {
-    const { runSingleTaskExecution } = await import("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+    const { runSingleTaskExecution } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
 
     const result = await runSingleTaskExecution({
       dbPath,
