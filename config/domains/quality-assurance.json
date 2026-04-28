@@ -4,9 +4,9 @@
   "divisionId": "engineering_ops",
   "latencyTier": "near_realtime",
   "riskSpec": {
-    "riskClass": "medium",
-    "reviewThreshold": "medium",
-    "maxSpendLimitUsd": 10.0
+    "advisoryOnly": false,
+    "humanAccountable": false,
+    "deterministicHotPathOnly": false
   },
   "workflowProfile": {
     "workflowId": "quality-assurance.primary",
