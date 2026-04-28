@@ -89,7 +89,7 @@ export class CircuitBreaker {
   private lastFailureAt: number | null = null;
   private lastSuccessAt: number | null = null;
   private nextAttemptAt: number | null = null;
-  private readonly onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
+  private readonly onStateChange: ((payload: CircuitBreakerStateChangePayload) => void) | undefined;
 
   // Track failures within monitoring window for rate-based decisions
   private readonly failureTimestamps: number[] = [];
@@ -100,7 +100,7 @@ export class CircuitBreaker {
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
-    this.onStateChange = options.onStateChange;
+    this.onStateChange = options.onStateChange ?? undefined;
   }
 
   /**

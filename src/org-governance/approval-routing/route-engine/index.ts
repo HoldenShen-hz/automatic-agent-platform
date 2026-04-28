@@ -149,7 +149,65 @@ export function applySodPolicy(
       blocked.add(ownerId);
     }
   }
+
+  const sameChainBlocked = findSameChainConflicts(request.requesterId, candidateApprovers, nodes, orgNodeId);
+  for (const blockedId of sameChainBlocked) {
+    blocked.add(blockedId);
+  }
+
   return candidateApprovers.filter((approverId) => !blocked.has(approverId));
+}
+
+function findSameChainConflicts(
+  requesterId: string,
+  candidateApprovers: readonly string[],
+  nodes: readonly OrgNode[],
+  requesterOrgNodeId: string,
+): string[] {
+  const blocked: string[] = [];
+  const requesterNode = nodes.find((item) => item.orgNodeId === requesterOrgNodeId) ?? null;
+  if (requesterNode == null) {
+    return blocked;
+  }
+
+  for (const approverId of candidateApprovers) {
+    if (isInSameApprovalChain(requesterId, approverId, nodes, requesterOrgNodeId, requesterNode)) {
+      blocked.push(approverId);
+    }
+  }
+  return blocked;
+}
+
+function isInSameApprovalChain(
+  requesterId: string,
+  approverId: string,
+  nodes: readonly OrgNode[],
+  requesterOrgNodeId: string,
+  requesterNode: OrgNode,
+): boolean {
+  const approverNode = nodes.find((item) => item.ownerUserIds.includes(approverId)) ?? null;
+  if (approverNode == null) {
+    return false;
+  }
+
+  if (requesterNode.parentOrgNodeId === approverNode.orgNodeId) {
+    return true;
+  }
+  if (approverNode.parentOrgNodeId === requesterOrgNodeId) {
+    return true;
+  }
+
+  let currentNode = requesterNode;
+  while (currentNode.parentOrgNodeId != null) {
+    const parentNode = nodes.find((item) => item.orgNodeId === currentNode.parentOrgNodeId) ?? null;
+    if (parentNode == null) break;
+    if (parentNode.ownerUserIds.includes(approverId)) {
+      return true;
+    }
+    currentNode = parentNode;
+  }
+
+  return false;
 }
 
 export function resolveApprovalRoute(
