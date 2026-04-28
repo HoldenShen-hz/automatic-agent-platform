@@ -185,6 +185,10 @@ export class ExecutionDispatchService {
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
     const tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
+
+    // R6-7: Capture ready_set for scheduler event (all pending tickets considered)
+    const readySet = tickets.map((t) => t.id);
+
     if (tickets.length === 0) {
       return {
         outcome: "no_ticket",

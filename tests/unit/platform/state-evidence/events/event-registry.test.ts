@@ -273,7 +273,7 @@ test("platform.graph_scheduler.decision_recorded is replayable per R5-34", () =>
 
   assert.equal(schema.producer, "graph-scheduler");
   assert.equal(metadata.replayable, true);
-  assert.equal(metadata.replayBehavior, "simulate_projection");
+  assert.equal(metadata.replayBehavior, "simulate");
   assert.equal(metadata.sourceOfTruth, "projection");
 });
 
@@ -281,7 +281,7 @@ test("oapeflir.view.run_lifecycle has simulation replay behavior", () => {
   const schema = getEventSchema("oapeflir.view.run_lifecycle");
   const metadata = getEventReplayMetadata("oapeflir.view.run_lifecycle");
 
-  assert.equal(metadata.replayBehavior, "simulate_projection");
+  assert.equal(metadata.replayBehavior, "simulate");
   assert.equal(metadata.sourceOfTruth, "projection");
 });
 
