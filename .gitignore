@@ -45,3 +45,6 @@ session-replay/
 tests/**/artifacts/
 tests/golden/snapshots/
 tests/fixtures/migration/snapshots/
+
+# Logs
+logs/

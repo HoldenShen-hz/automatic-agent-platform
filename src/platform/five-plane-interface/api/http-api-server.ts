@@ -368,7 +368,13 @@ export class HttpApiServer {
    * Routes a request after passing rate limiting.
    * Validates body size and dispatches to the appropriate handler.
    */
-  private async routeRequest(requestId: string, request: IncomingMessage, headers: Record<string, string | undefined>): Promise<ApiResponsePayload> {
+  private async routeRequest(
+    requestId: string,
+    request: IncomingMessage,
+    headers: Record<string, string | undefined>,
+    principal: ApiPrincipal | null,
+    rateLimitHeaders: Record<string, string>,
+  ): Promise<ApiResponsePayload> {
     const contentLength = Number.parseInt(headers["content-length"] ?? "0", 10);
     if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
       return this.buildJsonErrorResponse(requestId, 413, {
@@ -382,7 +388,7 @@ export class HttpApiServer {
       url: request.url,
       headers,
       body,
-    });
+    }, principal, rateLimitHeaders);
   }
 
   /**
@@ -398,9 +404,12 @@ export class HttpApiServer {
     }
   }
 
-  private async dispatchRequest(request: ApiRequestLike): Promise<ApiResponsePayload> {
+  private async dispatchRequest(
+    request: ApiRequestLike,
+    principal: ApiPrincipal | null,
+    rateLimitHeaders: Record<string, string>,
+  ): Promise<ApiResponsePayload> {
     const requestId = readRequestId(request);
-    const principal = authenticateOptionalPrincipal(request, this.options.authService ?? null);
 
     return provideContext({
       traceId: requestId,
@@ -432,7 +441,8 @@ export class HttpApiServer {
             message: "Route not found.",
           });
         }
-        return resolved;
+        // Attach rate limit headers to successful responses
+        return this.addRateLimitHeaders(resolved, rateLimitHeaders);
       } catch (error) {
         return this.handleError(error, requestId, request);
       }
@@ -624,6 +634,32 @@ export class HttpApiServer {
 
   private decoratePayload(payload: ApiResponsePayload, origin: string | undefined): ApiResponsePayload {
     return decorateResponseHeaders(payload, origin, this.corsConfig);
+  }
+
+  /**
+   * Builds rate limit headers from a rate limit check result.
+   * Returns headers conforming to IETF Rate Limit draft spec.
+   */
+  private buildRateLimitHeaders(result: RateLimitCheckResult): Record<string, string> {
+    return {
+      "x-ratelimit-limit": String(this.rateLimiter?.["maxCalls"] ?? 100),
+      "x-ratelimit-remaining": String(result.remaining),
+      "x-ratelimit-reset": String(Date.now() + (result.retryAfterMs ?? 60_000)),
+      ...(result.retryAfterMs != null ? { "retry-after": String(Math.ceil(result.retryAfterMs / 1000)) } : {}),
+    };
+  }
+
+  /**
+   * Adds rate limit headers to a response payload.
+   */
+  private addRateLimitHeaders(
+    payload: ApiResponsePayload,
+    rateLimitHeaders: Record<string, string>,
+  ): ApiResponsePayload {
+    return {
+      ...payload,
+      headers: { ...payload.headers, ...rateLimitHeaders },
+    };
   }
 
   private sendPayload(
