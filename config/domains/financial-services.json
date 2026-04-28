@@ -1,8 +1,17 @@
 {
   "domainId": "financial-services",
-  "phase": "9b",
+  "ringId": "ring2",
   "divisionId": "security",
   "latencyTier": "realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "high",
+    "maxAutonomyLevel": "supervised"
+  },
+  "riskSpec": {
+    "advisoryOnly": false,
+    "humanAccountable": true,
+    "deterministicHotPathOnly": false
+  },
   "workflowProfile": {
     "workflowId": "financial-services.primary",
     "rollout": "baseline"

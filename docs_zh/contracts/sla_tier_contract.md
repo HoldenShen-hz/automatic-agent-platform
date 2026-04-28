@@ -29,6 +29,18 @@
 - SLA 证据至少要能回链到 `harness_run_id`、`node_run_id` 与对应 `NodeAttemptReceipt`。
 - `platinum` 等级只有在 failover、quorum、演练与容量保留证据全部就绪时才能对外承诺。
 
+## 4A. HarnessRun / NodeRun 集成点
+
+| 集成场景 | 必填字段 | 说明 |
+| --- | --- | --- |
+| SLA 承诺绑定 | `harness_run_id`、`tier_id` | 每个 HarnessRun 必须携带 SLA tier 标识 |
+| 延迟追踪 | `harness_run_id`、`node_run_id`、`queued_at`、`started_at`、`completed_at` | 用于计算队列等待与执行延迟 |
+| 成功率统计 | `harness_run_id`、`node_run_id`、`attempt_id`、`status` | 按 `NodeAttemptReceipt.status` 聚合 |
+| 预算关联 | `harness_run_id`、`node_run_id`、`budget_reservation_id` | 用于 SLA 成本核算 |
+| 断点回链 | `harness_run_id`、`node_run_id`、`receipt_id` | `SlaBreachRecord` 必须引用 `NodeAttemptReceipt` |
+
+**v4.3 Remediation**：原文档仅声明"回链到 HarnessRun/NodeRun"，未明确集成字段列表。修复：正文现补充上表，明确每种集成场景的必填字段，确保实现侧有一致锚点。
+
 ## 5. 测试要求
 
 - unit：tier resolution、breach classification

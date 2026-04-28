@@ -156,18 +156,8 @@ export class OrgGovernanceSaga {
           outcome: "compensated",
         });
       }
-    } else {
-      for (const step of sortedSteps.filter((candidate) => candidate.action === "compensate")) {
-        this.handlers.compensate?.(step, context());
-        compensatedNodeIds.push(step.targetOrgNodeId);
-        executionLog.push({
-          stepId: step.stepId,
-          action: step.action,
-          targetOrgNodeId: step.targetOrgNodeId,
-          outcome: "compensated",
-        });
-      }
     }
+    // else: no failure - no compensation needed; proceed directly to audit
 
     for (const step of sortedSteps.filter((candidate) => candidate.action === "audit")) {
       this.handlers.audit?.(step, context());

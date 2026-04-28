@@ -402,12 +402,28 @@ export class DegradationController {
 
       // Emit OperationalDirective per §9.5
       const directive = createOperationalDirective({
-        directiveId: `degradation_escalate_${Date.now()}`,
-        issuedBy: "degradation_controller",
-        directiveType: "mode_escalation",
-        targetLevel: this.currentLevel,
+        operationalDirectiveId: `degradation_escalate_${Date.now()}`,
+        issuedBy: {
+          principalId: "degradation_controller",
+          tenantId: "system",
+          roles: ["system"],
+        },
+        type: "mode_switch",
+        scope: {},
         reason: this.lastEscalationReason ?? "health_threshold_exceeded",
-        previousLevel: oldLevel,
+        params: {
+          previousLevel: oldLevel,
+          newLevel: this.currentLevel,
+          action: "escalate",
+        },
+      });
+
+      // Emit to event bus per §9.5
+      this.eventBusEmitter?.("degradation:escalate", {
+        oldLevel,
+        newLevel: this.currentLevel,
+        directive,
+        reason: this.lastEscalationReason,
       });
 
       logger.log({
@@ -436,12 +452,28 @@ export class DegradationController {
 
       // Emit OperationalDirective per §9.5
       const directive = createOperationalDirective({
-        directiveId: `degradation_deescalate_${Date.now()}`,
-        issuedBy: "degradation_controller",
-        directiveType: "mode_deescalation",
-        targetLevel: this.currentLevel,
+        operationalDirectiveId: `degradation_deescalate_${Date.now()}`,
+        issuedBy: {
+          principalId: "degradation_controller",
+          tenantId: "system",
+          roles: ["system"],
+        },
+        type: "mode_switch",
+        scope: {},
         reason: "health_recovered",
-        previousLevel: oldLevel,
+        params: {
+          previousLevel: oldLevel,
+          newLevel: this.currentLevel,
+          action: "deescalate",
+        },
+      });
+
+      // Emit to event bus per §9.5
+      this.eventBusEmitter?.("degradation:deescalate", {
+        oldLevel,
+        newLevel: this.currentLevel,
+        directive,
+        reason: "health_recovered",
       });
 
       logger.log({

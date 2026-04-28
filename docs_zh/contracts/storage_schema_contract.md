@@ -705,7 +705,8 @@ CREATE TABLE IF NOT EXISTS event_consumer_acks (
   status TEXT NOT NULL,
   last_attempt_at TEXT NULL,
   acked_at TEXT NULL,
-  error_code TEXT NULL
+  error_code TEXT NULL,
+  attempt_count INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_consumer_event_consumer

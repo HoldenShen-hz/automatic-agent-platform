@@ -8,11 +8,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createIntegrationContext } from "../../../../helpers/integration-context.js";
-import { createRepositoryHarness } from "../../../../helpers/repository-harness.js";
-import { TransitionService } from "../../../../../src/platform/state-transition/transition-service.js";
-import { createRuntimeLifecycleRepository } from "../../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
-import { StateTransitionMachine } from "../../../../../src/platform/execution/state-transition/state-transition-machine.js";
+import { createIntegrationContext } from "../../../helpers/integration-context.js";
+import { createRepositoryHarness } from "../../../helpers/repository-harness.js";
+import { TransitionService } from "../../../../src/platform/state-transition/transition-service.js";
+import { createRuntimeLifecycleRepository } from "../../../../src/platform/state-evidence/truth/repositories/runtime-lifecycle-repository.js";
+import { StateTransitionMachine } from "../../../../src/platform/execution/state-transition/state-transition-machine.js";
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("state-transition: Task transitions from queued -> in_progress -> done", () => {

@@ -419,7 +419,10 @@ function normalizeThresholdCny(
     if (fxSnapshot != null && fxSnapshot.baseCurrency.toUpperCase() !== "CNY") {
       return rule.maxAmountUsd * fxSnapshot.rate;
     }
-    return rule.maxAmountUsd * 7.2;
+    if (fxSnapshot != null) {
+      return rule.maxAmountUsd * fxSnapshot.rate;
+    }
+    throw new Error("approval_route.fx_snapshot_required:for_non_usd_amount");
   }
   return Number.POSITIVE_INFINITY;
 }

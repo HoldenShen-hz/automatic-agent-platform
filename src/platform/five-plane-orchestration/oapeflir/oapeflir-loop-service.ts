@@ -150,6 +150,8 @@ export class OapeflirLoopService {
   private currentGraphPatch: GraphPatch | null = null;
   /** R5-3 Track current FSM stage for transition validation */
   private currentFsmStage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release" = "observe";
+  /** R5-3 StageTransitionFSM for validating stage transitions per R5-3 */
+  private readonly stageFsm = createStageTransitionFSM();
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {

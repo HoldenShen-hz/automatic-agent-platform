@@ -12,11 +12,13 @@ import {
   createControlDirective,
   createOperationalDirective,
   createDecisionDirective,
+} from "../../../../src/platform/contracts/control-directive/index.js";
+import {
   LEGACY_CONTRACT_NAMES,
   CANONICAL_CONTRACT_NAMES,
   type OperationalDirectiveType,
   type DecisionDirectiveType,
-} from "../../../../src/platform/contracts/control-directive/index.js";
+} from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 const minimalIssuedBy = {

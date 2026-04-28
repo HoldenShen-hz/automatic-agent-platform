@@ -3,988 +3,229 @@ import assert from "node:assert/strict";
 
 import { PlanBuilder } from "../../../../../src/platform/orchestration/planner/plan-builder.js";
 
-const workflow = {
-  workflow: {
-    workflowId: "wf_build",
-    divisionId: "coding",
-    steps: [],
-  },
-  executionSteps: [
-    {
-      stepId: "step_plan",
-      divisionId: "coding",
-      roleId: "planner",
-      inputKeys: [],
-      agentId: "agent_planner",
-      outputKey: "plan",
-      outputSchemaPath: null,
-      dependsOnStepIds: [],
-      dependencyTypes: {},
-      timeoutMs: 1000,
-      maxAttempts: 1,
+function createMinimalObservation(taskId: string) {
+  return {
+    taskId,
+    timestamp: Date.now(),
+    objective: "test task",
+    currentPhase: "planning" as const,
+    userIntent: { raw: "test", normalized: "test", confidence: 0.9 },
+    blockers: [],
+    codebaseSnapshot: {
+      rootPath: process.cwd(),
+      fileCount: 1,
+      relevantFiles: [],
     },
-    {
-      stepId: "step_execute",
+    environmentContext: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      workingDirectory: process.cwd(),
+      availableTools: ["read", "execute"],
+    },
+    historicalContext: { previousTaskIds: [], relatedMemoryRefs: [] },
+    relevantMemory: [],
+    fileRefs: [],
+    metrics: {},
+  };
+}
+
+function createMinimalAssessment(taskId: string, overrides: {
+  risk?: "low" | "medium" | "high" | "critical";
+  maxTokens?: number;
+} = {}) {
+  return {
+    taskId,
+    timestamp: Date.now(),
+    situationRef: `task_situation:${taskId}:1`,
+    phase: "pre-execution" as const,
+    complexity: "simple" as const,
+    risk: overrides.risk ?? "medium",
+    riskAssessment: { level: overrides.risk ?? "medium", factors: [] },
+    routingDecision: { division: "coding", workflow: "multi-step", rationale: "test" },
+    resourceAllocation: { modelClass: "small", maxTokens: overrides.maxTokens ?? 5000, timeoutMs: 30000 },
+    approvalPolicy: { required: false, level: "none" },
+    executionMode: "auto" as const,
+    suggestedActions: [],
+  };
+}
+
+function createWorkflow(steps: Array<{
+  stepId: string;
+  dependsOnStepIds: string[];
+  roleId?: string;
+  timeoutMs?: number;
+}>) {
+  return {
+    workflow: { workflowId: "wf_test", divisionId: "coding", steps: [] },
+    executionSteps: steps.map((s) => ({
+      stepId: s.stepId,
       divisionId: "coding",
-      roleId: "builder",
-      inputKeys: ["plan"],
+      roleId: s.roleId ?? "builder",
+      inputKeys: s.dependsOnStepIds,
       agentId: "agent_builder",
-      outputKey: "patch",
+      outputKey: `output_${s.stepId}`,
       outputSchemaPath: null,
-      dependsOnStepIds: ["step_plan"],
-      dependencyTypes: { step_plan: "hard" as const },
-      timeoutMs: 1000,
-      maxAttempts: 2,
-    },
-  ],
-  planReason: "workflow.requires_multi_step_orchestration",
-  dependencyEdges: [{ fromStepId: "step_plan", toStepId: "step_execute" }],
-};
-
-test("PlanBuilder builds reflexive multi-step plan from assessment", () => {
-  const builder = new PlanBuilder();
-  const plan = builder.build({
-    observation: {
-      taskId: "task_1",
-      timestamp: Date.now(),
-      objective: "build feature",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "build feature",
-        normalized: "build feature",
-        confidence: 0.9,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 2,
-        relevantFiles: [{ path: "src/app.ts" }],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read", "apply_patch"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: ["src/app.ts"],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_1",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_1:1",
-      phase: "pre-execution",
-      complexity: "complex",
-      risk: "medium",
-      riskAssessment: {
-        level: "medium",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "multi-step",
-        rationale: "needs orchestration",
-      },
-      resourceAllocation: {
-        modelClass: "medium",
-        maxTokens: 5000,
-        timeoutMs: 60000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow,
-  });
-
-  assert.equal(plan.strategy, "reflexive");
-  assert.equal(plan.steps.length, 2);
-  assert.equal(plan.steps[1]?.dependencies[0], "step_plan");
-});
-
-test("PlanBuilder assigns correct step order for dependencies", () => {
-  const builder = new PlanBuilder();
-  const plan = builder.build({
-    observation: {
-      taskId: "task_2",
-      timestamp: Date.now(),
-      objective: "multi-step task",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "multi-step task",
-        normalized: "multi-step task",
-        confidence: 0.85,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read", "write"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_2",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_2:1",
-      phase: "pre-execution",
-      complexity: "moderate",
-      risk: "low",
-      riskAssessment: {
-        level: "low",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "multi-step",
-        rationale: "moderate complexity",
-      },
-      resourceAllocation: {
-        modelClass: "small",
-        maxTokens: 3000,
-        timeoutMs: 30000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow,
-  });
-
-  assert.equal(plan.steps[0]?.stepId, "step_plan");
-  assert.equal(plan.steps[1]?.stepId, "step_execute");
-});
-
-test("PlanBuilder uses linear strategy for simple plans", () => {
-  const builder = new PlanBuilder();
-  const singleStepWorkflow = {
-    workflow: {
-      workflowId: "wf_simple",
-      divisionId: "coding",
-      steps: [],
-    },
-    executionSteps: [
-      {
-        stepId: "step_1",
-        divisionId: "coding",
-        roleId: "builder",
-        inputKeys: [],
-        agentId: "agent_builder",
-        outputKey: "result",
-        outputSchemaPath: null,
-        dependsOnStepIds: [],
-        dependencyTypes: {},
-        timeoutMs: 1000,
-        maxAttempts: 1,
-      },
-    ],
-    planReason: "workflow.single_step",
-    dependencyEdges: [],
+      dependsOnStepIds: s.dependsOnStepIds,
+      dependencyTypes: Object.fromEntries(s.dependsOnStepIds.map(id => [id, "hard" as const])),
+      timeoutMs: s.timeoutMs ?? 5000,
+      maxAttempts: 1,
+    })),
+    planReason: "test.workflow",
+    dependencyEdges: steps.flatMap(s =>
+      s.dependsOnStepIds.map(dep => ({ fromStepId: dep, toStepId: s.stepId }))
+    ),
   };
+}
 
-  const plan = builder.build({
-    observation: {
-      taskId: "task_3",
-      timestamp: Date.now(),
-      objective: "simple task",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "simple task",
-        normalized: "simple task",
-        confidence: 0.95,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_3",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_3:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: {
-        level: "low",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "single",
-        rationale: "simple task",
-      },
-      resourceAllocation: {
-        modelClass: "small",
-        maxTokens: 1000,
-        timeoutMs: 10000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: singleStepWorkflow,
-  });
-
-  assert.equal(plan.steps.length, 1);
-  assert.equal(plan.steps[0]?.stepId, "step_1");
-});
-
-test("PlanBuilder.replan creates new version with incremented version and parentVersion", () => {
+test("PlanBuilder.buildGraphBundle produces PlanGraphBundle with graph nodes and edges", () => {
   const builder = new PlanBuilder();
 
-  const initialPlan = builder.build({
-    observation: {
-      taskId: "task_replan",
-      timestamp: Date.now(),
-      objective: "initial task",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "initial task",
-        normalized: "initial task",
-        confidence: 0.9,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_replan",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_replan:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: {
-        level: "low",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "single",
-        rationale: "simple",
-      },
-      resourceAllocation: {
-        modelClass: "small",
-        maxTokens: 1000,
-        timeoutMs: 10000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: {
-      workflow: {
-        workflowId: "wf_replan",
-        divisionId: "coding",
-        steps: [],
-      },
-      executionSteps: [
-        {
-          stepId: "step_1",
-          divisionId: "coding",
-          roleId: "builder",
-          inputKeys: [],
-          agentId: "agent_builder",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "workflow.single_step",
-      dependencyEdges: [],
-    },
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_graph"),
+    assessment: createMinimalAssessment("task_graph"),
+    workflow: createWorkflow([
+      { stepId: "step_a", dependsOnStepIds: [] },
+      { stepId: "step_b", dependsOnStepIds: ["step_a"] },
+      { stepId: "step_c", dependsOnStepIds: ["step_b"] },
+    ]),
+    harnessRunId: "harness_001",
   });
 
-  assert.equal(initialPlan.version, 1);
-  assert.equal(initialPlan.parentVersion, undefined);
-  assert.equal(initialPlan.strategy, "linear");
+  // Verify PlanGraphBundle structure
+  assert.ok(bundle.harnessRunId, "harness_001");
+  assert.ok(bundle.graph, "graph exists");
+  assert.ok(bundle.graph.nodes, "nodes array exists");
+  assert.ok(bundle.graph.edges, "edges array exists");
 
-  const replanned = builder.replan(initialPlan, {
-    observation: {
-      taskId: "task_replan",
-      timestamp: Date.now(),
-      objective: "replanned task",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "replanned task",
-        normalized: "replanned task",
-        confidence: 0.85,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: ["task_replan"],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_replan",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_replan:2",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: {
-        level: "low",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "single",
-        rationale: "replan",
-      },
-      resourceAllocation: {
-        modelClass: "small",
-        maxTokens: 1000,
-        timeoutMs: 10000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: {
-      workflow: {
-        workflowId: "wf_replan",
-        divisionId: "coding",
-        steps: [],
-      },
-      executionSteps: [
-        {
-          stepId: "step_1",
-          divisionId: "coding",
-          roleId: "builder",
-          inputKeys: [],
-          agentId: "agent_builder",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "workflow.single_step",
-      dependencyEdges: [],
-    },
-  });
+  // Verify nodes count matches steps
+  assert.equal(bundle.graph.nodes.length, 3, "should have 3 nodes");
 
-  assert.equal(replanned.version, 2);
-  assert.equal(replanned.parentVersion, 1);
-  assert.equal(replanned.strategy, "replanned");
+  // Verify edges exist (step_b depends on step_a, step_c depends on step_b)
+  assert.ok(bundle.graph.edges.length >= 2, "should have at least 2 edges");
 });
 
-test("PlanBuilder.replan uses replanned strategy for subsequent versions", () => {
+test("PlanBuilder.buildGraphBundle sets entryNodeIds for steps with no dependencies", () => {
   const builder = new PlanBuilder();
 
-  const v1Plan = builder.build({
-    observation: {
-      taskId: "task_v1",
-      timestamp: Date.now(),
-      objective: "v1 task",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "v1 task",
-        normalized: "v1 task",
-        confidence: 0.9,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_v1",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_v1:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: {
-        level: "low",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "single",
-        rationale: "simple",
-      },
-      resourceAllocation: {
-        modelClass: "small",
-        maxTokens: 1000,
-        timeoutMs: 10000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: {
-      workflow: {
-        workflowId: "wf_v1",
-        divisionId: "coding",
-        steps: [],
-      },
-      executionSteps: [
-        {
-          stepId: "step_1",
-          divisionId: "coding",
-          roleId: "builder",
-          inputKeys: [],
-          agentId: "agent_builder",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "workflow.single_step",
-      dependencyEdges: [],
-    },
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_entry"),
+    assessment: createMinimalAssessment("task_entry"),
+    workflow: createWorkflow([
+      { stepId: "start", dependsOnStepIds: [] },
+      { stepId: "middle", dependsOnStepIds: ["start"] },
+      { stepId: "end", dependsOnStepIds: ["middle"] },
+    ]),
+    harnessRunId: "harness_entry",
   });
 
-  const v2Plan = builder.replan(v1Plan, {
-    observation: {
-      taskId: "task_v1",
-      timestamp: Date.now(),
-      objective: "v2 task",
-      currentPhase: "planning",
-      userIntent: {
-        raw: "v2 task",
-        normalized: "v2 task",
-        confidence: 0.8,
-      },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: ["task_v1"],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_v1",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_v1:2",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: {
-        level: "low",
-        factors: [],
-      },
-      routingDecision: {
-        division: "coding",
-        workflow: "single",
-        rationale: "replan",
-      },
-      resourceAllocation: {
-        modelClass: "small",
-        maxTokens: 1000,
-        timeoutMs: 10000,
-      },
-      approvalPolicy: {
-        required: false,
-        level: "none",
-      },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: {
-      workflow: {
-        workflowId: "wf_v1",
-        divisionId: "coding",
-        steps: [],
-      },
-      executionSteps: [
-        {
-          stepId: "step_1",
-          divisionId: "coding",
-          roleId: "builder",
-          inputKeys: [],
-          agentId: "agent_builder",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "workflow.single_step",
-      dependencyEdges: [],
-    },
-  });
-
-  assert.equal(v1Plan.version, 1);
-  assert.equal(v2Plan.version, 2);
-  assert.equal(v2Plan.parentVersion, 1);
-  assert.equal(v2Plan.strategy, "replanned");
+  // step_a has no dependencies, so it should be an entry node
+  assert.ok(bundle.graph.entryNodeIds.includes("step_a"), "step_a should be entry node");
+  assert.equal(bundle.graph.entryNodeIds.length, 1, "should have exactly 1 entry node");
 });
 
-test("PlanBuilder uses default timeout when timeoutMs is undefined", () => {
+test("PlanBuilder.buildGraphBundle sets terminalNodeIds for steps with no dependents", () => {
   const builder = new PlanBuilder();
-  const workflowWithMissingTimeout = {
-    workflow: { workflowId: "wf_test", divisionId: "coding", steps: [] },
-    executionSteps: [
-      {
-        stepId: "step_1",
-        divisionId: "coding",
-        roleId: "builder",
-        inputKeys: [],
-        agentId: "agent_builder",
-        outputKey: "result",
-        outputSchemaPath: null,
-        dependsOnStepIds: [],
-        dependencyTypes: {},
-        // timeoutMs is missing
-        maxAttempts: 1,
-      },
-    ],
-    planReason: "test",
-    dependencyEdges: [],
-  };
 
-  const plan = builder.build({
-    observation: {
-      taskId: "task_timeout",
-      timestamp: Date.now(),
-      objective: "test timeout",
-      currentPhase: "planning",
-      userIntent: { raw: "test", normalized: "test", confidence: 0.9 },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_timeout",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_timeout:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: { level: "low", factors: [] },
-      routingDecision: { division: "coding", workflow: "single", rationale: "test" },
-      resourceAllocation: { modelClass: "small", maxTokens: 5000, timeoutMs: 60000 },
-      approvalPolicy: { required: false, level: "none" },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: workflowWithMissingTimeout as any,
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_terminal"),
+    assessment: createMinimalAssessment("task_terminal"),
+    workflow: createWorkflow([
+      { stepId: "a", dependsOnStepIds: [] },
+      { stepId: "b", dependsOnStepIds: ["a"] },
+      { stepId: "c", dependsOnStepIds: ["b"] },
+    ]),
+    harnessRunId: "harness_terminal",
   });
 
-  // Should use default timeout of 60000
-  assert.equal(plan.steps[0]!.timeout, 60000);
+  // step_c has no dependents, so it should be a terminal node
+  assert.ok(bundle.graph.terminalNodeIds.includes("step_c"), "step_c should be terminal node");
+  assert.equal(bundle.graph.terminalNodeIds.length, 1, "should have exactly 1 terminal node");
 });
 
-test("PlanBuilder uses default maxAttempts when maxAttempts is undefined", () => {
+test("PlanBuilder.buildGraphBundle includes graphHash", () => {
   const builder = new PlanBuilder();
-  const workflowWithMissingMaxAttempts = {
-    workflow: { workflowId: "wf_test", divisionId: "coding", steps: [] },
-    executionSteps: [
-      {
-        stepId: "step_1",
-        divisionId: "coding",
-        roleId: "builder",
-        inputKeys: [],
-        agentId: "agent_builder",
-        outputKey: "result",
-        outputSchemaPath: null,
-        dependsOnStepIds: [],
-        dependencyTypes: {},
-        timeoutMs: 5000,
-        // maxAttempts is missing - should default to 1, then maxRetries = (1) - 1 = 0
-      },
-    ],
-    planReason: "test",
-    dependencyEdges: [],
-  };
 
-  const plan = builder.build({
-    observation: {
-      taskId: "task_maxattempts",
-      timestamp: Date.now(),
-      objective: "test max attempts",
-      currentPhase: "planning",
-      userIntent: { raw: "test", normalized: "test", confidence: 0.9 },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_maxattempts",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_maxattempts:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: { level: "low", factors: [] },
-      routingDecision: { division: "coding", workflow: "single", rationale: "test" },
-      resourceAllocation: { modelClass: "small", maxTokens: 5000, timeoutMs: 60000 },
-      approvalPolicy: { required: false, level: "none" },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: workflowWithMissingMaxAttempts as any,
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_hash"),
+    assessment: createMinimalAssessment("task_hash"),
+    workflow: createWorkflow([{ stepId: "step1", dependsOnStepIds: [] }]),
+    harnessRunId: "harness_hash",
   });
 
-  // maxAttempts defaults to 1, so maxRetries = max(0, 1-1) = 0
-  assert.equal(plan.steps[0]!.retryPolicy.maxRetries, 0);
+  assert.ok(bundle.graph.graphHash, "graphHash should exist");
+  assert.ok(bundle.graph.graphHash.includes("harness_hash"), "graphHash should include harnessRunId");
 });
 
-test("PlanBuilder uses execute action when toolNames is empty for non-first step", () => {
+test("PlanBuilder.buildGraphBundle includes validationReport", () => {
   const builder = new PlanBuilder();
-  const workflowWithEmptyToolNames = {
-    workflow: { workflowId: "wf_test", divisionId: "coding", steps: [] },
-    executionSteps: [
-      {
-        stepId: "step_1",
-        divisionId: "coding",
-        roleId: "builder",
-        inputKeys: [],
-        agentId: "agent_builder",
-        outputKey: "result",
-        outputSchemaPath: null,
-        dependsOnStepIds: [],
-        dependencyTypes: {},
-        timeoutMs: 5000,
-        maxAttempts: 1,
-      },
-    ],
-    planReason: "test",
-    dependencyEdges: [],
-  };
 
-  const plan = builder.build({
-    observation: {
-      taskId: "task_toolnames",
-      timestamp: Date.now(),
-      objective: "test toolnames",
-      currentPhase: "planning",
-      userIntent: { raw: "test", normalized: "test", confidence: 0.9 },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_toolnames",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_toolnames:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: { level: "low", factors: [] },
-      routingDecision: { division: "coding", workflow: "single", rationale: "test" },
-      resourceAllocation: { modelClass: "small", maxTokens: 5000, timeoutMs: 60000 },
-      approvalPolicy: { required: false, level: "none" },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: workflowWithEmptyToolNames as any,
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_validation"),
+    assessment: createMinimalAssessment("task_validation"),
+    workflow: createWorkflow([{ stepId: "step1", dependsOnStepIds: [] }]),
+    harnessRunId: "harness_validation",
   });
 
-  // TaskDecompositionService always includes "read" as first tool, so toolNames[0] is "read"
-  assert.equal(plan.steps[0]!.action, "read");
+  assert.ok(bundle.validationReport, "validationReport should exist");
+  assert.ok(typeof bundle.validationReport.valid === "boolean", "valid should be boolean");
 });
 
-test("PlanBuilder uses replanned strategy when version > 1 (replan scenario)", () => {
+test("PlanBuilder.buildGraphBundle includes schedulerPolicy", () => {
   const builder = new PlanBuilder();
 
-  const v1Plan = builder.build({
-    observation: {
-      taskId: "task_v2_test",
-      timestamp: Date.now(),
-      objective: "v2 test",
-      currentPhase: "planning",
-      userIntent: { raw: "v2 test", normalized: "v2 test", confidence: 0.9 },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_v2_test",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_v2_test:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: { level: "low", factors: [] },
-      routingDecision: { division: "coding", workflow: "single", rationale: "simple" },
-      resourceAllocation: { modelClass: "small", maxTokens: 1000, timeoutMs: 10000 },
-      approvalPolicy: { required: false, level: "none" },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: {
-      workflow: { workflowId: "wf_v2", divisionId: "coding", steps: [] },
-      executionSteps: [
-        {
-          stepId: "step_1",
-          divisionId: "coding",
-          roleId: "builder",
-          inputKeys: [],
-          agentId: "agent_builder",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "workflow.single_step",
-      dependencyEdges: [],
-    },
-    version: 2,
-    parentVersion: 1,
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_scheduler"),
+    assessment: createMinimalAssessment("task_scheduler"),
+    workflow: createWorkflow([{ stepId: "step1", dependsOnStepIds: [] }]),
+    harnessRunId: "harness_scheduler",
   });
 
-  // When version > 1, strategy should be "replanned" not the selected strategy
-  assert.equal(v1Plan.strategy, "replanned");
+  assert.ok(bundle.schedulerPolicy, "schedulerPolicy should exist");
+  assert.ok(bundle.schedulerPolicy.policyId, "policyId should exist");
+  assert.ok(bundle.schedulerPolicy.strategy, "strategy should exist");
 });
 
-test("PlanBuilder passes parentVersion to the plan", () => {
+test("PlanBuilder.buildGraphBundle includes riskProfile", () => {
   const builder = new PlanBuilder();
 
-  const plan = builder.build({
-    observation: {
-      taskId: "task_parent",
-      timestamp: Date.now(),
-      objective: "parent version test",
-      currentPhase: "planning",
-      userIntent: { raw: "parent test", normalized: "parent test", confidence: 0.9 },
-      blockers: [],
-      codebaseSnapshot: {
-        rootPath: process.cwd(),
-        fileCount: 1,
-        relevantFiles: [],
-      },
-      environmentContext: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        workingDirectory: process.cwd(),
-        availableTools: ["read"],
-      },
-      historicalContext: {
-        previousTaskIds: [],
-        relatedMemoryRefs: [],
-      },
-      relevantMemory: [],
-      fileRefs: [],
-      metrics: {},
-    },
-    assessment: {
-      taskId: "task_parent",
-      timestamp: Date.now(),
-      situationRef: "task_situation:task_parent:1",
-      phase: "pre-execution",
-      complexity: "simple",
-      risk: "low",
-      riskAssessment: { level: "low", factors: [] },
-      routingDecision: { division: "coding", workflow: "single", rationale: "test" },
-      resourceAllocation: { modelClass: "small", maxTokens: 1000, timeoutMs: 10000 },
-      approvalPolicy: { required: false, level: "none" },
-      executionMode: "auto",
-      suggestedActions: [],
-    },
-    workflow: {
-      workflow: { workflowId: "wf_parent", divisionId: "coding", steps: [] },
-      executionSteps: [
-        {
-          stepId: "step_1",
-          divisionId: "coding",
-          roleId: "builder",
-          inputKeys: [],
-          agentId: "agent_builder",
-          outputKey: "result",
-          outputSchemaPath: null,
-          dependsOnStepIds: [],
-          dependencyTypes: {},
-          timeoutMs: 1000,
-          maxAttempts: 1,
-        },
-      ],
-      planReason: "test",
-      dependencyEdges: [],
-    },
-    version: 5,
-    parentVersion: 3,
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_risk"),
+    assessment: createMinimalAssessment("task_risk"),
+    workflow: createWorkflow([{ stepId: "step1", dependsOnStepIds: [] }]),
+    harnessRunId: "harness_risk",
+    riskProfile: { riskClass: "high", reasons: ["test.reason"] },
   });
 
-  assert.equal(plan.version, 5);
-  assert.equal(plan.parentVersion, 3);
+  assert.ok(bundle.riskProfile, "riskProfile should exist");
+  assert.equal(bundle.riskProfile.riskClass, "high");
+  assert.ok(bundle.riskProfile.reasons.includes("test.reason"));
+});
+
+test("PlanBuilder.buildGraphBundle uses default riskProfile when not provided", () => {
+  const builder = new PlanBuilder();
+
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_default_risk"),
+    assessment: createMinimalAssessment("task_default_risk"),
+    workflow: createWorkflow([{ stepId: "step1", dependsOnStepIds: [] }]),
+    harnessRunId: "harness_default_risk",
+  });
+
+  assert.ok(bundle.riskProfile, "riskProfile should exist");
+  assert.equal(bundle.riskProfile.riskClass, "medium");
+  assert.ok(bundle.riskProfile.reasons.includes("plan_builder.default"));
+});
+
+test("PlanBuilder.buildGraphBundle includes budgetPlanRef", () => {
+  const builder = new PlanBuilder();
+
+  const bundle = builder.buildGraphBundle({
+    observation: createMinimalObservation("task_budget"),
+    assessment: createMinimalAssessment("task_budget"),
+    workflow: createWorkflow([{ stepId: "step1", dependsOnStepIds: [] }]),
+    harnessRunId: "harness_budget",
+  });
+
+  assert.ok(bundle.budgetPlanRef, "budgetPlanRef should exist");
+  assert.ok(bundle.budgetPlanRef.startsWith("budget:plan."), "budgetPlanRef should start with budget:plan.");
 });

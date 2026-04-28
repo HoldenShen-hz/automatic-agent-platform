@@ -21,6 +21,41 @@ const DOMAIN_PLUGIN_ROLE_ALIASES = {
   validator: "validator",
 } as const;
 
+// §37 DomainManifest - required per §37 for capability matrix/risk classification/schema registry reference
+export const DomainManifestSchema = z.object({
+  domainId: z.string().min(1),
+  name: z.string().min(1),
+  version: z.string().min(1),
+  owner: z.string().min(1),
+  description: z.string().min(1),
+  // Capability matrix - lists all capabilities this domain provides
+  capabilityMatrix: z.object({
+    providedCapabilities: z.array(z.object({
+      capabilityId: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().min(1),
+      inputs: z.record(z.string(), z.unknown()),
+      outputs: z.record(z.string(), z.unknown()),
+    })).default([]),
+    consumedCapabilities: z.array(z.string()).default([]),
+  }).default({ providedCapabilities: [], consumedCapabilities: [] }),
+  // Risk classification per §3.2
+  riskClassification: z.object({
+    riskClass: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+    advisoryOnly: z.boolean().default(false),
+    humanAccountable: z.boolean().default(false),
+    deterministicHotPathOnly: z.boolean().default(false),
+  }).default({ riskClass: "medium", advisoryOnly: false, humanAccountable: false, deterministicHotPathOnly: false }),
+  // Schema registry reference for domain input/output schema version management
+  schemaRegistryRef: z.string().nullable().default(null),
+  // Lifecycle state
+  lifecycleState: z.enum(["draft", "validated", "registered", "active", "updating", "deprecated", "archived"]).default("draft"),
+  // Trust level for the domain
+  trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
+});
+
+export type DomainManifest = z.infer<typeof DomainManifestSchema>;
+
 export const StepTemplateConfigSchema = z.object({
   stepName: z.string().min(1),
   toolHints: z.array(z.string()).default([]),
@@ -38,11 +73,24 @@ export const StepTemplateConfigSchema = z.object({
   dependsOn: z.array(z.string()).default([]),
 });
 
+// §13 WorkflowConfigSchema supports non-linear steps (not just linear z.array(StepTemplateConfigSchema))
+// Support branching/conditional steps via when/condition fields
 export const WorkflowConfigSchema = z.object({
   workflowId: z.string().min(1),
   name: z.string().min(1),
   triggerConditions: z.record(z.string(), z.unknown()).default({}),
+  // Non-linear steps: steps can reference dependsOn for DAG execution
+  // Supports branching via condition/when fields on each step
   steps: z.array(StepTemplateConfigSchema).default([]),
+  // Optional step graph for explicit non-linear control flow
+  // When provided, steps[] provides node definitions and stepGraph provides edges
+  stepGraph: z.object({
+    edges: z.array(z.object({
+      fromStep: z.string(),
+      toStep: z.string(),
+      condition: z.record(z.string(), z.unknown()).nullable().default(null),
+    })).default([]),
+  }).optional().default(undefined),
 });
 
 export const ToolBundleEntrySchema = z.object({

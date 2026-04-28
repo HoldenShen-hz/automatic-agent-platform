@@ -11,7 +11,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { existsSync, join } from "node:path";
 
 import { assertGolden } from "../helpers/golden.js";
 import { createTempWorkspace, cleanupPath } from "../helpers/fs.js";
@@ -27,12 +27,17 @@ function runCliCommand(
     status: 0,
   };
 
-  // Use tsx to run the CLI directly from source
-  const scriptPath = join(process.cwd(), "src", "sdk", "cli", scriptName);
+  // Use existing built CLI in dist_test or dist_temp
+  const distBase = existsSync(join(process.cwd(), "dist_test", "src", "sdk", "cli", scriptName))
+    ? join(process.cwd(), "dist_test", "src", "sdk", "cli")
+    : existsSync(join(process.cwd(), "dist_temp", "src", "sdk", "cli", scriptName))
+      ? join(process.cwd(), "dist_temp", "src", "sdk", "cli")
+      : join(process.cwd(), "dist", "src", "sdk", "cli");
+
   try {
     const output = execFileSync(
       process.execPath,
-      ["--import", "tsx", scriptPath],
+      [join(distBase, scriptName)],
       {
         cwd: process.cwd(),
         env: {

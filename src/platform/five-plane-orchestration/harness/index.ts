@@ -573,12 +573,10 @@ export class HarnessRuntimeService {
   }
 
   public recover(run: HarnessRunRuntimeState): HarnessRunRuntimeState {
-    const paused = run.status === "completed" || run.status === "failed" || run.status === "aborted"
-      ? {
-        ...run,
-        status: "paused" as const,
-        updatedAt: nowIso(),
-      }
+    const isTerminal = run.status === "completed" || run.status === "failed" || run.status === "aborted";
+    // R1-1: Must route all status changes through state machine to maintain INV-RUNTIME-001
+    const paused = isTerminal
+      ? this.transitionRunStatus(run, "paused", "harness.recover_from_terminal")
       : this.pauseRun(this.ensureRunning(run), "recovery");
     return {
       ...paused,

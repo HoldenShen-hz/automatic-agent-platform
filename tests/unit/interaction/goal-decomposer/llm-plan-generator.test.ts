@@ -1,18 +1,16 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
+
 import {
   UnifiedChatPlanGenerator,
   type LlmPlan,
   type LlmPlanGenerator,
+  type Goal,
 } from "../../../../src/interaction/goal-decomposer/llm-plan-generator.js";
-import type { Goal } from "../../../../src/interaction/goal-decomposer/index.js";
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
 import type { UnifiedChatProvider } from "../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 
-/**
- * Mock UnifiedChatProvider for testing - uses object instead of class to satisfy type
- */
 function createMockProvider(mockResponse: string): UnifiedChatProvider {
   return {
     complete: async (_prompt: string, _options?: { model?: string; system?: string; temperature?: number; maxTokens?: number }): Promise<string> => {
@@ -21,31 +19,16 @@ function createMockProvider(mockResponse: string): UnifiedChatProvider {
   } as UnifiedChatProvider;
 }
 
-class SpyBudgetAllocator extends BudgetAllocator {
-  public settleCalls = 0;
-  public releaseCalls = 0;
-
-  public override settle(input: Parameters<BudgetAllocator["settle"]>[0]): ReturnType<BudgetAllocator["settle"]> {
-    this.settleCalls += 1;
-    return super.settle(input);
-  }
-
-  public override release(input: Parameters<BudgetAllocator["release"]>[0]): ReturnType<BudgetAllocator["release"]> {
-    this.releaseCalls += 1;
-    return super.release(input);
-  }
-}
-
 function createTestGoal(overrides?: Partial<Goal>): Goal {
   return {
-    goalId: "test_goal_123",
-    description: "创建并部署一个Web服务",
+    goalId: "test_goal_llm",
+    description: "创建并部署Web服务",
     owner: "user_1",
     deadline: "2026-05-01T00:00:00Z",
     successCriteria: [
       { metric: "uptime", target: "99.9%", evaluationMethod: "metric_api" },
     ],
-    constraints: ["必须在生产环境部署", "必须通过安全扫描"],
+    constraints: ["必须通过安全扫描"],
     priority: "high",
     ...overrides,
   };
@@ -54,23 +37,18 @@ function createTestGoal(overrides?: Partial<Goal>): Goal {
 test("UnifiedChatPlanGenerator implements LlmPlanGenerator interface", () => {
   const provider = createMockProvider("{}");
   const generator = new UnifiedChatPlanGenerator({ provider });
-
-  // Verify it has a generate method
   assert.ok(typeof generator.generate === "function");
 });
 
 test("UnifiedChatPlanGenerator uses default model gpt-4o-mini", () => {
   const provider = createMockProvider("{}");
   const generator = new UnifiedChatPlanGenerator({ provider });
-
-  // Constructor should not throw and should use default model
   assert.ok(generator);
 });
 
 test("UnifiedChatPlanGenerator accepts custom model", () => {
   const provider = createMockProvider("{}");
   const generator = new UnifiedChatPlanGenerator({ provider, model: "claude-sonnet-4" });
-
   assert.ok(generator);
 });
 
@@ -141,7 +119,7 @@ test("UnifiedChatPlanGenerator.generate assigns task IDs with goal prefix", asyn
 
   const result = await generator.generate(goal);
 
-  assert.ok(result.tasks[0]!.taskId.startsWith("test_goal_123:llm:"));
+  assert.ok(result.tasks[0]!.taskId.startsWith("test_goal_llm:llm:"));
 });
 
 test("UnifiedChatPlanGenerator.generate includes goal context in task inputs", async () => {
@@ -166,7 +144,7 @@ test("UnifiedChatPlanGenerator.generate includes goal context in task inputs", a
   const result = await generator.generate(goal);
 
   const task = result.tasks[0]!;
-  assert.equal(task.inputs.goalDescription, "创建并部署一个Web服务");
+  assert.equal(task.inputs.goalDescription, "创建并部署Web服务");
   assert.deepEqual(task.inputs.successCriteria, goal.successCriteria);
   assert.deepEqual(task.inputs.constraints, goal.constraints);
   assert.equal(task.inputs.deadline, "2026-05-01T00:00:00Z");
@@ -189,8 +167,8 @@ test("UnifiedChatPlanGenerator.generate normalizes numeric task references", asy
 
   const result = await generator.generate(goal);
 
-  assert.equal(result.dependencyGraph[0]!.fromTask, "test_goal_123:llm:1");
-  assert.equal(result.dependencyGraph[0]!.toTask, "test_goal_123:llm:2");
+  assert.equal(result.dependencyGraph[0]!.fromTask, "test_goal_llm:llm:1");
+  assert.equal(result.dependencyGraph[0]!.toTask, "test_goal_llm:llm:2");
 });
 
 test("UnifiedChatPlanGenerator.generate normalizes already-prefixed task references", async () => {
@@ -200,7 +178,7 @@ test("UnifiedChatPlanGenerator.generate normalizes already-prefixed task referen
       { domainId: "b", description: "Task 2", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 0.01 },
     ],
     dependencyGraph: [
-      { fromTask: "test_goal_123:llm:1", toTask: "test_goal_123:llm:2", type: "blocks" },
+      { fromTask: "test_goal_llm:llm:1", toTask: "test_goal_llm:llm:2", type: "blocks" },
     ],
   });
 
@@ -210,8 +188,8 @@ test("UnifiedChatPlanGenerator.generate normalizes already-prefixed task referen
 
   const result = await generator.generate(goal);
 
-  assert.equal(result.dependencyGraph[0]!.fromTask, "test_goal_123:llm:1");
-  assert.equal(result.dependencyGraph[0]!.toTask, "test_goal_123:llm:2");
+  assert.equal(result.dependencyGraph[0]!.fromTask, "test_goal_llm:llm:1");
+  assert.equal(result.dependencyGraph[0]!.toTask, "test_goal_llm:llm:2");
 });
 
 test("UnifiedChatPlanGenerator.generate handles markdown-wrapped JSON response", async () => {
@@ -309,7 +287,7 @@ test("UnifiedChatPlanGenerator.generate handles goal without deadline", async ()
   const provider = createMockProvider(mockResponse);
   const generator = new UnifiedChatPlanGenerator({ provider });
   const goalWithoutDeadline: Goal = {
-    goalId: "test_goal_456",
+    goalId: "test_goal_no_deadline",
     description: "测试目标",
     owner: "user_2",
     successCriteria: [],
@@ -362,12 +340,56 @@ test("UnifiedChatPlanGenerator.generate uses low confidence for cost estimates",
 test("LlmPlanGenerator interface is compatible with UnifiedChatPlanGenerator", () => {
   const provider = createMockProvider("{}");
   const generator: LlmPlanGenerator = new UnifiedChatPlanGenerator({ provider });
-
-  // Verify the instance satisfies the interface
   assert.ok(typeof generator.generate === "function");
 });
 
-test("UnifiedChatPlanGenerator settles reserved budget after a successful plan call", async () => {
+// R5-19: Budget proportional allocation tests via LLM plan generator
+test("UnifiedChatPlanGenerator managesBudgetReservations is true when budgetControl is provided", () => {
+  const provider = createMockProvider("{}");
+  const ledger = createBudgetLedger({
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 5,
+    version: 0,
+  });
+  const generator = new UnifiedChatPlanGenerator({
+    provider,
+    budgetControl: {
+      ledger,
+      estimatedCostUsd: 0.2,
+      tenantId: "tenant-1",
+      traceId: "trace-1",
+      emittedBy: "test",
+    },
+  });
+
+  assert.equal(generator.managesBudgetReservations, true);
+});
+
+test("UnifiedChatPlanGenerator managesBudgetReservations is false when budgetControl is not provided", () => {
+  const provider = createMockProvider("{}");
+  const generator = new UnifiedChatPlanGenerator({ provider });
+
+  assert.equal(generator.managesBudgetReservations, false);
+});
+
+test("UnifiedChatPlanGenerator settles reserved budget after successful plan generation", async () => {
+  class SpyBudgetAllocator extends BudgetAllocator {
+    public settleCalls = 0;
+    public releaseCalls = 0;
+
+    public override settle(input: Parameters<BudgetAllocator["settle"]>[0]): ReturnType<BudgetAllocator["settle"]> {
+      this.settleCalls += 1;
+      return super.settle(input);
+    }
+
+    public override release(input: Parameters<BudgetAllocator["release"]>[0]): ReturnType<BudgetAllocator["release"]> {
+      this.releaseCalls += 1;
+      return super.release(input);
+    }
+  }
+
   const provider = createMockProvider(JSON.stringify({
     tasks: [
       {
@@ -408,6 +430,21 @@ test("UnifiedChatPlanGenerator settles reserved budget after a successful plan c
 });
 
 test("UnifiedChatPlanGenerator releases reserved budget when provider call fails", async () => {
+  class SpyBudgetAllocator extends BudgetAllocator {
+    public settleCalls = 0;
+    public releaseCalls = 0;
+
+    public override settle(input: Parameters<BudgetAllocator["settle"]>[0]): ReturnType<BudgetAllocator["settle"]> {
+      this.settleCalls += 1;
+      return super.settle(input);
+    }
+
+    public override release(input: Parameters<BudgetAllocator["release"]>[0]): ReturnType<BudgetAllocator["release"]> {
+      this.releaseCalls += 1;
+      return super.release(input);
+    }
+  }
+
   const provider = {
     complete: async (): Promise<string> => {
       throw new Error("provider.failed");
@@ -436,6 +473,61 @@ test("UnifiedChatPlanGenerator releases reserved budget when provider call fails
   await assert.rejects(() => generator.generate(createTestGoal()), /provider\.failed/);
   assert.equal(allocator.settleCalls, 0);
   assert.equal(allocator.releaseCalls, 1);
+});
+
+test("UnifiedChatPlanGenerator passes costTag to provider", async () => {
+  let receivedCostTag: string | undefined;
+  const provider: UnifiedChatProvider = {
+    complete: async (
+      _prompt: string,
+      options?: { model?: string; system?: string; temperature?: number; maxTokens?: number; costTag?: string },
+    ): Promise<string> => {
+      receivedCostTag = options?.costTag;
+      return JSON.stringify({ tasks: [], dependencyGraph: [] });
+    },
+  } as UnifiedChatProvider;
+  const generator = new UnifiedChatPlanGenerator({ provider });
+
+  await generator.generate(createTestGoal());
+
+  assert.equal(receivedCostTag, "goal_decomposer.llm_plan");
+});
+
+test("UnifiedChatPlanGenerator passes traceId and tenantId when budgetControl is provided", async () => {
+  let receivedTraceId: string | undefined;
+  let receivedTenantId: string | undefined;
+  const provider: UnifiedChatProvider = {
+    complete: async (
+      _prompt: string,
+      options?: { model?: string; traceId?: string; tenantId?: string },
+    ): Promise<string> => {
+      receivedTraceId = options?.traceId;
+      receivedTenantId = options?.tenantId;
+      return JSON.stringify({ tasks: [], dependencyGraph: [] });
+    },
+  } as UnifiedChatProvider;
+  const ledger = createBudgetLedger({
+    tenantId: "tenant-1",
+    harnessRunId: "run-1",
+    currency: "USD",
+    hardCap: 5,
+    version: 0,
+  });
+  const generator = new UnifiedChatPlanGenerator({
+    provider,
+    budgetControl: {
+      ledger,
+      estimatedCostUsd: 0.2,
+      tenantId: "tenant-1",
+      traceId: "trace-abc",
+      emittedBy: "test",
+    },
+  });
+
+  await generator.generate(createTestGoal());
+
+  assert.equal(receivedTraceId, "trace-abc");
+  assert.equal(receivedTenantId, "tenant-1");
 });
 
 test("LlmPlan type accepts tasks and dependencyGraph", () => {

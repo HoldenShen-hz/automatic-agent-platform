@@ -1,8 +1,17 @@
 {
   "domainId": "legal",
-  "phase": "9c",
+  "ringId": "ring3",
   "divisionId": "security",
   "latencyTier": "near_realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "high",
+    "maxAutonomyLevel": "supervised"
+  },
+  "riskSpec": {
+    "advisoryOnly": false,
+    "humanAccountable": true,
+    "deterministicHotPathOnly": false
+  },
   "workflowProfile": {
     "workflowId": "legal.primary",
     "rollout": "baseline"

@@ -10,6 +10,7 @@
  * - Deep: full pipeline + graph traversal, <2s, topK=30
  */
 
+import { ValidationError } from "../../contracts/errors.js";
 import type { RetrievalHit } from "./knowledge-model.js";
 import { AstStructuralIndex, type AstIndexedSymbol } from "./indexing/ast-index.js";
 import { KnowledgeRetrievalService, type KnowledgeQueryOptions } from "./retrieval/knowledge-retrieval.js";
@@ -63,10 +64,16 @@ interface L1CacheEntry {
  */
 class TenantDomainValidator {
   public validate(options: KnowledgeQueryOptions): void {
+    // R5-49: Enforce tenant/domain boundary validation
     // Tenant isolation: namespace must be specified or belong to the requesting domain
     if (options.namespace == null && options.domainId == null) {
-      // Quick/Standard query without namespace is allowed only for system-level queries
-      // Deep queries require explicit namespace or domainId for boundary enforcement
+      // For Deep queries, explicit namespace or domainId is required for boundary enforcement
+      // System-level queries may omit both, but only for cross-tenant admin operations
+      throw new ValidationError(
+        "knowledge_query.tenant_boundary_violation",
+        "Query must specify namespace or domainId for tenant isolation",
+        { details: { namespace: options.namespace, domainId: options.domainId } },
+      );
     }
     // Domain boundary: domainId in options must be consistent with principal's domain
     // This is enforced at the access control layer in KnowledgeRetrievalService

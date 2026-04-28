@@ -250,6 +250,15 @@ function decideLevel(
   const success = successRate(score);
   const overrides = overrideRate(score);
 
+  // §42.2: Cost overrun 200% demotion rule
+  const costOverrunThreshold = options.costOverrunDemotionThreshold ?? 2.0;
+  if (score.costOverruns > 0 && score.totalExecutions > 0) {
+    const overrunRatio = score.costOverruns / score.totalExecutions;
+    if (overrunRatio >= costOverrunThreshold) {
+      return "suggestion"; // Demote to suggestion on excessive cost overruns
+    }
+  }
+
   // §42 P0/P1 Demotion Logic:
   // - P0 incidents: freeze immediately (as before)
   // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
@@ -280,14 +289,37 @@ function decideLevel(
     return score.currentAutonomy === "suggestion" ? "supervised" : score.currentAutonomy;
   }
 
+  // §42.2: Promotion time window checks (incident-free period required)
+  const timeWindows = options.promotionTimeWindows ?? {};
+  const lastIncidentAge = score.lastIncidentAgeDays ?? Number.POSITIVE_INFINITY;
+
+  // §42.3: 180d no-execution -> suggestion demotion
+  const lastExecutionAge = score.lastExecutionAgeDays ?? 0;
+  if (lastExecutionAge > 180) {
+    return "suggestion"; // Demote to suggestion after 180 days of no execution
+  }
+
+  // Check incident-free windows for promotion
   if (score.totalExecutions >= 500 && success >= 0.99 && overrides < 0.01) {
-    return "full_auto";
+    // §42.2: 90d incident-free for full_auto
+    if (lastIncidentAge >= (timeWindows.toFullAutoDays ?? 90)) {
+      return "full_auto";
+    }
+    return "semi_auto"; // Not yet incident-free long enough for full_auto
   }
   if (score.totalExecutions >= 200 && success >= 0.98 && overrides < 0.05) {
-    return "semi_auto";
+    // §42.2: 60d incident-free for semi_auto
+    if (lastIncidentAge >= (timeWindows.toSemiAutoDays ?? 60)) {
+      return "semi_auto";
+    }
+    return "supervised"; // Not yet incident-free long enough for semi_auto
   }
   if (score.totalExecutions >= (options.minVolumeForPromotion ?? 50) && success >= 0.95) {
-    return "supervised";
+    // §42.2: 30d incident-free for supervised
+    if (lastIncidentAge >= (timeWindows.toSupervisedDays ?? 30)) {
+      return "supervised";
+    }
+    return "suggestion"; // Not yet incident-free long enough for supervised
   }
   return "suggestion";
 }

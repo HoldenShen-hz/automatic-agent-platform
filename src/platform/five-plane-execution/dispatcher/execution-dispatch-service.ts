@@ -67,6 +67,7 @@ export class ExecutionDispatchService {
   private readonly leases: ExecutionLeaseService;
   private readonly preemption: ExecutionPriorityPreemptionService;
   private readonly workers: WorkerRegistryService;
+  private cachedHealthService: HealthService | null = null;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -76,6 +77,16 @@ export class ExecutionDispatchService {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
+  }
+
+  private getOrCreateHealthService(occurredAt: string): HealthService {
+    if (this.cachedHealthService === null) {
+      this.cachedHealthService = new HealthService(this.db, this.store, {
+        ...DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
+        nowMsSupplier: () => Date.parse(occurredAt),
+      });
+    }
+    return this.cachedHealthService;
   }
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
@@ -226,10 +237,7 @@ export class ExecutionDispatchService {
       const requiredRepoVersion = resolveRequiredRepoVersion(ticket.requiredRepoVersion);
       const backpressure =
         this.backpressureSnapshot?.() ??
-        new HealthService(this.db, this.store, {
-          ...DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
-          nowMsSupplier: () => Date.parse(occurredAt),
-        }).getReport();
+        this.getOrCreateHealthService(occurredAt).getReport();
       const blockedByBackpressure = resolveDispatchBackpressureReason(ticket, backpressure);
       if (blockedByBackpressure) {
         blockedReason = blockedByBackpressure;

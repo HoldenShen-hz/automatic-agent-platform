@@ -23,6 +23,9 @@
 - `timestamp`
 - `level`
 - `message`
+- `harness_run_id?` — canonical 执行关联（架构要求）
+- `node_run_id?` — canonical 节点关联
+- `attempt_id?` — canonical attempt 关联
 - `task_id?`
 - `agent_id?`
 - `stage?`

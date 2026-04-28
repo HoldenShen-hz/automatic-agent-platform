@@ -24,6 +24,18 @@ export interface ConversationTurnRecord {
   readonly entities?: Record<string, string>;
   readonly timestamp: string;
   readonly metadata?: Record<string, unknown>;
+  // UI spec §45 required fields per R7-26
+  readonly clarificationState?: "awaiting_response" | "responded" | "not_needed";
+  readonly riskPreview?: {
+    readonly riskLevel: "low" | "medium" | "high" | "critical";
+    readonly riskFactors: readonly string[];
+    readonly mitigationSuggestions: readonly string[];
+  };
+  readonly actionOptions?: readonly {
+    readonly actionId: string;
+    readonly label: string;
+    readonly intent: string;
+  }[];
 }
 
 /**
@@ -38,6 +50,8 @@ export interface ConversationSessionRecord {
   readonly updatedAt: string;
   readonly lastIntent?: DetectedIntent["intentType"];
   readonly status: "active" | "completed" | "abandoned";
+  // UI spec §45 required field
+  readonly pendingClarificationCount?: number;
 }
 
 /**
@@ -59,14 +73,39 @@ export class ConversationHistoryService {
   private readonly memoryService: MemoryService | null;
   private readonly defaultScope = "conversation";
   private readonly defaultRetentionDays = 90;
+  private eventEmitter: ((event: ClarificationNeededEvent) => void) | null = null;
 
-  public constructor(memoryService?: MemoryService) {
-    this.memoryService = memoryService ?? null;
+  /**
+   * UI spec R7-27: Set the event emitter for nl.clarification_needed real-time push.
+   * This enables the service to emit WebSocket events when clarification is needed.
+   */
+  public setEventEmitter(emitter: (event: ClarificationNeededEvent) => void): void {
+    this.eventEmitter = emitter;
+  }
+
+  /**
+   * UI spec R7-27: Emit nl.clarification_needed event when user needs to clarify.
+   */
+  public emitClarificationNeeded(sessionId: string, turnId: string, prompt: string): void {
+    if (this.eventEmitter) {
+      const event: ClarificationNeededEvent = {
+        type: "nl.clarification_needed",
+        sessionId,
+        turnId,
+        prompt,
+        timestamp: nowIso(),
+      };
+      this.eventEmitter(event);
+    }
   }
 
   /**
    * Check if memory service is available
    */
+  public constructor(memoryService?: MemoryService) {
+    this.memoryService = memoryService ?? null;
+  }
+
   public isAvailable(): boolean {
     return this.memoryService !== null;
   }

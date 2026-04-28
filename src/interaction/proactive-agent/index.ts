@@ -101,6 +101,8 @@ export interface ProactiveAgentServiceOptions {
   readonly maxConsecutiveFailures?: number;
   readonly dailyTriggerBudgetByDomain?: Readonly<Record<string, number>>;
   readonly budgetPoolsByDomain?: Readonly<Record<string, ProactiveBudgetPool>>;
+  /** §42.5: Current autonomy level to check before auto_execution (requires semi_auto+ for medium+ risk) */
+  readonly currentAutonomyLevel?: "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
 }
 
 interface TriggerRuntimeState {

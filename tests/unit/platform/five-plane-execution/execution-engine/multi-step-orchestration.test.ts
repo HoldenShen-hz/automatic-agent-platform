@@ -38,7 +38,7 @@ test("runMultiStepOrchestration creates task with queued status", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -72,7 +72,7 @@ test("runMultiStepOrchestration handles simple request routing", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -114,7 +114,7 @@ test("runMultiStepOrchestration uses oapeflir plan when request starts with oape
   ]);
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -140,7 +140,7 @@ test("runMultiStepOrchestration creates workflow and session records", async () 
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -166,7 +166,7 @@ test("runMultiStepOrchestration emits routing:decided event", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -219,7 +219,7 @@ test("runMultiStepOrchestration returns compaction result when context budget ex
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -246,7 +246,7 @@ test("runMultiStepOrchestration enforces admission control", async () => {
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     // Create input with strict admission policy
     const result = await runMultiStepOrchestration({
@@ -277,7 +277,7 @@ test("runMultiStepOrchestration produces stream frames for streaming clients", a
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,
@@ -301,7 +301,7 @@ test("runMultiStepOrchestration handles budget reservation (INV-BUDGET-001)", as
   const dbPath = await createTempDbPath();
 
   try {
-    const { runMultiStepOrchestration } = await import("../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
+    const { runMultiStepOrchestration } = await import("../../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
     const result = await runMultiStepOrchestration({
       dbPath,

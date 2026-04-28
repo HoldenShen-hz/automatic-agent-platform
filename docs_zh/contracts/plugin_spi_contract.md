@@ -27,11 +27,11 @@ interface DomainRetrieverPlugin {
   // 检索相关知识
   retrieve(request: RetrievalRequest): Promise<RetrievalHit[]>;
 
-  // 生命周期
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期（canonical hook 名称：onLoad / onActivate / onDeactivate / onUnload）
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface RetrievalRequest {
@@ -56,10 +56,11 @@ interface DomainValidatorPlugin {
   // 验证输入/输出
   validate(input: unknown, context: ValidationContext): Promise<ValidationResult>;
 
-  initialize(config: PluginConfig): Promise<void>;
-  activate(): Promise<void>;
-  suspend(): Promise<void>;
-  deactivate(): Promise<void>;
+  // 生命周期（canonical hook 名称）
+  onLoad?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onActivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onDeactivate?(ctx: PluginLifecycleContext): Promise<void> | void;
+  onUnload?(ctx: PluginLifecycleContext): Promise<void> | void;
 }
 
 interface ValidationContext {

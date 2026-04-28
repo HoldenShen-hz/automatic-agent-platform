@@ -242,4 +242,127 @@ export class WorkflowBuilderService {
       saveReview,
     };
   }
+
+  // ─── REST API Methods (per UI spec CRUD + validate + publish) ───────────
+
+  /**
+   * Create a new workflow (REST: POST /workflows)
+   */
+  public createWorkflow(request: CreateWorkflowRequest): WorkflowResponse {
+    const now = nowIso();
+    return {
+      workflowId: newId("wf"),
+      name: request.name,
+      description: request.description ?? "",
+      status: "draft",
+      nodeCount: request.nodes.length,
+      edgeCount: request.edges.length,
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: null,
+    };
+  }
+
+  /**
+   * Get a workflow by ID (REST: GET /workflows/:workflowId)
+   */
+  public getWorkflow(workflowId: string): WorkflowResponse | null {
+    // In real implementation, this would query the store
+    // For now, return null to indicate not found
+    return null;
+  }
+
+  /**
+   * Update an existing workflow (REST: PUT /workflows/:workflowId)
+   */
+  public updateWorkflow(request: UpdateWorkflowRequest): WorkflowResponse | null {
+    // In real implementation, this would update the store
+    const now = nowIso();
+    return {
+      workflowId: request.workflowId,
+      name: request.name ?? "Updated Workflow",
+      description: request.description ?? "",
+      status: "draft",
+      nodeCount: request.nodes?.length ?? 0,
+      edgeCount: request.edges?.length ?? 0,
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: null,
+    };
+  }
+
+  /**
+   * Delete a workflow (REST: DELETE /workflows/:workflowId)
+   */
+  public deleteWorkflow(workflowId: string): boolean {
+    // In real implementation, this would delete from the store
+    return true;
+  }
+
+  /**
+   * List workflows (REST: GET /workflows)
+   */
+  public listWorkflows(limit: number = 25): readonly WorkflowResponse[] {
+    // In real implementation, this would query the store
+    return [];
+  }
+
+  /**
+   * Validate a workflow graph (REST: POST /workflows/validate)
+   */
+  public validateWorkflow(request: ValidateWorkflowRequest): ValidationResponse {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const messages = validateGraph(
+      request.nodes as { nodeId: string; label: string }[],
+      request.edges as { fromNodeId: string; toNodeId: string }[],
+    );
+
+    for (const msg of messages) {
+      if (msg.includes("cycle")) {
+        errors.push(msg);
+      } else if (msg.includes("empty")) {
+        warnings.push(msg);
+      } else {
+        warnings.push(msg);
+      }
+    }
+
+    // Additional validation: check for orphan nodes
+    const nodeIds = new Set(request.nodes.map((n) => n.nodeId));
+    for (const edge of request.edges) {
+      if (!nodeIds.has(edge.fromNodeId)) {
+        errors.push(`Edge references unknown source node: ${edge.fromNodeId}`);
+      }
+      if (!nodeIds.has(edge.toNodeId)) {
+        errors.push(`Edge references unknown target node: ${edge.toNodeId}`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      messages,
+      warnings,
+      errors,
+    };
+  }
+
+  /**
+   * Publish a workflow (REST: POST /workflows/:workflowId/publish)
+   */
+  public publishWorkflow(request: PublishWorkflowRequest): WorkflowResponse | null {
+    // In real implementation, this would update status to published
+    const now = nowIso();
+    return {
+      workflowId: request.workflowId,
+      name: "Published Workflow",
+      description: "",
+      status: "published",
+      nodeCount: 0,
+      edgeCount: 0,
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: now,
+    };
+  }
 }

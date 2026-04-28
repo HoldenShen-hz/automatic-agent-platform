@@ -1,5 +1,5 @@
 /**
- * @fileoverview Admin Routes - Stability, admin task takeover, control-plane, workers, config, rollouts, tenants, and budgets.
+ * @fileoverview Admin Routes - Stability, admin task takeover, control-plane, workers, config, rollouts, tenants, budgets, harness-runs, replay-sessions.
  *
  * Routes:
  * - GET /v1/stability
@@ -7,11 +7,19 @@
  * - GET /v1/admin/control-plane/load-balancing
  * - POST /v1/admin/control-plane/load-balancing/select
  * - GET /v1/admin/workers
- * - POST /v1/admin/config
+ * - POST /v1/admin/config (also PUT per R5-36)
+ * - PUT /v1/admin/config (R5-36)
  * - GET /v1/admin/rollouts
  * - GET /v1/admin/tenants
  * - GET /v1/admin/budgets
  * - GET /v1/admin/chargeback/reports
+ * - POST /v1/admin/panic-directives (R5-36)
+ * - POST /v1/admin/resume-directives (R5-36)
+ * - GET /api/v1/harness-runs (R5-35)
+ * - GET /api/v1/harness-runs/:id (R5-35)
+ * - GET /api/v1/harness-runs/:id/events (R5-35)
+ * - GET /api/v1/replay-sessions (R5-36)
+ * - GET /api/v1/replay-sessions/:id (R5-36)
  *
  * Part of §6 API Endpoints - Missing endpoints implementation
  */
@@ -58,6 +66,30 @@ const adminConfigUpdateSchema = z.object({
   value: z.unknown(),
   tenantId: nonEmptyStringSchema.optional(),
 }).strict();
+
+// §28.5 replay session schema
+const replaySessionSchema = z.object({
+  harnessRunId: z.string(),
+  fromSequence: z.number().int().nonnegative().optional(),
+  toSequence: z.number().int().nonnegative().optional(),
+  replayMode: z.enum(["full", "incremental", "targeted"]).default("full"),
+});
+
+// §28.5 panic directive schema
+const panicDirectiveSchema = z.object({
+  targetType: z.enum(["harness_run", "node_run", "task"]),
+  targetId: z.string(),
+  reason: z.string(),
+  severity: z.enum(["warning", "critical", "immediate"]),
+});
+
+// §28.5 resume directive schema
+const resumeDirectiveSchema = z.object({
+  targetType: z.enum(["harness_run", "node_run", "task"]),
+  targetId: z.string(),
+  fromCheckpoint: z.boolean().optional(),
+  resumeFromStepId: z.string().optional(),
+});
 
 export interface AdminConfigUpdatePayload {
   key: string;
