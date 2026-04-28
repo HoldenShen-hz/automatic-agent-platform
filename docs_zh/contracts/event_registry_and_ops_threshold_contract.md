@@ -33,24 +33,24 @@
 - Tier 2 / 3 即使不强制 ack，也要明确使用场景，避免事件语义漂移。
 - 每条注册事件自动携带 `payloadSchemaRef`（默认 `event://{domain}/{action}/v1`）和 `compatibilityPolicy`（默认 `backward_compatible_additive`），供 typed event bus 层做编译期校验。
 
-## 4. Phase 1a / 1b 事件注册表
+## 4. Ring 1 / Ring 2 事件注册表
 
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
-| `task.created` | `tier1` | gateway / scheduler | runtime, observability | 是 | 是 |
-| `task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | 是 | 是 |
-| `workflow.started` | `tier1` | workflow runtime | observability, recovery scan | 是 | 是 |
-| `workflow.step_completed` | `tier1` | workflow runtime | orchestrator, recovery scan | 是 | 是 |
-| `workflow.failed` | `tier1` | workflow runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | 是 | 是 |
+| `platform.task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | 是 | 是 |
+| `platform.harness.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.node.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
+| `platform.harness.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
 | `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
 | `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
 | `execution.blocked` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
 | `execution.succeeded` | `tier1` | runtime | transition service, observability | 是 | 是 |
 | `execution.failed` | `tier1` | runtime | supervisor, recovery scan | 是 | 是 |
 | `cost.limit_reached` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
-| `oapeflir.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
-| `oapeflir.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
-| `oapeflir.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | 否 | 建议 |
+| `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
+| `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
+| `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | 否 | 建议 |
 | `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
 | `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
 | `learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |

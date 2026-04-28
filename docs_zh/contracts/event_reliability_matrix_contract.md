@@ -18,15 +18,15 @@
 | `tier2` | 尽力送达 | 可选持久化 | 可选 | 建议支持 | 重要进度、工具阶段、观测事件 |
 | `tier3` | 可丢失 | 可不持久化 | 不要求 | 不要求 | 流式 chunk、heartbeat、瞬时进度 |
 
-## 3. Phase 1a 基线事件
+## 3. Ring 1 基线事件
 
 | 事件类型 | Tier | 原因 |
 | --- | --- | --- |
-| `task.created` | `tier1` | 主链事实事件 |
-| `task.status_changed` | `tier1` | 用户主状态 |
-| `workflow.started` | `tier1` | workflow 生命周期起点 |
-| `workflow.step_completed` | `tier1` | 下一步推进依赖 |
-| `workflow.failed` | `tier1` | 恢复与失败归因 |
+| `platform.task.created` | `tier1` | 主链事实事件 |
+| `platform.task.status_changed` | `tier1` | 用户主状态 |
+| `platform.harness.started` | `tier1` | Harness 生命周期起点 |
+| `platform.node.completed` | `tier1` | 下一节点推进依赖 |
+| `platform.harness.failed` | `tier1` | 恢复与失败归因 |
 | `approval.requested` | `tier1` | HITL 主链 |
 | `approval.resolved` | `tier1` | 恢复执行前提 |
 | `improve.candidate_accepted` | `tier1` | 候选接受会改变后续策略和 rollout 轨迹 |

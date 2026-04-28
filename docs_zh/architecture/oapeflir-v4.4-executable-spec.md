@@ -66,16 +66,10 @@ OAPEFLIR v4.4 的核心定位是：
 v4.4 不再只描述“Agent 应该怎么思考”，而是明确：
 
 ```text
-什么状态可以迁移
-什么事件必须记录
-什么图可以执行
-什么副作用可以提交
-什么情况下必须暂停
-什么情况下可以重试
-什么情况下必须人工接管
-什么学习结果可以进入线上
-什么评测门禁必须阻断发布
-什么证据必须永久保存
+哪些状态迁移必须由 HarnessRuntime / RuntimeStateMachine 先落 truth
+哪些事件与证据必须被 OAPEFLIR 解释为闭环视图
+哪些图执行、预算、副作用、暂停、重试、人工接管规则
+必须由主架构和 canonical contracts 先定义，OAPEFLIR 只能引用与解释
 ```
 
 一句话概括：
@@ -145,12 +139,12 @@ RequestEnvelope
    │
    ▼
 ┌─────────────────────────────────────────────────────────┐
-│          HarnessRuntime + OAPEFLIR Semantic Overlay     │
+│          HarnessRuntime Mainline + OAPEFLIR Projection  │
 │                                                         │
 │  Observe ─→ Assess ─→ PlanGraph ─→ Graph Scheduler       │
 │                              │                          │
 │                              ▼                          │
-│                      Node Execution Runtime              │
+│                Canonical Node Execution Mainline         │
 │                              │                          │
 │             ┌────────────────┼────────────────┐         │
 │             ▼                ▼                ▼         │
@@ -219,9 +213,11 @@ type OapeflirTraceProjection = {
 
 ---
 
-# 5. NodeRun 状态机
+# 5. NodeRun 生命周期投影（引用 canonical contract）
 
 ## 5.1 NodeRun
+
+> 本节只引用 `node-run-attempt-receipt-contract.md` 的 canonical 形状作为迁移输入摘要；NodeRun 真正的状态集与合法跃迁权威不在 OAPEFLIR spec 内定义。
 
 ```ts
 type NodeRun = {
@@ -294,7 +290,7 @@ retry_wait
   → ready
 ```
 
-## 5.4 Node 终态封闭规则
+## 5.4 Node 终态封闭规则（解释性约束）
 
 ```text
 1. `succeeded / failed / skipped / cancelled / dependency_failed / policy_blocked / aborted` 为终态，不得迁出。

@@ -31,6 +31,7 @@ import type {
   DelegationOptions,
   PermissionSet,
   DelegationCreatedEvent,
+  DelegationStatus,
 } from "./delegation-types.js";
 
 export interface DelegationExpirationConfig {
@@ -49,6 +50,17 @@ export interface ExpirationScanResult {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class DelegationManagerService {
+  private static readonly ALLOWED_STATUS_TRANSITIONS: Readonly<Record<DelegationStatus, readonly DelegationStatus[]>> = {
+    pending: ["active", "completed", "failed", "cancelled", "expired", "timed_out"],
+    pending_approval: ["active", "cancelled", "expired", "timed_out"],
+    active: ["completed", "failed", "cancelled", "expired", "timed_out"],
+    completed: [],
+    failed: [],
+    cancelled: [],
+    expired: [],
+    timed_out: [],
+  };
+
   private readonly topologyValidator: TopologyValidator;
   private readonly collaborationProtocol: CollaborationProtocolService;
   private readonly defaultTimeout: number;
@@ -177,7 +189,7 @@ export class DelegationManagerService {
       );
     }
 
-    delegation.status = "cancelled";
+    this.transitionDelegationStatus(delegation, "cancelled");
   }
 
   public cancelDelegation(delegationId: string): void {
@@ -192,8 +204,7 @@ export class DelegationManagerService {
    */
   public complete(delegationId: string, _outputRef?: string): void {
     const delegation = this.requireDelegation(delegationId);
-    delegation.status = "completed";
-    delegation.completedAt = nowIso();
+    this.transitionDelegationStatus(delegation, "completed");
   }
 
   public completeDelegation(delegationId: string, outputRef?: string): void {
@@ -243,12 +254,12 @@ export class DelegationManagerService {
    */
   public fail(delegationId: string, _error: string): void {
     const delegation = this.requireDelegation(delegationId);
-    delegation.status = "failed";
+    this.transitionDelegationStatus(delegation, "failed");
   }
 
   public handleDelegationTimeout(delegationId: string): void {
     const delegation = this.requireDelegation(delegationId);
-    delegation.status = "timed_out";
+    this.transitionDelegationStatus(delegation, "timed_out");
   }
 
   public createDelegationContext(
@@ -271,7 +282,7 @@ export class DelegationManagerService {
       delegationDepth: overrides.delegationDepth ?? delegation.depth,
       activeDelegations,
       permissions: delegation.permissions,
-      sandboxTier: overrides.sandboxTier ?? "container",
+      sandboxTier: overrides.sandboxTier ?? "workspace_write",
       correlationId: overrides.correlationId ?? delegation.correlationId,
       tenantId: overrides.tenantId ?? null,
     };
@@ -340,7 +351,7 @@ export class DelegationManagerService {
       if (delegation.status === "pending" || delegation.status === "pending_approval" || delegation.status === "active") {
         if (delegation.expiresAt < now) {
           try {
-            delegation.status = "expired";
+            this.transitionDelegationStatus(delegation, "expired");
             expired++;
           } catch (err) {
             errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
@@ -493,6 +504,30 @@ export class DelegationManagerService {
       );
     }
     return delegation;
+  }
+
+  private transitionDelegationStatus(
+    delegation: DelegationResult,
+    nextStatus: DelegationStatus,
+  ): void {
+    const allowedStatuses = DelegationManagerService.ALLOWED_STATUS_TRANSITIONS[delegation.status];
+    if (!allowedStatuses.includes(nextStatus)) {
+      throw new ValidationError(
+        "delegation.invalid_status_transition",
+        `Delegation ${delegation.delegationId} cannot transition from ${delegation.status} to ${nextStatus}`,
+        {
+          details: {
+            delegationId: delegation.delegationId,
+            fromStatus: delegation.status,
+            toStatus: nextStatus,
+          },
+        },
+      );
+    }
+    delegation.status = nextStatus;
+    if (nextStatus === "completed") {
+      delegation.completedAt = nowIso();
+    }
   }
 
   private resolveRootAgentId(parent: AgentContext): string {

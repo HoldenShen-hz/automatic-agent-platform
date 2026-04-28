@@ -27,8 +27,8 @@ function createOrchestrationDb(prefix) {
 function makeConstraintPack(overrides = {}) {
   return {
     policyIds: [],
-    approvalMode: "none" as const,
-    autonomyMode: "auto" as const,
+    approvalMode: "none",
+    autonomyMode: "auto",
     toolPolicy: { allowedTools: ["tool1", "tool2"] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
@@ -55,11 +55,11 @@ test("createRun produces a HarnessRun with created status", () => {
   assert.equal(run.steps.length, 0);
   assert.equal(run.maxIterations, 10);
   assert.equal(run.currentIteration, 0);
-  assert.ok(run.runId.startsWith("harness_run/"));
+  assert.ok(run.runId.startsWith("harness_run_"));
   assert.ok(run.createdAt != null);
 });
 
-test("appendStep transitions run to running and records step details", () => {
+test("appendStep records step details without mutating lifecycle status", () => {
   const harness = new HarnessRuntimeService();
   let run = harness.createRun({
     taskId: "task_002",
@@ -74,7 +74,7 @@ test("appendStep transitions run to running and records step details", () => {
     outputs: { plan: "step_1_plan" },
   });
 
-  assert.equal(run.status, "running");
+  assert.equal(run.status, "created");
   assert.equal(run.steps.length, 1);
   assert.equal(run.steps[0].role, "planner");
   assert.equal(run.steps[0].stage, "plan");
@@ -180,7 +180,7 @@ test("decide with maxIterationsReached returns abort", () => {
 // Sleep and resume
 // ---------------------------------------------------------------------------
 
-test("sleep transitions run to sleeping and records lease", () => {
+test("sleep pauses a run and records lease", () => {
   const harness = new HarnessRuntimeService();
   let run = harness.createRun({
     taskId: "task_005",
@@ -190,7 +190,8 @@ test("sleep transitions run to sleeping and records lease", () => {
 
   run = harness.sleep(run, "rate_limit_cooldown", "2026-04-26T00:00:00.000Z");
 
-  assert.equal(run.status, "sleeping");
+  assert.equal(run.status, "paused");
+  assert.equal(run.pauseReason, "sleep");
   assert.ok(run.sleepLease != null);
   assert.equal(run.sleepLease.reason, "rate_limit_cooldown");
   assert.equal(run.sleepLease.resumeAt, "2026-04-26T00:00:00.000Z");
@@ -217,7 +218,7 @@ test("resume clears sleepLease and returns to running", () => {
 // Recovery and checkpoint
 // ---------------------------------------------------------------------------
 
-test("recover transitions run to recovering and records checkpoint", () => {
+test("recover pauses a run and records checkpoint", () => {
   const harness = new HarnessRuntimeService();
   let run = harness.createRun({
     taskId: "task_007",
@@ -234,10 +235,11 @@ test("recover transitions run to recovering and records checkpoint", () => {
 
   run = harness.recover(run);
 
-  assert.equal(run.status, "recovering");
+  assert.equal(run.status, "paused");
+  assert.equal(run.pauseReason, "recovery");
   assert.ok(run.recoveryCheckpoint != null);
   assert.ok(run.recoveryCheckpoint.lastCompletedStepId != null);
-  assert.equal(run.recoveryCheckpoint.statusBeforeRecovery, "running");
+  assert.equal(run.recoveryCheckpoint.statusBeforeRecovery, "created");
   assert.ok(run.timeline.some((e) => e.type === "recovery_started"));
 });
 
@@ -267,7 +269,7 @@ test("resume after recover clears recoveryCheckpoint", () => {
 // HITL escalation
 // ---------------------------------------------------------------------------
 
-test("openHitlReview transitions run to waiting_hitl and records request", () => {
+test("openHitlReview pauses a run for hitl and records request", () => {
   const harness = new HarnessRuntimeService();
   let run = harness.createRun({
     taskId: "task_009",
@@ -277,7 +279,8 @@ test("openHitlReview transitions run to waiting_hitl and records request", () =>
 
   run = harness.openHitlReview(run, "requires_human_approval", ["evidence_ref_1"]);
 
-  assert.equal(run.status, "waiting_hitl");
+  assert.equal(run.status, "paused");
+  assert.equal(run.pauseReason, "hitl");
   assert.ok(run.hitlRequest != null);
   assert.equal(run.hitlRequest.reason, "requires_human_approval");
   assert.ok(run.timeline.some((e) => e.type === "hitl_requested"));
@@ -353,7 +356,7 @@ test("captureContextSnapshot produces snapshot with runId and iteration", () => 
   assert.equal(snapshot.domainId, run.domainId);
   assert.equal(snapshot.iteration, 2);
   assert.equal(snapshot.stepCount, 1);
-  assert.ok(snapshot.snapshotId.startsWith("ctx_snapshot/"));
+  assert.ok(snapshot.snapshotId.startsWith("ctx_snapshot_"));
   assert.ok(snapshot.lastDecisionId == null); // no decision yet
 });
 
@@ -428,7 +431,14 @@ test("assertInvariants detects iteration exceeding budget", () => {
     constraintPack: makeConstraintPack({ budget: { maxSteps: 5, maxCost: 100, maxDurationMs: 60000 } }),
   });
 
-  run = { ...run, currentIteration: 10 };
+  run = {
+    ...run,
+    currentIteration: 10,
+    loopMetrics: {
+      ...run.loopMetrics,
+      iterationCount: 10,
+    },
+  };
 
   const result = harness.assertInvariants(run);
   assert.ok(result.violations.some((v) => v.includes("iteration_exceeds_budget")));
@@ -451,7 +461,7 @@ test("assertInvariants detects replan count exceeding budget", () => {
   assert.ok(result.violations.some((v) => v.includes("replan_count_exceeds_budget")));
 });
 
-test("assertInvariants detects waiting_hitl without hitlRequest", () => {
+test("assertInvariants detects hitl pause without hitlRequest", () => {
   const harness = new HarnessRuntimeService();
   let run = harness.createRun({
     taskId: "task_020",
@@ -459,7 +469,7 @@ test("assertInvariants detects waiting_hitl without hitlRequest", () => {
     constraintPack: makeConstraintPack(),
   });
 
-  run = { ...run, status: "waiting_hitl", hitlRequest: null };
+  run = { ...run, status: "paused", pauseReason: "hitl", hitlRequest: null };
 
   const result = harness.assertInvariants(run);
   assert.ok(result.violations.some((v) => v.includes("waiting_hitl_requires_request")));
@@ -487,7 +497,7 @@ test("WorkflowPlanner.plan produces PlannedWorkflow with executionSteps", () => 
   const planner = new WorkflowPlanner();
 
   const planned = planner.plan({
-    workflowId: "single_agent_intake",
+    workflowId: "single_agent_minimal",
     request: "Test request",
   });
 
@@ -497,11 +507,11 @@ test("WorkflowPlanner.plan produces PlannedWorkflow with executionSteps", () => 
   assert.ok(planned.planReason != null);
 });
 
-test("WorkflowPlanner.plan with single_agent_intake produces expected step structure", () => {
+test("WorkflowPlanner.plan with single_agent_minimal produces expected step structure", () => {
   const planner = new WorkflowPlanner();
 
   const planned = planner.plan({
-    workflowId: "single_agent_intake",
+    workflowId: "single_agent_minimal",
     request: "Analyze this",
   });
 
@@ -518,12 +528,13 @@ test("WorkflowPlanner.plan sets dependency edges for multi-step workflows", () =
   const planner = new WorkflowPlanner();
 
   const planned = planner.plan({
-    workflowId: "single_agent_intake",
+    workflowId: "single_division_multi_step_orchestration",
     request: "Multi-step request",
   });
 
-  // For single step, dependency edges may be empty
+  assert.ok(planned.executionSteps.length > 1);
   assert.ok(Array.isArray(planned.dependencyEdges));
+  assert.ok(planned.dependencyEdges.length > 0);
 });
 
 // ---------------------------------------------------------------------------
@@ -547,7 +558,7 @@ test("runLoop with high score completes with accept decision", () => {
   assert.ok(run.completedAt != null);
 });
 
-test("runLoop with low score triggers replan", () => {
+test("runLoop with repeated low score eventually aborts after exhausting replan guards", () => {
   const harness = new HarnessRuntimeService();
   const run = harness.runLoop({
     taskId: "task_023",
@@ -559,7 +570,9 @@ test("runLoop with low score triggers replan", () => {
     evaluatorScore: 0.3,
   });
 
-  assert.equal(run.decision?.action, "replan");
+  assert.equal(run.status, "aborted");
+  assert.equal(run.decision?.action, "abort");
+  assert.ok(run.feedbackEnvelope != null);
 });
 
 test("runLoop records feedbackEnvelope with signals and learnedActions", () => {
@@ -594,7 +607,7 @@ test("runLoop captures context snapshots", () => {
 
   assert.ok(run.contextSnapshots.length >= 1);
   const snapshot = run.contextSnapshots[0];
-  assert.ok(snapshot.snapshotId.startsWith("ctx_snapshot/"));
+  assert.ok(snapshot.snapshotId.startsWith("ctx_snapshot_"));
   assert.equal(snapshot.runId, run.runId);
 });
 
@@ -656,7 +669,14 @@ test("persistRun throws on invariant violation", () => {
     constraintPack: makeConstraintPack({ budget: { maxSteps: 5, maxCost: 100, maxDurationMs: 60000 } }),
   });
 
-  run = { ...run, currentIteration: 20 }; // exceeds budget
+  run = {
+    ...run,
+    currentIteration: 20,
+    loopMetrics: {
+      ...run.loopMetrics,
+      iterationCount: 20,
+    },
+  };
 
   assert.throws(() => {
     harness.persistRun(run);
@@ -762,7 +782,7 @@ test("HarnessRun can be created from task snapshot of runSingleTaskExecution", a
     dbPath,
     title: "Harness Task Source",
     request: "Create task for harness mapping",
-    stepOutputOverride: { done: true },
+    stepOutputOverride: { result: "done" },
   });
 
   const harness = new HarnessRuntimeService();
@@ -785,7 +805,7 @@ test("HarnessRun can be created from task snapshot of runSingleTaskExecution", a
   cleanupPath(workspace);
 });
 
-test("HarnessRuntimeService handles handleFailure with graceful recovery", () => {
+test("HarnessRuntimeService handles tool timeout with graceful recovery", () => {
   const harness = new HarnessRuntimeService();
   let run = harness.createRun({
     taskId: "task_fail_001",
@@ -800,6 +820,7 @@ test("HarnessRuntimeService handles handleFailure with graceful recovery", () =>
     outputs: { partial: true },
   });
 
-  const afterFailure = harness.handleFailure(run, "step_timeout");
-  assert.ok(afterFailure.status !== "running" || afterFailure.recoveryCheckpoint != null);
+  const afterFailure = harness.handleFailure(run, "tool_timeout");
+  assert.equal(afterFailure.status, "running");
+  assert.equal(afterFailure.recoveryCheckpoint, null);
 });

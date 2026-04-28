@@ -4,6 +4,7 @@ import { evaluateChineseWallPolicy, type ChineseWallPolicy } from "./chinese-wal
 export interface FederatedKnowledgeSource {
   readonly sourceId: string;
   readonly boundaryId: string;
+  readonly tenantId?: string | null;
   readonly orgNodeId: string;
   readonly title: string;
   readonly content: string;
@@ -13,6 +14,7 @@ export interface FederatedKnowledgeSource {
 
 export interface FederatedKnowledgeQuery {
   readonly requesterOrgNodeId: string;
+  readonly requesterTenantId?: string | null;
   readonly query: string;
   readonly boundaryIds?: readonly string[];
   readonly transform?: CrossBoundaryTransform;
@@ -21,6 +23,7 @@ export interface FederatedKnowledgeQuery {
 export interface FederatedKnowledgeResult {
   readonly sourceId: string;
   readonly boundaryId: string;
+  readonly tenantId: string | null;
   readonly title: string;
   readonly excerpt: string;
   readonly matchedTags: readonly string[];
@@ -50,6 +53,17 @@ export class KnowledgeFederator {
         if (boundary == null) {
           return false;
         }
+        const boundaryTenantId = boundary.tenantId ?? null;
+        const sourceTenantId = source.tenantId ?? null;
+        const requesterTenantId = query.requesterTenantId ?? null;
+        if (
+          (boundaryTenantId != null || sourceTenantId != null || requesterTenantId != null)
+          && (boundaryTenantId == null || sourceTenantId == null || requesterTenantId == null
+            || boundaryTenantId !== requesterTenantId
+            || sourceTenantId !== requesterTenantId)
+        ) {
+          return false;
+        }
         if (!canAccessKnowledgeBoundary(boundary, query.requesterOrgNodeId)) {
           return false;
         }
@@ -73,6 +87,7 @@ export class KnowledgeFederator {
         return {
           sourceId: source.sourceId,
           boundaryId: source.boundaryId,
+          tenantId: boundary.tenantId ?? source.tenantId ?? null,
           title: source.title,
           excerpt: transformed.excerpt,
           matchedTags: source.tags.filter((tag) => normalizedQuery.includes(tag.toLowerCase()) || tag.toLowerCase().includes(normalizedQuery)),

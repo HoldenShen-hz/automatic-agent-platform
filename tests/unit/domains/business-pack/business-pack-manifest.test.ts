@@ -98,7 +98,7 @@ test("BusinessPackManifestSchema parses a full manifest with all fields", () => 
     assert.strictEqual(result.data.dependencies.length, 1);
     assert.strictEqual(result.data.approvalPoints.length, 1);
     assert.strictEqual(result.data.domainMetrics.length, 1);
-    assert.strictEqual(result.data.sandboxTier, "container");
+    assert.strictEqual(result.data.sandboxTier, "workspace_write");
   }
 });
 
@@ -129,7 +129,7 @@ test("BusinessPackManifestSchema applies default values", () => {
   if (result.success) {
     assert.strictEqual(result.data.lifecycleStage, "draft");
     assert.strictEqual(result.data.failureStrategy, "fail_fast");
-    assert.strictEqual(result.data.sandboxTier, "process");
+    assert.strictEqual(result.data.sandboxTier, "read_only");
     assert.strictEqual(result.data.author, "");
   }
 });

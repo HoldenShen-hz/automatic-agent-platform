@@ -58,15 +58,15 @@ test("DomainsRuntimeOrchestrator.startup returns DomainsRuntimeStartupResult", a
   assert.ok("steps" in result, "result should have steps field");
 });
 
-test("DomainsRuntimeOrchestrator.startup startupOrder matches phase sequence", async () => {
+test("DomainsRuntimeOrchestrator.startup startupOrder matches ring sequence", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  const expectedOrder = ["9a", "9b", "9c", "9d", "9e", "9f"];
-  assert.deepEqual(result.startupOrder, expectedOrder, "startup order should follow phase sequence");
+  const expectedOrder = ["ring1", "ring2", "ring3"];
+  assert.deepEqual(result.startupOrder, expectedOrder, "startup order should follow ring sequence");
 });
 
 test("DomainsRuntimeOrchestrator.startup steps contain execution details", async () => {
@@ -97,16 +97,15 @@ test("DomainsRuntimeOrchestrator.startup first step has no dependencies", async 
   assert.deepEqual(firstStep.initializedDependencyServiceIds, [], "first step should have no dependency service ids");
 });
 
-test("DomainsRuntimeOrchestrator.startup later steps depend on earlier phases", async () => {
+test("DomainsRuntimeOrchestrator.startup later steps depend on earlier rings", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  // Phase 9b should depend on 9a
-  const step9b = result.steps.find((s) => s.stepId === "9b")!;
-  assert.ok(step9b.initializedDependencyServiceIds.length > 0, "9b should have dependency service ids");
+  const ring2 = result.steps.find((s) => s.stepId === "ring2")!;
+  assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
 });
 
 test("DomainsRuntimeOrchestrator.startup result ready flag is true after full startup", async () => {
@@ -150,20 +149,17 @@ test("DomainsRuntimeOrchestrator.snapshotReadiness returns DomainsReadinessSnaps
   assert.ok("capabilityReadiness" in snapshot, "snapshot should have capabilityReadiness");
 });
 
-test("DomainsRuntimeOrchestrator.snapshotReadiness capabilityReadiness contains all phases", async () => {
+test("DomainsRuntimeOrchestrator.snapshotReadiness capabilityReadiness contains all rings", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
   const snapshot = orchestrator.snapshotReadiness();
 
-  const phases = snapshot.capabilityReadiness.map((c) => c.stepId);
-  assert.ok(phases.includes("9a"), "should include phase 9a");
-  assert.ok(phases.includes("9b"), "should include phase 9b");
-  assert.ok(phases.includes("9c"), "should include phase 9c");
-  assert.ok(phases.includes("9d"), "should include phase 9d");
-  assert.ok(phases.includes("9e"), "should include phase 9e");
-  assert.ok(phases.includes("9f"), "should include phase 9f");
+  const rings = snapshot.capabilityReadiness.map((c) => c.stepId);
+  assert.ok(rings.includes("ring1"), "should include ring1");
+  assert.ok(rings.includes("ring2"), "should include ring2");
+  assert.ok(rings.includes("ring3"), "should include ring3");
 });
 
 test("DomainsRuntimeOrchestrator.snapshotReadiness all steps initialized after startup", async () => {
@@ -198,14 +194,14 @@ test("registerDomainsRuntimeOrchestrator returns DomainsRuntimeOrchestrator inst
   assert.ok(orchestrator instanceof DomainsRuntimeOrchestrator, "should return DomainsRuntimeOrchestrator instance");
 });
 
-test("registerDomainsRuntimeOrchestrator startup produces correct phase order", async () => {
+test("registerDomainsRuntimeOrchestrator startup produces correct ring order", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  assert.deepEqual(result.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
+  assert.deepEqual(result.startupOrder, ["ring1", "ring2", "ring3"]);
 });
 
 test("registerDomainsRuntimeOrchestrator startup first step has empty dependency ids", async () => {
@@ -218,12 +214,12 @@ test("registerDomainsRuntimeOrchestrator startup first step has empty dependency
   assert.equal(result.steps[0]?.initializedDependencyServiceIds.length, 0);
 });
 
-test("registerDomainsRuntimeOrchestrator startup second step depends on first phase", async () => {
+test("registerDomainsRuntimeOrchestrator startup second step depends on first ring", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  assert.deepEqual(result.steps[1]?.initializedDependencyServiceIds, ["w5.domains.phase.9a.bootstrap"]);
+  assert.deepEqual(result.steps[1]?.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
 });

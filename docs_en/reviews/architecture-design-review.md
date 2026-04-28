@@ -144,3 +144,77 @@ Multi-step orchestration has no atomicity: Org cascade/Chinese Wall/delegation r
 Backpressure systematically missing: Evaluator/Budget/Approval/Dispatch queue four bottlenecks have no graceful degradation
 Resource leak paths: Run terminal/Plugin crash/Draft abandoned/Secret lease/ContextSnapshot all lack cleanup
 Unified architecture serves irreconcilable requirements: 50μs quant trading vs 30s LLM; cost derived token; 24 domains uncalibrated risk share engine
+
+Runtime & Reliability (20)
+#	Location	Issue	Recommendation
+64	§45.5	ContextSnapshot writes P5 every iteration with no eviction → storage unbounded growth	Retention policy + compaction
+65	§45.7/§45.21	Evaluator is single bottleneck, degradation has no bypass/circuit breaker	Circuit breaker policy
+66	§62.3	Edge SyncQueue hash-chain vs non-linear dependency graph cannot be linearized	Allow chain forks
+67	§45.19	Run version lock makes async run unable to receive security hot patch	Force-upgrade mechanism
+68	§56.4	Improvement released has no rollback state	Add rollback transition
+69	§59.6	Forensic budget P0 event may already be exhausted when event occurs	Event reservation or unlimited
+70	§45.18	HITL takeover external changes not in snapshot, context stale after recovery	Takeover change record
+71	§53.2/§47	Approval queue has no backpressure based on reviewer availability	Admission control
+72	§66.2	Compliance report signoff has no timeout, can stop generated indefinitely	Timeout + escalation
+73	§60.3	Break-glass 72h review not enforced	Reminder + consequences
+74	§56.2	Feedback has no statistical detection of collaborative bias injection	Collective anomaly detection
+75	§67	Capacity forecast has no accuracy feedback/model calibration	Forecast vs actual tracking
+76	§6.3	Abandoned task_draft has no expired cleanup → intake table unbounded growth	expires_at + sweeper
+77	§14.10	Run terminal state has no resource cleanup protocol (lease/budget/secret)	RunTerminationCleanup sequence
+78	§8.2/§32	No graceful shutdown/drain protocol	WorkerDrainProtocol
+79	§28.3	EventEnvelope has no spanId, breaking event-to-span association	Add spanId
+80	§11.7	Plugin crash has no resource cleanup (file/socket)	Cleanup hook
+81	§9.2/§6.2	Rate limit has no per-endpoint granularity, expensive/cheap shared	Endpoint-level classification
+82	§11.3	Secret lease still valid until TTL expiration after NodeRun terminal state	Terminal state sync revocation
+83	§7.1	WebSocket has no tenant-level subscription filter, can leak cross-tenant events	Enforce tenantId filtering
+
+Operations & Governance (12)
+#	Location	Issue	Recommendation
+84	§47.3	Approval peer delegation has no conflict of interest check	Conflict filtering
+85	§50.3	Chinese Wall has no expiration/reset, user restriction accumulates	WallExpiry policy
+86	§55.5	Marketplace removed has no migration guarantee	≥80% migrated before removed
+87	§56.3	Few-shot harvesting has no diversity/bias protection	Diversity scorer
+88	§60.2	Panic propagation has no partial failure handling	Unconfirmed → forced kill escalation
+89	§46.3	Department merge domain conflict undefined	Strictest wins
+90	§31.2	Failover reconciliation has no completion timeout	Max duration + escalation
+91	§31.3	DR drill has no pass/fail criteria	Define acceptance criteria
+92	§31.3/§23	Event replay recovery assumes unlimited log retention vs GDPR erasure	Retention tiers + tombstone
+93	§32.1	D1→D2→D3 deployment evolution has no rollback path	Rollback runbook
+94	§32.2	Environment promotion has no security hot patch fast path	Emergency promotion
+95	§30.5	Pack compatibility test suite "referenced but not defined"	Define generator + ownership
+
+Positive Feedback Loops (4)
+#	Location	Issue
+96	§45.16	Evaluator marks valuable → LTM → affects Evaluator → erroneous memory self-enhancement
+97	§45.20/§45.25	Guardrail block → replan → re-triggers same guardrail → oscillation exhausts budget
+98	§53.4	Priority upgrade → all same level → overload → more queuing → more upgrades
+99	§42.3/§42.5	Trust decay → run tasks to maintain → low value consumes budget → high value has no budget
+
+Consistency Contradictions (8)
+#	Location	Issue
+100	§54.2/§58.1	P95 (SLA matrix) vs P99 (Harness observation) vs model field name P99
+101	§58.5	Phase 6 belongs to both D3+S3 and S4
+102	§58.5/§58.9	Two error code namespaces have no interoperability
+103	§58	§58.7-8 missing
+104	AppH	References §45.23-27 but body has no such section numbers
+105	§33.2	Batch B=Phase3-4 but contains Phase8b deliverables
+106	§47.2/§52	Approval threshold only CNY vs multi-region
+107	§58.1	harness.run.duration P99 = business domain SLO = circular reference
+
+Infrastructure & API (8)
+#	Location	Issue	Recommendation
+108	§14.9	Dispatch queue has no max-depth, only lag triggers backpressure → memory overflow	max_queue_depth + DLQ
+109	§12.4	No orphaned budget reservation metric	gauge + alert
+110	§6.8	Legacy projection adapter has no contract test → upgrade silently regresses	CI contract test
+111	§22.2	SDK has no version handshake → upgrade calls deprecated API	X-Platform-Version + compatibility check
+112	§15.5	Cache has no warming → cold start directly degrades to D3/D4	Startup warming strategy
+113	§6	List API has no pagination/cursor/filtering	Cursor pagination
+114	§32.3	Worker pool inter-communication has no mutual auth	mTLS + service identity
+115	§24/§63	Config versioned but no runtime drift detection	Periodic reconciliation + drift alert
+
+Systemic Themes
+Multi-step orchestration has no atomicity: Org cascade/Chinese Wall/delegation revocation/SCIM all lack Saga
+4 positive feedback loops have no circuit breakers: Memory self-enhancement/Guardrail oscillation/Priority inflation/Trust maintenance
+Backpressure systematically missing: Evaluator/Budget/Approval/Dispatch queue four bottlenecks have no graceful degradation
+Resource leak paths: Run terminal/Plugin crash/Draft abandoned/Secret lease/ContextSnapshot all lack cleanup
+Unified architecture serves irreconcilable requirements: 50μs quant trading vs 30s LLM; cost derived token; 24 domains uncalibrated risk share engine

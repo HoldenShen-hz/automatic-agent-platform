@@ -18,6 +18,11 @@ import type {
   QuotaCounterRecord,
   UsageEventRecord,
 } from "../../platform/contracts/types/domain.js";
+import type {
+  BudgetLedger,
+  BudgetReservation,
+  BudgetSettlement,
+} from "../../platform/contracts/executable-contracts/index.js";
 
 export interface CreateBillingAccountInput {
   accountId?: string;
@@ -63,12 +68,23 @@ export interface RecordUsageInput {
   quantity: number;
   source: BillingUsageSource;
   capturedAt?: string;
+  budgetControl?: {
+    readonly tenantId: string;
+    readonly harnessRunId: string;
+    readonly traceId: string;
+    readonly emittedBy: string;
+    readonly ledger?: BudgetLedger;
+    readonly reservationTtlMs?: number;
+  };
 }
 
 export interface RecordUsageResult {
   usageEvent: UsageEventRecord;
   quotaCounter: QuotaCounterRecord | null;
   ledgerEntry: LedgerEntryRecord;
+  budgetReservation?: BudgetReservation;
+  budgetSettlement?: BudgetSettlement;
+  budgetLedger?: BudgetLedger;
 }
 
 export interface BillingAccountSummary {

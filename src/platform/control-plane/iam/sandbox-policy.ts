@@ -47,6 +47,24 @@ const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
  * - restricted_exec: Execution is constrained by executor policy rather than broad path roots
  */
 export type SandboxMode = "read_only" | "workspace_write" | "scoped_external_access" | "restricted_exec";
+export type SandboxModeLike = SandboxMode | string;
+
+const SANDBOX_MODE_ALIASES = {
+  none: "read_only",
+  process: "read_only",
+  container: "workspace_write",
+  scoped_external_access: "scoped_external_access",
+  read_only: "read_only",
+  workspace_write: "workspace_write",
+  restricted_exec: "restricted_exec",
+} as const satisfies Record<string, SandboxMode>;
+
+export function normalizeSandboxMode(mode: SandboxModeLike | null | undefined): SandboxMode {
+  if (mode == null) {
+    return "read_only";
+  }
+  return SANDBOX_MODE_ALIASES[mode as keyof typeof SANDBOX_MODE_ALIASES] ?? "read_only";
+}
 
 /**
  * Policy for handling symbolic links within sandbox roots.
@@ -415,6 +433,18 @@ export function createWorkspaceWritePolicy(workspaceRoot: string): SandboxPolicy
     realpathEnforced: true,
     symlinkPolicy: "deny",
     processRuleMode: "allow",
+  };
+}
+
+export function createReadOnlyPolicy(workspaceRoot: string): SandboxPolicy {
+  return {
+    policyId: "read_only",
+    mode: "read_only",
+    allowedRoots: [workspaceRoot],
+    deniedRoots: [],
+    realpathEnforced: true,
+    symlinkPolicy: "deny",
+    processRuleMode: "deny",
   };
 }
 

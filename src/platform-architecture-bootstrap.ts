@@ -3,6 +3,7 @@ import type {
   PlatformAppKind,
   PlatformAppManifest,
   PlatformArchitectureLayer,
+  PlatformPlane,
   PlatformStartupTarget,
 } from "./platform-architecture-types.js";
 import { ServiceRegistry } from "./platform/shared/lifecycle/service-registry.js";
@@ -15,20 +16,30 @@ export interface PlatformLayerManifest {
   canonicalSubdomains: string[];
 }
 
+export interface PlatformPlaneManifest {
+  planeId: PlatformPlane;
+  surfaceIds: string[];
+  description: string;
+  architectureSections: string[];
+}
+
 export interface PlatformArchitectureBootstrapSummary {
   generatedAt: string;
   startupEntryModule: string;
   architectureDocPath: string;
   layerCount: number;
+  planeCount: number;
   appCount: number;
   startupTargetCount: number;
   layers: PlatformLayerManifest[];
+  planes: PlatformPlaneManifest[];
   apps: PlatformAppManifest[];
   startupTargets: PlatformStartupTarget[];
 }
 
 export interface PlatformArchitectureServices {
   layers: readonly PlatformLayerManifest[];
+  planes: readonly PlatformPlaneManifest[];
   apps: readonly PlatformAppManifest[];
   startupTargets: readonly PlatformStartupTarget[];
   summary: PlatformArchitectureBootstrapSummary;
@@ -100,6 +111,45 @@ export const PLATFORM_LAYER_MANIFESTS: readonly PlatformLayerManifest[] = Object
   },
 ]);
 
+export const PLATFORM_PLANE_MANIFESTS: readonly PlatformPlaneManifest[] = Object.freeze([
+  {
+    planeId: "P1",
+    surfaceIds: ["interface"],
+    description: "P1 interface plane.",
+    architectureSections: ["§4", "§6", "§7"],
+  },
+  {
+    planeId: "X1",
+    surfaceIds: ["x1-fabric", "shared", "model-gateway", "prompt-engine", "compliance"],
+    description: "X1 cross-cutting reliability, observability, compliance, and AI governance fabric.",
+    architectureSections: ["§4.7", "§9", "§15", "§16", "§17", "§23", "§27", "§58"],
+  },
+  {
+    planeId: "P2",
+    surfaceIds: ["control-plane"],
+    description: "P2 control plane.",
+    architectureSections: ["§10", "§11", "§12", "§24"],
+  },
+  {
+    planeId: "P3",
+    surfaceIds: ["orchestration"],
+    description: "P3 orchestration plane.",
+    architectureSections: ["§13", "§19", "§21", "§45"],
+  },
+  {
+    planeId: "P4",
+    surfaceIds: ["execution"],
+    description: "P4 execution plane.",
+    architectureSections: ["§14", "§31"],
+  },
+  {
+    planeId: "P5",
+    surfaceIds: ["state-evidence"],
+    description: "P5 state and evidence plane.",
+    architectureSections: ["§25", "§26", "§28", "§29"],
+  },
+]);
+
 export function listPlatformLayerManifests(): readonly PlatformLayerManifest[] {
   return PLATFORM_LAYER_MANIFESTS;
 }
@@ -110,6 +160,7 @@ export function listPlatformAppsByKind(kind: PlatformAppKind): readonly Platform
 
 export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectureBootstrapSummary {
   const layers = [...listPlatformLayerManifests()];
+  const planes = [...PLATFORM_PLANE_MANIFESTS];
   const apps = [...listPlatformApps()];
   const startupTargets = [...buildPlatformStartupTargets()];
   return {
@@ -117,9 +168,11 @@ export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectur
     startupEntryModule: "src/index.ts",
     architectureDocPath: "docs_zh/architecture/00-platform-architecture.md",
     layerCount: layers.length,
+    planeCount: planes.length,
     appCount: apps.length,
     startupTargetCount: startupTargets.length,
     layers,
+    planes,
     apps,
     startupTargets,
   };
@@ -129,6 +182,9 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
     init: () => PLATFORM_LAYER_MANIFESTS,
   });
+  registry.register<readonly PlatformPlaneManifest[]>("architecture.plane-catalog", {
+    init: () => PLATFORM_PLANE_MANIFESTS,
+  });
   registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
     init: () => Object.freeze([...listPlatformApps()]),
   });
@@ -137,14 +193,15 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   });
   registry.register<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary", {
     init: () => buildPlatformArchitectureBootstrapSummary(),
-    dependsOn: ["architecture.layer-catalog", "architecture.app-catalog", "architecture.startup-targets"],
+    dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
   });
 
   const layers = registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
+  const planes = registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
   const apps = registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
   const startupTargets = registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
   const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
-  return { layers, apps, startupTargets, summary };
+  return { layers, planes, apps, startupTargets, summary };
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {

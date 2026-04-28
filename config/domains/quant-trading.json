@@ -4,9 +4,18 @@
   "description": "Quantitative trading workflows with mandatory pre-trade risk controls.",
   "version": 1,
   "status": "active",
-  "phase": "9b",
+  "ringId": "ring1",
   "divisionId": "analytics",
   "latencyTier": "ultra_realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "high",
+    "maxAutonomyLevel": "supervised"
+  },
+  "riskSpec": {
+    "advisoryOnly": false,
+    "humanAccountable": true,
+    "deterministicHotPathOnly": true
+  },
   "workflows": [
     {
       "workflowId": "quant-trading.primary",

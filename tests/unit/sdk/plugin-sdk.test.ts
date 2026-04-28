@@ -129,7 +129,7 @@ test("definePlugin creates valid plugin definition", () => {
     maxDurationMs: 30000,
   });
   assert.deepEqual(plugin.dependencies, []);
-  assert.deepEqual(plugin.security, { sandboxTier: "process", egressDomains: [] });
+  assert.deepEqual(plugin.security, { sandboxTier: "read_only", egressDomains: [] });
 });
 
 test("definePlugin applies custom resource limits and security", () => {
@@ -144,7 +144,7 @@ test("definePlugin applies custom resource limits and security", () => {
   });
 
   assert.deepEqual(plugin.resourceLimits, { maxMemoryMb: 1024, maxCpuMs: 10000, maxDurationMs: 60000 });
-  assert.deepEqual(plugin.security, { sandboxTier: "container", egressDomains: ["api.example.com"] });
+  assert.deepEqual(plugin.security, { sandboxTier: "workspace_write", egressDomains: ["api.example.com"] });
 });
 
 test("defineTool creates tool plugin", () => {
@@ -219,7 +219,7 @@ test("PluginContext initializes with defaults", () => {
   assert.equal(context.taskId, "unknown");
   assert.equal(context.tenantId, "default");
   assert.equal(context.userId, "anonymous");
-  assert.equal(context.sandboxTier, "process");
+  assert.equal(context.sandboxTier, "read_only");
 });
 
 test("PluginContext accepts custom config", () => {
@@ -238,7 +238,7 @@ test("PluginContext accepts custom config", () => {
   assert.equal(context.taskId, "task-456");
   assert.equal(context.tenantId, "tenant-abc");
   assert.equal(context.userId, "user-789");
-  assert.equal(context.sandboxTier, "container");
+  assert.equal(context.sandboxTier, "workspace_write");
 });
 
 test("PluginContext get and set values", () => {

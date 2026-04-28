@@ -69,7 +69,9 @@
 - `tenant_id?`
 - `workspace_id?`
 - `task_id?`
-- `execution_id?`
+- `harness_run_id?`
+- `node_run_id?`
+- `execution_id?`（legacy query key）
 - `action`
 - `resource_ref`
 - `decision_ref?`

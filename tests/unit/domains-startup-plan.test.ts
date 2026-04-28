@@ -11,9 +11,9 @@ import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-reg
 
 test("domains startup plan captures canonical W5 startup order", () => {
   const plan = buildDomainsStartupPlan();
-  assert.deepEqual(plan.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
+  assert.deepEqual(plan.startupOrder, ["ring1", "ring2", "ring3"]);
   assert.equal(plan.totalCapabilityCount, 31);
-  assert.equal(plan.steps[5]?.capabilityCount, 6);
+  assert.equal(plan.steps[2]?.capabilityCount, 12);
 });
 
 test("domains startup plan registers after W5 bootstraps are available", async () => {
@@ -22,7 +22,7 @@ test("domains startup plan registers after W5 bootstraps are available", async (
     registerDomainsBootstrap(registry);
     const plan = registerDomainsStartupPlan(registry);
     assert.equal(plan.steps[0]?.entryModule, "src/domains/index.ts");
-    assert.equal(plan.steps[1]?.dependsOnStepIds.includes("9a"), true);
+    assert.equal(plan.steps[1]?.dependsOnStepIds.includes("ring1"), true);
     assert.equal(registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID), true);
   } finally {
     await registry.reset();

@@ -34,56 +34,31 @@ import {
 // Additional tests for domains-runtime-catalog
 // =============================================================================
 
-test("buildDomainsRuntimeCatalog returns phases with correct domain counts", async () => {
+test("buildDomainsRuntimeCatalog returns rings with correct domain counts", async () => {
   const catalog = buildDomainsRuntimeCatalog();
 
-  // Phase 9a: coding, data-engineering, knowledge-base, user-operations
-  assert.equal(catalog.phase9a.length, 4);
-  assert.ok(catalog.phase9a.some((b) => b.domainId === "coding"));
-  assert.ok(catalog.phase9a.some((b) => b.domainId === "data-engineering"));
-  assert.ok(catalog.phase9a.some((b) => b.domainId === "knowledge-base"));
-  assert.ok(catalog.phase9a.some((b) => b.domainId === "user-operations"));
-
-  // Phase 9b: quant-trading, financial-services, ecommerce, advertising
-  assert.equal(catalog.phase9b.length, 4);
-  assert.ok(catalog.phase9b.some((b) => b.domainId === "quant-trading"));
-  assert.ok(catalog.phase9b.some((b) => b.domainId === "financial-services"));
-  assert.ok(catalog.phase9b.some((b) => b.domainId === "ecommerce"));
-  assert.ok(catalog.phase9b.some((b) => b.domainId === "advertising"));
-
-  // Phase 9c: industry-research, academic-research, product-management, quality-assurance, finance-accounting, legal
-  assert.equal(catalog.phase9c.length, 6);
-
-  // Phase 9d: customer-service, it-operations, content-moderation, live-streaming, project-management
-  assert.equal(catalog.phase9d.length, 5);
-
-  // Phase 9e: healthcare, human-resources, facilities, executive-assistant, supply-chain, education
-  assert.equal(catalog.phase9e.length, 6);
-
-  // Phase 9f: creative-production, game-dev, game-publishing, manufacturing, agriculture, marketing
-  assert.equal(catalog.phase9f.length, 6);
+  assert.equal(catalog.ring1.length, 8);
+  assert.ok(catalog.ring1.some((b) => b.domainId === "coding"));
+  assert.ok(catalog.ring1.some((b) => b.domainId === "quant-trading"));
+  assert.equal(catalog.ring2.length, 11);
+  assert.ok(catalog.ring2.some((b) => b.domainId === "legal"));
+  assert.ok(catalog.ring2.some((b) => b.domainId === "it-operations"));
+  assert.equal(catalog.ring3.length, 12);
+  assert.ok(catalog.ring3.some((b) => b.domainId === "healthcare"));
+  assert.ok(catalog.ring3.some((b) => b.domainId === "marketing"));
 });
 
-test("buildDomainsRuntimeCatalog phase domains have correct phase assignment", async () => {
+test("buildDomainsRuntimeCatalog ring domains retain historical batch assignment", async () => {
   const catalog = buildDomainsRuntimeCatalog();
 
-  for (const baseline of catalog.phase9a) {
-    assert.equal(baseline.phase, "9a", `${baseline.domainId} should be in phase 9a`);
+  for (const baseline of catalog.ring1) {
+    assert.ok(["9a", "9b"].includes(baseline.phase), `${baseline.domainId} should map into ring1`);
   }
-  for (const baseline of catalog.phase9b) {
-    assert.equal(baseline.phase, "9b", `${baseline.domainId} should be in phase 9b`);
+  for (const baseline of catalog.ring2) {
+    assert.ok(["9c", "9d"].includes(baseline.phase), `${baseline.domainId} should map into ring2`);
   }
-  for (const baseline of catalog.phase9c) {
-    assert.equal(baseline.phase, "9c", `${baseline.domainId} should be in phase 9c`);
-  }
-  for (const baseline of catalog.phase9d) {
-    assert.equal(baseline.phase, "9d", `${baseline.domainId} should be in phase 9d`);
-  }
-  for (const baseline of catalog.phase9e) {
-    assert.equal(baseline.phase, "9e", `${baseline.domainId} should be in phase 9e`);
-  }
-  for (const baseline of catalog.phase9f) {
-    assert.equal(baseline.phase, "9f", `${baseline.domainId} should be in phase 9f`);
+  for (const baseline of catalog.ring3) {
+    assert.ok(["9e", "9f"].includes(baseline.phase), `${baseline.domainId} should map into ring3`);
   }
 });
 
@@ -98,28 +73,18 @@ test("registerDomainsRuntimeCatalog requires bootstrap services to be registered
   }
 });
 
-test("registerDomainsRuntimeCatalog phase maps contain DomainBaseline arrays", async () => {
+test("registerDomainsRuntimeCatalog ring maps contain DomainBaseline arrays", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const catalog = registerDomainsRuntimeCatalog(registry);
 
     // Verify all phases are arrays
-    assert.ok(Array.isArray(catalog.phase9a));
-    assert.ok(Array.isArray(catalog.phase9b));
-    assert.ok(Array.isArray(catalog.phase9c));
-    assert.ok(Array.isArray(catalog.phase9d));
-    assert.ok(Array.isArray(catalog.phase9e));
-    assert.ok(Array.isArray(catalog.phase9f));
+    assert.ok(Array.isArray(catalog.ring1));
+    assert.ok(Array.isArray(catalog.ring2));
+    assert.ok(Array.isArray(catalog.ring3));
 
     // Verify all entries have required DomainBaseline properties
-    const allBaselines = [
-      ...catalog.phase9a,
-      ...catalog.phase9b,
-      ...catalog.phase9c,
-      ...catalog.phase9d,
-      ...catalog.phase9e,
-      ...catalog.phase9f,
-    ];
+    const allBaselines = [...catalog.ring1, ...catalog.ring2, ...catalog.ring3];
 
     for (const baseline of allBaselines) {
       assert.ok("domainId" in baseline);
@@ -143,8 +108,8 @@ test("buildDomainsStartupPlan returns correct step structure", async () => {
   assert.ok("totalCapabilityCount" in plan);
   assert.ok("startupOrder" in plan);
 
-  assert.equal(plan.steps.length, 6);
-  assert.equal(plan.startupOrder.length, 6);
+  assert.equal(plan.steps.length, 3);
+  assert.equal(plan.startupOrder.length, 3);
   assert.equal(plan.totalCapabilityCount, 31);
 });
 
@@ -153,36 +118,30 @@ test("buildDomainsStartupPlan first step has no dependencies", async () => {
 
   const firstStep = plan.steps[0]!;
   assert.deepEqual(firstStep.dependsOnStepIds, []);
-  assert.equal(firstStep.stepId, "9a");
+  assert.equal(firstStep.stepId, "ring1");
 });
 
-test("buildDomainsStartupPlan later steps depend on previous phases", async () => {
+test("buildDomainsStartupPlan later steps depend on previous rings", async () => {
   const plan = buildDomainsStartupPlan();
 
-  // Step 9b depends on 9a
-  const step9b = plan.steps.find((s) => s.stepId === "9b")!;
-  assert.deepEqual(step9b.dependsOnStepIds, ["9a"]);
+  const ring2 = plan.steps.find((s) => s.stepId === "ring2")!;
+  assert.deepEqual(ring2.dependsOnStepIds, ["ring1"]);
 
-  // Step 9c depends on 9b
-  const step9c = plan.steps.find((s) => s.stepId === "9c")!;
-  assert.deepEqual(step9c.dependsOnStepIds, ["9b"]);
-
-  // Step 9f depends on 9e
-  const step9f = plan.steps.find((s) => s.stepId === "9f")!;
-  assert.deepEqual(step9f.dependsOnStepIds, ["9e"]);
+  const ring3 = plan.steps.find((s) => s.stepId === "ring3")!;
+  assert.deepEqual(ring3.dependsOnStepIds, ["ring2"]);
 });
 
-test("buildDomainsStartupPlan step capability counts match phase domain counts", async () => {
+test("buildDomainsStartupPlan step capability counts match ring domain counts", async () => {
   const plan = buildDomainsStartupPlan();
 
-  const step9a = plan.steps.find((s) => s.stepId === "9a")!;
-  assert.equal(step9a.capabilityCount, 4);
+  const ring1 = plan.steps.find((s) => s.stepId === "ring1")!;
+  assert.equal(ring1.capabilityCount, 8);
 
-  const step9b = plan.steps.find((s) => s.stepId === "9b")!;
-  assert.equal(step9b.capabilityCount, 4);
+  const ring2 = plan.steps.find((s) => s.stepId === "ring2")!;
+  assert.equal(ring2.capabilityCount, 11);
 
-  const step9c = plan.steps.find((s) => s.stepId === "9c")!;
-  assert.equal(step9c.capabilityCount, 6);
+  const ring3 = plan.steps.find((s) => s.stepId === "ring3")!;
+  assert.equal(ring3.capabilityCount, 12);
 });
 
 test("buildDomainsStartupPlan registers correctly in registry", async () => {
@@ -192,7 +151,7 @@ test("buildDomainsStartupPlan registers correctly in registry", async () => {
     const plan = registerDomainsStartupPlan(registry);
 
     assert.ok(registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID));
-    assert.equal(plan.steps.length, 6);
+    assert.equal(plan.steps.length, 3);
   } finally {
     await registry.reset();
   }
@@ -248,7 +207,7 @@ test("registerDomainsRuntimeOrchestrator startup returns correct structure", asy
 
     // Verify result values
     assert.equal(result.ready, true);
-    assert.deepEqual(result.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
+    assert.deepEqual(result.startupOrder, ["ring1", "ring2", "ring3"]);
     assert.ok(result.steps.length > 0);
     assert.ok(result.initializedServiceIds.length > 0);
   } finally {
@@ -256,16 +215,15 @@ test("registerDomainsRuntimeOrchestrator startup returns correct structure", asy
   }
 });
 
-test("registerDomainsRuntimeOrchestrator startup initializes all phase services", async () => {
+test("registerDomainsRuntimeOrchestrator startup initializes all legacy phase dependencies", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const orchestrator = registerDomainsRuntimeOrchestrator(registry);
-    const result = orchestrator.startup();
+    orchestrator.startup();
 
-    // All phase bootstrap services should be initialized
     for (const phase of ["9a", "9b", "9c", "9d", "9e", "9f"] as const) {
       assert.ok(
-        result.initializedServiceIds.includes(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS[phase]),
+        registry.isInitialized(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS[phase]),
         `Phase ${phase} should be initialized`,
       );
     }
@@ -287,8 +245,7 @@ test("registerDomainsRuntimeOrchestrator startup produces steps with correct boo
       assert.ok("initialized" in step);
 
       // bootstrapServiceId should match the phase bootstrap service id
-      const expectedServiceId = DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS[step.stepId as keyof typeof DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS];
-      assert.equal(step.bootstrapServiceId, expectedServiceId);
+      assert.equal(step.bootstrapServiceId, `w5.domains.ring.${step.stepId}.bootstrap`);
     }
   } finally {
     await registry.reset();
@@ -338,20 +295,17 @@ test("registerDomainsRuntimeOrchestrator snapshotReadiness shows startup plan in
   }
 });
 
-test("registerDomainsRuntimeOrchestrator snapshotReadiness contains all phases", async () => {
+test("registerDomainsRuntimeOrchestrator snapshotReadiness contains all rings", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const orchestrator = registerDomainsRuntimeOrchestrator(registry);
     orchestrator.startup();
     const snapshot = orchestrator.snapshotReadiness();
 
-    const phases = snapshot.capabilityReadiness.map((c) => c.stepId);
-    assert.ok(phases.includes("9a"), "should include phase 9a");
-    assert.ok(phases.includes("9b"), "should include phase 9b");
-    assert.ok(phases.includes("9c"), "should include phase 9c");
-    assert.ok(phases.includes("9d"), "should include phase 9d");
-    assert.ok(phases.includes("9e"), "should include phase 9e");
-    assert.ok(phases.includes("9f"), "should include phase 9f");
+    const rings = snapshot.capabilityReadiness.map((c) => c.stepId);
+    assert.ok(rings.includes("ring1"), "should include ring1");
+    assert.ok(rings.includes("ring2"), "should include ring2");
+    assert.ok(rings.includes("ring3"), "should include ring3");
   } finally {
     await registry.reset();
   }
@@ -421,14 +375,14 @@ test("startup result steps have correct dependency chain", async () => {
     const result = orchestrator.startup();
 
     // Verify dependency chain
-    const step9a = result.steps.find((s) => s.stepId === "9a")!;
-    assert.deepEqual(step9a.initializedDependencyServiceIds, []);
+    const ring1 = result.steps.find((s) => s.stepId === "ring1")!;
+    assert.deepEqual(ring1.initializedDependencyServiceIds, []);
 
-    const step9b = result.steps.find((s) => s.stepId === "9b")!;
-    assert.deepEqual(step9b.initializedDependencyServiceIds, [DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS["9a"]]);
+    const ring2 = result.steps.find((s) => s.stepId === "ring2")!;
+    assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
 
-    const step9c = result.steps.find((s) => s.stepId === "9c")!;
-    assert.deepEqual(step9c.initializedDependencyServiceIds, [DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS["9b"]]);
+    const ring3 = result.steps.find((s) => s.stepId === "ring3")!;
+    assert.deepEqual(ring3.initializedDependencyServiceIds, ["w5.domains.ring.ring2.bootstrap"]);
   } finally {
     await registry.reset();
   }
@@ -441,7 +395,7 @@ test("DomainsRuntimeOrchestrator startup with explicit registry works correctly"
     const result = orchestrator.startup();
 
     assert.equal(result.ready, true);
-    assert.equal(result.steps.length, 6);
+    assert.equal(result.steps.length, 3);
   } finally {
     await registry.reset();
   }
@@ -480,19 +434,19 @@ test("full startup flow: bootstrap, catalog, plan, orchestrator", async () => {
     // Step 2: Register runtime catalog
     const catalog = registerDomainsRuntimeCatalog(registry);
     assert.ok(registry.isInitialized(DOMAINS_RUNTIME_CATALOG_SERVICE_ID));
-    assert.equal(catalog.phase9a.length, 4);
+    assert.equal(catalog.ring1.length, 8);
 
     // Step 3: Register startup plan
     const plan = registerDomainsStartupPlan(registry);
     assert.ok(registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID));
-    assert.equal(plan.steps.length, 6);
+    assert.equal(plan.steps.length, 3);
 
     // Step 4: Register and start orchestrator
     const orchestrator = registerDomainsRuntimeOrchestrator(registry);
     const result = orchestrator.startup();
 
     assert.equal(result.ready, true);
-    assert.equal(result.steps.length, 6);
+    assert.equal(result.steps.length, 3);
 
     // Verify all services are initialized
     assert.ok(registry.isInitialized(DOMAINS_BOOTSTRAP_SERVICE_ID));

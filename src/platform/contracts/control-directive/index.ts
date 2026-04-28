@@ -19,20 +19,14 @@ export function createControlDirective(input: Omit<ControlDirective, "directiveI
   directiveId?: string;
   createdAt?: string;
 }): ControlDirective {
-  assertRequired(input.targetRef, "control_directive.target_ref_required");
-  assertRequired(input.reasonCode, "control_directive.reason_code_required");
-  assertRequired(input.issuedBy, "control_directive.issued_by_required");
-  return {
-    directiveId: input.directiveId ?? newId("directive"),
-    kind: input.kind,
-    targetRef: input.targetRef,
-    reasonCode: input.reasonCode,
-    issuedBy: input.issuedBy,
-    tenantId: input.tenantId ?? null,
-    executionId: input.executionId ?? null,
-    metadata: input.metadata,
-    createdAt: input.createdAt ?? nowIso(),
-  };
+  void input;
+  void assertRequired;
+  void newId;
+  void nowIso;
+  throw new ValidationError(
+    "control_directive.legacy_contract_forbidden",
+    "ControlDirective is deprecated. Use runtime decision or governance directives from executable-contracts instead.",
+  );
 }
 
 function assertRequired(value: string, code: string): void {

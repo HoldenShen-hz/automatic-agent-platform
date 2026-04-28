@@ -1,4 +1,9 @@
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
+import type { BudgetLedger, BudgetResourceKind } from "../../platform/contracts/executable-contracts/index.js";
+import {
+  BudgetGuard,
+  type BudgetPolicy,
+} from "../../platform/model-gateway/cost-tracker/index.js";
 import type { RiskPreview } from "../nl-gateway/index.js";
 import type { LlmPlanGenerator } from "./llm-plan-generator.js";
 export * from "./llm-plan-generator.js";
@@ -104,6 +109,9 @@ export interface PlannerHandoffReceipt {
   readonly state: "ready_for_planner";
   readonly graphId: string;
   readonly constraintEnvelope: GoalConstraintEnvelope;
+  readonly budgetLedgerId?: string;
+  readonly budgetReservationId?: string;
+  readonly reservedBudgetUsd?: number | null;
 }
 
 export type GoalDecompositionResult = GoalDecomposition;
@@ -120,6 +128,20 @@ export interface GoalDecompositionServiceOptions {
   readonly maxDepth?: number;
   /** Current decomposition depth (used internally, do not set manually) */
   readonly currentDepth?: number;
+  readonly budgetControl?: {
+    readonly policy: BudgetPolicy;
+    readonly currentTaskCostUsd?: number;
+    readonly currentDailyCostUsd?: number;
+    readonly currentMonthlyCostUsd?: number;
+    readonly tenantId: string;
+    readonly harnessRunId: string;
+    readonly traceId: string;
+    readonly emittedBy: string;
+    readonly ledger?: BudgetLedger;
+    readonly estimatedLlmPlanCostUsd?: number;
+    readonly resourceKind?: BudgetResourceKind;
+    readonly expiresAt?: string;
+  };
 }
 
 const DEFAULT_COST_ESTIMATE: CostEstimate = {
@@ -261,11 +283,41 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         : matchedTemplate === "generic_multi_step"
           ? "hybrid"
           : "template";
+    let llmBudgetLedgerId: string | undefined;
+    let llmBudgetReservationId: string | undefined;
+    let llmReservedBudgetUsd: number | null = null;
+    let budgetBlockedLlmPlan = false;
 
     if ((matchedTemplate == null || matchedTemplate === "generic_multi_step")
       && goal.description.trim().length > 50
       && this.options.llmPlanGenerator != null) {
       try {
+        if (this.options.budgetControl != null) {
+          const guard = new BudgetGuard();
+          const reserved = guard.reserveExecutionChainBudget({
+            policy: this.options.budgetControl.policy,
+            spend: {
+              currentTaskCostUsd: this.options.budgetControl.currentTaskCostUsd ?? 0,
+              currentDailyCostUsd: this.options.budgetControl.currentDailyCostUsd ?? 0,
+              currentMonthlyCostUsd: this.options.budgetControl.currentMonthlyCostUsd ?? 0,
+              nextEstimatedCostUsd: this.options.budgetControl.estimatedLlmPlanCostUsd ?? 0.25,
+            },
+            tenantId: this.options.budgetControl.tenantId,
+            harnessRunId: this.options.budgetControl.harnessRunId,
+            traceId: this.options.budgetControl.traceId,
+            emittedBy: this.options.budgetControl.emittedBy,
+            ...(this.options.budgetControl.ledger != null ? { ledger: this.options.budgetControl.ledger } : {}),
+            ...(this.options.budgetControl.resourceKind != null ? { resourceKind: this.options.budgetControl.resourceKind } : {}),
+            ...(this.options.budgetControl.expiresAt != null ? { expiresAt: this.options.budgetControl.expiresAt } : {}),
+          });
+          llmBudgetLedgerId = reserved.ledger.budgetLedgerId;
+          llmBudgetReservationId = reserved.reservation?.budgetReservationId;
+          llmReservedBudgetUsd = reserved.reservation?.amount ?? null;
+          budgetBlockedLlmPlan = !reserved.allowed;
+        }
+        if (budgetBlockedLlmPlan) {
+          throw new Error("goal_decomposer.budget_reservation_required");
+        }
         const llmPlan = await this.withTimeout(
           this.options.llmPlanGenerator.generate(goal),
           this.options.maxLlmPlanLatencyMs ?? DEFAULT_LLM_PLAN_LATENCY_MS,
@@ -297,6 +349,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const validationMessages = [
       ...(graphAnalysis.hasCycle ? ["goal_decomposer.cycle_detected"] : []),
       ...(constraintEnvelope.requiresApproval ? ["goal_decomposer.approval_constraint_propagated"] : []),
+      ...(budgetBlockedLlmPlan ? ["goal_decomposer.llm_budget_reservation_blocked"] : []),
     ];
     const lifecycleState: GoalLifecycleState = "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
@@ -321,6 +374,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       state: "ready_for_planner",
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
+      ...(llmBudgetLedgerId != null ? { budgetLedgerId: llmBudgetLedgerId } : {}),
+      ...(llmBudgetReservationId != null ? { budgetReservationId: llmBudgetReservationId } : {}),
+      ...(llmReservedBudgetUsd != null ? { reservedBudgetUsd: llmReservedBudgetUsd } : {}),
     };
 
     return {

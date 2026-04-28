@@ -167,6 +167,17 @@ test("DelegationManagerService cannot cancel completed delegation", async () => 
   );
 });
 
+test("DelegationManagerService rejects terminal-to-terminal status rewrites", async () => {
+  const service = createDelegationManager();
+  const handle = await service.delegate(createParentContext(), createDelegationSpec());
+  await service.complete(handle.delegationId);
+
+  await assert.rejects(
+    async () => service.fail(handle.delegationId, "late failure"),
+    /cannot transition from completed to failed/,
+  );
+});
+
 test("DelegationManagerService returns null for non-existent delegation", () => {
   const service = createDelegationManager();
 

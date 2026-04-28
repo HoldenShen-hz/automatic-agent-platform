@@ -19,6 +19,7 @@ import {
 export interface KnowledgeAccessDecision {
   readonly allowed: boolean;
   readonly boundaryId: string;
+  readonly tenantId: string | null;
   readonly accessLog: KnowledgeAccessLogRecord;
   readonly reasonCodes: readonly string[];
   readonly relatedBoundaryIds?: readonly string[];
@@ -53,6 +54,7 @@ export class KnowledgeBoundaryService {
     grants: readonly KnowledgeShareGrant[],
     chineseWallPolicy?: ChineseWallPolicy,
     occurredAt = nowIso(),
+    tenantId: string | null = null,
   ): KnowledgeAccessDecision {
     return this.evaluateDynamicAccess({
       boundary,
@@ -62,6 +64,7 @@ export class KnowledgeBoundaryService {
       grants,
       ...(chineseWallPolicy !== undefined ? { chineseWallPolicy } : {}),
       occurredAt,
+      tenantId,
     });
   }
 
@@ -75,6 +78,7 @@ export class KnowledgeBoundaryService {
     dynamicPolicy?: DynamicKnowledgeIsolationPolicy;
     occurredAt?: string;
     relatedBoundaryIds?: readonly string[];
+    tenantId?: string | null;
   }): KnowledgeAccessDecision {
     const occurredAt = input.occurredAt ?? nowIso();
     const chineseWallDecision = input.chineseWallPolicy == null
@@ -89,14 +93,19 @@ export class KnowledgeBoundaryService {
       input.boundary.boundaryId,
       dynamicPolicyReasons,
     );
-    const allowed = chineseWallDecision.allowed && dynamicPolicyAllowed && (
-      canAccessKnowledgeBoundary(input.boundary, input.requesterOrgNodeId)
-      || evaluateKnowledgeShare(input.boundary, input.requesterOrgNodeId, input.grants, occurredAt)
-    );
+    const tenantAllowed = this.evaluateTenantScope(input.boundary.tenantId ?? null, input.tenantId ?? null);
+    const allowed = chineseWallDecision.allowed
+      && dynamicPolicyAllowed
+      && tenantAllowed
+      && (
+        canAccessKnowledgeBoundary(input.boundary, input.requesterOrgNodeId)
+        || evaluateKnowledgeShare(input.boundary, input.requesterOrgNodeId, input.grants, occurredAt)
+      );
     const log: KnowledgeAccessLogRecord = {
       recordId: `knowledge_access_${input.boundary.boundaryId}_${input.requesterId}_${occurredAt}`,
       requesterId: input.requesterId,
       boundaryId: input.boundary.boundaryId,
+      tenantId: input.boundary.tenantId ?? input.tenantId ?? null,
       purpose: input.purpose,
       allowed,
       occurredAt,
@@ -104,7 +113,12 @@ export class KnowledgeBoundaryService {
     this.accessLogs.set(input.boundary.boundaryId, [...(this.accessLogs.get(input.boundary.boundaryId) ?? []), log]);
     const violationCodes = allowed
       ? []
-      : [...dynamicPolicyReasons, ...chineseWallDecision.reasonCodes, "knowledge_boundary.access_denied"];
+      : [
+        ...(tenantAllowed ? [] : ["knowledge_boundary.tenant_scope_denied"]),
+        ...dynamicPolicyReasons,
+        ...chineseWallDecision.reasonCodes,
+        "knowledge_boundary.access_denied",
+      ];
     if (violationCodes.length > 0) {
       const violations = violationCodes.map((code, index) => ({
         violationId: `${log.recordId}_violation_${index + 1}`,
@@ -118,6 +132,7 @@ export class KnowledgeBoundaryService {
     return {
       allowed,
       boundaryId: input.boundary.boundaryId,
+      tenantId: input.boundary.tenantId ?? input.tenantId ?? null,
       accessLog: log,
       relatedBoundaryIds: input.relatedBoundaryIds ?? [],
       dynamicPolicyApplied: input.dynamicPolicy != null,
@@ -168,5 +183,15 @@ export class KnowledgeBoundaryService {
       }
     }
     return true;
+  }
+
+  private evaluateTenantScope(boundaryTenantId: string | null, requesterTenantId: string | null): boolean {
+    if (boundaryTenantId == null && requesterTenantId == null) {
+      return true;
+    }
+    if (boundaryTenantId == null || requesterTenantId == null) {
+      return false;
+    }
+    return boundaryTenantId === requesterTenantId;
   }
 }

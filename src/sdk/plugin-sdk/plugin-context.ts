@@ -4,6 +4,8 @@
  * Implements §22.4 Plugin lifecycle: PluginContext for runtime context injection.
  */
 
+import { normalizeSandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
+
 export interface PluginContextConfig {
   pluginId: string;
   packId?: string;
@@ -12,7 +14,7 @@ export interface PluginContextConfig {
   tenantId?: string;
   userId?: string;
   sessionId?: string;
-  sandboxTier?: "none" | "process" | "container" | "scoped_external_access";
+  sandboxTier?: SandboxModeLike;
   resourceLimits?: {
     maxMemoryMb?: number;
     maxCpuMs?: number;
@@ -47,7 +49,7 @@ export class PluginContext {
       tenantId: config.tenantId ?? "default",
       userId: config.userId ?? "anonymous",
       sessionId: config.sessionId ?? "none",
-      sandboxTier: config.sandboxTier ?? "process",
+      sandboxTier: normalizeSandboxMode(config.sandboxTier),
       resourceLimits: config.resourceLimits ?? {},
     };
 

@@ -9,40 +9,34 @@ import {
   type DomainsRuntimeCatalog,
 } from "../../src/domains-runtime-catalog.js";
 
-test("buildDomainsRuntimeCatalog returns catalog with all six phases", async () => {
+test("buildDomainsRuntimeCatalog returns catalog with all three readiness rings", async () => {
   const catalog = buildDomainsRuntimeCatalog();
 
-  assert.ok(catalog.phase9a != null, "phase9a should exist");
-  assert.ok(catalog.phase9b != null, "phase9b should exist");
-  assert.ok(catalog.phase9c != null, "phase9c should exist");
-  assert.ok(catalog.phase9d != null, "phase9d should exist");
-  assert.ok(catalog.phase9e != null, "phase9e should exist");
-  assert.ok(catalog.phase9f != null, "phase9f should exist");
+  assert.ok(catalog.ring1 != null, "ring1 should exist");
+  assert.ok(catalog.ring2 != null, "ring2 should exist");
+  assert.ok(catalog.ring3 != null, "ring3 should exist");
 });
 
-test("buildDomainsRuntimeCatalog phases contain DomainBaseline objects", async () => {
+test("buildDomainsRuntimeCatalog rings contain DomainBaseline objects", async () => {
   const catalog = buildDomainsRuntimeCatalog();
 
-  for (const phase of ["phase9a", "phase9b", "phase9c", "phase9d", "phase9e", "phase9f"] as const) {
-    const baselines = catalog[phase];
-    assert.ok(Array.isArray(baselines), `${phase} should be an array`);
+  for (const ring of ["ring1", "ring2", "ring3"] as const) {
+    const baselines = catalog[ring];
+    assert.ok(Array.isArray(baselines), `${ring} should be an array`);
     if (baselines.length > 0) {
       const baseline = baselines[0]!;
-      assert.ok("domainId" in baseline, `${phase} baseline should have domainId`);
-      assert.ok("phase" in baseline, `${phase} baseline should have phase`);
+      assert.ok("domainId" in baseline, `${ring} baseline should have domainId`);
+      assert.ok("phase" in baseline, `${ring} baseline should have phase`);
     }
   }
 });
 
-test("buildDomainsRuntimeCatalog phase counts match expected baseline counts", async () => {
+test("buildDomainsRuntimeCatalog ring counts match expected baseline counts", async () => {
   const catalog = buildDomainsRuntimeCatalog();
 
-  assert.equal(catalog.phase9a.length, 4);
-  assert.equal(catalog.phase9b.length, 4);
-  assert.equal(catalog.phase9c.length, 6);
-  assert.equal(catalog.phase9d.length, 5);
-  assert.equal(catalog.phase9e.length, 6);
-  assert.equal(catalog.phase9f.length, 6);
+  assert.equal(catalog.ring1.length, 8);
+  assert.equal(catalog.ring2.length, 11);
+  assert.equal(catalog.ring3.length, 12);
 });
 
 test("registerDomainsRuntimeCatalog registers service in registry", async () => {
@@ -65,18 +59,15 @@ test("registerDomainsRuntimeCatalog returns same instance on multiple calls", as
   assert.strictEqual(catalog1, catalog2, "should return same catalog instance");
 });
 
-test("registerDomainsRuntimeCatalog returns catalog with all six phases", async () => {
+test("registerDomainsRuntimeCatalog returns catalog with all three readiness rings", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const catalog = registerDomainsRuntimeCatalog(registry);
 
-  assert.ok(Array.isArray(catalog.phase9a));
-  assert.ok(Array.isArray(catalog.phase9b));
-  assert.ok(Array.isArray(catalog.phase9c));
-  assert.ok(Array.isArray(catalog.phase9d));
-  assert.ok(Array.isArray(catalog.phase9e));
-  assert.ok(Array.isArray(catalog.phase9f));
+  assert.ok(Array.isArray(catalog.ring1));
+  assert.ok(Array.isArray(catalog.ring2));
+  assert.ok(Array.isArray(catalog.ring3));
 });
 
 test("registerDomainsRuntimeCatalog contains expected domain baseline references", async () => {
@@ -85,9 +76,9 @@ test("registerDomainsRuntimeCatalog contains expected domain baseline references
 
   const catalog = registerDomainsRuntimeCatalog(registry);
 
-  assert.equal(catalog.phase9a.some((item) => item.domainId === "coding"), true);
-  assert.equal(catalog.phase9b.some((item) => item.domainId === "quant-trading"), true);
-  assert.equal(catalog.phase9f.some((item) => item.domainId === "marketing"), true);
+  assert.equal(catalog.ring1.some((item) => item.domainId === "coding"), true);
+  assert.equal(catalog.ring1.some((item) => item.domainId === "quant-trading"), true);
+  assert.equal(catalog.ring3.some((item) => item.domainId === "marketing"), true);
 });
 
 test("registerDomainsRuntimeCatalog depends on bootstrap and phase services", async () => {

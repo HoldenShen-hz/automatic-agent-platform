@@ -8,25 +8,31 @@ import {
 
 export const DOMAINS_RUNTIME_CATALOG_SERVICE_ID = "w5.runtime.catalog";
 
+export type DomainReadinessRing = "ring1" | "ring2" | "ring3";
+
 export interface DomainsRuntimeCatalog {
-  readonly phase9a: readonly DomainBaseline[];
-  readonly phase9b: readonly DomainBaseline[];
-  readonly phase9c: readonly DomainBaseline[];
-  readonly phase9d: readonly DomainBaseline[];
-  readonly phase9e: readonly DomainBaseline[];
-  readonly phase9f: readonly DomainBaseline[];
+  readonly ring1: readonly DomainBaseline[];
+  readonly ring2: readonly DomainBaseline[];
+  readonly ring3: readonly DomainBaseline[];
+}
+
+const RING_PHASES: Readonly<Record<DomainReadinessRing, readonly string[]>> = {
+  ring1: ["9a", "9b"],
+  ring2: ["9c", "9d"],
+  ring3: ["9e", "9f"],
+};
+
+function buildRingBaselines(phaseMap: ReadonlyMap<string, readonly DomainBaseline[]>): DomainsRuntimeCatalog {
+  return {
+    ring1: RING_PHASES.ring1.flatMap((phase) => phaseMap.get(phase) ?? []),
+    ring2: RING_PHASES.ring2.flatMap((phase) => phaseMap.get(phase) ?? []),
+    ring3: RING_PHASES.ring3.flatMap((phase) => phaseMap.get(phase) ?? []),
+  };
 }
 
 export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
   const bootstrap = registerDomainsBootstrap();
-  return {
-    phase9a: bootstrap.phases.find((phase) => phase.phase === "9a")!.baselines,
-    phase9b: bootstrap.phases.find((phase) => phase.phase === "9b")!.baselines,
-    phase9c: bootstrap.phases.find((phase) => phase.phase === "9c")!.baselines,
-    phase9d: bootstrap.phases.find((phase) => phase.phase === "9d")!.baselines,
-    phase9e: bootstrap.phases.find((phase) => phase.phase === "9e")!.baselines,
-    phase9f: bootstrap.phases.find((phase) => phase.phase === "9f")!.baselines,
-  };
+  return buildRingBaselines(new Map(bootstrap.phases.map((phase) => [phase.phase, phase.baselines])));
 }
 
 export function registerDomainsRuntimeCatalog(
@@ -36,14 +42,7 @@ export function registerDomainsRuntimeCatalog(
   const phaseMap = new Map(bootstrap.phases.map((phase) => [phase.phase, phase.baselines]));
 
   registry.register<DomainsRuntimeCatalog>(DOMAINS_RUNTIME_CATALOG_SERVICE_ID, {
-    init: () => ({
-      phase9a: phaseMap.get("9a") ?? [],
-      phase9b: phaseMap.get("9b") ?? [],
-      phase9c: phaseMap.get("9c") ?? [],
-      phase9d: phaseMap.get("9d") ?? [],
-      phase9e: phaseMap.get("9e") ?? [],
-      phase9f: phaseMap.get("9f") ?? [],
-    }),
+    init: () => buildRingBaselines(phaseMap),
     dependsOn: [DOMAINS_BOOTSTRAP_SERVICE_ID, ...Object.values(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS)],
   });
 

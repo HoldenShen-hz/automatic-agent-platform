@@ -5,6 +5,7 @@
  */
 
 import { ValidationError } from "../../platform/contracts/errors.js";
+import { normalizeSandboxMode, type SandboxModeLike } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
 export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
@@ -23,7 +24,7 @@ export interface PluginResourceLimits {
 }
 
 export interface PluginSecurityConfig {
-  sandboxTier: "none" | "process" | "container" | "scoped_external_access";
+  sandboxTier: SandboxModeLike;
   egressDomains: string[];
 }
 
@@ -76,7 +77,7 @@ const DEFAULT_RESOURCE_LIMITS: PluginResourceLimits = {
 };
 
 const DEFAULT_SECURITY: PluginSecurityConfig = {
-  sandboxTier: "process",
+  sandboxTier: "read_only",
   egressDomains: [],
 };
 
@@ -137,7 +138,10 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
     capabilities: options.capabilities,
     resourceLimits: options.resourceLimits ?? DEFAULT_RESOURCE_LIMITS,
     dependencies: options.dependencies ?? [],
-    security: options.security ?? DEFAULT_SECURITY,
+    security: {
+      sandboxTier: normalizeSandboxMode(options.security?.sandboxTier ?? DEFAULT_SECURITY.sandboxTier),
+      egressDomains: options.security?.egressDomains ?? DEFAULT_SECURITY.egressDomains,
+    },
     spiTypes: [...new Set((options.spiTypes ?? [options.type]).filter((type): type is PluginType => type !== undefined))],
     domainIds: [...new Set((options.domainIds ?? []).map((domainId) => domainId.trim()).filter((domainId) => domainId.length > 0))],
     sbomRef: options.sbomRef?.trim() ? options.sbomRef.trim() : null,

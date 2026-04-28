@@ -70,10 +70,10 @@
 - 历史 dispatch / worker / recovery / skill 运维事件当前保留冒号格式：`domain:action`。
 - 新增 OAPEFLIR、feedback、improve、release 类事件不得再引入新的冒号命名。
 
-Phase 1a 保留的稳定事件类型至少包括：
+Ring 1 之后仍保留的稳定事件类型至少包括：
 
-- `task.status_changed`
-- `workflow.step_completed`
+- `platform.task.status_changed`
+- `platform.node.completed`
 - `approval.requested`
 - `approval.resolved`
 - `feedback.signal_received`
@@ -85,8 +85,8 @@ Phase 1a 保留的稳定事件类型至少包括：
 - `release.rollout_completed`
 - `release.rollback_triggered`
 - `loop.iteration_completed`
-- `gateway.message_received`
-- `stream.chunk_emitted`
+- `platform.gateway.message_received`
+- `platform.stream.chunk_emitted`
 - `dispatch:ticket_created`
 - `dispatch:ticket_claimed`
 - `dispatch:decision_recorded`
@@ -124,11 +124,11 @@ Phase 1a 保留的稳定事件类型至少包括：
 - producer 和 consumer 都不得依赖未注册事件类型。
 - schema 破坏性变更必须走显式版本演进或新类型。
 
-当前 OAPEFLIR 闭环最少要求以下事件具有显式 schema：
+当前 OAPEFLIR 闭环最少要求以下投影视图事件具有显式 schema：
 
-- `oapeflir.observe.signals_collected`
-- `oapeflir.assess.evaluation_completed`
-- `oapeflir.plan.proposal_created`
+- `oapeflir.view.observe.signals_collected`
+- `oapeflir.view.assess.evaluation_completed`
+- `oapeflir.view.plan.proposal_created`
 - `feedback.signal_received`
 - `learn.object_created`
 - `learn.object_promoted`

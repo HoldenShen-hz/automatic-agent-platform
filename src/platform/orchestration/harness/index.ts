@@ -1,5 +1,11 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
-import type { PlanGraphBundle } from "../../../platform/contracts/executable-contracts/index.js";
+import {
+  createBudgetLedger,
+  type HarnessRun as CanonicalHarnessRun,
+  type HarnessRunStatus as CanonicalHarnessRunStatus,
+  type PlanGraphBundle,
+} from "../../../platform/contracts/executable-contracts/index.js";
+import { RuntimeStateMachine } from "../../../platform/execution/runtime-state-machine.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
 import { DurableHarnessService } from "./durable/durable-harness-service.js";
@@ -42,9 +48,6 @@ export type HarnessRunStatus =
   | "planning"
   | "ready"
   | "running"
-  | "sleeping"
-  | "waiting_hitl"
-  | "recovering"
   | "pausing"
   | "paused"
   | "resuming"
@@ -166,7 +169,16 @@ export interface HarnessDecision {
 }
 
 export interface HarnessRun {
+  readonly harnessRunId: string;
   readonly runId: string;
+  readonly tenantId: string;
+  readonly confirmedTaskSpecId: string;
+  readonly requestEnvelopeId: string;
+  readonly requestHash: string;
+  readonly constraintPackRef: string;
+  readonly versionLockId: string;
+  readonly budgetLedgerId: string;
+  readonly currentSeq: number;
   readonly taskId: string;
   readonly domainId: string;
   readonly constraintPack: ConstraintPack;
@@ -176,7 +188,9 @@ export interface HarnessRun {
   readonly currentIteration: number;
   readonly status: HarnessRunStatus;
   readonly createdAt: string;
+  readonly updatedAt: string;
   readonly completedAt: string | null;
+  readonly pauseReason: "sleep" | "hitl" | "recovery" | null;
   readonly decision: HarnessDecision | null;
   readonly contextSnapshots: readonly ContextSnapshot[];
   readonly sleepLease: WorkflowSleepLease | null;
@@ -221,6 +235,7 @@ export class HarnessRuntimeService {
   private readonly durableService: DurableHarnessService;
   private readonly contextAssembler: ContextAssembler;
   private readonly recoveryController: RecoveryController;
+  private readonly stateMachine: RuntimeStateMachine;
 
   public constructor(
     options: {
@@ -240,6 +255,7 @@ export class HarnessRuntimeService {
     this.evalRunService = options.evalRunService ?? new EvalRunService();
     this.durableService = options.durableService ?? new DurableHarnessService();
     this.contextAssembler = options.contextAssembler ?? new ContextAssembler();
+    this.stateMachine = new RuntimeStateMachine();
     this.recoveryController = new RecoveryController(this.durableService, this);
   }
 
@@ -250,8 +266,23 @@ export class HarnessRuntimeService {
     planGraphBundle?: PlanGraphBundle;
   }): HarnessRun {
     const runId = newId("harness_run");
+    const budgetLedger = createBudgetLedger({
+      tenantId: "tenant:local",
+      harnessRunId: runId,
+      currency: "USD",
+      hardCap: input.constraintPack.budget.maxCost,
+    });
     const run: HarnessRun = {
+      harnessRunId: runId,
       runId,
+      tenantId: "tenant:local",
+      confirmedTaskSpecId: `confirmed_task_spec:${input.taskId}`,
+      requestEnvelopeId: `request_envelope:${input.taskId}`,
+      requestHash: `request_hash:${input.taskId}`,
+      constraintPackRef: `constraint_pack:${input.domainId}`,
+      versionLockId: newId("run_version_lock"),
+      budgetLedgerId: budgetLedger.budgetLedgerId,
+      currentSeq: 0,
       taskId: input.taskId,
       domainId: input.domainId,
       constraintPack: input.constraintPack,
@@ -266,7 +297,9 @@ export class HarnessRuntimeService {
       currentIteration: 0,
       status: "created",
       createdAt: nowIso(),
+      updatedAt: nowIso(),
       completedAt: null,
+      pauseReason: null,
       decision: null,
       contextSnapshots: [],
       sleepLease: null,
@@ -353,9 +386,10 @@ export class HarnessRuntimeService {
   }
 
   public sleep(run: HarnessRun, reason: string, resumeAt: string): HarnessRun {
+    const paused = this.pauseRun(this.ensureRunning(run), "sleep");
     return {
-      ...run,
-      status: "sleeping",
+      ...paused,
+      pauseReason: "sleep",
       sleepLease: {
         leaseId: newId("sleep_lease"),
         runId: run.runId,
@@ -364,7 +398,7 @@ export class HarnessRuntimeService {
         createdAt: nowIso(),
       },
       timeline: [
-        ...run.timeline,
+        ...paused.timeline,
         {
           eventId: newId("timeline"),
           runId: run.runId,
@@ -377,9 +411,16 @@ export class HarnessRuntimeService {
   }
 
   public recover(run: HarnessRun): HarnessRun {
+    const paused = run.status === "completed" || run.status === "failed" || run.status === "aborted"
+      ? {
+        ...run,
+        status: "paused" as const,
+        updatedAt: nowIso(),
+      }
+      : this.pauseRun(this.ensureRunning(run), "recovery");
     return {
-      ...run,
-      status: "recovering",
+      ...paused,
+      pauseReason: "recovery",
       recoveryCheckpoint: {
         checkpointId: newId("recovery_checkpoint"),
         runId: run.runId,
@@ -388,7 +429,7 @@ export class HarnessRuntimeService {
         createdAt: nowIso(),
       },
       timeline: [
-        ...run.timeline,
+        ...paused.timeline,
         {
           eventId: newId("timeline"),
           runId: run.runId,
@@ -401,18 +442,22 @@ export class HarnessRuntimeService {
   }
 
   public resume(run: HarnessRun): HarnessRun {
+    const resumed = run.status === "paused"
+      ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.resume"), "running", "harness.resumed")
+      : this.transitionRunStatus(this.ensureRunning(run), "running", "harness.resume_noop");
     return {
-      ...run,
-      status: "running",
+      ...resumed,
+      pauseReason: null,
       sleepLease: null,
       recoveryCheckpoint: null,
     };
   }
 
   public openHitlReview(run: HarnessRun, reason: string, evidenceRefs: readonly string[]): HarnessRun {
+    const paused = this.pauseRun(this.ensureRunning(run), "hitl");
     return {
-      ...run,
-      status: "waiting_hitl",
+      ...paused,
+      pauseReason: "hitl",
       hitlRequest: this.hitlRuntime.open({
         runId: run.runId,
         domainId: run.domainId,
@@ -420,7 +465,7 @@ export class HarnessRuntimeService {
         evidenceRefs,
       }),
       timeline: [
-        ...run.timeline,
+        ...paused.timeline,
         {
           eventId: newId("timeline"),
           runId: run.runId,
@@ -437,13 +482,16 @@ export class HarnessRuntimeService {
       throw new Error(`harness.hitl.request_not_found_for_run:${run.runId}`);
     }
     const resolved = this.hitlRuntime.resolve(run.hitlRequest.requestId, resolution, actorId);
+    const nextRun = resolution === "approved"
+      ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
+      : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
     return {
-      ...run,
-      status: resolution === "approved" ? "running" : "aborted",
+      ...nextRun,
+      pauseReason: resolution === "approved" ? null : run.pauseReason,
       completedAt: resolution === "approved" ? null : nowIso(),
       hitlRequest: resolved,
       timeline: [
-        ...run.timeline,
+        ...nextRun.timeline,
         {
           eventId: newId("timeline"),
           runId: run.runId,
@@ -493,13 +541,13 @@ export class HarnessRuntimeService {
     if ((run.status === "completed" || run.status === "aborted") && run.completedAt == null) {
       violations.push("harness.invariant.final_state_requires_completed_at");
     }
-    if (run.status === "paused" && run.hitlRequest == null && run.sleepLease == null) {
+    if (run.status === "paused" && run.pauseReason == null) {
       violations.push("harness.invariant.paused_requires_wait_reason");
     }
-    if (run.status === "waiting_hitl" && run.hitlRequest == null) {
+    if (run.status === "paused" && run.pauseReason === "hitl" && run.hitlRequest == null) {
       violations.push("harness.invariant.waiting_hitl_requires_request");
     }
-    if (run.status === "sleeping" && run.sleepLease == null) {
+    if (run.status === "paused" && run.pauseReason === "sleep" && run.sleepLease == null) {
       violations.push("harness.invariant.sleeping_requires_sleep_lease");
     }
     if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
@@ -624,11 +672,11 @@ export class HarnessRuntimeService {
       domainId: input.domainId,
       constraintPack: input.constraintPack,
     });
-    run = {
-      ...run,
-      status: "running",
-      currentIteration: input.iteration ?? 1,
-    };
+    run = this.transitionRunStatus(run, "admitted", "harness.admitted");
+    run = this.transitionRunStatus(run, "planning", "harness.planning_started");
+    run = this.transitionRunStatus(run, "ready", "harness.plan_ready");
+    run = this.transitionRunStatus(run, "running", "harness.execution_started");
+    run = { ...run, currentIteration: input.iteration ?? 1 };
 
     while (true) {
       const iteration = (input.iteration ?? 1) + loop.getState().iteration;
@@ -686,18 +734,8 @@ export class HarnessRuntimeService {
         toolbelt,
         guardrailAssessment,
         hitlRequest: null,
-        status:
-          guardrailAssessment.suggestedAction === "abort" || decision.action === "abort"
-            ? "aborted"
-            : decision.action === "accept"
-            ? "completed"
-            : decision.action === "escalate_to_human"
-                ? "waiting_hitl"
-                : "running",
-        completedAt:
-          guardrailAssessment.suggestedAction === "abort" || decision.action === "accept" || decision.action === "abort"
-            ? nowIso()
-            : null,
+        pauseReason: null,
+        completedAt: null,
         decision,
         contextSnapshots: [...run.contextSnapshots, contextSnapshot],
         feedbackEnvelope: {
@@ -724,7 +762,17 @@ export class HarnessRuntimeService {
         action: decision.action,
         confidence: decision.confidence,
       });
-      if (baseRun.status === "waiting_hitl" && decision.action === "escalate_to_human" && guardrailAssessment.suggestedAction !== "abort") {
+      if (guardrailAssessment.suggestedAction === "abort" || decision.action === "abort") {
+        baseRun = this.transitionRunStatus(baseRun, "aborted", "harness.loop_aborted");
+        baseRun = { ...baseRun, completedAt: nowIso() };
+      } else if (decision.action === "accept") {
+        baseRun = this.transitionRunStatus(baseRun, "completed", "harness.loop_completed");
+        baseRun = { ...baseRun, completedAt: nowIso() };
+      } else if (decision.action === "replan") {
+        baseRun = this.transitionRunStatus(baseRun, "replanning", "harness.loop_replanning");
+        baseRun = this.transitionRunStatus(baseRun, "running", "harness.loop_replan_applied");
+      }
+      if (decision.action === "escalate_to_human" && guardrailAssessment.suggestedAction !== "abort") {
         baseRun = this.openHitlReview(
           baseRun,
           guardrailAssessment.requiresHuman
@@ -755,12 +803,10 @@ export class HarnessRuntimeService {
       const shouldStop = baseRun.status !== "running" || !progress.shouldContinue;
 
       if (shouldStop) {
-        const finalRun = progress.violation !== null && baseRun.status === "running"
+        let finalRun: HarnessRun = progress.violation !== null && baseRun.status === "running"
           ? {
               ...baseRun,
               loopMetrics: currentMetrics,
-              status: "aborted" as const,
-              completedAt: nowIso(),
               decision: {
                 decisionId: newId("harness_decision"),
                 action: "abort" as const,
@@ -779,10 +825,14 @@ export class HarnessRuntimeService {
               ...baseRun,
               loopMetrics: currentMetrics,
             };
+        if (progress.violation !== null && baseRun.status === "running") {
+          const aborted = this.transitionRunStatus(finalRun, "aborted", "harness.guard_aborted");
+          finalRun = { ...aborted, completedAt: nowIso() };
+        }
 
         this.ensureInvariantSafe(finalRun);
 
-        if (finalRun.status === "waiting_hitl" && finalRun.hitlRequest == null) {
+        if (finalRun.status === "paused" && finalRun.pauseReason === "hitl" && finalRun.hitlRequest == null) {
           const withHitl = this.openHitlReview(
             finalRun,
             "guardrail_or_operator_escalation",
@@ -799,10 +849,104 @@ export class HarnessRuntimeService {
       run = {
         ...baseRun,
         loopMetrics: currentMetrics,
-        status: "running",
         completedAt: null,
       };
     }
+  }
+
+  private ensureRunning(run: HarnessRun): HarnessRun {
+    if (run.status === "running") {
+      return run;
+    }
+    let current = run;
+    if (current.status === "created") {
+      current = this.transitionRunStatus(current, "admitted", "harness.auto_admitted");
+    }
+    if (current.status === "admitted") {
+      current = this.transitionRunStatus(current, "ready", "harness.auto_ready");
+    }
+    if (current.status === "planning") {
+      current = this.transitionRunStatus(current, "ready", "harness.auto_ready_from_planning");
+    }
+    if (current.status === "ready") {
+      current = this.transitionRunStatus(current, "running", "harness.auto_running");
+    }
+    if (current.status === "paused") {
+      current = this.transitionRunStatus(this.transitionRunStatus(current, "resuming", "harness.auto_resuming"), "running", "harness.auto_running");
+    }
+    return current;
+  }
+
+  private pauseRun(run: HarnessRun, reason: HarnessRun["pauseReason"]): HarnessRun {
+    const pausing = run.status === "running"
+      ? this.transitionRunStatus(run, "pausing", `harness.pause.${reason ?? "generic"}`)
+      : run;
+    const paused = pausing.status === "pausing"
+      ? this.transitionRunStatus(pausing, "paused", `harness.paused.${reason ?? "generic"}`)
+      : pausing;
+    return {
+      ...paused,
+      pauseReason: reason,
+    };
+  }
+
+  private transitionRunStatus(
+    run: HarnessRun,
+    toStatus: CanonicalHarnessRunStatus,
+    reasonCode: string,
+  ): HarnessRun {
+    if (run.status === toStatus) {
+      return run;
+    }
+    const aggregate = {
+      harnessRunId: run.harnessRunId ?? run.runId,
+      tenantId: run.tenantId ?? "tenant:local",
+      confirmedTaskSpecId: run.confirmedTaskSpecId ?? `confirmed_task_spec:${run.taskId}`,
+      requestEnvelopeId: run.requestEnvelopeId ?? `request_envelope:${run.taskId}`,
+      requestHash: run.requestHash ?? `request_hash:${run.taskId}`,
+      status: run.status,
+      constraintPackRef: run.constraintPackRef ?? `constraint_pack:${run.domainId}`,
+      versionLockId: run.versionLockId ?? `${run.runId}:version_lock`,
+      planGraphBundleId: run.planGraphBundle?.planGraphBundleId ?? `${run.runId}:compat_plan_graph_bundle`,
+      budgetLedgerId: run.budgetLedgerId ?? `${run.runId}:compat_budget_ledger`,
+      currentSeq: run.currentSeq ?? 0,
+      createdAt: run.createdAt,
+      updatedAt: run.updatedAt ?? run.createdAt,
+      ...(run.completedAt != null ? { terminalAt: run.completedAt } : {}),
+    } satisfies CanonicalHarnessRun;
+    const transitioned = this.stateMachine.transition({
+      aggregateType: "HarnessRun",
+      aggregate,
+      fromStatus: run.status,
+      toStatus,
+      expectedSeq: run.currentSeq ?? 0,
+      tenantId: run.tenantId ?? "tenant:local",
+      traceId: `trace:${run.harnessRunId ?? run.runId}`,
+      reasonCode,
+      emittedBy: "harness-runtime-service",
+      ...(toStatus === "admitted"
+        ? {
+          runVersionLockId: run.versionLockId ?? `${run.runId}:version_lock`,
+          policyGuard: {
+            allowed: true,
+            policyProofRef: run.constraintPackRef ?? `constraint_pack:${run.domainId}`,
+          },
+          budgetPrecondition: {
+            reservationId: run.budgetLedgerId ?? `${run.runId}:compat_budget_ledger`,
+            hardCapSatisfied: true,
+          },
+        }
+        : {}),
+      auditRef: `audit://harness-runs/${run.harnessRunId ?? run.runId}/${reasonCode}`,
+    });
+
+    return {
+      ...run,
+      status: transitioned.aggregate.status,
+      currentSeq: transitioned.aggregate.currentSeq,
+      updatedAt: transitioned.aggregate.updatedAt,
+      completedAt: transitioned.aggregate.terminalAt ?? run.completedAt,
+    };
   }
 
   private ensureInvariantSafe(run: HarnessRun): void {

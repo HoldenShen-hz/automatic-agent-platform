@@ -9,6 +9,8 @@ export type PlatformArchitectureLayer =
   | "sdk"
   | "apps";
 
+export type PlatformPlane = "P1" | "P2" | "P3" | "P4" | "P5" | "X1";
+
 export type PlatformAppKind = "api" | "console" | "worker";
 
 export interface PlatformAppManifest {

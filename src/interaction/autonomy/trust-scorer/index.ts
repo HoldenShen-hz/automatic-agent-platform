@@ -25,7 +25,7 @@ export function mapTrustLevel(score: number): TrustLevel {
 export function mapTrustLevelToAutonomyLevel(level: TrustLevel): ArchitectureAutonomyLevel {
   switch (level) {
     case "fully_trusted":
-      return "full_auto";
+      return "semi_auto";
     case "trusted":
     case "semi_trusted":
       return "semi_auto";

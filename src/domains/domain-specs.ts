@@ -54,6 +54,10 @@ export const DomainCoreDescriptorSchema = z.object({
 
 export const DomainRiskSpecSchema = z.object({
   domainId: z.string().min(1),
+  riskClass: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  advisoryOnly: z.boolean().default(false),
+  humanAccountable: z.boolean().default(false),
+  deterministicHotPathOnly: z.boolean().default(false),
   liabilityOwner: z.array(z.string().min(1)).min(1),
   compensationModel: z.array(z.enum(["refund", "reversal", "appeal", "manual_repair", "no_compensation"])).min(1),
   sideEffectTypes: z.array(z.string().min(1)).default([]),
@@ -102,3 +106,55 @@ export type DomainKnowledgeSpec = z.infer<typeof DomainKnowledgeSpecSchema>;
 export type DomainEvalSpec = z.infer<typeof DomainEvalSpecSchema>;
 export type DomainGovernanceSpec = z.infer<typeof DomainGovernanceSpecSchema>;
 export type DomainInteractionSpec = z.infer<typeof DomainInteractionSpecSchema>;
+
+const DEFAULT_DOMAIN_RISK_SPECS = {
+  healthcare: {
+    domainId: "healthcare",
+    riskClass: "critical",
+    advisoryOnly: true,
+    humanAccountable: true,
+    deterministicHotPathOnly: true,
+    liabilityOwner: ["healthcare-owners"],
+    compensationModel: ["manual_repair", "appeal"],
+  },
+  "quant-trading": {
+    domainId: "quant-trading",
+    riskClass: "high",
+    advisoryOnly: false,
+    humanAccountable: true,
+    deterministicHotPathOnly: true,
+    liabilityOwner: ["quant-trading-owners"],
+    compensationModel: ["reversal", "manual_repair"],
+  },
+  "financial-services": {
+    domainId: "financial-services",
+    riskClass: "high",
+    advisoryOnly: false,
+    humanAccountable: true,
+    deterministicHotPathOnly: true,
+    liabilityOwner: ["financial-services-owners"],
+    compensationModel: ["reversal", "manual_repair"],
+  },
+  legal: {
+    domainId: "legal",
+    riskClass: "critical",
+    advisoryOnly: true,
+    humanAccountable: true,
+    deterministicHotPathOnly: true,
+    liabilityOwner: ["legal-owners"],
+    compensationModel: ["appeal", "manual_repair"],
+  },
+} as const satisfies Record<string, Pick<DomainRiskSpec, "domainId" | "riskClass" | "advisoryOnly" | "humanAccountable" | "deterministicHotPathOnly" | "liabilityOwner" | "compensationModel">>;
+
+export function resolveDomainRiskSpec(domainId: string): DomainRiskSpec | null {
+  const normalized = domainId.trim().toLowerCase();
+  const spec = DEFAULT_DOMAIN_RISK_SPECS[normalized as keyof typeof DEFAULT_DOMAIN_RISK_SPECS];
+  if (spec == null) {
+    return null;
+  }
+  return DomainRiskSpecSchema.parse({
+    ...spec,
+    sideEffectTypes: [],
+    approvalThresholds: {},
+  });
+}

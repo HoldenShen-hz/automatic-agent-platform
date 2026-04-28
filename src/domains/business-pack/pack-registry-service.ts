@@ -11,7 +11,12 @@
 
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
-import type { BusinessPackLifecycleStage, BusinessPackManifest } from "./business-pack-manifest.js";
+import {
+  BusinessPackManifestSchema,
+  type BusinessPackLifecycleStage,
+  type BusinessPackManifest,
+  type NormalizedBusinessPackManifest,
+} from "./business-pack-manifest.js";
 
 // ============================================================================
 // Registry Types
@@ -24,7 +29,7 @@ export interface PackVersion {
   versionId: string;
   packId: string;
   version: string;
-  manifest: BusinessPackManifest;
+  manifest: NormalizedBusinessPackManifest;
   createdAt: string;
   changelog: string;
 }
@@ -44,7 +49,7 @@ export interface ListPacksFilter {
  */
 export interface PackRegistryEntry {
   packId: string;
-  currentManifest: BusinessPackManifest;
+  currentManifest: NormalizedBusinessPackManifest;
   versions: readonly PackVersion[];
   createdAt: string;
   updatedAt: string;
@@ -79,19 +84,20 @@ export class PackRegistryService {
       );
     }
 
+    const normalizedManifest = BusinessPackManifestSchema.parse(manifest);
     const now = nowIso();
     const version: PackVersion = {
       versionId: `${packId}_v1.0.0`,
       packId,
-      version: manifest.version,
-      manifest: { ...manifest },
+      version: normalizedManifest.version,
+      manifest: { ...normalizedManifest },
       createdAt: now,
       changelog: "Initial registration",
     };
 
     const entry: PackRegistryEntry = {
       packId,
-      currentManifest: { ...manifest },
+      currentManifest: { ...normalizedManifest },
       versions: [version],
       createdAt: now,
       updatedAt: now,
@@ -113,7 +119,7 @@ export class PackRegistryService {
   /**
    * Gets the current manifest for a pack.
    */
-  public getPackManifest(packId: string): BusinessPackManifest | null {
+  public getPackManifest(packId: string): NormalizedBusinessPackManifest | null {
     return this.registry.get(packId)?.currentManifest ?? null;
   }
 
@@ -197,6 +203,7 @@ export class PackRegistryService {
       );
     }
 
+    const normalizedManifest = BusinessPackManifestSchema.parse(manifest);
     const now = nowIso();
     const prevVersion = this.getLatestVersion(packId);
     const newVersionStr = prevVersion
@@ -207,7 +214,7 @@ export class PackRegistryService {
       versionId: `${packId}_v${newVersionStr}`,
       packId,
       version: newVersionStr,
-      manifest: { ...manifest },
+      manifest: { ...normalizedManifest },
       createdAt: now,
       changelog: `Updated from ${entry.currentManifest.version} to ${newVersionStr}`,
     };
@@ -215,7 +222,7 @@ export class PackRegistryService {
     const versionList = this.versions.get(packId) ?? [];
     this.versions.set(packId, [...versionList, version]);
 
-    entry.currentManifest = { ...manifest };
+    entry.currentManifest = { ...normalizedManifest };
     entry.updatedAt = now;
 
     return version;

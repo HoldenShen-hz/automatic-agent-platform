@@ -74,7 +74,7 @@ test("assessPromotion promotes supervised to semi_auto when thresholds met", () 
   assert.ok(result.reasonCodes.includes("autonomy.meets_semi_auto_threshold"));
 });
 
-test("assessPromotion promotes semi_auto to full_auto when thresholds met", () => {
+test("assessPromotion blocks automatic full_auto promotion even when thresholds are met", () => {
   const score = makeScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 500,
@@ -83,10 +83,10 @@ test("assessPromotion promotes semi_auto to full_auto when thresholds met", () =
     incidents: 0,
   });
   const result = assessPromotion(score);
-  assert.equal(result.shouldPromote, true);
+  assert.equal(result.shouldPromote, false);
   assert.equal(result.currentLevel, "semi_auto");
-  assert.equal(result.targetLevel, "full_auto");
-  assert.ok(result.reasonCodes.includes("autonomy.meets_full_auto_threshold"));
+  assert.equal(result.targetLevel, "semi_auto");
+  assert.ok(result.reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });
 
 test("assessPromotion does not promote at suggestion level with insufficient volume", () => {

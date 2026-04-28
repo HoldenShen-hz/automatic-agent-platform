@@ -12,6 +12,7 @@
 import { z } from "zod";
 
 import { ValidationError } from "../../platform/contracts/errors.js";
+import type { SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 // ============================================================================
 // Supporting Types
@@ -70,7 +71,21 @@ export interface MetricDef {
 /**
  * Sandbox tier requirements for the pack.
  */
-export type SandboxTier = "none" | "process" | "container" | "scoped_external_access";
+export type SandboxTier = SandboxMode;
+
+const SANDBOX_TIER_ALIASES = {
+  none: "read_only",
+  process: "read_only",
+  container: "workspace_write",
+  scoped_external_access: "scoped_external_access",
+  read_only: "read_only",
+  workspace_write: "workspace_write",
+  restricted_exec: "restricted_exec",
+} as const satisfies Record<string, SandboxTier>;
+
+function normalizeSandboxTier(value: unknown): unknown {
+  return typeof value === "string" ? SANDBOX_TIER_ALIASES[value as keyof typeof SANDBOX_TIER_ALIASES] ?? value : value;
+}
 
 /**
  * Permission requirement for the pack.
@@ -233,7 +248,10 @@ export const BusinessPackManifestSchema = z.object({
   })).default([]),
 
   // Security and sandbox requirements
-  sandboxTier: z.enum(["none", "process", "container", "scoped_external_access"]).default("process"),
+  sandboxTier: z.preprocess(
+    normalizeSandboxTier,
+    z.enum(["read_only", "workspace_write", "scoped_external_access", "restricted_exec"]),
+  ).default("read_only"),
   permissions: z.array(z.object({
     permission: z.string().min(1),
     level: z.enum(["read", "write", "admin"]).default("read"),
@@ -247,7 +265,8 @@ export const BusinessPackManifestSchema = z.object({
   updatedAt: z.string().default(() => new Date().toISOString()),
 });
 
-export type BusinessPackManifest = z.infer<typeof BusinessPackManifestSchema>;
+export type BusinessPackManifest = z.input<typeof BusinessPackManifestSchema>;
+export type NormalizedBusinessPackManifest = z.output<typeof BusinessPackManifestSchema>;
 
 // ============================================================================
 // Validation Result
@@ -288,12 +307,54 @@ export function validateBusinessPackManifest(
     installedPluginIds?: readonly string[];
   } = {},
 ): ManifestValidationResult {
+  const schemaResult = BusinessPackManifestSchema.safeParse(manifest);
   const issues: ManifestValidationIssue[] = [];
   const existingPackIds = new Set(options.existingPackIds ?? []);
   const installedPluginIds = new Set(options.installedPluginIds ?? []);
+  const raw = manifest as Partial<Record<string, unknown>>;
+  const normalizedManifest = schemaResult.success
+    ? schemaResult.data
+    : {
+      packId: typeof raw["packId"] === "string" ? raw["packId"] : "",
+      name: typeof raw["name"] === "string" ? raw["name"] : "",
+      version: typeof raw["version"] === "string" ? raw["version"] : "",
+      domainId: typeof raw["domainId"] === "string" ? raw["domainId"] : "",
+      dependencies: Array.isArray(raw["dependencies"]) ? raw["dependencies"] as BusinessPackManifest["dependencies"] : [],
+      pluginIds: Array.isArray(raw["pluginIds"]) ? raw["pluginIds"] as string[] : [],
+      riskMatrix: Array.isArray(raw["riskMatrix"]) ? raw["riskMatrix"] as BusinessPackManifest["riskMatrix"] : [],
+      sandboxTier: normalizeSandboxTier(raw["sandboxTier"] ?? "read_only") as NormalizedBusinessPackManifest["sandboxTier"],
+      permissions: Array.isArray(raw["permissions"]) ? raw["permissions"] as BusinessPackManifest["permissions"] : [],
+      approvalPoints: Array.isArray(raw["approvalPoints"]) ? raw["approvalPoints"] as BusinessPackManifest["approvalPoints"] : [],
+      failureStrategy: raw["failureStrategy"] === "continue" || raw["failureStrategy"] === "skip" || raw["failureStrategy"] === "fallback"
+        ? raw["failureStrategy"]
+        : "fail_fast",
+      rollbackCapability: raw["rollbackCapability"] === true,
+      lifecycleStage: raw["lifecycleStage"] === "certifying"
+        || raw["lifecycleStage"] === "published"
+        || raw["lifecycleStage"] === "deprecated"
+        || raw["lifecycleStage"] === "archived"
+        ? raw["lifecycleStage"]
+        : "draft",
+    };
+  const dependencies = normalizedManifest.dependencies ?? [];
+  const pluginIds = normalizedManifest.pluginIds ?? [];
+  const riskMatrix = normalizedManifest.riskMatrix ?? [];
+  const permissions = normalizedManifest.permissions ?? [];
+  const approvalPoints = normalizedManifest.approvalPoints ?? [];
+
+  if (!schemaResult.success) {
+    for (const issue of schemaResult.error.issues) {
+      issues.push({
+        code: `manifest.schema.${issue.code}`,
+        field: issue.path.join("."),
+        message: issue.message,
+        severity: "error",
+      });
+    }
+  }
 
   // Required fields validation
-  if (!manifest.packId || manifest.packId.trim().length === 0) {
+  if (!normalizedManifest.packId || normalizedManifest.packId.trim().length === 0) {
     issues.push({
       code: "manifest.missing_pack_id",
       field: "packId",
@@ -302,7 +363,7 @@ export function validateBusinessPackManifest(
     });
   }
 
-  if (!manifest.name || manifest.name.trim().length === 0) {
+  if (!normalizedManifest.name || normalizedManifest.name.trim().length === 0) {
     issues.push({
       code: "manifest.missing_name",
       field: "name",
@@ -311,14 +372,14 @@ export function validateBusinessPackManifest(
     });
   }
 
-  if (!manifest.version || manifest.version.trim().length === 0) {
+  if (!normalizedManifest.version || normalizedManifest.version.trim().length === 0) {
     issues.push({
       code: "manifest.missing_version",
       field: "version",
       message: "Pack version is required",
       severity: "error",
     });
-  } else if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) {
+  } else if (!/^\d+\.\d+\.\d+$/.test(normalizedManifest.version)) {
     issues.push({
       code: "manifest.invalid_version_format",
       field: "version",
@@ -327,7 +388,7 @@ export function validateBusinessPackManifest(
     });
   }
 
-  if (!manifest.domainId || manifest.domainId.trim().length === 0) {
+  if (!normalizedManifest.domainId || normalizedManifest.domainId.trim().length === 0) {
     issues.push({
       code: "manifest.missing_domain_id",
       field: "domainId",
@@ -337,7 +398,7 @@ export function validateBusinessPackManifest(
   }
 
   // Dependency validation
-  for (const dep of manifest.dependencies) {
+  for (const dep of dependencies) {
     if (!dep.packId) {
       issues.push({
         code: "manifest.missing_dependency_pack_id",
@@ -345,7 +406,7 @@ export function validateBusinessPackManifest(
         message: "Dependency pack ID is required",
         severity: "error",
       });
-    } else if (!existingPackIds.has(dep.packId) && dep.packId !== manifest.packId) {
+    } else if (!existingPackIds.has(dep.packId) && dep.packId !== normalizedManifest.packId) {
       issues.push({
         code: "manifest.dependency_not_found",
         field: `dependencies.${dep.packId}.packId`,
@@ -365,7 +426,7 @@ export function validateBusinessPackManifest(
   }
 
   // Plugin validation
-  for (const pluginId of manifest.pluginIds) {
+  for (const pluginId of pluginIds) {
     if (!installedPluginIds.has(pluginId)) {
       issues.push({
         code: "manifest.plugin_not_installed",
@@ -377,7 +438,7 @@ export function validateBusinessPackManifest(
   }
 
   // Sandbox tier validation based on risk level
-  const maxRisk = manifest.riskMatrix.reduce<BusinessPackRiskLevel | null>(
+  const maxRisk = riskMatrix.reduce<BusinessPackRiskLevel | null>(
     (max, entry) => {
       const riskOrder: BusinessPackRiskLevel[] = ["low", "medium", "high", "critical"];
       if (!max) return entry.level;
@@ -386,26 +447,26 @@ export function validateBusinessPackManifest(
     null,
   );
 
-  if (maxRisk === "critical" && manifest.sandboxTier === "none") {
+  if (maxRisk === "critical" && (normalizedManifest.sandboxTier === "read_only" || normalizedManifest.sandboxTier === "workspace_write")) {
     issues.push({
       code: "manifest.insecure_sandbox_tier",
       field: "sandboxTier",
-      message: "Critical risk packs must not use 'none' sandbox tier",
+      message: "Critical risk packs must use scoped_external_access or restricted_exec sandbox",
       severity: "error",
     });
   }
 
-  if (maxRisk === "high" && manifest.sandboxTier === "none" || manifest.sandboxTier === "process") {
+  if (maxRisk === "high" && normalizedManifest.sandboxTier === "read_only") {
     issues.push({
       code: "manifest.insecure_sandbox_tier",
       field: "sandboxTier",
-      message: "High risk packs should use container or scoped_external_access sandbox",
+      message: "High risk packs should use workspace_write, scoped_external_access, or restricted_exec sandbox",
       severity: "warning",
     });
   }
 
   // Permission validation - least privilege
-  for (const perm of manifest.permissions) {
+  for (const perm of permissions) {
     if (perm.level === "admin" && !perm.justification) {
       issues.push({
         code: "manifest.admin_permission_without_justification",
@@ -417,17 +478,20 @@ export function validateBusinessPackManifest(
   }
 
   // Approval point validation
-  for (const approval of manifest.approvalPoints) {
-    if (approval.requiredApprovals > 1 && approval.approverRoles.length < approval.requiredApprovals) {
+  for (const approval of approvalPoints) {
+    const requiredApprovals = approval.requiredApprovals ?? 1;
+    const approverRoles = approval.approverRoles ?? [];
+    const timeoutMinutes = approval.timeoutMinutes ?? 0;
+    if (requiredApprovals > 1 && approverRoles.length < requiredApprovals) {
       issues.push({
         code: "manifest.insufficient_approvers",
         field: `approvalPoints.${approval.pointId}`,
-        message: `Approval point requires ${approval.requiredApprovals} approvals but only ${approval.approverRoles.length} roles defined`,
+        message: `Approval point requires ${requiredApprovals} approvals but only ${approverRoles.length} roles defined`,
         severity: "error",
       });
     }
 
-    if (approval.timeoutMinutes <= 0) {
+    if (timeoutMinutes <= 0) {
       issues.push({
         code: "manifest.invalid_timeout",
         field: `approvalPoints.${approval.pointId}.timeoutMinutes`,
@@ -438,7 +502,7 @@ export function validateBusinessPackManifest(
   }
 
   // Rollback capability validation
-  if (manifest.failureStrategy === "fail_fast" && !manifest.rollbackCapability) {
+  if (normalizedManifest.failureStrategy === "fail_fast" && !normalizedManifest.rollbackCapability) {
     issues.push({
       code: "manifest.rollback_recommended",
       field: "rollbackCapability",
@@ -448,7 +512,7 @@ export function validateBusinessPackManifest(
   }
 
   // Lifecycle-specific validation
-  if (manifest.lifecycleStage === "published" && manifest.riskMatrix.length === 0) {
+  if (normalizedManifest.lifecycleStage === "published" && riskMatrix.length === 0) {
     issues.push({
       code: "manifest.published_without_risk_matrix",
       field: "riskMatrix",

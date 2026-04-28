@@ -91,12 +91,15 @@ test("buildPlatformArchitectureBootstrapSummary returns complete summary", async
   assert.equal(summary.startupEntryModule, "src/index.ts");
   assert.equal(summary.architectureDocPath, "docs_zh/architecture/00-platform-architecture.md");
   assert.equal(summary.layerCount, 9);
+  assert.equal(summary.planeCount, 6);
   assert.ok(summary.appCount >= 0);
   assert.ok(summary.startupTargetCount >= 0);
   assert.ok(Array.isArray(summary.layers));
+  assert.ok(Array.isArray(summary.planes));
   assert.ok(Array.isArray(summary.apps));
   assert.ok(Array.isArray(summary.startupTargets));
   assert.equal(summary.layers.length, 9);
+  assert.equal(summary.planes.length, 6);
 });
 
 test("buildPlatformArchitectureBootstrapSummary generatedAt is ISO format", async () => {
@@ -114,11 +117,13 @@ test("registerPlatformArchitectureServices registers four services", async () =>
   const services = registerPlatformArchitectureServices(registry);
 
   assert.ok(Array.isArray(services.layers));
+  assert.ok(Array.isArray(services.planes));
   assert.ok(Array.isArray(services.apps));
   assert.ok(Array.isArray(services.startupTargets));
   assert.ok(typeof services.summary === "object");
 
   assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
+  assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
   assert.equal(registry.isInitialized("architecture.app-catalog"), true);
   assert.equal(registry.isInitialized("architecture.startup-targets"), true);
   assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);
@@ -132,6 +137,7 @@ test("getPlatformArchitectureServices returns same services object", async () =>
   const services2 = getPlatformArchitectureServices(registry);
 
   assert.equal(services1.layers, services2.layers);
+  assert.equal(services1.planes, services2.planes);
   assert.equal(services1.apps, services2.apps);
   assert.equal(services1.startupTargets, services2.startupTargets);
   assert.equal(services1.summary, services2.summary);
@@ -155,6 +161,7 @@ test("services object is immutable - layers/apps/startupTargets are readonly", a
   const services = registerPlatformArchitectureServices(registry);
 
   assert.ok(Array.isArray(services.layers));
+  assert.ok(Array.isArray(services.planes));
   assert.ok(Array.isArray(services.apps));
   assert.ok(Array.isArray(services.startupTargets));
 });

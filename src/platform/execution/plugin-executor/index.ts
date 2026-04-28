@@ -69,8 +69,8 @@ export {
   type ExecutionContext,
   type ExecutionResult,
   type PluginExecutorOptions,
-  type SandboxTier,
 } from "./plugin-executor.service.js";
+export type { SandboxMode } from "../../control-plane/iam/sandbox-policy.js";
 
 // ─── Scoped External Access Sandbox ─────────────────────────────────────────
 

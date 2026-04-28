@@ -20,11 +20,14 @@ import {
 } from "../../../domains/registry/plugin-spi.js";
 import {
   checkSandboxPath,
+  createReadOnlyPolicy,
   createRestrictedExecPolicy,
   createScopedExternalAccessPolicy,
   createWorkspaceWritePolicy,
+  normalizeSandboxMode,
   type SandboxPolicy,
   type SandboxMode,
+  type SandboxModeLike,
 } from "../../control-plane/iam/sandbox-policy.js";
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
@@ -43,10 +46,8 @@ export interface ExecutionContext {
   taskId: string;
   tenantId: string | null;
   correlationId: string;
-  sandboxTier: SandboxTier;
+  sandboxTier: SandboxModeLike;
 }
-
-export type SandboxTier = "none" | "process" | "container" | "scoped_external_access";
 
 export interface ExecutionResult {
   executionId: string;
@@ -84,13 +85,6 @@ interface PluginInstance {
 // ─────────────────────────────────────────────────────────────────────────────
 // Sandbox Tier Configuration
 // ─────────────────────────────────────────────────────────────────────────────
-
-const SANDBOX_MODE_MAP: Record<SandboxTier, SandboxMode> = {
-  none: "restricted_exec",
-  process: "read_only",
-  container: "workspace_write",
-  scoped_external_access: "scoped_external_access",
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Plugin Executor Service
@@ -287,7 +281,7 @@ export class PluginExecutorService {
 
     // Get timeout from manifest
     const timeout = instance.manifest.sandbox?.timeoutMs ?? 5000;
-    const sandboxTier = context.sandboxTier;
+    const sandboxTier = normalizeSandboxMode(context.sandboxTier);
 
     // Create sandbox policy based on tier
     const pluginSandboxPolicy = this.createPluginSandbox(
@@ -316,7 +310,7 @@ export class PluginExecutorService {
     try {
       // Execute with timeout constraint
       const output = await this.executeWithTimeout(
-        () => this.invokePluginAction(instance.hooks, action, params, context, scopedSandbox),
+        () => this.invokePluginAction(instance.hooks, action, params, { ...context, sandboxTier }, scopedSandbox),
         timeout,
       );
 
@@ -421,35 +415,33 @@ export class PluginExecutorService {
 
   private createPluginSandbox(
     manifest: PluginManifest,
-    tier: SandboxTier,
+    tier: SandboxMode,
   ): SandboxPolicy {
-    const mode = SANDBOX_MODE_MAP[tier] ?? "read_only";
-
     // Validate plugin directory against workspace policy
     const pluginRoot = this.pluginDir;
     const pathCheck = checkSandboxPath(this.sandboxPolicy, pluginRoot);
     const basePolicy =
-      tier === "none"
+      tier === "restricted_exec"
         ? createRestrictedExecPolicy(pluginRoot)
         : tier === "scoped_external_access"
           ? createScopedExternalAccessPolicy(pluginRoot)
-          : createWorkspaceWritePolicy(pluginRoot);
+          : tier === "workspace_write"
+            ? createWorkspaceWritePolicy(pluginRoot)
+            : createReadOnlyPolicy(pluginRoot);
 
     return {
       ...basePolicy,
       policyId: `plugin-${manifest.pluginId}-${tier}`,
-      mode,
       allowedRoots: pathCheck.allowed
         ? [pathCheck.normalizedPath]
         : [],
       deniedRoots: [],
-      processRuleMode: tier === "none" ? "allow" : "deny",
     };
   }
 
   private createSandboxContext(
     policy: SandboxPolicy,
-    tier: SandboxTier,
+    tier: SandboxMode,
   ): SandboxContext {
     return {
       tier,
@@ -548,7 +540,7 @@ export class PluginExecutorService {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SandboxContext {
-  tier: SandboxTier;
+  tier: SandboxMode;
   policy: SandboxPolicy;
   destroyed: boolean;
   destroy(): void;

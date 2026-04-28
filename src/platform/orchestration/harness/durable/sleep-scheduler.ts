@@ -14,7 +14,7 @@ export class HarnessSleepScheduler {
     const dueRuns = leases
       .map((lease) => this.durableService.restore(lease.runId))
       .filter((run): run is HarnessRun =>
-        run != null && (run.status === "sleeping" || run.status === "paused") && run.sleepLease != null,
+        run != null && run.status === "paused" && run.pauseReason === "sleep" && run.sleepLease != null,
       );
 
     for (const run of dueRuns) {

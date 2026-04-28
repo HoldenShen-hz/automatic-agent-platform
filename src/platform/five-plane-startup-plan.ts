@@ -1,5 +1,9 @@
 import { ServiceRegistry } from "./shared/lifecycle/service-registry.js";
 import {
+  buildComplianceBootstrap,
+  COMPLIANCE_BOOTSTRAP_SERVICE_ID,
+} from "./compliance/compliance-bootstrap.js";
+import {
   CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
   buildControlPlaneBootstrap,
 } from "./control-plane/control-plane-bootstrap.js";
@@ -12,9 +16,17 @@ import {
   buildInterfacePlaneBootstrap,
 } from "./interface/interface-plane-bootstrap.js";
 import {
+  MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+  buildModelGatewayBootstrap,
+} from "./model-gateway/model-gateway-bootstrap.js";
+import {
   ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
   buildOrchestrationPlaneBootstrap,
 } from "./orchestration/orchestration-plane-bootstrap.js";
+import {
+  PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+  buildPromptEngineBootstrap,
+} from "./prompt-engine/prompt-engine-bootstrap.js";
 import {
   resolvePlatformSurfaceManifest,
   type PlatformSurfaceId,
@@ -28,6 +40,7 @@ export const FIVE_PLANE_STARTUP_PLAN_SERVICE_ID = "plane.runtime.startup-plan";
 
 export type FivePlaneStartupStepId =
   | "interface"
+  | "x1-fabric"
   | "control-plane"
   | "orchestration"
   | "execution"
@@ -50,10 +63,16 @@ export interface FivePlaneStartupPlan {
 
 export function buildFivePlaneStartupPlan(): FivePlaneStartupPlan {
   const interfaceSurface = resolvePlatformSurfaceManifest("interface");
+  const x1Surface = resolvePlatformSurfaceManifest("x1-fabric");
   const controlSurface = resolvePlatformSurfaceManifest("control-plane");
   const orchestrationSurface = resolvePlatformSurfaceManifest("orchestration");
   const executionSurface = resolvePlatformSurfaceManifest("execution");
   const stateEvidenceSurface = resolvePlatformSurfaceManifest("state-evidence");
+  const x1CapabilityCount =
+    x1Surface.canonicalSubdomains.length
+    + buildModelGatewayBootstrap().catalog.length
+    + buildPromptEngineBootstrap().catalog.length
+    + buildComplianceBootstrap().catalog.length;
 
   const steps = [
     {
@@ -65,12 +84,20 @@ export function buildFivePlaneStartupPlan(): FivePlaneStartupPlan {
       dependsOnStepIds: [],
     },
     {
+      stepId: "x1-fabric",
+      surfaceId: "x1-fabric",
+      entryModule: x1Surface.entryModule,
+      bootstrapServiceId: "plane.x1-fabric.bootstrap",
+      capabilityCount: x1CapabilityCount,
+      dependsOnStepIds: ["interface"],
+    },
+    {
       stepId: "control-plane",
       surfaceId: "control-plane",
       entryModule: controlSurface.entryModule,
       bootstrapServiceId: CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
       capabilityCount: buildControlPlaneBootstrap().catalog.length,
-      dependsOnStepIds: ["interface"],
+      dependsOnStepIds: ["x1-fabric"],
     },
     {
       stepId: "orchestration",
@@ -112,6 +139,9 @@ export function registerFivePlaneStartupPlan(
     init: () => buildFivePlaneStartupPlan(),
     dependsOn: [
       INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
+      MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+      PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+      COMPLIANCE_BOOTSTRAP_SERVICE_ID,
       CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
       ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
       EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,

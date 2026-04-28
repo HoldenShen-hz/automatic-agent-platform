@@ -29,6 +29,12 @@
 import { dirname, join } from "node:path";
 
 import { MonetizationError } from "../../platform/contracts/errors.js";
+import {
+  createBudgetLedger,
+  createBudgetSettlement,
+  type BudgetLedger,
+  type BudgetReservation,
+} from "../../platform/contracts/executable-contracts/index.js";
 import { ArtifactStore } from "../../platform/state-evidence/artifacts/artifact-store.js";
 import {
   ManualBillingPaymentGateway,
@@ -44,6 +50,7 @@ import {
 import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
+import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
 import type {
   BillingAccountRecord,
   BillingInvoiceRecord,
@@ -114,6 +121,7 @@ export class BillingService {
   private readonly planCatalog: BillingPlanCatalog;
   private readonly policyVersion: string;
   private readonly paymentGateway: BillingPaymentGateway;
+  private readonly budgetAllocator: BudgetAllocator;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -135,6 +143,7 @@ export class BillingService {
     this.policyVersion = options.policyVersion ?? "phase3.billing.v1";
     // Default to manual gateway if none provided
     this.paymentGateway = options.paymentGateway ?? new ManualBillingPaymentGateway();
+    this.budgetAllocator = new BudgetAllocator();
     // Artifact store for exporting billing reports
     this.artifactStore = new ArtifactStore(
       options.artifactStoreOptions ?? {
@@ -258,6 +267,26 @@ export class BillingService {
     const window = monthWindow(capturedAt);
     const existingCounter = this.store.billing.getQuotaCounter(account.accountId, metricType, window.start, window.end);
     const unitPriceUsd = quota?.unitPriceUsd ?? 0;
+    const estimatedChargeUsd = roundCurrency(quantity * unitPriceUsd);
+    let reservedBudget: { ledger: BudgetLedger; reservation: BudgetReservation } | null = null;
+
+    if (input.budgetControl != null && estimatedChargeUsd > 0) {
+      const ledger = input.budgetControl.ledger ?? createBudgetLedger({
+        tenantId: input.budgetControl.tenantId,
+        harnessRunId: input.budgetControl.harnessRunId,
+        currency: "USD",
+        hardCap: estimatedChargeUsd,
+      });
+      reservedBudget = this.budgetAllocator.reserve({
+        ledger,
+        amount: estimatedChargeUsd,
+        resourceKind: "api",
+        expiresAt: new Date(
+          Date.parse(capturedAt) + (input.budgetControl.reservationTtlMs ?? 5 * 60 * 1000),
+        ).toISOString(),
+        expectedVersion: ledger.version,
+      });
+    }
 
     // Create usage event record
     const usageEvent: UsageEventRecord = {
@@ -301,7 +330,7 @@ export class BillingService {
       usageId: usageEvent.usageId,
       periodId: window.periodId,
       entryType: "usage_charge",
-      amountUsd: roundCurrency(quantity * unitPriceUsd),
+      amountUsd: estimatedChargeUsd,
       currency: "USD",
       sourceRef: usageEvent.metricType,
       recordedAt: capturedAt,
@@ -316,7 +345,34 @@ export class BillingService {
       this.store.billing.insertLedgerEntry(ledgerEntry);
     });
 
-    return { usageEvent, quotaCounter, ledgerEntry };
+    const budgetSettlement = reservedBudget == null
+      ? undefined
+      : createBudgetSettlement({
+        budgetReservationId: reservedBudget.reservation.budgetReservationId,
+        actualAmount: ledgerEntry.amountUsd,
+        settlementKind: "final",
+      });
+    const settledBudget = reservedBudget == null
+      ? null
+      : this.budgetAllocator.settle({
+        ledger: reservedBudget.ledger,
+        reservation: reservedBudget.reservation,
+        actualAmount: ledgerEntry.amountUsd,
+        context: {
+          tenantId: input.budgetControl!.tenantId,
+          traceId: input.budgetControl!.traceId,
+          emittedBy: input.budgetControl!.emittedBy,
+        },
+      });
+
+    return {
+      usageEvent,
+      quotaCounter,
+      ledgerEntry,
+      ...(reservedBudget != null ? { budgetReservation: reservedBudget.reservation } : {}),
+      ...(budgetSettlement != null ? { budgetSettlement } : {}),
+      ...(settledBudget != null ? { budgetLedger: settledBudget.ledger } : {}),
+    };
   }
 
   /**

@@ -5569,15 +5569,15 @@ Prompt layering is incorporated into the §16 Prompt management system; each Pro
 Automatically distills failure cases into platform knowledge assets:
 
 ```text
-Step 失败
+Step failed
   → FeedbackEnvelope(outcome=failed)
-    → 失败模式分类（error_class + root_cause_category）
-      → 自动生成 candidate:
-         ├── Recovery Playbook（恢复操作手册）
-         ├── Prompt Patch Candidate（Prompt 修补建议）
-         ├── Risk Rule Candidate（风险规则建议）
-         └── Evaluator Rule Candidate（评估规则建议）
-      → 人工审核 → P2 Release 治理 → 灰度上线
+    → failure mode classification (error_class + root_cause_category)
+      → auto-generate candidate:
+         ├── Recovery Playbook
+         ├── Prompt Patch Candidate
+         ├── Risk Rule Candidate
+         └── Evaluator Rule Candidate
+      → Human review → P2 Release governance → canary rollout
 ```
 
 Key constraint: All candidates are suggestions only and must go through §34 ADR-Quality-Gate-Before-Prompt-Release and P2 approval before taking effect.
@@ -8213,7 +8213,7 @@ Structural conflicts resolved by above order; security, risk, compliance, and da
 | Spec Section | Topic |
 | --- | --- |
 | 0-3 | Core conclusions, design goals, eight stages, overall execution architecture |
-| 4-5 | HarnessRun convergence后 RunStatus projection, NodeRun state machine |
+| 4-5 | HarnessRun convergence after RunStatus projection, NodeRun state machine |
 | 6-13 | PlanGraph, Graph Normalization, Validation, Risk Propagation, Worst-Path, Scheduler, GraphPatch |
 | 14-17 | Event Registry, Budget Ledger, SideEffect Manager, Reconciliation State Machine |
 | 18-24 | Context Assembly, Prompt Execution, LLM Decision Record, Tool Output Taint, Memory Governance, Guardrails, Decision Engine |

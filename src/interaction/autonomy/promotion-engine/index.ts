@@ -28,7 +28,12 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
     return { shouldPromote: true, currentLevel: score.currentAutonomy, targetLevel: "semi_auto", reasonCodes: ["autonomy.meets_semi_auto_threshold"] };
   }
   if (score.currentAutonomy === "semi_auto" && score.totalExecutions >= 500 && rate >= 0.99) {
-    return { shouldPromote: true, currentLevel: score.currentAutonomy, targetLevel: "full_auto", reasonCodes: ["autonomy.meets_full_auto_threshold"] };
+    return {
+      shouldPromote: false,
+      currentLevel: score.currentAutonomy,
+      targetLevel: score.currentAutonomy,
+      reasonCodes: ["autonomy.full_auto_requires_governance_override"],
+    };
   }
   return {
     shouldPromote: false,

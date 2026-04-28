@@ -1,8 +1,17 @@
 {
   "domainId": "healthcare",
-  "phase": "9e",
+  "ringId": "ring3",
   "divisionId": "security",
   "latencyTier": "realtime",
+  "riskProfile": {
+    "defaultRiskLevel": "critical",
+    "maxAutonomyLevel": "manual"
+  },
+  "riskSpec": {
+    "advisoryOnly": true,
+    "humanAccountable": true,
+    "deterministicHotPathOnly": true
+  },
   "workflowProfile": {
     "workflowId": "healthcare.primary",
     "rollout": "baseline"

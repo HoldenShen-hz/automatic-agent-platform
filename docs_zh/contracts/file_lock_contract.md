@@ -46,12 +46,13 @@ Phase 1a / 1b 至少要做到：
 | `lock_scope` | `file` | 当前阶段固定为文件级 |
 | `target_path` | `string` | 绝对规范化路径 |
 | `mode` | `read \| write` | 锁模式 |
-| `task_id` | `string` | 任务 ID |
-| `execution_id` | `string` | execution ID |
+| `task_id` | `string?` | legacy 任务投影 ID |
+| `harness_run_id` | `string` | HarnessRun ID |
+| `node_run_id` | `string` | NodeRun ID |
 | `agent_id` | `string` | agent ID |
 | `ttl_seconds` | `number` | 租约 TTL |
 | `wait_timeout_ms` | `number` | 等待冲突释放时间 |
-| `reentrant_token` | `string?` | 同 execution 重入标识 |
+| `reentrant_token` | `string?` | 同 node run 重入标识 |
 
 ### 3.2 `FileLockRecord`
 
@@ -59,8 +60,9 @@ Phase 1a / 1b 至少要做到：
 - `target_path`
 - `normalized_path`
 - `mode`
-- `holder_task_id`
-- `holder_execution_id`
+- `holder_task_id?`
+- `holder_harness_run_id`
+- `holder_node_run_id`
 - `holder_agent_id`
 - `acquired_at`
 - `expires_at`
@@ -77,15 +79,15 @@ Phase 1a / 1b 至少要做到：
 
 补充规则：
 
-- 同一 `execution_id + normalized_path + mode` 的重入请求可复用已有锁。
-- 同一 execution 已持有 `write` 锁时，再请求同文件 `read` 锁应直接复用，不再降级。
-- 不允许“两个不同 execution 但同 task”绕过排他规则。
+- 同一 `node_run_id + normalized_path + mode` 的重入请求可复用已有锁。
+- 同一 node run 已持有 `write` 锁时，再请求同文件 `read` 锁应直接复用，不再降级。
+- 不允许“两个不同 node run 但同 task”绕过排他规则。
 
 ## 5. 租约与续约
 
 - Phase 1a 默认 TTL 建议为 `60s`。
-- 活跃 execution 必须通过 heartbeat 或显式 `renewLock(...)` 续约。
-- 锁过期后不代表自动安全可写；恢复链应先确认 holder execution 已 stale 或终止。
+- 活跃 node run 必须通过 heartbeat 或显式 `renewLock(...)` 续约。
+- 锁过期后不代表自动安全可写；恢复链应先确认 holder node run 已 stale 或终止。
 
 ## 6. 服务入口
 

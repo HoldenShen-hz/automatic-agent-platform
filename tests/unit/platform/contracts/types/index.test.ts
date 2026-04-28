@@ -386,15 +386,18 @@ test("createControlDirective creates directive with minimal input", () => {
     actorId: "user_123",
     tenantId: null,
   });
-  const directive = createControlDirective({
-    type: "pause",
-    issuedBy: principal,
-    reason: "maintenance",
-  });
-  assert.ok(directive.directiveId.startsWith("directive_"));
-  assert.equal(directive.type, "pause");
-  assert.equal(directive.reason, "maintenance");
-  assert.equal(directive.issuedBy, principal);
+  assert.throws(
+    () =>
+      createControlDirective({
+        type: "pause",
+        issuedBy: principal,
+        reason: "maintenance",
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+  );
 });
 
 test("createControlDirective accepts all directive types", () => {
@@ -404,12 +407,18 @@ test("createControlDirective accepts all directive types", () => {
   });
   const types = ["mode_switch", "pause", "resume", "rollback", "quota_adjust", "kill"] as const;
   for (const type of types) {
-    const directive = createControlDirective({
-      type,
-      issuedBy: principal,
-      reason: `testing ${type}`,
-    });
-    assert.equal(directive.type, type);
+    assert.throws(
+      () =>
+        createControlDirective({
+          type,
+          issuedBy: principal,
+          reason: `testing ${type}`,
+        }),
+      (error: unknown) =>
+        error instanceof Error
+        && "code" in error
+        && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+    );
   }
 });
 
@@ -418,14 +427,19 @@ test("createControlDirective accepts target scope", () => {
     actorId: "user_123",
     tenantId: null,
   });
-  const directive = createControlDirective({
-    type: "pause",
-    issuedBy: principal,
-    reason: "targeted pause",
-    targetScope: { tenantId: "tenant_abc", workflowId: "workflow_123" },
-  });
-  assert.equal(directive.targetScope.tenantId, "tenant_abc");
-  assert.equal(directive.targetScope.workflowId, "workflow_123");
+  assert.throws(
+    () =>
+      createControlDirective({
+        type: "pause",
+        issuedBy: principal,
+        reason: "targeted pause",
+        targetScope: { tenantId: "tenant_abc", workflowId: "workflow_123" },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+  );
 });
 
 test("createExecutionPlan creates plan with minimal input", () => {
@@ -433,47 +447,53 @@ test("createExecutionPlan creates plan with minimal input", () => {
     actorId: "user_123",
     tenantId: null,
   });
-  const plan = createExecutionPlan({
-    traceId: "trace_123",
-    principal,
-    workflowRunId: "workflow_abc",
-    steps: [],
-    budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 100 },
-  });
-  assert.ok(plan.planId.startsWith("plan_"));
-  assert.equal(plan.traceId, "trace_123");
-  assert.equal(plan.principal, principal);
-  assert.deepEqual(plan.steps, []);
-  assert.equal(plan.fallbackStrategy, "retry");
+  assert.throws(
+    () =>
+      createExecutionPlan({
+        traceId: "trace_123",
+        principal,
+        workflowRunId: "workflow_abc",
+        steps: [],
+        budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 100 },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+  );
 });
 
 test("createExecutionReceipt creates receipt with minimal input", () => {
-  const receipt = createExecutionReceipt({
-    planId: "plan_123",
-    stepId: "step_456",
-    status: "succeeded",
-    durationMs: 1500,
-  });
-  assert.ok(receipt.receiptId.startsWith("receipt_"));
-  assert.equal(receipt.planId, "plan_123");
-  assert.equal(receipt.stepId, "step_456");
-  assert.equal(receipt.status, "succeeded");
-  assert.equal(receipt.durationMs, 1500);
-  assert.deepEqual(receipt.sideEffects, []);
-  assert.deepEqual(receipt.evidenceRefs, []);
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan_123",
+        stepId: "step_456",
+        status: "succeeded",
+        durationMs: 1500,
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+  );
 });
 
 test("createExecutionReceipt accepts error detail", () => {
-  const receipt = createExecutionReceipt({
-    planId: "plan_123",
-    stepId: "step_456",
-    status: "failed",
-    durationMs: 500,
-    errorDetail: { code: "E001", message: "Step failed", retryable: true },
-  });
-  assert.equal(receipt.status, "failed");
-  assert.equal(receipt.errorDetail?.code, "E001");
-  assert.equal(receipt.errorDetail?.retryable, true);
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan_123",
+        stepId: "step_456",
+        status: "failed",
+        durationMs: 500,
+        errorDetail: { code: "E001", message: "Step failed", retryable: true },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+  );
 });
 
 test("createStateCommand creates command with all fields", () => {

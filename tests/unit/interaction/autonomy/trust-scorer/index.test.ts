@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateTrustScore, mapTrustLevel } from "../../../../../src/interaction/autonomy/trust-scorer/index.js";
+import { calculateTrustScore, mapTrustLevel, mapTrustLevelToAutonomyLevel } from "../../../../../src/interaction/autonomy/trust-scorer/index.js";
 import type { CapabilityTrustScore } from "../../../../../src/interaction/autonomy/index.js";
 
 function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTrustScore {
@@ -67,6 +67,11 @@ test("calculateTrustScore caps at 100 and floors at 0", () => {
 test("mapTrustLevel returns fully_trusted for score >= 95", () => {
   assert.equal(mapTrustLevel(95), "fully_trusted");
   assert.equal(mapTrustLevel(100), "fully_trusted");
+});
+
+test("mapTrustLevelToAutonomyLevel does not grant full_auto from trust score alone", () => {
+  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted"), "semi_auto");
+  assert.equal(mapTrustLevelToAutonomyLevel("trusted"), "semi_auto");
 });
 
 test("mapTrustLevel returns trusted for score >= 85 and < 95", () => {

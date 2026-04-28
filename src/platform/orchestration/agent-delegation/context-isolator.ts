@@ -9,6 +9,8 @@
  * @see docs_zh/architecture/00-platform-architecture.md §19
  */
 
+import { normalizeSandboxMode } from "../../control-plane/iam/sandbox-policy.js";
+
 import type {
   AgentContext,
   PermissionSet,
@@ -166,7 +168,8 @@ export class ContextIsolator {
     spec: DelegationSpec,
   ): IsolationLevel {
     // Sandboxed tier always uses SANDBOXED level
-    if (parent.sandboxTier === "container" || parent.sandboxTier === "scoped_external_access") {
+    const parentSandboxTier = normalizeSandboxMode(parent.sandboxTier);
+    if (parentSandboxTier === "workspace_write" || parentSandboxTier === "scoped_external_access" || parentSandboxTier === "restricted_exec") {
       return IsolationLevel.SANDBOXED;
     }
 

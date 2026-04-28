@@ -1,22 +1,22 @@
 # Runtime State Machine Contract
 
-> **v4.3 兼容说明**：本文件保留为历史 OAPEFLIR / task / workflow 状态机说明。v4.3 状态推进权威以 [ADR-110](../adr/110-runtime-state-machine-authority.md)、[harness-run-contract.md](./harness-run-contract.md)、[node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md)、[side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md) 和 [budget-ledger-contract.md](./budget-ledger-contract.md) 为准；新模块必须通过 `RuntimeStateMachine.transition(command)` 推进 truth。
+> **v4.3 兼容说明**：本文件保留为历史 task / workflow / OAPEFLIR 视图状态说明。v4.3 状态推进权威以 [ADR-110](../adr/110-runtime-state-machine-authority.md)、[harness-run-contract.md](./harness-run-contract.md)、[node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md)、[side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md) 和 [budget-ledger-contract.md](./budget-ledger-contract.md) 为准；新模块必须通过 `RuntimeStateMachine.transition(command)` 推进 truth。
 
-> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR 8 阶段状态机，对应 ADR-016。
+> **OAPEFLIR 相关**：本文件中的 OAPEFLIR 段落只表达 stage projection 顺序，不定义任何 truth-grade run / node 状态机。
 > **更新日期**：2026-04-17
 
 ## 1. 范围
 
-本 contract 定义 Phase 1a 必须稳定的任务、工作流、审批和执行状态机，以及允许的状态跃迁。
+本 contract 记录 Ring 1 之后仍需兼容的历史任务、workflow 与 OAPEFLIR 投影视图状态，以及它们与 v4.3 truth 状态机之间的映射约束。
 
 补充说明：
 
 - 本文件回答”状态可以如何变化”。
 - `runtime_execution_contract.md` 回答”runtime run 如何被检查、执行、重试和终止”。
 
-## 1A. OAPEFLIR 顶层阶段状态机
+## 1A. OAPEFLIR 顶层阶段投影视图
 
-Phase 1-4 的 workflow 顶层阶段按以下顺序推进：
+OAPEFLIR 的八阶段只用于解释闭环语义视图，推荐按以下顺序展示：
 
 ```text
 observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
@@ -51,7 +51,7 @@ observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
 
 - `stage` 的 canonical 写法必须是上述枚举，不得使用 `perceive`、`analyze`、`deploy` 等同义词替代。
 - `skipped` 只能用于明确受控跳过，不得用作失败降级别名。
-- `release` 是当前闭环阶段，不等同于一定发生真实外部发布；在当前 phase1-4 authoritative 边界内，可仅推进到 `off / suggest / shadow`。
+- `release` 是当前闭环阶段，不等同于一定发生真实外部发布；真正发布动作仍由 HarnessRuntime / Release Gate 受控推进。
 
 ## 2. TaskStatus
 
@@ -78,7 +78,7 @@ queued -> pending -> in_progress -> done
 - `awaiting_decision` 只用于等待外部审批/人工输入，不替代普通 pause。
 - `done`、`failed`、`cancelled` 为终态，终态后只能通过新建恢复任务进入新生命周期。
 
-## 3. WorkflowStatus
+## 3. WorkflowStatus（legacy projection）
 
 枚举：
 
@@ -106,7 +106,8 @@ queued -> pending -> in_progress -> done
 - `completed` 与 `failed` 为终态。
 - `paused` 必须伴随可恢复原因，例如审批等待、人工输入等待、外部依赖等待。
 - `resuming` 仅作为短暂中间态，用于恢复前的状态修复和 preflight 检查。
-- `WorkflowStatus` 表示 workflow 总体生命周期；具体闭环阶段进度由 `current_stage + StageStatus` 表达，不得把二者混成一个字段。
+- `WorkflowStatus` 只允许作为历史 workflow projection；v4.3 truth run 状态以 `HarnessRun.status` 为准。
+- 具体闭环阶段进度由 `current_stage + StageStatus` 表达，不得把二者混成一个字段。
 
 ## 4. SessionStatus
 
@@ -164,9 +165,9 @@ queued -> pending -> in_progress -> done
 - `approved` / `rejected` 决策只允许生效一次。
 - 新请求替代旧请求时，旧请求必须写成 `superseded`，不能静默覆盖。
 
-## 6. ExecutionStatus
+## 6. ExecutionStatus（legacy execution projection）
 
-> 注意：本枚举在早期文档中曾称 `AgentRunStatus`，现统一为 `ExecutionStatus`，与 `executions.status` 字段和 `transition_service_contract.md` 的入口保持一致。
+> 注意：`ExecutionStatus` 只保留为旧 `executions` 投影视图与迁移说明；新实现入口不得再把它作为权威执行状态枚举。
 
 枚举：
 
@@ -205,6 +206,7 @@ queued -> pending -> in_progress -> done
 - `superseded` 表示该 execution 被新的 attempt 或 handover 取代，旧 execution 不再推进。
 - 重试语义不再由独立状态表达，而通过创建新的 execution attempt（递增 `attempt` 字段）实现，旧 execution 进入 `failed` 或 `superseded`。
 - `succeeded`、`failed`、`cancelled`、`superseded` 为终态。
+- v4.3 truth 执行状态以 `NodeRun.status` 和 `NodeAttemptReceipt` append-only 回执为准，`ExecutionStatus` 不得反向驱动运行时合法性判断。
 
 ## 7. 跨状态一致性约束
 

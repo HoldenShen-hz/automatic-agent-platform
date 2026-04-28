@@ -3,6 +3,7 @@ import {
   mapAutonomyLevelToUnifiedRuntimeMode,
   type UnifiedRuntimeMode,
 } from "../../platform/contracts/types/unified-runtime-mode.js";
+import { resolveDomainRiskSpec, type DomainRiskSpec } from "../../domains/domain-specs.js";
 import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-service.js";
 export { AutonomyGovernanceService } from "./autonomy-governance-service.js";
 export {
@@ -124,6 +125,7 @@ export interface AutonomyEvaluationOptions {
   minVolumeForPromotion?: number;
   minVolumeForDemotion?: number;
   highRiskDomainIds?: readonly string[];
+  resolveDomainRiskSpec?: (domainId: string) => DomainRiskSpec | null;
 }
 
 const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
@@ -133,6 +135,7 @@ const DEFAULT_OPTIONS: AutonomyEvaluationOptions = {
   minVolumeForPromotion: 50,
   minVolumeForDemotion: 3,
   highRiskDomainIds: ["medical", "healthcare", "financial-services", "finance-accounting", "quant-trading", "legal"],
+  resolveDomainRiskSpec,
 };
 
 function successRate(score: CapabilityTrustScore): number {
@@ -254,9 +257,23 @@ function applyDomainRiskAutonomyCap(
   level: AutonomyLevel,
   options: AutonomyEvaluationOptions = DEFAULT_OPTIONS,
 ): AutonomyLevel {
+  const resolvedSpec = options.resolveDomainRiskSpec?.(domainId) ?? DEFAULT_OPTIONS.resolveDomainRiskSpec?.(domainId) ?? null;
+  if (resolvedSpec != null) {
+    if (resolvedSpec.advisoryOnly || resolvedSpec.riskClass === "critical") {
+      return level === "frozen" ? "frozen" : "suggestion";
+    }
+    if (resolvedSpec.humanAccountable || resolvedSpec.riskClass === "high") {
+      return lowestLevel([level, "supervised"]);
+    }
+    if (resolvedSpec.deterministicHotPathOnly && level === "full_auto") {
+      return "semi_auto";
+    }
+    return level;
+  }
+
   const highRiskDomainIds = options.highRiskDomainIds ?? DEFAULT_OPTIONS.highRiskDomainIds ?? [];
-  if (level === "full_auto" && highRiskDomainIds.includes(domainId)) {
-    return "semi_auto";
+  if (highRiskDomainIds.includes(domainId)) {
+    return lowestLevel([level, "supervised"]);
   }
   return level;
 }

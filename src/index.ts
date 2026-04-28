@@ -46,12 +46,9 @@ export interface PlatformRootSummary {
     readonly startupOrder: readonly string[];
     readonly totalCapabilityCount: number;
     readonly capabilityCounts: {
-      readonly phase9a: number;
-      readonly phase9b: number;
-      readonly phase9c: number;
-      readonly phase9d: number;
-      readonly phase9e: number;
-      readonly phase9f: number;
+      readonly ring1: number;
+      readonly ring2: number;
+      readonly ring3: number;
     };
   };
   readonly planes: {
@@ -59,6 +56,7 @@ export interface PlatformRootSummary {
     readonly totalCapabilityCount: number;
     readonly capabilityCounts: {
       readonly interface: number;
+      readonly x1Fabric: number;
       readonly controlPlane: number;
       readonly orchestration: number;
       readonly execution: number;
@@ -194,12 +192,9 @@ export function buildPlatformRootSummary(): PlatformRootSummary {
       startupOrder: domainsStartupPlan.startupOrder,
       totalCapabilityCount: domainsStartupPlan.totalCapabilityCount,
       capabilityCounts: {
-        phase9a: domainsRuntimeCatalog.phase9a.length,
-        phase9b: domainsRuntimeCatalog.phase9b.length,
-        phase9c: domainsRuntimeCatalog.phase9c.length,
-        phase9d: domainsRuntimeCatalog.phase9d.length,
-        phase9e: domainsRuntimeCatalog.phase9e.length,
-        phase9f: domainsRuntimeCatalog.phase9f.length,
+        ring1: domainsRuntimeCatalog.ring1.length,
+        ring2: domainsRuntimeCatalog.ring2.length,
+        ring3: domainsRuntimeCatalog.ring3.length,
       },
     },
     planes: {
@@ -207,6 +202,7 @@ export function buildPlatformRootSummary(): PlatformRootSummary {
       totalCapabilityCount: startupPlan.totalCapabilityCount,
       capabilityCounts: {
         interface: runtimeCatalog.interfacePlane.length,
+        x1Fabric: startupPlan.steps.find((step) => step.stepId === "x1-fabric")?.capabilityCount ?? 0,
         controlPlane: runtimeCatalog.controlPlane.length,
         orchestration: runtimeCatalog.orchestrationPlane.length,
         execution: runtimeCatalog.executionPlane.length,

@@ -29,8 +29,10 @@ test("platform architecture bootstrap summary exposes root startup entry and app
   assert.equal(summary.startupEntryModule, "src/index.ts");
   assert.equal(summary.architectureDocPath, "docs_zh/architecture/00-platform-architecture.md");
   assert.equal(summary.layerCount, 9);
+  assert.equal(summary.planeCount, 6);
   assert.equal(summary.appCount, 3);
   assert.equal(summary.startupTargetCount, 5);
+  assert.ok(summary.planes.some((plane) => plane.planeId === "X1"));
   assert.deepEqual(summary.apps.map((app) => app.kind), ["api", "console", "worker"]);
   assert.deepEqual(summary.startupTargets.map((target) => target.targetKind), ["summary", "demo", "api", "console", "worker"]);
 });
@@ -40,10 +42,12 @@ test("platform architecture bootstrap registers catalogs in the service registry
   try {
     const services = getPlatformArchitectureServices(registry);
     assert.equal(services.layers.length, 9);
+    assert.equal(services.planes.length, 6);
     assert.equal(services.apps.length, 3);
     assert.equal(services.startupTargets.length, 5);
     assert.equal(services.summary.startupEntryModule, "src/index.ts");
     assert.equal(registry.isInitialized("architecture.layer-catalog"), true);
+    assert.equal(registry.isInitialized("architecture.plane-catalog"), true);
     assert.equal(registry.isInitialized("architecture.app-catalog"), true);
     assert.equal(registry.isInitialized("architecture.startup-targets"), true);
     assert.equal(registry.isInitialized("architecture.bootstrap-summary"), true);

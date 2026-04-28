@@ -184,3 +184,49 @@ test("ReplayWorker reports include timing information", async () => {
   // so we just verify it's a non-negative number
   assert.ok(report.durationMs >= 0);
 });
+
+test("ReplayWorker rejects replay policies that allow real side effects", async () => {
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: createMockReplayService(),
+        listTaskIds: () => ["task_1"],
+        replayPolicy: {
+          mode: "trace_only",
+          allowRealSideEffects: true,
+        },
+      }),
+    /allow real side effects/,
+  );
+});
+
+test("ReplayWorker requires sandboxId for isolated sandbox replay", async () => {
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: createMockReplayService(),
+        listTaskIds: () => ["task_1"],
+        replayPolicy: {
+          mode: "isolated_sandbox",
+          allowRealSideEffects: false,
+        },
+      }),
+    /requires sandboxId/,
+  );
+});
+
+test("ReplayWorker records isolated sandbox replay metadata when explicitly allowed", async () => {
+  const worker = new ReplayWorker({
+    replayService: createMockReplayService(),
+    listTaskIds: () => ["task_1"],
+    replayPolicy: {
+      mode: "isolated_sandbox",
+      sandboxId: "replay-sandbox-1",
+      allowRealSideEffects: false,
+    },
+  });
+
+  const report = await worker.runRecoveryCycle();
+  assert.equal(report.metadata.replayPolicyMode, "isolated_sandbox");
+  assert.equal(report.metadata.replaySandboxId, "replay-sandbox-1");
+});

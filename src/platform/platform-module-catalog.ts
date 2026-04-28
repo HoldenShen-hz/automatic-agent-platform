@@ -3,6 +3,7 @@ import { ServiceRegistry } from "./shared/lifecycle/service-registry.js";
 export type PlatformSurfaceId =
   | "contracts"
   | "interface"
+  | "x1-fabric"
   | "control-plane"
   | "orchestration"
   | "execution"
@@ -46,6 +47,13 @@ export const PLATFORM_SURFACE_MANIFESTS: readonly PlatformSurfaceManifest[] = Ob
     description: "P1 Interface Plane, hosting API, Webhook, Scheduler, Console Backend and Ingress.",
     architectureSections: ["§4", "§6", "§7"],
     canonicalSubdomains: ["api", "channel-gateway", "console-backend", "ingress", "scheduler", "webhook"],
+  },
+  {
+    surfaceId: "x1-fabric",
+    entryModule: "src/platform/shared/index.ts",
+    description: "X1 cross-cutting fabric, aggregating shared reliability, observability, compliance, model gateway, and prompt governance surfaces.",
+    architectureSections: ["§4.7", "§9", "§15", "§16", "§17", "§23", "§27", "§58"],
+    canonicalSubdomains: ["shared", "model-gateway", "prompt-engine", "compliance"],
   },
   {
     surfaceId: "control-plane",

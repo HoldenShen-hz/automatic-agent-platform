@@ -20,7 +20,7 @@ test("integration: domains mainline turns all 24 baselines into active smoke-pas
     const orchestrator = registerDomainsRuntimeOrchestrator(registry);
     const startup = orchestrator.startup();
     assert.equal(startup.ready, true);
-    assert.deepEqual(startup.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
+    assert.deepEqual(startup.startupOrder, ["ring1", "ring2", "ring3"]);
 
     const bootstrapped = bootstrapVerticalDomainBaselines();
     assert.equal(bootstrapped.baselines.length, 31);

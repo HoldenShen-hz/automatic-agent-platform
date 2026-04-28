@@ -6,6 +6,14 @@
  * and estimated next step cost against configured limits.
  */
 
+import {
+  createBudgetLedger,
+  type BudgetLedger,
+  type BudgetReservationResult,
+  type BudgetResourceKind,
+} from "../../contracts/executable-contracts/index.js";
+import { BudgetAllocator } from "../../execution/budget-allocator.js";
+
 /**
  * Budget policy defining cost limits and warning thresholds.
  */
@@ -42,6 +50,24 @@ export interface BudgetGuardCascadeResult extends BudgetGuardResult {
   readonly warningScopes: readonly ("task" | "daily" | "monthly")[];
 }
 
+export interface BudgetReservationRequest {
+  readonly policy: BudgetPolicy;
+  readonly spend: ExecutionChainBudgetSpend;
+  readonly tenantId: string;
+  readonly harnessRunId: string;
+  readonly traceId: string;
+  readonly emittedBy: string;
+  readonly ledger?: BudgetLedger;
+  readonly resourceKind?: BudgetResourceKind;
+  readonly expiresAt?: string;
+}
+
+export interface BudgetReservationExecutionResult extends BudgetGuardCascadeResult {
+  readonly ledger: BudgetLedger;
+  readonly reservation: BudgetReservationResult["reservation"] | null;
+  readonly reservationReasonCode: string | null;
+}
+
 /**
  * Evaluates whether a task can proceed given its current cost and next step estimate.
  *
@@ -49,6 +75,12 @@ export interface BudgetGuardCascadeResult extends BudgetGuardResult {
  * if the task should proceed, require approval, or be blocked.
  */
 export class BudgetGuard {
+  private readonly allocator: BudgetAllocator;
+
+  public constructor(options: { readonly allocator?: BudgetAllocator } = {}) {
+    this.allocator = options.allocator ?? new BudgetAllocator();
+  }
+
   public evaluateTaskSpend(input: {
     policy: BudgetPolicy;
     currentTaskCostUsd: number;
@@ -127,6 +159,44 @@ export class BudgetGuard {
       projectedMonthlyCostUsd: projectedMonthly,
       violatedScope: null,
       warningScopes,
+    };
+  }
+
+  public reserveExecutionChainBudget(input: BudgetReservationRequest): BudgetReservationExecutionResult {
+    const evaluation = this.evaluateExecutionChain({
+      policy: input.policy,
+      spend: input.spend,
+    });
+    const ledger = input.ledger ?? createBudgetLedger({
+      tenantId: input.tenantId,
+      harnessRunId: input.harnessRunId,
+      currency: "USD",
+      hardCap: input.policy.maxTaskCostUsd,
+      softCap: Number((input.policy.maxTaskCostUsd * input.policy.warnAtRatio).toFixed(4)),
+    });
+
+    if (!evaluation.allowed || input.spend.nextEstimatedCostUsd <= 0) {
+      return {
+        ...evaluation,
+        ledger,
+        reservation: null,
+        reservationReasonCode: evaluation.reasonCode,
+      };
+    }
+
+    const reserved = this.allocator.reserve({
+      ledger,
+      amount: Number(input.spend.nextEstimatedCostUsd.toFixed(4)),
+      resourceKind: input.resourceKind ?? "token",
+      expiresAt: input.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expectedVersion: ledger.version,
+    });
+
+    return {
+      ...evaluation,
+      ledger: reserved.ledger,
+      reservation: reserved.reservation,
+      reservationReasonCode: "budget.reserved_pre_execution",
     };
   }
 }

@@ -19,16 +19,40 @@ function createConstraintPack(overrides = {}): ConstraintPack {
 
 function createRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
   return {
+    harnessRunId: "run-test-1",
     runId: "run-test-1",
+    tenantId: "tenant:local",
+    confirmedTaskSpecId: "confirmed_task_spec:task-1",
+    requestEnvelopeId: "request_envelope:task-1",
+    requestHash: "request_hash:task-1",
+    constraintPackRef: "constraint_pack:coding",
+    versionLockId: "run-test-1:version_lock",
+    budgetLedgerId: "run-test-1:budget_ledger",
+    currentSeq: 0,
     taskId: "task-1",
     domainId: "coding",
     constraintPack: createConstraintPack(),
+    planGraphBundle: {
+      planGraphBundleId: "plan_graph_bundle:test",
+      harnessRunId: "run-test-1",
+      graph: {
+        nodes: [],
+        edges: [],
+      },
+      validationReport: {
+        valid: true,
+        issues: [],
+      },
+      createdAt: new Date().toISOString(),
+    },
     steps: [],
     maxIterations: 10,
     currentIteration: 1,
     status: "running",
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     completedAt: null,
+    pauseReason: null,
     decision: null,
     contextSnapshots: [],
     sleepLease: null,
@@ -75,7 +99,8 @@ test("RecoveryController.handleFailure with worker_crash triggers recovery", () 
   const run = createRun({ status: "running" });
   const result = controller.handleFailure(run, "worker_crash");
 
-  assert.equal(result.status, "recovering");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
   assert.notEqual(result.recoveryCheckpoint, null);
 });
 
@@ -101,7 +126,8 @@ test("RecoveryController.handleFailure restores from checkpoint when available",
   const freshRun = createRun({ runId: "run-fresh", status: "running" });
   const result = controller.handleFailure(freshRun, "worker_crash");
 
-  assert.equal(result.status, "recovering");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
   assert.notEqual(result.recoveryCheckpoint, null);
 });
 
@@ -115,7 +141,8 @@ test("RecoveryController.handleFailure falls back to durable restore when no che
 
   const result = controller.handleFailure(run, "worker_crash");
 
-  assert.equal(result.status, "recovering");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });
 
 test("RecoveryController passes sourceRun from restore to runtime.recover", () => {
@@ -130,6 +157,7 @@ test("RecoveryController passes sourceRun from restore to runtime.recover", () =
 
   assert.ok(result.recoveryCheckpoint !== null);
   assert.equal(result.recoveryCheckpoint?.runId, run.runId);
+  assert.equal(result.pauseReason, "recovery");
 });
 
 test("RecoveryController returns original run when durable restore returns null and no checkpoint", () => {
@@ -141,7 +169,8 @@ test("RecoveryController returns original run when durable restore returns null 
   const result = controller.handleFailure(run, "worker_crash");
 
   assert.equal(result.runId, run.runId);
-  assert.equal(result.status, "recovering");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });
 
 test("RecoveryController accepts all HarnessFailureType values", () => {
@@ -166,7 +195,8 @@ test("RecoveryController handles recovery for completed run", () => {
   const run = createRun({ status: "completed", completedAt: new Date().toISOString() });
   const result = controller.handleFailure(run, "worker_crash");
 
-  assert.equal(result.status, "recovering");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });
 
 test("RecoveryController preserves other run fields during operator_abort", () => {

@@ -141,7 +141,7 @@ test("definePlugin applies custom security config", () => {
     },
   });
 
-  assert.equal(result.security.sandboxTier, "container");
+  assert.equal(result.security.sandboxTier, "workspace_write");
   assert.deepEqual(result.security.egressDomains, ["api.example.com"]);
 });
 

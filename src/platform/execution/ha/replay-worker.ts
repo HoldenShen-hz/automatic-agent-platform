@@ -13,11 +13,19 @@ export interface ReplayWorkerOptions {
   readonly workerId?: string;
   readonly cadence?: Partial<RecoveryCadence> & Pick<RecoveryCadence, "intervalMs">;
   readonly now?: () => string;
+  readonly replayPolicy?: ReplaySandboxPolicy;
+}
+
+export interface ReplaySandboxPolicy {
+  readonly mode: "trace_only" | "isolated_sandbox";
+  readonly sandboxId?: string;
+  readonly allowRealSideEffects: boolean;
 }
 
 export class ReplayWorker implements RecoveryWorker {
   private readonly cadence: RecoveryCadence;
   private readonly now: () => string;
+  private readonly replayPolicy: ReplaySandboxPolicy;
 
   public constructor(private readonly options: ReplayWorkerOptions) {
     this.cadence = buildRecoveryCadence({
@@ -26,6 +34,11 @@ export class ReplayWorker implements RecoveryWorker {
       priority: options.cadence?.priority ?? "normal",
     });
     this.now = options.now ?? nowIso;
+    this.replayPolicy = options.replayPolicy ?? {
+      mode: "trace_only",
+      allowRealSideEffects: false,
+    };
+    this.assertReplayPolicySafe(this.replayPolicy);
   }
 
   public getWorkerId(): string {
@@ -41,6 +54,7 @@ export class ReplayWorker implements RecoveryWorker {
     const startedMs = Date.now();
 
     try {
+      this.assertReplayPolicySafe(this.replayPolicy);
       const taskIds = [...await this.options.listTaskIds()];
       const reports = taskIds.map((taskId) => this.options.replayService.buildTaskReplayReport(taskId, startedAt));
       const recoveryActiveCount = reports.filter((report) => report.outcome !== "no_recovery_activity").length;
@@ -57,6 +71,8 @@ export class ReplayWorker implements RecoveryWorker {
         metadata: {
           replayedTaskIds: taskIds,
           recoveryActiveCount,
+          replayPolicyMode: this.replayPolicy.mode,
+          replaySandboxId: this.replayPolicy.sandboxId ?? null,
         },
       };
     } catch (error) {
@@ -73,6 +89,15 @@ export class ReplayWorker implements RecoveryWorker {
           message: error instanceof Error ? error.message : String(error),
         }],
       };
+    }
+  }
+
+  private assertReplayPolicySafe(policy: ReplaySandboxPolicy): void {
+    if (policy.allowRealSideEffects) {
+      throw new Error("ReplayWorker refuses replay policies that allow real side effects");
+    }
+    if (policy.mode === "isolated_sandbox" && (policy.sandboxId == null || policy.sandboxId.trim().length === 0)) {
+      throw new Error("ReplayWorker requires sandboxId for isolated_sandbox replay");
     }
   }
 }

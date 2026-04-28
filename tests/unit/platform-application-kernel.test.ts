@@ -15,27 +15,22 @@ test("platform application kernel builds startup plans for app targets", () => {
   assert.equal(apiPlan.selectedApp?.startupCommand, "npm run api");
   assert.ok(apiPlan.requiredLayerManifests.some((layer) => layer.layerId === "platform"));
   assert.ok(apiPlan.requiredLayerManifests.some((layer) => layer.layerId === "apps"));
-  assert.deepEqual(apiPlan.domainsStartupPlan?.startupOrder, ["9a", "9b", "9c", "9d", "9e", "9f"]);
+  assert.deepEqual(apiPlan.domainsStartupPlan?.startupOrder, ["ring1", "ring2", "ring3"]);
   assert.deepEqual(
     {
-      phase9a: apiPlan.domainsRuntimeCatalog?.phase9a.length,
-      phase9b: apiPlan.domainsRuntimeCatalog?.phase9b.length,
-      phase9c: apiPlan.domainsRuntimeCatalog?.phase9c.length,
-      phase9d: apiPlan.domainsRuntimeCatalog?.phase9d.length,
-      phase9e: apiPlan.domainsRuntimeCatalog?.phase9e.length,
-      phase9f: apiPlan.domainsRuntimeCatalog?.phase9f.length,
+      ring1: apiPlan.domainsRuntimeCatalog?.ring1.length,
+      ring2: apiPlan.domainsRuntimeCatalog?.ring2.length,
+      ring3: apiPlan.domainsRuntimeCatalog?.ring3.length,
     },
     {
-      phase9a: 4,
-      phase9b: 4,
-      phase9c: 6,
-      phase9d: 5,
-      phase9e: 6,
-      phase9f: 6,
+      ring1: 8,
+      ring2: 11,
+      ring3: 12,
     },
   );
   assert.deepEqual(apiPlan.planeStartupPlan?.startupOrder, [
     "interface",
+    "x1-fabric",
     "control-plane",
     "orchestration",
     "execution",

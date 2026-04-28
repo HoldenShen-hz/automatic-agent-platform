@@ -79,7 +79,7 @@ test("integration: DomainsRuntimeOrchestrator registers all services in correct 
   assert.ok(retrieved instanceof DomainsRuntimeOrchestrator);
 });
 
-test("integration: DomainsRuntimeOrchestrator startup produces correct phase order", async () => {
+test("integration: DomainsRuntimeOrchestrator startup produces correct ring order", async () => {
   const registry = ServiceRegistry.getInstance();
 
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
@@ -88,24 +88,22 @@ test("integration: DomainsRuntimeOrchestrator startup produces correct phase ord
   assert.equal(result.ready, true, "startup should be ready");
   assert.deepEqual(
     result.startupOrder,
-    ["9a", "9b", "9c", "9d", "9e", "9f"],
-    "startup order should follow phase sequence",
+    ["ring1", "ring2", "ring3"],
+    "startup order should follow ring sequence",
   );
 });
 
-test("integration: DomainsRuntimeOrchestrator startup initializes all phase services", async () => {
+test("integration: DomainsRuntimeOrchestrator startup initializes all ring services", async () => {
   const registry = ServiceRegistry.getInstance();
 
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  // All phase bootstrap services should be initialized
-  for (const phase of ["9a", "9b", "9c", "9d", "9e", "9f"] as const) {
-    assert.ok(
-      result.initializedServiceIds.includes(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS[phase]),
-      `Phase ${phase} should be initialized`,
-    );
-  }
+  assert.deepEqual(result.initializedServiceIds, [
+    "w5.domains.ring.ring1.bootstrap",
+    "w5.domains.ring.ring2.bootstrap",
+    "w5.domains.ring.ring3.bootstrap",
+  ]);
 });
 
 test("integration: DomainsRuntimeOrchestrator startup steps reflect correct dependency chain", async () => {
@@ -114,20 +112,17 @@ test("integration: DomainsRuntimeOrchestrator startup steps reflect correct depe
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  // First step (9a) has no dependencies
-  const step9a = result.steps.find((s) => s.stepId === "9a")!;
-  assert.deepEqual(step9a.initializedDependencyServiceIds, [], "9a should have no dependencies");
+  const ring1 = result.steps.find((s) => s.stepId === "ring1")!;
+  assert.deepEqual(ring1.initializedDependencyServiceIds, [], "ring1 should have no dependencies");
 
-  // Second step (9b) depends on 9a
-  const step9b = result.steps.find((s) => s.stepId === "9b")!;
-  assert.deepEqual(step9b.initializedDependencyServiceIds, [DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS["9a"]]);
+  const ring2 = result.steps.find((s) => s.stepId === "ring2")!;
+  assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
 
-  // Third step (9c) depends on 9b
-  const step9c = result.steps.find((s) => s.stepId === "9c")!;
-  assert.deepEqual(step9c.initializedDependencyServiceIds, [DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS["9b"]]);
+  const ring3 = result.steps.find((s) => s.stepId === "ring3")!;
+  assert.deepEqual(ring3.initializedDependencyServiceIds, ["w5.domains.ring.ring2.bootstrap"]);
 });
 
-test("integration: DomainsRuntimeOrchestrator snapshotReadiness captures all phases", async () => {
+test("integration: DomainsRuntimeOrchestrator snapshotReadiness captures all rings", async () => {
   const registry = ServiceRegistry.getInstance();
 
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
@@ -138,14 +133,10 @@ test("integration: DomainsRuntimeOrchestrator snapshotReadiness captures all pha
   assert.equal(snapshot.runtimeCatalogInitialized, true, "runtime catalog should be initialized");
   assert.equal(snapshot.startupPlanInitialized, true, "startup plan should be initialized");
 
-  // All phases should be captured
-  const phases = snapshot.capabilityReadiness.map((c) => c.stepId);
-  assert.ok(phases.includes("9a"), "should include phase 9a");
-  assert.ok(phases.includes("9b"), "should include phase 9b");
-  assert.ok(phases.includes("9c"), "should include phase 9c");
-  assert.ok(phases.includes("9d"), "should include phase 9d");
-  assert.ok(phases.includes("9e"), "should include phase 9e");
-  assert.ok(phases.includes("9f"), "should include phase 9f");
+  const rings = snapshot.capabilityReadiness.map((c) => c.stepId);
+  assert.ok(rings.includes("ring1"), "should include ring1");
+  assert.ok(rings.includes("ring2"), "should include ring2");
+  assert.ok(rings.includes("ring3"), "should include ring3");
 });
 
 test("integration: DomainsRuntimeOrchestrator can be instantiated with custom registry", async () => {
@@ -168,7 +159,7 @@ test("integration: DomainsRuntimeOrchestrator prepare returns correct plan struc
   assert.ok("totalCapabilityCount" in plan, "plan should have totalCapabilityCount");
   assert.ok("startupOrder" in plan, "plan should have startupOrder");
 
-  assert.equal(plan.steps.length, 6, "should have 6 steps");
+  assert.equal(plan.steps.length, 3, "should have 3 steps");
   assert.equal(plan.totalCapabilityCount, 31, "should have 31 total capabilities");
 });
 
@@ -202,7 +193,7 @@ test("integration: Full startup flow bootstrap, catalog, plan, orchestrator", as
   const result = orchestrator.startup();
 
   assert.equal(result.ready, true);
-  assert.equal(result.steps.length, 6);
+  assert.equal(result.steps.length, 3);
 
   // Verify all services are initialized
   assert.ok(registry.isInitialized(DOMAINS_BOOTSTRAP_SERVICE_ID));
@@ -236,11 +227,7 @@ test("integration: DomainsRuntimeCatalog is accessible after orchestrator startu
 
   const catalog = registry.get<DomainsRuntimeCatalog>(DOMAINS_RUNTIME_CATALOG_SERVICE_ID);
 
-  // Verify catalog has all phases
-  assert.ok(catalog.phase9a.length > 0, "phase9a should have baselines");
-  assert.ok(catalog.phase9b.length > 0, "phase9b should have baselines");
-  assert.ok(catalog.phase9c.length > 0, "phase9c should have baselines");
-  assert.ok(catalog.phase9d.length > 0, "phase9d should have baselines");
-  assert.ok(catalog.phase9e.length > 0, "phase9e should have baselines");
-  assert.ok(catalog.phase9f.length > 0, "phase9f should have baselines");
+  assert.ok(catalog.ring1.length > 0, "ring1 should have baselines");
+  assert.ok(catalog.ring2.length > 0, "ring2 should have baselines");
+  assert.ok(catalog.ring3.length > 0, "ring3 should have baselines");
 });

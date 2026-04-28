@@ -170,7 +170,7 @@ test("HarnessRuntimeService.assertInvariants returns empty violations for valid 
   assert.equal(result.violations.length, 0);
 });
 
-test("HarnessRuntimeService.sleep creates a sleeping run with a sleep lease", () => {
+test("HarnessRuntimeService.sleep pauses a run with a sleep lease", () => {
   const service = new HarnessRuntimeService();
   const constraintPack: ConstraintPack = {
     policyIds: [],
@@ -190,7 +190,8 @@ test("HarnessRuntimeService.sleep creates a sleeping run with a sleep lease", ()
 
   const sleepingRun = service.sleep(run, "waiting for resource", "2026-04-24T00:00:00Z");
 
-  assert.equal(sleepingRun.status, "sleeping");
+  assert.equal(sleepingRun.status, "paused");
+  assert.equal(sleepingRun.pauseReason, "sleep");
   assert.ok(sleepingRun.sleepLease !== null);
   assert.equal(sleepingRun.sleepLease?.reason, "waiting for resource");
   assert.equal(sleepingRun.sleepLease?.resumeAt, "2026-04-24T00:00:00Z");
@@ -218,10 +219,11 @@ test("HarnessRuntimeService.resume clears sleep lease and returns to running", (
   const resumedRun = service.resume(sleepingRun);
 
   assert.equal(resumedRun.status, "running");
+  assert.equal(resumedRun.pauseReason, null);
   assert.equal(resumedRun.sleepLease, null);
 });
 
-test("HarnessRuntimeService.recover creates a recovery checkpoint", () => {
+test("HarnessRuntimeService.recover pauses a run with a recovery checkpoint", () => {
   const service = new HarnessRuntimeService();
   const constraintPack: ConstraintPack = {
     policyIds: [],
@@ -241,7 +243,8 @@ test("HarnessRuntimeService.recover creates a recovery checkpoint", () => {
 
   const recoveredRun = service.recover(run);
 
-  assert.equal(recoveredRun.status, "recovering");
+  assert.equal(recoveredRun.status, "paused");
+  assert.equal(recoveredRun.pauseReason, "recovery");
   assert.ok(recoveredRun.recoveryCheckpoint !== null);
   assert.equal(recoveredRun.recoveryCheckpoint?.runId, run.runId);
 });

@@ -1,4 +1,6 @@
+import { ValidationError } from "../errors.js";
 import type { PlanStep } from "../../orchestration/oapeflir/types/plan.js";
+import type { SideEffectStatus } from "../executable-contracts/index.js";
 import { newId, nowIso } from "./ids.js";
 
 export interface PlatformPrincipal {
@@ -56,7 +58,7 @@ export interface SideEffectRecord {
   readonly effectId: string;
   readonly category: SideEffectExpectation["category"];
   readonly targetRef: string;
-  readonly status: "proposed" | "committed" | "rolled_back" | "failed";
+  readonly status: SideEffectStatus | "rolled_back";
   readonly summary?: string;
   readonly evidenceRef?: string;
 }
@@ -168,15 +170,11 @@ export function createControlDirective<TParams extends Record<string, unknown>>(
   directiveId?: string;
   expiresAt?: string;
 }): ControlDirective<TParams> {
-  return {
-    directiveId: input.directiveId ?? newId("directive"),
-    type: input.type,
-    targetScope: input.targetScope ?? {},
-    issuedBy: input.issuedBy,
-    reason: input.reason,
-    params: (input.params ?? {}) as TParams,
-    ...(input.expiresAt != null ? { expiresAt: input.expiresAt } : {}),
-  };
+  void input;
+  throw new ValidationError(
+    "platform_contracts.legacy_control_directive_forbidden",
+    "Legacy ControlDirective factory is disabled. Use executable-contracts or governance plane directives.",
+  );
 }
 
 export function createExecutionPlan(input: {
@@ -191,18 +189,11 @@ export function createExecutionPlan(input: {
   planId?: string;
   createdAt?: string;
 }): ExecutionPlan {
-  return {
-    planId: input.planId ?? newId("plan"),
-    traceId: input.traceId,
-    principal: input.principal,
-    workflowRunId: input.workflowRunId,
-    steps: input.steps,
-    fallbackStrategy: input.fallbackStrategy ?? "retry",
-    approvalGates: input.approvalGates ?? [],
-    sideEffectExpectations: input.sideEffectExpectations ?? [],
-    budget: input.budget,
-    createdAt: input.createdAt ?? nowIso(),
-  };
+  void input;
+  throw new ValidationError(
+    "platform_contracts.legacy_execution_plan_forbidden",
+    "Legacy ExecutionPlan factory is disabled. Use PlanGraphBundle from executable-contracts.",
+  );
 }
 
 export function createExecutionReceipt(input: {
@@ -215,16 +206,11 @@ export function createExecutionReceipt(input: {
   errorDetail?: ExecutionReceiptErrorDetail;
   receiptId?: string;
 }): ExecutionReceipt {
-  return {
-    receiptId: input.receiptId ?? newId("receipt"),
-    planId: input.planId,
-    stepId: input.stepId,
-    status: input.status,
-    durationMs: input.durationMs,
-    sideEffects: input.sideEffects ?? [],
-    evidenceRefs: input.evidenceRefs ?? [],
-    ...(input.errorDetail != null ? { errorDetail: input.errorDetail } : {}),
-  };
+  void input;
+  throw new ValidationError(
+    "platform_contracts.legacy_execution_receipt_forbidden",
+    "Legacy ExecutionReceipt factory is disabled. Use NodeAttemptReceipt from executable-contracts.",
+  );
 }
 
 export function createStateCommand<TPayload>(input: {

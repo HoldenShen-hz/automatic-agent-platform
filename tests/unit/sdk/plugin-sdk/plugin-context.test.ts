@@ -25,7 +25,7 @@ test("PluginContext creates with minimal config", () => {
   assert.equal(ctx.taskId, "unknown");
   assert.equal(ctx.tenantId, "default");
   assert.equal(ctx.userId, "anonymous");
-  assert.equal(ctx.sandboxTier, "process");
+  assert.equal(ctx.sandboxTier, "read_only");
 });
 
 test("PluginContext creates with full config", () => {
@@ -50,7 +50,7 @@ test("PluginContext creates with full config", () => {
   assert.equal(ctx.taskId, "task_1");
   assert.equal(ctx.tenantId, "tenant_1");
   assert.equal(ctx.userId, "user_1");
-  assert.equal(ctx.sandboxTier, "container");
+  assert.equal(ctx.sandboxTier, "workspace_write");
 });
 
 test("PluginContext.get returns undefined for missing key", () => {

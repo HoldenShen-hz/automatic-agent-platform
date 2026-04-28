@@ -15,13 +15,14 @@ test("five-plane startup plan captures the canonical startup order", () => {
   const plan = buildFivePlaneStartupPlan();
   assert.deepEqual(plan.startupOrder, [
     "interface",
+    "x1-fabric",
     "control-plane",
     "orchestration",
     "execution",
     "state-evidence",
   ]);
-  assert.equal(plan.totalCapabilityCount, 50);
-  assert.equal(plan.steps[2]?.bootstrapServiceId, "plane.orchestration.bootstrap");
+  assert.equal(plan.totalCapabilityCount, 70);
+  assert.equal(plan.steps[3]?.bootstrapServiceId, "plane.orchestration.bootstrap");
 });
 
 test("five-plane startup plan registers after plane bootstraps are available", async () => {
@@ -30,22 +31,23 @@ test("five-plane startup plan registers after plane bootstraps are available", a
     registerFivePlaneRuntimeCatalog(registry);
     const plan = registerFivePlaneStartupPlan(registry);
     assert.equal(plan.steps[0]?.entryModule, "src/platform/interface/index.ts");
-    assert.equal(plan.steps[4]?.dependsOnStepIds.includes("execution"), true);
+    assert.equal(plan.steps[5]?.dependsOnStepIds.includes("execution"), true);
     assert.equal(registry.isInitialized(FIVE_PLANE_STARTUP_PLAN_SERVICE_ID), true);
   } finally {
     await registry.reset();
   }
 });
 
-test("buildFivePlaneStartupPlan returns five steps", () => {
+test("buildFivePlaneStartupPlan returns six steps", () => {
   const plan = buildFivePlaneStartupPlan();
-  assert.equal(plan.steps.length, 5);
+  assert.equal(plan.steps.length, 6);
 });
 
 test("each step has correct stepId matching its position", () => {
   const plan = buildFivePlaneStartupPlan();
   const expectedStepIds: FivePlaneStartupStepId[] = [
     "interface",
+    "x1-fabric",
     "control-plane",
     "orchestration",
     "execution",
@@ -75,7 +77,14 @@ test("control-plane step depends on interface", () => {
   const plan = buildFivePlaneStartupPlan();
   const controlPlaneStep = plan.steps.find((s) => s.stepId === "control-plane");
   assert.ok(controlPlaneStep);
-  assert.deepEqual(controlPlaneStep.dependsOnStepIds, ["interface"]);
+  assert.deepEqual(controlPlaneStep.dependsOnStepIds, ["x1-fabric"]);
+});
+
+test("x1-fabric step depends on interface", () => {
+  const plan = buildFivePlaneStartupPlan();
+  const x1Step = plan.steps.find((s) => s.stepId === "x1-fabric");
+  assert.ok(x1Step);
+  assert.deepEqual(x1Step.dependsOnStepIds, ["interface"]);
 });
 
 test("orchestration step depends on control-plane", () => {
@@ -103,10 +112,11 @@ test("each step has correct bootstrapServiceId", () => {
   const plan = buildFivePlaneStartupPlan();
 
   assert.equal(plan.steps[0]!.bootstrapServiceId, "plane.interface.bootstrap");
-  assert.equal(plan.steps[1]!.bootstrapServiceId, "plane.control.bootstrap");
-  assert.equal(plan.steps[2]!.bootstrapServiceId, "plane.orchestration.bootstrap");
-  assert.equal(plan.steps[3]!.bootstrapServiceId, "plane.execution.bootstrap");
-  assert.equal(plan.steps[4]!.bootstrapServiceId, "plane.state-evidence.bootstrap");
+  assert.equal(plan.steps[1]!.bootstrapServiceId, "plane.x1-fabric.bootstrap");
+  assert.equal(plan.steps[2]!.bootstrapServiceId, "plane.control.bootstrap");
+  assert.equal(plan.steps[3]!.bootstrapServiceId, "plane.orchestration.bootstrap");
+  assert.equal(plan.steps[4]!.bootstrapServiceId, "plane.execution.bootstrap");
+  assert.equal(plan.steps[5]!.bootstrapServiceId, "plane.state-evidence.bootstrap");
 });
 
 test("totalCapabilityCount equals sum of all step capabilityCounts", () => {
@@ -142,6 +152,7 @@ test("steps are readonly arrays", () => {
 test("FivePlaneStartupStepId type accepts all valid step IDs", () => {
   const validIds: FivePlaneStartupStepId[] = [
     "interface",
+    "x1-fabric",
     "control-plane",
     "orchestration",
     "execution",

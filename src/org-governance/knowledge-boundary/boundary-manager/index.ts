@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const KnowledgeBoundarySchema = z.object({
   boundaryId: z.string().min(1),
+  tenantId: z.string().min(1).nullable().optional(),
   ownerOrgNodeId: z.string().min(1),
   namespaceIds: z.array(z.string()).default([]),
   accessPolicy: z.enum(["strict", "controlled"]).optional(),

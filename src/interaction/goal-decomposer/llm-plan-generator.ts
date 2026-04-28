@@ -1,4 +1,9 @@
 import type { UnifiedChatProvider } from "../../platform/model-gateway/provider-registry/index.js";
+import type {
+  BudgetLedger,
+  BudgetResourceKind,
+} from "../../platform/contracts/executable-contracts/index.js";
+import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
 import type { Goal, PlannedTask, TaskDependency } from "./index.js";
 
 export interface LlmPlan {
@@ -13,6 +18,16 @@ export interface LlmPlanGenerator {
 export interface UnifiedChatPlanGeneratorOptions {
   readonly provider: UnifiedChatProvider;
   readonly model?: string;
+  readonly budgetControl?: {
+    readonly allocator?: BudgetAllocator;
+    readonly ledger: BudgetLedger;
+    readonly estimatedCostUsd: number;
+    readonly tenantId: string;
+    readonly traceId: string;
+    readonly emittedBy: string;
+    readonly expiresAt?: string;
+    readonly resourceKind?: BudgetResourceKind;
+  };
 }
 
 interface SerializableTask {
@@ -37,6 +52,17 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
   }
 
   public async generate(goal: Goal): Promise<LlmPlan> {
+    const allocator = this.options.budgetControl?.allocator ?? new BudgetAllocator();
+    const reservedBudget = this.options.budgetControl == null
+      ? null
+      : allocator.reserve({
+        ledger: this.options.budgetControl.ledger,
+        amount: Number(this.options.budgetControl.estimatedCostUsd.toFixed(4)),
+        resourceKind: this.options.budgetControl.resourceKind ?? "token",
+        expiresAt: this.options.budgetControl.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        expectedVersion: this.options.budgetControl.ledger.version,
+      });
+
     const response = await this.options.provider.complete(this.buildPrompt(goal), {
       model: this.model,
       system:
@@ -44,6 +70,18 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
       temperature: 0.1,
       maxTokens: 1200,
     });
+    if (reservedBudget != null) {
+      allocator.settle({
+        ledger: reservedBudget.ledger,
+        reservation: reservedBudget.reservation,
+        actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
+        context: {
+          tenantId: this.options.budgetControl!.tenantId,
+          traceId: this.options.budgetControl!.traceId,
+          emittedBy: this.options.budgetControl!.emittedBy,
+        },
+      });
+    }
 
     const parsed = this.parsePlan(response);
     return {

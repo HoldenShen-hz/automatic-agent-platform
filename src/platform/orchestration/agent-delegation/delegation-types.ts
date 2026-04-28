@@ -9,6 +9,8 @@
 // Context Types
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { SandboxModeLike } from "../../control-plane/iam/sandbox-policy.js";
+
 export interface AgentContext {
   agentId: string;
   agentType: string;
@@ -16,7 +18,7 @@ export interface AgentContext {
   delegationDepth: number;
   activeDelegations: ReadonlyArray<string>;
   permissions: PermissionSet;
-  sandboxTier: "none" | "process" | "container" | "scoped_external_access";
+  sandboxTier: SandboxModeLike;
   correlationId: string;
   tenantId: string | null;
 }

@@ -34,8 +34,10 @@
 | `internal_details` | `json?` | 面向内部排障的细节 |
 | `source` | `gateway \| runtime \| workflow \| provider \| tool \| storage \| policy` | 主要来源 |
 | `trace_id` | `string?` | 链路追踪 |
-| `task_id?` | `string` | 关联任务 |
-| `execution_id?` | `string` | 关联执行 |
+| `task_id?` | `string` | 关联任务（兼容投影） |
+| `harness_run_id?` | `string` | 关联 HarnessRun |
+| `node_run_id?` | `string` | 关联 NodeRun |
+| `execution_id?` | `string` | legacy execution 投影键 |
 | `caused_by?` | `string` | 上游错误码或异常引用 |
 | `occurred_at` | `timestamp` | 发生时间 |
 
