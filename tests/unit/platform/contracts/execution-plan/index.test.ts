@@ -1,7 +1,14 @@
 /**
- * @deprecated This test suite validates the deprecated ExecutionPlan contract.
- * Per R6-25, these tests verify the legacy contract is properly blocked.
- * New tests should use PlanGraphBundle from executable-contracts instead.
+ * Unit Tests: Execution Plan Contract (DEPRECATED)
+ *
+ * @deprecated These tests validate the deprecated ExecutionPlan contract.
+ * ExecutionPlan was deprecated in v4.3 per §4.4 - use PlanGraphBundle instead.
+ * These tests verify the deprecation guard works correctly.
+ * New tests should use PlanGraphBundle from executable-contracts.
+ *
+ * Per R6-25: The legacy contract tests are intentionally minimal and only
+ * verify that the deprecation guard throws correctly. The actual validation
+ * logic has been removed - the contract is fully blocked.
  */
 
 import assert from "node:assert/strict";
@@ -15,6 +22,7 @@ import { ValidationError } from "../../../../../src/platform/contracts/errors.js
 
 /**
  * @deprecated ExecutionPlanStep is deprecated per §4.4. Use PlanNode from executable-contracts instead.
+ * This type is retained for legacy adapter compatibility only.
  */
 test("ExecutionPlanStep remains available as a compatibility type", () => {
   const step: ExecutionPlanStep = {
@@ -28,6 +36,10 @@ test("ExecutionPlanStep remains available as a compatibility type", () => {
   assert.equal(step.stepId, "legacy-step-1");
 });
 
+/**
+ * @deprecated Per R6-25: createExecutionPlan is blocked - ExecutionPlan is no longer canonical.
+ * Use PlanGraphBundle from executable-contracts instead.
+ */
 test("createExecutionPlan fails fast because ExecutionPlan is no longer canonical", () => {
   assert.throws(
     () =>

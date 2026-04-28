@@ -7,8 +7,8 @@ import {
   type BudgetReservationResult,
   type BudgetResourceKind,
   type BudgetSettlement,
-  ValidationError,
 } from "../contracts/executable-contracts/index.js";
+import { ValidationError } from "../contracts/errors.js";
 import {
   RuntimeStateMachine,
   type RuntimeTransitionResult,

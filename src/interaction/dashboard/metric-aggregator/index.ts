@@ -99,7 +99,7 @@ function deriveCostMetrics(totalCost: number, budgetLimit: number, taskCount: nu
   };
 }
 
-function deriveApprovalMetrics(pendingCount: number, resolved24h: number): ApprovalMetricSnapshot {
+function deriveApprovalMetrics(pendingCount: number, resolvedLast24h: number): ApprovalMetricSnapshot {
   return {
     pendingCount,
     avgWaitTimeMs: pendingCount > 10 ? 30000 : pendingCount > 5 ? 15000 : 5000,

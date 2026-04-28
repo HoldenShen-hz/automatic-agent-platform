@@ -254,6 +254,7 @@ public registerClient(
   /**
    * Pushes a dashboard delta to all relevant clients.
    * Maps delta change types to domain event types per UI spec.
+   * Routes based on channel-based subscription model.
    *
    * @param delta - Dashboard delta to push
    * @returns Number of clients that received the push
@@ -261,9 +262,35 @@ public registerClient(
   public pushDelta(delta: DashboardDelta): number {
     const affectedClients = new Set<string>();
 
-    // Find all clients subscribed to affected metrics
-    for (const metric of delta.affectedMetrics) {
-      const clients = this.dashboardSubscribers.get(metric);
+    // Map change types to channel-based routing per UI spec
+    for (const change of delta.changes) {
+      let channel: DashboardChannel;
+      let filterId: string | undefined;
+
+      switch (change.changeType) {
+        case "task_created":
+        case "task_updated":
+          channel = "task";
+          filterId = change.entityId;
+          break;
+        case "task_completed":
+        case "task_failed":
+          channel = "task";
+          filterId = change.entityId;
+          break;
+        case "incident_opened":
+        case "incident_resolved":
+          channel = "admin";
+          break;
+        case "system_health_changed":
+          channel = "global";
+          break;
+        default:
+          channel = "global";
+      }
+
+      const key = channelToKey(channel, filterId);
+      const clients = this.channelSubscribers.get(key);
       if (clients) {
         for (const clientId of clients) {
           affectedClients.add(clientId);
@@ -271,10 +298,10 @@ public registerClient(
       }
     }
 
-    // Also push to clients subscribed to "all" dashboards
-    const allClients = this.dashboardSubscribers.get("*");
-    if (allClients) {
-      for (const clientId of allClients) {
+    // Also push to clients subscribed to global channel
+    const globalClients = this.channelSubscribers.get("global");
+    if (globalClients) {
+      for (const clientId of globalClients) {
         affectedClients.add(clientId);
       }
     }

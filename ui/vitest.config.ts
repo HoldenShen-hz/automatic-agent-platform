@@ -13,10 +13,12 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary"],
       thresholds: {
-        lines: 30,
-        functions: 30,
-        statements: 30,
-        branches: 20,
+        // §7.2.6: shared≥90%/ui-core≥80%/features≥70%/apps≥50%
+        lines: 50,
+        functions: 50,
+        statements: 50,
+        branches: 50,
+        perManualProject: true,
       },
     },
   },

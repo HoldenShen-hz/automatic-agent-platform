@@ -583,7 +583,7 @@ export interface EventEnvelope<TPayload extends JsonValue = JsonValue> {
   readonly occurredAt: string;
 }
 
-export type EventReplayBehavior = "replay_as_fact" | "skip_side_effect" | "simulate_projection" | "forbidden";
+export type EventReplayBehavior = "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden";
 export type EventSourceOfTruth = "platform" | "projection";
 
 export interface PlatformFactEvent<TPayload extends JsonValue = JsonValue> extends EventEnvelope<TPayload> {

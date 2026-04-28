@@ -164,6 +164,10 @@ export interface CiGateOptions {
   baselinePromptVersion?: string | null;
   improvementScoreThreshold?: number;
   passingVerdicts?: readonly QualityVerdict[];
+  /** §21.7: Enforce risk-level independence for high-risk evaluations */
+  enforceIndependenceForHighRisk?: boolean;
+  /** §21.7: Required independent judge for high-risk evaluations */
+  requiredIndependentJudgeForHighRisk?: boolean;
 }
 
 type RawRow = Record<string, unknown>;

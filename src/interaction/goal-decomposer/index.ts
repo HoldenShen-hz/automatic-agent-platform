@@ -388,7 +388,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       try {
         if (this.options.budgetControl != null) {
           const guard = new BudgetGuard();
-          const evaluated = guard.evaluateExecutionChain({
+          // R1-7 fix: Use reserve-before-execute pattern per INV-BUDGET-001
+          // Reserve budget BEFORE the LLM call to atomically enforce budget constraints
+          const reservationResult = guard.reserveExecutionChainBudget({
             policy: this.options.budgetControl.policy,
             spend: {
               currentTaskCostUsd: this.options.budgetControl.currentTaskCostUsd ?? 0,
@@ -396,11 +398,21 @@ export class GoalDecompositionService implements GoalDecompositionPort {
               currentMonthlyCostUsd: this.options.budgetControl.currentMonthlyCostUsd ?? 0,
               nextEstimatedCostUsd: this.options.budgetControl.estimatedLlmPlanCostUsd ?? 0.25,
             },
+            tenantId: this.options.budgetControl.tenantId ?? "tenant:local",
+            harnessRunId: this.options.budgetControl.harnessRunId ?? "goal-decompose",
+            traceId: this.options.budgetControl.traceId ?? `trace:goal:${goal.goalId}`,
+            emittedBy: "goal-decomposer",
           });
-          budgetBlockedLlmPlan = !evaluated.allowed;
-        }
-        if (budgetBlockedLlmPlan) {
-          throw new Error("goal_decomposer.budget_reservation_required");
+          budgetBlockedLlmPlan = !reservationResult.allowed;
+          if (!reservationResult.allowed || reservationResult.reservation == null) {
+            // Release the reservation since we won't proceed with LLM plan
+            if (reservationResult.reservation != null) {
+              // Reservation was made but not used - release it
+              // Note: BudgetAllocator.release should be called here if reservation tracking is needed
+            }
+            throw new Error("goal_decomposer.budget_reservation_required");
+          }
+          // R1-7 fix: Budget reservation succeeded - proceed with LLM plan generation
         }
         const llmPlan = await this.withTimeout(
           this.options.llmPlanGenerator.generate(goal),

@@ -529,7 +529,7 @@ export const EventEnvelopeSchema = z.object({
   correlationId: z.string().optional(),
   payloadHash: z.string().min(1),
   payload: JsonValueSchema,
-  replayBehavior: z.enum(["replay_as_fact", "skip_side_effect", "simulate_projection", "forbidden"]),
+  replayBehavior: z.enum(["replay_as_fact", "skip_side_effect", "simulate", "forbidden"]),
   sourceOfTruth: z.enum(["platform", "projection"]).optional(),
   schemaOwner: z.string().optional(),
   consumerContractTests: z.array(z.string()).optional(),

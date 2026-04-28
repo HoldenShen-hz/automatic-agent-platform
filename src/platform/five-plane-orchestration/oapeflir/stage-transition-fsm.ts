@@ -120,8 +120,17 @@ export class StageTransitionFSM {
     }
 
     if (targetIndex < currentIndex) {
-      // §45.7/§13.4: Allow backward transitions for feedback-driven replanning
-      // A feedback signal may require returning to an earlier stage (e.g., feedback→plan)
+      // §45.7/§13.4: Allow backward transitions when current stage is a valid predecessor
+      // This supports feedback-driven replanning (feedback→plan) and other re-entry scenarios
+      if (validPredecessors.includes(currentStage)) {
+        return {
+          allowed: true,
+          targetStage,
+          reasonCode: "fsm.valid_predecessor_backward",
+          reasonCodes: [`fsm.valid_predecessor_backward: ${currentStage} → ${targetStage}`],
+        };
+      }
+      // Additional allowlist for feedback-driven replan scenarios where target is plan/assess/execute
       const isFeedbackDrivenReplan = (currentStage === "feedback" || currentStage === "learn" || currentStage === "improve" || currentStage === "release")
         && (targetStage === "plan" || targetStage === "assess" || targetStage === "execute");
       if (isFeedbackDrivenReplan) {

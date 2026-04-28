@@ -361,6 +361,7 @@ test("validateWriteAccess denies when lease has expired even if other fields mat
 
   const result = service.validateWriteAccess({
     executionId: "exec-1",
+    leaseId: "lease-1", // Must match active lease id
     workerId: "worker-1",
     fencingToken: 5,
   });
@@ -393,6 +394,7 @@ test("validateWriteAccess allows access when fence token matches and lease is ac
 
   const result = service.validateWriteAccess({
     executionId: "exec-1",
+    leaseId: "lease-1", // Must match active lease id
     workerId: "worker-1",
     fencingToken: 42,
   });

@@ -2,10 +2,12 @@ import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const distRoot = join(process.cwd(), "apps/web/dist/assets");
+// §7.3.1 perf budget: main<200KB gz/lazy chunk<100KB gz
+// With ~2.5-3x gzip ratio, raw limits are ~500KB/250KB
 const budgets = {
-  maxJsChunkBytes: 550 * 1024,
-  maxCssChunkBytes: 150 * 1024,
-  totalBytes: 1200 * 1024,
+  maxJsChunkBytes: 250 * 1024,   // ~100KB gz per lazy chunk
+  maxCssChunkBytes: 100 * 1024,  // ~40KB gz
+  totalBytes: 600 * 1024,        // ~200-240KB gz total
 };
 
 const assets = readdirSync(distRoot).map((file) => ({
