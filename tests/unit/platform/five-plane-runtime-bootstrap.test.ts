@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildFivePlaneRuntimeCatalog,
   FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID,
+  X1_FABRIC_BOOTSTRAP_SERVICE_ID,
   registerFivePlaneRuntimeCatalog,
   type FivePlaneRuntimeCatalog,
 } from "../../../src/platform/five-plane-runtime-bootstrap.js";
@@ -26,6 +27,7 @@ test("five-plane runtime bootstrap registers plane catalogs in the service regis
     assert.equal(registry.isInitialized(FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID), true);
     assert.equal(registry.isInitialized("plane.interface.catalog"), true);
     assert.equal(registry.isInitialized("plane.interface.bootstrap"), true);
+    assert.equal(registry.isInitialized(X1_FABRIC_BOOTSTRAP_SERVICE_ID), true);
     assert.equal(registry.isInitialized("plane.control.catalog"), true);
     assert.equal(registry.isInitialized("plane.control.bootstrap"), true);
     assert.equal(registry.isInitialized("plane.orchestration.catalog"), true);
@@ -64,6 +66,7 @@ test("registerFivePlaneRuntimeCatalog registers all plane bootstrap services", a
   try {
     registerFivePlaneRuntimeCatalog(registry);
     assert.equal(registry.isInitialized("plane.interface.bootstrap"), true);
+    assert.equal(registry.isInitialized(X1_FABRIC_BOOTSTRAP_SERVICE_ID), true);
     assert.equal(registry.isInitialized("plane.control.bootstrap"), true);
     assert.equal(registry.isInitialized("plane.orchestration.bootstrap"), true);
     assert.equal(registry.isInitialized("plane.execution.bootstrap"), true);

@@ -192,7 +192,7 @@ export class ContextIsolator {
   ): AgentContext["sandboxTier"] {
     // Child sandbox tier is determined by parent's sandbox tier
     // Child cannot have more privilege than parent
-    return parent.sandboxTier;
+    return normalizeSandboxMode(parent.sandboxTier);
   }
 
   private narrowPermissionsInternal(

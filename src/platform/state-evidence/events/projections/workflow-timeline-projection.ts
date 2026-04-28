@@ -199,8 +199,10 @@ function isEventProcessed(state: WorkflowTimelineState, eventId: string): boolea
  * Implements ProjectionHandler interface for workflow timeline tracking.
  * Handles all workflow-related events to build a complete chronological timeline.
  * Events handled:
- * - workflow:step_completed - Step completion
- * - workflow:step_failed - Step failure
+ * - platform.node_run.status_changed - Canonical node-run status projection
+ * - platform.harness_run.status_changed - Canonical harness-run status projection
+ * - workflow:step_completed - Legacy step completion projection input
+ * - workflow:step_failed - Legacy step failure projection input
  * - division:completed - Division completed
  * - division:failed - Division failed
  * - subtask:completed - Subtask completed
@@ -208,8 +210,8 @@ function isEventProcessed(state: WorkflowTimelineState, eventId: string): boolea
  * - task:status_changed - Task status transitions
  * - decision:requested - Decision requested
  * - decision:responded - Decision responded
- * - workflow_run.created - Workflow run created
- * - workflow_run.failed - Workflow run failed
+ * - workflow_run.created - Legacy workflow-run created projection input
+ * - workflow_run.failed - Legacy workflow-run failed projection input
  *
  * @param state - Current projection state (null for first event)
  * @param event - Input event to apply
@@ -287,6 +289,25 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
       }
       break;
 
+    case "platform.harness_run.status_changed": {
+      const toStatus = (payload.toStatus as string | null | undefined) ?? (payload.status as string | null | undefined);
+      if (toStatus === "completed") {
+        newState.status = "completed";
+        newState.completedAt = event.createdAt;
+      } else if (toStatus === "failed" || toStatus === "aborted") {
+        newState.status = "failed";
+        newState.failedAt = event.createdAt;
+      } else if (toStatus === "paused" || toStatus === "pausing") {
+        newState.status = "awaiting_decision";
+      } else {
+        newState.status = "running";
+        if (newState.startedAt === null) {
+          newState.startedAt = event.createdAt;
+        }
+      }
+      break;
+    }
+
     case "workflow:step_completed":
       if (stepId) {
         newState.completedSteps[stepId] = event.createdAt;
@@ -298,6 +319,23 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
         }
       }
       break;
+
+    case "platform.node_run.status_changed": {
+      const toStatus = (payload.toStatus as string | null | undefined) ?? (payload.status as string | null | undefined);
+      if (stepId && (toStatus === "succeeded" || toStatus === "completed")) {
+        newState.completedSteps[stepId] = event.createdAt;
+      }
+      if (stepId && (toStatus === "failed" || toStatus === "aborted" || toStatus === "policy_blocked")) {
+        newState.failedSteps[stepId] = event.createdAt;
+      }
+      if (newState.status === "pending" && toStatus != null) {
+        newState.status = "running";
+        if (newState.startedAt === null) {
+          newState.startedAt = event.createdAt;
+        }
+      }
+      break;
+    }
 
     case "workflow:step_failed":
       if (stepId) {
@@ -311,6 +349,18 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
         failedStepId: stepId,
         failedAt: event.createdAt,
       };
+      break;
+
+    case "platform.side_effect.status_changed":
+    case "platform.budget_ledger.status_changed":
+    case "platform.budget_reservation.status_changed":
+    case "platform.graph_scheduler.decision_recorded":
+      if (newState.status === "pending") {
+        newState.status = "running";
+        if (newState.startedAt === null) {
+          newState.startedAt = event.createdAt;
+        }
+      }
       break;
 
     case "division:completed":

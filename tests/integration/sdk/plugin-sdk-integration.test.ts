@@ -222,7 +222,7 @@ test("plugin SDK: PluginContext initializes with pluginId and provides accessors
   assert.equal(ctx.taskId, "task-123");
   assert.equal(ctx.tenantId, "tenant-acme");
   assert.equal(ctx.userId, "user-456");
-  assert.equal(ctx.sandboxTier, "container");
+  assert.equal(ctx.sandboxTier, "workspace_write");
 });
 
 test("plugin SDK: PluginContext defaults values when not provided", () => {
@@ -237,7 +237,7 @@ test("plugin SDK: PluginContext defaults values when not provided", () => {
   // sessionId is stored internally but not exposed as a public getter - verify via fork behavior
   const grandchild = childWithSession.fork({});
   assert.equal(grandchild.taskId, ctx.taskId);
-  assert.equal(ctx.sandboxTier, "process");
+  assert.equal(ctx.sandboxTier, "read_only");
 });
 
 test("plugin SDK: PluginContext set/get/has/keys for context values", () => {

@@ -96,7 +96,8 @@ test("HarnessSdk.sleep accepts string or run", () => {
   });
 
   const sleeping = sdk.sleep(run, "waiting for event", "2026-04-27T00:00:00.000Z");
-  assert.equal(sleeping.status, "sleeping");
+  assert.equal(sleeping.status, "paused");
+  assert.equal(sleeping.pauseReason, "sleep");
   assert.ok(sleeping.sleepLease !== null);
 });
 
@@ -139,7 +140,8 @@ test("HarnessSdk.requestHumanReview adds HITL request to run", () => {
   });
 
   const review = sdk.requestHumanReview(run, "needs approval", ["evidence-1", "evidence-2"]);
-  assert.equal(review.status, "waiting_hitl");
+  assert.equal(review.status, "paused");
+  assert.equal(review.pauseReason, "hitl");
   assert.ok(review.hitlRequest !== null);
 });
 

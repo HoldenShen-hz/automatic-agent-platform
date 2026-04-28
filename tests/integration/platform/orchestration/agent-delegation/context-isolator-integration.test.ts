@@ -116,7 +116,7 @@ test("ContextIsolator inherits sandbox tier from parent", () => {
 
     const result = isolator.isolate(parent, spec);
 
-    assert.equal(result.context.sandboxTier, "container");
+    assert.equal(result.context.sandboxTier, "workspace_write");
   } finally {
     ctx.cleanup();
   }

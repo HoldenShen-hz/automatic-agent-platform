@@ -1,4 +1,4 @@
-# ADR-012 SQLite 是否作为 Phase 1-2 唯一主存储
+# ADR-012 SQLite 是否作为 Ring 1-2 默认主存储
 
 - 状态：Accepted
 - 决策日期：2026-04-03
@@ -9,12 +9,12 @@
 
 需要决策的问题是：
 
-- Phase 1a / 1b 是否继续以 SQLite 作为默认主事务存储。
+- Ring 1 是否继续以 SQLite 作为默认主事务存储。
 - 何时必须退出这一决策。
 
 ## 决策
 
-Phase 1a 与 Phase 1b 继续以 SQLite 作为默认 / 首选主事务存储。
+Ring 1 与 Ring 2 早期继续以 SQLite 作为默认 / 首选主事务存储。
 
 同时明确边界：
 

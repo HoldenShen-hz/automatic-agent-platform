@@ -52,7 +52,8 @@ test("Harness workflow progresses through planner->generator->evaluator with gua
       producedEvidenceRefs: ["exec_trace_001"],
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.equal(run.steps.length, 3);
     assert.equal(run.steps[0]?.role, "planner");
     assert.equal(run.steps[1]?.role, "generator");
@@ -161,7 +162,8 @@ test("Harness workflow opens HITL review when requiresHuman is true", () => {
 
     run = service.openHitlReview(run, "Security scan requires human review", ["security_scan_result"]);
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest);
     assert.equal(run.hitlRequest?.reason, "Security scan requires human review");
   } finally {
@@ -192,7 +194,8 @@ test("Harness workflow resolves HITL approval and continues", () => {
 
     run = service.openHitlReview(run, "Needs approval", ["evidence_001"]);
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
 
     run = service.resolveHitlReview(run, "approved", "operator_001");
 
@@ -288,7 +291,8 @@ test("Harness workflow recovers from checkpoint", () => {
 
     run = service.recover(run);
 
-    assert.equal(run.status, "recovering");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "recovery");
     assert.ok(run.recoveryCheckpoint);
     assert.ok(run.recoveryCheckpoint?.lastCompletedStepId);
     assert.equal(run.recoveryCheckpoint?.statusBeforeRecovery, "created");

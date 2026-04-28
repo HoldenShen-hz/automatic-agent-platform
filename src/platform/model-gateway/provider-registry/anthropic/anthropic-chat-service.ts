@@ -56,6 +56,7 @@ export interface AnthropicChatCompletionRequest {
   stream?: boolean;
   tools?: AnthropicTool[];
   tool_choice?: "auto" | "none";
+  signal?: AbortSignal;
 }
 
 export interface AnthropicUsage {
@@ -216,6 +217,7 @@ export class AnthropicChatService {
       // Transform request to Anthropic format
       const anthropicRequest = this.transformToAnthropicRequest(request);
 
+      const { signal } = request;
       const response = await this.fetchImpl(url, {
         method: "POST",
         headers: {
@@ -224,6 +226,7 @@ export class AnthropicChatService {
           "anthropic-version": ANTHROPIC_VERSION,
         },
         body: JSON.stringify({ ...anthropicRequest, ...(stream ? { stream: true } : {}) }),
+        ...(signal !== undefined ? { signal } : {}),
       });
 
       if (response.ok) {

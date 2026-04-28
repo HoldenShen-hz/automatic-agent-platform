@@ -8,8 +8,9 @@ import { createExecutionReceipt } from "../../../../src/platform/contracts/execu
 import { createModelRequest } from "../../../../src/platform/contracts/model-request/index.js";
 import { createRequestEnvelope } from "../../../../src/platform/contracts/request-envelope/index.js";
 import { createStateCommand } from "../../../../src/platform/contracts/state-command/index.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
-test("integration: platform contract objects compose into a consistent request-plan-receipt flow", () => {
+test("integration: supported platform contract objects compose while legacy plan/directive/receipt factories fail fast", () => {
   const envelope = createRequestEnvelope({
     requestId: "request-1",
     taskId: "task-1",
@@ -27,57 +28,65 @@ test("integration: platform contract objects compose into a consistent request-p
     tenantId: envelope.tenantId,
     taskId: envelope.taskId,
   });
-  const plan = createExecutionPlan({
-    taskId: envelope.taskId ?? "task-1",
-    tenantId: envelope.tenantId,
-    version: 1,
-    steps: [
-      { stepId: "step-1", title: "Assess request", actionRef: "model.assess", dependsOn: [], requiresApproval: false },
-      { stepId: "step-2", title: "Deploy rollout", actionRef: "rollout.advance", dependsOn: ["step-1"], requiresApproval: true },
-    ],
-  });
   const delegation = createDelegationRequest({
-    taskId: plan.taskId,
+    taskId: envelope.taskId ?? "task-1",
     fromAgentId: "planner",
     toAgentId: "executor",
     capabilityRef: null,
     priority: "critical",
     reason: "execute approved rollout",
     contextRef: modelRequest.requestId,
-    tenantId: plan.tenantId,
-  });
-  const directive = createControlDirective({
-    kind: "escalate",
-    targetRef: plan.steps[1]!.stepId,
-    reasonCode: "approval.required",
-    issuedBy: "policy-center",
-    tenantId: plan.tenantId,
-    executionId: null,
-    metadata: { delegationRequestId: delegation.requestId },
+    tenantId: envelope.tenantId,
   });
   const command = createStateCommand({
-    entityKind: "execution_plan",
-    entityId: plan.planId,
+    entityKind: "delegation_request",
+    entityId: delegation.requestId,
     action: "transition",
-    expectedVersion: 1,
-    payload: { nextStatus: "awaiting_approval", directiveId: directive.directiveId },
+    expectedVersion: null,
+    payload: { nextStatus: "queued", delegationRequestId: delegation.requestId },
     emittedBy: "planner",
-  });
-  const receipt = createExecutionReceipt({
-    planId: plan.planId,
-    stepId: plan.steps[0]!.stepId,
-    status: "completed",
-    workerId: "worker-1",
-    taskId: plan.taskId,
-    tenantId: plan.tenantId,
-    resultRef: "artifact:assessment-1",
-    errorCode: null,
   });
 
   assert.equal(modelRequest.taskId, envelope.taskId);
-  assert.equal(plan.steps[1]?.requiresApproval, true);
   assert.equal(delegation.contextRef, modelRequest.requestId);
-  assert.equal(directive.metadata.delegationRequestId, delegation.requestId);
-  assert.equal(command.payload.directiveId, directive.directiveId);
-  assert.equal(receipt.resultRef, "artifact:assessment-1");
+  assert.equal(command.payload.delegationRequestId, delegation.requestId);
+  assert.throws(
+    () =>
+      createExecutionPlan({
+        taskId: envelope.taskId ?? "task-1",
+        tenantId: envelope.tenantId,
+        version: 1,
+        steps: [
+          { stepId: "step-1", title: "Assess request", actionRef: "model.assess", dependsOn: [], requiresApproval: false },
+        ],
+      }),
+    (error: unknown) => error instanceof ValidationError && error.code === "execution_plan.legacy_contract_forbidden",
+  );
+  assert.throws(
+    () =>
+      createControlDirective({
+        kind: "escalate",
+        targetRef: "step-2",
+        reasonCode: "approval.required",
+        issuedBy: "policy-center",
+        tenantId: envelope.tenantId,
+        executionId: null,
+        metadata: { delegationRequestId: delegation.requestId },
+      }),
+    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+  );
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan-1",
+        stepId: "step-1",
+        status: "completed",
+        workerId: "worker-1",
+        taskId: envelope.taskId ?? "task-1",
+        tenantId: envelope.tenantId,
+        resultRef: "artifact:assessment-1",
+        errorCode: null,
+      }),
+    (error: unknown) => error instanceof ValidationError && error.code === "execution_receipt.legacy_contract_forbidden",
+  );
 });

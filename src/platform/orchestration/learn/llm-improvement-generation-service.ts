@@ -54,6 +54,9 @@ export class LLMImprovementGenerationService {
         messages,
         maxTokens: this.maxTokens,
         temperature: this.temperature,
+        traceId: newId("trace"),
+        tenantId: null,
+        costTag: "learning.improvement_generation",
       });
 
       return this.parseImprovementsFromResponse(result.content, signals);

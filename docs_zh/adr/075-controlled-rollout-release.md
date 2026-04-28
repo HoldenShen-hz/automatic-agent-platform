@@ -122,7 +122,7 @@ interface RolloutScheduler {
 
 ## 备选方案
 
-### 方案 A：仅 off/suggest/shadow（Phase 1 简化版）
+### 方案 A：仅 off/suggest/shadow（Ring 1 简化版）
 
 优点：实现简单，风险低。
 代价：无法实现渐进式发布，收益有限。

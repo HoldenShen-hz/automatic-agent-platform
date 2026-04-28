@@ -44,6 +44,11 @@ interface SLARequirement {
 | 延迟超标 | 部分退款 |
 | 错误率超标 | 积分补偿 |
 
+补充前置条件：
+
+- `platinum` 只有在自动 failover、quorum、容量预留与演练证据全部具备时才允许对外承诺。
+- 所有 SLA 承诺都必须可回链到 `HarnessRun / NodeRun / NodeAttemptReceipt` 证据。
+
 ## 后果
 
 优点：

@@ -36,7 +36,8 @@ test("HarnessSdk provides a stable facade over HarnessRuntimeService", () => {
   assert.ok(run.runId.startsWith("harness_run_"));
   assert.equal(runWithStep.steps.length, 1);
   assert.equal(decision.action, "accept");
-  assert.equal(reviewRequested.status, "waiting_hitl");
+  assert.equal(reviewRequested.status, "paused");
+  assert.equal(reviewRequested.pauseReason, "hitl");
   assert.equal(reviewResolved.status, "running");
   assert.ok(timeline.length >= 3);
   assert.ok(evaluation != null);

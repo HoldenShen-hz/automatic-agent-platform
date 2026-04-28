@@ -111,7 +111,11 @@ export interface HumanFeedback {
  */
 export interface FeedbackLoop {
   loopId: string;
+  harnessRunId: string;
+  nodeRunId: string;
+  /** @deprecated legacy workflow projection identifier; use harnessRunId */
   workflowRunId: string;
+  /** @deprecated legacy step projection identifier; use nodeRunId */
   stepId: string;
   maxIterations: number;
   currentIteration: number;
@@ -280,6 +284,8 @@ export class ApprovalFlowEngine {
     config: Omit<ApprovalFlowConfig, "flowId">,
     request: ApprovalRequest,
     options: {
+      harnessRunId?: string;
+      nodeRunId?: string;
       workflowRunId?: string;
       stepId?: string;
       initialDelegationTtlMs?: number;
@@ -309,10 +315,14 @@ export class ApprovalFlowEngine {
     // Initialize feedback loop if configured
     let feedbackLoop: FeedbackLoop | null = null;
     if (effectiveConfig.feedbackLoop) {
+      const harnessRunId = options?.harnessRunId ?? options?.workflowRunId ?? request.taskId;
+      const nodeRunId = options?.nodeRunId ?? options?.stepId ?? "";
       feedbackLoop = {
         loopId: newId("feedback"),
-        workflowRunId: options?.workflowRunId ?? request.taskId,
-        stepId: options?.stepId ?? "",
+        harnessRunId,
+        nodeRunId,
+        workflowRunId: harnessRunId,
+        stepId: nodeRunId,
         maxIterations: effectiveConfig.feedbackLoop.maxIterations,
         currentIteration: 0,
         humanFeedback: [],
@@ -960,6 +970,8 @@ export class ApprovalFlowEngine {
     options?: {
       minRejectionsToDeny?: number;
       votingWindowMs?: number;
+      harnessRunId?: string;
+      nodeRunId?: string;
       workflowRunId?: string;
       stepId?: string;
     },
@@ -998,6 +1010,8 @@ export class ApprovalFlowEngine {
     request: ApprovalRequest,
     approver: ApproverRule,
     options?: {
+      harnessRunId?: string;
+      nodeRunId?: string;
       workflowRunId?: string;
       stepId?: string;
     },

@@ -44,6 +44,10 @@ export interface LlmModelCallRequest {
   system?: string;
   temperature?: number;
   maxTokens: number;
+  traceId?: string;
+  tenantId?: string | null;
+  costTag?: string;
+  abortSignal?: AbortSignal;
   tools?: Array<{
     type: "function";
     name: string;
@@ -154,6 +158,10 @@ export class ModelCallProviderService {
       messages: request.messages,
       maxTokens: request.maxTokens,
       stream: false,
+      ...(request.traceId !== undefined ? { traceId: request.traceId } : {}),
+      ...(request.tenantId !== undefined ? { tenantId: request.tenantId } : {}),
+      ...(request.costTag !== undefined ? { costTag: request.costTag } : {}),
+      ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
     if (request.system !== undefined) {
@@ -181,6 +189,10 @@ export class ModelCallProviderService {
       messages: request.messages,
       maxTokens: request.maxTokens,
       stream: true,
+      ...(request.traceId !== undefined ? { traceId: request.traceId } : {}),
+      ...(request.tenantId !== undefined ? { tenantId: request.tenantId } : {}),
+      ...(request.costTag !== undefined ? { costTag: request.costTag } : {}),
+      ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
     if (request.system !== undefined) {

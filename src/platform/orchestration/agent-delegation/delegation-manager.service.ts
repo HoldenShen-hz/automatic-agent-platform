@@ -13,6 +13,7 @@
 
 import { nowIso, newId } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { normalizeSandboxMode } from "../../control-plane/iam/sandbox-policy.js";
 import {
   TopologyValidator,
   createTopologyValidator,
@@ -457,7 +458,7 @@ export class DelegationManagerService {
       delegationDepth: parent.delegationDepth + 1,
       activeDelegations: [], // New context starts with no active delegations
       permissions,
-      sandboxTier: parent.sandboxTier, // Inherit sandbox tier from parent
+      sandboxTier: normalizeSandboxMode(parent.sandboxTier),
       correlationId: `${parent.correlationId}:${newId("dlg")}`,
       tenantId: parent.tenantId,
     };

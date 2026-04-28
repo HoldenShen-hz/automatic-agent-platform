@@ -52,6 +52,7 @@ test("HarnessSleepScheduler.pollDueRuns returns runs with expired sleep leases",
   const run = createMinimalHarnessRun({
     runId: "run_due_1",
     status: "paused",
+    pauseReason: "sleep",
     sleepLease: {
       leaseId: "lease_1",
       runId: "run_due_1",
@@ -76,6 +77,7 @@ test("HarnessSleepScheduler.pollDueRuns excludes future sleep leases", () => {
   const run = createMinimalHarnessRun({
     runId: "run_future",
     status: "paused",
+    pauseReason: "sleep",
     sleepLease: {
       leaseId: "lease_future",
       runId: "run_future",
@@ -122,6 +124,7 @@ test("HarnessSleepScheduler.pollDueRuns calls onDueRun callback", () => {
   const run = createMinimalHarnessRun({
     runId: "run_callback",
     status: "paused",
+    pauseReason: "sleep",
     sleepLease: {
       leaseId: "lease_callback",
       runId: "run_callback",
@@ -162,6 +165,7 @@ test("HarnessSleepScheduler.pollDueRuns respects referenceTime parameter", () =>
   const run = createMinimalHarnessRun({
     runId: "run_reference",
     status: "paused",
+    pauseReason: "sleep",
     sleepLease: {
       leaseId: "lease_reference",
       runId: "run_reference",

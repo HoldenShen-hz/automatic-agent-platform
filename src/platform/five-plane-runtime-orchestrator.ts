@@ -1,6 +1,7 @@
 import { ServiceRegistry } from "./shared/lifecycle/service-registry.js";
 import {
   FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID,
+  X1_FABRIC_BOOTSTRAP_SERVICE_ID,
   registerFivePlaneRuntimeCatalog,
   type FivePlaneRuntimeCatalog,
 } from "./five-plane-runtime-bootstrap.js";
@@ -114,7 +115,11 @@ export function registerFivePlaneRuntimeOrchestrator(
   registerFivePlaneStartupPlan(registry);
   registry.register<FivePlaneRuntimeOrchestrator>(FIVE_PLANE_RUNTIME_ORCHESTRATOR_SERVICE_ID, {
     init: () => new FivePlaneRuntimeOrchestrator(registry),
-    dependsOn: [FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID, FIVE_PLANE_STARTUP_PLAN_SERVICE_ID],
+    dependsOn: [
+      FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID,
+      X1_FABRIC_BOOTSTRAP_SERVICE_ID,
+      FIVE_PLANE_STARTUP_PLAN_SERVICE_ID,
+    ],
   });
   return registry.get<FivePlaneRuntimeOrchestrator>(FIVE_PLANE_RUNTIME_ORCHESTRATOR_SERVICE_ID);
 }

@@ -206,7 +206,8 @@ test("HarnessRuntimeService sleep and resume workflow", () => {
     const resumeAt = new Date(Date.now() + 60000).toISOString();
     run = service.sleep(run, "Rate limit hit", resumeAt);
 
-    assert.equal(run.status, "sleeping");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "sleep");
     assert.ok(run.sleepLease);
     assert.equal(run.sleepLease?.reason, "Rate limit hit");
     assert.ok(run.sleepLease?.resumeAt === resumeAt);

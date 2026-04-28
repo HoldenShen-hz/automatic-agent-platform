@@ -21,12 +21,12 @@ test("registerPlatformSurfaceCatalog registers service with correct service ID",
   }
 });
 
-test("registerPlatformSurfaceCatalog returns array of 10 surface manifests", async () => {
+test("registerPlatformSurfaceCatalog returns array of 11 surface manifests", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const result = registerPlatformSurfaceCatalog(registry);
 
-    assert.equal(result.length, 10);
+    assert.equal(result.length, 11);
     assert.ok(Array.isArray(result));
   } finally {
     await registry.reset();
@@ -55,7 +55,7 @@ test("registerPlatformSurfaceCatalog can be called without arguments (uses defau
   try {
     const result = registerPlatformSurfaceCatalog();
 
-    assert.equal(result.length, 10);
+    assert.equal(result.length, 11);
     assert.equal(registry.isInitialized(PLATFORM_SURFACE_CATALOG_SERVICE_ID), true);
   } finally {
     await registry.reset();
@@ -83,9 +83,10 @@ test("after registration, registry.get returns correct surface catalog", async (
 
     const catalog = registry.get<readonly PlatformSurfaceManifest[]>(PLATFORM_SURFACE_CATALOG_SERVICE_ID);
 
-    assert.equal(catalog.length, 10);
+    assert.equal(catalog.length, 11);
     assert.ok(catalog.some((m) => m.surfaceId === "execution"));
     assert.ok(catalog.some((m) => m.surfaceId === "orchestration"));
+    assert.ok(catalog.some((m) => m.surfaceId === "x1-fabric"));
   } finally {
     await registry.reset();
   }
@@ -133,7 +134,7 @@ test("after reset, re-registration works correctly", async () => {
 
   const result = registerPlatformSurfaceCatalog(registry);
 
-  assert.equal(result.length, 10);
+  assert.equal(result.length, 11);
   assert.equal(registry.isInitialized(PLATFORM_SURFACE_CATALOG_SERVICE_ID), true);
 });
 
@@ -155,6 +156,7 @@ test("registered catalog surfaces match expected platform structure", async () =
       "prompt-engine",
       "shared",
       "state-evidence",
+      "x1-fabric",
     ]);
   } finally {
     await registry.reset();
@@ -170,7 +172,7 @@ test("registration does not mutate original PLATFORM_SURFACE_MANIFESTS", async (
     // The original should always be frozen and unchanged
     const catalog = listPlatformSurfaceManifests();
     assert.ok(Object.isFrozen(catalog));
-    assert.equal(catalog.length, 10);
+    assert.equal(catalog.length, 11);
   } finally {
     await registry.reset();
   }
@@ -233,7 +235,7 @@ test("separate registry instances maintain independent registrations", async () 
     registerPlatformSurfaceCatalog(registry1);
 
     const catalog1 = registry1.get<readonly PlatformSurfaceManifest[]>(PLATFORM_SURFACE_CATALOG_SERVICE_ID);
-    assert.equal(catalog1.length, 10);
+    assert.equal(catalog1.length, 11);
 
     // Reset and verify registry is clean
     await registry1.reset();

@@ -20,7 +20,7 @@ test("PackCatalogService.createPack creates a new pack", () => {
   assert.equal(pack.version, "1.0.0");
   assert.equal(pack.domainId, "test-domain");
   assert.equal(pack.lifecycleStage, "draft");
-  assert.equal(pack.sandboxTier, "process");
+  assert.equal(pack.sandboxTier, "read_only");
   assert.equal(pack.riskCount, 0);
   assert.equal(pack.dependencyCount, 0);
   assert.equal(pack.pluginCount, 0);
@@ -67,7 +67,7 @@ test("PackCatalogService.createPack sets optional fields", () => {
   const pack = service.createPack(input);
 
   assert.equal(pack.description, "A pack with options");
-  assert.equal(pack.sandboxTier, "container");
+  assert.equal(pack.sandboxTier, "workspace_write");
   assert.equal(pack.riskCount, 3);
   assert.equal(pack.dependencyCount, 5);
   assert.equal(pack.pluginCount, 10);

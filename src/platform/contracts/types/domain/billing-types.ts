@@ -110,8 +110,8 @@ export interface BillingPaymentSessionRecord {
  * Every billable action (API calls, task executions, storage usage) generates
  * a usage event. Events are aggregated into invoices and reconciled against quotas.
  *
- * Step-level tracking (stepId) enables per-step cost attribution within a workflow,
- * supporting fine-grained cost control and budget enforcement at the step granularity.
+ * Canonical runtime attribution is anchored on HarnessRun / NodeRun / NodeAttempt.
+ * Legacy executionId / stepId fields remain for projection compatibility only.
  */
 export interface UsageEventRecord {
   usageId: string;
@@ -120,7 +120,12 @@ export interface UsageEventRecord {
   workspaceId: string | null;
   tenantId: string | null;
   taskId: string | null;
+  harnessRunId?: string | null;
+  nodeRunId?: string | null;
+  attemptId?: string | null;
+  /** @deprecated legacy projection identifier; use harnessRunId */
   executionId: string | null;
+  /** @deprecated legacy projection identifier; use nodeRunId */
   stepId: string | null;
   metricType: string;
   quantity: number;

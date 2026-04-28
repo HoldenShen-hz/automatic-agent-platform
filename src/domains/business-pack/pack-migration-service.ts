@@ -21,6 +21,8 @@ import { nowIso } from "../../platform/contracts/types/ids.js";
  * Migration step for executing changes.
  */
 export interface MigrationStep {
+  nodeId?: string;
+  /** @deprecated legacy migration label; use nodeId */
   stepId: string;
   description: string;
   order: number;
@@ -48,6 +50,8 @@ export interface MigrationPlan {
  * A planned step in the migration.
  */
 export interface MigrationPlanStep {
+  nodeId?: string;
+  /** @deprecated legacy migration label; use nodeId */
   stepId: string;
   description: string;
   order: number;
@@ -87,6 +91,7 @@ export interface MigrationExecutionResult {
 
 export interface MigrationStepExecutionRecord {
   readonly planId: string;
+  readonly nodeId?: string;
   readonly stepId: string;
   readonly phase: "execute" | "rollback";
   readonly status: "completed";
@@ -377,24 +382,28 @@ export class PackMigrationService {
     // Generate default migration steps
     return [
       {
+        nodeId: `${fromPackId}_export_state`,
         stepId: `${fromPackId}_export_state`,
         description: `Export state from ${fromPackId}`,
         order: 1,
         estimatedDurationMinutes: 5,
       },
       {
+        nodeId: `${toPackId}_validate_target`,
         stepId: `${toPackId}_validate_target`,
         description: `Validate target ${toPackId} is ready`,
         order: 2,
         estimatedDurationMinutes: 2,
       },
       {
+        nodeId: `${fromPackId}_to_${toPackId}_transfer`,
         stepId: `${fromPackId}_to_${toPackId}_transfer`,
         description: `Transfer data from ${fromPackId} to ${toPackId}`,
         order: 3,
         estimatedDurationMinutes: 10,
       },
       {
+        nodeId: `${toPackId}_verify`,
         stepId: `${toPackId}_verify`,
         description: `Verify ${toPackId} state`,
         order: 4,
@@ -412,6 +421,7 @@ export class PackMigrationService {
     const detail = this.applyStep(plan, step);
     this.appendTrace(planId, {
       planId,
+      nodeId: step.nodeId ?? step.stepId,
       stepId: step.stepId,
       phase: "execute",
       status: "completed",
@@ -426,6 +436,7 @@ export class PackMigrationService {
     const detail = this.revertStep(plan, stepId);
     this.appendTrace(planId, {
       planId,
+      nodeId: stepId,
       stepId,
       phase: "rollback",
       status: "completed",

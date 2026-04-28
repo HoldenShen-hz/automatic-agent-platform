@@ -36,12 +36,9 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 
 | 阶段 | 重点 |
 |------|------|
-| Phase 1-2 | 核心执行面 + 稳定性 |
-| Phase 3 | AI 运营层 |
-| Phase 4 | 业务域接入 |
-| Phase 5 | 智能交互 |
-| Phase 6 | 组织治理 |
-| Phase 7 | 规模化生态 |
+| Ring 1 | 核心执行面 + 稳定性基线 |
+| Ring 2 | 治理、恢复、耐久与高可信运维 |
+| Ring 3 | 业务域、生态与高级智能能力 |
 
 ## ADR 覆盖范围
 
@@ -50,8 +47,13 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 ## 关键不变量
 
 - 五平面隔离不变
-- OAPEFLIR 循环不变
+- `HarnessRuntime + RuntimeStateMachine` truth authority 不变
+- OAPEFLIR 只作为认知投影不变
 - 宪法原则不变
+
+## v4.3 ADR Remediation
+
+- A-63: 本 ADR 原先把 `Phase 1-7` 与 “OAPEFLIR 循环不变”写成主架构不变量，根因是总结 ADR 汇总了历史路线图与认知模型，但没有区分 roadmap 和 runtime authority。修复：正文现改为 ring 口径，并把运行时不变量明确收口到 `HarnessRuntime + RuntimeStateMachine`。
 
 ## 后续工作
 

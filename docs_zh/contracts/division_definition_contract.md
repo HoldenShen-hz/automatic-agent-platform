@@ -36,8 +36,10 @@
 | `plugin_refs` | `string[]?` | 允许加载的 plugin 引用 |
 | `knowledge_namespace` | `string?` | 该 division 的知识命名空间 |
 | `roles` | `RoleRef[]` | 角色定义列表 |
-| `default_workflow` | `string` | 默认 workflow ID |
-| `orchestration_workflow` | `string?` | 多步编排 workflow ID |
+| `default_plan_blueprint_ref` | `string` | 默认 PlanGraph/blueprint 引用 |
+| `orchestration_plan_blueprint_ref` | `string?` | 多步编排 blueprint 引用 |
+| `default_workflow` | `string?` | legacy loader alias |
+| `orchestration_workflow` | `string?` | legacy loader alias |
 
 ## 3. Trigger 规则
 
@@ -57,10 +59,14 @@
 
 ## 5. Workflow 规则
 
-- `division.yaml` 通过 `default_workflow` / `orchestration_workflow` 引用该事业部下声明的 workflow。
+- `division.yaml` 应优先通过 `default_plan_blueprint_ref` / `orchestration_plan_blueprint_ref` 引用编排蓝图；`default_workflow` / `orchestration_workflow` 只保留兼容别名。
 - workflow 定义可以内联于加载器支持的最小定义中，也可以位于 `workflows/` 目录并由 loader 统一装载。
 - 步骤间通过 output key 传递数据；若存在返工或回退，应显式表达，不依赖隐式约定。
 - division 若声明 `domain`，workflow 中的 tool / plugin 引用必须与该 domain 匹配。
+
+## v4.3 Contract Remediation
+
+- T-72: 本文原先把 `default_workflow / orchestration_workflow` 写成 canonical 引用，根因是 division contract 成型时平台仍以 workflow loader 为中心，没有切换到计划蓝图与图执行语义。修复：正文现把 `*_plan_blueprint_ref` 提升为权威字段，旧 workflow 键仅保留 loader 兼容作用。
 
 ## 6. 与 HR Agent 的边界
 

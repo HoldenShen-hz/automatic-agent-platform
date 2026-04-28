@@ -62,7 +62,12 @@ export interface RecordUsageInput {
   workspaceId?: string | null;
   tenantId?: string | null;
   taskId?: string | null;
+  harnessRunId?: string | null;
+  nodeRunId?: string | null;
+  attemptId?: string | null;
+  /** @deprecated legacy projection identifier; use harnessRunId */
   executionId?: string | null;
+  /** @deprecated legacy projection identifier; use nodeRunId */
   stepId?: string | null;
   metricType: BillingMetricType;
   quantity: number;

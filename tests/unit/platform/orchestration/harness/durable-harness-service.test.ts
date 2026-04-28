@@ -207,6 +207,7 @@ test("HarnessSleepScheduler polls due paused runs with sleep leases", () => {
   const pausedRun = createMinimalHarnessRun({
     runId: "paused-run",
     status: "paused",
+    pauseReason: "sleep",
     sleepLease: {
       leaseId: "lease-1",
       runId: "paused-run",

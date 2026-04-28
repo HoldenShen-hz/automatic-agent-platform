@@ -9,17 +9,13 @@
 
 ## 决策
 
-### 7 期路线图
+### 3 Ring 路线图
 
 | 阶段 | 目标 | 关键交付物 |
 |------|------|-----------|
-| Phase 1 | 核心执行面 | 基础 Workflow、Plugin、状态管理 |
-| Phase 2 | 稳定性增强 | 恢复机制、监控告警 |
-| Phase 3 | AI 运营层 | LLM 抽象、Prompt 治理、成本管理 |
-| Phase 4 | 业务域接入 | DomainDescriptor、Pack SDK |
-| Phase 5 | 智能交互 | NL 入口、目标分解、主动 Agent |
-| Phase 6 | 组织治理 | 租户隔离、SSO、权限管理 |
-| Phase 7 | 规模化生态 | 多 Region、Marketplace |
+| Ring 1 | 核心执行面 | HarnessRuntime、PlanGraphBundle、状态管理 |
+| Ring 2 | 稳定性增强 | 恢复机制、监控告警、治理与耐久 |
+| Ring 3 | 业务域与生态 | DomainDescriptor、Pack SDK、Marketplace、多 Region |
 
 ### 路线图服务
 
@@ -29,7 +25,7 @@
 
 ### 阶段门禁
 
-- SuccessCriteriaService 支持 phase gate 注册
+- SuccessCriteriaService 支持 ring gate 注册
 - 指标记分
 - `evaluatePhaseAdvance()` 拦截
 
@@ -55,6 +51,10 @@
 
 - [ADR-075 六级受控发布与 Rollout 状态机](./075-controlled-rollout-release.md)
 - [ADR-090 Runtime、数据可靠性与运维治理](./090-runtime-data-reliability-and-operations.md)
+
+## v4.3 ADR Remediation
+
+- A-64: 本 ADR 原先把 `Phase 1-7` 作为 canonical 路线图，根因是落地路线 ADR 形成时主架构尚未统一到 ring 口径。修复：正文现改为 `Ring 1/2/3`，历史 phase 仅允许作为旧里程碑映射。
 
 ## 来源章节
 

@@ -37,7 +37,7 @@ test("AgentContext structure", () => {
   assert.equal(ctx.sandboxTier, "none");
 });
 
-test("AgentContext with container sandboxTier", () => {
+test("AgentContext accepts canonical sandboxTier values", () => {
   const ctx: AgentContext = {
     agentId: "agent-002",
     agentType: "worker",
@@ -49,11 +49,11 @@ test("AgentContext with container sandboxTier", () => {
       actions: [],
       constraints: { maxDurationMs: 30000 },
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "corr-002",
     tenantId: "tenant-001",
   };
-  assert.equal(ctx.sandboxTier, "container");
+  assert.equal(ctx.sandboxTier, "workspace_write");
   assert.equal(ctx.activeDelegations.length, 1);
   assert.equal(ctx.permissions.constraints.maxDurationMs, 30000);
 });

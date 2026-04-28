@@ -61,6 +61,7 @@ export interface MiniMaxChatCompletionRequest {
   stream?: boolean;
   tools?: MiniMaxTool[];
   tool_choice?: "auto" | "none";
+  signal?: AbortSignal;
 }
 
 export interface MiniMaxTool {
@@ -245,13 +246,15 @@ export class MiniMaxChatService {
       }
       triedCredentialIds.push(selection.credentialId);
 
+      const { signal, ...requestBody } = request;
       const response = await this.fetchImpl(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${selection.apiKey}`,
         },
-        body: JSON.stringify({ ...request, ...(stream ? { stream: true } : {}) }),
+        body: JSON.stringify({ ...requestBody, ...(stream ? { stream: true } : {}) }),
+        ...(signal !== undefined ? { signal } : {}),
       });
 
       if (response.ok) {

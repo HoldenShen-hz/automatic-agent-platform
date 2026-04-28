@@ -1,4 +1,5 @@
 import { ServiceRegistry } from "./shared/lifecycle/service-registry.js";
+import { X1_FABRIC_BOOTSTRAP_SERVICE_ID } from "./five-plane-runtime-bootstrap.js";
 import {
   buildComplianceBootstrap,
   COMPLIANCE_BOOTSTRAP_SERVICE_ID,
@@ -87,7 +88,7 @@ export function buildFivePlaneStartupPlan(): FivePlaneStartupPlan {
       stepId: "x1-fabric",
       surfaceId: "x1-fabric",
       entryModule: x1Surface.entryModule,
-      bootstrapServiceId: "plane.x1-fabric.bootstrap",
+      bootstrapServiceId: X1_FABRIC_BOOTSTRAP_SERVICE_ID,
       capabilityCount: x1CapabilityCount,
       dependsOnStepIds: ["interface"],
     },
@@ -139,6 +140,7 @@ export function registerFivePlaneStartupPlan(
     init: () => buildFivePlaneStartupPlan(),
     dependsOn: [
       INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
+      X1_FABRIC_BOOTSTRAP_SERVICE_ID,
       MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
       PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
       COMPLIANCE_BOOTSTRAP_SERVICE_ID,

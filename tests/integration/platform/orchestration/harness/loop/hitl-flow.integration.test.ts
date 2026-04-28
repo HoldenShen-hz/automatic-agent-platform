@@ -2,7 +2,7 @@
  * Integration Test: Harness HITL Flow
  *
  * Tests human-in-the-loop integration:
- * - runLoop with requiresHuman=true -> waiting_hitl -> resolveHitlReview(approved/rejected)
+ * - runLoop with requiresHuman=true -> paused(hitl) -> resolveHitlReview(approved/rejected)
  * - Multiple HITL resolution scenarios
  * - HITL state transitions and persistence
  *
@@ -45,7 +45,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
   };
 }
 
-test("runLoop with requiresHuman=true transitions to waiting_hitl status", () => {
+test("runLoop with requiresHuman=true transitions to paused hitl status", () => {
   const ctx = createIntegrationContext("aa-hitl-requires-human-");
   try {
     const service = new HarnessRuntimeService();
@@ -62,7 +62,8 @@ test("runLoop with requiresHuman=true transitions to waiting_hitl status", () =>
       producedEvidenceRefs: ["security_scan"],
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.equal(run.decision?.action, "escalate_to_human");
     assert.ok(run.hitlRequest);
     assert.equal(run.hitlRequest?.runId, run.runId);
@@ -91,7 +92,8 @@ test("resolveHitlReview with approved resumes the run", () => {
       producedEvidenceRefs: [],
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest);
 
     const approved = service.resolveHitlReview(run, "approved", "legal_manager_jane");
@@ -132,7 +134,8 @@ test("resolveHitlReview with rejected aborts the run", () => {
       riskScore: 65,
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     const rejected = service.resolveHitlReview(run, "rejected", "security_admin");
 
     assert.equal(rejected.status, "aborted");
@@ -185,7 +188,8 @@ test("openHitlReview and resolveHitlReview can be called manually", () => {
       "legal_sign_off",
     ]);
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest);
     assert.equal(run.hitlRequest?.reason, "Compliance checkpoint requires approval");
     assert.equal(run.hitlRequest?.evidenceRefs.length, 3);
@@ -236,17 +240,20 @@ test("HITL run persists correctly after opening review", () => {
       producedEvidenceRefs: [],
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
 
     // Persist the run
     const persisted = service.persistRun(run);
     assert.equal(persisted.run.runId, run.runId);
-    assert.equal(persisted.run.status, "waiting_hitl");
+    assert.equal(persisted.run.status, "paused");
+    assert.equal(persisted.run.pauseReason, "hitl");
 
     // Restore and verify
     const restored = service.restoreRun(run.runId);
     assert.ok(restored);
-    assert.equal(restored.status, "waiting_hitl");
+    assert.equal(restored.status, "paused");
+    assert.equal(restored.pauseReason, "hitl");
     assert.ok(restored.hitlRequest);
     assert.equal(restored.hitlRequest?.status, "pending");
   } finally {
@@ -281,15 +288,16 @@ test("HITL with high riskScore triggers escalation via guardrail", () => {
     assert.ok(run.guardrailAssessment);
     assert.equal(run.guardrailAssessment.passed, true); // Still passed - no blocker
 
-    // Run should be waiting_hitl due to guardrail assessment requiring human
-    assert.equal(run.status, "waiting_hitl");
+    // Run should pause for HITL due to guardrail assessment requiring human.
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.equal(run.decision?.action, "escalate_to_human");
   } finally {
     ctx.cleanup();
   }
 });
 
-test("HITL with blocked tools returns abort instead of waiting_hitl", () => {
+test("HITL with blocked tools returns abort instead of paused hitl", () => {
   const ctx = createIntegrationContext("aa-hitl-blocked-");
   try {
     const service = new HarnessRuntimeService();
@@ -382,7 +390,8 @@ test("HITL with multiple evidence refs preserves all references", () => {
       ],
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest);
     assert.equal(run.hitlRequest?.evidenceRefs.length, 5);
     assert.ok(run.hitlRequest?.evidenceRefs.includes("security_scan_result"));

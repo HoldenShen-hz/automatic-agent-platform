@@ -64,6 +64,11 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   tools?: ChatTool[];
   toolChoice?: "auto" | "none";
+  traceId?: string;
+  tenantId?: string | null;
+  costTag?: string;
+  abortSignal?: AbortSignal;
+  validatePartialChunk?: (chunk: ChatCompletionResult, isFinal: boolean) => void;
 }
 
 export interface CompletionOptions {
@@ -72,6 +77,10 @@ export interface CompletionOptions {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
+  traceId?: string;
+  tenantId?: string | null;
+  costTag?: string;
+  abortSignal?: AbortSignal;
 }
 
 export type ChatProviderType = "anthropic" | "openai" | "minimax";
@@ -253,6 +262,7 @@ export class UnifiedChatProvider {
 
   public async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResult> {
     this.assertNotDisposed();
+    this.assertNotAborted(request.abortSignal);
     const { provider, service } = this.getProviderForModel(request.model);
     const breaker = this.breakers.get(provider);
     const startedAt = Date.now();
@@ -299,6 +309,7 @@ export class UnifiedChatProvider {
     onChunk: (chunk: ChatCompletionResult, isFinal: boolean) => void,
   ): Promise<void> {
     this.assertNotDisposed();
+    this.assertNotAborted(request.abortSignal);
     const { provider, service } = this.getProviderForModel(request.model);
 
     switch (provider) {
@@ -307,7 +318,9 @@ export class UnifiedChatProvider {
         await anthropicService.createStreamingChatCompletion(
           this.toAnthropicRequest(request),
           (chunk, isFinal) => {
-            onChunk(this.normalizeAnthropicResult(chunk, provider), isFinal);
+            const normalized = this.normalizeAnthropicResult(chunk, provider);
+            request.validatePartialChunk?.(normalized, isFinal);
+            onChunk(normalized, isFinal);
           },
         );
         return;
@@ -317,7 +330,9 @@ export class UnifiedChatProvider {
         await openaiService.createStreamingChatCompletion(
           this.toOpenAIRequest(request),
           (chunk, isFinal) => {
-            onChunk(this.normalizeOpenAIResult(chunk, provider), isFinal);
+            const normalized = this.normalizeOpenAIResult(chunk, provider);
+            request.validatePartialChunk?.(normalized, isFinal);
+            onChunk(normalized, isFinal);
           },
         );
         return;
@@ -327,7 +342,9 @@ export class UnifiedChatProvider {
         await minimaxService.createStreamingChatCompletion(
           this.toMiniMaxRequest(request),
           (chunk) => {
-            onChunk(this.normalizeMiniMaxResult(chunk, provider), false);
+            const normalized = this.normalizeMiniMaxResult(chunk, provider);
+            request.validatePartialChunk?.(normalized, false);
+            onChunk(normalized, false);
           },
         );
         return;
@@ -349,6 +366,10 @@ export class UnifiedChatProvider {
       ...(options.system !== undefined ? { system: options.system } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.topP !== undefined ? { topP: options.topP } : {}),
+      ...(options.traceId !== undefined ? { traceId: options.traceId } : {}),
+      ...(options.tenantId !== undefined ? { tenantId: options.tenantId } : {}),
+      ...(options.costTag !== undefined ? { costTag: options.costTag } : {}),
+      ...(options.abortSignal !== undefined ? { abortSignal: options.abortSignal } : {}),
       maxTokens: options.maxTokens ?? 512,
     });
     return result.content;
@@ -367,6 +388,7 @@ export class UnifiedChatProvider {
       model: request.model,
       messages: request.messages as AnthropicChatCompletionRequest["messages"],
       max_tokens: request.maxTokens,
+      ...(request.abortSignal !== undefined ? { signal: request.abortSignal } : {}),
     };
     if (request.system !== undefined) {
       result.system = request.system;
@@ -399,6 +421,7 @@ export class UnifiedChatProvider {
       model: request.model,
       messages: request.messages as OpenAIChatCompletionRequest["messages"],
       max_tokens: request.maxTokens,
+      ...(request.abortSignal !== undefined ? { signal: request.abortSignal } : {}),
     };
     if (request.temperature !== undefined) {
       result.temperature = request.temperature;
@@ -430,6 +453,7 @@ export class UnifiedChatProvider {
       model: request.model,
       messages: request.messages as MiniMaxChatCompletionRequest["messages"],
       max_tokens: request.maxTokens,
+      ...(request.abortSignal !== undefined ? { signal: request.abortSignal } : {}),
     };
     if (request.temperature !== undefined) {
       result.temperature = request.temperature;
@@ -538,6 +562,16 @@ export class UnifiedChatProvider {
   private assertNotDisposed(): void {
     if (this.disposed) {
       throw new AppError("provider.disposed", "Unified chat provider has been disposed.", {
+        category: "provider",
+        source: "provider",
+        retryable: false,
+      });
+    }
+  }
+
+  private assertNotAborted(signal: AbortSignal | undefined): void {
+    if (signal?.aborted) {
+      throw new AppError("provider.request_aborted", "Chat completion request was aborted before execution.", {
         category: "provider",
         source: "provider",
         retryable: false,

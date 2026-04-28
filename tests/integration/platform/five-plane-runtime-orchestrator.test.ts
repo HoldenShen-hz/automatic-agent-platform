@@ -18,6 +18,7 @@ test("integration: five-plane runtime orchestrator coordinates full plane initia
     assert.equal(result.ready, true);
     assert.deepEqual(result.startupOrder, [
       "interface",
+      "x1-fabric",
       "control-plane",
       "orchestration",
       "execution",
@@ -26,6 +27,7 @@ test("integration: five-plane runtime orchestrator coordinates full plane initia
 
     // Verify all plane bootstraps are registered
     assert.ok(result.initializedServiceIds.includes("plane.interface.bootstrap"));
+    assert.ok(result.initializedServiceIds.includes("plane.x1-fabric.bootstrap"));
     assert.ok(result.initializedServiceIds.includes("plane.control.bootstrap"));
     assert.ok(result.initializedServiceIds.includes("plane.orchestration.bootstrap"));
     assert.ok(result.initializedServiceIds.includes("plane.execution.bootstrap"));
@@ -48,7 +50,7 @@ test("integration: orchestrator startup result has correct step initialization",
     const orchestrator = registerFivePlaneRuntimeOrchestrator(registry);
     const result = orchestrator.startup();
 
-    assert.equal(result.steps.length, 5);
+    assert.equal(result.steps.length, 6);
 
     // Interface has no dependencies
     const interfaceStep = result.steps.find((s) => s.stepId === "interface");
@@ -56,11 +58,17 @@ test("integration: orchestrator startup result has correct step initialization",
     assert.equal(interfaceStep.initialized, true);
     assert.deepEqual(interfaceStep.initializedDependencyServiceIds, []);
 
-    // Control-plane depends on interface
+    // X1 fabric depends on interface.
+    const x1FabricStep = result.steps.find((s) => s.stepId === "x1-fabric");
+    assert.ok(x1FabricStep);
+    assert.equal(x1FabricStep.initialized, true);
+    assert.ok(x1FabricStep.initializedDependencyServiceIds.includes("plane.interface.bootstrap"));
+
+    // Control-plane depends on x1 fabric.
     const controlPlaneStep = result.steps.find((s) => s.stepId === "control-plane");
     assert.ok(controlPlaneStep);
     assert.equal(controlPlaneStep.initialized, true);
-    assert.ok(controlPlaneStep.initializedDependencyServiceIds.includes("plane.interface.bootstrap"));
+    assert.ok(controlPlaneStep.initializedDependencyServiceIds.includes("plane.x1-fabric.bootstrap"));
 
     // Orchestration depends on control-plane
     const orchestrationStep = result.steps.find((s) => s.stepId === "orchestration");
@@ -97,9 +105,9 @@ test("integration: readiness snapshot reflects all planes after initialization",
     assert.equal(snapshot.runtimeCatalogInitialized, true);
     assert.equal(snapshot.startupPlanInitialized, true);
     assert.equal(snapshot.orchestratorInitialized, true);
-    assert.equal(snapshot.planeReadiness.length, 5);
+    assert.equal(snapshot.planeReadiness.length, 6);
 
-    // All planes should be initialized
+    // All startup steps should be initialized.
     for (const plane of snapshot.planeReadiness) {
       assert.equal(plane.initialized, true, `${plane.stepId} should be initialized`);
     }

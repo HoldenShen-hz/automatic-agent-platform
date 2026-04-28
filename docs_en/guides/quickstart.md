@@ -72,9 +72,11 @@ Content to NOT implement prematurely:
 
 **Troubleshooting Steps**:
 1. Confirm build artifacts are latest: `npm run build:test`
-2. Check for uncommitted migration file conflicts
-3. View specific test file location and error messages
-4. Run single test file to locate problem: `node --test dist/tests/unit/xxx.test.js`
+2. Start with the fast layered regression: `npm run test:layers:smoke`
+3. Narrow by layer: `npm run test:unit` / `npm run test:invariants` / `npm run test:integration` / `npm run test:e2e`
+4. Check for uncommitted migration file conflicts
+5. View specific test file location and error messages
+6. Run a single test file to locate the problem: `node --import tsx --test tests/unit/xxx.test.ts`
 
 #### 3. Type Check Failure (npm run typecheck)
 
@@ -99,6 +101,8 @@ Content to NOT implement prematurely:
 | Tool | Command | Purpose |
 |------|---------|---------|
 | Type Check | `npm run typecheck` | Validate TypeScript types |
-| Test Coverage | `npm run test:unit -- --test-name-pattern="xxx"` | Run single test |
+| Layered Smoke | `npm run test:layers:smoke` | Run unit + invariants first |
+| Layered Dev Regression | `npm run test:layers:dev` | Run unit + invariants + golden |
+| Single Layer | `npm run test:unit` / `npm run test:integration` / `npm run test:e2e` | Narrow the failing layer |
 | Build Diagnosis | `npm run build 2>&1 | grep error` | Filter build errors |
 | Documentation Validation | `npm run docs:lint` | Check documentation links and formatting |

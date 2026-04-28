@@ -247,7 +247,7 @@ test("PluginContext.fork allows overriding sandboxTier", () => {
     sandboxTier: "process",
   });
   const child = ctx.fork({ sandboxTier: "container" });
-  assert.equal((child as any).config.sandboxTier, "container");
+  assert.equal((child as any).config.sandboxTier, "workspace_write");
 });
 
 test("PluginContext.setValues uses specified source", () => {

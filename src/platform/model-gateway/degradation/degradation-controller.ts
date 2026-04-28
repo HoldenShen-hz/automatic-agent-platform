@@ -212,6 +212,9 @@ export class DegradationController {
         model: request.model,
         messages: request.messages.map((m) => ({ role: m.role as "user" | "assistant" | "system", content: m.content })),
         maxTokens: 4096,
+        traceId: `degradation:${request.routeClass}:primary`,
+        tenantId: request.tenantId ?? null,
+        costTag: `degradation.${request.routeClass}.primary`,
       });
 
       // Cache successful response for D2 fallback
@@ -258,6 +261,9 @@ export class DegradationController {
         model: fallbackProfile.profileName,
         messages: request.messages.map((m) => ({ role: m.role as "user" | "assistant" | "system", content: m.content })),
         maxTokens: 4096,
+        traceId: `degradation:${request.routeClass}:fallback`,
+        tenantId: request.tenantId ?? null,
+        costTag: `degradation.${request.routeClass}.fallback`,
       });
 
       return {

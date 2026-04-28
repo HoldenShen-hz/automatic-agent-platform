@@ -113,7 +113,7 @@ test("harness SDK: decide produces decision based on evaluator score", () => {
   assert.equal(humanDecision.action, "escalate_to_human");
 });
 
-test("harness SDK: sleep/resume cycle transitions run through sleeping and back to running", () => {
+test("harness SDK: sleep/resume cycle transitions run through paused sleep and back to running", () => {
   const sdk = new HarnessSdk();
   let run = sdk.createRun({
     taskId: "task-sleep-001",
@@ -124,7 +124,8 @@ test("harness SDK: sleep/resume cycle transitions run through sleeping and back 
   const resumeAt = new Date(Date.now() + 60000).toISOString();
   run = sdk.sleep(run, "waiting_for_resource", resumeAt);
 
-  assert.equal(run.status, "sleeping");
+  assert.equal(run.status, "paused");
+  assert.equal(run.pauseReason, "sleep");
   assert.ok(run.sleepLease);
   assert.equal(run.sleepLease.reason, "waiting_for_resource");
   assert.equal(run.sleepLease.resumeAt, resumeAt);
@@ -134,7 +135,7 @@ test("harness SDK: sleep/resume cycle transitions run through sleeping and back 
   assert.equal(run.sleepLease, null);
 });
 
-test("harness SDK: requestHumanReview/resolveReview round-trip through waiting_hitl", () => {
+test("harness SDK: requestHumanReview/resolveReview round-trip through paused hitl", () => {
   const sdk = new HarnessSdk();
   let run = sdk.createRun({
     taskId: "task-hitl-001",
@@ -143,7 +144,8 @@ test("harness SDK: requestHumanReview/resolveReview round-trip through waiting_h
   });
 
   run = sdk.requestHumanReview(run, "cost_exceeds_threshold", ["artifact://cost-report"]);
-  assert.equal(run.status, "waiting_hitl");
+  assert.equal(run.status, "paused");
+  assert.equal(run.pauseReason, "hitl");
   assert.ok(run.hitlRequest);
   assert.equal(run.hitlRequest.reason, "cost_exceeds_threshold");
 

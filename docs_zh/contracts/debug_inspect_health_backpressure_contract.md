@@ -35,7 +35,7 @@
 
 - 出问题时，开发者和运维能看什么。
 - 外部系统如何判断服务是否健康。
-- 如何一键检查单个 task / workflow / execution 的完整轨迹。
+- 如何一键检查单个 task / harness run / node run 的完整轨迹。
 - 系统过载时如何拒绝、排队或降级，而不是继续把问题放大。
 
 ## 3. 关键对象
@@ -60,8 +60,9 @@
 ### 3.2 `TaskInspectView`
 
 - `task`
-- `workflow_state?`
-- `executions[]`
+- `harness_run?`
+- `node_runs[]`
+- `legacy_workflow_projection?`
 - `approvals[]`
 - `sessions[]`
 - `recent_events[]`
@@ -147,7 +148,9 @@ Phase 1b 增强：
 ### 5.1 最小接口
 
 - `GET /tasks/:taskId/inspect`
-- `GET /executions/:executionId/inspect`
+- `GET /harness-runs/:harnessRunId/inspect`
+- `GET /node-runs/:nodeRunId/inspect`
+- `GET /executions/:executionId/inspect` (legacy compat alias)
 - `GET /approvals/:approvalId/inspect`
 - `GET /rollouts/:rolloutId/inspect`
 - `GET /knowledge/:namespace/inspect`
@@ -155,7 +158,7 @@ Phase 1b 增强：
 
 ### 5.2 查询要求
 
-- `task inspect` 应可还原 task 的主状态、workflow、execution、审批、会话和事件尾部
+- `task inspect` 应可还原 task 的主状态、harness run、node run、审批、会话和事件尾部
 - `task inspect` 应能展示当前 `stage`、`loop_iteration`、最近 feedback / learn / improve / release 引用
 - inspect 输出必须优先读 authoritative store，而不是只依赖内存状态
 - inspect 查询不得改变业务状态
@@ -172,6 +175,10 @@ flowchart TD
     D --> E["Build Inspect View"]
     E --> F["Return Read-Only Snapshot"]
 ```
+
+## v4.3 Contract Remediation
+
+- T-63: 本文原先把 inspect 主视图锚定在 `workflow_state + executions[]`，根因是调试 contract 直接继承了旧 workflow/execution 观测模型，没有跟随 runtime truth 表族切换。修复：正文现把 inspect 主链收口到 `Task -> HarnessRun -> NodeRun[]`，旧 execution 入口仅保留兼容别名。
 
 ## 6. Debug 能力
 

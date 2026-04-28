@@ -1,5 +1,10 @@
 import { ServiceRegistry } from "./shared/lifecycle/service-registry.js";
 import {
+  buildComplianceBootstrap,
+  registerComplianceBootstrap,
+  COMPLIANCE_BOOTSTRAP_SERVICE_ID,
+} from "./compliance/compliance-bootstrap.js";
+import {
   buildControlPlaneBootstrap,
   registerControlPlaneBootstrap,
   CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
@@ -21,12 +26,22 @@ import {
   type InterfaceCapabilityBaseline,
 } from "./interface/interface-plane-bootstrap.js";
 import {
+  buildModelGatewayBootstrap,
+  registerModelGatewayBootstrap,
+  MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+} from "./model-gateway/model-gateway-bootstrap.js";
+import {
   buildOrchestrationPlaneBootstrap,
   registerOrchestrationPlaneBootstrap,
   ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
   type OrchestrationPlaneBootstrap,
   type OrchestrationCapabilityBaseline,
 } from "./orchestration/orchestration-plane-bootstrap.js";
+import {
+  buildPromptEngineBootstrap,
+  registerPromptEngineBootstrap,
+  PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+} from "./prompt-engine/prompt-engine-bootstrap.js";
 import {
   buildStateEvidencePlaneBootstrap,
   registerStateEvidencePlaneBootstrap,
@@ -36,6 +51,18 @@ import {
 } from "./state-evidence/state-evidence-plane-bootstrap.js";
 
 export const FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID = "plane.runtime.catalog";
+export const X1_FABRIC_BOOTSTRAP_SERVICE_ID = "plane.x1-fabric.bootstrap";
+
+export interface X1FabricBootstrap {
+  readonly capabilityGroupId: "x1-fabric";
+  readonly capabilityCount: number;
+  readonly registeredServiceIds: readonly [
+    typeof MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+    typeof PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+    typeof COMPLIANCE_BOOTSTRAP_SERVICE_ID,
+    typeof X1_FABRIC_BOOTSTRAP_SERVICE_ID,
+  ];
+}
 
 export interface FivePlaneRuntimeCatalog {
   readonly interfacePlane: readonly InterfaceCapabilityBaseline[];
@@ -61,8 +88,42 @@ export function buildFivePlaneRuntimeCatalog(): FivePlaneRuntimeCatalog {
   };
 }
 
+export function buildX1FabricBootstrap(): X1FabricBootstrap {
+  return {
+    capabilityGroupId: "x1-fabric",
+    capabilityCount:
+      buildModelGatewayBootstrap().catalog.length
+      + buildPromptEngineBootstrap().catalog.length
+      + buildComplianceBootstrap().catalog.length,
+    registeredServiceIds: [
+      MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+      PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+      COMPLIANCE_BOOTSTRAP_SERVICE_ID,
+      X1_FABRIC_BOOTSTRAP_SERVICE_ID,
+    ],
+  };
+}
+
+export function registerX1FabricBootstrap(
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+): X1FabricBootstrap {
+  registerModelGatewayBootstrap(registry);
+  registerPromptEngineBootstrap(registry);
+  registerComplianceBootstrap(registry);
+  registry.register<X1FabricBootstrap>(X1_FABRIC_BOOTSTRAP_SERVICE_ID, {
+    init: () => buildX1FabricBootstrap(),
+    dependsOn: [
+      MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+      PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+      COMPLIANCE_BOOTSTRAP_SERVICE_ID,
+    ],
+  });
+  return registry.get<X1FabricBootstrap>(X1_FABRIC_BOOTSTRAP_SERVICE_ID);
+}
+
 export function registerFivePlaneRuntimeCatalog(registry: ServiceRegistry = ServiceRegistry.getInstance()): FivePlaneRuntimeCatalog {
   registerInterfacePlaneBootstrap(registry);
+  registerX1FabricBootstrap(registry);
   registerControlPlaneBootstrap(registry);
   registerOrchestrationPlaneBootstrap(registry);
   registerExecutionPlaneBootstrap(registry);

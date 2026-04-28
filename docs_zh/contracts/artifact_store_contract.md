@@ -20,7 +20,10 @@
 ## 3. ArtifactRecord 最小字段
 
 - `artifact_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id?`
+- `plan_graph_bundle_id?`
+- `task_id?`
 - `ref_id?`
 - `kind`
 - `path`
@@ -78,6 +81,10 @@
 
 - artifact 必须能通过 `ref_id` 回链到 feedback / learning / improvement / rollout / diagnostics 等闭环对象。
 - publish / preview / governance 相关 artifact 不得只存在文件系统路径，必须有结构化索引。
+
+## v4.3 Contract Remediation
+
+- T-64: 本文原先只要求 `task_id`，根因是 artifact store contract 早于 v4.3 executable contract 成型，导致 artifact 索引缺少运行时 lineage。修复：正文现要求 `harness_run_id / node_run_id / plan_graph_bundle_id` 作为最小运行链主键，`task_id` 仅作为聚合查询入口。
 
 ### 5.5 ArtifactPublishService
 

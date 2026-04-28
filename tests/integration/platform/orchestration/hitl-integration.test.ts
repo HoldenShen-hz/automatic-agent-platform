@@ -660,7 +660,7 @@ test("HITL runtime rejects request and run aborts", () => {
 // HarnessRuntimeService HITL integration tests
 // ---------------------------------------------------------------------------
 
-test("Harness openHitlReview transitions run to waiting_hitl status", () => {
+test("Harness openHitlReview transitions run to paused hitl status", () => {
   const ctx = createHitlContext("aa-hitl-harness-");
   try {
     const service = new HarnessRuntimeService();
@@ -680,7 +680,8 @@ test("Harness openHitlReview transitions run to waiting_hitl status", () => {
 
     run = service.openHitlReview(run, "High risk operation requires human approval", ["artifact_1"]);
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest, "Run should have HITL request");
     assert.equal(run.hitlRequest!.reason, "High risk operation requires human approval");
 

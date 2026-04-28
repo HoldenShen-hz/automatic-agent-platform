@@ -24,7 +24,7 @@
 ## 3. 统一对象
 
 - `HumanOutput`: 面向用户展示的结论或摘要
-- `StructuredStepOutput`: workflow / step 的结构化中间结果（对应 OAPEFLIR Execute DualChannelStepOutput）
+- `StructuredExecutionView`: 基于 `NodeAttemptReceipt` 派生的结构化中间结果视图
 - `ArtifactRecord`: 文件、图片、报告、压缩包等物理产物
 
 ### 3.1 OAPEFLIR ArtifactPlane 接口
@@ -32,9 +32,11 @@
 ```typescript
 interface ArtifactRecord {
   artifactId: string;
-  taskId: string;
-  executionId?: string;
-  planId?: string;          // OAPEFLIR Plan Hub
+  harnessRunId: string;
+  nodeRunId?: string;
+  planGraphBundleId?: string;
+  taskId?: string;          // 查询入口，不是 truth 主键
+  executionId?: string;     // legacy projection alias
   type: ArtifactType;
   path: string;
   mimeType: string;
@@ -52,6 +54,10 @@ interface ArtifactRef {
   targetId: string;
 }
 ```
+
+## v4.3 Contract Remediation
+
+- T-62: 本文原先把 `executionId / planId / StructuredStepOutput` 写成 artifact 主关联键，根因是 artifact contract 直接复用了旧 workflow-step 输出模型，没有切换到 `NodeAttemptReceipt` 和 `PlanGraphBundle` 的执行真相边界。修复：正文现以 `harnessRunId / nodeRunId / planGraphBundleId` 为权威 lineage，旧字段仅保留为查询兼容别名。
 
 ### 3.2 ArtifactType 扩展
 

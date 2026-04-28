@@ -16,6 +16,7 @@ test("five-plane runtime orchestrator starts planes in canonical order", async (
     assert.equal(result.ready, true);
     assert.deepEqual(result.startupOrder, [
       "interface",
+      "x1-fabric",
       "control-plane",
       "orchestration",
       "execution",
@@ -23,6 +24,7 @@ test("five-plane runtime orchestrator starts planes in canonical order", async (
     ]);
     assert.equal(result.steps[0]?.initializedDependencyServiceIds.length, 0);
     assert.deepEqual(result.steps[1]?.initializedDependencyServiceIds, ["plane.interface.bootstrap"]);
+    assert.deepEqual(result.steps[2]?.initializedDependencyServiceIds, ["plane.x1-fabric.bootstrap"]);
     assert.equal(result.runtimeCatalog.executionPlane.length, 14);
   } finally {
     await registry.reset();
@@ -54,7 +56,7 @@ test("prepare returns startup plan and runtime catalog", async () => {
     const { startupPlan, runtimeCatalog } = orchestrator.prepare();
     assert.ok(startupPlan, "prepare should return startupPlan");
     assert.ok(runtimeCatalog, "prepare should return runtimeCatalog");
-    assert.equal(startupPlan.steps.length, 5, "startupPlan should have 5 steps");
+    assert.equal(startupPlan.steps.length, 6, "startupPlan should have 6 steps");
     assert.equal(runtimeCatalog.interfacePlane.length, 6);
     assert.equal(runtimeCatalog.controlPlane.length, 12);
   } finally {
@@ -68,26 +70,30 @@ test("startup returns correct initialized status for each step", async () => {
     const orchestrator = registerFivePlaneRuntimeOrchestrator(registry);
     const result = orchestrator.startup();
 
-    assert.equal(result.steps.length, 5);
+    assert.equal(result.steps.length, 6);
     assert.equal(result.steps[0]!.stepId, "interface");
     assert.equal(result.steps[0]!.initialized, true);
     assert.equal(result.steps[0]!.capabilityCount, 6);
 
-    assert.equal(result.steps[1]!.stepId, "control-plane");
+    assert.equal(result.steps[1]!.stepId, "x1-fabric");
     assert.equal(result.steps[1]!.initialized, true);
-    assert.equal(result.steps[1]!.capabilityCount, 12);
+    assert.equal(result.steps[1]!.capabilityCount, 20);
 
-    assert.equal(result.steps[2]!.stepId, "orchestration");
+    assert.equal(result.steps[2]!.stepId, "control-plane");
     assert.equal(result.steps[2]!.initialized, true);
-    assert.equal(result.steps[2]!.capabilityCount, 8);
+    assert.equal(result.steps[2]!.capabilityCount, 12);
 
-    assert.equal(result.steps[3]!.stepId, "execution");
+    assert.equal(result.steps[3]!.stepId, "orchestration");
     assert.equal(result.steps[3]!.initialized, true);
-    assert.equal(result.steps[3]!.capabilityCount, 14);
+    assert.equal(result.steps[3]!.capabilityCount, 8);
 
-    assert.equal(result.steps[4]!.stepId, "state-evidence");
+    assert.equal(result.steps[4]!.stepId, "execution");
     assert.equal(result.steps[4]!.initialized, true);
-    assert.equal(result.steps[4]!.capabilityCount, 10);
+    assert.equal(result.steps[4]!.capabilityCount, 14);
+
+    assert.equal(result.steps[5]!.stepId, "state-evidence");
+    assert.equal(result.steps[5]!.initialized, true);
+    assert.equal(result.steps[5]!.capabilityCount, 10);
   } finally {
     await registry.reset();
   }
@@ -101,6 +107,7 @@ test("startup returns all initialized service IDs", async () => {
 
     assert.ok(result.initializedServiceIds.length > 0);
     assert.ok(result.initializedServiceIds.includes("plane.interface.bootstrap"));
+    assert.ok(result.initializedServiceIds.includes("plane.x1-fabric.bootstrap"));
     assert.ok(result.initializedServiceIds.includes("plane.control.bootstrap"));
     assert.ok(result.initializedServiceIds.includes("plane.orchestration.bootstrap"));
     assert.ok(result.initializedServiceIds.includes("plane.execution.bootstrap"));
@@ -110,15 +117,16 @@ test("startup returns all initialized service IDs", async () => {
   }
 });
 
-test("snapshotReadiness returns plane readiness for all five planes", async () => {
+test("snapshotReadiness returns plane readiness for all startup steps", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const orchestrator = registerFivePlaneRuntimeOrchestrator(registry);
     const snapshot = orchestrator.snapshotReadiness();
 
-    assert.equal(snapshot.planeReadiness.length, 5);
+    assert.equal(snapshot.planeReadiness.length, 6);
     assert.deepEqual(snapshot.planeReadiness.map(s => s.stepId), [
       "interface",
+      "x1-fabric",
       "control-plane",
       "orchestration",
       "execution",

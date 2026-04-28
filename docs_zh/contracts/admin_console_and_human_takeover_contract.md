@@ -33,8 +33,8 @@
 
 - 接管任务
 - 修改下一步输入
-- 跳过某步
-- 重试某步
+- 跳过某个 `NodeRun`
+- 重试某个 `NodeAttempt`
 - 切换模型
 - 切换 worker
 - 手动补充 artifact
@@ -55,8 +55,13 @@
 - human takeover 必须写审计。
 - 高风险 takeover 动作必须再次经过 Policy Engine。
 - 普通管理员不得默认拥有 break-glass 权限。
-- takeover 动作必须带 tenant / workspace / execution 作用域，不能以全局模糊操作替代。
+- takeover 动作必须带 tenant / workspace / harness run / node run 作用域，不能以全局模糊操作替代。
 - 手动补充 artifact、切换 worker、强制结束任务等动作必须保留前后状态差异证据。
+- 任何改变运行态的 takeover 动作都必须通过 `RuntimeStateMachine.transition(command)` 与预算预留检查，不得直接改写状态字段。
+
+## v4.3 Contract Remediation
+
+- T-70: 本文原先把人工接管动作表述成“某步/某 execution”的直接操作，根因是值班控制台 contract 沿用旧 step/execution 运维语义，没有接入 runtime authority 和 budget gate。修复：正文现把 takeover 锚点切到 `HarnessRun / NodeRun / NodeAttempt`，并强制状态迁移与预算预留走正式控制链。
 
 ## 7. UI 目标
 

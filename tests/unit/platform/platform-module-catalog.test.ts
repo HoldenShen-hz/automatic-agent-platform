@@ -15,21 +15,22 @@ import {
 } from "../../../src/platform/platform-module-catalog.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
-test("PLATFORM_SURFACE_MANIFESTS is frozen and has exactly 10 surfaces", () => {
+test("PLATFORM_SURFACE_MANIFESTS is frozen and has exactly 11 surfaces", () => {
   assert.ok(Object.isFrozen(PLATFORM_SURFACE_MANIFESTS), "PLATFORM_SURFACE_MANIFESTS should be frozen");
-  assert.equal(PLATFORM_SURFACE_MANIFESTS.length, 10);
+  assert.equal(PLATFORM_SURFACE_MANIFESTS.length, 11);
 });
 
-test("listPlatformSurfaceManifests returns frozen array of 10 surfaces", () => {
+test("listPlatformSurfaceManifests returns frozen array of 11 surfaces", () => {
   const manifests = listPlatformSurfaceManifests();
   assert.ok(Object.isFrozen(manifests), "returned array should be frozen");
-  assert.equal(manifests.length, 10);
+  assert.equal(manifests.length, 11);
 });
 
 test("all surface IDs are valid PlatformSurfaceId types", () => {
   const surfaceIds: PlatformSurfaceId[] = [
     "contracts",
     "interface",
+    "x1-fabric",
     "control-plane",
     "orchestration",
     "execution",
@@ -71,15 +72,15 @@ test("each surface manifest entryModule starts with 'src/platform/'", () => {
   }
 });
 
-test("all architecture sections follow section reference format (§X)", () => {
+test("all architecture sections follow section reference format (§X or §X.Y)", () => {
   const manifests = listPlatformSurfaceManifests();
-  const sectionPattern = /^§\d+$/;
+  const sectionPattern = /^§\d+(?:\.\d+)*$/;
 
   for (const manifest of manifests) {
     for (const section of manifest.architectureSections) {
       assert.ok(
         sectionPattern.test(section),
-        `${manifest.surfaceId}: architecture section '${section}' should match §X format`,
+        `${manifest.surfaceId}: architecture section '${section}' should match section reference format`,
       );
     }
   }
@@ -282,13 +283,13 @@ test("gateMeaning fields are descriptive and non-empty", () => {
 
 test("each ring's architectureSections contain valid section references", () => {
   const rings = listArchitectureReadinessRings();
-  const sectionPattern = /^§\d+$/;
+  const sectionPattern = /^§\d+(?:\.\d+)*$/;
 
   for (const ring of rings) {
     for (const section of ring.architectureSections) {
       assert.ok(
         sectionPattern.test(section),
-        `${ring.ringId}: architecture section '${section}' should match §X format`,
+        `${ring.ringId}: architecture section '${section}' should match section reference format`,
       );
     }
   }
@@ -454,7 +455,7 @@ test("registerPlatformSurfaceCatalog registers service in registry", async () =>
     const manifests = registerPlatformSurfaceCatalog(registry);
 
     assert.ok(registry.isInitialized("platform.surface-catalog"));
-    assert.equal(manifests.length, 10);
+    assert.equal(manifests.length, 11);
   } finally {
     await registry.reset();
   }
@@ -478,7 +479,7 @@ test("registerPlatformSurfaceCatalog works with default registry", async () => {
     const manifests = registerPlatformSurfaceCatalog();
 
     assert.ok(manifests.length > 0);
-    assert.equal(manifests.length, 10);
+    assert.equal(manifests.length, 11);
   } finally {
     await registry.reset();
   }

@@ -287,13 +287,18 @@ test("createControlDirective accepts all directive types", async () => {
   const directiveTypes = ["mode_switch", "pause", "resume", "rollback", "quota_adjust", "kill"] as const;
 
   for (const type of directiveTypes) {
-    const directive = createControlDirective({
-      type,
-      issuedBy: principal,
-      reason: `testing ${type}`,
-    });
-    assert.equal(directive.type, type);
-    assert.equal(directive.reason, `testing ${type}`);
+    assert.throws(
+      () =>
+        createControlDirective({
+          type,
+          issuedBy: principal,
+          reason: `testing ${type}`,
+        }),
+      (error: unknown) =>
+        error instanceof Error
+        && "code" in error
+        && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+    );
   }
 });
 
@@ -305,20 +310,23 @@ test("createControlDirective with targetScope", async () => {
     tenantId: null,
   });
 
-  const directive = createControlDirective({
-    type: "pause",
-    issuedBy: principal,
-    reason: "maintenance window",
-    targetScope: {
-      tenantId: "tenant_abc",
-      workflowId: "workflow_xyz",
-      workerId: "worker_123",
-    },
-  });
-
-  assert.equal(directive.targetScope.tenantId, "tenant_abc");
-  assert.equal(directive.targetScope.workflowId, "workflow_xyz");
-  assert.equal(directive.targetScope.workerId, "worker_123");
+  assert.throws(
+    () =>
+      createControlDirective({
+        type: "pause",
+        issuedBy: principal,
+        reason: "maintenance window",
+        targetScope: {
+          tenantId: "tenant_abc",
+          workflowId: "workflow_xyz",
+          workerId: "worker_123",
+        },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+  );
 });
 
 test("createExecutionPlan with all options", async () => {
@@ -329,41 +337,46 @@ test("createExecutionPlan with all options", async () => {
     tenantId: null,
   });
 
-  const plan = createExecutionPlan({
-    traceId: "trace_abc",
-    principal,
-    workflowRunId: "workflow_xyz",
-    steps: [],
-    budget: { maxSteps: 100, maxDurationMs: 3600000, maxCost: 1000 },
-    fallbackStrategy: "escalate",
-    approvalGates: ["gate_1", "gate_2"],
-    planId: "plan_custom",
-  });
-
-  assert.equal(plan.planId, "plan_custom");
-  assert.equal(plan.fallbackStrategy, "escalate");
-  assert.deepEqual(plan.approvalGates, ["gate_1", "gate_2"]);
+  assert.throws(
+    () =>
+      createExecutionPlan({
+        traceId: "trace_abc",
+        principal,
+        workflowRunId: "workflow_xyz",
+        steps: [],
+        budget: { maxSteps: 100, maxDurationMs: 3600000, maxCost: 1000 },
+        fallbackStrategy: "escalate",
+        approvalGates: ["gate_1", "gate_2"],
+        planId: "plan_custom",
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+  );
 });
 
 test("createExecutionReceipt with error detail", async () => {
   const { createExecutionReceipt } = await import("../../../../src/platform/contracts/types/index.js");
 
-  const receipt = createExecutionReceipt({
-    planId: "plan_123",
-    stepId: "step_456",
-    status: "failed",
-    durationMs: 2500,
-    errorDetail: {
-      code: "E001",
-      message: "Step execution timed out",
-      retryable: true,
-    },
-  });
-
-  assert.equal(receipt.status, "failed");
-  assert.equal(receipt.errorDetail?.code, "E001");
-  assert.equal(receipt.errorDetail?.message, "Step execution timed out");
-  assert.equal(receipt.errorDetail?.retryable, true);
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan_123",
+        stepId: "step_456",
+        status: "failed",
+        durationMs: 2500,
+        errorDetail: {
+          code: "E001",
+          message: "Step execution timed out",
+          retryable: true,
+        },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+  );
 });
 
 test("createStateCommand with all command types", async () => {

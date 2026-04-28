@@ -55,7 +55,9 @@
 DecisionRequest 至少需要：
 
 - `decision_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id?`
+- `task_id?`
 - `reason`
 - `options`
 - `deadline?`
@@ -72,6 +74,10 @@ DecisionResponse 至少需要：
 - 网关层只做适配，不改平台语义。
 - 渠道差异应通过 formatter / adapter 解决。
 - 决策请求必须可追踪回具体任务和升级原因。
+
+## v4.3 Contract Remediation
+
+- T-65: 本文原先把 `task_id` 写成决策交互唯一关联键，根因是网关消息 contract 仍按任务级 UI 模型定义审批，而没有下沉到实际运行实例。修复：正文现把 `harness_run_id / node_run_id` 提升为决策链权威关联键，`task_id` 只保留渠道聚合语义。
 
 ## 7. 补充规则
 

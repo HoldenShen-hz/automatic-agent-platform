@@ -1,9 +1,10 @@
 /**
  * Sub-Workflow Executor
  *
- * Executes sub-workflows as part of a parent workflow execution.
- * Manages workflow state, step results, checkpointing, and rollback
- * within a nested execution context.
+ * Executes legacy linear sub-workflows inside a bounded compatibility adapter.
+ * Canonical runtime truth still belongs to PlanGraphBundle / NodeRun / NodeAttempt;
+ * this module only preserves old domain workflow definitions until they are
+ * expanded into the executable graph model at the orchestration boundary.
  *
  * Architecture: §14 Runtime Execution Plane
  * @see docs_zh/architecture/00-platform-architecture.md §14
@@ -23,6 +24,8 @@ export type WorkflowStatus = "created" | "running" | "paused" | "completed" | "f
 export type RollbackPolicy = "none" | "manual" | "automatic";
 
 export interface WorkflowStep {
+  nodeId?: string;
+  /** @deprecated compatibility alias; use nodeId */
   stepId: string;
   name: string;
   action: string;
@@ -54,6 +57,8 @@ export interface SubWorkflowDefinition {
 }
 
 export interface WorkflowStepDefinition {
+  nodeId?: string;
+  /** @deprecated compatibility alias; use nodeId */
   stepId: string;
   name: string;
   action: string;
@@ -162,6 +167,7 @@ export class SubWorkflowExecutor {
     // Initialize steps from definition
     for (const stepDef of definition.steps) {
       const step: WorkflowStep = {
+        nodeId: stepDef.nodeId ?? stepDef.stepId,
         stepId: stepDef.stepId,
         name: stepDef.name,
         action: stepDef.action,
@@ -682,6 +688,7 @@ export class SubWorkflowExecutor {
     if (completedSteps.length > 0) {
       result.output = {
         completedSteps: completedSteps.map((s) => ({
+          nodeId: s.nodeId ?? s.stepId,
           stepId: s.stepId,
           name: s.name,
           output: s.output,

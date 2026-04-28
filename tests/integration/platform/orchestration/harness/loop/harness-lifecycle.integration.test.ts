@@ -47,7 +47,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
   };
 }
 
-test("Full loop lifecycle: createRun -> appendStep -> sleep -> recover -> resume", () => {
+test("Full loop lifecycle: createRun -> appendStep -> paused(sleep) -> paused(recovery) -> resume", () => {
   const ctx = createIntegrationContext("aa-lifecycle-loop-");
   try {
     const service = new HarnessRuntimeService();
@@ -95,7 +95,8 @@ test("Full loop lifecycle: createRun -> appendStep -> sleep -> recover -> resume
     // Step 3: Sleep the run
     const futureTime = new Date(Date.now() + 60_000).toISOString();
     run = service.sleep(run, "awaiting_resource", futureTime);
-    assert.equal(run.status, "sleeping");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "sleep");
     assert.ok(run.sleepLease);
     assert.equal(run.sleepLease?.reason, "awaiting_resource");
     assert.equal(run.sleepLease?.runId, run.runId);
@@ -107,16 +108,17 @@ test("Full loop lifecycle: createRun -> appendStep -> sleep -> recover -> resume
 
     // Step 4: Recover from sleep
     run = service.recover(run);
-    assert.equal(run.status, "recovering");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "recovery");
     assert.ok(run.recoveryCheckpoint);
     assert.equal(run.recoveryCheckpoint?.runId, run.runId);
-    assert.equal(run.recoveryCheckpoint?.statusBeforeRecovery, "sleeping");
+    assert.equal(run.recoveryCheckpoint?.statusBeforeRecovery, "paused");
     assert.equal(run.recoveryCheckpoint?.lastCompletedStepId, run.steps[2]?.stepId);
 
     // Verify recovery timeline event was added
     const recoveryEvent = run.timeline.find((e: HarnessTimelineEvent) => e.type === "recovery_started");
     assert.ok(recoveryEvent);
-    assert.deepEqual(recoveryEvent.payload, { statusBeforeRecovery: "sleeping" });
+    assert.deepEqual(recoveryEvent.payload, { statusBeforeRecovery: "paused" });
 
     // Step 5: Resume the run
     run = service.resume(run);
@@ -266,7 +268,8 @@ test("Recovery flow: handleFailure with worker_crash", () => {
     // Handle worker_crash failure
     const recovered = service.handleFailure(run, "worker_crash");
 
-    assert.equal(recovered.status, "recovering");
+    assert.equal(recovered.status, "paused");
+    assert.equal(recovered.pauseReason, "recovery");
     assert.ok(recovered.recoveryCheckpoint);
     assert.equal(recovered.recoveryCheckpoint?.runId, run.runId);
     assert.equal(recovered.recoveryCheckpoint?.lastCompletedStepId, run.steps.at(-1)?.stepId ?? null);
@@ -432,7 +435,8 @@ test("runLoop escalates to HITL when requiresHuman is true", () => {
       producedEvidenceRefs: [],
     });
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.equal(run.decision?.action, "escalate_to_human");
     assert.ok(run.hitlRequest);
     assert.equal(run.hitlRequest?.status, "pending");
@@ -553,7 +557,7 @@ test("Invariant checking: iteration_exceeds_budget violation", () => {
   }
 });
 
-test("Invariant checking: waiting_hitl without hitlRequest", () => {
+test("Invariant checking: paused HITL run without hitlRequest", () => {
   const ctx = createIntegrationContext("aa-invariant-hitl-");
   try {
     const service = new HarnessRuntimeService();
@@ -564,10 +568,11 @@ test("Invariant checking: waiting_hitl without hitlRequest", () => {
       constraintPack: createConstraintPack(),
     });
 
-    // Manually create a run with waiting_hitl status but no hitlRequest
+    // Manually create a paused HITL run without a request to verify the invariant.
     const violatingRun: HarnessRun = {
       ...run,
-      status: "waiting_hitl",
+      status: "paused",
+      pauseReason: "hitl",
       hitlRequest: null,
     };
 

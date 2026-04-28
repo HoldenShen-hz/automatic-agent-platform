@@ -49,7 +49,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 输入: "modify foo.ts bar function"
 验证: O→A→P→E→F→L→I(shadow) 全链路
 验证: 每阶段 DTO 通过 Zod 校验
-验证: 无阶段被跳过
+验证: `oapeflir.view.*` 阶段视图连续，且不替代 runtime truth
 验证: <60s E2E 延迟
 ```
 
@@ -64,7 +64,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 ```
 输入: 执行中途 tool_failure
 验证: ReplanningService 生成 version N+1
-验证: 新 Plan 从失败步骤后继续
+验证: 新 `GraphPatch` 从失败 `NodeRun` 后继续
 ```
 
 #### Test 4: Canary 升级流程
@@ -83,6 +83,10 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 ```
 
 ### 4. 性能基准目标
+
+## v4.3 ADR Remediation
+
+- A-66: 本 ADR 原先把 OAPEFLIR 测试描述成“无阶段被跳过”的可执行主链，并使用“失败步骤后继续”表述 replan，根因是测试策略 ADR 把认知阶段视图和 runtime 执行图混在了一起。修复：正文现把 OAPEFLIR 限定为 view 连续性验证，把恢复/重规划锚点切到 `GraphPatch / NodeRun`。
 
 | 模块 | 操作 | P99 目标 | 测试文件 |
 |------|------|---------|---------|

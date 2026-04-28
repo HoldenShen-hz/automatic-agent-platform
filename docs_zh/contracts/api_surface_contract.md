@@ -44,7 +44,9 @@
 - `GET /tasks/:taskId/oapeflir-timeline`
 - `POST /tasks/:taskId/cancel`
 - `GET /sessions/:sessionId/messages`
-- `GET /executions/:executionId/inspect`
+- `GET /harness-runs/:harnessRunId/inspect`
+- `GET /node-runs/:nodeRunId/inspect`
+- `GET /executions/:executionId/inspect` (legacy compat alias)
 - `GET /approvals/:approvalId/inspect`
 - `POST /approvals/:approvalId/decision`
 - `GET /rollouts/:rolloutId/inspect`
@@ -78,6 +80,10 @@
 
 - API 返回结构必须与 contract 命名对齐。
 - 写接口必须返回稳定 ID 与时间戳。
+
+## v4.3 Contract Remediation
+
+- T-61: 本文原先把 `/executions/:executionId/inspect` 写成唯一 canonical inspect 入口，根因是 API contract 沿用了旧 execution-centric 观测模型，没有随着 `HarnessRun / NodeRun` 真相主链升级。修复：本文现把 `harness-runs` / `node-runs` inspect 提升为权威端点，`/executions/:executionId/inspect` 只保留兼容查询语义。
 - 高风险动作应要求审批或明确权限。
 - OpenAPI 应由 schema 生成，不维护手写漂移版本。
 - health / inspect 的状态语义与字段命名以 `debug_inspect_health_backpressure_contract.md` 为准。

@@ -86,10 +86,10 @@ test("BusinessPackManifestSchema parses full manifest with all optional fields",
   assert.equal(manifest.riskMatrix.length, 1);
   assert.equal(manifest.dependencies.length, 1);
   assert.equal(manifest.approvalPoints.length, 1);
-  assert.equal(manifest.sandboxTier, "container");
+  assert.equal(manifest.sandboxTier, "workspace_write");
 });
 
-test("BusinessPackManifestSchema uses defaults for optional fields", () => {
+test("BusinessPackManifestSchema uses canonical defaults for optional fields", () => {
   const manifest = BusinessPackManifestSchema.parse({
     packId: "minimal-pack",
     name: "Minimal Pack",
@@ -108,7 +108,7 @@ test("BusinessPackManifestSchema uses defaults for optional fields", () => {
   assert.equal(manifest.failureStrategy, "fail_fast");
   assert.equal(manifest.rollbackCapability, false);
   assert.equal(manifest.domainMetrics.length, 0);
-  assert.equal(manifest.sandboxTier, "process");
+  assert.equal(manifest.sandboxTier, "read_only");
   assert.equal(manifest.permissions.length, 0);
   assert.equal(manifest.author, "");
   assert.equal(manifest.tags.length, 0);
@@ -286,8 +286,8 @@ test("type exports are usable", () => {
   };
   assert.equal(riskEntry.level, "high");
 
-  const sandboxTier: SandboxTier = "container";
-  assert.equal(sandboxTier, "container");
+  const sandboxTier: SandboxTier = "workspace_write";
+  assert.equal(sandboxTier, "workspace_write");
 
   const transition: LifecycleTransitionResult = {
     from: "draft",

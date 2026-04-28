@@ -217,7 +217,8 @@ test("E2E: loop escalates to human when requiresHuman is true and receives appro
       requiresHuman: true,
     });
 
-    assert.equal(run.status, "waiting_hitl", "run should be waiting for HITL review");
+    assert.equal(run.status, "paused", "run should pause for HITL review");
+    assert.equal(run.pauseReason, "hitl", "pause reason should identify HITL review");
     assert.equal(run.decision?.action, "escalate_to_human", "decision should be escalate_to_human");
     assert.ok(run.hitlRequest, "hitlRequest should be present");
     assert.equal(run.hitlRequest?.status, "pending", "HITL request should be pending");
@@ -260,7 +261,8 @@ test("E2E: loop escalates to human and is rejected, run aborts", (t) => {
       requiresHuman: true,
     });
 
-    assert.equal(run.status, "waiting_hitl", "run should be waiting for HITL review");
+    assert.equal(run.status, "paused", "run should pause for HITL review");
+    assert.equal(run.pauseReason, "hitl", "pause reason should identify HITL review");
     assert.equal(run.decision?.action, "escalate_to_human");
 
     // Resolve the HITL review with rejection

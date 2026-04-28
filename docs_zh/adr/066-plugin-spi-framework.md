@@ -8,7 +8,7 @@
 
 OAPEFLIR 八阶段架构需要对不同业务域（coding/operations/growth/game-dev/asset-production/livestream）提供差异化的检索、验证、规划和展示能力。同时，外部系统（Jira/GitHub/Notion/Figma/OBS/Ad/CRM）需要通过统一接口接入。
 
-现有 `PluginSPIRegistry`（`plugin-spi-registry.ts`，829 行）已实现完整的生命周期状态机，本 ADR 正式确立 Plugin SPI 作为 OAPEFLIR 的正式扩展机制。
+现有 `PluginSPIRegistry`（`plugin-spi-registry.ts`，829 行）已实现完整的生命周期状态机，本 ADR 正式确立 Plugin SPI 作为平台 domain registry 的正式扩展边界；OAPEFLIR 只消费其投影视图与结果，不拥有插件执行权。
 
 ## 决策
 
@@ -19,7 +19,7 @@ OAPEFLIR 八阶段架构需要对不同业务域（coding/operations/growth/game
 | `DomainRetrieverPlugin` | 从知识库/内存/上下文中检索相关内容 | `retrieve(query: RetrievalQuery): Promise<RetrievalResult[]>` |
 | `DomainValidatorPlugin` | 验证执行输入/输出是否符合 domain 规范 | `validate(input: unknown, context: ValidationContext): Promise<ValidationResult>` |
 | `DomainPlannerPlugin` | 为特定 domain 生成定制化执行计划 | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>` |
-| `DomainPresenterPlugin` | 将执行结果格式化为 domain 特定输出 | `present(output: DualChannelStepOutput, format: OutputFormat): Promise<PresentedOutput>` |
+| `DomainPresenterPlugin` | 将执行结果格式化为 domain 特定输出 | `present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>` |
 
 ### 2. Plugin 生命周期状态机
 

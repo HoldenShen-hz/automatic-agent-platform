@@ -70,7 +70,7 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
   "workflow:step_completed": {
     type: "workflow:step_completed",
     tier: "tier_1",
-    producer: "workflow_runtime",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("workflow:step_completed"),
   },
   "decision:requested": {
@@ -88,25 +88,25 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
   "division:completed": {
     type: "division:completed",
     tier: "tier_1",
-    producer: "workflow_runtime",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("division:completed"),
   },
   "division:failed": {
     type: "division:failed",
     tier: "tier_1",
-    producer: "workflow_runtime",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("division:failed"),
   },
   "subtask:completed": {
     type: "subtask:completed",
     tier: "tier_1",
-    producer: "workflow_runtime",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("subtask:completed"),
   },
   "subtask:failed": {
     type: "subtask:failed",
     tier: "tier_1",
-    producer: "workflow_runtime",
+    producer: "harness_runtime_legacy_projection",
     consumers: getRequiredConsumers("subtask:failed"),
   },
   "cost:limit_reached": {

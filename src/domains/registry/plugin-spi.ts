@@ -5,6 +5,10 @@ import type { UnifiedAssessment } from "../../platform/orchestration/oapeflir/ty
 import type { StepTemplateConfig } from "./domain-model.js";
 
 export interface MachineOutput {
+  nodeId?: string | null;
+  nodeRunId?: string | null;
+  attemptId?: string | null;
+  /** @deprecated legacy projection identifier; use nodeId/nodeRunId */
   stepId: string;
   outputRef: string | null;
   payload: Record<string, unknown>;
@@ -134,6 +138,7 @@ export interface DomainValidatorPlugin extends PluginLifecycleHooks {
   spiType: "validator";
   capabilityIds?: readonly string[];
   validate(output: {
+    nodeId?: string;
     stepId: string;
     machineOutput: MachineOutput;
     contract: Record<string, unknown>;
@@ -154,6 +159,8 @@ export interface DomainPlannerPlugin extends PluginLifecycleHooks {
     intent: string;
     assessment: UnifiedAssessment;
   }): Promise<{
+    planGraphBundleId?: string;
+    /** @deprecated legacy projection identifier; use planGraphBundleId */
     workflowId: string;
     overrides: Partial<StepTemplateConfig>[];
     rationale: string;

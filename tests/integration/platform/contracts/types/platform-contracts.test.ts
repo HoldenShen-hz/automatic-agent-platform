@@ -75,19 +75,20 @@ test("platform-contracts: createControlDirective generates valid directive", () 
     tenantId: "tenant_abc",
   });
 
-  const directive = createControlDirective({
-    type: "pause",
-    targetScope: { workflowId: "wf_123" },
-    issuedBy: principal,
-    reason: "maintenance",
-    params: { duration: "1h" },
-  });
-
-  assert.equal(directive.type, "pause");
-  assert.deepEqual(directive.targetScope, { workflowId: "wf_123" });
-  assert.equal(directive.issuedBy, principal);
-  assert.equal(directive.reason, "maintenance");
-  assert.deepEqual(directive.params, { duration: "1h" });
+  assert.throws(
+    () =>
+      createControlDirective({
+        type: "pause",
+        targetScope: { workflowId: "wf_123" },
+        issuedBy: principal,
+        reason: "maintenance",
+        params: { duration: "1h" },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+  );
 });
 
 test("platform-contracts: createControlDirective handles optional expiresAt", () => {
@@ -96,14 +97,19 @@ test("platform-contracts: createControlDirective handles optional expiresAt", ()
     tenantId: null,
   });
 
-  const directive = createControlDirective({
-    type: "resume",
-    issuedBy: principal,
-    reason: "resume after maintenance",
-    expiresAt: "2026-12-31T23:59:59.000Z",
-  });
-
-  assert.equal(directive.expiresAt, "2026-12-31T23:59:59.000Z");
+  assert.throws(
+    () =>
+      createControlDirective({
+        type: "resume",
+        issuedBy: principal,
+        reason: "resume after maintenance",
+        expiresAt: "2026-12-31T23:59:59.000Z",
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+  );
 });
 
 test("platform-contracts: createExecutionPlan generates valid plan", () => {
@@ -112,59 +118,59 @@ test("platform-contracts: createExecutionPlan generates valid plan", () => {
     tenantId: null,
   });
 
-  const plan = createExecutionPlan({
-    traceId: "trace_abc",
-    principal,
-    workflowRunId: "wf_run_123",
-    steps: [],
-    budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 10 },
-  });
-
-  assert.ok(plan.planId.startsWith("plan_"));
-  assert.equal(plan.traceId, "trace_abc");
-  assert.equal(plan.principal, principal);
-  assert.equal(plan.workflowRunId, "wf_run_123");
-  assert.equal(plan.fallbackStrategy, "retry");
-  assert.deepEqual(plan.approvalGates, []);
+  assert.throws(
+    () =>
+      createExecutionPlan({
+        traceId: "trace_abc",
+        principal,
+        workflowRunId: "wf_run_123",
+        steps: [],
+        budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 10 },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+  );
 });
 
 test("platform-contracts: createExecutionReceipt generates valid receipt", () => {
-  const receipt = createExecutionReceipt({
-    planId: "plan_123",
-    stepId: "step_1",
-    status: "succeeded",
-    durationMs: 5000,
-    sideEffects: [],
-    evidenceRefs: ["ref_1", "ref_2"],
-  });
-
-  assert.ok(receipt.receiptId.startsWith("receipt_"));
-  assert.equal(receipt.planId, "plan_123");
-  assert.equal(receipt.stepId, "step_1");
-  assert.equal(receipt.status, "succeeded");
-  assert.equal(receipt.durationMs, 5000);
-  assert.deepEqual(receipt.evidenceRefs, ["ref_1", "ref_2"]);
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan_123",
+        stepId: "step_1",
+        status: "succeeded",
+        durationMs: 5000,
+        sideEffects: [],
+        evidenceRefs: ["ref_1", "ref_2"],
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+  );
 });
 
 test("platform-contracts: createExecutionReceipt handles error detail", () => {
-  const receipt = createExecutionReceipt({
-    planId: "plan_123",
-    stepId: "step_1",
-    status: "failed",
-    durationMs: 1000,
-    errorDetail: {
-      code: "ERR_FAILED",
-      message: "Step failed",
-      retryable: true,
-    },
-  });
-
-  assert.equal(receipt.status, "failed");
-  assert.deepEqual(receipt.errorDetail, {
-    code: "ERR_FAILED",
-    message: "Step failed",
-    retryable: true,
-  });
+  assert.throws(
+    () =>
+      createExecutionReceipt({
+        planId: "plan_123",
+        stepId: "step_1",
+        status: "failed",
+        durationMs: 1000,
+        errorDetail: {
+          code: "ERR_FAILED",
+          message: "Step failed",
+          retryable: true,
+        },
+      }),
+    (error: unknown) =>
+      error instanceof Error
+      && "code" in error
+      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+  );
 });
 
 test("platform-contracts: createStateCommand generates valid command", () => {

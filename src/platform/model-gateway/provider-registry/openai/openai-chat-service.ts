@@ -59,6 +59,7 @@ export interface OpenAIChatCompletionRequest {
   tools?: OpenAIFunction[];
   tool_choice?: "auto" | "none" | { type: "function"; function: { name: string } };
   response_format?: { type: "text" | "json_object" };
+  signal?: AbortSignal;
 }
 
 export interface OpenAIUsage {
@@ -254,10 +255,12 @@ export class OpenAIChatService {
         headers["OpenAI-Organization"] = this.organization;
       }
 
+      const { signal, ...requestBody } = request;
       const response = await this.fetchImpl(url, {
         method: "POST",
         headers,
-        body: JSON.stringify({ ...request, ...(stream ? { stream: true } : {}) }),
+        body: JSON.stringify({ ...requestBody, ...(stream ? { stream: true } : {}) }),
+        ...(signal !== undefined ? { signal } : {}),
       });
 
       if (response.ok) {

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildFivePlaneRuntimeCatalog,
   FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID,
+  X1_FABRIC_BOOTSTRAP_SERVICE_ID,
   registerFivePlaneRuntimeCatalog,
 } from "../../../src/platform/five-plane-runtime-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
@@ -22,6 +23,7 @@ test("integration: registerFivePlaneRuntimeCatalog initializes all five plane ca
 
     // Verify all plane bootstraps are initialized
     assert.ok(registry.isInitialized("plane.interface.bootstrap"));
+    assert.ok(registry.isInitialized(X1_FABRIC_BOOTSTRAP_SERVICE_ID));
     assert.ok(registry.isInitialized("plane.control.bootstrap"));
     assert.ok(registry.isInitialized("plane.orchestration.bootstrap"));
     assert.ok(registry.isInitialized("plane.execution.bootstrap"));

@@ -93,6 +93,9 @@ export class ApprovalContextSummaryService {
         messages,
         maxTokens: this.maxTokens,
         temperature: this.temperature,
+        traceId: newId("trace"),
+        tenantId: null,
+        costTag: "approval.context_summary",
       });
 
       return this.parseSummaryFromResponse(result.content, context);

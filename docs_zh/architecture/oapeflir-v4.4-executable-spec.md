@@ -2328,3 +2328,34 @@ CI Test Matrix
 - `§15 / §16 / §23 / §25 / §26 / §30`：预算、副作用、guardrail、runtime profile、HITL、策略优先级都明确收敛到 Harness/P2/P5 正式边界。
 - `§19 / §20 / §22 / §24`：prompt 角色、replay 方式、memory scope、decision bundle 收敛到现行 canonical contract。
 - `§34 / §35 / §39 / §40`：错误码、指标、实现目录、落地路线改为 `PLATFORM.*`、`harness.*`、Harness 中心目录与 `Ring 1/2/3`。
+
+补充说明：HarnessRuntime 是唯一执行入口。
+补充说明：OAPEFLIR 只产生 `oapeflir.view.*` 与 `oapeflir.rationale.*` 这类投影/解释事件，不产生 execution truth。
+
+逐项审计闭环：
+
+- F-1: 删除 “OAPEFLIR runtime 直接驱动执行” 叙述，统一为 `HarnessRuntime` 是唯一执行入口。
+- F-2: 删除把 `OapeflirRun` 当作运行 truth 的定义，统一为 `HarnessRun` truth。
+- F-3: 将 OAPEFLIR 自身定位为认知/规划/评估循环，而非执行状态机。
+- F-4: 将执行完成、失败、补偿等终态归回 `HarnessRun` / `NodeRun` / `NodeAttemptReceipt`。
+- F-5: 将节点权威状态收敛到 canonical `NodeRun.status`，移除 `compensating / compensated`。
+- F-6: 将编排输出改为 `PlanGraphBundle` / graph patch，而非 OAPEFLIR 私有可变执行图。
+- F-7: 将 `PlanNode.type` 收敛为 `kind`，避免旧 spec 与现行代码字段漂移。
+- F-8: 删除 `generatedBy=repair_worker` 这类旧执行耦合来源，保留现行生成来源语义。
+- F-9: 将 budget reservation 放回 Harness / billing / state-evidence 权威链路。
+- F-10: 将 side effect receipt / reconcile 放回 execution plane 与 state-evidence plane。
+- F-11: 将 guardrail block / allow / escalate 的最终裁决边界放回 P2/P3/P5。
+- F-12: 将 runtime profile 约束收敛到 Harness runtime profile，而非 OAPEFLIR 私有 profile。
+- F-13: 将 HITL / approval timeout / escalation 统一到现行 approval-and-hitl contract。
+- F-14: 将 prompt role 和 system / user / tool 语义改为与 model gateway / prompt engine 一致。
+- F-15: 将 replay 语义改为基于事实事件与 projection rebuild，而不是 OAPEFLIR 自行回放 execution。
+- F-16: 将 memory scope 绑定回 canonical memory / knowledge boundary contract。
+- F-17: 将 decision bundle、evidence refs、rationale refs 改为现行 evidence 对象模型。
+- F-18: 将事件分层改为 `platform.*` facts 与 `oapeflir.view.*` / `oapeflir.rationale.*` projections。
+- F-19: 明确 OAPEFLIR 不写 execution truth，不直接发布 task / workflow / execution terminal facts。
+- F-20: 将错误码前缀统一为 `PLATFORM.*` / `HARNESS.*` 权威命名，移除 spec 私有枚举。
+- F-21: 将 metrics / observability 指标前缀统一到 `harness.*` 与平台观测命名。
+- F-22: 将实现目录指向 Harness / orchestration / contracts 当前真实代码位置。
+- F-23: 将 rollout / remediation 路线图收敛到 `Ring 1 / Ring 2 / Ring 3`。
+- F-24: 明确 OAPEFLIR 与 execution plane 的边界是 “生成提案 / 投影 / rationale”，不是 “直接执行”。
+- F-25: 明确本 spec 任何 legacy OAPEFLIR execution 描述仅可作为历史兼容背景，不再作为实现依据。

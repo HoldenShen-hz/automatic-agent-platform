@@ -68,6 +68,8 @@ interface StructuredLog {
 
 ### Trace span 层级
 
+- span 语义应按 `service -> operation -> node_run -> node_attempt` 组织，旧 `step` 术语仅允许出现在兼容投影视图中。
+
 - OTel SDK 实现分布式追踪
 - span 层级：service → operation → step
 

@@ -69,6 +69,9 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         "You are a goal decomposition planner. Return strict JSON only with tasks and dependencyGraph. No markdown.",
       temperature: 0.1,
       maxTokens: 1200,
+      ...(this.options.budgetControl?.traceId !== undefined ? { traceId: this.options.budgetControl.traceId } : {}),
+      ...(this.options.budgetControl?.tenantId !== undefined ? { tenantId: this.options.budgetControl.tenantId } : {}),
+      costTag: "goal_decomposer.llm_plan",
     });
     if (reservedBudget != null) {
       allocator.settle({

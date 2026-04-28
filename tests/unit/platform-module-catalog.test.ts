@@ -14,6 +14,7 @@ import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-reg
 const VALID_SURFACE_IDS: PlatformSurfaceId[] = [
   "contracts",
   "interface",
+  "x1-fabric",
   "control-plane",
   "orchestration",
   "execution",
@@ -82,6 +83,12 @@ test("resolvePlatformSurfaceManifest returns manifest with correct structure", (
   assert.equal(manifest.entryModule, "src/platform/execution/index.ts");
   assert.ok(manifest.architectureSections.includes("§14"));
   assert.ok(manifest.canonicalSubdomains.includes("dispatcher"));
+});
+
+test("x1-fabric surface resolves to the shared bootstrap fabric entry", () => {
+  const manifest = resolvePlatformSurfaceManifest("x1-fabric");
+  assert.equal(manifest.entryModule, "src/platform/shared/index.ts");
+  assert.ok(manifest.architectureSections.includes("§4.7"));
 });
 
 test("registerPlatformSurfaceCatalog registers catalog in ServiceRegistry", async () => {

@@ -27,6 +27,9 @@
 `FederatedSearchRequest` 最小字段：
 
 - `requester`
+- `requester_tenant_id`
+- `harness_run_id`
+- `node_run_id?`
 - `query`
 - `allowed_boundaries`
 - `purpose`
@@ -44,6 +47,7 @@
 - 默认 deny cross-boundary 访问。
 - 共享必须通过 `KnowledgeShareGrant` 或显式 policy。
 - 命中 Chinese Wall 的请求必须被阻断并审计。
+- 联邦搜索审计必须同时记录 boundary、tenant 与运行时 lineage，禁止只记录 org 维度。
 
 ## 6. 测试要求
 
@@ -51,3 +55,6 @@
 - integration：federated search with mixed allow / deny boundaries
 - contract：未授权的跨边界检索不得返回原始内容
 
+## v4.3 Contract Remediation
+
+- T-74: 本文原先只要求 requester/query/boundary，没有强制 tenant 与运行链审计，根因是知识边界 contract 从组织隔离出发设计，后续多租户 runtime lineage 没有补进来。修复：正文现要求 `requester_tenant_id / harness_run_id / node_run_id` 进入联邦检索请求与审计链。

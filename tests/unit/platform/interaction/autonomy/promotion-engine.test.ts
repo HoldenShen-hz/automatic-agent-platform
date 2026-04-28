@@ -60,7 +60,7 @@ test("assessPromotion promotes supervised to semi_auto with sufficient metrics",
   assert.strictEqual(result.targetLevel, "semi_auto");
 });
 
-test("assessPromotion promotes semi_auto to full_auto with sufficient metrics", () => {
+test("assessPromotion keeps semi_auto at current level until governance override is granted", () => {
   const score = mockTrustScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 500,
@@ -69,8 +69,9 @@ test("assessPromotion promotes semi_auto to full_auto with sufficient metrics", 
     incidents: 0,
   });
   const result = assessPromotion(score);
-  assert.strictEqual(result.shouldPromote, true);
-  assert.strictEqual(result.targetLevel, "full_auto");
+  assert.strictEqual(result.shouldPromote, false);
+  assert.strictEqual(result.targetLevel, "semi_auto");
+  assert.ok(result.reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });
 
 test("assessPromotion does not promote when below threshold", () => {
@@ -173,7 +174,7 @@ test("assessPromotion success rate exactly at threshold passes", () => {
   assert.ok(rate >= 0.94);
 });
 
-test("assessPromotion semi_auto threshold requires 500+ executions", () => {
+test("assessPromotion semi_auto path still blocks at and above 500 executions without governance override", () => {
   const belowScore = mockTrustScore({
     currentAutonomy: "semi_auto",
     totalExecutions: 499,
@@ -189,5 +190,6 @@ test("assessPromotion semi_auto threshold requires 500+ executions", () => {
     incidents: 0,
   });
   assert.strictEqual(assessPromotion(belowScore).shouldPromote, false);
-  assert.strictEqual(assessPromotion(aboveScore).shouldPromote, true);
+  assert.strictEqual(assessPromotion(aboveScore).shouldPromote, false);
+  assert.ok(assessPromotion(aboveScore).reasonCodes.includes("autonomy.full_auto_requires_governance_override"));
 });

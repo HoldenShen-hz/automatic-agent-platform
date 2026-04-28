@@ -70,7 +70,8 @@ test("Harness opens HITL review and stores request in SQLite", () => {
       ["security_scan_001", "code_review_001"],
     );
 
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest);
     assert.equal(run.hitlRequest?.domainId, "security");
 
@@ -128,7 +129,8 @@ test("Harness resolves HITL review as approved", () => {
     });
 
     run = service.openHitlReview(run, "Needs approval", ["evidence_001"]);
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
 
     run = service.resolveHitlReview(run, "approved", "operator_jane_doe");
 
@@ -162,7 +164,8 @@ test("Harness resolves HITL review as rejected and aborts", () => {
     });
 
     run = service.openHitlReview(run, "Security concern", ["scan_result"]);
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
 
     run = service.resolveHitlReview(run, "rejected", "operator_john_smith");
 
@@ -269,7 +272,8 @@ test("Harness recovers from HITL timeout scenario", () => {
     run = service.openHitlReview(run, "Awaiting operator", ["pending_review"]);
 
     run = service.recover(run);
-    assert.equal(run.status, "recovering");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "recovery");
 
     run = service.resume(run);
     assert.equal(run.status, "running");

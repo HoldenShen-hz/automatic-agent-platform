@@ -129,7 +129,7 @@ interface DomainPresenterPlugin {
   readonly domainId: string;
 
   // 格式化输出
-  present(output: DualChannelStepOutput, format: OutputFormat): Promise<PresentedOutput>;
+  present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>;
 
   initialize(config: PluginConfig): Promise<void>;
   activate(): Promise<void>;
@@ -150,6 +150,8 @@ interface PresentedOutput {
   metrics?: OutputMetrics;
 }
 ```
+
+`NodeAttemptReceipt` 至少要携带：`harnessRunId`、`planGraphBundleId`、`graphVersion`、`nodeRunId`、`nodeAttemptId`、`status`、`outputRef?`、`evidenceRefs[]`。
 
 ## 3. ExternalAdapterPlugin（8 种适配类型）
 

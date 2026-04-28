@@ -28,7 +28,10 @@
 | --- | --- | --- |
 | `decision_id` | `string` | 决策请求 ID |
 | `task_id` | `string` | 当前任务 |
-| `execution_id` | `string?` | 当前 execution |
+| `harness_run_id` | `string?` | 当前 HarnessRun |
+| `node_run_id` | `string?` | 当前 NodeRun |
+| `attempt_id` | `string?` | 当前 NodeAttempt |
+| `execution_id` | `string?` | legacy execution 投影引用 |
 | `session_id` | `string?` | 当前会话 |
 | `subject_type` | `user \| agent \| system` | 请求主体 |
 | `subject_id` | `string` | 主体 ID |
@@ -45,6 +48,10 @@
 - `mode` 必须使用架构定义的 8 种规范模式；`supervised / auto / full-auto` 只允许作为 legacy 输入并在入口归一化。
 - 降级模式必须被策略显式理解，而不是由调用方用布尔组合私自推断。
 - `stage_view_ref` 只提供解释上下文，运行模式裁决仍以 `OperationalDirective`、风险分类、预算和 policy 规则为准。
+
+## v4.3 Contract Remediation
+
+- T-67: 本文原先把 `execution_id` 作为策略决策主关联键，根因是 policy engine 在执行模型升级后仍引用旧 runtime 参数透传表单。修复：正文现把 `harness_run_id / node_run_id / attempt_id` 提升为权威关联键，`execution_id` 降级为 legacy projection 引用。
 
 ### 3.2 `PolicyDecisionResult`
 

@@ -59,7 +59,11 @@ export interface HumanFeedback {
 
 export interface FeedbackLoop {
   loopId: string;
+  harnessRunId: string;
+  nodeRunId: string;
+  /** @deprecated legacy workflow projection identifier; use harnessRunId */
   workflowRunId: string;
+  /** @deprecated legacy step projection identifier; use nodeRunId */
   stepId: string;
   maxIterations: number;
   currentIteration: number;

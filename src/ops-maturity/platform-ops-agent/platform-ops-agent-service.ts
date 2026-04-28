@@ -49,7 +49,7 @@ export interface OpsProposal {
   readonly createdAt: string;
 }
 
-export interface OpsExecutionReceipt {
+export interface OpsNodeAttemptReceipt {
   readonly proposalId: string;
   readonly executed: boolean;
   readonly executedAt: string;
@@ -57,6 +57,9 @@ export interface OpsExecutionReceipt {
   readonly riskLevel: OpsRiskLevel;
   readonly reasonCodes: readonly string[];
 }
+
+/** @deprecated compatibility export; use OpsNodeAttemptReceipt */
+export type OpsExecutionReceipt = OpsNodeAttemptReceipt;
 
 function riskFromSignals(
   incidentLevel: "warning" | "incident" | "critical_incident",
@@ -171,7 +174,7 @@ export class PlatformOpsAgentService {
     return updated;
   }
 
-  public execute(proposalId: string): OpsExecutionReceipt {
+  public execute(proposalId: string): OpsNodeAttemptReceipt {
     const proposal = this.getProposal(proposalId);
     return {
       proposalId,

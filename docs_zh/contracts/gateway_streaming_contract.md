@@ -32,7 +32,9 @@
 ## 3. StreamEvent 最小字段
 
 - `stream_id`
-- `task_id`
+- `harness_run_id`
+- `node_run_id?`
+- `task_id?`
 - `channel`
 - `event_type`
 - `sequence`
@@ -51,11 +53,11 @@
 
 ## 5. SSE 帧格式
 
-Phase 1a 统一使用：
+Ring 1 基线统一使用：
 
 - `id`: `<stream_id>:<sequence>`
 - `event`: `event_type`
-- `data`: JSON，至少包含 `stream_id`、`task_id`、`sequence`、`payload`
+- `data`: JSON，至少包含 `stream_id`、`harness_run_id`、`sequence`、`payload`
 
 规则：
 
@@ -70,6 +72,10 @@ Phase 1a 统一使用：
 - 应维护 liveness timeout；长时间只收不到 keepalive / frame 时，应主动断开并进入恢复。
 - 对“会话暂时未找到 / compaction 暂停发流 / generation 切换”这类可恢复场景，应设置有限重试预算，而不是无限重试或立即判死。
 - 若支持 `Last-Event-ID` 或等价续流机制，应定义 replay buffer 窗口；客户端落后过多且所需事件已被驱逐时，服务端必须返回明确错误，而不是静默丢帧后继续。
+
+## v4.3 Contract Remediation
+
+- T-66: 本文原先把 `task_id` 定义为流式事件主锚点并使用 `Phase 1a` 口径，根因是 streaming contract 沿用了任务级 gateway 模型，没有同步到 `HarnessRun / NodeRun` 与 ring 口径。修复：正文现改为 `harness_run_id / node_run_id` 主链，`task_id` 仅保留聚合视图用途。
 
 ## 6. WebSocket 兼容策略
 

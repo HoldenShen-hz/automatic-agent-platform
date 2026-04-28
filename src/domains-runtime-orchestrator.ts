@@ -13,7 +13,7 @@ import {
 } from "./domains-startup-plan.js";
 import {
   DOMAINS_BOOTSTRAP_SERVICE_ID,
-  DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS,
+  DOMAIN_RING_BOOTSTRAP_SERVICE_IDS,
   registerDomainsBootstrap,
 } from "./domains/domains-bootstrap.js";
 
@@ -78,7 +78,7 @@ export class DomainsRuntimeOrchestrator {
       init: () => this,
       dependsOn: [
         DOMAINS_BOOTSTRAP_SERVICE_ID,
-        ...Object.values(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS),
+        ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS),
         DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
         DOMAINS_STARTUP_PLAN_SERVICE_ID,
       ],
@@ -133,7 +133,7 @@ export function registerDomainsRuntimeOrchestrator(
     init: () => new DomainsRuntimeOrchestrator(registry),
     dependsOn: [
       DOMAINS_BOOTSTRAP_SERVICE_ID,
-      ...Object.values(DOMAIN_PHASE_BOOTSTRAP_SERVICE_IDS),
+      ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS),
       DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
       DOMAINS_STARTUP_PLAN_SERVICE_ID,
     ],

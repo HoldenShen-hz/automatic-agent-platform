@@ -213,7 +213,7 @@ Worker 隔离等级有序排列：`standard (0) < hardened (1) < strict (2)`。
 
 execution plane 完成单次 attempt 后，truth 输出必须先落 `NodeAttemptReceipt`：
 
-- `nodeAttemptReceiptId`
+- `receiptId`
 - `nodeAttemptId`
 - `nodeRunId`
 - `status`
@@ -233,7 +233,7 @@ execution plane 完成单次 attempt 后，truth 输出必须先落 `NodeAttempt
 **规则**：
 
 - `NodeAttemptReceipt` 是 Execute → 其他平面的正式 truth 输出，不得只通过日志侧带。
-- `FeedbackSignal` 必须显式关联 `nodeAttemptReceiptId`、`planGraphBundleId` 与 `graphVersion`，作为派生认知输入，而不是替代回执。
+- `FeedbackSignal` 必须显式关联 `receiptId`、`planGraphBundleId` 与 `graphVersion`，作为派生认知输入，而不是替代回执。
 - 若某次 attempt 没有产生 feedback，也应显式记录 `feedback_count=0` 或等价 evidence，避免后续 Learn / Improve 误判链路缺失。
 - `DualChannelStepOutput` 只允许作为用户展示投影，不得成为 recovery、budget settlement 或 side-effect confirmation 的唯一依据。
 
@@ -428,5 +428,6 @@ Execution plane 的核心不是“把运行挪到多进程”，而是把 execut
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
 - T-14: 本文原先把 `PlanDTO + steps[] + dag` 和 `DualChannelStepOutput / FeedbackSignal` 直接写成执行平面主输入输出，根因是旧 execution plane 文档沿用了 ADR-060/079 的线性 plan 与反馈桥接草案，没有随着 `PlanGraphBundle` / `NodeAttemptReceipt` 成为 canonical truth 一起重写对象模型。修复：正文现把 P3 -> P4 输入收敛到 `PlanGraphBundle`，P4 truth 输出收敛到 `NodeAttemptReceipt`，其余对象只允许作为派生 view。
+- T-75: 本文原先在 Execute -> Feedback 边界里继续使用 `nodeAttemptReceiptId`，根因是 execution plane contract 在 v4.3 重命名后没有把 API 级字段形状同步收口。修复：正文现统一使用 `receiptId` 作为回执主键。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

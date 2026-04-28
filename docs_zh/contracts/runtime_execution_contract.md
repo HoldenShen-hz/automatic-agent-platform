@@ -36,7 +36,7 @@
 | `node_run_id` | `string` | 当前 NodeRun |
 | `attempt_id` | `string` | 当前 NodeAttempt |
 | `task_id` | `string?` | 兼容查询入口；非 truth 主键 |
-| `workflow_id` | `string?` | legacy workflow 投影引用 |
+| `workflow_id` | `string?` | legacy workflow 投影引用；不得作为 truth 主键 |
 | `agent_id` | `string` | 执行主体 |
 | `role_id` | `string?` | 承担角色 |
 | `run_kind` | `node_execution \| tool_call \| hitl_resume \| replay \| evaluator \| compensation \| release_gate` | 执行类型 |
@@ -60,7 +60,7 @@
 - `attempt_id` 必须与一次明确的 `NodeAttempt` 一一对应。
 - `harness_run_id`、`node_run_id`、`attempt_id` 的 lineage 不能被投影层替换或重写。
 - `attempt_no` 只能递增，不能覆盖旧尝试。
-- Phase 1a 允许 envelope 存于 DB + 内存运行态组合中，但字段语义必须稳定。
+- Ring 1 允许 envelope 存于 DB + 内存运行态组合中，但字段语义必须稳定。
 - `stage_view_ref` 只能关联 view / rationale，不得作为状态机推进条件。
 
 ## 4. run_kind 枚举

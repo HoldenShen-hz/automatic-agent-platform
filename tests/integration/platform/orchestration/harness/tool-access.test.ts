@@ -417,7 +417,8 @@ test("ToolAccess integration: toolbelt used in HITL workflow", () => {
     // Toolbelt should still be assembled even when escalating
     assert.ok(run.toolbelt);
     assert.deepEqual(run.toolbelt.grantedTools, ["bash", "read"]);
-    assert.equal(run.status, "waiting_hitl");
+    assert.equal(run.status, "paused");
+    assert.equal(run.pauseReason, "hitl");
     assert.ok(run.hitlRequest);
 
     // Resolve HITL and verify toolbelt persists

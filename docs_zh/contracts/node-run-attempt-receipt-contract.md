@@ -82,6 +82,9 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `receiptId` | `string` | receipt ID |
+| `harnessRunId` | `string` | 所属 HarnessRun |
+| `planGraphBundleId` | `string` | 所属图 bundle |
+| `graphVersion` | `number` | 图版本 |
 | `nodeAttemptId` | `string` | 对应 attempt |
 | `nodeRunId` | `string` | 对应 node run |
 | `receiptKind` | `tool \| llm \| hitl \| subgraph \| evaluator \| router` | 回执类别 |
@@ -91,6 +94,7 @@
 | `sideEffectRefs` | `string[]` | 关联副作用 |
 | `budgetSettlementRefs` | `string[]` | 关联预算结算 |
 | `evidenceRefs` | `ArtifactRef[]` | 证据引用 |
+| `durationMs` | `number?` | 本次 attempt 耗时 |
 | `producedAt` | `timestamp` | 产生时间 |
 
 ## 5. 推进规则
@@ -121,6 +125,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-46: 本文原先把回执主键写成 `nodeAttemptReceiptId`，根因是 contract 直接跟随底层存储命名习惯暴露了 table-shaped 字段名，没有维持 v4.3 executable contract 的 canonical API 形状。修复：正文现把主键统一收敛到 `receiptId`，并把 `nodeAttemptReceiptId` 降为 deprecated storage-shaped key。
+- T-46: 本文原先把回执主键写成 `nodeAttemptReceiptId`，并遗漏 `harnessRunId / planGraphBundleId / graphVersion / durationMs`，根因是 contract 直接跟随底层存储命名习惯暴露了 table-shaped 字段名，没有维持 v4.3 executable contract 的 canonical API 形状。修复：正文现把主键统一收敛到 `receiptId`，并补齐运行链 lineage 与耗时字段。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

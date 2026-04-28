@@ -42,11 +42,16 @@ export interface ConflictResolutionDecision {
   readonly rationale: string;
 }
 
-export interface EdgeExecutionReceipt {
+export interface EdgeNodeAttemptReceiptView {
   readonly record: OfflineExecutionRecord;
   readonly selectedModelId: string | null;
+  readonly planGraphNodeIds: readonly string[];
+  /** @deprecated compatibility alias; use planGraphNodeIds */
   readonly executionPlan: readonly string[];
 }
+
+/** @deprecated compatibility export; use EdgeNodeAttemptReceiptView */
+export type EdgeExecutionReceipt = EdgeNodeAttemptReceiptView;
 
 export interface EdgeSyncReceipt {
   readonly acceptedEnvelopeIds: readonly string[];
@@ -59,7 +64,7 @@ export class EdgeRuntimeSyncService {
     profile: EdgeRuntimeProfile,
     models: readonly LocalModelProfile[],
     request: OfflineExecutionRequest,
-  ): EdgeExecutionReceipt {
+  ): EdgeNodeAttemptReceiptView {
     const createdAt = request.createdAt ?? nowIso();
     const record = buildOfflineExecutionRecord(profile.edgeNodeId, request.taskId, createdAt);
     const model = selectEdgeLocalModel(
@@ -70,6 +75,7 @@ export class EdgeRuntimeSyncService {
     return {
       record,
       selectedModelId: model?.modelId ?? null,
+      planGraphNodeIds: buildEdgeExecutionPlan([request.taskId]).orderedTaskIds,
       executionPlan: buildEdgeExecutionPlan([request.taskId]).orderedTaskIds,
     };
   }

@@ -32,7 +32,7 @@ test("BusinessPackManifestSchema parses a valid minimal manifest", () => {
   }
 });
 
-test("BusinessPackManifestSchema parses a full manifest with all fields", () => {
+test("BusinessPackManifestSchema parses a full manifest and normalizes sandbox aliases", () => {
   const manifest = {
     packId: "pack-002",
     name: "Full Pack",
@@ -115,7 +115,7 @@ test("BusinessPackManifestSchema rejects invalid semver version", () => {
   assert.ok(!result.success, "Invalid semver should fail");
 });
 
-test("BusinessPackManifestSchema applies default values", () => {
+test("BusinessPackManifestSchema uses canonical defaults for optional fields", () => {
   const manifest = {
     packId: "pack-001",
     name: "Test Pack",

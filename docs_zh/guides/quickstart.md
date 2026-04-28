@@ -72,9 +72,11 @@
 
 **排查步骤**:
 1. 确认构建产物最新：`npm run build:test`
-2. 检查是否有未提交的迁移文件冲突
-3. 查看具体测试文件位置和错误信息
-4. 运行单个测试文件定位问题：`node --test dist/tests/unit/xxx.test.js`
+2. 先跑快速分层回归：`npm run test:layers:smoke`
+3. 按层定位：`npm run test:unit` / `npm run test:invariants` / `npm run test:integration` / `npm run test:e2e`
+4. 检查是否有未提交的迁移文件冲突
+5. 查看具体测试文件位置和错误信息
+6. 运行单个测试文件定位问题：`node --import tsx --test tests/unit/xxx.test.ts`
 
 #### 3. 类型检查失败（npm run typecheck）
 
@@ -99,6 +101,8 @@
 | 工具 | 命令 | 用途 |
 |------|------|------|
 | 类型检查 | `npm run typecheck` | 验证 TypeScript 类型 |
-| 测试覆盖 | `npm run test:unit -- --test-name-pattern=”xxx”` | 运行单个测试 |
+| 分层冒烟 | `npm run test:layers:smoke` | 先跑 unit + invariants |
+| 分层开发回归 | `npm run test:layers:dev` | 跑 unit + invariants + golden |
+| 单层测试 | `npm run test:unit` / `npm run test:integration` / `npm run test:e2e` | 按层定位问题 |
 | 构建诊断 | `npm run build 2>&1 | grep error` | 过滤构建错误 |
 | 文档验证 | `npm run docs:lint` | 检查文档链接和格式 |
