@@ -126,7 +126,6 @@ export class DomainRegistryService {
       payload: {
         domainId,
         status: "active",
-        canaryPromotion: canary,
         capabilityCount: updated.pluginBindings.length,
         pluginCount: updated.pluginBindings.length,
         occurredAt: nowIso(),

@@ -1,4 +1,6 @@
 import { createStore } from "zustand/vanilla";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware/persist";
 
 /**
  * UIStore state per §5.1.1 - complete UI state including theme, sidebar, and NL panel.
@@ -23,33 +25,38 @@ export interface UiStoreState {
 }
 
 export function createUiStore() {
-  return createStore<UiStoreState>((set) => ({
-    activeRoute: "/",
-    activeFeature: "dashboard",
-    theme: "dark",
-    sidebarCollapsed: false,
-    nlPanelOpen: false,
-    commandPaletteOpen: false,
-    setActiveRoute(activeRoute) {
-      set({ activeRoute });
-    },
-    setActiveFeature(activeFeature) {
-      set({ activeFeature });
-    },
-    setTheme(theme) {
-      set({ theme });
-    },
-    toggleSidebar() {
-      set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
-    },
-    setSidebarCollapsed(sidebarCollapsed) {
-      set({ sidebarCollapsed });
-    },
-    setNlPanelOpen(nlPanelOpen) {
-      set({ nlPanelOpen });
-    },
-    setCommandPaletteOpen(commandPaletteOpen) {
-      set({ commandPaletteOpen });
-    },
-  }));
+  return createStore<UiStoreState>()(
+    persist(
+      immer((set) => ({
+        activeRoute: "/",
+        activeFeature: "dashboard",
+        theme: "dark",
+        sidebarCollapsed: false,
+        nlPanelOpen: false,
+        commandPaletteOpen: false,
+        setActiveRoute(activeRoute) {
+          set({ activeRoute });
+        },
+        setActiveFeature(activeFeature) {
+          set({ activeFeature });
+        },
+        setTheme(theme) {
+          set({ theme });
+        },
+        toggleSidebar() {
+          set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+        },
+        setSidebarCollapsed(sidebarCollapsed) {
+          set({ sidebarCollapsed });
+        },
+        setNlPanelOpen(nlPanelOpen) {
+          set({ nlPanelOpen });
+        },
+        setCommandPaletteOpen(commandPaletteOpen) {
+          set({ commandPaletteOpen });
+        },
+      })),
+      { name: "aa-ui-store" },
+    ),
+  );
 }

@@ -364,13 +364,29 @@ export function classifyErrorCode(errorCode: string | null): FailureCategory {
     return 'validation_error';
   }
 
-  const normalized = errorCode.toLowerCase().replace(/[._-]/g, '_');
+  const normalized = errorCode
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[.\-]/g, "_");
+
+  // Coding-agent specific runtime prefixes must be resolved before generic
+  // keyword matching, otherwise strings like E7_LockTimeout get swallowed by
+  // the timeout classifier before the lock/concurrency mapping can apply.
+  if (errorCode.startsWith('E7')) {
+    return 'concurrency_limit_exceeded'; // E7 = LockingError
+  }
+  if (errorCode.startsWith('E8')) {
+    return 'resource_exhausted'; // E8 = MemoryError
+  }
+  if (errorCode.startsWith('EC')) {
+    return 'state_transition_error'; // EC = RuntimeError
+  }
 
   // Platform-level patterns
   if (normalized.includes('resource_exhaust') || normalized.includes('out_of_memory') || normalized.includes('memory')) {
     return 'resource_exhausted';
   }
-  if (normalized.includes('timeout') || normalized.includes('timed_out')) {
+  if (normalized.includes('timeout') || normalized.includes('timed_out') || normalized.includes('time_out')) {
     return 'timeout_exceeded';
   }
   if (normalized.includes('dependency') && (normalized.includes('unavailable') || normalized.includes('not_found'))) {
@@ -394,35 +410,38 @@ export function classifyErrorCode(errorCode: string | null): FailureCategory {
   if (normalized.includes('state_transition') || normalized.includes('invalid_state')) {
     return 'state_transition_error';
   }
-  if (normalized.includes('deadlock')) {
+  if (normalized.includes('deadlock') || normalized.includes('dead_lock')) {
     return 'deadlock_detected';
   }
-  if (normalized.includes('data_inconsist') || normalized.includes('mismatch')) {
-    return 'data_inconsistency';
-  }
-  if (normalized.includes('governance') || normalized.includes('policy_violation')) {
+  if (normalized.includes('governance')) {
     return 'governance_policy_violation';
   }
   if (normalized.includes('budget') || normalized.includes('cost_exceed')) {
     return 'budget_exceeded';
   }
+  if (normalized.includes('type_mismatch') || normalized.includes('typemismatch')) {
+    return 'type_error';
+  }
 
-  // Coding-agent specific patterns (E7/E8/EC classification)
-  if (errorCode.startsWith('E7')) {
-    return 'concurrency_limit_exceeded'; // E7 = LockingError
+  if (normalized.includes('migration') || normalized.includes('schema_change')) {
+    return 'migration_failure';
   }
-  if (errorCode.startsWith('E8')) {
-    return 'resource_exhausted'; // E8 = MemoryError
+  if (normalized.includes('security') || normalized.includes('policy')) {
+    return 'security_policy_violation';
   }
-  if (errorCode.startsWith('EC')) {
-    return 'state_transition_error'; // EC = RuntimeError
+  if (normalized.includes('data_inconsist') || normalized.includes('mismatch')) {
+    return 'data_inconsistency';
   }
 
   // transient coding patterns
   if (normalized.includes('schema') || normalized.includes('parse')) {
     return 'schema_error';
   }
-  if (normalized.includes('type') && normalized.includes('error')) {
+  if (
+    (normalized.includes('type') && normalized.includes('error'))
+    || normalized.includes('type_mismatch')
+    || normalized.includes('typemismatch')
+  ) {
     return 'type_error';
   }
   if (normalized.includes('test') && (normalized.includes('fail') || normalized.includes('error'))) {
@@ -442,14 +461,8 @@ export function classifyErrorCode(errorCode: string | null): FailureCategory {
   if (normalized.includes('high_risk') || normalized.includes('dangerous')) {
     return 'high_risk_operation';
   }
-  if (normalized.includes('migration') || normalized.includes('schema_change')) {
-    return 'migration_failure';
-  }
   if (normalized.includes('deploy') || normalized.includes('rollback')) {
     return 'deployment_failure';
-  }
-  if (normalized.includes('security') || normalized.includes('policy')) {
-    return 'security_policy_violation';
   }
 
   // Default to validation error for unknown codes

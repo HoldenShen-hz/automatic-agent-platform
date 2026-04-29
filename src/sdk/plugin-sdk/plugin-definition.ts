@@ -459,7 +459,7 @@ const DEFAULT_SECURITY: PluginSecurityConfig = {
  * });
  * ```
  */
-export function definePlugin(options: DefinePluginOptions): PluginDefinition {
+export async function definePlugin(options: DefinePluginOptions): Promise<PluginDefinition> {
   if (!options.pluginId?.trim()) {
     throw new ValidationError("plugin_sdk.missing_plugin_id", "Plugin ID is required (plugin_sdk.missing_plugin_id).");
   }
@@ -532,7 +532,29 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
       throw new ValidationError(
         "plugin_sdk.signature_verification_failed",
         `Plugin signature verification failed: ${verification.error}`,
-        { pluginId: result.pluginId, keyId: result.signing.keyId },
+        { details: { pluginId: result.pluginId, keyId: result.signing.keyId } },
+      );
+    }
+  }
+
+  // §22.4/R21-46: Verify SBOM reference if present.
+  // The SBOM must be scanned for security vulnerabilities before the plugin is loaded.
+  // If sbomRef is present but scan fails or reveals critical/high vulnerabilities, reject.
+  if (result.sbomRef != null) {
+    const sbomVerification = await verifySbomRef(result.sbomRef);
+    if (!sbomVerification.valid) {
+      throw new ValidationError(
+        "plugin_sdk.sbom_verification_failed",
+        `SBOM verification failed: ${sbomVerification.scanErrors.join("; ")}`,
+        { details: { pluginId: result.pluginId, sbomRef: result.sbomRef } },
+      );
+    }
+    const criticalVulns = sbomVerification.vulnerabilities.filter((v) => v.severity === "critical" || v.severity === "high");
+    if (criticalVulns.length > 0) {
+      throw new ValidationError(
+        "plugin_sdk.sbom_critical_vulnerabilities",
+        `SBOM contains critical/high vulnerabilities: ${criticalVulns.map((v) => v.id).join(", ")}`,
+        { details: { pluginId: result.pluginId, sbomRef: result.sbomRef, vulnerabilities: criticalVulns } },
       );
     }
   }
@@ -543,35 +565,35 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
 /**
  * Define a tool plugin (convenience function).
  */
-export function defineTool(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): PluginDefinition {
+export function defineTool(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): Promise<PluginDefinition> {
   return definePlugin({ ...options, type: "tool" });
 }
 
 /**
  * Define an adapter plugin (convenience function).
  */
-export function defineAdapter(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): PluginDefinition {
+export function defineAdapter(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): Promise<PluginDefinition> {
   return definePlugin({ ...options, type: "adapter" });
 }
 
 /**
  * Define a retriever plugin (convenience function).
  */
-export function defineRetriever(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): PluginDefinition {
+export function defineRetriever(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): Promise<PluginDefinition> {
   return definePlugin({ ...options, type: "retriever" });
 }
 
 /**
  * Define an evaluator plugin (convenience function).
  */
-export function defineEvaluator(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): PluginDefinition {
+export function defineEvaluator(options: Omit<DefinePluginOptions, "type"> & { pluginId: string; name: string; version: string }): Promise<PluginDefinition> {
   return definePlugin({ ...options, type: "evaluator" });
 }
 
 /**
  * Validate a plugin manifest.
  */
-export function validatePluginDefinition(definition: PluginDefinition): PluginDefinition {
+export async function validatePluginDefinition(definition: PluginDefinition): Promise<PluginDefinition> {
   return definePlugin({
     pluginId: definition.pluginId,
     name: definition.name,

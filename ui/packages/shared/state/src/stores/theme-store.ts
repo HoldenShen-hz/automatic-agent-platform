@@ -1,4 +1,6 @@
 import { createStore } from "zustand/vanilla";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware/persist";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ColorScheme = "light" | "dark";
@@ -20,11 +22,16 @@ function resolveColorScheme(mode: ThemeMode): ColorScheme {
 }
 
 export function createThemeStore() {
-  return createStore<ThemeStoreState>((set) => ({
-    themeMode: "system",
-    resolvedColorScheme: resolveColorScheme("system"),
-    setThemeMode(themeMode) {
-      set({ themeMode, resolvedColorScheme: resolveColorScheme(themeMode) });
-    },
-  }));
+  return createStore<ThemeStoreState>()(
+    persist(
+      immer((set) => ({
+        themeMode: "system",
+        resolvedColorScheme: resolveColorScheme("system"),
+        setThemeMode(themeMode) {
+          set({ themeMode, resolvedColorScheme: resolveColorScheme(themeMode) });
+        },
+      })),
+      { name: "aa-theme-store" },
+    ),
+  );
 }

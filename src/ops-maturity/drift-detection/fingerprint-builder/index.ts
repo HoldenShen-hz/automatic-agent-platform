@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { nowIso } from "../../../../../platform/contracts/types/ids.js";
+import { nowIso } from "../../../platform/contracts/types/ids.js";
 
 /**
  * Canonical window sizes for behavior fingerprinting per §63.1.

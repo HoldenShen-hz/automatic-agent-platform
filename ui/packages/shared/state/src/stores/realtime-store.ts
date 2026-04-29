@@ -1,4 +1,6 @@
 import { createStore } from "zustand/vanilla";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware/persist";
 
 /**
  * RealtimeStore state per §5.1.1 - complete realtime state including subscriptions and incidents.
@@ -30,48 +32,53 @@ export interface RealtimeStoreState {
 }
 
 export function createRealtimeStore() {
-  return createStore<RealtimeStoreState>((set) => ({
-    wsStatus: "disconnected",
-    panicActivated: false,
-    offlineQueueSize: 0,
-    syncStatus: "idle",
-    activeSubscriptions: [],
-    pendingApprovalCount: 0,
-    activeIncidents: [],
-    setWsStatus(wsStatus) {
-      set({ wsStatus });
-    },
-    triggerPanic() {
-      set({ panicActivated: true });
-    },
-    setOfflineQueueSize(offlineQueueSize) {
-      set({ offlineQueueSize });
-    },
-    setSyncStatus(syncStatus) {
-      set({ syncStatus });
-    },
-    subscribe(channel) {
-      set((state) => ({
-        activeSubscriptions: [...state.activeSubscriptions, channel],
-      }));
-    },
-    unsubscribe(channel) {
-      set((state) => ({
-        activeSubscriptions: state.activeSubscriptions.filter((c) => c !== channel),
-      }));
-    },
-    setPendingApprovalCount(pendingApprovalCount) {
-      set({ pendingApprovalCount });
-    },
-    addActiveIncident(incidentId) {
-      set((state) => ({
-        activeIncidents: [...state.activeIncidents, incidentId],
-      }));
-    },
-    removeActiveIncident(incidentId) {
-      set((state) => ({
-        activeIncidents: state.activeIncidents.filter((id) => id !== incidentId),
-      }));
-    },
-  }));
+  return createStore<RealtimeStoreState>()(
+    persist(
+      immer((set) => ({
+        wsStatus: "disconnected",
+        panicActivated: false,
+        offlineQueueSize: 0,
+        syncStatus: "idle",
+        activeSubscriptions: [],
+        pendingApprovalCount: 0,
+        activeIncidents: [],
+        setWsStatus(wsStatus) {
+          set({ wsStatus });
+        },
+        triggerPanic() {
+          set({ panicActivated: true });
+        },
+        setOfflineQueueSize(offlineQueueSize) {
+          set({ offlineQueueSize });
+        },
+        setSyncStatus(syncStatus) {
+          set({ syncStatus });
+        },
+        subscribe(channel) {
+          set((state) => ({
+            activeSubscriptions: [...state.activeSubscriptions, channel],
+          }));
+        },
+        unsubscribe(channel) {
+          set((state) => ({
+            activeSubscriptions: state.activeSubscriptions.filter((c: string) => c !== channel),
+          }));
+        },
+        setPendingApprovalCount(pendingApprovalCount) {
+          set({ pendingApprovalCount });
+        },
+        addActiveIncident(incidentId) {
+          set((state) => ({
+            activeIncidents: [...state.activeIncidents, incidentId],
+          }));
+        },
+        removeActiveIncident(incidentId) {
+          set((state) => ({
+            activeIncidents: state.activeIncidents.filter((id: string) => id !== incidentId),
+          }));
+        },
+      })),
+      { name: "aa-realtime-store" },
+    ),
+  );
 }

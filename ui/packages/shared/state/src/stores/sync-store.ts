@@ -1,4 +1,6 @@
 import { createStore } from "zustand/vanilla";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware/persist";
 
 /**
  * SyncStore state per §5.1.1 - complete sync state including online status and conflicts.
@@ -30,34 +32,39 @@ export interface ConflictInfo {
 }
 
 export function createSyncStore() {
-  return createStore<SyncStoreState>((set) => ({
-    online: typeof navigator !== "undefined" ? navigator.onLine : true,
-    pendingMutations: 0,
-    lastFlushedAt: null,
-    syncStatus: "idle",
-    conflicts: [],
-    setOnline(online) {
-      set({ online, syncStatus: online ? "idle" : "offline" });
-    },
-    setPendingMutations(pendingMutations) {
-      set({ pendingMutations });
-    },
-    markFlushed(lastFlushedAt) {
-      set({ pendingMutations: 0, lastFlushedAt, syncStatus: "idle" });
-    },
-    setSyncStatus(syncStatus) {
-      set({ syncStatus });
-    },
-    addConflict(conflict) {
-      set((state) => ({ conflicts: [...state.conflicts, conflict] }));
-    },
-    resolveConflict(conflictId, _resolution) {
-      set((state) => ({
-        conflicts: state.conflicts.filter((c) => c.id !== conflictId),
-      }));
-    },
-    retrySync() {
-      set({ syncStatus: "syncing" });
-    },
-  }));
+  return createStore<SyncStoreState>()(
+    persist(
+      immer<SyncStoreState>((set) => ({
+        online: typeof navigator !== "undefined" ? navigator.onLine : true,
+        pendingMutations: 0,
+        lastFlushedAt: null,
+        syncStatus: "idle",
+        conflicts: [],
+        setOnline(online) {
+          set({ online, syncStatus: online ? "idle" : "offline" });
+        },
+        setPendingMutations(pendingMutations) {
+          set({ pendingMutations });
+        },
+        markFlushed(lastFlushedAt) {
+          set({ pendingMutations: 0, lastFlushedAt, syncStatus: "idle" });
+        },
+        setSyncStatus(syncStatus) {
+          set({ syncStatus });
+        },
+        addConflict(conflict) {
+          set((state) => ({ conflicts: [...state.conflicts, conflict] }));
+        },
+        resolveConflict(conflictId, _resolution) {
+          set((state) => ({
+            conflicts: state.conflicts.filter((c: ConflictInfo) => c.id !== conflictId),
+          }));
+        },
+        retrySync() {
+          set({ syncStatus: "syncing" });
+        },
+      })),
+      { name: "aa-sync-store" },
+    ),
+  );
 }

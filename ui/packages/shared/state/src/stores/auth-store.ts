@@ -1,4 +1,6 @@
 import { createStore } from "zustand/vanilla";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware/persist";
 
 /**
  * AuthStore state per §5.1.1 - complete auth context including tokens and tenant info.
@@ -31,45 +33,50 @@ export interface AuthSessionData {
 }
 
 export function createAuthStore() {
-  return createStore<AuthStoreState>((set) => ({
-    authenticated: false,
-    locale: "zh-CN",
-    userId: null,
-    tenantId: null,
-    roles: [],
-    permissions: [],
-    accessToken: null,
-    refreshToken: null,
-    login(session) {
-      set({
-        authenticated: true,
-        userId: session.userId,
-        tenantId: session.tenantId,
-        roles: session.roles,
-        permissions: session.permissions,
-        accessToken: session.accessToken,
-        refreshToken: session.refreshToken,
-      });
-    },
-    logout() {
-      set({
+  return createStore<AuthStoreState>()(
+    persist(
+      immer((set) => ({
         authenticated: false,
+        locale: "zh-CN",
         userId: null,
         tenantId: null,
         roles: [],
         permissions: [],
         accessToken: null,
         refreshToken: null,
-      });
-    },
-    setLocale(locale) {
-      set({ locale });
-    },
-    switchTenant(tenantId) {
-      set({ tenantId });
-    },
-    updateTokens(accessToken, refreshToken) {
-      set({ accessToken, refreshToken });
-    },
-  }));
+        login(session) {
+          set({
+            authenticated: true,
+            userId: session.userId,
+            tenantId: session.tenantId,
+            roles: session.roles,
+            permissions: session.permissions,
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+          });
+        },
+        logout() {
+          set({
+            authenticated: false,
+            userId: null,
+            tenantId: null,
+            roles: [],
+            permissions: [],
+            accessToken: null,
+            refreshToken: null,
+          });
+        },
+        setLocale(locale) {
+          set({ locale });
+        },
+        switchTenant(tenantId) {
+          set({ tenantId });
+        },
+        updateTokens(accessToken, refreshToken) {
+          set({ accessToken, refreshToken });
+        },
+      })),
+      { name: "aa-auth-store" },
+    ),
+  );
 }

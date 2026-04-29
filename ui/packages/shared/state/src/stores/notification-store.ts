@@ -1,4 +1,6 @@
 import { createStore } from "zustand/vanilla";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware/persist";
 
 export type NotificationKind = "info" | "success" | "warning" | "error";
 
@@ -26,51 +28,56 @@ function generateId(): string {
 }
 
 export function createNotificationStore() {
-  return createStore<NotificationStoreState>((set, get) => ({
-    notifications: [],
-    unreadCount: 0,
-    addNotification(notification) {
-      const newNotification: Notification = {
-        ...notification,
-        id: generateId(),
-        createdAt: new Date().toISOString(),
-        read: false,
-      };
-      set((state) => ({
-        notifications: [newNotification, ...state.notifications],
-        unreadCount: state.unreadCount + 1,
-      }));
-    },
-    markRead(id) {
-      set((state) => {
-        const notification = state.notifications.find((n) => n.id === id);
-        if (!notification || notification.read) {
-          return state;
-        }
-        return {
-          notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-          unreadCount: Math.max(0, state.unreadCount - 1),
-        };
-      });
-    },
-    markAllRead() {
-      set((state) => ({
-        notifications: state.notifications.map((n) => ({ ...n, read: true })),
+  return createStore<NotificationStoreState>()(
+    persist(
+      immer((set, get) => ({
+        notifications: [],
         unreadCount: 0,
-      }));
-    },
-    dismissNotification(id) {
-      set((state) => {
-        const notification = state.notifications.find((n) => n.id === id);
-        const newNotifications = state.notifications.filter((n) => n.id !== id);
-        return {
-          notifications: newNotifications,
-          unreadCount: notification && !notification.read ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
-        };
-      });
-    },
-    clearAll() {
-      set({ notifications: [], unreadCount: 0 });
-    },
-  }));
+        addNotification(notification) {
+          const newNotification: Notification = {
+            ...notification,
+            id: generateId(),
+            createdAt: new Date().toISOString(),
+            read: false,
+          };
+          set((state) => ({
+            notifications: [newNotification, ...state.notifications],
+            unreadCount: state.unreadCount + 1,
+          }));
+        },
+        markRead(id) {
+          set((state) => {
+            const notification = state.notifications.find((n: Notification) => n.id === id);
+            if (!notification || notification.read) {
+              return state;
+            }
+            return {
+              notifications: state.notifications.map((n: Notification) => (n.id === id ? { ...n, read: true } : n)),
+              unreadCount: Math.max(0, state.unreadCount - 1),
+            };
+          });
+        },
+        markAllRead() {
+          set((state) => ({
+            notifications: state.notifications.map((n: Notification) => ({ ...n, read: true })),
+            unreadCount: 0,
+          }));
+        },
+        dismissNotification(id) {
+          set((state) => {
+            const notification = state.notifications.find((n: Notification) => n.id === id);
+            const newNotifications = state.notifications.filter((n: Notification) => n.id !== id);
+            return {
+              notifications: newNotifications,
+              unreadCount: notification && !notification.read ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
+            };
+          });
+        },
+        clearAll() {
+          set({ notifications: [], unreadCount: 0 });
+        },
+      })),
+      { name: "aa-notification-store" },
+    ),
+  );
 }

@@ -162,7 +162,7 @@ export class RepairPipeline {
     if (shouldEscalate(context, this.state.taskCard.maxRepairRounds)) {
       return {
         action: 'escalate',
-        reason: `Failure level ${context.level}: ${context.description}`,
+        reason: `Failure level ${context.level} (${context.legacyLevel}): ${context.description}`,
       };
     }
 
@@ -204,7 +204,7 @@ export class RepairPipeline {
     if (shouldEscalate(context, this.state.taskCard.maxRepairRounds)) {
       return {
         action: 'escalate',
-        reason: `Failure level ${context.level}: ${context.description}`,
+        reason: `Failure level ${context.level} (${context.legacyLevel}): ${context.description}`,
       };
     }
 

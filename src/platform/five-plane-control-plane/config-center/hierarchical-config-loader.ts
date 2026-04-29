@@ -2,10 +2,11 @@
  * Hierarchical Configuration Loader
  *
  * Loads and merges configuration from multiple hierarchy levels:
- * platform → tenant → pack → task-type
+ * platform → environment → tenant → pack → runtime
  *
  * Each subsequent layer can override values from previous layers.
- * This enables tenant-specific, pack-specific, and task-type-specific config overrides.
+ * This enables environment-specific, tenant-specific, pack-specific,
+ * and runtime-specific configuration overrides.
  */
 
 import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";

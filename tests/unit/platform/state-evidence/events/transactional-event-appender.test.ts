@@ -203,6 +203,92 @@ test("TransactionalEventAppender.appendEvents with outbox writes all entries", (
   }
 });
 
+test("TransactionalEventAppender.appendEvent can mutate truth in the same transaction", () => {
+  const workspace = createTempWorkspace("aa-txn-truth-hook-");
+  let db: SqliteDatabase;
+
+  try {
+    db = createDbWithOutbox(workspace);
+    db.connection.exec("CREATE TABLE truth_projection (id TEXT PRIMARY KEY, status TEXT NOT NULL)");
+    const eventRepo = new EventRepository(db.connection);
+    const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
+    const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
+
+    appender.appendEvent(
+      {
+        taskId: "task-1",
+        eventType: "task:status_changed",
+        payloadJson: JSON.stringify({ status: "running" }),
+      },
+      {
+        mutateTruth: (transactionDb) => {
+          transactionDb.connection
+            .prepare("INSERT INTO truth_projection (id, status) VALUES (?, ?)")
+            .run("task-1", "running");
+        },
+      },
+    );
+
+    const projection = db.connection
+      .prepare("SELECT status FROM truth_projection WHERE id = ?")
+      .get("task-1") as { status: string } | undefined;
+
+    assert.equal(projection?.status, "running");
+    assert.ok(eventRepo.listEventsByType("task:status_changed").length >= 1);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("TransactionalEventAppender rolls back event insert when truth mutation fails", () => {
+  const workspace = createTempWorkspace("aa-txn-truth-rollback-");
+  let db: SqliteDatabase;
+
+  try {
+    db = createDbWithOutbox(workspace);
+    db.connection.exec("CREATE TABLE truth_projection (id TEXT PRIMARY KEY, status TEXT NOT NULL)");
+    const eventRepo = new EventRepository(db.connection);
+    const outboxRepo = new OutboxRepository(db.connection);
+    const store = new AuthoritativeTaskStore(db);
+    const appender = new TransactionalEventAppender(db, eventRepo, outboxRepo);
+
+    seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
+
+    assert.throws(() => {
+      appender.appendEvent(
+        {
+          taskId: "task-1",
+          eventType: "task:status_changed",
+          payloadJson: JSON.stringify({ status: "running" }),
+        },
+        {
+          mutateTruth: (transactionDb) => {
+            transactionDb.connection
+              .prepare("INSERT INTO truth_projection (id, status) VALUES (?, ?)")
+              .run("task-1", "running");
+            throw new Error("truth mutation failed");
+          },
+        },
+      );
+    });
+
+    const projectionCount = db.connection
+      .prepare("SELECT COUNT(*) AS count FROM truth_projection")
+      .get() as { count: number };
+    assert.equal(projectionCount.count, 0);
+    assert.equal(eventRepo.listEventsByType("task:status_changed").length, 0);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("TransactionalEventAppender rolls back on error", () => {
   const workspace = createTempWorkspace("aa-txn-rollback-");
   let db: SqliteDatabase;

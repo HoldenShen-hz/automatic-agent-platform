@@ -60,7 +60,13 @@ export default defineConfig({
             return "query";
           }
           if (id.includes("/packages/features/")) {
-            return "features";
+            // R22-25 fix: Split features into individual chunks per §10 bundle size requirement
+            // Extract feature name from path like @aa/feature-dashboard or /packages/features/dashboard
+            const match = id.match(/feature[-\/](\w+)/);
+            if (match) {
+              return `feature-${match[1]}`;
+            }
+            return "features-misc";
           }
           return undefined;
         },

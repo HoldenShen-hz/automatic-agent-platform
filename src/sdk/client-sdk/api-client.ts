@@ -187,7 +187,7 @@ export class RetryableApiClient {
       throw new ValidationError(
         "client_sdk.version_incompatible",
         `Client version ${clientVersion} is not compatible with platform minimum version ${minVersion}`,
-        { clientVersion, minVersion, platformVersion: response.data.platformVersion },
+        { details: { clientVersion, minVersion, platformVersion: response.data.platformVersion } },
       );
     }
 

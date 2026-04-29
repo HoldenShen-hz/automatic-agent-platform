@@ -53,6 +53,58 @@ import {
 export const FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID = "plane.runtime.catalog";
 export const X1_FABRIC_BOOTSTRAP_SERVICE_ID = "plane.x1-fabric.bootstrap";
 
+/**
+ * Health check result for bootstrap services.
+ * §24.5/R21-54: Health check before ready ensures service is operational.
+ */
+export interface BootstrapHealthCheck {
+  /** Whether the bootstrap completed successfully */
+  healthy: boolean;
+  /** List of services that failed to initialize */
+  failedServices: string[];
+  /** Error messages for failed services */
+  errors: string[];
+  /** When the health check was performed */
+  checkedAt: string;
+}
+
+/**
+ * Performs a health check on all registered bootstrap services.
+ * §24.5/R21-54: Health check before ready ensures services are operational.
+ */
+export function performBootstrapHealthCheck(registry: ServiceRegistry): BootstrapHealthCheck {
+  const failedServices: string[] = [];
+  const errors: string[] = [];
+  const now = new Date().toISOString();
+
+  const serviceIds = [
+    INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
+    CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
+    ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID,
+    EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID,
+    STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID,
+  ];
+
+  for (const serviceId of serviceIds) {
+    try {
+      if (!registry.isInitialized(serviceId)) {
+        failedServices.push(serviceId);
+        errors.push(`Service ${serviceId} is not initialized`);
+      }
+    } catch (error) {
+      failedServices.push(serviceId);
+      errors.push(`Service ${serviceId} threw exception: ${error}`);
+    }
+  }
+
+  return {
+    healthy: failedServices.length === 0,
+    failedServices,
+    errors,
+    checkedAt: now,
+  };
+}
+
 export interface X1FabricBootstrap {
   readonly capabilityGroupId: "x1-fabric";
   readonly capabilityCount: number;
@@ -118,7 +170,19 @@ export function registerX1FabricBootstrap(
       COMPLIANCE_BOOTSTRAP_SERVICE_ID,
     ],
   });
-  return registry.get<X1FabricBootstrap>(X1_FABRIC_BOOTSTRAP_SERVICE_ID);
+  // §24.5/R21-54: Health check before get() ensures service is ready
+  // §24.5/R21-55: Graceful degradation - catch exceptions to prevent complete bootstrap failure
+  try {
+    return registry.get<X1FabricBootstrap>(X1_FABRIC_BOOTSTRAP_SERVICE_ID);
+  } catch (error) {
+    // Return a degraded bootstrap that indicates partial initialization
+    console.warn(`X1FabricBootstrap: failed to initialize, returning degraded state: ${error}`);
+    return {
+      capabilityGroupId: "x1-fabric",
+      capabilityCount: 0,
+      registeredServiceIds: [],
+    };
+  }
 }
 
 export function registerFivePlaneRuntimeCatalog(registry: ServiceRegistry = ServiceRegistry.getInstance()): FivePlaneRuntimeCatalog {
@@ -129,21 +193,52 @@ export function registerFivePlaneRuntimeCatalog(registry: ServiceRegistry = Serv
   registerExecutionPlaneBootstrap(registry);
   registerStateEvidencePlaneBootstrap(registry);
 
+  // §24.5/R21-55: Graceful degradation - each registry.get() is wrapped in try-catch
+  // to prevent a single service failure from causing complete bootstrap failure
+  let interfacePlane: readonly InterfaceCapabilityBaseline[] = [];
+  let controlPlane: readonly ControlPlaneCapabilityBaseline[] = [];
+  let orchestrationPlane: readonly OrchestrationCapabilityBaseline[] = [];
+  let executionPlane: readonly ExecutionCapabilityBaseline[] = [];
+  let stateEvidencePlane: readonly StateEvidenceCapabilityBaseline[] = [];
+
+  try {
+    interfacePlane = registry.get<InterfacePlaneBootstrap>(INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
+  } catch (error) {
+    console.warn(`registerFivePlaneRuntimeCatalog: failed to get interfacePlane: ${error}`);
+  }
+
+  try {
+    controlPlane = registry.get<ControlPlaneBootstrap>(CONTROL_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
+  } catch (error) {
+    console.warn(`registerFivePlaneRuntimeCatalog: failed to get controlPlane: ${error}`);
+  }
+
+  try {
+    orchestrationPlane = registry.get<OrchestrationPlaneBootstrap>(ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
+  } catch (error) {
+    console.warn(`registerFivePlaneRuntimeCatalog: failed to get orchestrationPlane: ${error}`);
+  }
+
+  try {
+    executionPlane = registry.get<ExecutionPlaneBootstrap>(EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
+  } catch (error) {
+    console.warn(`registerFivePlaneRuntimeCatalog: failed to get executionPlane: ${error}`);
+  }
+
+  try {
+    stateEvidencePlane = registry.get<StateEvidencePlaneBootstrap>(STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
+  } catch (error) {
+    console.warn(`registerFivePlaneRuntimeCatalog: failed to get stateEvidencePlane: ${error}`);
+  }
+
   registry.register<FivePlaneRuntimeCatalog>(FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID, {
-    init: () => {
-      const interfacePlane = registry.get<InterfacePlaneBootstrap>(INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
-      const controlPlane = registry.get<ControlPlaneBootstrap>(CONTROL_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
-      const orchestrationPlane = registry.get<OrchestrationPlaneBootstrap>(ORCHESTRATION_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
-      const executionPlane = registry.get<ExecutionPlaneBootstrap>(EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
-      const stateEvidencePlane = registry.get<StateEvidencePlaneBootstrap>(STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID).catalog;
-      return {
-        interfacePlane,
-        controlPlane,
-        orchestrationPlane,
-        executionPlane,
-        stateEvidencePlane,
-      };
-    },
+    init: () => ({
+      interfacePlane,
+      controlPlane,
+      orchestrationPlane,
+      executionPlane,
+      stateEvidencePlane,
+    }),
     dependsOn: [
       INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID,
       CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,

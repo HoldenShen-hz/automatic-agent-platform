@@ -12,19 +12,19 @@ import {
   shouldEscalate,
 } from "../../../../../src/platform/execution/recovery/failure-classification.js";
 
-test("FailureLevel type accepts L1", () => {
-  const level: FailureLevel = "L1";
-  assert.equal(level, "L1");
+test("FailureLevel type accepts transient", () => {
+  const level: FailureLevel = "transient";
+  assert.equal(level, "transient");
 });
 
-test("FailureLevel type accepts L2", () => {
-  const level: FailureLevel = "L2";
-  assert.equal(level, "L2");
+test("FailureLevel type accepts unknown", () => {
+  const level: FailureLevel = "unknown";
+  assert.equal(level, "unknown");
 });
 
-test("FailureLevel type accepts L3", () => {
-  const level: FailureLevel = "L3";
-  assert.equal(level, "L3");
+test("FailureLevel type accepts permanent", () => {
+  const level: FailureLevel = "permanent";
+  assert.equal(level, "permanent");
 });
 
 test("classifyErrorCode returns validation_error for null", () => {
@@ -209,13 +209,15 @@ test("classifyFailure adds repairBudgetUsed to classification", () => {
   const result = classifyFailure("unit_test_failure", 2);
   assert.equal(result.category, "unit_test_failure");
   assert.equal(result.repairBudgetUsed, 2);
-  assert.equal(result.level, "L1");
+  assert.equal(result.level, "transient");
+  assert.equal(result.legacyLevel, "L1");
 });
 
 test("classifyFailure preserves all classification fields", () => {
   const result = classifyFailure("schema_error", 0);
   assert.equal(result.category, "schema_error");
-  assert.equal(result.level, "L1");
+  assert.equal(result.level, "transient");
+  assert.equal(result.legacyLevel, "L1");
   assert.equal(result.description, "Output schema mismatch or validation failure");
   assert.equal(result.autoRepairable, true);
   assert.equal(result.requiresModelUpgrade, false);
@@ -226,7 +228,7 @@ test("classifyFailure preserves all classification fields", () => {
 test("classifyFailureFromErrorCode classifies and builds context", () => {
   const result = classifyFailureFromErrorCode("timeout", 1);
   assert.equal(result.category, "timeout_exceeded");
-  assert.equal(result.level, "L1");
+  assert.equal(result.level, "transient");
   assert.equal(result.repairBudgetUsed, 1);
   assert.equal(result.autoRepairable, true);
 });
@@ -237,10 +239,11 @@ test("classifyFailureFromErrorCode with null returns validation_error", () => {
   assert.equal(result.repairBudgetUsed, 0);
 });
 
-test("shouldEscalate returns true for L3 regardless of repair budget", () => {
+test("shouldEscalate returns true for permanent failures regardless of repair budget", () => {
   const failure: FailureContext = {
     category: "forbidden_path",
-    level: "L3",
+    level: "permanent",
+    legacyLevel: "L3",
     description: "",
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -250,10 +253,11 @@ test("shouldEscalate returns true for L3 regardless of repair budget", () => {
   assert.equal(shouldEscalate(failure, 5), true);
 });
 
-test("shouldEscalate returns true for L3 with high repair budget", () => {
+test("shouldEscalate returns true for permanent failures with high repair budget", () => {
   const failure: FailureContext = {
     category: "secret_exposure",
-    level: "L3",
+    level: "permanent",
+    legacyLevel: "L3",
     description: "",
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -263,10 +267,11 @@ test("shouldEscalate returns true for L3 with high repair budget", () => {
   assert.equal(shouldEscalate(failure, 100), true);
 });
 
-test("shouldEscalate returns true for L2 after one repair", () => {
+test("shouldEscalate returns true for unknown failures after one repair", () => {
   const failure: FailureContext = {
     category: "complex_repair_failure",
-    level: "L2",
+    level: "unknown",
+    legacyLevel: "L2",
     description: "",
     autoRepairable: false,
     requiresModelUpgrade: true,
@@ -276,10 +281,11 @@ test("shouldEscalate returns true for L2 after one repair", () => {
   assert.equal(shouldEscalate(failure, 5), true);
 });
 
-test("shouldEscalate returns false for L2 before repair", () => {
+test("shouldEscalate returns false for unknown failures before repair", () => {
   const failure: FailureContext = {
     category: "planning_inconsistency",
-    level: "L2",
+    level: "unknown",
+    legacyLevel: "L2",
     description: "",
     autoRepairable: false,
     requiresModelUpgrade: true,
@@ -292,7 +298,8 @@ test("shouldEscalate returns false for L2 before repair", () => {
 test("shouldEscalate returns true when repair budget exhausted", () => {
   const failure: FailureContext = {
     category: "schema_error",
-    level: "L1",
+    level: "transient",
+    legacyLevel: "L1",
     description: "",
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -302,10 +309,11 @@ test("shouldEscalate returns true when repair budget exhausted", () => {
   assert.equal(shouldEscalate(failure, 3), true);
 });
 
-test("shouldEscalate returns false when L1 has budget remaining", () => {
+test("shouldEscalate returns false when transient failures have budget remaining", () => {
   const failure: FailureContext = {
     category: "type_error",
-    level: "L1",
+    level: "transient",
+    legacyLevel: "L1",
     description: "",
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -315,8 +323,8 @@ test("shouldEscalate returns false when L1 has budget remaining", () => {
   assert.equal(shouldEscalate(failure, 5), false);
 });
 
-test("FAILURE_CLASSIFICATION has all platform L1 categories", () => {
-  const platformL1: FailureCategory[] = [
+test("FAILURE_CLASSIFICATION has all platform transient categories", () => {
+  const platformTransient: FailureCategory[] = [
     "resource_exhausted",
     "timeout_exceeded",
     "dependency_unavailable",
@@ -328,17 +336,18 @@ test("FAILURE_CLASSIFICATION has all platform L1 categories", () => {
     "state_transition_error",
   ];
 
-  for (const category of platformL1) {
+  for (const category of platformTransient) {
     const classification = FAILURE_CLASSIFICATION[category];
     assert.ok(classification, `Missing classification for ${category}`);
-    assert.equal(classification.level, "L1", `${category} should be L1`);
+    assert.equal(classification.level, "transient", `${category} should be transient`);
+    assert.equal(classification.legacyLevel, "L1", `${category} should preserve legacy L1`);
     assert.equal(classification.autoRepairable, true, `${category} should be autoRepairable`);
     assert.equal(classification.isPlatformException, true, `${category} should be isPlatformException`);
   }
 });
 
-test("FAILURE_CLASSIFICATION has all platform L3 categories", () => {
-  const platformL3: FailureCategory[] = [
+test("FAILURE_CLASSIFICATION has all platform permanent categories", () => {
+  const platformPermanent: FailureCategory[] = [
     "migration_failure",
     "deadlock_detected",
     "data_inconsistency",
@@ -347,10 +356,11 @@ test("FAILURE_CLASSIFICATION has all platform L3 categories", () => {
     "security_policy_violation",
   ];
 
-  for (const category of platformL3) {
+  for (const category of platformPermanent) {
     const classification = FAILURE_CLASSIFICATION[category];
     assert.ok(classification, `Missing classification for ${category}`);
-    assert.equal(classification.level, "L3", `${category} should be L3`);
+    assert.equal(classification.level, "permanent", `${category} should be permanent`);
+    assert.equal(classification.legacyLevel, "L3", `${category} should preserve legacy L3`);
     assert.equal(classification.requiresHumanEscalation, true, `${category} should require human escalation`);
     assert.equal(classification.isPlatformException, true, `${category} should be isPlatformException`);
   }

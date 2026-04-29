@@ -223,7 +223,7 @@ export class ConfigRolloutService {
 
     // §24.3: Always start from PENDING (index 0); canary pipeline must execute
     // regardless of targetPercentage. Even target=100 goes through:
-    // PENDING → CANARY_5 → CANARY_25 → HALF → FULL
+    // PENDING → CANARY → CANARY_10 → FULL
     const startStage = this.stages[0]!;
 
     const mergedHealthGates: RolloutHealthGates = {
