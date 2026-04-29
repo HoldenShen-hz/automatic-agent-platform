@@ -1,5 +1,31 @@
 import { ValidationError } from "../../platform/contracts/errors.js";
 
+/**
+ * SdkReleaseDescriptor - SDK release metadata per §22
+ * Describes an SDK release with version compatibility and deprecation policy.
+ */
+export interface SdkReleaseDescriptor {
+  /** Semantic version of the SDK */
+  sdk_semver: string;
+  /** Minimum platform version required to use this SDK */
+  platform_min_version: string;
+  /** Maximum platform version supported by this SDK */
+  platform_max_version: string;
+  /** Deprecation policy for this SDK release */
+  deprecation_policy: {
+    /** When this SDK will be deprecated (ISO date) */
+    deprecatedAt?: string | null;
+    /** When this SDK will reach end-of-life (ISO date) */
+    eolAt?: string | null;
+    /** Recommended alternative SDK version to migrate to */
+    migrationTarget?: string | null;
+    /** Whether critical security patches will still be provided after deprecation */
+    securityPatchSupport?: boolean;
+  };
+  /** Contract test generator identifier */
+  contract_test_generator?: string;
+}
+
 export interface PackCapabilityProfile {
   maturity: "experimental" | "beta" | "ga";
   requiredContracts: string[];
@@ -37,10 +63,8 @@ export interface BusinessPackManifest {
     supportedDomainSpecVersions?: string[];
     requiresActiveDomain?: boolean;
   };
-  sdk_semver?: string;
-  platform_min_version?: string;
-  platform_max_version?: string;
-  contract_test_generator?: string;
+  /** SDK release descriptor with version compatibility and deprecation policy per §22 */
+  sdk_release?: SdkReleaseDescriptor;
 }
 
 export function validateBusinessPackManifest(

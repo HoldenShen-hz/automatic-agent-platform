@@ -43,6 +43,9 @@ export interface FencingTokenValidation {
   reason?: string;
 }
 
+const FENCING_TOKEN_SEPARATOR = "::";
+const DEFAULT_FENCE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * Service for generating and validating fencing tokens to prevent split-brain.
  *
@@ -79,7 +82,12 @@ export class FencingTokenService {
   public generateFencingToken(executionId: string, nodeId: string): string {
     this.tokenCounter++;
     const timestamp = Date.now();
-    return `${executionId}-${nodeId}-${this.tokenCounter}-${timestamp}`;
+    return [
+      encodeURIComponent(executionId),
+      encodeURIComponent(nodeId),
+      String(this.tokenCounter),
+      String(timestamp),
+    ].join(FENCING_TOKEN_SEPARATOR);
   }
 
   /**
@@ -97,19 +105,26 @@ export class FencingTokenService {
       };
     }
 
-    const parts = token.split("-");
-    if (parts.length < 4) {
+    const parts = token.split(FENCING_TOKEN_SEPARATOR);
+    if (parts.length !== 4) {
       return {
         valid: false,
         reason: "Token format invalid",
       };
     }
 
-    // Token format: {executionId}-{nodeId}-{counter}-{timestamp}
-    const tokenNodeId = parts[1];
-    const executionIdPart = parts[0];
+    const [encodedExecutionId, encodedNodeId, counterPart, timestampPart] = parts;
+    const executionIdPart = decodeURIComponent(encodedExecutionId ?? "");
+    const tokenNodeId = decodeURIComponent(encodedNodeId ?? "");
+    const counter = Number.parseInt(counterPart ?? "", 10);
+    const timestamp = Number.parseInt(timestampPart ?? "", 10);
 
-    if (!tokenNodeId || !executionIdPart) {
+    if (
+      !tokenNodeId ||
+      !executionIdPart ||
+      !Number.isFinite(counter) ||
+      !Number.isFinite(timestamp)
+    ) {
       return {
         valid: false,
         reason: "Token format invalid",
@@ -142,6 +157,7 @@ export class FencingTokenService {
    * @returns The fence info if acquired, null if fence already held in exclusive mode
    */
   public acquireFence(executionId: string, mode: FenceMode): FenceInfo | null {
+    this.pruneExpiredFences();
     // Check if any fence exists for this execution
     for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId) {
@@ -165,7 +181,7 @@ export class FencingTokenService {
       fenceToken,
       ownerNodeId: this.nodeId,
       acquiredAt: new Date(),
-      expiresAt: null,
+      expiresAt: new Date(Date.now() + DEFAULT_FENCE_TTL_MS),
     };
 
     FencingTokenService.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
@@ -197,6 +213,7 @@ export class FencingTokenService {
    * @returns true if a fence is held
    */
   public isFenceHeld(executionId: string): boolean {
+    this.pruneExpiredFences();
     for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId) {
         return true;
@@ -212,6 +229,7 @@ export class FencingTokenService {
    * @returns The fence info or undefined if no fence held
    */
   public getFenceInfo(executionId: string): FenceInfo | undefined {
+    this.pruneExpiredFences();
     for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
         return fence;
@@ -242,6 +260,15 @@ export class FencingTokenService {
    * @returns Number of active fences
    */
   public getActiveFenceCount(): number {
+    this.pruneExpiredFences();
     return FencingTokenService.activeFences.size;
+  }
+
+  private pruneExpiredFences(now: Date = new Date()): void {
+    for (const [key, fence] of FencingTokenService.activeFences.entries()) {
+      if (fence.expiresAt != null && fence.expiresAt.getTime() <= now.getTime()) {
+        FencingTokenService.activeFences.delete(key);
+      }
+    }
   }
 }

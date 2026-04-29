@@ -154,8 +154,13 @@ export class PluginContext {
 
   /**
    * Set a context value.
+   * §14: Plugins cannot override system.* keys - enforces namespace isolation.
    */
   set(key: string, value: unknown, source: ContextValue["source"] = "plugin"): void {
+    // Enforce namespace isolation: plugins cannot override system.* keys
+    if (source === "plugin" && key.startsWith("system.")) {
+      throw new Error("plugin_context.namespace_violation: Plugins cannot override system.* keys");
+    }
     this.setValue(key, value, source);
   }
 

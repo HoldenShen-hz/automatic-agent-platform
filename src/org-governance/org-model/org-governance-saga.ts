@@ -147,14 +147,26 @@ export class OrgGovernanceSaga {
             targetOrgNodeId: nodeId,
             phase: "domain" as OrgGovernancePhase,
           };
-        this.handlers.compensate?.(compensationStep, context());
-        compensatedNodeIds.push(nodeId);
-        executionLog.push({
-          stepId: compensationStep.stepId,
-          action: compensationStep.action,
-          targetOrgNodeId: compensationStep.targetOrgNodeId,
-          outcome: "compensated",
-        });
+        // §9.2: Wrap compensation in try-catch to prevent cascade failure
+        // Compensation failures should not throw - saga must complete all compensation steps
+        try {
+          this.handlers.compensate?.(compensationStep, context());
+          compensatedNodeIds.push(nodeId);
+          executionLog.push({
+            stepId: compensationStep.stepId,
+            action: compensationStep.action,
+            targetOrgNodeId: compensationStep.targetOrgNodeId,
+            outcome: "compensated",
+          });
+        } catch {
+          // Record compensation failure but continue with remaining compensation steps
+          executionLog.push({
+            stepId: compensationStep.stepId,
+            action: compensationStep.action,
+            targetOrgNodeId: compensationStep.targetOrgNodeId,
+            outcome: "failed",
+          });
+        }
       }
     }
     // else: no failure - no compensation needed; proceed directly to audit

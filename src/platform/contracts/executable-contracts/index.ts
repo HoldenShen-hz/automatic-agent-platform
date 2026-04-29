@@ -62,6 +62,7 @@ export interface PrincipalRef {
   readonly tenantId: string;
   readonly roles: readonly string[];
   readonly displayName?: string;
+  readonly authorizationLevel?: "viewer" | "operator" | "admin";
 }
 
 export interface ArtifactRef {
@@ -416,7 +417,7 @@ export interface NodeAttemptReceipt {
   readonly duration: number;
   readonly outputRef?: ArtifactRef;
   readonly error?: AppErrorRef;
-  readonly errorDetail?: string;
+  readonly errorDetail: string;
   readonly sideEffectRefs: readonly string[];
   readonly budgetSettlementRefs: readonly string[];
   readonly evidenceRefs: readonly ArtifactRef[];
@@ -466,6 +467,12 @@ export interface SideEffectRecord {
   readonly approvalRef?: string;
   readonly preCommitPolicyProofRef: ArtifactRef;
   readonly externalRef?: string;
+  /** Per-effect deadline (ISO 8601 timestamp) - must commit before this time per §14.11 */
+  readonly deadline: string;
+  /** Inline rollback handler specification per §14.11 */
+  readonly rollbackHandler?: string;
+  /** Inline compensation plan reference per §14.11 */
+  readonly compensationPlan?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -607,6 +614,14 @@ export interface HumanResponsibilityRecord {
   readonly expiresAt?: string;
 }
 
+/**
+ * EventEnvelope - canonical event structure per §28.1
+ *
+ * Compliance notes:
+ * - runId: REQUIRED per §28.1 (not optional)
+ * - replayBehavior: REQUIRED (explicitly declared, not optional) per §28.1
+ * - schemaVersion: numeric type per §28.1 (not string)
+ */
 export interface EventEnvelope<TPayload extends JsonValue = JsonValue> {
   readonly eventId: string;
   readonly runId: string;
@@ -646,6 +661,7 @@ export function createPrincipalRef(input: {
   tenantId: string;
   roles?: readonly string[];
   displayName?: string;
+  authorizationLevel?: "viewer" | "operator" | "admin";
 }): PrincipalRef {
   requireNonEmpty(input.principalId, "principal.principal_id_required");
   requireNonEmpty(input.tenantId, "principal.tenant_id_required");
@@ -654,6 +670,7 @@ export function createPrincipalRef(input: {
     tenantId: input.tenantId,
     roles: input.roles ?? [],
     ...(input.displayName != null ? { displayName: input.displayName } : {}),
+    ...(input.authorizationLevel != null ? { authorizationLevel: input.authorizationLevel } : {}),
   };
 }
 
@@ -762,6 +779,8 @@ export function createHarnessRun(input: {
   harnessRunId?: string;
   status?: HarnessRunStatus;
   planGraphBundleId?: string;
+  leaseId?: string;
+  fencingToken?: string;
   currentSeq?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -778,6 +797,8 @@ export function createHarnessRun(input: {
     versionLockId: input.versionLockId,
     ...(input.planGraphBundleId != null ? { planGraphBundleId: input.planGraphBundleId } : {}),
     budgetLedgerId: input.budgetLedgerId,
+    ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
+    ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
@@ -966,10 +987,10 @@ export function createNodeAttemptReceipt(input: {
   receiptKind: NodeAttemptReceipt["receiptKind"];
   status: NodeAttemptReceipt["status"];
   duration: number;
+  errorDetail: string;
   nodeAttemptReceiptId?: string;
   outputRef?: ArtifactRef;
   error?: AppErrorRef;
-  errorDetail?: string;
   sideEffectRefs?: readonly string[];
   budgetSettlementRefs?: readonly string[];
   evidenceRefs?: readonly ArtifactRef[];
@@ -987,7 +1008,7 @@ export function createNodeAttemptReceipt(input: {
     duration: input.duration,
     ...(input.outputRef != null ? { outputRef: input.outputRef } : {}),
     ...(input.error != null ? { error: input.error } : {}),
-    ...(input.errorDetail != null ? { errorDetail: input.errorDetail } : {}),
+    errorDetail: input.errorDetail,
     sideEffectRefs: input.sideEffectRefs ?? [],
     budgetSettlementRefs: input.budgetSettlementRefs ?? [],
     evidenceRefs: input.evidenceRefs ?? [],
@@ -1007,6 +1028,9 @@ export function createSideEffectRecord(input: {
   status?: SideEffectStatus;
   approvalRef?: string;
   externalRef?: string;
+  deadline: string;
+  rollbackHandler?: string;
+  compensationPlan?: string;
   createdAt?: string;
   updatedAt?: string;
 }): SideEffectRecord {
@@ -1023,6 +1047,9 @@ export function createSideEffectRecord(input: {
     ...(input.approvalRef != null ? { approvalRef: input.approvalRef } : {}),
     preCommitPolicyProofRef: input.preCommitPolicyProofRef,
     ...(input.externalRef != null ? { externalRef: input.externalRef } : {}),
+    deadline: input.deadline,
+    ...(input.rollbackHandler != null ? { rollbackHandler: input.rollbackHandler } : {}),
+    ...(input.compensationPlan != null ? { compensationPlan: input.compensationPlan } : {}),
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
   };

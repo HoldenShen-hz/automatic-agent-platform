@@ -32,6 +32,8 @@ import type {
   WorkflowStateRecord,
 } from "../../contracts/types/domain.js";
 
+import type { PlatformFactEvent } from "../../contracts/executable-contracts/index.js";
+
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { openAuthoritativeStorageContext } from "../../state-evidence/truth/storage-backend-factory.js";
 import { HealthService } from "../../shared/observability/health-service.js";
@@ -47,6 +49,7 @@ import type { WorkflowCrashInjection } from "../recovery/workflow-crash-simulato
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { createWorkflowStepCheckpoint } from "../../state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
+import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
 import type { BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import {
   AdmissionController,
@@ -63,6 +66,7 @@ import {
 } from "./model-call-provider.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
+import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -149,6 +153,14 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
 
   assertWorkflowValid(SINGLE_AGENT_MINIMAL_WORKFLOW);
 
+  // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as only P3→P4 contract
+  const harnessRunId = newId("harness_run");
+  const planGraphBundle = minimalWorkflowToPlanGraphBundle(SINGLE_AGENT_MINIMAL_WORKFLOW, harnessRunId);
+
+  // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard
+  const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
+  const validatedPlanGraphBundle = guardResult.planGraphBundle;
+
   const storage = openAuthoritativeStorageContext({
     dbPath: input.dbPath,
   });
@@ -167,6 +179,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       input.admissionPolicy,
       input.admissionBackpressureSnapshot ?? (() => healthService.getReport()),
     );
+    // R4-32 (INV-APPROVAL): Initialize approval policy engine for risk-proportional approval
+    const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
     const [step] = SINGLE_AGENT_MINIMAL_WORKFLOW.steps;
     const toolExposure = new RoleToolExposureService().resolve({
       divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
@@ -289,6 +303,23 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       updatedAt: now,
     };
 
+    // R4-32 (INV-APPROVAL): Evaluate risk-proportional approval before creating execution
+    const approvalContext: ApprovalPolicyContext = {
+      decisionId: newId("approval"),
+      taskId,
+      executionId,
+      sessionId,
+      subjectType: "agent",
+      subjectId: "agent_general_executor",
+      action: "invoke_tool",
+      riskCategory: "cost_sensitive",
+      mode: "auto",
+      stage: "execute",
+      estimatedCostUsd: 1,
+      metadata: { roleId: step.roleId, stepId: step.stepId },
+    };
+    const approvalResult = approvalEngine.evaluate(approvalContext);
+
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,
@@ -303,7 +334,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       attempt: 1,
       timeoutMs: step.timeoutMs,
       budgetUsdLimit: 1,
-      requiresApproval: 0,
+      // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
+      // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
+      requiresApproval: approvalResult.requiresApproval ? 1 : 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(toolExposure.resolvedToolNames),
       allowedPathsJson: JSON.stringify([]),
@@ -327,11 +360,85 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       updatedAt: now,
     };
 
+    // R4-28 (INV-STATE-001): Every truth mutation must append a PlatformFactEvent in the same transaction
+    const taskCreatedEvent: PlatformFactEvent = {
+      id: newId("evt"),
+      taskId,
+      executionId: null,
+      eventType: "platform.task.status_changed",
+      eventTier: "tier_1",
+      payloadJson: JSON.stringify({
+        aggregateType: "Task",
+        fromStatus: null,
+        toStatus: "queued",
+        reasonCode: "task.created",
+        emittedBy: "single_task_happy_path",
+      }),
+      traceId,
+      createdAt: now,
+    };
+
+    const workflowCreatedEvent: PlatformFactEvent = {
+      id: newId("evt"),
+      taskId,
+      executionId: null,
+      eventType: "platform.workflow.status_changed",
+      eventTier: "tier_1",
+      payloadJson: JSON.stringify({
+        aggregateType: "Workflow",
+        fromStatus: null,
+        toStatus: "running",
+        reasonCode: "workflow.started",
+        emittedBy: "single_task_happy_path",
+      }),
+      traceId,
+      createdAt: now,
+    };
+
+    const executionCreatedEvent: PlatformFactEvent = {
+      id: newId("evt"),
+      taskId,
+      executionId,
+      eventType: "platform.execution.status_changed",
+      eventTier: "tier_1",
+      payloadJson: JSON.stringify({
+        aggregateType: "Execution",
+        fromStatus: null,
+        toStatus: "created",
+        reasonCode: "execution.created",
+        emittedBy: "single_task_happy_path",
+      }),
+      traceId,
+      createdAt: now,
+    };
+
+    const sessionCreatedEvent: PlatformFactEvent = {
+      id: newId("evt"),
+      taskId,
+      executionId: null,
+      eventType: "platform.session.status_changed",
+      eventTier: "tier_1",
+      payloadJson: JSON.stringify({
+        aggregateType: "Session",
+        fromStatus: null,
+        toStatus: "open",
+        reasonCode: "session.created",
+        emittedBy: "single_task_happy_path",
+      }),
+      traceId,
+      createdAt: now,
+    };
+
     db.transaction(() => {
       store.task.insertTask(task);
       store.workflow.insertWorkflowState(workflow);
       store.execution.insertExecution(execution);
       store.session.insertSession(session);
+      // R4-28 (INV-STATE-001): Append PlatformFactEvents in same transaction as truth mutations
+      store.event.insertEvent(taskCreatedEvent);
+      store.event.insertEvent(workflowCreatedEvent);
+      store.event.insertEvent(executionCreatedEvent);
+      store.event.insertEvent(sessionCreatedEvent);
     });
 
     const admissionDecision = admission.evaluate({

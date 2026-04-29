@@ -13,32 +13,66 @@ import { join } from "node:path";
 import { ConfigGovernanceService } from "../../src/platform/control-plane/config-center/config-governance-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 
+function writeLayerConfig(configRoot: string, layerName: string, value: Record<string, unknown>): void {
+  const layerRoot = join(configRoot, layerName);
+  mkdirSync(layerRoot, { recursive: true });
+  writeFileSync(join(layerRoot, "default.json"), JSON.stringify(value));
+}
+
+function createValidConfigRoot(workspace: string): string {
+  const configRoot = join(workspace, "config");
+  mkdirSync(configRoot, { recursive: true });
+
+  writeLayerConfig(configRoot, "bootstrap", {
+    appName: "automatic-agent",
+    phase: "stable",
+    stableCoreEnabled: true,
+  });
+  writeLayerConfig(configRoot, "gateways", {
+    defaultGateway: "primary",
+    sseEnabled: true,
+  });
+  writeLayerConfig(configRoot, "providers", {
+    defaultProvider: "minimax",
+    defaultModelProfile: "balanced",
+  });
+  writeLayerConfig(configRoot, "runtime", {
+    defaultTaskTimeoutMs: 60000,
+    defaultStepTimeoutMs: 10000,
+    maxConcurrentTasks: 4,
+    maxAgentRounds: 8,
+    maxToolCalls: 16,
+  });
+  writeLayerConfig(configRoot, "security", {
+    approvalMode: "required",
+    sandboxMode: "workspace_write",
+    allowDestructiveActions: false,
+    remoteWorkerRegistration: {
+      challengeTtlMs: 300000,
+      allowedCapabilities: ["read", "write"],
+    },
+  });
+  writeLayerConfig(configRoot, "workflows", {
+    defaultWorkflowId: "single_agent_minimal",
+    allowCrossDivisionDag: false,
+  });
+
+  return configRoot;
+}
+
 test("golden: config governance service loads bundle structure", () => {
   const workspace = createTempWorkspace("aa-golden-config-");
 
   try {
-    // Create minimal config directory structure
-    const configRoot = join(workspace, "config", "dev");
-    mkdirSync(configRoot, { recursive: true });
-
-    // Write minimal layer files
-    writeFileSync(join(configRoot, "runtime.json"), JSON.stringify({ key: "value" }));
-    writeFileSync(join(configRoot, "providers.json"), JSON.stringify({ test: true }));
+    const configRoot = createValidConfigRoot(workspace);
 
     const service = new ConfigGovernanceService({ configRoot });
+    const bundle = service.loadBundle("dev");
 
-    // Try to load bundle - may throw if files don't match schema
-    // We just verify structure if it loads
-    try {
-      const bundle = service.loadBundle("dev");
-
-      assert.ok(bundle, "Bundle should be loaded");
-      assert.ok(bundle.version, "Should have version");
-      assert.ok(bundle.layers, "Should have layers");
-    } catch (err) {
-      // Schema validation may fail - fail the test with actual error for debugging
-      assert.fail(`Schema validation failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    assert.ok(bundle, "Bundle should be loaded");
+    assert.ok(bundle.version, "Should have version");
+    assert.ok(bundle.layers, "Should have layers");
+    assert.equal(bundle.issues.length, 0, "Valid bundle should not report issues");
   } finally {
     cleanupPath(workspace);
   }
@@ -48,30 +82,15 @@ test("golden: config bundle version structure", () => {
   const workspace = createTempWorkspace("aa-golden-config-version-");
 
   try {
-    const configRoot = join(workspace, "config", "dev");
-    mkdirSync(configRoot, { recursive: true });
-
-    writeFileSync(join(configRoot, "runtime.json"), JSON.stringify({ environment: "test" }));
-    writeFileSync(join(configRoot, "providers.json"), JSON.stringify({ provider: "test" }));
-    writeFileSync(join(configRoot, "workflows.json"), JSON.stringify({ workflows: [] }));
-    writeFileSync(join(configRoot, "security.json"), JSON.stringify({ sandbox: {} }));
-    writeFileSync(join(configRoot, "gateways.json"), JSON.stringify({ gateways: [] }));
+    const configRoot = createValidConfigRoot(workspace);
 
     const service = new ConfigGovernanceService({ configRoot });
+    const bundle = service.loadBundle("dev");
 
-    try {
-      const bundle = service.loadBundle("dev");
-
-      assert.ok(bundle.version.versionId, "Version ID should exist");
-      assert.ok(bundle.version.createdAt, "Created at should exist");
-      assert.ok(bundle.version.layerHashes, "Layer hashes should exist");
-
-      // Verify version format matches expected pattern
-      assert.match(bundle.version.versionId, /^\d+\.\d+\.\d+$/, "Version ID should match semver pattern");
-    } catch (err) {
-      // Validation may fail for incomplete files - fail with actual error
-      assert.fail(`Validation failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    assert.ok(bundle.version.versionId, "Version ID should exist");
+    assert.ok(bundle.version.generatedAt, "Generated at should exist");
+    assert.ok(bundle.version.layerHashes, "Layer hashes should exist");
+    assert.match(bundle.version.versionId, /^[0-9a-f]{16}$/i, "Version ID should be a 16-char hash prefix");
   } finally {
     cleanupPath(workspace);
   }
@@ -81,29 +100,27 @@ test("golden: config layer hashes are deterministic", () => {
   const workspace = createTempWorkspace("aa-golden-config-hashes-");
 
   try {
-    const configRoot = join(workspace, "config", "dev");
-    mkdirSync(configRoot, { recursive: true });
-
-    const layerContent = { testKey: "testValue", number: 42, array: [1, 2, 3] };
-    writeFileSync(join(configRoot, "runtime.json"), JSON.stringify(layerContent));
-    writeFileSync(join(configRoot, "providers.json"), JSON.stringify({ test: true }));
+    const configRoot = createValidConfigRoot(workspace);
+    writeLayerConfig(configRoot, "runtime", {
+      defaultTaskTimeoutMs: 60000,
+      defaultStepTimeoutMs: 10000,
+      maxConcurrentTasks: 4,
+      maxAgentRounds: 8,
+      maxToolCalls: 16,
+      testKey: "testValue",
+      number: 42,
+      array: [1, 2, 3],
+    });
 
     const service1 = new ConfigGovernanceService({ configRoot });
     const service2 = new ConfigGovernanceService({ configRoot });
+    const bundle1 = service1.loadBundle("dev");
+    const bundle2 = service2.loadBundle("dev");
 
-    try {
-      const bundle1 = service1.loadBundle("dev");
-      const bundle2 = service2.loadBundle("dev");
+    const runtimeHash1 = bundle1.version.layerHashes["runtime"];
+    const runtimeHash2 = bundle2.version.layerHashes["runtime"];
 
-      // Layer hashes should be consistent across loads
-      const runtimeHash1 = bundle1.version.layerHashes["runtime"];
-      const runtimeHash2 = bundle2.version.layerHashes["runtime"];
-
-      assert.equal(runtimeHash1, runtimeHash2, "Same layer should produce same hash");
-    } catch (err) {
-      // Hash computation failed - fail with actual error
-      assert.fail(`Hash computation failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    assert.equal(runtimeHash1, runtimeHash2, "Same layer should produce same hash");
   } finally {
     cleanupPath(workspace);
   }
@@ -113,23 +130,22 @@ test("golden: config bundle load handles missing layers gracefully", () => {
   const workspace = createTempWorkspace("aa-golden-config-missing-");
 
   try {
-    const configRoot = join(workspace, "config", "test");
+    const configRoot = join(workspace, "config");
     mkdirSync(configRoot, { recursive: true });
-
-    // Write only one layer
-    writeFileSync(join(configRoot, "runtime.json"), JSON.stringify({ minimal: true }));
+    writeLayerConfig(configRoot, "runtime", {
+      defaultTaskTimeoutMs: 60000,
+      defaultStepTimeoutMs: 10000,
+      maxConcurrentTasks: 4,
+    });
 
     const service = new ConfigGovernanceService({ configRoot });
+    const bundle = service.loadBundle("nonexistent");
 
-    // Loading non-existent environment should throw ValidationError
-    assert.throws(
-      () => service.loadBundle("nonexistent"),
-      (err: unknown) => {
-        const error = err as { message?: string };
-        return error.message?.includes("config.root_missing") || error.message?.includes("ENOENT");
-      },
-      "Should throw for missing environment",
-    );
+    assert.ok(bundle.issues.includes("config.missing_layer:bootstrap"));
+    assert.ok(bundle.issues.includes("config.missing_layer:gateways"));
+    assert.ok(bundle.issues.includes("config.missing_layer:providers"));
+    assert.ok(bundle.issues.includes("config.missing_layer:security"));
+    assert.ok(bundle.issues.includes("config.missing_layer:workflows"));
   } finally {
     cleanupPath(workspace);
   }

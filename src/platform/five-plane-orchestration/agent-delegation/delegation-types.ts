@@ -124,14 +124,14 @@ export interface DelegationResult {
   requiresApproval?: boolean;
   status: DelegationStatus;
   // §19.1 required fields
-  summary?: string;
-  artifact_refs?: readonly string[];
-  trust_level?: number;
-  taint_labels?: readonly string[];
-  evidence_refs?: readonly string[];
-  policy_outcome?: string;
+  summary: string;
+  artifact_refs: readonly string[];
+  trust_level: number;
+  taint_labels: readonly string[];
+  evidence_refs: readonly string[];
+  policy_outcome: string;
   // §19.1 cross-delegation data classification
-  data_class?: string;
+  data_class: string;
 }
 
 export type DelegationStatus =

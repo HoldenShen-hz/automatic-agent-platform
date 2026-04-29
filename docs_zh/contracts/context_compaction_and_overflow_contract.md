@@ -132,12 +132,12 @@ Phase 1a / 1b 建议至少维护：
 |--------------|---------|------|
 | Observe | 最新观察信号 | Assess 依赖 |
 | Assess | UnifiedAssessment 结果 | Plan 依赖 |
-| Plan | Plan DTO + version | Execute 依赖（R3-SINGLE 约束） |
+| Plan | PlanGraphBundle + graphVersion | Execute 依赖（R3-SINGLE 约束） |
 | Execute | DualChannelStepOutput | Feedback 依赖 |
 | Feedback | FeedbackSignal[] | Learn 证据链（R4-EVIDENCE） |
 | Learn | LearningObject + evidence | Improve 依赖 |
-| Improve | ImprovementCandidate | Rollout 依赖 |
-| Rollout | RolloutRecord | 审计追溯 |
+| Improve | ImprovementCandidate | Release 依赖 |
+| Release | ReleaseRecord | 审计追溯 |
 
 ## 9. `CompactionRecord`
 

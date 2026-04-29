@@ -65,6 +65,18 @@ export interface ApprovalQueueState {
    * Used for freshness monitoring and stale projection detection.
    */
   lastProjectedAt: string | null;
+  /**
+   * Lag in milliseconds between event time and projection update.
+   * Computed as: now - lastProjectedAt.
+   * Used for freshness monitoring per §28.6.
+   */
+  lagMs: number | null;
+  /**
+   * Whether this projection is considered stale.
+   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
+   * Used for freshness monitoring per §28.6/§25.5.
+   */
+  stale: boolean;
   /** Decision type */
   decisionType: string | null;
   /** Selected option ID */
@@ -134,6 +146,8 @@ export function createEmptyApprovalQueueState(): ApprovalQueueState {
     cascadeDeny: false,
     cascadeSourceApprovalId: null,
     cascadeSessionId: null,
+    lagMs: null,
+    stale: false,
   };
 }
 
@@ -230,6 +244,13 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   }
   newState.lastEventAt = event.createdAt;
   newState.lastProjectedAt = event.createdAt;
+  // Compute lagMs and stale flag per §28.6/§25.5
+  if (event.createdAt) {
+    const eventTime = new Date(event.createdAt).getTime();
+    const now = Date.now();
+    newState.lagMs = now - eventTime;
+    newState.stale = newState.lagMs > 300000;
+  }
 
   // Add to timeline
   const timelineEntry: ApprovalQueueTimelineEntry = {
@@ -290,7 +311,7 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
  * Handle decision:requested event
  */
 function handleDecisionRequested(
-  state: ApprovalQueueState,
+  state: ApprovalQueueStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -315,7 +336,7 @@ function handleDecisionRequested(
  * Handle decision:responded event
  */
 function handleDecisionResponded(
-  state: ApprovalQueueState,
+  state: ApprovalQueueStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -350,7 +371,7 @@ function handleDecisionResponded(
  * Handle decision:partial_approval event (multi-party progress)
  */
 function handlePartialApproval(
-  state: ApprovalQueueState,
+  state: ApprovalQueueStateInternal,
   payload: Record<string, unknown>,
   _timestamp: string,
 ): void {
@@ -370,7 +391,7 @@ function handlePartialApproval(
  * Handle decision:approved event (multi-party final)
  */
 function handleDecisionApproved(
-  state: ApprovalQueueState,
+  state: ApprovalQueueStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -387,7 +408,7 @@ function handleDecisionApproved(
  * Handle decision:rejected event (multi-party final)
  */
 function handleDecisionRejected(
-  state: ApprovalQueueState,
+  state: ApprovalQueueStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {

@@ -66,7 +66,23 @@ export interface OutputScanResult {
 }
 
 /**
- * Result of the full 5-step cross-border transfer chain
+ * Transfer logging result from Step 6 per §52.4
+ */
+export interface TransferLoggingResult {
+  readonly logged: boolean;
+  readonly logId: string;
+  readonly loggedAt: string;
+  readonly transferRecord: {
+    readonly sourceRegionId: string;
+    readonly targetRegionId: string;
+    readonly dataCategories: readonly TransferDataCategory[];
+    readonly mechanism: TransferMechanism;
+    readonly decision: "allowed" | "blocked" | "requires_review";
+  };
+}
+
+/**
+ * Result of the full 6-step cross-border transfer chain per §52.4
  */
 export interface CrossBorderTransferChainResult {
   readonly chainStepResults: {
@@ -75,6 +91,7 @@ export interface CrossBorderTransferChainResult {
     mechanismSelection: MechanismSelectionResult;
     dataMinimization: DataMinimizationResult;
     outputScan: OutputScanResult;
+    transferLogging: TransferLoggingResult;
   };
   readonly overallDecision: "allowed" | "blocked" | "requires_review";
   readonly blockedReason: string | null;
@@ -251,6 +268,31 @@ function scanOutput(
   };
 }
 
+/**
+ * Step 6: TransferLogger - records the transfer in the audit log per §52.4
+ */
+function logTransfer(
+  sourceRegion: RegionDescriptor,
+  targetRegion: RegionDescriptor,
+  dataCategories: readonly TransferDataCategory[],
+  mechanism: TransferMechanism,
+  decision: "allowed" | "blocked" | "requires_review",
+): TransferLoggingResult {
+  const logId = `transfer_log_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return {
+    logged: true,
+    logId,
+    loggedAt: new Date().toISOString(),
+    transferRecord: {
+      sourceRegionId: sourceRegion.regionId,
+      targetRegionId: targetRegion.regionId,
+      dataCategories,
+      mechanism,
+      decision,
+    },
+  };
+}
+
 export interface ResidencyPolicy {
   readonly policyId: string;
   readonly allowedJurisdictions: readonly string[];
@@ -267,6 +309,8 @@ export interface CrossRegionRouteRequest {
   readonly primaryRegionHealthy: boolean;
   readonly replicationPolicy?: ReplicationPolicy | null;
   readonly dataCategories?: readonly TransferDataCategory[];
+  /** When true, route to any healthy replica; when false, route writes to partition leader only per §52.3 */
+  readonly readOnly?: boolean;
 }
 
 export interface CrossRegionRouteDecision {
@@ -297,14 +341,30 @@ export class CrossRegionRoutingService {
     const unhealthyPrimaryRegionId = !request.primaryRegionHealthy ? request.primaryRegionId ?? null : null;
     const allowedJurisdictions = new Set(request.policy.allowedJurisdictions);
     const requiredCapabilities = request.policy.requiredCapabilities ?? [];
+    const isReadOnly = request.readOnly ?? false;
+
+    // Per §52.3: truth writes must route to partition leader only (primary region)
+    // Reads can route to any healthy replica
     const blockedRegions = request.regions
-      .filter((region) =>
-        blockedRegionIds.has(region.regionId)
-        || region.regionId === unhealthyPrimaryRegionId
-        || region.status === "draining"
-        || !region.residencyAllowed
-        || !allowedJurisdictions.has(region.jurisdiction)
-        || !includesAllCapabilities(region, requiredCapabilities))
+      .filter((region) => {
+        // Always block explicitly blocked regions
+        if (blockedRegionIds.has(region.regionId)) return true;
+        // Always block draining regions
+        if (region.status === "draining") return true;
+        // Block regions violating residency
+        if (!region.residencyAllowed) return true;
+        // Block regions in disallowed jurisdictions
+        if (!allowedJurisdictions.has(region.jurisdiction)) return true;
+        // Block regions missing required capabilities
+        if (!includesAllCapabilities(region, requiredCapabilities)) return true;
+
+        // For write operations: only the primary (partition leader) can accept writes
+        if (!isReadOnly) {
+          if (region.regionId === unhealthyPrimaryRegionId) return true;
+        }
+
+        return false;
+      })
       .map((region) => region.regionId);
 
     const candidateDescriptors = request.regions.filter((region) => !blockedRegions.includes(region.regionId));
@@ -319,7 +379,7 @@ export class CrossRegionRoutingService {
         .map((region) => region.regionId),
     });
 
-    // Execute 5-step cross-border transfer chain if needed
+    // Execute 6-step cross-border transfer chain if needed
     let crossBorderTransferChain: CrossBorderTransferChainResult | undefined;
     if (selectedRegion != null && request.primaryRegionId != null) {
       const primaryRegion = request.regions.find((r) => r.regionId === request.primaryRegionId);
@@ -383,7 +443,7 @@ export class CrossRegionRoutingService {
     const outputScan = scanOutput(mechanismSelection, dataMinimization);
     auditTrail.push(`step5_outputscan:${outputScan.passed ? "passed" : "failed"}`);
 
-    // Determine overall decision
+    // Determine overall decision before logging
     let overallDecision: "allowed" | "blocked" | "requires_review" = "allowed";
     let blockedReason: string | null = null;
 
@@ -398,6 +458,17 @@ export class CrossRegionRoutingService {
       blockedReason = "Transfer requires additional safeguards review";
     }
 
+    // Step 6: TransferLogger - log the transfer decision
+    const dataCategories = impactAssessment.dataCategories;
+    const transferLogging = logTransfer(
+      sourceRegion,
+      targetRegion,
+      dataCategories,
+      mechanismSelection.selectedMechanism,
+      overallDecision,
+    );
+    auditTrail.push(`step6_transferlog:${transferLogging.logId}`);
+
     return {
       chainStepResults: {
         jurisdictionClassification,
@@ -405,6 +476,7 @@ export class CrossRegionRoutingService {
         mechanismSelection,
         dataMinimization,
         outputScan,
+        transferLogging,
       },
       overallDecision,
       blockedReason,

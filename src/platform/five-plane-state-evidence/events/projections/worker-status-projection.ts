@@ -69,6 +69,18 @@ export interface WorkerStatusState {
    * Used for freshness monitoring and stale projection detection.
    */
   lastProjectedAt: string | null;
+  /**
+   * Lag in milliseconds between event time and projection update.
+   * Computed as: now - lastProjectedAt.
+   * Used for freshness monitoring per §28.6.
+   */
+  lagMs: number | null;
+  /**
+   * Whether this projection is considered stale.
+   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
+   * Used for freshness monitoring per §28.6/§25.5.
+   */
+  stale: boolean;
   /** First claim accepted timestamp */
   firstClaimAcceptedAt: string | null;
   /** Last claim accepted timestamp */
@@ -127,6 +139,8 @@ export function createEmptyWorkerStatusState(): WorkerStatusState {
     firstEventAt: null,
     lastEventAt: null,
     lastProjectedAt: null,
+    lagMs: null,
+    stale: false,
     firstClaimAcceptedAt: null,
     lastClaimAcceptedAt: null,
   };
@@ -227,6 +241,13 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
   }
   newState.lastEventAt = event.createdAt;
   newState.lastProjectedAt = event.createdAt;
+  // Compute lagMs and stale flag per §28.6/§25.5
+  if (event.createdAt) {
+    const eventTime = new Date(event.createdAt).getTime();
+    const now = Date.now();
+    newState.lagMs = now - eventTime;
+    newState.stale = newState.lagMs > 300000;
+  }
 
   // Extract details for timeline
   const details: Record<string, unknown> = {};

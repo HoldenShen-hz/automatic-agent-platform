@@ -104,7 +104,7 @@ interface RuntimeExecuteBridge {
 
 ## 后果
 
-- 新增 `src/core/planning/` 模块（约 9 文件，2000 行）。
+- 新增 `src/platform/orchestration/` 模块（约 9 文件，2000 行）。
 - `PlanGraphBundle` 作为唯一 P3→P4 handoff；`RuntimeExecuteBridge` 仅保留为 compatibility seam。
 
 ## v4.3 ADR Remediation

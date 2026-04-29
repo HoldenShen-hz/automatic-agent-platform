@@ -1,4 +1,4 @@
-import type { SystemSituation } from "../../../platform/shared/observability/system-situation-model.js";
+import type { SystemSituationPort } from "../contracts/dashboard-port.js";
 
 /**
  * Structured health score data per UI spec StabilityPanelView.
@@ -19,8 +19,10 @@ export interface StructuredHealthScore {
 /**
  * Score system health and return structured data per UI spec.
  * Replaces single-number score with 8-field structured output.
+ *
+ * Uses SystemSituationPort to avoid direct coupling to P4/P5 internals.
  */
-export function scoreSystemHealth(system: SystemSituation): StructuredHealthScore {
+export function scoreSystemHealth(system: SystemSituationPort): StructuredHealthScore {
   const baseUptime = system.healthStatus === "ok" ? 99.9 : system.healthStatus === "degraded" ? 95 : 85;
   const baseErrorRate = system.healthStatus === "ok" ? 0.01 : system.healthStatus === "degraded" ? 0.05 : 0.15;
 

@@ -1,5 +1,19 @@
 {
   "appName": "automatic-agent-system",
   "phase": "phase_1a",
-  "stableCoreEnabled": true
+  "stableCoreEnabled": true,
+  "dependencyOrder": ["P5", "X1", "P2", "P3", "P4", "P1"],
+  "healthCheckTimeoutMs": 15000,
+  "degradationPolicy": {
+    "onRegistryLookupFailure": "graceful_degradation",
+    "onOptionalServiceFailure": "continue_with_warning",
+    "onCriticalServiceFailure": "fail_closed"
+  },
+  "readinessGates": [
+    "state_evidence_ready",
+    "event_bus_ready",
+    "control_plane_ready",
+    "orchestration_ready",
+    "execution_ready"
+  ]
 }

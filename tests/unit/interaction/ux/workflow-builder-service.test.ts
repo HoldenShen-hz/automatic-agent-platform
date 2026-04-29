@@ -130,6 +130,49 @@ test("WorkflowBuilderService.build creates edges between consecutive nodes", () 
   assert.equal(result.builder.canvas.edges[1]!.toNodeId, "node_3");
 });
 
+test("WorkflowBuilderService.build projects the canvas into canonical PlanNode and PlanEdge structures", () => {
+  const service = new WorkflowBuilderService();
+  const session: WizardSession = {
+    sessionId: "session_plan",
+    currentStepId: "step_1",
+    steps: [{ stepId: "step_1", title: "Step 1", completed: true }],
+  };
+  const template: InteractionTemplate = {
+    templateId: "tpl_plan",
+    title: "Plan Template",
+    steps: ["Generate draft", "Approve release", "Deploy to production"],
+  };
+  const wizard: DomainOnboardingWizard = {
+    steps: [],
+    recommendedDomains: ["engineering_ops"],
+    defaultMode: {
+      mode: "solo",
+      autoDetected: true,
+      features: {
+        multiTenancy: false,
+        approvalEngine: "self_approve",
+        securityReview: "auto_only",
+        onboarding: "wizard_3min",
+        dashboardLevels: ["L1"],
+        governance: "self",
+      },
+      upgradePath: "",
+    },
+  };
+
+  const result = service.build({ session, template, onboardingWizard: wizard, components: [] });
+
+  assert.equal(result.saveReview.canonicalPlanGraph.graphId, "session_plan:tpl_plan:plan_graph");
+  assert.equal(result.saveReview.canonicalPlanGraph.constraintPackRef, "tpl_plan:constraint_pack");
+  assert.equal(result.saveReview.canonicalPlanGraph.nodes.length, 3);
+  assert.equal(result.saveReview.canonicalPlanGraph.edges.length, 2);
+  assert.equal(result.saveReview.canonicalPlanGraph.nodes[0]?.nodeType, "llm");
+  assert.equal(result.saveReview.canonicalPlanGraph.nodes[1]?.nodeType, "hitl_wait");
+  assert.equal(result.saveReview.canonicalPlanGraph.nodes[2]?.nodeType, "tool");
+  assert.deepEqual(result.saveReview.canonicalPlanGraph.entryNodeIds, ["node_1"]);
+  assert.deepEqual(result.saveReview.canonicalPlanGraph.terminalNodeIds, ["node_3"]);
+});
+
 test("WorkflowBuilderService.build sets nextStepAllowed based on wizard state", () => {
   const service = new WorkflowBuilderService();
   const sessionCompleted: WizardSession = {

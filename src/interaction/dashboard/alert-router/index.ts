@@ -52,19 +52,6 @@ const DEFAULT_CONFIG: AlertRouterConfig = {
 };
 
 /**
- * Sort attention queue by priority and timestamp.
- */
-export function sortAttentionQueue(items: readonly AttentionItem[]): AttentionItem[] {
-  return [...items].sort((left, right) => {
-    const byPriority = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
-    if (byPriority !== 0) {
-      return byPriority;
-    }
-    return left.createdAt.localeCompare(right.createdAt);
-  });
-}
-
-/**
  * Alert Router Service
  *
  * Provides real-time routing, overlay, push, and haptic notification delivery

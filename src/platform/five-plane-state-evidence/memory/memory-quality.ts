@@ -8,6 +8,8 @@ export interface MemoryRecallQuery {
   sessionId?: string;
   agentId?: string;
   executionId?: string;
+  /** §9.1: Tenant ID for multi-tenant query-level isolation */
+  tenantId?: string;
   scopes?: string[];
   memoryLayers?: MemoryLayer[];
   classifications?: string[];
@@ -70,6 +72,27 @@ export function matchesMemoryRecallQuery(record: MemoryRecord, query: MemoryReca
   }
   if (query.executionId != null && record.executionId !== query.executionId) {
     return false;
+  }
+  // §9.1: Tenant isolation - memory records must have matching tenantId for multi-tenant security
+  // Memory records store tenantId in their content JSON, so we check during recall
+  // The memory service's recall() passes tenantId through for query-level isolation
+  if (query.tenantId != null) {
+    // Check if contentJson contains the tenantId (memories are tenant-scoped)
+    if (typeof record.contentJson === "string") {
+      try {
+        const parsed = JSON.parse(record.contentJson);
+        if (parsed.tenantId !== query.tenantId) {
+          return false;
+        }
+      } catch {
+        // If parsing fails, check can't be performed - fail secure by returning false
+        return false;
+      }
+    } else if (typeof record.contentJson === "object" && record.contentJson !== null) {
+      if ((record.contentJson as Record<string, unknown>).tenantId !== query.tenantId) {
+        return false;
+      }
+    }
   }
   if (query.scopes != null && query.scopes.length > 0 && !query.scopes.includes(record.scope)) {
     return false;

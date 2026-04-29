@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const FeedbackSourceSchema = z.enum(["execution", "user", "hitl", "validation", "system"]);
-export const FeedbackCategorySchema = z.enum(["success", "failure", "correction", "timeout", "partial"]);
+export const FeedbackCategorySchema = z.enum(["success", "failure", "correction", "timeout", "partial", "blocker", "regression"]);
 export const FeedbackSeveritySchema = z.enum(["info", "warning", "error", "critical"]);
 
 /**

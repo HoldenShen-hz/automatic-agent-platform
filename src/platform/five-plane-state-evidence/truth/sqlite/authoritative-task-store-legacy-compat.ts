@@ -47,6 +47,7 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract updateTaskStatusCas(...args: RepoMethodArgs<TaskRepository, "updateTaskStatusCas">): RepoMethodResult<TaskRepository, "updateTaskStatusCas">;
   public abstract setTaskState(...args: RepoMethodArgs<TaskRepository, "setTaskState">): RepoMethodResult<TaskRepository, "setTaskState">;
   public abstract updateTaskInput(...args: RepoMethodArgs<TaskRepository, "updateTaskInput">): RepoMethodResult<TaskRepository, "updateTaskInput">;
+  public abstract updateTaskTitle(...args: RepoMethodArgs<TaskRepository, "updateTaskTitle">): RepoMethodResult<TaskRepository, "updateTaskTitle">;
   public abstract countQueuedTasks(...args: RepoMethodArgs<TaskRepository, "countQueuedTasks">): RepoMethodResult<TaskRepository, "countQueuedTasks">;
   public abstract getWorkflowState(...args: RepoMethodArgs<WorkflowRepository, "getWorkflowState">): RepoMethodResult<WorkflowRepository, "getWorkflowState">;
   public abstract listWorkflowStates(...args: RepoMethodArgs<WorkflowRepository, "listWorkflowStates">): RepoMethodResult<WorkflowRepository, "listWorkflowStates">;

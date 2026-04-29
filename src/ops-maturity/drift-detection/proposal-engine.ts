@@ -15,12 +15,15 @@ export type ProposalKind =
   | 'threshold_tuning';
 
 export type ProposalStatus =
-  | 'proposed'
-  | 'testing'
+  | 'draft'
+  | 'review'
+  | 'staging'
   | 'canary'
   | 'active'
-  | 'rejected'
-  | 'rolled_back';
+  | 'paused'
+  | 'deprecated'
+  | 'archived'
+  | 'retired';
 
 export interface ImprovementProposal {
   id: string;
@@ -106,7 +109,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Tool routing optimization based on ${reflection.evidenceIds.length} failures`,
         risk: 'low',
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
+        status: 'draft',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.15, cost: 0.05 },
@@ -124,7 +127,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Improve testing guidelines based on ${reflection.evidenceIds.length} test failures`,
         risk: 'low',
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
+        status: 'draft',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { quality: 0.10 },
@@ -142,7 +145,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Improve workflow template for complex tasks`,
         risk: 'high',  // workflow_template is in MANUAL_ONLY_KINDS = requires manual approval
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
+        status: 'draft',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.20, latency: -0.10 },
@@ -160,7 +163,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         rationale: `Strengthen security guidelines`,
         risk: 'high',
         evidenceIds: reflection.evidenceIds,
-        status: 'proposed',
+        status: 'draft',
         createdAt: now,
         updatedAt: now,
         expectedBenefit: { stability: 0.30 },
@@ -200,7 +203,7 @@ export class SimpleProposalEngine implements ProposalEngine {
       rationale: input.description,
       risk: input.risk,
       evidenceIds: input.evidenceIds,
-      status: 'proposed',
+      status: 'draft',
       createdAt: now,
       updatedAt: now,
     };
@@ -212,18 +215,18 @@ export class SimpleProposalEngine implements ProposalEngine {
   async submitForApproval(proposalId: string): Promise<void> {
     const proposal = this.proposals.get(proposalId);
     if (proposal) {
-      proposal.status = 'testing';
+      proposal.status = 'staging';
       proposal.updatedAt = new Date().toISOString();
     }
   }
 
   async listPending(): Promise<ImprovementProposal[]> {
-    return Array.from(this.proposals.values()).filter((p) => p.status === 'proposed');
+    return Array.from(this.proposals.values()).filter((p) => p.status === 'draft');
   }
 
   async listActive(): Promise<ImprovementProposal[]> {
     return Array.from(this.proposals.values()).filter(
-      (p) => p.status === 'testing' || p.status === 'canary' || p.status === 'active'
+      (p) => p.status === 'staging' || p.status === 'canary' || p.status === 'active'
     );
   }
 

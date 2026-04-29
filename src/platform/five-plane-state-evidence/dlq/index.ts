@@ -136,6 +136,12 @@ export class DeadLetterQueueService {
       throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
     const record = this.getRequired(deadLetterId);
+    if (record.status === "discarded" || record.status === "resolved") {
+      throw new ValidationError(
+        "dlq.retry_terminal_status",
+        `Dead-letter record ${deadLetterId} is already terminal and cannot be retried.`,
+      );
+    }
     const now = nowIso();
     const updated: DeadLetterRecord = {
       ...record,
@@ -167,7 +173,7 @@ export class DeadLetterQueueService {
     const record = this.getRequired(deadLetterId);
     const updated: DeadLetterRecord = {
       ...record,
-      status: "pending",
+      status: "discarded",
       retryExhaustedAt: nowIso(),
       nextRetryAt: null,
       updatedAt: nowIso(),

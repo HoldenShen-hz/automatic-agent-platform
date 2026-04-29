@@ -110,7 +110,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map(
       owner: "platform-team",
       domainIds: [],
       capabilityIds: ["evaluator.core"],
-      spiTypes: ["validator"],
+      spiTypes: ["evaluator"],
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-basic-evaluator",

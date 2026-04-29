@@ -9,6 +9,7 @@ export type CleanupResourceKind =
   | "hitl_wait"
   | "context_snapshot"
   | "callback"
+  | "cancel_callback"
   | "state_evidence"
   | "side_effect_compensation";
 
@@ -54,6 +55,8 @@ const CLEANUP_ORDER: readonly CleanupResourceKind[] = [
   "hitl_wait",
   "context_snapshot",
   "callback",
+  // §14.10: Cancel pending callbacks after regular callback cleanup
+  "cancel_callback",
   // §8.6: Side effect compensation happens last
   "side_effect_compensation",
 ];

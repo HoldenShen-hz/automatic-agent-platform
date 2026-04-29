@@ -66,6 +66,8 @@ export interface DegradationConfig {
   deescalateErrorRateThreshold: number;
   /** Latency P99 threshold to trigger escalation (ms) */
   escalateLatencyP99Ms: number;
+  /** R16-22 FIX: §15.6 TTFT P99 threshold - separate from general P99 latency (10s = 10000ms) */
+  escalateTtftP99Ms: number;
   /** Minimum consecutive healthy evaluations before de-escalation */
   deescalateMinHealthyCount: number;
   /** Maximum degradation level for automatic de-escalation */
@@ -101,7 +103,11 @@ export interface LLMDegradationResponse {
 export const DEFAULT_DEGRADATION_CONFIG: DegradationConfig = {
   escalateErrorRateThreshold: 50,
   deescalateErrorRateThreshold: 5,
+  // R16-22 FIX: §15.6 separates TTFT from P99 latency - TTFT threshold is 10s (10000ms)
+  // P99 latency threshold remains at 5000ms for general latency escalation
   escalateLatencyP99Ms: 5000,
+  // TTFT P99 threshold per §15.6 - separate from general P99 latency
+  escalateTtftP99Ms: 10000,
   deescalateMinHealthyCount: 3,
   maxAutoDeescalateLevel: DegradationLevel.D0,
 };
@@ -141,6 +147,9 @@ export class DegradationController {
   private currentLevel: DegradationLevel = DegradationLevel.D0;
   private consecutiveHealthyCount: number = 0;
   private lastEscalationReason: string | null = null;
+  /** R16-10 FIX: Track recursion depth to prevent stack overflow during cascading failures */
+  private routeRecursionDepth: number = 0;
+  private static readonly MAX_ROUTE_RECURSION_DEPTH: number = 5;
 
   private readonly config: DegradationConfig;
   private readonly primaryProvider: UnifiedChatProvider;
@@ -247,6 +256,18 @@ export class DegradationController {
     } catch (error) {
       this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
       this.escalate();
+      // R16-10 FIX: Check recursion depth to prevent stack overflow
+      this.routeRecursionDepth++;
+      if (this.routeRecursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
+        // Too many cascading failures, escalate to D4 to break the cycle
+        this.routeRecursionDepth = 0;
+        this.currentLevel = DegradationLevel.D4;
+        throw new ProviderError(
+          "degradation.max_recursion_exceeded",
+          "LLM service failed after maximum retry attempts due to sustained degradation.",
+          { retryable: true, details: { recursionDepth: this.routeRecursionDepth } },
+        );
+      }
       // Retry with new level
       return this.route(request);
     }
@@ -260,6 +281,17 @@ export class DegradationController {
     if (fallbackProfile == null) {
       // No fallback available, escalate to D2
       this.escalate();
+      // R16-10 FIX: Check recursion depth before recursing
+      this.routeRecursionDepth++;
+      if (this.routeRecursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
+        this.routeRecursionDepth = 0;
+        this.currentLevel = DegradationLevel.D4;
+        throw new ProviderError(
+          "degradation.max_recursion_exceeded",
+          "LLM service failed after maximum retry attempts due to sustained degradation.",
+          { retryable: true, details: { recursionDepth: this.routeRecursionDepth } },
+        );
+      }
       return this.route(request);
     }
 
@@ -284,6 +316,17 @@ export class DegradationController {
     } catch (error) {
       this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
       this.escalate();
+      // R16-10 FIX: Check recursion depth before recursing
+      this.routeRecursionDepth++;
+      if (this.routeRecursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
+        this.routeRecursionDepth = 0;
+        this.currentLevel = DegradationLevel.D4;
+        throw new ProviderError(
+          "degradation.max_recursion_exceeded",
+          "LLM service failed after maximum retry attempts due to sustained degradation.",
+          { retryable: true, details: { recursionDepth: this.routeRecursionDepth } },
+        );
+      }
       // Retry with new level
       return this.route(request);
     }
@@ -347,7 +390,7 @@ export class DegradationController {
     primaryProfileName: string,
   ): ModelFallbackCandidate | null {
     // Consult the fallback service for available candidates
-    const candidates = this.getFallbackCandidates();
+    const candidates = this.getFallbackCandidates(primaryProfileName);
     if (candidates.length === 0) {
       return null;
     }
@@ -368,26 +411,42 @@ export class DegradationController {
    * Gets available fallback candidates from all providers.
    * Returns providers that are not the primary and are currently healthy.
    */
-  private getFallbackCandidates(): ModelFallbackCandidate[] {
-    // In a full implementation, this would query the provider registry
-    // for available healthy providers that can serve as fallbacks.
-    // For now, return candidates from the fallback provider if configured.
+  private getFallbackCandidates(primaryProfileName: string): ModelFallbackCandidate[] {
     const candidates: ModelFallbackCandidate[] = [];
 
-    // If a fallback provider is configured, add it as a candidate
-    if (this.fallbackProvider != null) {
-      // Note: In a real implementation, we would query the provider's
-      // model profiles and health status here. This is a simplified version.
-      candidates.push({
-        profileName: "fallback-default",
-        provider: "fallback",
-        tier: "balanced",
-        healthy: true,
-        inputCostPer1kUsd: 0.5,
-      });
+    // Get available profiles from the fallback provider if configured,
+    // otherwise query the primary provider for alternative profiles
+    const provider = this.fallbackProvider ?? this.primaryProvider;
+    const availableProfiles = provider.getAvailableProfiles();
+
+    // Filter out the primary profile and convert to ModelFallbackCandidate format
+    for (const profile of availableProfiles) {
+      if (profile.profileName !== primaryProfileName) {
+        candidates.push({
+          profileName: profile.profileName,
+          provider: profile.provider as ModelFallbackCandidate["provider"],
+          tier: profile.tier as ModelFallbackCandidate["tier"],
+          healthy: true,
+          inputCostPer1kUsd: this.estimateInputCost(profile.profileName),
+        });
+      }
     }
 
     return candidates;
+  }
+
+  /**
+   * Estimates input cost per 1k tokens based on provider and model.
+   */
+  private estimateInputCost(modelName: string): number {
+    const modelLower = modelName.toLowerCase();
+    if (modelLower.includes("opus") || modelLower.includes("gpt-4o") || modelLower.includes("MiniMax-M2.7")) {
+      return 0.003; // Premium models
+    }
+    if (modelLower.includes("sonnet") || modelLower.includes("gpt-4-turbo") || modelLower.includes("MiniMax-M2")) {
+      return 0.0015; // Mid-tier models
+    }
+    return 0.0005; // Fast/cheap models
   }
 
   /**
@@ -504,14 +563,16 @@ export class DegradationController {
     const { errorRate, latencyP99Ms, ttftP99Ms } = metrics;
 
     // Check for escalation conditions
-    // §15: TTFT >10s triggers escalation
-    if (ttftP99Ms > 10000) {
+    // R16-22 FIX: §15.6 separates TTFT from P99 latency - use configurable TTFT threshold
+    // TTFT >10s (or configured escalateTtftP99Ms) triggers escalation
+    const ttftThreshold = (this.config as { escalateTtftP99Ms?: number }).escalateTtftP99Ms ?? 10000;
+    if (ttftP99Ms > ttftThreshold) {
       if (this.currentLevel < DegradationLevel.D4) {
         this.escalate();
         return {
           action: "escalate",
           newLevel: this.currentLevel,
-          reason: `ttft_p99:${ttftP99Ms}ms`,
+          reason: `ttft_p99:${ttftP99Ms}ms exceeds threshold:${ttftThreshold}ms`,
         };
       }
     }

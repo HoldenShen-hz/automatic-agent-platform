@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import type { PlanEdge, PlanNode, RiskClass } from "../../platform/contracts/executable-contracts/index.js";
 import { applyInteractionTemplate, type InteractionTemplate } from "./template-engine/index.js";
 import { canAdvanceWizard, type WizardSession, type WizardStep } from "./wizard/index.js";
 import type {
@@ -28,6 +29,14 @@ export interface WorkflowBuilderSaveReview {
   readonly normalizedGraph: {
     readonly nodeIds: readonly string[];
     readonly edgePairs: readonly string[];
+  };
+  readonly canonicalPlanGraph: {
+    readonly graphId: string;
+    readonly constraintPackRef: string;
+    readonly nodes: readonly PlanNode[];
+    readonly edges: readonly PlanEdge[];
+    readonly entryNodeIds: readonly string[];
+    readonly terminalNodeIds: readonly string[];
   };
   readonly validationMessages: readonly string[];
   readonly riskPropagation: {
@@ -107,12 +116,57 @@ function categorizeComponents(components: readonly DraggableComponent[]): Compon
   }));
 }
 
-function buildPreview(template: InteractionTemplate, steps: readonly WizardStep[]): WorkflowPreview {
+function resolveStepLabel(step: unknown, fallbackIndex: number): string {
+  if (typeof step === "string") {
+    return step;
+  }
+  if (step != null && typeof step === "object" && "stepId" in step) {
+    const stepId = (step as { stepId?: unknown }).stepId;
+    if (typeof stepId === "string" && stepId.trim().length > 0) {
+      return stepId;
+    }
+  }
+  return `step_${fallbackIndex + 1}`;
+}
+
+function normalizeTemplateForBuilder(template: InteractionTemplate): InteractionTemplate {
+  const rawTemplate = template as InteractionTemplate & {
+    readonly domainId?: string;
+    readonly riskProfile?: "low" | "medium" | "high" | "critical";
+    readonly version?: string;
+    readonly parameters?: readonly unknown[];
+    readonly requiredCapabilities?: readonly string[];
+    readonly steps?: readonly unknown[];
+  };
+
+  return applyInteractionTemplate({
+    ...rawTemplate,
+    domainId: rawTemplate.domainId ?? "general_ops",
+    riskProfile: rawTemplate.riskProfile ?? "low",
+    version: rawTemplate.version ?? "1.0.0",
+    parameters: [...(rawTemplate.parameters ?? [])] as [],
+    requiredCapabilities: [...(rawTemplate.requiredCapabilities ?? [])],
+    steps: (rawTemplate.steps ?? []).map((step, index) =>
+      typeof step === "string"
+        ? {
+            stepId: step,
+            inputMappings: {},
+            outputMappings: {},
+          }
+        : {
+            stepId: resolveStepLabel(step, index),
+            inputMappings: (step as { inputMappings?: Record<string, string> }).inputMappings ?? {},
+            outputMappings: (step as { outputMappings?: Record<string, string> }).outputMappings ?? {},
+          }),
+  });
+}
+
+function buildPreview(stepLabels: readonly string[], steps: readonly WizardStep[]): WorkflowPreview {
   return {
     estimatedDuration: `${Math.max(1, steps.length * 5)} min`,
-    estimatedCost: `$${(template.steps.length * 0.03).toFixed(2)}`,
+    estimatedCost: `$${(stepLabels.length * 0.03).toFixed(2)}`,
     riskAssessment: steps.some((item) => item.completed === false) ? "needs review" : "ready",
-    stepByStepDescription: template.steps,
+    stepByStepDescription: stepLabels,
   };
 }
 
@@ -198,28 +252,111 @@ function analyzeWorstPath(nodes: readonly { nodeId: string }[], edges: readonly 
   };
 }
 
+function toRiskClass(highestRisk: WorkflowBuilderSaveReview["riskPropagation"]["highestRisk"]): RiskClass {
+  return highestRisk;
+}
+
+function resolvePlanNodeType(label: string): PlanNode["nodeType"] {
+  if (/(approve|审批|review|确认)/i.test(label)) {
+    return "hitl_wait";
+  }
+  if (/(route|router|branch|分流)/i.test(label)) {
+    return "router";
+  }
+  if (/(evaluate|score|check|validate|验证|评估)/i.test(label)) {
+    return "evaluator";
+  }
+  if (/(compensate|rollback|回滚|补偿)/i.test(label)) {
+    return "compensation";
+  }
+  if (/(llm|generate|draft|summarize|生成|总结)/i.test(label)) {
+    return "llm";
+  }
+  return "tool";
+}
+
+function buildCanonicalPlanGraph(
+  session: WizardSession,
+  template: InteractionTemplate,
+  nodes: readonly { nodeId: string; label: string }[],
+  edges: readonly { fromNodeId: string; toNodeId: string }[],
+  riskPropagation: WorkflowBuilderSaveReview["riskPropagation"],
+): WorkflowBuilderSaveReview["canonicalPlanGraph"] {
+  const inboundCounts = new Map<string, number>();
+  const outboundCounts = new Map<string, number>();
+  for (const node of nodes) {
+    inboundCounts.set(node.nodeId, 0);
+    outboundCounts.set(node.nodeId, 0);
+  }
+  for (const edge of edges) {
+    inboundCounts.set(edge.toNodeId, (inboundCounts.get(edge.toNodeId) ?? 0) + 1);
+    outboundCounts.set(edge.fromNodeId, (outboundCounts.get(edge.fromNodeId) ?? 0) + 1);
+  }
+
+  const highestRiskClass = toRiskClass(riskPropagation.highestRisk);
+
+  return {
+    graphId: `${session.sessionId}:${template.templateId}:plan_graph`,
+    constraintPackRef: `${template.templateId}:constraint_pack`,
+    nodes: nodes.map((node) => ({
+      nodeId: node.nodeId,
+      nodeType: resolvePlanNodeType(node.label),
+      inputRefs: (inboundCounts.get(node.nodeId) ?? 0) === 0
+        ? ["workflow_builder:entry"]
+        : [`workflow_builder:${node.nodeId}:inputs`],
+      outputSchemaRef: `workflow_builder:${template.templateId}:${node.nodeId}:output`,
+      riskClass: riskPropagation.riskyNodeIds.includes(node.nodeId) ? highestRiskClass : "low",
+      budgetIntent: {
+        amount: 0,
+        currency: "USD",
+        resourceKinds: ["tool"],
+      },
+      sideEffectProfile: {
+        mayCommitExternalEffect: /(deploy|publish|delete|approve|发布|删除|审批)/i.test(node.label),
+        reversible: !/(delete|drop|terminate|删除|终止)/i.test(node.label),
+      },
+      retryPolicyRef: `workflow_builder:${template.templateId}:${node.nodeId}:retry_policy`,
+      timeoutMs: 60_000,
+    })),
+    edges: edges.map((edge, index) => ({
+      edgeId: `${edge.fromNodeId}->${edge.toNodeId}:${index + 1}`,
+      fromNodeId: edge.fromNodeId,
+      toNodeId: edge.toNodeId,
+      condition: { kind: "always" },
+      dependencyType: "hard",
+    })),
+    entryNodeIds: nodes
+      .filter((node) => (inboundCounts.get(node.nodeId) ?? 0) === 0)
+      .map((node) => node.nodeId),
+    terminalNodeIds: nodes
+      .filter((node) => (outboundCounts.get(node.nodeId) ?? 0) === 0)
+      .map((node) => node.nodeId),
+  };
+}
+
 export class WorkflowBuilderService {
   public build(request: WorkflowBuilderRequest): WorkflowBuilderResult {
-    const template = applyInteractionTemplate(request.template);
+    const template = normalizeTemplateForBuilder(request.template);
+    const stepLabels = template.steps.map((step, index) => resolveStepLabel(step, index));
     const nextStepAllowed = canAdvanceWizard(request.session);
     const palette = categorizeComponents(request.components);
     const builder: VisualWorkflowBuilder = {
       canvas: {
-        nodes: template.steps.map((step, index) => ({
+        nodes: stepLabels.map((stepLabel, index) => ({
           nodeId: `node_${index + 1}`,
           componentId: palette.flatMap((item) => item.components).find((component) =>
-            component.previewDescription.toLowerCase().includes(step.toLowerCase())
-              || component.name.toLowerCase().includes(step.toLowerCase()),
+            component.previewDescription.toLowerCase().includes(stepLabel.toLowerCase())
+              || component.name.toLowerCase().includes(stepLabel.toLowerCase()),
           )?.componentId ?? `template_step_${index + 1}`,
-          label: step,
+          label: stepLabel,
         })),
-        edges: template.steps.slice(1).map((_, index) => ({
+        edges: stepLabels.slice(1).map((_, index) => ({
           fromNodeId: `node_${index + 1}`,
           toNodeId: `node_${index + 2}`,
         })),
       },
       componentPalette: palette,
-      livePreview: buildPreview(template, request.session.steps),
+      livePreview: buildPreview(stepLabels, request.session.steps),
       validation: {
         valid: nextStepAllowed || request.session.steps.every((step) => step.completed),
         messages: nextStepAllowed
@@ -227,10 +364,18 @@ export class WorkflowBuilderService {
           : [`complete current step before leaving ${request.session.currentStepId}`],
       },
     };
+    const riskPropagation = propagateRisk(builder.canvas.nodes);
     const saveReview: WorkflowBuilderSaveReview = {
       normalizedGraph: normalizeGraph(builder.canvas.nodes, builder.canvas.edges),
+      canonicalPlanGraph: buildCanonicalPlanGraph(
+        request.session,
+        template,
+        builder.canvas.nodes,
+        builder.canvas.edges,
+        riskPropagation,
+      ),
       validationMessages: validateGraph(builder.canvas.nodes, builder.canvas.edges),
-      riskPropagation: propagateRisk(builder.canvas.nodes),
+      riskPropagation,
       worstPathAnalysis: analyzeWorstPath(builder.canvas.nodes, builder.canvas.edges),
     };
 

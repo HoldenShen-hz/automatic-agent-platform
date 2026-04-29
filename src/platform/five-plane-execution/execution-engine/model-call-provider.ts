@@ -21,7 +21,9 @@ import { CallGovernance, type DistributedRateLimiterLike } from "./call-governan
 import { DistributedRateLimiter } from "../../interface/ingress/distributed-rate-limiter.js";
 import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
 import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { nowIso } from "../../contracts/types/ids.js";
+import { BudgetAllocator, type BudgetAllocatorContext, type BudgetLedger } from "../../five-plane-execution/budget-allocator.js";
+import { createBudgetLedger, type BudgetReservation, reserveBudgetHardCap } from "../../contracts/executable-contracts/index.js";
+import { nowIso, newId } from "../../contracts/types/ids.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -83,6 +85,8 @@ export class ModelCallProviderService {
   private readonly defaultModel: string;
   private readonly callGovernance: CallGovernance | null;
   private readonly budgetGuard: BudgetGuard;
+  private readonly budgetAllocator: BudgetAllocator;
+  private readonly budgetLedger: BudgetLedger;
   private disposed = false;
 
   public constructor(config: ModelCallProviderConfig) {
@@ -111,6 +115,14 @@ export class ModelCallProviderService {
     this.defaultModel = config.defaultModel ?? "MiniMax-M2.7";
     this.callGovernance = createModelCallGovernance(config, process.env);
     this.budgetGuard = new BudgetGuard();
+    this.budgetAllocator = new BudgetAllocator();
+    // R4-25 (INV-BUDGET-001): Initialize budget ledger for reserve-before-execute
+    this.budgetLedger = createBudgetLedger({
+      tenantId: "tenant:local",
+      harnessRunId: "harness_run:model_provider",
+      currency: "USD",
+      hardCap: 10, // matches default maxTaskCostUsd
+    });
   }
 
   public dispose(): void {
@@ -157,16 +169,51 @@ export class ModelCallProviderService {
       });
     }
 
-    // R4-25 (INV-BUDGET-001): Reserve budget before LLM call
+    // R4-25 (INV-BUDGET-001): Reserve budget before LLM call using BudgetAllocator.reserve()
     const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
+    const policy = this.getDefaultBudgetPolicy();
+
+    // Pre-check using BudgetGuard evaluation
     const budgetEvaluation = this.budgetGuard.evaluateTaskSpend({
-      policy: this.getDefaultBudgetPolicy(),
+      policy,
       currentTaskCostUsd: 0,
       nextEstimatedCostUsd: estimatedCostUsd,
     });
     if (!budgetEvaluation.allowed) {
       throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${budgetEvaluation.reasonCode}`, {
         retryable: false,
+      });
+    }
+
+    // R4-25: Actually reserve the budget using BudgetAllocator.reserve()
+    const reservationContext: BudgetAllocatorContext = {
+      tenantId: "tenant:local",
+      traceId: request.traceId ?? newId("trace"),
+      emittedBy: "ModelCallProviderService",
+      tier: "task",
+      tierLimit: policy.maxTaskCostUsd,
+      watermarkAlert: {
+        warningThreshold: policy.warnAtRatio,
+        criticalThreshold: 0.95,
+        hardCapThreshold: 1.0,
+      },
+      autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 1 },
+      crossRunPriority: { priority: 1, weightFactor: 1 },
+      streamingSettle: { enabled: false, tokenInterval: Number.MAX_SAFE_INTEGER, timeIntervalMs: Number.MAX_SAFE_INTEGER },
+    };
+
+    const reservation = this.budgetAllocator.reserve({
+      ledger: this.budgetLedger,
+      amount: Number(estimatedCostUsd.toFixed(4)),
+      resourceKind: "token",
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expectedVersion: this.budgetLedger.version,
+      context: reservationContext,
+    });
+
+    if (!reservation.success || !reservation.reservation) {
+      throw new ProviderError("model_call.budget_reservation_failed", `Budget reservation failed: ${reservation.errorCode ?? "unknown"}`, {
+        retryable: true,
       });
     }
 

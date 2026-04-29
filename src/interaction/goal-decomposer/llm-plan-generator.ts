@@ -1,4 +1,4 @@
-import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
+import type { CostEstimate } from "../../platform/contracts/types/cost.js";
 import type { UnifiedChatProvider } from "../../platform/model-gateway/provider-registry/index.js";
 import type {
   BudgetLedger,

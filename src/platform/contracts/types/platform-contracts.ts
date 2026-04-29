@@ -78,7 +78,9 @@ export {
 } from "../control-directive/index.js";
 
 // =============================================================================
-// Re-exports from execution-plan (deprecated legacy types)
+// Legacy Type Re-exports (deprecated per §5)
+// These are re-exported from executable-contracts for backward compatibility.
+// DO NOT use in new code - use canonical types from executable-contracts.
 // =============================================================================
 
 // Legacy ExecutionPlan - deprecated per §4.4, use PlanGraphBundle instead
@@ -97,15 +99,19 @@ export {
   createExecutionPlan,
 } from "../execution-plan/index.js";
 
-// =============================================================================
-// Re-exports from execution-receipt (deprecated legacy types)
-// =============================================================================
-
-// Legacy ExecutionReceipt - deprecated, use NodeAttemptReceipt instead
+// Legacy ExecutionReceipt - deprecated per §4.5, use NodeAttemptReceipt instead
 export {
-  // Legacy - deprecated
+  /**
+   * @deprecated ExecutionReceipt is deprecated per §4.5. Use NodeAttemptReceipt from executable-contracts instead.
+   */
   type ExecutionReceipt,
+  /**
+   * @deprecated ExecutionReceiptStatus is deprecated per §4.5.
+   */
   type ExecutionReceiptStatus,
+  /**
+   * @deprecated createExecutionReceipt is deprecated per §4.5. Use createNodeAttemptReceipt instead.
+   */
   createExecutionReceipt,
 } from "../execution-receipt/index.js";
 
@@ -132,8 +138,11 @@ export interface RequestEnvelope<TPayload = unknown> {
   readonly metadata: Readonly<Record<string, string>>;
 }
 
-// SideEffectRecord is defined in executable-contracts with 16 states (canonical per §4)
-// SideEffectExpectation is retained locally for platform-level use
+/**
+ * @deprecated SideEffectExpectation is deprecated per §5.3.
+ * Use SideEffectRecord from executable-contracts (canonical with 16 states).
+ * This interface is retained for legacy adapter compatibility only.
+ */
 export interface SideEffectExpectation {
   readonly effectId: string;
   readonly category: "read" | "write" | "notification" | "artifact" | "external_api";
@@ -141,8 +150,6 @@ export interface SideEffectExpectation {
   readonly requiredReceipt: boolean;
   readonly reversible: boolean;
 }
-
-// Note: SideEffectRecord with 16 states is canonical in executable-contracts
 
 export interface ExecutionPlanBudget {
   readonly maxSteps: number;

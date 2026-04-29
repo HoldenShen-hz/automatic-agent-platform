@@ -23,7 +23,8 @@ export type ApprovalDecisionEffect =
   | "block_candidate"
   | "approve_candidate"
   | "advance_rollout"
-  | "rollback_rollout";
+  | "rollback_rollout"
+  | "override_prior";
 
 export interface ApprovalFeedbackLink {
   readonly approvalId: string;
@@ -87,7 +88,10 @@ export interface HitlApprovalDecisionResult {
   readonly feedbackLink: ApprovalFeedbackLink;
 }
 
-function defaultEffectForDecision(decision: ApprovalDecision): ApprovalDecisionEffect {
+function defaultEffectForDecision(
+  decision: ApprovalDecision,
+  mode?: string,
+): ApprovalDecisionEffect {
   if (decision.decisionType === "rejected" || decision.decisionType === "expired") {
     return "block_candidate";
   }
@@ -102,6 +106,9 @@ function defaultEffectForDecision(decision: ApprovalDecision): ApprovalDecisionE
   }
   if (decision.selectedOptionId === "approve_candidate") {
     return "approve_candidate";
+  }
+  if (mode === "override_decision") {
+    return "override_prior";
   }
   return "continue";
 }
@@ -214,12 +221,13 @@ export class HitlApprovalOrchestrationService {
     if (existingLink == null) {
       throw new Error(`hitl_approval.feedback_link_not_found:${decision.approvalId}`);
     }
+    const packet = this.packets.get(decision.approvalId);
     this.approvalService.applyDecision(decision);
     const updatedLink: ApprovalFeedbackLink = {
       ...existingLink,
       feedbackSignalId: existingLink.feedbackSignalId
         ?? (decision.decisionType === "expired" ? null : newId("feedback_signal")),
-      decisionEffect: defaultEffectForDecision(decision),
+      decisionEffect: defaultEffectForDecision(decision, packet?.mode),
     };
     this.feedbackLinks.set(decision.approvalId, updatedLink);
     return {

@@ -34,6 +34,10 @@ export interface PlatformPromptReleaseInput {
   baseline?: EvalDatasetBaselineMetrics | undefined;
   gatePolicy?: EvalDatasetGatePolicy | undefined;
   autoActivate?: boolean | undefined;
+  /** §17.3: Domain owner approval is required before release to canary_20 or higher */
+  domainOwnerApproval?: boolean | null;
+  /** §17.3: Rollback plan must be present for release to stable */
+  rollbackPlanPresent?: boolean | null;
 }
 
 export interface PlatformPromptReleaseResult {
@@ -87,9 +91,24 @@ export class PlatformPromptReleaseOrchestrationService {
       regressionPassed: evaluationReport.gateDecision === "promote",
       domainBlockCompatible: input.domainBlockCompatible,
     });
-    const rollout = input.autoActivate === true && createdRollout.status === "ready"
-      ? this.rollouts.activateRollout(createdRollout.rolloutId)
-      : createdRollout;
+
+    // R14-21: When autoActivate is requested, gateDecision must be "promote" for activation to proceed.
+    // If gateDecision is not "promote", autoActivate is ignored and the rollout remains in its current state.
+    // R16-14 FIX: §17.3 - domain_owner_approval required for canary_20+, rollback_plan_present required for stable
+    let rollout = createdRollout;
+    if (input.autoActivate === true && createdRollout.status === "canary_5" && evaluationReport.gateDecision === "promote") {
+      // Canary_5 requires domain_owner_approval per §17.3
+      if (input.domainOwnerApproval !== true) {
+        // Cannot auto-activate, stay at canary_5
+      } else {
+        rollout = this.rollouts.activateRollout(createdRollout.rolloutId);
+        // After canary_5 succeeds, check if we can proceed to canary_20
+        // Canary_20 requires domain_owner_approval and rollback_plan_present
+        if (input.domainOwnerApproval === true && input.rollbackPlanPresent === true) {
+          rollout = this.rollouts.activateRollout(rollout.rolloutId);
+        }
+      }
+    }
 
     return {
       template,

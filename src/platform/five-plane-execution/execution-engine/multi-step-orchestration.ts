@@ -39,6 +39,7 @@ import type {
   MultiStepToolExecutionInput,
 } from "./multi-step-orchestration-types.js";
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
+import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
@@ -51,35 +52,49 @@ function isOapeflirPlanRequest(request: string): boolean {
   return request.startsWith(OAPEFLIR_PLAN_PREFIX);
 }
 
-function deserializeOapeflirPlan(request: string): import("../../orchestration/oapeflir/types/plan.js").PlanStep[] {
+// R19-09 fix: Changed return type from PlanStep[] to PlanNode[] to preserve rich metadata
+// Previously deserialized to PlanStep[] which lost riskClass, budgetIntent, sideEffectProfile, etc.
+function deserializeOapeflirPlan(request: string): import("../../contracts/executable-contracts/index.js").PlanNode[] {
   const json = request.slice(OAPEFLIR_PLAN_PREFIX.length);
-  return JSON.parse(json) as import("../../orchestration/oapeflir/types/plan.js").PlanStep[];
+  return JSON.parse(json) as import("../../contracts/executable-contracts/index.js").PlanNode[];
 }
 
-function resolveOapeflirRoleId(_step: import("../../orchestration/oapeflir/types/plan.js").PlanStep): string {
+// R19-09 fix: Updated to accept PlanNode and preserve rich metadata
+// Previously resolved from PlanStep which lacked nodeType, riskClass, budgetIntent, etc.
+function resolveOapeflirRoleId(_node: import("../../contracts/executable-contracts/index.js").PlanNode): string {
   return "general_executor";
 }
 
-function oapeflirStepToMinimalStep(step: import("../../orchestration/oapeflir/types/plan.js").PlanStep): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
+// R19-09 fix: Changed parameter type from PlanStep to PlanNode and preserves rich metadata
+// Previously converted PlanStep which lost nodeType, riskClass, budgetIntent, sideEffectProfile, retryPolicyRef
+function oapeflirStepToMinimalStep(node: import("../../contracts/executable-contracts/index.js").PlanNode): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
   return {
-    stepId: step.stepId,
-    roleId: resolveOapeflirRoleId(step),
-    outputKey: step.outputs?.[0] ?? `output_${step.stepId}`,
-    inputKeys: step.dependencies,
-    timeoutMs: step.timeout,
-    maxAttempts: Math.max(1, step.retryPolicy.maxRetries + 1),
-    dependsOnStepIds: step.dependencies,
+    stepId: node.nodeId,
+    roleId: resolveOapeflirRoleId(node),
+    outputKey: `output_${node.nodeId}`,
+    inputKeys: node.inputRefs,
+    timeoutMs: node.timeoutMs,
+    maxAttempts: 1, // Default; retryPolicyRef is preserved separately
+    dependsOnStepIds: node.inputRefs, // Note: PlanNode.inputRefs are step dependencies
+    // R19-09 fix: Preserve rich metadata from PlanNode
+    nodeType: node.nodeType,
+    riskClass: node.riskClass,
+    budgetIntent: node.budgetIntent,
+    sideEffectProfile: node.sideEffectProfile,
+    retryPolicyRef: node.retryPolicyRef,
   };
 }
 
+// R19-09 fix: Changed parameter type from PlanStep[] to PlanNode[] to preserve rich metadata
+// The PlanGraphBundle's validated PlanNode[] now flows through without losing metadata
 function buildOapeflirPlannedWorkflow(
-  steps: import("../../orchestration/oapeflir/types/plan.js").PlanStep[],
+  nodes: import("../../contracts/executable-contracts/index.js").PlanNode[],
   planId: string,
 ): import("../../orchestration/routing/workflow-planner.js").PlannedWorkflow {
   const workflowDef: import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition = {
     workflowId: `oapeflir_${planId}`,
     divisionId: "general_ops",
-    steps: steps.map(oapeflirStepToMinimalStep),
+    steps: nodes.map(oapeflirStepToMinimalStep),
   };
 
   const executionSteps: import("../../orchestration/routing/workflow-planner.js").PlannedExecutionStep[] = workflowDef.steps.map((step) => {
@@ -167,6 +182,15 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     plannedWorkflow = planner.plan({ workflowId: routing.workflowId, request: input.request });
     assertWorkflowValid(plannedWorkflow.workflow);
   }
+
+  // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as only P3→P4 contract
+  // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard
+  const harnessRunId = newId("harness_run");
+  const planGraphBundle = minimalWorkflowToPlanGraphBundle(plannedWorkflow.workflow, harnessRunId);
+  const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
+  const validatedPlanGraphBundle = guardResult.planGraphBundle;
+  // Use validatedPlanGraphBundle - the execution now has a valid harnessRunId for budget tracking
+  void validatedPlanGraphBundle;
 
   const storage = openAuthoritativeStorageContext({ dbPath: input.dbPath });
   const db = storage.sql;

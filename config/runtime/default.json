@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "configVersion": "runtime-default-v1",
   "maxConcurrentTasks": 1,
   "defaultTaskTimeoutMs": 300000,
   "apiDefaultTimeoutMs": 5000,
@@ -15,6 +16,18 @@
     "maxRetries": 3,
     "backoffMs": 1000,
     "maxBackoffMs": 30000
+  },
+  "circuitBreaker": {
+    "enabled": true,
+    "failureThreshold": 5,
+    "resetTimeoutMs": 30000,
+    "halfOpenMaxAttempts": 3
+  },
+  "rateLimit": {
+    "enabled": true,
+    "maxRequestsPerSecond": 100,
+    "burstSize": 200,
+    "global": true
   },
   "stateMachine": {
     "type": "RuntimeStateMachine",

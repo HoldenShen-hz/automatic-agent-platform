@@ -6,6 +6,7 @@ export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved"
 
 export interface IncidentCase {
   incidentId: string;
+  tenantId: string | null;
   severity: IncidentSeverity;
   status: IncidentStatus;
   title: string;
@@ -22,6 +23,7 @@ export class IncidentCaseService {
   private nextIncidentOrder = 1;
 
   public openIncident(input: {
+    tenantId: string | null;
     severity: IncidentSeverity;
     title: string;
     linkedEvidenceRefs?: string[];
@@ -29,6 +31,7 @@ export class IncidentCaseService {
     const now = nowIso();
     const incident: IncidentCase = {
       incidentId: newId("incident"),
+      tenantId: input.tenantId,
       severity: input.severity,
       status: "open",
       title: input.title,
@@ -43,13 +46,15 @@ export class IncidentCaseService {
     return incident;
   }
 
-  public acknowledge(incidentId: string, owner: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public acknowledge(tenantId: string | undefined, incidentId: string, owner: string): IncidentCase {
+    // R14-17: Enforce tenant scoping when acknowledging an incident
+    const incident = this.getRequired(tenantId, incidentId);
     return this.update(incidentId, { ...incident, status: "acknowledged", owner, updatedAt: nowIso() });
   }
 
-  public startMitigation(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public startMitigation(tenantId: string | undefined, incidentId: string): IncidentCase {
+    // R14-17: Enforce tenant scoping when starting mitigation
+    const incident = this.getRequired(tenantId, incidentId);
     if (incident.status === "open") {
       throw new ValidationError(
         "incident.must_acknowledge_before_mitigation",
@@ -59,18 +64,28 @@ export class IncidentCaseService {
     return this.update(incidentId, { ...incident, status: "mitigating", updatedAt: nowIso() });
   }
 
-  public resolve(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public resolve(tenantId: string | undefined, incidentId: string): IncidentCase {
+    // R14-17: Enforce tenant scoping when resolving an incident
+    const incident = this.getRequired(tenantId, incidentId);
     const now = nowIso();
     return this.update(incidentId, { ...incident, status: "resolved", updatedAt: now, resolvedAt: now });
   }
 
-  public getIncident(incidentId: string): IncidentCase | null {
-    return this.incidents.get(incidentId) ?? null;
+  public getIncident(tenantId: string | undefined, incidentId: string): IncidentCase | null {
+    const incident = this.incidents.get(incidentId) ?? null;
+    if (incident == null) {
+      return null;
+    }
+    // R14-17: Enforce tenant scoping - only return incident if it belongs to the tenant scope
+    if (tenantId != null && incident.tenantId !== tenantId) {
+      return null;
+    }
+    return incident;
   }
 
-  public listIncidents(limit = 50): IncidentCase[] {
+  public listIncidents(tenantId: string | undefined, limit = 50): IncidentCase[] {
     return [...this.incidents.values()]
+      .filter((incident) => tenantId == null || incident.tenantId === tenantId)
       .sort((left, right) => {
         const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
         if (createdAtOrder !== 0) {
@@ -81,8 +96,8 @@ export class IncidentCaseService {
       .slice(0, Math.max(0, limit));
   }
 
-  private getRequired(incidentId: string): IncidentCase {
-    const incident = this.getIncident(incidentId);
+  private getRequired(tenantId: string | undefined, incidentId: string): IncidentCase {
+    const incident = this.getIncident(tenantId, incidentId);
     if (incident == null) {
       throw new ValidationError(`incident.not_found:${incidentId}`, `Incident ${incidentId} was not found.`);
     }

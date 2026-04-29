@@ -3,6 +3,7 @@ import { z } from "zod";
 export const DualChannelStepOutputSchema = z.object({
   stepId: z.string().min(1),
   planRef: z.string().min(1),
+  status: z.enum(["succeeded", "failed", "partial_success", "skipped"]).default("succeeded"),
   userFacingResult: z.object({
     summary: z.string().min(1),
     artifacts: z.array(z.string()).default([]),

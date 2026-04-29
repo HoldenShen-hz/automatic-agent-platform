@@ -77,10 +77,61 @@ export interface TimeTravelDebugEvent {
   readonly stepId?: string | null;
 }
 
+/**
+ * Replay sandbox policy per §65.3.
+ * Ensures replay events are isolated and cannot trigger real side effects.
+ */
+export interface ReplaySandboxPolicy {
+  readonly isolationMode: "full" | "observed_only" | "mocked_io";
+  readonly allowNetwork: boolean;
+  readonly allowFileSystem: boolean;
+  readonly allowSideEffects: boolean;
+  readonly maxReplaySpeed: number; // events per second, 0 = unlimited
+  readonly timeoutPerEventMs: number;
+}
+
+export const DEFAULT_REPLAY_SANDBOX_POLICY: ReplaySandboxPolicy = {
+  isolationMode: "full",
+  allowNetwork: false,
+  allowFileSystem: false,
+  allowSideEffects: false,
+  maxReplaySpeed: 0,
+  timeoutPerEventMs: 5000,
+};
+
+/**
+ * Debug permission context per §65.3: dual factor + least privilege + short-lived sessions + audit.
+ */
+export interface DebugPermissionContext {
+  readonly userId: string;
+  readonly sessionToken: string;
+  readonly sessionIssuedAt: string;
+  readonly sessionExpiresAt: string;
+  readonly allowedTaskIds: readonly string[];
+  readonly allowedHarnessRunIds: readonly string[];
+  readonly requireTwoFactor: boolean;
+  readonly twoFactorVerified: boolean;
+  readonly auditTrailEnabled: boolean;
+}
+
+export function isSessionExpired(ctx: DebugPermissionContext): boolean {
+  return nowIso() > ctx.sessionExpiresAt;
+}
+
+export function canAccessTask(ctx: DebugPermissionContext, taskId: string): boolean {
+  return ctx.allowedTaskIds.length === 0 || ctx.allowedTaskIds.includes(taskId);
+}
+
+export function canAccessHarnessRun(ctx: DebugPermissionContext, harnessRunId: string): boolean {
+  return ctx.allowedHarnessRunIds.length === 0 || ctx.allowedHarnessRunIds.includes(harnessRunId);
+}
+
 export interface TimeTravelDebugServiceOptions {
   maxSessions?: number;
   maxEventsPerExecution?: number;
   maxSnapshotsPerSession?: number;
+  replaySandboxPolicy?: ReplaySandboxPolicy;
+  permissionContext?: DebugPermissionContext | null;
 }
 
 function isVariableScope(value: unknown): value is VariableState["scope"] {
@@ -102,6 +153,8 @@ export class TimeTravelDebugService {
   private readonly maxSessions: number;
   private readonly maxEventsPerExecution: number;
   private readonly maxSnapshotsPerSession: number;
+  private readonly replaySandboxPolicy: ReplaySandboxPolicy;
+  private readonly permissionContext: DebugPermissionContext | null;
   private readonly sessions = new Map<string, TimeTravelDebugSession>();
   private readonly eventStore = new Map<string, ReadonlyArray<TimeTravelDebugEvent>>();
   private readonly snapshots = new Map<string, DebugSnapshot[]>();
@@ -110,9 +163,38 @@ export class TimeTravelDebugService {
     this.maxSessions = options.maxSessions ?? 100;
     this.maxEventsPerExecution = options.maxEventsPerExecution ?? 10_000;
     this.maxSnapshotsPerSession = options.maxSnapshotsPerSession ?? 100;
+    this.replaySandboxPolicy = options.replaySandboxPolicy ?? DEFAULT_REPLAY_SANDBOX_POLICY;
+    this.permissionContext = options.permissionContext ?? null;
+  }
+
+  /**
+   * Returns the active replay sandbox policy.
+   */
+  public getReplaySandboxPolicy(): ReplaySandboxPolicy {
+    return this.replaySandboxPolicy;
+  }
+
+  private isReplayIsolated(): boolean {
+    return this.replaySandboxPolicy.isolationMode === "full" || this.replaySandboxPolicy.isolationMode === "mocked_io";
   }
 
   public createSession(taskId: string, harnessRunId: string): TimeTravelDebugSession {
+    // §65.3: Dual factor + least privilege + short-lived session + audit
+    const ctx = this.permissionContext;
+    if (ctx) {
+      if (isSessionExpired(ctx)) {
+        throw new Error("debug_session.session_expired");
+      }
+      if (ctx.requireTwoFactor && !ctx.twoFactorVerified) {
+        throw new Error("debug_session.two_factor_required");
+      }
+      if (!canAccessTask(ctx, taskId)) {
+        throw new Error("debug_session.access_denied:task_not_allowed");
+      }
+      if (!canAccessHarnessRun(ctx, harnessRunId)) {
+        throw new Error("debug_session.access_denied:harness_run_not_allowed");
+      }
+    }
     this.evictOldestSessionIfNeeded();
     const session: TimeTravelDebugSession = {
       sessionId: newId("ttdebug"),

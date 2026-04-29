@@ -130,12 +130,16 @@ interface ConfigRollbackPointCreatedPayload {
 /**
  * Service for managing configuration versioning, diffs, and rollbacks.
  * Per §24.2: Implements event sourcing for complete history + rollback capability.
+ * §24.2/R15-78: Version history is persisted via DurableEventBus and rebuilt on startup.
  *
  * Stores snapshots of configuration at each change, enabling:
  * - Tracking configuration history (event-sourced via DurableEventBus)
  * - Comparing any two versions
  * - Rolling back to previous configurations
  * - Audit trail of changes
+ *
+ * The event bus provides durability - even if the process restarts,
+ * the events are replayed to rebuild the complete version history.
  */
 export class ConfigVersioningService {
   private readonly eventBus: DurableEventBus | null;
@@ -143,6 +147,7 @@ export class ConfigVersioningService {
   private readonly maxVersionAgeMs: number;
   private readonly persistEvents: boolean;
   private _initialized = false;
+  private _initPromise: Promise<void> | null = null;
 
   /** In-memory storage for version snapshots (rebuilt from events on init) */
   private readonly snapshots = new Map<string, ConfigVersionSnapshot[]>();
@@ -159,15 +164,39 @@ export class ConfigVersioningService {
 
   /**
    * Initializes the service by subscribing to events and rebuilding state.
-   * Must be called before using the service if persistEvents is enabled.
+   * §24.2/R15-78: Ensures version history is rebuilt from persisted events on startup.
+   * Automatically initializes on first use if not already initialized.
    */
   public async initialize(): Promise<void> {
-    if (this._initialized || !this.eventBus) {
+    if (this._initialized) {
+      return;
+    }
+
+    // Prevent concurrent initialization
+    if (this._initPromise) {
+      return this._initPromise;
+    }
+
+    if (!this.eventBus) {
       this._initialized = true;
       return;
     }
 
+    this._initPromise = this.doInitialize();
+    await this._initPromise;
+    this._initialized = true;
+  }
+
+  /**
+   * Internal initialization that subscribes to events for replay.
+   */
+  private async doInitialize(): Promise<void> {
+    if (!this.eventBus) {
+      return;
+    }
+
     // Subscribe to version events for replay
+    // These events contain the full content, enabling complete state rebuild
     await this.eventBus.subscribe(
       "config.version.created",
       this.handleVersionCreatedEvent.bind(this),
@@ -176,12 +205,26 @@ export class ConfigVersioningService {
       "config.rollback_point.created",
       this.handleRollbackPointCreatedEvent.bind(this),
     );
+    // Also handle rollback events for replay
+    await this.eventBus.subscribe(
+      "config.version.rollback",
+      this.handleVersionCreatedEvent.bind(this),
+    );
+  }
 
-    this._initialized = true;
+  /**
+   * Ensures the service is initialized before operations.
+   * Calls initialize() if not already initialized.
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this._initialized) {
+      await this.initialize();
+    }
   }
 
   /**
    * Creates a new version snapshot for a configuration.
+   * §24.2/R15-78: Ensures initialization is complete before creating version.
    *
    * @param configPath - Dot-notation path to the config
    * @param layer - Hierarchy layer
@@ -191,14 +234,18 @@ export class ConfigVersioningService {
    * @param reason - Reason for the change
    * @returns The created version snapshot
    */
-  public createVersion(
+  public async createVersion(
     configPath: string,
     layer: string,
     sourceId: string | null,
     content: Record<string, unknown>,
     createdBy: string | null = null,
     reason: string | null = null,
-  ): ConfigVersionSnapshot {
+  ): Promise<ConfigVersionSnapshot> {
+    // §24.2/R15-78: Ensure we are initialized before creating versions
+    // This guarantees events will be properly captured for replay
+    await this.ensureInitialized();
+
     const key = this.buildKey(configPath, layer, sourceId);
     const versions = this.snapshots.get(key) ?? [];
 
@@ -226,7 +273,7 @@ export class ConfigVersioningService {
     // Cleanup old versions
     this.pruneVersionsInternal(key);
 
-    // Emit event
+    // Emit event for durability
     this.emitVersionEvent("config.version.created", snapshot);
 
     return snapshot;
@@ -378,18 +425,18 @@ export class ConfigVersioningService {
    * @param reason - Reason for the rollback
    * @returns The new version snapshot created from rollback, or null if version not found
    */
-  public rollback(
+  public async rollback(
     versionId: string,
     createdBy: string,
     reason: string | null = null,
-  ): ConfigVersionSnapshot | null {
+  ): Promise<ConfigVersionSnapshot | null> {
     const targetVersion = this.getVersion(versionId);
     if (!targetVersion) {
       return null;
     }
 
     // Create a new version with the old content
-    const rollbackVersion = this.createVersion(
+    const rollbackVersion = await this.createVersion(
       targetVersion.configPath,
       targetVersion.layer,
       targetVersion.sourceId,
@@ -508,6 +555,21 @@ export class ConfigVersioningService {
         parentVersionId: snapshot.parentVersionId,
       },
     });
+
+    if (eventType === "config.version.created" || eventType === "config.version.rollback") {
+      this.eventBus.publish({
+        eventType: "config.changed",
+        payload: {
+          configPath: snapshot.configPath,
+          layer: snapshot.layer,
+          sourceId: snapshot.sourceId,
+          versionId: snapshot.versionId,
+          contentHash: snapshot.contentHash,
+          changedAt: snapshot.createdAt,
+          reason: snapshot.reason,
+        },
+      });
+    }
   }
 
   /**

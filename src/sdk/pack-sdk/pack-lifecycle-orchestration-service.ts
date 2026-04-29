@@ -294,10 +294,11 @@ export class PackLifecycleOrchestrationService {
   public deprecatePack(input: DeprecateBusinessPackInput): PackLifecycleRecord {
     const record = this.getMutableRecord(input.packId, input.version);
     assertLifecycleStage(record, ["certified", "published", "running", "deprecated"]);
-    if (input.supportWindowDays < 180) {
+    // §22.4: Minimum support window is 90 days
+    if (input.supportWindowDays < 90) {
       throw new ValidationError(
         `pack_lifecycle.support_window_too_short:${record.packId}@${record.version}`,
-        `Business pack ${record.packId}@${record.version} must provide at least 180 days of support during deprecation.`,
+        `Business pack ${record.packId}@${record.version} must provide at least 90 days of support during deprecation per §22.4.`,
       );
     }
 

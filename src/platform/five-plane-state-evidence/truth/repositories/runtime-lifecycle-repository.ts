@@ -25,7 +25,7 @@ export interface RuntimeLifecycleRepository {
     errorCode?: string | null,
     completedAt?: string | null,
   ): number;
-  updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void;
+  updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number;
   updateWorkflowState(
     taskId: string,
     status: string,
@@ -128,8 +128,8 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     return this.store.task.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt);
   }
 
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
-    this.store.task.updateTaskOutput(taskId, outputJson, updatedAt);
+  public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
+    return this.store.task.updateTaskOutput(taskId, expectedStatus, outputJson, updatedAt);
   }
 
   public updateWorkflowState(
@@ -302,8 +302,8 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.run("updateTaskStatusCas", () => this.inner.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt));
   }
 
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
-    return this.run("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, outputJson, updatedAt));
+  public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
+    return this.run("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, expectedStatus, outputJson, updatedAt));
   }
 
   public updateWorkflowState(taskId: string, status: string, currentStepIndex: number, outputsJson: string, updatedAt: string, resumableFromStep: string | null = null): void {
@@ -461,8 +461,8 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.observe("updateTaskStatusCas", () => this.inner.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt));
   }
 
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
-    return this.observe("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, outputJson, updatedAt));
+  public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
+    return this.observe("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, expectedStatus, outputJson, updatedAt));
   }
 
   public updateWorkflowState(taskId: string, status: string, currentStepIndex: number, outputsJson: string, updatedAt: string, resumableFromStep: string | null = null): void {

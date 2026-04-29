@@ -198,8 +198,10 @@ function scoreCapability(score: CapabilityTrustScore): number {
   const success = successRate(score);
   const overridePenalty = overrideRate(score) * 200;
   const incidentPenalty = score.incidents * 150;
-  const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
-  // §42.1: TrustScore range 0-1000 (expanded from 0-100)
+  // §42.1: Volume bonus scaled to max out at ~100 extra points at 5000+ executions
+  const volumeBonus = Math.min(200, Math.floor(score.totalExecutions / 50));
+  // §42.1: TrustScore range 0-1000
+  // success is 0-1, scaled to 0-1000; penalties remove from this base
   return Math.max(
     0,
     Math.min(
@@ -250,13 +252,13 @@ function decideLevel(
   const success = successRate(score);
   const overrides = overrideRate(score);
 
-  // §42.2: Cost overrun 200% demotion rule
+  // §42.2: Cost overrun 200% demotion rule - any execution exceeding 200% of budget triggers demotion
   const costOverrunThreshold = options.costOverrunDemotionThreshold ?? 2.0;
-  if (score.costOverruns > 0 && score.totalExecutions > 0) {
-    const overrunRatio = score.costOverruns / score.totalExecutions;
-    if (overrunRatio >= costOverrunThreshold) {
-      return "suggestion"; // Demote to suggestion on excessive cost overruns
-    }
+  if (score.costOverruns >= costOverrunThreshold) {
+    return "supervised";
+  }
+  if (score.costOverruns > 0) {
+    return "supervised"; // costOverruns records executions that already crossed the 200% guardrail
   }
 
   // §42 P0/P1 Demotion Logic:
@@ -415,7 +417,8 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           fromLevel: item.currentAutonomy,
           toLevel: nextLevel,
           trigger: item.incidents > 0 ? "incident_response" : "rule_engine",
-          approvedBy: "auto",
+          // §42.2: Promotions require domain_owner/platform_team approval; only incident-driven and demotions use "auto"
+          approvedBy: item.incidents > 0 || eventType === "agent.autonomy.demoted" ? "auto" : "domain_owner",
           evidence,
         };
         changeEvents.push(changeEvent);

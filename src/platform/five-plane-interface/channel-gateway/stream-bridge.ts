@@ -41,6 +41,17 @@ import { z } from "zod";
 const DROPPABLE_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>(["status_changed", "progress", "message_delta"]);
 
 /**
+ * Event types that must never be evicted from the replay buffer.
+ * These events carry terminal outcomes or explicit operator handoff.
+ */
+const CRITICAL_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>([
+  "completed",
+  "failed",
+  "approval_requested",
+  "artifact_ready",
+]);
+
+/**
  * Schema for validating event payload JSON in mapEventType.
  * §5.2: All inter-plane boundary JSON must be schema-validated.
  */
@@ -385,18 +396,6 @@ export class StreamBridge {
       }),
     };
   }
-
-  /**
-   * Critical event types that must NEVER be dropped from replay buffer.
-   * These terminal states and approval requests are essential for clients
-   * to receive final workflow outcomes.
-   */
-const CRITICAL_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>([
-    "completed",
-    "failed",
-    "approval_requested",
-    "artifact_ready",
-  ]);
 
   /**
    * Appends a frame to the replay buffer, evicting old frames if necessary.

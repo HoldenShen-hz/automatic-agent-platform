@@ -56,21 +56,39 @@ export class AsyncDelegationRepository {
 
   public async updateDelegation(input: {
     delegationId: string;
+    expectedStatus: string; // §25.3: CAS guard to prevent concurrent overwrites
     status?: string;
     resultRef?: string | null;
     updatedAt: string;
   }): Promise<number> {
+    // §25.3: CAS semantics - only update if current status matches expectedStatus.
+    // This prevents concurrent overwrites when status is being transitioned.
     const sets = ["updated_at = $1"];
     const values: unknown[] = [input.updatedAt];
     let idx = 2;
 
-    if (input.status !== undefined) { sets.push(`status = $${idx++}`); values.push(input.status); }
-    if (input.resultRef !== undefined) { sets.push(`result_ref = $${idx++}`); values.push(input.resultRef); }
+    const hasStatusUpdate = input.status !== undefined;
+    if (hasStatusUpdate) {
+      sets.push(`status = $${idx++}`);
+      values.push(input.status);
+    }
+    if (input.resultRef !== undefined) {
+      sets.push(`result_ref = $${idx++}`);
+      values.push(input.resultRef);
+    }
 
+    // Build WHERE clause: delegation_id is always checked, status CAS is only
+    // meaningful when we're updating the status field
     values.push(input.delegationId);
+    let whereClause = `delegation_id = $${idx++}`;
+    if (hasStatusUpdate) {
+      whereClause += ` AND status = $${idx++}`;
+      values.push(input.expectedStatus);
+    }
+
     return asyncExecute(
       this.conn,
-      `UPDATE delegations SET ${sets.join(", ")} WHERE delegation_id = $${idx}`,
+      `UPDATE delegations SET ${sets.join(", ")} WHERE ${whereClause}`,
       ...values,
     );
   }

@@ -198,9 +198,11 @@ export class InspectService {
 
   public queryTaskInspectSummaries(query: TaskInspectQuery = {}): TaskInspectSummary[] {
     const limit = normalizeLimit(query.limit, 25);
+    // R14-18: Pass tenantId to store's listTasks for SQL-level filtering instead of
+    // fetching all 200 items and filtering in memory. This reduces memory usage and
+    // improves performance significantly for multi-tenant deployments.
     return this.store
-      .listTasks()
-      .filter((task) => query.tenantId === undefined || (task.tenantId ?? null) === query.tenantId)
+      .listTasks(limit, query.tenantId ?? undefined)
       .map((task) => this.buildTaskInspectSummary(task))
       .filter((summary) => {
         if (query.taskStatus && summary.taskStatus !== query.taskStatus) {
@@ -219,8 +221,7 @@ export class InspectService {
           return query.hasPendingApproval ? summary.pendingApprovalCount > 0 : summary.pendingApprovalCount === 0;
         }
         return true;
-      })
-      .slice(0, limit);
+      });
   }
 
   public queryWorkflowInspectSummaries(query: WorkflowInspectQuery = {}): WorkflowInspectSummary[] {

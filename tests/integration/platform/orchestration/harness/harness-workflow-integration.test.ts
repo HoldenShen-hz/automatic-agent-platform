@@ -27,7 +27,7 @@ function createWorkflowContext(prefix: string) {
   return { workspace, db, store };
 }
 
-test("Harness workflow progresses through planner->generator->evaluator with guardrail escalation recorded", () => {
+test("Harness workflow retries same plan when required evidence is missing", () => {
   const ctx = createWorkflowContext("aa-harness-wf-");
   try {
     const service = new HarnessRuntimeService();
@@ -52,15 +52,16 @@ test("Harness workflow progresses through planner->generator->evaluator with gua
       producedEvidenceRefs: ["exec_trace_001"],
     });
 
-    assert.equal(run.status, "paused");
-    assert.equal(run.pauseReason, "hitl");
+    assert.equal(run.status, "running");
+    assert.equal(run.pauseReason, null);
     assert.equal(run.steps.length, 3);
     assert.equal(run.steps[0]?.role, "planner");
     assert.equal(run.steps[1]?.role, "generator");
     assert.equal(run.steps[2]?.role, "evaluator");
     assert.ok(run.decision);
-    assert.equal(run.decision?.action, "escalate_to_human");
-    assert.equal(run.hitlRequest?.reason, "guardrail_or_operator_escalation");
+    assert.equal(run.decision?.action, "retry_same_plan");
+    assert.equal(run.decision?.reasonCode, "harness.guardrail_retry_same_plan");
+    assert.equal(run.hitlRequest, null);
     assert.ok(run.feedbackEnvelope);
   } finally {
     ctx.db.close();

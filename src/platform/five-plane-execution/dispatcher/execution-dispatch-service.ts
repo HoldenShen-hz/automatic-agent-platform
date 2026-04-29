@@ -54,6 +54,7 @@ import {
 } from "./execution-dispatch-support.js";
 import { HorizontalScalingController, DEFAULT_SCALING_POLICY } from "../../shared/scaling/horizontal-scaling-controller.js";
 import { nowIso as nowDate } from "../../contracts/types/ids.js";
+import type { HealthReportProvider } from "../../contracts/types/health.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -76,6 +77,7 @@ export class ExecutionDispatchService {
     private readonly store: AuthoritativeTaskStore,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
     private readonly queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
+    private readonly healthReportProvider: HealthReportProvider | null = null,
   ) {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
@@ -91,6 +93,25 @@ export class ExecutionDispatchService {
       });
     }
     return this.cachedHealthService;
+  }
+
+  /**
+   * Returns the backpressure snapshot, using healthReportProvider if available.
+   * This avoids P4 directly instantiating HealthService with P5 internals.
+   */
+  private getBackpressureSnapshot(): { status: string; degradationMode: string; queueGovernance: { starvationDetected: boolean }; findings: string[] } | null {
+    const snapshot = this.backpressureSnapshot?.();
+    if (snapshot) return snapshot;
+    if (this.healthReportProvider) {
+      const report = this.healthReportProvider.getReport();
+      return {
+        status: report.status,
+        degradationMode: report.degradationMode,
+        queueGovernance: { starvationDetected: report.queueGovernance.starvationDetected },
+        findings: report.findings,
+      };
+    }
+    return null;
   }
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
@@ -242,9 +263,7 @@ export class ExecutionDispatchService {
     }
 
     // R9-10 fix: Compute backpressure once outside ticket loop (was O(n) health scans per ticket)
-    const backpressure =
-      this.backpressureSnapshot?.() ??
-      this.getOrCreateHealthService(occurredAt).getReport();
+    const backpressure = this.getBackpressureSnapshot();
 
     // R13-18: §8.1 Queue backlog > threshold → emit scale_up/scale_down signals
     const queueAvailability = this.queueAvailabilitySnapshot?.();

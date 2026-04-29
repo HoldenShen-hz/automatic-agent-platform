@@ -10,6 +10,12 @@ import { normalizeSandboxMode, type SandboxMode } from "../../platform/control-p
 export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
 export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
 
+/**
+ * PluginSpiType - All valid SPI types per plugin-spi contract §4
+ * Union of PluginType plus extended SPI roles (planner, presenter, validator).
+ */
+export type PluginSpiType = PluginType | "planner" | "presenter" | "validator";
+
 export interface PluginCapability {
   name: string;
   description: string;
@@ -44,7 +50,8 @@ export interface PluginDefinition {
   resourceLimits: PluginResourceLimits;
   dependencies: string[];
   security: PluginSecurityConfig;
-  spiTypes: PluginType[];
+  /** SPI types must be compatible with PluginSpiType from plugin-spi contract §4 */
+  spiTypes: PluginSpiType[];
   domainIds: string[];
   sbomRef: string | null;
   signing: {
@@ -65,7 +72,8 @@ export interface DefinePluginOptions {
   resourceLimits?: PluginResourceLimits;
   dependencies?: string[];
   security?: PluginSecurityInput;
-  spiTypes?: PluginType[];
+  /** SPI types must be compatible with PluginSpiType from plugin-spi contract §4 */
+  spiTypes?: PluginSpiType[];
   domainIds?: string[];
   sbomRef?: string | null;
   signing?: {
@@ -147,7 +155,7 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
       sandboxTier: normalizeSandboxMode(options.security?.sandboxTier ?? DEFAULT_SECURITY.sandboxTier),
       egressDomains: options.security?.egressDomains ?? DEFAULT_SECURITY.egressDomains,
     },
-    spiTypes: [...new Set((options.spiTypes ?? [options.type]).filter((type): type is PluginType => type !== undefined))],
+    spiTypes: [...new Set((options.spiTypes ?? [options.type]).filter((type): type is PluginSpiType => type !== undefined))],
     domainIds: [...new Set((options.domainIds ?? []).map((domainId) => domainId.trim()).filter((domainId) => domainId.length > 0))],
     sbomRef: options.sbomRef?.trim() ? options.sbomRef.trim() : null,
     signing: options.signing == null ? null : {

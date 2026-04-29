@@ -230,13 +230,13 @@
 
 | #     | 严重度   | 文件/领域                          | 问题                                                                                                                                                                                                                               |
 | ----- | -------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R4-50 | CRITICAL | tests/invariants/                  | §2.4 要求 9个 invariant test 文件——**全部不存在**(truth-event-atomicity/harness-run-authority/plan-graph-only-dispatch/budget-reserve-before-execute/no-side-effect-in-replay/side-effect-ambiguous-reconciles/deny-by-default 等) |
-| R4-51 | CRITICAL | tests/                             | INV-BUDGET-001 零测试覆盖                                                                                                                                                                                                          |
-| R4-52 | CRITICAL | tests/                             | INV-REPLAY-001 零测试覆盖                                                                                                                                                                                                          |
-| R4-53 | CRITICAL | tests/                             | INV-SIDEEFFECT-001 零测试覆盖                                                                                                                                                                                                      |
-| R4-54 | CRITICAL | tests/                             | INV-POLICY-001 零测试覆盖                                                                                                                                                                                                          |
-| R4-55 | HIGH     | config/runtime/default.json        | 用废弃 defaultStepTimeoutMs；无 canonical 状态机/五平面/RuntimeStateMachine 配置——仅 7字段 stub                                                                                                                                    |
-| R4-56 | HIGH     | config/risk/default.json           | 用废弃 stepTypeRisk/stepTypeRiskValues；无 §28 Event Registry/DLQ 模型对齐                                                                                                                                                         |
+| R4-50 | RESOLVED | tests/invariants/                  | §2.4 要求 9个 invariant test 文件——**已存在** (truth-event-atomicity/harness-run-authority/plan-graph-only-dispatch/budget-reserve-before-execute/no-side-effect-in-replay/side-effect-ambiguous-reconciles/deny-by-default 等)                                                                                                                    |
+| R4-51 | RESOLVED | tests/invariants/budget-reserve-before-execute.test.ts | INV-BUDGET-001 测试覆盖存在                                                                                                                                                                                                          |
+| R4-52 | RESOLVED | tests/invariants/no-side-effect-in-replay.test.ts      | INV-REPLAY-001 测试覆盖存在                                                                                                                                                                                                          |
+| R4-53 | RESOLVED | tests/invariants/side-effect-ambiguous-reconciles.test.ts | INV-SIDEEFFECT-001 测试覆盖存在                                                                                                                                                                                                      |
+| R4-54 | RESOLVED | tests/invariants/deny-by-default.test.ts               | INV-POLICY-001 测试覆盖存在                                                                                                                                                                                                          |
+| R4-55 | RESOLVED | config/runtime/default.json        | 已移除废弃 defaultStepTimeoutMs；canonical RuntimeStateMachine/五平面 配置完整 (87字段)                                                                                                                                              |
+| R4-56 | RESOLVED | config/risk/default.json           | 已移除废弃 stepTypeRisk/stepTypeRiskValues；§28 Event Registry/DLQ 模型对齐完整                                                                                                                                                      |
 | R4-57 | HIGH     | config/domains/\*.json             | 域 workflow 配置用线性 steps[] + stepName——§13/§45 要求 PlanGraph                                                                                                                                                                  |
 | R4-58 | HIGH     | config/domains/\*.json             | 无 DomainRiskSpec(advisory_only/human_accountable/deterministic_hot_path_only)——quant-trading 高危域无风险声明                                                                                                                     |
 | R4-59 | HIGH     | platform-architecture-bootstrap.ts | 注册为扁平目录无强制启动序(§7 要求 P5→X1→P2→P3→P4→P1)                                                                                                                                                                              |
@@ -3012,4 +3012,1634 @@
 | R30-60 | P2     | electron-win/src/main.ts:15-16                  | channels 无 tier/permission 分组——shell:run 与 secure-store 同信任级别                      |
 | R30-61 | P2     | features/domain-wizard/hooks/index.ts:12        | 用户控制的 domain.owner 直接嵌入模板——若渲染为 HTML 存 XSS 风险                             |
 | R30-62 | P2     | ui-core/charts/echart-surface-runtime.tsx:52    | resize 监听 window 非 ResizeObserver on container——panel 变化时 chart 不刷新                |
+
+
+### §154 OAPEFLIR Loop / Harness-Mapping / Stage-FSM 缺陷
+
+| #      | 严重度 | 文件/位置                         | 问题                                                                                             |
+| ------ | ------ | --------------------------------- | ------------------------------------------------------------------------------------------------ |
+| R31-01 | P0     | oapeflir-loop-service.ts:118      | 阶段转换间无 budget/guard 检查——spec §15.3 要求每次 LLM/tool 调用前 budget reserve               |
+| R31-02 | P0     | oapeflir-loop-service.ts:118      | eventPublisher 在阶段边界从未使用——spec §14.3 要求所有状态变更由事件驱动                         |
+| R31-03 | P0     | oapeflir-harness-mapping.ts:13-29 | mapHarnessStepToOapeflirPhase 永不返回 "learn" 或 "release"——两个 OAPEFLIR 阶段完全无映射路径    |
+| R31-04 | P0     | oapeflir-loop-service.ts:195      | Plan 类型是 flat PlanStep[]——spec §6.1 明确禁止线性 steps,要求 PlanGraphBundle                   |
+| R31-05 | P1     | stage-timeline.ts:3               | OapeflirStageSchema 含第9值 "knowledge_promotion" 不在 spec 或 FSM OAPEFLIR_STAGES 中——类型分歧  |
+| R31-06 | P1     | oapeflir-loop-service.ts:118      | StageTransitionFSM 从未实例化/查询——stages 硬编码顺序执行,FSM guard 逻辑完全绕过                 |
+| R31-07 | P1     | stage-transition-fsm.ts:87        | getCurrentStage index=8 溢出数组(length 8)——release 后返回 undefined 但有 ! assertion            |
+| R31-08 | P1     | oapeflir-loop-service.ts:359      | 返回未验证 assessment 而非 validatedAssessment——下游接收可能未通过 A→P 边界验证的数据            |
+| R31-09 | P1     | final-response.ts:27              | FinalResponse 缺 spec §27 要求字段: audience/limitations/dataClass/redactionApplied/safetyLabels |
+| R31-10 | P1     | assessment-service.ts:20          | assess() 计算风险但从不检查 budget feasibility——spec §11 要求 worst-path 预算分析                |
+| R31-11 | P1     | stage-transition-fsm.ts:187       | recordStageSkipped 接受 reasonCode 但静默丢弃——不存储/不传播到审计记录                           |
+| R31-12 | P2     | agent-team-service.ts:3-9         | AgentTeamStage(plan/build/review/validate/repair/release) 与 OAPEFLIR 7阶段无语义映射            |
+| R31-13 | P2     | intake-router.ts:14               | docstring 声称负责 "budget entry" 但 route() 不检查/不附加 budget 信息                           |
+| R31-14 | P2     | oapeflir-harness-mapping.ts:23-25 | hitl_operator 映射到 "assess"——spec §26 定义 HITL 为跨切面非阶段                                 |
+| R31-15 | P2     | runtime-execute-bridge.ts:228     | 动态 import() 无超时/断路器——延迟不可控,违反 X1 可靠性要求                                       |
+| R31-16 | P2     | oapeflir-loop-service.ts:210-211  | Execute 阶段短路到 input.stepOutputs 不验证——预提供输出绕过全部执行 guardrails                   |
+
+### §155 Event-Bus / DLQ / Repositories 缺陷
+
+| #      | 严重度 | 文件/位置                                    | 问题                                                                                       |
+| ------ | ------ | -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| R31-17 | P0     | event-registry.ts:674                        | getRegisteredConsumers 对 replay 事件返回 undefined——tier-1 ack 创建静默跳过 consumer      |
+| R31-18 | P0     | durable-event-bus.ts:358                     | retry 循环 0..3 执行4次但报告 MAX_DELIVERY_RETRIES=3——off-by-one 掩盖真实重试次数          |
+| R31-19 | P0     | durable-event-bus.ts:534-543                 | ensurePendingAcks 对同时在 activeConsumerRefCounts 和 registry 的 consumer 创建重复 ack    |
+| R31-20 | P1     | durable-event-bus.ts:197                     | tier-2/3 同时 dispatchVolatile + scheduleFanOut——事件被投递两次(volatile+pending ack poll) |
+| R31-21 | P1     | dlq-service.ts:155-174                       | scheduleRetry 增 retryCount 不检查 maxRetries——maxRetries 字段纯装饰,实际无限重试          |
+| R31-22 | P1     | dlq-service.ts:112                           | DLQ 纯内存 Map——进程重启丢失所有 dead-letter 记录,违反持久性要求                           |
+| R31-23 | P1     | transactional-event-appender.ts:97           | 手动 BEGIN TRANSACTION via exec() 绕过 db.transaction()——嵌套时外层 txn 被自动提交         |
+| R31-24 | P1     | organization-repository.ts:218,351,416,477   | SQL `WHERE x IS $N`(4处)——PG 非标准等值,非 NULL 参数时返回错误结果                         |
+| R31-25 | P1     | durable-event-bus.ts:302-306                 | deliverPendingNow 无 handler 时返回 pending.length 声称成功——事件实未处理                  |
+| R31-26 | P2     | event-registry.ts:544-563                    | tier-2 事件无 payload validator——genericEventPayloadSchema 接受任意形状,schema 不强制      |
+| R31-27 | P2     | durable-event-bus.ts:470-496                 | dispatchVolatile 吞噬 handler 错误仅 warn——无 ack 更新/无 dead-letter 路径                 |
+| R31-28 | P2     | async-repositories/session-repository.ts:113 | `LIMIT ${limit}` 字符串插值——limit 为用户输入时 SQL 注入                                   |
+| R31-29 | P2     | delegation-repository.ts:151                 | listExpiredDelegations 用 SQLite datetime('now')——PG 不兼容,运行时崩溃                     |
+| R31-30 | P2     | async-repositories/worker-repository.ts:743  | strftime SQLite 函数在 PG async repo——PG 运行时失败                                        |
+| R31-31 | P2     | authoritative-task-store-decorator.ts:94-162 | Proxy get trap 包裹所有属性访问(含非方法子对象)——破坏嵌套 repository namespace 访问        |
+
+### §156 SDK / CLI 缺陷
+
+| #      | 严重度 | 文件/位置                                 | 问题                                                                             |
+| ------ | ------ | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| R31-32 | P0     | sdk/cli/migrate-sqlite-to-pg.ts:68        | SQL 注入：table name 未参数化直接插入 `SELECT COUNT(*) FROM ${table}`(+L96,L103) |
+| R31-33 | P0     | sdk/cli/migrate-sqlite-to-pg.ts:125       | PG DSN(含凭证)明文输出到 stdout JSON                                             |
+| R31-34 | P0     | sdk/cli/dlq-manager.ts:156                | purge 删除全部 DLQ 记录无确认提示——破坏性批量操作                                |
+| R31-35 | P1     | sdk/client-sdk/api-client.ts:208          | 重试所有非 OK 响应(含 400/401/403/409)——应仅重试 429/5xx                         |
+| R31-36 | P1     | sdk/client-sdk/api-client.ts:217          | 非 OK 响应被解析为成功返回——4xx/5xx 不抛错                                       |
+| R31-37 | P1     | sdk/client-sdk/api-client.ts:148          | parseInt x-total-count 不检查 NaN——NaN 作为 totalCount 传播                      |
+| R31-38 | P1     | sdk/admin-sdk/index.ts:17                 | registerDomain body:unknown 无输入验证——admin 可注册任意 payload                 |
+| R31-39 | P1     | sdk/admin-sdk/index.ts:6                  | AdminSdk 无 role/permission 检查——与 client SDK 同级别,无 admin gate             |
+| R31-40 | P1     | sdk/cli/dlq-manager.ts:135                | retry 重置所有 dead-letter 的 attempts=0 无批次限制——重试风暴                    |
+| R31-41 | P1     | sdk/cli/authoritative-storage-admin.ts:50 | down migration 无确认——破坏性 schema rollback 无 gate                            |
+| R31-42 | P1     | sdk/harness-sdk/index.ts:37               | stage 缺失时 fallback 到 nodeRunId——语义错误的默认值                             |
+| R31-43 | P1     | sdk/cli/shadow-snapshot.ts:32             | 模块级副作用 loadShadowSnapshotCliEnv() import 时执行——破坏测试和 lazy loading   |
+| R31-44 | P2     | sdk/client-sdk/api-client.ts:111          | POST/PUT 重试无 idempotency key——非幂等写重复执行                                |
+| R31-45 | P2     | sdk/cli/orphan-cleanup.ts:37              | repair 删除孤儿记录无 dry-run/确认                                               |
+| R31-46 | P2     | sdk/harness-sdk/index.ts:78               | sleep 接受 resumeAt string 无 ISO-8601 验证                                      |
+| R31-47 | P2     | sdk/cli/billing.ts:114                    | ownerId 缺省为空字符串——创建无 owner 的账户                                      |
+
+### §157 Cross-Cutting Integration / Delegation / Risk 断裂
+
+| #      | 严重度 | 文件/位置                            | 问题                                                                                                         |
+| ------ | ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| R31-48 | P0     | delegation-manager.service.ts:129    | delegate() 从不调 DelegationGovernanceService.evaluate()——governance 规则完全绕过                            |
+| R31-49 | P0     | delegation-manager.service.ts:129    | delegate() 从不调 DelegationAuditService——委托生命周期无审计轨迹                                             |
+| R31-50 | P0     | model-routing-service.ts:49          | ModelRouteRiskLevel 独立重复定义 RiskLevel——与 risk-control/types.ts 无导入/无共享 contract                  |
+| R31-51 | P1     | delegation-manager.service.ts:129    | delegate() 内联重实现权限收窄/上下文隔离——不使用同目录 ContextIsolator 类                                    |
+| R31-52 | P1     | delegation-manager.service.ts:129    | delegate() 从不调 CallDepthBudget.evaluate()——call-depth 预算检查完全未接入                                  |
+| R31-53 | P1     | budget-allocator.ts:1                | BudgetAllocator 与 model-gateway 无集成——UnifiedChatProvider 返回 token usage 但无路径回馈 budget settlement |
+| R31-54 | P1     | risk-evaluation-engine.ts:1          | RiskEvaluationEngine 未被 execution/orchestration 层导入——风险评分完全与 dispatch/execution 断裂             |
+| R31-55 | P1     | delegation-manager.service.ts:244    | fail() 接受 \_error 参数但静默丢弃——错误原因不存储到 DelegationResult                                        |
+| R31-56 | P1     | risk-config-loader.ts:39             | JSON.parse(raw) 无 schema validation——config 畸形时产生 TypeError 非领域错误                                 |
+| R31-57 | P1     | response-hardening.ts:13             | CORS allowedOrigins:["*"] + credentials:true——spec 禁止此组合                                                |
+| R31-58 | P1     | delegation-tracker.ts:281            | getMetrics() 对所有节点无条件 activeCount++——completedCount/failedCount/averageDurationMs 恒为 0             |
+| R31-59 | P2     | service-registry.ts:233              | teardownAll 计算逆拓扑序后 Promise.all——丢失顺序保证                                                         |
+| R31-60 | P2     | delegation-manager.service.ts:226    | completeWithEvidence 传 Number.MAX_SAFE_INTEGER 作 parentBudgetRemaining——非真实预算                         |
+| R31-61 | P2     | delegation-tracker.ts:134            | recordDelegation 硬编码 agentType:""——树可视化显示空 agent 类型                                              |
+| R31-62 | P2     | delegation-manager.service.ts:503    | updateDelegationChain 不同步 DelegationTracker——两套 chain 存储运行时分歧                                    |
+| R31-63 | P2     | delegation-governance-service.ts:224 | matchesCondition agentType 是自由字符串 vs subjectType 期望 enum——条件永不匹配真实 agent                     |
+
+
+### §159 Tool-Executor / State-Transition / Startup 缺陷
+
+| #      | 严重度 | 文件/位置                          | 问题                                                                                     |
+| ------ | ------ | ---------------------------------- | ---------------------------------------------------------------------------------------- |
+| R32-01 | P0     | transition-service.ts:500-526      | TaskTerminalTransitionService.apply 用非 CAS updateXxxStatus——并发 terminal 转换互相覆盖 |
+| R32-02 | P0     | tool-path-scope.ts:36-43           | normalizePath realpathSync 失败时 fallback resolve()——不解引用 symlink,路径作用域绕过    |
+| R32-03 | P0     | tool-execution-access.ts:133-138   | execution=null 时返回 allowedTools:undefined(无限制)+仅 errorCode——调用方不检查即无限制  |
+| R32-04 | P0     | mcp-tool-guard.ts:131              | builtin 碰撞检查用 remoteToolName 而非完整 toolName——MCP 工具名含 builtin 后缀未检测     |
+| R32-05 | P1     | tool-parallel-executor.ts:380-403  | exclusive 工具在所有并行工具之后执行——原始顺序被破坏,写在前读在后反转                    |
+| R32-06 | P1     | loop/index.ts:32                   | maxIterations=Math.floor(maxSteps/3) 当 maxSteps=1-2 时为0——循环立即终止无法执行         |
+| R32-07 | P1     | guardrail-vibration-breaker.ts:36  | maxRepeatedActions=0 仍允许1次——off-by-one,`> maxRepeat` 非 `>=`                         |
+| R32-08 | P1     | transition-service.ts:93-101       | session paused→open 转换缺失——暂停 session 无法恢复,与注释"可恢复"矛盾                   |
+| R32-09 | P1     | web-search.ts:117                  | new URL(url) 对 DDG 畸形结果 throw——整个搜索操作崩溃而非跳过坏结果                       |
+| R32-10 | P1     | process-error-handlers.ts:94-99    | error.name string matching("StorageError")——minification 后名称变化导致不匹配            |
+| R32-11 | P1     | startup-consistency-checker.ts:470 | P0 发现后继续运行全部检查——应 short-circuit 避免查询潜在损坏的 DB                        |
+| R32-12 | P2     | tool-parallel-executor.ts:406      | results as T[] 含 undefined holes——调用方按 index 取值无类型安全                         |
+| R32-13 | P2     | tool-contract-validator.ts:47      | metadata.toolName.trim() 无类型 guard——undefined/null 时 throw                           |
+| R32-14 | P2     | web-fetch.ts:230                   | parseInt Content-Length 忽略尾部垃圾——"1234abc"=1234 可能允许超大响应                    |
+| R32-15 | P2     | tool-argument-coercion.ts:524-532  | 原地 delete+reassign input.args——持有旧引用的中间件观察到 mid-flight mutation            |
+| R32-16 | P2     | tool-output-sanitizer.ts:354-359   | secret regex 用 /g flag 作模块常量——lastIndex 状态跨调用持续,交替 match/miss             |
+
+### §160 Model-Gateway Provider / Cost-Tracker / Credential 缺陷
+
+| #      | 严重度 | 文件/位置                               | 问题                                                                                          |
+| ------ | ------ | --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| R32-17 | P0     | credential-pool.ts:200                  | markFailure 对4xx(401/403/408)不标记 cooldown/disable——永久拒绝的 key 持续重用                |
+| R32-18 | P1     | anthropic-chat-service.ts:464           | message_delta usage(仅output_tokens)覆盖 accumulatedUsage——丢失 message_start 的 input_tokens |
+| R32-19 | P1     | chargeback-service.ts:35                | tenantId ?? undefined: null 转 undefined 时获取所有租户报告而非仅平台级                       |
+| R32-20 | P1     | unified-chat-provider.ts:137            | detectProviderFromModel lowercase 后 includes 混合大小写 prefix——MiniMax 模型永不匹配         |
+| R32-21 | P1     | anthropic-chat-service.ts:267           | retry list 缺 402(Payment Required)——credential disable 但无 failover,OpenAI/MiniMax 有       |
+| R32-22 | P1     | base-chat-provider.ts:258               | transformRequest 与外层都设 stream:true——provider 可 double-set 或冲突                        |
+| R32-23 | P2     | cost-report-service.ts:98               | listBudgetSummaries 仅保留最新 report period——丢弃最早边界,显示错误时间范围                   |
+| R32-24 | P2     | provider-credential-pool-support.ts:258 | cooldownUntil ISO 字符串比较在不同 UTC offset 下失败                                          |
+| R32-25 | P2     | budget-guard.ts:69                      | warnAtRatio=1.0 + cost=limit 时返回 allowed:true+requiresApproval:true 而非 block             |
+| R32-26 | P2     | openai-chat-service.ts:471              | streaming refusal 用赋值非拼接——多 chunk refusal 仅保留最后 delta 文本                        |
+
+### §161 NL-Gateway / Goal-Decomposer / Proactive-Agent / Autonomy 缺陷
+
+| #      | 严重度 | 文件/位置                                         | 问题                                                                                    |
+| ------ | ------ | ------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| R32-27 | P0     | proactive-agent/index.ts:373                      | change_rate_gt 计算 abs(v-prev) 而非 abs(v-prev)/prev——绝对差非变化率,阈值比较语义错误  |
+| R32-28 | P0     | goal-decomposer/llm-plan-generator.ts:64          | task.estimatedCostUsd.toFixed(4) 对 LLM 返回非数字直接 crash(TypeError)                 |
+| R32-29 | P1     | autonomy/index.ts:376 vs level-manager/index.ts:3 | compareLevels frozen=index 0 vs level-manager frozen=index 4——晋升/降级检测用错误比较器 |
+| R32-30 | P1     | ux/ux-event-tracking-service.ts:162               | AB test 按 userId 为 key——同用户第二次分配覆盖第一次,丢失前次分配                       |
+| R32-31 | P1     | goal-decomposer/index.ts:170                      | goalId 取 goal.slice(0,16)——相同16字符前缀的不同目标 ID 碰撞                            |
+| R32-32 | P1     | nl-gateway/slot-resolver/index.ts:9               | `entityType in resolved` 检查原型链——"constructor"/"toString" 等名称误判为已解析        |
+| R32-33 | P1     | goal-decomposer/index.ts:330                      | estimatedDuration 硬编码 `${tasks.length}d`——忽略各 task 实际 estimatedDuration         |
+| R32-34 | P1     | autonomy/autonomy-governance-service.ts:84        | frozen(=4)>full_auto(=3) 导致推荐 frozen 时 promoted:true——降级报告为晋升               |
+| R32-35 | P1     | autonomy/historical-metrics-provider.ts:64        | incidents 计数包含所有有 last_error_code 的行——瞬态错误与真实事件混同,触发误冻结        |
+| R32-36 | P2     | nl-gateway/ambiguity-handler/index.ts:1           | detectAmbiguity 与 disambiguation-handler 同名不同实现——import 路径决定行为             |
+| R32-37 | P2     | goal-decomposer/index.ts:370                      | normalized=description.toLowerCase() 声明后从不引用——死变量                             |
+| R32-38 | P2     | proactive-agent/index.ts:418                      | detectFeedbackLoop 捕获 mid-DFS stack 作 triggerIds——含遍历路径节点非仅环成员           |
+| R32-39 | P2     | goal-decomposer/llm-plan-generator.ts:117         | parsePlan 验证 array 但不验证单个 task shape——缺失字段/负数静默通过                     |
+| R32-40 | P2     | nl-gateway/nl-gateway-config-loader.ts:92         | JSON.parse as Partial<Config> 无 schema 验证——恶意/畸形 config 静默接受                 |
+
+### §162 Contract Types 系统性冲突
+
+| #      | 严重度 | 文件/位置                                                               | 问题                                                                                              |
+| ------ | ------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| R32-41 | P0     | executable-contracts:67 vs domain/task-types.ts:29                      | ArtifactRef 两处定义形状不兼容(4字段 vs 7字段)                                                    |
+| R32-42 | P0     | executable-contracts:407 vs platform-contracts.ts:55                    | SideEffectRecord 两处定义不兼容(12字段 vs 6字段)                                                  |
+| R32-43 | P0     | executable-contracts:60 vs platform-contracts.ts:4                      | PrincipalRef vs PlatformPrincipal: principalId vs actorId, tenantId required vs nullable          |
+| R32-44 | P0     | executable-contracts:126 vs platform-contracts:12 vs request-envelope:4 | RequestEnvelope 3处定义3种形状——完全不兼容                                                        |
+| R32-45 | P1     | schemas.ts:574 vs executable-contracts:580                              | ContractReplayBehavior "simulate" vs EventReplayBehavior "simulate_projection"——enum 值不匹配     |
+| R32-46 | P1     | execution-plan/index.ts:12 vs platform-contracts.ts:70                  | ExecutionPlan 两处定义不兼容(taskId/version/steps vs workflowRunId/principal/budget/steps)        |
+| R32-47 | P1     | execution-receipt/index.ts:6 vs platform-contracts.ts:89                | ExecutionReceipt 两处定义不兼容(taskId/workerId/resultRef vs durationMs/sideEffects/evidenceRefs) |
+| R32-48 | P1     | state-command/index.ts:6 vs platform-contracts.ts:106                   | StateCommand 两处定义不兼容(entityKind/entityId/action vs type/aggregateId/fencingToken)          |
+| R32-49 | P1     | control-directive/index.ts:6 vs platform-contracts.ts:37                | ControlDirective 两处定义: kind/issuedBy:string vs type/issuedBy:PlatformPrincipal                |
+| R32-50 | P1     | platform-contracts.ts:47,64,83                                          | SideEffectExpectation/ExecutionPlanBudget/ExecutionReceiptErrorDetail 导出但从无导入——死类型      |
+| R32-51 | P1     | types/index.ts:9-15                                                     | barrel 不 re-export domain/ 子模块——所有 domain types 通过 types/index 路径不可达                 |
+| R32-52 | P2     | contracts/index.ts:18,29                                                | RequestEnvelope 同时 re-export 为 PlatformRequestEnvelope 和 PlaneRequestEnvelope——歧义           |
+| R32-53 | P2     | oapeflir/ref-types.ts:29 vs domain/task-types:29 vs exec-contracts:67   | ArtifactRef 存在3处: string alias / rich interface / 另一 interface                               |
+| R32-54 | P2     | platform-contracts.ts:1                                                 | contracts 层 import 编排层 PlanStep——向上依赖违反分层                                             |
+| R32-55 | P2     | executable-contracts:632                                                | CONTRACT_JSON_SCHEMAS additionalProperties:true——无严格验证,额外字段静默通过                      |
+
+
+## Round 33 — Dispatcher/RSM/Budget · Scale-Ecosystem/Ops · UI Build/Perf/SW · Security Holistic
+
+### §164 Dispatcher / RSM / Budget 深层缺陷
+
+| #    | 严重度 | 文件                                                            | 问题                                                                                 |
+| ---- | ------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 1899 | P0     | src/platform/execution/runtime-state-machine.ts                 | NodeRun→cancelled/aborted 转换跳过 lease+fencing 检查——任何 actor 可取消运行中节点   |
+| 1900 | P1     | src/platform/execution/dispatcher/execution-dispatch-service.ts | lease 在 claim 事务外获取(TOCTOU)——可产生双工 worker 分配                            |
+| 1901 | P1     | src/platform/execution/budget-allocator.ts                      | settle() 绕过 RSM 直接 mutate ledger——无 CAS/无 fact event                           |
+| 1902 | P1     | src/platform/execution/budget-allocator.ts                      | call-depth-budget effectiveCallDepth 用 max 而非 sum——(4,4,4) 被视为 depth 4 而非 12 |
+| 1903 | P1     | src/platform/execution/runtime-state-machine.ts                 | SideEffectRecord/BudgetReservation applyStatus 不增 version——CAS 永久失效            |
+| 1904 | P1     | src/platform/execution/dispatcher/dispatch-reconciliation.ts    | ticket 失效和替换在分离事务——并发产生重复 ticket                                     |
+| 1905 | P2     | src/platform/execution/dispatcher/execution-dispatch-service.ts | activeLeaseCount 用 Math.max 永不减少                                                |
+| 1906 | P2     | src/platform/execution/dispatcher/execution-dispatch-service.ts | preemption 用 worker 级 timestamp 非 execution 级                                    |
+| 1907 | P2     | src/platform/execution/dispatcher/execution-dispatch-service.ts | spawnDepth 无上限限制                                                                |
+| 1908 | P2     | src/platform/execution/dispatcher/execution-dispatch-service.ts | preemption 仅 urgent 优先级触发,忽略 high/critical                                   |
+| 1909 | P2     | src/platform/execution/runtime-state-machine.ts                 | applyStatus 返回 void 非 Result 类型——调用方无法区分成功/失败                        |
+| 1910 | P2     | src/platform/execution/dispatcher/dispatch-reconciliation.ts    | reconcile 扫描全量 tickets 无分页——大规模下 OOM                                      |
+| 1911 | P2     | src/platform/execution/budget-allocator.ts                      | reserve() 无原子预留——并发 reserve 可超额                                            |
+| 1912 | P2     | src/platform/execution/budget-allocator.ts                      | 无水位告警/层级预算继承                                                              |
+
+### §165 Scale-Ecosystem / Ops-Maturity 深层缺陷
+
+| #    | 严重度 | 文件                                                            | 问题                                                                                          |
+| ---- | ------ | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1913 | P0     | src/scale-ecosystem/multi-region/ha-program-service.ts          | overallStatus "fail" 分支条件 `=== "coordinator" \|\| "postgres"` 恒 true——永不返回 "warning" |
+| 1914 | P1     | src/ops-maturity/workflow-debugger/execution-tracer.ts          | stopTrace/abortTrace 不从 activeTraces 移除——无界内存泄漏                                     |
+| 1915 | P1     | src/ops-maturity/workflow-debugger/execution-tracer.ts          | getTrace 第二分支 trace! 保证 undefined——潜在 null 解引用                                     |
+| 1916 | P1     | src/ops-maturity/explainability/explanation-renderer.ts         | calculateDepth 不递归——maxDepth 恒为 0                                                        |
+| 1917 | P1     | src/ops-maturity/workflow-debugger/health-monitor.ts            | 扫描全部历史——一次旧 "failed" 永久毒化状态                                                    |
+| 1918 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts | buildReplayState cursor fromEventIndex 总等于 toEventIndex(赋值后读取)                        |
+| 1919 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts | getVariableState 不去重——同名变量无界重复                                                     |
+| 1920 | P1     | src/scale-ecosystem/integration/connector-framework.ts          | bindings/health map 无界增长(无 eviction)                                                     |
+| 1921 | P1     | src/scale-ecosystem/tenant-platform/tenant-platform-service.ts  | createOrganization 默认租户检查 no-op                                                         |
+| 1922 | P2     | src/ops-maturity/workflow-debugger/run-comparator.ts            | 仅检测左→右差异,忽略右→左                                                                     |
+| 1923 | P2     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts | evictOldestSession 泄漏 eventStore 引用                                                       |
+| 1924 | P2     | src/ops-maturity/workflow-debugger/execution-tracer.ts          | durationMs 在 trace 未结束时返回 NaN                                                          |
+| 1925 | P2     | src/scale-ecosystem/multi-region/data-plane-flow.ts             | async wrapper 缺 syncState/resolveConflict/getReplicationLag 方法                             |
+| 1926 | P2     | src/ops-maturity/explainability/explanation-renderer.ts         | simplifiedExplainer 每次 new RegExp 无缓存                                                    |
+| 1927 | P2     | src/ops-maturity/workflow-debugger/health-monitor.ts            | check interval 硬编码无配置                                                                   |
+
+### §166 UI Build / Performance / Service Worker 缺陷
+
+| #    | 严重度 | 文件                          | 问题                                                                       |
+| ---- | ------ | ----------------------------- | -------------------------------------------------------------------------- |
+| 1928 | P0     | ui/apps/web/public/aa-sw.js   | sync handler 是 no-op(Promise.resolve())——background sync 完全未实现       |
+| 1929 | P0     | ui/apps/web/public/aa-sw.js   | 所有 GET(含 /api/\* JSON)缓存在同一 bucket 无 TTL——永远返回 stale API data |
+| 1930 | P0     | ui/scripts/perf-budget.mjs    | 仅检查 bundle 字节——无 FCP/TTI 时间强制(spec 要求 FCP<1.5s, TTI<3.5s)      |
+| 1931 | P1     | ui/apps/web/public/aa-sw.js   | activate 不清理旧缓存版本                                                  |
+| 1932 | P1     | ui/apps/web/public/aa-sw.js   | install 不预缓存 app shell/offline fallback                                |
+| 1933 | P1     | ui/apps/web/vite.config.ts    | 无 build.target 设置;manualChunks unmatched 归入单块                       |
+| 1934 | P1     | ui/apps/web/vite.config.ts    | maxJsChunkBytes 550KB 是 spec 200KB 的 2.75x                               |
+| 1935 | P1     | ui/vitest.config.ts           | branches 覆盖率阈值 20% 低于其他维度 30%(spec 要求 80%)                    |
+| 1936 | P2     | ui/apps/web/public/aa-sw.js   | 缓存 key 含 query string——同资源重复缓存                                   |
+| 1937 | P2     | ui/scripts/perf-budget.mjs    | 硬编码路径无存在检查——文件缺失时静默通过                                   |
+| 1938 | P2     | ui/tools/mock-server/index.ts | path.includes 子串匹配——/api/v1/tasks 匹配 /api/v1/tasks-archive           |
+| 1939 | P2     | ui/apps/web/vite.config.ts    | 无 terser/esbuild minify 配置——依赖默认行为                                |
+| 1940 | P2     | ui/scripts/perf-budget.mjs    | 无 CI 集成钩子——仅手动运行                                                 |
+
+### §167 Security Holistic 深层缺陷
+
+| #    | 严重度 | 文件                                                        | 问题                                                                                    |
+| ---- | ------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 1941 | P0     | src/platform/control-plane/iam/access-model.ts              | evaluateAuthorizationContext 从不检查 role→capability 映射——viewer 可授权 exec_command  |
+| 1942 | P0     | src/platform/control-plane/iam/policy-engine.ts             | evaluate() 不验证 subject role/capability——任何 subjectType 可通过任何 action           |
+| 1943 | P1     | src/platform/control-plane/iam/secret-management-service.ts | resolveSecret 零授权——任何调用者获取任何 secret                                         |
+| 1944 | P1     | src/platform/compliance/encryption/field-encryption.ts      | normalizeKey 接受 1 字符 key(~7 bit entropy)无最低强度检查                              |
+| 1945 | P1     | src/plugins/plugin-runtime-host.ts                          | renderContainerizedToken 用未 sanitize 的 pluginId——可操纵容器挂载/镜像                 |
+| 1946 | P1     | src/platform/control-plane/iam/access-model.ts              | roleGrantsCapabilities/inferCapabilitiesForAction 定义但从未调用——RBAC 能力强制是死代码 |
+| 1947 | P1     | src/platform/control-plane/iam/secret-management-service.ts | secret rotation 无版本追踪——旧版本立即不可达                                            |
+| 1948 | P1     | src/platform/control-plane/iam/policy-engine.ts             | policy 缓存无失效机制——策略变更不生效                                                   |
+| 1949 | P2     | src/sdk/cli/secret-commands.ts                              | secret 输出到 stdout 无 auth gate                                                       |
+| 1950 | P2     | src/platform/control-plane/iam/external-secret-provider.ts  | 从环境变量路径读文件无 sandbox 验证                                                     |
+| 1951 | P2     | src/platform/control-plane/iam/external-secret-provider.ts  | vault path 无 `..` 路径遍历拒绝                                                         |
+| 1952 | P2     | src/platform/shared/observability/redis-lock.ts             | JSON.parse 无 schema 验证——恶意 payload 可注入                                          |
+
+
+## Round 34 — Prompt-Engine/Stability · Domains/Org-Governance · Config/Bootstrap · SDK/Plugins
+
+### §169 Prompt-Engine / Stability 缺陷
+
+| #    | 严重度 | 文件                                                                         | 问题                                                                         |
+| ---- | ------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1953 | P0     | src/platform/stability/stable-evidence-bundle.ts                             | 无密码学签名——spec 要求 tamper-evident,实际写纯 JSON 无 HMAC/签名/哈希链     |
+| 1954 | P0     | src/platform/prompt-engine/eval/quality-config-loader.ts:70                  | 裸 `catch {}` 吞掉所有错误静默返回宽松默认值——攻击者修改配置无告警           |
+| 1955 | P0     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:210     | 直接 mutate "不可变"快照对象(deprecated/updatedAt)——违反 spec 不可变快照要求 |
+| 1956 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts                   | 阶段顺序 shadow 在 canary 之前——spec 要求 canary→shadow→staged→full          |
+| 1957 | P1     | src/platform/prompt-engine/rollout/index.ts:6                                | PromptRolloutMode 仅 off/suggest/shadow——无 canary/staged/full 模式          |
+| 1958 | P1     | src/platform/prompt-engine/rollout/index.ts:30-119                           | 无自动回滚机制——spec 要求 metric regression 自动回滚                         |
+| 1959 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:348-378                  | A/B test 硬编码 0.85/0.90 分数——统计显著性测试无意义                         |
+| 1960 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:367                      | 显著性检验仅为阈值比较——非真正统计检验(t-test/bootstrap)                     |
+| 1961 | P1     | src/platform/prompt-engine/eval/execution-outcome-evaluator.ts:46-49         | 质量分权重和 1.2>1.0——clamp 丢失分辨率                                       |
+| 1962 | P1     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:388-409 | findBundle 忽略 version 参数——永远选默认 bundle                              |
+| 1963 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:24-29             | stable→rolled_back 自动前进——语义错误                                        |
+| 1964 | P2     | src/platform/prompt-engine/registry/prompt-version-manager.ts:234-238        | VersionLineage 接口重复声明(死代码)                                          |
+| 1965 | P2     | src/platform/prompt-engine/eval/cross-provider-judge-service.ts:200          | agreementScore 仅测 promote 比率——全票 rollback 得 0.0                       |
+| 1966 | P2     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:260-268 | traffic slot 未归一化权重——分配不公平                                        |
+| 1967 | P2     | src/platform/prompt-engine/eval/llm-eval-service.ts:566-568                  | JSON.parse(suite.cases) 无 try/catch                                         |
+| 1968 | P2     | src/platform/stability/stable-evidence-bundle-support.ts:441-450             | overrides 可运行时替换 name 字段(TS Omit 不阻止 JS)                          |
+
+### §170 Domains / Org-Governance 缺陷
+
+| #    | 严重度 | 文件                                                                                | 问题                                                          |
+| ---- | ------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1969 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:237                                | 无 PKCE 支持——auth code 流易被拦截                            |
+| 1970 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:237,519                            | userinfo 失败 fallback 到 mock admin 用户——攻击者故障注入提权 |
+| 1971 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:329-335                            | refresh token 不轮换——spec 要求 token rotation                |
+| 1972 | P0     | src/org-governance/sso-scim/scim-sync/scim-service.ts:135                           | 无租户隔离——全局 Map 返回任何租户数据                         |
+| 1973 | P0     | src/org-governance/knowledge-boundary/sharing-gate/index.ts:28                      | grant expiry 检查逻辑错误+字符串比较非日期比较                |
+| 1974 | P1     | src/domains/registry/domain-registry-service.ts:106-111                             | 缺 canary 状态——直接 registered→active 跳过 canary            |
+| 1975 | P1     | src/domains/registry/domain-registry-service.ts                                     | 无 archived 状态转换方法                                      |
+| 1976 | P1     | src/domains/registry/domain-model.ts:66-76                                          | DomainManifest 缺 resource quotas(CPU/内存/并发)              |
+| 1977 | P1     | src/org-governance/delegated-governance/delegated-governance-service.ts:46-53       | delegation 不做权限交集——grantee 可超越 grantor 权限          |
+| 1978 | P1     | src/org-governance/approval-routing/route-engine/index.ts:118                       | 金额阈值用 < 非 <=——恰等金额 fall through                     |
+| 1979 | P1     | src/org-governance/approval-routing/approval-routing-service.ts:78-91               | audit recordId 无时间戳/随机——同 requester+node 碰撞          |
+| 1980 | P1     | src/org-governance/compliance-engine/policy-resolver/index.ts:4-18                  | 无 deny-by-default——无策略时返回空对象=允许                   |
+| 1981 | P1     | src/org-governance/delegated-governance/governance-delegation-revocation-saga.ts:28 | cascadeWithinSlo 恒 true(length>=0 恒真)                      |
+| 1982 | P2     | src/org-governance/sso-scim/oidc/oidc-service.ts:426-433                            | 过期 session 清理多等 24h                                     |
+| 1983 | P2     | src/domains/recipes/recipe-executor.ts:34                                           | workflow 存在检查是正则 stub 非真实查询                       |
+| 1984 | P2     | src/org-governance/sso-scim/scim-sync/scim-service.ts:533-535                       | SCIM patch remove members 清空全部而非目标                    |
+| 1985 | P2     | src/org-governance/knowledge-boundary/knowledge-boundary-service.ts:163             | requiredGrantBoundaryIds 检查逻辑反——恒失败                   |
+| 1986 | P2     | src/org-governance/sso-scim/scim-sync/scim-service.ts:791-818                       | SCIM filter 忽略属性名——错误匹配 userName                     |
+
+### §171 Config / Bootstrap / Divisions 缺陷
+
+| #    | 严重度 | 文件                                           | 问题                                                                |
+| ---- | ------ | ---------------------------------------------- | ------------------------------------------------------------------- |
+| 1987 | P0     | config/risk/default.json                       | 仍为 6 因子风险模型——spec 要求 8 因子                               |
+| 1988 | P0     | config/security/dev.json                       | approvalMode:"auto" 绕过所有审批门                                  |
+| 1989 | P0     | config/security/default.json                   | sandboxMode:"workspace_write" 过度宽松默认——违反最小权限            |
+| 1990 | P0     | config/bootstrap/default.json                  | 无依赖顺序/健康检查门/层级声明——spec 要求严格依赖序                 |
+| 1991 | P1     | config/bootstrap/default.json                  | 无热重载/影响分析/canary 配置                                       |
+| 1992 | P1     | src/platform-architecture-bootstrap.ts:150-152 | getPlatformArchitectureServices 无条件重复注册                      |
+| 1993 | P1     | src/platform-architecture-bootstrap.ts:143-146 | register 后立即 get 无就绪门——可获取未初始化数据                    |
+| 1994 | P1     | divisions/\*/division.yaml                     | 无 division 声明 resource_boundaries 或 fault_domains               |
+| 1995 | P1     | divisions/devops+operations                    | trigger 重叠:deployment/monitoring 无消歧规则                       |
+| 1996 | P1     | divisions/engineering_ops+qa                   | trigger 重叠:bug/fix 无消歧规则                                     |
+| 1997 | P1     | divisions/general_ops+research                 | trigger 重叠:research/analyze/review 靠隐式优先级                   |
+| 1998 | P1     | config/risk/default.json                       | medium risk autoExecute:true+requiresApproval:false——违反纵深防御   |
+| 1999 | P2     | config/security/default.json                   | remoteWorkerRegistration.allowedCapabilities 含 "bash"——prod 无覆写 |
+| 2000 | P2     | config/domains/default.json                    | outputContracts schema {"type":"object"} 无属性——严格验证=无验证    |
+| 2001 | P2     | config/gateways/default.json                   | 网关配置无 rate limit/auth/CORS/TLS 设置                            |
+| 2002 | P2     | src/index.ts:41                                | PlatformRootEntryMode 与 PlatformStartupTargetKind 重复定义         |
+| 2003 | P2     | config/runtime/default.json                    | maxToolCalls:8/maxAgentRounds:6 过低——复杂流程静默截断              |
+| 2004 | P2     | config/security/threat-matrix.json             | STRIDE 模型缺 TAMPERING(config)/INFO_DISCLOSURE(agent memory)缓解   |
+
+### §172 SDK / Plugins 缺陷
+
+| #    | 严重度 | 文件                                              | 问题                                                                        |
+| ---- | ------ | ------------------------------------------------- | --------------------------------------------------------------------------- |
+| 2005 | P0     | src/sdk/client-sdk/api-client.ts:208              | 重试所有非 OK 含 4xx——POST/DELETE 重复执行                                  |
+| 2006 | P0     | src/sdk/client-sdk/api-client.ts                  | 无 ContractEnvelope 包装——spec 强制要求                                     |
+| 2007 | P0     | src/sdk/plugin-sdk/plugin-definition.ts:144-148   | 签名验证从不执行——spec 要求签名强制                                         |
+| 2008 | P0     | src/plugins/adapters/crm-adapter.ts:55-72         | execute 返回硬编码 mock——生产代码无实际 API 调用                            |
+| 2009 | P1     | src/sdk/harness-sdk/index.ts                      | 缺 beforeRun/afterRun/onError/onTimeout 生命周期钩子                        |
+| 2010 | P1     | src/sdk/client-sdk/api-client.ts                  | 无版本握手协议                                                              |
+| 2011 | P1     | src/sdk/client-sdk/api-client.ts                  | 无类型化错误——HTTP 错误被吞                                                 |
+| 2012 | P1     | src/sdk/admin-sdk/index.ts                        | 缺租户管理/配置操作/审计访问                                                |
+| 2013 | P1     | src/sdk/pack-sdk/pack-manifest.ts:42-104          | 无安全扫描/制品签名                                                         |
+| 2014 | P1     | src/plugins/adapters/game-dev-adapter.ts:26-28    | authenticate 是 no-op,execute 无 auth guard(同 asset-production/livestream) |
+| 2015 | P1     | src/sdk/plugin-sdk/plugin-definition.ts:140       | resourceLimits/sandboxTier 仅存储不强制——sandboxTier:"none" 无告警          |
+| 2016 | P1     | src/plugins/validators/basic-evaluator.ts:42      | requiredFields 空时跳过类型验证                                             |
+| 2017 | P1     | src/plugins/validators/basic-evaluator.ts:53      | null 被类型化为 "object"——通过 object 类型检查                              |
+| 2018 | P2     | src/sdk/plugin-sdk/plugin-test-harness.ts:196-213 | executePlugin 是 mock 永不运行真实插件代码                                  |
+| 2019 | P2     | src/sdk/workbench/index.ts:8-10                   | validatePluginManifest 是 no-op pass-through                                |
+| 2020 | P2     | src/plugins/adapters/github-adapter.ts:81         | repository 参数未 sanitize——URL 路径遍历                                    |
+| 2021 | P2     | src/sdk/pack-sdk/pack-scaffold-service.ts:266-273 | packId 模板注入——特殊字符注入生成文件                                       |
+## Round 34 — Prompt-Engine/Stability · Domains/Org-Governance · Config/Bootstrap · SDK/Plugins
+
+### §169 Prompt-Engine / Stability 缺陷
+
+| #    | 严重度 | 文件                                                                         | 问题                                                                         |
+| ---- | ------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1953 | P0     | src/platform/stability/stable-evidence-bundle.ts                             | 无密码学签名——spec 要求 tamper-evident,实际写纯 JSON 无 HMAC/签名/哈希链     |
+| 1954 | P0     | src/platform/prompt-engine/eval/quality-config-loader.ts:70                  | 裸 `catch {}` 吞掉所有错误静默返回宽松默认值——攻击者修改配置无告警           |
+| 1955 | P0     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:210     | 直接 mutate "不可变"快照对象(deprecated/updatedAt)——违反 spec 不可变快照要求 |
+| 1956 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts                   | 阶段顺序 shadow 在 canary 之前——spec 要求 canary→shadow→staged→full          |
+| 1957 | P1     | src/platform/prompt-engine/rollout/index.ts:6                                | PromptRolloutMode 仅 off/suggest/shadow——无 canary/staged/full 模式          |
+| 1958 | P1     | src/platform/prompt-engine/rollout/index.ts:30-119                           | 无自动回滚机制——spec 要求 metric regression 自动回滚                         |
+| 1959 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:348-378                  | A/B test 硬编码 0.85/0.90 分数——统计显著性测试无意义                         |
+| 1960 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:367                      | 显著性检验仅为阈值比较——非真正统计检验(t-test/bootstrap)                     |
+| 1961 | P1     | src/platform/prompt-engine/eval/execution-outcome-evaluator.ts:46-49         | 质量分权重和 1.2>1.0——clamp 丢失分辨率                                       |
+| 1962 | P1     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:388-409 | findBundle 忽略 version 参数——永远选默认 bundle                              |
+| 1963 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:24-29             | stable→rolled_back 自动前进——语义错误                                        |
+| 1964 | P2     | src/platform/prompt-engine/registry/prompt-version-manager.ts:234-238        | VersionLineage 接口重复声明(死代码)                                          |
+| 1965 | P2     | src/platform/prompt-engine/eval/cross-provider-judge-service.ts:200          | agreementScore 仅测 promote 比率——全票 rollback 得 0.0                       |
+| 1966 | P2     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:260-268 | traffic slot 未归一化权重——分配不公平                                        |
+| 1967 | P2     | src/platform/prompt-engine/eval/llm-eval-service.ts:566-568                  | JSON.parse(suite.cases) 无 try/catch                                         |
+| 1968 | P2     | src/platform/stability/stable-evidence-bundle-support.ts:441-450             | overrides 可运行时替换 name 字段(TS Omit 不阻止 JS)                          |
+
+### §170 Domains / Org-Governance 缺陷
+
+| #    | 严重度 | 文件                                                                                | 问题                                                          |
+| ---- | ------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1969 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:237                                | 无 PKCE 支持——auth code 流易被拦截                            |
+| 1970 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:237,519                            | userinfo 失败 fallback 到 mock admin 用户——攻击者故障注入提权 |
+| 1971 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:329-335                            | refresh token 不轮换——spec 要求 token rotation                |
+| 1972 | P0     | src/org-governance/sso-scim/scim-sync/scim-service.ts:135                           | 无租户隔离——全局 Map 返回任何租户数据                         |
+| 1973 | P0     | src/org-governance/knowledge-boundary/sharing-gate/index.ts:28                      | grant expiry 检查逻辑错误+字符串比较非日期比较                |
+| 1974 | P1     | src/domains/registry/domain-registry-service.ts:106-111                             | 缺 canary 状态——直接 registered→active 跳过 canary            |
+| 1975 | P1     | src/domains/registry/domain-registry-service.ts                                     | 无 archived 状态转换方法                                      |
+| 1976 | P1     | src/domains/registry/domain-model.ts:66-76                                          | DomainManifest 缺 resource quotas(CPU/内存/并发)              |
+| 1977 | P1     | src/org-governance/delegated-governance/delegated-governance-service.ts:46-53       | delegation 不做权限交集——grantee 可超越 grantor 权限          |
+| 1978 | P1     | src/org-governance/approval-routing/route-engine/index.ts:118                       | 金额阈值用 < 非 <=——恰等金额 fall through                     |
+| 1979 | P1     | src/org-governance/approval-routing/approval-routing-service.ts:78-91               | audit recordId 无时间戳/随机——同 requester+node 碰撞          |
+| 1980 | P1     | src/org-governance/compliance-engine/policy-resolver/index.ts:4-18                  | 无 deny-by-default——无策略时返回空对象=允许                   |
+| 1981 | P1     | src/org-governance/delegated-governance/governance-delegation-revocation-saga.ts:28 | cascadeWithinSlo 恒 true(length>=0 恒真)                      |
+| 1982 | P2     | src/org-governance/sso-scim/oidc/oidc-service.ts:426-433                            | 过期 session 清理多等 24h                                     |
+| 1983 | P2     | src/domains/recipes/recipe-executor.ts:34                                           | workflow 存在检查是正则 stub 非真实查询                       |
+| 1984 | P2     | src/org-governance/sso-scim/scim-sync/scim-service.ts:533-535                       | SCIM patch remove members 清空全部而非目标                    |
+| 1985 | P2     | src/org-governance/knowledge-boundary/knowledge-boundary-service.ts:163             | requiredGrantBoundaryIds 检查逻辑反——恒失败                   |
+| 1986 | P2     | src/org-governance/sso-scim/scim-sync/scim-service.ts:791-818                       | SCIM filter 忽略属性名——错误匹配 userName                     |
+
+### §171 Config / Bootstrap / Divisions 缺陷
+
+| #    | 严重度 | 文件                                           | 问题                                                                |
+| ---- | ------ | ---------------------------------------------- | ------------------------------------------------------------------- |
+| 1987 | P0     | config/risk/default.json                       | 仍为 6 因子风险模型——spec 要求 8 因子                               |
+| 1988 | P0     | config/security/dev.json                       | approvalMode:"auto" 绕过所有审批门                                  |
+| 1989 | P0     | config/security/default.json                   | sandboxMode:"workspace_write" 过度宽松默认——违反最小权限            |
+| 1990 | P0     | config/bootstrap/default.json                  | 无依赖顺序/健康检查门/层级声明——spec 要求严格依赖序                 |
+| 1991 | P1     | config/bootstrap/default.json                  | 无热重载/影响分析/canary 配置                                       |
+| 1992 | P1     | src/platform-architecture-bootstrap.ts:150-152 | getPlatformArchitectureServices 无条件重复注册                      |
+| 1993 | P1     | src/platform-architecture-bootstrap.ts:143-146 | register 后立即 get 无就绪门——可获取未初始化数据                    |
+| 1994 | P1     | divisions/\*/division.yaml                     | 无 division 声明 resource_boundaries 或 fault_domains               |
+| 1995 | P1     | divisions/devops+operations                    | trigger 重叠:deployment/monitoring 无消歧规则                       |
+| 1996 | P1     | divisions/engineering_ops+qa                   | trigger 重叠:bug/fix 无消歧规则                                     |
+| 1997 | P1     | divisions/general_ops+research                 | trigger 重叠:research/analyze/review 靠隐式优先级                   |
+| 1998 | P1     | config/risk/default.json                       | medium risk autoExecute:true+requiresApproval:false——违反纵深防御   |
+| 1999 | P2     | config/security/default.json                   | remoteWorkerRegistration.allowedCapabilities 含 "bash"——prod 无覆写 |
+| 2000 | P2     | config/domains/default.json                    | outputContracts schema {"type":"object"} 无属性——严格验证=无验证    |
+| 2001 | P2     | config/gateways/default.json                   | 网关配置无 rate limit/auth/CORS/TLS 设置                            |
+| 2002 | P2     | src/index.ts:41                                | PlatformRootEntryMode 与 PlatformStartupTargetKind 重复定义         |
+| 2003 | P2     | config/runtime/default.json                    | maxToolCalls:8/maxAgentRounds:6 过低——复杂流程静默截断              |
+| 2004 | P2     | config/security/threat-matrix.json             | STRIDE 模型缺 TAMPERING(config)/INFO_DISCLOSURE(agent memory)缓解   |
+
+### §172 SDK / Plugins 缺陷
+
+| #    | 严重度 | 文件                                              | 问题                                                                        |
+| ---- | ------ | ------------------------------------------------- | --------------------------------------------------------------------------- |
+| 2005 | P0     | src/sdk/client-sdk/api-client.ts:208              | 重试所有非 OK 含 4xx——POST/DELETE 重复执行                                  |
+| 2006 | P0     | src/sdk/client-sdk/api-client.ts                  | 无 ContractEnvelope 包装——spec 强制要求                                     |
+| 2007 | P0     | src/sdk/plugin-sdk/plugin-definition.ts:144-148   | 签名验证从不执行——spec 要求签名强制                                         |
+| 2008 | P0     | src/plugins/adapters/crm-adapter.ts:55-72         | execute 返回硬编码 mock——生产代码无实际 API 调用                            |
+| 2009 | P1     | src/sdk/harness-sdk/index.ts                      | 缺 beforeRun/afterRun/onError/onTimeout 生命周期钩子                        |
+| 2010 | P1     | src/sdk/client-sdk/api-client.ts                  | 无版本握手协议                                                              |
+| 2011 | P1     | src/sdk/client-sdk/api-client.ts                  | 无类型化错误——HTTP 错误被吞                                                 |
+| 2012 | P1     | src/sdk/admin-sdk/index.ts                        | 缺租户管理/配置操作/审计访问                                                |
+| 2013 | P1     | src/sdk/pack-sdk/pack-manifest.ts:42-104          | 无安全扫描/制品签名                                                         |
+| 2014 | P1     | src/plugins/adapters/game-dev-adapter.ts:26-28    | authenticate 是 no-op,execute 无 auth guard(同 asset-production/livestream) |
+| 2015 | P1     | src/sdk/plugin-sdk/plugin-definition.ts:140       | resourceLimits/sandboxTier 仅存储不强制——sandboxTier:"none" 无告警          |
+| 2016 | P1     | src/plugins/validators/basic-evaluator.ts:42      | requiredFields 空时跳过类型验证                                             |
+| 2017 | P1     | src/plugins/validators/basic-evaluator.ts:53      | null 被类型化为 "object"——通过 object 类型检查                              |
+| 2018 | P2     | src/sdk/plugin-sdk/plugin-test-harness.ts:196-213 | executePlugin 是 mock 永不运行真实插件代码                                  |
+| 2019 | P2     | src/sdk/workbench/index.ts:8-10                   | validatePluginManifest 是 no-op pass-through                                |
+| 2020 | P2     | src/plugins/adapters/github-adapter.ts:81         | repository 参数未 sanitize——URL 路径遍历                                    |
+| 2021 | P2     | src/sdk/pack-sdk/pack-scaffold-service.ts:266-273 | packId 模板注入——特殊字符注入生成文件                                       |
+
+## Round 35 — Orchestration/State-Evidence · Interaction/Interface · ADR/Contract · UI Features/Shared
+
+### §174 Orchestration / State-Evidence 深层缺陷
+
+| #    | 严重度 | 文件                                                                        | 问题                                                                                   |
+| ---- | ------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 2022 | P0     | src/platform/orchestration/oapeflir/stage-transition-fsm.ts:122             | FSM 阻止 feedback→observe 反向转换——OAPEFLIR 闭环不可能                                |
+| 2023 | P0     | src/platform/orchestration/oapeflir/stage-transition-fsm.ts:182             | recordStageCompletion("release") 设 index=8 越界——后续查询 crash                       |
+| 2024 | P0     | src/platform/state-evidence/events/cas/cas-service.ts:46-47                 | CAS 纯内存 Map——read-check-write 非原子,无分布式并发控制                               |
+| 2025 | P0     | src/platform/state-evidence/events/transactional-event-appender.ts:97       | 手动 BEGIN/COMMIT 绕过 db.transaction()——SQLite 无嵌套事务导致边界损坏                 |
+| 2026 | P1     | src/platform/state-evidence/events/cas/fencing-token-service.ts:100-110     | fencing token 按 `-` split 解析——UUID executionId 含连字符被错误切割                   |
+| 2027 | P1     | src/platform/state-evidence/memory/memory-service.ts:158                    | 内容 hash 截断至 16 hex(64-bit)——~10K 记录时碰撞概率显著                               |
+| 2028 | P1     | src/platform/state-evidence/memory/memory-decay-service.ts:194-195          | scope→SixLayerMemoryType 无映射——"project"等真实 scope 全回退 session 衰减率           |
+| 2029 | P1     | src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.ts:169   | 知识摄入跳过 quarantine——spec 要求隔离+推广生命周期                                    |
+| 2030 | P1     | src/platform/state-evidence/checkpoints/workflow-step-checkpoint.ts:255-258 | compensationModel 类型判断 typeof==="string" 但实际类型是 object——有效 checkpoint 被拒 |
+| 2031 | P1     | src/platform/state-evidence/memory/memory-service.ts:138-140                | 大小检查用 .length(UTF-16 码元)非字节——CJK 内容可超 1MB                                |
+| 2032 | P1     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:361-365        | 返回原始 assessment 而非 validatedAssessment——下游收到未验证数据                       |
+| 2033 | P2     | src/platform/state-evidence/events/durable-event-bus.ts:358                 | 重试循环 0..<=MAX(3) 实际 4 次——描述说"3次重试"                                        |
+| 2034 | P2     | src/platform/state-evidence/events/event-registry.ts:670-675                | getRegisteredConsumers 对 runtime 类型 undefined 解引 crash                            |
+| 2035 | P2     | src/platform/orchestration/harness/memory-manager.ts:10-39                  | HarnessMemoryManager 无 eviction/max-size——无界增长                                    |
+| 2036 | P2     | src/platform/state-evidence/memory/knowledge-promotion-service.ts:403       | verificationStatus 原地 mutate——违反追加-only 不可变审计                               |
+| 2037 | P2     | src/platform/state-evidence/memory/memory-retrieval-service.ts:288          | 参数化查询前手动转义引号——含引号 ID 永远 DELETE 不到                                   |
+
+### §175 Interaction / Interface 缺陷
+
+| #    | 严重度 | 文件                                                               | 问题                                                             |
+| ---- | ------ | ------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| 2038 | P0     | src/platform/interface/api/http-server/response-hardening.ts:12-18 | CORS origin:"\*"+credentials:true——回显任意 Origin=无 CORS       |
+| 2039 | P0     | src/platform/interface/api/http-server/approval-routes.ts:73,119   | approvalId 无校验/无 authz——任意 ID 注入批准/查看决策            |
+| 2040 | P0     | src/interaction/dashboard/dashboard-websocket-server.ts:330-346    | heartbeat 标记断开但不 unregister——连接/订阅 Map 无界泄漏        |
+| 2041 | P1     | src/interaction/goal-decomposer/index.ts:297-324                   | 检测到循环图仍设 ready_for_planner——planner 收到循环 DAG         |
+| 2042 | P1     | src/interaction/autonomy/level-manager/index.ts:3-9                | "frozen" 排序在 "full_auto" 之上——frozen agent 被比作更高自治    |
+| 2043 | P1     | src/platform/interface/api/http-server/task-routes.ts:255-256      | PATCH title 更新死代码——写入旧值不生效                           |
+| 2044 | P1     | src/interaction/goal-decomposer/index.ts:343-344                   | currentDepth 恒0/maxDepthReached 恒 false——递归深度防护无效      |
+| 2045 | P1     | src/platform/interface/api/http-server/admin-routes.ts:217         | listTenants(MAX_SAFE_INTEGER) 加载全量计算 total——OOM DoS        |
+| 2046 | P1     | src/interaction/proactive-agent/index.ts:392-421                   | 循环检测 stack.delete 在捕获前——incident 记录不完整 trigger 集   |
+| 2047 | P1     | src/platform/interface/channel-gateway/channel-gateway-service.ts  | 仅 outbound——inbound webhook 存原始 payload 不转 RequestEnvelope |
+| 2048 | P2     | src/interaction/proactive-agent/trigger-engine/index.ts:1-9        | resolveTriggerActionMode 导出但从未调用(死代码)                  |
+| 2049 | P2     | src/interaction/nl-gateway/index.ts:463-478 vs :668                | 状态机不一致——parseDetailed 返回 "Building" 但 buildTask 跳过    |
+| 2050 | P2     | src/interaction/dashboard/index.ts:402                             | attention queue 按 createdAt 排序忽略 priority                   |
+| 2051 | P2     | src/interaction/nl-gateway/index.ts:804-899                        | 会话上下文 Map 无 max-size/LRU——无界内存增长                     |
+| 2052 | P2     | src/platform/interface/api/middleware/                             | 无 rate limiting 中间件接入 pipeline                             |
+| 2053 | P2     | src/interaction/nl-gateway/index.ts:448-461                        | 注入检测 per-pattern 仅返回首个匹配——低估攻击严重度              |
+
+### §176 ADR / Contract 文档偏差
+
+| #    | 严重度 | 文件                                                           | 问题                                                                                         |
+| ---- | ------ | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 2054 | P0     | docs_zh/adr/060-explicit-planning-hub.md                       | 定义 `Plan{steps:PlanStep[]}` 作为 P3→P4 规范——spec/ADR-109 要求 PlanGraphBundle(DAG)        |
+| 2055 | P0     | docs_zh/adr/083-proactive-agent-and-progressive-autonomy.md    | 4 级自治——spec §9.5 已改为 8 种 canonical runtime mode                                       |
+| 2056 | P0     | docs_zh/adr/065-workflow-visual-debugger.md                    | 引用 WorkflowState 为权威——spec §5.5 已改为 HarnessRun/NodeRun                               |
+| 2057 | P1     | docs_zh/contracts/workflow_debugger_contract.md                | BreakpointDefinition 用 workflow_id+step_selector——应为 harnessRunId+nodeRunId               |
+| 2058 | P1     | docs_zh/contracts/perception_intelligence_plane_contract.md    | completeness_score 用 "steps" 单位——应为 NodeRun                                             |
+| 2059 | P1     | docs_zh/contracts/app_error_contract.md                        | 导出 WorkflowStateError——应为 HarnessRunError/NodeRunError                                   |
+| 2060 | P1     | docs_zh/contracts/platform_ops_agent_contract.md               | OpsMaturityLevel 用 legacy 4 值——应为 canonical runtime modes                                |
+| 2061 | P1     | docs_zh/adr/073-unified-resource-model.md                      | 将 TaskRecord/WorkflowState 列为"canonical objects"——spec §5.5 定义为 non-authoritative 投影 |
+| 2062 | P1     | docs_zh/adr/054-sla-tiered-guarantees.md                       | platinum 99.99% 无 failover/quorum/演练前提——spec §2.5 禁止                                  |
+| 2063 | P1     | docs_zh/adr/026-risk-control-architecture.md                   | 风险因子名/权重与 spec §10.2 八因子不匹配——因子已重命名重加权                                |
+| 2064 | P1     | docs_zh/adr/066-\*.md                                          | ADR-066 编号重复(compliance-report + plugin-spi)——违反唯一性                                 |
+| 2065 | P2     | docs_zh/adr/060-explicit-planning-hub.md                       | 引用 RuntimeExecuteBridge——不存在于任何 contract/spec                                        |
+| 2066 | P2     | docs_zh/contracts/domain_descriptor_and_onboarding_contract.md | DomainDescriptor 缺 latency_tier——ADR-105 要求                                               |
+| 2067 | P2     | docs_zh/contracts/cost_and_budget_contract.md                  | BudgetPolicy 含 max_steps——应为 max_node_runs                                                |
+| 2068 | P2     | docs_zh/adr/069-platform-self-operating-agent.md               | self-ops 能力无 OpsActionProposal/governance gate 引用                                       |
+
+### §177 UI Features / Shared Packages 缺陷
+
+| #    | 严重度 | 文件                                                         | 问题                                                             |
+| ---- | ------ | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| 2069 | P0     | ui/packages/shared/auth/src/auth-service.ts:37               | SSO token 从 URL query 提取——泄漏至 history/Referer/日志         |
+| 2070 | P0     | ui/packages/shared/api-client/src/ws-client.ts:88            | WS auth token 嵌入 URL query——代理/CDN 可见                      |
+| 2071 | P1     | ui/packages/shared/api-client/src/interceptors.ts:29         | auth interceptor 闭包捕获初始 token——refresh 后仍发旧 token      |
+| 2072 | P1     | ui/packages/shared/api-client/src/interceptors.ts:51         | CSRF interceptor 读取一次 meta tag——rotation 后 403              |
+| 2073 | P1     | ui/packages/shared/sync/src/offline-queue.ts:19-22           | enqueue 在 IndexedDB 加载前调用——persist 覆写未加载数据          |
+| 2074 | P1     | ui/packages/shared/sync/src/conflict-resolver.ts:19-23       | merge 仅浅展开——嵌套对象 server 值被覆盖=数据丢失                |
+| 2075 | P1     | ui/packages/shared/sync/src/sync-coordinator.ts:33-38        | flush() 返回 mutations 但不发送——离线变更被丢弃                  |
+| 2076 | P1     | ui/packages/shared/telemetry/src/index.ts:17,27              | events 数组无上限——长时间会话无界内存泄漏                        |
+| 2077 | P1     | ui/packages/shared/api-client/src/rest-client.ts:60-147      | MockTransport 忽略 HTTP method——POST/DELETE 返回 GET 数据        |
+| 2078 | P1     | ui/packages/ui-core/src/index.tsx:61                         | createFeatureModule 硬编码 codeSplit:false——spec 要求 lazy load  |
+| 2079 | P2     | ui/packages/shared/telemetry/src/index.ts:28-30              | telemetry export 错误静默吞——数据丢失无告警                      |
+| 2080 | P2     | ui/packages/shared/sync/src/offline-queue.ts:87-101          | 每次 readAll/writeAll 新建 IndexedDB 连接——无复用                |
+| 2081 | P2     | ui/packages/ui-core/src/layouts/index.ts:30                  | ThreePaneLayout 最小 720px——移动端溢出                           |
+| 2082 | P2     | ui/packages/ui-core/src/components/index.ts:156              | onChange 用 DOM Event 非 React.ChangeEvent——类型安全缺口         |
+| 2083 | P2     | ui/packages/ui-core/src/themes/index.ts:5-22                 | darkTheme 缺 accent/danger/success/warning 覆写——WCAG AAA 不达标 |
+| 2084 | P2     | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:58 | useEffect deps 缺 theme ref——主题切换后图表颜色 stale            |
+
+
+## Round 36 — Model-Gateway/Compliance · Tests/Ops-Maturity · Control-Plane/Scale-Eco · Execution/Shared
+
+### §179 Model-Gateway / Compliance 深层缺陷
+
+| #    | 严重度 | 文件                                                                                     | 问题                                                                        |
+| ---- | ------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 2085 | P0     | src/platform/compliance/crypto-shredding/crypto-shredding-service.ts:249                 | encryptRecordForSubject 返回 originalValue(明文 PII)——调用方日志/持久化泄漏 |
+| 2086 | P0     | src/platform/compliance/crypto-shredding/dek-manager.ts:207-208                          | markRotated() 删除旧 key——已加密数据无法解密,rotation 是破坏性的            |
+| 2087 | P0     | src/platform/model-gateway/cost-tracker/chargeback-service.ts:40-73                      | 成本追踪与执行非原子——crash 间丢失成本记录                                  |
+| 2088 | P1     | src/platform/model-gateway/provider-registry/circuit-breaker.ts:270-277                  | failureRate=(failures/windowSec)\*10——无请求总数分母,3次失败即50%触发 open  |
+| 2089 | P1     | src/platform/model-gateway/provider-registry/openai/openai-chat-service.ts:463-465       | streaming finish_reason 从首个 chunk 读——首 chunk 恒为 null,结果恒"stop"    |
+| 2090 | P1     | src/platform/model-gateway/degradation/degradation-controller.ts:357-359                 | getFallbackCandidates() 硬编码返回 []——D1 永不生效直跳 D2                   |
+| 2091 | P1     | src/platform/model-gateway/degradation/degradation-controller.ts:209-241                 | 递归 escalation 无深度限制——D1-D4 全失败时 stack overflow                   |
+| 2092 | P1     | src/platform/compliance/lineage/index.ts:17                                              | lineage DAG 可变(plain array)——无 append-only/完整性哈希/篡改检测           |
+| 2093 | P1     | src/platform/model-gateway/provider-registry/unified-chat-provider.ts:297-335            | streaming 绕过 circuit breaker——流失败不计入/open 时不拒绝                  |
+| 2094 | P2     | src/platform/compliance/crypto-shredding/dek-manager.ts:386                              | 返回 stale IV(元数据)非实际加密使用的 IV                                    |
+| 2095 | P2     | src/platform/model-gateway/provider-registry/anthropic/anthropic-chat-service.ts:305-306 | message role 映射是恒等——死代码                                             |
+| 2096 | P2     | src/platform/model-gateway/degradation/degradation-controller.ts:425-447                 | de-escalation 忽略 latency P99——高延迟持续振荡                              |
+| 2097 | P2     | src/platform/model-gateway/provider-registry/circuit-breaker.ts:155                      | 无最小样本量——3次失败即 open 忽略千次成功                                   |
+| 2098 | P2     | src/platform/compliance/encryption/index.ts:61-63                                        | field encryption 仍为 base64url 编码非 AES-256-GCM                          |
+| 2099 | P2     | src/platform/model-gateway/provider-registry/unified-chat-provider.ts:136-137            | MiniMax 表查找死代码——大小写不匹配永不命中                                  |
+
+### §180 Tests / Ops-Maturity 缺陷
+
+| #    | 严重度 | 文件                                                                           | 问题                                                                            |
+| ---- | ------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| 2100 | P0     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:155                       | injectFault() 仅返回配置不注入——无真实故障注入能力                              |
+| 2101 | P0     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:148                       | recordSteadyStateResult 按计数非按 hypothesis ID 去重——同假设重复记录可完成实验 |
+| 2102 | P0     | src/ops-maturity/drift-detection/benchmark-runner.ts:119                       | benchmark 用 Math.random() 模拟结果——promotion gate 决策无意义                  |
+| 2103 | P0     | src/ops-maturity/agent-lifecycle/agent-registry/index.ts:144                   | deprecated→active 有效——绕过所有 stage gate 直接回生产                          |
+| 2104 | P1     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:161                       | autoTerminate 不回滚已注入故障——spec 要求自动回滚                               |
+| 2105 | P1     | src/ops-maturity/agent-lifecycle/agent-lifecycle-service.ts:263                | bindTask 允许 draft/testing/staging 状态 agent                                  |
+| 2106 | P1     | src/ops-maturity/drift-detection/rollout-manager.ts:42                         | rollout 纯内存无持久化——重启丢失;rollback() 仅改状态无实际回滚                  |
+| 2107 | P1     | src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts:119 | ISO 时间字符串比较——非 UTC 格式静默错误;overdue/expired 反转                    |
+| 2108 | P1     | src/ops-maturity/agent-lifecycle/agent-performance-profiler.ts:65              | eviction 按 Map 插入序非按活跃度——最近活跃可被淘汰                              |
+| 2109 | P1     | tests/unit/ops-maturity/agent-lifecycle/agent-lifecycle-service.test.ts:10     | 测试用非法 shape——服务不验证 schema,测试无法检测 contract 违规                  |
+| 2110 | P1     | src/ops-maturity/drift-detection/reflection-engine.ts:44                       | 需≥2次同类失败才反思——单次严重安全事件被忽略                                    |
+| 2111 | P2     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:94                        | steadyStateCache 声明但从未读写(死代码)                                         |
+| 2112 | P2     | tests/integration/ops-maturity/chaos/ integration test:296                     | 测试断言通过原因错误——实验已提前完成而非仍 running                              |
+| 2113 | P2     | src/ops-maturity/drift-detection/cross-agent-analyzer/index.ts:29              | 单 agent 时 best===worst——语义误导                                              |
+| 2114 | P2     | src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts:66  | generate() 双重查找——fallback 是死代码                                          |
+| 2115 | P2     | src/ops-maturity/agent-lifecycle/version-manager/agent-version-manager.ts:86   | blue-green 互斥 revoke——只有单 slot 活跃,违反零停机切换                         |
+
+### §181 Control-Plane / Scale-Ecosystem 缺陷
+
+| #    | 严重度 | 文件                                                                                     | 问题                                                            |
+| ---- | ------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 2116 | P0     | src/platform/control-plane/config-center/config-rollout-service.ts:134                   | canary rollout target=100 直跳 FULL——跳过 5%/25%/50% 阶段       |
+| 2117 | P0     | src/scale-ecosystem/marketplace/pack-security-service.ts:154-169                         | sandbox test 仅扫权限列表不执行代码——恶意运行时行为通过         |
+| 2118 | P0     | src/scale-ecosystem/marketplace/auto-stop-loss-service.ts:727-741                        | human-approved playbook actions 永不执行——审批后 no-op          |
+| 2119 | P1     | src/platform/control-plane/incident-control/runbook-executor/markdown-parser.ts:48       | 严重度 pattern `\bhight\b` 拼写错误——P1 永不匹配 "high"         |
+| 2120 | P1     | src/platform/control-plane/config-center/config-versioning-service.ts:339                | rollback 浅拷贝——嵌套对象共享引用,修改腐败历史版本              |
+| 2121 | P1     | src/platform/control-plane/risk-control/risk-evaluation-engine.ts:14-16                  | 仅 6 因子——缺 reversibility+temporal_context(spec §10.2 要求 8) |
+| 2122 | P1     | src/platform/control-plane/risk-control/risk-config-loader.ts:39-73                      | JSON.parse 无 schema 验证——畸形配置直接 TypeError crash         |
+| 2123 | P1     | src/scale-ecosystem/sla-engine/sla-operations-service.ts:111                             | preemptionCapApplied 恒 true(值≤max 恒成立)                     |
+| 2124 | P1     | src/scale-ecosystem/integration/connector-framework-service.ts:95-105                    | 无 circuit breaker——单次 healthy 即信任,无状态机                |
+| 2125 | P1     | src/platform/control-plane/incident-control/incident-detector.ts:63-84                   | 仅生成 P1/P2——P3/P4 检查结果不创建 incident                     |
+| 2126 | P2     | src/platform/control-plane/incident-control/takeover-escalation-manager.ts:406-413       | 未确认 session 永不淘汰——Map 无界增长                           |
+| 2127 | P2     | src/platform/control-plane/incident-control/auto-stop-loss-service.ts:700-706            | executionCounts hourly key 无清理——慢泄漏                       |
+| 2128 | P2     | src/platform/control-plane/incident-control/auto-stop-loss-service.ts:619                | 升级级别靠 string includes "emergency"——大小写/措辞变体误判     |
+| 2129 | P2     | src/platform/control-plane/config-center/config-override-governance.ts:314-318           | requireAudit && !allowed 分支不可达(死代码)                     |
+| 2130 | P2     | src/platform/control-plane/incident-control/runbook-executor/runbook-executor.ts:238-241 | "只读"正则匹配 kubectl delete/docker rm 等破坏性命令            |
+| 2131 | P2     | src/scale-ecosystem/sla-engine/breach-detector/index.ts:17-24                            | 无 burn-rate/error-budget 追踪——仅点快照阈值                    |
+
+### §182 Execution / Shared Infrastructure 缺陷
+
+| #    | 严重度 | 文件                                                                   | 问题                                                                               |
+| ---- | ------ | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2132 | P0     | src/platform/execution/tool-executor/command-executor.ts:368-380       | stdout/stderr 无 maxBuffer——恶意命令输出 OOM                                       |
+| 2133 | P0     | src/platform/execution/ha/ha-coordinator-service-inner.ts:676-679      | verifyWriteAuthority 用 >=——stale leader 持当前 token 被接受,破坏 split-brain 防护 |
+| 2134 | P0     | src/platform/execution/ha/wal-checkpoint-service.ts:119                | sequenceCounter 纯内存——crash 后重置为 0 产生重复 WAL 序号                         |
+| 2135 | P1     | src/platform/shared/lifecycle/service-registry.ts:316-323              | 拓扑排序循环仅 warn——cycled 服务跳过 teardown 导致资源泄漏                         |
+| 2136 | P1     | src/platform/execution/tool-executor/command-security.ts:259           | 脚本后所有 flag 被阻——`python script.py --output foo` 被拒                         |
+| 2137 | P1     | src/platform/execution/tool-executor/command-security.ts:120           | META_SYNTAX_PATTERN 匹配 glob——`ls *.ts` 被误拒                                    |
+| 2138 | P1     | src/platform/shared/lifecycle/graceful-shutdown.ts:227                 | 超时 handler 继续后台运行——Promise.race 后 zombie async                            |
+| 2139 | P1     | src/platform/shared/observability/structured-logger.ts:437             | rotationScheduled per-instance 但 fileSink 全局——并发 rotation 文件损坏            |
+| 2140 | P1     | src/platform/execution/ha/leader-election-service.ts:512-514           | setInterval 无 unref()——阻止进程正常退出                                           |
+| 2141 | P1     | src/platform/execution/ha/leader-election-service.ts:545-547           | heartbeat setInterval 无 unref()——同上                                             |
+| 2142 | P1     | src/platform/execution/ha/wal-checkpoint-service.ts:597-599            | checkpoint interval 无 unref()——同上                                               |
+| 2143 | P1     | src/platform/execution/tool-executor/tool-parallel-executor.ts:406-407 | results 数组含 undefined hole——下游收到意外 undefined 元素                         |
+| 2144 | P2     | src/platform/shared/lifecycle/service-registry.ts:146-149              | `if(!has){delete}` 是 no-op——条件写反                                              |
+| 2145 | P2     | src/platform/execution/tool-executor/command-security.ts:92-111        | touch/mkdir 重复条目——Map last-wins 首条死代码                                     |
+| 2146 | P2     | src/platform/execution/tool-executor/tool-output-sanitizer.ts:28       | CONTROL_CHARS_REGEX 漏 0x1C-0x1F——FS/GS/RS/US 未清理                               |
+## Round 36 — Model-Gateway/Compliance · Tests/Ops-Maturity · Control-Plane/Scale-Eco · Execution/Shared
+
+### §179 Model-Gateway / Compliance 深层缺陷
+
+| #    | 严重度 | 文件                                                                                     | 问题                                                                        |
+| ---- | ------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 2085 | P0     | src/platform/compliance/crypto-shredding/crypto-shredding-service.ts:249                 | encryptRecordForSubject 返回 originalValue(明文 PII)——调用方日志/持久化泄漏 |
+| 2086 | P0     | src/platform/compliance/crypto-shredding/dek-manager.ts:207-208                          | markRotated() 删除旧 key——已加密数据无法解密,rotation 是破坏性的            |
+| 2087 | P0     | src/platform/model-gateway/cost-tracker/chargeback-service.ts:40-73                      | 成本追踪与执行非原子——crash 间丢失成本记录                                  |
+| 2088 | P1     | src/platform/model-gateway/provider-registry/circuit-breaker.ts:270-277                  | failureRate=(failures/windowSec)\*10——无请求总数分母,3次失败即50%触发 open  |
+| 2089 | P1     | src/platform/model-gateway/provider-registry/openai/openai-chat-service.ts:463-465       | streaming finish_reason 从首个 chunk 读——首 chunk 恒为 null,结果恒"stop"    |
+| 2090 | P1     | src/platform/model-gateway/degradation/degradation-controller.ts:357-359                 | getFallbackCandidates() 硬编码返回 []——D1 永不生效直跳 D2                   |
+| 2091 | P1     | src/platform/model-gateway/degradation/degradation-controller.ts:209-241                 | 递归 escalation 无深度限制——D1-D4 全失败时 stack overflow                   |
+| 2092 | P1     | src/platform/compliance/lineage/index.ts:17                                              | lineage DAG 可变(plain array)——无 append-only/完整性哈希/篡改检测           |
+| 2093 | P1     | src/platform/model-gateway/provider-registry/unified-chat-provider.ts:297-335            | streaming 绕过 circuit breaker——流失败不计入/open 时不拒绝                  |
+| 2094 | P2     | src/platform/compliance/crypto-shredding/dek-manager.ts:386                              | 返回 stale IV(元数据)非实际加密使用的 IV                                    |
+| 2095 | P2     | src/platform/model-gateway/provider-registry/anthropic/anthropic-chat-service.ts:305-306 | message role 映射是恒等——死代码                                             |
+| 2096 | P2     | src/platform/model-gateway/degradation/degradation-controller.ts:425-447                 | de-escalation 忽略 latency P99——高延迟持续振荡                              |
+| 2097 | P2     | src/platform/model-gateway/provider-registry/circuit-breaker.ts:155                      | 无最小样本量——3次失败即 open 忽略千次成功                                   |
+| 2098 | P2     | src/platform/compliance/encryption/index.ts:61-63                                        | field encryption 仍为 base64url 编码非 AES-256-GCM                          |
+| 2099 | P2     | src/platform/model-gateway/provider-registry/unified-chat-provider.ts:136-137            | MiniMax 表查找死代码——大小写不匹配永不命中                                  |
+
+### §180 Tests / Ops-Maturity 缺陷
+
+| #    | 严重度 | 文件                                                                           | 问题                                                                            |
+| ---- | ------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| 2100 | P0     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:155                       | injectFault() 仅返回配置不注入——无真实故障注入能力                              |
+| 2101 | P0     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:148                       | recordSteadyStateResult 按计数非按 hypothesis ID 去重——同假设重复记录可完成实验 |
+| 2102 | P0     | src/ops-maturity/drift-detection/benchmark-runner.ts:119                       | benchmark 用 Math.random() 模拟结果——promotion gate 决策无意义                  |
+| 2103 | P0     | src/ops-maturity/agent-lifecycle/agent-registry/index.ts:144                   | deprecated→active 有效——绕过所有 stage gate 直接回生产                          |
+| 2104 | P1     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:161                       | autoTerminate 不回滚已注入故障——spec 要求自动回滚                               |
+| 2105 | P1     | src/ops-maturity/agent-lifecycle/agent-lifecycle-service.ts:263                | bindTask 允许 draft/testing/staging 状态 agent                                  |
+| 2106 | P1     | src/ops-maturity/drift-detection/rollout-manager.ts:42                         | rollout 纯内存无持久化——重启丢失;rollback() 仅改状态无实际回滚                  |
+| 2107 | P1     | src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts:119 | ISO 时间字符串比较——非 UTC 格式静默错误;overdue/expired 反转                    |
+| 2108 | P1     | src/ops-maturity/agent-lifecycle/agent-performance-profiler.ts:65              | eviction 按 Map 插入序非按活跃度——最近活跃可被淘汰                              |
+| 2109 | P1     | tests/unit/ops-maturity/agent-lifecycle/agent-lifecycle-service.test.ts:10     | 测试用非法 shape——服务不验证 schema,测试无法检测 contract 违规                  |
+| 2110 | P1     | src/ops-maturity/drift-detection/reflection-engine.ts:44                       | 需≥2次同类失败才反思——单次严重安全事件被忽略                                    |
+| 2111 | P2     | src/ops-maturity/chaos/chaos-experiment-scheduler.ts:94                        | steadyStateCache 声明但从未读写(死代码)                                         |
+| 2112 | P2     | tests/integration/ops-maturity/chaos/ integration test:296                     | 测试断言通过原因错误——实验已提前完成而非仍 running                              |
+| 2113 | P2     | src/ops-maturity/drift-detection/cross-agent-analyzer/index.ts:29              | 单 agent 时 best===worst——语义误导                                              |
+| 2114 | P2     | src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts:66  | generate() 双重查找——fallback 是死代码                                          |
+| 2115 | P2     | src/ops-maturity/agent-lifecycle/version-manager/agent-version-manager.ts:86   | blue-green 互斥 revoke——只有单 slot 活跃,违反零停机切换                         |
+
+### §181 Control-Plane / Scale-Ecosystem 缺陷
+
+| #    | 严重度 | 文件                                                                                     | 问题                                                            |
+| ---- | ------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 2116 | P0     | src/platform/control-plane/config-center/config-rollout-service.ts:134                   | canary rollout target=100 直跳 FULL——跳过 5%/25%/50% 阶段       |
+| 2117 | P0     | src/scale-ecosystem/marketplace/pack-security-service.ts:154-169                         | sandbox test 仅扫权限列表不执行代码——恶意运行时行为通过         |
+| 2118 | P0     | src/scale-ecosystem/marketplace/auto-stop-loss-service.ts:727-741                        | human-approved playbook actions 永不执行——审批后 no-op          |
+| 2119 | P1     | src/platform/control-plane/incident-control/runbook-executor/markdown-parser.ts:48       | 严重度 pattern `\bhight\b` 拼写错误——P1 永不匹配 "high"         |
+| 2120 | P1     | src/platform/control-plane/config-center/config-versioning-service.ts:339                | rollback 浅拷贝——嵌套对象共享引用,修改腐败历史版本              |
+| 2121 | P1     | src/platform/control-plane/risk-control/risk-evaluation-engine.ts:14-16                  | 仅 6 因子——缺 reversibility+temporal_context(spec §10.2 要求 8) |
+| 2122 | P1     | src/platform/control-plane/risk-control/risk-config-loader.ts:39-73                      | JSON.parse 无 schema 验证——畸形配置直接 TypeError crash         |
+| 2123 | P1     | src/scale-ecosystem/sla-engine/sla-operations-service.ts:111                             | preemptionCapApplied 恒 true(值≤max 恒成立)                     |
+| 2124 | P1     | src/scale-ecosystem/integration/connector-framework-service.ts:95-105                    | 无 circuit breaker——单次 healthy 即信任,无状态机                |
+| 2125 | P1     | src/platform/control-plane/incident-control/incident-detector.ts:63-84                   | 仅生成 P1/P2——P3/P4 检查结果不创建 incident                     |
+| 2126 | P2     | src/platform/control-plane/incident-control/takeover-escalation-manager.ts:406-413       | 未确认 session 永不淘汰——Map 无界增长                           |
+| 2127 | P2     | src/platform/control-plane/incident-control/auto-stop-loss-service.ts:700-706            | executionCounts hourly key 无清理——慢泄漏                       |
+| 2128 | P2     | src/platform/control-plane/incident-control/auto-stop-loss-service.ts:619                | 升级级别靠 string includes "emergency"——大小写/措辞变体误判     |
+| 2129 | P2     | src/platform/control-plane/config-center/config-override-governance.ts:314-318           | requireAudit && !allowed 分支不可达(死代码)                     |
+| 2130 | P2     | src/platform/control-plane/incident-control/runbook-executor/runbook-executor.ts:238-241 | "只读"正则匹配 kubectl delete/docker rm 等破坏性命令            |
+| 2131 | P2     | src/scale-ecosystem/sla-engine/breach-detector/index.ts:17-24                            | 无 burn-rate/error-budget 追踪——仅点快照阈值                    |
+
+### §182 Execution / Shared Infrastructure 缺陷
+
+| #    | 严重度 | 文件                                                                   | 问题                                                                               |
+| ---- | ------ | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2132 | P0     | src/platform/execution/tool-executor/command-executor.ts:368-380       | stdout/stderr 无 maxBuffer——恶意命令输出 OOM                                       |
+| 2133 | P0     | src/platform/execution/ha/ha-coordinator-service-inner.ts:676-679      | verifyWriteAuthority 用 >=——stale leader 持当前 token 被接受,破坏 split-brain 防护 |
+| 2134 | P0     | src/platform/execution/ha/wal-checkpoint-service.ts:119                | sequenceCounter 纯内存——crash 后重置为 0 产生重复 WAL 序号                         |
+| 2135 | P1     | src/platform/shared/lifecycle/service-registry.ts:316-323              | 拓扑排序循环仅 warn——cycled 服务跳过 teardown 导致资源泄漏                         |
+| 2136 | P1     | src/platform/execution/tool-executor/command-security.ts:259           | 脚本后所有 flag 被阻——`python script.py --output foo` 被拒                         |
+| 2137 | P1     | src/platform/execution/tool-executor/command-security.ts:120           | META_SYNTAX_PATTERN 匹配 glob——`ls *.ts` 被误拒                                    |
+| 2138 | P1     | src/platform/shared/lifecycle/graceful-shutdown.ts:227                 | 超时 handler 继续后台运行——Promise.race 后 zombie async                            |
+| 2139 | P1     | src/platform/shared/observability/structured-logger.ts:437             | rotationScheduled per-instance 但 fileSink 全局——并发 rotation 文件损坏            |
+| 2140 | P1     | src/platform/execution/ha/leader-election-service.ts:512-514           | setInterval 无 unref()——阻止进程正常退出                                           |
+| 2141 | P1     | src/platform/execution/ha/leader-election-service.ts:545-547           | heartbeat setInterval 无 unref()——同上                                             |
+| 2142 | P1     | src/platform/execution/ha/wal-checkpoint-service.ts:597-599            | checkpoint interval 无 unref()——同上                                               |
+| 2143 | P1     | src/platform/execution/tool-executor/tool-parallel-executor.ts:406-407 | results 数组含 undefined hole——下游收到意外 undefined 元素                         |
+| 2144 | P2     | src/platform/shared/lifecycle/service-registry.ts:146-149              | `if(!has){delete}` 是 no-op——条件写反                                              |
+| 2145 | P2     | src/platform/execution/tool-executor/command-security.ts:92-111        | touch/mkdir 重复条目——Map last-wins 首条死代码                                     |
+| 2146 | P2     | src/platform/execution/tool-executor/tool-output-sanitizer.ts:28       | CONTROL_CHARS_REGEX 漏 0x1C-0x1F——FS/GS/RS/US 未清理                               |
+
+
+## Round 37 — State-Transition/Recovery · Desktop/Mobile · Routing/Escalation/Delegation · Multi-Region/Tenant
+
+### §184 State-Transition / Recovery / Lease 缺陷
+
+| #    | 严重度 | 文件                                                                         | 问题                                                                            |
+| ---- | ------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 2147 | P0     | src/platform/execution/recovery/runtime-recovery-service.ts:298              | stale 阈值 `Date.now()+thresholdMs` 加法反了——所有 run 被标记为 stale           |
+| 2148 | P0     | src/platform/execution/state-transition/transition-service.ts:286-288        | WorkflowTransitionService.transition() 无事务——read+write 非原子,并发丢更新     |
+| 2149 | P1     | src/platform/execution/state-transition/transition-service.ts:97             | Session `paused` 状态无入边——状态图孤立节点,永不可达                            |
+| 2150 | P1     | src/platform/execution/lease/execution-lease-service.ts:556-664              | validateWriteAccess 不检查 lease TTL 过期——过期 lease 仍可写                    |
+| 2151 | P1     | src/platform/execution/lease/execution-lease-service-async.ts:247-289        | async releaseLeaseSync 无 active 状态守卫——可重复释放已终止 lease               |
+| 2152 | P1     | src/platform/execution/recovery/runtime-recovery-decision-service.ts:162-196 | decision apply() 事务外读取——TOCTOU 基于陈旧数据做决策                          |
+| 2153 | P1     | src/platform/execution/recovery/repair-pipeline.ts:88-95                     | transitionTo 无状态验证——terminal 状态可退出/任意跳转                           |
+| 2154 | P1     | src/platform/execution/recovery/repair-pipeline.ts:192-222                   | handleReviewFailure 绕过 repair budget——无限修复循环                            |
+| 2155 | P1     | src/platform/execution/side-effect-manager.ts:89-101                         | targetStatusForReconciliation 无 default case——unknown action→undefined 状态    |
+| 2156 | P1     | src/platform/execution/recovery/replay-boundary-guard.ts:22                  | reexecution_replay 允许 real side effects——恢复重放产生重复外部变更             |
+| 2157 | P2     | src/platform/execution/state-transition/transition-service.ts:763-773        | resolveExistingExecutionId 绕过 repository 用 raw SQL——非 SQLite 后端无 FK 校验 |
+| 2158 | P2     | src/platform/execution/recovery/repair-pipeline.ts:233-239                   | escalate()/fail() 丢弃 reason 参数——审计不可追溯                                |
+| 2159 | P2     | src/platform/execution/lease/execution-lease-service-async.ts:207            | TTL 过期用字符串比较——timezone/精度不同时错误                                   |
+| 2160 | P2     | src/platform/execution/run-termination-cleanup.ts:47-48                      | 未知 resourceKind indexOf=-1 排最前——依赖序反转                                 |
+| 2161 | P2     | src/platform/execution/state-transition/transition-service.ts:43-46          | self-transition 静默 no-op——掩盖幂等性 bug,terminal 状态不触发补偿              |
+
+### §185 Desktop / Mobile 应用缺陷
+
+| #    | 严重度 | 文件                                         | 问题                                                                                |
+| ---- | ------ | -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 2162 | P0     | ui/apps/electron-win/src/main.ts:15-16       | IPC shell:run/shell:spawn 暴露——renderer 可执行任意 shell 命令                      |
+| 2163 | P0     | ui/apps/electron-win/src/preload.ts:33-34    | bridge 直接赋 window 属性非 contextBridge.exposeInMainWorld——绕过 context isolation |
+| 2164 | P0     | ui/apps/web/src/app-shell.tsx:8-22           | demoGuardContext 硬编码全管理员权限——所有路由守卫 no-op                             |
+| 2165 | P0     | ui/apps/electron-win/src/main.ts:21-23       | IPC files:read/files:write 无路径白名单——任意文件读写                               |
+| 2166 | P1     | ui/apps/web/src/runtime.ts:34                | API base URL fallback http://localhost:3000——非本地部署不安全                       |
+| 2167 | P1     | ui/apps/web/src/runtime.ts:44-46             | wsUrl 被忽略——WS 永远用 InMemoryWSClient(死代码)                                    |
+| 2168 | P1     | ui/apps/electron-win/index.html:2-10         | 无 CSP meta tag——XSS 可加载远程脚本+调用 IPC                                        |
+| 2169 | P1     | ui/apps/mobile/src/App.tsx:5                 | 平台硬编码 "android"——iOS 用户获得错误 adapter                                      |
+| 2170 | P1     | ui/apps/tauri-macos/src-tauri/src/lib.rs:7-8 | open_deep_link 无 scheme 验证——可打开 file:///javascript: URL                       |
+| 2171 | P1     | ui/apps/tauri-macos+linux Cargo.toml         | 无 tauri-plugin-updater——无自动更新/签名验证                                        |
+| 2172 | P2     | ui/apps/tauri-linux/src/index.ts:4-8         | DesktopShellManifest 缺 updateChannel                                               |
+| 2173 | P2     | ui/apps/electron-win/package.json            | 无 electron 依赖/无打包签名配置                                                     |
+| 2174 | P2     | ui/apps/mobile/package.json                  | 无 react-native 依赖——无法构建                                                      |
+| 2175 | P2     | ui/apps/web/src/runtime.ts:39                | createAuthInterceptor 用硬编码字符串非 session token                                |
+| 2176 | P2     | ui/apps/web/src/runtime.ts:55                | registerWebServiceWorker 注册不存在的 sw 文件——404                                  |
+
+### §186 Routing / Escalation / Delegation 缺陷
+
+| #    | 严重度 | 文件                                                                                        | 问题                                                                    |
+| ---- | ------ | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 2177 | P0     | src/platform/orchestration/escalation/index.ts:23-50                                        | 无分层升级策略——spec 要求 agent→team→human→incident,实际仅 flat 条件链  |
+| 2178 | P0     | src/platform/orchestration/agent-delegation/context-isolator.ts:174-175                     | parent.permissions.actions=0 时除零→Infinity→错误隔离级别               |
+| 2179 | P0     | src/platform/orchestration/agent-delegation/context-isolator.ts:213-221                     | MINIMAL 隔离从 requiredPermissions 取值不与 parent 交集——子可超越父权限 |
+| 2180 | P1     | src/platform/orchestration/routing/intake-router.ts:348-403                                 | 无 skill taxonomy/负载均衡——仅关键词匹配+字符长度启发                   |
+| 2181 | P1     | src/platform/orchestration/routing/workflow-planner.ts:97-99,163                            | 无 DAG 环检测——循环依赖导致无限执行                                     |
+| 2182 | P1     | src/platform/orchestration/routing/agent-team-service.ts:146                                | repair→validate 无限循环无退出——无 max retry/escalation 出口            |
+| 2183 | P1     | src/platform/orchestration/agent-delegation/delegation-manager.service.ts:104-116           | eviction 淘汰 active delegation——"not found"错误                        |
+| 2184 | P1     | src/platform/orchestration/agent-delegation/delegation-governance-service.ts:230-234        | delegationDepth 条件短路后续检查——depth+risk 组合规则永不匹配           |
+| 2185 | P1     | src/platform/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.ts:82 | depth<=maxDepth 用 parent depth——实际允许 max+1                         |
+| 2186 | P1     | src/platform/orchestration/agent-delegation/delegation-governance-service.ts:191-193        | addRule 允许重复 ruleId——delete 只删首个,重复 deny 不可覆盖             |
+| 2187 | P1     | src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.ts:18-29           | 自转换允许——重复记录+重置 transitionedAt 绕过 dwell-time                |
+| 2188 | P1     | src/platform/orchestration/learn/knowledge-promotion-service.ts:98-110                      | 批量 promotion event 仅引用首个 object——其余丢失 lineage                |
+| 2189 | P2     | src/platform/orchestration/agent-delegation/delegation-tracker.ts:281-285                   | getMetrics activeCount 恒等于 nodes 总数——completed/failed 恒0          |
+| 2190 | P2     | src/platform/orchestration/learn/learning-object-validator.ts:63-67                         | validateMany 静默丢弃无效对象无审计——诊断信号丢失                       |
+| 2191 | P2     | src/platform/orchestration/improve-rollout/canary-traffic-router.ts:29-34                   | hash 函数短 ID 有偏——canary_5 实际偏离目标                              |
+
+### §187 Multi-Region / Tenant / SLA 缺陷
+
+| #    | 严重度 | 文件                                                                    | 问题                                                          |
+| ---- | ------ | ----------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 2192 | P0     | src/scale-ecosystem/tenant-platform/data-plane-flow-service.ts:613      | scope null 绕过租户隔离——数据跨 tenant 泄漏到全局命名空间     |
+| 2193 | P0     | src/scale-ecosystem/multi-region/region-health-check-service.ts:330-331 | latency 降级是死代码——引用等式永不匹配,高延迟地区恒 healthy   |
+| 2194 | P0     | src/scale-ecosystem/multi-region/data-replicator/index.ts:112-114       | timer flush 返回值被丢弃——事件永久丢失                        |
+| 2195 | P0     | src/scale-ecosystem/sla-engine/resource-allocator/index.ts:6-10         | 无 ≤100% 验证——tiers 超额分配物理不存在的容量                 |
+| 2196 | P0     | src/scale-ecosystem/multi-region/cdc-replication-service.ts:277-280     | 复制队列只入不出——无界内存增长至 OOM                          |
+| 2197 | P1     | src/scale-ecosystem/multi-region/data-replicator/index.ts:246           | checkpoint pendingCount 用 total 非 errors——复制 lag 永久虚高 |
+| 2198 | P1     | src/scale-ecosystem/multi-region/data-replicator/index.ts:218-234       | retry 成功后 sequence 双重计数——ReplicationResult 不一致      |
+| 2199 | P1     | src/scale-ecosystem/multi-region/region-health-check-service.ts:347-349 | degraded 不累积 consecutiveFailures——failover 阈值永不触发    |
+| 2200 | P1     | src/scale-ecosystem/multi-region/region-health-check-service.ts:240-248 | 串行 health check——N regions O(N\*T) 延迟非 O(T)              |
+| 2201 | P1     | src/platform/execution/startup/startup-consistency-checker.ts:470-474   | fail_closed 不阻止接收流量——报告但不执行                      |
+| 2202 | P1     | src/scale-ecosystem/multi-region/failover-controller/index.ts:34-36     | failover 盲选 candidates[0]——无 health/latency 检查           |
+| 2203 | P2     | src/scale-ecosystem/multi-region/remote-session-state.ts:14-15          | failed→connected 无过渡——掩盖未解决故障                       |
+| 2204 | P2     | src/scale-ecosystem/multi-region/data-replicator/index.ts:170           | event ID Date.now()+random 非唯一保证——并发碰撞               |
+## Round 37 — State-Transition/Recovery · Desktop/Mobile · Routing/Escalation/Delegation · Multi-Region/Tenant
+
+### §184 State-Transition / Recovery / Lease 缺陷
+
+| #    | 严重度 | 文件                                                                         | 问题                                                                            |
+| ---- | ------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 2147 | P0     | src/platform/execution/recovery/runtime-recovery-service.ts:298              | stale 阈值 `Date.now()+thresholdMs` 加法反了——所有 run 被标记为 stale           |
+| 2148 | P0     | src/platform/execution/state-transition/transition-service.ts:286-288        | WorkflowTransitionService.transition() 无事务——read+write 非原子,并发丢更新     |
+| 2149 | P1     | src/platform/execution/state-transition/transition-service.ts:97             | Session `paused` 状态无入边——状态图孤立节点,永不可达                            |
+| 2150 | P1     | src/platform/execution/lease/execution-lease-service.ts:556-664              | validateWriteAccess 不检查 lease TTL 过期——过期 lease 仍可写                    |
+| 2151 | P1     | src/platform/execution/lease/execution-lease-service-async.ts:247-289        | async releaseLeaseSync 无 active 状态守卫——可重复释放已终止 lease               |
+| 2152 | P1     | src/platform/execution/recovery/runtime-recovery-decision-service.ts:162-196 | decision apply() 事务外读取——TOCTOU 基于陈旧数据做决策                          |
+| 2153 | P1     | src/platform/execution/recovery/repair-pipeline.ts:88-95                     | transitionTo 无状态验证——terminal 状态可退出/任意跳转                           |
+| 2154 | P1     | src/platform/execution/recovery/repair-pipeline.ts:192-222                   | handleReviewFailure 绕过 repair budget——无限修复循环                            |
+| 2155 | P1     | src/platform/execution/side-effect-manager.ts:89-101                         | targetStatusForReconciliation 无 default case——unknown action→undefined 状态    |
+| 2156 | P1     | src/platform/execution/recovery/replay-boundary-guard.ts:22                  | reexecution_replay 允许 real side effects——恢复重放产生重复外部变更             |
+| 2157 | P2     | src/platform/execution/state-transition/transition-service.ts:763-773        | resolveExistingExecutionId 绕过 repository 用 raw SQL——非 SQLite 后端无 FK 校验 |
+| 2158 | P2     | src/platform/execution/recovery/repair-pipeline.ts:233-239                   | escalate()/fail() 丢弃 reason 参数——审计不可追溯                                |
+| 2159 | P2     | src/platform/execution/lease/execution-lease-service-async.ts:207            | TTL 过期用字符串比较——timezone/精度不同时错误                                   |
+| 2160 | P2     | src/platform/execution/run-termination-cleanup.ts:47-48                      | 未知 resourceKind indexOf=-1 排最前——依赖序反转                                 |
+| 2161 | P2     | src/platform/execution/state-transition/transition-service.ts:43-46          | self-transition 静默 no-op——掩盖幂等性 bug,terminal 状态不触发补偿              |
+
+### §185 Desktop / Mobile 应用缺陷
+
+| #    | 严重度 | 文件                                         | 问题                                                                                |
+| ---- | ------ | -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 2162 | P0     | ui/apps/electron-win/src/main.ts:15-16       | IPC shell:run/shell:spawn 暴露——renderer 可执行任意 shell 命令                      |
+| 2163 | P0     | ui/apps/electron-win/src/preload.ts:33-34    | bridge 直接赋 window 属性非 contextBridge.exposeInMainWorld——绕过 context isolation |
+| 2164 | P0     | ui/apps/web/src/app-shell.tsx:8-22           | demoGuardContext 硬编码全管理员权限——所有路由守卫 no-op                             |
+| 2165 | P0     | ui/apps/electron-win/src/main.ts:21-23       | IPC files:read/files:write 无路径白名单——任意文件读写                               |
+| 2166 | P1     | ui/apps/web/src/runtime.ts:34                | API base URL fallback http://localhost:3000——非本地部署不安全                       |
+| 2167 | P1     | ui/apps/web/src/runtime.ts:44-46             | wsUrl 被忽略——WS 永远用 InMemoryWSClient(死代码)                                    |
+| 2168 | P1     | ui/apps/electron-win/index.html:2-10         | 无 CSP meta tag——XSS 可加载远程脚本+调用 IPC                                        |
+| 2169 | P1     | ui/apps/mobile/src/App.tsx:5                 | 平台硬编码 "android"——iOS 用户获得错误 adapter                                      |
+| 2170 | P1     | ui/apps/tauri-macos/src-tauri/src/lib.rs:7-8 | open_deep_link 无 scheme 验证——可打开 file:///javascript: URL                       |
+| 2171 | P1     | ui/apps/tauri-macos+linux Cargo.toml         | 无 tauri-plugin-updater——无自动更新/签名验证                                        |
+| 2172 | P2     | ui/apps/tauri-linux/src/index.ts:4-8         | DesktopShellManifest 缺 updateChannel                                               |
+| 2173 | P2     | ui/apps/electron-win/package.json            | 无 electron 依赖/无打包签名配置                                                     |
+| 2174 | P2     | ui/apps/mobile/package.json                  | 无 react-native 依赖——无法构建                                                      |
+| 2175 | P2     | ui/apps/web/src/runtime.ts:39                | createAuthInterceptor 用硬编码字符串非 session token                                |
+| 2176 | P2     | ui/apps/web/src/runtime.ts:55                | registerWebServiceWorker 注册不存在的 sw 文件——404                                  |
+
+### §186 Routing / Escalation / Delegation 缺陷
+
+| #    | 严重度 | 文件                                                                                        | 问题                                                                    |
+| ---- | ------ | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 2177 | P0     | src/platform/orchestration/escalation/index.ts:23-50                                        | 无分层升级策略——spec 要求 agent→team→human→incident,实际仅 flat 条件链  |
+| 2178 | P0     | src/platform/orchestration/agent-delegation/context-isolator.ts:174-175                     | parent.permissions.actions=0 时除零→Infinity→错误隔离级别               |
+| 2179 | P0     | src/platform/orchestration/agent-delegation/context-isolator.ts:213-221                     | MINIMAL 隔离从 requiredPermissions 取值不与 parent 交集——子可超越父权限 |
+| 2180 | P1     | src/platform/orchestration/routing/intake-router.ts:348-403                                 | 无 skill taxonomy/负载均衡——仅关键词匹配+字符长度启发                   |
+| 2181 | P1     | src/platform/orchestration/routing/workflow-planner.ts:97-99,163                            | 无 DAG 环检测——循环依赖导致无限执行                                     |
+| 2182 | P1     | src/platform/orchestration/routing/agent-team-service.ts:146                                | repair→validate 无限循环无退出——无 max retry/escalation 出口            |
+| 2183 | P1     | src/platform/orchestration/agent-delegation/delegation-manager.service.ts:104-116           | eviction 淘汰 active delegation——"not found"错误                        |
+| 2184 | P1     | src/platform/orchestration/agent-delegation/delegation-governance-service.ts:230-234        | delegationDepth 条件短路后续检查——depth+risk 组合规则永不匹配           |
+| 2185 | P1     | src/platform/orchestration/agent-delegation/collaboration-protocol/invariant-enforcer.ts:82 | depth<=maxDepth 用 parent depth——实际允许 max+1                         |
+| 2186 | P1     | src/platform/orchestration/agent-delegation/delegation-governance-service.ts:191-193        | addRule 允许重复 ruleId——delete 只删首个,重复 deny 不可覆盖             |
+| 2187 | P1     | src/platform/orchestration/improve-rollout/rollout/rollout-state-machine.ts:18-29           | 自转换允许——重复记录+重置 transitionedAt 绕过 dwell-time                |
+| 2188 | P1     | src/platform/orchestration/learn/knowledge-promotion-service.ts:98-110                      | 批量 promotion event 仅引用首个 object——其余丢失 lineage                |
+| 2189 | P2     | src/platform/orchestration/agent-delegation/delegation-tracker.ts:281-285                   | getMetrics activeCount 恒等于 nodes 总数——completed/failed 恒0          |
+| 2190 | P2     | src/platform/orchestration/learn/learning-object-validator.ts:63-67                         | validateMany 静默丢弃无效对象无审计——诊断信号丢失                       |
+| 2191 | P2     | src/platform/orchestration/improve-rollout/canary-traffic-router.ts:29-34                   | hash 函数短 ID 有偏——canary_5 实际偏离目标                              |
+
+### §187 Multi-Region / Tenant / SLA 缺陷
+
+| #    | 严重度 | 文件                                                                    | 问题                                                          |
+| ---- | ------ | ----------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 2192 | P0     | src/scale-ecosystem/tenant-platform/data-plane-flow-service.ts:613      | scope null 绕过租户隔离——数据跨 tenant 泄漏到全局命名空间     |
+| 2193 | P0     | src/scale-ecosystem/multi-region/region-health-check-service.ts:330-331 | latency 降级是死代码——引用等式永不匹配,高延迟地区恒 healthy   |
+| 2194 | P0     | src/scale-ecosystem/multi-region/data-replicator/index.ts:112-114       | timer flush 返回值被丢弃——事件永久丢失                        |
+| 2195 | P0     | src/scale-ecosystem/sla-engine/resource-allocator/index.ts:6-10         | 无 ≤100% 验证——tiers 超额分配物理不存在的容量                 |
+| 2196 | P0     | src/scale-ecosystem/multi-region/cdc-replication-service.ts:277-280     | 复制队列只入不出——无界内存增长至 OOM                          |
+| 2197 | P1     | src/scale-ecosystem/multi-region/data-replicator/index.ts:246           | checkpoint pendingCount 用 total 非 errors——复制 lag 永久虚高 |
+| 2198 | P1     | src/scale-ecosystem/multi-region/data-replicator/index.ts:218-234       | retry 成功后 sequence 双重计数——ReplicationResult 不一致      |
+| 2199 | P1     | src/scale-ecosystem/multi-region/region-health-check-service.ts:347-349 | degraded 不累积 consecutiveFailures——failover 阈值永不触发    |
+| 2200 | P1     | src/scale-ecosystem/multi-region/region-health-check-service.ts:240-248 | 串行 health check——N regions O(N\*T) 延迟非 O(T)              |
+| 2201 | P1     | src/platform/execution/startup/startup-consistency-checker.ts:470-474   | fail_closed 不阻止接收流量——报告但不执行                      |
+| 2202 | P1     | src/scale-ecosystem/multi-region/failover-controller/index.ts:34-36     | failover 盲选 candidates[0]——无 health/latency 检查           |
+| 2203 | P2     | src/scale-ecosystem/multi-region/remote-session-state.ts:14-15          | failed→connected 无过渡——掩盖未解决故障                       |
+| 2204 | P2     | src/scale-ecosystem/multi-region/data-replicator/index.ts:170           | event ID Date.now()+random 非唯一保证——并发碰撞               |
+
+
+## Round 38 — Platform Contracts/Types · UI Features · Contract Docs · Event Bus/Truth/Harness
+
+### §189 Platform Contracts / Types 类型系统冲突
+
+| #    | 严重度 | 文件                                                                                                                    | 问题                                                                               |
+| ---- | ------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2205 | P0     | src/platform/contracts/executable-contracts/index.ts:67 vs types/domain/task-types.ts:29                                | ArtifactRef 双定义不兼容——字段集完全不同,barrel 导出 type shadowing                |
+| 2206 | P0     | src/platform/contracts/execution-plan/index.ts:12 vs types/platform-contracts.ts:70                                     | ExecutionPlan 双定义——steps 类型/budget/traceId 全部冲突                           |
+| 2207 | P0     | src/platform/contracts/execution-receipt/index.ts:6 vs types/platform-contracts.ts:89                                   | ExecutionReceipt 双定义——status enum 完全不同                                      |
+| 2208 | P0     | src/platform/contracts/control-directive/index.ts:6 vs types/platform-contracts.ts:37                                   | ControlDirective 双定义——kind/type/issuedBy 类型/scope 全冲突                      |
+| 2209 | P0     | src/platform/contracts/state-command/index.ts:6 vs types/platform-contracts.ts:106                                      | StateCommand 双定义——action/type/entityId/aggregateId 冲突,子目录版缺 fencingToken |
+| 2210 | P0     | src/platform/contracts/request-envelope/index.ts:4 + types/platform-contracts.ts:12 + executable-contracts/index.ts:126 | RequestEnvelope 三重定义——三套不兼容字段集                                         |
+| 2211 | P1     | src/platform/contracts/executable-contracts/index.ts:158                                                                | HarnessRun 缺 §5.5 字段:orgId/budgetEnvelope/riskProfile/auditTrail/fencingToken   |
+| 2212 | P1     | src/platform/contracts/executable-contracts/index.ts:316                                                                | NodeRun 缺 §5.5 字段:sideEffects[]/compensation 未内嵌,leaseId/fencingToken 可选   |
+| 2213 | P1     | src/platform/contracts/executable-contracts/index.ts:583                                                                | PlatformFactEvent 缺 source/correlationId(必填)/schemaVersion                      |
+| 2214 | P1     | 整个代码库                                                                                                              | ContractEnvelope 类型完全不存在——§5.5 要求 {version,schema,payload,signature,ttl}  |
+| 2215 | P1     | src/platform/contracts/executable-contracts/schemas.ts:574 vs index.ts:580                                              | replayBehavior "simulate" vs "simulate_projection" 字符串不匹配——运行时比对失败    |
+| 2216 | P1     | src/platform-architecture-types.ts:1                                                                                    | 架构层类型文件零引用 §5.5 canonical types——canonical object map 无代码表示         |
+| 2217 | P2     | src/platform/contracts/index.ts:8-31                                                                                    | barrel 导出 RequestEnvelope 三个别名——消费方混淆                                   |
+| 2218 | P2     | src/platform/contracts/types/platform-contracts.ts:55 vs executable-contracts/index.ts:407                              | SideEffectRecord 双定义——effectId vs sideEffectId,6字段 vs 12+字段                 |
+
+### §190 Contract 文档偏差（续）
+
+| #    | 严重度 | 文件                                                                          | 问题                                                                                                                                                                                                                                                                         |
+| ---- | ------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2219 | P0     | docs_zh/contracts/ (缺失)                                                     | 14/16 spec-required contracts 不存在(distributed_consensus/data_lifecycle/execution_sandbox/evidence_chain/federation/harness_run_lifecycle/hitl/knowledge_lifecycle/prompt_management/multi_region_replication/recovery/risk_assessment/security_baseline/tenant_isolation) |
+| 2220 | P0     | docs_zh/contracts/app_error_contract.md:37-38                                 | AppError 用 task_id/execution_id——无 harness_run_id/node_run_id                                                                                                                                                                                                              |
+| 2221 | P0     | docs_zh/contracts/model_gateway_routing_contract.md:18                        | ModelRouteRequest.taskId 用 legacy 非 harnessRunId/nodeRunId                                                                                                                                                                                                                 |
+| 2222 | P1     | docs_zh/contracts/observability_contract.md:22-29                             | LogEvent 含 task_id 无 harness_run_id/node_run_id——日志无法与 runtime truth 关联                                                                                                                                                                                             |
+| 2223 | P1     | docs_zh/contracts/perception_intelligence_plane_contract.md:70-73             | ExecutionAssessment 用 execution_id+"steps"——应为 nodeRunId+NodeRun 计数                                                                                                                                                                                                     |
+| 2224 | P1     | docs_zh/contracts/audit_lineage_and_retention_contract.md:72                  | audit 字段含 execution_id? 无 harness_run_id——审计记录不可链接                                                                                                                                                                                                               |
+| 2225 | P1     | docs_zh/contracts/tool_skill_plugin_contract.md:60                            | SkillDefinition 用 steps——应引用 graph nodes                                                                                                                                                                                                                                 |
+| 2226 | P1     | docs_zh/contracts/dashboard_and_operator_experience_contract.md:51-58         | GuidedOnboardingSession/WorkflowBuilderDraft 用 steps——应产 PlanGraph                                                                                                                                                                                                        |
+| 2227 | P1     | docs_zh/contracts/knowledge_spi_contract.md:27                                | KnowledgeArchive 指定 SQLite——spec 限 MVP-only,知识平面需生产存储                                                                                                                                                                                                            |
+| 2228 | P1     | docs_zh/contracts/cross_region_routing_and_data_residency_contract.md:13      | ReplicationPolicy 列为 canonical 但无字段定义                                                                                                                                                                                                                                |
+| 2229 | P1     | docs_zh/contracts/prompt_engine_spi_contract.md:16-27                         | PromptDefinition 缺 tenantId——违反多租户隔离                                                                                                                                                                                                                                 |
+| 2230 | P2     | docs_zh/contracts/observability_contract.md:67-72                             | legacy metric alias taskMetrics/executionMetrics 无对应维度                                                                                                                                                                                                                  |
+| 2231 | P2     | docs_zh/contracts/model_gateway_routing_contract.md:19                        | ModelRouteRequest.sessionId 无生命周期 contract 定义                                                                                                                                                                                                                         |
+| 2232 | P2     | docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md:37-46 | 一致性章节仅 bullet 无对象定义/failure_behavior                                                                                                                                                                                                                              |
+
+### §191 Event Bus / Truth / Harness 缺陷
+
+| #    | 严重度 | 文件                                                                              | 问题                                                                                    |
+| ---- | ------ | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2233 | P0     | src/platform/state-evidence/events/dlq-service.ts:155                             | scheduleRetry 无 maxRetries 上限——无限重试,无 poison-pill quarantine                    |
+| 2234 | P0     | src/platform/state-evidence/truth/runtime-truth-repository.ts:196                 | storeAggregate 用 Map.set 覆写——truth 非 append-only 非不可变                           |
+| 2235 | P0     | src/platform/orchestration/harness/index.ts:633-656                               | runLoop planner/generator/evaluator 全在 budget gate 前执行——spec 要求每阶段前检查      |
+| 2236 | P0     | src/platform/orchestration/oapeflir/types/feedback-signal.ts:7-16                 | FeedbackSignal 缺 trustScore 和 evidenceRefs——spec 必需字段                             |
+| 2237 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:534-543                   | ensurePendingAcks 为所有 consumer 创建 ack 不过滤 eventType——虚假 pending 计数          |
+| 2238 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:301-306                   | deliverPendingNow 无 handler 时返回 pending.length 作为"已投递"——误导指标               |
+| 2239 | P1     | src/platform/state-evidence/events/projections/workflow-run-projection.ts:322     | subtask:failed 立即设 workflow=failed——无重试/fallback 路径                             |
+| 2240 | P1     | src/platform/state-evidence/events/projections/ (all 9)                           | processedEventIds 用 Array.includes() O(n) 去重——100K 事件重建 O(n²)                    |
+| 2241 | P1     | src/platform/orchestration/oapeflir/assessment-service.ts:66                      | routingDecision.division 硬编码 "coding"——非编码任务全部误路由                          |
+| 2242 | P1     | src/platform/state-evidence/events/layered-event-inbox.ts:21                      | records 数组只增不减无压缩——内存泄漏                                                    |
+| 2243 | P2     | src/platform/orchestration/harness/index.ts:505-506                               | non-accept decision 的 feedbackEnvelope 仅 assertInvariants 检查——appendStep 路径可绕过 |
+| 2244 | P2     | src/platform/state-evidence/events/projections/artifact-catalog-projection.ts:283 | artifact:updated 版本自增——乱序重放产生确定性但语义无意义的 version                     |
+| 2245 | P2     | src/platform/orchestration/harness/index.ts:508-523                               | hasOpenExecutionBlockers 仅 terminal run 检查——活跃 run 的 blocked-tool 不触发          |
+| 2246 | P2     | src/platform/orchestration/harness/evaluation/eval-run-service.ts:23              | actualEvidenceRefs 混入 reasonCodes——与 requiredEvidence 比对产生误匹配                 |
+| 2247 | P2     | src/platform/state-evidence/events/projections/governance-projection.ts:203-204   | mapEventToActionType fallback 将含"decision"事件映射为 approval_granted——语义错误       |
+## Round 38 — Platform Contracts/Types · UI Features · Contract Docs · Event Bus/Truth/Harness
+
+### §189 Platform Contracts / Types 类型系统冲突
+
+| #    | 严重度 | 文件                                                                                                                    | 问题                                                                               |
+| ---- | ------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2205 | P0     | src/platform/contracts/executable-contracts/index.ts:67 vs types/domain/task-types.ts:29                                | ArtifactRef 双定义不兼容——字段集完全不同,barrel 导出 type shadowing                |
+| 2206 | P0     | src/platform/contracts/execution-plan/index.ts:12 vs types/platform-contracts.ts:70                                     | ExecutionPlan 双定义——steps 类型/budget/traceId 全部冲突                           |
+| 2207 | P0     | src/platform/contracts/execution-receipt/index.ts:6 vs types/platform-contracts.ts:89                                   | ExecutionReceipt 双定义——status enum 完全不同                                      |
+| 2208 | P0     | src/platform/contracts/control-directive/index.ts:6 vs types/platform-contracts.ts:37                                   | ControlDirective 双定义——kind/type/issuedBy 类型/scope 全冲突                      |
+| 2209 | P0     | src/platform/contracts/state-command/index.ts:6 vs types/platform-contracts.ts:106                                      | StateCommand 双定义——action/type/entityId/aggregateId 冲突,子目录版缺 fencingToken |
+| 2210 | P0     | src/platform/contracts/request-envelope/index.ts:4 + types/platform-contracts.ts:12 + executable-contracts/index.ts:126 | RequestEnvelope 三重定义——三套不兼容字段集                                         |
+| 2211 | P1     | src/platform/contracts/executable-contracts/index.ts:158                                                                | HarnessRun 缺 §5.5 字段:orgId/budgetEnvelope/riskProfile/auditTrail/fencingToken   |
+| 2212 | P1     | src/platform/contracts/executable-contracts/index.ts:316                                                                | NodeRun 缺 §5.5 字段:sideEffects[]/compensation 未内嵌,leaseId/fencingToken 可选   |
+| 2213 | P1     | src/platform/contracts/executable-contracts/index.ts:583                                                                | PlatformFactEvent 缺 source/correlationId(必填)/schemaVersion                      |
+| 2214 | P1     | 整个代码库                                                                                                              | ContractEnvelope 类型完全不存在——§5.5 要求 {version,schema,payload,signature,ttl}  |
+| 2215 | P1     | src/platform/contracts/executable-contracts/schemas.ts:574 vs index.ts:580                                              | replayBehavior "simulate" vs "simulate_projection" 字符串不匹配——运行时比对失败    |
+| 2216 | P1     | src/platform-architecture-types.ts:1                                                                                    | 架构层类型文件零引用 §5.5 canonical types——canonical object map 无代码表示         |
+| 2217 | P2     | src/platform/contracts/index.ts:8-31                                                                                    | barrel 导出 RequestEnvelope 三个别名——消费方混淆                                   |
+| 2218 | P2     | src/platform/contracts/types/platform-contracts.ts:55 vs executable-contracts/index.ts:407                              | SideEffectRecord 双定义——effectId vs sideEffectId,6字段 vs 12+字段                 |
+
+### §190 Contract 文档偏差（续）
+
+| #    | 严重度 | 文件                                                                          | 问题                                                                                                                                                                                                                                                                         |
+| ---- | ------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2219 | P0     | docs_zh/contracts/ (缺失)                                                     | 14/16 spec-required contracts 不存在(distributed_consensus/data_lifecycle/execution_sandbox/evidence_chain/federation/harness_run_lifecycle/hitl/knowledge_lifecycle/prompt_management/multi_region_replication/recovery/risk_assessment/security_baseline/tenant_isolation) |
+| 2220 | P0     | docs_zh/contracts/app_error_contract.md:37-38                                 | AppError 用 task_id/execution_id——无 harness_run_id/node_run_id                                                                                                                                                                                                              |
+| 2221 | P0     | docs_zh/contracts/model_gateway_routing_contract.md:18                        | ModelRouteRequest.taskId 用 legacy 非 harnessRunId/nodeRunId                                                                                                                                                                                                                 |
+| 2222 | P1     | docs_zh/contracts/observability_contract.md:22-29                             | LogEvent 含 task_id 无 harness_run_id/node_run_id——日志无法与 runtime truth 关联                                                                                                                                                                                             |
+| 2223 | P1     | docs_zh/contracts/perception_intelligence_plane_contract.md:70-73             | ExecutionAssessment 用 execution_id+"steps"——应为 nodeRunId+NodeRun 计数                                                                                                                                                                                                     |
+| 2224 | P1     | docs_zh/contracts/audit_lineage_and_retention_contract.md:72                  | audit 字段含 execution_id? 无 harness_run_id——审计记录不可链接                                                                                                                                                                                                               |
+| 2225 | P1     | docs_zh/contracts/tool_skill_plugin_contract.md:60                            | SkillDefinition 用 steps——应引用 graph nodes                                                                                                                                                                                                                                 |
+| 2226 | P1     | docs_zh/contracts/dashboard_and_operator_experience_contract.md:51-58         | GuidedOnboardingSession/WorkflowBuilderDraft 用 steps——应产 PlanGraph                                                                                                                                                                                                        |
+| 2227 | P1     | docs_zh/contracts/knowledge_spi_contract.md:27                                | KnowledgeArchive 指定 SQLite——spec 限 MVP-only,知识平面需生产存储                                                                                                                                                                                                            |
+| 2228 | P1     | docs_zh/contracts/cross_region_routing_and_data_residency_contract.md:13      | ReplicationPolicy 列为 canonical 但无字段定义                                                                                                                                                                                                                                |
+| 2229 | P1     | docs_zh/contracts/prompt_engine_spi_contract.md:16-27                         | PromptDefinition 缺 tenantId——违反多租户隔离                                                                                                                                                                                                                                 |
+| 2230 | P2     | docs_zh/contracts/observability_contract.md:67-72                             | legacy metric alias taskMetrics/executionMetrics 无对应维度                                                                                                                                                                                                                  |
+| 2231 | P2     | docs_zh/contracts/model_gateway_routing_contract.md:19                        | ModelRouteRequest.sessionId 无生命周期 contract 定义                                                                                                                                                                                                                         |
+| 2232 | P2     | docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md:37-46 | 一致性章节仅 bullet 无对象定义/failure_behavior                                                                                                                                                                                                                              |
+
+### §191 Event Bus / Truth / Harness 缺陷
+
+| #    | 严重度 | 文件                                                                              | 问题                                                                                    |
+| ---- | ------ | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2233 | P0     | src/platform/state-evidence/events/dlq-service.ts:155                             | scheduleRetry 无 maxRetries 上限——无限重试,无 poison-pill quarantine                    |
+| 2234 | P0     | src/platform/state-evidence/truth/runtime-truth-repository.ts:196                 | storeAggregate 用 Map.set 覆写——truth 非 append-only 非不可变                           |
+| 2235 | P0     | src/platform/orchestration/harness/index.ts:633-656                               | runLoop planner/generator/evaluator 全在 budget gate 前执行——spec 要求每阶段前检查      |
+| 2236 | P0     | src/platform/orchestration/oapeflir/types/feedback-signal.ts:7-16                 | FeedbackSignal 缺 trustScore 和 evidenceRefs——spec 必需字段                             |
+| 2237 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:534-543                   | ensurePendingAcks 为所有 consumer 创建 ack 不过滤 eventType——虚假 pending 计数          |
+| 2238 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:301-306                   | deliverPendingNow 无 handler 时返回 pending.length 作为"已投递"——误导指标               |
+| 2239 | P1     | src/platform/state-evidence/events/projections/workflow-run-projection.ts:322     | subtask:failed 立即设 workflow=failed——无重试/fallback 路径                             |
+| 2240 | P1     | src/platform/state-evidence/events/projections/ (all 9)                           | processedEventIds 用 Array.includes() O(n) 去重——100K 事件重建 O(n²)                    |
+| 2241 | P1     | src/platform/orchestration/oapeflir/assessment-service.ts:66                      | routingDecision.division 硬编码 "coding"——非编码任务全部误路由                          |
+| 2242 | P1     | src/platform/state-evidence/events/layered-event-inbox.ts:21                      | records 数组只增不减无压缩——内存泄漏                                                    |
+| 2243 | P2     | src/platform/orchestration/harness/index.ts:505-506                               | non-accept decision 的 feedbackEnvelope 仅 assertInvariants 检查——appendStep 路径可绕过 |
+| 2244 | P2     | src/platform/state-evidence/events/projections/artifact-catalog-projection.ts:283 | artifact:updated 版本自增——乱序重放产生确定性但语义无意义的 version                     |
+| 2245 | P2     | src/platform/orchestration/harness/index.ts:508-523                               | hasOpenExecutionBlockers 仅 terminal run 检查——活跃 run 的 blocked-tool 不触发          |
+| 2246 | P2     | src/platform/orchestration/harness/evaluation/eval-run-service.ts:23              | actualEvidenceRefs 混入 reasonCodes——与 requiredEvidence 比对产生误匹配                 |
+| 2247 | P2     | src/platform/state-evidence/events/projections/governance-projection.ts:203-204   | mapEventToActionType fallback 将含"decision"事件映射为 approval_granted——语义错误       |
+
+
+## Round 39 — IAM/SSO · UI Features · CLI/SDK · Cross-Cutting Architecture
+
+### §193 IAM / SSO 深层缺陷
+
+| #    | 严重度 | 文件                                                                  | 问题                                                                                  |
+| ---- | ------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 2248 | P0     | src/org-governance/sso-scim/saml/index.ts:226                         | consumeAssertion 不传 IdP 公钥——xml-crypto 用 XML 内嵌 key,攻击者自签伪造断言         |
+| 2249 | P0     | src/platform/control-plane/iam/access-model.ts:183                    | resolvePrincipalAccessProfile 用 input.capabilities 替换非交集——viewer 可声称任意能力 |
+| 2250 | P0     | src/platform/control-plane/iam/access-model.ts:259-268                | manualTakeoverActive=true 时无条件 allowed:true——任何调用方注入此标志绕过全部检查     |
+| 2251 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:237-252              | fetchUserInfo 任何错误 fallback mock admin——allowMockFallback=false 时仍执行          |
+| 2252 | P1     | src/platform/control-plane/iam/field-encryption.ts:14-15              | normalizeKey 单次 SHA-256 无 salt/stretching——1字符密码即有效 key                     |
+| 2253 | P1     | src/platform/control-plane/iam/secret-management-service.ts:168-196   | requireSecret 返回明文无审计记录——绕过审计                                            |
+| 2254 | P1     | src/org-governance/sso-scim/oidc/oidc-service.ts:261-276              | token 比较用 === 非 timingSafeEqual——timing side-channel                              |
+| 2255 | P1     | src/org-governance/sso-scim/oidc/oidc-service.ts:302-307              | createSession 无并发 session 上限——无界增长                                           |
+| 2256 | P1     | src/org-governance/sso-scim/oidc/oidc-service.ts:404-409              | touchSession 不延 expiresAt——无滑动窗口过期                                           |
+| 2257 | P1     | src/platform/control-plane/iam/policy-engine.ts:246-263               | full-auto 绕过所有 risk escalation——高风险操作无审批                                  |
+| 2258 | P1     | src/platform/control-plane/iam/vault-http-secret-provider.ts:173-174  | vault token 硬编码 1h 假设 TTL——实际 TTL 短时静默失败                                 |
+| 2259 | P2     | src/platform/control-plane/iam/data-classification-service.ts:719-720 | 用户定义 regex 无 ReDoS 防护                                                          |
+| 2260 | P2     | src/org-governance/sso-scim/scim-sync/scim-service.ts:792             | applyFilter 丢弃字段名——所有过滤落 userName                                           |
+| 2261 | P2     | src/platform/control-plane/iam/audit-integrity-repository.ts:63-78    | chainPosition 无唯一性/顺序验证——完整性链可损坏                                       |
+| 2262 | P2     | src/org-governance/sso-scim/group-role-mapping-service.ts:9-11        | register 无 authz/roleId 验证——任何调用方映射 admin 角色                              |
+
+### §194 UI Features 深层缺陷
+
+| #    | 严重度 | 文件                                                          | 问题                                                                      |
+| ---- | ------ | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 2263 | P0     | ui/packages/features/hitl/src/hooks/index.ts:5-13             | HITL 仅 3 静态文本项——spec 5 能力(approve/reject/edit/escalate/defer)全缺 |
+| 2264 | P0     | ui/packages/features/takeover/src/hooks/index.ts:5-13         | takeover 无状态保持机制——无执行快照/上下文传递/所有权转移                 |
+| 2265 | P0     | ui/packages/features/domain-wizard/src/web/index.tsx          | 无多步向导/草稿持久化/后退导航——仅 3 按钮平面面板                         |
+| 2266 | P0     | ui/packages/features/governance-compliance/src/hooks/index.ts | 缺策略编辑器/审批队列/审计轨迹——仅 3 静态描述字符串                       |
+| 2267 | P1     | ui/packages/features/analytics/src/web/index.tsx              | 无时序图表/导出/自定义日期——trend 映射为整数非时间数据                    |
+| 2268 | P1     | ui/packages/features/task-cockpit/src/hooks/index.ts          | 无实时监控——无 polling/WS/refetchInterval                                 |
+| 2269 | P1     | ui/packages/features/settings/src/hooks/index.ts:105-107      | save() 同步设 saving→saved——React batch 使 saving 不可见                  |
+| 2270 | P1     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:41   | selectedId 不同步 fallback——高亮与详情面板不一致                          |
+| 2271 | P1     | ui/packages/features/task-cockpit/src/hooks/index.ts:40       | 同上 ghost selection bug                                                  |
+| 2272 | P1     | ui/packages/features/conversation/src/hooks/index.ts:42-45    | sendPrompt 每次强制 requestClarification——无法直接执行                    |
+| 2273 | P1     | ui/packages/features/workflow-cockpit/src/web/index.tsx:45-48 | 破坏性操作(release/pause)无确认对话框                                     |
+| 2274 | P2     | ui/packages/features/task-cockpit/src/web/index.tsx:48-53     | operator/escalation target 无输入验证——注入无效状态值                     |
+| 2275 | P2     | ui/packages/features/settings/src/hooks/index.ts:108-114      | activityItems 无界增长(同 workflow-cockpit/task-cockpit)                  |
+| 2276 | P2     | ui/packages/features/conversation/src/hooks/index.ts:19       | ConversationClient remount 丢失全部历史——无持久化                         |
+| 2277 | P2     | ui/packages/features/settings/src/hooks/index.ts:46-47        | useEffect deps 不含全部同步字段——部分偏好变更不触发                       |
+
+### §195 CLI / SDK 缺陷
+
+| #    | 严重度 | 文件                                        | 问题                                                           |
+| ---- | ------ | ------------------------------------------- | -------------------------------------------------------------- |
+| 2278 | P0     | src/sdk/cli/migrate-sqlite-to-pg.ts:68      | 表名+列名直接拼入 SQL——二阶注入(attacker-controlled SQLite DB) |
+| 2279 | P0     | src/sdk/cli/migrate-sqlite-to-pg.ts:123-128 | PG DSN(含密码)输出到 stdout——凭证泄漏                          |
+| 2280 | P0     | src/sdk/cli/api-server.ts:160-168           | AA_API_KEYS/JWT_SECRET 空时认证完全禁用——全端点无保护          |
+| 2281 | P1     | src/sdk/cli/api-server.ts:198               | webhookSecret 无最低熵检查——空/弱 secret 允许伪造              |
+| 2282 | P1     | src/sdk/cli/dlq-manager.ts:131-149          | retryDeadLetters 重置 ALL 死信为 waiting——无限制无确认         |
+| 2283 | P1     | src/sdk/cli/dlq-manager.ts:152-165          | purgeDeadLetters 硬删除无审计/归档——不可恢复                   |
+| 2284 | P1     | src/sdk/harness-sdk/index.ts:1-126          | 无 deterministic replay 方法——spec 要求                        |
+| 2285 | P1     | src/sdk/admin-sdk/index.ts:6-31             | 无 bulk 操作/事务语义——spec 要求                               |
+| 2286 | P1     | src/sdk/cli/index.ts:1-82                   | 无 PKCE OAuth login 命令——CLI 仅用 env bearer token            |
+| 2287 | P1     | src/sdk/cli/billing.ts:56-64                | Stripe secret key 明文内存无 redaction wrapper                 |
+| 2288 | P2     | src/sdk/cli/migrate-sqlite-to-pg.ts:79-117  | 跨表无单事务——中途崩溃破坏引用完整性                           |
+| 2289 | P2     | src/sdk/cli/shadow-snapshot.ts:34-44        | sandbox policy 限 workspaceRoot 但写 shadowRoot——超出策略范围  |
+| 2290 | P2     | src/sdk/cli/data-plane.ts:38-46             | ArtifactStore 无 sandboxPolicy——无约束文件写                   |
+| 2291 | P2     | src/sdk/client-sdk/api-client.ts:258-265    | cursor JSON.parse 无 schema 验证——注入任意属性                 |
+
+### §196 Cross-Cutting 架构级缺陷
+
+| #    | 严重度 | 文件                                                                 | 问题                                                                     |
+| ---- | ------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------ | --- |
+| 2292 | P0     | src/platform/interface/api/http-server/task-routes.ts:196-229        | POST /v1/tasks 无 idempotencyKey——重试创建重复任务                       |
+| 2293 | P0     | src/platform/interface/api/http-server/request-helpers.ts:17-28      | matchRoute 仅允许 GET/POST/OPTIONS——PATCH/DELETE 路由不可达              |
+| 2294 | P0     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:86-116  | 核心编排 hard-instantiate 12+ 服务无 DI——不可测/不可替换/不可断路        |
+| 2295 | P1     | src/platform/interface/api/http-server/ (全部路由)                   | 无 correlationId 从 HTTP header 传播——下游事件/RSM/span 无法关联         |
+| 2296 | P1     | src/platform/interface/api/http-server/task-routes.ts:207-226        | 任务创建直写 store 绕过 RSM——不产生 PlatformFactEvent 违反 INV-STATE-001 |
+| 2297 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:48           | 10ms poll 无 backpressure/max_queue_depth——无流控                        |
+| 2298 | P1     | src/platform/interface/api/http-server/response-hardening.ts:105     | API 版本仅静态 /v1/ 路径——无版本协商/弃用 header/content-type 版本       |
+| 2299 | P1     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:398-402 | 错误丢失阶段/任务/span 上下文——调试困难                                  |
+| 2300 | P2     | task-routes.ts + durable-event-bus.ts                                | 任务写入与事件发布在分离事务——crash 间产生孤立任务                       |
+| 2301 | P2     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:144-165 | 边界验证失败静默降级无 incident/metric——掩盖系统性漂移                   |
+| 2302 | P2     | src/platform/shared/lifecycle/service-registry.ts:66-67              | ServiceRegistry 全局单例——多租户/多 worker 共享无隔离                    |
+| 2303 | P2     | src/platform/execution/runtime-state-machine.ts:150-189              | RSM 创建 event 但不持久化——调用方可忘记写入                              |     |
+
+
+## Round 40 — Domains · Testing · Prompt-Engine/Proactive · HTTP Routes
+
+### §198 Domains (Quant-Trading / Legal / Registry) 缺陷
+
+| #    | 严重度 | 文件                                                             | 问题                                                                        |
+| ---- | ------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 2304 | P0     | src/domains/quant-trading/index.ts:7                             | 无领域特定风险因子(loss-limit/position-size/market-hours)——金融操作无安全门 |
+| 2305 | P0     | src/domains/legal/index.ts:7                                     | 无合规检查(jurisdiction/privilege/confidentiality)——违反知识边界门要求      |
+| 2306 | P0     | src/domains/quant-trading+legal/index.ts                         | 无 PlanGraphBundle——域 workflow 无 DAG 结构(spec 要求)                      |
+| 2307 | P0     | src/domains/recipes/recipe-executor.ts:34                        | workflow 可用性检查仅 regex——非"nonexistent"开头的任意 ID 报告成功但不执行  |
+| 2308 | P1     | src/domains/registry/plugin-ecosystem-runtime-service.ts:108-134 | buildPlan 调用两次——首次结果丢弃,两次间状态可变                             |
+| 2309 | P1     | src/domains/registry/plugin-ecosystem-runtime-service.ts:96      | ready 检查忽略 degraded/registered/loaded 插件——不可用插件被视为就绪        |
+| 2310 | P1     | src/domains/registry/domain-smoke-test.ts:56-64                  | 跨 workflow step 名碰撞——依赖图被覆写,环检测错误                            |
+| 2311 | P1     | src/domains/registry/domain-smoke-test.ts:80-81                  | 悬空依赖 continue 跳过——断裂 workflow 通过检查                              |
+| 2312 | P1     | src/domains/registry/domain-model.ts:87-91                       | bindingRole preprocess 非法值返回 undefined 非拒绝——掩盖类型错误            |
+| 2313 | P1     | src/domains/recipes/recipe-registry.ts:37-39                     | trigger phrase 子串首匹配——短词("trade")遮蔽长词("trade options")           |
+| 2314 | P1     | src/domains/registry/domain-registry-service.ts:41-43            | validated→registered 自动提升无事件——审计断裂                               |
+| 2315 | P2     | src/domains/registry/plugin-runtime-child.ts:89-92               | sandbox root 从 env 取无路径遍历检查                                        |
+| 2316 | P2     | src/domains/recipes/index.ts:22                                  | name 可选——注册无名 recipe 不可调试                                         |
+| 2317 | P2     | src/domains/registry/domain-registry-service.ts:106-111          | deprecate 无状态守卫——draft/archived 均可 deprecate                         |
+| 2318 | P2     | src/domains/registry/plugin-spi-registry.ts:646                  | failure threshold off-by-one: >maxFail 非 >=——第4次才禁用                   |
+
+### §199 Testing 基础设施缺陷
+
+| #    | 严重度 | 文件                                                                                     | 问题                                                         |
+| ---- | ------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 2319 | P0     | tests/unit/platform/workspace/sandbox-policy-security.test.ts:171                        | 断言 `allowed===true\|\|false` 恒真——命令注入测试永不失败    |
+| 2320 | P0     | tests/integration/core/runtime/distributed-lock-service.test.ts:21                       | `keys.length>=0` 恒真——分布式锁集成测试验证零行为            |
+| 2321 | P0     | tests/unit/platform/stability/stable-concurrency-rehearsal.test.ts:75                    | failedScenarios>0 时跳过断言——失败时测试仍通过               |
+| 2322 | P0     | tests/golden/config-file-generation.test.ts:38                                           | catch{assert.ok(true)} 吞掉所有失败——3个 golden 测试是 no-op |
+| 2323 | P1     | tests/unit/platform/stability/stable-chaos-smoke.test.ts:88                              | 仅断言 typeof fn==="function"——从不调用被测函数              |
+| 2324 | P1     | tests/unit/platform/stability/stable-evidence-campaign.test.ts:15-98                     | 测试自己的字面量——零生产代码执行                             |
+| 2325 | P1     | tests/unit/platform/stability/stable-chaos-smoke.test.ts:7-86                            | 共享 /tmp 无隔离——并行运行互相污染                           |
+| 2326 | P1     | tests/integration/security/input-validation.test.ts:408-436                              | 测试输入无控制字符——验证错误行为(合法命令被阻止)             |
+| 2327 | P1     | tests/unit/platform/stability/stable-concurrency-rehearsal.comprehensive.test.ts:179-231 | 类型 shape 自我断言——无生产代码覆盖                          |
+| 2328 | P1     | tests/e2e/distributed-lock-e2e.test.ts:270-327                                           | "并发"测试顺序执行——无 Promise.all/无 worker/无竞态          |
+| 2329 | P2     | tests/integration/security/path-traversal.test.ts:81-110                                 | 编码遍历测试先解码再传入——从未测试编码绕过                   |
+| 2330 | P2     | tests/integration/security/command-injection.test.ts:450-478                             | if(blocked){fail}——unknown status 静默通过                   |
+| 2331 | P2     | tests/integration/security/input-validation.test.ts:497-524                              | 断言 includes 3 个值覆盖全部结果——恒通过                     |
+| 2332 | P2     | tests/unit/platform/stability/stable-concurrency-rehearsal.test.ts:8-66                  | 每个场景测试跑全套——4x 冗余                                  |
+| 2333 | P2     | tests/integration/security/input-validation.test.ts:439-466                              | ok(succeeded\|\|blocked)——双值覆盖无信号                     |
+
+### §200 Prompt-Engine / Proactive-Agent 深层缺陷
+
+| #    | 严重度 | 文件                                                                         | 问题                                                              |
+| ---- | ------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| 2334 | P0     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:25-29             | nextStage("stable")→"rolled_back"——语义错误                       |
+| 2335 | P0     | src/interaction/proactive-agent/trigger-engine/index.ts:6-7                  | critical risk+!requireConfirmation→silent_record——违反自治边界    |
+| 2336 | P0     | src/platform/prompt-engine/rollout/index.ts:6                                | PromptRolloutMode 无 "canary"——mode 与 stage 断连                 |
+| 2337 | P0     | src/platform/prompt-engine/rollout/index.ts:65-76                            | activateRollout ready→active 无 dwell-time——跳过所有渐进阶段      |
+| 2338 | P1     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:261-268 | traffic slot 权重不归一——高于 total 的 slot 永不匹配              |
+| 2339 | P1     | src/platform/prompt-engine/registry/hierarchical-registry-service.ts:388-409 | findBundle 忽略 version 参数——deprecate 错误 bundle               |
+| 2340 | P1     | src/platform/prompt-engine/eval/cross-provider-judge-service.ts:200          | agreementScore=promoteCount/total——全票 rollback 得 0             |
+| 2341 | P1     | src/platform/prompt-engine/eval/cross-provider-judge-service.ts:21-22        | parallelEvaluation 声明未使用——judges 恒串行                      |
+| 2342 | P1     | src/platform/prompt-engine/eval/eval-dataset-judge-service.ts:490            | criterion scores 无 [0,1] range 验证——999/-5 腐败加权             |
+| 2343 | P1     | src/platform/prompt-engine/eval/eval-dataset-judge-service.ts:263-393        | 无 hold-out set 分割——全数据集训练+评估,违反统计严格性            |
+| 2344 | P1     | src/interaction/proactive-agent/index.ts:270-271                             | Math.max(0.6,...) 硬编码覆盖配置——proactive budget 强制≤40%       |
+| 2345 | P1     | src/interaction/proactive-agent/index.ts:392-430                             | detectFeedbackLoop 禁用整个祖先链非仅循环成员                     |
+| 2346 | P2     | src/platform/prompt-engine/registry/prompt-version-manager.ts:89-105         | compareVersions 返回任意整数非 -1/0/1——严格比较调用方 break       |
+| 2347 | P2     | src/interaction/proactive-agent/index.ts:316-322 vs trigger-engine           | 重复 action-mode 逻辑——行为不一致                                 |
+| 2348 | P2     | src/interaction/proactive-agent/index.ts:358-360                             | input.event 可 undefined 但 .name 无 optional chaining——TypeError |
+
+### §201 HTTP Routes / Interface 深层缺陷
+
+| #    | 严重度 | 文件                                                                           | 问题                                                                |
+| ---- | ------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| 2349 | P0     | src/platform/interface/api/http-server/incident-routes.ts:88                   | GET incident 无 tenant 隔离——void principal 后跨租户读              |
+| 2350 | P0     | src/platform/interface/api/http-server/incident-routes.ts:129                  | PATCH incident 无 tenant 隔离——跨租户修改                           |
+| 2351 | P0     | src/platform/interface/api/http-server/incident-routes.ts:66-67                | list incidents void tenantId——返回全租户数据                        |
+| 2352 | P0     | src/platform/interface/api/http-server/websocket-bridge.ts:99                  | JWT token 在 URL query——泄漏至日志/代理/Referer                     |
+| 2353 | P1     | src/platform/interface/api/http-server/incident-routes.ts:86                   | incidentId 无格式验证——任意字符串传入                               |
+| 2354 | P1     | src/platform/interface/api/middleware/sanitize.ts:22-39                        | JSON sanitize 无递归深度限制——10k 嵌套 stack overflow DoS           |
+| 2355 | P1     | src/platform/interface/api/http-server/websocket-bridge.ts:134                 | WS 无消息大小限制——GB 级 frame OOM DoS                              |
+| 2356 | P1     | src/platform/interface/api/http-server/billing-routes.ts:36-71                 | 无版本前缀 shadow route /billing/webhooks/reconcile——未文档化攻击面 |
+| 2357 | P1     | src/platform/interface/api/http-server/gateway-routes.ts:129-142               | webhookSecret=null 时签名验证静默跳过——无告警                       |
+| 2358 | P1     | src/platform/interface/api/http-server/incident-routes.ts:136-143              | PATCH 仅含 owner 时 throw "transition to undefined"——逻辑 bug       |
+| 2359 | P2     | src/platform/interface/api/http-server/gateway-routes.ts:101                   | POST send 返回 200 非 201——语义错误                                 |
+| 2360 | P2     | src/platform/interface/api/http-server/gateway-routes.ts:93-108                | POST send 无 idempotency-key                                        |
+| 2361 | P2     | src/platform/interface/api/http-server/stream-bridge.ts:182-184                | sequence/replay/dropped maps 无界增长——慢泄漏                       |
+| 2362 | P2     | src/platform/interface/api/http-server/incident-routes.ts:99                   | POST /v1/incidents 无 idempotency-key                               |
+| 2363 | P2     | src/platform/interface/channel-gateway/channel-gateway-delivery-service.ts:287 | generateNonce slice(0,32) 熵减半(128-bit 非 256-bit)                |
+
+
+## Round 41 — 深度补充审计（ops-maturity / scale-ecosystem / SDK / plugins / config / UI-shared / bootstrap）
+
+### §203 Ops-Maturity 深层缺陷（workflow-debugger / drift-detection / explainability / SLA）
+
+| #    | 严重度 | 文件                                                                | 问题                                                                            |
+| ---- | ------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 2364 | P0     | src/ops-maturity/drift-detection/benchmark-runner.ts:118            | Math.random() 模拟基准结果——晋升决策不确定，违反规范确定性证据驱动评估          |
+| 2365 | P0     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts:91  | 重放执行无 ReplaySandboxPolicy 守卫——违反 INV-REPLAY-001 重放不得产生真实副作用 |
+| 2366 | P0     | src/scale-ecosystem/integration/connector-framework-service.ts:107  | execute() 未经 SideEffectManager 记录——违反 INV-SIDEEFFECT-001                  |
+| 2367 | P0     | src/platform/shared/observability/slo-alerting-service.ts:240       | 通知 fetch 发送前即返回 delivered:true——投递失败静默吞没                        |
+| 2368 | P1     | src/ops-maturity/workflow-debugger/execution-tracer.ts:28           | workflowId/stepId 使用废弃术语——应为 PlanGraph/NodeRun/NodeAttempt              |
+| 2369 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts:18  | DebugSnapshot 使用 executionId/stepId——与§5.5 canonical 对象模型不一致          |
+| 2370 | P1     | src/ops-maturity/drift-detection/evidence-store.ts:46               | InMemoryEvidenceStore.records 无上界——持续 append OOM                           |
+| 2371 | P1     | src/scale-ecosystem/sla-engine/resource-allocator/index.ts:6        | allocateReservedCapacity 未校验 reservedPercent ≤100%——可超额分配               |
+| 2372 | P1     | src/platform/shared/lifecycle/service-registry.ts:146               | if(!has){delete}——死代码无效果                                                  |
+| 2373 | P1     | src/ops-maturity/explainability/explanation-pipeline-service.ts:80  | L3 depth ttlHours:0 但无 TTL 驱逐——条目永驻内存                                 |
+| 2374 | P1     | src/platform/shared/observability/slo-alerting-service.ts:620       | acknowledgeAlert 直接 mutate readonly 语义对象                                  |
+| 2375 | P1     | src/ops-maturity/drift-detection/rollout-manager.ts:43              | rollouts Map 无容量限制——已完成 rollout 无清理                                  |
+| 2376 | P1     | src/ops-maturity/drift-detection/reflection-engine.ts:62            | 自增 counter 生成 ID——重启后冲突                                                |
+| 2377 | P1     | src/ops-maturity/drift-detection/proposal-engine.ts:100             | 同上 prop\_${++counter}——重启后 ID 冲突                                         |
+| 2378 | P1     | src/ops-maturity/workflow-debugger/execution-tracer.ts:103          | durationMs = now - traceStart——测量的是总经过时间非单事件时长                   |
+| 2379 | P1     | src/platform/shared/observability/slo-alerting-service.ts:738       | executeRunbook() 恒标 completed——无实际执行逻辑                                 |
+| 2380 | P1     | src/ops-maturity/drift-detection/reflection-engine.ts:94            | new Date() 替代平台 nowIso()——测试不确定                                        |
+| 2381 | P1     | src/ops-maturity/drift-detection/proposal-engine.ts:93              | 同上 new Date() 替代 nowIso()                                                   |
+| 2382 | P1     | src/scale-ecosystem/integration/connector-framework-service.ts:107  | execute() 返回模拟结果非实际调用——connector 功能未实现                          |
+| 2383 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts:124 | breakpoints 赋值可变数组至 readonly 字段——绕过只读约束                          |
+
+### §204 SDK / Plugins / Config / Divisions 缺陷
+
+| #    | 严重度 | 文件                                                | 问题                                                                               |
+| ---- | ------ | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2384 | P0     | config/security/default.json:7                      | allowedCapabilities 含 "mcp" 但 PluginSandboxPolicy 无此能力类型——违反默认安全收敛 |
+| 2385 | P0     | src/plugins/adapters/crm-adapter.ts:52              | token 明文前 8 字符存入 fingerprint——泄露敏感凭据片段                              |
+| 2386 | P1     | src/sdk/admin-sdk/index.ts:6                        | 缺 resumeHarnessRun/listWorkers/getConfig 等 Admin API——运维脚本化能力不足         |
+| 2387 | P1     | src/sdk/admin-sdk/index.ts:1                        | 未发送 X-Platform-Version/X-SDK-Version 请求头——违反 SDK 兼容性契约                |
+| 2388 | P1     | src/sdk/harness-sdk/index.ts:34                     | appendStep 用 stage 字段映射 nodeRunId——应为 NodeRun/NodeAttempt                   |
+| 2389 | P1     | src/sdk/harness-sdk/index.ts:27                     | 缺 reserveBudget/settleBudget——违反 INV-BUDGET-001 先预留再执行                    |
+| 2390 | P1     | config/runtime/default.json:4                       | defaultStepTimeoutMs 使用废弃 step 术语——应为 defaultNodeRunTimeoutMs              |
+| 2391 | P1     | config/risk/default.json:2                          | $schema 引用 .ts 文件——非合法 JSON Schema                                          |
+| 2392 | P1     | src/plugins/validators/basic-evaluator.ts:14        | initialize/shutdown 空实现——跳过 PluginLifecycleHooks 完整生命周期                 |
+| 2393 | P1     | src/plugins/adapters/game-dev-adapter.ts:26         | authenticate() 空实现——接受任意凭据                                                |
+| 2394 | P1     | src/plugins/builtin-plugin-registry.ts:21           | 无插件生命周期状态跟踪(registered→loaded→active→inactive→unloaded)                 |
+| 2395 | P1     | src/plugins/operations-config.ts:160                | operations 域缺 monitoring_review workflow 输出合约                                |
+| 2396 | P1     | config/bootstrap/default.json:2                     | phase "phase_1a" 使用废弃 Phase 术语——应为 Ring 1/2/3                              |
+| 2397 | P1     | src/domains/recipes/index.ts:3                      | DomainRecipeSchema 缺 riskLevel/budgetHint/requiredApproval                        |
+| 2398 | P1     | src/sdk/pack-sdk/pack-manifest.ts:26                | BusinessPackManifest 缺 rollbackStrategy——违反"先可恢复再自动化"宪法               |
+| 2399 | P1     | src/plugins/adapters/asset-production-adapter.ts:15 | adapterType "figma" 不在 ExternalAdapterPlugin 联合类型中——类型不匹配              |
+| 2400 | P2     | config/security/default.json:3                      | sandboxMode 默认 "workspace_write"——应为 "read_only"                               |
+| 2401 | P2     | config/gateways/default.json:1                      | 缺 timeout/circuitBreaker/fallbackMode 字段                                        |
+| 2402 | P2     | divisions/operations/schemas/ops-output.json:1      | draft-07 vs 其他 division 的 draft/2020-12——schema 版本不统一                      |
+| 2403 | P2     | config/domains/default.json:98                      | coding 域 status "testing" 与 Pack 生命周期状态命名不一致                          |
+| 2404 | P2     | divisions/analytics/division.yaml:1                 | analytics/devops/operations trigger "monitoring" 重叠——无优先级仲裁                |
+| 2405 | P2     | src/plugins/growth-config.ts:201                    | externalAdapters 声明 jira 但无实现——声明与实现不一致                              |
+| 2406 | P2     | src/domains/recipes/recipe-executor.ts:34           | 硬编码 regex stub 判断 workflow 不存在——应查询 WorkflowRegistry                    |
+
+### §205 UI Shared 层 / Features 深层缺陷
+
+| #    | 严重度 | 文件                                                              | 问题                                                                                |
+| ---- | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 2407 | P0     | ui/packages/shared/platform/src/web-platform-adapter.ts:9         | 安全凭证存 localStorage——XSS 完全暴露，违反 UP-6 Token 安全存储                     |
+| 2408 | P0     | ui/packages/shared/platform/src/mobile-platform-adapter.ts:10     | analyticsConsentDefault:true——违反 GDPR opt-in 原则                                 |
+| 2409 | P0     | ui/packages/features/conversation/src/hooks/index.ts:46           | 跳过 intake pipeline 本地模拟 execute——违反 P1→P2 必经控制面不变量                  |
+| 2410 | P0     | src/platform/contracts/control-directive/index.ts:4               | ControlDirective 仍为 canonical 导出——§5.2 要求 v4.2 起为 deprecated alias          |
+| 2411 | P0     | src/platform/contracts/execution-plan/index.ts:17                 | ExecutionPlan 仍用线性 steps[]——§5.3 要求 PlanGraphBundle 为唯一执行契约            |
+| 2412 | P1     | ui/packages/features/settings/src/hooks/index.ts:106              | save() 无实际 API 调用——违反 UP-1 API-First 原则                                    |
+| 2413 | P1     | ui/packages/shared/sync/src/conflict-resolver.ts:12               | merge 用 {...server,...local} 简单覆盖——local 无条件覆写 server 可致数据丢失        |
+| 2414 | P1     | ui/packages/shared/sync/src/offline-queue.ts:19                   | enqueue 后 persist 失败仅存内存——崩溃丢失离线变更                                   |
+| 2415 | P1     | ui/packages/shared/sync/src/types.ts:1                            | OfflineMutation 缺 tenantId/traceId/principal——flush 后无法满足 ContractEnvelope    |
+| 2416 | P1     | ui/packages/shared/telemetry/src/index.ts:74                      | OTLP POST 无认证头——违反多租户隔离                                                  |
+| 2417 | P1     | ui/packages/shared/platform/src/base-platform-adapter.ts:96       | runShell(command) 无白名单——命令注入风险                                            |
+| 2418 | P1     | ui/packages/shared/nl-client/src/index.ts:16                      | 纯内存客户端模拟无后端交互——UI 状态与 truth 不同步                                  |
+| 2419 | P1     | docs_zh/adr/018-rollout-eleven-state-machine.md:1                 | Superseded ADR 仍含可执行规格——与 ADR-075 六级状态机不兼容                          |
+| 2420 | P1     | src/platform/execution/state-transition/transition-service.ts:228 | 仍用 TaskStatus/WorkflowStatus TransitionCommand——应统一为 RuntimeTransitionCommand |
+| 2421 | P2     | ui/packages/features/alerts/src/hooks/index.ts:6                  | 告警无权限过滤——违反最小权限展示                                                    |
+| 2422 | P2     | ui/packages/features/conversation/src/index.tsx:7                 | NL 作为主入口归入 Extended 组——与§UX-1 主入口定位矛盾                               |
+| 2423 | P2     | ui/packages/shared/sync/src/sync-coordinator.ts:35                | flush drain 后未等发送确认——变更可永久丢失                                          |
+| 2424 | P2     | ui/packages/shared/telemetry/src/index.ts:28                      | record() fire-and-forget 无重试/DLQ                                                 |
+| 2425 | P2     | ui/packages/shared/platform/src/desktop-platform-adapter.ts:9     | Web screenSecurityDefault:false vs 桌面 true——安全基线不统一                        |
+| 2426 | P2     | ui/packages/features/settings/src/hooks/index.ts:20               | 7 个查询无并行加载——违反 FCP<1.5s 性能目标                                          |
+
+### §206 Bootstrap / 初始化 / 测试基础设施 缺陷
+
+| #    | 严重度 | 文件                                                             | 问题                                                                    |
+| ---- | ------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 2427 | P0     | src/index.ts:264                                                 | main() 未调用 registerProcessErrorHandlers——进程异常无有序关闭兜底      |
+| 2428 | P0     | src/index.ts:125                                                 | runPlatformRootDemo 未注册 GracefulShutdown——崩溃时无优雅关停           |
+| 2429 | P1     | src/index.ts:178                                                 | buildPlatformRootSummary 绕过 ServiceRegistry 直接调用 build 函数       |
+| 2430 | P1     | src/platform-architecture-bootstrap.ts:150                       | getPlatformArchitectureServices 每次重新 register——覆盖缓存实例         |
+| 2431 | P1     | src/index.ts:13                                                  | buildFivePlaneRuntimeCatalog 未 re-export——公共 API 不对称              |
+| 2432 | P1     | src/index.ts:10                                                  | buildAiOperationsStartupPlan/buildFivePlaneStartupPlan 未根导出         |
+| 2433 | P1     | src/platform/execution/startup/graceful-shutdown.ts:274          | globalShutdownInstance 模块级单例未纳入 ServiceRegistry——双单例泄漏风险 |
+| 2434 | P1     | src/platform/execution/startup/process-error-handlers.ts:19      | processLogger 模块顶层构造——绕过生命周期管理，测试间状态泄漏            |
+| 2435 | P1     | src/platform-architecture-bootstrap.ts:111                       | buildBootstrapSummary 与 registerServices 双源分歧——运行时数据不一致    |
+| 2436 | P1     | src/platform-application-kernel.ts:130                           | registerKernel 未声明 dependsOn——ServiceRegistry 无法保障初始化顺序     |
+| 2437 | P1     | tests/integration/                                               | 无 graceful-shutdown/process-error-handlers 集成测试                    |
+| 2438 | P2     | tests/unit/runtime/graceful-shutdown.test.ts:6                   | 测试路径不符合规范目录结构                                              |
+| 2439 | P2     | tests/e2e/ui-web-flow.test.ts:7                                  | 硬编码路径且未检查 multi-shell 路由清单一致性                           |
+| 2440 | P2     | tests/golden/prompt-assembly.test.ts:19                          | golden 测试硬编码模型标识——model-metadata 变更则快照静默失效            |
+| 2441 | P2     | src/index.ts:41                                                  | PlatformRootEntryMode 定义在根入口而非 types 文件——类型分散             |
+| 2442 | P2     | package.json:6                                                   | exports 缺 ./platform/execution/startup 子路径                          |
+| 2443 | P2     | src/platform/execution/startup/startup-consistency-checker.ts:16 | 硬依赖 DispatchReconciliation 构造——增加启动耦合                        |
+## Round 41 — 深度补充审计（ops-maturity / scale-ecosystem / SDK / plugins / config / UI-shared / bootstrap）
+
+### §203 Ops-Maturity 深层缺陷（workflow-debugger / drift-detection / explainability / SLA）
+
+| #    | 严重度 | 文件                                                                | 问题                                                                            |
+| ---- | ------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 2364 | P0     | src/ops-maturity/drift-detection/benchmark-runner.ts:118            | Math.random() 模拟基准结果——晋升决策不确定，违反规范确定性证据驱动评估          |
+| 2365 | P0     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts:91  | 重放执行无 ReplaySandboxPolicy 守卫——违反 INV-REPLAY-001 重放不得产生真实副作用 |
+| 2366 | P0     | src/scale-ecosystem/integration/connector-framework-service.ts:107  | execute() 未经 SideEffectManager 记录——违反 INV-SIDEEFFECT-001                  |
+| 2367 | P0     | src/platform/shared/observability/slo-alerting-service.ts:240       | 通知 fetch 发送前即返回 delivered:true——投递失败静默吞没                        |
+| 2368 | P1     | src/ops-maturity/workflow-debugger/execution-tracer.ts:28           | workflowId/stepId 使用废弃术语——应为 PlanGraph/NodeRun/NodeAttempt              |
+| 2369 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts:18  | DebugSnapshot 使用 executionId/stepId——与§5.5 canonical 对象模型不一致          |
+| 2370 | P1     | src/ops-maturity/drift-detection/evidence-store.ts:46               | InMemoryEvidenceStore.records 无上界——持续 append OOM                           |
+| 2371 | P1     | src/scale-ecosystem/sla-engine/resource-allocator/index.ts:6        | allocateReservedCapacity 未校验 reservedPercent ≤100%——可超额分配               |
+| 2372 | P1     | src/platform/shared/lifecycle/service-registry.ts:146               | if(!has){delete}——死代码无效果                                                  |
+| 2373 | P1     | src/ops-maturity/explainability/explanation-pipeline-service.ts:80  | L3 depth ttlHours:0 但无 TTL 驱逐——条目永驻内存                                 |
+| 2374 | P1     | src/platform/shared/observability/slo-alerting-service.ts:620       | acknowledgeAlert 直接 mutate readonly 语义对象                                  |
+| 2375 | P1     | src/ops-maturity/drift-detection/rollout-manager.ts:43              | rollouts Map 无容量限制——已完成 rollout 无清理                                  |
+| 2376 | P1     | src/ops-maturity/drift-detection/reflection-engine.ts:62            | 自增 counter 生成 ID——重启后冲突                                                |
+| 2377 | P1     | src/ops-maturity/drift-detection/proposal-engine.ts:100             | 同上 prop\_${++counter}——重启后 ID 冲突                                         |
+| 2378 | P1     | src/ops-maturity/workflow-debugger/execution-tracer.ts:103          | durationMs = now - traceStart——测量的是总经过时间非单事件时长                   |
+| 2379 | P1     | src/platform/shared/observability/slo-alerting-service.ts:738       | executeRunbook() 恒标 completed——无实际执行逻辑                                 |
+| 2380 | P1     | src/ops-maturity/drift-detection/reflection-engine.ts:94            | new Date() 替代平台 nowIso()——测试不确定                                        |
+| 2381 | P1     | src/ops-maturity/drift-detection/proposal-engine.ts:93              | 同上 new Date() 替代 nowIso()                                                   |
+| 2382 | P1     | src/scale-ecosystem/integration/connector-framework-service.ts:107  | execute() 返回模拟结果非实际调用——connector 功能未实现                          |
+| 2383 | P1     | src/ops-maturity/workflow-debugger/time-travel-debug-service.ts:124 | breakpoints 赋值可变数组至 readonly 字段——绕过只读约束                          |
+
+### §204 SDK / Plugins / Config / Divisions 缺陷
+
+| #    | 严重度 | 文件                                                | 问题                                                                               |
+| ---- | ------ | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 2384 | P0     | config/security/default.json:7                      | allowedCapabilities 含 "mcp" 但 PluginSandboxPolicy 无此能力类型——违反默认安全收敛 |
+| 2385 | P0     | src/plugins/adapters/crm-adapter.ts:52              | token 明文前 8 字符存入 fingerprint——泄露敏感凭据片段                              |
+| 2386 | P1     | src/sdk/admin-sdk/index.ts:6                        | 缺 resumeHarnessRun/listWorkers/getConfig 等 Admin API——运维脚本化能力不足         |
+| 2387 | P1     | src/sdk/admin-sdk/index.ts:1                        | 未发送 X-Platform-Version/X-SDK-Version 请求头——违反 SDK 兼容性契约                |
+| 2388 | P1     | src/sdk/harness-sdk/index.ts:34                     | appendStep 用 stage 字段映射 nodeRunId——应为 NodeRun/NodeAttempt                   |
+| 2389 | P1     | src/sdk/harness-sdk/index.ts:27                     | 缺 reserveBudget/settleBudget——违反 INV-BUDGET-001 先预留再执行                    |
+| 2390 | P1     | config/runtime/default.json:4                       | defaultStepTimeoutMs 使用废弃 step 术语——应为 defaultNodeRunTimeoutMs              |
+| 2391 | P1     | config/risk/default.json:2                          | $schema 引用 .ts 文件——非合法 JSON Schema                                          |
+| 2392 | P1     | src/plugins/validators/basic-evaluator.ts:14        | initialize/shutdown 空实现——跳过 PluginLifecycleHooks 完整生命周期                 |
+| 2393 | P1     | src/plugins/adapters/game-dev-adapter.ts:26         | authenticate() 空实现——接受任意凭据                                                |
+| 2394 | P1     | src/plugins/builtin-plugin-registry.ts:21           | 无插件生命周期状态跟踪(registered→loaded→active→inactive→unloaded)                 |
+| 2395 | P1     | src/plugins/operations-config.ts:160                | operations 域缺 monitoring_review workflow 输出合约                                |
+| 2396 | P1     | config/bootstrap/default.json:2                     | phase "phase_1a" 使用废弃 Phase 术语——应为 Ring 1/2/3                              |
+| 2397 | P1     | src/domains/recipes/index.ts:3                      | DomainRecipeSchema 缺 riskLevel/budgetHint/requiredApproval                        |
+| 2398 | P1     | src/sdk/pack-sdk/pack-manifest.ts:26                | BusinessPackManifest 缺 rollbackStrategy——违反"先可恢复再自动化"宪法               |
+| 2399 | P1     | src/plugins/adapters/asset-production-adapter.ts:15 | adapterType "figma" 不在 ExternalAdapterPlugin 联合类型中——类型不匹配              |
+| 2400 | P2     | config/security/default.json:3                      | sandboxMode 默认 "workspace_write"——应为 "read_only"                               |
+| 2401 | P2     | config/gateways/default.json:1                      | 缺 timeout/circuitBreaker/fallbackMode 字段                                        |
+| 2402 | P2     | divisions/operations/schemas/ops-output.json:1      | draft-07 vs 其他 division 的 draft/2020-12——schema 版本不统一                      |
+| 2403 | P2     | config/domains/default.json:98                      | coding 域 status "testing" 与 Pack 生命周期状态命名不一致                          |
+| 2404 | P2     | divisions/analytics/division.yaml:1                 | analytics/devops/operations trigger "monitoring" 重叠——无优先级仲裁                |
+| 2405 | P2     | src/plugins/growth-config.ts:201                    | externalAdapters 声明 jira 但无实现——声明与实现不一致                              |
+| 2406 | P2     | src/domains/recipes/recipe-executor.ts:34           | 硬编码 regex stub 判断 workflow 不存在——应查询 WorkflowRegistry                    |
+
+### §205 UI Shared 层 / Features 深层缺陷
+
+| #    | 严重度 | 文件                                                              | 问题                                                                                |
+| ---- | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 2407 | P0     | ui/packages/shared/platform/src/web-platform-adapter.ts:9         | 安全凭证存 localStorage——XSS 完全暴露，违反 UP-6 Token 安全存储                     |
+| 2408 | P0     | ui/packages/shared/platform/src/mobile-platform-adapter.ts:10     | analyticsConsentDefault:true——违反 GDPR opt-in 原则                                 |
+| 2409 | P0     | ui/packages/features/conversation/src/hooks/index.ts:46           | 跳过 intake pipeline 本地模拟 execute——违反 P1→P2 必经控制面不变量                  |
+| 2410 | P0     | src/platform/contracts/control-directive/index.ts:4               | ControlDirective 仍为 canonical 导出——§5.2 要求 v4.2 起为 deprecated alias          |
+| 2411 | P0     | src/platform/contracts/execution-plan/index.ts:17                 | ExecutionPlan 仍用线性 steps[]——§5.3 要求 PlanGraphBundle 为唯一执行契约            |
+| 2412 | P1     | ui/packages/features/settings/src/hooks/index.ts:106              | save() 无实际 API 调用——违反 UP-1 API-First 原则                                    |
+| 2413 | P1     | ui/packages/shared/sync/src/conflict-resolver.ts:12               | merge 用 {...server,...local} 简单覆盖——local 无条件覆写 server 可致数据丢失        |
+| 2414 | P1     | ui/packages/shared/sync/src/offline-queue.ts:19                   | enqueue 后 persist 失败仅存内存——崩溃丢失离线变更                                   |
+| 2415 | P1     | ui/packages/shared/sync/src/types.ts:1                            | OfflineMutation 缺 tenantId/traceId/principal——flush 后无法满足 ContractEnvelope    |
+| 2416 | P1     | ui/packages/shared/telemetry/src/index.ts:74                      | OTLP POST 无认证头——违反多租户隔离                                                  |
+| 2417 | P1     | ui/packages/shared/platform/src/base-platform-adapter.ts:96       | runShell(command) 无白名单——命令注入风险                                            |
+| 2418 | P1     | ui/packages/shared/nl-client/src/index.ts:16                      | 纯内存客户端模拟无后端交互——UI 状态与 truth 不同步                                  |
+| 2419 | P1     | docs_zh/adr/018-rollout-eleven-state-machine.md:1                 | Superseded ADR 仍含可执行规格——与 ADR-075 六级状态机不兼容                          |
+| 2420 | P1     | src/platform/execution/state-transition/transition-service.ts:228 | 仍用 TaskStatus/WorkflowStatus TransitionCommand——应统一为 RuntimeTransitionCommand |
+| 2421 | P2     | ui/packages/features/alerts/src/hooks/index.ts:6                  | 告警无权限过滤——违反最小权限展示                                                    |
+| 2422 | P2     | ui/packages/features/conversation/src/index.tsx:7                 | NL 作为主入口归入 Extended 组——与§UX-1 主入口定位矛盾                               |
+| 2423 | P2     | ui/packages/shared/sync/src/sync-coordinator.ts:35                | flush drain 后未等发送确认——变更可永久丢失                                          |
+| 2424 | P2     | ui/packages/shared/telemetry/src/index.ts:28                      | record() fire-and-forget 无重试/DLQ                                                 |
+| 2425 | P2     | ui/packages/shared/platform/src/desktop-platform-adapter.ts:9     | Web screenSecurityDefault:false vs 桌面 true——安全基线不统一                        |
+| 2426 | P2     | ui/packages/features/settings/src/hooks/index.ts:20               | 7 个查询无并行加载——违反 FCP<1.5s 性能目标                                          |
+
+### §206 Bootstrap / 初始化 / 测试基础设施 缺陷
+
+| #    | 严重度 | 文件                                                             | 问题                                                                    |
+| ---- | ------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 2427 | P0     | src/index.ts:264                                                 | main() 未调用 registerProcessErrorHandlers——进程异常无有序关闭兜底      |
+| 2428 | P0     | src/index.ts:125                                                 | runPlatformRootDemo 未注册 GracefulShutdown——崩溃时无优雅关停           |
+| 2429 | P1     | src/index.ts:178                                                 | buildPlatformRootSummary 绕过 ServiceRegistry 直接调用 build 函数       |
+| 2430 | P1     | src/platform-architecture-bootstrap.ts:150                       | getPlatformArchitectureServices 每次重新 register——覆盖缓存实例         |
+| 2431 | P1     | src/index.ts:13                                                  | buildFivePlaneRuntimeCatalog 未 re-export——公共 API 不对称              |
+| 2432 | P1     | src/index.ts:10                                                  | buildAiOperationsStartupPlan/buildFivePlaneStartupPlan 未根导出         |
+| 2433 | P1     | src/platform/execution/startup/graceful-shutdown.ts:274          | globalShutdownInstance 模块级单例未纳入 ServiceRegistry——双单例泄漏风险 |
+| 2434 | P1     | src/platform/execution/startup/process-error-handlers.ts:19      | processLogger 模块顶层构造——绕过生命周期管理，测试间状态泄漏            |
+| 2435 | P1     | src/platform-architecture-bootstrap.ts:111                       | buildBootstrapSummary 与 registerServices 双源分歧——运行时数据不一致    |
+| 2436 | P1     | src/platform-application-kernel.ts:130                           | registerKernel 未声明 dependsOn——ServiceRegistry 无法保障初始化顺序     |
+| 2437 | P1     | tests/integration/                                               | 无 graceful-shutdown/process-error-handlers 集成测试                    |
+| 2438 | P2     | tests/unit/runtime/graceful-shutdown.test.ts:6                   | 测试路径不符合规范目录结构                                              |
+| 2439 | P2     | tests/e2e/ui-web-flow.test.ts:7                                  | 硬编码路径且未检查 multi-shell 路由清单一致性                           |
+| 2440 | P2     | tests/golden/prompt-assembly.test.ts:19                          | golden 测试硬编码模型标识——model-metadata 变更则快照静默失效            |
+| 2441 | P2     | src/index.ts:41                                                  | PlatformRootEntryMode 定义在根入口而非 types 文件——类型分散             |
+| 2442 | P2     | package.json:6                                                   | exports 缺 ./platform/execution/startup 子路径                          |
+| 2443 | P2     | src/platform/execution/startup/startup-consistency-checker.ts:16 | 硬依赖 DispatchReconciliation 构造——增加启动耦合                        |
+
+
+## Round 42 — 深度审计（compliance / HA-execution / UI-apps / contracts-implementation 交叉验证）
+
+### §208 Compliance / Model-Gateway / Prompt-Engine 深层缺陷
+
+| #    | 严重度 | 文件                                                                          | 问题                                                                            |
+| ---- | ------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 2444 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:1                  | 渐进阶段 canary_5/partial_25/50/75 与 spec 定义的 canary(5%)/canary(20%) 不一致 |
+| 2445 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:24                 | nextStage() 允许 stable→rolled_back 顺序推进——stable 应为终态                   |
+| 2446 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:348                       | runAbTest() 硬编码 0.85/0.90 分数——A/B 测试结果完全虚假                         |
+| 2447 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:308                       | verdict 不区分 critical case——仅用 80% 阈值，critical_case_pass==100% 未实现    |
+| 2448 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:525                       | detectRegression 缺 latency_regression≤120% 和 cost_regression≤150% 门禁        |
+| 2449 | P1     | src/platform/prompt-engine/conversation-template-service.ts:374               | next() 对已注销 template 调用 registry.get() 抛异常而非返回 null                |
+| 2450 | P1     | src/platform/execution/budget-allocator.ts:82                                 | settle() 内存计算 ledger——无 SQL CAS 原子操作，并发 settle 余额不一致           |
+| 2451 | P1     | src/platform/execution/runtime-state-machine.ts:322                           | assertAuditRef 不校验 null——requiresAudit=true 时转换可不提供 auditRef          |
+| 2452 | P1     | src/platform/state-evidence/memory/memory-decay-service.ts:161                | access boost 指数增长致 freshness 恒=1.0——高频记忆永不衰减违反 6 层模型         |
+| 2453 | P1     | src/platform/state-evidence/events/cas/cas-service.ts:46                      | CAS 纯内存 Map——多节点无一致性保证                                              |
+| 2454 | P2     | src/platform/execution/budget-reservation-sweeper.ts:31                       | expiresAt 格式异常时 Date.parse 返回 NaN——孤儿 reservation 永不释放             |
+| 2455 | P2     | src/platform/execution/distributed-lock/redis-lock-adapter.ts:97              | fencingCounter 实例级——多 pod 各自从 0 递增，无全局单调性                       |
+| 2456 | P2     | src/platform/execution/distributed-lock/redis-lock-adapter.ts:130             | extendAsync Lua 不更新 JSON.ttlMs——inspect 返回过期值                           |
+| 2457 | P2     | src/platform/execution/distributed-lock/redis-lock-adapter.ts:182             | forceSteal SET XX——原 lock 过期被 Redis 删除后 steal 失败                       |
+| 2458 | P2     | src/platform/execution/distributed-lock/pg-advisory-lock-adapter.ts:31        | lockKey hash 仅 32-bit——碰撞概率高                                              |
+| 2459 | P2     | src/platform/execution/distributed-lock/pg-advisory-lock-adapter.ts:66        | extend() 返回 inspect() 恒 null——扩展静默失败                                   |
+| 2460 | P2     | src/platform/state-evidence/events/cas/fencing-token-service.ts:58            | activeFences static Map 但 tokenCounter 实例级——不同实例可生成相同 token        |
+| 2461 | P2     | src/platform/state-evidence/events/cas/fencing-token-service.ts:100           | split("-") 解析——executionId/nodeId 含 "-" 时解析错误                           |
+| 2462 | P2     | src/ops-maturity/explainability/explanation-pipeline-service.ts:80            | L3 TTL=0 条目仍写入缓存——审计解释不可检索                                       |
+| 2463 | P2     | src/platform/prompt-engine/eval/prompt-model-policy-governance-service.ts:162 | reviewRequired=false 直接 approved——跳过 staging eval gate                      |
+
+### §209 HA / Lease / Recovery / Worker-Pool / Dispatcher 深层缺陷
+
+| #    | 严重度 | 文件                                                                | 问题                                                                                    |
+| ---- | ------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2464 | P0     | src/platform/execution/ha/ha-coordinator-service-inner.ts:353       | renewLeadership 返回 currentLease.ttlMs 而非 fencing token——续约后 stale-write 校验失效 |
+| 2465 | P0     | src/platform/execution/ha/ha-coordinator-service-async.ts:228       | 异步版同样返回 ttlMs 作为 fencing token                                                 |
+| 2466 | P0     | src/platform/execution/ha/ha-coordinator-service-inner.ts:701       | fencingTokenCounter 内存变量——重启归零可复用旧 token                                    |
+| 2467 | P0     | src/platform/execution/ha/ha-coordinator-service-async.ts:510       | 异步版 counter 各节点独立递增——无全局唯一性                                             |
+| 2468 | P0     | src/platform/execution/ha/ha-coordinator-service-async.ts:102       | acquireLeadership 无事务——并发可同时获得 leadership 脑裂                                |
+| 2469 | P0     | src/platform/execution/ha/lease-reclaimer-service.ts:387            | getExpiredLeases 依赖 getActiveLease(只返回未过期)——永远找不到过期租约                  |
+| 2470 | P0     | src/platform/execution/ha/lease-reclaimer-service.ts:415            | expireLease 仅打日志不执行状态变更——过期租约无法回收                                    |
+| 2471 | P0     | src/platform/execution/recovery/runtime-recovery-service.ts:298     | findStaleExecuting 用 now+threshold 而非 now-threshold——所有执行被判 stale              |
+| 2472 | P1     | src/platform/execution/ha/ha-coordinator-service-async.ts:487       | verifyWriteAuthority >= 比较——旧 leader 持当前 token 仍可写入                           |
+| 2473 | P1     | src/platform/execution/ha/ha-coordinator-service-async.ts:503       | purgeOldFailoverDecisions 硬编码返回 0——failover 历史永不清理                           |
+| 2474 | P1     | src/platform/execution/ha/leader-election-service.ts:176            | HA_1 单节点无续约定时器——租约过期后不自动续期                                           |
+| 2475 | P1     | src/platform/execution/ha/stuck-run-sweeper-service.ts:559          | killRun 先设 status="killed" 再调回调——回调失败时状态已污染                             |
+| 2476 | P1     | src/platform/execution/ha/recovery-orchestrator-service.ts:27       | recovery worker 串行 for-of await——无并行度，大量待恢复项延迟高                         |
+| 2477 | P1     | src/platform/execution/dispatcher/execution-dispatch-service.ts:401 | 嵌套事务——SQLite 不支持 SAVEPOINT 嵌套可静默失败                                        |
+| 2478 | P1     | src/platform/execution/lease/execution-lease-service-async.ts:247   | releaseLeaseSync 不检查 lease.status——已过期租约可被再次释放                            |
+| 2479 | P1     | src/platform/execution/tool-executor/tool-parallel-executor.ts:407  | results 数组含 undefined 空洞——返回类型断言 T[] 致下游 NPE                              |
+| 2480 | P1     | src/platform/execution/tool-executor/command-executor.ts:162        | activeProcessCount static 无锁——高并发可超限                                            |
+| 2481 | P2     | src/platform/execution/tool-executor/command-executor.ts:99         | Windows/Unix 使用相同 SIGTERM——Windows 上无效                                           |
+| 2482 | P2     | src/platform/execution/tool-executor/command-security.ts:259        | 过度拦截脚本参数——python --verbose 等合法用法被拒绝                                     |
+| 2483 | P2     | src/platform/execution/lease/execution-lease-service.ts:797         | getLatestFencingToken fallback 返回 0——任何 token 校验均通过                            |
+| 2484 | P2     | src/platform/execution/ha/lease-reclaimer-service.ts:406            | getStaleNodes 硬编码返回空数组——心跳超时节点永不检测                                    |
+
+### §210 UI Apps (Electron/Tauri/Mobile) + Features (HITL/Approval/Cockpit) 缺陷
+
+| #    | 严重度 | 文件                                                        | 问题                                                              |
+| ---- | ------ | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| 2485 | P0     | ui/apps/tauri-macos/src-tauri/src/lib.rs:12                 | run_shell 任意字符串无校验——远程代码执行                          |
+| 2486 | P0     | ui/apps/tauri-linux/src-tauri/src/lib.rs:12                 | 同上 Linux 端无输入过滤                                           |
+| 2487 | P0     | ui/apps/electron-win/src/preload.ts:33                      | 直接赋值 window.**AA_ELECTRON** 绕过 contextBridge——安全模式失效  |
+| 2488 | P0     | ui/apps/electron-win/index.html:1                           | 缺 CSP meta 标签——违反§6.5.4 安全基线                             |
+| 2489 | P0     | ui/apps/tauri-macos/src-tauri/tauri.conf.json:1             | 缺 security 段/CSP/allowlist——默认开放全部 IPC                    |
+| 2490 | P0     | ui/apps/tauri-linux/src-tauri/tauri.conf.json:1             | 同上 Linux Tauri 配置缺 security                                  |
+| 2491 | P1     | ui/packages/features/hitl/src/hooks/index.ts:5              | HITL 缺 Patch+Override 能力——仅实现 Inspect/Takeover/Resume (3/5) |
+| 2492 | P1     | ui/packages/features/hitl/src/web/index.tsx:9               | HITL 仅渲染静态 ListCard——无实际交互表单/按钮                     |
+| 2493 | P1     | ui/packages/features/approval/src/hooks/index.ts:13         | 缺 request_more_context 动作——最小动作集不完整                    |
+| 2494 | P1     | ui/packages/features/approval/src/web/index.tsx:33          | 缺 deadline 倒计时/policy_source/recommended_option               |
+| 2495 | P1     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:59 | pause/resume/recover 仅修改本地 state——未调用 REST API            |
+| 2496 | P1     | ui/packages/features/task-cockpit/src/hooks/index.ts:58     | claim/resume/escalate 同理——仅本地变更无 API 调用                 |
+| 2497 | P1     | ui/packages/features/workflow-cockpit/src/web/index.tsx:34  | 缺 DAGViewer 组件——§4.2.3 L2 必需                                 |
+| 2498 | P1     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:5  | 缺 approval_nodes/evidence_refs 字段                              |
+| 2499 | P1     | ui/apps/mobile/src/App.tsx:5                                | 硬编码 "android"——iOS 设备获得错误平台标识                        |
+| 2500 | P1     | ui/apps/mobile/src/navigation.ts:8                          | 移动端缺 workflow-cockpit 入口                                    |
+| 2501 | P2     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:30 | useWorkflowsQuery + useState 双持——缓存一致性偏差                 |
+| 2502 | P2     | ui/packages/features/task-cockpit/src/web/index.tsx:12      | 缺 L3-L5 下钻子路由                                               |
+| 2503 | P2     | ui/packages/features/approval/src/hooks/index.ts:80         | approve/reject 仅本地移除——未调用后端 POST decisions              |
+| 2504 | P2     | ui/apps/electron-win/src/main.ts:15                         | IPC shell:run/shell:spawn 无命令白名单                            |
+| 2505 | P2     | ui/packages/features/approval/src/mobile/index.ts:4         | 移动端审批无交互——规格要求通知栏快捷操作                          |
+| 2506 | P2     | ui/packages/features/hitl/src/mobile/index.ts:3             | HITL 移动端完全不可用                                             |
+| 2507 | P2     | ui/apps/mobile/src/navigation.ts:14                         | settings 缺子路由——无法导航到 7 个配置子页面                      |
+
+### §211 Contracts-Implementation 交叉验证（OAPEFLIR / EventBus / NL-Gateway / Goal-Decomposer）
+
+| #    | 严重度 | 文件                                                              | 问题                                                                          |
+| ---- | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 2508 | P0     | src/platform/contracts/types/domain/session-types.ts:237          | EventRecord 缺 sequence/causationId/correlationId/payloadHash/idempotencyKey  |
+| 2509 | P0     | src/platform/state-evidence/events/durable-event-bus.ts:358       | dead-letter 仅内存 Map 非独立 DLQ 表——违反"Event 不允许物理删除"              |
+| 2510 | P0     | src/platform/state-evidence/events/durable-event-bus.ts:178       | publish() 未维护 run 内单调递增 sequence——违反§14.3 第 3 条                   |
+| 2511 | P1     | src/platform/orchestration/oapeflir/stage-timeline.ts:3           | 含 knowledge_promotion 第 9 阶段——spec 定义 OAPEFLIR 仅八阶段                 |
+| 2512 | P1     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:52   | 使用 PlannedWorkflow 而非 PlanGraphBundle——Plan 为线性 steps                  |
+| 2513 | P1     | src/platform/orchestration/oapeflir/types/plan.ts:32              | PlanSchema 仅 steps[]——缺 nodes/edges/entryNodeIds/graphConstraints           |
+| 2514 | P1     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:62   | 缺 normalizationReport/validationReport/riskPropagation/worstPath             |
+| 2515 | P1     | src/platform/orchestration/oapeflir/stage-transition-fsm.ts:53    | FSM 严格线性——不支持 retry_wait→ready 等非线性迁移                            |
+| 2516 | P1     | src/platform/state-evidence/events/event-registry.ts:63           | 事件命名 task:/workflow: 与 spec platform.harness*run.*/node*run.* 完全不匹配 |
+| 2517 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:197       | bus 层未强制 event append 与 truth update 同事务                              |
+| 2518 | P1     | src/interaction/nl-gateway/index.ts:620                           | parseDetailed 缺完整 Input Guardrail 层——仅 regex injection 检测              |
+| 2519 | P2     | src/interaction/goal-decomposer/index.ts:43                       | 返回 PlannedTask[] 非 PlanGraphBundle                                         |
+| 2520 | P2     | src/interaction/goal-decomposer/index.ts:6                        | SuccessCriterion 缺 operator/threshold 量化字段                               |
+| 2521 | P2     | src/platform/orchestration/harness/oapeflir-harness-mapping.ts:13 | 缺 learn/release 映射——L/R 阶段永不被触发                                     |
+| 2522 | P2     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:276  | Feedback 结果未包装为 DecisionInputBundle(缺 budgetState/riskState)           |
+| 2523 | P2     | src/platform/state-evidence/events/event-types.ts:42              | TIER_1 含 26 类型但 registry 仅注册原始 9 个——新 tier-1 缺 schema/validator   |
+| 2524 | P2     | src/platform/state-evidence/events/typed-event-bus.ts:32          | TypedEventPayloadMap 未覆盖 delegation/prompt/tenant 等事件 payload 定义      |
+| 2525 | P2     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:118  | run() 未调用 StageTransitionFSM——FSM 死代码                                   |
+| 2526 | P2     | src/interaction/nl-gateway/index.ts:677                           | buildTask 缺 RuntimeMode/AutonomyMode 注入——critical risk 未降级 autonomy     |
+| 2527 | P2     | src/platform/orchestration/harness/harness-bootstrap.ts:18        | 仅注册 2 个 service ID——缺 NodeRuntime/SideEffectMgr/Evaluator/GraphScheduler |
+## Round 42 — 深度审计（compliance / HA-execution / UI-apps / contracts-implementation 交叉验证）
+
+### §208 Compliance / Model-Gateway / Prompt-Engine 深层缺陷
+
+| #    | 严重度 | 文件                                                                          | 问题                                                                            |
+| ---- | ------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 2444 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:1                  | 渐进阶段 canary_5/partial_25/50/75 与 spec 定义的 canary(5%)/canary(20%) 不一致 |
+| 2445 | P1     | src/platform/prompt-engine/rollout/prompt-rollout-stage.ts:24                 | nextStage() 允许 stable→rolled_back 顺序推进——stable 应为终态                   |
+| 2446 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:348                       | runAbTest() 硬编码 0.85/0.90 分数——A/B 测试结果完全虚假                         |
+| 2447 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:308                       | verdict 不区分 critical case——仅用 80% 阈值，critical_case_pass==100% 未实现    |
+| 2448 | P1     | src/platform/prompt-engine/eval/llm-eval-service.ts:525                       | detectRegression 缺 latency_regression≤120% 和 cost_regression≤150% 门禁        |
+| 2449 | P1     | src/platform/prompt-engine/conversation-template-service.ts:374               | next() 对已注销 template 调用 registry.get() 抛异常而非返回 null                |
+| 2450 | P1     | src/platform/execution/budget-allocator.ts:82                                 | settle() 内存计算 ledger——无 SQL CAS 原子操作，并发 settle 余额不一致           |
+| 2451 | P1     | src/platform/execution/runtime-state-machine.ts:322                           | assertAuditRef 不校验 null——requiresAudit=true 时转换可不提供 auditRef          |
+| 2452 | P1     | src/platform/state-evidence/memory/memory-decay-service.ts:161                | access boost 指数增长致 freshness 恒=1.0——高频记忆永不衰减违反 6 层模型         |
+| 2453 | P1     | src/platform/state-evidence/events/cas/cas-service.ts:46                      | CAS 纯内存 Map——多节点无一致性保证                                              |
+| 2454 | P2     | src/platform/execution/budget-reservation-sweeper.ts:31                       | expiresAt 格式异常时 Date.parse 返回 NaN——孤儿 reservation 永不释放             |
+| 2455 | P2     | src/platform/execution/distributed-lock/redis-lock-adapter.ts:97              | fencingCounter 实例级——多 pod 各自从 0 递增，无全局单调性                       |
+| 2456 | P2     | src/platform/execution/distributed-lock/redis-lock-adapter.ts:130             | extendAsync Lua 不更新 JSON.ttlMs——inspect 返回过期值                           |
+| 2457 | P2     | src/platform/execution/distributed-lock/redis-lock-adapter.ts:182             | forceSteal SET XX——原 lock 过期被 Redis 删除后 steal 失败                       |
+| 2458 | P2     | src/platform/execution/distributed-lock/pg-advisory-lock-adapter.ts:31        | lockKey hash 仅 32-bit——碰撞概率高                                              |
+| 2459 | P2     | src/platform/execution/distributed-lock/pg-advisory-lock-adapter.ts:66        | extend() 返回 inspect() 恒 null——扩展静默失败                                   |
+| 2460 | P2     | src/platform/state-evidence/events/cas/fencing-token-service.ts:58            | activeFences static Map 但 tokenCounter 实例级——不同实例可生成相同 token        |
+| 2461 | P2     | src/platform/state-evidence/events/cas/fencing-token-service.ts:100           | split("-") 解析——executionId/nodeId 含 "-" 时解析错误                           |
+| 2462 | P2     | src/ops-maturity/explainability/explanation-pipeline-service.ts:80            | L3 TTL=0 条目仍写入缓存——审计解释不可检索                                       |
+| 2463 | P2     | src/platform/prompt-engine/eval/prompt-model-policy-governance-service.ts:162 | reviewRequired=false 直接 approved——跳过 staging eval gate                      |
+
+### §209 HA / Lease / Recovery / Worker-Pool / Dispatcher 深层缺陷
+
+| #    | 严重度 | 文件                                                                | 问题                                                                                    |
+| ---- | ------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 2464 | P0     | src/platform/execution/ha/ha-coordinator-service-inner.ts:353       | renewLeadership 返回 currentLease.ttlMs 而非 fencing token——续约后 stale-write 校验失效 |
+| 2465 | P0     | src/platform/execution/ha/ha-coordinator-service-async.ts:228       | 异步版同样返回 ttlMs 作为 fencing token                                                 |
+| 2466 | P0     | src/platform/execution/ha/ha-coordinator-service-inner.ts:701       | fencingTokenCounter 内存变量——重启归零可复用旧 token                                    |
+| 2467 | P0     | src/platform/execution/ha/ha-coordinator-service-async.ts:510       | 异步版 counter 各节点独立递增——无全局唯一性                                             |
+| 2468 | P0     | src/platform/execution/ha/ha-coordinator-service-async.ts:102       | acquireLeadership 无事务——并发可同时获得 leadership 脑裂                                |
+| 2469 | P0     | src/platform/execution/ha/lease-reclaimer-service.ts:387            | getExpiredLeases 依赖 getActiveLease(只返回未过期)——永远找不到过期租约                  |
+| 2470 | P0     | src/platform/execution/ha/lease-reclaimer-service.ts:415            | expireLease 仅打日志不执行状态变更——过期租约无法回收                                    |
+| 2471 | P0     | src/platform/execution/recovery/runtime-recovery-service.ts:298     | findStaleExecuting 用 now+threshold 而非 now-threshold——所有执行被判 stale              |
+| 2472 | P1     | src/platform/execution/ha/ha-coordinator-service-async.ts:487       | verifyWriteAuthority >= 比较——旧 leader 持当前 token 仍可写入                           |
+| 2473 | P1     | src/platform/execution/ha/ha-coordinator-service-async.ts:503       | purgeOldFailoverDecisions 硬编码返回 0——failover 历史永不清理                           |
+| 2474 | P1     | src/platform/execution/ha/leader-election-service.ts:176            | HA_1 单节点无续约定时器——租约过期后不自动续期                                           |
+| 2475 | P1     | src/platform/execution/ha/stuck-run-sweeper-service.ts:559          | killRun 先设 status="killed" 再调回调——回调失败时状态已污染                             |
+| 2476 | P1     | src/platform/execution/ha/recovery-orchestrator-service.ts:27       | recovery worker 串行 for-of await——无并行度，大量待恢复项延迟高                         |
+| 2477 | P1     | src/platform/execution/dispatcher/execution-dispatch-service.ts:401 | 嵌套事务——SQLite 不支持 SAVEPOINT 嵌套可静默失败                                        |
+| 2478 | P1     | src/platform/execution/lease/execution-lease-service-async.ts:247   | releaseLeaseSync 不检查 lease.status——已过期租约可被再次释放                            |
+| 2479 | P1     | src/platform/execution/tool-executor/tool-parallel-executor.ts:407  | results 数组含 undefined 空洞——返回类型断言 T[] 致下游 NPE                              |
+| 2480 | P1     | src/platform/execution/tool-executor/command-executor.ts:162        | activeProcessCount static 无锁——高并发可超限                                            |
+| 2481 | P2     | src/platform/execution/tool-executor/command-executor.ts:99         | Windows/Unix 使用相同 SIGTERM——Windows 上无效                                           |
+| 2482 | P2     | src/platform/execution/tool-executor/command-security.ts:259        | 过度拦截脚本参数——python --verbose 等合法用法被拒绝                                     |
+| 2483 | P2     | src/platform/execution/lease/execution-lease-service.ts:797         | getLatestFencingToken fallback 返回 0——任何 token 校验均通过                            |
+| 2484 | P2     | src/platform/execution/ha/lease-reclaimer-service.ts:406            | getStaleNodes 硬编码返回空数组——心跳超时节点永不检测                                    |
+
+### §210 UI Apps (Electron/Tauri/Mobile) + Features (HITL/Approval/Cockpit) 缺陷
+
+| #    | 严重度 | 文件                                                        | 问题                                                              |
+| ---- | ------ | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| 2485 | P0     | ui/apps/tauri-macos/src-tauri/src/lib.rs:12                 | run_shell 任意字符串无校验——远程代码执行                          |
+| 2486 | P0     | ui/apps/tauri-linux/src-tauri/src/lib.rs:12                 | 同上 Linux 端无输入过滤                                           |
+| 2487 | P0     | ui/apps/electron-win/src/preload.ts:33                      | 直接赋值 window.**AA_ELECTRON** 绕过 contextBridge——安全模式失效  |
+| 2488 | P0     | ui/apps/electron-win/index.html:1                           | 缺 CSP meta 标签——违反§6.5.4 安全基线                             |
+| 2489 | P0     | ui/apps/tauri-macos/src-tauri/tauri.conf.json:1             | 缺 security 段/CSP/allowlist——默认开放全部 IPC                    |
+| 2490 | P0     | ui/apps/tauri-linux/src-tauri/tauri.conf.json:1             | 同上 Linux Tauri 配置缺 security                                  |
+| 2491 | P1     | ui/packages/features/hitl/src/hooks/index.ts:5              | HITL 缺 Patch+Override 能力——仅实现 Inspect/Takeover/Resume (3/5) |
+| 2492 | P1     | ui/packages/features/hitl/src/web/index.tsx:9               | HITL 仅渲染静态 ListCard——无实际交互表单/按钮                     |
+| 2493 | P1     | ui/packages/features/approval/src/hooks/index.ts:13         | 缺 request_more_context 动作——最小动作集不完整                    |
+| 2494 | P1     | ui/packages/features/approval/src/web/index.tsx:33          | 缺 deadline 倒计时/policy_source/recommended_option               |
+| 2495 | P1     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:59 | pause/resume/recover 仅修改本地 state——未调用 REST API            |
+| 2496 | P1     | ui/packages/features/task-cockpit/src/hooks/index.ts:58     | claim/resume/escalate 同理——仅本地变更无 API 调用                 |
+| 2497 | P1     | ui/packages/features/workflow-cockpit/src/web/index.tsx:34  | 缺 DAGViewer 组件——§4.2.3 L2 必需                                 |
+| 2498 | P1     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:5  | 缺 approval_nodes/evidence_refs 字段                              |
+| 2499 | P1     | ui/apps/mobile/src/App.tsx:5                                | 硬编码 "android"——iOS 设备获得错误平台标识                        |
+| 2500 | P1     | ui/apps/mobile/src/navigation.ts:8                          | 移动端缺 workflow-cockpit 入口                                    |
+| 2501 | P2     | ui/packages/features/workflow-cockpit/src/hooks/index.ts:30 | useWorkflowsQuery + useState 双持——缓存一致性偏差                 |
+| 2502 | P2     | ui/packages/features/task-cockpit/src/web/index.tsx:12      | 缺 L3-L5 下钻子路由                                               |
+| 2503 | P2     | ui/packages/features/approval/src/hooks/index.ts:80         | approve/reject 仅本地移除——未调用后端 POST decisions              |
+| 2504 | P2     | ui/apps/electron-win/src/main.ts:15                         | IPC shell:run/shell:spawn 无命令白名单                            |
+| 2505 | P2     | ui/packages/features/approval/src/mobile/index.ts:4         | 移动端审批无交互——规格要求通知栏快捷操作                          |
+| 2506 | P2     | ui/packages/features/hitl/src/mobile/index.ts:3             | HITL 移动端完全不可用                                             |
+| 2507 | P2     | ui/apps/mobile/src/navigation.ts:14                         | settings 缺子路由——无法导航到 7 个配置子页面                      |
+
+### §211 Contracts-Implementation 交叉验证（OAPEFLIR / EventBus / NL-Gateway / Goal-Decomposer）
+
+| #    | 严重度 | 文件                                                              | 问题                                                                          |
+| ---- | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 2508 | P0     | src/platform/contracts/types/domain/session-types.ts:237          | EventRecord 缺 sequence/causationId/correlationId/payloadHash/idempotencyKey  |
+| 2509 | P0     | src/platform/state-evidence/events/durable-event-bus.ts:358       | dead-letter 仅内存 Map 非独立 DLQ 表——违反"Event 不允许物理删除"              |
+| 2510 | P0     | src/platform/state-evidence/events/durable-event-bus.ts:178       | publish() 未维护 run 内单调递增 sequence——违反§14.3 第 3 条                   |
+| 2511 | P1     | src/platform/orchestration/oapeflir/stage-timeline.ts:3           | 含 knowledge_promotion 第 9 阶段——spec 定义 OAPEFLIR 仅八阶段                 |
+| 2512 | P1     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:52   | 使用 PlannedWorkflow 而非 PlanGraphBundle——Plan 为线性 steps                  |
+| 2513 | P1     | src/platform/orchestration/oapeflir/types/plan.ts:32              | PlanSchema 仅 steps[]——缺 nodes/edges/entryNodeIds/graphConstraints           |
+| 2514 | P1     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:62   | 缺 normalizationReport/validationReport/riskPropagation/worstPath             |
+| 2515 | P1     | src/platform/orchestration/oapeflir/stage-transition-fsm.ts:53    | FSM 严格线性——不支持 retry_wait→ready 等非线性迁移                            |
+| 2516 | P1     | src/platform/state-evidence/events/event-registry.ts:63           | 事件命名 task:/workflow: 与 spec platform.harness*run.*/node*run.* 完全不匹配 |
+| 2517 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:197       | bus 层未强制 event append 与 truth update 同事务                              |
+| 2518 | P1     | src/interaction/nl-gateway/index.ts:620                           | parseDetailed 缺完整 Input Guardrail 层——仅 regex injection 检测              |
+| 2519 | P2     | src/interaction/goal-decomposer/index.ts:43                       | 返回 PlannedTask[] 非 PlanGraphBundle                                         |
+| 2520 | P2     | src/interaction/goal-decomposer/index.ts:6                        | SuccessCriterion 缺 operator/threshold 量化字段                               |
+| 2521 | P2     | src/platform/orchestration/harness/oapeflir-harness-mapping.ts:13 | 缺 learn/release 映射——L/R 阶段永不被触发                                     |
+| 2522 | P2     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:276  | Feedback 结果未包装为 DecisionInputBundle(缺 budgetState/riskState)           |
+| 2523 | P2     | src/platform/state-evidence/events/event-types.ts:42              | TIER_1 含 26 类型但 registry 仅注册原始 9 个——新 tier-1 缺 schema/validator   |
+| 2524 | P2     | src/platform/state-evidence/events/typed-event-bus.ts:32          | TypedEventPayloadMap 未覆盖 delegation/prompt/tenant 等事件 payload 定义      |
+| 2525 | P2     | src/platform/orchestration/oapeflir/oapeflir-loop-service.ts:118  | run() 未调用 StageTransitionFSM——FSM 死代码                                   |
+| 2526 | P2     | src/interaction/nl-gateway/index.ts:677                           | buildTask 缺 RuntimeMode/AutonomyMode 注入——critical risk 未降级 autonomy     |
+| 2527 | P2     | src/platform/orchestration/harness/harness-bootstrap.ts:18        | 仅注册 2 个 service ID——缺 NodeRuntime/SideEffectMgr/Evaluator/GraphScheduler |
+
+
+## Round 43 — 深度审计（org-governance / state-evidence / interaction-autonomy / scale-ecosystem）
+
+### §213 Org-Governance 深层缺陷（delegation / approval / SSO-SCIM）
+
+| #    | 严重度 | 文件                                                                                | 问题                                                                           |
+| ---- | ------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 2528 | P0     | src/org-governance/delegated-governance/delegated-governance-service.ts:96          | attemptedValue===undefined 时跳过所有 guardrail——未传值操作绕过全部约束        |
+| 2529 | P0     | src/org-governance/delegated-governance/governance-console-service.ts:146           | revokeDelegation 不校验 actorId 权限——任意用户可撤销任意委托                   |
+| 2530 | P0     | src/org-governance/sso-scim/oidc/oidc-service.ts:237                                | fetchUserInfo 错误时回退 simulateUserInfo——生产环境可产生虚假会话              |
+| 2531 | P0     | src/org-governance/delegated-governance/delegated-governance-service.ts:189         | validateInheritanceRule 对 delete 无条件 allowed:true——低级角色可删除上级约束  |
+| 2532 | P1     | src/org-governance/delegated-governance/delegated-governance-service.ts:77          | checkOperation 仅收集 platform_team guardrails——忽略 division/dept admin 层级  |
+| 2533 | P1     | src/org-governance/approval-routing/route-engine/index.ts:179                       | 无汇率快照时 createdAt 回退至 epoch 1970——审计时间戳失义                       |
+| 2534 | P1     | src/org-governance/approval-routing/route-engine/index.ts:256                       | normalizeThresholdCny 硬编码汇率 7.2——与动态 fxRateSnapshot 不一致             |
+| 2535 | P1     | src/org-governance/sso-scim/scim-sync/scim-service.ts:533                           | SCIM remove 清空全部 members——未解析 members[value eq "xxx"] 精确移除          |
+| 2536 | P1     | src/org-governance/sso-scim/scim-sync/scim-service.ts:164                           | createUser 未校验 userName 唯一性——重复 userName 覆盖索引                      |
+| 2537 | P1     | src/org-governance/sso-scim/saml/index.ts:150                                       | consumedAssertionIds Map 无 TTL——无限增长内存泄漏                              |
+| 2538 | P1     | src/org-governance/approval-routing/delegation/index.ts:30                          | coiReviewStatus=failed 的委托仍生效——利益冲突审查被绕过                        |
+| 2539 | P1     | src/org-governance/delegated-governance/governance-delegation-revocation-saga.ts:28 | cascadeWithinSlo 条件 >=0 恒 true——级联撤销失败永不标记                        |
+| 2540 | P1     | src/org-governance/sso-scim/api-key-service.ts:94                                   | API Key 过期后 status 仍 "active"——后续操作基于 status 判断不一致              |
+| 2541 | P1     | src/org-governance/sso-scim/oidc/oidc-service.ts:261                                | validateAccessToken O(n) 线性扫描所有 session——无 token→sessionId 索引         |
+| 2542 | P2     | src/org-governance/approval-routing/approval-routing-service.ts:79                  | recordId 无时间戳/随机因子——同请求者+同节点 ID 冲突                            |
+| 2543 | P2     | src/org-governance/approval-routing/approval-routing-service.ts:64                  | 升级审批人追加到 chain 末尾——sequential 模式下升级反而最后审批                 |
+| 2544 | P2     | src/org-governance/org-model/hierarchy/index.ts:73                                  | listAncestorNodeIds 无环检测——环形引用致无限循环                               |
+| 2545 | P2     | src/org-governance/delegated-governance/governance-console-service.ts:126           | createDelegation 硬编码 level:"view"/delegatable:false——所有委托只读不可再委托 |
+| 2546 | P2     | src/org-governance/sso-scim/scim-sync/scim-service.ts:791                           | applyFilter 忽略 emails.value 等标准 SCIM 过滤字段                             |
+| 2547 | P2     | src/org-governance/org-model/hierarchy/index.ts:226                                 | employee_transfer toTeamId 设为父节点 ID——调动目标记录错误                     |
+| 2548 | P2     | src/org-governance/sso-scim/oidc/oidc-service.ts:427                                | cleanupExpiredSessions 延迟最长 24h——过期会话长期占内存                        |
+
+### §214 State-Evidence 深层缺陷（Truth / Checkpoints / Knowledge / Projections / Inbox）
+
+| #    | 严重度 | 文件                                                                             | 问题                                                                      |
+| ---- | ------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 2549 | P0     | src/platform/state-evidence/truth/runtime-truth-repository.ts:196                | storeAggregate 对已存在聚合 Map.set 覆写——违反 append-only 不变量         |
+| 2550 | P0     | src/platform/state-evidence/events/layered-event-inbox/layered-event-inbox.ts:51 | drain 无事件去重——同一 EventEnvelope append 两次 consumer 收到两条        |
+| 2551 | P1     | src/platform/state-evidence/events/durable-event-bus.ts:358                      | 重试 attempt<=MAX(3) 实际执行 4 次(0..3)——比声明多一次                    |
+| 2552 | P1     | src/platform/state-evidence/events/layered-event-inbox/layered-event-inbox.ts:65 | drain 对不匹配 consumer 的事件仍推进 cursor——跨 consumer 事件可能丢失     |
+| 2553 | P1     | src/platform/state-evidence/events/transactional-event-appender.ts:97            | 手动 BEGIN 绕过 WAL 栅栏——嵌套事务时静默提交或回滚范围错误                |
+| 2554 | P1     | src/platform/state-evidence/knowledge/knowledge-query-service.ts:186             | Deep 同步回退用 Standard 逻辑——语义不一致                                 |
+| 2555 | P1     | src/platform/state-evidence/knowledge/knowledge-retrieval.ts:296                 | pgvector 后端时同步查询无语义候选——collectSemanticCandidates 返回空       |
+| 2556 | P1     | src/platform/state-evidence/checkpoints/session-dual-storage.ts:120              | task-index 写入失败仅 log——session 已落盘但索引缺失，replay 一致性破坏    |
+| 2557 | P1     | src/platform/state-evidence/checkpoints/checkpoint-envelope.ts:149               | 错误消息报告 originalSize 非 compressedSize——运维排查信息错误             |
+| 2558 | P1     | src/platform/state-evidence/events/projections/worker-status-projection.ts:137   | isEventProcessed Array.includes O(n²)——长期运行性能退化                   |
+| 2559 | P1     | src/platform/state-evidence/events/cas/cas-service.ts:182                        | setValue 重置 version=1 而非递增——破坏 version 单调递增不变量             |
+| 2560 | P2     | src/platform/state-evidence/truth/cross-region-truth-leader.ts:31                | leader 已迁移后合法写入被永久拒绝——不支持 leader failover                 |
+| 2561 | P2     | src/platform/state-evidence/knowledge/knowledge-query-service.ts:352             | truncateHits 固定截断每个 hit——总 token 可能远超 maxTokens                |
+| 2562 | P2     | src/platform/state-evidence/events/projections/workflow-run-projection.ts:322    | 单 subtask:failed 直接标 workflow failed——未考虑容错策略                  |
+| 2563 | P2     | src/platform/state-evidence/events/projections/approval-queue-projection.ts:356  | rejectionsReceived 设为 approvalsRequired 非递增——多次 rejection 计数丢失 |
+| 2564 | P2     | src/platform/state-evidence/events/durable-event-bus.ts:48                       | POLL 10ms/consumer 无 backoff——高 consumer 数 CPU 开销大                  |
+| 2565 | P2     | src/platform/state-evidence/knowledge/knowledge-ingestion-pipeline.ts:220        | semantic chunking 回退到 fixed 分割——违反 ChunkingConfig 契约             |
+| 2566 | P2     | src/platform/state-evidence/knowledge/storage-quota-service.ts:159               | rmSync 失败中断整个清理——应 catch 继续                                    |
+
+### §215 Interaction 层深层缺陷（Autonomy / Dashboard / UX / Proactive-Agent）
+
+| #    | 严重度 | 文件                                                        | 问题                                                                        |
+| ---- | ------ | ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 2567 | P0     | src/interaction/autonomy/index.ts:215                       | P0 incident 直接 freeze——§42.2 规定应降至 suggestion 非 frozen              |
+| 2568 | P0     | src/interaction/autonomy/autonomy-governance-service.ts:71  | trustScore<30 降级不检查 incident severity——高风险 incident 绕过 P0/P1 降级 |
+| 2569 | P0     | src/interaction/autonomy/index.ts:258                       | 高风险域仅压 full_auto→semi_auto——§42.5 要求写操作最高 supervised           |
+| 2570 | P1     | src/interaction/autonomy/level-manager/index.ts:3           | frozen 放在 full_auto 之后(index=4)——compare 认为 frozen>full_auto 语义错误 |
+| 2571 | P1     | src/interaction/autonomy/index.ts:172                       | 模块内 AUTONOMY_LEVEL_ORDER 不含 frozen，level-manager 含——三处排序互相矛盾 |
+| 2572 | P1     | src/interaction/autonomy/index.ts:194                       | demoteOneLevel 对 frozen→full_auto——§42 要求 frozen 恢复需人工审批          |
+| 2573 | P1     | src/interaction/autonomy/promotion-engine/index.ts:16       | incidents>0 全部阻止晋升——未区分 P2/P3 低级别 incident                      |
+| 2574 | P1     | src/interaction/dashboard/dashboard-websocket-server.ts:106 | WS registerClient 无认证/鉴权——违反§11.7 要求 authenticated principal       |
+| 2575 | P1     | src/interaction/dashboard/dashboard-websocket-server.ts:208 | pushDelta 按 metric 匹配但 subscriber 按 dashboardId 注册——永远匹配不到     |
+| 2576 | P1     | src/interaction/dashboard/index.ts:402                      | attentionQueue 按 createdAt 升序(最旧在前)——应按紧急度排序                  |
+| 2577 | P1     | src/interaction/dashboard/dashboard-websocket-server.ts:330 | heartbeat 超时标 isConnected=false 但不清理 Map——幽灵连接内存泄漏           |
+| 2578 | P2     | src/interaction/autonomy/autonomy-audit-service.ts:39       | audit id 用递增序号——多实例重复 id                                          |
+| 2579 | P2     | src/interaction/autonomy/historical-metrics-provider.ts:49  | SQL 未按 capabilityId 过滤——返回 agent 级非 capability 级 metrics           |
+| 2580 | P2     | src/interaction/autonomy/historical-metrics-provider.ts:64  | error_code!=null 算 incident——不等于真正 incident                           |
+| 2581 | P2     | src/interaction/ux/conversation-history-service.ts:121      | memoryLayer!=="layer_3" 才持久化，默认 "layer_3"——条件矛盾永不持久化        |
+| 2582 | P2     | src/interaction/ux/conversation-history-service.ts:199      | recall 不过滤 tenantId——跨租户会话泄露                                      |
+| 2583 | P2     | src/interaction/dashboard/index.ts:183                      | successRate 分母含 pending/in_progress——导致 rate 偏低                      |
+| 2584 | P2     | src/interaction/ux/ux-event-tracking-service.ts:162         | abTestAssignments 以 userId 为 key——多并行 A/B test 互相覆盖                |
+
+### §216 Scale-Ecosystem 深层缺陷（Tenant / Marketplace / SLA / Multi-Region）
+
+| #    | 严重度 | 文件                                                                  | 问题                                                                         |
+| ---- | ------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 2585 | P0     | src/scale-ecosystem/tenant-platform/tenant-platform-service.ts:267    | addWorkspaceMembership 未验证调用者权限——任意用户可向任意 workspace 添加成员 |
+| 2586 | P0     | src/scale-ecosystem/tenant-platform/tenant-platform-service.ts:342    | addOrganizationMembership 无鉴权——任意用户可自添 admin 角色，权限提升        |
+| 2587 | P0     | src/scale-ecosystem/tenant-platform/data-plane-flow-service.ts:611    | scope tenantId/orgId=null 时跳过边界检查——可绕过租户隔离                     |
+| 2588 | P1     | src/scale-ecosystem/marketplace/pack-security-service.ts:202          | runStaticAnalysis 仅正则扫描 sourceUri 字符串——实际源代码未扫描              |
+| 2589 | P1     | src/scale-ecosystem/marketplace/pack-security-service.ts:238          | 危险 capability ≤3 不告警——检测阈值过高                                      |
+| 2590 | P1     | src/scale-ecosystem/sla-engine/sla-operations-service.ts:84           | 缺 maxExecutionTimeoutRate/minDependencyAvailability——SLA 违约检测不完整     |
+| 2591 | P1     | src/scale-ecosystem/sla-engine/sla-operations-service.ts:111          | preemptionCapApplied 条件恒 true——标志无法正确判断                           |
+| 2592 | P1     | src/scale-ecosystem/multi-region/cdc-replication-service.ts:98        | checkpoint/queue 纯内存——重启后复制进度丢失，违反 RPO                        |
+| 2593 | P1     | src/scale-ecosystem/multi-region/data-replicator/index.ts:170         | eventId = Date.now()+Math.random()——高并发 ID 冲突                           |
+| 2594 | P1     | src/scale-ecosystem/multi-region/data-replicator/index.ts:244         | flush checkpoint sequence 为局部计数器——重启归零致重复消费                   |
+| 2595 | P1     | src/scale-ecosystem/multi-region/cdc-replication-service.ts:209       | recordFailure 仅记日志无 retry 入队——失败 batch 静默丢弃                     |
+| 2596 | P1     | src/scale-ecosystem/multi-region/region-health-check-service.ts:347   | degraded 不重置 consecutiveFailures——恢复后仍累积旧计数触发误 failover       |
+| 2597 | P1     | src/scale-ecosystem/tenant-platform/tenant-platform-service.ts:312    | createOrganization 校验条件恒 false——校验被绕过                              |
+| 2598 | P1     | src/scale-ecosystem/marketplace/marketplace-governance-service.ts:501 | reviewRequired=0 的 internal 包也必须有 review——与文档矛盾                   |
+| 2599 | P2     | src/scale-ecosystem/marketplace/marketplace-governance-service.ts:590 | revokePublication 未检查当前 status——已 revoked 可重复 revoke                |
+| 2600 | P2     | src/scale-ecosystem/marketplace/certification/index.ts:12             | 不检查 approvedAt 存在——status=approved 但 approvedAt=null 视为已认证        |
+| 2601 | P2     | src/scale-ecosystem/marketplace/publisher/index.ts:16                 | reputationScore>=0.4 硬编码——sandboxed publisher 也可发布                    |
+| 2602 | P2     | src/scale-ecosystem/marketplace/catalog/index.ts:63                   | validateListingDependencies 无循环检测——循环依赖致安装无限递归               |
+| 2603 | P2     | src/scale-ecosystem/multi-region/region-health-check-service.ts:240   | checkAllRegions 串行 await——大量 region 延迟线性增长                         |
+| 2604 | P2     | src/scale-ecosystem/multi-region/failover-controller/index.ts:36      | failover 取 candidateRegionIds[0]——未考虑健康状态和复制 lag                  |
 

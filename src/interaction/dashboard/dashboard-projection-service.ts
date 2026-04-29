@@ -21,12 +21,23 @@ import type { TypedEventType } from "../../platform/state-evidence/events/typed-
 export interface DashboardDelta {
   readonly deltaId: string;
   readonly timestamp: string;
+  readonly tenantId: string | null;
+  readonly visibilityScope: "global" | "tenant";
   readonly changes: readonly DashboardChange[];
   readonly affectedMetrics: readonly string[];
 }
 
 export interface DashboardChange {
-  readonly changeType: "task_created" | "task_updated" | "task_completed" | "task_failed" | "incident_opened" | "incident_resolved" | "system_health_changed";
+  readonly changeType:
+    | "task_created"
+    | "task_updated"
+    | "task_completed"
+    | "task_failed"
+    | "approval_requested"
+    | "approval_resolved"
+    | "incident_opened"
+    | "incident_resolved"
+    | "system_health_changed";
   readonly entityId: string;
   readonly previousValue?: unknown;
   readonly newValue: unknown;
@@ -38,7 +49,17 @@ export interface DashboardProjectionConfig {
 }
 
 const DEFAULT_CONFIG: DashboardProjectionConfig = {
-  projectionNames: ["task_summary", "incident_summary", "workflow_summary"],
+  projectionNames: [
+    "task_summary",              // §43.2
+    "incident_summary",          // §43.3
+    "workflow_summary",         // §43.4
+    "agent_health",             // §43.2: agent health projection
+    "agent_slo",                // §43.3: agent SLO projection
+    "agent_budget",             // §43.4: agent budget projection
+    "approval_summary",         // §43.5: approval projection
+    "resource_usage",           // §43.5: resource projection
+    "cost_summary",             // §43.5: cost projection
+  ],
   emitDebounceMs: 100,
 };
 
@@ -69,6 +90,8 @@ export class DashboardProjectionService {
     const delta: DashboardDelta = {
       deltaId: newId("delta"),
       timestamp: nowIso(),
+      tenantId: this.extractTenantId(record.state),
+      visibilityScope: this.deriveVisibilityScope(changes),
       changes,
       affectedMetrics: this.deriveAffectedMetrics(changes),
     };
@@ -100,6 +123,8 @@ export class DashboardProjectionService {
     const delta: DashboardDelta = {
       deltaId: newId("delta"),
       timestamp: nowIso(),
+      tenantId: this.extractTenantId(payload),
+      visibilityScope: this.deriveVisibilityScope([change]),
       changes: [change],
       affectedMetrics: this.deriveAffectedMetrics([change]),
     };
@@ -198,6 +223,30 @@ export class DashboardProjectionService {
         case "workflow_summary":
           workflowCount++;
           break;
+        case "agent_health":
+          if (String(projection.state.status ?? "").toLowerCase() === "healthy") {
+            activeAgentCount++;
+          }
+          break;
+        case "agent_slo":
+          if (Number(projection.state.errorRate ?? 0) > 0.05) {
+            failedCount++;
+          }
+          break;
+        case "agent_budget":
+          totalCost += Number(projection.state.costUsd ?? projection.state.consumedUsd ?? 0);
+          break;
+        case "approval_summary":
+          if (projection.state.resolved !== true) {
+            approvalPendingCount++;
+          }
+          break;
+        case "resource_usage":
+          totalDurationMs += Number(projection.state.durationMs ?? 0);
+          break;
+        case "cost_summary":
+          totalCost += Number(projection.state.totalCostUsd ?? projection.state.costUsd ?? 0);
+          break;
       }
     }
 
@@ -277,6 +326,26 @@ export class DashboardProjectionService {
           newValue: record.state,
         });
         break;
+      case "agent_health":
+      case "agent_slo":
+      case "agent_budget":
+      case "resource_usage":
+      case "cost_summary":
+        changes.push({
+          changeType: "system_health_changed",
+          entityId: record.entityRef,
+          previousValue: undefined,
+          newValue: record.state,
+        });
+        break;
+      case "approval_summary":
+        changes.push({
+          changeType: record.state.resolved === true ? "approval_resolved" : "approval_requested",
+          entityId: record.entityRef,
+          previousValue: undefined,
+          newValue: record.state,
+        });
+        break;
     }
 
     return changes;
@@ -310,6 +379,8 @@ export class DashboardProjectionService {
     if (eventType.startsWith("task.updated")) return "task_updated";
     if (eventType.startsWith("task.completed")) return "task_completed";
     if (eventType.startsWith("task.failed")) return "task_failed";
+    if (eventType.startsWith("approval.requested")) return "approval_requested";
+    if (eventType.startsWith("approval.resolved")) return "approval_resolved";
     if (eventType.startsWith("incident.opened")) return "incident_opened";
     if (eventType.startsWith("incident.resolved")) return "incident_resolved";
     if (eventType.startsWith("system.health")) return "system_health_changed";
@@ -357,6 +428,10 @@ export class DashboardProjectionService {
         case "task_updated":
           metrics.add("totalTasks");
           break;
+        case "approval_requested":
+        case "approval_resolved":
+          metrics.add("approvalPendingCount");
+          break;
         case "incident_opened":
           metrics.add("incidentCount");
           metrics.add("incidentsByPriority");
@@ -372,6 +447,32 @@ export class DashboardProjectionService {
     }
 
     return [...metrics];
+  }
+
+  private deriveVisibilityScope(changes: readonly DashboardChange[]): DashboardDelta["visibilityScope"] {
+    if (changes.some((change) => change.changeType === "system_health_changed")) {
+      return "global";
+    }
+    return "tenant";
+  }
+
+  private extractTenantId(value: unknown): string | null {
+    if (value == null || typeof value !== "object") {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    const directTenantId = record.tenantId;
+    if (typeof directTenantId === "string" && directTenantId.trim().length > 0) {
+      return directTenantId;
+    }
+    const lastPayload = record.lastPayload;
+    if (lastPayload != null && typeof lastPayload === "object") {
+      const nestedTenantId = (lastPayload as Record<string, unknown>).tenantId;
+      if (typeof nestedTenantId === "string" && nestedTenantId.trim().length > 0) {
+        return nestedTenantId;
+      }
+    }
+    return null;
   }
 
   private scheduleEmit(): void {

@@ -336,6 +336,9 @@ export class ExecutionTicketRepository {
   // Orders by priority/risk_class/critical_path_rank/created_order/scheduler_seed
   // Note: critical_path_rank and scheduler_seed fields require schema migration
   // For now, uses available fields: priority DESC, created_at ASC, id ASC (stable sort)
+  //
+  // R13-14 fix: Priority is lexicographically sorted but should be semantic (critical > high > normal > low).
+  // SQLite's CASE expression maps priority strings to numeric values for correct ordering.
   public listDispatchableExecutionTickets(now: string, queueName: string | null = null): ExecutionTicketRecord[] {
     const params: Array<string | number> = [now];
     let sql = `${EXECUTION_TICKET_SELECT}
@@ -347,7 +350,8 @@ export class ExecutionTicketRepository {
     }
     // R6-4: Deterministic ordering - add id ASC for stable sort when priorities match
     // Full §14.9 ordering (critical_path_rank, scheduler_seed) requires schema migration
-    sql += " ORDER BY priority DESC, created_at ASC, id ASC";
+    // R13-14 fix: Use CASE expression for semantic priority ordering (critical=4, high=3, normal=2, low=1)
+    sql += " ORDER BY CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'normal' THEN 2 WHEN 'low' THEN 1 ELSE 0 END DESC, created_at ASC, id ASC";
     return queryAll<ExecutionTicketRecord>(this.conn, sql, ...params);
   }
 

@@ -178,18 +178,49 @@ export async function runPlatformRootSummary(): Promise<void> {
   console.log(JSON.stringify(summary, null, 2));
 }
 
+/**
+ * Safely executes a thunk that may throw, returning a fallback on error.
+ * §9: Provides error boundary to prevent single failure from crashing entire build.
+ */
+function safeBuild<T>(thunk: () => T, fallback: T): { success: true; value: T } | { success: false; error: unknown } {
+  try {
+    return { success: true, value: thunk() };
+  } catch (error) {
+    return { success: false, error };
+  }
+}
+
 export function buildPlatformRootSummary(): PlatformRootSummary {
-  const architecture = buildPlatformArchitectureBootstrapSummary();
-  const domainsStartupPlan = buildDomainsStartupPlan();
-  const domainsRuntimeCatalog = buildDomainsRuntimeCatalog();
-  const startupPlan = buildFivePlaneStartupPlan();
-  const aiOperationsStartupPlan = buildAiOperationsStartupPlan();
-  const interactionGovernanceStartupPlan = buildInteractionGovernanceStartupPlan();
-  const runtimeCatalog = buildFivePlaneRuntimeCatalog();
-  const aiOperationsRuntimeCatalog = buildAiOperationsRuntimeCatalog();
-  const interactionGovernanceRuntimeCatalog = buildInteractionGovernanceRuntimeCatalog();
-  const scaleOpsStartupPlan = buildScaleOpsStartupPlan();
-  const scaleOpsRuntimeCatalog = buildScaleOpsRuntimeCatalog();
+  // §9: Each build step has error boundary - single failure doesn't crash overall
+  const architectureResult = safeBuild(buildPlatformArchitectureBootstrapSummary, null);
+  const domainsStartupPlanResult = safeBuild(buildDomainsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const domainsRuntimeCatalogResult = safeBuild(buildDomainsRuntimeCatalog, { ring1: [], ring2: [], ring3: [] });
+  const startupPlanResult = safeBuild(buildFivePlaneStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const aiOperationsStartupPlanResult = safeBuild(buildAiOperationsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const interactionGovernanceStartupPlanResult = safeBuild(buildInteractionGovernanceStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const runtimeCatalogResult = safeBuild(buildFivePlaneRuntimeCatalog, {
+    interfacePlane: [], controlPlane: [], orchestrationPlane: [], executionPlane: [], stateEvidencePlane: [],
+  });
+  const aiOperationsRuntimeCatalogResult = safeBuild(buildAiOperationsRuntimeCatalog, {
+    modelGateway: [], promptEngine: [], compliance: [], harness: [],
+  });
+  const interactionGovernanceRuntimeCatalogResult = safeBuild(buildInteractionGovernanceRuntimeCatalog, {
+    interaction: [], governance: [],
+  });
+  const scaleOpsStartupPlanResult = safeBuild(buildScaleOpsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const scaleOpsRuntimeCatalogResult = safeBuild(buildScaleOpsRuntimeCatalog, { scaleEcosystem: [], opsMaturity: [] });
+
+  const architecture = architectureResult.success ? architectureResult.value : null;
+  const domainsStartupPlan = domainsStartupPlanResult.success ? domainsStartupPlanResult.value : { startupOrder: [], totalCapabilityCount: 0, steps: [] };
+  const domainsRuntimeCatalog = domainsRuntimeCatalogResult.success ? domainsRuntimeCatalogResult.value : { ring1: [], ring2: [], ring3: [] };
+  const startupPlan = startupPlanResult.success ? startupPlanResult.value : { startupOrder: [], totalCapabilityCount: 0, steps: [] };
+  const aiOperationsStartupPlan = aiOperationsStartupPlanResult.success ? aiOperationsStartupPlanResult.value : { startupOrder: [], totalCapabilityCount: 0, steps: [] };
+  const interactionGovernanceStartupPlan = interactionGovernanceStartupPlanResult.success ? interactionGovernanceStartupPlanResult.value : { startupOrder: [], totalCapabilityCount: 0, steps: [] };
+  const runtimeCatalog = runtimeCatalogResult.success ? runtimeCatalogResult.value : { interfacePlane: [], controlPlane: [], orchestrationPlane: [], executionPlane: [], stateEvidencePlane: [] };
+  const aiOperationsRuntimeCatalog = aiOperationsRuntimeCatalogResult.success ? aiOperationsRuntimeCatalogResult.value : { modelGateway: [], promptEngine: [], compliance: [], harness: [] };
+  const interactionGovernanceRuntimeCatalog = interactionGovernanceRuntimeCatalogResult.success ? interactionGovernanceRuntimeCatalogResult.value : { interaction: [], governance: [] };
+  const scaleOpsStartupPlan = scaleOpsStartupPlanResult.success ? scaleOpsStartupPlanResult.value : { startupOrder: [], totalCapabilityCount: 0, steps: [] };
+  const scaleOpsRuntimeCatalog = scaleOpsRuntimeCatalogResult.success ? scaleOpsRuntimeCatalogResult.value : { scaleEcosystem: [], opsMaturity: [] };
 
   return {
     architecture,

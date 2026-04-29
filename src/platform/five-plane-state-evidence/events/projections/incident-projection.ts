@@ -58,6 +58,18 @@ export interface IncidentState {
    * Used for freshness monitoring and stale projection detection.
    */
   lastProjectedAt: string | null;
+  /**
+   * Lag in milliseconds between event time and projection update.
+   * Computed as: now - lastProjectedAt.
+   * Used for freshness monitoring per §28.6.
+   */
+  lagMs: number | null;
+  /**
+   * Whether this projection is considered stale.
+   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
+   * Used for freshness monitoring per §28.6/§25.5.
+   */
+  stale: boolean;
   /** Detected timestamp */
   detectedAt: string | null;
   /** Resolved timestamp */
@@ -130,6 +142,8 @@ export function createEmptyIncidentState(): IncidentState {
     firstEventAt: null,
     lastEventAt: null,
     lastProjectedAt: null,
+    lagMs: null,
+    stale: false,
     detectedAt: null,
     resolvedAt: null,
     acknowledgedAt: null,
@@ -260,6 +274,13 @@ export const incidentProjectionHandler: ProjectionHandler = (
   }
   newState.lastEventAt = event.createdAt;
   newState.lastProjectedAt = event.createdAt;
+  // Compute lagMs and stale flag per §28.6/§25.5
+  if (event.createdAt) {
+    const eventTime = new Date(event.createdAt).getTime();
+    const now = Date.now();
+    newState.lagMs = now - eventTime;
+    newState.stale = newState.lagMs > 300000;
+  }
 
   // Add to timeline
   const timelineEntry: IncidentTimelineEntry = {
@@ -340,7 +361,7 @@ export const incidentProjectionHandler: ProjectionHandler = (
  * Handle incident:created event
  */
 function handleIncidentCreated(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -366,7 +387,7 @@ function handleIncidentCreated(
  * Handle incident:acknowledged event
  */
 function handleIncidentAcknowledged(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -380,7 +401,7 @@ function handleIncidentAcknowledged(
  * Handle incident:investigating event
  */
 function handleIncidentInvestigating(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   _timestamp: string,
 ): void {
@@ -394,7 +415,7 @@ function handleIncidentInvestigating(
  * Handle incident:mitigated event
  */
 function handleIncidentMitigated(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   _timestamp: string,
 ): void {
@@ -408,7 +429,7 @@ function handleIncidentMitigated(
  * Handle incident:resolved event
  */
 function handleIncidentResolved(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -423,7 +444,7 @@ function handleIncidentResolved(
  * Handle incident:cancelled event
  */
 function handleIncidentCancelled(
-  state: IncidentState,
+  state: IncidentStateInternal,
   _payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -435,7 +456,7 @@ function handleIncidentCancelled(
  * Handle compliance:violation_detected event (creates incident)
  */
 function handleComplianceViolation(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -468,7 +489,7 @@ function handleComplianceViolation(
  * Handle slo:breached event (creates incident)
  */
 function handleSloBreached(
-  state: IncidentState,
+  state: IncidentStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {

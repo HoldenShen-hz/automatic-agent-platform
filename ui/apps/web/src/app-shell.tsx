@@ -1,25 +1,10 @@
 import type { ReactElement } from "react";
+import React from "react";
 import { BrowserRouter, MemoryRouter, NavLink, Route, Routes } from "react-router-dom";
 import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
-
-const demoGuardContext = createFeatureGuardContext({
-  permissions: [
-    "authenticated",
-    "platform_sre",
-    "pack_developer+",
-    "domain_admin+",
-    "org_admin+",
-  ],
-  featureFlags: {
-    analytics: true,
-    "workflow-builder": true,
-    "workflow-debugger": true,
-    marketplace: true,
-  },
-});
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
@@ -27,18 +12,45 @@ export interface WebAppShellProps {
   readonly wsClient?: WSClient;
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
+  /** Auth context for RBAC - should come from auth store per §5.1.1 */
+  readonly authContext?: AuthContext;
 }
 
-function renderGuardedFeature(features: readonly FeatureModule[], path: string): ReactElement {
+export interface AuthContext {
+  readonly userId: string;
+  readonly permissions: readonly string[];
+  readonly tenantId: string;
+  readonly roles: readonly string[];
+}
+
+function renderGuardedFeature(
+  features: readonly FeatureModule[],
+  path: string,
+  authContext: AuthContext | null,
+): ReactElement {
   const feature = features.find((candidate) => candidate.route.path === path) ?? features[0]!;
-  const guard = createRouteGuardChain(feature.route.permission, feature.manifest.kind === "planned" ? feature.manifest.id : undefined);
-  const result = guard.evaluate(demoGuardContext);
+
+  // §5.1.1: Use real RBAC from auth context instead of hardcoded demoGuardContext
+  const guardContext = createFeatureGuardContext({
+    authenticated: authContext !== null,
+    tenantId: authContext?.tenantId ?? "",
+    domainId: "platform",
+    permissions: authContext?.permissions ?? [],
+    roles: authContext?.roles ?? [],
+  });
+
+  const guard = createRouteGuardChain(
+    feature.route.permission,
+    feature.manifest.kind === "planned" ? feature.manifest.id : undefined,
+  );
+  const result = guard.evaluate(guardContext);
 
   if (!result.allowed) {
     return (
       <section>
         <h2>Access denied</h2>
         <p>{result.reason}</p>
+        <button onClick={() => window.history.back()}>Go Back</button>
       </section>
     );
   }
@@ -55,7 +67,7 @@ function AppRouter(
   return <BrowserRouter>{children}</BrowserRouter>;
 }
 
-function AppFrame({ features }: { features: readonly FeatureModule[] }): ReactElement {
+function AppFrame({ features, authContext }: { features: readonly FeatureModule[]; authContext: AuthContext | null }): ReactElement {
   const systemStatus = useSystemStatus();
   const groupedFeatures = Object.entries(
     features.reduce<Record<string, FeatureModule[]>>((groups, feature) => {
@@ -100,7 +112,7 @@ function AppFrame({ features }: { features: readonly FeatureModule[] }): ReactEl
         <Routes>
         {/* §4.4.1 L2-L5 nested drill-down routes */}
         {features.map((feature) => (
-          <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path)} path={feature.route.path}>
+          <Route key={feature.manifest.id} element={renderGuardedFeature(features, feature.route.path, authContext)} path={feature.route.path}>
             {/* L3-L5 nested child routes per §4.4.1 */}
             <Route index element={null} />
             <Route path="evidence" element={null} />
@@ -110,14 +122,63 @@ function AppFrame({ features }: { features: readonly FeatureModule[] }): ReactEl
             <Route path="settings" element={null} />
           </Route>
         ))}
-        <Route element={renderGuardedFeature(features, features[0]!.route.path)} path="*" />
+        <Route element={renderGuardedFeature(features, features[0]!.route.path, authContext)} path="*" />
       </Routes>
       </main>
     </div>
   );
 }
 
-export function WebAppShell({ features, client, wsClient, router = "browser", initialEntries }: WebAppShellProps): ReactElement {
+/**
+ * ErrorBoundary per §5.6 with per-severity fallback handling.
+ */
+class AppErrorBoundary extends React.Component<
+  { children: ReactElement },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactElement }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  private handleRetry = (): void => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  private handleReport = (): void => {
+    const error = this.state.error;
+    if (error !== null) {
+      console.error("[AppErrorBoundary] Error report:", {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+      });
+      // In production, this would send to error reporting service
+    }
+  };
+
+  public render(): ReactElement {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 20, color: "red" }}>
+          <h2>Something went wrong</h2>
+          <p>{this.state.error?.message ?? "Unknown error"}</p>
+          <div style={{ display: "grid", gap: 8 }}>
+            <button onClick={this.handleRetry}>Retry</button>
+            <button onClick={this.handleReport}>Report Issue</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export function WebAppShell({ features, client, wsClient, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(wsClient == null ? {} : { wsClient }),
@@ -125,9 +186,11 @@ export function WebAppShell({ features, client, wsClient, router = "browser", in
 
   return (
     <UiRuntimeProvider {...runtimeProps}>
-      <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
-        <AppFrame features={features} />
-      </AppRouter>
+      <AppErrorBoundary>
+        <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
+          <AppFrame features={features} authContext={authContext ?? null} />
+        </AppRouter>
+      </AppErrorBoundary>
     </UiRuntimeProvider>
   );
 }

@@ -2,6 +2,13 @@
 
 > v4.3 canonical contract。覆盖 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope`。
 
+## 0. 类型定义
+
+| 类型 | 定义 | 说明 |
+| --- | --- | --- |
+| `ConstraintPackRef` | `string` | 约束包引用，格式为 `constraint_pack:${id}`，指向平台合并后的不可变约束包 |
+| `PrincipalRef` | `{ principalId: string; tenantId: string; roles: readonly string[] }` | 发起主体引用 |
+
 ## 1. 范围
 
 本 contract 定义从原始输入进入 HarnessRuntime 前的唯一 intake 链路：

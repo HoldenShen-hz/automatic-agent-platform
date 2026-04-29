@@ -1,99 +1,71 @@
-import { lazy } from "react";
+import { lazy, type ReactElement } from "react";
+import type { FeatureModule } from "@aa/ui-core";
 
 // All features use React.lazy per §4.4.1 (only / and /login are static entry points)
 // Lazy-loaded feature registry for code splitting per §7.3.1
-export const LazyFeatureDashboard = lazy(() => import("@aa/feature-dashboard"));
-export const LazyFeatureTaskCockpit = lazy(() => import("@aa/feature-task-cockpit"));
-export const LazyFeatureWorkflowCockpit = lazy(() => import("@aa/feature-workflow-cockpit"));
-export const LazyFeatureApproval = lazy(() => import("@aa/feature-approval"));
-export const LazyFeatureStability = lazy(() => import("@aa/feature-stability"));
-export const LazyFeatureTakeover = lazy(() => import("@aa/feature-takeover"));
-export const LazyFeatureAlerts = lazy(() => import("@aa/feature-alerts"));
-export const LazyFeatureDispatch = lazy(() => import("@aa/feature-dispatch"));
-export const LazyFeatureInspect = lazy(() => import("@aa/feature-inspect"));
-export const LazyFeatureHealth = lazy(() => import("@aa/feature-health"));
-export const LazyFeatureIncidents = lazy(() => import("@aa/feature-incidents"));
-export const LazyFeatureCompliance = lazy(() => import("@aa/feature-compliance"));
-export const LazyFeaturePolicy = lazy(() => import("@aa/feature-policy"));
-export const LazyFeatureAudit = lazy(() => import("@aa/feature-audit"));
-export const LazyFeatureConversation = lazy(() => import("@aa/feature-conversation"));
-export const LazyFeatureHitl = lazy(() => import("@aa/feature-hitl"));
-export const LazyFeatureDomainWizard = lazy(() => import("@aa/feature-domain-wizard"));
-export const LazyFeatureSettings = lazy(() => import("@aa/feature-settings"));
-export const LazyFeatureWorkers = lazy(() => import("@aa/feature-workers"));
-export const LazyFeatureQueues = lazy(() => import("@aa/feature-queues"));
-export const LazyFeatureWorkflowBuilder = lazy(() => import("@aa/feature-workflow-builder"));
-export const LazyFeatureWorkflowDebugger = lazy(() => import("@aa/feature-workflow-debugger"));
-export const LazyFeatureAgentManager = lazy(() => import("@aa/feature-agent-manager"));
-export const LazyFeatureExplainability = lazy(() => import("@aa/feature-explainability"));
-export const LazyFeatureCostCenter = lazy(() => import("@aa/feature-cost-center"));
-export const LazyFeatureMarketplace = lazy(() => import("@aa/feature-marketplace"));
-export const LazyFeatureAnalytics = lazy(() => import("@aa/feature-analytics"));
-export const LazyFeatureFeatureFlags = lazy(() => import("@aa/feature-feature-flags"));
+// Each lazy import extracts the .default.Component from the FeatureModule
+export const LazyFeatureDashboard = lazy(() => import("@aa/feature-dashboard").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureTaskCockpit = lazy(() => import("@aa/feature-task-cockpit").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureWorkflowCockpit = lazy(() => import("@aa/feature-workflow-cockpit").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureApproval = lazy(() => import("@aa/feature-approval").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureStability = lazy(() => import("@aa/feature-stability").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureTakeover = lazy(() => import("@aa/feature-takeover").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureAlerts = lazy(() => import("@aa/feature-alerts").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureDispatch = lazy(() => import("@aa/feature-dispatch").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureInspect = lazy(() => import("@aa/feature-inspect").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureHealth = lazy(() => import("@aa/feature-health").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureIncidents = lazy(() => import("@aa/feature-incidents").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureCompliance = lazy(() => import("@aa/feature-compliance").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeaturePolicy = lazy(() => import("@aa/feature-policy").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureAudit = lazy(() => import("@aa/feature-audit").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureConversation = lazy(() => import("@aa/feature-conversation").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureHitl = lazy(() => import("@aa/feature-hitl").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureDomainWizard = lazy(() => import("@aa/feature-domain-wizard").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureSettings = lazy(() => import("@aa/feature-settings").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureWorkers = lazy(() => import("@aa/feature-workers").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureQueues = lazy(() => import("@aa/feature-queues").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureWorkflowBuilder = lazy(() => import("@aa/feature-workflow-builder").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureWorkflowDebugger = lazy(() => import("@aa/feature-workflow-debugger").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureAgentManager = lazy(() => import("@aa/feature-agent-manager").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureExplainability = lazy(() => import("@aa/feature-explainability").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureCostCenter = lazy(() => import("@aa/feature-cost-center").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureMarketplace = lazy(() => import("@aa/feature-marketplace").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureAnalytics = lazy(() => import("@aa/feature-analytics").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
+export const LazyFeatureFeatureFlags = lazy(() => import("@aa/feature-flags").then((m) => ({ default: m.default.Component as unknown as () => ReactElement })));
 
-// Static imports only for entry points (/ and /login) per §4.4.1
-import dashboard from "@aa/feature-dashboard";
-import taskCockpit from "@aa/feature-task-cockpit";
-import workflowCockpit from "@aa/feature-workflow-cockpit";
-import approval from "@aa/feature-approval";
-import stability from "@aa/feature-stability";
-import takeover from "@aa/feature-takeover";
-import alerts from "@aa/feature-alerts";
-import dispatch from "@aa/feature-dispatch";
-import inspect from "@aa/feature-inspect";
-import health from "@aa/feature-health";
-import incidents from "@aa/feature-incidents";
-import compliance from "@aa/feature-compliance";
-import policy from "@aa/feature-policy";
-import audit from "@aa/feature-audit";
-import conversation from "@aa/feature-conversation";
-import hitl from "@aa/feature-hitl";
-import domainWizard from "@aa/feature-domain-wizard";
-import settings from "@aa/feature-settings";
-import workers from "@aa/feature-workers";
-import queues from "@aa/feature-queues";
-import workflowBuilder from "@aa/feature-workflow-builder";
-import workflowDebugger from "@aa/feature-workflow-debugger";
-import agentManager from "@aa/feature-agent-manager";
-import explainability from "@aa/feature-explainability";
-import costCenter from "@aa/feature-cost-center";
-import marketplace from "@aa/feature-marketplace";
-import analytics from "@aa/feature-analytics";
-import featureFlags from "@aa/feature-feature-flags";
+// Type for lazy component wrapper - converts LazyExoticComponent to plain function component
+type LazyComponent = () => ReactElement;
 
 // Static entry points only (per §4.4.1: only / and /login are non-lazy)
-const staticFeatures = [dashboard, taskCockpit, workflowCockpit, approval, stability, takeover, alerts, dispatch, inspect, health, incidents, compliance, policy, audit, conversation, hitl, domainWizard, settings, workers, queues, workflowBuilder, workflowDebugger, agentManager, explainability, costCenter, marketplace, analytics, featureFlags] as const;
-
-// Lazy-loaded feature registry for code splitting
-export const lazyFeatureRegistry = [
-  { manifest: dashboard.manifest, route: dashboard.route, Component: LazyFeatureDashboard },
-  { manifest: taskCockpit.manifest, route: taskCockpit.route, Component: LazyFeatureTaskCockpit },
-  { manifest: workflowCockpit.manifest, route: workflowCockpit.route, Component: LazyFeatureWorkflowCockpit },
-  { manifest: approval.manifest, route: approval.route, Component: LazyFeatureApproval },
-  { manifest: stability.manifest, route: stability.route, Component: LazyFeatureStability },
-  { manifest: takeover.manifest, route: takeover.route, Component: LazyFeatureTakeover },
-  { manifest: alerts.manifest, route: alerts.route, Component: LazyFeatureAlerts },
-  { manifest: dispatch.manifest, route: dispatch.route, Component: LazyFeatureDispatch },
-  { manifest: inspect.manifest, route: inspect.route, Component: LazyFeatureInspect },
-  { manifest: health.manifest, route: health.route, Component: LazyFeatureHealth },
-  { manifest: incidents.manifest, route: incidents.route, Component: LazyFeatureIncidents },
-  { manifest: compliance.manifest, route: compliance.route, Component: LazyFeatureCompliance },
-  { manifest: policy.manifest, route: policy.route, Component: LazyFeaturePolicy },
-  { manifest: audit.manifest, route: audit.route, Component: LazyFeatureAudit },
-  { manifest: conversation.manifest, route: conversation.route, Component: LazyFeatureConversation },
-  { manifest: hitl.manifest, route: hitl.route, Component: LazyFeatureHitl },
-  { manifest: domainWizard.manifest, route: domainWizard.route, Component: LazyFeatureDomainWizard },
-  { manifest: settings.manifest, route: settings.route, Component: LazyFeatureSettings },
-  { manifest: workers.manifest, route: workers.route, Component: LazyFeatureWorkers },
-  { manifest: queues.manifest, route: queues.route, Component: LazyFeatureQueues },
-  { manifest: workflowBuilder.manifest, route: workflowBuilder.route, Component: LazyFeatureWorkflowBuilder },
-  { manifest: workflowDebugger.manifest, route: workflowDebugger.route, Component: LazyFeatureWorkflowDebugger },
-  { manifest: agentManager.manifest, route: agentManager.route, Component: LazyFeatureAgentManager },
-  { manifest: explainability.manifest, route: explainability.route, Component: LazyFeatureExplainability },
-  { manifest: costCenter.manifest, route: costCenter.route, Component: LazyFeatureCostCenter },
-  { manifest: marketplace.manifest, route: marketplace.route, Component: LazyFeatureMarketplace },
-  { manifest: analytics.manifest, route: analytics.route, Component: LazyFeatureAnalytics },
-  { manifest: featureFlags.manifest, route: featureFlags.route, Component: LazyFeatureFeatureFlags },
+// Feature registry uses lazy imports - no eager static imports per §4.4.1 code splitting
+// We import the manifest/route data eagerly but keep Component lazy for code splitting
+export const featureRegistry: readonly FeatureModule[] = [
+  { manifest: { id: "dashboard", title: "Dashboard", group: "Mission Control", kind: "implemented", status: "Implemented/Internal", path: "/mission-control/dashboard", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "Mission Control 首页，回答系统是否健康、当前在做什么、卡在哪里。" }, route: { path: "/mission-control/dashboard", featureId: "dashboard", group: "Mission Control", title: "Dashboard", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureDashboard as unknown as LazyComponent },
+  { manifest: { id: "task-cockpit", title: "Task Cockpit", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/tasks", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "任务五级下钻和三栏工作台基线。" }, route: { path: "/mission-control/tasks", featureId: "task-cockpit", group: "Mission Control", title: "Task Cockpit", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureTaskCockpit as unknown as LazyComponent },
+  { manifest: { id: "workflow-cockpit", title: "Workflow Cockpit", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/workflows", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "工作流监控和调试基线。" }, route: { path: "/mission-control/workflows", featureId: "workflow-cockpit", group: "Mission Control", title: "Workflow Cockpit", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureWorkflowCockpit as unknown as LazyComponent },
+  { manifest: { id: "approval", title: "Approval", group: "Operations", kind: "implemented", status: "Implemented/Contracted", path: "/operations/approvals", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "人工审批工作流和批量审批。" }, route: { path: "/operations/approvals", featureId: "approval", group: "Operations", title: "Approval", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureApproval as unknown as LazyComponent },
+  { manifest: { id: "stability", title: "Stability", group: "Operations", kind: "implemented", status: "Implemented/Contracted", path: "/operations/stability", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "稳定性监控和告警管理。" }, route: { path: "/operations/stability", featureId: "stability", group: "Operations", title: "Stability", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureStability as unknown as LazyComponent },
+  { manifest: { id: "takeover", title: "Takeover", group: "Operations", kind: "implemented", status: "Implemented/Contracted", path: "/operations/takeover", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "人工接管和中断处理。" }, route: { path: "/operations/takeover", featureId: "takeover", group: "Operations", title: "Takeover", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureTakeover as unknown as LazyComponent },
+  { manifest: { id: "alerts", title: "Alerts", group: "Operations", kind: "implemented", status: "Implemented/Contracted", path: "/operations/alerts", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "告警规则和通知管理。" }, route: { path: "/operations/alerts", featureId: "alerts", group: "Operations", title: "Alerts", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureAlerts as unknown as LazyComponent },
+  { manifest: { id: "dispatch", title: "Dispatch", group: "Operations", kind: "implemented", status: "Implemented/Contracted", path: "/operations/dispatch", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "任务分发和负载均衡。" }, route: { path: "/operations/dispatch", featureId: "dispatch", group: "Operations", title: "Dispatch", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureDispatch as unknown as LazyComponent },
+  { manifest: { id: "inspect", title: "Inspect", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/inspect", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "任务和工作流inspect." }, route: { path: "/mission-control/inspect", featureId: "inspect", group: "Mission Control", title: "Inspect", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureInspect as unknown as LazyComponent },
+  { manifest: { id: "health", title: "Health", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/health", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "系统健康状态监控。" }, route: { path: "/mission-control/health", featureId: "health", group: "Mission Control", title: "Health", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureHealth as unknown as LazyComponent },
+  { manifest: { id: "incidents", title: "Incidents", group: "Operations", kind: "implemented", status: "Implemented/Contracted", path: "/operations/incidents", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "事故管理和响应。" }, route: { path: "/operations/incidents", featureId: "incidents", group: "Operations", title: "Incidents", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureIncidents as unknown as LazyComponent },
+  { manifest: { id: "compliance", title: "Compliance", group: "Governance", kind: "implemented", status: "Implemented/Contracted", path: "/governance/compliance", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "合规审计和报告。" }, route: { path: "/governance/compliance", featureId: "compliance", group: "Governance", title: "Compliance", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureCompliance as unknown as LazyComponent },
+  { manifest: { id: "policy", title: "Policy", group: "Governance", kind: "implemented", status: "Implemented/Contracted", path: "/governance/policy", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "策略管理和执行。" }, route: { path: "/governance/policy", featureId: "policy", group: "Governance", title: "Policy", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeaturePolicy as unknown as LazyComponent },
+  { manifest: { id: "audit", title: "Audit", group: "Governance", kind: "implemented", status: "Implemented/Contracted", path: "/governance/audit", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "审计日志查询。" }, route: { path: "/governance/audit", featureId: "audit", group: "Governance", title: "Audit", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureAudit as unknown as LazyComponent },
+  { manifest: { id: "conversation", title: "Conversation", group: "Extended", kind: "implemented", status: "Implemented/Contracted", path: "/extended/conversation", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "对话式AI交互。" }, route: { path: "/extended/conversation", featureId: "conversation", group: "Extended", title: "Conversation", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureConversation as unknown as LazyComponent },
+  { manifest: { id: "hitl", title: "HITL", group: "Extended", kind: "implemented", status: "Implemented/Contracted", path: "/extended/hitl", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "人机交互学习。" }, route: { path: "/extended/hitl", featureId: "hitl", group: "Extended", title: "HITL", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureHitl as unknown as LazyComponent },
+  { manifest: { id: "domain-wizard", title: "Domain Wizard", group: "Extended", kind: "implemented", status: "Implemented/Contracted", path: "/extended/domain-wizard", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "领域配置向导。" }, route: { path: "/extended/domain-wizard", featureId: "domain-wizard", group: "Extended", title: "Domain Wizard", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureDomainWizard as unknown as LazyComponent },
+  { manifest: { id: "settings", title: "Settings", group: "Admin", kind: "implemented", status: "Implemented/Contracted", path: "/admin/settings", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "系统设置。" }, route: { path: "/admin/settings", featureId: "settings", group: "Admin", title: "Settings", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureSettings as unknown as LazyComponent },
+  { manifest: { id: "workers", title: "Workers", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/workers", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "Worker管理。" }, route: { path: "/mission-control/workers", featureId: "workers", group: "Mission Control", title: "Workers", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureWorkers as unknown as LazyComponent },
+  { manifest: { id: "queues", title: "Queues", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/queues", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "队列管理。" }, route: { path: "/mission-control/queues", featureId: "queues", group: "Mission Control", title: "Queues", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureQueues as unknown as LazyComponent },
+  { manifest: { id: "workflow-builder", title: "Workflow Builder", group: "Extended", kind: "planned", status: "Planned", path: "/extended/workflow-builder", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "工作流构建器。" }, route: { path: "/extended/workflow-builder", featureId: "workflow-builder", group: "Extended", title: "Workflow Builder", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureWorkflowBuilder as unknown as LazyComponent },
+  { manifest: { id: "workflow-debugger", title: "Workflow Debugger", group: "Extended", kind: "planned", status: "Planned", path: "/extended/workflow-debugger", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "工作流调试器。" }, route: { path: "/extended/workflow-debugger", featureId: "workflow-debugger", group: "Extended", title: "Workflow Debugger", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureWorkflowDebugger as unknown as LazyComponent },
+  { manifest: { id: "agent-manager", title: "Agent Manager", group: "Admin", kind: "implemented", status: "Implemented/Contracted", path: "/admin/agent-manager", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "Agent生命周期管理。" }, route: { path: "/admin/agent-manager", featureId: "agent-manager", group: "Admin", title: "Agent Manager", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureAgentManager as unknown as LazyComponent },
+  { manifest: { id: "explainability", title: "Explainability", group: "Extended", kind: "implemented", status: "Implemented/Contracted", path: "/extended/explainability", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "AI决策可解释性。" }, route: { path: "/extended/explainability", featureId: "explainability", group: "Extended", title: "Explainability", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureExplainability as unknown as LazyComponent },
+  { manifest: { id: "cost-center", title: "Cost Center", group: "Admin", kind: "implemented", status: "Implemented/Contracted", path: "/admin/cost-center", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "成本中心。" }, route: { path: "/admin/cost-center", featureId: "cost-center", group: "Admin", title: "Cost Center", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureCostCenter as unknown as LazyComponent },
+  { manifest: { id: "marketplace", title: "Marketplace", group: "Extended", kind: "implemented", status: "Implemented/Contracted", path: "/extended/marketplace", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "Pack市场。" }, route: { path: "/extended/marketplace", featureId: "marketplace", group: "Extended", title: "Marketplace", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureMarketplace as unknown as LazyComponent },
+  { manifest: { id: "analytics", title: "Analytics", group: "Mission Control", kind: "implemented", status: "Implemented/Contracted", path: "/mission-control/analytics", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "分析仪表板。" }, route: { path: "/mission-control/analytics", featureId: "analytics", group: "Mission Control", title: "Analytics", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureAnalytics as unknown as LazyComponent },
+  { manifest: { id: "feature-flags", title: "Feature Flags", group: "Admin", kind: "implemented", status: "Implemented/Contracted", path: "/admin/feature-flags", platforms: ["web", "windows", "macos", "linux", "android", "ios"], permission: "authenticated", apiLayer: "C", summary: "Feature Flag管理。" }, route: { path: "/admin/feature-flags", featureId: "feature-flags", group: "Admin", title: "Feature Flags", permission: "authenticated", platforms: ["web", "windows", "macos", "linux", "android", "ios"], codeSplit: false }, Component: LazyFeatureFeatureFlags as unknown as LazyComponent },
 ] as const;
-
-export const featureRegistry = staticFeatures;

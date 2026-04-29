@@ -21,6 +21,15 @@ export interface KnowledgeGraphNode {
   label: string;
   namespace: string | null;
   knowledgeRef: string | null;
+  /** R16-34 FIX: §29.1 Trust Level for knowledge nodes
+   * Levels (lowest to highest):
+   * - private_unverified: raw info, no review
+   * - team_reviewed: verified by team
+   * - official: formally approved
+   * - authoritative: canonical, cannot be contested
+   * - contested: previously authoritative but now disputed
+   */
+  trustLevel: "private_unverified" | "team_reviewed" | "official" | "authoritative" | "contested";
 }
 
 export interface KnowledgeGraphEdge {
@@ -83,6 +92,8 @@ export class SemanticKnowledgeGraph {
       label: record.document.namespace,
       namespace: record.document.namespace,
       knowledgeRef: null,
+      // R16-34 FIX: Namespace nodes are authoritative - they represent org boundaries
+      trustLevel: "authoritative",
     });
 
     const documentNodeId = `document:${record.document.documentId}`;
@@ -92,6 +103,8 @@ export class SemanticKnowledgeGraph {
       label: record.document.title,
       namespace: record.document.namespace,
       knowledgeRef: null,
+      // R16-34 FIX: Documents start as team_reviewed until formally approved
+      trustLevel: "team_reviewed",
     });
     this.addEdge(namespaceNodeId, documentNodeId, "contains", 1);
 
@@ -99,12 +112,15 @@ export class SemanticKnowledgeGraph {
     for (const chunk of record.chunks) {
       const chunkNodeId = `chunk:${chunk.chunkId}`;
       chunkNodeIds.push(chunkNodeId);
+      // R16-34 FIX: Derive trust level from source trust level (chunks inherit from parent document's source)
+      const derivedTrustLevel = record.source.trustLevel as KnowledgeGraphNode["trustLevel"];
       this.nodes.set(chunkNodeId, {
         nodeId: chunkNodeId,
         nodeType: "chunk",
         label: chunk.summary,
         namespace: chunk.namespace,
         knowledgeRef: `knowledge:${chunk.chunkId}`,
+        trustLevel: derivedTrustLevel ?? "private_unverified",
       });
       this.chunkByKnowledgeRef.set(`knowledge:${chunk.chunkId}`, chunkNodeId);
       this.addEdge(documentNodeId, chunkNodeId, "contains", 1);
@@ -122,6 +138,8 @@ export class SemanticKnowledgeGraph {
           label: normalizedKeyword,
           namespace: chunk.namespace,
           knowledgeRef: null,
+          // R16-34 FIX: Keywords inherit trust from their parent chunk's source
+          trustLevel: derivedTrustLevel ?? "private_unverified",
         });
         this.addEdge(chunkNodeId, keywordNodeId, "contains", 1);
         const chunkIds = this.keywordToChunkIds.get(normalizedKeyword) ?? new Set<string>();
@@ -242,7 +260,12 @@ export class SemanticKnowledgeGraph {
 
     while (queue.length > 0 && collected.size < limit) {
       const currentNodeId = queue.shift()!;
-      for (const edge of this.edges.values()) {
+
+      // R16-33 FIX: Use adjacency index instead of iterating all edges
+      // O(V*E) -> O(V + E) by using the pre-built adjacencyByNodeId map
+      const adjacentEdges = this.adjacencyByNodeId.get(currentNodeId) ?? [];
+
+      for (const edge of adjacentEdges) {
         if (collected.size >= limit) {
           return;
         }
@@ -312,6 +335,8 @@ export class SemanticKnowledgeGraph {
         label: fromEntityRef,
         namespace: null,
         knowledgeRef: null,
+        // R16-34 FIX: Entity nodes default to private_unverified (unverified info)
+        trustLevel: "private_unverified",
       });
     }
     if (!this.nodes.has(toNodeId)) {
@@ -319,6 +344,11 @@ export class SemanticKnowledgeGraph {
         nodeId: toNodeId,
         nodeType: "entity",
         label: toEntityRef,
+        namespace: null,
+        knowledgeRef: null,
+        // R16-34 FIX: Entity nodes default to private_unverified (unverified info)
+        trustLevel: "private_unverified",
+      });
         namespace: null,
         knowledgeRef: null,
       });

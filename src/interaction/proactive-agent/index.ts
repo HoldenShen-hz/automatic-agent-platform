@@ -74,6 +74,15 @@ export interface TriggerFireDecision {
   readonly queuedSuggestionId: string | null;
 }
 
+export interface ProactiveSuggestionContext {
+  readonly triggerType: CanonicalTriggerType;
+  readonly riskLevel: TriggerDefinition["riskLevel"];
+  readonly sourceSummary: string;
+  readonly matchedSignal: string | null;
+  readonly targetDomainId: string;
+  readonly requireConfirmation: boolean;
+}
+
 export interface ProactiveSuggestion {
   readonly suggestionId: string;
   readonly triggerId: string;
@@ -81,6 +90,8 @@ export interface ProactiveSuggestion {
   readonly createdAt: string;
   readonly title: string;
   readonly action: TriggerAction;
+  readonly context: ProactiveSuggestionContext;
+  readonly qualityScore: number;
 }
 
 export interface ProactiveBudgetPool {
@@ -103,6 +114,11 @@ export interface ProactiveAgentServiceOptions {
   readonly budgetPoolsByDomain?: Readonly<Record<string, ProactiveBudgetPool>>;
   /** §42.5: Current autonomy level to check before auto_execution (requires semi_auto+ for medium+ risk) */
   readonly currentAutonomyLevel?: "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
+  /** §41.1: Optional domain descriptor validator - validates trigger attributes against domain capabilities */
+  readonly domainDescriptorValidator?: (
+    domainId: string,
+    trigger: TriggerDefinition,
+  ) => readonly string[] | null;
 }
 
 interface TriggerRuntimeState {
@@ -111,6 +127,17 @@ interface TriggerRuntimeState {
   fireTimestamps: string[];
   consecutiveFailures: number;
   fireCount: number;
+  pendingBatch: TriggerBatchState | null;
+}
+
+interface TriggerBatchState {
+  openedAt: string;
+  lastEventAt: string;
+  events: {
+    source: string;
+    name: string;
+    payload?: Record<string, unknown>;
+  }[];
 }
 
 function parseDurationMs(raw: string): number {
@@ -200,6 +227,72 @@ function normalizeTriggerType(type: TriggerType): CanonicalTriggerType {
   return type;
 }
 
+function buildSuggestionContext(
+  trigger: TriggerDefinition,
+  input: TriggerEvaluationInput,
+): ProactiveSuggestionContext {
+  const normalizedType = normalizeTriggerType(trigger.type);
+  if ((normalizedType === "event" || normalizedType === "webhook") && input.event != null) {
+    return {
+      triggerType: normalizedType,
+      riskLevel: trigger.riskLevel,
+      sourceSummary: `${input.event.source}:${input.event.name}`,
+      matchedSignal: input.event.payload == null ? null : JSON.stringify(input.event.payload),
+      targetDomainId: trigger.domainId,
+      requireConfirmation: trigger.action.requireConfirmation,
+    };
+  }
+
+  if (normalizedType === "condition" && input.metric != null) {
+    const previousValue = input.metric.previousValue == null ? "" : ` (prev ${input.metric.previousValue})`;
+    return {
+      triggerType: normalizedType,
+      riskLevel: trigger.riskLevel,
+      sourceSummary: `${input.metric.source}:${input.metric.name}`,
+      matchedSignal: `${input.metric.value}${previousValue}`,
+      targetDomainId: trigger.domainId,
+      requireConfirmation: trigger.action.requireConfirmation,
+    };
+  }
+
+  return {
+    triggerType: normalizedType,
+    riskLevel: trigger.riskLevel,
+    sourceSummary: trigger.name,
+    matchedSignal: null,
+    targetDomainId: trigger.domainId,
+    requireConfirmation: trigger.action.requireConfirmation,
+  };
+}
+
+function generateSuggestionTitle(trigger: TriggerDefinition, context: ProactiveSuggestionContext): string {
+  const riskLabel = context.riskLevel === "critical" ? "critical" : context.riskLevel;
+  if (context.matchedSignal != null && context.matchedSignal.length > 0) {
+    return `[${riskLabel}] ${trigger.name}: ${context.sourceSummary}`;
+  }
+  return `[${riskLabel}] ${trigger.name}`;
+}
+
+function scoreSuggestionQuality(trigger: TriggerDefinition, context: ProactiveSuggestionContext): number {
+  let score = 0.4;
+  if (context.matchedSignal != null && context.matchedSignal.length > 0) {
+    score += 0.2;
+  }
+  if (Object.keys(trigger.action.template).length > 0) {
+    score += 0.15;
+  }
+  if (trigger.boundAgentId != null) {
+    score += 0.1;
+  }
+  if (trigger.feedbackTargetTriggerIds != null && trigger.feedbackTargetTriggerIds.length > 0) {
+    score += 0.05;
+  }
+  if (trigger.riskLevel === "low") {
+    score += 0.05;
+  }
+  return Number(Math.min(1, score).toFixed(4));
+}
+
 export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly states = new Map<string, TriggerRuntimeState>();
   private readonly suggestions = new Map<string, ProactiveSuggestion>();
@@ -211,6 +304,11 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private readonly incidents: ProactiveIncident[] = [];
   /** §42.5: Current autonomy level for trigger-autonomy linkage */
   private readonly currentAutonomyLevel: "suggestion" | "supervised" | "semi_auto" | "full_auto" | "frozen";
+  /** §41.1: Domain descriptor validator for trigger attribute validation */
+  private readonly domainDescriptorValidator: (
+    domainId: string,
+    trigger: TriggerDefinition,
+  ) => readonly string[] | null;
 
   public constructor(options: ProactiveAgentServiceOptions = {}) {
     this.declaredTriggerIdsByDomain = options.declaredTriggerIdsByDomain ?? {};
@@ -218,6 +316,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     this.dailyTriggerBudgetByDomain = options.dailyTriggerBudgetByDomain ?? {};
     this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
     this.currentAutonomyLevel = options.currentAutonomyLevel ?? "supervised";
+    this.domainDescriptorValidator = options.domainDescriptorValidator ?? (() => null);
   }
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
@@ -226,12 +325,20 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (declared != null && !declared.includes(definition.triggerId)) {
       throw new Error(`proactive_agent.trigger_not_declared:${definition.domainId}:${definition.triggerId}`);
     }
+    // §41.1: Validate trigger attributes against DomainDescriptor capabilities
+    const validationErrors = this.domainDescriptorValidator(definition.domainId, definition);
+    if (validationErrors != null && validationErrors.length > 0) {
+      throw new Error(
+        `proactive_agent.domain_descriptor_validation_failed:${definition.domainId}:${definition.triggerId}:${validationErrors.join(",")}`,
+      );
+    }
     this.states.set(definition.triggerId, {
       trigger: definition,
       lastFiredAt: null,
       fireTimestamps: [],
       consecutiveFailures: 0,
       fireCount: 0,
+      pendingBatch: null,
     });
     this.detectFeedbackLoop(definition.triggerId);
   }
@@ -313,6 +420,16 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       };
     }
 
+    const effectiveInput = this.resolveBatchWindowInput(state, input, now);
+    if (effectiveInput == null) {
+      return {
+        allowed: false,
+        reasonCodes: ["proactive_agent.batch_window_collecting"],
+        actionMode: "silent_record",
+        queuedSuggestionId: null,
+      };
+    }
+
     state.lastFiredAt = new Date(now).toISOString();
     state.fireTimestamps.push(state.lastFiredAt);
     state.fireCount += 1;
@@ -320,17 +437,17 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
 
-    // §41.1: Require confirmation for medium+ risk triggers
-    // §42.5: Autonomy level must be semi_auto+ for auto_execution of medium+ risk
+    // §41.1: Medium/high proactive actions stay in suggestion mode even when the
+    // current autonomy level is full_auto. Triggered work can be high-volume and
+    // externally sourced, so risk gating must remain stricter than interactive
+    // autonomy upgrades.
     let actionMode: TriggerFireDecision["actionMode"];
-    if (state.trigger.riskLevel === "critical") {
+    if (state.trigger.action.actionType === "update_dashboard") {
+      actionMode = "silent_record";
+    } else if (state.trigger.riskLevel === "critical") {
       actionMode = "silent_record";
     } else if (state.trigger.riskLevel === "high" || state.trigger.riskLevel === "medium") {
-      // Medium/high risk: require confirmation unless autonomy level is high enough
-      const canAutoExecute = this.currentAutonomyLevel === "full_auto";
-      actionMode = state.trigger.action.requireConfirmation || !canAutoExecute
-        ? "suggest"
-        : "auto_execute";
+      actionMode = "suggest";
     } else {
       // Low risk: use standard logic
       actionMode = resolveTriggerActionMode(
@@ -338,11 +455,14 @@ export class ProactiveAgentService implements ProactiveAgentPort {
         state.trigger.riskLevel,
       );
     }
-    const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger) : null;
+    const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger, effectiveInput) : null;
 
     return {
       allowed: true,
-      reasonCodes: ["proactive_agent.fire_allowed"],
+      reasonCodes: [
+        "proactive_agent.fire_allowed",
+        ...(effectiveInput !== input ? ["proactive_agent.batch_window_aggregated"] : []),
+      ],
       actionMode,
       queuedSuggestionId,
     };
@@ -394,17 +514,80 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     return true;
   }
 
-  private enqueueSuggestion(trigger: TriggerDefinition): string {
+  private enqueueSuggestion(trigger: TriggerDefinition, input: TriggerEvaluationInput): string {
     const suggestionId = newId("suggestion");
+    const context = buildSuggestionContext(trigger, input);
     this.suggestions.set(suggestionId, {
       suggestionId,
       triggerId: trigger.triggerId,
       domainId: trigger.domainId,
       createdAt: nowIso(),
-      title: `Suggestion from trigger ${trigger.name}`,
+      title: generateSuggestionTitle(trigger, context),
       action: trigger.action,
+      context,
+      qualityScore: scoreSuggestionQuality(trigger, context),
     });
     return suggestionId;
+  }
+
+  private resolveBatchWindowInput(
+    state: TriggerRuntimeState,
+    input: TriggerEvaluationInput,
+    now: number,
+  ): TriggerEvaluationInput | null {
+    const normalizedType = normalizeTriggerType(state.trigger.type);
+    if ((normalizedType !== "event" && normalizedType !== "webhook") || input.event == null) {
+      return input;
+    }
+
+    const batchWindow = (state.trigger.config as EventTriggerConfig).batchWindow;
+    const batchWindowMs = batchWindow == null ? 0 : parseDurationMs(batchWindow);
+    if (batchWindowMs <= 0) {
+      return input;
+    }
+
+    const timestamp = new Date(now).toISOString();
+    const eventSample = {
+      source: input.event.source,
+      name: input.event.name,
+      ...(input.event.payload == null ? {} : { payload: input.event.payload }),
+    };
+
+    if (state.pendingBatch == null) {
+      state.pendingBatch = {
+        openedAt: timestamp,
+        lastEventAt: timestamp,
+        events: [eventSample],
+      };
+      return null;
+    }
+
+    state.pendingBatch.events.push(eventSample);
+    state.pendingBatch.lastEventAt = timestamp;
+    const openedAt = new Date(state.pendingBatch.openedAt).getTime();
+    if (now - openedAt < batchWindowMs) {
+      return null;
+    }
+
+    const batch = state.pendingBatch;
+    state.pendingBatch = null;
+    const [firstEvent] = batch.events;
+    if (firstEvent == null) {
+      return input;
+    }
+
+    return {
+      ...input,
+      event: {
+        source: firstEvent.source,
+        name: firstEvent.name,
+        payload: {
+          batchCount: batch.events.length,
+          batchWindow,
+          events: batch.events.slice(0, 5),
+        },
+      },
+    };
   }
 
   private detectFeedbackLoop(triggerId: string): void {

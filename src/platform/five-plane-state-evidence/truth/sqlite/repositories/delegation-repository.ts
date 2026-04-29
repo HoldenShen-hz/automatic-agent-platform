@@ -7,7 +7,20 @@
 
 import { newId, nowIso } from "../../../../contracts/types/ids.js";
 
-export type DelegationStatus = "pending" | "active" | "completed" | "failed" | "cancelled" | "expired";
+// R17-14: Updated to match spec's 11-state state machine (was only 6 states)
+// Missing states added: pending_approval, discovery, bid, awarded, timed_out
+export type DelegationStatus =
+  | "pending"
+  | "pending_approval"
+  | "discovery"
+  | "bid"
+  | "awarded"
+  | "active"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired"
+  | "timed_out";
 
 export interface DelegationRecord {
   delegationId: string;
@@ -43,11 +56,13 @@ export interface DelegationRepository {
 }
 
 export interface CreateDelegationInput {
+  delegationId?: string;
   parentAgentId: string;
   childAgentId: string;
   delegationChain: readonly string[];
   depth: number;
   expiresAt?: string;
+  status?: DelegationStatus;
 }
 
 export interface DelegationEventRepository {
@@ -69,7 +84,7 @@ export class InMemoryDelegationRepository implements DelegationRepository {
   private readonly delegations = new Map<string, DelegationRecord>();
 
   public async create(input: CreateDelegationInput): Promise<DelegationRecord> {
-    const delegationId = newId("delegation");
+    const delegationId = input.delegationId ?? newId("delegation");
     const now = nowIso();
 
     const delegation: DelegationRecord = {
@@ -77,7 +92,7 @@ export class InMemoryDelegationRepository implements DelegationRepository {
       parentAgentId: input.parentAgentId,
       childAgentId: input.childAgentId,
       delegationChain: input.delegationChain,
-      status: "pending",
+      status: input.status ?? "pending",
       depth: input.depth,
       expiresAt: input.expiresAt ?? null,
       resultRef: null,

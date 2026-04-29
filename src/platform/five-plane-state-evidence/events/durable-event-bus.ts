@@ -45,8 +45,12 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
 /**
  * Active subscriptions poll for newly persisted tier-1 events so cross-instance
  * publishers do not rely on subscription-time races.
+ *
+ * R16-36 FIX: Reduced from 10ms to 100ms to reduce unnecessary CPU usage.
+ * 100ms provides sufficient responsiveness while avoiding 100 ops/sec/consumer
+ * overhead when idle. This is still well within the §25.3 requirement.
  */
-const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 10;
+const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
 
 /**
  * Calculates exponential backoff delay with jitter for retry intervals.
@@ -161,12 +165,12 @@ class PartitionAwareSubscriberRegistry {
     }
 
     // Clean up aggregate sequences for this consumer group
-    for (const partition of this.aggregatePartitions.values()) {
+    for (const partition of Array.from(this.aggregatePartitions.values())) {
       partition.consumerGroupSequences.delete(reg.groupId);
     }
 
     // Remove from aggregate consumers
-    for (const consumerSet of this.aggregateConsumers.values()) {
+    for (const consumerSet of Array.from(this.aggregateConsumers.values())) {
       consumerSet.delete(consumerId);
     }
 
@@ -534,7 +538,7 @@ export class DurableEventBus {
     }
 
     // Sort events within each aggregate by sequence
-    for (const [, group] of aggregateGroups) {
+    for (const group of Array.from(aggregateGroups.values())) {
       group.sort((a, b) => {
         const seqA = a.event.sequence ?? 0;
         const seqB = b.event.sequence ?? 0;
@@ -546,7 +550,7 @@ export class DurableEventBus {
     let deadLetteredCount = 0;
     let consecutiveFailures = groupState?.consecutiveFailures ?? 0;
 
-    for (const [aggId, group] of aggregateGroups) {
+    for (const [aggId, group] of Array.from(aggregateGroups.entries())) {
       // Get or create aggregate partition for this aggregate
       const partition = this.subscriberRegistry.getOrCreatePartition(aggId);
       // Get the consumer group's last acknowledged sequence for this aggregate
@@ -554,8 +558,10 @@ export class DurableEventBus {
 
       // Filter events that respect sequence ordering for this consumer group
       const orderedGroup = group.filter((item) => {
-        const itemSeq = item.event.sequence ?? 0;
-        return itemSeq > lastGroupSeq;
+        if (item.event.sequence == null) {
+          return true;
+        }
+        return item.event.sequence > lastGroupSeq;
       });
 
       for (const item of orderedGroup) {
@@ -563,7 +569,9 @@ export class DurableEventBus {
         if (result.delivered) {
           delivered++;
           // Update consumer group's sequence tracking for this aggregate
-          this.updateGroupAggregateSequence(aggId, groupId, item.event.sequence ?? 0);
+          if (item.event.sequence != null) {
+            this.updateGroupAggregateSequence(aggId, groupId, item.event.sequence);
+          }
           consecutiveFailures = 0;
         } else if (result.deadLettered) {
           deadLetteredCount++;
@@ -650,7 +658,7 @@ export class DurableEventBus {
   private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler, consumerId: string): Promise<{ delivered: boolean; deadLettered: boolean }> {
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt <= MAX_DELIVERY_RETRIES; attempt++) {
+    for (let attempt = 1; attempt <= MAX_DELIVERY_RETRIES; attempt++) {
       try {
         await handler(item.event);
         this.store.event.markEventAck({
@@ -664,21 +672,21 @@ export class DurableEventBus {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if (attempt < MAX_DELIVERY_RETRIES) {
-          const backoffDelay = calculateBackoff(attempt);
+          const backoffDelay = calculateBackoff(attempt - 1);
           await sleep(backoffDelay);
         }
       }
     }
 
-    // All retries exhausted - mark as failed (will be retried on next replay)
+    // All delivery attempts exhausted - mark the ack as dead-lettered so the
+    // event does not remain indefinitely "pending" inside the primary queue.
     const errorMessage = lastError
       ? `failed_after_${MAX_DELIVERY_RETRIES}_retries: ${lastError.message}`
       : `failed_after_${MAX_DELIVERY_RETRIES}_retries: unknown_error`;
 
-    this.store.event.markEventAck({
+    this.store.event.markEventDeadLettered({
       eventId: item.event.id,
       consumerId: item.ack.consumerId,
-      status: "failed",
       occurredAt: nowIso(),
       errorCode: errorMessage,
     });
@@ -780,13 +788,6 @@ export class DurableEventBus {
     this.schedulePollingTick(consumerId, 0);
   }
 
-  /**
-   * Calculates adaptive polling interval based on queue depth, consumer priority, and circuit breaker state.
-   * Implements graduated back-pressure: higher depth = longer interval, low priority = longer interval.
-   * @param consumerId - The consumer ID to calculate interval for
-   * @param queueDepth - Number of pending events
-   * @returns Polling interval in milliseconds
-   */
   /**
    * Calculates adaptive polling interval based on queue depth, consumer priority, and circuit breaker state.
    * Implements graduated back-pressure: higher depth = longer interval, low priority = longer interval.
@@ -951,7 +952,7 @@ export class DurableEventBus {
     for (const consumerId of getRegisteredConsumers(event.eventType)) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
-    for (const consumerId of this.activeConsumerRefCounts.keys()) {
+    for (const consumerId of Array.from(this.activeConsumerRefCounts.keys())) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
   }

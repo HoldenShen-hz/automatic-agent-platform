@@ -41,22 +41,22 @@ describe("FencingTokenService", () => {
     it("should include execution ID in token", () => {
       const token = service.generateFencingToken("exec-123", "node-1");
 
-      assert.ok(token.startsWith("exec-123-"), "Token should start with execution ID");
+      assert.ok(token.startsWith("exec-123::"), "Token should start with execution ID");
     });
 
     it("should include node ID in token", () => {
       const token = service.generateFencingToken("exec-1", "node-specific");
 
-      assert.ok(token.includes("-node-specific-"), "Token should include node ID");
+      assert.ok(token.includes("::node-specific::"), "Token should include node ID");
     });
 
     it("should generate monotonically increasing tokens", () => {
       const token1 = service.generateFencingToken("exec1", "node1");
       const token2 = service.generateFencingToken("exec1", "node1");
 
-      // Extract counter from tokens (format: executionId-nodeId-counter-timestamp)
-      const parts1 = token1.split("-");
-      const parts2 = token2.split("-");
+      // Extract counter from tokens (format: executionId::nodeId::counter::timestamp)
+      const parts1 = token1.split("::");
+      const parts2 = token2.split("::");
       assert.ok(parts1.length >= 3, "Token should have at least 3 parts");
       assert.ok(parts2.length >= 3, "Token should have at least 3 parts");
       const counter1 = parseInt(parts1[2]!, 10);
@@ -67,11 +67,20 @@ describe("FencingTokenService", () => {
 
     it("should include timestamp in token", () => {
       const token = service.generateFencingToken("exec-1", "node-1");
-      const parts = token.split("-");
+      const parts = token.split("::");
 
       assert.ok(parts.length >= 4, "Token should have at least 4 parts");
       const timestamp = parseInt(parts[3]!, 10);
       assert.ok(timestamp > 0, "Timestamp should be a positive number");
+    });
+
+    it("should safely encode hyphenated execution IDs and node IDs", () => {
+      const token = service.generateFencingToken("exec-prod-west", "node-a-1");
+      const result = service.validateFencingToken(token, "node-a-1");
+
+      assert.strictEqual(result.valid, true);
+      assert.strictEqual(result.executionId, "exec-prod-west");
+      assert.strictEqual(result.owner, "node-a-1");
     });
   });
 
@@ -117,7 +126,7 @@ describe("FencingTokenService", () => {
 
     it("should return invalid when execution ID part is empty", () => {
       // Manually create a malformed token
-      const malformedToken = "-node-1-1-12345";
+      const malformedToken = "::node-1::1::12345";
       const result = service.validateFencingToken(malformedToken, "node-1");
 
       assert.strictEqual(result.valid, false);
@@ -135,7 +144,7 @@ describe("FencingTokenService", () => {
       assert.strictEqual(result.ownerNodeId, "test-node");
       assert.ok(result.fenceToken.length > 0);
       assert.ok(result.acquiredAt instanceof Date);
-      assert.strictEqual(result.expiresAt, null);
+      assert.ok(result.expiresAt instanceof Date);
     });
 
     it("should acquire an exclusive fence successfully", () => {

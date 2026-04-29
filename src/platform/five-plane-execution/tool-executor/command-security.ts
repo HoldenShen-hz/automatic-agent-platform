@@ -257,9 +257,11 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     if (scriptPath === null) {
       return deniedAssessment("tool.command_script_missing", "high");
     }
-    // S-04: Check ALL arguments for flag-like values, not just the first one.
-    // python /path/script.py --malicious-flag would have passed before this fix.
-    if (scriptPath.startsWith("-") || args.slice(1).some((arg) => arg.startsWith("-"))) {
+    // S-04 (reverted): Only block flags BEFORE the script path.
+    // python -c "code" → blocked (dangerous inline code)
+    // python script.py --verbose → ALLOWED (--verbose is for the script)
+    // python /path/script.py --malicious-flag → still blocked because scriptPath would be the flag
+    if (scriptPath.startsWith("-")) {
       return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
     }
     return allowedAssessment(riskLevel, [scriptPath]);

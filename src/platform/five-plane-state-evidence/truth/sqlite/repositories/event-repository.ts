@@ -47,6 +47,34 @@ const EVENT_COLS_PREFIXED = `e.id,
         e.trace_id AS traceId,
         e.created_at AS createdAt`;
 
+export interface TaskEventStreamSnapshot {
+  taskId: string;
+  tenantId: string | null;
+  events: EventRecord[];
+  streamVersion: number;
+  snapshotCursor: string | null;
+  lastEventId: string | null;
+  lastCreatedAt: string | null;
+}
+
+function encodeEventStreamCursor(event: Pick<EventRecord, "id" | "createdAt">): string {
+  return Buffer.from(JSON.stringify({ id: event.id, createdAt: event.createdAt }), "utf8").toString("base64url");
+}
+
+function decodeEventStreamCursor(cursor: string): { id: string; createdAt: string } {
+  const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
+    id?: unknown;
+    createdAt?: unknown;
+  };
+  if (typeof parsed.id !== "string" || typeof parsed.createdAt !== "string") {
+    throw new Error("event_repository.invalid_snapshot_cursor");
+  }
+  return {
+    id: parsed.id,
+    createdAt: parsed.createdAt,
+  };
+}
+
 export class EventRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
@@ -446,7 +474,7 @@ export class EventRepository {
         `SELECT ${EVENT_COLS}
          FROM events
          WHERE task_id = ?
-         ORDER BY created_at DESC
+         ORDER BY created_at DESC, id DESC
          LIMIT ?`,
         taskId,
         tenantIdOrLimit,
@@ -462,7 +490,7 @@ export class EventRepository {
          INNER JOIN tasks t ON t.id = e.task_id
          WHERE e.task_id = ?
            AND t.tenant_id = ?
-         ORDER BY e.created_at ASC`,
+         ORDER BY e.created_at ASC, e.id ASC`,
         taskId,
         scopedTenantId,
       );
@@ -473,8 +501,56 @@ export class EventRepository {
       `SELECT ${EVENT_COLS}
        FROM events
        WHERE task_id = ?
-       ORDER BY created_at ASC`,
+       ORDER BY created_at ASC, id ASC`,
       taskId,
+    );
+  }
+
+  public listEventsForTaskSnapshot(taskId: string, tenantId?: string | null): TaskEventStreamSnapshot {
+    const events = this.listEventsForTask(taskId, tenantId);
+    const lastEvent = events.at(-1) ?? null;
+    return {
+      taskId,
+      tenantId: resolveTenantScope(tenantId) ?? null,
+      events,
+      streamVersion: events.length,
+      snapshotCursor: lastEvent ? encodeEventStreamCursor(lastEvent) : null,
+      lastEventId: lastEvent?.id ?? null,
+      lastCreatedAt: lastEvent?.createdAt ?? null,
+    };
+  }
+
+  public listEventsForTaskSinceCursor(taskId: string, snapshotCursor: string, tenantId?: string | null): EventRecord[] {
+    const cursor = decodeEventStreamCursor(snapshotCursor);
+    const scopedTenantId = resolveTenantScope(tenantId);
+    if (scopedTenantId !== undefined) {
+      return queryAll<EventRecord>(
+        this.conn,
+        `SELECT ${EVENT_COLS_PREFIXED}
+         FROM events e
+         INNER JOIN tasks t ON t.id = e.task_id
+         WHERE e.task_id = ?
+           AND t.tenant_id = ?
+           AND (e.created_at > ? OR (e.created_at = ? AND e.id > ?))
+         ORDER BY e.created_at ASC, e.id ASC`,
+        taskId,
+        scopedTenantId,
+        cursor.createdAt,
+        cursor.createdAt,
+        cursor.id,
+      );
+    }
+    return queryAll<EventRecord>(
+      this.conn,
+      `SELECT ${EVENT_COLS}
+       FROM events
+       WHERE task_id = ?
+         AND (created_at > ? OR (created_at = ? AND id > ?))
+       ORDER BY created_at ASC, id ASC`,
+      taskId,
+      cursor.createdAt,
+      cursor.createdAt,
+      cursor.id,
     );
   }
 

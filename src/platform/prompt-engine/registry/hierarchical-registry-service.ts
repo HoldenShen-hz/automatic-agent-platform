@@ -234,6 +234,7 @@ export class HierarchicalPromptRegistryService {
   /**
    * Gets the resolved prompt bundle considering traffic allocation.
    * Used for A/B testing scenarios.
+   * R16-15 FIX: Incorporates runVersionLock to ensure consistent bundle selection per run.
    */
   public resolveBundleForTraffic(
     name: string,
@@ -241,6 +242,7 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
     domain?: string,
     trafficKey?: string,
+    runVersionLock?: { runVersionLockId: string } | null,
   ): PromptBundle | null {
     const candidates = this.getResolvedScopeBundles(name, taskType, packId, domain);
     if (candidates.length === 0) {
@@ -258,7 +260,8 @@ export class HierarchicalPromptRegistryService {
       return this.selectDefaultBundle(eligible);
     }
 
-    const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`);
+    // R16-15 FIX: Include runVersionLock in traffic slot computation for consistency
+    const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`, runVersionLock);
     let cursor = 0;
     for (const bundle of eligible) {
       cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);
@@ -477,9 +480,11 @@ export class HierarchicalPromptRegistryService {
     return eligible[0] ?? null;
   }
 
-  private computeTrafficSlot(key: string): number {
+  private computeTrafficSlot(key: string, runVersionLock?: { runVersionLockId: string } | null): number {
     let hash = 0;
-    for (const char of key) {
+    // R16-15 FIX: Include runVersionLock in hash for consistent bundle selection per run
+    const effectiveKey = runVersionLock ? `${key}:${runVersionLock.runVersionLockId}` : key;
+    for (const char of effectiveKey) {
       hash = ((hash << 5) - hash + char.charCodeAt(0)) >>> 0;
     }
     return hash % 100;

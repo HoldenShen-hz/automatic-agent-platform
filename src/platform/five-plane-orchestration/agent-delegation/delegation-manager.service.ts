@@ -35,6 +35,7 @@ import type {
   DelegationCreatedEvent,
   DelegationStatus,
 } from "./delegation-types.js";
+import type { DelegationRepository, DelegationEventRepository } from "../../state-evidence/truth/sqlite/repositories/delegation-repository.js";
 
 export interface DelegationExpirationConfig {
   checkIntervalMs?: number;
@@ -73,13 +74,16 @@ export class DelegationManagerService {
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
   private readonly delegationRootStore: Map<string, string>;
+  // R17-13: Optional persistence layer - if provided, delegations survive restarts
+  private readonly delegationRepository: DelegationRepository | null = null;
+  private readonly eventRepository: DelegationEventRepository | null = null;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ENTRIES = 1000;
   private readonly ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
-  public constructor(options: DelegationOptions = {}) {
+  public constructor(options: DelegationOptions = {}, delegationRepository?: DelegationRepository, eventRepository?: DelegationEventRepository) {
     const config: TopologyValidatorConfig = {
       maxDepth: options.maxDepth ?? options.maxDelegationDepth ?? DEFAULT_MAX_DEPTH,
       maxFanout: options.maxFanout ?? 10,
@@ -92,6 +96,9 @@ export class DelegationManagerService {
     this.delegationStore = new Map();
     this.chainStore = new Map();
     this.delegationRootStore = new Map();
+    // R17-13: Initialize persistence layer if provided
+    this.delegationRepository = delegationRepository ?? null;
+    this.eventRepository = eventRepository ?? null;
   }
 
   /**
@@ -297,6 +304,18 @@ export class DelegationManagerService {
     overrides: Partial<AgentContext> = {},
   ): AgentContext {
     const delegation = this.requireDelegation(delegationId);
+
+    // R17-05 fix: Re-verify parent permissions have not been revoked by checking expiration.
+    // If the delegation has expired, permissions are stale and must not be used.
+    const now = nowIso();
+    if (delegation.expiresAt < now) {
+      throw new ValidationError(
+        "delegation.permissions_revoked",
+        `Delegation ${delegationId} expired at ${delegation.expiresAt} - parent permissions have been revoked`,
+        { details: { delegationId, expiredAt: delegation.expiresAt, currentTime: now } },
+      );
+    }
+
     const activeDelegations = [
       ...new Set([
         delegationId,
@@ -515,7 +534,10 @@ export class DelegationManagerService {
 
     const delegationId = newId("dlg");
     const now = nowIso();
-    const timeout = spec.timeout > 0 ? spec.timeout : this.defaultTimeout;
+    // R17-15: Enforce upper bound on timeout to prevent immortal delegations
+    const MAX_DELEGATION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+    const requestedTimeout = spec.timeout > 0 ? spec.timeout : this.defaultTimeout;
+    const timeout = Math.min(requestedTimeout, MAX_DELEGATION_TIMEOUT_MS);
     const expiresAt = new Date(Date.now() + timeout).toISOString();
 
     const delegation: DelegationResult = {
@@ -530,9 +552,31 @@ export class DelegationManagerService {
       correlationId: parent.correlationId,
       ...(spec.requiresApproval ? { requiresApproval: true } : {}),
       status: spec.requiresApproval ? "pending_approval" : "pending",
+      summary: `Delegated ${spec.targetAgentType} work from ${parent.agentId} to ${spec.targetAgentId}`,
+      artifact_refs: [],
+      trust_level: Math.max(0, Number((1 - Math.min(parent.delegationDepth + 1, DEFAULT_MAX_DEPTH) / (DEFAULT_MAX_DEPTH + 1)).toFixed(2))),
+      taint_labels: permissions.constraints.allowedDomains ?? [],
+      evidence_refs: [],
+      policy_outcome: "delegation.permissions_narrowed",
+      data_class: spec.dataClass ?? "delegation",
     };
 
     this.delegationStore.set(delegationId, delegation);
+
+    // R17-13: Persist to repository if available for durability across restarts
+    if (this.delegationRepository) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.delegationRepository.create({
+        delegationId: delegation.delegationId,
+        parentAgentId: delegation.parentAgentId,
+        childAgentId: delegation.childAgentId,
+        delegationChain: [delegation.parentAgentId, delegation.childAgentId],
+        depth: delegation.depth,
+        expiresAt: delegation.expiresAt,
+        status: delegation.status,
+      });
+    }
+
     return delegation;
   }
 
@@ -552,16 +596,34 @@ export class DelegationManagerService {
     delegation: DelegationResult,
     nextStatus: DelegationStatus,
   ): void {
-    const allowedStatuses = DelegationManagerService.ALLOWED_STATUS_TRANSITIONS[delegation.status];
+    // R17-02: Use CAS (compare-and-swap) to prevent race conditions between
+    // concurrent status transitions (e.g., cancel() + complete() racing).
+    // Read current status and determine allowed transitions atomically.
+    const currentStatus = delegation.status;
+    const allowedStatuses = DelegationManagerService.ALLOWED_STATUS_TRANSITIONS[currentStatus];
     if (!allowedStatuses.includes(nextStatus)) {
       throw new ValidationError(
         "delegation.invalid_status_transition",
-        `Delegation ${delegation.delegationId} cannot transition from ${delegation.status} to ${nextStatus}`,
+        `Delegation ${delegation.delegationId} cannot transition from ${currentStatus} to ${nextStatus}`,
         {
           details: {
             delegationId: delegation.delegationId,
-            fromStatus: delegation.status,
+            fromStatus: currentStatus,
             toStatus: nextStatus,
+          },
+        },
+      );
+    }
+    // Re-check with the actual current status before writing (fencing)
+    if (delegation.status !== currentStatus) {
+      throw new ValidationError(
+        "delegation.concurrent_modification",
+        `Delegation ${delegation.delegationId} status changed during transition (expected ${currentStatus}, found ${delegation.status})`,
+        {
+          details: {
+            delegationId: delegation.delegationId,
+            expectedStatus: currentStatus,
+            actualStatus: delegation.status,
           },
         },
       );
@@ -569,6 +631,11 @@ export class DelegationManagerService {
     delegation.status = nextStatus;
     if (nextStatus === "completed") {
       delegation.completedAt = nowIso();
+    }
+    // R17-13: Persist status change to repository for durability
+    if (this.delegationRepository) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.delegationRepository.updateStatus(delegation.delegationId, nextStatus);
     }
   }
 
@@ -643,6 +710,8 @@ export class DelegationManagerService {
 
 export function createDelegationManager(
   options?: DelegationOptions,
+  delegationRepository?: DelegationRepository,
+  eventRepository?: DelegationEventRepository,
 ): DelegationManagerService {
-  return new DelegationManagerService(options);
+  return new DelegationManagerService(options, delegationRepository, eventRepository);
 }

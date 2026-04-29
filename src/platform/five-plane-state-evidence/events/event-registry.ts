@@ -693,7 +693,26 @@ export const EVENT_SCHEMA_REGISTRY: Record<KnownEventType, EventSchemaDefinition
   ]),
 ) as Record<KnownEventType, EventSchemaDefinition>;
 
+/**
+ * RUNTIME_EVENT_REPLAY_METADATA - Complete registry of all platform.* and oapeflir.* events
+ *
+ * R16-29 FIX: All Tier-1 events from event-types.ts TIER_1_EVENT_TYPES are now registered here.
+ * This ensures getEventSchema() can find the replay metadata for all platform/oapeflir events.
+ *
+ * R16-30 FIX: §28.2 EventEnvelope fields are now complete - every event has proper
+ * replayBehavior, sourceOfTruth, and schemaOwner defined.
+ *
+ * §28 EventEnvelope fields covered:
+ * - eventType: the canonical event name
+ * - sourceOfTruth: "platform" (truth projector source) or "projection" (derived)
+ * - replayable: whether event can be replayed
+ * - sideEffectSafeToReplay: whether replay is safe without side effects
+ * - schemaOwner: the service that owns this event's schema
+ * - replayBehavior: replay_as_fact | skip_side_effect | simulate | forbidden
+ * - consumerContractTests: test files that verify consumer contracts
+ */
 export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> = {
+  // §28 Platform request envelope events
   "platform.request_envelope.admitted": {
     eventType: "platform.request_envelope.admitted",
     sourceOfTruth: "platform",
@@ -702,6 +721,89 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     schemaOwner: "intake-admission-service",
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["intake-admission-service.test.ts"],
+  },
+
+  // §28 Platform harness run lifecycle events
+  "platform.harness_run.created": {
+    eventType: "platform.harness_run.created",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.admitted": {
+    eventType: "platform.harness_run.admitted",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.planning": {
+    eventType: "platform.harness_run.planning",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.ready": {
+    eventType: "platform.harness_run.ready",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.pausing": {
+    eventType: "platform.harness_run.pausing",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.replanning": {
+    eventType: "platform.harness_run.replanning",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.compensating": {
+    eventType: "platform.harness_run.compensating",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.aborted": {
+    eventType: "platform.harness_run.aborted",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.harness_run.completed": {
+    eventType: "platform.harness_run.completed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
   },
   "platform.harness_run.status_changed": {
     eventType: "platform.harness_run.status_changed",
@@ -712,6 +814,98 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["runtime-state-machine.test.ts", "runtime-truth-repository.test.ts"],
   },
+
+  // §28 Platform node run lifecycle events
+  "platform.node_run.created": {
+    eventType: "platform.node_run.created",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.admitted": {
+    eventType: "platform.node_run.admitted",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.planning": {
+    eventType: "platform.node_run.planning",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.ready": {
+    eventType: "platform.node_run.ready",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.pausing": {
+    eventType: "platform.node_run.pausing",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.replanning": {
+    eventType: "platform.node_run.replanning",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.completed": {
+    eventType: "platform.node_run.completed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.failed": {
+    eventType: "platform.node_run.failed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.compensating": {
+    eventType: "platform.node_run.compensating",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
+  "platform.node_run.skipped": {
+    eventType: "platform.node_run.skipped",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "runtime-state-machine",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["runtime-state-machine.test.ts"],
+  },
   "platform.node_run.status_changed": {
     eventType: "platform.node_run.status_changed",
     sourceOfTruth: "platform",
@@ -721,6 +915,35 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["runtime-state-machine.test.ts", "plan-graph-harness-runtime.test.ts"],
   },
+
+  // §28 Platform side effect lifecycle events
+  "platform.side_effect.triggered": {
+    eventType: "platform.side_effect.triggered",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: false,
+    schemaOwner: "side-effect-manager",
+    replayBehavior: "skip_side_effect",
+    consumerContractTests: ["side-effect-manager.test.ts"],
+  },
+  "platform.side_effect.completed": {
+    eventType: "platform.side_effect.completed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: false,
+    schemaOwner: "side-effect-manager",
+    replayBehavior: "skip_side_effect",
+    consumerContractTests: ["side-effect-manager.test.ts"],
+  },
+  "platform.side_effect.failed": {
+    eventType: "platform.side_effect.failed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: false,
+    schemaOwner: "side-effect-manager",
+    replayBehavior: "skip_side_effect",
+    consumerContractTests: ["side-effect-manager.test.ts"],
+  },
   "platform.side_effect.status_changed": {
     eventType: "platform.side_effect.status_changed",
     sourceOfTruth: "platform",
@@ -729,6 +952,53 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     schemaOwner: "side-effect-manager",
     replayBehavior: "skip_side_effect",
     consumerContractTests: ["side-effect-manager.test.ts"],
+  },
+
+  // §28 Platform budget lifecycle events
+  "platform.budget.reserved": {
+    eventType: "platform.budget.reserved",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts"],
+  },
+  "platform.budget.actualized": {
+    eventType: "platform.budget.actualized",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts"],
+  },
+  "platform.budget.exceeded": {
+    eventType: "platform.budget.exceeded",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts"],
+  },
+  "platform.budget.status_changed": {
+    eventType: "platform.budget.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts"],
+  },
+  "platform.budget_reconciliation.status_changed": {
+    eventType: "platform.budget_reconciliation.status_changed",
+    sourceOfTruth: "platform",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "budget-allocator",
+    replayBehavior: "replay_as_fact",
+    consumerContractTests: ["budget-allocator.test.ts"],
   },
   "platform.budget_ledger.status_changed": {
     eventType: "platform.budget_ledger.status_changed",
@@ -756,6 +1026,26 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
     schemaOwner: "graph-scheduler",
     replayBehavior: "replay_as_fact",
     consumerContractTests: ["plan-graph-harness-runtime.test.ts"],
+  },
+
+  // §28 OAPEFLIR events
+  "oapeflir.decision.recorded": {
+    eventType: "oapeflir.decision.recorded",
+    sourceOfTruth: "projection",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "oapeflir-projection",
+    replayBehavior: "simulate",
+    consumerContractTests: ["oapeflir-projection.test.ts"],
+  },
+  "oapeflir.phase.transition": {
+    eventType: "oapeflir.phase.transition",
+    sourceOfTruth: "projection",
+    replayable: true,
+    sideEffectSafeToReplay: true,
+    schemaOwner: "oapeflir-projection",
+    replayBehavior: "simulate",
+    consumerContractTests: ["oapeflir-projection.test.ts"],
   },
   "oapeflir.view.run_lifecycle": {
     eventType: "oapeflir.view.run_lifecycle",
@@ -805,11 +1095,21 @@ export function getEventSchema(type: string): EventSchemaDefinition {
   }
   const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
   if (metadata != null) {
+    // R16-30 FIX: Use getRequiredConsumers() from event-types.ts to get the proper
+    // consumers instead of hard-coded values. This ensures consistency with
+    // REQUIRED_CONSUMERS_BY_EVENT_TYPE defined in event-types.ts
+    const requiredConsumers = getRequiredConsumers(type);
+    const consumers = requiredConsumers.length > 0
+      ? requiredConsumers
+      : metadata.sourceOfTruth === "platform"
+        ? ["truth_projector", "audit_projection"]
+        : ["oapeflir_projection"];
+
     return {
       type,
-      tier: type.startsWith("platform.") ? "tier_1" : "tier_2",
+      tier: type.startsWith("platform.") || type.startsWith("oapeflir.") ? "tier_1" : "tier_2",
       producer: metadata.schemaOwner,
-      consumers: metadata.sourceOfTruth === "platform" ? ["truth_projector", "audit_projection"] : ["oapeflir_projection"],
+      consumers,
       payloadSchemaRef: buildPayloadSchemaRef(type),
       compatibilityPolicy: "backward_compatible_additive",
     };

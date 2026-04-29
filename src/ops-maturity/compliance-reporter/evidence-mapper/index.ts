@@ -2,7 +2,10 @@ export interface EvidenceReference {
   readonly evidenceId: string;
   readonly evidenceType: string;
   readonly controlId?: string;
+  // §66.2: Evidence quality fields for evidenceQualityScore
   readonly freshness?: string;
+  readonly trustworthiness?: "high" | "medium" | "low";
+  readonly tamperProof?: "cryptographic" | "signed" | "none";
   readonly owner?: string;
   readonly exception?: string;
 }
@@ -50,14 +53,19 @@ export function mapEvidenceByType(items: readonly EvidenceReference[]): Record<s
 }
 
 /**
- * Maps evidence by control point with pass/fail/partial status.
+ * Maps evidence by control point with pass/fail/partial/not_applicable status.
  * Per §66.2, ControlMapper must provide control point mapping with status.
  */
 export function mapEvidenceByControl(items: readonly EvidenceReference[]): ControlMapping[] {
   const controlMap = new Map<string, ControlMapping>();
+  const notApplicableIds: string[] = [];
 
   for (const item of items) {
-    if (!item.controlId) continue;
+    if (!item.controlId) {
+      // §66.2: Evidence without controlId is marked as not_applicable
+      notApplicableIds.push(item.evidenceId);
+      continue;
+    }
 
     const existing = controlMap.get(item.controlId);
     if (existing) {
@@ -85,6 +93,16 @@ export function mapEvidenceByControl(items: readonly EvidenceReference[]): Contr
         : "fail";
     controlMap.set(controlId, { ...mapping, status });
   });
+
+  // §66.2: Add not_applicable control mapping if there are items without controlId
+  if (notApplicableIds.length > 0) {
+    controlMap.set("_not_applicable", {
+      controlId: "_not_applicable",
+      status: "not_applicable",
+      evidenceIds: notApplicableIds,
+      coverageRatio: 0,
+    });
+  }
 
   return Array.from(controlMap.values());
 }
@@ -130,6 +148,37 @@ export function findMissingEvidenceTypes(
   return requiredTypes.filter((type) => (mapped[type] ?? []).length === 0);
 }
 
+/**
+ * Computes evidence quality score based on coverage, freshness, trustworthiness, and tamper-proof.
+ * Per §66.2, evidenceQualityScore must consider freshness/trustworthiness/tamper-proof.
+ */
+export function computeEvidenceQualityScore(
+  items: readonly EvidenceReference[],
+  coverageRatio: number,
+): number {
+  if (items.length === 0) return 0;
+
+  // Coverage component (40% weight)
+  const coverageScore = coverageRatio * 0.4;
+
+  // Freshness component (20% weight) - based on presence of freshness field
+  const freshnessScore = items.some((item) => item.freshness) ? 0.2 : 0;
+
+  // Trustworthiness component (20% weight)
+  const trustworthinessScores: Record<string, number> = { high: 0.2, medium: 0.1, low: 0 };
+  const trustworthinessScore = items.reduce<number>((sum, item) => {
+    return sum + (item.trustworthiness ? trustworthinessScores[item.trustworthiness] : 0);
+  }, 0) / items.length;
+
+  // Tamper-proof component (20% weight)
+  const tamperProofScores: Record<string, number> = { cryptographic: 0.2, signed: 0.1, none: 0 };
+  const tamperProofScore = items.reduce<number>((sum, item) => {
+    return sum + (item.tamperProof ? tamperProofScores[item.tamperProof] : 0);
+  }, 0) / items.length;
+
+  return Number(((coverageScore + freshnessScore + trustworthinessScore + tamperProofScore) * 100).toFixed(2));
+}
+
 export class EvidenceMapperService {
   public map(items: readonly EvidenceReference[]): Record<string, string[]> {
     return mapEvidenceByType(items);
@@ -170,5 +219,13 @@ export class EvidenceMapperService {
       coveredTypes,
       missingTypes,
     };
+  }
+
+  /**
+   * Computes evidence quality score based on coverage, freshness, trustworthiness, and tamper-proof.
+   * Per §66.2, evidenceQualityScore must consider freshness/trustworthiness/tamper-proof.
+   */
+  public computeQualityScore(items: readonly EvidenceReference[], coverageRatio: number): number {
+    return computeEvidenceQualityScore(items, coverageRatio);
   }
 }

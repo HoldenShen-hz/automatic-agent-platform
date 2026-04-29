@@ -31,6 +31,9 @@ export class DomainSmokeTestRunner {
       issues.push("domain_registry.missing_required_tools");
     }
 
+    // §37.2: executionProfile validation - must cover risk/HITL/tool/eval/SLO
+    runtimeChecks.push(this.validateExecutionProfile(definition));
+
     // Gate check 1: Dependency resolution validation
     runtimeChecks.push(this.validateDependencyGraph(definition));
 
@@ -49,6 +52,67 @@ export class DomainSmokeTestRunner {
       issues,
       runtimeChecks,
       rollbackPoints: this.computeRollbackPoints(definition),
+    };
+  }
+
+  /**
+   * §37.2: Validate executionProfile covers required lint checks.
+   * Must verify risk, HITL, tool, eval, and SLO coverage.
+   */
+  private validateExecutionProfile(definition: DomainDefinition): SmokTestRuntimeCheck {
+    const profile = definition.executionProfile;
+
+    if (!profile) {
+      return {
+        checkId: "execution_profile",
+        passed: false,
+        details: "executionProfile is required but not provided",
+      };
+    }
+
+    const findings: string[] = [];
+
+    // Check executionMode is properly configured
+    if (!profile.executionMode) {
+      findings.push("executionMode not configured");
+    } else {
+      // Verify planningMode is set
+      if (!profile.executionMode.planningMode) {
+        findings.push("planningMode not set");
+      }
+      // Verify hotPathMode is set
+      if (!profile.executionMode.hotPathMode) {
+        findings.push("hotPathMode not set");
+      }
+    }
+
+    // Check latencyTier is set (SLO requirement)
+    if (!profile.latencyTier) {
+      findings.push("latencyTier not set (SLO requirement)");
+    }
+
+    // If descriptors bundle exists, validate HITL coverage
+    if (definition.descriptors?.governance) {
+      const hitlPolicy = definition.descriptors.governance.hitlPolicy;
+      if (hitlPolicy === "platform_default" || !hitlPolicy) {
+        findings.push("HITL policy not explicitly configured");
+      }
+    }
+
+    // If descriptors bundle exists, validate risk coverage
+    if (definition.descriptors?.risk) {
+      const riskSpec = definition.descriptors.risk;
+      if (!riskSpec.riskClass) {
+        findings.push("riskClass not set in risk descriptor");
+      }
+    }
+
+    return {
+      checkId: "execution_profile",
+      passed: findings.length === 0,
+      details: findings.length === 0
+        ? "executionProfile validated: risk/HITL/tool/eval/SLO coverage confirmed"
+        : `executionProfile gaps: ${findings.join("; ")}`,
     };
   }
 

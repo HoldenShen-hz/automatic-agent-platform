@@ -1,15 +1,23 @@
 {
+  "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": ["^typecheck"],
+      "inputs": ["**/*.ts", "**/*.tsx", "tsconfig.json"],
+      "outputs": ["dist/**/*.tsbuildinfo"]
     },
-    "lint": {},
+    "lint": {
+      "inputs": ["**/*.ts", "**/*.tsx", "eslint.config.js"],
+      "outputs": []
+    },
     "test": {
-      "dependsOn": ["typecheck"]
+      "dependsOn": ["typecheck"],
+      "inputs": ["**/*.test.ts", "**/*.test.tsx", "vitest.config.ts"],
+      "outputs": ["coverage/**"]
     },
     "dev": {
       "cache": false,

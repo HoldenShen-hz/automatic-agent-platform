@@ -15,6 +15,27 @@ export interface RegisterImprovementCandidateInput {
 
 export class ImprovementCandidateRegistry {
   private readonly candidates = new Map<string, ImprovementCandidate>();
+  private readonly accessOrder: string[] = [];
+  private readonly maxSize: number;
+
+  constructor(maxSize = 1000) {
+    this.maxSize = maxSize;
+  }
+
+  private touch(key: string): void {
+    const idx = this.accessOrder.indexOf(key);
+    if (idx !== -1) {
+      this.accessOrder.splice(idx, 1);
+    }
+    this.accessOrder.push(key);
+  }
+
+  private evictIfNeeded(): void {
+    while (this.candidates.size >= this.maxSize && this.accessOrder.length > 0) {
+      const lru = this.accessOrder.shift()!;
+      this.candidates.delete(lru);
+    }
+  }
 
   public register(input: RegisterImprovementCandidateInput): ImprovementCandidate {
     const candidate = parseImprovementCandidate({
@@ -28,7 +49,9 @@ export class ImprovementCandidateRegistry {
       status: "proposed",
       createdAt: Date.now(),
     });
+    this.evictIfNeeded();
     this.candidates.set(candidate.candidateId, candidate);
+    this.touch(candidate.candidateId);
     return candidate;
   }
 
@@ -43,6 +66,7 @@ export class ImprovementCandidateRegistry {
     }
     const updated = { ...current, status };
     this.candidates.set(candidateId, updated);
+    this.touch(candidateId);
     return updated;
   }
 

@@ -99,21 +99,55 @@ export function startWebVitalsCollection(
   };
 }
 
+/** Flush interval in milliseconds per §7.3 */
+const DEFAULT_FLUSH_INTERVAL_MS = 5000;
+/** Maximum buffer size before forced flush */
+const DEFAULT_MAX_BUFFER_SIZE = 100;
+
 export class TelemetrySink {
   private readonly events: TelemetryEvent[] = [];
+  private readonly flushIntervalMs: number;
+  private readonly maxBufferSize: number;
+  private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly exporters: readonly TelemetryExporter[];
+  private readonly consentChecker: (() => boolean) | null;
 
-  public constructor(private readonly exporters: readonly TelemetryExporter[] = []) {}
+  public constructor(
+    exporters: readonly TelemetryExporter[] = [],
+    options: {
+      flushIntervalMs?: number;
+      maxBufferSize?: number;
+      consentChecker?: () => boolean;
+    } = {},
+  ) {
+    this.exporters = exporters;
+    this.flushIntervalMs = options.flushIntervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
+    this.maxBufferSize = options.maxBufferSize ?? DEFAULT_MAX_BUFFER_SIZE;
+    this.consentChecker = options.consentChecker ?? null;
+    this.startFlushTimer();
+  }
 
+  /**
+   * Records a telemetry event with batching and analytics consent check per §7.3.
+   * Events are buffered and flushed periodically or when buffer is full.
+   */
   public record(name: string, attributes: Readonly<Record<string, unknown>> = {}): void {
+    // §6.5.5+GDPR: Check analytics consent before recording
+    if (this.consentChecker !== null && !this.consentChecker()) {
+      return;
+    }
+
     const event = {
       name,
       attributes,
       recordedAt: new Date().toISOString(),
     };
     this.events.push(event);
-    void Promise.all(this.exporters.map(async (exporter) => {
-      await exporter.export([event]);
-    }));
+
+    // Force flush if buffer is full
+    if (this.events.length >= this.maxBufferSize) {
+      void this.flush();
+    }
   }
 
   public list(): readonly TelemetryEvent[] {
@@ -130,6 +164,45 @@ export class TelemetrySink {
       },
     };
   }
+
+  /**
+   * Flushes buffered events to all exporters per §7.3.
+   */
+  public async flush(): Promise<void> {
+    if (this.events.length === 0) {
+      return;
+    }
+
+    const toExport = [...this.events];
+    this.events.length = 0;
+
+    await Promise.all(this.exporters.map(async (exporter) => {
+      try {
+        await exporter.export(toExport);
+      } catch (error) {
+        // Re-queue events on export failure
+        this.events.unshift(...toExport);
+        console.error("[TelemetrySink] Export failed, events re-queued:", error);
+      }
+    }));
+  }
+
+  private startFlushTimer(): void {
+    if (typeof setInterval === "undefined") {
+      return;
+    }
+    this.flushTimer = setInterval(() => {
+      void this.flush();
+    }, this.flushIntervalMs);
+  }
+
+  public dispose(): void {
+    if (this.flushTimer !== null) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+    void this.flush();
+  }
 }
 
 export class InMemoryTelemetryExporter implements TelemetryExporter {
@@ -144,6 +217,10 @@ export class InMemoryTelemetryExporter implements TelemetryExporter {
   }
 }
 
+/**
+ * OTLP HTTP exporter per §7.3 G-1.
+ * Uses correct resourceLogs[].scopeLogs[] format (not scopeMetrics[].logs).
+ */
 export class OtlpHttpTelemetryExporter implements TelemetryExporter {
   public constructor(
     private readonly endpoint: string,
@@ -155,30 +232,55 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
     if (events.length === 0) {
       return;
     }
+
+    // §7.3 G-1: Correct OTLP format is resourceLogs[].scopeLogs[] not scopeMetrics[].logs
+    const payload = {
+      resourceLogs: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "automatic-agent-platform-ui" } },
+            ],
+          },
+          scopeLogs: [
+            {
+              scope: {
+                name: "ui-telemetry",
+                attributes: [],
+              },
+              logRecords: events.map((event) => ({
+                timeUnixNano: Date.parse(event.recordedAt) * 1_000_000,
+                body: { stringValue: event.name },
+                attributes: Object.entries(event.attributes).map(([k, v]) => ({
+                  key: k,
+                  value: typeof v === "string" ? { stringValue: v } : { intValue: String(v) },
+                })),
+                flags: 0,
+              })),
+            },
+          ],
+        },
+      ],
+    };
+
     await this.fetchImplementation(this.endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         ...this.headers,
       },
-      body: JSON.stringify({
-        resource: { "service.name": "automatic-agent-platform-ui" },
-        scopeMetrics: [
-          {
-            scope: { name: "ui-telemetry" },
-            metrics: [],
-            logs: events.map((event) => ({
-              body: event.name,
-              timeUnixNano: Date.parse(event.recordedAt) * 1_000_000,
-              attributes: event.attributes,
-            })),
-          },
-        ],
-      }),
+      body: JSON.stringify(payload),
     });
   }
 }
 
-export function createTelemetrySink(exporters: readonly TelemetryExporter[] = []): TelemetrySink {
-  return new TelemetrySink(exporters);
+export function createTelemetrySink(
+  exporters: readonly TelemetryExporter[] = [],
+  options: {
+    flushIntervalMs?: number;
+    maxBufferSize?: number;
+    consentChecker?: () => boolean;
+  } = {},
+): TelemetrySink {
+  return new TelemetrySink(exporters, options);
 }

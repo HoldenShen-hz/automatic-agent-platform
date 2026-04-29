@@ -11,6 +11,8 @@ export function GovernanceComplianceWebView(): ReactElement {
         actions={[
           { id: "governance-summary", label: "汇总治理状态", tone: "accent" },
           { id: "governance-field-policy", label: "审阅字段策略", tone: "neutral" },
+          { id: "governance-audit-trail", label: "查看审计轨迹", tone: "neutral" },
+          { id: "governance-exception", label: "管理异常", tone: "neutral" },
           { id: "governance-escalate", label: "升级委托审批", tone: "danger" },
         ]}
       />

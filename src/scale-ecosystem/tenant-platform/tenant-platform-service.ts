@@ -361,6 +361,9 @@ export class TenantPlatformService {
    * is true or the organization has no default tenant yet, this tenant
    * becomes the organization's default.
    *
+   * Per R15-57 and §9.8: dedicated_pool isolation mode creates real infrastructure isolation
+   * by provisioning a dedicated deployment binding with isolated resources.
+   *
    * @param input - Tenant creation parameters
    * @returns The created tenant record
    */
@@ -369,6 +372,58 @@ export class TenantPlatformService {
       const organization = this.requireOrganization(input.organizationId);
       const createdAt = input.createdAt ?? nowIso();
       const tenantId = assertIdentifier(input.tenantId ?? newId("tenant"), "tenant.invalid_tenant_id");
+      const isolationMode = input.isolationMode ?? "shared_hard_scoped";
+
+      // Per R15-57: dedicated_pool tenants need real isolation via dedicated deployment
+      // When isolationMode is dedicated_pool, override deploymentMode to private_cloud
+      // unless already explicitly set to a non-shared mode
+      let deploymentMode = input.deploymentMode;
+      if (isolationMode === "dedicated_pool") {
+        if (!deploymentMode || deploymentMode === "cloud_shared") {
+          deploymentMode = "private_cloud";
+        }
+        // Create a dedicated storage scope for true isolation
+        const tenant: TenantRecord = {
+          tenantId,
+          organizationId: organization.organizationId,
+          displayName: tenantId,
+          storageScope: assertIdentifier(`${input.storageScope}-dedicated`, "tenant.invalid_storage_scope"),
+          identityScope: assertIdentifier(`${input.identityScope}-dedicated`, "tenant.invalid_identity_scope"),
+          policyScope: assertIdentifier(input.policyScope, "tenant.invalid_policy_scope"),
+          artifactScope: assertIdentifier(`${input.artifactScope}-dedicated`, "tenant.invalid_artifact_scope"),
+          isolationMode,
+          deploymentMode,
+          createdAt,
+          updatedAt: createdAt,
+        };
+        this.store.organization.upsertTenantRecord(tenant);
+
+        // Create a dedicated data namespace for this tenant's isolated data
+        this.store.organization.upsertDataNamespaceRecord({
+          namespaceId: assertIdentifier(`${tenantId}-dedicated-ns`, "tenant.invalid_namespace_id"),
+          plane: "transactional",
+          tenantId: tenant.tenantId,
+          organizationId: organization.organizationId,
+          workspaceId: null,
+          retentionPolicy: "dedicated_retention",
+          encryptionPolicy: "dedicated_encryption",
+          residencyPolicy: null,
+          createdAt,
+          updatedAt: createdAt,
+        });
+
+        // Set as organization default if requested or if no default exists
+        if (input.setAsOrganizationDefault === true || organization.defaultTenantId == null) {
+          this.store.organization.upsertOrganizationRecord({
+            ...organization,
+            defaultTenantId: tenant.tenantId,
+            updatedAt: createdAt,
+          });
+        }
+        return tenant;
+      }
+
+      // Standard shared tenant creation
       const tenant: TenantRecord = {
         tenantId,
         organizationId: organization.organizationId,
@@ -377,8 +432,8 @@ export class TenantPlatformService {
         identityScope: assertIdentifier(input.identityScope, "tenant.invalid_identity_scope"),
         policyScope: assertIdentifier(input.policyScope, "tenant.invalid_policy_scope"),
         artifactScope: assertIdentifier(input.artifactScope, "tenant.invalid_artifact_scope"),
-        isolationMode: input.isolationMode ?? "shared_hard_scoped",
-        deploymentMode: input.deploymentMode ?? "cloud_shared",
+        isolationMode,
+        deploymentMode: deploymentMode ?? "cloud_shared",
         createdAt,
         updatedAt: createdAt,
       };

@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { DomainExecutionProfileSchema } from "../domain-specs.js";
+import {
+  DomainCoreDescriptorSchema,
+  DomainExecutionProfileSchema,
+  DomainRiskSpecSchema,
+  DomainKnowledgeSpecSchema,
+  DomainEvalSpecSchema,
+  DomainGovernanceSpecSchema,
+  DomainInteractionSpecSchema,
+} from "../domain-specs.js";
 
 const DOMAIN_STATUS_ALIASES = {
   testing: "validated",
@@ -20,6 +28,23 @@ const DOMAIN_PLUGIN_ROLE_ALIASES = {
   presenter: "presenter",
   validator: "validator",
 } as const;
+
+/**
+ * §37.2 v4.3: DomainDescriptorBundle represents the 7 independent descriptors
+ * that constitute a complete domain definition. Each descriptor can be
+ * validated and versioned independently.
+ */
+export const DomainDescriptorBundleSchema = z.object({
+  core: DomainCoreDescriptorSchema,
+  risk: DomainRiskSpecSchema,
+  knowledge: DomainKnowledgeSpecSchema,
+  eval: DomainEvalSpecSchema,
+  governance: DomainGovernanceSpecSchema,
+  interaction: DomainInteractionSpecSchema,
+  executionProfile: DomainExecutionProfileSchema.optional(),
+});
+
+export type DomainDescriptorBundle = z.infer<typeof DomainDescriptorBundleSchema>;
 
 // §37 DomainManifest - required per §37 for capability matrix/risk classification/schema registry reference
 export const DomainManifestSchema = z.object({
@@ -144,11 +169,18 @@ export const PluginBindingSchema = z.object({
   config: z.record(z.string(), z.unknown()).default({}),
 });
 
+/**
+ * DomainDefinitionSchema - Legacy monolithic schema for backward compatibility.
+ * §37.2 v4.3: New code should use DomainDescriptorBundleSchema with 7 independent descriptors.
+ * This schema is maintained for existing consumers and gradual migration.
+ */
 export const DomainDefinitionSchema = z.object({
   domainId: z.string().min(1),
   name: z.string().min(1),
   description: z.string().min(1),
   version: z.number().int().positive().default(1),
+  // §37.2 v4.3: Descriptors bundle - contains the 7 independent descriptors
+  descriptors: DomainDescriptorBundleSchema.optional(),
   workflows: z.array(WorkflowConfigSchema).default([]),
   toolBundles: z.array(ToolBundleConfigSchema).default([]),
   outputContracts: z.array(OutputContractConfigSchema).default([]),
@@ -180,5 +212,7 @@ export type DomainDefinition = Omit<DomainDefinitionParsed, "status" | "pluginBi
   status: DomainDefinitionParsed["status"] | "testing";
   pluginBindings: PluginBinding[];
   executionProfile?: DomainDefinitionParsed["executionProfile"];
+  /** §37.2 v4.3: 7 independent descriptors bundle */
+  descriptors?: DomainDescriptorBundle;
 };
 export type DomainDefinitionExtended = DomainDefinition;

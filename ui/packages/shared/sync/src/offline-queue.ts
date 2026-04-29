@@ -1,13 +1,24 @@
 import type { OfflineMutation, OfflineMutationStore } from "./types";
 
+/** Default maximum queue capacity per §5.5 */
+const DEFAULT_MAX_CAPACITY = 1000;
+
 export class OfflineQueue {
   private readonly queue: OfflineMutation[] = [];
   private readonly readyPromise: Promise<void>;
+  private readonly maxCapacity: number;
+  private readonly store: OfflineMutationStore;
 
-  public constructor(private readonly store: OfflineMutationStore = createMemoryOfflineMutationStore()) {
+  public constructor(
+    store: OfflineMutationStore = createMemoryOfflineMutationStore(),
+    maxCapacity = DEFAULT_MAX_CAPACITY,
+  ) {
+    this.store = store;
+    this.maxCapacity = maxCapacity;
     this.readyPromise = this.store.readAll()
       .then((mutations) => {
-        this.queue.push(...mutations);
+        // Filter out mutations exceeding capacity on load
+        this.queue.push(...mutations.slice(0, maxCapacity));
       })
       .catch(() => undefined);
   }
@@ -16,7 +27,19 @@ export class OfflineQueue {
     await this.readyPromise;
   }
 
+  /**
+   * Enqueues a mutation with capacity check per §5.5.
+   * If queue is at capacity, oldest pending mutations are evicted.
+   */
   public enqueue(mutation: OfflineMutation): void {
+    // Evict oldest pending mutations if at capacity
+    while (this.queue.length >= this.maxCapacity) {
+      const evicted = this.queue.shift();
+      if (evicted != null) {
+        // Log eviction for debugging (in production this would go to telemetry)
+        console.warn(`[OfflineQueue] Evicted oldest mutation due to capacity limit: ${evicted.id}`);
+      }
+    }
     this.queue.push(mutation);
     void this.persist();
   }
@@ -38,6 +61,14 @@ export class OfflineQueue {
 
   public isEmpty(): boolean {
     return this.queue.length === 0;
+  }
+
+  public isFull(): boolean {
+    return this.queue.length >= this.maxCapacity;
+  }
+
+  public capacity(): number {
+    return this.maxCapacity;
   }
 
   private async persist(): Promise<void> {

@@ -129,11 +129,13 @@ export interface CreateWorkflowStepCheckpointInput {
  *
  * A condensed view that excludes full output and context to allow
  * listing checkpoints without loading all data.
+ * §5.5: Uses canonical harnessRunId/nodeRunId/planGraphBundleId identifiers.
  */
 export interface WorkflowStepCheckpointSummary {
   artifactId: string;
-  stepId: string;
-  workflowId: string;
+  harnessRunId: string;
+  nodeRunId: string | null;
+  planGraphBundleId: string;
   status: StepOutputRecord["status"];
   producedAt: string;
   nextStepId: string | null;
@@ -218,6 +220,7 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
  *
  * Extracts key fields for display: step ID, status, timestamps,
  * next step, output keys, and summary text.
+ * §5.5: Uses canonical harnessRunId/nodeRunId/planGraphBundleId identifiers.
  */
 export function summarizeWorkflowStepCheckpoint(
   artifactId: string,
@@ -226,8 +229,9 @@ export function summarizeWorkflowStepCheckpoint(
   const output = checkpoint.output as { summary?: unknown } | null;
   return {
     artifactId,
-    stepId: checkpoint.stepId,
-    workflowId: checkpoint.workflowId,
+    harnessRunId: checkpoint.harnessRunId,
+    nodeRunId: checkpoint.nodeRunId,
+    planGraphBundleId: checkpoint.planGraphBundleId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,
     nextStepId: checkpoint.resumeContext.nextStepId,

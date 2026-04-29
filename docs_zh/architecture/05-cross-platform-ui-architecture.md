@@ -4,7 +4,7 @@ automatic_agent/automatic-agent-platform-main/docs_zh/architecture/12-cross-plat
 
 > **文档版本**：v3.0
 > **文档状态**：Accepted
-> **基线文档**：`00-platform-architecture.md` v3.2 五平面架构 · `contracts/ui_console_and_cockpit_contract.md`
+> **基线文档**：`00-platform-architecture.md` v4.3 五平面架构 · `contracts/ui_console_and_cockpit_contract.md`
 > **前序文档**：`10-cross-platform-ui-architecture.md`（v1 概览，已 Superseded）· `11-cross-platform-ui-implementation-design.md`（v1 实施，已 Superseded）
 > **适用对象**：前端架构师、UI/UX 工程师、移动端/桌面端开发、QA、DevOps、平台 SRE
 > **设计定位**：单一权威 UI 架构规格。完全合并 Doc-10 和 Doc-11 的全部内容，消除版本不一致，对齐后端实现

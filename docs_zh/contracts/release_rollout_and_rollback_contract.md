@@ -1,4 +1,4 @@
-# Release Rollout And Rollback Contract
+# Release And Rollback Contract
 
 > **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Improve Hub 的受控发布与回滚机制，对应 ADR-075 和 ADR-018。
 > **更新日期**：2026-04-17
@@ -20,7 +20,7 @@ Related documents:
 - Unify release paths for code, config, prompt, role, skill.
 - Make any production release have controllable canary and executable rollback.
 - Make schema changes comply with forward/backward compatibility.
-- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → RolloutRecord pipeline.
+- Integrate with OAPEFLIR LearningObject → ImprovementCandidate → ReleaseRecord pipeline.
 
 ## 3. Release Objects
 
@@ -107,7 +107,7 @@ LearningObject(validated/promoted)
     → ImprovementCandidate(candidate_created)
     → under_review
     → approved / rejected
-    → RolloutRecord(evaluate_0 → canary → partial → stable → released)
+    → ReleaseRecord(evaluate_0 → canary → partial → stable → released)
 ```
 
 **必须满足的条件**（R4-EVIDENCE 约束）：
@@ -135,10 +135,10 @@ interface ImprovementCandidate {
 type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 ```
 
-## 7. RolloutRecord 接口
+## 7. ReleaseRecord 接口
 
 ```typescript
-interface RolloutRecord {
+interface ReleaseRecord {
   recordId: string;
   candidateId: string;
   fromLevel: RolloutLevel;

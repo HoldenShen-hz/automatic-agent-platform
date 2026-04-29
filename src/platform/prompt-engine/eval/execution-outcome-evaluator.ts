@@ -16,7 +16,7 @@
 
 import { newId } from "../../contracts/types/ids.js";
 import type { PlanGraphBundle, RiskClass } from "../../contracts/executable-contracts/index.js";
-import type { FeedbackBatch } from "../../../scale-ecosystem/feedback-loop/collector/feedback-model.js";
+import type { FeedbackBatch } from "../../contracts/types/feedback.js";
 import type {
   QualityGateConfig,
   DomainId,
@@ -61,8 +61,10 @@ export interface ExecutionOutcomeEvaluatorOptions {
  */
 const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
   qualityGate: {
-    defaultPassThreshold: 0.5,
-    criticalPassThreshold: 0.8,
+    // R16-18 FIX: §17.3 requires delta-based quality evaluation (quality_score_delta≥-0.05)
+    // Minimum threshold should be meaningful (0.7) to avoid degraded quality passing
+    defaultPassThreshold: 0.7,
+    criticalPassThreshold: 0.9,
     enforcement: "blocking",
   },
   qualityScoreWeights: {
@@ -72,7 +74,9 @@ const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
     partialSignal: 0.1,
   },
   actionThresholds: {
-    completeMinScore: 0.5,
+    // R16-18 FIX: §17.3 requires meaningful quality threshold for completion
+    // CompleteMinScore 0.5 is too low - raising to 0.7 to align with delta-based evaluation
+    completeMinScore: 0.7,
     approvalRequiredScore: 0.3,
     retryMaxFailures: 3,
   },

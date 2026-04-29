@@ -40,6 +40,8 @@ test("ProactiveAgentService queues suggestions for confirmation-required trigger
   assert.equal(decision.actionMode, "suggest");
   assert.ok(decision.queuedSuggestionId);
   assert.equal(service.listSuggestions().length, 1);
+  assert.ok(service.listSuggestions()[0]!.qualityScore > 0);
+  assert.equal(service.listSuggestions()[0]!.context.triggerType, "schedule");
 });
 
 test("ProactiveAgentService enforces domain daily trigger budget", async () => {
@@ -207,6 +209,41 @@ test("ProactiveAgentService evaluate matches event triggers correctly", () => {
   assert.equal(decision3.allowed, false);
 });
 
+test("ProactiveAgentService aggregates event triggers across batchWindow before queuing suggestion", async () => {
+  const service = new ProactiveAgentService();
+  const eventConfig: EventTriggerConfig = {
+    eventSource: "task",
+    eventPattern: "failed",
+    filter: { severity: "high" },
+    batchWindow: "5m",
+  };
+  await service.registerTrigger(makeTrigger({
+    triggerId: "batched_event_trigger",
+    type: "event",
+    config: eventConfig,
+  }));
+
+  const first = service.evaluate("batched_event_trigger", {
+    kind: "event",
+    now: "2026-04-19T01:00:00.000Z",
+    event: { source: "task", name: "task_failed", payload: { severity: "high", taskId: "task-1" } },
+  });
+  const second = service.evaluate("batched_event_trigger", {
+    kind: "event",
+    now: "2026-04-19T01:06:00.000Z",
+    event: { source: "task", name: "task_failed", payload: { severity: "high", taskId: "task-2" } },
+  });
+
+  assert.equal(first.allowed, false);
+  assert.ok(first.reasonCodes.includes("proactive_agent.batch_window_collecting"));
+  assert.equal(second.allowed, true);
+  assert.ok(second.reasonCodes.includes("proactive_agent.batch_window_aggregated"));
+  const suggestion = service.listSuggestions()[0];
+  assert.ok(suggestion);
+  assert.equal(suggestion?.context.triggerType, "event");
+  assert.match(suggestion?.context.matchedSignal ?? "", /batchCount/);
+});
+
 test("ProactiveAgentService evaluate matches threshold triggers correctly", () => {
   const service = new ProactiveAgentService();
   const thresholdConfig: ThresholdTriggerConfig = {
@@ -257,6 +294,61 @@ test("ProactiveAgentService evaluate handles auto_execute for no-confirmation lo
   assert.equal(decision.allowed, true);
   assert.equal(decision.actionMode, "auto_execute");
   assert.equal(decision.queuedSuggestionId, null);
+});
+
+test("ProactiveAgentService keeps medium-risk triggers in suggest mode even under full_auto autonomy", () => {
+  const service = new ProactiveAgentService({ currentAutonomyLevel: "full_auto" });
+  service.registerTrigger(makeTrigger({
+    triggerId: "trigger_medium_risk",
+    riskLevel: "medium",
+    action: { actionType: "create_task", template: {}, requireConfirmation: false },
+  }));
+
+  const decision = service.evaluate("trigger_medium_risk", { kind: "schedule" });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.actionMode, "suggest");
+  assert.ok(decision.queuedSuggestionId != null);
+});
+
+test("ProactiveAgentService builds suggestion context and quality score for event triggers", async () => {
+  const service = new ProactiveAgentService();
+  service.registerTrigger(makeTrigger({
+    triggerId: "event_trigger",
+    name: "high severity task failure",
+    type: "event",
+    riskLevel: "medium",
+    config: {
+      eventSource: "task",
+      eventPattern: "failed",
+      filter: { severity: "high" },
+    },
+    action: {
+      actionType: "suggest_to_user",
+      template: { templateId: "task-failure-review" },
+      requireConfirmation: true,
+    },
+    boundAgentId: "agent-observer-1",
+  }));
+
+  const decision = service.evaluate("event_trigger", {
+    kind: "event",
+    now: "2026-04-19T03:00:00.000Z",
+    event: {
+      source: "task",
+      name: "task_failed",
+      payload: { severity: "high", taskId: "task-1" },
+    },
+  });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.actionMode, "suggest");
+  const suggestion = service.listSuggestions()[0]!;
+  assert.equal(suggestion.context.triggerType, "event");
+  assert.equal(suggestion.context.sourceSummary, "task:task_failed");
+  assert.ok(suggestion.context.matchedSignal?.includes("\"taskId\":\"task-1\""));
+  assert.ok(suggestion.title.includes("high severity task failure"));
+  assert.ok(suggestion.qualityScore >= 0.85);
 });
 
 test("ProactiveAgentService evaluate handles silent_record for dashboard updates", () => {
@@ -318,6 +410,17 @@ test("ProactiveAgentService registerTrigger validates declared triggers", async 
   await assert.rejects(
     async () => service.registerTrigger(makeTrigger({ triggerId: "not_declared" })),
     /proactive_agent.trigger_not_declared/,
+  );
+});
+
+test("ProactiveAgentService registerTrigger validates domain descriptor constraints", async () => {
+  const service = new ProactiveAgentService({
+    domainDescriptorValidator: () => ["missing_event_capability"],
+  });
+
+  await assert.rejects(
+    async () => service.registerTrigger(makeTrigger()),
+    /proactive_agent.domain_descriptor_validation_failed/,
   );
 });
 

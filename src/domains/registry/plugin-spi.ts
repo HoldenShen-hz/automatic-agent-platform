@@ -21,7 +21,20 @@ export interface HumanOutput {
 }
 
 export const PluginSpiTypeSchema = z.enum(["retriever", "validator", "planner", "presenter", "adapter"]);
-export const PluginLifecycleStateSchema = z.enum(["registered", "loaded", "active", "inactive", "unloaded", "degraded", "disabled"]);
+/**
+ * Plugin lifecycle states per contract §4.
+ * States: suspended/loading/initialized map to code's degraded/disabled in operational sense.
+ * Code uses more granular states for internal tracking; contract defines canonical set.
+ */
+export const PluginLifecycleStateSchema = z.enum([
+  "registered",   // Plugin registered but not loaded
+  "loading",      // Plugin is being loaded (code: loaded)
+  "active",       // Plugin fully loaded and active (code: active)
+  "inactive",     // Plugin loaded but inactive
+  "unloaded",     // Plugin unloaded
+  "suspended",    // Plugin suspended (code: degraded)
+  "disabled",     // Plugin disabled (code: disabled)
+]);
 export const PluginRuntimeIsolationSchema = z.enum([
   "shared_process",
   "serialized_in_process",
@@ -91,6 +104,8 @@ export interface PluginLifecycleHooks {
   onActivate?(context: PluginLifecycleContext): Promise<void> | void;
   onDeactivate?(context: PluginLifecycleContext): Promise<void> | void;
   onUnload?(context: PluginLifecycleContext): Promise<void> | void;
+  /** Suspend plugin operations - called when transitioning to suspended state per contract §4 */
+  suspend?(reason: string): Promise<void> | void;
   initialize?(): Promise<void> | void;
   healthCheck?(): Promise<boolean> | boolean;
   shutdown?(): Promise<void> | void;

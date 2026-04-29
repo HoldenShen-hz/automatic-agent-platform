@@ -75,7 +75,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           ? 25
           : readLimit(ctx.request, 25);
         const tasks = deps.inspectService.queryTaskInspectSummaries({
-          limit: 200,
+          limit,
           ...(principal.tenantId != null ? { tenantId: principal.tenantId } : {}),
         });
         const page = paginateByCursor(tasks, limit, readCursor(ctx.request));
@@ -307,7 +307,10 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
 
         const now = nowIso();
         if (payload.title != null) {
-          deps.taskStore.task.updateTaskInput(taskId, existing.inputJson, existing.normalizedInputJson ?? existing.inputJson, now);
+          deps.taskStore.task.updateTaskTitle(taskId, payload.title, now);
+        }
+        if (payload.inputJson != null) {
+          deps.taskStore.task.updateTaskInput(taskId, payload.inputJson, existing.normalizedInputJson ?? existing.inputJson, now);
         }
         if (payload.status != null) {
           deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);

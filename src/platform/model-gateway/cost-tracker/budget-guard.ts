@@ -17,9 +17,10 @@ import { BudgetAllocator } from "../../execution/budget-allocator.js";
 /**
  * Budget policy defining cost limits and warning thresholds.
  * §18: Implements three-level budget hierarchy - platform/pack/step
+ * §18.3: Independent limits for max_model_tokens, max_steps, max_duration_ms
  */
 export interface BudgetPolicy {
-  /** Task-level budget limit */
+  /** Task-level budget limit in USD */
   maxTaskCostUsd: number;
   /** Pack-level budget limit (aggregated task group) */
   maxPackCostUsd: number;
@@ -29,6 +30,12 @@ export interface BudgetPolicy {
   maxDailyCostUsd: number;
   /** Legacy monthly cost limit (deprecated, use maxPlatformCostUsd) */
   maxMonthlyCostUsd: number;
+  /** §18.3: Independent limit for maximum model tokens per task */
+  maxModelTokens: number;
+  /** §18.3: Independent limit for maximum execution steps per task */
+  maxSteps: number;
+  /** §18.3: Independent limit for maximum execution duration in milliseconds */
+  maxDurationMs: number;
   warnAtRatio: number;
   mode: "supervised" | "auto" | "full-auto";
 }

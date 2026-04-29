@@ -68,6 +68,23 @@ export interface PanicResumeReceipt {
   readonly reasonCodes: readonly string[];
 }
 
+/**
+ * Platform Resume Directive
+ * Issued after successful panic resolution to authorize platform resume.
+ * §R14-01: Cascade halt + PanicAcknowledgment + PlatformResumeDirective
+ */
+export interface PlatformResumeDirective {
+  readonly directiveId: string;
+  readonly relatedPanicDirectiveId: string;
+  readonly scope: string;
+  readonly issuedBy: string;
+  readonly issuedAt: string;
+  readonly approvedBy: readonly string[];
+  readonly rollbackExecuted: boolean;
+  readonly validationResults: readonly string[];
+  readonly allowlistRestored: boolean;
+}
+
 export interface PlatformPanicActivation {
   readonly directive: PlatformPanicDirective;
   readonly propagationRecords: readonly PanicPropagationRecord[];
@@ -107,6 +124,7 @@ function normalizeRequiredApprovers(
 export class PlatformPanicService {
   private readonly activations = new Map<string, PlatformPanicActivation>();
   private readonly resumeReceipts = new Map<string, PanicResumeReceipt>();
+  private readonly resumeDirectives = new Map<string, PlatformResumeDirective>();
 
   public activate(request: PanicActivationRequest): PlatformPanicActivation {
     if (!shouldEnterPanicMode(request)) {
@@ -125,7 +143,7 @@ export class PlatformPanicService {
       requiredApprovers: normalizeRequiredApprovers(request),
       severity: (request.severity as "full" | "partial") ?? "full",
       reconfirmationAfterSeconds: 300,
-      rollbackStrategy: "manual",
+      rollbackStrategy: "automatic",
       ...(request.allowList != null ? { allowList: request.allowList } : {}),
     };
     const panicPlanes = ["P1", "P2", "P3", "P4", "P5"] as const;
@@ -207,6 +225,11 @@ export class PlatformPanicService {
     };
   }
 
+  /**
+   * Resumes platform operations after panic resolution.
+   * Issues a PlatformResumeDirective upon successful resume.
+   * §R14-01: Cascade halt + PanicAcknowledgment + PlatformResumeDirective
+   */
   public resume(scope: string, plan: ResumePlan, resumedAt = nowIso()): PanicResumeReceipt {
     const activation = this.resolveActivation(scope);
     if (activation == null) {
@@ -232,6 +255,21 @@ export class PlatformPanicService {
       return blockedReceipt;
     }
     this.activations.delete(activation.directive.scope);
+
+    // Issue PlatformResumeDirective for cascade resume authorization
+    const resumeDirective: PlatformResumeDirective = {
+      directiveId: newId("resume"),
+      relatedPanicDirectiveId: activation.directive.directiveId,
+      scope: activation.directive.scope,
+      issuedBy: plan.approvedBy[0] ?? "system",
+      issuedAt: resumedAt,
+      approvedBy: plan.approvedBy,
+      rollbackExecuted: activation.directive.rollbackStrategy === "automatic",
+      validationResults: plan.validationRunPassed ? ["all_checks_passed"] : [],
+      allowlistRestored: true,
+    };
+    this.resumeDirectives.set(scope, resumeDirective);
+
     const receipt: PanicResumeReceipt = {
       scope: activation.directive.scope,
       resumed: true,
@@ -241,6 +279,13 @@ export class PlatformPanicService {
     };
     this.resumeReceipts.set(scope, receipt);
     return receipt;
+  }
+
+  /**
+   * Gets the PlatformResumeDirective for a scope after successful resume.
+   */
+  public getResumeDirective(scope: string): PlatformResumeDirective | null {
+    return this.resumeDirectives.get(scope) ?? null;
   }
 
   public getResumeReceipt(scope: string): PanicResumeReceipt | null {

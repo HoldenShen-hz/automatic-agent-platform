@@ -314,8 +314,8 @@ test("mapHarnessStepToOapeflirPhase maps evaluator role to feedback phase", () =
   assert.equal(mapHarnessStepToOapeflirPhase("evaluator", "evaluate"), "feedback");
 });
 
-test("mapHarnessStepToOapeflirPhase maps hitl_operator to assess phase", () => {
-  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "review"), "assess");
+test("mapHarnessStepToOapeflirPhase maps hitl_operator to feedback phase", () => {
+  assert.equal(mapHarnessStepToOapeflirPhase("hitl_operator", "review"), "feedback");
 });
 
 test("mapHarnessStepToOapeflirPhase maps loop_controller to improve phase", () => {

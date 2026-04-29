@@ -25,6 +25,10 @@ export interface HarnessSdkCreateRunInput {
   readonly taskId: string;
   readonly domainId: string;
   readonly constraintPack: ConstraintPack;
+  /** §18: Tenant context required for multi-tenant isolation */
+  readonly tenantId?: string;
+  /** §18: Budget allocation ref for cost tracking */
+  readonly budgetRef?: string;
 }
 
 export interface HarnessSdkAppendStepInput {
@@ -40,10 +44,61 @@ export interface HarnessSdkAppendStepInput {
   readonly receiptKind?: NodeAttemptReceipt["receiptKind"];
 }
 
-export class HarnessSdk {
-  public constructor(private readonly runtime: HarnessRuntimeService = new HarnessRuntimeService()) {}
+/**
+ * Validation error for Harness SDK operations.
+ */
+export class HarnessSdkError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "HarnessSdkError";
+  }
+}
 
+/**
+ * §18: Budget validation result for run creation.
+ */
+interface BudgetValidationResult {
+  allowed: boolean;
+  remainingBudget?: number;
+  error?: string;
+}
+
+export class HarnessSdk {
+  public constructor(
+    private readonly runtime: HarnessRuntimeService = new HarnessRuntimeService(),
+    private readonly budgetChecker?: (budgetRef: string) => BudgetValidationResult,
+  ) {}
+
+  /**
+   * §18: Create a harness run with proper auth/tenant/budget validation.
+   * All three checks must pass before the run is created.
+   */
   public createRun(input: HarnessSdkCreateRunInput): HarnessRun {
+    // §18: Tenant validation - ensure tenant context is present
+    if (!input.tenantId) {
+      throw new HarnessSdkError(
+        "harness_sdk.missing_tenant",
+        "tenantId is required for run creation per §18 multi-tenant isolation",
+        { taskId: input.taskId },
+      );
+    }
+
+    // §18: Budget validation - ensure budget is available
+    if (input.budgetRef) {
+      const budgetResult = this.budgetChecker?.(input.budgetRef);
+      if (budgetResult && !budgetResult.allowed) {
+        throw new HarnessSdkError(
+          "harness_sdk.budget_exceeded",
+          `Budget ${input.budgetRef} does not allow run creation`,
+          { budgetRef: input.budgetRef, remaining: budgetResult.remainingBudget },
+        );
+      }
+    }
+
     return this.runtime.createRun(input);
   }
 

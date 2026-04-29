@@ -4,7 +4,10 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PromptTemplateRecord } from "../registry/index.js";
 
 export type PromptRolloutMode = "off" | "suggest" | "shadow";
-export type PromptRolloutStatus = "draft" | "ready" | "active" | "blocked" | "rolled_back";
+// R16-04 FIX: Align with §16.1 lifecycle - canary stages per §16.3
+// Valid transitions: blocked → canary_5 → canary_20 → stable → deprecated
+// rolled_back is a terminal state
+export type PromptRolloutStatus = "blocked" | "canary_5" | "canary_20" | "stable" | "deprecated" | "rolled_back";
 
 export interface PromptRolloutRecord {
   rolloutId: string;
@@ -49,7 +52,8 @@ export class PromptRolloutService {
       templateKey: input.template.templateKey,
       version: input.template.version,
       mode: input.mode,
-      status: decision.allowed ? "ready" : "blocked",
+      // R16-04 FIX: Start at canary_5 per §16.3 canonical pipeline
+      status: decision.allowed ? "canary_5" : "blocked",
       owner: input.owner.trim(),
       fixedPrefixHash: input.template.fixedPrefixHash,
       regressionSuiteId: input.regressionSuiteId.trim(),
@@ -64,19 +68,36 @@ export class PromptRolloutService {
 
   public activateRollout(rolloutId: string): PromptRolloutRecord {
     const record = this.getRequired(rolloutId);
-    if (record.status !== "ready") {
+    // R16-13 FIX: Allow canary traffic split transitions per §16.3
+    // Valid transitions: canary_5 → canary_20 → stable
+    const validTransitions: Record<string, string> = {
+      "canary_5": "canary_20",
+      "canary_20": "stable",
+      "stable": "stable", // stable can re-enter stable (idempotent)
+    };
+    const nextStatus = validTransitions[record.status];
+    if (nextStatus === undefined) {
       throw new ValidationError(
-        `prompt_rollout.invalid_transition:${record.status}->active`,
-        `Prompt rollout in status ${record.status} cannot transition to active.`,
+        `prompt_rollout.invalid_transition:${record.status}->canary/stable`,
+        `Prompt rollout in status ${record.status} cannot transition to canary or stable. Valid transitions: canary_5→canary_20→stable`,
       );
     }
-    const updated = { ...record, status: "active" as const, updatedAt: nowIso() };
+    const updated = { ...record, status: nextStatus as PromptRolloutStatus, updatedAt: nowIso() };
     this.rollouts.set(rolloutId, updated);
     return updated;
   }
 
   public rollbackRollout(rolloutId: string, reason: string): PromptRolloutRecord {
     const record = this.getRequired(rolloutId);
+    // R16-04 FIX: Allow rollback from canary stages and stable per §16.3
+    // Only "blocked", "deprecated", or already "rolled_back" cannot be rolled back
+    const rollbackableStates = ["canary_5", "canary_20", "stable"];
+    if (!rollbackableStates.includes(record.status)) {
+      throw new ValidationError(
+        `prompt_rollout.invalid_transition:${record.status}->rolled_back`,
+        `Prompt rollout in status ${record.status} cannot be rolled back. Only canary_5, canary_20, or stable rollouts can be rolled back.`,
+      );
+    }
     const updated = {
       ...record,
       status: "rolled_back" as const,
@@ -99,9 +120,10 @@ export class PromptRolloutService {
       return { allowed: false, nextStatus: "blocked", reason: "domain_block_incompatible" };
     }
     if (input.mode === "shadow") {
-      return { allowed: true, nextStatus: "ready", reason: "shadow_guardrail_passed" };
+      return { allowed: true, nextStatus: "canary_5", reason: "shadow_guardrail_passed" };
     }
-    return { allowed: true, nextStatus: "ready", reason: "rollout_guardrail_passed" };
+    // R16-04 FIX: Start at canary_5 per §16.3 canonical pipeline
+    return { allowed: true, nextStatus: "canary_5", reason: "rollout_guardrail_passed" };
   }
 
   public listRollouts(templateKey?: string): PromptRolloutRecord[] {

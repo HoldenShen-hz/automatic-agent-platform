@@ -177,6 +177,84 @@ test("MockExecuteBridge.executeStep accepts ExecutionContext", async () => {
   assert.equal(result.status, "succeeded");
 });
 
+test("RuntimeExecuteBridge delegates through injected runtime executor and maps outputs", async () => {
+  let capturedInput:
+    | {
+        dbPath: string;
+        title: string;
+        request: string;
+        contextBudgetTokens?: number;
+      }
+    | undefined;
+
+  const bridge = new RuntimeExecuteBridge(
+    "/tmp/runtime-execute-bridge.db",
+    "MiniMax-M2.7",
+    async (input) => {
+      capturedInput = input;
+      return {
+        snapshot: {
+          executionRecord: {
+            stepOutputs: [
+              {
+                id: "sor-runtime-1",
+                stepId: "step_runtime_1",
+                taskId: "task_runtime",
+                roleId: "general_executor",
+                status: "succeeded",
+                dataJson: '{"result":"ok"}',
+                artifactsJson: '["artifact.txt"]',
+                summary: "Runtime execution completed",
+                durationMs: 75,
+                tokenCost: 120,
+                validationJson: '{"valid":true}',
+                producedAt: "2026-04-28T00:00:00.000Z",
+              },
+            ],
+          },
+        },
+      } as unknown as MultiStepOrchestrationResult;
+    },
+  );
+
+  const plan = {
+    planId: "plan_runtime",
+    taskId: "task_runtime",
+    version: 1,
+    assessmentRef: "assessment_runtime",
+    strategy: "linear" as const,
+    steps: [
+      createMockPlanStep({
+        stepId: "step_runtime_1",
+        action: "write_code",
+        outputs: ["artifact.txt"],
+      }),
+    ],
+    createdAt: Date.now(),
+  };
+
+  const result = await bridge.executePlan(plan, {
+    taskId: "task_runtime",
+    tokenBudget: 2048,
+  });
+
+  assert.deepEqual(capturedInput, {
+    dbPath: "/tmp/runtime-execute-bridge.db",
+    title: "OAPEFLIR plan plan_runtime",
+    request: serialiseOapeflirPlan(plan.steps),
+    contextBudgetTokens: 2048,
+  });
+  assert.equal(result.planId, "plan_runtime");
+  assert.equal(result.results.length, 1);
+  assert.equal(result.results[0]!.stepId, "step_runtime_1");
+  assert.equal(result.results[0]!.summary, "Runtime execution completed");
+  assert.deepEqual(result.results[0]!.outputs, { result: "ok" });
+  assert.deepEqual(result.results[0]!.artifacts, ["artifact.txt"]);
+  assert.equal(result.totalDurationMs, 75);
+  assert.equal(result.totalTokenCost, 120);
+  assert.equal(result.allSucceeded, true);
+});
+
 // ---------------------------------------------------------------------------
 // Helper function tests
 // ---------------------------------------------------------------------------

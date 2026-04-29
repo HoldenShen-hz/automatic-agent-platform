@@ -270,6 +270,7 @@ export class PlanGraphHarnessRuntime {
       emittedBy: input.context.emittedBy,
       leaseId,
       fencingToken,
+      auditRef: `audit://plan-graph/${input.harnessRun.harnessRunId}/${node.nodeId}/${terminalStatus}`,
     });
 
     return {

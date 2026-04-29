@@ -72,7 +72,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     if (command.aggregateType === "HarnessRun") {
       const harnessRun = this.getHarnessRun(getAggregateId(command.aggregateType, command.aggregate as RuntimeStateAggregate) as string);
       if (harnessRun != null) {
-        this.validateLease(harnessRun);
+        this.validateLease(command, harnessRun);
       }
     }
 
@@ -265,25 +265,59 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     return normalizedEvent;
   }
 
-  // §25.3: Lease/fencing validation for HarnessRun
-  private validateLease(harnessRun: HarnessRun): void {
-    if (harnessRun.lease != null) {
-      const now = Date.now();
-      const leaseExpiry = new Date(harnessRun.lease.expiresAt).getTime();
-      if (now > leaseExpiry) {
-        throw new ValidationError(
-          "runtime_truth_repository.lease_expired",
-          `HarnessRun ${harnessRun.harnessRunId} has expired lease`,
-          { details: { harnessRunId: harnessRun.harnessRunId, leaseExpiresAt: harnessRun.lease.expiresAt } },
-        );
-      }
-      if (harnessRun.lease.ownerId !== harnessRun.ownedBy) {
-        throw new ValidationError(
-          "runtime_truth_repository.lease_fencing_violation",
-          `HarnessRun ${harnessRun.harnessRunId} lease owner mismatch`,
-          { details: { leaseOwner: harnessRun.lease.ownerId, ownedBy: harnessRun.ownedBy } },
-        );
-      }
+  // §25.3: HarnessRun writes must present the same leaseId/fencingToken that the
+  // authoritative aggregate currently holds. Admission is the transition that
+  // establishes these values; later mutations must echo them back.
+  private validateLease(
+    command: RuntimeTransitionCommand<RuntimeStateAggregate>,
+    harnessRun: HarnessRun,
+  ): void {
+    const currentLeaseId = (harnessRun as HarnessRun & { leaseId?: string }).leaseId;
+    const currentFencingToken = (harnessRun as HarnessRun & { fencingToken?: string }).fencingToken;
+    if (currentLeaseId == null && currentFencingToken == null) {
+      return;
+    }
+
+    if (command.leaseId == null || command.fencingToken == null) {
+      throw new ValidationError(
+        "runtime_truth_repository.lease_fencing_required",
+        `HarnessRun ${harnessRun.harnessRunId} requires leaseId and fencingToken for mutation`,
+        {
+          details: {
+            harnessRunId: harnessRun.harnessRunId,
+            expectedLeaseId: currentLeaseId ?? null,
+            expectedFencingToken: currentFencingToken ?? null,
+          },
+        },
+      );
+    }
+
+    if (currentLeaseId != null && command.leaseId !== currentLeaseId) {
+      throw new ValidationError(
+        "runtime_truth_repository.stale_lease_id",
+        `HarnessRun ${harnessRun.harnessRunId} leaseId mismatch`,
+        {
+          details: {
+            harnessRunId: harnessRun.harnessRunId,
+            expectedLeaseId: currentLeaseId,
+            actualLeaseId: command.leaseId,
+          },
+        },
+      );
+    }
+
+    if (currentFencingToken != null && command.fencingToken !== currentFencingToken) {
+      throw new ValidationError(
+        "runtime_truth_repository.stale_fencing_token",
+        `HarnessRun ${harnessRun.harnessRunId} fencingToken mismatch`,
+        {
+          details: {
+            harnessRunId: harnessRun.harnessRunId,
+            expectedFencingToken: currentFencingToken,
+            actualFencingToken: command.fencingToken,
+          },
+        },
+      );
     }
   }
 }

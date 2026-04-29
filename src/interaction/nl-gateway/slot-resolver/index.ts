@@ -40,6 +40,7 @@ export class SlotResolver {
    * @param requiredEntityTypes - Required slot types to fill
    * @param priorState - Previous clarification state to continue from (undefined for first pass)
    * @param entityConfidence - Optional per-entity confidence scores
+   * @param priorConversationContext - Prior conversation turns for context-aware slot resolution
    * @returns Resolution result with missing slots, resolved values, and updated clarification state
    */
   public resolveRequiredSlots(
@@ -47,6 +48,12 @@ export class SlotResolver {
     requiredEntityTypes: readonly string[],
     priorState?: ClarificationRound,
     entityConfidence?: Record<string, number>,
+    priorConversationContext?: readonly {
+      turnNumber: number;
+      message: string;
+      detectedIntent: { intentType: string };
+      timestamp: string;
+    }[],
   ): {
     readonly missing: readonly string[];
     readonly resolved: Record<string, unknown>;
@@ -57,12 +64,22 @@ export class SlotResolver {
     const resolved: Record<string, unknown> = {};
     const entityConfidenceMap = entityConfidence ?? {};
 
+    // §39.5: Build context-aware resolution map using prior conversation turns
+    const contextSlots = this.extractContextSlots(priorConversationContext);
+
     // Build resolved map from entities, tracking confidence
     for (const entity of entities) {
       const confidence = entityConfidenceMap[entity.entityType] ?? 1.0;
       // Only resolve if confidence meets threshold
       if (confidence >= this.slotConfidenceThreshold && !(entity.entityType in resolved)) {
         resolved[entity.entityType] = entity.normalized;
+      }
+    }
+
+    // §39.5: Fill slots from conversation context when not present in entities
+    for (const slot of requiredEntityTypes) {
+      if (!(slot in resolved) && slot in contextSlots) {
+        resolved[slot] = contextSlots[slot];
       }
     }
 
@@ -92,6 +109,49 @@ export class SlotResolver {
       shouldRequestClarification: state === "in_progress",
       generatedQuestions,
     };
+  }
+
+  /**
+   * §39.5: Extract slot values from prior conversation context.
+   * Uses regex patterns to find previously mentioned slot values.
+   */
+  private extractContextSlots(
+    priorContext?: readonly {
+      turnNumber: number;
+      message: string;
+      detectedIntent: { intentType: string };
+      timestamp: string;
+    }[],
+  ): Record<string, unknown> {
+    const slots: Record<string, unknown> = {};
+    if (!priorContext || priorContext.length === 0) {
+      return slots;
+    }
+
+    // Patterns for extracting slot values from prior messages
+    const slotPatterns: Record<string, RegExp> = {
+      date: /(?:在|于|on\s+)?(\d{4}[-/]\d{1,2}[-/]\d{1,2})/,
+      time: /(?:在|于|at\s+)?(\d{1,2}:\d{2})/,
+      budget: /(?:预算|budget|cost)[:\s]*([¥$€]?\d+(?:,\d{3})*(?:\.\d{2})?)/i,
+      priority: /(?:优先级|priority)[:\s]*(high|medium|low|高|中|低)/i,
+      assignee: /(?:分配给|assign to|负责人)[:\s]*(\S+)/i,
+      environment: /(?:环境|environment)[:\s]*(production|staging|dev|生产|测试|开发)/i,
+    };
+
+    // Process recent turns (last 3) for context
+    const recentTurns = priorContext.slice(-3);
+    for (const turn of recentTurns) {
+      for (const [slotType, pattern] of Object.entries(slotPatterns)) {
+        if (!(slotType in slots)) {
+          const match = turn.message.match(pattern);
+          if (match && match[1]) {
+            slots[slotType] = match[1];
+          }
+        }
+      }
+    }
+
+    return slots;
   }
 
   /**

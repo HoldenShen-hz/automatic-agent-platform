@@ -224,6 +224,18 @@ export class DlqService {
     if (delayMs !== undefined && (!Number.isFinite(delayMs) || delayMs < 0)) {
       throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
+    if (record.status === "discarded" || record.status === "resolved") {
+      throw new ValidationError(
+        "dlq.retry_terminal_status",
+        `Dead-letter record ${deadLetterId} is already terminal and cannot be retried.`,
+      );
+    }
+    if (record.retryCount >= record.maxRetries) {
+      throw new ValidationError(
+        "dlq.retry_limit_exceeded",
+        `Dead-letter record ${deadLetterId} has already exhausted its retry budget.`,
+      );
+    }
 
     const backoffDelay = delayMs ?? DEFAULT_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);
     const nextRetryAt = new Date(Date.parse(now) + backoffDelay).toISOString();
@@ -311,12 +323,12 @@ export class DlqService {
       timestamp: now,
       details: { retryCount: record.retryCount, maxRetries: record.maxRetries },
       previousStatus: record.status,
-      newStatus: "pending",
+      newStatus: "discarded",
     };
 
     const updated: ExtendedDeadLetterRecord = {
       ...record,
-      status: "pending",
+      status: "discarded",
       retryExhaustedAt: now,
       nextRetryAt: null,
       updatedAt: now,

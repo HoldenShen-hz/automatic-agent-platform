@@ -1,3 +1,5 @@
+import type { TaskStatus, WorkflowStatus } from "../../platform/contracts/types/status.js";
+
 export interface TaskMetricSnapshot {
   readonly total: number;
   readonly done: number;
@@ -125,19 +127,19 @@ function computePercentile(values: number[], percentile: number): number {
 function deriveTaskMetrics(statuses: readonly string[]): TaskMetricSnapshot {
   return {
     total: statuses.length,
-    done: statuses.filter((item) => item === "done").length,
-    inProgress: statuses.filter((item) => item === "in_progress").length,
-    failed: statuses.filter((item) => item === "failed").length,
+    done: statuses.filter((item): item is TaskStatus => item === "done").length,
+    inProgress: statuses.filter((item): item is TaskStatus => item === "in_progress").length,
+    failed: statuses.filter((item): item is TaskStatus => item === "failed").length,
   };
 }
 
 function deriveWorkflowMetrics(statuses: readonly string[]): WorkflowMetricSnapshot {
   return {
     total: statuses.length,
-    running: statuses.filter((item) => item === "in_progress").length,
-    paused: statuses.filter((item) => item === "paused" || item === "awaiting_decision").length,
-    completed: statuses.filter((item) => item === "done").length,
-    failed: statuses.filter((item) => item === "failed").length,
+    running: statuses.filter((item): item is WorkflowStatus => item === "running").length,
+    paused: statuses.filter((item): item is WorkflowStatus => item === "paused" || item === "awaiting_decision").length,
+    completed: statuses.filter((item): item is WorkflowStatus => item === "completed").length,
+    failed: statuses.filter((item): item is WorkflowStatus => item === "failed").length,
   };
 }
 

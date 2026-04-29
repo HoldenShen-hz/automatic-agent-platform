@@ -606,11 +606,30 @@ export class DataPlaneFlowService {
    * organization, or workspace scopes. This prevents data exfiltration
    * across organizational boundaries.
    *
+   * A namespace with a null scope (global namespace) is incompatible with
+   * any namespace that has a non-null scope of the same type. This prevents
+   * the global namespace from freely exchanging data with any tenant-scoped,
+   * organization-scoped, or workspace-scoped namespace.
+   *
    * @throws TenantBoundaryError if movement crosses a boundary
    */
   private assertScopeCompatibility(sourceNamespace: DataNamespaceRecord, targetNamespace: DataNamespaceRecord): void {
-    // Check tenant boundary
-    if (sourceNamespace.tenantId != null && targetNamespace.tenantId != null && sourceNamespace.tenantId !== targetNamespace.tenantId) {
+    // Check tenant boundary: null (global) is incompatible with any non-null (tenant-scoped)
+    // Explicitly handle the null boundary case to prevent bypass when tenantId is null
+    const sourceTenantNull = sourceNamespace.tenantId === null;
+    const targetTenantNull = targetNamespace.tenantId === null;
+    if (sourceTenantNull !== targetTenantNull) {
+      // One is global (null) and the other is tenant-scoped (non-null) - this is a boundary violation
+      throw new TenantBoundaryError("data_plane.cross_tenant_movement_denied", "data_plane.cross_tenant_movement_denied", {
+        retryable: false,
+        details: {
+          sourceTenantId: sourceNamespace.tenantId,
+          targetTenantId: targetNamespace.tenantId,
+        },
+      });
+    }
+    // Both null (global-to-global) is allowed; both non-null must match
+    if (!sourceTenantNull && sourceNamespace.tenantId !== targetNamespace.tenantId) {
       throw new TenantBoundaryError("data_plane.cross_tenant_movement_denied", "data_plane.cross_tenant_movement_denied", {
         retryable: false,
         details: {
@@ -620,12 +639,19 @@ export class DataPlaneFlowService {
       });
     }
 
-    // Check organization boundary
-    if (
-      sourceNamespace.organizationId != null
-      && targetNamespace.organizationId != null
-      && sourceNamespace.organizationId !== targetNamespace.organizationId
-    ) {
+    // Check organization boundary: null (global) is incompatible with any non-null (org-scoped)
+    const sourceOrgNull = sourceNamespace.organizationId === null;
+    const targetOrgNull = targetNamespace.organizationId === null;
+    if (sourceOrgNull !== targetOrgNull) {
+      throw new TenantBoundaryError("data_plane.cross_organization_movement_denied", "data_plane.cross_organization_movement_denied", {
+        retryable: false,
+        details: {
+          sourceOrganizationId: sourceNamespace.organizationId,
+          targetOrganizationId: targetNamespace.organizationId,
+        },
+      });
+    }
+    if (!sourceOrgNull && sourceNamespace.organizationId !== targetNamespace.organizationId) {
       throw new TenantBoundaryError("data_plane.cross_organization_movement_denied", "data_plane.cross_organization_movement_denied", {
         retryable: false,
         details: {
@@ -635,8 +661,19 @@ export class DataPlaneFlowService {
       });
     }
 
-    // Check workspace boundary
-    if (sourceNamespace.workspaceId != null && targetNamespace.workspaceId != null && sourceNamespace.workspaceId !== targetNamespace.workspaceId) {
+    // Check workspace boundary: null (global) is incompatible with any non-null (workspace-scoped)
+    const sourceWsNull = sourceNamespace.workspaceId === null;
+    const targetWsNull = targetNamespace.workspaceId === null;
+    if (sourceWsNull !== targetWsNull) {
+      throw new TenantBoundaryError("data_plane.cross_workspace_movement_denied", "data_plane.cross_workspace_movement_denied", {
+        retryable: false,
+        details: {
+          sourceWorkspaceId: sourceNamespace.workspaceId,
+          targetWorkspaceId: targetNamespace.workspaceId,
+        },
+      });
+    }
+    if (!sourceWsNull && sourceNamespace.workspaceId !== targetNamespace.workspaceId) {
       throw new TenantBoundaryError("data_plane.cross_workspace_movement_denied", "data_plane.cross_workspace_movement_denied", {
         retryable: false,
         details: {

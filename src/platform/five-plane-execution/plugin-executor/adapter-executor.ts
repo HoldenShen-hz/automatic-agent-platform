@@ -204,30 +204,52 @@ export class AdapterExecutor {
 
   /**
    * Check idempotency cache for a previously cached result.
-   * In production, this would query a distributed cache (Redis) with TTL.
+   * Uses in-memory Map with TTL for idempotency. In production, replace with Redis.
    */
   private async checkIdempotencyCache(
-    _idempotencyKey: string,
-    _attempt: number,
+    idempotencyKey: string,
+    attempt: number,
   ): Promise<AdapterExecutionResult | null> {
-    // TODO: In production, implement Redis-based idempotency check
-    // e.g., const cached = await redis.get(`idempotency:${idempotencyKey}`);
-    // return cached ? JSON.parse(cached) : null;
+    // Skip idempotency check on first attempt
+    if (attempt <= 1) {
+      return null;
+    }
+    const cached = this.idempotencyCache.get(idempotencyKey);
+    if (cached != null) {
+      // Expired or already used - don't return cached result
+      if (cached.expiresAt < Date.now()) {
+        this.idempotencyCache.delete(idempotencyKey);
+        return null;
+      }
+      // Mark as consumed to prevent double-use
+      this.idempotencyCache.delete(idempotencyKey);
+      return cached.result;
+    }
     return null;
   }
 
   /**
-   * Cache successful result for idempotency.
-   * In production, this would store to a distributed cache (Redis) with TTL.
+   * Cache successful result for idempotency with TTL.
+   * Uses in-memory Map. In production, replace with Redis.
    */
   private async cacheIdempotencyResult(
-    _idempotencyKey: string,
-    _attempt: number,
-    _result: AdapterExecutionResult,
+    idempotencyKey: string,
+    attempt: number,
+    result: AdapterExecutionResult,
   ): Promise<void> {
-    // TODO: In production, implement Redis-based caching
-    // e.g., await redis.set(`idempotency:${idempotencyKey}`, JSON.stringify(result), { EX: 3600 });
+    // Only cache successful results for idempotency
+    if (result.status !== "ok") {
+      return;
+    }
+    // TTL of 5 minutes for idempotency window
+    const TTL_MS = 5 * 60 * 1000;
+    this.idempotencyCache.set(idempotencyKey, {
+      result,
+      expiresAt: Date.now() + TTL_MS,
+    });
   }
+
+  private readonly idempotencyCache = new Map<string, { result: AdapterExecutionResult; expiresAt: number }>();
 
   private async dispatch(descriptor: AdapterDescriptor, request: AdapterExecutionRequest): Promise<unknown> {
     switch (descriptor.protocol) {

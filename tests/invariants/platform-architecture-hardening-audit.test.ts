@@ -218,12 +218,23 @@ test("compatibility, drift, resume, sequencing, timers, and guardrail breakers a
     delegationDepth: 9,
   }).reasonCode, "call_depth.exceeded");
 
+  // R13-41: Autonomy boundary enforcement
   assert.equal(new DeterministicHotPathGate().evaluate({
     routeId: "pricing",
     latencyClass: "low_latency",
     usesLlmHotPath: true,
     deterministicFallbackAvailable: true,
+    allowedAutonomyLevel: "full_auto",
   }).reasonCode, "hot_path.llm_blocked");
+
+  // R13-41: Autonomy exceeded blocks LLM hot path
+  assert.equal(new DeterministicHotPathGate().evaluate({
+    routeId: "pricing",
+    latencyClass: "low_latency",
+    usesLlmHotPath: true,
+    deterministicFallbackAvailable: true,
+    allowedAutonomyLevel: "suggestion",
+  }).reasonCode, "hot_path.autonomy_exceeded");
 
   assert.equal(new CrossRegionTruthLeader().evaluate({
     tenantId: "tenant-a",

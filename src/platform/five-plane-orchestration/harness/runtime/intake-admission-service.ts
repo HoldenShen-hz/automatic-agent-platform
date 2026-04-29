@@ -331,9 +331,13 @@ export class IntakeAdmissionService {
       harnessRunId: createdRun.harnessRunId,
       runtimeProfileVersion: input.runtimeProfileVersion ?? "runtime-profile:default",
     });
+    const admissionLeaseId = `lease:${createdRun.harnessRunId}:admission`;
+    const admissionFencingToken = `fencing:${createdRun.harnessRunId}:admission:0`;
     const runnable = {
       ...createdRun,
       versionLockId: runVersionLock.runVersionLockId,
+      leaseId: admissionLeaseId,
+      fencingToken: admissionFencingToken,
     };
     const admitted = this.stateMachine.transition({
       aggregateType: "HarnessRun",
@@ -346,6 +350,8 @@ export class IntakeAdmissionService {
       reasonCode: "admission.accepted",
       emittedBy: "intake-admission-service",
       runVersionLockId: runVersionLock.runVersionLockId,
+      leaseId: admissionLeaseId,
+      fencingToken: admissionFencingToken,
       // R6-12: Use actual policy evaluation result instead of hardcoded true
       policyGuard: {
         allowed: policyGuardResult.allowed,

@@ -282,14 +282,19 @@ export class TaskTransitionService {
  * step index and any accumulated outputs from previous steps.
  */
 export class WorkflowTransitionService {
-  public constructor(private readonly repository: RuntimeLifecycleRepository) {}
+  public constructor(
+    private readonly db: AuthoritativeSqlDatabase,
+    private readonly repository: RuntimeLifecycleRepository,
+  ) {}
 
   /**
-   * Transitions workflow status.
-   * Note: Does not wrap in a transaction as workflows are updated independently.
+   * Transitions workflow status atomically within a database transaction.
+   * Ensures workflow state updates are serialized with other concurrent operations.
    */
   public transition(command: WorkflowStatusTransitionCommand): void {
-    this.apply(command);
+    this.db.transaction(() => {
+      this.apply(command);
+    });
   }
 
   /**
@@ -323,6 +328,14 @@ export class WorkflowTransitionService {
         `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    // §28: Emit tier-1 status change event for workflow transitions
+    this.repository.createTier1StatusEvent({
+      taskId: command.entityId, // workflows are keyed by taskId
+      executionId: null,
+      eventType: "workflow:status_changed",
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+    });
   }
 }
 
@@ -362,6 +375,14 @@ export class SessionTransitionService {
         `session.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    // §28: Emit tier-1 status change event for session transitions
+    this.repository.createTier1StatusEvent({
+      taskId: command.entityId, // sessionId for correlation
+      executionId: null,
+      eventType: "session:status_changed",
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+    });
   }
 }
 
@@ -414,6 +435,14 @@ export class ExecutionTransitionService {
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    // §28: Emit tier-1 status change event for execution transitions
+    this.repository.createTier1StatusEvent({
+      taskId: null,
+      executionId: command.entityId,
+      eventType: "execution:status_changed",
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+    });
   }
 }
 
@@ -502,7 +531,17 @@ class TaskTerminalTransitionService {
     sessionStateMachine.assertTransition(input.currentSessionStatus, sessionTerminal);
     executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
 
-    this.repository.updateTaskOutput(input.taskId, input.taskOutputJson, input.context.occurredAt);
+    // RT-01: updateTaskOutput must use CAS to avoid TOCTOU race (§25.3).
+    // Only update output if the task is still in the expected status.
+    const outputAffected = this.repository.updateTaskOutput(
+      input.taskId,
+      input.currentTaskStatus,
+      input.taskOutputJson,
+      input.context.occurredAt,
+    );
+    if (outputAffected === 0) {
+      throw new Error(`task.output_cas_failed:${input.taskId}:${input.currentTaskStatus}`);
+    }
     const taskAffected = this.repository.updateTaskStatusCas(
       input.taskId,
       input.currentTaskStatus,
@@ -700,7 +739,7 @@ export class TransitionService {
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
   ) {
     this.tasks = new TaskTransitionService(db, repository);
-    this.workflows = new WorkflowTransitionService(repository);
+    this.workflows = new WorkflowTransitionService(db, repository);
     this.sessions = new SessionTransitionService(repository);
     this.executions = new ExecutionTransitionService(repository);
     this.approvals = new ApprovalTransitionService(repository);

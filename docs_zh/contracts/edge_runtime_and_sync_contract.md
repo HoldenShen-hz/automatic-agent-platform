@@ -22,12 +22,14 @@
 - `max_local_retention_hours`
 - `allowed_models`
 - `sync_policy`
+- `run_version_lock_ref`  (可选，离线节点若持有活跃 NodeRun 则必须关联 RunVersionLock)
 
 规则：
 
 - canonical edge runtime 必须显式声明 `stateful = true`，因为离线执行会持有本地 state、checkpoint 与待同步 evidence。
 - `lease_migration_supported` 必须声明该 edge runtime 是否允许在回连或抢占时迁移 lease / ownership。
 - 若 `checkpoint_required_before_preempt = true`，在抢占、升级或 region 接管前必须先完成 checkpoint，再允许终止本地执行。
+- 离线节点持有活跃 `NodeRun` 时，必须关联 `RunVersionLock`（§24/§25）以确保配置版本冻结语义；配置发布不得改变已冻结 run 的语义，只能通过显式 GraphPatch、OperationalDirective、redrive 或新 HarnessRun 使用新版本。
 
 ## 4. 规则
 

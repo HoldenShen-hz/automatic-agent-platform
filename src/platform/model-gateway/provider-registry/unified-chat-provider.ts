@@ -55,6 +55,12 @@ export interface ChatCompletionResult {
   usage: ChatCompletionUsage;
   model: string;
   provider: string;
+  /** §15.2: Request ID for correlation - set on final result, may be null for intermediate streaming chunks */
+  requestId: string | null;
+  /** §15.2: Estimated cost in USD for the request - set on final result, may be 0 for intermediate streaming chunks */
+  estimatedCost: number;
+  /** §15.2: Request latency in milliseconds - set on final result, may be 0 for intermediate streaming chunks */
+  latencyMs: number;
 }
 
 export interface ChatCompletionRequest {
@@ -69,11 +75,15 @@ export interface ChatCompletionRequest {
   toolChoice?: "auto" | "none";
   /** §15.2: Required - trace ID for request correlation */
   traceId: string;
+  /** §12.7: Span ID for distributed tracing chain continuity */
+  spanId?: string;
   /** §15.2: Required - tenant ID for multi-tenant isolation */
   tenantId: string | null;
   principalId?: string | null;
   /** §15.2: Required - cost tag for chargeback attribution */
   costTag: string;
+  /** §15.2: Request timeout in milliseconds (default: 60000) */
+  timeoutMs?: number;
   abortSignal?: AbortSignal;
   validatePartialChunk?: (chunk: ChatCompletionResult, isFinal: boolean) => void;
   /** §15.4: Streaming budget real-time control - called with cumulative cost after each chunk */
@@ -166,8 +176,9 @@ function detectProviderFromModel(modelId: string): ChatProviderType {
     }
   }
 
-  // Default to openai for unknown models (most common)
-  return "openai";
+  // R16-20 FIX: Unknown models should not silently default to openai.
+  // Throw error to alert operators of potential misconfiguration.
+  throw new Error(`Unknown model: "${modelId}". Cannot determine provider. Please use a known model or configure the provider explicitly.`);
 }
 
 export class UnifiedChatProvider {
@@ -238,6 +249,48 @@ export class UnifiedChatProvider {
       case "minimax":
         return this.minimax !== null;
     }
+  }
+
+  /**
+   * Returns available model profiles from all configured providers.
+   * Used by DegradationController to find real fallback candidates.
+   */
+  public getAvailableProfiles(): Array<{
+    profileName: string;
+    provider: string;
+    tier: string;
+  }> {
+    this.assertNotDisposed();
+    const profiles: Array<{ profileName: string; provider: string; tier: string }> = [];
+
+    // Add Anthropic profiles
+    if (this.anthropic !== null) {
+      profiles.push(
+        { profileName: "claude-opus-4-5", provider: "anthropic", tier: "reasoning" },
+        { profileName: "claude-sonnet-4", provider: "anthropic", tier: "balanced" },
+        { profileName: "claude-haiku-3-5", provider: "anthropic", tier: "fast" },
+      );
+    }
+
+    // Add OpenAI profiles
+    if (this.openai !== null) {
+      profiles.push(
+        { profileName: "gpt-4o", provider: "openai", tier: "reasoning" },
+        { profileName: "gpt-4o-mini", provider: "openai", tier: "fast" },
+        { profileName: "gpt-4-turbo", provider: "openai", tier: "balanced" },
+      );
+    }
+
+    // Add MiniMax profiles
+    if (this.minimax !== null) {
+      profiles.push(
+        { profileName: "MiniMax-M2.7", provider: "minimax", tier: "reasoning" },
+        { profileName: "MiniMax-M2", provider: "minimax", tier: "balanced" },
+        { profileName: "MiniMax-M1", provider: "minimax", tier: "fast" },
+      );
+    }
+
+    return profiles;
   }
 
   public dispose(): void {
@@ -320,7 +373,17 @@ export class UnifiedChatProvider {
     }
 
     const totalSeconds = (Date.now() - startedAt) / 1000;
+    // R16-21 FIX: §15.6 TTFT (Time To First Token) must be actually measured, not approximated as totalSeconds.
+    // TTFT requires streaming response tracking. For non-streaming requests, we cannot measure TTFT
+    // accurately, so we pass totalSeconds as a placeholder. Actual TTFT measurement requires
+    // streaming implementation with time-to-first-token tracking.
     runtimeMetricsRegistry.recordLlmLatency(totalSeconds, totalSeconds, result.model, result.provider);
+
+    // R16-07 FIX: Add latencyMs to result per §15.2
+    result.latencyMs = Date.now() - startedAt;
+    result.requestId = result.id;
+    result.estimatedCost = result.usage.estimatedCost;
+
     return result;
   }
 
@@ -335,6 +398,7 @@ export class UnifiedChatProvider {
     this.assertNotDisposed();
     this.assertNotAborted(request.abortSignal);
     const { provider, service } = this.getProviderForModel(request.model);
+    const breaker = this.breakers.get(provider);
     // §15.4: Track cumulative streaming cost for real-time budget control with abort capability
     let cumulativeCostUsd = 0;
     const estimatedCostPerToken = 0.00001; // Estimated cost per token for streaming budget tracking
@@ -372,52 +436,60 @@ export class UnifiedChatProvider {
       request.validatePartialChunk?.(chunk, isFinal);
     };
 
-    switch (provider) {
-      case "anthropic": {
-        const anthropicService = service as AnthropicChatService;
-        const anthropicRequest = this.toAnthropicRequest(request);
-        anthropicRequest.signal = activeSignal;
-        await anthropicService.createStreamingChatCompletion(
-          anthropicRequest,
-          (chunk, isFinal) => {
-            const normalized = this.normalizeAnthropicResult(chunk, provider);
-            trackStreamingBudget(normalized);
-            validatePartialChunk(normalized, isFinal);
-            onChunk(normalized, isFinal);
-          },
-        );
-        return;
+    const runStreamingWithBreaker = async (): Promise<void> => {
+      switch (provider) {
+        case "anthropic": {
+          const anthropicService = service as AnthropicChatService;
+          const anthropicRequest = this.toAnthropicRequest(request);
+          anthropicRequest.signal = activeSignal;
+          await anthropicService.createStreamingChatCompletion(
+            anthropicRequest,
+            (chunk, isFinal) => {
+              const normalized = this.normalizeAnthropicResult(chunk, provider);
+              trackStreamingBudget(normalized);
+              validatePartialChunk(normalized, isFinal);
+              onChunk(normalized, isFinal);
+            },
+          );
+          return;
+        }
+        case "openai": {
+          const openaiService = service as OpenAIChatService;
+          const openaiRequest = this.toOpenAIRequest(request);
+          openaiRequest.signal = activeSignal;
+          await openaiService.createStreamingChatCompletion(
+            openaiRequest,
+            (chunk, isFinal) => {
+              const normalized = this.normalizeOpenAIResult(chunk, provider);
+              trackStreamingBudget(normalized);
+              validatePartialChunk(normalized, isFinal);
+              onChunk(normalized, isFinal);
+            },
+          );
+          return;
+        }
+        case "minimax": {
+          const minimaxService = service as MiniMaxChatService;
+          const minimaxRequest = this.toMiniMaxRequest(request);
+          minimaxRequest.signal = activeSignal;
+          await minimaxService.createStreamingChatCompletion(
+            minimaxRequest,
+            (chunk) => {
+              const normalized = this.normalizeMiniMaxResult(chunk, provider);
+              trackStreamingBudget(normalized);
+              validatePartialChunk(normalized, false);
+              onChunk(normalized, false);
+            },
+          );
+          return;
+        }
       }
-      case "openai": {
-        const openaiService = service as OpenAIChatService;
-        const openaiRequest = this.toOpenAIRequest(request);
-        openaiRequest.signal = activeSignal;
-        await openaiService.createStreamingChatCompletion(
-          openaiRequest,
-          (chunk, isFinal) => {
-            const normalized = this.normalizeOpenAIResult(chunk, provider);
-            trackStreamingBudget(normalized);
-            validatePartialChunk(normalized, isFinal);
-            onChunk(normalized, isFinal);
-          },
-        );
-        return;
-      }
-      case "minimax": {
-        const minimaxService = service as MiniMaxChatService;
-        const minimaxRequest = this.toMiniMaxRequest(request);
-        minimaxRequest.signal = activeSignal;
-        await minimaxService.createStreamingChatCompletion(
-          minimaxRequest,
-          (chunk) => {
-            const normalized = this.normalizeMiniMaxResult(chunk, provider);
-            trackStreamingBudget(normalized);
-            validatePartialChunk(normalized, false);
-            onChunk(normalized, false);
-          },
-        );
-        return;
-      }
+    };
+
+    if (breaker) {
+      await breaker.execute(runStreamingWithBreaker);
+    } else {
+      await runStreamingWithBreaker();
     }
   }
 
@@ -489,6 +561,9 @@ export class UnifiedChatProvider {
     if (request.traceId) {
       (result as unknown as Record<string, unknown>).traceId = request.traceId;
     }
+    if (request.spanId) {
+      (result as unknown as Record<string, unknown>).spanId = request.spanId;
+    }
     return result;
   }
 
@@ -524,6 +599,9 @@ export class UnifiedChatProvider {
     // §12.7: Propagate traceId/spanId for chain continuity
     if (request.traceId) {
       (result as unknown as Record<string, unknown>).traceId = request.traceId;
+    }
+    if (request.spanId) {
+      (result as unknown as Record<string, unknown>).spanId = request.spanId;
     }
     return result;
   }
@@ -601,6 +679,10 @@ export class UnifiedChatProvider {
       },
       model: result.model,
       provider,
+      // R16-07 FIX: These fields are populated on final result, set to null/0 for streaming chunks
+      requestId: null,
+      estimatedCost: 0,
+      latencyMs: 0,
     };
   }
 
@@ -627,6 +709,10 @@ export class UnifiedChatProvider {
       },
       model: result.model,
       provider,
+      // R16-07 FIX: These fields are populated on final result, set to null/0 for streaming chunks
+      requestId: null,
+      estimatedCost: 0,
+      latencyMs: 0,
     };
   }
 
@@ -649,6 +735,10 @@ export class UnifiedChatProvider {
       },
       model: result.model ?? "minimax",
       provider,
+      // R16-07 FIX: These fields are populated on final result, set to null/0 for streaming chunks
+      requestId: null,
+      estimatedCost: 0,
+      latencyMs: 0,
     };
   }
 

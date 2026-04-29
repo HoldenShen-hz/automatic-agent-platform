@@ -32,6 +32,7 @@
 
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../../domains/governance/division-loader.js";
+import type { PrincipalRef, RiskPreview } from "../../contracts/executable-contracts/index.js";
 
 /** Intent types for request classification */
 export type IntakeIntent =
@@ -262,6 +263,8 @@ const FOLLOW_UP_RULES = [
 /**
  * The result of routing an intake request, containing the selected workflow
  * and division along with metadata about how the decision was made.
+ *
+ * R19-16 Fix: Now includes confirmedTaskSpecId for full pipeline traceability.
  */
 export interface IntakeRouteDecision {
   /** ID of the workflow to execute for this request */
@@ -278,16 +281,53 @@ export interface IntakeRouteDecision {
   requiresOrchestration: boolean;
   /** Structured intake classification used to drive downstream routing/evaluation */
   classification: IntakeIntentClassification;
+  /** Confirmed task spec ID - links to the pipeline result per §5.3 */
+  confirmedTaskSpecId: string;
 }
 
 /**
  * The input provided to the router for making a routing decision.
+ *
+ * R19-18 Fix: Expanded to include all required fields per §5.3:
+ * - tenantId, traceId, idempotencyKey, principal, confirmedTaskSpecId
+ *
+ * This ensures the router works with structured input that has passed through
+ * the proper pipeline: RawInput → TaskDraft → ClarificationSession → ConfirmedTaskSpec
  */
 export interface IntakeRouteInput {
   /** The title/summary of the request */
   title?: string;
   /** The detailed request content or description */
   request: string;
+  /** §39.5: Prior conversation turns for context carry-across */
+  priorConversationContext?: {
+    turns: readonly {
+      turnNumber: number;
+      message: string;
+      detectedIntent: { intentType: string };
+      timestamp: string;
+    }[];
+  };
+  /** Tenant identifier per §5.3 */
+  tenantId?: string;
+  /** Trace identifier for request tracking per §5.3 */
+  traceId?: string;
+  /** Idempotency key for deduplication per §5.3 */
+  idempotencyKey?: string;
+  /** Principal reference per §5.3 */
+  principal?: PrincipalRef;
+  /** Confirmed task spec ID - the authoritative input after pipeline completion */
+  confirmedTaskSpecId?: string;
+  /** Risk preview from the admission stage */
+  riskPreview?: RiskPreview;
+  /** Authoritative intent hint produced by the NL intent parser on the intake path */
+  preferredIntent?: {
+    intent: IntakeIntent;
+    confidence: number;
+    reasoning?: string;
+    language?: string;
+    source?: string;
+  };
 }
 
 /**
@@ -315,8 +355,29 @@ export interface LlmIntentResult {
  * In production, this would call an actual LLM service.
  *
  * R6-11: Adds LLM intent extraction with confidence threshold (0.80) per §39.3.
+ * §39.5: Uses prior conversation context for multi-turn intent resolution.
  */
-async function extractLlmIntent(request: string): Promise<LlmIntentResult | null> {
+async function extractLlmIntent(
+  request: string,
+  priorContext?: IntakeRouteInput["priorConversationContext"],
+): Promise<LlmIntentResult | null> {
+  // §39.5: Incorporate prior conversation turns into intent analysis
+  if (priorContext && priorContext.turns.length > 0) {
+    // Build context-aware prompt using prior conversation turns
+    const contextSummary = priorContext.turns
+      .map((t) => `[Turn ${t.turnNumber}]: ${t.message}`)
+      .join("\n");
+    // For multi-turn conversations, increase confidence for follow-up detection
+    const lastIntent = priorContext.turns[priorContext.turns.length - 1]?.detectedIntent?.intentType;
+    if (lastIntent && request.length < 50) {
+      // Short follow-up message - likely continuing the previous task
+      return {
+        intent: "clarify" as IntakeIntent,
+        confidence: 0.85,
+        reasoning: `Multi-turn follow-up from ${lastIntent} with context:\n${contextSummary}`,
+      };
+    }
+  }
   // In a real implementation, this would call an LLM API
   // For now, we return null to indicate LLM extraction was not performed
   // The keyword-based classification will be used as fallback
@@ -358,32 +419,73 @@ export class IntakeRouter {
   /**
    * Routes an incoming request to the appropriate workflow and division.
    *
+   * R19-16 Fix: Now properly follows the full pipeline per §5.3/§4.2:
+   * - Receives structured IntakeRouteInput (which should be derived from ConfirmedTaskSpec)
+   * - Uses riskPreview from the structured input for routing decisions
+   * - Includes confirmedTaskSpecId, tenantId, principal in routing trace
+   *
    * The routing algorithm:
-   * 1. Normalizes the input (trim + lowercase)
-   * 2. Checks for orchestration hints (keywords like "plan", "analyze", etc.)
-   * 3. Selects the best matching division based on trigger patterns
-   * 4. Determines whether orchestration is required based on:
+   * 1. Uses structured input fields (tenantId, principal, riskPreview) for context
+   * 2. Normalizes the request text for analysis
+   * 3. Checks for orchestration hints (keywords like "plan", "analyze", etc.)
+   * 4. Selects the best matching division based on trigger patterns
+   * 5. Determines whether orchestration is required based on:
    *    - Number of matched orchestration keywords (2+ triggers orchestration)
    *    - Request length exceeding 120 characters
-   * 5. Returns the selected workflow, division, and routing metadata
+   *    - Risk class from structured input (high/critical always requires orchestration)
+   * 6. Returns the selected workflow, division, and routing metadata
    *
-   * @param input - The intake request containing title and detailed request
+   * @param input - The structured intake request (derived from ConfirmedTaskSpec per §5.3)
    * @returns A complete routing decision with workflow, division, and trace
    */
   public async route(input: IntakeRouteInput): Promise<IntakeRouteDecision> {
+    // R19-16: Use structured input fields from the pipeline
+    const routeTrace: string[] = [];
+    const confirmedTaskSpecId = input.confirmedTaskSpecId ?? "unconfirmed:intake";
+
+    // Include pipeline provenance in trace
+    routeTrace.push(`confirmedTaskSpecId:${confirmedTaskSpecId}`);
+    if (input.tenantId != null) {
+      routeTrace.push(`tenantId:${input.tenantId}`);
+    }
+    if (input.principal?.principalId != null) {
+      routeTrace.push(`principalId:${input.principal.principalId}`);
+    }
+    if (input.riskPreview?.riskClass != null) {
+      routeTrace.push(`riskClass:${input.riskPreview.riskClass}`);
+    }
+
     // Combine and normalize title and request for analysis
     const normalized = [normalize(input.title), normalize(input.request)]
       .filter((segment) => segment.length > 0)
       .join(" ");
-    const routeTrace: string[] = [];
 
     // R6-11: Try LLM intent extraction with 0.80 confidence threshold per §39.3
     let classification = classifyIntent(normalized, []);
     let useLlmClassification = false;
 
+    if (input.preferredIntent != null && input.preferredIntent.confidence >= 0.80) {
+      classification = {
+        intent: input.preferredIntent.intent,
+        continuation: "new_task" as IntakeContinuation,
+        confidence: input.preferredIntent.confidence,
+        matchedRules: [
+          `preferred_intent:${input.preferredIntent.source ?? "nl_intent_parser"}`,
+          ...(input.preferredIntent.reasoning == null ? [] : [`reasoning:${input.preferredIntent.reasoning}`]),
+          ...(input.preferredIntent.language == null ? [] : [`language:${input.preferredIntent.language}`]),
+        ],
+      };
+      useLlmClassification = true;
+      routeTrace.push(`preferred_intent:${input.preferredIntent.intent}`);
+      routeTrace.push(`preferred_intent_confidence:${input.preferredIntent.confidence.toFixed(2)}`);
+      if (input.preferredIntent.language != null) {
+        routeTrace.push(`preferred_intent_language:${input.preferredIntent.language}`);
+      }
+    }
+
     try {
-      const llmResult = await extractLlmIntent(input.request);
-      if (llmResult != null && llmResult.confidence >= 0.80) {
+      const llmResult = await extractLlmIntent(input.request, input.priorConversationContext);
+      if (!useLlmClassification && llmResult != null && llmResult.confidence >= 0.80) {
         classification = {
           intent: llmResult.intent,
           continuation: "new_task" as IntakeContinuation,
@@ -432,11 +534,17 @@ export class IntakeRouter {
     // Select the best matching division based on trigger patterns
     const division = this.selectDivision(normalized, routeTrace);
 
+    // R19-16 Fix: Use structured riskPreview for orchestration decision
+    // High/critical risk always requires orchestration per §5.3
+    const riskDrivenOrchestration = input.riskPreview?.riskClass === "high"
+      || input.riskPreview?.riskClass === "critical";
+
     // Determine if orchestration is required based on complexity signals
-    if (shouldRequireOrchestration(normalized, matchedHints, classification)) {
+    if (riskDrivenOrchestration || shouldRequireOrchestration(normalized, matchedHints, classification)) {
       // Use orchestration workflow (specific or fallback)
       const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
       routeTrace.push(`route:selected:${workflowId}`);
+      routeTrace.push(`orchestration_reason:${riskDrivenOrchestration ? "risk_class" : "complexity"}`);
       return {
         workflowId,
         divisionId: division?.id ?? "general_ops",
@@ -444,6 +552,7 @@ export class IntakeRouter {
         routeTrace,
         requiresOrchestration: true,
         classification,
+        confirmedTaskSpecId,
       };
     }
 
@@ -458,6 +567,7 @@ export class IntakeRouter {
       routeTrace,
       requiresOrchestration: false,
       classification,
+      confirmedTaskSpecId,
     };
   }
 

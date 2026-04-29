@@ -19,7 +19,7 @@
 - 明确用户可读结果与文件产物不是同一种对象。
 - 统一中间结构输出和最终交付物的边界。
 - 为 inspect、replay、download、retention 提供统一语义。
-- 支持 OAPEFLIR 8 阶段的 artifact 追踪（Plan/Execute/Learn/Improve/Rollout）。
+- 支持 OAPEFLIR 8 阶段的 artifact 追踪（Plan/Execute/Learn/Improve/Release）。
 
 ## 3. 统一对象
 

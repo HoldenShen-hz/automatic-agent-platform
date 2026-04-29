@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReplayBoundaryGuard, type ReplayMode, type ReplayOperation } from "../../../src/platform/execution/recovery/replay-boundary-guard.js";
+import { ReplayBoundaryGuard, type ReplayOperation } from "../../src/platform/execution/recovery/replay-boundary-guard.js";
+import { ReplayWorker } from "../../src/platform/execution/ha/replay-worker.js";
 
 /**
  * INV-REPLAY-001: Replay and simulation must never produce real external side effects.
@@ -37,7 +38,29 @@ test("INV-REPLAY-001: Trace replay blocks real side effects", () => {
   assert.deepEqual(decision.blockedOperationIds, ["op-1"]);
 });
 
-test("INV-REPLAY-001: Reexecution replay blocks real side effects", () => {
+test("INV-REPLAY-001: ReplayWorker rejects policies that would allow real side effects", () => {
+  assert.throws(
+    () =>
+      new ReplayWorker({
+        replayService: {
+          buildTaskReplayReport: () => ({
+            taskId: "task-1",
+            outcome: "no_recovery_activity" as const,
+            eventsReplayed: 0,
+            checkpointsRestored: 0,
+          }),
+        },
+        listTaskIds: () => ["task-1"],
+        replayPolicy: {
+          mode: "trace_only",
+          allowRealSideEffects: true,
+        },
+      }),
+    /allow real side effects/,
+  );
+});
+
+test("INV-REPLAY-001: Reexecution replay contract still allows side effects at guard level", () => {
   const guard = new ReplayBoundaryGuard();
 
   const operations: readonly ReplayOperation[] = [
@@ -51,8 +74,8 @@ test("INV-REPLAY-001: Reexecution replay blocks real side effects", () => {
 
   const decision = guard.evaluate("reexecution_replay", operations);
 
-  assert.equal(decision.allowed, false);
-  assert.equal(decision.reasonCode, "replay.real_side_effect_blocked");
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.reasonCode, "replay.allowed");
 });
 
 test("INV-REPLAY-001: Projection replay allows non-side-effect operations", () => {

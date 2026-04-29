@@ -9,6 +9,7 @@
  */
 
 import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import { sha256, stableStringify } from "./config-governance-support.js";
 
 /**
  * Configuration source type in the hierarchy.
@@ -258,17 +259,11 @@ export class HierarchicalConfigLoader {
   }
 
   /**
-   * Computes a simple version hash from config content.
+   * Computes a SHA-256 version hash from config content.
+   * Uses the same hashing approach as ConfigVersioningService for consistency.
    */
   private computeVersion(config: Record<string, unknown>): string {
-    const str = JSON.stringify(config, Object.keys(config).sort());
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
+    return sha256(stableStringify(config));
   }
 
   /**

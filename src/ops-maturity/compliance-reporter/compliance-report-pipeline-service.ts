@@ -1,7 +1,189 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { EvidenceMapperService, mapEvidenceByType, type EvidenceReference } from "./evidence-mapper/index.js";
+import { EvidenceMapperService, computeEvidenceQualityScore, mapEvidenceByType, analyzeGaps, type EvidenceReference, type GapAnalysisResult } from "./evidence-mapper/index.js";
 import { ComplianceReportRendererService, renderComplianceReportMarkdown, type ComplianceReportSection } from "./report-renderer/index.js";
 import { ComplianceTemplateRegistryService, findComplianceTemplate } from "./template-registry/index.js";
+
+// Re-export GapAnalysisResult from evidence-mapper for backward compatibility
+export type { GapAnalysisResult } from "./evidence-mapper/index.js";
+
+/**
+ * §66.3: Framework-specific scheduling requirements.
+ * Different compliance frameworks require different reporting frequencies.
+ */
+export type ComplianceFramework = "SOC2" | "HIPAA" | "ISO27001" | "GDPR" | "PCI-DSS" | "NIST" | "OTHER";
+
+export interface FrameworkSchedulingConfig {
+  readonly framework: ComplianceFramework;
+  readonly reportingFrequencyDays: number;
+  readonly quarterly: boolean;
+  readonly monthly: boolean;
+  readonly description: string;
+}
+
+/**
+ * §66.3: Canonical framework scheduling configurations per architecture spec.
+ * SOC2 reports quarterly, HIPAA reports monthly, etc.
+ */
+export const FRAMEWORK_SCHEDULING: Record<ComplianceFramework, FrameworkSchedulingConfig> = {
+  SOC2: {
+    framework: "SOC2",
+    reportingFrequencyDays: 90,
+    quarterly: true,
+    monthly: false,
+    description: "SOC 2 Type II reports typically generated quarterly",
+  },
+  HIPAA: {
+    framework: "HIPAA",
+    reportingFrequencyDays: 30,
+    quarterly: false,
+    monthly: true,
+    description: "HIPAA compliance reports required monthly",
+  },
+  ISO27001: {
+    framework: "ISO27001",
+    reportingFrequencyDays: 90,
+    quarterly: true,
+    monthly: false,
+    description: "ISO 27001 risk assessment reviews quarterly",
+  },
+  GDPR: {
+    framework: "GDPR",
+    reportingFrequencyDays: 30,
+    quarterly: false,
+    monthly: true,
+    description: "GDPR data processing activity reviews monthly",
+  },
+  "PCI-DSS": {
+    framework: "PCI-DSS",
+    reportingFrequencyDays: 90,
+    quarterly: true,
+    monthly: false,
+    description: "PCI-DSS compliance assessment quarterly",
+  },
+  NIST: {
+    framework: "NIST",
+    reportingFrequencyDays: 90,
+    quarterly: true,
+    monthly: false,
+    description: "NIST framework cybersecurity assessments quarterly",
+  },
+  OTHER: {
+    framework: "OTHER",
+    reportingFrequencyDays: 90,
+    quarterly: true,
+    monthly: false,
+    description: "Custom framework with default quarterly schedule",
+  },
+};
+
+/**
+ * §66.4: Auditor access control with PII redaction and per-framework least privilege.
+ */
+export interface AuditorAccessConfig {
+  readonly auditorId: string;
+  readonly permittedFrameworks: readonly ComplianceFramework[];
+  readonly canAccessPII: boolean;
+  readonly canAccessRawEvidence: boolean;
+  readonly canInitiateRemediation: boolean;
+  readonly redactedFields: readonly string[];
+}
+
+/**
+ * §66.4: PII redaction patterns for common Personally Identifiable Information.
+ */
+const PII_PATTERNS: ReadonlyArray<{ readonly pattern: RegExp; readonly replacement: string }> = [
+  { pattern: /\b\d{3}-\d{2}-\d{4}\b/g, replacement: "[SSN-REDACTED]" },
+  { pattern: /\b\d{16}\b/g, replacement: "[CARD-REDACTED]" },
+  { pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, replacement: "[EMAIL-REDACTED]" },
+  { pattern: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, replacement: "[PHONE-REDACTED]" },
+  { pattern: /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd)\b/gi, replacement: "[ADDRESS-REDACTED]" },
+];
+
+/**
+ * §66.4: PII redaction service for compliance reports.
+ */
+export class PIIRedactionService {
+  public redactPII(content: string, customPatterns?: ReadonlyArray<{ readonly pattern: RegExp; readonly replacement: string }>): string {
+    const patterns = customPatterns ?? PII_PATTERNS;
+    let redacted = content;
+    for (const { pattern, replacement } of patterns) {
+      redacted = redacted.replace(pattern, replacement);
+    }
+    return redacted;
+  }
+
+  public redactEvidence<T extends Record<string, unknown>>(evidence: T): T {
+    const redacted: Record<string, unknown> = { ...evidence };
+    for (const key of Object.keys(redacted)) {
+      if (typeof redacted[key] === "string") {
+        redacted[key] = this.redactPII(redacted[key] as string);
+      }
+    }
+    return redacted as T;
+  }
+}
+
+/**
+ * §66.4: Per-framework least-privilege access control for auditors.
+ */
+export class AuditorAccessControlService {
+  private readonly auditors = new Map<string, AuditorAccessConfig>();
+  private readonly piiRedactor = new PIIRedactionService();
+
+  public registerAuditor(config: AuditorAccessConfig): void {
+    this.auditors.set(config.auditorId, config);
+  }
+
+  public getAuditorConfig(auditorId: string): AuditorAccessConfig | null {
+    return this.auditors.get(auditorId) ?? null;
+  }
+
+  public canAccessFramework(auditorId: string, framework: ComplianceFramework): boolean {
+    const config = this.auditors.get(auditorId);
+    if (!config) return false;
+    return config.permittedFrameworks.includes(framework);
+  }
+
+  /**
+   * §66.3: Gets the next scheduled report date based on framework requirements.
+   */
+  public getNextScheduledDate(framework: ComplianceFramework, fromDate?: string): string {
+    const config = FRAMEWORK_SCHEDULING[framework];
+    const baseDate = fromDate ? new Date(fromDate) : new Date();
+    const nextDate = new Date(baseDate.getTime() + config.reportingFrequencyDays * 24 * 60 * 60 * 1000);
+    return nextDate.toISOString();
+  }
+
+  /**
+   * §66.4: Redacts content based on auditor's permitted access level.
+   */
+  public redactForAuditor<T extends Record<string, unknown>>(
+    auditorId: string,
+    content: T,
+    framework: ComplianceFramework,
+  ): T {
+    const config = this.auditors.get(auditorId);
+    if (!config) {
+      return {} as T;
+    }
+
+    if (!this.canAccessFramework(auditorId, framework)) {
+      throw new Error(`compliance.access_denied:auditor_${auditorId}_not_permitted_for_${framework}`);
+    }
+
+    if (!config.canAccessPII) {
+      return this.piiRedactor.redactEvidence(content);
+    }
+
+    const result: Record<string, unknown> = { ...content };
+    for (const field of config.redactedFields) {
+      if (field in result && typeof result[field] === "string") {
+        result[field] = "[REDACTED]";
+      }
+    }
+    return result as T;
+  }
+}
 
 export interface ComplianceReportTemplateDefinition {
   readonly templateId: string;
@@ -10,12 +192,15 @@ export interface ComplianceReportTemplateDefinition {
   readonly requiredEvidenceTypes: readonly string[];
   readonly renderSchema: readonly string[];
   readonly version: string;
-  // §66.1: Template governance fields
-  readonly lockedOnGeneration?: boolean;
-  readonly reportVersionLock?: string | null;
-  readonly requiredDataSources?: readonly string[];
-  readonly legalVersion?: string | null;
-  readonly migrationRule?: string | null;
+  // §66.1: Template governance fields - required per ComplianceTemplateLike
+  readonly lockedOnGeneration: boolean;
+  readonly reportVersionLock: string | null;
+  readonly requiredDataSources: readonly string[];
+  readonly legalVersion: string | null;
+  readonly migrationRule: string | null;
+  // §66.1: Effective and review dates for template lifecycle
+  readonly effectiveDate: string | null;
+  readonly lastReviewDate: string | null;
   // §66.2: Human signoff enforcement
   readonly signoffRequired?: boolean;
   readonly signoffDueAtDays?: number;
@@ -81,17 +266,10 @@ export interface ControlCoverageReport {
   readonly exception?: string;
 }
 
-// §66.2: GapAnalysisResult with remediation, owner, deadline
-export interface GapAnalysisResult {
-  readonly controlId: string;
-  readonly gapSeverity: "low" | "medium" | "high" | "critical";
-  readonly missingEvidence: readonly string[];
-  readonly recommendation: string;
-  readonly remediation: string;
-  readonly owner: string | null;
-  readonly deadline: string | null;
-}
-
+/**
+ * §66.2: GapAnalyzerService delegates to the evidence-mapper implementation.
+ * This class provides compliance-specific gap analysis orchestration.
+ */
 export class GapAnalyzerService {
   public analyze(
     controls: readonly string[],
@@ -99,22 +277,8 @@ export class GapAnalyzerService {
     ownerMap?: Readonly<Record<string, string>>,
     deadlineMap?: Readonly<Record<string, string>>,
   ): GapAnalysisResult[] {
-    const results: GapAnalysisResult[] = [];
-    for (const controlId of controls) {
-      const evidenceTypes = evidenceMap[controlId] ?? [];
-      const missingEvidence = evidenceTypes.length === 0 ? [controlId] : [];
-      const gapSeverity: GapAnalysisResult["gapSeverity"] = missingEvidence.length > 0 ? "high" : "low";
-      results.push({
-        controlId,
-        gapSeverity,
-        missingEvidence,
-        recommendation: missingEvidence.length > 0 ? `Missing evidence for control ${controlId}` : "Control satisfied",
-        remediation: missingEvidence.length > 0 ? `Obtain and provide evidence for ${controlId}` : "No remediation needed",
-        owner: ownerMap?.[controlId] ?? null,
-        deadline: deadlineMap?.[controlId] ?? null,
-      });
-    }
-    return results;
+    // §66.2: Delegate to the evidence-mapper's analyzeGaps function
+    return analyzeGaps(controls, evidenceMap, ownerMap, deadlineMap);
   }
 }
 
@@ -170,7 +334,7 @@ export class ComplianceReportPipelineService {
       status,
       missingEvidenceTypes,
       evidenceMap,
-      evidenceQualityScore: Number((coverage.coverageRatio * 100).toFixed(2)),
+      evidenceQualityScore: computeEvidenceQualityScore(request.evidence, coverage.coverageRatio),
       markdown: this.renderer.renderMarkdown(
         `${template.framework} ${template.reportType} report`,
         sections,
@@ -213,8 +377,10 @@ export class ComplianceReportPipelineService {
     readonly timeoutAction?: "escalate" | "auto_approve" | "auto_reject";
   }): ComplianceReportHumanSignoff {
     const signedAt = input.signedAt ?? null;
-    const escalationOwner = input.escalationOwner ?? input.artifact.escalationOwner ?? null;
-    const timeoutAction = input.timeoutAction ?? (input.now > input.signoffDueAt ? "escalate" : null);
+    // §66.2: escalationOwner must be resolved - template default or system fallback
+    const escalationOwner = input.escalationOwner ?? input.artifact.escalationOwner ?? "compliance_admin";
+    // §66.2: timeoutAction must be defined - default to "escalate" when overdue
+    const timeoutAction = input.timeoutAction ?? (input.now > input.signoffDueAt ? "escalate" : "escalate");
 
     if (signedAt != null && signedAt <= input.signoffDueAt) {
       return {

@@ -10,12 +10,12 @@ export interface CorsConfig {
 }
 
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
-  allowedOrigins: ["*"],
+  allowedOrigins: [],
   allowedMethods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
   exposedHeaders: ["x-request-id", "x-api-version", "x-app-version"],
   maxAgeSeconds: 86_400,
-  credentials: true,
+  credentials: false,
 };
 
 const DEFAULT_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
@@ -61,8 +61,12 @@ export function isOriginAllowed(origin: string | undefined, config: CorsConfig):
   if (typeof origin !== "string" || origin.trim().length === 0) {
     return false;
   }
+  // R14-16: Wildcard origin is only allowed when credentials are disabled.
+  // When credentials are enabled, we must never allow wildcard - it creates
+  // the ["*"] + credentials:true security anti-pattern where credentials
+  // are sent to any origin.
   if (config.allowedOrigins.includes("*")) {
-    return true;
+    return !config.credentials;
   }
   return config.allowedOrigins.includes(origin.trim());
 }
@@ -71,9 +75,8 @@ function resolveAllowOrigin(origin: string | undefined, config: CorsConfig): str
   if (!isOriginAllowed(origin, config)) {
     return null;
   }
-  if (config.allowedOrigins.includes("*")) {
-    return origin != null && config.credentials ? origin : "*";
-  }
+  // When credentials are enabled, we must never use wildcard origin.
+  // Echo the validated origin back to the client.
   return origin!.trim();
 }
 

@@ -42,12 +42,12 @@ export class DomainRegistryService {
       ? { ...parsed, status: "registered" as const }
       : parsed;
     const normalizedBindings = normalized.pluginBindings.map((binding, index) =>
-      normalizePluginBinding(binding, input.pluginBindings[index]),
+      normalizePluginBinding(binding as PluginBinding, input.pluginBindings[index] as PluginBinding | undefined),
     );
     const normalizedDefinition: DomainDefinition = {
       ...normalized,
       pluginBindings: normalizedBindings,
-    };
+    } as DomainDefinition;
     this.validateDefinition(normalizedDefinition);
 
     // §37 Smoke test gate: run smoke tests before allowing registration
@@ -117,8 +117,106 @@ export class DomainRegistryService {
 
   public deprecate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
+    // §37.10: Only Active domains can be deprecated
+    if (current.status !== "active") {
+      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only be deprecated from active state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
     const updated: DomainDefinition = { ...current, status: "deprecated" };
     this.registry.set(domainId, updated);
+    return updated;
+  }
+
+  /**
+   * §37.10: Transition domain to updating state (Active→Updating→Active).
+   * During updating state, domain modifications are allowed but executions
+   * may be queued or redirected.
+   */
+  public updating(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "active") {
+      throw new ValidationError("domain_registry.invalid_updating_state", "Domains can only enter updating state from active state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "updating" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      // @ts-expect-error §37.10: New domain lifecycle events not yet in base registry
+      eventType: "domain:updating",
+      payload: {
+        domainId,
+        status: "updating",
+        occurredAt: nowIso(),
+      },
+    });
+    return updated;
+  }
+
+  /**
+   * §37.10: Complete the update cycle and return domain to active state (Updating→Active).
+   * Validates the domain is still viable after modifications.
+   */
+  public completeUpdate(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "updating") {
+      throw new ValidationError("domain_registry.invalid_complete_update_state", "Domains can only complete update from updating state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const smoke = this.smokeTests.run(current);
+    if (!smoke.passed) {
+      throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during update completion.", {
+        category: "validation",
+        source: "internal",
+        details: { issues: smoke.issues },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "active" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      // @ts-expect-error §37.10: New domain lifecycle events not yet in base registry
+      eventType: "domain:updated",
+      payload: {
+        domainId,
+        status: "active",
+        occurredAt: nowIso(),
+      },
+    });
+    return updated;
+  }
+
+  /**
+   * §37.10: Archive a deprecated domain. Archived domains are read-only
+   * and no longer eligible for activation.
+   */
+  public archive(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "deprecated") {
+      throw new ValidationError("domain_registry.invalid_archive_state", "Domains can only be archived from deprecated state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: "archived" };
+    this.registry.set(domainId, updated);
+    this.eventPublisher?.publish({
+      // @ts-expect-error §37.10: New domain lifecycle events not yet in base registry
+      eventType: "domain:archived",
+      payload: {
+        domainId,
+        status: "archived",
+        occurredAt: nowIso(),
+      },
+    });
     return updated;
   }
 

@@ -191,10 +191,30 @@ export class TaskRepository {
   }
 
   /**
-   * Update task output.
+   * Update task output with CAS semantics.
+   * §25.3: Only updates if current status matches expectedStatus to prevent TOCTOU races.
+   * Returns the number of rows affected (0 if status didn't match).
    */
-  public updateTaskOutput(taskId: string, outputJson: string, updatedAt: string): void {
-    execute(this.conn, `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ?`, outputJson, updatedAt, taskId);
+  public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
+    const result = execute(
+      this.conn,
+      `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ? AND status = ?`,
+      outputJson,
+      updatedAt,
+      taskId,
+      expectedStatus,
+    );
+    return result.changes;
+  }
+
+  public updateTaskTitle(taskId: string, title: string, updatedAt: string): void {
+    execute(
+      this.conn,
+      `UPDATE tasks SET title = ?, updated_at = ? WHERE id = ?`,
+      title,
+      updatedAt,
+      taskId,
+    );
   }
 
   public updateTaskInput(taskId: string, inputJson: string, normalizedInputJson: string, updatedAt: string): void {

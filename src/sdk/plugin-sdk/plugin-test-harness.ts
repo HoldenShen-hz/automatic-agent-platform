@@ -23,10 +23,48 @@ export interface MockToolResult {
   durationMs: number;
 }
 
+/**
+ * MockModelGateway - mock LLM gateway for plugin testing per §22.3
+ * Supports record/replay mode where it plays back pre-recorded responses
+ * without actual LLM execution, ensuring deterministic test behavior.
+ */
+export interface MockModelGateway {
+  /** Unique identifier for this gateway instance */
+  gatewayId: string;
+  /** Whether this gateway is in record mode (true) or replay mode (false) */
+  isRecording: boolean;
+  /**
+   * Record a response for a given input hash.
+   * Only applicable in record mode.
+   */
+  record(inputHash: string, output: unknown): void;
+  /**
+   * Replay a pre-recorded response for a given input hash.
+   * Returns null if no recording exists (in replay mode).
+   */
+  replay(inputHash: string): unknown | null;
+  /**
+   * Get all recorded input-output pairs.
+   * Used for generating test fixtures.
+   */
+  getRecordings(): Array<{ inputHash: string; output: unknown }>;
+  /**
+   * Clear all recordings.
+   */
+  reset(): void;
+}
+
+/** Test harness mode - controls execution behavior */
+export type HarnessMode = "live" | "mock" | "replay";
+
 export interface TestHarnessConfig {
   plugin: PluginDefinition;
   mockLlm?: MockLlmConfig;
   mockTools?: MockToolResult[];
+  /** Test harness mode per §22.3: live|mock|replay */
+  mode?: HarnessMode;
+  /** Mock model gateway for record/replay testing */
+  mockGateway?: MockModelGateway;
   timeoutMs?: number;
 }
 
@@ -63,6 +101,7 @@ export interface HarnessReport {
  * - Running test cases with mock inputs
  * - Mock LLM responses for plugins that call the LLM
  * - Mock tool results for tool-using plugins
+ * - MockModelGateway with record/replay per §22.3
  * - Coverage tracking
  */
 export class PluginTestHarness {
@@ -70,10 +109,14 @@ export class PluginTestHarness {
   private mockLlm: MockLlmConfig | null = null;
   private mockToolResults: Map<string, MockToolResult> = new Map();
   private timeoutMs: number;
+  private mode: HarnessMode;
+  private mockGateway: MockModelGateway | null;
 
   constructor(config: TestHarnessConfig) {
     this.plugin = config.plugin;
     this.mockLlm = config.mockLlm ?? null;
+    this.mode = config.mode ?? "mock";
+    this.mockGateway = config.mockGateway ?? null;
     this.timeoutMs = config.timeoutMs ?? 30000;
 
     if (config.mockTools) {
@@ -193,24 +236,86 @@ export class PluginTestHarness {
     return this.plugin;
   }
 
-  private async executePlugin(input: Record<string, unknown>): Promise<unknown> {
-    // Simulate execution with mock delay
-    await delay(10);
-
-    // Return mock output based on plugin type
-    switch (this.plugin.type) {
-      case "tool":
-        return { result: `Tool ${this.plugin.name} executed`, input };
-      case "adapter":
-        return { adapted: true, original: input };
-      case "retriever":
-        return { documents: [], query: input };
-      case "evaluator":
-        return { passed: true, score: 1.0, input };
-      default:
-        return { output: input };
-    }
+  /**
+   * Set the test harness mode (live|mock|replay).
+   * §22.3 requires MockModelGateway with record/replay for non-live testing.
+   */
+  setMode(mode: HarnessMode): void {
+    this.mode = mode;
   }
+
+  /**
+   * Set the mock model gateway for record/replay testing.
+   * §22.3 requires MockModelGateway to avoid actual LLM execution.
+   */
+  setMockGateway(gateway: MockModelGateway): void {
+    this.mockGateway = gateway;
+  }
+
+  private async executePlugin(input: Record<string, unknown>): Promise<unknown> {
+    // Compute input hash for record/replay lookup
+    const inputHash = hashInput(input);
+
+    // In replay mode, try to use pre-recorded response
+    if (this.mode === "replay" && this.mockGateway) {
+      const recorded = this.mockGateway.replay(inputHash);
+      if (recorded !== null) {
+        return recorded;
+      }
+      // Fall through to mock if no recording found
+    }
+
+    // In mock or replay (no recording found) mode, use mock behavior
+    if (this.mode === "mock" || this.mode === "replay") {
+      // Simulate execution with mock delay
+      await delay(10);
+
+      // Return mock output based on plugin type
+      let output: unknown;
+      switch (this.plugin.type) {
+        case "tool":
+          output = { result: `Tool ${this.plugin.name} executed`, input };
+          break;
+        case "adapter":
+          output = { adapted: true, original: input };
+          break;
+        case "retriever":
+          output = { documents: [], query: input };
+          break;
+        case "evaluator":
+          output = { passed: true, score: 1.0, input };
+          break;
+        default:
+          output = { output: input };
+      }
+
+      // In record mode, record the input-output pair
+      if (this.mockGateway?.isRecording) {
+        this.mockGateway.record(inputHash, output);
+      }
+
+      return output;
+    }
+
+    // In live mode, we would execute the actual plugin
+    // For now, throw an error since live execution is not implemented
+    throw new Error(`PluginTestHarness: live execution not supported. Use mock or replay mode.`);
+  }
+}
+
+/**
+ * Compute a simple hash of the input for record/replay lookup.
+ * In production, use a proper hash function.
+ */
+function hashInput(input: Record<string, unknown>): string {
+  const str = JSON.stringify(input, Object.keys(input).sort());
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString(16);
 }
 
 function delay(ms: number): Promise<void> {

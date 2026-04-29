@@ -23,8 +23,9 @@ export interface WorkerIdentityDecision {
     | "worker_identity.tenant_not_allowed";
 }
 
-import type { WorkerServiceIdentity, WorkerNodeRunClaim, WorkerIdentityDecision } from "./worker-service-identity.js";
 import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { Timestamp } from "../../contracts/types/domain/primitives.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 /**
  * Worker service identity registry with P5 persistence.
@@ -62,16 +63,68 @@ export class WorkerServiceIdentityRegistry {
   }
 
   public register(identity: WorkerServiceIdentity): WorkerServiceIdentity {
-    // Persist to store for P5 durability
+    // §8.2: Verify identity before overwriting to prevent mTLS fingerprint hijacking
+    // If a verified identity exists, the new identity must match or provide valid challenge proof
     const existing = this.store.worker.getWorkerSnapshot(identity.workerId);
-    if (existing) {
-      this.store.worker.upsertWorkerSnapshot({
-        ...existing,
-        serviceIdentity: identity.serviceIdentity,
-        mtlsPeerFingerprint: identity.mtlsPeerFingerprint,
-        allowedNodeRunTenants: identity.allowedNodeRunTenants,
-      });
+    if (existing != null && existing.registrationVerifiedAt != null && existing.mtlsPeerFingerprint != null) {
+      // Identity has been previously verified with mTLS - new registration must match
+      if (existing.mtlsPeerFingerprint !== identity.mtlsPeerFingerprint) {
+        // Cannot overwrite verified identity without re-verification
+        // This prevents a malicious actor from hijacking a legitimate worker's mTLS fingerprint
+        throw new ValidationError(
+          "worker_identity.verified_identity_overwrite_denied",
+          "Cannot overwrite a verified worker identity with a different mTLS fingerprint.",
+          {
+            details: {
+              workerId: identity.workerId,
+              existingFingerprint: existing.mtlsPeerFingerprint,
+              attemptedFingerprint: identity.mtlsPeerFingerprint,
+              registrationVerifiedAt: existing.registrationVerifiedAt,
+            },
+          },
+        );
+      }
     }
+    this.store.worker.upsertWorkerSnapshot({
+      workerId: identity.workerId,
+      status: existing?.status ?? "online",
+      serviceIdentity: identity.serviceIdentity,
+      mtlsPeerFingerprint: identity.mtlsPeerFingerprint,
+      allowedNodeRunTenants: identity.allowedNodeRunTenants,
+      placement: existing?.placement,
+      isolationLevel: existing?.isolationLevel,
+      repoVersion: existing?.repoVersion,
+      remoteSessionStatus: existing?.remoteSessionStatus,
+      lastAcknowledgedStreamOffset: existing?.lastAcknowledgedStreamOffset,
+      streamResumeSuccessRate: existing?.streamResumeSuccessRate,
+      credentialRefreshSuccessRate: existing?.credentialRefreshSuccessRate,
+      sessionConsistencyCheckStatus: existing?.sessionConsistencyCheckStatus,
+      sessionConsistencyCheckedAt: existing?.sessionConsistencyCheckedAt,
+      workspaceSyncStatus: existing?.workspaceSyncStatus,
+      workspaceSyncCheckedAt: existing?.workspaceSyncCheckedAt,
+      saturation: existing?.saturation,
+      activeLeaseCount: existing?.activeLeaseCount ?? 0,
+      meanStartupLatencyMs: existing?.meanStartupLatencyMs,
+      sandboxSuccessRate: existing?.sandboxSuccessRate,
+      repoCacheHitRate: existing?.repoCacheHitRate,
+      registrationVerifiedAt: existing?.registrationVerifiedAt,
+      registrationChallengeId: existing?.registrationChallengeId,
+      capabilitiesJson: existing?.capabilitiesJson ?? "{}",
+      runningExecutionsJson: existing?.runningExecutionsJson ?? "[]",
+      maxConcurrency: existing?.maxConcurrency ?? 1,
+      queueAffinity: existing?.queueAffinity,
+      runtimeInstanceId: existing?.runtimeInstanceId,
+      restartedFromRuntimeInstanceId: existing?.restartedFromRuntimeInstanceId,
+      restartGeneration: existing?.restartGeneration ?? 0,
+      cpuPct: existing?.cpuPct,
+      memoryMb: existing?.memoryMb,
+      toolBacklogCount: existing?.toolBacklogCount ?? 0,
+      currentStepId: existing?.currentStepId,
+      lastProgressAt: existing?.lastProgressAt,
+      lastHeartbeatAt: existing?.lastHeartbeatAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString() as Timestamp,
+      version: (existing?.version ?? 0) + 1,
+    });
     this.identities.set(identity.workerId, identity);
     return identity;
   }

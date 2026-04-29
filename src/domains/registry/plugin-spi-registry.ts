@@ -187,7 +187,7 @@ export class PluginSpiRegistry {
         details: { pluginId, disabledReason: record.disabledReason },
       });
     }
-    if (record.lifecycleState === "active" || record.lifecycleState === "degraded") {
+    if (record.lifecycleState === "active" || record.lifecycleState === "suspended") {
       return record.plugin;
     }
     this.assertNotCoolingDown(record, "activation", context);
@@ -218,6 +218,41 @@ export class PluginSpiRegistry {
       await record.plugin.onDeactivate(context);
     }
     this.setLifecycleState(record, "inactive");
+  }
+
+  /**
+   * Suspend a plugin - puts it in suspended state per contract §4.
+   * Plugin may be resumed later without full reload.
+   */
+  public async suspend(pluginId: string, reason: string, overrides: Partial<PluginLifecycleContext> = {}): Promise<void> {
+    const record = this.requireRecord(pluginId);
+    if (record.lifecycleState !== "active" && record.lifecycleState !== "inactive") {
+      return; // Can only suspend active/inactive plugins
+    }
+    const context = buildContext(record, overrides);
+
+    // Call the plugin's suspend hook if it exists
+    if (record.plugin.suspend) {
+      if (this.isProcessIsolatedRuntime(record)) {
+        // For isolated runtimes, suspend via the runtime host
+        await this.invokeForkedRuntime<void>(record, "suspend", context, { reason });
+      } else {
+        await record.plugin.suspend(reason);
+      }
+    }
+
+    this.setLifecycleState(record, "suspended");
+    this.eventPublisher?.publish({
+      eventType: "plugin:suspended",
+      payload: {
+        pluginId: record.manifest.pluginId,
+        domainId: context.domainId,
+        spiType: record.plugin.spiType,
+        lifecycleState: "suspended",
+        reason,
+        occurredAt: nowIso(),
+      },
+    });
   }
 
   public async unload(pluginId: string, overrides: Partial<PluginLifecycleContext> = {}): Promise<void> {
@@ -377,7 +412,7 @@ export class PluginSpiRegistry {
 
   private async invokeForkedRuntime<T>(
     record: RegisteredPluginRecord,
-    action: "load" | "activate" | "health_check" | "deactivate" | "unload" | "retrieve" | "present" | "authenticate" | "execute",
+    action: "load" | "activate" | "health_check" | "deactivate" | "unload" | "suspend" | "retrieve" | "present" | "authenticate" | "execute",
     context: PluginLifecycleContext,
     input?: unknown,
   ): Promise<T> {
@@ -450,8 +485,8 @@ export class PluginSpiRegistry {
     }
     record.lastErrorAt = nowIso();
     record.lastErrorMessage = `${record.manifest.sandbox.runtimeIsolation} plugin runtime exited unexpectedly.`;
-    if (record.lifecycleState === "active" || record.lifecycleState === "loaded") {
-      this.setLifecycleState(record, "degraded");
+    if (record.lifecycleState === "active" || record.lifecycleState === "loading") {
+      this.setLifecycleState(record, "suspended");
     }
     if (record.activeInvocationCount === 0) {
       this.publishIsolationEvent(record, buildContext(record), "runtime_exit", new Error(record.lastErrorMessage));
@@ -526,7 +561,7 @@ export class PluginSpiRegistry {
             await record.plugin.initialize();
           }
         });
-        this.setLifecycleState(record, "loaded");
+        this.setLifecycleState(record, "loading");
       }
 
       if (record.lifecycleState !== "active") {
@@ -649,7 +684,7 @@ export class PluginSpiRegistry {
       record.disabledReason = phase;
       this.setLifecycleState(record, "disabled");
     } else {
-      this.setLifecycleState(record, "degraded");
+      this.setLifecycleState(record, "suspended");
     }
     this.publishIsolationEvent(record, context, phase, error);
   }
@@ -678,7 +713,7 @@ export class PluginSpiRegistry {
     try {
       const result = await this.runSandboxed(record, phase, context, runner);
       this.resetFailureState(record);
-      if (record.lifecycleState === "degraded") {
+      if (record.lifecycleState === "suspended") {
         this.setLifecycleState(record, "active");
       }
       this.publishInvocationEvent("plugin:invocation_completed", record, context, phase, invocationId, {

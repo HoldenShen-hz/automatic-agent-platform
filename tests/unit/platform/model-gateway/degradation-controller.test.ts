@@ -40,6 +40,10 @@ function createMockUnifiedChatProvider(shouldFail = false, failCount = 0) {
         provider: "mock",
       };
     },
+    getAvailableProfiles: () => [
+      { profileName: "test-model", provider: "openai", tier: "primary" },
+      { profileName: "fallback-model", provider: "anthropic", tier: "secondary" },
+    ],
     dispose: () => {},
   } as unknown as UnifiedChatProvider;
 }

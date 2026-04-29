@@ -26,9 +26,14 @@ export interface SettingsVm {
   save(): Promise<void>;
 }
 
+/**
+ * Settings ViewModel with proper ETag-based optimistic locking per §4.7.8.
+ * Uses If-Match header for concurrent update detection.
+ */
 export function useSettingsVm(): SettingsVm {
   const client = useRestClient();
-  const preferences = usePreferencesQuery().data;
+  const preferencesQuery = usePreferencesQuery();
+  const preferences = preferencesQuery.data;
   const roles = useRolesQuery().data ?? [];
   const flags = useFeatureFlagsQuery().data ?? [];
   const models = useModelsQuery().data ?? [];
@@ -57,10 +62,19 @@ export function useSettingsVm(): SettingsVm {
     { key: "Flags", value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
   ], [draftLocale, draftTheme, flags, preferences, roles]);
 
+  /**
+   * Saves preferences with ETag-based optimistic locking per §4.7.8.
+   * The ETag is extracted from preferences to detect concurrent modifications.
+   */
   const save = useCallback(async (): Promise<void> => {
+    if (preferences == null) {
+      return;
+    }
     setSaveState("saving");
     try {
-      await updatePreferences(client, { theme: draftTheme, locale: draftLocale });
+      // §4.7.8: Use If-Match header with ETag for optimistic locking
+      const etag = (preferences as { etag?: string }).etag;
+      await updatePreferences(client, { theme: draftTheme, locale: draftLocale }, etag);
       setSaveState("saved");
       setActivityItems((current) => [
         {
@@ -69,10 +83,12 @@ export function useSettingsVm(): SettingsVm {
         },
         ...current,
       ]);
-    } catch {
+    } catch (error) {
       setSaveState("idle");
+      // Could handle 409 Conflict here to show user a message
+      console.error("[Settings] Save failed:", error);
     }
-  }, [client, draftTheme, draftLocale]);
+  }, [client, draftTheme, draftLocale, preferences]);
 
   return {
     loading: preferences == null,

@@ -328,9 +328,9 @@ function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
     command.aggregateType === "SideEffectRecord" ||
     command.toStatus === "succeeded" ||
     command.toStatus === "failed";
-  if (requiresAudit && command.auditRef != null && command.auditRef.trim().length === 0) {
-    throw new WorkflowStateError("runtime_state_machine.audit_ref_invalid", "Audit ref cannot be empty.", {
-      details: { aggregateType: command.aggregateType },
+  if (requiresAudit && (command.auditRef == null || command.auditRef.trim().length === 0)) {
+    throw new WorkflowStateError("runtime_state_machine.audit_ref_required", "Audit ref is required for HarnessRun, SideEffectRecord, succeeded, and failed transitions.", {
+      details: { aggregateType: command.aggregateType, toStatus: command.toStatus },
     });
   }
 }
@@ -479,7 +479,14 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
 ): TAggregate {
   switch (command.aggregateType) {
     case "HarnessRun":
-      return applyHarnessRunStatus(command.aggregate as HarnessRun, command.toStatus as HarnessRunStatus, command.reasonCode, occurredAt) as TAggregate;
+      return applyHarnessRunStatus(
+        command.aggregate as HarnessRun,
+        command.toStatus as HarnessRunStatus,
+        command.reasonCode,
+        occurredAt,
+        command.leaseId,
+        command.fencingToken,
+      ) as TAggregate;
     case "NodeRun":
       return applyNodeRunStatus(
         command.aggregate as NodeRun,
@@ -516,11 +523,15 @@ function applyHarnessRunStatus(
   status: HarnessRunStatus,
   terminalReason: string,
   occurredAt: string,
+  leaseId?: string,
+  fencingToken?: string,
 ): HarnessRun {
   const isTerminal = status === "completed" || status === "failed" || status === "aborted";
   return {
     ...aggregate,
     status,
+    ...(leaseId != null ? { leaseId } : {}),
+    ...(fencingToken != null ? { fencingToken } : {}),
     currentSeq: aggregate.currentSeq + 1,
     updatedAt: occurredAt,
     ...(isTerminal ? { terminalAt: occurredAt, terminalReason } : {}),

@@ -295,8 +295,14 @@ export class DefaultRESTClient implements RESTClient {
     return this.request<T>({ path, method: "PUT", headers: new Headers(), body });
   }
 
-  public patch<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>({ path, method: "PATCH", headers: new Headers(), body });
+  public patch<T>(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<T> {
+    const headers = new Headers();
+    if (extraHeaders != null) {
+      for (const [key, value] of Object.entries(extraHeaders)) {
+        headers.set(key, value);
+      }
+    }
+    return this.request<T>({ path, method: "PATCH", headers, body });
   }
 
   public delete<T>(path: string): Promise<T> {

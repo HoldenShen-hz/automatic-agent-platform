@@ -6,7 +6,12 @@
  * wrapped in a ContractEnvelope.
  */
 
-import { ValidationError } from "../../platform/contracts/errors.js";
+import {
+  AuthError,
+  NetworkError,
+  BusinessError,
+  ValidationError,
+} from "../../platform/contracts/errors.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { PrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
 
@@ -117,7 +122,13 @@ export class RetryableApiClient {
   private readonly retryConfig: RetryConfig;
 
   constructor(config: ApiClientConfig, retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG) {
-    this.config = config;
+    // Ensure version headers are always set per §22.2 version handshake requirement
+    this.config = {
+      ...config,
+      platformVersion: config.platformVersion ?? "v4.3",
+      sdkVersion: config.sdkVersion ?? "1.0.0",
+      contractVersion: config.contractVersion ?? "v4.3",
+    };
     this.retryConfig = retryConfig;
   }
 
@@ -228,7 +239,12 @@ export class RetryableApiClient {
 
       const response = await fetch(url, fetchOptions);
 
-      if (!response.ok && attempt < this.retryConfig.maxRetries) {
+      // §22: Only retry non-GET requests on network errors, not on non-OK responses.
+      // POST/PUT/DELETE are not idempotent and retrying them can cause duplicate side effects.
+      // Note: request.method is optional and defaults to GET at the call sites.
+      const method: string = request.method ?? "GET";
+      const isIdempotentRequest = method === "GET" || method === "HEAD" || method === "OPTIONS";
+      if (!response.ok && isIdempotentRequest && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
@@ -243,13 +259,43 @@ export class RetryableApiClient {
         responseHeaders[key] = value;
       });
 
+      // §5: Classify errors by HTTP status code
+      if (!response.ok) {
+        const errorInfo = extractErrorInfo(data);
+        if (response.status === 401 || response.status === 403) {
+          throw new AuthError("client_sdk.auth_failed", `Authentication/authorization failed: ${response.status}`, {
+            statusCode: response.status,
+            details: errorInfo,
+            source: "gateway",
+          });
+        }
+        if (response.status >= 400 && response.status < 500) {
+          // Business logic errors (validation, business rule violations)
+          throw new BusinessError("client_sdk.business_error", `Request failed with status ${response.status}: ${response.statusText}`, {
+            statusCode: response.status,
+            details: errorInfo,
+            source: "runtime",
+          });
+        }
+        // Server errors - potentially transient but not retryable at this layer
+        throw new NetworkError("client_sdk.server_error", `Server error: ${response.status} ${response.statusText}`, {
+          statusCode: response.status,
+          details: errorInfo,
+          source: "gateway",
+        });
+      }
+
       return {
         data,
         status: response.status,
         headers: responseHeaders,
       };
     } catch (error) {
-      if (attempt < this.retryConfig.maxRetries) {
+      // §22: Idempotent-aware retry - only retry network errors for idempotent methods.
+      // POST/PUT/DELETE network errors may have caused partial side effects and must not be retried blindly.
+      const method: string = request.method ?? "GET";
+      const isIdempotentRequest = method === "GET" || method === "HEAD" || method === "OPTIONS";
+      if (isIdempotentRequest && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
@@ -260,6 +306,29 @@ export class RetryableApiClient {
       throw error;
     }
   }
+}
+
+/**
+ * Extract error information from API response body for structured error handling.
+ * SDK contract §5 requires error classification (network/auth/business).
+ */
+function extractErrorInfo(data: unknown): Record<string, unknown> | null {
+  if (data == null) {
+    return null;
+  }
+  if (typeof data === "object") {
+    // Prefer structured error fields if available
+    const obj = data as Record<string, unknown>;
+    if (obj.code || obj.error || obj.message) {
+      return {
+        code: obj.code ?? obj.error,
+        message: obj.message ?? obj.error,
+        details: obj.details ?? obj.internalDetails ?? null,
+      };
+    }
+    return obj;
+  }
+  return null;
 }
 
 /**

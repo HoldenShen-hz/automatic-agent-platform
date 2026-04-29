@@ -137,16 +137,53 @@ export interface StreamingSettleState {
   readonly tokenAccumulator: number;
 }
 
+const DEFAULT_WATERMARK_ALERT: WatermarkAlertConfig = {
+  warningThreshold: 0.8,
+  criticalThreshold: 0.95,
+  hardCapThreshold: 1,
+};
+
+const DEFAULT_AUTO_THROTTLE: AutoThrottleConfig = {
+  enabled: false,
+  throttleRatio: 1,
+  recoveryRatio: 1,
+};
+
+const DEFAULT_CROSS_RUN_PRIORITY: CrossRunPriorityConfig = {
+  priority: 1,
+  weightFactor: 1,
+};
+
+const DEFAULT_STREAMING_SETTLE: StreamingSettleConfig = {
+  enabled: false,
+  tokenInterval: Number.MAX_SAFE_INTEGER,
+  timeIntervalMs: Number.MAX_SAFE_INTEGER,
+};
+
 export class BudgetAllocator {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly streamingStates = new Map<string, StreamingSettleState>();
   private readonly throttleState = new Map<string, boolean>(); // runId -> isThrottled
+  private readonly events?: BudgetAllocatorEvents;
 
   public constructor(options: {
     readonly stateMachine?: RuntimeStateMachine;
     readonly events?: BudgetAllocatorEvents;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
+    this.events = options.events;
+  }
+
+  private normalizeContext(
+    context: BudgetAllocatorContext,
+  ): BudgetAllocatorContext {
+    return {
+      ...context,
+      watermarkAlert: context.watermarkAlert ?? DEFAULT_WATERMARK_ALERT,
+      autoThrottle: context.autoThrottle ?? DEFAULT_AUTO_THROTTLE,
+      crossRunPriority: context.crossRunPriority ?? DEFAULT_CROSS_RUN_PRIORITY,
+      streamingSettle: context.streamingSettle ?? DEFAULT_STREAMING_SETTLE,
+    };
   }
 
   /**
@@ -242,13 +279,11 @@ export class BudgetAllocator {
   }
 
   private emitWatermarkAlert(alert: BudgetWatermarkAlert): void {
-    // This would be connected to the event bus in production
-    // emitWatermarkAlert is optional in BudgetAllocatorEvents
+    this.events?.emitWatermarkAlert?.(alert);
   }
 
   private emitAutoThrottleEvent(event: BudgetAutoThrottleEvent): void {
-    // This would be connected to the event bus in production
-    // emitAutoThrottleEvent is optional in BudgetAllocatorEvents
+    this.events?.emitAutoThrottleEvent?.(event);
   }
 
   /**
@@ -338,6 +373,8 @@ export class BudgetAllocator {
     readonly nodeRunId?: string;
     readonly context: BudgetAllocatorContext;
   }): BudgetReservationResult {
+    const context = this.normalizeContext(input.context);
+
     // Validate CAS against expected version before proceeding
     if (input.ledger.version !== input.expectedVersion) {
       throw new ValidationError(
@@ -350,7 +387,7 @@ export class BudgetAllocator {
     // Compute effective amount considering auto-throttle
     // §18.2-18.3: Auto-throttle reduces allocation when engaged
     const effectiveAmount = this.computeEffectiveAmount(
-      input.context,
+      context,
       input.ledger.harnessRunId,
       input.amount,
     );
@@ -367,17 +404,17 @@ export class BudgetAllocator {
             commandId: newId("cmd"),
             entityType: "BudgetLedger",
             entityId: input.ledger.budgetLedgerId,
-            principal: input.context.emittedBy,
+            principal: context.emittedBy,
             aggregateType: "BudgetLedger",
             aggregate: input.ledger,
             fromStatus: input.ledger.status,
             toStatus: newStatus,
-            tenantId: input.context.tenantId,
-            traceId: input.context.traceId,
+            tenantId: context.tenantId,
+            traceId: context.traceId,
             reasonCode: "budget.reserved",
-            emittedBy: input.context.emittedBy,
-            leaseId: input.context.leaseId,
-            fencingToken: input.context.fencingToken,
+            emittedBy: context.emittedBy,
+            leaseId: context.leaseId,
+            fencingToken: context.fencingToken,
             auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/reserve`,
           }).aggregate;
 
@@ -392,14 +429,14 @@ export class BudgetAllocator {
     });
 
     // §18.2-18.3: Watermark alert check after reservation
-    this.checkWatermarkAlert(input.context, reservationResult.ledger, input.ledger.harnessRunId);
+    this.checkWatermarkAlert(context, reservationResult.ledger, input.ledger.harnessRunId);
 
     // §18.2-18.3: Auto-throttle check after reservation
-    this.checkAutoThrottle(input.context, reservationResult.ledger, input.ledger.harnessRunId);
+    this.checkAutoThrottle(context, reservationResult.ledger, input.ledger.harnessRunId);
 
     // §18.3: Initialize streaming settle state if enabled
-    if (input.context.streamingSettle.enabled) {
-      this.processStreamingSettle(input.context, reservationResult.reservation, 0);
+    if (context.streamingSettle.enabled) {
+      this.processStreamingSettle(context, reservationResult.reservation, 0);
     }
 
     return reservationResult;
@@ -412,6 +449,7 @@ export class BudgetAllocator {
     readonly evidenceRefs?: readonly ArtifactRef[];
     readonly context: BudgetAllocatorContext;
   }): BudgetSettlementResult {
+    const context = this.normalizeContext(input.context);
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: input.actualAmount,
@@ -426,15 +464,15 @@ export class BudgetAllocator {
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
       entityId: input.reservation.budgetReservationId,
-      principal: input.context.emittedBy,
+      principal: context.emittedBy,
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
       toStatus: "settled",
-      tenantId: input.context.tenantId,
-      traceId: input.context.traceId,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
       reasonCode: "budget.settled",
-      emittedBy: input.context.emittedBy,
+      emittedBy: context.emittedBy,
       budgetPrecondition: {
         reservationId: input.reservation.budgetReservationId,
         hardCapSatisfied,
@@ -443,13 +481,32 @@ export class BudgetAllocator {
     });
 
     // §18.3: Process streaming settle
-    if (input.context.streamingSettle.enabled) {
-      this.processStreamingSettle(input.context, input.reservation, input.actualAmount);
+    if (context.streamingSettle.enabled) {
+      this.processStreamingSettle(context, input.reservation, input.actualAmount);
     }
 
     // Clean up streaming state on final settle
     if (settlement.settlementKind === "final") {
       this.streamingStates.delete(input.reservation.budgetReservationId);
+    }
+
+    // §26: Budget hard cap must be enforced at settlement time
+    // If hardCapSatisfied is false, the state machine transition above would have thrown
+    // Here we additionally guard the ledger update to ensure hard cap enforcement
+    if (!hardCapSatisfied) {
+      throw new ValidationError(
+        "budget.settle.hard_cap_not_satisfied",
+        "Budget hard cap is not satisfied at settlement time.",
+        {
+          details: {
+            reservationId: input.reservation.budgetReservationId,
+            hardCapSatisfied,
+            ledgerHardCap: input.ledger.hardCap,
+            currentSettledAmount: input.ledger.settledAmount,
+            actualAmount: input.actualAmount,
+          },
+        },
+      );
     }
 
     return {
@@ -471,6 +528,7 @@ export class BudgetAllocator {
     readonly reasonCode?: string;
     readonly context: BudgetAllocatorContext;
   }): BudgetReleaseResult {
+    const context = this.normalizeContext(input.context);
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: 0,
@@ -480,15 +538,15 @@ export class BudgetAllocator {
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
       entityId: input.reservation.budgetReservationId,
-      principal: input.context.emittedBy,
+      principal: context.emittedBy,
       aggregateType: "BudgetReservation",
       aggregate: input.reservation,
       fromStatus: input.reservation.status,
       toStatus: "released",
-      tenantId: input.context.tenantId,
-      traceId: input.context.traceId,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
       reasonCode: input.reasonCode ?? "budget.released_without_execution",
-      emittedBy: input.context.emittedBy,
+      emittedBy: context.emittedBy,
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
     });
 

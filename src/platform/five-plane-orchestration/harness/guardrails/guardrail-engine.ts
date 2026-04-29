@@ -133,9 +133,9 @@ export class GuardrailEngine {
     }
 
     const hasBlocker = findings.some((finding) => finding.severity === "block");
-    const requiresHuman = findings.some((finding) =>
-      finding.severity === "warn" && (finding.layer === "risk" || finding.layer === "evidence")
-    );
+    const hasRiskWarning = findings.some((finding) => finding.severity === "warn" && finding.layer === "risk");
+    const hasRetryableWarning = findings.some((finding) => finding.severity === "warn" && finding.layer === "evidence");
+    const requiresHuman = hasRiskWarning;
 
     return {
       passed: !hasBlocker,
@@ -144,7 +144,9 @@ export class GuardrailEngine {
         ? "abort"
         : requiresHuman
           ? "escalate_to_human"
-          : "proceed",
+          : hasRetryableWarning
+            ? "retry_same_plan"
+            : "proceed",
       findings,
     };
   }

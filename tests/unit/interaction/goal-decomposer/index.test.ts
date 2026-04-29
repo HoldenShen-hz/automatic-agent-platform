@@ -47,6 +47,21 @@ test("GoalDecompositionService requests human review for unmatched short goal", 
   assert.equal(result.decompositionConfidence < 0.7, true);
 });
 
+test("GoalDecompositionService surfaces domain capability mismatches instead of filtering them away", async () => {
+  const service = new GoalDecompositionService();
+
+  const result = await service.decompose("发起春季营销 campaign，并补齐审批流程与 ROI dashboard 分析");
+
+  assert.equal(result.goalGraphDraft.constraintEnvelope.requiredCapabilities.includes("analytics"), true);
+  assert.equal(result.goalGraphDraft.constraintEnvelope.requiredCapabilities.includes("approval_workflow"), true);
+  assert.equal(result.requiresHumanReview, true);
+  assert.ok(
+    result.taskGraphDraft.validationMessages.some((message) => message.includes("missing_capability")),
+    "expected missing capability findings to survive into validation output",
+  );
+  assert.equal(result.goalGraphDraft.constraintEnvelope.riskPropagation?.length, result.tasks.length);
+});
+
 test("GoalDecompositionService uses llm_plan strategy when injected generator succeeds", async () => {
   const llmPlanGenerator: LlmPlanGenerator = {
     async generate(goal) {

@@ -278,18 +278,25 @@ export class RegionHealthCheckService {
   }
 
   /**
-   * Perform the actual health check
+   * Perform the actual health check with real network probing per §52.5
    */
   private async performHealthCheck(
     config: RegionHealthCheckConfig,
   ): Promise<{ metrics: HealthCheckMetric[] }> {
     const snapshot = config.metricSnapshot ?? {};
+
+    // Perform real network probe to measure latency
+    let measuredLatencyMs = snapshot.latencyMs ?? null;
+    if (measuredLatencyMs === null) {
+      measuredLatencyMs = await this.measureNetworkLatency(config.endpoint);
+    }
+
     const metrics: HealthCheckMetric[] = [
       {
         metricName: "latency",
-        value: snapshot.latencyMs ?? Math.min(config.thresholds.maxLatencyMs, config.endpoint.length * 10),
+        value: measuredLatencyMs,
         threshold: config.thresholds.maxLatencyMs,
-        isHealthy: (snapshot.latencyMs ?? config.endpoint.length * 10) <= config.thresholds.maxLatencyMs,
+        isHealthy: measuredLatencyMs <= config.thresholds.maxLatencyMs,
       },
       {
         metricName: "error_rate",
@@ -312,6 +319,31 @@ export class RegionHealthCheckService {
     ];
 
     return { metrics };
+  }
+
+  /**
+   * Measure actual network latency to a region endpoint per §52.5
+   * Uses HTTP HEAD request to measure round-trip time
+   */
+  private async measureNetworkLatency(endpoint: string): Promise<number> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const start = Date.now();
+      const response = await fetch(`${endpoint}/health`, {
+        method: "HEAD",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!response.ok) {
+        return 5000; // Treat non-2xx as timeout
+      }
+      return Date.now() - start;
+    } catch {
+      clearTimeout(timeout);
+      return 5000; // Treat errors as high latency
+    }
   }
 
   /**

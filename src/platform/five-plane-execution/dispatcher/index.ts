@@ -136,8 +136,9 @@ class MultiStepToolRegistry {
   }
 
   private assertBudgetAllowed(toolName: string): void {
-    // R4-25 (INV-BUDGET-001): Reserve budget before tool call
+    // R4-25 (INV-BUDGET-001): Reserve budget before tool call using BudgetAllocator.reserve()
     const estimatedCost = this.estimateToolCost(toolName);
+    // R4-25: First evaluate if task can proceed
     const evaluation = this.budgetGuard.evaluateTaskSpend({
       policy: this.getDefaultBudgetPolicy(),
       currentTaskCostUsd: 0,
@@ -147,6 +148,29 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.budget_exceeded",
         `Budget limit exceeded for tool execution: ${toolName} - ${evaluation.reasonCode}`,
+        { toolName, retryable: false },
+      );
+    }
+    // R4-25: Actually reserve the budget using reserveExecutionChainBudget
+    const reservationResult = this.budgetGuard.reserveExecutionChainBudget({
+      policy: this.getDefaultBudgetPolicy(),
+      spend: {
+        currentTaskCostUsd: 0,
+        nextEstimatedCostUsd: estimatedCost,
+        currentPackCostUsd: 0,
+        currentPlatformCostUsd: 0,
+        currentDailyCostUsd: 0,
+        currentMonthlyCostUsd: 0,
+      },
+      tenantId: "tenant:local",
+      harnessRunId: "harness_run:multi_step_dispatcher",
+      traceId: newId("trace"),
+      emittedBy: "MultiStepToolRegistry",
+    });
+    if (!reservationResult.allowed || !reservationResult.reservation) {
+      throw new ToolExecutionError(
+        "tool.budget_reservation_failed",
+        `Budget reservation failed for tool: ${toolName} - ${reservationResult.reservationReasonCode ?? evaluation.reasonCode}`,
         { toolName, retryable: false },
       );
     }
@@ -212,13 +236,19 @@ class MultiStepToolRegistry {
     // For todo_write, enforce proper sandbox policy
     if (toolName === "todo_write") {
       const request = args as TodoWriteToolRequest;
+      const allowOperations = Array.isArray((this.sandboxPolicy as { allow?: unknown }).allow)
+        ? ((this.sandboxPolicy as { allow: unknown[] }).allow.filter((value): value is string => typeof value === "string"))
+        : [];
+      const denyOperations = Array.isArray((this.sandboxPolicy as { deny?: unknown }).deny)
+        ? ((this.sandboxPolicy as { deny: unknown[] }).deny.filter((value): value is string => typeof value === "string"))
+        : [];
       // R4-31: Write operations on todo_write need explicit sandbox allow
       // Read-only operations (list, get) are allowed by default
       const writeOperations = ["create", "update", "delete"];
       if (writeOperations.includes(request.operation)) {
         // The hardcoded {allow:[],deny:[]} policy should deny by default
         // Empty policy means deny by default (deny-by-default invariant)
-        if (this.sandboxPolicy.allow.length === 0 && this.sandboxPolicy.deny.length === 0) {
+        if (allowOperations.length === 0 && denyOperations.length === 0) {
           logger.log({
             level: "debug",
             message: "R4-31 (INV-SANDBOX): Empty sandbox policy, denying write operation by default",
@@ -231,7 +261,7 @@ class MultiStepToolRegistry {
           );
         }
         // Check if operation is explicitly allowed
-        const isAllowed = this.sandboxPolicy.allow.includes(request.operation);
+        const isAllowed = allowOperations.includes(request.operation) && !denyOperations.includes(request.operation);
         if (!isAllowed) {
           throw new ToolExecutionError(
             "tool.sandbox_violation",

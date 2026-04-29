@@ -356,6 +356,45 @@ test("listEventsForTask without tenant or limit", async () => {
   assert.ok(!calls[0]!.sql.includes("INNER JOIN tasks"));
 });
 
+test("listEventsForTaskSnapshot returns stream metadata and snapshot cursor", async () => {
+  const events = [
+    eventRecord({ id: "evt-1", createdAt: "2026-04-26T10:00:00.000Z" }),
+    eventRecord({ id: "evt-2", createdAt: "2026-04-26T10:00:00.000Z" }),
+  ];
+  const { connection, calls } = createConnection({ queryRows: [events] });
+  const repo = new AsyncEventRepository(connection);
+
+  const snapshot = await repo.listEventsForTaskSnapshot("task-1");
+
+  assert.equal(snapshot.taskId, "task-1");
+  assert.equal(snapshot.streamVersion, 2);
+  assert.equal(snapshot.lastEventId, "evt-2");
+  assert.equal(snapshot.lastCreatedAt, "2026-04-26T10:00:00.000Z");
+  assert.equal(snapshot.events.length, 2);
+  assert.ok(snapshot.snapshotCursor);
+  assert.ok(calls[0]!.sql.includes("ORDER BY created_at ASC, id ASC"));
+});
+
+test("listEventsForTaskSinceCursor uses snapshot cursor as an incremental checkpoint", async () => {
+  const baselineEvents = [
+    eventRecord({ id: "evt-1", createdAt: "2026-04-26T10:00:00.000Z" }),
+    eventRecord({ id: "evt-2", createdAt: "2026-04-26T10:00:00.000Z" }),
+  ];
+  const newEvents = [
+    eventRecord({ id: "evt-3", createdAt: "2026-04-26T10:00:01.000Z" }),
+  ];
+  const { connection, calls } = createConnection({ queryRows: [baselineEvents, newEvents] });
+  const repo = new AsyncEventRepository(connection);
+
+  const snapshot = await repo.listEventsForTaskSnapshot("task-1");
+  const delta = await repo.listEventsForTaskSinceCursor("task-1", snapshot.snapshotCursor!);
+
+  assert.equal(delta.length, 1);
+  assert.equal(delta[0]!.id, "evt-3");
+  assert.ok(calls[1]!.sql.includes("(created_at > $2 OR (created_at = $2 AND id > $3))"));
+  assert.deepEqual(calls[1]!.params, ["task-1", "2026-04-26T10:00:00.000Z", "evt-2"]);
+});
+
 // ─── getEvent ─────────────────────────────────────────────────────────────────
 
 test("getEvent queries by event ID", async () => {

@@ -70,6 +70,7 @@ export interface ConversationHistoryOptions {
   readonly memoryLayer?: MemoryRecord["memoryLayer"];
   readonly scope?: string;
   readonly retentionDays?: number;
+  readonly dataHandling?: "standard" | "restricted" | "regulated";
 }
 
 /**
@@ -163,7 +164,7 @@ export class ConversationHistoryService {
     };
 
     // Persist to memory store if available
-    if (this.memoryService && options.memoryLayer !== "layer_3") {
+    if (this.memoryService && this.shouldPersistToLongTermMemory(options) && options.memoryLayer !== "layer_3") {
       await this.persistSession(updatedSession, options);
     }
 
@@ -183,7 +184,7 @@ export class ConversationHistoryService {
       updatedAt: nowIso(),
     };
 
-    if (this.memoryService) {
+    if (this.memoryService && this.shouldPersistToLongTermMemory(options)) {
       await this.persistSession(completedSession, options);
     }
 
@@ -203,7 +204,7 @@ export class ConversationHistoryService {
       updatedAt: nowIso(),
     };
 
-    if (this.memoryService) {
+    if (this.memoryService && this.shouldPersistToLongTermMemory(options)) {
       await this.persistSession(abandonedSession, options);
     }
 
@@ -236,6 +237,10 @@ export class ConversationHistoryService {
       kind: "episode",
       expiresAt,
     });
+  }
+
+  private shouldPersistToLongTermMemory(options: ConversationHistoryOptions): boolean {
+    return options.dataHandling !== "restricted" && options.dataHandling !== "regulated";
   }
 
   /**

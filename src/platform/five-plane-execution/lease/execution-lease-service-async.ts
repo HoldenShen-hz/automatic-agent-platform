@@ -288,6 +288,16 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    // R17-08 fix: Check expiration to prevent releasing already-expired lease
+    // A lease may have status="active" but be past its expiration time
+    if (lease.expiresAt <= occurredAt) {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_expired",
+        lease,
+      };
+    }
+
     // R9-03 fix: Re-check status inside transaction to prevent TOCTOU
     // Between the check above and the close below, another thread could have
     // already released the lease. Re-verify before closing.
@@ -406,6 +416,33 @@ export class ExecutionLeaseServiceAsync {
       this.insertLeaseAudit({
         id: newId("audit"),
         executionId: input.executionId,
+        leaseId: activeLease.id,
+        workerId: activeLease.workerId,
+        fencingToken: activeLease.fencingToken,
+        eventType: "lease_expired",
+        reasonCode: "lease_expired",
+        recordedAt: occurredAt,
+      });
+      return {
+        allowed: false,
+        reasonCode: "lease_expired",
+        authoritativeFencingToken: activeLease.fencingToken,
+        activeLeaseId: activeLease.id,
+      };
+    }
+
+    // R17-09 fix: Final expiration check to prevent TOCTOU race condition
+    // Lease could expire between the check at line 389 and reaching here
+    if (activeLease.expiresAt <= occurredAt) {
+      this.store.worker.closeExecutionLease({
+        leaseId: activeLease.id,
+        status: "expired",
+        releasedAt: occurredAt,
+        reasonCode: "lease_expired",
+      });
+      this.insertLeaseAudit({
+        id: newId("audit"),
+        executionId: activeLease.executionId,
         leaseId: activeLease.id,
         workerId: activeLease.workerId,
         fencingToken: activeLease.fencingToken,

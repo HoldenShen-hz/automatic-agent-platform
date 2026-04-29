@@ -145,12 +145,6 @@ export class ComplianceCaseOrchestrationService {
       exportContent = `[SUMMARY OF ${classification.level.toUpperCase()} CONTENT - ORIGINAL EXCLUDED]`;
       redactionApplied = true;
       reasons.push("classification_summary_applied");
-    } else if (transferDecision.action === "deny" && input.allowRedactedRestrictedTransfer === true && annotations.length > 0) {
-      exportContent = this.services.classification.redactContent(input.content, annotations);
-      redactionApplied = exportContent !== input.content;
-      if (redactionApplied) {
-        reasons.push("classification_override_redaction_applied");
-      }
     }
 
     const protectedRecord = this.encryption.protectRecord({

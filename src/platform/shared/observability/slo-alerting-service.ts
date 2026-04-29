@@ -444,10 +444,10 @@ export class SloAlertingService {
 
     this.db.connection
       .prepare(
-        `INSERT INTO slo_definitions (id, name, description, sli_kind, target_value, operator, window_minutes, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO slo_definitions (id, domain_id, tenant_id, name, description, sli_kind, target_value, operator, window_minutes, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(slo.id, slo.name, slo.description, slo.sliKind, slo.targetValue, slo.operator, slo.windowMinutes, slo.status, slo.createdAt, slo.updatedAt);
+      .run(slo.id, slo.domainId, slo.tenantId, slo.name, slo.description, slo.sliKind, slo.targetValue, slo.operator, slo.windowMinutes, slo.status, slo.createdAt, slo.updatedAt);
 
     return slo;
   }
@@ -479,10 +479,12 @@ export class SloAlertingService {
    */
   collectSli(sloId: string, value: number, unit: string = "", metadata?: Record<string, unknown>): SliRecord {
     const now = nowIso();
+    const slo = this.getSlo(sloId);
     const sli: SliRecord = {
       id: newId("sli"),
       sloId,
-      kind: (this.getSlo(sloId)?.sliKind ?? "custom") as SliKind,
+      domainId: (metadata?.domainId as string) ?? slo?.domainId ?? "default",
+      kind: (slo?.sliKind ?? "custom") as SliKind,
       value,
       unit,
       collectedAt: now,
@@ -491,10 +493,10 @@ export class SloAlertingService {
 
     this.db.connection
       .prepare(
-        `INSERT INTO sli_samples (id, slo_id, kind, value, unit, collected_at, metadata)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO sli_samples (id, slo_id, domain_id, kind, value, unit, collected_at, metadata)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(sli.id, sli.sloId, sli.kind, sli.value, sli.unit, sli.collectedAt, sli.metadata);
+      .run(sli.id, sli.sloId, sli.domainId, sli.kind, sli.value, sli.unit, sli.collectedAt, sli.metadata);
 
     return sli;
   }
@@ -784,10 +786,13 @@ export class SloAlertingService {
 
   /**
    * Maps a database row to an SloDefinition.
+   * §R14-06: SLO definitions must have domainId/tenantId columns
    */
   private mapSlo(row: RawRow): SloDefinition {
     return {
       id: String(row.id),
+      domainId: String(row.domain_id ?? "default"),
+      tenantId: String(row.tenant_id ?? "default"),
       name: String(row.name ?? ""),
       description: String(row.description ?? ""),
       sliKind: String(row.sli_kind ?? "custom") as SliKind,
@@ -807,6 +812,7 @@ export class SloAlertingService {
     return {
       id: String(row.id),
       sloId: String(row.slo_id ?? ""),
+      domainId: String(row.domain_id ?? "default"),
       kind: String(row.kind ?? "custom") as SliKind,
       value: Number(row.value ?? 0),
       unit: String(row.unit ?? ""),

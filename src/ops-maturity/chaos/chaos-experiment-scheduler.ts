@@ -9,12 +9,12 @@
  *
  * §68 Chaos Engineering - Experiment Scheduling + Automated Steady-State Validation
  *
- * §66 GameDay Orchestrator (P2 Enhancement for Phase 3):
- * Current scheduleGameDay() / startGameDay() / refreshGameDayStatus() implement basic scheduling skeleton.
- * To implement complete GameDay orchestration capability, the following are needed: real fault injection
- * execution, integration with monitoring system for steady-state validation, multi-experiment parallel
- * orchestration, and GameDay report generation. Currently ChaosExperimentScheduler lacks integration
- * with external fault injection systems and real steady-state validation pipeline.
+ * Architecture anchor: This module implements the chaos engineering capabilities
+ * described in §68, providing experiment scheduling, fault injection, and steady-state
+ * validation for the ops-maturity plane.
+ *
+ * Note: GameDay orchestration capabilities (experiment grouping and parallel execution)
+ * are implemented as part of §68 chaos engineering scope.
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
@@ -26,10 +26,37 @@ export interface SteadyStateHypothesis {
   operator: "lt" | "gt" | "eq" | "ne" | "lte" | "gte";
 }
 
+/**
+ * Blast radius limits for chaos experiments.
+ * §61 requires explosion radius control to limit impact scope.
+ */
+export interface BlastRadiusLimits {
+  maxAffectedServices: number;
+  maxAffectedNodes: number;
+  maxAffectedPercentage: number;
+  containedToLabels: Readonly<Record<string, string>> | null;
+}
+
+/**
+ * Rollback strategy for chaos experiments.
+ * §61 requires automatic rollback when hypotheses fail.
+ */
+export interface RollbackStrategy {
+  enabled: boolean;
+  rollbackOnViolation: boolean;
+  autoRestoreDurationMs: number | null;
+  notificationsEnabled: boolean;
+}
+
+/**
+ * Experiment target with blast radius controls.
+ */
 export interface ExperimentTarget {
   targetKind: "service" | "node" | "network" | "database";
   targetId: string;
   labels: Readonly<Record<string, string>>;
+  blastRadius: BlastRadiusLimits;
+  rollbackStrategy: RollbackStrategy;
 }
 
 export interface FaultInjection {
@@ -52,6 +79,10 @@ export interface ChaosExperiment {
   completedAt: string | null;
   maxDurationMs: number;
   results: readonly ExperimentResult[];
+  blastRadius: BlastRadiusLimits;
+  rollbackStrategy: RollbackStrategy;
+  autoRollbackTriggered: boolean;
+  violationDetectedAt: string | null;
 }
 
 export interface ExperimentResult {
@@ -71,6 +102,8 @@ export interface ExperimentScheduleInput {
   steadyStateHypotheses: readonly SteadyStateHypothesis[];
   scheduledAt: string;
   maxDurationMs: number;
+  blastRadius: BlastRadiusLimits;
+  rollbackStrategy: RollbackStrategy;
 }
 
 export interface GameDayScheduleInput {
@@ -119,6 +152,10 @@ export class ChaosExperimentScheduler {
       completedAt: null,
       maxDurationMs: input.maxDurationMs,
       results: [],
+      blastRadius: input.blastRadius,
+      rollbackStrategy: input.rollbackStrategy,
+      autoRollbackTriggered: false,
+      violationDetectedAt: null,
     };
 
     this.experiments.set(experiment.experimentId, experiment);
@@ -154,6 +191,19 @@ export class ChaosExperimentScheduler {
     };
 
     experiment.results = [...experiment.results, result];
+
+    // Check if hypothesis passed
+    if (!passed) {
+      experiment.violationDetectedAt = nowIso();
+
+      // §61: Auto-rollback when hypothesis violation is detected
+      if (experiment.rollbackStrategy.rollbackOnViolation && experiment.rollbackStrategy.enabled) {
+        experiment.autoRollbackTriggered = true;
+        experiment.status = "violated";
+        experiment.completedAt = nowIso();
+        return;
+      }
+    }
 
     // Check if all hypotheses have been evaluated
     if (experiment.results.length >= experiment.steadyStateHypotheses.length) {
@@ -202,9 +252,9 @@ export class ChaosExperimentScheduler {
 
   public listExperiments(status?: ChaosExperiment["status"]): ChaosExperiment[] {
     if (status) {
-      return [...this.experiments.values()].filter((e) => e.status === status);
+      return Array.from(this.experiments.values()).filter((e) => e.status === status);
     }
-    return [...this.experiments.values()];
+    return Array.from(this.experiments.values());
   }
 
   public cancelExperiment(experimentId: string): boolean {

@@ -12,7 +12,14 @@ export interface HarnessLoopState {
   readonly replanCount: number;
   readonly startedAt: number;
   readonly totalCost: number;
+  readonly lastRetryAt: number;
+  readonly retryAttempt: number;
 }
+
+// Backoff constants per §9.3
+const BACKOFF_BASE_MS = 1000; // 1 second base
+const BACKOFF_MAX_MS = 60000; // 60 seconds max
+const JITTER_FACTOR = 0.1; // 10% jitter
 
 export interface HarnessLoopProgress {
   readonly shouldContinue: boolean;
@@ -42,6 +49,8 @@ export class HarnessLoopController {
       replanCount: initialState.replanCount ?? 0,
       startedAt: initialState.startedAt ?? Date.now(),
       totalCost: initialState.totalCost ?? 0,
+      lastRetryAt: initialState.lastRetryAt ?? 0,
+      retryAttempt: initialState.retryAttempt ?? 0,
     };
   }
 
@@ -50,6 +59,8 @@ export class HarnessLoopController {
       ...this.state,
       iteration: this.state.iteration + 1,
       totalCost: Number((this.state.totalCost + cost).toFixed(6)),
+      lastRetryAt: Date.now(),
+      retryAttempt: this.state.retryAttempt + 1,
     };
   }
 
@@ -60,6 +71,17 @@ export class HarnessLoopController {
     };
   }
 
+  /**
+   * Compute exponential backoff with jitter per §9.3.
+   * @returns Backoff delay in milliseconds (base=1s, max=60s, 10% jitter)
+   */
+  public getBackoffMs(): number {
+    const exponentialDelay = BACKOFF_BASE_MS * Math.pow(2, this.state.retryAttempt - 1);
+    const cappedDelay = Math.min(exponentialDelay, BACKOFF_MAX_MS);
+    const jitter = cappedDelay * JITTER_FACTOR * Math.random();
+    return Math.floor(cappedDelay + jitter);
+  }
+
   public shouldContinue(lastAction: HarnessDecisionAction, hasRemainingIterations = true): boolean {
     if (this.getGuardViolation() !== null) {
       return false;
@@ -67,7 +89,12 @@ export class HarnessLoopController {
     if (!hasRemainingIterations) {
       return false;
     }
-    return lastAction === "retry_same_plan" || lastAction === "replan";
+    if (lastAction === "retry_same_plan") {
+      // Enforce exponential backoff + jitter per §9.3 to prevent thundering herd
+      const elapsed = Date.now() - this.state.lastRetryAt;
+      return elapsed >= this.getBackoffMs();
+    }
+    return lastAction === "replan";
   }
 
   public getGuardViolation(now = Date.now()): string | null {

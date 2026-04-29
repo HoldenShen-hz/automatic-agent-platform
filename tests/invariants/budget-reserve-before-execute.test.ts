@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BudgetAllocator } from "../../../src/platform/execution/budget-allocator.js";
-import { createBudgetLedger } from "../../../src/platform/contracts/executable-contracts/index.js";
-import { WorkflowStateError } from "../../../src/platform/contracts/errors.js";
+import { BudgetAllocator } from "../../src/platform/execution/budget-allocator.js";
+import { createBudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
+import { ValidationError, WorkflowStateError } from "../../src/platform/contracts/errors.js";
+
+const context = {
+  tenantId: "tenant-budget-001",
+  traceId: "trace-budget-001",
+  emittedBy: "INV-BUDGET-001-test",
+} as const;
+
+const lockedContext = {
+  ...context,
+  leaseId: "lease-budget-001",
+  fencingToken: "fence-budget-001",
+} as const;
 
 /**
  * INV-BUDGET-001: Budget reservation must precede LLM, tool, side-effect, and evaluation cost.
@@ -33,9 +45,10 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     expectedVersion: 0,
     nodeRunId: "node-1",
+    context: lockedContext,
   });
 
-  assert.equal(reserved.reservation.aggregate.status, "reserved");
+  assert.equal(reserved.reservation.status, "reserved");
   assert.equal(reserved.ledger.reservedAmount, 50);
 
   // Test 2: Settlement after reserve - correct
@@ -43,17 +56,14 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 40,
-    context: {
-      tenantId: "tenant-budget-001",
-      traceId: "trace-budget-001",
-      emittedBy: "INV-BUDGET-001-test",
-    },
+    context,
   });
   assert.equal(settled.reservation.aggregate.status, "settled");
-  assert.equal(settled.ledger.reservedAmount, 50); // Reserved stays until release
+  assert.equal(settled.ledger.reservedAmount, 0);
   assert.equal(settled.ledger.settledAmount, 40);
+  assert.equal(settled.ledger.releasedAmount, 10);
 
-  // Test 3: Reject settlement without prior reservation
+  // Test 3: Reject settlement that exceeds reservation or hard cap
   const ledger2 = createBudgetLedger({
     tenantId: "tenant-budget-001",
     harnessRunId: "run-badget-002",
@@ -62,36 +72,31 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", () => {
     version: 0,
   });
 
-  // Attempting to settle without reserve should fail
+  const reserved2 = allocator.reserve({
+    ledger: ledger2,
+    amount: 10,
+    resourceKind: "llm",
+    expiresAt: new Date(Date.now() + 60000).toISOString(),
+    expectedVersion: 0,
+    nodeRunId: "node-2",
+    context: lockedContext,
+  });
+
   assert.throws(
     () =>
       allocator.settle({
-        ledger: ledger2,
-        reservation: {
-          aggregate: {
-            reservationId: "fake-reservation",
-            harnessRunId: "run-badget-002",
-            nodeRunId: "node-1",
-            resourceKind: "llm",
-            amount: 50,
-            status: "settled" as const,
-            reservedAt: new Date().toISOString(),
-          },
-        },
-        actualAmount: 30,
-        context: {
-          tenantId: "tenant-budget-001",
-          traceId: "trace-budget-002",
-          emittedBy: "INV-BUDGET-001-test",
-        },
+        ledger: reserved2.ledger,
+        reservation: reserved2.reservation,
+        actualAmount: 11,
+        context,
       }),
     (error: unknown) =>
       error instanceof WorkflowStateError &&
-      error.code === "runtime_state_machine.budget_reservation_not_found",
+      error.code === "runtime_state_machine.budget_hard_cap_not_satisfied",
   );
 });
 
-test("INV-BUDGET-001: Replay/simulation scenarios must not create real budget commitments", () => {
+test("INV-BUDGET-001: Zero-cost settlement does not create real spend", () => {
   const allocator = new BudgetAllocator();
 
   const ledger = createBudgetLedger({
@@ -102,7 +107,6 @@ test("INV-BUDGET-001: Replay/simulation scenarios must not create real budget co
     version: 0,
   });
 
-  // Simulate replay mode - budget operations should be projection-only
   const reserved = allocator.reserve({
     ledger,
     amount: 50,
@@ -110,14 +114,18 @@ test("INV-BUDGET-001: Replay/simulation scenarios must not create real budget co
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     expectedVersion: 0,
     nodeRunId: "node-replay-1",
-    replayBehavior: "simulation", // Mark as simulation
+    context: {
+      ...context,
+      traceId: "trace-budget-001-replay",
+      leaseId: "lease-budget-002",
+      fencingToken: "fence-budget-002",
+    },
   });
 
-  // In replay mode, settlement should be a no-op or projection-only
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
-    actualAmount: 0, // No actual cost in replay
+    actualAmount: 0,
     context: {
       tenantId: "tenant-budget-001-replay",
       traceId: "trace-replay-001",
@@ -125,9 +133,9 @@ test("INV-BUDGET-001: Replay/simulation scenarios must not create real budget co
     },
   });
 
-  // Replay settlements should not affect the actual ledger
   assert.equal(settled.ledger.settledAmount, 0);
   assert.equal(settled.reservation.aggregate.status, "settled");
+  assert.equal(settled.ledger.releasedAmount, 50);
 });
 
 test("INV-BUDGET-001: Release properly unwinds reserved amounts", () => {
@@ -148,6 +156,12 @@ test("INV-BUDGET-001: Release properly unwinds reserved amounts", () => {
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     expectedVersion: 0,
     nodeRunId: "node-release-1",
+    context: {
+      ...context,
+      traceId: "trace-release-001",
+      leaseId: "lease-budget-003",
+      fencingToken: "fence-budget-003",
+    },
   });
 
   assert.equal(reserved.ledger.reservedAmount, 75);
@@ -189,10 +203,16 @@ test("INV-BUDGET-001: Deny execution when budget reservation fails", () => {
         expiresAt: new Date(Date.now() + 60000).toISOString(),
         expectedVersion: 0,
         nodeRunId: "node-deny-1",
+        context: {
+          ...context,
+          traceId: "trace-deny-001",
+          leaseId: "lease-budget-004",
+          fencingToken: "fence-budget-004",
+        },
       }),
     (error: unknown) =>
-      error instanceof WorkflowStateError &&
-      error.code === "runtime_state_machine.budget_hard_cap_not_satisfied",
+      error instanceof ValidationError &&
+      error.code === "budget_reservation.hard_cap_exceeded",
   );
 
   // Execution must be blocked when budget reservation fails

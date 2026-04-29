@@ -63,8 +63,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = resolveTenantScope(principal, undefined);
         const limit = readLimit(ctx.request, 50);
-        void tenantId;
-        const incidents: IncidentCase[] = deps.incidentService.listIncidents(limit);
+        const incidents: IncidentCase[] = deps.incidentService.listIncidents(tenantId, limit);
 
         return buildJsonResponse(ctx.requestId, 200, {
           incidents,
@@ -84,9 +83,9 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const incidentId = segments[2]!;
+        const tenantId = resolveTenantScope(principal, undefined);
 
-        void principal;
-        const incident = deps.incidentService.getIncident(incidentId);
+        const incident = deps.incidentService.getIncident(tenantId, incidentId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
         }
@@ -102,8 +101,8 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
         const tenantId = resolveTenantScope(principal, undefined);
 
-        void tenantId;
         const incident = deps.incidentService.openIncident({
+          tenantId,
           severity: payload.severity as IncidentSeverity,
           title: payload.title,
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
@@ -125,20 +124,23 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const incidentId = segments[2]!;
         const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
+        const tenantId = resolveTenantScope(principal, undefined);
 
-        void principal;
-        const incident = deps.incidentService.getIncident(incidentId);
+        const incident = deps.incidentService.getIncident(tenantId, incidentId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
         }
 
         let updated: IncidentCase;
         if (payload.status === "acknowledged" && incident.status === "open") {
-          updated = deps.incidentService.acknowledge(incidentId, payload.owner ?? "unknown");
+          // R14-17: Pass tenantId to enforce tenant scoping on state transitions
+          updated = deps.incidentService.acknowledge(tenantId, incidentId, payload.owner ?? "unknown");
         } else if (payload.status === "mitigating") {
-          updated = deps.incidentService.startMitigation(incidentId);
+          // R14-17: Pass tenantId to enforce tenant scoping on state transitions
+          updated = deps.incidentService.startMitigation(tenantId, incidentId);
         } else if (payload.status === "resolved") {
-          updated = deps.incidentService.resolve(incidentId);
+          // R14-17: Pass tenantId to enforce tenant scoping on state transitions
+          updated = deps.incidentService.resolve(tenantId, incidentId);
         } else {
           throw new ApiError(400, "incident.invalid_transition", `Cannot transition from ${incident.status} to ${payload.status}.`);
         }

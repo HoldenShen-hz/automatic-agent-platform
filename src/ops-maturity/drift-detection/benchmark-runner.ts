@@ -41,11 +41,51 @@ export interface BenchmarkCase {
   critical?: boolean;
 }
 
+/**
+ * Baseline data for a benchmark case - actual historical performance.
+ */
+export interface BaselineData {
+  successRate: number;
+  avgCost: number;
+  avgLatencyMs: number;
+  sampleCount: number;
+}
+
+/**
+ * Executes a proposal against a given input and returns the result.
+ * Required for §56.4 eval version compliance.
+ */
+export interface ProposalExecutor {
+  execute(proposal: ImprovementProposal, input: Record<string, unknown>): Promise<{
+    success: boolean;
+    costUsd: number;
+    latencyMs: number;
+    output?: unknown;
+    violations: string[];
+  }>;
+}
+
 export class SimpleBenchmarkRunner implements BenchmarkRunner {
   private benchmarkCases: BenchmarkCase[] = [];
+  private baselineData: Map<string, BaselineData> = new Map();
+  private proposalExecutor: ProposalExecutor | null = null;
 
   constructor(initialCases: BenchmarkCase[] = []) {
     this.benchmarkCases = initialCases;
+  }
+
+  /**
+   * Set the proposal executor - must be provided for eval version compliance.
+   */
+  setProposalExecutor(executor: ProposalExecutor): void {
+    this.proposalExecutor = executor;
+  }
+
+  /**
+   * Set locked baseline data for a benchmark case.
+   */
+  setBaseline(testCaseId: string, baseline: BaselineData): void {
+    this.baselineData.set(testCaseId, baseline);
   }
 
   addBenchmarkCase(benchmarkCase: BenchmarkCase): void {
@@ -59,20 +99,42 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
     const successCount = results.filter((r) => r.success).length;
     const successRateAfter = benchmarkCases > 0 ? successCount / benchmarkCases : 0;
 
-    // Baseline assumption: 60% success rate before
-    const successRateBefore = 0.60;
+    // Compute baseline from stored locked data for the test cases being evaluated
+    let successRateBefore = 0;
+    let avgCostBefore = 0;
+    let avgLatencyBefore = 0;
+    let baselineCount = 0;
 
-    const avgCostBefore = 0.30; // Baseline assumption
+    for (const result of results) {
+      const baseline = this.baselineData.get(result.testCaseId);
+      if (baseline) {
+        successRateBefore += baseline.successRate * baseline.sampleCount;
+        avgCostBefore += baseline.avgCost * baseline.sampleCount;
+        avgLatencyBefore += baseline.avgLatencyMs * baseline.sampleCount;
+        baselineCount += baseline.sampleCount;
+      }
+    }
+
+    if (baselineCount > 0) {
+      successRateBefore /= baselineCount;
+      avgCostBefore /= baselineCount;
+      avgLatencyBefore /= baselineCount;
+    } else {
+      // No baseline data - cannot compute regression
+      successRateBefore = successRateAfter;
+      avgCostBefore = results.reduce((sum, r) => sum + r.costUsd, 0) / results.length || 0;
+      avgLatencyBefore = results.reduce((sum, r) => sum + r.latencyMs, 0) / results.length || 0;
+    }
+
     const avgCostAfter = results.length > 0
       ? results.reduce((sum, r) => sum + r.costUsd, 0) / results.length
       : avgCostBefore;
-    const avgCostDelta = (avgCostAfter - avgCostBefore) / avgCostBefore;
+    const avgCostDelta = avgCostBefore > 0 ? (avgCostAfter - avgCostBefore) / avgCostBefore : 0;
 
-    const avgLatencyBefore = 5000; // Baseline ms
     const avgLatencyAfter = results.length > 0
       ? results.reduce((sum, r) => sum + r.latencyMs, 0) / results.length
       : avgLatencyBefore;
-    const avgLatencyDelta = (avgLatencyAfter - avgLatencyBefore) / avgLatencyBefore;
+    const avgLatencyDelta = avgLatencyBefore > 0 ? (avgLatencyAfter - avgLatencyBefore) / avgLatencyBefore : 0;
 
     const safetyViolations = results.reduce(
       (sum, r) => sum + r.violations.length,
@@ -108,24 +170,29 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
   }
 
   async runBenchmarks(proposal: ImprovementProposal): Promise<BenchmarkResult[]> {
-    // Simple simulation - in reality this would run actual benchmarks
+    // §56.4: Run actual benchmarks against locked real input samples using eval version
+    if (!this.proposalExecutor) {
+      throw new Error('ProposalExecutor required for §56.4 eval version compliance');
+    }
+
     const relevantCases = this.benchmarkCases.filter(
       (c) => this.isRelevantCase(c, proposal)
     );
 
-    return relevantCases.map((testCase) => {
-      // Simulate running test
-      const random = Math.random();
-      const success = random > 0.3; // 70% simulated success rate
+    const results: BenchmarkResult[] = [];
 
-      return {
+    for (const testCase of relevantCases) {
+      const execResult = await this.proposalExecutor.execute(proposal, testCase.input);
+      results.push({
         testCaseId: testCase.id,
-        success,
-        costUsd: success ? 0.25 : 0.45,
-        latencyMs: success ? 4000 : 8000,
-        violations: success ? [] : ['minor_issue'],
-      };
-    });
+        success: execResult.success,
+        costUsd: execResult.costUsd,
+        latencyMs: execResult.latencyMs,
+        violations: execResult.violations,
+      });
+    }
+
+    return results;
   }
 
   private isRelevantCase(testCase: BenchmarkCase, proposal: ImprovementProposal): boolean {

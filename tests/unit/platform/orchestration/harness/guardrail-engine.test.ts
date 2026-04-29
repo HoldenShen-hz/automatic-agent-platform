@@ -341,8 +341,8 @@ test("GuardrailEngine warns when required evidence missing", () => {
   const assessment = engine.assess(input);
 
   assert.equal(assessment.passed, true);
-  assert.equal(assessment.requiresHuman, true);
-  assert.equal(assessment.suggestedAction, "escalate_to_human");
+  assert.equal(assessment.requiresHuman, false);
+  assert.equal(assessment.suggestedAction, "retry_same_plan");
   const missingFindings = assessment.findings.filter(f => f.code === "harness.guardrail.required_evidence_missing");
   assert.equal(missingFindings.length, 1);
   assert.ok(missingFindings.some(f => f.message.includes("audit_log")));
@@ -483,7 +483,7 @@ test("GuardrailEngine suggestedAction is abort when blocked findings present", (
   assert.equal(assessment.suggestedAction, "abort");
 });
 
-test("GuardrailEngine suggestedAction is escalate_to_human when only warns present", () => {
+test("GuardrailEngine suggestedAction is escalate_to_human when risk warnings are present", () => {
   const engine = new GuardrailEngine();
   const input = createAssessmentInput({
     toolbelt: { ...createMinimalToolbelt(), requiredEvidence: ["req"] },
@@ -496,6 +496,21 @@ test("GuardrailEngine suggestedAction is escalate_to_human when only warns prese
   const assessment = engine.assess(input);
 
   assert.equal(assessment.suggestedAction, "escalate_to_human");
+});
+
+test("GuardrailEngine suggestedAction is retry_same_plan when only evidence warnings are present", () => {
+  const engine = new GuardrailEngine();
+  const input = createAssessmentInput({
+    toolbelt: { ...createMinimalToolbelt(), requiredEvidence: ["req"] },
+    evidenceRefs: [],
+    riskScore: 10,
+    maxRiskScore: 100,
+    escalationThreshold: 80,
+  });
+
+  const assessment = engine.assess(input);
+
+  assert.equal(assessment.suggestedAction, "retry_same_plan");
 });
 
 test("GuardrailEngine suggestedAction is proceed when no issues", () => {
@@ -520,7 +535,7 @@ test("GuardrailEngine requiresHuman is true when risk warn present", () => {
   assert.equal(assessment.requiresHuman, true);
 });
 
-test("GuardrailEngine requiresHuman is true when evidence warn present", () => {
+test("GuardrailEngine requiresHuman is false when only evidence warn is present", () => {
   const engine = new GuardrailEngine();
   const input = createAssessmentInput({
     toolbelt: { ...createMinimalToolbelt(), requiredEvidence: ["req"] },
@@ -529,7 +544,7 @@ test("GuardrailEngine requiresHuman is true when evidence warn present", () => {
 
   const assessment = engine.assess(input);
 
-  assert.equal(assessment.requiresHuman, true);
+  assert.equal(assessment.requiresHuman, false);
 });
 
 test("GuardrailEngine requiresHuman is false when only other warns present", () => {

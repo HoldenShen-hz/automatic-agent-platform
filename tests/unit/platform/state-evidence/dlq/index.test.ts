@@ -88,7 +88,7 @@ test("DeadLetterQueueService markRetryExhausted sets retryExhaustedAt", () => {
 
   const exhausted = service.markRetryExhausted(record.deadLetterId);
 
-  assert.equal(exhausted.status, "pending");
+  assert.equal(exhausted.status, "discarded");
   assert.ok(exhausted.retryExhaustedAt !== null);
   assert.equal(exhausted.nextRetryAt, null);
 });

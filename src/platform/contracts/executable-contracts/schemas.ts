@@ -343,7 +343,7 @@ export const NodeAttemptReceiptSchema = z.object({
   duration: z.number().nonnegative(),
   outputRef: ArtifactRefSchema.optional(),
   error: AppErrorRefSchema.optional(),
-  errorDetail: z.string().optional(),
+  errorDetail: z.string().min(1),
   sideEffectRefs: z.array(z.string()),
   budgetSettlementRefs: z.array(z.string()),
   evidenceRefs: z.array(ArtifactRefSchema),
@@ -381,6 +381,12 @@ export const SideEffectRecordSchema = z.object({
   approvalRef: z.string().optional(),
   preCommitPolicyProofRef: ArtifactRefSchema,
   externalRef: z.string().optional(),
+  /** Per-effect deadline (ISO 8601 timestamp) - must commit before this time per §14.11 */
+  deadline: z.string().min(1),
+  /** Inline rollback handler specification per §14.11 */
+  rollbackHandler: z.string().optional(),
+  /** Inline compensation plan reference per §14.11 */
+  compensationPlan: z.string().optional(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
 });
@@ -612,8 +618,8 @@ const REQUIRED_FIELDS = {
   NodeRun: ["nodeRunId", "harnessRunId", "planGraphBundleId", "graphVersion", "nodeId", "status", "attemptCount", "currentSeq", "createdAt", "updatedAt"],
   NodeAttempt: ["nodeAttemptId", "nodeRunId", "attemptNo", "attemptKind", "startedAt", "executorRef", "inputSnapshotRef"],
   AttemptLineage: ["attemptLineageId", "nodeRunId", "reason", "createdBy", "createdAt"],
-  NodeAttemptReceipt: ["nodeAttemptReceiptId", "nodeAttemptId", "nodeRunId", "harnessRunId", "planGraphId", "graphVersion", "receiptKind", "status", "duration", "sideEffectRefs", "budgetSettlementRefs", "evidenceRefs", "producedAt"],
-  SideEffectRecord: ["sideEffectId", "harnessRunId", "nodeRunId", "nodeAttemptId", "effectKind", "idempotencyKey", "status", "riskClass", "preCommitPolicyProofRef", "createdAt", "updatedAt"],
+  NodeAttemptReceipt: ["nodeAttemptReceiptId", "nodeAttemptId", "nodeRunId", "harnessRunId", "planGraphId", "graphVersion", "receiptKind", "status", "duration", "errorDetail", "sideEffectRefs", "budgetSettlementRefs", "evidenceRefs", "producedAt"],
+  SideEffectRecord: ["sideEffectId", "harnessRunId", "nodeRunId", "nodeAttemptId", "effectKind", "idempotencyKey", "status", "riskClass", "preCommitPolicyProofRef", "deadline", "createdAt", "updatedAt"],
   ReconciliationRecord: ["reconciliationId", "sideEffectId", "probeKind", "externalObservedState", "result", "evidenceRefs", "nextAction", "createdAt"],
   CompensationRecord: ["compensationId", "sideEffectId", "harnessRunId", "planRef", "status", "evidenceRefs", "createdAt"],
   BudgetLedger: ["budgetLedgerId", "tenantId", "harnessRunId", "currency", "hardCap", "reservedAmount", "settledAmount", "releasedAmount", "status", "version"],

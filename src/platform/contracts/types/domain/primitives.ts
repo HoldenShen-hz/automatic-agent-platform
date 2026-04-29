@@ -176,7 +176,8 @@ export type TenantIsolationMode =
   | "shared_logical"
   | "shared_hard_scoped"
   | "dedicated_runtime"
-  | "dedicated_environment";
+  | "dedicated_environment"
+  | "dedicated_pool"; // Per R15-57: dedicated_pool creates real infrastructure isolation
 export type DataNamespacePlane = "transactional" | "artifact" | "analytics" | "memory_archive" | "replay";
 export type EnvironmentName = "dev" | "test" | "staging" | "pre-prod" | "prod" | "development" | "production";
 export type DeploymentMode = "cloud_shared" | "private_cloud" | "on_prem";

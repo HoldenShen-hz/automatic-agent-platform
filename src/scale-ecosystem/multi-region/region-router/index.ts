@@ -17,7 +17,7 @@ export const RegionDescriptorSchema = z.object({
   residencyAllowed: z.boolean().default(true),
 });
 
-export type RegionDescriptor = z.input<typeof RegionDescriptorSchema>;
+export type RegionDescriptor = z.output<typeof RegionDescriptorSchema>;
 
 export function selectPreferredRegion(regions: readonly RegionDescriptor[]): RegionDescriptor | null {
   return regions

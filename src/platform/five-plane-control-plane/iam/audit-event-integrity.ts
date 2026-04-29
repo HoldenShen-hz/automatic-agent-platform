@@ -224,10 +224,12 @@ export function computeTier1AuditChainHash(
  * 4. Event tier - confirms events are actually Tier 1
  *
  * @param entries - Array of integrity records with their corresponding events
+ * @param signingKey - HMAC signing key for tamper-evident verification (required for HMAC-protected events)
  * @returns Verification report with findings and statistics
  */
 export function verifyTier1AuditIntegrity(
   entries: ReadonlyArray<Tier1AuditIntegrityVerificationEntry>,
+  signingKey?: string,
 ): Tier1AuditIntegrityReport {
   const compromisedEventIds = new Set<string>();
   const missingEventIds = new Set<string>();
@@ -261,7 +263,8 @@ export function verifyTier1AuditIntegrity(
       }
 
       // Check 4: Event checksum matches stored value
-      const eventChecksum = computeTier1AuditEventChecksum(entry.event);
+      // R12-16: Use HMAC-SHA-256 with signing key for tamper-evident verification
+      const eventChecksum = computeTier1AuditEventChecksum(entry.event, signingKey);
       if (eventChecksum !== integrityRecord.eventChecksum) {
         compromised = true;
         findings.add(`audit_event_checksum_mismatch:${integrityRecord.eventId}`);
@@ -269,12 +272,13 @@ export function verifyTier1AuditIntegrity(
     }
 
     // Check 5: Chain hash can be recomputed correctly
+    // R12-16: Use HMAC-SHA-256 with signing key for tamper-evident chain verification
     const expectedChainHash = computeTier1AuditChainHash({
       chainPosition: integrityRecord.chainPosition,
       previousChainHash: integrityRecord.previousChainHash,
       eventChecksum: integrityRecord.eventChecksum,
       eventId: integrityRecord.eventId,
-    });
+    }, signingKey);
 
     if (expectedChainHash !== integrityRecord.chainHash) {
       compromised = true;
@@ -303,15 +307,4 @@ export function verifyTier1AuditIntegrity(
     missingEventIds: Array.from(missingEventIds).sort(),
     findings: Array.from(findings).sort(),
   };
-}
-
-/**
- * Internal SHA-256 hashing utility.
- * Uses Node.js crypto module for fast, reliable hashing.
- *
- * @param value - String to hash
- * @returns Hex-encoded hash string
- */
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
 }

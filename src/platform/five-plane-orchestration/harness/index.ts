@@ -71,6 +71,25 @@ export interface ConstraintOutputPolicy {
   readonly redactSensitiveData: boolean;
 }
 
+export interface ConstraintSandboxRequirement {
+  readonly sandboxMode: "none" | "ephemeral" | "persistent" | "network_isolated";
+  readonly timeoutMs: number;
+  readonly allowedHosts?: readonly string[];
+}
+
+export interface ConstraintApprovalRequirement {
+  readonly requiredForRiskClass: readonly ("low" | "medium" | "high" | "critical")[];
+  readonly approverRoles: readonly string[];
+  readonly escalationTimeoutMs: number;
+}
+
+export interface ConstraintBudgetEnvelope {
+  readonly maxSteps: number;
+  readonly maxCost: number;
+  readonly maxDurationMs: number;
+  readonly maxTokens?: number;
+}
+
 export interface ConstraintPack {
   readonly policyIds: readonly string[];
   readonly approvalMode: "none" | "required" | "supervised";
@@ -80,7 +99,14 @@ export interface ConstraintPack {
   readonly outputPolicy?: ConstraintOutputPolicy;
   readonly risk_policy?: ConstraintRiskPolicy;
   readonly output_policy?: ConstraintOutputPolicy;
-  readonly budget: {
+  readonly budget_envelope?: ConstraintBudgetEnvelope;
+  readonly budgetEnvelope?: ConstraintBudgetEnvelope;
+  readonly sandbox_requirement?: ConstraintSandboxRequirement;
+  readonly sandboxRequirement?: ConstraintSandboxRequirement;
+  readonly approval_requirement?: ConstraintApprovalRequirement;
+  readonly approvalRequirement?: ConstraintApprovalRequirement;
+  /** @deprecated Use budgetEnvelope or budget_envelope */
+  readonly budget?: {
     readonly maxSteps: number;
     readonly maxCost: number;
     readonly maxDurationMs: number;
@@ -106,8 +132,11 @@ export function getConstraintOutputPolicy(constraintPack: ConstraintPack): Const
 export function normalizeConstraintPack(constraintPack: ConstraintPack): ConstraintPack {
   const riskPolicy = getConstraintRiskPolicy(constraintPack);
   const outputPolicy = getConstraintOutputPolicy(constraintPack);
+  const budgetEnvelope = constraintPack.budgetEnvelope ?? constraintPack.budget_envelope ?? constraintPack.budget;
+  const sandboxRequirement = constraintPack.sandboxRequirement ?? constraintPack.sandbox_requirement;
+  const approvalRequirement = constraintPack.approvalRequirement ?? constraintPack.approval_requirement;
 
-  return {
+  const result: Record<string, unknown> = {
     policyIds: [...constraintPack.policyIds],
     approvalMode: constraintPack.approvalMode,
     autonomyMode: constraintPack.autonomyMode,
@@ -122,12 +151,31 @@ export function normalizeConstraintPack(constraintPack: ConstraintPack): Constra
       requiredEvidence: [...outputPolicy.requiredEvidence],
       redactSensitiveData: outputPolicy.redactSensitiveData,
     },
-    budget: {
-      maxSteps: constraintPack.budget.maxSteps,
-      maxCost: constraintPack.budget.maxCost,
-      maxDurationMs: constraintPack.budget.maxDurationMs,
-    },
   };
+
+  if (sandboxRequirement != null) {
+    result.sandboxRequirement = sandboxRequirement;
+  }
+  if (approvalRequirement != null) {
+    result.approvalRequirement = approvalRequirement;
+  }
+  if (budgetEnvelope != null) {
+    result.budgetEnvelope = {
+      maxSteps: budgetEnvelope.maxSteps,
+      maxCost: budgetEnvelope.maxCost,
+      maxDurationMs: budgetEnvelope.maxDurationMs,
+      ...("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null
+        ? { maxTokens: budgetEnvelope.maxTokens }
+        : {}),
+    };
+    result.budget = {
+      maxSteps: budgetEnvelope.maxSteps,
+      maxCost: budgetEnvelope.maxCost,
+      maxDurationMs: budgetEnvelope.maxDurationMs,
+    };
+  }
+
+  return result as ConstraintPack;
 }
 
 export interface PlanBundle {
@@ -500,11 +548,12 @@ export class HarnessRuntimeService {
   }): HarnessRunRuntimeState {
     const constraintPack = normalizeConstraintPack(input.constraintPack);
     const runId = newId("harness_run");
+    const budgetEnvelope = constraintPack.budgetEnvelope;
     const budgetLedger = createBudgetLedger({
       tenantId: "tenant:local",
       harnessRunId: runId,
       currency: "USD",
-      hardCap: constraintPack.budget.maxCost,
+      hardCap: budgetEnvelope?.maxCost ?? 100000,
     });
     const run: HarnessRunRuntimeState = {
       harnessRunId: runId,
@@ -528,7 +577,7 @@ export class HarnessRuntimeService {
       }),
       steps: [],
       nodeRunIds: [],
-      maxIterations: constraintPack.budget.maxSteps,
+      maxIterations: budgetEnvelope?.maxSteps ?? 100,
       currentIteration: 0,
       status: "created",
       createdAt: nowIso(),
@@ -549,9 +598,9 @@ export class HarnessRuntimeService {
         replanCount: 0,
         totalCost: 0,
         durationMs: 0,
-        maxIterations: constraintPack.budget.maxSteps,
-        maxCost: constraintPack.budget.maxCost,
-        maxDurationMs: constraintPack.budget.maxDurationMs,
+        maxIterations: budgetEnvelope?.maxSteps ?? 100,
+        maxCost: budgetEnvelope?.maxCost ?? 100000,
+        maxDurationMs: budgetEnvelope?.maxDurationMs ?? 3600000,
       },
     };
     return this.appendTimelineEvent(run, "run_created", {
@@ -907,6 +956,7 @@ export class HarnessRuntimeService {
     requiresHuman?: boolean;
     maxIterationsReached?: boolean;
     riskScore?: number;
+    guardrailSuggestedAction?: GuardrailAssessment["suggestedAction"];
     harnessRunId?: string;
     nodeRunId?: string;
     evidenceRefs?: readonly string[];
@@ -925,6 +975,9 @@ export class HarnessRuntimeService {
     } else if (input.riskScore !== undefined && input.riskScore > 0.8) {
       action = "downgrade_mode";
       reasonCodes.push("harness.risk_high_downgrade");
+    } else if (input.guardrailSuggestedAction === "retry_same_plan") {
+      action = "retry_same_plan";
+      reasonCodes.push("harness.guardrail_retry_same_plan");
     } else if (input.evaluatorScore < 0.5) {
       action = "replan";
       reasonCodes.push("harness.eval_below_replan_threshold");
@@ -1034,6 +1087,7 @@ export class HarnessRuntimeService {
         requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman,
         maxIterationsReached: run.steps.length >= input.constraintPack.budget.maxSteps,
         riskScore: input.riskScore,
+        guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,
         nodeRunId: run.nodeRunIds.at(-1),
         evidenceRefs: input.producedEvidenceRefs,
@@ -1390,7 +1444,7 @@ function createInitialPlanGraphBundle(input: {
   const plannerNodeId = newId("plan_node");
   const generatorNodeId = newId("plan_node");
   const evaluatorNodeId = newId("plan_node");
-  const graphId = newId("plan_graph");
+  const graphId = newId("graph");
   const graphHash = [
     input.taskId,
     input.domainId,
@@ -1398,6 +1452,11 @@ function createInitialPlanGraphBundle(input: {
     generatorNodeId,
     evaluatorNodeId,
   ].join(":");
+  const budgetEnvelope = input.constraintPack.budgetEnvelope ?? input.constraintPack.budget ?? {
+    maxSteps: 100,
+    maxCost: 100000,
+    maxDurationMs: 3600000,
+  };
 
   return {
     planGraphBundleId: newId("plan_graph_bundle"),
@@ -1413,7 +1472,7 @@ function createInitialPlanGraphBundle(input: {
           outputSchemaRef: "schema:harness.plan",
           riskClass: "medium",
           budgetIntent: {
-            amount: Math.max(1, input.constraintPack.budget.maxCost / 3),
+            amount: Math.max(1, budgetEnvelope.maxCost / 3),
             currency: "USD",
             resourceKinds: ["compute"],
           },
@@ -1422,7 +1481,7 @@ function createInitialPlanGraphBundle(input: {
             reversible: true,
           },
           retryPolicyRef: "retry:harness.default",
-          timeoutMs: input.constraintPack.budget.maxDurationMs,
+          timeoutMs: budgetEnvelope.maxDurationMs,
         },
         {
           nodeId: generatorNodeId,
@@ -1431,7 +1490,7 @@ function createInitialPlanGraphBundle(input: {
           outputSchemaRef: "schema:harness.work_product",
           riskClass: "medium",
           budgetIntent: {
-            amount: Math.max(1, input.constraintPack.budget.maxCost / 3),
+            amount: Math.max(1, budgetEnvelope.maxCost / 3),
             currency: "USD",
             resourceKinds: ["compute"],
           },
@@ -1440,7 +1499,7 @@ function createInitialPlanGraphBundle(input: {
             reversible: true,
           },
           retryPolicyRef: "retry:harness.default",
-          timeoutMs: input.constraintPack.budget.maxDurationMs,
+          timeoutMs: budgetEnvelope.maxDurationMs,
         },
         {
           nodeId: evaluatorNodeId,
@@ -1449,7 +1508,7 @@ function createInitialPlanGraphBundle(input: {
           outputSchemaRef: "schema:harness.evaluation",
           riskClass: "medium",
           budgetIntent: {
-            amount: Math.max(1, input.constraintPack.budget.maxCost / 3),
+            amount: Math.max(1, budgetEnvelope.maxCost / 3),
             currency: "USD",
             resourceKinds: ["compute"],
           },
@@ -1458,7 +1517,7 @@ function createInitialPlanGraphBundle(input: {
             reversible: true,
           },
           retryPolicyRef: "retry:harness.default",
-          timeoutMs: input.constraintPack.budget.maxDurationMs,
+          timeoutMs: budgetEnvelope.maxDurationMs,
         },
       ],
       edges: [

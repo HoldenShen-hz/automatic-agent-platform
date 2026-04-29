@@ -131,22 +131,7 @@ export class QueueMetricCollector {
       p95WaitTimeMs: p95WaitTime,
       p99WaitTimeMs: p99WaitTime,
       waitTimes: waitTimeValues,
-      failureReasons: this.failureReasons.map((e) => e.value), 1]! : 0;
-    const p99WaitTime =
-      sortedWaitTimes.length > 0 ? sortedWaitTimes[p99Index] ?? sortedWaitTimes[sortedWaitTimes.length - 1]! : 0;
-
-    return {
-      queueName: this.queueName,
-      timestamp: Date.now(),
-      totalEnqueued: this.enqueued,
-      totalDequeued: this.dequeued,
-      totalFailed: this.failed,
-      depth,
-      averageWaitTimeMs: avgWaitTime,
-      p95WaitTimeMs: p95WaitTime,
-      p99WaitTimeMs: p99WaitTime,
-      waitTimes: [...this.waitTimes],
-      failureReasons: [...this.failureReasons],
+      failureReasons: this.failureReasons.map((e) => e.value),
       enqueuedPerMinute: this.enqueued,
       dequeuedPerMinute: this.dequeued,
       throughputPerMinute: this.enqueued - this.dequeued,

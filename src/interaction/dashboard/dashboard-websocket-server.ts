@@ -36,6 +36,7 @@ export type DashboardPushMessageType =
   | "system.health_changed"
   | "dashboard_snapshot"
   | "connection_ack"
+  | "stream_gap"
   | "error";
 
 export interface DashboardPushMessage {
@@ -49,12 +50,16 @@ export interface WebSocketServerConfig {
   readonly heartbeatIntervalMs: number;
   readonly maxClients: number;
   readonly connectionTimeoutMs: number;
+  readonly replayRetentionMs: number;
+  readonly replayBufferLimit: number;
 }
 
 const DEFAULT_CONFIG: WebSocketServerConfig = {
   heartbeatIntervalMs: 30000,
   maxClients: 1000,
   connectionTimeoutMs: 60000,
+  replayRetentionMs: 24 * 60 * 60 * 1000,
+  replayBufferLimit: 5000,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,6 +78,27 @@ export interface ChannelSubscription {
   readonly filterId?: string; // For "task" channel: taskId; for others: undefined
 }
 
+export interface DashboardSubscriptionAuthorization {
+  readonly allowedChannels: readonly DashboardChannel[];
+  readonly allowedTaskIds?: readonly string[];
+  readonly allowedTenantIds?: readonly string[];
+}
+
+export interface DashboardReplayGap {
+  readonly lastEventId: string;
+  readonly expectedOldestEventId: string | null;
+  readonly latestEventId: string | null;
+  readonly reasonCode: "stream.last_event_id_not_replayable" | "stream.tenant_scope_unavailable";
+  readonly recoveryAction: "resync_from_snapshot";
+}
+
+export interface DashboardReconnectResult {
+  readonly clientId: string;
+  readonly ack: DashboardPushMessage;
+  readonly missedEvents?: readonly DashboardDelta[];
+  readonly gapMessage?: DashboardPushMessage;
+}
+
 function channelToKey(channel: DashboardChannel, filterId?: string): string {
   if (channel === "task" && filterId) {
     return `task:${filterId}`;
@@ -84,10 +110,18 @@ interface ConnectionState {
   clientId: string;
   principal: string;
   tenantId: string;
+  authorization: DashboardSubscriptionAuthorization;
   subscribedChannels: ChannelSubscription[];
   isConnected: boolean;
   lastActivityAt: string;
   heartbeatTimer: ReturnType<typeof setInterval> | null;
+  lastEventId: string | null;      // §7.1: last_event_id for disconnect recovery + gap detection
+  schemaVersion: string;            // §1.8: schema_version negotiation
+}
+
+interface ReplayRecord {
+  readonly delta: DashboardDelta;
+  readonly recordedAtMs: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,6 +132,7 @@ export class DashboardWebSocketServer {
   private readonly config: WebSocketServerConfig;
   private readonly connections = new Map<string, ConnectionState>();
   private readonly channelSubscribers = new Map<string, Set<string>>();
+  private readonly replayBuffer: ReplayRecord[] = [];
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private deltaHandler: ((delta: DashboardDelta, clientIds: readonly string[]) => void) | null = null;
 
@@ -153,21 +188,60 @@ export class DashboardWebSocketServer {
     }
   }
 
+  private validateSubscriptions(
+    channels: readonly ChannelSubscription[],
+    tenantId: string,
+    authorization?: DashboardSubscriptionAuthorization,
+  ): DashboardSubscriptionAuthorization {
+    const effectiveAuthorization = authorization ?? { allowedChannels: ["global"], allowedTenantIds: [tenantId] };
+    const allowedChannels = new Set(effectiveAuthorization.allowedChannels);
+    const allowedTaskIds = new Set(effectiveAuthorization.allowedTaskIds ?? []);
+    const allowedTenantIds = new Set(effectiveAuthorization.allowedTenantIds ?? [tenantId]);
+
+    if (!allowedTenantIds.has(tenantId)) {
+      throw new Error("dashboard.authz: Tenant scope is not authorized");
+    }
+
+    for (const subscription of channels) {
+      if (!allowedChannels.has(subscription.channel)) {
+        throw new Error(`dashboard.authz: Channel ${channelToKey(subscription.channel, subscription.filterId)} is not authorized`);
+      }
+      if (subscription.channel === "task") {
+        if (!subscription.filterId || subscription.filterId.trim().length === 0) {
+          throw new Error("dashboard.authz: Task channel subscriptions require a task filterId");
+        }
+        if (effectiveAuthorization.allowedTaskIds !== undefined && !allowedTaskIds.has(subscription.filterId)) {
+          throw new Error(`dashboard.authz: Task ${subscription.filterId} is outside the authorized scope`);
+        }
+      } else if (subscription.filterId !== undefined) {
+        throw new Error(`dashboard.authz: Channel ${subscription.channel} does not accept filterId`);
+      }
+    }
+
+    return effectiveAuthorization;
+  }
+
   /**
    * Registers a new client connection.
    *
    * @param channels - Channel-based subscriptions per UI spec (global/task:{id}/approvals/admin)
    * @param principal - Principal ID for authentication (required by §11.1)
    * @param tenantId - Tenant ID for multi-tenant isolation (required by §11.1)
+   * @param lastEventId - §7.1: last_event_id for disconnect recovery + gap detection
+   * @param schemaVersion - §1.8: schema_version negotiation (UI arch)
    * @returns Client ID and acknowledgment message
    */
   public registerClient(
     channels: readonly ChannelSubscription[],
     principal: string,
     tenantId: string,
-  ): { clientId: string; ack: DashboardPushMessage } {
+    lastEventId?: string | null,
+    schemaVersion?: string,
+    authorization?: DashboardSubscriptionAuthorization,
+  ): DashboardReconnectResult {
     // Authenticate per §11.1
     this.validateCredentials(principal, tenantId);
+    const validatedAuthorization = this.validateSubscriptions(channels, tenantId, authorization);
 
     if (this.connections.size >= this.config.maxClients) {
       const errorAck = this.createMessage("error", "", {
@@ -182,11 +256,28 @@ export class DashboardWebSocketServer {
       clientId,
       principal,
       tenantId,
+      authorization: validatedAuthorization,
       subscribedChannels: [...channels],
       isConnected: true,
       lastActivityAt: nowIso(),
       heartbeatTimer: null,
+      lastEventId: lastEventId ?? null,   // §7.1: track last_event_id for gap detection
+      schemaVersion: schemaVersion ?? "1.0", // §1.8: schema_version negotiation with default
     };
+
+    // §7.1: Compute missed events if reconnecting with last_event_id
+    let missedEvents: readonly DashboardDelta[] | undefined;
+    let gapMessage: DashboardPushMessage | undefined;
+    if (lastEventId) {
+      const replay = this.computeReconnectReplay(connection, lastEventId);
+      missedEvents = replay.missedEvents;
+      gapMessage = replay.gap === null
+        ? undefined
+        : this.createMessage("stream_gap", clientId, replay.gap);
+      if (missedEvents.length > 0) {
+        connection.lastEventId = missedEvents[missedEvents.length - 1].deltaId;
+      }
+    }
 
     this.connections.set(clientId, connection);
 
@@ -205,9 +296,48 @@ export class DashboardWebSocketServer {
       tenantId,
       subscribedChannels: channels,
       serverTime: nowIso(),
+      schemaVersion: connection.schemaVersion, // §1.8: echo negotiated schema version
+      missedEvents: missedEvents?.length ?? 0,  // §7.1: signal gap recovery to client
+      authorizedChannels: validatedAuthorization.allowedChannels,
+      recoveryRequired: gapMessage !== undefined,
     });
 
-    return { clientId, ack };
+    return { clientId, ack, missedEvents, gapMessage };
+  }
+
+  /**
+   * §7.1: Computes missed events since last_event_id for gap detection + disconnect recovery.
+   */
+  private computeReconnectReplay(
+    connection: ConnectionState,
+    lastEventId: string,
+  ): { missedEvents: readonly DashboardDelta[]; gap: DashboardReplayGap | null } {
+    this.pruneReplayBuffer();
+    const replayable = this.replayBuffer
+      .map((entry) => entry.delta)
+      .filter((delta) => this.canClientReceiveDelta(connection, delta));
+
+    if (replayable.length === 0) {
+      return { missedEvents: [], gap: null };
+    }
+
+    const replayIndex = replayable.findIndex((delta) => delta.deltaId === lastEventId);
+    if (replayIndex >= 0) {
+      return { missedEvents: replayable.slice(replayIndex + 1), gap: null };
+    }
+
+    return {
+      missedEvents: [],
+      gap: {
+        lastEventId,
+        expectedOldestEventId: replayable[0]?.deltaId ?? null,
+        latestEventId: replayable[replayable.length - 1]?.deltaId ?? null,
+        reasonCode: replayable.some((delta) => delta.visibilityScope === "tenant" && delta.tenantId === null)
+          ? "stream.tenant_scope_unavailable"
+          : "stream.last_event_id_not_replayable",
+        recoveryAction: "resync_from_snapshot",
+      },
+    };
   }
 
   /**
@@ -249,6 +379,7 @@ export class DashboardWebSocketServer {
   public updateSubscriptions(clientId: string, channels: readonly ChannelSubscription[]): boolean {
     const connection = this.connections.get(clientId);
     if (!connection) return false;
+    this.validateSubscriptions(channels, connection.tenantId, connection.authorization);
 
     // Remove from old subscriptions
     for (const subscription of connection.subscribedChannels) {
@@ -281,24 +412,13 @@ export class DashboardWebSocketServer {
    * @returns Number of clients that received the push
    */
   public pushDelta(delta: DashboardDelta): number {
+    this.recordReplayDelta(delta);
     const affectedClients = new Set<string>();
 
-    // Find all clients subscribed to affected metrics
-    for (const metric of delta.affectedMetrics) {
-      const clients = this.dashboardSubscribers.get(metric);
-      if (clients) {
-        for (const clientId of clients) {
-          affectedClients.add(clientId);
-        }
-      }
-    }
-
-    // Also push to clients subscribed to "all" dashboards
-    const allClients = this.dashboardSubscribers.get("*");
-    if (allClients) {
-      for (const clientId of allClients) {
-        affectedClients.add(clientId);
-      }
+    // Find all clients subscribed to affected metrics via channel routing
+    const affectedClientIds = this.findAffectedClientIds(delta);
+    for (const clientId of affectedClientIds) {
+      affectedClients.add(clientId);
     }
 
     // Map change types to domain event types per UI spec
@@ -318,6 +438,7 @@ export class DashboardWebSocketServer {
         // In real implementation: ws.send(JSON.stringify(message))
         sentCount++;
         connection.lastActivityAt = nowIso();
+        connection.lastEventId = delta.deltaId;
       }
     }
 
@@ -506,7 +627,10 @@ export class DashboardWebSocketServer {
       const clients = this.channelSubscribers.get(key);
       if (clients) {
         for (const clientId of clients) {
-          clientIds.add(clientId);
+          const connection = this.connections.get(clientId);
+          if (connection && this.canClientReceiveDelta(connection, delta, channel, filterId)) {
+            clientIds.add(clientId);
+          }
         }
       }
     }
@@ -515,11 +639,63 @@ export class DashboardWebSocketServer {
     const globalClients = this.channelSubscribers.get("global");
     if (globalClients) {
       for (const clientId of globalClients) {
-        clientIds.add(clientId);
+        const connection = this.connections.get(clientId);
+        if (connection && this.canClientReceiveDelta(connection, delta, "global")) {
+          clientIds.add(clientId);
+        }
       }
     }
 
     return [...clientIds];
+  }
+
+  private canClientReceiveDelta(
+    connection: ConnectionState,
+    delta: DashboardDelta,
+    routedChannel?: DashboardChannel,
+    routedFilterId?: string,
+  ): boolean {
+    if (delta.visibilityScope === "tenant") {
+      if (delta.tenantId === null || delta.tenantId !== connection.tenantId) {
+        return false;
+      }
+    }
+
+    if (routedChannel === "task") {
+      return connection.subscribedChannels.some((subscription) =>
+        subscription.channel === "task" && subscription.filterId === routedFilterId);
+    }
+
+    if (routedChannel !== undefined) {
+      return connection.subscribedChannels.some((subscription) => subscription.channel === routedChannel);
+    }
+
+    return connection.subscribedChannels.some((subscription) => {
+      if (subscription.channel === "task") {
+        return delta.changes.some((change) => change.entityId === subscription.filterId);
+      }
+      return subscription.channel === "global"
+        || (subscription.channel === "admin" && delta.changes.some((change) => change.changeType.startsWith("incident_")))
+        || (subscription.channel === "approvals" && delta.changes.some((change) => change.changeType.startsWith("approval_")));
+    });
+  }
+
+  private recordReplayDelta(delta: DashboardDelta): void {
+    this.replayBuffer.push({
+      delta,
+      recordedAtMs: Date.now(),
+    });
+    this.pruneReplayBuffer();
+  }
+
+  private pruneReplayBuffer(): void {
+    const cutoff = Date.now() - this.config.replayRetentionMs;
+    while (this.replayBuffer.length > 0 && this.replayBuffer[0]!.recordedAtMs < cutoff) {
+      this.replayBuffer.shift();
+    }
+    while (this.replayBuffer.length > this.config.replayBufferLimit) {
+      this.replayBuffer.shift();
+    }
   }
 
   private createMessage(type: DashboardPushMessage["type"], clientId: string, payload: unknown): DashboardPushMessage {

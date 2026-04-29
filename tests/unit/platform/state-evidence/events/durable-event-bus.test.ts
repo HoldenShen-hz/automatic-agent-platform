@@ -19,7 +19,7 @@ test("durable event bus publishes tier1 event and acks after delivery", async ()
     const seen: string[] = [];
     seedTaskAndExecution(db, store, { taskId: "task-1", executionId: "exec-1", traceId: "trace-1" });
 
-    bus.subscribe("task_projection", async (event) => {
+    bus.subscribe("inspect_projection", async (event) => {
       seen.push(event.eventType);
     });
 
@@ -41,12 +41,12 @@ test("durable event bus publishes tier1 event and acks after delivery", async ()
       },
     });
 
-    const pendingBefore = bus.pendingForConsumer("task_projection");
+    const pendingBefore = bus.pendingForConsumer("inspect_projection");
     assert.equal(pendingBefore.length, 1);
 
-    await bus.deliverPending("task_projection");
+    await bus.deliverPending("inspect_projection");
 
-    const pendingAfter = bus.pendingForConsumer("task_projection");
+    const pendingAfter = bus.pendingForConsumer("inspect_projection");
     const event = store.listEventsForTask("task-1")[0];
     const payload = event ? (JSON.parse(event.payloadJson) as Record<string, unknown>) : null;
     const traceContext = payload?.traceContext as Record<string, unknown> | undefined;
@@ -55,6 +55,7 @@ test("durable event bus publishes tier1 event and acks after delivery", async ()
     assert.equal(traceContext?.spanId, "span-1");
     assert.equal(traceContext?.correlationId, "task-1");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -72,7 +73,7 @@ test("durable event bus publish auto-fans out to active subscribers", async () =
     const seen: string[] = [];
     seedTaskAndExecution(db, store, { taskId: "task-fanout", executionId: "exec-fanout", traceId: "trace-fanout" });
 
-    bus.subscribe("task_projection", async (event) => {
+    bus.subscribe("inspect_projection", async (event) => {
       seen.push(event.id);
     });
 
@@ -88,11 +89,12 @@ test("durable event bus publish auto-fans out to active subscribers", async () =
       },
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     assert.deepEqual(seen, [event.id]);
-    assert.equal(bus.pendingForConsumer("task_projection").length, 0);
+    assert.equal(bus.pendingForConsumer("inspect_projection").length, 0);
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -110,7 +112,7 @@ test("durable event bus continues delivering later pending events after an earli
     seedTaskAndExecution(db, store, { taskId: "task-retry", executionId: "exec-retry", traceId: "trace-retry" });
     const delivered: string[] = [];
 
-    bus.subscribe("task_projection", async (event) => {
+    bus.subscribe("inspect_projection", async (event) => {
       if (event.payloadJson.includes("\"sequence\":1")) {
         throw new Error("projection unavailable");
       }
@@ -140,16 +142,15 @@ test("durable event bus continues delivering later pending events after an earli
       },
     });
 
-    await assert.rejects(
-      () => bus.deliverPending("task_projection"),
-      /dead-lettered/,
-    );
+    await new Promise((resolve) => setTimeout(resolve, 450));
 
     assert.deepEqual(delivered, [second.id]);
-    const remaining = bus.pendingForConsumer("task_projection");
-    assert.equal(remaining.length, 1);
-    assert.equal(remaining[0]?.event.id, first.id);
+    const remaining = bus.pendingForConsumer("inspect_projection");
+    assert.equal(remaining.length, 0);
+    const firstAck = store.event.getEventConsumerAck(first.id, "inspect_projection");
+    assert.equal(firstAck?.status, "dead_lettered");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -166,12 +167,12 @@ test("durable event bus dispose clears subscribers and rejects new operations", 
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-dispose", executionId: "exec-dispose", traceId: "trace-dispose" });
 
-    bus.subscribe("task_projection", async () => undefined);
-    assert.equal(bus.pendingForConsumer("task_projection").length, 0);
+    bus.subscribe("inspect_projection", async () => undefined);
+    assert.equal(bus.pendingForConsumer("inspect_projection").length, 0);
 
     bus.dispose();
 
-    assert.throws(() => bus.pendingForConsumer("task_projection"), /event_bus\.disposed/);
+    assert.throws(() => bus.pendingForConsumer("inspect_projection"), /event_bus\.disposed/);
     assert.throws(
       () =>
         bus.publish({
@@ -183,7 +184,7 @@ test("durable event bus dispose clears subscribers and rejects new operations", 
         }),
       /event_bus\.disposed/,
     );
-    await assert.rejects(() => bus.deliverPending("task_projection"), /event_bus\.disposed/);
+    await assert.rejects(() => bus.deliverPending("inspect_projection"), /event_bus\.disposed/);
 
     db.close();
   } finally {
@@ -203,7 +204,7 @@ test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-
     seedTaskAndExecution(db, store, { taskId: "task-retry-exhaust", executionId: "exec-retry-exhaust", traceId: "trace-retry-exhaust" });
     let attemptCount = 0;
 
-    bus.subscribe("task_projection", async (_event) => {
+    bus.subscribe("inspect_projection", async (_event) => {
       attemptCount++;
       throw new Error("handler always fails");
     });
@@ -221,27 +222,26 @@ test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-
       },
     });
 
-    // deliverPending uses swallowErrors=false, so errors propagate
-    // The handler will be called MAX_DELIVERY_RETRIES+1 times (attempts 0,1,2,3)
-    // with exponential backoff between failures (100, 200, 400 ms)
-    // Total time: ~700ms+ so use 3000ms timeout
-    await assert.rejects(
-      () => bus.deliverPending("task_projection"),
-      /dead-lettered/,
-    );
+    // deliverPending uses swallowErrors=false, so errors propagate.
+    // The handler should be called exactly MAX_DELIVERY_RETRIES times and
+    // then the ack moves to dead_lettered instead of staying pending.
+    await new Promise((resolve) => setTimeout(resolve, 450));
 
-    // Verify handler was called MAX_DELIVERY_RETRIES times (not attempt 4 since last one marks failed)
-    // Actually the loop is for (attempt = 0; attempt <= MAX_DELIVERY_RETRIES; attempt++)
-    // So attempts: 0 (first call), 1 (after backoff 100ms), 2 (after backoff 200ms), 3 (after backoff 400ms)
-    // That's MAX_DELIVERY_RETRIES + 1 = 4 total attempts
-    assert.ok(attemptCount >= 3, `Expected at least 3 handler attempts, got ${attemptCount}`);
+    assert.equal(attemptCount, 3);
 
-    // After dead-lettering, the event should still be in pending list but with status='failed'
-    const remaining = bus.pendingForConsumer("task_projection");
-    assert.equal(remaining.length, 1);
-    assert.equal(remaining[0]?.ack.status, "failed");
-    assert.ok(remaining[0]?.ack.errorCode?.includes("failed_after_3_retries"), `Expected error code with retry info, got: ${remaining[0]?.ack.errorCode}`);
+    // After dead-lettering, the event should no longer be pending and the ack
+    // should be persisted in terminal dead_lettered state.
+    const remaining = bus.pendingForConsumer("inspect_projection");
+    assert.equal(remaining.length, 0);
 
+    const persistedEvent = store.listEventsForTask("task-retry-exhaust")[0];
+    const ack = persistedEvent
+      ? store.event.getEventConsumerAck(persistedEvent.id, "inspect_projection")
+      : undefined;
+    assert.equal(ack?.status, "dead_lettered");
+    assert.ok(ack?.errorCode?.includes("failed_after_3_retries"), `Expected error code with retry info, got: ${ack?.errorCode}`);
+
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -354,6 +354,7 @@ test("durable event bus volatile subscriber error does not propagate", async () 
     // The publish should succeed (error doesn't propagate)
     assert.equal(event.eventType, "stream:chunk_emitted");
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -394,7 +395,7 @@ test("durable event bus unsubscribe removes subscriber", async () => {
     assert.equal(pendingAfter.length, 1, "Should have 1 pending event after publish");
 
     // Wait for async fan-out delivery to complete
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     assert.equal(seen.length, 1);
 
@@ -630,6 +631,7 @@ test("durable event bus publishBatch fanning out to subscribers", async () => {
     assert.ok(seen.includes(events[0]!.id));
     assert.ok(seen.includes(events[1]!.id));
 
+    bus.dispose();
     db.close();
   } finally {
     cleanupPath(workspace);
@@ -656,7 +658,7 @@ test("durable event bus publishBatch creates ack records for tier1 events", asyn
       },
     ]);
 
-    const pending = bus.pendingForConsumer("task_projection");
+    const pending = bus.pendingForConsumer("inspect_projection");
     assert.equal(pending.length, 1);
 
     db.close();
@@ -753,9 +755,9 @@ test("durable event bus deliverPending returns count of delivered events", async
       payload: { fromStatus: "queued", toStatus: "in_progress" },
     });
 
-    bus.subscribe("task_projection", async () => {});
+    bus.subscribe("inspect_projection", async () => {});
 
-    const delivered = await bus.deliverPending("task_projection");
+    const delivered = await bus.deliverPending("inspect_projection");
     assert.equal(delivered, 1);
 
     db.close();

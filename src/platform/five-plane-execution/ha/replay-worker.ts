@@ -6,7 +6,7 @@ import {
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { RuntimeRecoveryReplayService } from "../recovery/runtime-recovery-replay-service-root.js";
-import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "./replay-boundary-guard.js";
+import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "../recovery/replay-boundary-guard.js";
 
 export interface ReplayWorkerOptions {
   readonly replayService: Pick<RuntimeRecoveryReplayService, "buildTaskReplayReport">;

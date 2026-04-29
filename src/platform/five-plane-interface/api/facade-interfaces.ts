@@ -178,16 +178,18 @@ export interface KnowledgeFacadeService {
  * Abstraction for incident case operations (P5).
  */
 export interface IncidentFacadeService {
-  listIncidents(limit?: number): IncidentCase[];
-  getIncident(incidentId: string): IncidentCase | null;
+  listIncidents(tenantId: string | undefined, limit?: number): IncidentCase[];
+  getIncident(tenantId: string | undefined, incidentId: string): IncidentCase | null;
   openIncident(input: {
+    tenantId: string | null;
     severity: IncidentSeverity;
     title: string;
     linkedEvidenceRefs?: string[];
   }): IncidentCase;
-  acknowledge(incidentId: string, owner: string): IncidentCase;
-  startMitigation(incidentId: string): IncidentCase;
-  resolve(incidentId: string): IncidentCase;
+  // R14-17: acknowledge, startMitigation, resolve must receive tenantId to enforce tenant scoping
+  acknowledge(tenantId: string | undefined, incidentId: string, owner: string): IncidentCase;
+  startMitigation(tenantId: string | undefined, incidentId: string): IncidentCase;
+  resolve(tenantId: string | undefined, incidentId: string): IncidentCase;
 }
 
 // ─── No-op implementations for defaults ─────────────────────────────────────
@@ -197,22 +199,23 @@ export interface IncidentFacadeService {
  * Used as a default when incidentService is not provided.
  */
 class NoOpIncidentFacadeService implements IncidentFacadeService {
-  public listIncidents(limit?: number): IncidentCase[] {
+  public listIncidents(_tenantId: string | undefined, limit?: number): IncidentCase[] {
     return [];
   }
-  public getIncident(_incidentId: string): IncidentCase | null {
+  public getIncident(_tenantId: string | undefined, _incidentId: string): IncidentCase | null {
     return null;
   }
-  public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[] }): IncidentCase {
+  public openIncident(input: { tenantId: string | null; severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[] }): IncidentCase {
     throw new Error("Incident service not configured");
   }
-  public acknowledge(_incidentId: string, _owner: string): IncidentCase {
+  // R14-17: acknowledge, startMitigation, resolve must receive tenantId to enforce tenant scoping
+  public acknowledge(_tenantId: string | undefined, _incidentId: string, _owner: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
-  public startMitigation(_incidentId: string): IncidentCase {
+  public startMitigation(_tenantId: string | undefined, _incidentId: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
-  public resolve(_incidentId: string): IncidentCase {
+  public resolve(_tenantId: string | undefined, _incidentId: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
 }

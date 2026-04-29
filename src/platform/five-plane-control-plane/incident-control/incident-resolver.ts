@@ -7,6 +7,7 @@
  */
 
 import { nowIso } from "../../contracts/types/ids.js";
+import { newId } from "../../contracts/types/ids.js";
 import type {
   IncidentDetection,
   IncidentSeverity,
@@ -45,6 +46,35 @@ export interface IncidentResolverOptions {
   maxSelfHealAttempts?: number;
   selfHealTimeoutSeconds?: number;
   escalationThresholdSeconds?: number;
+  postMortemDueHours?: number;
+}
+
+/**
+ * Post-incident report per §12.5/§60.3.
+ * Required within 72h for SEV1/SEV2 incidents.
+ */
+export interface PostIncidentReport {
+  reportId: string;
+  incidentId: string;
+  createdAt: string;
+  dueBy: string;
+  status: "pending" | "in_progress" | "submitted" | "approved";
+  rootCause: string;
+  impact: string;
+  timeline: string;
+  lessonsLearned: string;
+  actionItems: readonly ActionItem[];
+  createdBy: string;
+  approvedBy?: string;
+}
+
+export interface ActionItem {
+  itemId: string;
+  description: string;
+  priority: "critical" | "high" | "medium" | "low";
+  owner: string;
+  dueDate: string | null;
+  status: "open" | "in_progress" | "completed";
 }
 
 export class IncidentResolver {
@@ -83,8 +113,8 @@ export class IncidentResolver {
    * Determines the appropriate resolution strategy based on incident characteristics.
    */
   public determineStrategy(incident: IncidentDetection): ResolutionStrategy {
-    // P1 incidents require immediate manual intervention
-    if (incident.severity === "p1") {
+    // SEV1 incidents require immediate manual intervention
+    if (incident.severity === "SEV1") {
       return "manual";
     }
 
@@ -218,6 +248,69 @@ export class IncidentResolver {
   }
 
   /**
+   * Creates a post-incident report for SEV1/SEV2 incidents per §12.5/§60.3.
+   * Due within 72 hours of incident resolution.
+   */
+  public createPostIncidentReport(
+    incident: IncidentDetection,
+    options?: {
+      rootCause?: string;
+      impact?: string;
+      timeline?: string;
+      lessonsLearned?: string;
+      actionItems?: ActionItem[];
+    },
+  ): PostIncidentReport {
+    const postMortemDueHours = this.options.postMortemDueHours ?? 72;
+    const createdAt = nowIso();
+    const dueByDate = new Date(Date.now() + postMortemDueHours * 60 * 60 * 1000);
+
+    return {
+      reportId: newId("pm_report"),
+      incidentId: incident.incidentId,
+      createdAt,
+      dueBy: dueByDate.toISOString(),
+      status: "pending",
+      rootCause: options?.rootCause ?? "Under investigation",
+      impact: options?.impact ?? "To be determined",
+      timeline: options?.timeline ?? "To be documented",
+      lessonsLearned: options?.lessonsLearned ?? "To be documented",
+      actionItems: options?.actionItems ?? [],
+      createdBy: "system",
+    };
+  }
+
+  /**
+   * Checks if an incident requires post-mortem per §12.5.
+   * SEV1 and SEV2 incidents require post-incident reports.
+   */
+  public requiresPostMortem(incident: IncidentDetection): boolean {
+    return incident.severity === "SEV1" || incident.severity === "SEV2";
+  }
+
+  /**
+   * Checks if post-mortem is overdue (past 72h deadline).
+   */
+  public isPostMortemOverdue(report: PostIncidentReport): boolean {
+    if (report.status === "approved") return false;
+    return Date.now() > Date.parse(report.dueBy);
+  }
+
+  /**
+   * Completes post-mortem with approval.
+   */
+  public approvePostMortemReport(
+    report: PostIncidentReport,
+    approvedBy: string,
+  ): PostIncidentReport {
+    return {
+      ...report,
+      status: "approved",
+      approvedBy,
+    };
+  }
+
+  /**
    * Gets escalation threshold based on resolution strategy.
    */
   private getEscalationThreshold(strategy: ResolutionStrategy): number {
@@ -243,7 +336,7 @@ export class IncidentResolver {
     estimatedDurationSeconds: number,
   ): ResolutionAction {
     return {
-      actionId: `action_${Date.now()}_${step}`,
+      actionId: newId("action"),
       step,
       description,
       strategy,
@@ -256,9 +349,10 @@ export class IncidentResolver {
   }
 
   /**
-   * Generates a unique resolution ID.
+   * Generates a unique resolution ID using cryptographically secure UUID.
+   * §R14-11: Incident ID must use crypto.randomUUID() not Math.random()
    */
   private generateResolutionId(): string {
-    return `resolution_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return newId("resolution");
   }
 }

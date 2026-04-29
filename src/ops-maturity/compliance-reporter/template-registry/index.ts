@@ -45,14 +45,14 @@ type ComplianceTemplateLike = {
   readonly requiredEvidenceTypes: readonly string[];
   readonly renderSchema: readonly string[];
   readonly version: string;
-  // §66.1 template governance fields
-  readonly lockedOnGeneration?: boolean;
-  readonly reportVersionLock?: string | null;
-  readonly requiredDataSources?: readonly string[];
-  readonly legalVersion?: string | null;
-  readonly migrationRule?: string | null;
-  readonly effectiveDate?: string | null;
-  readonly lastReviewDate?: string | null;
+  // §66.1 template governance fields - all required per spec
+  readonly lockedOnGeneration: boolean;
+  readonly reportVersionLock: string | null;
+  readonly requiredDataSources: readonly string[];
+  readonly legalVersion: string | null;
+  readonly migrationRule: string | null;
+  readonly effectiveDate: string | null;
+  readonly lastReviewDate: string | null;
 };
 
 export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike = ComplianceTemplateLike> {

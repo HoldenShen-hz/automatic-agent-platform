@@ -86,13 +86,11 @@ export class ChargebackService {
     const reports = this.source.listReports(input.limit ?? 500, input.tenantId ?? undefined);
     const allocations = new Map<string, ChargebackAllocation>();
     let totalCostUsd = 0;
-    let currency = baseCurrency;
 
     for (const report of reports) {
       // Convert report total to base currency
       const reportTotalInBase = convertCurrency(report.totalCostUsd, report.currency, baseCurrency);
       totalCostUsd += reportTotalInBase;
-      currency = baseCurrency; // Report currency is now base currency
 
       for (const resource of report.resourceCosts) {
         // Convert resource cost to base currency
@@ -117,7 +115,7 @@ export class ChargebackService {
             originalCurrency: resource.currency,
             baseCurrency,
             fxRateToBase: fxRate,
-            costOriginal: resource.costUsd,
+            costOriginal: resource.costUsd / fxRate,
             costUsd: costInBase,
             costSource: resolveCostSource(resource),
             reportCount: 1,
@@ -128,7 +126,8 @@ export class ChargebackService {
         }
         allocations.set(allocationKey, {
           ...current,
-          costOriginal: current.costOriginal + resource.costUsd,
+          // costOriginal is in originalCurrency, not USD — divide USD by fxRate to get original amount
+          costOriginal: current.costOriginal + resource.costUsd / fxRate,
           costUsd: current.costUsd + costInBase,
           reportCount: current.reportCount + 1,
           firstPeriodStart: report.periodStart.localeCompare(current.firstPeriodStart) < 0 ? report.periodStart : current.firstPeriodStart,
@@ -140,7 +139,7 @@ export class ChargebackService {
     return {
       generatedAt: new Date().toISOString(),
       tenantId: input.tenantId ?? null,
-      currency,
+      currency: baseCurrency,
       totalCostUsd,
       reportCount: reports.length,
       allocations: [...allocations.values()].sort((left, right) => right.costUsd - left.costUsd),

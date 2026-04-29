@@ -248,6 +248,42 @@ export class PolicyDeniedError extends AppError {
 }
 
 /**
+ * Error for network connectivity or transport failures.
+ * Includes DNS resolution, connection refused/timeout, TLS handshake failures.
+ * Default HTTP status: 503 Service Unavailable, retryable by default
+ */
+export class NetworkError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "external",
+      source: options.source ?? "gateway",
+      statusCode: options.statusCode ?? 503,
+      retryable: options.retryable ?? true,
+    });
+    this.name = "NetworkError";
+  }
+}
+
+/**
+ * Error for business logic failures - semantic errors from the server that indicate
+ * the request was understood but could not be processed due to business rules.
+ * Default HTTP status: 422 Unprocessable Entity, NOT retryable
+ */
+export class BusinessError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "business-rule",
+      source: options.source ?? "runtime",
+      statusCode: options.statusCode ?? 422,
+      retryable: options.retryable ?? false,
+    });
+    this.name = "BusinessError";
+  }
+}
+
+/**
  * Error for authentication failures.
  * Default HTTP status: 401 Unauthorized
  */

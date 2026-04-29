@@ -45,9 +45,7 @@ export class StateTransitionMachine<TState extends string> {
       throw new WorkflowStateError(`${this.entityKind}.noop_transition_denied`, `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`, {
         details: { entityKind: this.entityKind, current, next },
       });
-    }
-
-    if (!this.transitions[current]?.includes(next)) {
+    } else if (!this.transitions[current]?.includes(next)) {
       throw new WorkflowStateError(`${this.entityKind}.invalid_transition`, `${this.entityKind}.invalid_transition: Invalid transition: ${current} -> ${next}`, {
         details: { entityKind: this.entityKind, current, next },
       });

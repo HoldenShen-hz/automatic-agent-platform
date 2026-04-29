@@ -123,6 +123,9 @@ export interface OapeflirLoopServiceOptions {
   eventPublisher?: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | null;
 }
 
+/** R5-41 §14.3 OAPEFLIR event emission helper */
+type OapeflirEventType = "oapeflir.view.run_lifecycle" | "oapeflir.phase.transition" | "oapeflir.decision.recorded";
+
 export class OapeflirLoopService {
   private readonly situationBuilder = new TaskSituationBuilder();
   private readonly systemSituationBuilder = new SystemSituationBuilder();
@@ -140,6 +143,8 @@ export class OapeflirLoopService {
   private readonly rollout = new PolicyRolloutService();
   private readonly executeBridge: ExecuteBridge;
   private readonly boundaryLogger = new StructuredLogger({ retentionLimit: 500 });
+  /** R5-41 §14.3 Event publisher for OAPEFLIR lifecycle events */
+  private readonly eventPublisher: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | null = null;
   /** R5-4 HarnessLoopController for max-iteration/max-replan/max-duration/max-cost guards */
   private loopController: HarnessLoopController | null = null;
   /** R5-2 Loop iteration counter for re-entrant replanning */
@@ -161,10 +166,30 @@ export class OapeflirLoopService {
     } else {
       this.executeBridge = new MockExecuteBridge();
     }
+    // R5-41 §14.3: Store event publisher for run() lifecycle emissions
+    this.eventPublisher = options.eventPublisher ?? null;
     // G7: Wire eventPublisher to KnowledgePromotionService for learning:knowledge_promoted events
     this.knowledgePromotion = new KnowledgePromotionService({
       eventPublisher: options.eventPublisher ?? null,
     });
+  }
+
+  /**
+   * R5-41 §14.3: Emits OAPEFLIR lifecycle and phase transition events.
+   * Called at key state transitions throughout the run() method.
+   */
+  private emitOapeflirEvent(
+    eventType: OapeflirEventType,
+    payload: Record<string, unknown>,
+    taskId: string,
+  ): void {
+    if (this.eventPublisher) {
+      this.eventPublisher.publish({
+        eventType,
+        taskId,
+        payload: payload as import("../../five-plane-state-evidence/events/typed-event-bus.js").TypedEventPayloadMap[OapeflirEventType],
+      });
+    }
   }
 
   public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
@@ -201,6 +226,13 @@ export class OapeflirLoopService {
       }
       this.stageFsm.recordStageEntry("observe");
       this.currentFsmStage = "observe";
+      // R5-41 §14.3: Emit observe stage entry event
+      this.emitOapeflirEvent("oapeflir.view.run_lifecycle", {
+        stage: "observe",
+        runId: `oapeflir_run_${input.taskId}`,
+        taskId: input.taskId,
+        occurredAt: nowIso(),
+      }, input.taskId);
 
       while (shouldContinue) {
         const timeline = new OapeflirStageTimelineBuilder();
@@ -238,6 +270,14 @@ export class OapeflirLoopService {
         }
         this.stageFsm.recordStageEntry("assess");
         this.currentFsmStage = "assess";
+        // R5-41 §14.3: Emit observe→assess phase transition
+        this.emitOapeflirEvent("oapeflir.phase.transition", {
+          runId: `oapeflir_run_${currentInput.taskId}`,
+          fromPhase: "observe",
+          toPhase: "assess",
+          taskId: currentInput.taskId,
+          occurredAt: nowIso(),
+        }, currentInput.taskId);
 
         // O→A boundary: validate TaskSituation — degrade to default on failure (per §L.14)
         const observedTask: TaskSituation = (() => {
@@ -252,7 +292,7 @@ export class OapeflirLoopService {
             timestamp: Date.now(),
             objective: currentInput.objective,
             currentPhase: "planning",
-            userIntent: { raw: currentInput.objective, normalized: currentInput.objective, confidence: 0.5 },
+            userIntent: { raw: currentInput.objective, normalized: currentInput.objective, confidence: 0.75 },
             blockers: [],
             codebaseSnapshot: { rootPath: ".", fileCount: 0, relevantFiles: [] },
             environmentContext: { nodeVersion: process.version, platform: process.platform, workingDirectory: process.cwd(), availableTools: [] },
@@ -263,7 +303,26 @@ export class OapeflirLoopService {
           };
         })();
 
-        const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess(observedTask), {
+        const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess({
+          taskSituation: observedTask,
+          constraintPack: currentInput.constraintPack,
+          effectivePolicySnapshot: currentInput.constraintPack == null
+            ? undefined
+            : {
+                snapshotId: `policy_snapshot:${currentInput.taskId}:${this.loopIteration}`,
+                requiredApprovalLevel: currentInput.constraintPack.approvalMode === "required"
+                  ? "admin"
+                  : currentInput.constraintPack.approvalMode === "supervised"
+                    ? "user"
+                    : "none",
+                blockedTools: [],
+                forcedExecutionMode: currentInput.constraintPack.autonomyMode === "suggestion"
+                  ? "manual"
+                  : currentInput.constraintPack.autonomyMode === "supervised"
+                    ? "supervised"
+                    : undefined,
+              },
+        }), {
           taskId: currentInput.taskId,
         });
         timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
@@ -276,6 +335,14 @@ export class OapeflirLoopService {
         }
         this.stageFsm.recordStageEntry("plan");
         this.currentFsmStage = "plan";
+        // R5-41 §14.3: Emit assess→plan phase transition
+        this.emitOapeflirEvent("oapeflir.phase.transition", {
+          runId: `oapeflir_run_${currentInput.taskId}`,
+          fromPhase: "assess",
+          toPhase: "plan",
+          taskId: currentInput.taskId,
+          occurredAt: nowIso(),
+        }, currentInput.taskId);
 
         // A→P boundary: validate UnifiedAssessment — default to fallback on failure (per §L.14)
         const validatedAssessment: UnifiedAssessment = (() => {
@@ -340,7 +407,7 @@ export class OapeflirLoopService {
           },
           schedulerPolicy: { policyId: "scheduler:oapeflir.fifo", strategy: "deterministic_fifo" },
           budgetPlanRef: "budget:oapeflir.default",
-          riskProfile: { riskClass: assessment.risk as "low" | "medium" | "high" | "critical", reasons: [`complexity:${assessment.complexity}`] },
+          riskProfile: { riskClass: validatedAssessment.risk as "low" | "medium" | "high" | "critical", reasons: [`complexity:${validatedAssessment.complexity}`] },
           validationReport: { valid: true, findings: [] },
         });
         this.currentPlanGraphBundle = planGraphBundle;
@@ -354,6 +421,14 @@ export class OapeflirLoopService {
         }
         this.stageFsm.recordStageEntry("execute");
         this.currentFsmStage = "execute";
+        // R5-41 §14.3: Emit plan→execute phase transition
+        this.emitOapeflirEvent("oapeflir.phase.transition", {
+          runId: `oapeflir_run_${currentInput.taskId}`,
+          fromPhase: "plan",
+          toPhase: "execute",
+          taskId: currentInput.taskId,
+          occurredAt: nowIso(),
+        }, currentInput.taskId);
 
         // P→E boundary: validate Plan DTO — abort on failure (per §L.14)
         const planValidation = validatePlan(plan);
@@ -399,6 +474,14 @@ export class OapeflirLoopService {
         }
         this.stageFsm.recordStageEntry("feedback");
         this.currentFsmStage = "feedback";
+        // R5-41 §14.3: Emit execute→feedback phase transition
+        this.emitOapeflirEvent("oapeflir.phase.transition", {
+          runId: `oapeflir_run_${currentInput.taskId}`,
+          fromPhase: "execute",
+          toPhase: "feedback",
+          taskId: currentInput.taskId,
+          occurredAt: nowIso(),
+        }, currentInput.taskId);
 
         // E→F boundary: validate step outputs and feedback signals — skip feedback on failure (per §L.14)
         const validatedStepOutputs: DualChannelStepOutput[] = (() => {
@@ -445,6 +528,14 @@ export class OapeflirLoopService {
         if (learnTransition.allowed) {
           this.stageFsm.recordStageEntry("learn");
           this.currentFsmStage = "learn";
+          // R5-41 §14.3: Emit feedback→learn phase transition
+          this.emitOapeflirEvent("oapeflir.phase.transition", {
+            runId: `oapeflir_run_${currentInput.taskId}`,
+            fromPhase: "feedback",
+            toPhase: "learn",
+            taskId: currentInput.taskId,
+            occurredAt: nowIso(),
+          }, currentInput.taskId);
         }
 
         const learningObjects = await this.runStage<LearningObject[]>("learn", () => this.learning.learn(validatedLearningSignals), {
@@ -466,7 +557,7 @@ export class OapeflirLoopService {
 
         // G7: Promote validated learning objects into the knowledge plane
         if (learningObjects.length > 0) {
-          this.knowledgePromotion.promote(learningObjects, currentInput.taskId);
+          await this.knowledgePromotion.promote(learningObjects, currentInput.taskId);
         }
 
         const outcome = this.outcomeEvaluator.evaluate(plan, feedback);
@@ -581,20 +672,53 @@ export class OapeflirLoopService {
 
         // R5-2: Re-entrant loop check - if replanDecision says replan, loop back to plan stage
         shouldContinue = false;
-        if (replanDecision.shouldReplan && this.loopController) {
-          // R5-4: Record iteration and check guards
-          this.loopController.recordIteration(0); // Cost estimation would need actual metrics
-          if (replanDecision.strategy === "replanned") {
-            this.loopController.recordReplan();
+        // R19-03: replanDecision is authoritative — act on it regardless of loopController presence
+        if (replanDecision.shouldReplan) {
+          // R5-4: Record iteration and check guards if loopController exists
+          if (this.loopController) {
+            this.loopController.recordIteration(0); // Cost estimation would need actual metrics
+            if (replanDecision.strategy === "replanned") {
+              this.loopController.recordReplan();
+            }
+
+            const progress = this.loopController.evaluateProgress(
+              "replan",
+              true, // has remaining iterations
+            );
+
+            if (!progress.shouldContinue) {
+              // Guard triggered stop
+              harnessDecision = {
+                decisionId: newId("harness_decision"),
+                decisionInputBundleId: "",
+                decisionKind: "replan",
+                decision: "abort",
+                deciderType: "system",
+                deciderRef: "harness.guardrails",
+                reasonCode: progress.violation ?? "harness.guard.max_iterations_reached",
+                createdAt: nowIso(),
+              };
+              // R5-41 §14.3: Emit replan aborted event
+              this.emitOapeflirEvent("oapeflir.view.run_lifecycle", {
+                stage: "replan_aborted",
+                runId: `oapeflir_run_${currentInput.taskId}`,
+                taskId: currentInput.taskId,
+                occurredAt: nowIso(),
+              }, currentInput.taskId);
+              // Do not set shouldContinue — fall through to return
+            }
           }
 
-          const progress = this.loopController.evaluateProgress(
-            "replan",
-            true, // has remaining iterations
-          );
+          // R5-12: Produce GraphPatch for replan (R19-03 fix: always execute when shouldReplan is true)
+          if (harnessDecision === null) {
+            // R5-41 §14.3: Emit replanning lifecycle event
+            this.emitOapeflirEvent("oapeflir.view.run_lifecycle", {
+              stage: "replanning",
+              runId: `oapeflir_run_${currentInput.taskId}`,
+              taskId: currentInput.taskId,
+              occurredAt: nowIso(),
+            }, currentInput.taskId);
 
-          if (progress.shouldContinue) {
-            // R5-12: Produce GraphPatch for replan
             const newGraphVersion = (this.currentPlanGraphBundle?.graphVersion ?? 0) + 1;
             graphPatch = createGraphPatch({
               harnessRunId: `oapeflir_run_${currentInput.taskId}`,
@@ -615,6 +739,11 @@ export class OapeflirLoopService {
             this.currentGraphPatch = graphPatch;
 
             // R5-3: Allow backward transition feedback→plan for replanning
+            // R19-01 fix: validate transition via FSM before recording
+            const replanPlanTransition = this.stageFsm.canTransitionTo("plan");
+            if (!replanPlanTransition.allowed) {
+              throw new Error(`fsm.transition_rejected: ${replanPlanTransition.reasonCode}`);
+            }
             this.stageFsm.recordStageEntry("plan");
             this.currentFsmStage = "plan";
 
@@ -635,27 +764,22 @@ export class OapeflirLoopService {
 
             // R5-4: Record loop metrics
             if (this.loopController) {
-              const loopState = this.loopController.getState();
               runtimeMetricsRegistry.recordOapeflirStageEntry("loop_iteration");
               runtimeMetricsRegistry.recordOapeflirStageExit("loop_iteration", "completed", 0);
             }
             continue;
-          } else {
-            // Guard triggered stop
-            harnessDecision = {
-              decisionId: newId("harness_decision"),
-              decisionInputBundleId: "",
-              decisionKind: "replan",
-              decision: "abort",
-              deciderType: "system",
-              deciderRef: "harness.guardrails",
-              reasonCode: progress.violation ?? "harness.guard.max_iterations_reached",
-              createdAt: nowIso(),
-            };
           }
         }
 
         // R5-2: Final return only when loop completes (no replan needed or guard stopped)
+        // R5-41 §14.3: Emit loop completed lifecycle event
+        this.emitOapeflirEvent("oapeflir.view.run_lifecycle", {
+          stage: "completed",
+          runId: `oapeflir_run_${input.taskId}`,
+          taskId: input.taskId,
+          occurredAt: nowIso(),
+        }, input.taskId);
+
         return {
           observation: taskObservation,
           assessment,
@@ -677,6 +801,14 @@ export class OapeflirLoopService {
       }
 
       // R5-2: Exit with last known state when guard triggered
+      // R5-41 §14.3: Emit loop aborted lifecycle event
+      this.emitOapeflirEvent("oapeflir.view.run_lifecycle", {
+        stage: "aborted",
+        runId: `oapeflir_run_${input.taskId}`,
+        taskId: input.taskId,
+        occurredAt: nowIso(),
+      }, input.taskId);
+
       return {
         observation: null as unknown as UnifiedObservation,
         assessment: null as unknown as UnifiedAssessment,
@@ -729,19 +861,30 @@ export class OapeflirLoopService {
   }
 
   private buildFeedbackSignals(taskId: string, stepOutputs: readonly DualChannelStepOutput[]): FeedbackSignal[] {
-    return stepOutputs.map((output, index) => ({
-      signalId: `signal_${index + 1}`,
-      taskId,
-      source: index === stepOutputs.length - 1 ? "user" : "execution",
-      category: "success",
-      severity: "info",
-      payload: {
-        summary: output.userFacingResult.summary,
-        durationMs: output.systemTelemetry.durationMs,
-      },
-      stepOutputRefs: [output.stepId],
-      timestamp: Date.now() + index,
-    }));
+    return stepOutputs.map((output, index) => {
+      // Map step status to feedback category
+      const category = output.status === "succeeded"
+        ? "success"
+        : output.status === "failed"
+          ? "failure"
+          : output.status === "partial_success"
+            ? "partial"
+            : "correction"; // "skipped" maps to "correction"
+
+      return {
+        signalId: `signal_${index + 1}`,
+        taskId,
+        source: index === stepOutputs.length - 1 ? "user" : "execution",
+        category,
+        severity: "info",
+        payload: {
+          summary: output.userFacingResult.summary,
+          durationMs: output.systemTelemetry.durationMs,
+        },
+        stepOutputRefs: [output.stepId],
+        timestamp: Date.now() + index,
+      };
+    });
   }
 
   /**

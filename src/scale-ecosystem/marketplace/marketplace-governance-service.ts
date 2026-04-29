@@ -78,6 +78,13 @@ export interface RegisterExtensionPackageInput {
   lifecycleState?: ExtensionLifecycleState;
   /** Whether review is required before publication */
   reviewRequired?: boolean;
+  // §55.1 Quality & Security Gate
+  /** Whether SBOM (Software Bill of Materials) has been verified */
+  sbomVerified?: boolean;
+  /** Whether sandbox certificate has been verified */
+  sandboxCertVerified?: boolean;
+  /** Whether egress policy compliance has been verified */
+  egressPolicyCompliant?: boolean;
   /** Creation timestamp override */
   createdAt?: string;
   /** Update timestamp override */
@@ -393,6 +400,10 @@ export class MarketplaceGovernanceService {
       manifestChecksum: assertChecksum(input.manifestChecksum, "marketplace.invalid_manifest_checksum"),
       lifecycleState: input.lifecycleState ?? "installed",
       reviewRequired: input.reviewRequired === false ? 0 : 1,
+      // §55.1 Quality & Security Gate fields
+      sbomVerified: input.sbomVerified === true ? 1 : 0,
+      sandboxCertVerified: input.sandboxCertVerified === true ? 1 : 0,
+      egressPolicyCompliant: input.egressPolicyCompliant === true ? 1 : 0,
       createdAt,
       updatedAt,
     };
@@ -559,6 +570,39 @@ export class MarketplaceGovernanceService {
     // Non-internal packages require signature verification
     if (packageRecord.trustLevel !== "internal" && packageRecord.signatureVerified !== 1) {
       throw new PolicyDeniedError("marketplace.signature_required", "marketplace.signature_required", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          trustLevel: packageRecord.trustLevel,
+        },
+      });
+    }
+
+    // §55.1 Quality & Security Gate: SBOM verification required for publication
+    if (packageRecord.trustLevel !== "internal" && packageRecord.sbomVerified !== 1) {
+      throw new PolicyDeniedError("marketplace.sbom_required", "marketplace.sbom_required", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          trustLevel: packageRecord.trustLevel,
+        },
+      });
+    }
+
+    // §55.1 Quality & Security Gate: Sandbox certificate required for publication
+    if (packageRecord.trustLevel !== "internal" && packageRecord.sandboxCertVerified !== 1) {
+      throw new PolicyDeniedError("marketplace.sandbox_cert_required", "marketplace.sandbox_cert_required", {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          trustLevel: packageRecord.trustLevel,
+        },
+      });
+    }
+
+    // §55.1 Quality & Security Gate: Egress policy compliance required for publication
+    if (packageRecord.trustLevel !== "internal" && packageRecord.egressPolicyCompliant !== 1) {
+      throw new PolicyDeniedError("marketplace.egress_policy_required", "marketplace.egress_policy_required", {
         retryable: false,
         details: {
           packageId: packageRecord.packageId,

@@ -55,33 +55,7 @@ export * from "./evidence-record/index.js";
 // Deprecated Contracts - DO NOT USE IN NEW CODE
 // -----------------------------------------------------------------------------
 // These are retained for backward compatibility only.
-
-// Legacy request-envelope - deprecated, use executable-contracts RequestEnvelope
-// NOTE: Only re-export the factory as deprecated alias; types come from executable-contracts
-export {
-  createRequestEnvelope as createLegacyRequestEnvelope,
-} from "./request-envelope/index.js";
-
-// Legacy control-directive (re-exported from platform-contracts for convenience)
-export {
-  type ControlDirectiveKind,
-  type ControlDirective,
-  createControlDirective,
-} from "./types/platform-contracts.js";
-
-// Legacy ExecutionPlan - deprecated, use PlanGraphBundle from executable-contracts
-export {
-  type ExecutionPlan,
-  type ExecutionPlanStep,
-  createExecutionPlan,
-} from "./types/platform-contracts.js";
-
-// Legacy ExecutionReceipt - deprecated, use NodeAttemptReceipt from executable-contracts
-export {
-  type ExecutionReceipt,
-  type ExecutionReceiptStatus,
-  createExecutionReceipt,
-} from "./types/platform-contracts.js";
+// Deprecated types are accessible via executable-contracts or their source directories.
 
 // -----------------------------------------------------------------------------
 // LEGACY_CONTRACT_NAMES - for linting/deprecation enforcement
@@ -102,3 +76,43 @@ export const LEGACY_CONTRACT_NAMES = [
   "StepOutput",
   "workflow_run",
 ] as const;
+
+export type LegacyContractName = (typeof LEGACY_CONTRACT_NAMES)[number];
+
+/**
+ * Emits a console warning if a deprecated contract name is detected.
+ * Use this in migration scripts or CI to detect usage of deprecated contracts.
+ *
+ * @param contractName - The contract name to check
+ * @param importPath - The path where the contract was imported from (for error reporting)
+ * @returns true if the contract is deprecated (warning was emitted)
+ */
+export function emitDeprecationWarning(contractName: string, importPath?: string): boolean {
+  if (LEGACY_CONTRACT_NAMES.includes(contractName as LegacyContractName)) {
+    const pathSuffix = importPath ? ` imported from "${importPath}"` : "";
+    console.warn(
+      `[DEPRECATION WARNING] "${contractName}"${pathSuffix} is a deprecated contract. ` +
+      `Migrate to canonical executable-contracts per §4 and §5.3. ` +
+      `See LEGACY_CONTRACT_NAMES in platform/contracts/index.ts for the full list.`,
+    );
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Validates that a contract name is not in the deprecated list.
+ * Use in factory functions or constructors to fail fast on deprecated usage.
+ *
+ * @param contractName - The contract name to validate
+ * @throws Error if the contract is deprecated
+ */
+export function assertNotDeprecated(contractName: string): void {
+  if (LEGACY_CONTRACT_NAMES.includes(contractName as LegacyContractName)) {
+    throw new Error(
+      `Contract "${contractName}" is deprecated per §4 and §5.3. ` +
+      `Use canonical executable-contracts instead. ` +
+      `See LEGACY_CONTRACT_NAMES in platform/contracts/index.ts.`,
+    );
+  }
+}

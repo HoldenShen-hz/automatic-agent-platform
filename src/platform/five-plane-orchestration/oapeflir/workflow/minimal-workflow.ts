@@ -58,6 +58,11 @@ export type CompensationModel =
  * Each step is assigned to a role and produces an output under a specified key.
  * Steps can declare dependencies on other steps, creating a directed acyclic graph
  * of execution order.
+ *
+ * R19-09 fix: Extended with optional rich metadata fields from PlanNode to preserve
+ * riskClass, budgetIntent, sideEffectProfile, and nodeType through the orchestration pipeline.
+ * These fields were previously lost when buildOapeflirPlannedWorkflow converted
+ * PlanNode[] to MinimalWorkflowStep[], bypassing the validated PlanGraphBundle.
  */
 export interface MinimalWorkflowStep {
   /** Unique identifier for this step within the workflow */
@@ -88,6 +93,18 @@ export interface MinimalWorkflowStep {
    *  - "compensating_action": a reverse action undoes the side effect
    *  - "manual_reconciliation_required": human intervention needed on failure */
   compensationModel?: CompensationModel;
+
+  // R19-09 fix: Rich metadata from PlanNode preserved through orchestration pipeline
+  /** Node type from the original PlanNode (e.g. "llm", "tool", "subgraph") */
+  nodeType?: import("../../../../platform/contracts/executable-contracts/index.js").PlanNodeType;
+  /** Risk class from the original PlanNode - controls execution isolation and review requirements */
+  riskClass?: import("../../../../platform/contracts/executable-contracts/index.js").RiskClass;
+  /** Budget intent from the original PlanNode - token and compute budget allocation */
+  budgetIntent?: import("../../../../platform/contracts/executable-contracts/index.js").BudgetIntent;
+  /** Side effect profile from the original PlanNode - external effect and reversibility info */
+  sideEffectProfile?: import("../../../../platform/contracts/executable-contracts/index.js").SideEffectProfile;
+  /** Retry policy reference from the original PlanNode */
+  retryPolicyRef?: string;
 }
 
 /**

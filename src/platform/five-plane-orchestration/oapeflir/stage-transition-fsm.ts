@@ -76,6 +76,7 @@ export class StageTransitionFSM {
   private currentStageIndex: number = 0;
   private readonly stageStatuses = new Map<OapeflirStage, StageStatus>();
   private readonly stageTimestamps = new Map<OapeflirStage, number>();
+  private readonly stageSkipReasons = new Map<OapeflirStage, string>();
 
   public constructor() {
     for (const stage of STAGE_ORDER) {
@@ -93,6 +94,10 @@ export class StageTransitionFSM {
 
   public getStageTimestamp(stage: OapeflirStage): number | undefined {
     return this.stageTimestamps.get(stage);
+  }
+
+  public getStageSkipReason(stage: OapeflirStage): string | undefined {
+    return this.stageSkipReasons.get(stage);
   }
 
   public canTransitionTo(targetStage: OapeflirStage): StageTransitionResult {
@@ -193,6 +198,14 @@ export class StageTransitionFSM {
   public recordStageEntry(stage: OapeflirStage, status: StageStatus = "pending"): void {
     this.stageStatuses.set(stage, status);
     this.stageTimestamps.set(stage, Date.now());
+    // R19-02 fix: also update currentStageIndex so getCurrentStage() reflects the entered stage.
+    // This is critical for backward transitions during replan (feedback→plan) where we call
+    // recordStageEntry without calling recordStageCompletion first.
+    const targetIndex = STAGE_ORDER.indexOf(stage);
+    if (targetIndex >= 0 && targetIndex < this.currentStageIndex) {
+      // Entering an earlier stage (backward transition) - update index to track position
+      this.currentStageIndex = targetIndex;
+    }
   }
 
   public recordStageCompletion(stage: OapeflirStage): void {
@@ -208,6 +221,7 @@ export class StageTransitionFSM {
   public recordStageSkipped(stage: OapeflirStage, reasonCode: string): void {
     this.stageStatuses.set(stage, "skipped");
     this.stageTimestamps.set(stage, Date.now());
+    this.stageSkipReasons.set(stage, reasonCode);
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
     if (stageIndex >= this.currentStageIndex) {

@@ -131,6 +131,7 @@ export class CircuitBreaker {
    * Record a successful call.
    */
   onSuccess(): void {
+    this.promoteToHalfOpenIfProbeWindowExpired();
     this.onSuccessInternal();
 
     if (this.state === "half_open") {
@@ -158,6 +159,7 @@ export class CircuitBreaker {
    * Record a failed call.
    */
   onFailure(): void {
+    this.promoteToHalfOpenIfProbeWindowExpired();
     this.onFailureInternal();
 
     // Track failure for rate-based opening
@@ -190,13 +192,7 @@ export class CircuitBreaker {
    * Get current circuit breaker state.
    */
   getState(): CircuitBreakerState {
-    // Check if we should transition from open to half_open
-    if (this.state === "open" && this.nextAttemptAt !== null) {
-      if (Date.now() >= this.nextAttemptAt) {
-        this.transitionTo("half_open");
-      }
-    }
-    return this.state;
+    return this.computeReadableState();
   }
 
   /**
@@ -204,7 +200,7 @@ export class CircuitBreaker {
    */
   getMetrics(): CircuitBreakerMetrics {
     return {
-      state: this.getState(),
+      state: this.computeReadableState(),
       failures: this.failures,
       successes: this.successes,
       consecutiveFailures: this.consecutiveFailures,
@@ -219,17 +215,19 @@ export class CircuitBreaker {
    * Check if circuit allows execution.
    */
   private canExecute(): boolean {
-    if (this.state === "closed") {
+    const readableState = this.computeReadableState();
+    if (readableState === "closed") {
       return true;
     }
 
-    if (this.state === "open") {
-      if (this.nextAttemptAt !== null && Date.now() >= this.nextAttemptAt) {
-        this.transitionTo("half_open");
-        this.halfOpenInFlight++;
-        return true;
-      }
+    if (readableState === "open") {
       return false;
+    }
+
+    if (this.state === "open") {
+      this.transitionTo("half_open");
+      this.halfOpenInFlight++;
+      return true;
     }
 
     // PROV-01: half_open admits at most one probe at a time. Previously every
@@ -240,6 +238,19 @@ export class CircuitBreaker {
     }
     this.halfOpenInFlight++;
     return true;
+  }
+
+  private computeReadableState(now = Date.now()): CircuitBreakerState {
+    if (this.state === "open" && this.nextAttemptAt !== null && now >= this.nextAttemptAt) {
+      return "half_open";
+    }
+    return this.state;
+  }
+
+  private promoteToHalfOpenIfProbeWindowExpired(): void {
+    if (this.state === "open" && this.computeReadableState() === "half_open") {
+      this.transitionTo("half_open");
+    }
   }
 
   /**

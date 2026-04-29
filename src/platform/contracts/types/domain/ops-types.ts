@@ -100,6 +100,13 @@ export interface ExtensionPackageRecord {
   manifestChecksum: string;
   lifecycleState: ExtensionLifecycleState;
   reviewRequired: 0 | 1;
+  // §55.1 Quality & Security Gate fields
+  /** Whether SBOM (Software Bill of Materials) has been verified */
+  sbomVerified: 0 | 1;
+  /** Whether sandbox certificate has been verified */
+  sandboxCertVerified: 0 | 1;
+  /** Whether egress policy compliance has been verified */
+  egressPolicyCompliant: 0 | 1;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

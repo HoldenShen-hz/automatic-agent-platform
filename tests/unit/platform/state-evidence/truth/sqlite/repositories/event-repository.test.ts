@@ -159,6 +159,115 @@ test("EventRepository listEventsForTask with limit returns specified number", ()
   }
 });
 
+test("EventRepository listEventsForTaskSnapshot returns stable stream version and cursor", () => {
+  const workspace = createTempWorkspace("aa-sqlite-event-repo-");
+  const dbPath = join(workspace, "event-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new EventRepository(db.connection);
+    const taskRepo = new TaskRepository(db.connection);
+
+    const now = "2026-04-27T10:00:00.000Z";
+    createTestTask(taskRepo, "sqlite-snapshot-task", now);
+
+    repo.insertEvent({
+      id: "sqlite-snapshot-evt-001",
+      taskId: "sqlite-snapshot-task",
+      sessionId: null,
+      executionId: null,
+      eventType: "task:status_changed",
+      eventTier: "tier_2",
+      payloadJson: '{"index":1}',
+      traceId: "trace-snapshot-1",
+      createdAt: now,
+    });
+    repo.insertEvent({
+      id: "sqlite-snapshot-evt-002",
+      taskId: "sqlite-snapshot-task",
+      sessionId: null,
+      executionId: null,
+      eventType: "task:status_changed",
+      eventTier: "tier_2",
+      payloadJson: '{"index":2}',
+      traceId: "trace-snapshot-2",
+      createdAt: now,
+    });
+
+    const snapshot = repo.listEventsForTaskSnapshot("sqlite-snapshot-task");
+    assert.equal(snapshot.streamVersion, 2);
+    assert.equal(snapshot.lastEventId, "sqlite-snapshot-evt-002");
+    assert.equal(snapshot.lastCreatedAt, now);
+    assert.ok(snapshot.snapshotCursor);
+    assert.deepEqual(
+      snapshot.events.map((event) => event.id),
+      ["sqlite-snapshot-evt-001", "sqlite-snapshot-evt-002"],
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("EventRepository listEventsForTaskSinceCursor returns only events after the snapshot cursor", () => {
+  const workspace = createTempWorkspace("aa-sqlite-event-repo-");
+  const dbPath = join(workspace, "event-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new EventRepository(db.connection);
+    const taskRepo = new TaskRepository(db.connection);
+
+    createTestTask(taskRepo, "sqlite-cursor-task", "2026-04-27T10:00:00.000Z");
+
+    repo.insertEvent({
+      id: "sqlite-cursor-evt-001",
+      taskId: "sqlite-cursor-task",
+      sessionId: null,
+      executionId: null,
+      eventType: "task:status_changed",
+      eventTier: "tier_2",
+      payloadJson: '{"index":1}',
+      traceId: "trace-cursor-1",
+      createdAt: "2026-04-27T10:00:00.000Z",
+    });
+    repo.insertEvent({
+      id: "sqlite-cursor-evt-002",
+      taskId: "sqlite-cursor-task",
+      sessionId: null,
+      executionId: null,
+      eventType: "task:status_changed",
+      eventTier: "tier_2",
+      payloadJson: '{"index":2}',
+      traceId: "trace-cursor-2",
+      createdAt: "2026-04-27T10:00:00.000Z",
+    });
+
+    const snapshot = repo.listEventsForTaskSnapshot("sqlite-cursor-task");
+
+    repo.insertEvent({
+      id: "sqlite-cursor-evt-003",
+      taskId: "sqlite-cursor-task",
+      sessionId: null,
+      executionId: null,
+      eventType: "task:status_changed",
+      eventTier: "tier_2",
+      payloadJson: '{"index":3}',
+      traceId: "trace-cursor-3",
+      createdAt: "2026-04-27T10:00:01.000Z",
+    });
+
+    const delta = repo.listEventsForTaskSinceCursor("sqlite-cursor-task", snapshot.snapshotCursor!);
+    assert.deepEqual(
+      delta.map((event) => event.id),
+      ["sqlite-cursor-evt-003"],
+    );
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("EventRepository listEventsByType returns matching events", () => {
   const workspace = createTempWorkspace("aa-sqlite-event-repo-");
   const dbPath = join(workspace, "event-repo.db");

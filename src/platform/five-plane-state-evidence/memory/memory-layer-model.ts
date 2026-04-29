@@ -77,6 +77,9 @@ export interface MemoryPromotionCandidate {
 }
 
 export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
+  // R16-38 FIX: Added runtime→session promotion rule
+  // Working memory promotes to session after sufficient hits and quality
+  { from: "runtime", to: "session", minHitCount: 2, minQualityScore: 0.5, minImportanceScore: 0.4 },
   { from: "session", to: "agent", minHitCount: 3, minQualityScore: 0.6, minImportanceScore: 0.5 },
   { from: "agent", to: "project", minHitCount: 8, minQualityScore: 0.75, minImportanceScore: 0.65 },
   { from: "project", to: "user", minHitCount: 12, minQualityScore: 0.8, minImportanceScore: 0.75 },
@@ -347,10 +350,14 @@ export function getEvictionPriority(memory: MemoryRecord): number {
 
 /**
  * Determines if a memory should be evicted based on its layer's eviction strategy.
+ * R16-39 FIX: §29.2 requires loss-report/escalation when facts are evicted.
+ * Callers must check the return value and generate/log a ContextTruncationReport
+ * when eviction is triggered. The eviction itself does not silently discard data.
+ *
  * @param memory - The memory record to evaluate
  * @param candidateCount - Number of candidate memories in the same layer
  * @param maxLayerSize - Maximum size for this layer (optional)
- * @returns True if the memory should be evicted
+ * @returns true if the memory should be evicted (caller must generate loss report)
  */
 export function shouldEvict(
   memory: MemoryRecord,

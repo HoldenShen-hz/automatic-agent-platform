@@ -159,13 +159,19 @@ export class DataReplicatorService {
 
   /**
    * Record a replication event
+   * Per R15-54: checks shouldReplicateToRegion() to enforce residency policy
    */
   public recordEvent(
     targetRegionId: string,
     aggregateType: string,
     aggregateId: string,
     payload: unknown,
-  ): ReplicationEvent {
+  ): ReplicationEvent | null {
+    // Check if replication to this region is allowed by policy
+    if (!shouldReplicateToRegion(this.config.policy, targetRegionId)) {
+      return null;
+    }
+
     const event: ReplicationEvent = {
       eventId: `repl_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       sourceRegionId: this.config.sourceRegionId,
@@ -235,7 +241,10 @@ export class DataReplicatorService {
       }
     }
 
-    // Update checkpoint
+    // Update checkpoint with actual pending count
+    // pendingCount = events still in buffer waiting to be sent + in-flight (not yet acknowledged)
+    const currentBuffer = this.buffers.get(targetRegionId);
+    const actualPendingCount = (currentBuffer?.size() ?? 0) + (events.length - lastSequence - errors.length);
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
@@ -243,7 +252,7 @@ export class DataReplicatorService {
       targetRegionId,
       sequenceNumber: lastSequence,
       timestamp: nowIso(),
-      pendingCount: events.length,
+      pendingCount: Math.max(0, actualPendingCount),
     });
 
     return {

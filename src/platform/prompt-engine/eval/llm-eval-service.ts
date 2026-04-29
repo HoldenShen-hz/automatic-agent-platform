@@ -320,9 +320,23 @@ export class LlmEvalService {
     const scores = results.map((r) => Number(r.score));
     const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
+    // R16-16 FIX: §17.3 requires ≥95% for degraded, critical cases require 100%
+    // Parse risk level from metadata to determine if any critical cases failed
+    let hasCriticalFailure = false;
+    for (const r of results) {
+      if (!r.passed) {
+        const metadata = r.metadata ? JSON.parse(String(r.metadata)) : {};
+        if (metadata.riskLevel === "critical") {
+          hasCriticalFailure = true;
+          break;
+        }
+      }
+    }
+
     let verdict: QualityVerdict;
     if (failed === 0) verdict = "pass";
-    else if (passed / results.length >= 0.8) verdict = "degraded";
+    else if (hasCriticalFailure) verdict = "fail"; // Critical cases require 100% pass
+    else if (passed / results.length >= 0.95) verdict = "degraded"; // §17.3: ≥95% for degraded
     else verdict = "fail";
 
     const status: EvalStatus = verdict === "pass" ? "passed" : (verdict === "degraded" ? "degraded" : "failed");
@@ -368,6 +382,11 @@ async runAbTest(
   config: AbTestConfig,
   options: { llmEvaluator?: LlmAbTestEvaluatorConfig } = {},
 ): Promise<AbTestResult> {
+  // R16-17 FIX: §17.5 requires judge independence - control and treatment must use different model/family/provider
+  if (config.controlModelId === config.treatmentModelId) {
+    throw new Error("A/B test requires different models for control and treatment per §17.5 judge independence");
+  }
+
   const controlRun = this.startRun(suiteId, config.controlModelId, config.controlPromptVersion, "ab_test");
   const treatmentRun = this.startRun(suiteId, config.treatmentModelId, config.treatmentPromptVersion, "ab_test");
 

@@ -1,4 +1,6 @@
-import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
+import type { CostEstimate } from "../../platform/contracts/types/cost.js";
+import { VERTICAL_DOMAIN_BASELINES, getVerticalDomainBaseline } from "../../domains/domain-baseline-catalog.js";
+import { matchDomainRecipe, type DomainRecipe } from "../../domains/recipes/index.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import {
   createHarnessRun,
@@ -161,6 +163,7 @@ export interface GoalDecompositionPort {
 }
 
 export interface GoalDecompositionServiceOptions {
+  readonly domainRecipes?: readonly DomainRecipe[];
   readonly costEstimator?: { estimate(divisionId?: string | null): CostEstimate } | null;
   readonly llmPlanGenerator?: LlmPlanGenerator | null;
   readonly maxLlmPlanLatencyMs?: number;
@@ -206,6 +209,86 @@ const DEFAULT_MAX_DELEGATION_DEPTH = 3;
 /** Default global call depth hard cap (per §19.2) */
 const DEFAULT_CALL_DEPTH = 8;
 const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
+const DEFAULT_DOMAIN_RECIPES: readonly DomainRecipe[] = Object.freeze(
+  VERTICAL_DOMAIN_BASELINES.flatMap((baseline) => baseline.recipes),
+);
+type DomainBaselineStatus = "draft" | "validated" | "registered" | "active" | "updating" | "deprecated" | "archived";
+
+interface TaskDomainPolicy {
+  readonly baselineDomainId: string;
+  readonly providedCapabilities: readonly string[];
+  readonly allowedPermissions: readonly string[];
+}
+
+const ACTIVE_DOMAIN_BASELINE_STATUSES = new Set<DomainBaselineStatus>([
+  "validated",
+  "registered",
+  "active",
+  "updating",
+]);
+
+const TASK_DOMAIN_POLICIES: Readonly<Record<string, TaskDomainPolicy>> = Object.freeze({
+  general_ops: {
+    baselineDomainId: "project-management",
+    providedCapabilities: ["analytics", "approval_workflow"],
+    allowedPermissions: [],
+  },
+  content_production: {
+    baselineDomainId: "creative-production",
+    providedCapabilities: [],
+    allowedPermissions: [],
+  },
+  legal: {
+    baselineDomainId: "legal",
+    providedCapabilities: ["approval_workflow"],
+    allowedPermissions: [],
+  },
+  advertising: {
+    baselineDomainId: "advertising",
+    providedCapabilities: ["analytics"],
+    allowedPermissions: [],
+  },
+  data_analysis: {
+    baselineDomainId: "data-engineering",
+    providedCapabilities: ["analytics"],
+    allowedPermissions: [],
+  },
+  engineering_ops: {
+    baselineDomainId: "coding",
+    providedCapabilities: [],
+    allowedPermissions: ["deployment:write", "destructive:write"],
+  },
+  quality_assurance: {
+    baselineDomainId: "quality-assurance",
+    providedCapabilities: [],
+    allowedPermissions: [],
+  },
+  operations: {
+    baselineDomainId: "it-operations",
+    providedCapabilities: [],
+    allowedPermissions: ["deployment:write", "destructive:write"],
+  },
+  security: {
+    baselineDomainId: "content-moderation",
+    providedCapabilities: [],
+    allowedPermissions: [],
+  },
+  communications: {
+    baselineDomainId: "marketing",
+    providedCapabilities: [],
+    allowedPermissions: [],
+  },
+  hr: {
+    baselineDomainId: "human-resources",
+    providedCapabilities: ["approval_workflow"],
+    allowedPermissions: [],
+  },
+  finance: {
+    baselineDomainId: "finance-accounting",
+    providedCapabilities: ["approval_workflow", "analytics"],
+    allowedPermissions: [],
+  },
+});
 const HIGH_RISK_KEYWORDS = [
   "deploy",
   "release",
@@ -249,6 +332,49 @@ function normalizeGoal(goal: Goal | string): Goal {
   };
 }
 
+function resolveTaskDomainPolicy(domainId: string): TaskDomainPolicy | null {
+  return TASK_DOMAIN_POLICIES[domainId] ?? null;
+}
+
+/**
+ * §40.2: Validates that all task domainIds reference active DomainDescriptors
+ * with required capabilities before decomposition proceeds.
+ */
+function validateTaskDomainCapabilities(tasks: readonly PlannedTask[]): readonly string[] {
+  const findings: string[] = [];
+  for (const task of tasks) {
+    const policy = resolveTaskDomainPolicy(task.domainId);
+    if (policy == null) {
+      findings.push(`task.${task.taskId}.domain_policy_missing:${task.domainId}`);
+      continue;
+    }
+    try {
+      const baseline = getVerticalDomainBaseline(policy.baselineDomainId);
+      if (!ACTIVE_DOMAIN_BASELINE_STATUSES.has(baseline.definition.status as DomainBaselineStatus)) {
+        findings.push(`task.${task.taskId}.domain_not_active:${policy.baselineDomainId}`);
+      }
+      const allowedCapabilities = new Set(policy.providedCapabilities);
+      const requiredCaps = task.constraintEnvelope?.requiredCapabilities ?? [];
+      for (const required of requiredCaps) {
+        if (!allowedCapabilities.has(required)) {
+          findings.push(`task.${task.taskId}.missing_capability:${required}`);
+        }
+      }
+
+      const allowedPermissions = new Set(policy.allowedPermissions);
+      const requiredPermissions = task.constraintEnvelope?.requiredPermissions ?? [];
+      for (const permission of requiredPermissions) {
+        if (!allowedPermissions.has(permission)) {
+          findings.push(`task.${task.taskId}.unauthorized_permission:${permission}`);
+        }
+      }
+    } catch {
+      findings.push(`task.${task.taskId}.domain_not_found:${policy.baselineDomainId}`);
+    }
+  }
+  return findings;
+}
+
 function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPreview {
   const normalized = goal.description.toLowerCase();
   const critical = goal.priority === "critical" || CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
@@ -270,32 +396,45 @@ function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPrevi
   };
 }
 
-function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[]): GoalConstraintEnvelope {
+function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[], taskDomainId?: string): GoalConstraintEnvelope {
   const rawConstraints = [goal.description, ...goal.constraints].join(" ");
   const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(rawConstraints);
   const budgetLimitUsd = budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!);
-  const requiredPermissions = [
+  const goalRequiredPermissions = [
     ...( /(deploy|release|publish|上线|发布)/i.test(rawConstraints) ? ["deployment:write"] : []),
     ...( /(delete|drop|remove|删除|清空)/i.test(rawConstraints) ? ["destructive:write"] : []),
   ];
-  const requiredCapabilities = [
+  const goalRequiredCapabilities = [
     ...( /(dashboard|report|报表|roi|分析)/i.test(rawConstraints) ? ["analytics"] : []),
     ...( /(approval|审批)/i.test(rawConstraints) ? ["approval_workflow"] : []),
   ];
+  void taskDomainId;
+  // Preserve the caller's requested permissions/capabilities verbatim. Domain-policy
+  // validation runs later against these requested constraints; pre-filtering here would
+  // erase exactly the mismatches that §40.2 expects us to surface.
+  const requiredPermissions = goalRequiredPermissions;
+  const requiredCapabilities = goalRequiredCapabilities;
 
   // §40.2: Proportional budget allocation to subtasks
+  // Risk multiplier map for task-level risk propagation
+  const taskRiskMultiplierMap: Record<string, number> = {
+    low: 1.0,
+    medium: 1.5,
+    high: 2.0,
+    critical: 3.0,
+  };
   const budgetAllocations: GoalConstraintEnvelope["budgetAllocations"] = tasks && tasks.length > 0 && budgetLimitUsd != null
-    ? tasks.map((task, index) => {
+    ? tasks.map((task) => {
         // Proportional allocation based on estimated cost ratio
-        const taskCostRatio = task.estimatedCost.estimatedCostUsd > 0
-          ? task.estimatedCost.estimatedCostUsd / tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0)
+        const totalTaskCost = tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0);
+        const taskCostRatio = totalTaskCost > 0
+          ? task.estimatedCost.estimatedCostUsd / totalTaskCost
           : 1 / tasks.length;
+        // Risk multiplier: use task's riskTolerance if available, otherwise fall back to goal risk
+        const taskRisk = task.constraintEnvelope?.riskTolerance
+          ?? (goal.priority === "critical" ? "critical" : goal.priority === "high" ? "high" : "medium");
+        const riskMultiplier = taskRiskMultiplierMap[taskRisk] ?? 1.5;
         const taskBudget = Number((budgetLimitUsd * taskCostRatio).toFixed(4));
-        // Risk multiplier: critical=2.0, high=1.5, medium=1.2, low=1.0
-        const riskMultiplier = task.constraintEnvelope?.riskTolerance === "critical" ? 2.0
-          : task.constraintEnvelope?.riskTolerance === "high" ? 1.5
-          : task.constraintEnvelope?.riskTolerance === "medium" ? 1.2
-          : 1.0;
         return { taskId: task.taskId, budgetUsd: taskBudget, riskMultiplier };
       })
     : undefined;
@@ -474,7 +613,16 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       ...(graphAnalysis.hasCycle ? ["goal_decomposer.cycle_detected"] : []),
       ...(constraintEnvelope.requiresApproval ? ["goal_decomposer.approval_constraint_propagated"] : []),
       ...(budgetBlockedLlmPlan ? ["goal_decomposer.llm_budget_reservation_blocked"] : []),
+      // §40.2: Validate task domain capabilities against DomainDescriptor
+      ...validateTaskDomainCapabilities(tasks).map((f) => `goal_decomposer.${f}`),
     ];
+    const hasDomainValidationFailure = validationMessages.some((message) => {
+      return message.includes(".domain_policy_missing:")
+        || message.includes(".domain_not_active:")
+        || message.includes(".missing_capability:")
+        || message.includes(".unauthorized_permission:")
+        || message.includes(".domain_not_found:");
+    });
     const lifecycleState: GoalLifecycleState = "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
       goalId: goal.goalId,
@@ -521,7 +669,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         decompositionConfidence < 0.7
         || riskSummary.overallRisk === "critical"
         || goal.priority === "critical"
-        || graphAnalysis.hasCycle,
+        || graphAnalysis.hasCycle
+        || hasDomainValidationFailure,
       decompositionStrategy,
       topologicallySortedTaskIds: graphAnalysis.topologicallySortedTaskIds,
       parallelTaskGroups: graphAnalysis.parallelTaskGroups,
@@ -553,7 +702,10 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   }
 
   private detectTemplate(description: string): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
-    const normalized = description.toLowerCase();
+    const recipeTemplate = this.detectTemplateFromDomainRecipe(description);
+    if (recipeTemplate != null) {
+      return recipeTemplate;
+    }
     if (/(campaign|marketing|广告|投放|素材|营销|推广)/i.test(description)) {
       return "marketing_campaign";
     }
@@ -570,6 +722,39 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       return "generic_multi_step";
     }
     return null;
+  }
+
+  private detectTemplateFromDomainRecipe(
+    description: string,
+  ): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
+    const recipes = this.options.domainRecipes ?? DEFAULT_DOMAIN_RECIPES;
+    const recipe = matchDomainRecipe(recipes, description);
+    if (recipe == null) {
+      return null;
+    }
+
+    const recipeHints = [
+      recipe.domainId,
+      recipe.archetype,
+      recipe.name ?? "",
+      recipe.description ?? "",
+      recipe.defaultWorkflowId,
+      ...recipe.defaultToolBundleIds,
+    ].join(" ").toLowerCase();
+
+    if (recipe.archetype === "incident_ops" || /(incident|outage|recovery|rollback|切流|故障)/i.test(recipeHints)) {
+      return "incident_response";
+    }
+    if (/(release|deploy|rollout|launch|change_managed|灰度)/i.test(recipeHints)) {
+      return "release_launch";
+    }
+    if (recipe.archetype === "creative" || /(marketing|campaign|advertising|creative|roi|素材|投放)/i.test(recipeHints)) {
+      return "marketing_campaign";
+    }
+    if (/(hire|recruit|candidate|onboard|hr|招聘|入职)/i.test(recipeHints)) {
+      return "hiring_pipeline";
+    }
+    return "generic_multi_step";
   }
 
   private buildTasks(goal: Goal, template: ReturnType<GoalDecompositionService["detectTemplate"]>): PlannedTask[] {
@@ -658,7 +843,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
   private makeTask(domainId: string, description: string, goal: Goal, estimatedDuration: string, options?: { delegationDepth?: number; isSubdelegation?: boolean }): PlannedTask {
     const estimatedCost = this.options.costEstimator?.estimate(domainId) ?? DEFAULT_COST_ESTIMATE;
-    const constraintEnvelope = parseConstraintEnvelope(goal);
+    const constraintEnvelope = parseConstraintEnvelope(goal, undefined, domainId);
     const delegationDepth = options?.delegationDepth ?? 0;
     const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
 
@@ -779,7 +964,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         budgetIntent: {
           amount: Number(task.estimatedCost.estimatedCostUsd.toFixed(4)),
           currency: "USD",
-          resourceKinds: [this.options.budgetControl?.resourceKind ?? (nodeType === "llm" ? "llm" : "tool")],
+          resourceKinds: nodeType === "llm"
+            ? (["llm"] as const)
+            : ([this.options.budgetControl?.resourceKind ?? "tool"] as const),
         },
         sideEffectProfile: {
           mayCommitExternalEffect: /(deploy|release|publish|advertising|operations)/i.test(`${task.domainId} ${task.description}`),
@@ -812,8 +999,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
   }
 
   private resolveTaskRiskClass(task: PlannedTask, riskSummary: RiskPreview): RiskClass {
-    const taskRisk = task.constraintEnvelope?.riskTolerance;
-    if (taskRisk === "critical" || riskSummary.overallRisk === "critical") {
+    const taskRisk = task.constraintEnvelope?.riskTolerance ?? "medium";
+    // Note: riskTolerance is "low"|"medium"|"high" but overallRisk can be "critical"
+    if (riskSummary.overallRisk === "critical") {
       return "critical";
     }
     if (taskRisk === "high" || riskSummary.overallRisk === "high") {

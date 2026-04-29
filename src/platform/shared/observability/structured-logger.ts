@@ -271,6 +271,8 @@ export class StructuredLogger {
     // §7.1: tenantId and harnessRunId are required for every log entry
     const tenantId = entry.tenantId ?? readStringField(rawData, "tenantId");
     const harnessRunId = entry.harnessRunId ?? readStringField(rawData, "harnessRunId");
+    // §12.4: crosscuttingFabric classification for reliability/security/governance categorization
+    const crosscuttingFabric = entry.crosscuttingFabric ?? readStringField(rawData, "crosscuttingFabric") as CrosscuttingFabricCategory | undefined;
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const data = rawData;
@@ -289,6 +291,7 @@ export class StructuredLogger {
       ...(correlationId !== undefined && correlationId !== null ? { correlationId } : {}),
       ...(tenantId !== undefined ? { tenantId } : {}),
       ...(harnessRunId !== undefined ? { harnessRunId } : {}),
+      ...(crosscuttingFabric !== undefined ? { crosscuttingFabric } : {}),
       ...(data !== undefined ? { data, structuredPayload: data } : {}),
       createdAt: timestamp,
       timestamp,

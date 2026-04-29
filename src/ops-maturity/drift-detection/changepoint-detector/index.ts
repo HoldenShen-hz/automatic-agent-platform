@@ -1,6 +1,11 @@
 /**
  * Drift detection using multiple canonical detection windows per §63.2.
  * Implements Z-Score (1h), CUSUM (7d), Bayesian (30d), and KL-JS (90d) methods.
+ *
+ * §63.2 requires:
+ * - Configurable thresholds with sample-size awareness
+ * - Explicit distribution assumptions per method
+ * - False positive handling declarations
  */
 
 export type DriftWindowType = "1h_zscore" | "7d_cusum" | "30d_bayesian" | "90d_kljs";
@@ -21,6 +26,73 @@ export interface ChangepointDetectionResult {
   recommendedAction: "observe" | "require_review" | "pause_agent" | "none";
 }
 
+/**
+ * §63.2: Configuration for drift detection thresholds and assumptions.
+ * All thresholds are configurable to support different sample sizes and risk tolerances.
+ */
+export interface DriftDetectorConfig {
+  /** §63.2: Minimum samples required before detection is attempted */
+  readonly minSampleSize: number;
+  /** §63.2: Samples per hour for window size calculation */
+  readonly samplesPerHour: number;
+  /** §63.2: Z-Score threshold (default 2.0, |Z| > threshold indicates drift) */
+  readonly zscoreThreshold: number;
+  /** §63.2: Z-Score severity thresholds */
+  readonly zscoreHighSeverity: number;
+  readonly zscoreMediumSeverity: number;
+  /** §63.2: CUSUM decision boundary multiplier (h = multiplier * baselineMean) */
+  readonly cusumBoundaryMultiplier: number;
+  /** §63.2: CUSUM slack parameter multiplier (k = multiplier * baselineStd) */
+  readonly cusumSlackMultiplier: number;
+  /** §63.2: CUSUM severity thresholds as multiplier of h */
+  readonly cusumHighSeverityMultiplier: number;
+  readonly cusumMediumSeverityMultiplier: number;
+  /** §63.2: Bayesian confidence level (default 0.95 = 95% confidence) */
+  readonly bayesianConfidenceLevel: number;
+  /** §63.2: Bayesian severity p-value thresholds */
+  readonly bayesianHighSeverity: number;
+  readonly bayesianMediumSeverity: number;
+  /** §63.2: KL-JS divergence threshold (default 0.1) */
+  readonly kljsDivergenceThreshold: number;
+  /** §63.2: KL-JS severity divergence thresholds */
+  readonly kljsHighSeverity: number;
+  readonly kljsMediumSeverity: number;
+  /** §63.2: Distribution assumption for detection method */
+  readonly distributionAssumption: "normal" | "poisson" | "exponential" | "unknown";
+  /** §63.2: Expected false positive rate for this configuration */
+  readonly falsePositiveRate: number;
+  /** §63.2: Rolling window for false positive rate estimation (in samples) */
+  readonly falsePositiveWindowSize: number;
+  /** §63.2: Multi-burst suppression - minimum samples between alerts */
+  readonly minSamplesBetweenAlerts: number;
+}
+
+/**
+ * §63.2: Default configuration with documented assumptions.
+ * These values assume normal distribution and ~5% false positive rate.
+ */
+export const DEFAULT_DRIFT_DETECTOR_CONFIG: DriftDetectorConfig = {
+  minSampleSize: 10,
+  samplesPerHour: 1,
+  zscoreThreshold: 2.0,
+  zscoreHighSeverity: 4.0,
+  zscoreMediumSeverity: 3.0,
+  cusumBoundaryMultiplier: 5.0,
+  cusumSlackMultiplier: 0.5,
+  cusumHighSeverityMultiplier: 3.0,
+  cusumMediumSeverityMultiplier: 2.0,
+  bayesianConfidenceLevel: 0.95,
+  bayesianHighSeverity: 0.01,
+  bayesianMediumSeverity: 0.03,
+  kljsDivergenceThreshold: 0.1,
+  kljsHighSeverity: 0.3,
+  kljsMediumSeverity: 0.2,
+  distributionAssumption: "normal",
+  falsePositiveRate: 0.05,
+  falsePositiveWindowSize: 100,
+  minSamplesBetweenAlerts: 5,
+};
+
 /** §63.2: 1h Z-Score window - detects rapid shifts using standard deviation */
 const ZSCORE_WINDOW_HOURS = 1;
 
@@ -35,7 +107,28 @@ const KLJS_WINDOW_HOURS = 90 * 24;
 
 const ALL_WINDOWS: DriftWindowType[] = ["1h_zscore", "7d_cusum", "30d_bayesian", "90d_kljs"];
 
+/**
+ * §63.2: Detection metadata including sample-size awareness and false positive tracking.
+ */
+export interface DetectionMetadata {
+  readonly sampleSizeUsed: number;
+  readonly distributionAssumption: DriftDetectorConfig["distributionAssumption"];
+  readonly falsePositiveRateEstimate: number;
+  readonly lastAlertSampleIndex: number | null;
+  readonly suppressedUntilSampleIndex: number | null;
+}
+
 export class ChangepointDetectorService {
+  private readonly config: DriftDetectorConfig;
+  /** §63.2: Tracks samples since last alert for burst suppression */
+  private samplesSinceLastAlert = 0;
+  /** §63.2: Tracks recent detections for false positive rate estimation */
+  private recentDetections: boolean[] = [];
+
+  public constructor(config: DriftDetectorConfig = DEFAULT_DRIFT_DETECTOR_CONFIG) {
+    this.config = config;
+  }
+
   /**
    * Detects changepoints using multiple canonical detection windows per §63.2.
    *
@@ -47,33 +140,69 @@ export class ChangepointDetectorService {
     samples: DriftSample[],
     windowType: DriftWindowType = "1h_zscore",
   ): ChangepointDetectionResult {
-    const samplesPerHour = 1; // Assuming 1 sample per hour
     const windowHours = this.getWindowHours(windowType);
-    const windowSamples = windowHours * samplesPerHour;
+    const windowSamples = windowHours * this.config.samplesPerHour;
 
-    if (samples.length < windowSamples) {
+    // §63.2: Check minimum sample size requirement
+    if (samples.length < Math.max(windowSamples, this.config.minSampleSize)) {
       return {
         detected: false,
         baselineMean: 0,
         recentMean: 0,
         absoluteShift: 0,
         relativeShift: 0,
-        reasonCode: `drift.insufficient_data:${windowType}`,
+        reasonCode: `drift.insufficient_data:${windowType}:requires_${Math.max(windowSamples, this.config.minSampleSize)}_samples`,
         severity: "none",
         recommendedAction: "none",
       };
     }
 
+    // §63.2: Burst suppression - suppress alerts if too close to last alert
+    this.samplesSinceLastAlert++;
+    if (
+      this.recentDetections.length > 0
+      && this.samplesSinceLastAlert < this.config.minSamplesBetweenAlerts
+    ) {
+      return {
+        detected: false,
+        baselineMean: 0,
+        recentMean: 0,
+        absoluteShift: 0,
+        relativeShift: 0,
+        reasonCode: `drift.suppressed:${windowType}:burst_suppression_active`,
+        severity: "none",
+        recommendedAction: "none",
+      };
+    }
+
+    let result: ChangepointDetectionResult;
     switch (windowType) {
       case "1h_zscore":
-        return this.detectZScore(samples, windowSamples);
+        result = this.detectZScore(samples, windowSamples);
+        break;
       case "7d_cusum":
-        return this.detectCUSUM(samples, windowSamples);
+        result = this.detectCUSUM(samples, windowSamples);
+        break;
       case "30d_bayesian":
-        return this.detectBayesian(samples, windowSamples);
+        result = this.detectBayesian(samples, windowSamples);
+        break;
       case "90d_kljs":
-        return this.detectKLJS(samples, windowSamples);
+        result = this.detectKLJS(samples, windowSamples);
+        break;
     }
+
+    // §63.2: Track detections for false positive rate estimation
+    this.recentDetections.push(result.detected);
+    if (this.recentDetections.length > this.config.falsePositiveWindowSize) {
+      this.recentDetections.shift();
+    }
+
+    // §63.2: Reset suppression counter if detection occurred
+    if (result.detected) {
+      this.samplesSinceLastAlert = 0;
+    }
+
+    return result;
   }
 
   /**
@@ -81,6 +210,31 @@ export class ChangepointDetectorService {
    */
   public detectAll(samples: DriftSample[]): ChangepointDetectionResult[] {
     return ALL_WINDOWS.map((windowType) => this.detect(samples, windowType));
+  }
+
+  /**
+   * §63.2: Returns metadata about the last detection including false positive rate estimate.
+   */
+  public getMetadata(): DetectionMetadata {
+    const falsePositiveRate = this.recentDetections.length > 0
+      ? this.recentDetections.filter((d) => d).length / this.recentDetections.length
+      : this.config.falsePositiveRate;
+    return {
+      sampleSizeUsed: this.config.minSampleSize,
+      distributionAssumption: this.config.distributionAssumption,
+      falsePositiveRateEstimate: falsePositiveRate,
+      lastAlertSampleIndex: this.samplesSinceLastAlert > 0 ? this.recentDetections.length - this.samplesSinceLastAlert : null,
+      suppressedUntilSampleIndex: this.samplesSinceLastAlert < this.config.minSamplesBetweenAlerts
+        ? this.recentDetections.length
+        : null,
+    };
+  }
+
+  /**
+   * §63.2: Returns the current configuration being used.
+   */
+  public getConfig(): DriftDetectorConfig {
+    return this.config;
   }
 
   private getWindowHours(windowType: DriftWindowType): number {
@@ -98,7 +252,7 @@ export class ChangepointDetectorService {
 
   /**
    * 1h Z-Score: Detects rapid shifts using standard deviation from baseline mean.
-   * Triggers SEV3+ when score deviates beyond threshold from baseline.
+   * §63.2: Assumes normal distribution; threshold and severity are configurable.
    */
   private detectZScore(
     samples: DriftSample[],
@@ -111,8 +265,9 @@ export class ChangepointDetectorService {
     const baselineStd = standardDeviation(baseline.map((s) => s.score));
     const recentScore = recent[0]!.score;
 
+    // §63.2: Use configurable threshold instead of hardcoded 2.0
     const zScore = baselineStd !== 0 ? (recentScore - baselineMean) / baselineStd : 0;
-    const detected = Math.abs(zScore) > 2; // |Z| > 2 indicates significant drift
+    const detected = Math.abs(zScore) > this.config.zscoreThreshold;
 
     const severity = this.zScoreToSeverity(zScore);
     return {
@@ -121,7 +276,7 @@ export class ChangepointDetectorService {
       recentMean: recentScore,
       absoluteShift: recentScore - baselineMean,
       relativeShift: baselineMean !== 0 ? (recentScore - baselineMean) / baselineMean : 0,
-      reasonCode: detected ? "drift.zscore_detected" : "drift.stable",
+      reasonCode: `drift.zscore_detected:${this.config.distributionAssumption}`,
       severity,
       recommendedAction: severityToAction(severity),
     };
@@ -129,7 +284,7 @@ export class ChangepointDetectorService {
 
   /**
    * 7d CUSUM: Cumulative sum detection for gradual drifts.
-   * Detects sustained drift direction over the window.
+   * §63.2: Assumes normal distribution; boundary and slack are configurable.
    */
   private detectCUSUM(
     samples: DriftSample[],
@@ -139,8 +294,11 @@ export class ChangepointDetectorService {
     const recent = samples.slice(-Math.min(windowSamples, 24)); // Last 24h for comparison
 
     const baselineMean = average(baseline.map((s) => s.score));
+    const baselineStd = standardDeviation(baseline.map((s) => s.score));
     const target = baselineMean;
-    const k = 0.5 * standardDeviation(baseline.map((s) => s.score)); // Allowable slack
+
+    // §63.2: Use configurable slack parameter
+    const k = this.config.cusumSlackMultiplier * baselineStd;
 
     let cusumPos = 0;
     let cusumNeg = 0;
@@ -151,7 +309,8 @@ export class ChangepointDetectorService {
       cusumNeg = Math.max(0, cusumNeg - dev - k);
     }
 
-    const h = 5 * baselineMean; // Decision boundary
+    // §63.2: Use configurable decision boundary
+    const h = this.config.cusumBoundaryMultiplier * baselineMean;
     const detected = cusumPos > h || cusumNeg > h;
 
     const severity = this.cusumToSeverity(cusumPos, cusumNeg, h);
@@ -161,7 +320,7 @@ export class ChangepointDetectorService {
       recentMean: average(recent.map((s) => s.score)),
       absoluteShift: average(recent.map((s) => s.score)) - baselineMean,
       relativeShift: baselineMean !== 0 ? (average(recent.map((s) => s.score)) - baselineMean) / baselineMean : 0,
-      reasonCode: detected ? "drift.cusum_detected" : "drift.stable",
+      reasonCode: `drift.cusum_detected:${this.config.distributionAssumption}`,
       severity,
       recommendedAction: severityToAction(severity),
     };
@@ -169,7 +328,7 @@ export class ChangepointDetectorService {
 
   /**
    * 30d Bayesian: Probabilistic drift detection.
-   * Compares posterior probability of drift vs no-drift.
+   * §63.2: Assumes normal distribution; confidence level is configurable.
    */
   private detectBayesian(
     samples: DriftSample[],
@@ -188,9 +347,10 @@ export class ChangepointDetectorService {
     const se = Math.sqrt(pooledVar / recent.length);
     const tStat = se !== 0 ? Math.abs(recentMean - baselineMean) / se : 0;
 
-    // P(|t| > tStat) approximation using normal distribution
+    // §63.2: Use configurable confidence level for detection threshold
     const pValue = 2 * (1 - normalCDF(tStat));
-    const detected = pValue < 0.05; // 95% confidence threshold
+    const alpha = 1 - this.config.bayesianConfidenceLevel;
+    const detected = pValue < alpha;
 
     const severity = this.bayesianToSeverity(pValue);
     return {
@@ -199,7 +359,7 @@ export class ChangepointDetectorService {
       recentMean,
       absoluteShift: recentMean - baselineMean,
       relativeShift: baselineMean !== 0 ? (recentMean - baselineMean) / baselineMean : 0,
-      reasonCode: detected ? "drift.bayesian_detected" : "drift.stable",
+      reasonCode: `drift.bayesian_detected:${this.config.distributionAssumption}`,
       severity,
       recommendedAction: severityToAction(severity),
     };
@@ -207,7 +367,7 @@ export class ChangepointDetectorService {
 
   /**
    * 90d KL-JS: Distribution divergence detection using Jensen-Shannon divergence.
-   * Compares probability distributions of baseline vs recent window.
+   * §63.2: No distribution assumption required; threshold is configurable.
    */
   private detectKLJS(
     samples: DriftSample[],
@@ -220,8 +380,8 @@ export class ChangepointDetectorService {
     const recentScores = recent.map((s) => s.score);
 
     const divergence = this.jensenShannonDivergence(baselineScores, recentScores);
-    // JS divergence threshold: > 0.1 indicates significant distributional shift
-    const detected = divergence > 0.1;
+    // §63.2: Use configurable divergence threshold
+    const detected = divergence > this.config.kljsDivergenceThreshold;
 
     const severity = this.kljsToSeverity(divergence);
     return {
@@ -232,7 +392,7 @@ export class ChangepointDetectorService {
       relativeShift: average(baselineScores) !== 0
         ? (average(recentScores) - average(baselineScores)) / average(baselineScores)
         : 0,
-      reasonCode: detected ? "drift.kljs_detected" : "drift.stable",
+      reasonCode: detected ? "drift.kljs_detected:distribution_free" : "drift.stable",
       severity,
       recommendedAction: severityToAction(severity),
     };
@@ -276,36 +436,40 @@ export class ChangepointDetectorService {
     return (klPM + klQM) / 2;
   }
 
+  // §63.2: Use configurable severity thresholds
   private zScoreToSeverity(zScore: number): ChangepointDetectionResult["severity"] {
-    if (Math.abs(zScore) > 4) return "high";
-    if (Math.abs(zScore) > 3) return "medium";
-    if (Math.abs(zScore) > 2) return "low";
+    if (Math.abs(zScore) > this.config.zscoreHighSeverity) return "high";
+    if (Math.abs(zScore) > this.config.zscoreMediumSeverity) return "medium";
+    if (Math.abs(zScore) > this.config.zscoreThreshold) return "low";
     return "none";
   }
 
+  // §63.2: Use configurable severity multipliers
   private cusumToSeverity(
     cusumPos: number,
     cusumNeg: number,
     h: number,
   ): ChangepointDetectionResult["severity"] {
     const maxCusum = Math.max(cusumPos, cusumNeg);
-    if (maxCusum > 3 * h) return "high";
-    if (maxCusum > 2 * h) return "medium";
+    if (maxCusum > this.config.cusumHighSeverityMultiplier * h) return "high";
+    if (maxCusum > this.config.cusumMediumSeverityMultiplier * h) return "medium";
     if (maxCusum > h) return "low";
     return "none";
   }
 
+  // §63.2: Use configurable severity p-value thresholds
   private bayesianToSeverity(pValue: number): ChangepointDetectionResult["severity"] {
-    if (pValue < 0.01) return "high";
-    if (pValue < 0.03) return "medium";
-    if (pValue < 0.05) return "low";
+    if (pValue < this.config.bayesianHighSeverity) return "high";
+    if (pValue < this.config.bayesianMediumSeverity) return "medium";
+    if (pValue < 1 - this.config.bayesianConfidenceLevel) return "low";
     return "none";
   }
 
+  // §63.2: Use configurable severity divergence thresholds
   private kljsToSeverity(divergence: number): ChangepointDetectionResult["severity"] {
-    if (divergence > 0.3) return "high";
-    if (divergence > 0.2) return "medium";
-    if (divergence > 0.1) return "low";
+    if (divergence > this.config.kljsHighSeverity) return "high";
+    if (divergence > this.config.kljsMediumSeverity) return "medium";
+    if (divergence > this.config.kljsDivergenceThreshold) return "low";
     return "none";
   }
 }
