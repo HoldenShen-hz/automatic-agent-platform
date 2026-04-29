@@ -386,7 +386,16 @@ export class ConversationTemplateExecutor {
       return null;
     }
 
-    return this.next(conversation);
+    const nextIndex = Math.min(
+      conversation.currentStepIndex + 1,
+      conversation.steps.length,
+    );
+
+    return this.buildTemplatedConversation(
+      conversation.templateId,
+      nextIndex,
+      conversation.context,
+    );
   }
 
   /**

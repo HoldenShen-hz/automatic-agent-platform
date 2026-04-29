@@ -15,7 +15,7 @@ import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/author
 import { newId, nowIso } from "../../contracts/types/ids.js";
 export { LLM_EVAL_DDL } from "./prompt-model-policy-governance-schema.js";
 
-// ── Types ──────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------
 
 /** Status of an evaluation run */
 export type EvalStatus = "pending" | "running" | "passed" | "failed" | "degraded";
@@ -174,7 +174,7 @@ export interface CiGateOptions {
 
 type RawRow = Record<string, unknown>;
 
-// ── Service ────────────────────────────────────────────────────────────
+// -- Service ------------------------------------------------------------
 
 /**
  * Service for LLM evaluation including suite management, run execution,
@@ -183,7 +183,7 @@ type RawRow = Record<string, unknown>;
 export class LlmEvalService {
   constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
-  // ── Suite Management ───────────────────────────────────────────────
+  // -- Suite Management -----------------------------------------------
 
   /**
    * Defines a new evaluation suite with test cases.
@@ -227,7 +227,7 @@ export class LlmEvalService {
     return (this.db.connection.prepare(`SELECT * FROM eval_suites ORDER BY name`).all() as RawRow[]).map((r) => this.mapSuite(r));
   }
 
-  // ── Eval Runs ──────────────────────────────────────────────────────
+  // -- Eval Runs ------------------------------------------------------
 
   /**
    * Starts a new evaluation run for a suite with a specific model and prompt version.
@@ -343,7 +343,7 @@ export class LlmEvalService {
     return (this.db.connection.prepare(`SELECT * FROM eval_runs ORDER BY started_at DESC LIMIT ?`).all(limit) as RawRow[]).map((r) => this.mapRun(r));
   }
 
-  // ── A/B Testing ────────────────────────────────────────────────────
+  // -- A/B Testing ----------------------------------------------------
 
 /**
  * Statistical helper for computing significance.
@@ -575,7 +575,7 @@ function computeStringSimilarity(a: string, b: string): number {
   return 1 - distance / maxLen;
 }
 
-  // ── CI Gate ───────────────────────────────────────────────────────
+  // -- CI Gate -------------------------------------------------------
 
   /**
    * Runs a CI gate evaluation for a prompt/model release.
@@ -701,7 +701,7 @@ function computeStringSimilarity(a: string, b: string): number {
     };
   }
 
-  // ── Prompt Regression Detection ────────────────────────────────────
+  // -- Prompt Regression Detection ------------------------------------
 
   /**
    * Detects regression between two prompt versions by comparing scores.
@@ -745,7 +745,7 @@ function computeStringSimilarity(a: string, b: string): number {
     };
   }
 
-  // ── Mappers ───────────────────────────────────────────────────────
+  // -- Mappers -------------------------------------------------------
 
   private mapSuite(row: RawRow): EvalSuiteRecord {
     return {
