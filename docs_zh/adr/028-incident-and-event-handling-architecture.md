@@ -92,4 +92,9 @@ interface StructuredLog {
 
 ## 来源章节
 
-- `§12` 异常事件处理架构
+注：v4.3 迁移后，原 §12 异常事件处理章节已拆分到可观测性与事件模型相关章节。
+
+v4.3 有效引用：
+- `§28` EventEnvelope 与事件事实面
+- `§59` Explainability / StageRationale / Trace 语义
+- `§63` 观测与告警

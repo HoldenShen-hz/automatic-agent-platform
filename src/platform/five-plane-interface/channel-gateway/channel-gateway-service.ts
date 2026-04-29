@@ -43,6 +43,93 @@ export type {
 export { GatewayRateLimitError } from "./errors.js";
 
 /**
+ * Circuit breaker states per §9.1/§7.1.
+ */
+type CircuitBreakerState = "closed" | "open" | "half_open";
+
+/**
+ * Circuit breaker configuration for external provider calls.
+ */
+interface CircuitBreakerConfig {
+  /** Number of consecutive failures before opening circuit */
+  failureThreshold: number;
+  /** Milliseconds to wait before attempting half-open */
+  resetTimeoutMs: number;
+  /** Whether circuit breaker is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Circuit breaker for external HTTP provider calls.
+ * Prevents cascading failures when external providers are unavailable.
+ */
+class CircuitBreaker {
+  private state: CircuitBreakerState = "closed";
+  private consecutiveFailures: number = 0;
+  private nextAttemptAt: number | null = null;
+
+  constructor(private readonly config: CircuitBreakerConfig) {}
+
+  /**
+   * Check if the circuit allows the request to proceed.
+   * @returns true if request should proceed, false if circuit is open
+   */
+  public isRequestAllowed(): boolean {
+    if (!this.config.enabled ?? true) {
+      return true;
+    }
+    if (this.state === "closed") {
+      return true;
+    }
+    if (this.state === "open") {
+      if (this.nextAttemptAt != null && Date.now() >= this.nextAttemptAt) {
+        this.state = "half_open";
+        return true;
+      }
+      return false;
+    }
+    // half_open state - allow single request to test
+    return true;
+  }
+
+  /**
+   * Record a successful request - resets the circuit to closed.
+   */
+  public recordSuccess(): void {
+    this.state = "closed";
+    this.consecutiveFailures = 0;
+    this.nextAttemptAt = null;
+  }
+
+  /**
+   * Record a failed request - may open the circuit.
+   */
+  public recordFailure(): void {
+    this.consecutiveFailures++;
+    if (this.consecutiveFailures >= this.config.failureThreshold) {
+      this.state = "open";
+      this.nextAttemptAt = Date.now() + this.config.resetTimeoutMs;
+    }
+  }
+
+  /**
+   * Get current circuit state for observability.
+   */
+  public getState(): CircuitBreakerState {
+    return this.state;
+  }
+}
+
+/**
+ * Default circuit breaker configuration per §9.1.
+ */
+const DEFAULT_CIRCUIT_BREAKER_CONFIG: CircuitBreakerConfig = {
+  failureThreshold: 5,
+  resetTimeoutMs: 30_000, // 30 seconds
+  enabled: true,
+};
+
+/**
  * Channel adapter interface for pluggable protocol support.
  * Each adapter handles the specifics of sending messages via a particular channel.
  */
@@ -118,6 +205,7 @@ export class ChannelAdapterRegistry {
  */
 class TelegramChannelAdapter implements ChannelAdapter {
   readonly channel = "telegram";
+  private readonly circuitBreaker = new CircuitBreaker(DEFAULT_CIRCUIT_BREAKER_CONFIG);
 
   async send(input: {
     targetId: string;
@@ -127,6 +215,9 @@ class TelegramChannelAdapter implements ChannelAdapter {
     fetchImpl: FetchLike;
     options: ChannelGatewayServiceOptions;
   }): Promise<GatewayDeliveryReceipt> {
+    if (!this.circuitBreaker.isRequestAllowed()) {
+      throw new GatewayDeliveryError("gateway.telegram_circuit_open", 503, true);
+    }
     const config = input.options.telegram;
     if (config == null) {
       throw new PolicyDeniedError("gateway.telegram_not_configured", "gateway.telegram_not_configured", {
@@ -141,19 +232,27 @@ class TelegramChannelAdapter implements ChannelAdapter {
         blocked: "gateway.telegram_url_blocked",
       },
     ).toString();
-    const response = await input.fetchImpl(requestUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: input.text,
-      }),
-    });
+    let response: Awaited<ReturnType<FetchLike>>;
+    try {
+      response = await input.fetchImpl(requestUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: input.text,
+        }),
+      });
+    } catch (err) {
+      this.circuitBreaker.recordFailure();
+      throw err;
+    }
     if (!response.ok) {
+      this.circuitBreaker.recordFailure();
       throw new GatewayDeliveryError(`gateway.telegram_delivery_failed:${response.status}`, response.status, response.status >= 500 || response.status === 429 || response.status === 408);
     }
+    this.circuitBreaker.recordSuccess();
     const body = await response.json() as { result?: { message_id?: number | string } };
     return {
       deliveredAt: nowIso(),
@@ -172,6 +271,7 @@ class TelegramChannelAdapter implements ChannelAdapter {
  */
 class SlackChannelAdapter implements ChannelAdapter {
   readonly channel = "slack";
+  private readonly circuitBreaker = new CircuitBreaker(DEFAULT_CIRCUIT_BREAKER_CONFIG);
 
   async send(input: {
     targetId: string;
@@ -181,6 +281,9 @@ class SlackChannelAdapter implements ChannelAdapter {
     fetchImpl: FetchLike;
     options: ChannelGatewayServiceOptions;
   }): Promise<GatewayDeliveryReceipt> {
+    if (!this.circuitBreaker.isRequestAllowed()) {
+      throw new GatewayDeliveryError("gateway.slack_circuit_open", 503, true);
+    }
     const config = input.options.slack;
     if (config == null) {
       throw new PolicyDeniedError("gateway.slack_not_configured", "gateway.slack_not_configured", {
@@ -195,20 +298,28 @@ class SlackChannelAdapter implements ChannelAdapter {
         blocked: "gateway.slack_url_blocked",
       },
     ).toString();
-    const response = await input.fetchImpl(requestUrl, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${config.botToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        channel: channelId,
-        text: input.text,
-      }),
-    });
+    let response: Awaited<ReturnType<FetchLike>>;
+    try {
+      response = await input.fetchImpl(requestUrl, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${config.botToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          channel: channelId,
+          text: input.text,
+        }),
+      });
+    } catch (err) {
+      this.circuitBreaker.recordFailure();
+      throw err;
+    }
     if (!response.ok) {
+      this.circuitBreaker.recordFailure();
       throw new GatewayDeliveryError(`gateway.slack_delivery_failed:${response.status}`, response.status, response.status >= 500 || response.status === 429 || response.status === 408);
     }
+    this.circuitBreaker.recordSuccess();
     const body = await response.json() as { ok?: boolean; ts?: string };
     if (body.ok !== true) {
       throw new GatewayDeliveryError("gateway.slack_delivery_failed:provider_rejected", response.status, false);
@@ -230,6 +341,7 @@ class SlackChannelAdapter implements ChannelAdapter {
  */
 class WebhookChannelAdapter implements ChannelAdapter {
   readonly channel = "webhook";
+  private readonly circuitBreaker = new CircuitBreaker(DEFAULT_CIRCUIT_BREAKER_CONFIG);
 
   async send(input: {
     targetId: string;
@@ -239,6 +351,9 @@ class WebhookChannelAdapter implements ChannelAdapter {
     fetchImpl: FetchLike;
     options: ChannelGatewayServiceOptions;
   }): Promise<GatewayDeliveryReceipt> {
+    if (!this.circuitBreaker.isRequestAllowed()) {
+      throw new GatewayDeliveryError("gateway.webhook_circuit_open", 503, true);
+    }
     const requestUrl = typeof input.metadata?.webhookUrl === "string" && input.metadata.webhookUrl.trim().length > 0
       ? input.metadata.webhookUrl.trim()
       : (input.externalTargetId?.startsWith("http://") || input.externalTargetId?.startsWith("https://") ? input.externalTargetId : null);
@@ -254,21 +369,29 @@ class WebhookChannelAdapter implements ChannelAdapter {
       blocked: "gateway.webhook_url_blocked_ssrf",
     }).toString();
 
-    const response = await input.fetchImpl(validatedRequestUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(input.options.webhook?.defaultHeaders ?? {}),
-      },
-      body: JSON.stringify({
-        targetId: input.targetId,
-        text: input.text,
-        metadata: input.metadata,
-      }),
-    });
+    let response: Awaited<ReturnType<FetchLike>>;
+    try {
+      response = await input.fetchImpl(validatedRequestUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(input.options.webhook?.defaultHeaders ?? {}),
+        },
+        body: JSON.stringify({
+          targetId: input.targetId,
+          text: input.text,
+          metadata: input.metadata,
+        }),
+      });
+    } catch (err) {
+      this.circuitBreaker.recordFailure();
+      throw err;
+    }
     if (!response.ok) {
+      this.circuitBreaker.recordFailure();
       throw new GatewayDeliveryError(`gateway.webhook_delivery_failed:${response.status}`, response.status, response.status >= 500 || response.status === 429 || response.status === 408);
     }
+    this.circuitBreaker.recordSuccess();
     return {
       deliveredAt: nowIso(),
       channel: "webhook",
@@ -312,6 +435,10 @@ export class ChannelGatewayService {
   private readonly fetchImpl: FetchLike;
   private readonly logger = new StructuredLogger({ retentionLimit: 100 });
   private readonly adapterRegistry: ChannelAdapterRegistry;
+  /** §7.1: Default fetch timeout (5s per §7.1) */
+  private static readonly DEFAULT_FETCH_TIMEOUT_MS = 5_000;
+  /** §7.1: Maximum fetch timeout (30s max per §7.1) */
+  private static readonly MAX_FETCH_TIMEOUT_MS = 30_000;
 
   public constructor(
     /** Storage port for target lookups */
@@ -676,9 +803,26 @@ export class ChannelGatewayService {
       externalTargetId: input.externalTargetId,
       text: input.text,
       metadata: input.metadata,
-      fetchImpl: this.fetchImpl,
+      fetchImpl: this.createTimedFetch(),
       options: this.options,
     });
+  }
+
+  /**
+   * Creates a fetch implementation with §7.1 timeout (default 5s, max 30s).
+   * Wraps the stored fetchImpl with an AbortController timeout.
+   */
+  private createTimedFetch(): FetchLike {
+    const timeout = ChannelGatewayService.MAX_FETCH_TIMEOUT_MS;
+    return (url: URL | string | Request, init?: RequestInit) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      try {
+        return this.fetchImpl(url, { ...init, signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
   }
 
   /**

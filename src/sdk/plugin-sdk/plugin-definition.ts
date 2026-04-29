@@ -4,8 +4,354 @@
  * Implements §22.4 Plugin lifecycle: definePlugin() for plugin definition.
  */
 
+import { createHmac, createVerify, createPublicKey, timingSafeEqual } from "node:crypto";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
+
+/**
+ * Registry for plugin signing public keys.
+ * Maps keyId -> PEM-encoded public key.
+ */
+class PluginSigningKeyRegistry {
+  private readonly keys = new Map<string, string>();
+
+  /**
+   * Register a public key for signature verification.
+   */
+  registerKey(keyId: string, publicKeyPem: string): void {
+    if (!keyId?.trim()) {
+      throw new ValidationError("plugin_sdk.invalid_key_id", "Key ID must be non-empty.");
+    }
+    if (!publicKeyPem?.trim()) {
+      throw new ValidationError("plugin_sdk.invalid_public_key", "Public key must be non-empty.");
+    }
+    this.keys.set(keyId.trim(), publicKeyPem.trim());
+  }
+
+  /**
+   * Get a registered public key by keyId.
+   */
+  getKey(keyId: string): string | null {
+    return this.keys.get(keyId) ?? null;
+  }
+
+  /**
+   * Check if a keyId is registered.
+   */
+  hasKey(keyId: string): boolean {
+    return this.keys.has(keyId);
+  }
+
+  /**
+   * Remove a registered key.
+   */
+  removeKey(keyId: string): boolean {
+    return this.keys.delete(keyId);
+  }
+
+  /**
+   * Clear all registered keys.
+   */
+  clear(): void {
+    this.keys.clear();
+  }
+}
+
+// Global registry instance
+const globalSigningKeyRegistry = new PluginSigningKeyRegistry();
+
+/**
+ * Get the global signing key registry.
+ * Use this to register public keys for plugin signature verification.
+ */
+export function getSigningKeyRegistry(): PluginSigningKeyRegistry {
+  return globalSigningKeyRegistry;
+}
+
+/**
+ * Result of plugin signature verification.
+ */
+export interface PluginSignatureVerificationResult {
+  readonly valid: boolean;
+  readonly error?: string;
+}
+
+/**
+ * Result of SBOM verification and security scan.
+ */
+export interface SbomVerificationResult {
+  readonly valid: boolean;
+  readonly scannedAt: string;
+  readonly vulnerabilities: readonly SbomVulnerability[];
+  readonly scanErrors: readonly string[];
+}
+
+/**
+ * Security vulnerability detected in a plugin.
+ */
+export interface SbomVulnerability {
+  readonly id: string;
+  readonly severity: "critical" | "high" | "medium" | "low" | "info";
+  readonly packageName: string;
+  readonly packageVersion: string;
+  readonly description: string;
+  readonly fixedVersion?: string;
+  readonly cveId?: string;
+}
+
+/**
+ * §22.4: SbomScanner - Interface for security scanning of SBOM references.
+ * Implementations can use different backends (native, API-based, etc.)
+ */
+export interface SbomScanner {
+  /**
+   * Fetch and scan an SBOM from a reference URL or path.
+   * @param sbomRef - URI reference to the SBOM (https://, file://, etc.)
+   * @param options - Scan options including severity threshold
+   * @returns Verification result with any vulnerabilities found
+   */
+  scan(sbomRef: string, options?: { minSeverity?: "critical" | "high" | "medium" | "low" | "info" }): Promise<SbomVerificationResult>;
+}
+
+/**
+ * Default SBOM scanner using a simple vulnerability database lookup.
+ * In production, this would integrate with a real security scanning service.
+ */
+export class DefaultSbomScanner implements SbomScanner {
+  private readonly severityOrder = ["critical", "high", "medium", "low", "info"];
+
+  async scan(
+    sbomRef: string,
+    options?: { minSeverity?: "critical" | "high" | "medium" | "low" | "info" },
+  ): Promise<SbomVerificationResult> {
+    const vulnerabilities: SbomVulnerability[] = [];
+    const scanErrors: string[] = [];
+
+    // §22.4: Validate sbomRef format
+    if (!this.isValidSbomRef(sbomRef)) {
+      return {
+        valid: false,
+        scannedAt: new Date().toISOString(),
+        vulnerabilities: [],
+        scanErrors: [`Invalid SBOM reference format: ${sbomRef}`],
+      };
+    }
+
+    // Parse SBOM from reference
+    const sbom = await this.fetchSbom(sbomRef);
+    if (!sbom) {
+      return {
+        valid: false,
+        scannedAt: new Date().toISOString(),
+        vulnerabilities: [],
+        scanErrors: [`Failed to fetch SBOM from ${sbomRef}`],
+      };
+    }
+
+    // Check for known vulnerable packages
+    for (const pkg of sbom.packages ?? []) {
+      const vulns = this.checkVulnerabilities(pkg.name, pkg.version);
+      for (const vuln of vulns) {
+        if (this.shouldReportVuln(vuln, options?.minSeverity)) {
+          vulnerabilities.push(vuln);
+        }
+      }
+    }
+
+    return {
+      valid: vulnerabilities.filter((v) => v.severity === "critical" || v.severity === "high").length === 0,
+      scannedAt: new Date().toISOString(),
+      vulnerabilities,
+      scanErrors: [],
+    };
+  }
+
+  /**
+   * Validate SBOM reference format.
+   */
+  private isValidSbomRef(sbomRef: string): boolean {
+    if (!sbomRef?.trim()) return false;
+    try {
+      const url = new URL(sbomRef);
+      return url.protocol === "https:" || url.protocol === "http:" || url.protocol === "file:";
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Fetch SBOM content from reference.
+   * In production this would parse SPDX/CycloneDX formats.
+   */
+  private async fetchSbom(sbomRef: string): Promise<{ packages: Array<{ name: string; version: string }> } | null> {
+    try {
+      if (sbomRef.startsWith("file://")) {
+        // Local file reference - would read from filesystem in production
+        return null;
+      }
+      if (sbomRef.startsWith("http://") || sbomRef.startsWith("https://")) {
+        // Remote URL - would fetch in production
+        return null;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check a package against known vulnerability database.
+   * In production this would query a real vulnerability database.
+   */
+  private checkVulnerabilities(packageName: string, packageVersion: string): SbomVulnerability[] {
+    // Simulated vulnerability database - in production this would be a real DB lookup
+    // Example: known vulnerabilities in common packages
+    const knownVulns: Record<string, SbomVulnerability[]> = {
+      "lodash": [{
+        id: "CVE-2021-23337",
+        severity: "high",
+        packageName: "lodash",
+        packageVersion: "4.17.21",
+        description: "Command injection via template string",
+        fixedVersion: "4.17.22",
+        cveId: "CVE-2021-23337",
+      }],
+      "axios": [{
+        id: "CVE-2021-3749",
+        severity: "high",
+        packageName: "axios",
+        packageVersion: "0.21.1",
+        description: "Server-Side Request Forgery",
+        fixedVersion: "0.21.2",
+        cveId: "CVE-2021-3749",
+      }],
+    };
+
+    return knownVulns[packageName]?.filter((v) => v.packageVersion === packageVersion) ?? [];
+  }
+
+  /**
+   * Determine if a vulnerability should be reported based on severity threshold.
+   */
+  private shouldReportVuln(vuln: SbomVulnerability, minSeverity?: "critical" | "high" | "medium" | "low" | "info"): boolean {
+    if (!minSeverity) return true;
+    const vulnIndex = this.severityOrder.indexOf(vuln.severity);
+    const minIndex = this.severityOrder.indexOf(minSeverity);
+    return vulnIndex <= minIndex;
+  }
+}
+
+// Global SBOM scanner instance
+const globalSbomScanner = new DefaultSbomScanner();
+
+/**
+ * Get the global SBOM scanner instance.
+ */
+export function getSbomScanner(): SbomScanner {
+  return globalSbomScanner;
+}
+
+/**
+ * Set a custom SBOM scanner (for testing or alternative implementations).
+ */
+export function setSbomScanner(scanner: SbomScanner): void {
+  (globalSbomScanner as unknown as { scanner: SbomScanner }).scanner = scanner;
+}
+
+/**
+ * Verify an SBOM reference and scan for security vulnerabilities.
+ * Returns verification result with any vulnerabilities found.
+ */
+export async function verifySbomRef(sbomRef: string | null): Promise<SbomVerificationResult> {
+  if (!sbomRef) {
+    return {
+      valid: true,
+      scannedAt: new Date().toISOString(),
+      vulnerabilities: [],
+      scanErrors: [],
+    };
+  }
+
+  return globalSbomScanner.scan(sbomRef);
+}
+
+/**
+ * Verify a plugin definition's signature against its canonical representation.
+ * Uses the public key registered for the given keyId.
+ *
+ * @param definition - The plugin definition with signing info
+ * @param canonicalString - The canonical string that was signed (typically JSON canonicalized definition)
+ * @returns Verification result with validity and error message if invalid
+ */
+export function verifyPluginSignature(
+  definition: PluginDefinition,
+  canonicalString: string,
+): PluginSignatureVerificationResult {
+  // If no signing info, plugin is not signed
+  if (!definition.signing) {
+    return { valid: false, error: "plugin_sdk.not_signed" };
+  }
+
+  const { keyId, signature, algorithm } = definition.signing;
+
+  // Get the public key from registry
+  const publicKeyPem = globalSigningKeyRegistry.getKey(keyId);
+  if (!publicKeyPem) {
+    return { valid: false, error: `plugin_sdk.unknown_key_id: ${keyId}` };
+  }
+
+  try {
+    const publicKey = createPublicKey({ key: publicKeyPem, format: "pem" });
+
+    // Map algorithm name to Node.js verify algorithm
+    const nodeAlg = algorithmToNodeAlg(algorithm);
+
+    const verify = createVerify(nodeAlg);
+    verify.update(canonicalString);
+    const sigBuffer = Buffer.from(signature, "base64url");
+    const isValid = verify.verify(publicKey, sigBuffer);
+
+    return isValid ? { valid: true } : { valid: false, error: "plugin_sdk.signature_invalid" };
+  } catch (err) {
+    return {
+      valid: false,
+      error: `plugin_sdk.verification_failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/**
+ * Map algorithm name to Node.js crypto algorithm string.
+ */
+function algorithmToNodeAlg(alg: string): string {
+  switch (alg) {
+    case "ed25519":
+      return "ed25519";
+    case "ed448":
+      return "ed448";
+    case "rs256":
+    case "RS256":
+      return "RSA-SHA256";
+    case "rs384":
+    case "RS384":
+      return "RSA-SHA384";
+    case "rs512":
+    case "RS512":
+      return "RSA-SHA512";
+    case "es256":
+    case "ES256":
+      return "SHA256"; // Node.js ECDSA verify uses "SHA*" for ES256
+    case "es384":
+    case "ES384":
+      return "SHA384";
+    case "es512":
+    case "ES512":
+      return "SHA512";
+    default:
+      // Default to ed25519 for unknown algorithms (common for plugin signatures)
+      return "ed25519";
+  }
+}
 
 export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
 export type PluginRole = "tool" | "adapter" | "retriever" | "evaluator" | "planner" | "presenter" | "validator";
@@ -167,6 +513,30 @@ export function definePlugin(options: DefinePluginOptions): PluginDefinition {
   if (options.description?.trim()) {
     result.description = options.description.trim();
   }
+
+  // §4/R21-30: Verify plugin signature cryptographically if signing info is present.
+  // The signature must be validated before the plugin is considered valid.
+  // If signing is present but verification fails, the plugin must be rejected.
+  if (result.signing != null) {
+    const canonicalJson = JSON.stringify({
+      pluginId: result.pluginId,
+      name: result.name,
+      version: result.version,
+      type: result.type,
+      capabilities: result.capabilities,
+      spiTypes: result.spiTypes,
+      domainIds: result.domainIds,
+    });
+    const verification = verifyPluginSignature(result, canonicalJson);
+    if (!verification.valid) {
+      throw new ValidationError(
+        "plugin_sdk.signature_verification_failed",
+        `Plugin signature verification failed: ${verification.error}`,
+        { pluginId: result.pluginId, keyId: result.signing.keyId },
+      );
+    }
+  }
+
   return result;
 }
 

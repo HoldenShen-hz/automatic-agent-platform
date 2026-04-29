@@ -20,7 +20,7 @@ export interface HumanOutput {
   citations: string[];
 }
 
-export const PluginSpiTypeSchema = z.enum(["retriever", "validator", "planner", "presenter", "adapter"]);
+export const PluginSpiTypeSchema = z.enum(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
 /**
  * Plugin lifecycle states per contract §4.
  * States: suspended/loading/initialized map to code's degraded/disabled in operational sense.
@@ -28,12 +28,13 @@ export const PluginSpiTypeSchema = z.enum(["retriever", "validator", "planner", 
  */
 export const PluginLifecycleStateSchema = z.enum([
   "registered",   // Plugin registered but not loaded
-  "loading",      // Plugin is being loaded (code: loaded)
-  "active",       // Plugin fully loaded and active (code: active)
-  "inactive",     // Plugin loaded but inactive
-  "unloaded",     // Plugin unloaded
-  "suspended",    // Plugin suspended (code: degraded)
-  "disabled",     // Plugin disabled (code: disabled)
+  "validated",     // Plugin validated
+  "loading",       // Plugin is being loaded (code: loaded)
+  "active",        // Plugin fully loaded and active (code: active)
+  "inactive",      // Plugin loaded but inactive
+  "unloaded",      // Plugin unloaded
+  "suspended",     // Plugin suspended (code: degraded)
+  "disabled",      // Plugin disabled (code: disabled)
 ]);
 export const PluginRuntimeIsolationSchema = z.enum([
   "shared_process",
@@ -195,6 +196,44 @@ export interface DomainPresenterPlugin extends PluginLifecycleHooks {
   }): Promise<HumanOutput>;
 }
 
+export interface DomainToolPlugin extends PluginLifecycleHooks {
+  pluginId: string;
+  domainId: string;
+  spiType: "tool";
+  capabilityIds?: readonly string[];
+  execute(params: {
+    taskId: string;
+    toolName: string;
+    arguments: Record<string, unknown>;
+    context: Record<string, unknown>;
+  }): Promise<{
+    success: boolean;
+    output: unknown;
+    errorMessage?: string;
+    metadata?: Record<string, unknown>;
+  }>;
+}
+
+export interface DomainEvaluatorPlugin extends PluginLifecycleHooks {
+  pluginId: string;
+  domainId: string;
+  spiType: "evaluator";
+  capabilityIds?: readonly string[];
+  evaluate(input: {
+    taskId: string;
+    nodeId?: string;
+    stepId?: string;
+    machineOutput: MachineOutput;
+    criteria: Record<string, unknown>;
+    context: Record<string, unknown>;
+  }): Promise<{
+    passed: boolean;
+    score: number;
+    feedback: string;
+    details: Array<{ criterion: string; passed: boolean; score: number; reason: string }>;
+  }>;
+}
+
 export interface ExternalAdapterPlugin extends PluginLifecycleHooks {
   pluginId: string;
   spiType: "adapter";
@@ -217,4 +256,6 @@ export type RegisteredPlugin =
   | DomainValidatorPlugin
   | DomainPlannerPlugin
   | DomainPresenterPlugin
+  | DomainToolPlugin
+  | DomainEvaluatorPlugin
   | ExternalAdapterPlugin;

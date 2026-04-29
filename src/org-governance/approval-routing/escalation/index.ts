@@ -6,9 +6,128 @@ export const ApprovalEscalationRuleSchema = z.object({
   escalateToApproverId: z.string().min(1).optional(),
   escalateToParentManager: z.boolean().default(false),
   appliesToRiskLevels: z.array(z.enum(["low", "medium", "high", "critical"])).default(["high", "critical"]),
+  escalationLevel: z.number().int().nonnegative().default(0),
 });
 
 export type ApprovalEscalationRule = z.infer<typeof ApprovalEscalationRuleSchema>;
+
+/**
+ * Approval step timeout configuration.
+ * Used to enforce maximum wait time for approval at each level.
+ */
+export interface ApprovalStepTimeout {
+  stepId: string;
+  startedAtIso: string;
+  maxWaitMinutes: number;
+}
+
+export const ApprovalStepTimeoutSchema = z.object({
+  stepId: z.string().min(1),
+  startedAtIso: z.string().datetime(),
+  maxWaitMinutes: z.number().int().positive(),
+});
+
+export type ApprovalStepTimeoutConfig = z.infer<typeof ApprovalStepTimeoutSchema>;
+
+/**
+ * Check if an approval step has timed out.
+ */
+export function isApprovalStepTimedOut(
+  timeout: ApprovalStepTimeout,
+  nowIso: string,
+): boolean {
+  const elapsedMs = Date.parse(nowIso) - Date.parse(timeout.startedAtIso);
+  return elapsedMs >= timeout.maxWaitMinutes * 60_000;
+}
+
+/**
+ * Get the timeout remaining for an approval step in milliseconds.
+ * Returns 0 if already timed out, or the remaining time.
+ */
+export function getApprovalStepTimeoutRemaining(
+  timeout: ApprovalStepTimeout,
+  nowIso: string,
+): number {
+  const elapsedMs = Date.parse(nowIso) - Date.parse(timeout.startedAtIso);
+  const maxWaitMs = timeout.maxWaitMinutes * 60_000;
+  return Math.max(0, maxWaitMs - elapsedMs);
+}
+
+/**
+ * Multi-level escalation result containing all escalation levels.
+ */
+export interface EscalationChainResult {
+  shouldEscalate: boolean;
+  currentLevel: number;
+  nextApproverId: string;
+  escalatedThroughLevels: Array<{
+    fromLevel: number;
+    toLevel: number;
+    approverId: string;
+    triggeredAtIso: string;
+  }>;
+  timedOutStepId?: string;
+}
+
+/**
+ * Evaluate a chain of escalation rules to determine multi-level escalation.
+ * Processes rules in order of escalationLevel, finding all applicable escalations.
+ */
+export function evaluateEscalationChain(
+  rules: ReadonlyArray<ApprovalEscalationRule>,
+  createdAtIso: string,
+  nowIso: string,
+  riskLevel: "low" | "medium" | "high" | "critical",
+  context: EscalationContext,
+  orgNodes: ReadonlyArray<{ orgNodeId: string; parentOrgNodeId: string | null; ownerUserIds: readonly string[] }>,
+): EscalationChainResult | null {
+  if (rules.length === 0) {
+    return null;
+  }
+
+  // Sort rules by escalation level ascending
+  const sortedRules = [...rules].sort((a, b) => a.escalationLevel - b.escalationLevel);
+
+  const escalatedThroughLevels: EscalationChainResult["escalatedThroughLevels"] = [];
+  let currentApproverId = context.currentApproverId;
+  let currentLevel = 0;
+  let timedOutStepId: string | undefined;
+
+  for (const rule of sortedRules) {
+    // Check if rule applies to this risk level
+    if (!rule.appliesToRiskLevels.includes(riskLevel)) {
+      continue;
+    }
+
+    // Check if the time threshold has been met
+    const elapsedMs = Date.parse(nowIso) - Date.parse(createdAtIso);
+    const thresholdMs = rule.triggerAfterMinutes * 60_000;
+
+    if (elapsedMs >= thresholdMs) {
+      const newApproverId = resolveEscalationApprover(context, orgNodes, rule);
+
+      escalatedThroughLevels.push({
+        fromLevel: currentLevel,
+        toLevel: rule.escalationLevel,
+        approverId: newApproverId,
+        triggeredAtIso: nowIso,
+      });
+
+      currentApproverId = newApproverId;
+      currentLevel = rule.escalationLevel;
+    }
+  }
+
+  const shouldEscalate = escalatedThroughLevels.length > 0;
+
+  return {
+    shouldEscalate,
+    currentLevel,
+    nextApproverId: currentApproverId,
+    escalatedThroughLevels,
+    timedOutStepId,
+  };
+}
 
 export function shouldEscalateApproval(
   rule: ApprovalEscalationRule,

@@ -20,6 +20,7 @@ export interface ContractEnvelope<TPayload = unknown> {
   readonly envelopeId: string;
   readonly schemaVersion: string;
   readonly commandId: string;
+  readonly idempotencyKey: string;
   readonly correlationId: string;
   readonly signature: string | null;
   readonly principal: PrincipalRef;
@@ -38,6 +39,19 @@ export interface ApiClientConfig {
   platformVersion?: string;
   sdkVersion?: string;
   contractVersion?: string;
+  principal: PrincipalRef;
+  /**
+   * Default idempotency key for all requests made by this client.
+   * Can be overridden per-request via ApiRequestSpec.idempotencyKey.
+   * Used to ensure safe retries of mutating operations.
+   */
+  idempotencyKey?: string;
+  /**
+   * If true, perform version handshake with platform on client creation.
+   * Validates client/platform version compatibility before issuing any requests.
+   * Throws if versions are incompatible.
+   */
+  performVersionHandshakeOnInit?: boolean;
 }
 
 export interface ApiRequestSpec {
@@ -45,6 +59,12 @@ export interface ApiRequestSpec {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   query?: Record<string, string | number | boolean | null | undefined>;
   body?: unknown;
+  /**
+   * Idempotency key for this request.
+   * If provided, enables safe retries of mutating operations.
+   * The server will deduplicate requests with the same idempotency key.
+   */
+  idempotencyKey?: string;
 }
 
 export interface ApiResponse<T> {
@@ -116,6 +136,7 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
 
 /**
  * Retry client with exponential backoff for resilient API calls.
+ * Wraps all API calls in ContractEnvelope per §5.2.
  */
 export class RetryableApiClient {
   private readonly config: ApiClientConfig;
@@ -130,6 +151,67 @@ export class RetryableApiClient {
       contractVersion: config.contractVersion ?? "v4.3",
     };
     this.retryConfig = retryConfig;
+  }
+
+  /**
+   * Initialize the client and optionally perform version handshake.
+   * If performVersionHandshakeOnInit is set, validates client/platform compatibility.
+   * Throws ValidationError if versions are incompatible.
+   */
+  async initialize(): Promise<void> {
+    if (this.config.performVersionHandshakeOnInit) {
+      await this.performVersionHandshake();
+    }
+  }
+
+  /**
+   * Perform version handshake with the platform.
+   * Validates that client and platform versions are compatible.
+   * Returns the platform's accepted version info or throws if incompatible.
+   */
+  async performVersionHandshake(): Promise<{
+    platformVersion: string;
+    contractVersion: string;
+    minClientVersion: string;
+  }> {
+    const response = await this.get<{
+      platformVersion: string;
+      contractVersion: string;
+      minClientVersion: string;
+    }>("/version");
+
+    const clientVersion = this.config.sdkVersion ?? "1.0.0";
+    const minVersion = response.data.minClientVersion;
+
+    if (!this.versionsCompatible(clientVersion, minVersion)) {
+      throw new ValidationError(
+        "client_sdk.version_incompatible",
+        `Client version ${clientVersion} is not compatible with platform minimum version ${minVersion}`,
+        { clientVersion, minVersion, platformVersion: response.data.platformVersion },
+      );
+    }
+
+    return {
+      platformVersion: response.data.platformVersion,
+      contractVersion: response.data.contractVersion,
+      minClientVersion: response.data.minClientVersion,
+    };
+  }
+
+  /**
+   * Check if client version satisfies minimum required version.
+   */
+  private versionsCompatible(clientVersion: string, minVersion: string): boolean {
+    const clientParts = clientVersion.split(".").map(Number);
+    const minParts = minVersion.split(".").map(Number);
+
+    for (let i = 0; i < Math.max(clientParts.length, minParts.length); i++) {
+      const clientPart = clientParts[i] ?? 0;
+      const minPart = minParts[i] ?? 0;
+      if (clientPart < minPart) return false;
+      if (clientPart > minPart) return true;
+    }
+    return true;
   }
 
   /**
@@ -221,7 +303,18 @@ export class RetryableApiClient {
     const url = buildApiUrl(this.config, request);
     const headers = buildAuthHeaders(this.config);
 
-    if (request.body) {
+    // §22.2: Use request-level idempotency key if provided, otherwise fall back to client-level key
+    const idempotencyKey = request.idempotencyKey ?? this.config.idempotencyKey;
+
+    let body = request.body;
+    // §5.2: Wrap all API calls in ContractEnvelope for cross-plane calls
+    if (request.body !== undefined) {
+      const envelope = createContractEnvelope({
+        payload: request.body,
+        principal: this.config.principal,
+        idempotencyKey,
+      });
+      body = envelope;
       headers["content-type"] = "application/json";
     }
 
@@ -230,8 +323,8 @@ export class RetryableApiClient {
         method: request.method ?? "GET",
         headers,
       };
-      if (request.body !== undefined) {
-        fetchOptions.body = JSON.stringify(request.body);
+      if (body !== undefined) {
+        fetchOptions.body = JSON.stringify(body);
       }
       if (this.config.timeoutMs !== undefined) {
         fetchOptions.signal = AbortSignal.timeout(this.config.timeoutMs);
@@ -239,12 +332,12 @@ export class RetryableApiClient {
 
       const response = await fetch(url, fetchOptions);
 
-      // §22: Only retry non-GET requests on network errors, not on non-OK responses.
+      // §22: Only retry 5xx/429 on idempotent requests, not 4xx client errors.
       // POST/PUT/DELETE are not idempotent and retrying them can cause duplicate side effects.
       // Note: request.method is optional and defaults to GET at the call sites.
       const method: string = request.method ?? "GET";
       const isIdempotentRequest = method === "GET" || method === "HEAD" || method === "OPTIONS";
-      if (!response.ok && isIdempotentRequest && attempt < this.retryConfig.maxRetries) {
+      if ((response.status >= 500 || response.status === 429) && isIdempotentRequest && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
@@ -333,6 +426,7 @@ function extractErrorInfo(data: unknown): Record<string, unknown> | null {
 
 /**
  * Create a retryable API client with configuration.
+ * Principal is required for ContractEnvelope per §5.2.
  */
 export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   if (!config.baseUrl?.trim()) {
@@ -340,6 +434,9 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   }
   if (!config.apiVersion?.trim()) {
     throw new ValidationError("client_sdk.missing_api_version", "API client requires apiVersion.");
+  }
+  if (!config.principal) {
+    throw new ValidationError("client_sdk.missing_principal", "API client requires principal for ContractEnvelope.");
   }
   return new RetryableApiClient(config);
 }
@@ -371,6 +468,68 @@ function delay(ms: number): Promise<void> {
 // §5.2 ContractEnvelope factory and utilities
 
 /**
+ * Supported contract envelope content types.
+ */
+const CONTRACT_ENVELOPE_CONTENT_TYPE = "application/json; envelope-type=contract";
+const APPLICATION_JSON_CONTENT_TYPE = "application/json";
+
+/**
+ * Check if a content-type header indicates a ContractEnvelope response.
+ */
+function isContractEnvelopeContentType(contentType: string | null): boolean {
+  if (!contentType) return false;
+  return contentType.startsWith("application/json") && contentType.includes("envelope-type=contract");
+}
+
+/**
+ * Verify and unwrap an incoming ContractEnvelope.
+ * Validates required fields and returns the inner payload.
+ * Throws ValidationError if envelope is malformed.
+ */
+function verifyAndUnwrapEnvelope<TPayload>(envelope: unknown, expectedSchemaVersion?: string): TPayload {
+  if (envelope == null || typeof envelope !== "object") {
+    throw new ValidationError("client_sdk.invalid_envelope", "ContractEnvelope must be a non-null object.");
+  }
+
+  const obj = envelope as Record<string, unknown>;
+
+  // Verify required envelope fields per §5.2
+  if (typeof obj.envelopeId !== "string" || !obj.envelopeId.trim()) {
+    throw new ValidationError("client_sdk.missing_envelope_id", "ContractEnvelope missing or invalid envelopeId.");
+  }
+  if (typeof obj.schemaVersion !== "string" || !obj.schemaVersion.trim()) {
+    throw new ValidationError("client_sdk.missing_schema_version", "ContractEnvelope missing or invalid schemaVersion.");
+  }
+  if (typeof obj.commandId !== "string" || !obj.commandId.trim()) {
+    throw new ValidationError("client_sdk.missing_command_id", "ContractEnvelope missing or invalid commandId.");
+  }
+  if (typeof obj.idempotencyKey !== "string" || !obj.idempotencyKey.trim()) {
+    throw new ValidationError("client_sdk.missing_idempotency_key", "ContractEnvelope missing or invalid idempotencyKey.");
+  }
+  if (typeof obj.correlationId !== "string" || !obj.correlationId.trim()) {
+    throw new ValidationError("client_sdk.missing_correlation_id", "ContractEnvelope missing or invalid correlationId.");
+  }
+  if (typeof obj.timestamp !== "string" || !obj.timestamp.trim()) {
+    throw new ValidationError("client_sdk.missing_timestamp", "ContractEnvelope missing or invalid timestamp.");
+  }
+  if (!obj.principal || typeof obj.principal !== "object") {
+    throw new ValidationError("client_sdk.missing_principal", "ContractEnvelope missing or invalid principal.");
+  }
+
+  // Validate schema version if expected version provided
+  if (expectedSchemaVersion && obj.schemaVersion !== expectedSchemaVersion) {
+    throw new ValidationError("client_sdk.schema_version_mismatch", `ContractEnvelope schemaVersion mismatch: expected ${expectedSchemaVersion}, got ${obj.schemaVersion}`);
+  }
+
+  // The payload field contains the actual response data
+  if (!Object.prototype.hasOwnProperty.call(obj, "payload")) {
+    throw new ValidationError("client_sdk.missing_payload", "ContractEnvelope missing payload field.");
+  }
+
+  return obj.payload as TPayload;
+}
+
+/**
  * Create a ContractEnvelope wrapping a payload with required metadata.
  * All inter-plane messages must use this wrapper per §5.2.
  */
@@ -379,6 +538,7 @@ export function createContractEnvelope<TPayload>(input: {
   principal: PrincipalRef;
   schemaVersion?: string;
   commandId?: string;
+  idempotencyKey?: string;
   correlationId?: string;
   signature?: string | null;
   metadata?: Readonly<Record<string, string>>;
@@ -387,6 +547,7 @@ export function createContractEnvelope<TPayload>(input: {
     envelopeId: newId("env"),
     schemaVersion: input.schemaVersion ?? "v4.3",
     commandId: input.commandId ?? newId("cmd"),
+    idempotencyKey: input.idempotencyKey ?? newId("idem"),
     correlationId: input.correlationId ?? newId("corr"),
     signature: input.signature ?? null,
     principal: input.principal,
@@ -405,6 +566,7 @@ export function wrapInContractEnvelope<TPayload>(
   options?: {
     schemaVersion?: string;
     commandId?: string;
+    idempotencyKey?: string;
     correlationId?: string;
     signature?: string | null;
     metadata?: Readonly<Record<string, string>>;

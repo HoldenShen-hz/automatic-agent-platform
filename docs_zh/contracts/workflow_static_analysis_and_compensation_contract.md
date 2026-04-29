@@ -38,11 +38,9 @@
 ## 4. 分析结果对象
 
 - `WorkflowLintReport`
-- `StaticCompatibilityIssue`
 - `DependencyCycle`
 - `CompensationPlan`
 - `CheckpointPlan`
-- `WorkflowTemplate`
 
 ## 5. 补偿模型
 

@@ -73,8 +73,8 @@ export const DomainManifestSchema = z.object({
   }).default({ riskClass: "medium", advisoryOnly: false, humanAccountable: false, deterministicHotPathOnly: false }),
   // Schema registry reference for domain input/output schema version management
   schemaRegistryRef: z.string().nullable().default(null),
-  // Lifecycle state
-  lifecycleState: z.enum(["draft", "validated", "registered", "active", "updating", "deprecated", "archived"]).default("draft"),
+  // Lifecycle state: draft→canary→active→deprecated→archived per spec
+  lifecycleState: z.enum(["draft", "canary", "active", "deprecated", "archived"]).default("draft"),
   // Trust level for the domain
   trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
 });
@@ -186,11 +186,12 @@ export const DomainDefinitionSchema = z.object({
   outputContracts: z.array(OutputContractConfigSchema).default([]),
   promptOverrides: z.record(z.string(), z.string()).default({}),
   capabilities: DomainCapabilityProfileSchema.default({}),
+  // Status: draft→canary→active→deprecated→archived per spec
   status: z.preprocess(
     (value) => typeof value === "string"
       ? DOMAIN_STATUS_ALIASES[value as keyof typeof DOMAIN_STATUS_ALIASES] ?? value
       : value,
-    z.enum(["draft", "validated", "registered", "active", "updating", "deprecated", "archived"]),
+    z.enum(["draft", "canary", "active", "deprecated", "archived"]),
   ).default("draft"),
   executionProfile: DomainExecutionProfileSchema.default({}),
   externalAdapters: z.array(z.string()).default([]),

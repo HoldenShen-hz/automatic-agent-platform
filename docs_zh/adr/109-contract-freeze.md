@@ -36,7 +36,7 @@ Accepted
 
 - ADR-021 的平面间通信语义继续保留，但跨平面执行对象必须使用 v4.3 canonical contract。
 - ADR-029 的 OAPEFLIR 语义继续保留，但 OAPEFLIR 不拥有独立执行权。
-- ADR-030 的 runtime execution plane 继续保留，但状态推进入口由 ADR-110 定义为 `RuntimeStateMachine.transition(command)`。
+- ADR-030 的 runtime execution plane 继续保留，但状态推进入口由 v4.3 Contract Freeze 的 `RuntimeStateMachine.transition(command)` 统一定义。
 
 ## 后果
 

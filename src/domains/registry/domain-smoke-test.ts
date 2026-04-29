@@ -56,6 +56,29 @@ export class DomainSmokeTestRunner {
   }
 
   /**
+   * §37.2: Execute actual runtime integration test with provided runtime context.
+   * This validates the domain can actually execute in a runtime environment,
+   * not just validating the config structure statically.
+   */
+  public async runWithRuntime(
+    definition: DomainDefinition,
+    runtimeContext: RuntimeContext,
+  ): Promise<DomainSmokeTestResult> {
+    const baseResult = this.run(definition);
+
+    // §37.2: Add actual runtime integration check
+    const runtimeCheck = await this.runRuntimeIntegration(definition, runtimeContext);
+    baseResult.runtimeChecks.push(runtimeCheck);
+
+    if (!runtimeCheck.passed) {
+      baseResult.issues.push("domain_registry.runtime_integration_failed");
+      baseResult.passed = false;
+    }
+
+    return baseResult;
+  }
+
+  /**
    * §37.2: Validate executionProfile covers required lint checks.
    * Must verify risk, HITL, tool, eval, and SLO coverage.
    */
@@ -210,6 +233,120 @@ export class DomainSmokeTestRunner {
     };
   }
 
+  /**
+   * §37.2: Execute actual runtime integration test.
+   * Instantiates and exercises the domain in a sandboxed runtime context.
+   */
+  async runRuntimeIntegration(
+    definition: DomainDefinition,
+    runtimeContext: RuntimeContext,
+  ): Promise<SmokTestRuntimeCheck> {
+    try {
+      // §37.2: Verify runtime can load the domain descriptor
+      if (!runtimeContext.loadDomainDescriptor) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "Runtime context missing loadDomainDescriptor function",
+        };
+      }
+
+      const loaded = await runtimeContext.loadDomainDescriptor(definition);
+      if (!loaded) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "Runtime failed to load domain descriptor",
+        };
+      }
+
+      // §37.2: Verify domain can be instantiated in sandbox
+      if (!runtimeContext.createSandbox) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "Runtime context missing createSandbox function",
+        };
+      }
+
+      const sandbox = await runtimeContext.createSandbox({
+        domainId: definition.domainId,
+        securityLevel: definition.capabilities.securityLevel,
+        toolGrant: definition.capabilities.requiredTools,
+        resourceLimits: definition.capabilities.budgetLimits,
+      });
+
+      if (!sandbox) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "Runtime failed to create sandbox for domain",
+        };
+      }
+
+      // §37.2: Execute a smoke test workflow step in the sandbox
+      if (!sandbox.executeStep) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "Sandbox missing executeStep function",
+        };
+      }
+
+      // Find first workflow with at least one step for smoke testing
+      const testWorkflow = definition.workflows[0];
+      const testStep = testWorkflow?.steps[0];
+
+      if (!testStep) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "No workflow steps available for runtime integration test",
+        };
+      }
+
+      const stepResult = await sandbox.executeStep({
+        workflowId: testWorkflow.workflowId,
+        stepName: testStep.stepName,
+        input: {},
+        timeoutMs: 5000,
+      });
+
+      if (!stepResult) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: "Sandbox executeStep returned null/undefined",
+        };
+      }
+
+      if (stepResult.error) {
+        return {
+          checkId: "runtime_integration",
+          passed: false,
+          details: `Sandbox step execution error: ${stepResult.error}`,
+        };
+      }
+
+      // §37.2: Cleanup sandbox after successful test
+      if (sandbox.release) {
+        await sandbox.release();
+      }
+
+      return {
+        checkId: "runtime_integration",
+        passed: true,
+        details: `Runtime integration passed: domain=${definition.domainId} workflow=${testWorkflow.workflowId} step=${testStep.stepName} executed=${stepResult.executed ?? false}`,
+      };
+    } catch (err) {
+      return {
+        checkId: "runtime_integration",
+        passed: false,
+        details: `Runtime integration exception: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+  }
+
   private computeRollbackPoints(definition: DomainDefinition): readonly string[] {
     const points: string[] = [];
     for (const workflow of definition.workflows) {
@@ -221,4 +358,52 @@ export class DomainSmokeTestRunner {
     }
     return points;
   }
+}
+
+/**
+ * Runtime context required for actual integration testing.
+ * Provides the sandbox and tooling needed to exercise a domain at runtime.
+ */
+export interface RuntimeContext {
+  /**
+   * Load a domain descriptor into the runtime.
+   * Returns true if successful.
+   */
+  loadDomainDescriptor(definition: DomainDefinition): Promise<boolean>;
+
+  /**
+   * Create an isolated sandbox for domain execution.
+   */
+  createSandbox(options: {
+    domainId: string;
+    securityLevel: string;
+    toolGrant: readonly string[];
+    resourceLimits: { maxTokensPerTask: number; maxCostPerTask: number };
+  }): Promise<SandboxContext | null>;
+
+  /**
+   * Terminate and cleanup all sandboxes for this runtime.
+   */
+  dispose(): Promise<void>;
+}
+
+/**
+ * Sandbox context for executing domain steps.
+ */
+export interface SandboxContext {
+  /**
+   * Execute a single workflow step in the sandbox.
+   * Returns null if the step could not be executed.
+   */
+  executeStep(options: {
+    workflowId: string;
+    stepName: string;
+    input: Record<string, unknown>;
+    timeoutMs: number;
+  }): Promise<{ executed: boolean; output?: unknown; error?: string } | null>;
+
+  /**
+   * Release sandbox resources.
+   */
+  release(): Promise<void>;
 }

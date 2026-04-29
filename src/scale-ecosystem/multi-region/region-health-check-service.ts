@@ -360,7 +360,10 @@ export class RegionHealthCheckService {
     }
 
     const regionId = [...this.healthResults.entries()]
-      .find(([, result]) => result.metrics === metrics)?.[0];
+      .find(([, result]) =>
+        result.metrics.length === metrics.length &&
+        result.metrics.every((m, i) => m.metricName === metrics[i].metricName && m.value === metrics[i].value)
+      )?.[0];
     const config = regionId == null ? null : this.configs.get(regionId);
     if (config && latencyMs > config.thresholds.maxLatencyMs) {
       return "degraded";

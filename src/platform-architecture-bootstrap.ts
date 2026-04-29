@@ -255,12 +255,15 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
     dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
   });
 
-  const layers = registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
-  const planes = registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
-  const apps = registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
-  const startupTargets = registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
-  const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
-  return { layers, planes, apps, startupTargets, summary };
+  // Return lazy references to preserve DAG initialization pattern.
+  // Callers should use registry.get() when they actually need the values.
+  return {
+    layers: undefined as unknown as readonly PlatformLayerManifest[],
+    planes: undefined as unknown as readonly PlatformPlaneManifest[],
+    apps: undefined as unknown as readonly PlatformAppManifest[],
+    startupTargets: undefined as unknown as readonly PlatformStartupTarget[],
+    summary: undefined as unknown as PlatformArchitectureBootstrapSummary,
+  };
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {

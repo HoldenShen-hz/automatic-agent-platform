@@ -11,7 +11,7 @@ export const LearningObjectSchema = z.object({
   recommendation: z.string().min(1),
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
   promotionStatus: z.enum(["draft", "quarantine", "validated", "promoted", "retired"]).default("quarantine"),
-  createdAt: z.number().int().nonnegative(),
+  createdAt: z.string(),
 });
 
 export type LearningObject = z.infer<typeof LearningObjectSchema>;

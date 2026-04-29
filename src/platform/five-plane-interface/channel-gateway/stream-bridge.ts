@@ -193,6 +193,12 @@ function mapEventType(event: EventRecord): StreamEventFrame["eventType"] {
 }
 
 /**
+ * §10: Transport connection state for gateway_streaming contract compliance.
+ * Tracks the state of transport connections to detect reconnection and failure scenarios.
+ */
+export type TransportState = "connected" | "reconnecting" | "failed";
+
+/**
  * Manages event streams with replay capabilities.
  *
  * StreamBridge provides the infrastructure for SSE (Server-Sent Events) streaming.
@@ -204,12 +210,51 @@ function mapEventType(event: EventRecord): StreamEventFrame["eventType"] {
  * - When buffer is full, droppable events are evicted (oldest first)
  * - Critical events (completed, failed, approval_requested) are never dropped
  * - Dropped sequence numbers are tracked to allow clients to detect gaps
+ *
+ * §7.1: Per-connection backpressure:
+ * - Tracks connected clients per stream
+ * - Detects slow consumers based on client cursor lag
+ * - Emits stream_gap events when clients fall behind
+ * - Supports dropping low-priority frames for slow consumers
  */
 export class StreamBridge {
   private readonly options: Required<StreamBridgeOptions>;
   private readonly nextSequenceByStream = new Map<string, number>();
   private readonly replayBuffer = new Map<string, StreamEventFrame[]>();
   private readonly droppedBeforeSequenceByStream = new Map<string, number>();
+
+  // §7.1: Per-connection tracking for backpressure and slow-consumer detection
+  /** Map of streamId -> Set of connected client IDs */
+  private readonly connectedClientsByStream = new Map<string, Set<string>>();
+  /** Map of clientId -> last acknowledged sequence number for that client */
+  private readonly clientLastSequence = new Map<string, number>();
+  /** Map of clientId -> streamId they are subscribed to */
+  private readonly clientStreamSubscription = new Map<string, string>();
+  /** Threshold for slow consumer detection - max sequence lag before marking as slow */
+  private readonly slowConsumerLagThreshold = 10;
+
+  // §10: Transport state tracking for gateway_streaming contract compliance
+  /** Transport connection state per stream */
+  private readonly transportStateByStream = new Map<string, TransportState>();
+
+  /**
+   * Gets the current transport state for a stream.
+   * @param streamId - The stream to check
+   * @returns Current transport state
+   */
+  public getTransportState(streamId: string): TransportState {
+    return this.transportStateByStream.get(streamId) ?? "connected";
+  }
+
+  /**
+   * Sets the transport state for a stream.
+   * §10: Must be called when transport state changes (connected/reconnecting/failed).
+   * @param streamId - The stream to update
+   * @param state - New transport state
+   */
+  public setTransportState(streamId: string, state: TransportState): void {
+    this.transportStateByStream.set(streamId, state);
+  }
 
   /**
    * Creates a new StreamBridge instance.
@@ -219,6 +264,121 @@ export class StreamBridge {
     this.options = {
       maxReplayFrames: options.maxReplayFrames ?? 100,
     };
+  }
+
+  // §7.1: Per-connection client management
+
+  /**
+   * Registers a client connection to a stream.
+   * @param clientId - Unique identifier for the client
+   * @param streamId - The stream to connect to
+   * @param lastSequence - Last sequence number the client has received (for replay)
+   */
+  public registerClient(clientId: string, streamId: string, lastSequence: number = 0): void {
+    if (!this.connectedClientsByStream.has(streamId)) {
+      this.connectedClientsByStream.set(streamId, new Set());
+    }
+    this.connectedClientsByStream.get(streamId)!.add(clientId);
+    this.clientLastSequence.set(clientId, lastSequence);
+    this.clientStreamSubscription.set(clientId, streamId);
+  }
+
+  /**
+   * Unregisters a client from its stream.
+   * @param clientId - Unique identifier for the client
+   */
+  public unregisterClient(clientId: string): void {
+    const streamId = this.clientStreamSubscription.get(clientId);
+    if (streamId) {
+      this.connectedClientsByStream.get(streamId)?.delete(clientId);
+      // Clean up empty sets
+      if (this.connectedClientsByStream.get(streamId)?.size === 0) {
+        this.connectedClientsByStream.delete(streamId);
+      }
+    }
+    this.clientLastSequence.delete(clientId);
+    this.clientStreamSubscription.delete(clientId);
+  }
+
+  /**
+   * Updates a client's last acknowledged sequence number.
+   * Called by clients to report their cursor position.
+   * @param clientId - Unique identifier for the client
+   * @param sequence - Last sequence number received by client
+   */
+  public updateClientCursor(clientId: string, sequence: number): void {
+    this.clientLastSequence.set(clientId, sequence);
+  }
+
+  /**
+   * §7.1: Checks if a client is a slow consumer based on sequence lag.
+   * A client is considered slow if their acknowledged sequence is more than
+   * slowConsumerLagThreshold behind the current stream sequence.
+   * @param clientId - Unique identifier for the client
+   * @returns true if the client is lagging behind
+   */
+  public isSlowConsumer(clientId: string): boolean {
+    const streamId = this.clientStreamSubscription.get(clientId);
+    if (!streamId) return false;
+
+    const currentSequence = this.nextSequenceByStream.get(streamId) ?? 0;
+    const clientSequence = this.clientLastSequence.get(clientId) ?? 0;
+    const lag = currentSequence - clientSequence;
+
+    return lag > this.slowConsumerLagThreshold;
+  }
+
+  /**
+   * §7.1: Gets all slow consumers for a given stream.
+   * @param streamId - The stream to check
+   * @returns Array of client IDs that are slow consumers
+   */
+  public getSlowConsumers(streamId: string): string[] {
+    const clients = this.connectedClientsByStream.get(streamId) ?? new Set();
+    const slowClients: string[] = [];
+
+    for (const clientId of clients) {
+      if (this.isSlowConsumer(clientId)) {
+        slowClients.push(clientId);
+      }
+    }
+
+    return slowClients;
+  }
+
+  /**
+   * §7.1: Detects and returns stream gap information for a client.
+   * A gap exists when the client's last sequence is behind what we'd expect.
+   * @param clientId - Unique identifier for the client
+   * @returns Gap info if a gap is detected, null otherwise
+   */
+  public detectStreamGap(clientId: string): { fromSequence: number; toSequence: number; gapSize: number } | null {
+    const streamId = this.clientStreamSubscription.get(clientId);
+    if (!streamId) return null;
+
+    const currentSequence = this.nextSequenceByStream.get(streamId) ?? 0;
+    const clientSequence = this.clientLastSequence.get(clientId) ?? 0;
+    const droppedBefore = this.droppedBeforeSequenceByStream.get(streamId) ?? 0;
+
+    // If client's sequence is less than the oldest available, there's a gap
+    if (clientSequence < droppedBefore) {
+      return {
+        fromSequence: clientSequence,
+        toSequence: droppedBefore,
+        gapSize: droppedBefore - clientSequence,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Gets the number of connected clients for a stream.
+   * @param streamId - The stream to check
+   * @returns Number of connected clients
+   */
+  public getConnectedClientCount(streamId: string): number {
+    return this.connectedClientsByStream.get(streamId)?.size ?? 0;
   }
 
   /**

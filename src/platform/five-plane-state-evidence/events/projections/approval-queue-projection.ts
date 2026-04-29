@@ -299,6 +299,16 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
       handleDecisionRejected(newState, payload, event.createdAt);
       break;
 
+    case "decision:expired":
+      newState.status = "expired";
+      newState.completedAt = event.createdAt;
+      break;
+
+    case "decision:cancelled":
+      newState.status = "cancelled";
+      newState.completedAt = event.createdAt;
+      break;
+
     default:
       // No specific handling for other event types
       break;

@@ -121,12 +121,17 @@ interface ClientConnection {
  * - Allows clients to subscribe to specific task updates
  * - Broadcasts task events to subscribed clients
  * - Maintains connection health via ping/pong
+ * - Implements server-side backpressure via bufferedAmount checking per §7.1
  */
 export class WebSocketBridge {
   private readonly wss: WebSocketServer;
   private readonly clients = new Map<WebSocket, ClientConnection>();
   private readonly taskSubscribers = new Map<string, Set<WebSocket>>();
+  /** §7.1: Per-connection backpressure tracking for slow-consumer detection */
+  private readonly slowConsumers = new Set<WebSocket>();
   private readonly tenantScopeFilter: TenantScopeFilter | null;
+  /** §9 isolation: Per-client subscription cap to prevent memory exhaustion */
+  private static readonly MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
 
   constructor(
     server: Server,
@@ -317,6 +322,18 @@ export class WebSocketBridge {
       return false;
     }
 
+    // §9 isolation: Enforce per-client subscription cap to prevent memory exhaustion
+    if (client.subscribedTasks.size >= WebSocketBridge.MAX_SUBSCRIPTIONS_PER_CLIENT) {
+      logger.warn("WebSocket client subscription limit reached", {
+        actorId: client.principal.actorId,
+        tenantId: client.principal.tenantId,
+        taskId,
+        subscriptionCount: client.subscribedTasks.size,
+        limit: WebSocketBridge.MAX_SUBSCRIPTIONS_PER_CLIENT,
+      });
+      return false;
+    }
+
     client.subscribedTasks.add(taskId);
 
     if (!this.taskSubscribers.has(taskId)) {
@@ -366,6 +383,8 @@ export class WebSocketBridge {
       }
     }
 
+    // §7.1: Remove from slow consumer tracking
+    this.slowConsumers.delete(ws);
     this.clients.delete(ws);
 
     logger.info("WebSocket client disconnected", {
@@ -376,6 +395,8 @@ export class WebSocketBridge {
   /**
    * Broadcast a task event to all subscribers of that task.
    * Implements back-pressure by checking buffered amount before sending.
+   * §7.1: Server-side backpressure - when buffer is full, drop low-priority events
+   * but still deliver critical events (completed, failed, approval_requested).
    * §7: Includes event_id for resume/replay support.
    * §6.7/R15-80: Includes sequenceNum for at-least-once delivery guarantee.
    */
@@ -396,25 +417,34 @@ export class WebSocketBridge {
         continue;
       }
 
-      // §7: Back-pressure check - skip slow clients with large send buffers
-      // Check buffered amount to prevent memory buildup from slow consumers
+      // §7.1: Back-pressure check - detect slow consumers with large send buffers
       const bufferedAmount = ws.bufferedAmount;
       const maxBufferedAmount = 1_000_000; // 1MB threshold
+
       if (bufferedAmount > maxBufferedAmount) {
-        // §9.2: Graduated back-pressure - warn client and skip delivery
-        const warningMsg = JSON.stringify({
-          type: "backpressure_warning",
-          taskId,
-          bufferedCount: client.bufferedEventCount,
-          reason: "send_buffer_full",
-        });
-        ws.send(warningMsg);
-        logger.warn("WebSocket client back-pressure, skipping delivery", {
-          actorId: client.principal.actorId,
-          taskId,
-          bufferedAmount,
-        });
-        continue;
+        // §7.1: Mark client as slow consumer for tracking
+        this.slowConsumers.add(ws);
+
+        // §7.1: Critical events are never dropped - always deliver
+        const isCritical = event.eventType === "completed" ||
+                           event.eventType === "failed" ||
+                           event.eventType === "approval_requested" ||
+                           event.eventType === "artifact_ready";
+
+        if (!isCritical) {
+          // §7.1: Drop low-priority event for slow consumer
+          logger.debug("Dropping low-priority event for slow consumer", {
+            actorId: client.principal.actorId,
+            taskId,
+            eventType: event.eventType,
+            bufferedAmount,
+          });
+          continue;
+        }
+        // Critical events still get through even for slow consumers
+      } else {
+        // §7.1: Clear slow consumer flag when buffer drains
+        this.slowConsumers.delete(ws);
       }
 
       // §6.7/R15-80: Assign sequence number for at-least-once delivery guarantee
@@ -532,16 +562,18 @@ export class WebSocketBridge {
   /**
    * Broadcast to all connected clients (for system-wide announcements).
    * Implements back-pressure by checking buffered amount before sending.
+   * §7.1: Tracks slow consumers for per-connection backpressure monitoring.
    */
   broadcastToAll(message: WebSocketMessageType): void {
     const payload = JSON.stringify(message);
     for (const [ws, client] of Array.from(this.clients.entries())) {
       if (ws.readyState !== ws.OPEN) continue;
 
-      // §9.2: Back-pressure check - skip slow clients with large send buffers
+      // §7.1: Back-pressure check - track slow consumers
       const bufferedAmount = ws.bufferedAmount;
       const maxBufferedAmount = 1_000_000; // 1MB threshold
       if (bufferedAmount > maxBufferedAmount) {
+        this.slowConsumers.add(ws);
         logger.warn("WebSocket client back-pressure in broadcastToAll, skipping", {
           actorId: client.principal.actorId,
           bufferedAmount,
@@ -549,6 +581,8 @@ export class WebSocketBridge {
         continue;
       }
 
+      // §7.1: Clear slow consumer flag when buffer drains
+      this.slowConsumers.delete(ws);
       ws.send(payload);
     }
   }
@@ -558,6 +592,13 @@ export class WebSocketBridge {
    */
   getClientCount(): number {
     return this.clients.size;
+  }
+
+  /**
+   * §7.1: Get the number of slow consumers (clients with bufferedAmount > threshold).
+   */
+  getSlowConsumerCount(): number {
+    return this.slowConsumers.size;
   }
 
   /**

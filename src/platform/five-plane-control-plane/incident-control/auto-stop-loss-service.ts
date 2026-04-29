@@ -685,7 +685,7 @@ export class AutoStopLossService {
         playbookName: playbook.name,
         triggerReason,
         actionsExecuted: [],
-        escalationLevel: SEVERITY_TO_ESCALATION[triggerReason.includes("emergency") ? "emergency" : "critical"],
+        escalationLevel: SEVERITY_TO_ESCALATION[severity] ?? "critical",
         executedAt: startTime,
         completedAt: null,
         success: false,

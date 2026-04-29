@@ -313,6 +313,18 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
       newState.status = "completed";
       break;
 
+    case "worker:registered":
+      newState.status = "idle";
+      break;
+
+    case "worker:deregistered":
+      newState.status = "dead";
+      break;
+
+    case "worker:drain_started":
+      newState.status = "idle";
+      break;
+
     default:
       break;
   }

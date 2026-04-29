@@ -1,5 +1,6 @@
 import type { DurableHarnessService } from "./durable/durable-harness-service.js";
-import type { HarnessRun, HarnessRuntimeService } from "./index.js";
+import type { HarnessRun, HarnessRuntimeService, HarnessRunRuntimeState } from "./index.js";
+import type { HarnessLoopController } from "./loop/index.js";
 
 export type HarnessFailureType =
   | "worker_crash"
@@ -33,7 +34,28 @@ export class RecoveryController {
   public constructor(
     private readonly durableService: DurableHarnessService,
     private readonly runtime: HarnessRuntimeService,
+    private readonly loopController?: HarnessLoopController,
   ) {}
+
+  /**
+   * Gets or creates a LoopController for the given run.
+   * If a LoopController was provided at construction time, returns it.
+   * Otherwise creates one on-demand using the run's constraintPack and state.
+   * R18-16 fix: ensures all retry decisions go through LoopController per §45.11
+   */
+  private getLoopController(run: HarnessRunRuntimeState): HarnessLoopController {
+    if (this.loopController) {
+      return this.loopController;
+    }
+    // Create LoopController on-demand from run's constraintPack and state
+    return new HarnessLoopController(run.constraintPack, {}, {
+      iteration: run.loopMetrics?.iterationCount ?? 0,
+      replanCount: run.loopMetrics?.replanCount ?? 0,
+      retryAttempt: run.sleepLease?.retryAttempt ?? 0,
+      totalCost: run.loopMetrics?.totalCost ?? 0,
+      lastRetryAt: run.sleepLease?.createdAt ? new Date(run.sleepLease.createdAt).getTime() : Date.now(),
+    });
+  }
 
   /**
    * Determines the retry scope for a given failure type per §45.15.
@@ -62,16 +84,8 @@ export class RecoveryController {
   }
 
   public handleFailure(run: HarnessRun, failure: HarnessFailureType): HarnessRun {
-    if (failure === "operator_abort") {
-      const result = {
-        ...run,
-        status: "aborted",
-        completedAt: run.completedAt ?? new Date().toISOString(),
-      };
-      this.durableService.persist(result);
-      return result;
-    }
-
+    // R18-04 fix: operator_abort now routes through RecoveryController for consistent handling.
+    // Previously it short-circuited without going through the recovery path, violating §45.11.
     const checkpointRef = this.durableService.getCheckpointRef(run.runId);
     const restored = checkpointRef ? this.durableService.restoreFromCheckpoint(checkpointRef) : null;
     const sourceRun = restored ?? this.durableService.restore(run.runId) ?? run;
@@ -82,6 +96,14 @@ export class RecoveryController {
     const scope = this.determineRetryScope(failure);
 
     switch (failure) {
+      case "operator_abort":
+        // Operator abort: no retry, transition to aborted and require human review per §45.11
+        return this.runtime.openHitlReview(
+          recovering,
+          "operator_aborted",
+          [],
+        );
+
       case "llm_provider_unavailable": {
         // R13-13 fix: exponential backoff with max retries and retry_exhausted escalation
         if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
@@ -103,23 +125,30 @@ export class RecoveryController {
       }
 
       case "tool_timeout": {
-        // R13-13 fix: apply retry limits to tool_timeout
-        if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
-          // Retry budget exhausted → escalate to human review per §9.3
+        // R18-16 fix: consult LoopController for retry/replan decision per §45.11
+        // Node-level retry should go through LoopController's guard evaluation
+        const loop = this.getLoopController(run as HarnessRunRuntimeState);
+        const hasRemainingIterations = (run.steps?.length ?? 0) < (run.loopMetrics?.maxIterations ?? Infinity);
+        if (!loop.shouldContinue("retry_same_plan", hasRemainingIterations)) {
+          // Guard violation or no remaining iterations → escalate to human review
+          const guardViolation = loop.getGuardViolation();
+          const reasonCode = guardViolation ?? "harness.guard.retry_not_allowed";
           const escalated = this.runtime.openHitlReview(
             recovering,
-            "tool_timeout_retry_exhausted",
-            [],
+            "tool_timeout_loop_guard_violation",
+            [reasonCode],
           );
           this.durableService.persist(escalated);
           return escalated;
         }
 
-        const delayMs = computeBackoffDelayMs(currentAttempt + 1);
-        const resumeAt = new Date(Date.now() + delayMs).toISOString();
+        // Use LoopController's backoff with jitter per §9.3
+        const backoffMs = loop.getBackoffMs();
+        const resumeAt = new Date(Date.now() + backoffMs).toISOString();
+        loop.recordIteration(0); // Record retry attempt in LoopController
         this.durableService.persist(recovering);
-        // R13-16 fix: use node scope for tool_timeout (retry_same_plan semantics)
-        return this.runtime.sleep(recovering, `tool_timeout_retry`, resumeAt, currentAttempt + 1);
+        // Use LoopController's retryAttempt as the authoritative count
+        return this.runtime.sleep(recovering, `tool_timeout_retry`, resumeAt, loop.getState().retryAttempt);
       }
 
       case "budget_exhausted":

@@ -101,12 +101,14 @@ export function decorateResponseHeaders(
   payload: ApiResponsePayload,
   origin: string | undefined,
   corsConfig: CorsConfig,
+  traceId: string | undefined,
 ): ApiResponsePayload {
   const headers: Record<string, string> = {
     ...payload.headers,
     ...DEFAULT_SECURITY_HEADERS,
     "x-api-version": "v1",
     "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
+    ...(traceId != null ? { "x-trace-id": traceId } : {}),
   };
   const allowOrigin = resolveAllowOrigin(origin, corsConfig);
   if (allowOrigin != null) {

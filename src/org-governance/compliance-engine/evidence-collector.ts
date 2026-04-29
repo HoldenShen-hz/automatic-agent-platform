@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { createHash } from "crypto";
 
 export interface ComplianceEvidenceRecord {
   readonly evidenceId: string;
@@ -12,12 +13,33 @@ export interface ComplianceEvidenceRecord {
   readonly sourceSystem?: string;
   readonly timestamp?: string;
   readonly collectedAt: string;
+  /** §R21-32: Hash chain for tamper-proof audit evidence */
+  readonly previousHash: string;
+  readonly hash: string;
+}
+
+/** @internal Computes SHA-256 hash of a record for hash chain */
+function computeRecordHash(record: Omit<ComplianceEvidenceRecord, "hash" | "previousHash">): string {
+  const payload = JSON.stringify({
+    evidenceId: record.evidenceId,
+    frameworkId: record.frameworkId,
+    controlId: record.controlId,
+    source: record.source,
+    artifactRef: record.artifactRef,
+    evidenceType: record.evidenceType,
+    collectedBy: record.collectedBy,
+    content: record.content,
+    sourceSystem: record.sourceSystem,
+    timestamp: record.timestamp,
+    collectedAt: record.collectedAt,
+  });
+  return createHash("sha256").update(payload).digest("hex");
 }
 
 type ComplianceEvidenceCollectInput =
-  Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt"> & { collectedAt?: string };
+  Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt" | "previousHash" | "hash"> & { collectedAt?: string };
 
-function normalizeEvidenceInput(input: ComplianceEvidenceCollectInput): Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt"> {
+function normalizeEvidenceInput(input: ComplianceEvidenceCollectInput): Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt" | "previousHash" | "hash"> {
   const source = input.source
     ?? input.sourceSystem
     ?? input.collectedBy
@@ -65,16 +87,26 @@ export interface EvidenceCollectionJob {
 export class ComplianceEvidenceCollector {
   private readonly records = new Map<string, ComplianceEvidenceRecord[]>();
   private readonly scheduledCollections = new Map<string, ScheduledEvidenceCollection>();
+  /** §R21-32: Last hash per framework for hash chain continuity */
+  private readonly lastHashByFramework = new Map<string, string>();
 
   public collect(
     input: ComplianceEvidenceCollectInput,
   ): ComplianceEvidenceRecord {
     const normalized = normalizeEvidenceInput(input);
-    const record: ComplianceEvidenceRecord = {
+    const previousHash = this.lastHashByFramework.get(normalized.frameworkId) ?? "GENESIS";
+    const baseRecord = {
       ...normalized,
       evidenceId: newId("compliance_evidence"),
       collectedAt: input.collectedAt ?? nowIso(),
+      previousHash,
     };
+    const hash = computeRecordHash(baseRecord);
+    const record: ComplianceEvidenceRecord = {
+      ...baseRecord,
+      hash,
+    };
+    this.lastHashByFramework.set(record.frameworkId, hash);
     this.records.set(record.frameworkId, [...(this.records.get(record.frameworkId) ?? []), record]);
     return record;
   }
@@ -173,6 +205,40 @@ export class ComplianceEvidenceCollector {
     }
     this.scheduledCollections.set(scheduleId, { ...schedule, active: false });
     return true;
+  }
+
+  /** §R21-32: Verify hash chain integrity for a framework - returns list of tampered evidenceIds */
+  public verifyChain(frameworkId: string): readonly string[] {
+    const records = this.records.get(frameworkId) ?? [];
+    const tampered: string[] = [];
+    let expectedPreviousHash = "GENESIS";
+    for (const record of records) {
+      if (record.previousHash !== expectedPreviousHash) {
+        tampered.push(record.evidenceId);
+      } else {
+        // Recompute hash and verify
+        const baseRecord = {
+          evidenceId: record.evidenceId,
+          frameworkId: record.frameworkId,
+          controlId: record.controlId,
+          source: record.source,
+          artifactRef: record.artifactRef,
+          evidenceType: record.evidenceType,
+          collectedBy: record.collectedBy,
+          content: record.content,
+          sourceSystem: record.sourceSystem,
+          timestamp: record.timestamp,
+          collectedAt: record.collectedAt,
+          previousHash: record.previousHash,
+        };
+        const computedHash = computeRecordHash(baseRecord);
+        if (computedHash !== record.hash) {
+          tampered.push(record.evidenceId);
+        }
+        expectedPreviousHash = record.hash;
+      }
+    }
+    return tampered;
   }
 }
 

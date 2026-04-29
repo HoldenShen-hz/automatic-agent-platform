@@ -62,6 +62,10 @@ const DEFAULT_CASCADE_SCOPE: GovernanceDelegationCascadeScope = {
   scheduledTriggers: true,
 };
 
+// Revocation SLO thresholds (in milliseconds)
+const REVOKE_SLO_MS = 60_000;
+const CASCADE_SLO_MS = 300_000;
+
 export class GovernanceDelegationRevocationSaga {
   public constructor(private readonly handlers: GovernanceDelegationRevocationSagaHandlers = {}) {}
 
@@ -156,8 +160,8 @@ export class GovernanceDelegationRevocationSaga {
       revokedWorkerLeases,
       revokedScheduledTriggers,
       revokedDerivedDelegationIds,
-      revokeWithinSlo: elapsed <= 60_000,
-      cascadeWithinSlo: elapsed <= 300_000,
+      revokeWithinSlo: elapsed <= REVOKE_SLO_MS,
+      cascadeWithinSlo: failedStage == null && elapsed <= CASCADE_SLO_MS,
       completedAtMs,
       sagaStages: compensationResourceIds.length > 0
         ? ["prepare", "commit", "compensate", "audit"]

@@ -166,11 +166,36 @@ export interface EdgeSyncReceipt {
 }
 
 export class EdgeRuntimeSyncService {
+  /**
+   * Task risk assessment for offline execution.
+   * Evaluates task characteristics to determine if offline execution is safe.
+   * §62.2: Risk gate ensures high-risk tasks are not executed offline.
+   */
+  private assessTaskRisk(request: OfflineExecutionRequest): "low" | "medium" | "high" {
+    // Risk is determined by taskId characteristics:
+    // - Tasks with "critical", "prod", "payment" in taskId are high risk
+    // - Tasks with "test", "dev", "staging" in taskId are low risk
+    // - All others are medium risk by default
+    const taskIdLower = request.taskId.toLowerCase();
+    if (taskIdLower.includes("critical") || taskIdLower.includes("prod") || taskIdLower.includes("payment")) {
+      return "high";
+    }
+    if (taskIdLower.includes("test") || taskIdLower.includes("dev") || taskIdLower.includes("staging")) {
+      return "low";
+    }
+    return "medium";
+  }
+
   public executeOffline(
     profile: EdgeRuntimeProfile,
     models: readonly LocalModelProfile[],
     request: OfflineExecutionRequest,
   ): EdgeNodeAttemptReceiptView {
+    // §62.2: Risk gate - assess task risk before allowing offline execution
+    const taskRisk = this.assessTaskRisk(request);
+    if (taskRisk === "high") {
+      throw new Error("edge_runtime.task_risk_high:offline_execution_not_allowed_for_high_risk_tasks");
+    }
     // §62.2: Only tasks with risk_level <= medium can be executed offline.
     // Reject "high", undefined, or any other value not explicitly "low" or "medium".
     if (profile.riskLevel !== "low" && profile.riskLevel !== "medium") {
@@ -271,7 +296,6 @@ export class EdgeRuntimeSyncService {
         side_effect_dependency_refs: [],
         signature: item.signature,
       })))
-        .reverse()
         .map((orderedItem) => envelopes.find((item) => item.envelopeId === orderedItem.envelopeId)!)
       : [...envelopes];
     const acceptedEnvelopeIds: string[] = [];

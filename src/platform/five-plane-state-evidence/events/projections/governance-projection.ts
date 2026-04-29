@@ -250,9 +250,10 @@ function mapEventToActionType(eventType: string, payload: Record<string, unknown
     case "decision:escalated":
       return "escalation_triggered";
     default:
-      // Try to infer from payload
+      // Try to infer from payload (only for events we explicitly recognize in switch)
+      // Unknown approval/decision events should not infer approval_granted - return null
+      if (eventType.includes("approval") || eventType.includes("decision")) return null;
       if (eventType.includes("policy")) return "policy_updated";
-      if (eventType.includes("approval") || eventType.includes("decision")) return "approval_granted";
       if (eventType.includes("delegation")) return "delegation_created";
       if (eventType.includes("compliance") || eventType.includes("violation")) return "compliance_violation";
       if (eventType.includes("permission")) return "permission_granted";

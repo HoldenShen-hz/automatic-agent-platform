@@ -39,6 +39,10 @@ export type CrosscuttingFabricCategory = "reliability" | "security" | "governanc
  * Structured log entry with level, message, optional correlation IDs
  * (taskId, agentId, sessionId, stepId, traceId), optional data payload,
  * and ISO timestamp.
+ *
+ * §5.2: correlationId and causationId both support causal chain tracing.
+ * - correlationId: groups related log entries (same request/operation)
+ * - causationId: identifies the direct cause (previous event/action that triggered this)
  */
 export interface StructuredLogEntry {
   level: StructuredLogLevel;
@@ -55,6 +59,8 @@ export interface StructuredLogEntry {
   spanId?: string;
   parentSpanId?: string;
   correlationId?: string;
+  /** §5.2: Causation ID for causal chain tracing - the event/action that caused this entry */
+  causationId?: string;
   /** Tenant identifier per §7.1: every log entry must include tenantId for multi-tenant isolation */
   tenantId?: string;
   /** Harness run identifier per §7.1: every log entry must include harnessRunId for test correlation */
@@ -88,6 +94,8 @@ export interface StructuredLoggerOptions {
   plane?: StructuredPlane;
   planeSourceFile?: string;
   service?: string;
+  /** Minimum log level for filtering (default: debug = all logs pass through) */
+  minLogLevel?: StructuredLogLevel;
 }
 
 type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "service" | "structuredPayload"> & {
@@ -147,6 +155,7 @@ export class StructuredLogger {
   private readonly retentionLimit: number;
   private readonly plane: StructuredPlane;
   private readonly service: string;
+  private readonly minLogLevel: StructuredLogLevel;
   private head: number = 0;
   private count: number = 0;
   private droppedEntryCount: number = 0;
@@ -244,6 +253,7 @@ export class StructuredLogger {
     this.service = normalizeStructuredService(options.service ?? options.planeSourceFile);
     // Pre-allocate buffer for O(1) insertion
     this.buffer = new Array(this.retentionLimit);
+    this.minLogLevel = options.minLogLevel ?? "debug";
   }
 
   /**
@@ -268,6 +278,8 @@ export class StructuredLogger {
       readStringField(rawData, "correlationId") ??
       traceId ??
       activeTelemetryContext?.traceId;
+    // §5.2: causationId for causal chain tracing - the event/action that caused this entry
+    const causationId = entry.causationId ?? readStringField(rawData, "causationId");
     // §7.1: tenantId and harnessRunId are required for every log entry
     const tenantId = entry.tenantId ?? readStringField(rawData, "tenantId");
     const harnessRunId = entry.harnessRunId ?? readStringField(rawData, "harnessRunId");
@@ -289,6 +301,7 @@ export class StructuredLogger {
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
       ...(correlationId !== undefined && correlationId !== null ? { correlationId } : {}),
+      ...(causationId !== undefined && causationId !== null ? { causationId } : {}),
       ...(tenantId !== undefined ? { tenantId } : {}),
       ...(harnessRunId !== undefined ? { harnessRunId } : {}),
       ...(crosscuttingFabric !== undefined ? { crosscuttingFabric } : {}),
@@ -296,6 +309,11 @@ export class StructuredLogger {
       createdAt: timestamp,
       timestamp,
     };
+
+    // Filter out entries below the minimum log level
+    if (!this.passesLevelFilter(entry.level)) {
+      return record;
+    }
 
     if (this.retentionLimit > 0) {
       // If buffer is full, track overflow
@@ -516,6 +534,22 @@ export class StructuredLogger {
     } finally {
       this.rotationScheduled = false;
     }
+  }
+
+  /**
+   * Checks if a log level passes the minimum log level filter.
+   * @param level - The log level to check
+   * @returns True if the level should be processed (passes filter)
+   */
+  private passesLevelFilter(level: StructuredLogLevel): boolean {
+    const LEVEL_PRIORITY: Record<StructuredLogLevel, number> = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3,
+      fatal: 4,
+    };
+    return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[this.minLogLevel];
   }
 }
 

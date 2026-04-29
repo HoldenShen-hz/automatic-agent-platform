@@ -77,6 +77,139 @@ export interface CDCReplicationResult {
 }
 
 /**
+ * Vector clock entry for tracking causal ordering across regions
+ */
+export interface VectorClockEntry {
+  readonly regionId: string;
+  readonly sequence: number;
+  readonly timestamp: string;
+}
+
+/**
+ * Vector clock for conflict detection - tracks per-region sequence numbers
+ */
+export class VectorClock {
+  private readonly clock = new Map<string, number>();
+
+  constructor(initialClock?: ReadonlyMap<string, number>) {
+    if (initialClock) {
+      for (const [regionId, seq] of initialClock) {
+        this.clock.set(regionId, seq);
+      }
+    }
+  }
+
+  /**
+   * Increment the clock for a region
+   */
+  public increment(regionId: string): VectorClock {
+    const newClock = new Map(this.clock);
+    newClock.set(regionId, (newClock.get(regionId) ?? 0) + 1);
+    return new VectorClock(newClock);
+  }
+
+  /**
+   * Merge another vector clock into this one (takes max of each component)
+   */
+  public merge(other: VectorClock): VectorClock {
+    const newClock = new Map(this.clock);
+    for (const [regionId, seq] of other.clock) {
+      newClock.set(regionId, Math.max(newClock.get(regionId) ?? 0, seq));
+    }
+    return new VectorClock(newClock);
+  }
+
+  /**
+   * Compare two vector clocks
+   * @returns -1 if this < other, 1 if this > other, 0 if concurrent
+   */
+  public compare(other: VectorClock): -1 | 0 | 1 {
+    let thisGreater = false;
+    let otherGreater = false;
+
+    const allRegions = new Set([...this.clock.keys(), ...other.clock.keys()]);
+
+    for (const regionId of allRegions) {
+      const thisSeq = this.clock.get(regionId) ?? 0;
+      const otherSeq = other.clock.get(regionId) ?? 0;
+
+      if (thisSeq > otherSeq) {
+        thisGreater = true;
+      } else if (thisSeq < otherSeq) {
+        otherGreater = true;
+      }
+    }
+
+    if (thisGreater && !otherGreater) return 1;
+    if (!thisGreater && otherGreater) return -1;
+    return 0; // concurrent (neither dominates)
+  }
+
+  /**
+   * Check if this clock happened-before or is equal to another
+   */
+  public happensBeforeOrEqual(other: VectorClock): boolean {
+    return this.compare(other) <= 0;
+  }
+
+  /**
+   * Get current clock as map
+   */
+  public toMap(): ReadonlyMap<string, number> {
+    return new Map(this.clock);
+  }
+
+  /**
+   * Get the maximum sequence across all regions
+   */
+  public getMaxSequence(): number {
+    let max = 0;
+    for (const seq of this.clock.values()) {
+      if (seq > max) max = seq;
+    }
+    return max;
+  }
+}
+
+/**
+ * Conflict resolution strategy
+ */
+export type ConflictResolutionStrategy = "lww" | "merge" | "abort";
+
+/**
+ * Conflict metadata for debugging/auditing
+ */
+export interface ConflictInfo {
+  readonly localEvent: CDCReplicationEvent;
+  readonly remoteEvent: CDCReplicationEvent;
+  readonly resolution: "local_wins" | "remote_wins" | "merged" | "aborted";
+  readonly localVectorClock: VectorClock;
+  readonly remoteVectorClock: VectorClock;
+  readonly conflictType: "concurrent" | "causal_before" | "causal_after";
+}
+
+/**
+ * Conflict resolution result
+ */
+export interface ConflictResolutionResult {
+  readonly resolved: boolean;
+  readonly resolvedEvent: CDCReplicationEvent | null;
+  readonly conflict: ConflictInfo | null;
+  readonly strategy: ConflictResolutionStrategy;
+}
+
+/**
+ * Conflict resolution configuration
+ */
+export interface ConflictResolutionConfig {
+  readonly defaultStrategy: ConflictResolutionStrategy;
+  readonly timestampToleranceMs: number;
+  readonly enableVectorClock: boolean;
+  readonly enableLWW: boolean;
+  readonly maxMergeAttempts: number;
+}
+
+/**
  * Region replication configuration
  */
 export interface RegionReplicationConfig {
@@ -98,6 +231,270 @@ export class CDCReplicationService {
   private readonly checkpoints = new Map<string, CDCReplicationCheckpoint>();
   private readonly configs = new Map<string, RegionReplicationConfig>();
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
+  private readonly vectorClocks = new Map<string, VectorClock>();
+  private readonly conflictHistory = new Map<string, ConflictInfo[]>();
+  private readonly conflictConfig: ConflictResolutionConfig = {
+    defaultStrategy: "lww",
+    timestampToleranceMs: 1000,
+    enableVectorClock: true,
+    enableLWW: true,
+    maxMergeAttempts: 3,
+  };
+  private readonly lagHistory = new Map<string, number[]>();
+  private readonly maxLagHistorySize = 100;
+
+  /**
+   * RPO/RTO configuration for timing enforcement
+   * RPO < 1min: max acceptable replication lag is 60s
+   * RTO < 30s: max time to complete failover is 30s
+   */
+  private readonly rpoConfig = {
+    maxLagMs: 60000,           // RPO < 1 min
+    lagAlertThreshold: 30000,   // Alert at 30s lag
+    lagCriticalThreshold: 50000, // Critical at 50s lag
+  };
+
+  private readonly rtoConfig = {
+    failoverTimeoutMs: 30000,   // RTO < 30s
+    healthCheckIntervalMs: 5000,
+    maxFailoverDurationMs: 30000,
+  };
+
+  private failoverStartTime: Map<string, number> = new Map();
+  private readonly lagAlertListeners = new Set<(alert: LagAlert) => void>();
+
+  /**
+   * Get vector clock key for entity across regions
+   */
+  private getVectorClockKey(entityId: string, regionId: string): string {
+    return `${entityId}::${regionId}`;
+  }
+
+  /**
+   * Get or create vector clock for an entity
+   */
+  public getVectorClock(entityId: string): VectorClock | undefined {
+    return this.vectorClocks.get(entityId);
+  }
+
+  /**
+   * Update vector clock for an entity after local event
+   */
+  public updateVectorClock(entityId: string, regionId: string, sequence: number): VectorClock {
+    const existing = this.vectorClocks.get(entityId) ?? new VectorClock();
+    const updated = existing.increment(regionId);
+    this.vectorClocks.set(entityId, updated);
+    return updated;
+  }
+
+  /**
+   * Merge remote vector clock into local for an entity
+   */
+  public mergeVectorClock(entityId: string, remoteClock: VectorClock): VectorClock {
+    const existing = this.vectorClocks.get(entityId) ?? new VectorClock();
+    const merged = existing.merge(remoteClock);
+    this.vectorClocks.set(entityId, merged);
+    return merged;
+  }
+
+  /**
+   * Resolve conflict between local and remote events using LWW
+   * Returns the winning event based on timestamp (Last Writer Wins)
+   */
+  public resolveConflictLWW(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+  ): ConflictResolutionResult {
+    const localTime = new Date(localEvent.createdAt).getTime();
+    const remoteTime = new Date(remoteEvent.createdAt).getTime();
+
+    // LWW: later timestamp wins
+    if (remoteTime > localTime) {
+      return {
+        resolved: true,
+        resolvedEvent: remoteEvent,
+        conflict: {
+          localEvent,
+          remoteEvent,
+          resolution: "remote_wins",
+          localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
+          remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
+          conflictType: "concurrent",
+        },
+        strategy: "lww",
+      };
+    }
+    return {
+      resolved: true,
+      resolvedEvent: localEvent,
+      conflict: {
+        localEvent,
+        remoteEvent,
+        resolution: "local_wins",
+        localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
+        remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
+        conflictType: "concurrent",
+      },
+      strategy: "lww",
+    };
+  }
+
+  /**
+   * Detect if two events are in conflict (concurrent updates)
+   */
+  public detectConflict(localEvent: CDCReplicationEvent, remoteEvent: CDCReplicationEvent): boolean {
+    if (localEvent.taskId !== remoteEvent.taskId) {
+      return false;
+    }
+    const localClock = this.getVectorClock(localEvent.taskId);
+    const remoteClock = this.getVectorClock(remoteEvent.taskId);
+    if (!localClock || !remoteClock) {
+      return false;
+    }
+    // Concurrent if neither happens-before the other
+    return localClock.compare(remoteClock) === 0 && localEvent.sequence !== remoteEvent.sequence;
+  }
+
+  /**
+   * Resolve conflict using merge strategy - combines both updates
+   * For simple payload merge, we use remote as base and apply local delta
+   */
+  public resolveConflictMerge(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+  ): ConflictResolutionResult {
+    // Merge by taking the later event but preserving metadata from both
+    const localTime = new Date(localEvent.createdAt).getTime();
+    const remoteTime = new Date(remoteEvent.createdAt).getTime();
+
+    const winningEvent = remoteTime >= localTime ? remoteEvent : localEvent;
+    const losingEvent = remoteTime >= localTime ? localEvent : remoteEvent;
+
+    return {
+      resolved: true,
+      resolvedEvent: {
+        ...winningEvent,
+        payloadJson: this.mergePayload(winningEvent.payloadJson, losingEvent.payloadJson),
+      },
+      conflict: {
+        localEvent,
+        remoteEvent,
+        resolution: "merged",
+        localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
+        remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
+        conflictType: "concurrent",
+      },
+      strategy: "merge",
+    };
+  }
+
+  /**
+   * Merge two payload JSON strings (simple field-level merge)
+   */
+  private mergePayload(baseJson: string, deltaJson: string): string {
+    try {
+      const base = JSON.parse(baseJson);
+      const delta = JSON.parse(deltaJson);
+      const merged = { ...base, ...delta, _merged: true, _mergedAt: nowIso() };
+      return JSON.stringify(merged);
+    } catch {
+      // If parsing fails, return base
+      return baseJson;
+    }
+  }
+
+  /**
+   * Resolve conflict with configured strategy
+   */
+  public resolveConflict(
+    localEvent: CDCReplicationEvent,
+    remoteEvent: CDCReplicationEvent,
+    strategy?: ConflictResolutionStrategy,
+  ): ConflictResolutionResult {
+    const resolvedStrategy = strategy ?? this.conflictConfig.defaultStrategy;
+
+    switch (resolvedStrategy) {
+      case "lww":
+        return this.resolveConflictLWW(localEvent, remoteEvent);
+      case "merge":
+        return this.resolveConflictMerge(localEvent, remoteEvent);
+      case "abort":
+        return {
+          resolved: false,
+          resolvedEvent: null,
+          conflict: {
+            localEvent,
+            remoteEvent,
+            resolution: "aborted",
+            localVectorClock: this.getVectorClock(localEvent.taskId) ?? new VectorClock(),
+            remoteVectorClock: this.getVectorClock(remoteEvent.taskId) ?? new VectorClock(),
+            conflictType: "concurrent",
+          },
+          strategy: "abort",
+        };
+    }
+  }
+
+  /**
+   * Record conflict for auditing
+   */
+  public recordConflict(entityId: string, conflict: ConflictInfo): void {
+    const history = this.conflictHistory.get(entityId) ?? [];
+    history.push(conflict);
+    // Keep last 100 conflicts per entity
+    if (history.length > 100) {
+      history.shift();
+    }
+    this.conflictHistory.set(entityId, history);
+  }
+
+  /**
+   * Get conflict history for an entity
+   */
+  public getConflictHistory(entityId: string): readonly ConflictInfo[] {
+    return this.conflictHistory.get(entityId) ?? [];
+  }
+
+  /**
+   * Merge incoming remote events with local state using conflict resolution
+   */
+  public mergeEventsWithConflictResolution(
+    entityId: string,
+    localEvents: readonly CDCReplicationEvent[],
+    remoteEvents: readonly CDCReplicationEvent[],
+    strategy?: ConflictResolutionStrategy,
+  ): CDCReplicationEvent[] {
+    const result: CDCReplicationEvent[] = [...localEvents];
+
+    for (const remoteEvent of remoteEvents) {
+      const existingLocal = localEvents.find(
+        (e) => e.sequence === remoteEvent.sequence && e.taskId === remoteEvent.taskId,
+      );
+
+      if (!existingLocal) {
+        // No conflict - just add
+        result.push(remoteEvent);
+      } else {
+        // Conflict detected - resolve
+        const conflictResult = this.resolveConflict(existingLocal, remoteEvent, strategy);
+        if (conflictResult.resolved && conflictResult.resolvedEvent) {
+          // Replace with resolved event
+          const idx = result.findIndex(
+            (e) => e.sequence === conflictResult.conflict!.localEvent.sequence,
+          );
+          if (idx >= 0) {
+            result[idx] = conflictResult.resolvedEvent;
+          }
+        }
+        // Record the conflict
+        if (conflictResult.conflict) {
+          this.recordConflict(entityId, conflictResult.conflict);
+        }
+      }
+    }
+
+    return result;
+  }
 
   /**
    * Register a replication configuration

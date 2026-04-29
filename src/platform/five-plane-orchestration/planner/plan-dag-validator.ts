@@ -106,7 +106,9 @@ export class PlanDagValidator {
     return {
       valid: issues.length === 0,
       issues,
-      orderedSteps: orderedSteps.length === steps.length ? orderedSteps : [...steps],
+      // When cycle detected, topological sort produces partial result - use it
+      // so downstream can still see dependency order even though valid=false
+      orderedSteps: orderedSteps.length === steps.length ? orderedSteps : orderedSteps.length > 0 ? orderedSteps : [...steps],
     };
   }
 

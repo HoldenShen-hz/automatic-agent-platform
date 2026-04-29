@@ -307,16 +307,6 @@ export class ConfigOverrideGovernanceService {
 
     this.auditLog.record(baseRecord);
 
-    if (!validation.allowed) {
-      return baseRecord;
-    }
-
-    const rule = this.rules.get(attempt.layer);
-    if (rule?.requireAudit && !validation.allowed) {
-      baseRecord.allowed = false;
-      baseRecord.reason = `config_override.audit_required:${attempt.path}`;
-    }
-
     return baseRecord;
   }
 

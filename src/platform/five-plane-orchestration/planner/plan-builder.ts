@@ -40,6 +40,20 @@ export class PlanBuilder {
     }));
 
     const dagValidation = this.dagValidator.validate(steps);
+    if (!dagValidation.valid) {
+      const planId = newId("plan");
+      const strategy = this.strategySelector.select(input);
+      return parsePlan({
+        planId,
+        taskId: input.observation.taskId,
+        assessmentRef: createAssessmentRef(input.assessment),
+        version: input.version ?? 1,
+        strategy: input.version != null && input.version > 1 ? "replanned" : strategy,
+        steps: dagValidation.orderedSteps,
+        createdAt: Date.now(),
+        parentVersion: input.parentVersion,
+      });
+    }
     const strategy = this.strategySelector.select(input);
 
     return parsePlan({

@@ -314,11 +314,12 @@ export class ServiceRegistry {
 
     // Check for cycles - if not all services are in result, there's a cycle
     if (result.length !== serviceNames.length) {
-      logger.log({
-        level: "warn",
-        message: "ServiceRegistry: circular dependency detected in topological sort",
-        data: { unsortedServices: serviceNames.filter(n => !result.includes(n)) },
-      });
+      const unsortedServices = serviceNames.filter(n => !result.includes(n));
+      throw new InternalAppError(
+        "service_registry.circular_dependency",
+        `service_registry.circular_dependency: Circular dependency detected in topological sort`,
+        { source: "internal", details: { unsortedServices } },
+      );
     }
 
     return result;

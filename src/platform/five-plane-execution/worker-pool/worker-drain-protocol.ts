@@ -42,6 +42,8 @@ export interface WorkerDrainRequest {
   readonly requestedAt: string;
   readonly deadlineAt: string;
   readonly activeLeases: readonly ActiveLeaseSummary[];
+  /** R20-11: Reason for drain (graceful_shutdown, node_replacement, incident, etc.) */
+  readonly drainReason?: string;
 }
 
 /**
@@ -58,6 +60,14 @@ export interface WorkerDrainReceipt {
   readonly completedLeaseCount: number;
   readonly handoverLeaseIds: readonly string[];
   readonly runTerminationCleanupRequired: boolean;
+  /** R20-11: Number of leases forcibly handed off after deadline exceeded */
+  readonly forcedHandoffCount: number;
+  /** R20-11: Cleanup result for run termination */
+  readonly cleanupResult?: {
+    runsTerminated: number;
+    gracefulMs: number;
+    forcedMs: number;
+  };
   readonly phaseHistory: readonly {
     phase: WorkerDrainPhase;
     enteredAt: string;
@@ -154,6 +164,7 @@ export class WorkerDrainProtocol {
       completedLeaseCount: 0,
       handoverLeaseIds,
       runTerminationCleanupRequired: false,
+      forcedHandoffCount: 0,
       phaseHistory,
     };
   }
@@ -169,7 +180,7 @@ export class WorkerDrainProtocol {
     observedAt: string,
   ): WorkerDrainReceipt {
     const elapsed = new Date(observedAt).getTime() - new Date(currentReceipt.requestedAt).getTime();
-    const deadlineExceeded = observedAt > currentReceipt.deadlineAt;
+    const deadlineExceeded = new Date(observedAt).getTime() > new Date(currentReceipt.deadlineAt).getTime();
 
     // Update phase history - mark current phase as exited
     const updatedHistory = currentReceipt.phaseHistory.map((entry, index) => {
@@ -220,6 +231,7 @@ export class WorkerDrainProtocol {
       status: newStatus,
       phase: newPhase,
       runTerminationCleanupRequired: deadlineExceeded || currentReceipt.handoverLeaseIds.length > 0,
+      forcedHandoffCount: deadlineExceeded ? currentReceipt.completedLeaseCount : currentReceipt.forcedHandoffCount,
       phaseHistory: updatedHistory,
     };
   }
@@ -236,7 +248,7 @@ export class WorkerDrainProtocol {
       .filter((lease) => lease.handoverRequired)
       .map((lease) => lease.leaseId);
 
-    const deadlineExceeded = observedAt > request.deadlineAt;
+    const deadlineExceeded = new Date(observedAt).getTime() > new Date(request.deadlineAt).getTime();
     const elapsed = new Date(observedAt).getTime() - new Date(request.requestedAt).getTime();
 
     // Determine current phase based on elapsed time
@@ -319,6 +331,7 @@ export class WorkerDrainProtocol {
       ),
       handoverLeaseIds,
       runTerminationCleanupRequired: deadlineExceeded || handoverLeaseIds.length > 0,
+      forcedHandoffCount: deadlineExceeded ? request.activeLeases.length - completedLeaseCount : 0,
       phaseHistory,
     };
   }
@@ -337,6 +350,6 @@ export class WorkerDrainProtocol {
    * Check if deadline has been exceeded.
    */
   public isDeadlineExceeded(receipt: WorkerDrainReceipt, observedAt: string): boolean {
-    return observedAt > receipt.deadlineAt;
+    return new Date(observedAt).getTime() > new Date(receipt.deadlineAt).getTime();
   }
 }

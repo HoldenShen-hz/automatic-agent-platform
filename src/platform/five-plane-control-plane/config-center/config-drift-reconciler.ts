@@ -43,6 +43,91 @@ interface ConfigDriftDetectedPayload extends Record<string, unknown> {
 }
 
 /**
+ * Security-sensitive configuration keys that require fail-closed behavior.
+ */
+const SECURITY_SENSITIVE_KEYS = [
+  "sandboxMode",
+  "allowDestructiveActions",
+  "approvalMode",
+  "authentication.enabled",
+  "authorization.enabled",
+  "encryption.enabled",
+  "ssl.enabled",
+];
+
+/**
+ * Budget/egress-sensitive configuration keys that require fail-closed behavior.
+ */
+const BUDGET_EGRESS_SENSITIVE_KEYS = [
+  "budget.limit",
+  "budget.threshold",
+  "egress.restrictions",
+  "egress.allowlist",
+  "egress.blocklist",
+  "quota.limit",
+  "rateLimit",
+];
+
+/**
+ * Sandbox-related configuration keys that require fail-closed behavior.
+ */
+const SANDBOX_SENSITIVE_KEYS = [
+  "sandbox.mode",
+  "sandbox.policy",
+  "sandbox.enabled",
+  "isolation.enabled",
+  "containment.level",
+];
+
+/**
+ * Determines if a key is security-sensitive.
+ */
+function isSecuritySensitiveKey(key: string): boolean {
+  return SECURITY_SENSITIVE_KEYS.some((sensitive) => key.includes(sensitive));
+}
+
+/**
+ * Determines if a key is budget/egress-sensitive.
+ */
+function isBudgetEgressSensitiveKey(key: string): boolean {
+  return BUDGET_EGRESS_SENSITIVE_KEYS.some((sensitive) => key.includes(sensitive));
+}
+
+/**
+ * Determines if a key is sandbox-sensitive.
+ */
+function isSandboxSensitiveKey(key: string): boolean {
+  return SANDBOX_SENSITIVE_KEYS.some((sensitive) => key.includes(sensitive));
+}
+
+/**
+ * Determines the severity of a drift finding.
+ * Security, budget, egress, and sandbox drifts are always blocking (fail-closed).
+ */
+function determineFindingSeverity(
+  key: string,
+  blockingKeys: Set<string>,
+): "warning" | "blocking" {
+  // Security-sensitive keys are always blocking
+  if (isSecuritySensitiveKey(key)) {
+    return "blocking";
+  }
+  // Budget/egress-sensitive keys are always blocking
+  if (isBudgetEgressSensitiveKey(key)) {
+    return "blocking";
+  }
+  // Sandbox-sensitive keys are always blocking
+  if (isSandboxSensitiveKey(key)) {
+    return "blocking";
+  }
+  // User-specified blocking keys are blocking
+  if (blockingKeys.has(key)) {
+    return "blocking";
+  }
+  return "warning";
+}
+
+/**
  * Service for detecting configuration drift and emitting incidents.
  * §24.2/R15-77: Emits config.drift_detected incidents via EventBus.
  */
@@ -68,12 +153,13 @@ export class ConfigDriftReconciler {
       for (const [key, expectedValue] of Object.entries(input.baseline.values)) {
         const observedValue = observed.values[key] ?? null;
         if (observedValue !== expectedValue) {
+          const severity = determineFindingSeverity(key, blockingKeys);
           findings.push({
             key,
             expectedValue,
             observedValue,
             observedSource: observed.sourceName,
-            severity: blockingKeys.has(key) ? "blocking" : "warning",
+            severity,
           });
         }
       }

@@ -2,7 +2,8 @@
  * Config Rollout Service
  *
  * Implements canary rollout strategy for configuration changes.
- * Supports gradual rollout phases: 0% → 5% → 25% → 50% → 100%
+ * Supports gradual rollout phases: 0% → canary → 10% → 100%
+ * §24.3 spec: canary → 30min observation → 10% → full
  *
  * Also emits config.changed events to the event bus when configs are updated.
  */
@@ -16,12 +17,10 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 export enum RolloutPhase {
   /** Rollout is pending, not started */
   PENDING = "pending",
-  /** Initial canary: 5% of traffic */
-  CANARY_5 = "canary_5",
-  /** Expanded canary: 25% of traffic */
-  CANARY_25 = "canary_25",
-  /** Half rollout: 50% of traffic */
-  HALF = "half",
+  /** Initial canary phase */
+  CANARY = "canary",
+  /** Canary reaches 10% of traffic after mandatory 30min observation */
+  CANARY_10 = "canary_10",
   /** Full rollout: 100% of traffic */
   FULL = "full",
   /** Rollout was cancelled */
@@ -40,12 +39,12 @@ export interface RolloutStage {
 
 /**
  * Default rollout stages in order.
+ * §24.3 spec: canary → 30min → 10% → full
  */
 export const DEFAULT_ROLLOUT_STAGES: RolloutStage[] = [
   { phase: RolloutPhase.PENDING, percentage: 0, minDurationMs: 0, autoProgress: false },
-  { phase: RolloutPhase.CANARY_5, percentage: 5, minDurationMs: 1800000, autoProgress: true },
-  { phase: RolloutPhase.CANARY_25, percentage: 25, minDurationMs: 300000, autoProgress: true },
-  { phase: RolloutPhase.HALF, percentage: 50, minDurationMs: 600000, autoProgress: true },
+  { phase: RolloutPhase.CANARY, percentage: 0, minDurationMs: 1800000, autoProgress: true },
+  { phase: RolloutPhase.CANARY_10, percentage: 10, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.CANCELLED, percentage: 0, minDurationMs: 0, autoProgress: false },
 ];
@@ -502,6 +501,73 @@ export class ConfigRolloutService {
       checkedAt: rollout.lastHealthCheckAt ?? rollout.startedAt,
       reasons: [],
     };
+  }
+
+  /**
+   * Rolls back a rollout to the previous stage.
+   * §24.3: Rollback provides stability when issues are detected.
+   *
+   * @param rolloutId - The rollout ID to roll back
+   * @returns Updated rollout or null if not found or cannot roll back
+   */
+  public rollbackToPreviousStage(rolloutId: string): ConfigRollout | null {
+    const rollout = this.activeRollouts.get(rolloutId);
+    if (!rollout) {
+      return null;
+    }
+
+    const currentIndex = this.stages.findIndex((s) => s.phase === rollout.stage.phase);
+    if (currentIndex <= 0) {
+      // Already at first stage, cannot roll back further
+      return rollout;
+    }
+
+    const previousStage = this.stages[currentIndex - 1]!;
+    rollout.stage = previousStage;
+    rollout.currentPercentage = previousStage.percentage;
+    rollout.updatedAt = nowIso();
+    rollout.lastHealthCheckPassed = null;
+
+    this.persistRollout(rollout);
+    this.emitRolloutEvent("config.rollout.rolled_back", rollout);
+
+    return rollout;
+  }
+
+  /**
+   * Auto-rolls back rollouts when health gates fail.
+   * §24.3: Automatic rollback triggers when health metrics breach thresholds.
+   * Should be called periodically by a scheduler after health checks are evaluated.
+   *
+   * @returns Number of rollouts that were rolled back
+   */
+  public autoRollbackOnHealthFailure(): number {
+    let rollbackCount = 0;
+
+    for (const rollout of this.activeRollouts.values()) {
+      // Only roll back if health check was performed and failed
+      if (rollout.lastHealthCheckPassed !== false) {
+        continue;
+      }
+
+      // Only roll back if not already at the first stage
+      const currentIndex = this.stages.findIndex((s) => s.phase === rollout.stage.phase);
+      if (currentIndex <= 0) {
+        continue;
+      }
+
+      const previousStage = this.stages[currentIndex - 1]!;
+      rollout.stage = previousStage;
+      rollout.currentPercentage = previousStage.percentage;
+      rollout.updatedAt = nowIso();
+      rollout.lastHealthCheckPassed = null;
+
+      this.persistRollout(rollout);
+      this.emitRolloutEvent("config.rollout.auto_rolled_back", rollout);
+      rollbackCount++;
+    }
+
+    return rollbackCount;
   }
 
   /**

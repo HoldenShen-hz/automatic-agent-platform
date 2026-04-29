@@ -190,7 +190,17 @@ export class ChaosExperimentScheduler {
       message,
     };
 
-    experiment.results = [...experiment.results, result];
+    // Replace any existing result for the same hypothesis to avoid duplicate accumulation
+    const existingIndex = experiment.results.findIndex((r) => r.steadyStateName === hypothesisName);
+    if (existingIndex !== -1) {
+      experiment.results = [
+        ...experiment.results.slice(0, existingIndex),
+        result,
+        ...experiment.results.slice(existingIndex + 1),
+      ];
+    } else {
+      experiment.results = [...experiment.results, result];
+    }
 
     // Check if hypothesis passed
     if (!passed) {
@@ -205,8 +215,9 @@ export class ChaosExperimentScheduler {
       }
     }
 
-    // Check if all hypotheses have been evaluated
-    if (experiment.results.length >= experiment.steadyStateHypotheses.length) {
+    // Check if all hypotheses have been evaluated (deduplicated by hypothesis name)
+    const uniqueHypothesisNames = new Set(experiment.results.map((r) => r.steadyStateName));
+    if (uniqueHypothesisNames.size >= experiment.steadyStateHypotheses.length) {
       const allPassed = experiment.results.every((r) => r.passed);
       experiment.status = allPassed ? "completed" : "violated";
       experiment.completedAt = nowIso();

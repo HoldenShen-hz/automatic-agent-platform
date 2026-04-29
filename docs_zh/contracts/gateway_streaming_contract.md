@@ -23,11 +23,10 @@
 
 ## 2. 关键对象
 
-- `StreamChannel`
-- `StreamEvent`
-- `ProgressChunk`
-- `FinalChunk`
-- `ErrorChunk`
+- `StreamEventFrame`
+- `SseFrame`
+- `StreamReplayWindow`
+- `StreamReplayResult`
 
 ## 3. StreamEvent 最小字段
 

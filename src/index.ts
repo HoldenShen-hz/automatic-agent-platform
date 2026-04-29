@@ -39,11 +39,15 @@ export { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governan
 export { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 export { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 export { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
-export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
+export type {
+  HarnessRun,
+  HarnessRunStatus,
+  NodeRun,
+  PlanGraphBundle,
+} from "./platform-architecture-types.js";
+export type { PlatformAppKind, PlatformStartupTargetKind as PlatformRootEntryMode } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
-
-export type PlatformRootEntryMode = "summary" | "demo" | PlatformAppKind;
 
 export interface PlatformRootSummary {
   readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary>;
@@ -134,27 +138,25 @@ export async function runPlatformRootDemo(): Promise<void> {
     request: "Create the minimal stable single-agent execution baseline.",
   });
 
-  // R4-63: Use HarnessRun/NodeRun model instead of deprecated currentStepIndex/stepOutputs
-  const harnessRun = snapshot.harnessRun;
-  const nodeRuns = snapshot.nodeRuns ?? [];
-
+  // Output canonical TaskSnapshot structure
   console.log(
     JSON.stringify(
       {
-        harnessRun: harnessRun
+        task: snapshot.task
           ? {
-              harnessRunId: harnessRun.harnessRunId,
-              status: harnessRun.status,
-              tenantId: harnessRun.tenantId,
-              planGraphBundleId: harnessRun.planGraphBundleId,
+              id: snapshot.task.id,
+              status: snapshot.task.status,
+              tenantId: snapshot.task.tenantId,
+              title: snapshot.task.title,
             }
           : null,
-        nodeRuns: nodeRuns.map((node) => ({
-          nodeRunId: node.nodeRunId,
-          nodeId: node.nodeId,
-          status: node.status,
-          attemptCount: node.attemptCount,
-        })),
+        workflow: snapshot.workflow
+          ? {
+              taskId: snapshot.workflow.taskId,
+              status: snapshot.workflow.status,
+              currentStepIndex: snapshot.workflow.currentStepIndex,
+            }
+          : null,
         execution: snapshot.execution
           ? {
               id: snapshot.execution.id,

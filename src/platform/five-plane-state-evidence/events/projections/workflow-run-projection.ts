@@ -284,6 +284,22 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
       handleTaskStatusChanged(newState, payload, event.createdAt);
       break;
 
+    case "workflow_run.created":
+      if (newState.status === "pending") {
+        newState.status = "running";
+      }
+      break;
+
+    case "workflow_run.completed":
+      newState.status = "completed";
+      newState.completedAt = event.createdAt;
+      break;
+
+    case "workflow_run.failed":
+      newState.status = "failed";
+      newState.failedAt = event.createdAt;
+      break;
+
     default:
       // No specific handling for other event types
       break;

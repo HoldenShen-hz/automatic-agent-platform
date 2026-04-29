@@ -265,6 +265,7 @@ export class HttpApiServer {
     const startedAt = Date.now();
     const headers = normalizeHeaders(options.headers);
     const method = options.method ?? "GET";
+    const requestId = readRequestId({ method, url: options.url, headers, body: options.body ?? null });
     // Authenticate for inject requests too so rate limiting can use principal context
     const principal = authenticateOptionalPrincipal(
       { method, url: options.url, headers, body: options.body ?? undefined },
@@ -284,6 +285,7 @@ export class HttpApiServer {
             body: options.body ?? null,
           }, principal, {}),
       headers.origin,
+      requestId,
     );
     this.recordPrometheusHttpMetric(method, options.url, response.statusCode, Date.now() - startedAt);
     return {
@@ -366,7 +368,7 @@ export class HttpApiServer {
       });
     }
 
-    const finalizedPayload = this.decoratePayload(payload, headers.origin);
+    const finalizedPayload = this.decoratePayload(payload, headers.origin, requestId);
     this.recordPrometheusHttpMetric(request.method ?? "GET", request.url, payload.statusCode, Date.now() - startedAt);
     this.sendPayload(response, finalizedPayload, headers["accept-encoding"]);
   }
@@ -640,8 +642,8 @@ export class HttpApiServer {
     };
   }
 
-  private decoratePayload(payload: ApiResponsePayload, origin: string | undefined): ApiResponsePayload {
-    return decorateResponseHeaders(payload, origin, this.corsConfig);
+  private decoratePayload(payload: ApiResponsePayload, origin: string | undefined, requestId: string): ApiResponsePayload {
+    return decorateResponseHeaders(payload, origin, this.corsConfig, requestId);
   }
 
   /**

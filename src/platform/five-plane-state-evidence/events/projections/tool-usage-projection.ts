@@ -282,6 +282,7 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
       break;
 
     case "plugin:invocation_completed":
+      newState.status = "completed";
       if (status === "completed") {
         newState.successCount++;
         newState.lastSuccessAt = event.createdAt;

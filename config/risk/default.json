@@ -7,7 +7,8 @@
     "compliance",
     "reputational",
     "safety",
-    "strategic"
+    "strategic",
+    "ai"
   ],
   "factorWeights": {
     "targetSystemRisk": 4,

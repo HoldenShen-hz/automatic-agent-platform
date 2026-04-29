@@ -83,14 +83,33 @@ export class DomainRegistryService {
     return this.smokeTests.run(definition);
   }
 
-  public activate(domainId: string): DomainDefinition {
+  /**
+   * §37.10: Activate a domain. Domains can be activated from:
+   * - "registered" state: normal activation after initial smoke tests
+   * - "updating" state: canary deployment promotion
+   *
+   * The optional canary flag enables staged rollout validation.
+   */
+  public activate(domainId: string, canary: boolean = false): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    if (current.status !== "registered") {
-      throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
-        category: "validation",
-        source: "internal",
-        details: { currentStatus: current.status },
-      });
+    if (canary) {
+      // Canary promotion: allow "updating" -> "active" transition
+      if (current.status !== "updating" && current.status !== "registered") {
+        throw new ValidationError("domain_registry.invalid_canary_state", "Canary activation requires domain to be in updating or registered state.", {
+          category: "validation",
+          source: "internal",
+          details: { currentStatus: current.status },
+        });
+      }
+    } else {
+      // Standard activation: only from "registered"
+      if (current.status !== "registered") {
+        throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
+          category: "validation",
+          source: "internal",
+          details: { currentStatus: current.status },
+        });
+      }
     }
     const smoke = this.smokeTests.run(current);
     if (!smoke.passed) {
@@ -107,6 +126,7 @@ export class DomainRegistryService {
       payload: {
         domainId,
         status: "active",
+        canaryPromotion: canary,
         capabilityCount: updated.pluginBindings.length,
         pluginCount: updated.pluginBindings.length,
         occurredAt: nowIso(),

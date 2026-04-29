@@ -177,6 +177,9 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
     switch (event.event.eventType) {
       case "dispatch:ticket_created": {
         const payload = JSON.parse(event.event.payloadJson as string) as DispatchTicketCreatedPayload;
+        const newTimeline = [...state.timeline];
+        newTimeline.push({ ...timelineEntry, details: `ticket_created:${payload.ticketId}` });
+        const newProcessedEventIds = [...state.processedEventIds, event.event.id];
         return {
           ...state,
           ticketId: payload.ticketId,
@@ -186,9 +189,9 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
           dispatchTarget: payload.dispatchTarget,
           priority: payload.priority,
           status: "pending",
-          timeline: [...state.timeline, { ...timelineEntry, details: `ticket_created:${payload.ticketId}` }],
+          timeline: newTimeline,
           eventCount: state.eventCount + 1,
-          processedEventIds: [...state.processedEventIds, event.event.id],
+          processedEventIds: newProcessedEventIds,
           firstEventAt: state.firstEventAt ?? occurredAt,
           lastEventAt: occurredAt,
           lastProjectedAt: occurredAt,
@@ -197,14 +200,17 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
 
       case "dispatch:ticket_claimed": {
         const payload = JSON.parse(event.event.payloadJson as string) as DispatchTicketClaimedPayload;
+        const newTimeline = [...state.timeline];
+        newTimeline.push({ ...timelineEntry, details: `ticket_claimed:${payload.ticketId} by ${payload.workerId}` });
+        const newProcessedEventIds = [...state.processedEventIds, event.event.id];
         return {
           ...state,
           workerId: payload.workerId,
           status: "claimed",
           claimedAt: occurredAt,
-          timeline: [...state.timeline, { ...timelineEntry, details: `ticket_claimed:${payload.ticketId} by ${payload.workerId}` }],
+          timeline: newTimeline,
           eventCount: state.eventCount + 1,
-          processedEventIds: [...state.processedEventIds, event.event.id],
+          processedEventIds: newProcessedEventIds,
           lastEventAt: occurredAt,
           lastProjectedAt: occurredAt,
         };
@@ -212,15 +218,18 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
 
       case "dispatch:decision_recorded": {
         const payload = JSON.parse(event.event.payloadJson as string) as DispatchDecisionRecordedPayload;
+        const newTimeline = [...state.timeline];
+        newTimeline.push({ ...timelineEntry, details: `decision_recorded:${payload.outcome}` });
+        const newProcessedEventIds = [...state.processedEventIds, event.event.id];
         return {
           ...state,
           decisionOutcome: payload.outcome,
           decisionReasonCode: payload.reasonCode,
           decisionSelectedWorkerId: payload.selectedWorkerId,
           decisionTraceJson: JSON.stringify(payload),
-          timeline: [...state.timeline, { ...timelineEntry, details: `decision_recorded:${payload.outcome}` }],
+          timeline: newTimeline,
           eventCount: state.eventCount + 1,
-          processedEventIds: [...state.processedEventIds, event.event.id],
+          processedEventIds: newProcessedEventIds,
           lastEventAt: occurredAt,
           lastProjectedAt: occurredAt,
         };

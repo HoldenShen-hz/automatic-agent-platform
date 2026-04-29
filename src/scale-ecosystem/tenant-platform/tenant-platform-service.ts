@@ -33,6 +33,9 @@ import type {
   WorkspaceRecord,
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { QuotaEnforcerService, type QuotaPolicy, type MultiResourceQuotaVector } from "../../scale-ecosystem/resource-manager/quota-enforcer/index.js";
+import { orderFairQueue, type FairQueueItem } from "../../scale-ecosystem/resource-manager/fair-queue/index.js";
+import { choosePreemptionVictim, type PreemptionCandidate } from "../../scale-ecosystem/resource-manager/preemption/index.js";
 
 /**
  * Validates an identifier string against the allowed pattern.
@@ -182,6 +185,55 @@ export interface CreateDataNamespaceInput {
   residencyPolicy?: string | null;
   /** Creation timestamp override */
   createdAt?: string;
+}
+
+/**
+ * Per-tenant SLO definition per R21-10.
+ * Defines availability and performance targets for each tenant.
+ */
+export interface TenantSloDefinition {
+  /** Tenant this SLO applies to */
+  tenantId: string;
+  /** SLO tier determining priority in scheduling */
+  sloTier: "platinum" | "gold" | "silver" | "bronze";
+  /** Minimum availability target as percentage (e.g., 99.99) */
+  availabilityTarget: number;
+  /** Maximum p99 latency in milliseconds */
+  maxLatencyMs: number;
+  /** Maximum concurrent executions guaranteed */
+  maxConcurrentExecutions: number;
+  /** Maximum queue time in milliseconds before warning */
+  maxQueueTimeMs: number;
+}
+
+/**
+ * Tenant scheduling context for fair scheduling per R21-09.
+ * Carries scheduling metadata used by weighted fair queuing.
+ */
+export interface TenantSchedulingContext {
+  tenantId: string;
+  orgNodeId?: string | null;
+  domainId: string;
+  sloTier: number;
+  priority: number;
+  weight: number;
+  currentUsage: number;
+  guaranteedQuota: number;
+  borrowedQuota: number;
+}
+
+/**
+ * Scheduling decision for tenant load placement per R21-08.
+ */
+export interface TenantSchedulingDecision {
+  /** Whether the request was admitted */
+  admitted: boolean;
+  /** Preemption victim if load was evicted */
+  victimExecutionId: string | null;
+  /** Reason for admission or rejection */
+  reason: string;
+  /** Queue position if admitted */
+  queuePosition: number | null;
 }
 
 /** Summary of the entire tenant topology with counts and entity lists */

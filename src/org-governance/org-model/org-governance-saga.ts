@@ -68,7 +68,37 @@ export interface OrgGovernanceSagaReceipt {
 export class OrgGovernanceSaga {
   public constructor(private readonly handlers: OrgGovernanceSagaHandlers = {}) {}
 
+  /**
+   * Validate that saga has sufficient handlers for execution.
+   * Throws if saga cannot execute compensation when needed.
+   */
+  private validateHandlers(steps: readonly OrgGovernanceSagaStep[]): void {
+    const hasCompensate = steps.some((s) => s.action === "compensate");
+    const hasCommit = steps.some((s) => s.action === "commit");
+    const hasPrepare = steps.some((s) => s.action === "prepare");
+    const hasAudit = steps.some((s) => s.action === "audit");
+
+    // If saga has commit steps but no prepare handler, it cannot properly initialize
+    if (hasPrepare && !this.handlers.prepare) {
+      throw new Error("org_governance_saga.missing_prepare_handler");
+    }
+    // If saga has commit steps but no commit handler, it cannot commit
+    if (hasCommit && !this.handlers.commit) {
+      throw new Error("org_governance_saga.missing_commit_handler");
+    }
+    // If saga has compensate steps or may need compensation (has commit), require compensate handler
+    if ((hasCompensate || hasCommit) && !this.handlers.compensate) {
+      throw new Error("org_governance_saga.missing_compensate_handler");
+    }
+    // If saga has audit steps but no audit handler, audit cannot proceed
+    if (hasAudit && !this.handlers.audit) {
+      throw new Error("org_governance_saga.missing_audit_handler");
+    }
+  }
+
   public execute(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaResult {
+    // Validate handlers exist before starting saga execution
+    this.validateHandlers(steps);
     const sortedSteps = sortStepsByPhase(steps);
     const preparedNodeIds: string[] = [];
     const committedNodeIds: string[] = [];

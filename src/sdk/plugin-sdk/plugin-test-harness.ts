@@ -256,6 +256,13 @@ export class PluginTestHarness {
     // Compute input hash for record/replay lookup
     const inputHash = hashInput(input);
 
+    // Create a timeout race
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`PluginTestHarness: execution timed out after ${this.timeoutMs}ms`));
+      }, this.timeoutMs);
+    });
+
     // In replay mode, try to use pre-recorded response
     if (this.mode === "replay" && this.mockGateway) {
       const recorded = this.mockGateway.replay(inputHash);
@@ -267,39 +274,76 @@ export class PluginTestHarness {
 
     // In mock or replay (no recording found) mode, use mock behavior
     if (this.mode === "mock" || this.mode === "replay") {
-      // Simulate execution with mock delay
-      await delay(10);
-
-      // Return mock output based on plugin type
-      let output: unknown;
-      switch (this.plugin.type) {
-        case "tool":
-          output = { result: `Tool ${this.plugin.name} executed`, input };
-          break;
-        case "adapter":
-          output = { adapted: true, original: input };
-          break;
-        case "retriever":
-          output = { documents: [], query: input };
-          break;
-        case "evaluator":
-          output = { passed: true, score: 1.0, input };
-          break;
-        default:
-          output = { output: input };
-      }
-
-      // In record mode, record the input-output pair
-      if (this.mockGateway?.isRecording) {
-        this.mockGateway.record(inputHash, output);
-      }
-
-      return output;
+      // Use Promise.race to enforce timeout
+      const executionPromise = this.executeMock(input, inputHash);
+      return await Promise.race([executionPromise, timeoutPromise]);
     }
 
-    // In live mode, we would execute the actual plugin
-    // For now, throw an error since live execution is not implemented
-    throw new Error(`PluginTestHarness: live execution not supported. Use mock or replay mode.`);
+    // In live mode, execute the actual plugin with timeout enforcement
+    if (this.mode === "live") {
+      const executionPromise = this.executeLive(input);
+      return await Promise.race([executionPromise, timeoutPromise]);
+    }
+
+    throw new Error(`PluginTestHarness: unknown mode ${this.mode}`);
+  }
+
+  /**
+   * Execute plugin in mock mode with mock tool results.
+   */
+  private async executeMock(input: Record<string, unknown>, inputHash: string): Promise<unknown> {
+    // Simulate execution with mock delay
+    await delay(10);
+
+    // For tool plugins, try to use provided mock tool results
+    if (this.plugin.type === "tool" && this.mockToolResults.size > 0) {
+      const toolName = (input.toolName as string) ?? this.plugin.name;
+      const mockResult = this.mockToolResults.get(toolName);
+      if (mockResult) {
+        const output = {
+          success: mockResult.success,
+          output: mockResult.output,
+          errorMessage: mockResult.errorMessage,
+          durationMs: mockResult.durationMs,
+        };
+        // In record mode, record the input-output pair
+        if (this.mockGateway?.isRecording) {
+          this.mockGateway.record(inputHash, output);
+        }
+        return output;
+      }
+    }
+
+    // Use mock LLM responses if configured
+    if (this.mockLlm?.responses?.length) {
+      const response = this.mockLlm.responses[0];
+      if (this.mockGateway?.isRecording) {
+        this.mockGateway.record(inputHash, response);
+      }
+      return response;
+    }
+
+    // Fall back to placeholder output if no mock configured
+    const output = { result: `Plugin ${this.plugin.pluginId} mock result`, input };
+
+    // In record mode, record the input-output pair
+    if (this.mockGateway?.isRecording) {
+      this.mockGateway.record(inputHash, output);
+    }
+
+    return output;
+  }
+
+  /**
+   * Execute plugin in live mode against actual plugin implementation.
+   */
+  private async executeLive(input: Record<string, unknown>): Promise<unknown> {
+    // In live mode, we would load and execute the actual plugin
+    // For now, throw an error indicating live execution requires proper setup
+    throw new Error(
+      `PluginTestHarness: live execution requires a running plugin host. ` +
+      `Use mock or replay mode for testing, or provide a mockGateway with recordings.`
+    );
   }
 }
 

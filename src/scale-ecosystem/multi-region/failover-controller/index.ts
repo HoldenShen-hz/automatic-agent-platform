@@ -9,7 +9,34 @@
  * - Fencing token (promote epoch) must be acquired before region can serve writes
  * - Old leader receives demotion指令 and must acknowledge before new leader activates
  * - All state changes are sequenced by promote epoch to prevent split-brain
+ *
+ * Split-brain detection:
+ * - Uses fencing epoch to ensure only one region can be leader at a time
+ * - Old leader must confirm demotion before new leader can activate
+ * - Prevents dual-active scenario where both regions think they are leader
  */
+
+export type CircuitState = "closed" | "open" | "half_open";
+
+export interface RegionCircuitBreakerState {
+  readonly regionId: string;
+  readonly state: CircuitState;
+  readonly failureCount: number;
+  readonly lastFailureAt: string | null;
+  readonly lastStateChangeAt: string;
+  readonly halfOpenSuccessCount: number;
+}
+
+/**
+ * Split-brain detection metadata carried in fencing tokens.
+ */
+export interface FencingToken {
+  readonly epoch: number;
+  readonly issuedAt: string;
+  readonly issuedBy: string;
+  readonly previousLeaderId: string | null;
+  readonly isAcknowledged: boolean;
+}
 
 export interface RegionFailoverInput {
   readonly primaryHealthy: boolean;
@@ -28,6 +55,7 @@ export interface RegionFailoverDecision {
   readonly promoteEpoch: number;
   readonly demoteOldLeader: boolean;
   readonly oldLeaderId: string | null;
+  readonly fencingToken: FencingToken | null;
 }
 
 export interface RegionLeaderState {
@@ -35,6 +63,7 @@ export interface RegionLeaderState {
   readonly promoteEpoch: number;
   readonly isDemotionAcknowledged: boolean;
   readonly lastUpdatedAt: string;
+  readonly fencingToken: FencingToken | null;
 }
 
 /**
@@ -45,6 +74,11 @@ export interface RegionLeaderState {
  * 2. Old leader receives demotion command
  * 3. Old leader must acknowledge demotion
  * 4. Only after demotion acknowledgment can new leader activate
+ *
+ * Split-brain prevention:
+ * - Fencing token issued with each promote epoch
+ * - Old leader must acknowledge demotion before new leader activates
+ * - Dual-active detection via epoch comparison
  */
 export class RegionFailoverController {
   private leaderState: RegionLeaderState = {
@@ -52,6 +86,7 @@ export class RegionFailoverController {
     promoteEpoch: 0,
     isDemotionAcknowledged: true,
     lastUpdatedAt: new Date(0).toISOString(),
+    fencingToken: null,
   };
 
   /**
@@ -59,6 +94,73 @@ export class RegionFailoverController {
    */
   public getLeaderState(): RegionLeaderState {
     return { ...this.leaderState };
+  }
+
+  /**
+   * §52.3: Checks for split-brain condition.
+   * Returns true if another region claims to be leader with a higher or equal epoch.
+   */
+  public detectSplitBrain(
+    claimedLeaderId: string,
+    claimedEpoch: number,
+  ): boolean {
+    // If claimed epoch is lower than ours, it's stale
+    if (claimedEpoch < this.leaderState.promoteEpoch) {
+      return true; // Split-brain: stale leader trying to act
+    }
+
+    // If claimed epoch equals ours and leader is different, we have dual leadership
+    if (
+      claimedEpoch === this.leaderState.promoteEpoch &&
+      claimedLeaderId !== this.leaderState.currentLeaderId &&
+      this.leaderState.currentLeaderId !== null
+    ) {
+      return true; // Split-brain: two leaders with same epoch
+    }
+
+    return false;
+  }
+
+  /**
+   * §52.3: Generates an isolation fencing token for the given epoch.
+   * The token must be presented by the new leader when activating.
+   */
+  public generateFencingToken(
+    epoch: number,
+    previousLeaderId: string | null,
+  ): FencingToken {
+    const token: FencingToken = {
+      epoch,
+      issuedAt: new Date().toISOString(),
+      issuedBy: "system",
+      previousLeaderId,
+      isAcknowledged: false,
+    };
+    this.leaderState = {
+      ...this.leaderState,
+      fencingToken: token,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+    return token;
+  }
+
+  /**
+   * §52.3: Validates a fencing token against current state.
+   * Returns true if the token is valid and can be used to activate leadership.
+   */
+  public validateFencingToken(token: FencingToken): boolean {
+    // Token epoch must match current epoch
+    if (token.epoch !== this.leaderState.promoteEpoch) {
+      return false;
+    }
+
+    // Token must have been issued for this epoch
+    if (this.leaderState.fencingToken?.epoch !== token.epoch) {
+      return false;
+    }
+
+    // Token must be acknowledged (old leader demoted)
+    return token.isAcknowledged || this.leaderState.isDemotionAcknowledged;
   }
 
   /**
@@ -87,6 +189,7 @@ export class RegionFailoverController {
         promoteEpoch: this.leaderState.promoteEpoch,
         demoteOldLeader: false,
         oldLeaderId: null,
+        fencingToken: this.leaderState.fencingToken,
       };
     }
 
@@ -99,6 +202,7 @@ export class RegionFailoverController {
         promoteEpoch: this.leaderState.promoteEpoch,
         demoteOldLeader: false,
         oldLeaderId: null,
+        fencingToken: this.leaderState.fencingToken,
       };
     }
 
@@ -115,6 +219,7 @@ export class RegionFailoverController {
         promoteEpoch: this.leaderState.promoteEpoch,
         demoteOldLeader: false,
         oldLeaderId: null,
+        fencingToken: this.leaderState.fencingToken,
       };
     }
 
@@ -132,12 +237,16 @@ export class RegionFailoverController {
     // Generate new promote epoch for the new leader
     const newPromoteEpoch = this.leaderState.promoteEpoch + 1;
 
+    // Generate fencing token for isolation
+    const fencingToken = this.generateFencingToken(newPromoteEpoch, oldLeaderId);
+
     // Update internal state
     this.leaderState = {
       currentLeaderId: targetRegionId,
       promoteEpoch: newPromoteEpoch,
       isDemotionAcknowledged: !isLeaderChange, // No demotion needed if no previous leader or same leader
       lastUpdatedAt: new Date().toISOString(),
+      fencingToken,
     };
 
     // §52.3: Return decision with demotion flag if this is a leader change
@@ -148,6 +257,7 @@ export class RegionFailoverController {
       promoteEpoch: newPromoteEpoch,
       demoteOldLeader: isLeaderChange,
       oldLeaderId: isLeaderChange ? oldLeaderId : null,
+      fencingToken,
     };
   }
 
@@ -164,6 +274,14 @@ export class RegionFailoverController {
     // In practice, this would be called with the old leader's ID after it steps down
     if (this.leaderState.isDemotionAcknowledged) {
       return true; // Already acknowledged
+    }
+
+    // Mark fencing token as acknowledged
+    if (this.leaderState.fencingToken) {
+      this.leaderState.fencingToken = {
+        ...this.leaderState.fencingToken,
+        isAcknowledged: true,
+      };
     }
 
     this.leaderState = {
@@ -186,6 +304,13 @@ export class RegionFailoverController {
    */
   public getPromoteEpoch(): number {
     return this.leaderState.promoteEpoch;
+  }
+
+  /**
+   * §52.3: Returns the current fencing token.
+   */
+  public getFencingToken(): FencingToken | null {
+    return this.leaderState.fencingToken;
   }
 }
 

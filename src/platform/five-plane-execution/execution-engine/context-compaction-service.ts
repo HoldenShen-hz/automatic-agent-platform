@@ -17,6 +17,7 @@
  * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
+import { createHash } from "node:crypto";
 import type { CompactionRecord, MessageRecord } from "../../contracts/types/domain.js";
 
 import { estimateMessageTokens } from "../../model-gateway/messages/token-estimator.js";
@@ -84,7 +85,10 @@ function isProtectedMessage(message: MessageRecord, latestUserMessageId: string 
     message.messageType === "user_request" ||
     message.messageType === "assistant_plan" ||
     message.messageType === "approval_decision" ||
-    message.messageType === "compaction_summary"
+    message.messageType === "compaction_summary" ||
+    // §14.2: FeedbackSignal and LearningObject summaries are protected - not eligible for compaction
+    message.messageType === "feedback_signal" ||
+    message.messageType === "learning_object"
   );
 }
 
@@ -133,6 +137,25 @@ export class ContextCompactionService {
         }
       }
 
+      // G9: Compute KV cache keys from fixed_prefix and domain_block content
+      // These keys are used to identify cached KV cache entries
+      let kvCacheFixedPrefixCacheKey: string | null = null;
+      let kvCacheDomainBlockCacheKey: string | null = null;
+      if (kvCacheEnabled) {
+        const fixedPrefixContent = sessionMessages
+          .slice(0, fixedPrefixEndIndex)
+          .map((m) => m.content)
+          .join("\n");
+        const domainBlockContent = kvConfig.domainBlockTemplates[options.taskId] ?? "";
+        // §G9: Use hash_prefix strategy for cache key computation
+        kvCacheFixedPrefixCacheKey = fixedPrefixContent
+          ? `fp:${createHash("sha256").update(fixedPrefixContent).digest("hex").slice(0, 16)}`
+          : null;
+        kvCacheDomainBlockCacheKey = domainBlockContent
+          ? `db:${createHash("sha256").update(domainBlockContent).digest("hex").slice(0, 16)}`
+          : null;
+      }
+
       const compactionRecords = this.store.session.listCompactionRecordsBySession(options.sessionId);
       const latestUserMessage = [...sessionMessages].reverse().find((message) => message.direction === "inbound") ?? null;
       const usageBeforeTokens = sessionMessages.reduce(
@@ -161,10 +184,6 @@ export class ContextCompactionService {
       let errorCode: ContextCompactionResult["errorCode"] = null;
       const persistedRecords: CompactionRecord[] = [];
 
-      // G9: Compute KV cache keys if enabled
-      let kvCacheFixedPrefixCacheKey: string | null = null;
-      let kvCacheDomainBlockCacheKey: string | null = null;
-
       const stage1Messages = sessionMessages.map((message, idx) => {
         const protectedMessage = isProtectedMessage(message, latestUserMessage?.id ?? null);
         // G9: fixed_prefix messages are always protected
@@ -188,12 +207,20 @@ export class ContextCompactionService {
       });
 
       if (stage1Triggered) {
+        const trimMessageIndices = trimCandidates.map((message) => {
+          const idx = sessionMessages.findIndex((m) => m.id === message.id);
+          return idx;
+        });
+        const coveredRange = trimMessageIndices.length > 0
+          ? `${Math.min(...trimMessageIndices)}-${Math.max(...trimMessageIndices)}`
+          : null;
         const record: CompactionRecord = {
           id: newId("compact"),
           sessionId: options.sessionId,
           taskId: options.taskId,
           stage: "trim",
           sourceMessageIdsJson: JSON.stringify(trimCandidates.map((message) => message.id)),
+          coveredMessageRange: coveredRange,
           summaryText: null,
           summaryRef: null,
           compactionReason: "context_overflow_stage1_trim",
@@ -254,12 +281,20 @@ export class ContextCompactionService {
             finalMessages = [...preserved, summaryMessage];
             usageAfterStage2Tokens = finalMessages.reduce((sum, message) => sum + message.estimatedTokens, 0);
 
+            const summaryIndices = summaryCandidates.map((message) => {
+              const idx = stage1Messages.findIndex((m) => m.messageId === message.messageId);
+              return idx;
+            });
+            const coveredRange = summaryIndices.length > 0
+              ? `${Math.min(...summaryIndices)}-${Math.max(...summaryIndices)}`
+              : null;
             const record: CompactionRecord = {
               id: newId("compact"),
               sessionId: options.sessionId,
               taskId: options.taskId,
               stage: "summarize",
               sourceMessageIdsJson: JSON.stringify(summaryCandidates.map((message) => message.messageId)),
+              coveredMessageRange: coveredRange,
               summaryText: summaryMessage.content,
               summaryRef: summaryMessage.messageId,
               compactionReason: "context_overflow_stage2_summarize",
@@ -286,6 +321,8 @@ export class ContextCompactionService {
         contextMessages: finalMessages,
         persistedRecords,
         errorCode,
+        kvCacheFixedPrefixCacheKey,
+        kvCacheDomainBlockCacheKey,
       };
     });
   }

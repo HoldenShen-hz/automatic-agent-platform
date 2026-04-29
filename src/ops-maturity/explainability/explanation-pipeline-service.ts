@@ -56,6 +56,8 @@ export interface ExplanationBundle {
   readonly explanationId: string;
   readonly depth: ExplanationDepth;
   readonly rationale: StageRationale;
+  /** §59.6: version lock reference - binds this explanation to the exact model/prompt version that produced it */
+  readonly versionLockRef: string;
   readonly rendered: string;
   readonly causalSummary: readonly string[];
   readonly redactedEvidenceRefs: readonly string[];
@@ -193,6 +195,7 @@ export class ExplanationPipelineService {
       explanationId,
       depth,
       rationale,
+      versionLockRef,
       rendered,
       causalSummary,
       redactedEvidenceRefs,

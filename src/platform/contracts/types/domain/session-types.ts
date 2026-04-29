@@ -214,6 +214,8 @@ export interface CompactionRecord {
   taskId: string;
   stage: CompactionStage;
   sourceMessageIdsJson: string;
+  /** §14.2: Message range covered by this compaction (start_index-end_index) */
+  coveredMessageRange: string | null;
   summaryText: string | null;
   summaryRef: string | null;
   compactionReason: string;

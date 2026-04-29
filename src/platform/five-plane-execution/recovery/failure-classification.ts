@@ -1,12 +1,14 @@
 /**
- * Failure Classification - L1/L2/L3 Failure Categories
+ * Failure Classification - canonical recovery categories
  *
- * Classifies agent failures into levels to determine appropriate
- * remediation strategy. Supports both coding-agent specific errors
- * and generic platform errors per §9.6 exception classification.
+ * Legacy revisions used internal `L1/L2/L3` labels. That naming drifted from the
+ * platform recovery contracts, which classify failure handling as
+ * `transient/permanent/unknown`. Keep the legacy projection as metadata so older
+ * evidence remains readable, but expose the canonical level on the main field.
  */
 
-export type FailureLevel = 'L1' | 'L2' | 'L3';
+export type FailureLevel = "transient" | "permanent" | "unknown";
+export type LegacyFailureLevel = "L1" | "L2" | "L3";
 
 export type FailureCategory =
   // Platform-level exceptions (generic)
@@ -19,24 +21,24 @@ export type FailureCategory =
   | 'concurrency_limit_exceeded'
   | 'validation_error'
   | 'state_transition_error'
-  // L1: Auto-repairable (coding-agent + generic)
+  // transient: Auto-repairable (coding-agent + generic)
   | 'schema_error'
   | 'type_error'
   | 'unit_test_failure'
   | 'lint_error'
   | 'simple_logic_bug'
-  // L2: Model upgrade required
+  // unknown: Model upgrade required
   | 'complex_repair_failure'
   | 'review_validate_conflict'
   | 'planning_inconsistency'
-  // L3: Human/agent escalation required
+  // permanent: Human/agent escalation required
   | 'forbidden_path'
   | 'secret_exposure'
   | 'high_risk_operation'
   | 'migration_failure'
   | 'deployment_failure'
   | 'security_policy_violation'
-  // Platform-level L3 escalations
+  // Platform-level permanent escalations
   | 'deadlock_detected'
   | 'data_inconsistency'
   | 'governance_policy_violation'
@@ -48,6 +50,9 @@ export interface FailureContext {
 
   /** Failure level */
   level: FailureLevel;
+
+  /** Legacy compatibility label kept for older repair evidence */
+  legacyLevel: LegacyFailureLevel;
 
   /** Human-readable description */
   description: string;
@@ -68,11 +73,12 @@ export interface FailureContext {
   isPlatformException: boolean;
 }
 
-export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext, 'repairBudgetUsed'>> = {
-  // Platform-level L1: Auto-repairable generic errors
+export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext, "repairBudgetUsed">> = {
+  // Platform-level transient: Auto-repairable generic errors
   resource_exhausted: {
     category: 'resource_exhausted',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'System resource (memory, disk, CPU) exhausted',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -81,7 +87,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   timeout_exceeded: {
     category: 'timeout_exceeded',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Operation exceeded configured timeout',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -90,7 +97,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   dependency_unavailable: {
     category: 'dependency_unavailable',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Required dependency service unavailable',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -99,7 +107,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   quota_exceeded: {
     category: 'quota_exceeded',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Resource quota limit reached',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -108,7 +117,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   rate_limit_exceeded: {
     category: 'rate_limit_exceeded',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'API rate limit exceeded',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -117,7 +127,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   circuit_breaker_open: {
     category: 'circuit_breaker_open',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Circuit breaker prevented request',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -126,7 +137,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   concurrency_limit_exceeded: {
     category: 'concurrency_limit_exceeded',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Concurrency limit reached for resource',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -135,7 +147,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   validation_error: {
     category: 'validation_error',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Input validation failed',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -144,7 +157,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   state_transition_error: {
     category: 'state_transition_error',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Invalid state transition attempted',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -152,10 +166,11 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     isPlatformException: true,
   },
 
-  // L1: Auto-repairable failures (coding-agent specific)
+  // transient: Auto-repairable failures (coding-agent specific)
   schema_error: {
     category: 'schema_error',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Output schema mismatch or validation failure',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -164,7 +179,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   type_error: {
     category: 'type_error',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'TypeScript type checking failure',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -173,7 +189,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   unit_test_failure: {
     category: 'unit_test_failure',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Unit test failed after code change',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -182,7 +199,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   lint_error: {
     category: 'lint_error',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Linter errors in generated code',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -191,7 +209,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   simple_logic_bug: {
     category: 'simple_logic_bug',
-    level: 'L1',
+    level: "transient",
+    legacyLevel: "L1",
     description: 'Straightforward logic error easily identifiable',
     autoRepairable: true,
     requiresModelUpgrade: false,
@@ -199,10 +218,11 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     isPlatformException: false,
   },
 
-  // L2: Model upgrade required
+  // unknown: Model upgrade required
   complex_repair_failure: {
     category: 'complex_repair_failure',
-    level: 'L2',
+    level: "unknown",
+    legacyLevel: "L2",
     description: 'Repair attempts failed multiple times',
     autoRepairable: false,
     requiresModelUpgrade: true,
@@ -211,7 +231,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   review_validate_conflict: {
     category: 'review_validate_conflict',
-    level: 'L2',
+    level: "unknown",
+    legacyLevel: "L2",
     description: 'Review and validation reports disagree',
     autoRepairable: false,
     requiresModelUpgrade: true,
@@ -220,7 +241,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   planning_inconsistency: {
     category: 'planning_inconsistency',
-    level: 'L2',
+    level: "unknown",
+    legacyLevel: "L2",
     description: 'Generated plan is inconsistent or incomplete',
     autoRepairable: false,
     requiresModelUpgrade: true,
@@ -228,10 +250,11 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     isPlatformException: false,
   },
 
-  // L3: Human escalation required
+  // permanent: Human escalation required
   forbidden_path: {
     category: 'forbidden_path',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Attempted to modify forbidden path',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -240,7 +263,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   secret_exposure: {
     category: 'secret_exposure',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Secret or credential detected in output',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -249,7 +273,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   high_risk_operation: {
     category: 'high_risk_operation',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'High-risk operation detected',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -258,7 +283,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   migration_failure: {
     category: 'migration_failure',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Database migration failed',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -267,7 +293,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   deployment_failure: {
     category: 'deployment_failure',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Deployment or post-deployment check failed',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -276,7 +303,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   security_policy_violation: {
     category: 'security_policy_violation',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Security policy violation detected',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -284,10 +312,11 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     isPlatformException: true,
   },
 
-  // Platform-level L3 escalations
+  // Platform-level permanent escalations
   deadlock_detected: {
     category: 'deadlock_detected',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Deadlock detected in resource contention',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -296,7 +325,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   data_inconsistency: {
     category: 'data_inconsistency',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Data inconsistency detected between systems',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -305,7 +335,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   governance_policy_violation: {
     category: 'governance_policy_violation',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Governance policy violation detected',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -314,7 +345,8 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
   },
   budget_exceeded: {
     category: 'budget_exceeded',
-    level: 'L3',
+    level: "permanent",
+    legacyLevel: "L3",
     description: 'Budget limit exceeded during execution',
     autoRepairable: false,
     requiresModelUpgrade: false,
@@ -386,7 +418,7 @@ export function classifyErrorCode(errorCode: string | null): FailureCategory {
     return 'state_transition_error'; // EC = RuntimeError
   }
 
-  // L1 coding patterns
+  // transient coding patterns
   if (normalized.includes('schema') || normalized.includes('parse')) {
     return 'schema_error';
   }
@@ -400,7 +432,7 @@ export function classifyErrorCode(errorCode: string | null): FailureCategory {
     return 'lint_error';
   }
 
-  // L3 patterns
+  // permanent patterns
   if (normalized.includes('forbidden') || normalized.includes('access_denied')) {
     return 'forbidden_path';
   }
@@ -443,11 +475,11 @@ export function classifyFailureFromErrorCode(
 }
 
 export function shouldEscalate(failure: FailureContext, maxRepairRounds: number): boolean {
-  // L3 always escalates
-  if (failure.level === 'L3') return true;
+  // permanent failures always escalate
+  if (failure.level === "permanent") return true;
 
-  // L2 after one failed repair
-  if (failure.level === 'L2' && failure.repairBudgetUsed >= 1) return true;
+  // unknown failures escalate after one failed repair
+  if (failure.level === "unknown" && failure.repairBudgetUsed >= 1) return true;
 
   // Exhausted repair budget
   if (failure.repairBudgetUsed >= maxRepairRounds) return true;

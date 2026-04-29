@@ -35,4 +35,4 @@ Harness 的失败恢复不能依赖调用方自由决定，否则会破坏一致
 
 ## v4.3 ADR Remediation
 
-- R10-45: 本 ADR 原先使用 `phase 8b` 作为恢复控制交付门禁术语，已修复为 `Ring 2 durable-readiness`，符合 §33 ring 口径废弃 Phase 1-9 的要求。
+- R10-45: 已修正交付门禁术语为 `Ring 2 durable-readiness`，符合 §33 ring 口径废弃 Phase 1-9 的要求。

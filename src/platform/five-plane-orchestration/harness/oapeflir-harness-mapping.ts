@@ -26,5 +26,11 @@ export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string):
   if (role === "loop_controller") {
     return "improve";
   }
+  if (stage === "learn" || role === "learner") {
+    return "learn";
+  }
+  if (stage === "release" || role === "release_manager") {
+    return "release";
+  }
   return "observe";
 }

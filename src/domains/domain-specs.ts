@@ -16,13 +16,12 @@ const DomainRecipeArchetypeSchemaInternal = z.enum([
 ]);
 
 export const DomainLifecycleStateSchema = z.enum([
-  "draft",
-  "validated",
-  "registered",
+  "validating",
+  "certified",
+  "canary",
   "active",
-  "updating",
   "deprecated",
-  "archived",
+  "retired",
 ]);
 
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
@@ -58,6 +57,8 @@ export const DomainRiskSpecSchema = z.object({
   advisoryOnly: z.boolean().default(false),
   humanAccountable: z.boolean().default(false),
   deterministicHotPathOnly: z.boolean().default(false),
+  allowedCapabilityOverrides: z.array(z.string().min(1)).default([]),
+  requiredApprovalPolicies: z.array(z.string().min(1)).default([]),
   liabilityOwner: z.array(z.string().min(1)).min(1),
   compensationModel: z.array(z.enum(["refund", "reversal", "appeal", "manual_repair", "no_compensation"])).min(1),
   sideEffectTypes: z.array(z.string().min(1)).default([]),

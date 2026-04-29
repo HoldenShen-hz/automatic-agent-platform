@@ -17,6 +17,12 @@ import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
 import { DurableHarnessService } from "./durable/durable-harness-service.js";
 import { GuardrailEngine, type GuardrailAssessment } from "./guardrails/guardrail-engine.js";
+import {
+  GuardrailVibrationBreaker,
+  type GuardrailActionSignal,
+  type GuardrailVibrationState,
+  type GuardrailVibrationDecision,
+} from "./guardrails/guardrail-vibration-breaker.js";
 import { HitlRuntime, type HitlRequest } from "./hitl-runtime.js";
 import { EvalRunService } from "./evaluation/eval-run-service.js";
 import { HarnessMemoryManager } from "./memory-manager.js";
@@ -34,6 +40,7 @@ export * from "./durable/sleep-scheduler.js";
 export * from "./evaluation/eval-run-service.js";
 export * from "./evaluation/task-outcome-grader.js";
 export * from "./guardrails/guardrail-engine.js";
+export * from "./guardrails/guardrail-vibration-breaker.js";
 export * from "./hitl-runtime.js";
 export * from "./loop/index.js";
 export * from "./memory-manager.js";
@@ -93,7 +100,7 @@ export interface ConstraintBudgetEnvelope {
 export interface ConstraintPack {
   readonly policyIds: readonly string[];
   readonly approvalMode: "none" | "required" | "supervised";
-  readonly autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
+  readonly autonomyMode: "suggestion" | "semi_auto";
   readonly toolPolicy: ConstraintToolPolicy;
   readonly riskPolicy?: ConstraintRiskPolicy;
   readonly outputPolicy?: ConstraintOutputPolicy;
@@ -110,6 +117,9 @@ export interface ConstraintPack {
     readonly maxSteps: number;
     readonly maxCost: number;
     readonly maxDurationMs: number;
+    readonly maxModelTokens?: number;
+    readonly maxContextTokens?: number;
+    readonly maxOutputTokens?: number;
   };
 }
 
@@ -172,6 +182,13 @@ export function normalizeConstraintPack(constraintPack: ConstraintPack): Constra
       maxSteps: budgetEnvelope.maxSteps,
       maxCost: budgetEnvelope.maxCost,
       maxDurationMs: budgetEnvelope.maxDurationMs,
+      ...("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null
+        ? {
+            maxModelTokens: budgetEnvelope.maxTokens,
+            maxContextTokens: budgetEnvelope.maxTokens,
+            maxOutputTokens: budgetEnvelope.maxTokens,
+          }
+        : {}),
     };
   }
 
@@ -198,9 +215,38 @@ export interface EvaluationReport {
   readonly notes?: string;
 }
 
+/**
+ * FeedbackEnvelope - hierarchical signal structure per §45.6.
+ * Four-level hierarchy: Step → Task → Workflow → System
+ */
 export interface FeedbackEnvelope {
   readonly feedbackId: string;
-  readonly signals: readonly string[];
+  /** Step-level signals: atomic feedback from single step execution */
+  readonly stepSignals: readonly {
+    readonly stepId: string;
+    readonly role: HarnessRole;
+    readonly signals: readonly string[];
+    readonly timestamp: string;
+  }[];
+  /** Task-level signals: aggregated feedback for full task attempt */
+  readonly taskSignals: readonly {
+    readonly taskId: string;
+    readonly iteration: number;
+    readonly signals: readonly string[];
+    readonly timestamp: string;
+  }[];
+  /** Workflow-level signals: cross-step coordination feedback */
+  readonly workflowSignals: readonly {
+    readonly phase: string;
+    readonly signals: readonly string[];
+    readonly timestamp: string;
+  }[];
+  /** System-level signals: global feedback affecting entire run */
+  readonly systemSignals: readonly {
+    readonly category: "budget" | "safety" | "policy" | "capacity";
+    readonly signals: readonly string[];
+    readonly timestamp: string;
+  }[];
   readonly learnedActions: readonly string[];
   readonly createdAt: string;
 }
@@ -376,6 +422,10 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
     terminalAt: state.completedAt ?? undefined,
+    traceId: state.traceId,
+    riskLevel: state.riskLevel,
+    ownership: state.ownership,
+    auditRefs: state.auditRefs,
   };
 }
 
@@ -510,6 +560,7 @@ export interface HarnessLoopInput {
 export class HarnessRuntimeService {
   private readonly toolbeltAssembler: ToolbeltAssembler;
   private readonly guardrailEngine: GuardrailEngine;
+  private readonly vibrationBreaker: GuardrailVibrationBreaker;
   private readonly hitlRuntime: HitlRuntime;
   private readonly memoryManager: HarnessMemoryManager;
   private readonly evalRunService: EvalRunService;
@@ -517,11 +568,18 @@ export class HarnessRuntimeService {
   private readonly contextAssembler: ContextAssembler;
   private readonly recoveryController: RecoveryController;
   private readonly stateMachine: RuntimeStateMachine;
+  /** Vibration state per-run, maintained across runLoop iterations per §45.20 */
+  private vibrationState: GuardrailVibrationState = {
+    guardrailActionCount: 0,
+    lastGuardrailSignature: null,
+    guardrailCooldownUntilMs: null,
+  };
 
   public constructor(
     options: {
       toolbeltAssembler?: ToolbeltAssembler;
       guardrailEngine?: GuardrailEngine;
+      vibrationBreaker?: GuardrailVibrationBreaker;
       hitlRuntime?: HitlRuntime;
       memoryManager?: HarnessMemoryManager;
       evalRunService?: EvalRunService;
@@ -531,6 +589,10 @@ export class HarnessRuntimeService {
   ) {
     this.toolbeltAssembler = options.toolbeltAssembler ?? new ToolbeltAssembler();
     this.guardrailEngine = options.guardrailEngine ?? new GuardrailEngine();
+    // R18-05 fix: Initialize vibration breaker with defaults per §45.20
+    // maxRepeatedActions=3 means allow up to 3 repeated guardrail actions before cooldown
+    // cooldownMs=30000 means 30 second cooldown when vibration is detected
+    this.vibrationBreaker = options.vibrationBreaker ?? new GuardrailVibrationBreaker(3, 30_000);
     this.hitlRuntime = options.hitlRuntime ?? new HitlRuntime();
     this.memoryManager = options.memoryManager ?? new HarnessMemoryManager();
     this.evalRunService = options.evalRunService ?? new EvalRunService();
@@ -538,6 +600,12 @@ export class HarnessRuntimeService {
     this.contextAssembler = options.contextAssembler ?? new ContextAssembler();
     this.stateMachine = new RuntimeStateMachine();
     this.recoveryController = new RecoveryController(this.durableService, this);
+    // R18-05 fix: Reset vibration state for each new service instance
+    this.vibrationState = {
+      guardrailActionCount: 0,
+      lastGuardrailSignature: null,
+      guardrailCooldownUntilMs: null,
+    };
   }
 
   public createRun(input: {
@@ -618,8 +686,16 @@ export class HarnessRuntimeService {
       outputs: Readonly<Record<string, unknown>>;
       iteration?: number;
       nodeRunId?: string;
+      rationale?: string;
+      evidenceRefs?: readonly string[];
+      toolCalls?: readonly Record<string, unknown>[];
+      latency?: number;
+      cost?: number;
+      error?: string | null;
+      nextAction?: string;
     },
   ): HarnessRunRuntimeState {
+    const startedAt = nowIso();
     const completedAt = nowIso();
     const iteration = input.iteration ?? Math.max(run.currentIteration, 1);
     const step: HarnessStep = {
@@ -630,8 +706,16 @@ export class HarnessRuntimeService {
       semanticPhase: mapHarnessStepToOapeflirPhase(input.role, input.stage),
       inputs: input.inputs,
       outputs: input.outputs,
-      startedAt: completedAt,
+      startedAt,
       completedAt,
+      nodeRunRefs: input.nodeRunId != null ? [input.nodeRunId] : undefined,
+      rationale: input.rationale,
+      evidenceRefs: input.evidenceRefs,
+      toolCalls: input.toolCalls,
+      latency: input.latency,
+      cost: input.cost,
+      error: input.error ?? null,
+      nextAction: input.nextAction,
     };
     return {
       ...run,
@@ -957,6 +1041,14 @@ export class HarnessRuntimeService {
     maxIterationsReached?: boolean;
     riskScore?: number;
     guardrailSuggestedAction?: GuardrailAssessment["suggestedAction"];
+    /** Deterministic: sideEffect mayCommit=false must abort regardless of evaluatorScore (§45.25) */
+    sideEffectMayCommit?: boolean;
+    /** Deterministic: HITL pending must escalate regardless of evaluatorScore (§45.25) */
+    hitlPending?: boolean;
+    /** Deterministic: budget exhausted must abort regardless of evaluatorScore (§45.25) */
+    budgetExhausted?: boolean;
+    /** Deterministic: guardrail abort signal must override evaluatorScore (§45.25) */
+    guardrailAbort?: boolean;
     harnessRunId?: string;
     nodeRunId?: string;
     evidenceRefs?: readonly string[];
@@ -966,9 +1058,22 @@ export class HarnessRuntimeService {
     let action: HarnessDecisionAction = "accept";
     const reasonCodes: string[] = [];
 
-    if (input.maxIterationsReached) {
+    // §45.25 "LLM-as-Judge cannot override deterministic failure" - check all deterministic signals first
+    if (input.guardrailAbort) {
+      action = "abort";
+      reasonCodes.push("harness.guardrail_deterministic_abort");
+    } else if (input.sideEffectMayCommit === false) {
+      action = "abort";
+      reasonCodes.push("harness.side_effect_cannot_commit");
+    } else if (input.budgetExhausted) {
+      action = "abort";
+      reasonCodes.push("harness.budget_exhausted");
+    } else if (input.maxIterationsReached) {
       action = "abort";
       reasonCodes.push("harness.max_iterations_reached");
+    } else if (input.hitlPending) {
+      action = "escalate_to_human";
+      reasonCodes.push("harness.hitl_pending");
     } else if (input.requiresHuman) {
       action = "escalate_to_human";
       reasonCodes.push("harness.human_required");
@@ -1093,6 +1198,33 @@ export class HarnessRuntimeService {
         evidenceRefs: input.producedEvidenceRefs,
         deciderRef: "harness.run_loop",
       });
+
+      // R18-05 fix: Check for guardrail vibration (repeated same action) per §45.20
+      // VibrationBreaker detects when the same guardrail action repeats too often,
+      // indicating an oscillation loop that would cause infinite replanning.
+      // Use guardrailSuggestedAction as the signature since that drives retry/replan.
+      const vibrationSignal: GuardrailActionSignal = {
+        runId: run.runId,
+        signature: guardrailAssessment.suggestedAction,
+        observedAtMs: Date.now(),
+      };
+      const vibrationDecision: GuardrailVibrationDecision = this.vibrationBreaker.evaluate(
+        vibrationSignal,
+        this.vibrationState,
+      );
+      this.vibrationState = vibrationDecision.state;
+
+      // If vibration is in cooldown, escalate to human review to break the oscillation loop
+      if (!vibrationDecision.allowed && guardrailAssessment.suggestedAction !== "proceed") {
+        const escalated = this.openHitlReview(
+          run,
+          "guardrail_vibration_detected",
+          [vibrationDecision.reasonCode, guardrailAssessment.suggestedAction],
+        );
+        this.durableService.persist(escalated);
+        return escalated;
+      }
+
       const contextSnapshot = this.captureContextSnapshot({
         ...run,
         decision,

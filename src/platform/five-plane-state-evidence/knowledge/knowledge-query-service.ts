@@ -64,19 +64,59 @@ interface L1CacheEntry {
  */
 class TenantDomainValidator {
   public validate(options: KnowledgeQueryOptions): void {
-    // R5-49: Enforce tenant/domain boundary validation
-    // Tenant isolation: namespace must be specified or belong to the requesting domain
     if (options.namespace == null && options.domainId == null) {
-      // For Deep queries, explicit namespace or domainId is required for boundary enforcement
-      // System-level queries may omit both, but only for cross-tenant admin operations
       throw new ValidationError(
         "knowledge_query.tenant_boundary_violation",
         "Query must specify namespace or domainId for tenant isolation",
         { details: { namespace: options.namespace, domainId: options.domainId } },
       );
     }
-    // Domain boundary: domainId in options must be consistent with principal's domain
-    // This is enforced at the access control layer in KnowledgeRetrievalService
+    const principal = options.accessPrincipal ?? null;
+    if (principal == null) {
+      throw new ValidationError(
+        "knowledge_query.principal_required",
+        "Knowledge queries must include an access principal for boundary enforcement",
+        { details: { namespace: options.namespace, domainId: options.domainId } },
+      );
+    }
+
+    const roleSet = new Set(principal.roles);
+    const crossDomainAllowed = roleSet.has("admin") || roleSet.has("cross_domain_reader");
+
+    if (options.domainId != null && principal.domainId !== options.domainId && !crossDomainAllowed) {
+      throw new ValidationError(
+        "knowledge_query.domain_principal_mismatch",
+        "Requested domainId does not match the caller principal domain",
+        {
+          details: {
+            requestedDomainId: options.domainId,
+            principalDomainId: principal.domainId,
+            principalId: principal.principalId,
+          },
+        },
+      );
+    }
+
+    if (
+      options.namespace != null
+      && principal.permittedNamespaces != null
+      && principal.permittedNamespaces.length > 0
+      && !principal.permittedNamespaces.includes(options.namespace)
+      && !crossDomainAllowed
+      && principal.domainId !== options.domainId
+    ) {
+      throw new ValidationError(
+        "knowledge_query.namespace_principal_mismatch",
+        "Requested namespace is not permitted for the caller principal",
+        {
+          details: {
+            namespace: options.namespace,
+            principalId: principal.principalId,
+            principalDomainId: principal.domainId,
+          },
+        },
+      );
+    }
   }
 }
 

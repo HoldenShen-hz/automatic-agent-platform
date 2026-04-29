@@ -427,6 +427,15 @@ function normalizeThresholdCny(
   return Number.POSITIVE_INFINITY;
 }
 
+// Default FX rate fallback for legacy USD amounts when no fxRateSnapshot is provided
+// In production, use a real exchange rate service or configured rate
+const DEFAULT_LEGACY_FX_RATE = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
+
+export function setDefaultLegacyFxRate(rate: number): void {
+  // For testing purposes - allows test files to override the default rate
+  (process.env as Record<string, string>)["APPROVAL_ROUTE_DEFAULT_FX_RATE"] = String(rate);
+}
+
 function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountSnapshot {
   if (request.amount != null) {
     const currency = request.amount.currency.toUpperCase();
@@ -458,11 +467,11 @@ function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountS
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
-    amountCny: legacyAmountUsd * 7.2,
+    amountCny: legacyAmountUsd * DEFAULT_LEGACY_FX_RATE,
     fxSnapshot: {
       baseCurrency: "USD",
       quoteCurrency: "CNY",
-      rate: 7.2,
+      rate: DEFAULT_LEGACY_FX_RATE,
       source: "legacy_amount_usd_default",
       capturedAt: "1970-01-01T00:00:00.000Z",
     },

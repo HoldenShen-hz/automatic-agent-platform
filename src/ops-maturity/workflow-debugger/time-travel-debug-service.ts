@@ -288,14 +288,15 @@ export class TimeTravelDebugService {
     if (!session) return [];
 
     const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const variables: VariableState[] = [];
+    // Use a map to keep only the latest value for each variable name
+    const latestVariables = new Map<string, VariableState>();
 
     for (let i = 0; i <= atEventIndex && i < events.length; i++) {
       const event = events[i]!;
       const vars = readVariables(event);
       if (typeof vars === "object") {
         for (const [name, value] of Object.entries(vars)) {
-          variables.push({
+          latestVariables.set(name, {
             name,
             value: readVariableValue(value),
             type: String(typeof value),
@@ -305,7 +306,7 @@ export class TimeTravelDebugService {
       }
     }
 
-    return variables;
+    return [...latestVariables.values()];
   }
 
   public endSession(sessionId: string): void {

@@ -249,7 +249,7 @@ export interface ComplianceReportHumanSignoff {
   readonly signerId: string | null;
   readonly signoffDueAt: string;
   readonly signedAt: string | null;
-  readonly status: "signed" | "signoff_overdue" | "not_attested_expired";
+  readonly status: "signed" | "signed_late" | "signoff_overdue" | "not_attested_expired";
   // §66.2: Escalation fields
   readonly escalationOwner: string | null;
   readonly timeoutAction: "escalate" | "auto_approve" | "auto_reject" | null;
@@ -394,6 +394,18 @@ export class ComplianceReportPipelineService {
       };
     }
 
+    if (signedAt != null && signedAt > input.signoffDueAt) {
+      return {
+        artifactId: input.artifact.artifactId,
+        signerId: input.signerId ?? null,
+        signoffDueAt: input.signoffDueAt,
+        signedAt,
+        status: "signed_late",
+        escalationOwner,
+        timeoutAction,
+      };
+    }
+
     return {
       artifactId: input.artifact.artifactId,
       signerId: input.signerId ?? null,
@@ -424,7 +436,7 @@ export class ComplianceReportPipelineService {
     }
 
     // §66.2: Can only attest if signoff was actually obtained
-    if (signoff.status !== "signed") {
+    if (signoff.status !== "signed" && signoff.status !== "signed_late") {
       throw new Error(`compliance_report.signoff_not_obtained: Cannot attest - signoff status is ${signoff.status}`);
     }
 
@@ -433,8 +445,8 @@ export class ComplianceReportPipelineService {
       throw new Error("compliance_report.signoff_mismatch: Signoff artifact ID does not match");
     }
 
-    // §66.2: Verify signoff was obtained before due date
-    if (signoff.signedAt != null && artifact.signoffDueAt != null && signoff.signedAt > artifact.signoffDueAt) {
+    // §66.2: Verify signoff was obtained before due date (only enforced for on-time signoffs)
+    if (signoff.status === "signed" && signoff.signedAt != null && artifact.signoffDueAt != null && signoff.signedAt > artifact.signoffDueAt) {
       throw new Error("compliance_report.signoff_overdue: Cannot attest - signoff was obtained after due date");
     }
 

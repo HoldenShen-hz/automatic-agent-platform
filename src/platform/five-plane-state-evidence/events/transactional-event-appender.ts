@@ -30,6 +30,11 @@ export interface TransactionalAppendOptions {
   traceId?: string | null;
   /** Event tier (defaults to auto-detect based on event type) */
   eventTier?: EventRecord["eventTier"];
+  /**
+   * Optional truth-table mutation to run inside the same database transaction as the event append.
+   * This closes the gap where callers previously had no way to atomically update truth + event.
+   */
+  mutateTruth?: (db: AuthoritativeSqlDatabase) => void;
 }
 
 /**
@@ -96,6 +101,8 @@ export class TransactionalEventAppender {
     // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
     // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
     return this.db.transaction(() => {
+      options.mutateTruth?.(this.db);
+
       // Step 1: Insert event into event store
       const insertedEvent = this.insertEventInternal(event);
 
@@ -131,6 +138,8 @@ export class TransactionalEventAppender {
     // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
     // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
     return this.db.transaction(() => {
+      options.mutateTruth?.(this.db);
+
       const results: TransactionalAppendResult[] = [];
 
       for (const eventData of events) {

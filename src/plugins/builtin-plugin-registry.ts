@@ -363,6 +363,147 @@ export function listBuiltinPluginIds(): string[] {
 const DATA_TAINT_LABELS = new Map<string, DataTaintLabel>();
 
 /**
+ * §23.8: DynamicPluginLoader - Interface for dynamically loading plugins.
+ * Plugins can be loaded from marketplace, local filesystem, or remote URLs.
+ */
+export interface DynamicPluginLoader {
+  /**
+   * Load a plugin from a dynamic source.
+   * @param source - URI or identifier for the plugin source (marketplace ID, file path, or URL)
+   * @param authToken - Optional authentication token for accessing the plugin source
+   * @returns Loaded plugin instance or null if loading failed
+   */
+  loadFromSource(source: string, authToken?: string): Promise<RegisteredPlugin | null>;
+
+  /**
+   * Check if this loader supports loading from the given source.
+   */
+  supportsSource(source: string): boolean;
+}
+
+/**
+ * §23.8: MarketplacePluginEntry - Plugin entry from the marketplace.
+ */
+export interface MarketplacePluginEntry {
+  pluginId: string;
+  name: string;
+  version: string;
+  owner: string;
+  trustLevel: "internal" | "trusted" | "verified" | "certified";
+  source: string;
+  verifiedAt?: string;
+  certifications?: readonly string[];
+}
+
+/**
+ * §23.8: PluginMarketplaceRegistry - Registry for marketplace-discoverable plugins.
+ * Supports dynamic loading, authentication, and verification.
+ */
+export class PluginMarketplaceRegistry {
+  private readonly loaders = new Map<string, DynamicPluginLoader>();
+  private readonly marketplaceEntries = new Map<string, MarketplacePluginEntry>();
+  private readonly authenticatedSessions = new Map<string, string>();
+
+  /**
+   * Register a dynamic plugin loader for a source scheme.
+   * @param scheme - The URL scheme or source type prefix (e.g., "marketplace:", "file:", "https:")
+   * @param loader - The loader instance for this scheme
+   */
+  registerLoader(scheme: string, loader: DynamicPluginLoader): void {
+    this.loaders.set(scheme, loader);
+  }
+
+  /**
+   * Register a plugin entry from the marketplace.
+   */
+  registerMarketplaceEntry(entry: MarketplacePluginEntry): void {
+    this.marketplaceEntries.set(entry.pluginId, entry);
+  }
+
+  /**
+   * Authenticate with the marketplace using credentials.
+   * Returns a session token on success.
+   */
+  async authenticate(
+    marketplaceUrl: string,
+    credentials: { apiKey?: string; apiSecret?: string },
+  ): Promise<string> {
+    // In production this would call the marketplace auth endpoint
+    // For now, generate a session token keyed to the marketplace URL
+    const sessionToken = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    this.authenticatedSessions.set(sessionToken, marketplaceUrl);
+    return sessionToken;
+  }
+
+  /**
+   * Check if a session is authenticated.
+   */
+  isAuthenticated(sessionToken: string): boolean {
+    return this.authenticatedSessions.has(sessionToken);
+  }
+
+  /**
+   * Dynamically load a plugin from a marketplace or external source.
+   */
+  async loadPlugin(
+    pluginId: string,
+    source: string,
+    authToken?: string,
+  ): Promise<RegisteredPlugin | null> {
+    // Check marketplace entry first
+    const entry = this.marketplaceEntries.get(pluginId);
+    if (!entry) {
+      return null;
+    }
+
+    // Verify authentication if required
+    if (authToken && !this.isAuthenticated(authToken)) {
+      throw new Error(`Plugin marketplace.auth.required: Authentication required to load plugin ${pluginId}`);
+    }
+
+    // Find a loader that supports this source
+    for (const [, loader] of this.loaders) {
+      if (loader.supportsSource(source)) {
+        return loader.loadFromSource(source, authToken);
+      }
+    }
+
+    throw new Error(`Plugin marketplace.loader.not_found: No loader found for source ${source}`);
+  }
+
+  /**
+   * List all plugins available in the marketplace.
+   */
+  listMarketplacePlugins(): readonly MarketplacePluginEntry[] {
+    return [...this.marketplaceEntries.values()];
+  }
+
+  /**
+   * Get a marketplace entry by plugin ID.
+   */
+  getMarketplaceEntry(pluginId: string): MarketplacePluginEntry | null {
+    return this.marketplaceEntries.get(pluginId) ?? null;
+  }
+
+  /**
+   * Check if a plugin is available in the marketplace.
+   */
+  hasMarketplacePlugin(pluginId: string): boolean {
+    return this.marketplaceEntries.has(pluginId);
+  }
+}
+
+// Global marketplace registry instance
+const globalMarketplaceRegistry = new PluginMarketplaceRegistry();
+
+/**
+ * Get the global plugin marketplace registry.
+ */
+export function getMarketplaceRegistry(): PluginMarketplaceRegistry {
+  return globalMarketplaceRegistry;
+}
+
+/**
  * §23.4: Propagate data taint labels when data flows between plugins.
  * When a plugin uses data from another plugin, taint labels must be tracked.
  */

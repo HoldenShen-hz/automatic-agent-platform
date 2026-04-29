@@ -99,6 +99,11 @@ export class ReplicationEventBuffer {
     return events;
   }
 
+  private flushTimer(): ReplicationEvent[] {
+    const flushed = this.flush();
+    return flushed;
+  }
+
   public size(): number {
     return this.buffer.length;
   }
@@ -110,7 +115,7 @@ export class ReplicationEventBuffer {
   private scheduleFlush(): void {
     if (this.timer || this.buffer.length === 0) return;
     this.timer = setTimeout(() => {
-      this.flush();
+      this.flushTimer();
     }, this.flushIntervalMs);
   }
 }
@@ -231,7 +236,6 @@ export class DataReplicatorService {
         for (let attempt = 1; attempt < this.config.retryAttempts; attempt++) {
           try {
             await this.sendToTarget(targetRegionId, event);
-            lastSequence++;
             errors.pop(); // Remove the error we just resolved
             break;
           } catch {
@@ -244,7 +248,7 @@ export class DataReplicatorService {
     // Update checkpoint with actual pending count
     // pendingCount = events still in buffer waiting to be sent + in-flight (not yet acknowledged)
     const currentBuffer = this.buffers.get(targetRegionId);
-    const actualPendingCount = (currentBuffer?.size() ?? 0) + (events.length - lastSequence - errors.length);
+    const actualPendingCount = errors.length;
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,

@@ -48,15 +48,20 @@ function buildReconcileResponse(ctx: { requestId: string }, deps: BillingRouteDe
     (typeof ctx.request.headers.authorization === "string" && ctx.request.headers.authorization.trim().length > 0)
     || (typeof ctx.request.headers["x-api-key"] === "string" && ctx.request.headers["x-api-key"]!.trim().length > 0);
 
-  if (!hasAuthCredential) {
-    const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
-    const expected = deps.webhookSecret;
+  const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
+  const expected = deps.webhookSecret;
+
+  // R20-18 fix: If x-webhook-signature is present, ALWAYS verify it regardless of auth credentials
+  if (typeof signature === "string" && signature.length > 0) {
     if (typeof expected !== "string" || expected.length === 0) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
     }
-    if (typeof signature !== "string" || signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
     }
+  } else if (!hasAuthCredential) {
+    // No signature AND no auth credentials - reject
+    throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
   }
 
   return billingService.reconcilePaymentSession({

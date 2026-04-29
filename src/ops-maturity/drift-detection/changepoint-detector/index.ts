@@ -8,7 +8,7 @@
  * - False positive handling declarations
  */
 
-export type DriftWindowType = "1h_zscore" | "7d_cusum" | "30d_bayesian" | "90d_kljs";
+export type DriftWindowType = "1h" | "6h" | "24h" | "7d";
 
 export interface DriftSample {
   observedAt: string;
@@ -23,7 +23,49 @@ export interface ChangepointDetectionResult {
   relativeShift: number;
   reasonCode: string;
   severity: "low" | "medium" | "high" | "none";
-  recommendedAction: "observe" | "require_review" | "pause_agent" | "none";
+  /** §63: Drift response actions - must support observe_only | throttle | downgrade | rollback | freeze */
+  recommendedAction: "observe" | "require_review" | "pause_agent" | "throttle" | "downgrade" | "rollback" | "freeze" | "none";
+}
+
+/**
+ * §63: Canonical DriftSignal - represents a detected drift event.
+ * Used to signal drift detection results to governance and rollout systems.
+ */
+export interface DriftSignal {
+  signalId: string;
+  subjectId: string;
+  subjectType: string;
+  detectedAt: string;
+  driftScore: number;
+  severity: ChangepointDetectionResult["severity"];
+  windowType: DriftWindowType;
+  baselineRef: string | null;
+  reasonCode: string;
+  recommendedAction: ChangepointDetectionResult["recommendedAction"];
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * §63: Canonical DriftResponsePlan - planned response actions for drift.
+ * Coordinates with rollout and governance systems to execute drift response.
+ */
+export interface DriftResponsePlan {
+  planId: string;
+  signalId: string;
+  actions: DriftResponseAction[];
+  createdAt: string;
+  expiresAt: string | null;
+  status: "proposed" | "approved" | "rejected" | "executed" | "expired";
+}
+
+export type DriftResponseActionType = "observe" | "throttle" | "downgrade" | "rollback" | "freeze";
+
+export interface DriftResponseAction {
+  actionType: DriftResponseActionType;
+  targetId: string;
+  targetType: string;
+  reason: string;
+  parameters?: Record<string, unknown>;
 }
 
 /**
@@ -93,19 +135,19 @@ export const DEFAULT_DRIFT_DETECTOR_CONFIG: DriftDetectorConfig = {
   minSamplesBetweenAlerts: 5,
 };
 
-/** §63.2: 1h Z-Score window - detects rapid shifts using standard deviation */
-const ZSCORE_WINDOW_HOURS = 1;
+/** §63.2: 1h window - rapid shift detection using CUSUM */
+const WINDOW_1H_HOURS = 1;
 
-/** §63.2: 7d CUSUM window - cumulative sum for gradual drifts */
-const CUSUM_WINDOW_HOURS = 7 * 24;
+/** §63.2: 6h window - short-term drift using CUSUM */
+const WINDOW_6H_HOURS = 6;
 
-/** §63.2: 30d Bayesian window - probabilistic drift detection */
-const BAYESIAN_WINDOW_HOURS = 30 * 24;
+/** §63.2: 24h window - daily pattern detection using CUSUM */
+const WINDOW_24H_HOURS = 24;
 
-/** §63.2: 90d KL-JS window - distribution divergence detection */
-const KLJS_WINDOW_HOURS = 90 * 24;
+/** §63.2: 7d window - weekly trend detection using Bayesian changepoint */
+const WINDOW_7D_HOURS = 7 * 24;
 
-const ALL_WINDOWS: DriftWindowType[] = ["1h_zscore", "7d_cusum", "30d_bayesian", "90d_kljs"];
+const ALL_WINDOWS: DriftWindowType[] = ["1h", "6h", "24h", "7d"];
 
 /**
  * §63.2: Detection metadata including sample-size awareness and false positive tracking.
@@ -133,13 +175,19 @@ export class ChangepointDetectorService {
    * Detects changepoints using multiple canonical detection windows per §63.2.
    *
    * @param samples Time-ordered drift samples (oldest first)
-   * @param windowType Which detection window to use (default all 4 windows)
+   * @param windowTypes Which detection windows to use (default all 4 windows: 1h/6h/24h/7d)
    * @returns ChangepointDetectionResult with severity if drift detected
    */
   public detect(
     samples: DriftSample[],
-    windowType: DriftWindowType = "1h_zscore",
+    windowTypes: DriftWindowType[] = ["1h", "6h", "24h", "7d"],
   ): ChangepointDetectionResult {
+    // §63.2: For multi-window analysis, run all windows and aggregate results
+    if (windowTypes.length > 1) {
+      return this.detectMultiWindow(samples, windowTypes);
+    }
+
+    const windowType = windowTypes[0]!;
     const windowHours = this.getWindowHours(windowType);
     const windowSamples = windowHours * this.config.samplesPerHour;
 
@@ -175,19 +223,17 @@ export class ChangepointDetectorService {
       };
     }
 
+    // §63.2: Use CUSUM for short windows (1h/6h/24h) - proper statistical changepoint algorithm
+    // §63.2: Use Bayesian for longer window (7d) - proper statistical changepoint with significance
     let result: ChangepointDetectionResult;
     switch (windowType) {
-      case "1h_zscore":
-        result = this.detectZScore(samples, windowSamples);
-        break;
-      case "7d_cusum":
+      case "1h":
+      case "6h":
+      case "24h":
         result = this.detectCUSUM(samples, windowSamples);
         break;
-      case "30d_bayesian":
+      case "7d":
         result = this.detectBayesian(samples, windowSamples);
-        break;
-      case "90d_kljs":
-        result = this.detectKLJS(samples, windowSamples);
         break;
     }
 
@@ -206,10 +252,42 @@ export class ChangepointDetectorService {
   }
 
   /**
+   * §63.2: Multi-window detection using proper statistical algorithms per window.
+   * Aggregates results from all windows for comprehensive drift detection.
+   */
+  private detectMultiWindow(
+    samples: DriftSample[],
+    windowTypes: DriftWindowType[],
+  ): ChangepointDetectionResult {
+    const results = windowTypes.map((wt) => this.detect(samples, [wt]));
+
+    // §63.2: Aggregate detection - if any window detects with high severity, mark as detected
+    const anyDetected = results.some((r) => r.detected);
+    const maxSeverity = results.reduce((max, r) => {
+      const severityOrder = { none: 0, low: 1, medium: 2, high: 3 };
+      return severityOrder[r.severity] > severityOrder[max] ? r.severity : max;
+    }, "none" as ChangepointDetectionResult["severity"]);
+
+    // §63.2: Use the most significant result for reporting
+    const primaryResult = results.find((r) => r.detected) ?? results[0]!;
+
+    return {
+      detected: anyDetected,
+      baselineMean: primaryResult.baselineMean,
+      recentMean: primaryResult.recentMean,
+      absoluteShift: primaryResult.absoluteShift,
+      relativeShift: primaryResult.relativeShift,
+      reasonCode: `drift.multi_window:${windowTypes.join(",")}:${primaryResult.reasonCode}`,
+      severity: maxSeverity,
+      recommendedAction: severityToAction(maxSeverity),
+    };
+  }
+
+  /**
    * Returns all 4 canonical detection window results per §63.2.
    */
   public detectAll(samples: DriftSample[]): ChangepointDetectionResult[] {
-    return ALL_WINDOWS.map((windowType) => this.detect(samples, windowType));
+    return ALL_WINDOWS.map((windowType) => this.detect(samples, [windowType]));
   }
 
   /**
@@ -239,52 +317,20 @@ export class ChangepointDetectorService {
 
   private getWindowHours(windowType: DriftWindowType): number {
     switch (windowType) {
-      case "1h_zscore":
-        return ZSCORE_WINDOW_HOURS;
-      case "7d_cusum":
-        return CUSUM_WINDOW_HOURS;
-      case "30d_bayesian":
-        return BAYESIAN_WINDOW_HOURS;
-      case "90d_kljs":
-        return KLJS_WINDOW_HOURS;
+      case "1h":
+        return WINDOW_1H_HOURS;
+      case "6h":
+        return WINDOW_6H_HOURS;
+      case "24h":
+        return WINDOW_24H_HOURS;
+      case "7d":
+        return WINDOW_7D_HOURS;
     }
   }
 
   /**
-   * 1h Z-Score: Detects rapid shifts using standard deviation from baseline mean.
-   * §63.2: Assumes normal distribution; threshold and severity are configurable.
-   */
-  private detectZScore(
-    samples: DriftSample[],
-    windowSamples: number,
-  ): ChangepointDetectionResult {
-    const baseline = samples.slice(0, windowSamples);
-    const recent = samples.slice(-1); // Compare latest point to baseline
-
-    const baselineMean = average(baseline.map((s) => s.score));
-    const baselineStd = standardDeviation(baseline.map((s) => s.score));
-    const recentScore = recent[0]!.score;
-
-    // §63.2: Use configurable threshold instead of hardcoded 2.0
-    const zScore = baselineStd !== 0 ? (recentScore - baselineMean) / baselineStd : 0;
-    const detected = Math.abs(zScore) > this.config.zscoreThreshold;
-
-    const severity = this.zScoreToSeverity(zScore);
-    return {
-      detected,
-      baselineMean,
-      recentMean: recentScore,
-      absoluteShift: recentScore - baselineMean,
-      relativeShift: baselineMean !== 0 ? (recentScore - baselineMean) / baselineMean : 0,
-      reasonCode: `drift.zscore_detected:${this.config.distributionAssumption}`,
-      severity,
-      recommendedAction: severityToAction(severity),
-    };
-  }
-
-  /**
-   * 7d CUSUM: Cumulative sum detection for gradual drifts.
-   * §63.2: Assumes normal distribution; boundary and slack are configurable.
+   * CUSUM: Cumulative sum detection for gradual drifts (used for 1h/6h/24h windows).
+   * §63.2: Proper statistical changepoint algorithm - detects cumulative shifts.
    */
   private detectCUSUM(
     samples: DriftSample[],
@@ -327,8 +373,8 @@ export class ChangepointDetectorService {
   }
 
   /**
-   * 30d Bayesian: Probabilistic drift detection.
-   * §63.2: Assumes normal distribution; confidence level is configurable.
+   * Bayesian: Probabilistic drift detection with significance testing (used for 7d window).
+   * §63.2: Proper statistical changepoint algorithm with p-value significance testing.
    */
   private detectBayesian(
     samples: DriftSample[],
@@ -510,9 +556,9 @@ function severityToAction(
 ): ChangepointDetectionResult["recommendedAction"] {
   switch (severity) {
     case "high":
-      return "pause_agent";
+      return "freeze";
     case "medium":
-      return "require_review";
+      return "throttle";
     case "low":
       return "observe";
     case "none":

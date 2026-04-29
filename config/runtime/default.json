@@ -20,6 +20,7 @@
   "circuitBreaker": {
     "enabled": true,
     "failureThreshold": 5,
+    "threshold": 3,
     "resetTimeoutMs": 30000,
     "halfOpenMaxAttempts": 3
   },
@@ -28,6 +29,10 @@
     "maxRequestsPerSecond": 100,
     "burstSize": 200,
     "global": true
+  },
+  "configSchemaVersion": "runtime-default-v1",
+  "configDriftReconciler": {
+    "interval": 60000
   },
   "stateMachine": {
     "type": "RuntimeStateMachine",
