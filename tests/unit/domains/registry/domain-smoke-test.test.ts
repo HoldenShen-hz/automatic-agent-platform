@@ -46,6 +46,16 @@ function createMinimalDefinition(): DomainDefinition {
     status: "active",
     externalAdapters: [],
     pluginBindings: [],
+    executionProfile: {
+      executionMode: {
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
+      },
+      latencyTier: "near_realtime",
+      compiledArtifactRef: null,
+    },
   };
 }
 

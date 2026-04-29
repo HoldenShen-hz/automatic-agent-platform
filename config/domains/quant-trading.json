@@ -2,7 +2,7 @@
   "domainId": "quant-trading",
   "name": "Quant Trading",
   "description": "Quantitative trading workflows with mandatory pre-trade risk controls.",
-  "version": "1.0.0",
+  "version": 1,
   "status": "active",
   "ringId": "ring1",
   "divisionId": "analytics",

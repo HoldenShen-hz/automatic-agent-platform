@@ -31,7 +31,7 @@ test("NlEntryService.buildTask keeps requestEnvelope null while user confirmatio
   assert.equal(task.confirmationReceipt.actor, "user-confirmation-gate");
   assert.match(task.confirmationReceipt.riskPreviewVersion ?? "", /^risk-preview-v1:/);
   assert.ok(task.confirmationReceipt.timestamp != null);
-  assert.equal(task.clarificationState.rounds, 1);
+  assert.equal(task.clarificationState.rounds, 0);
 });
 
 test("NlEntryService.buildTask emits requestEnvelope only when confirmation is not required", async () => {

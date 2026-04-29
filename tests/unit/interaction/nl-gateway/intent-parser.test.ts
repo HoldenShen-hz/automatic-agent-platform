@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseIntentTokens, type ParsedIntentToken } from "../../../src/interaction/nl-gateway/intent-parser/index.js";
+import { parseIntentTokens, type ParsedIntentToken } from "../../../../src/interaction/nl-gateway/intent-parser/index.js";
 
 test("parseIntentTokens detects approval_action for approval keywords", () => {
   const tokens = parseIntentTokens("请审批这个请求");

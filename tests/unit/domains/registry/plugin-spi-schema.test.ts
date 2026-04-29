@@ -23,7 +23,7 @@ test("PluginSpiTypeSchema rejects invalid spi types", () => {
 });
 
 test("PluginLifecycleStateSchema accepts valid states", () => {
-  const validStates = ["registered", "loaded", "active", "inactive", "unloaded", "degraded", "disabled"];
+  const validStates = ["registered", "loading", "active", "inactive", "unloaded", "suspended", "disabled"];
   for (const state of validStates) {
     const result = PluginLifecycleStateSchema.safeParse(state);
     assert.equal(result.success, true, `Expected ${state} to be valid`);

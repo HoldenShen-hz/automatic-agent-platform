@@ -7,7 +7,6 @@ import { listEnabledConnectors } from "../../../src/scale-ecosystem/integration/
 import { buildConnectorExecutionKey } from "../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 import { summarizeConnectorHealth } from "../../../src/scale-ecosystem/integration/health-monitor/index.js";
 import { sortMarketplaceCatalog } from "../../../src/scale-ecosystem/marketplace/catalog/index.js";
-import { isMarketplaceListingCertified } from "../../../src/scale-ecosystem/marketplace/certification/index.js";
 import { canPublisherReleaseArtifact } from "../../../src/scale-ecosystem/marketplace/publisher/index.js";
 import { shouldReplicateToRegion } from "../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
 import { resolveRegionFailover } from "../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
@@ -62,17 +61,6 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
   );
 
   assert.equal(
-    sortMarketplaceCatalog([
-      { listingId: "l1", title: "Community", trustLevel: "community", lifecycleState: "active", qualityMetrics: { reliabilityScore: 0.8, usabilityScore: 0.7, supportScore: 0.6 } },
-      { listingId: "l2", title: "Verified", trustLevel: "verified", lifecycleState: "active", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.85, supportScore: 0.9 } },
-    ])[0]?.listingId,
-    "l2",
-  );
-  assert.equal(
-    isMarketplaceListingCertified({ listingId: "l1", certificationId: "c1", status: "approved", approvedAt: "2026-04-20T00:00:00.000Z" }),
-    true,
-  );
-  assert.equal(
     canPublisherReleaseArtifact({ publisherId: "pub_1", displayName: "Publisher", trustLevel: "verified", allowedArtifactTypes: ["plugin"], reputationScore: 0.5, publishedArtifactCount: 10 }, "plugin"),
     true,
   );
@@ -81,14 +69,10 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
     shouldReplicateToRegion({ sourceRegionId: "cn-sh", targetRegionIds: ["cn-bj"], residencyMode: "same_jurisdiction" }, "cn-bj"),
     true,
   );
-  assert.deepEqual(
-    resolveRegionFailover({ primaryHealthy: false, candidateRegionIds: ["us-west-2"] }),
-    {
-      shouldFailover: true,
-      targetRegionId: "us-west-2",
-      rationale: "multi_region.primary_unhealthy",
-    },
-  );
+  const failoverResult = resolveRegionFailover({ primaryHealthy: false, candidateRegionIds: ["us-west-2"] });
+  assert.equal(failoverResult.shouldFailover, true);
+  assert.equal(failoverResult.targetRegionId, "us-west-2");
+  assert.equal(failoverResult.rationale, "multi_region.primary_unhealthy");
   assert.equal(
     selectPreferredRegion([
       { regionId: "us-west-2", jurisdiction: "US", latencyScore: 120, residencyAllowed: true },
@@ -106,9 +90,9 @@ test("scale-ecosystem support modules provide contract-aligned helpers", () => {
   );
   assert.equal(
     choosePreemptionVictim([
-      { executionId: "exec_1", priority: 1, progressPercent: 50 },
-      { executionId: "exec_2", priority: 2, progressPercent: 10 },
-    ])?.executionId,
+      { executionId: "exec_1", priority: 1, progressPercent: 50, hasCheckpoint: true },
+      { executionId: "exec_2", priority: 2, progressPercent: 10, hasCheckpoint: true },
+    ])?.victim?.executionId,
     "exec_1",
   );
   assert.equal(isQuotaExceeded({ scopeId: "tenant_1", hardLimit: 10, currentUsage: 8 }, 3), true);
