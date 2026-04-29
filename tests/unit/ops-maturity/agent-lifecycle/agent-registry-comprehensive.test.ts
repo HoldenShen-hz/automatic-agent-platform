@@ -81,9 +81,9 @@ test("isValidLifecycleTransition - invalid transitions return false", () => {
   assert.equal(isValidLifecycleTransition("draft", "canary"), false);
   assert.equal(isValidLifecycleTransition("testing", "canary"), false);
 
-  // Cannot transition from archived (terminal)
+  // Archived is resumable only to active or removable to removed
   assert.equal(isValidLifecycleTransition("archived", "draft"), false);
-  assert.equal(isValidLifecycleTransition("archived", "active"), false);
+  assert.equal(isValidLifecycleTransition("archived", "active"), true);
 
   // Cannot transition to archived except from deprecated
   assert.equal(isValidLifecycleTransition("active", "archived"), false);
@@ -93,8 +93,8 @@ test("isValidLifecycleTransition - invalid transitions return false", () => {
   // Cannot go from active back to canary
   assert.equal(isValidLifecycleTransition("active", "canary"), false);
 
-  // Cannot go from paused to canary
-  assert.equal(isValidLifecycleTransition("paused", "canary"), false);
+  // Paused runs may re-enter canary for controlled revalidation
+  assert.equal(isValidLifecycleTransition("paused", "canary"), true);
 });
 
 test("isValidLifecycleTransition - same state returns false (not a valid transition)", () => {
@@ -208,8 +208,8 @@ test("canAutoPromote - only canary returns true", () => {
 // isTerminalState - only archived is terminal
 // ---------------------------------------------------------------------------
 
-test("isTerminalState - only archived is terminal", () => {
-  const terminalStates: AgentLifecycleState[] = ["archived"];
+test("isTerminalState - only removed is terminal", () => {
+  const terminalStates: AgentLifecycleState[] = ["removed"];
   const nonTerminalStates: AgentLifecycleState[] = [
     "draft",
     "testing",
@@ -218,6 +218,7 @@ test("isTerminalState - only archived is terminal", () => {
     "active",
     "paused",
     "deprecated",
+    "archived",
   ];
 
   for (const state of terminalStates) {
@@ -243,6 +244,7 @@ test("VALID_LIFECYCLE_TRANSITIONS contains all states", () => {
     "paused",
     "deprecated",
     "archived",
+    "removed",
   ];
 
   for (const state of allStates) {
@@ -255,10 +257,10 @@ test("VALID_LIFECYCLE_TRANSITIONS contains all states", () => {
   assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, allStates.length);
 });
 
-test("archived state has no valid transitions (completely terminal)", () => {
+test("archived state can transition to removed or active", () => {
   const archivedTransitions = VALID_LIFECYCLE_TRANSITIONS.get("archived");
   assert.ok(archivedTransitions !== undefined);
-  assert.equal(archivedTransitions.length, 0);
+  assert.deepEqual(archivedTransitions, ["removed", "active"]);
 });
 
 test("draft state only allows transition to testing", () => {

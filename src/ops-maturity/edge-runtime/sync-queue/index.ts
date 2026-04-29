@@ -1,13 +1,13 @@
 export interface EdgeSyncEnvelope {
   readonly envelopeId: string;
-  readonly device_id?: string;
-  readonly sequence_no?: number;
+  readonly device_id: string;
+  readonly sequence_no: number;
   readonly priority: number;
-  readonly createdAt?: string;
-  readonly local_time_offset?: number;
-  readonly prev_hash?: string;
-  readonly side_effect_dependency_refs?: readonly string[];
-  readonly signature?: string;
+  readonly createdAt: string;
+  readonly local_time_offset: number;
+  readonly prev_hash: string | null;
+  readonly side_effect_dependency_refs: readonly string[];
+  readonly signature: string;
 }
 
 export function orderEdgeSyncQueue(items: readonly EdgeSyncEnvelope[]): EdgeSyncEnvelope[] {

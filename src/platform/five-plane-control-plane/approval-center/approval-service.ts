@@ -44,6 +44,8 @@ import {
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { TransitionService } from "../../execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { createDecisionDirective, type DecisionDirective } from "../../contracts/control-directive/index.js";
+import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
 
 /**
  * Represents a request for human approval before proceeding.
@@ -55,6 +57,9 @@ export interface ApprovalRequest {
   approvalId: string;
   status?: "pending";
   taskId: string;
+  harnessRunId?: string | null;
+  nodeRunId?: string | null;
+  /** @deprecated compatibility alias; use harnessRunId */
   executionId?: string | null;
   sourceAgentId: string;
   reason: string;
@@ -69,6 +74,10 @@ export interface ApprovalRequest {
   approverGroups?: readonly string[];
   /** Current count of approvals received */
   approvalsReceived?: number;
+}
+
+function resolveApprovalHarnessRunId(request: Pick<ApprovalRequest, "harnessRunId" | "executionId" | "taskId">): string | null {
+  return request.harnessRunId ?? request.executionId ?? null;
 }
 
 export interface ApprovalDecision {
@@ -157,7 +166,13 @@ export function validateApprovalDecision(decision: ApprovalDecision): void {
 }
 
 function parseApprovalRequest(requestJson: string): ApprovalRequest {
-  return JSON.parse(requestJson) as ApprovalRequest;
+  const parsed = JSON.parse(requestJson) as ApprovalRequest;
+  return {
+    ...parsed,
+    harnessRunId: parsed.harnessRunId ?? parsed.executionId ?? null,
+    nodeRunId: parsed.nodeRunId ?? null,
+    executionId: parsed.executionId ?? parsed.harnessRunId ?? null,
+  };
 }
 
 function readCascadeSessionId(request: ApprovalRequest): string | null {
@@ -184,14 +199,17 @@ function readCascadeSessionId(request: ApprovalRequest): string | null {
 export class ApprovalService {
   private readonly transitions: TransitionService;
   private readonly repository: RuntimeLifecycleRepository;
+  private readonly directiveSink: ControlPlaneDirectiveSink | null;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
+    directiveSink: ControlPlaneDirectiveSink | null = null,
   ) {
     this.repository = repository;
     this.transitions = new TransitionService(db, store, repository);
+    this.directiveSink = directiveSink;
   }
 
   /**
@@ -212,7 +230,9 @@ export class ApprovalService {
       status: "pending",
       createdAt: nowIso(),
       ...input,
-      executionId: input.executionId ?? null,
+      harnessRunId: input.harnessRunId ?? input.executionId ?? null,
+      nodeRunId: input.nodeRunId ?? null,
+      executionId: input.executionId ?? input.harnessRunId ?? null,
       approverGroups: input.approverGroups ?? contextApproverGroups,
     };
 
@@ -220,7 +240,7 @@ export class ApprovalService {
       this.repository.insertApproval({
         id: approval.approvalId,
         taskId: approval.taskId,
-        executionId: approval.executionId ?? null,
+        executionId: resolveApprovalHarnessRunId(approval),
         status: "requested",
         requestJson: JSON.stringify(approval),
         responseJson: null,
@@ -231,7 +251,7 @@ export class ApprovalService {
       this.repository.insertEvent({
         id: newId("evt"),
         taskId: approval.taskId,
-        executionId: approval.executionId ?? null,
+        executionId: resolveApprovalHarnessRunId(approval),
         eventType: "decision:requested",
         eventTier: "tier_1",
         payloadJson: JSON.stringify(approval),
@@ -336,6 +356,7 @@ export class ApprovalService {
         traceId: null,
         createdAt: decision.respondedAt,
       });
+      this.emitDecisionDirective(existingRequest, decision, nextStatus, existing.taskId);
 
       if (decision.decisionType === "rejected") {
         const cascadeSessionId = readCascadeSessionId(existingRequest);
@@ -388,6 +409,10 @@ export class ApprovalService {
               traceId: null,
               createdAt: decision.respondedAt,
             });
+            this.emitDecisionDirective(siblingRequest, {
+              ...cascadeDecision,
+              approvalId: sibling.id,
+            }, "rejected", sibling.taskId);
           }
         }
       }
@@ -413,6 +438,67 @@ export class ApprovalService {
 
     this.repository.updateExecutionStatus(executionId, "cancelled", occurredAt, execution.startedAt, occurredAt, "approval.denied");
   }
+
+  private emitDecisionDirective(
+    request: ApprovalRequest,
+    decision: ApprovalDecision,
+    approvalStatus: "approved" | "rejected" | "expired",
+    taskId: string,
+  ): void {
+    if (this.directiveSink == null) {
+      return;
+    }
+
+    const tenantId = resolveDirectiveTenantId(request.context);
+    const directive = createDecisionDirective({
+      type: mapApprovalDecisionToDirectiveType(decision.decisionType),
+      scope: {
+        tenantId: tenantId ?? undefined,
+        harnessRunId: request.harnessRunId ?? undefined,
+        nodeRunId: request.nodeRunId ?? undefined,
+      },
+      issuedBy: {
+        principalId: decision.respondedBy,
+        tenantId: tenantId ?? "system",
+        roles: [decision.respondedBy === "system" ? "system" : "approver"],
+      },
+      targetRef: `approval:${decision.approvalId}`,
+      payload: {
+        approvalId: decision.approvalId,
+        approvalStatus,
+        decisionType: decision.decisionType,
+        taskId,
+        harnessRunId: request.harnessRunId ?? null,
+        nodeRunId: request.nodeRunId ?? null,
+        selectedOptionId: decision.selectedOptionId ?? null,
+        confirmed: decision.confirmed ?? false,
+        inputText: decision.inputText ?? null,
+        respondedAt: decision.respondedAt,
+        cascadeDeny: "cascadeDeny" in decision ? decision.cascadeDeny === true : false,
+      },
+      reason: request.reason,
+      riskAcknowledged: request.riskLevel === "high" || request.riskLevel === "critical",
+    });
+    this.directiveSink.emitDecisionDirective(directive);
+  }
+}
+
+function mapApprovalDecisionToDirectiveType(
+  decisionType: ApprovalDecision["decisionType"],
+): DecisionDirective["type"] {
+  switch (decisionType) {
+    case "rejected":
+      return "deny";
+    case "expired":
+      return "expire_approval";
+    default:
+      return "approve";
+  }
+}
+
+function resolveDirectiveTenantId(context: Record<string, unknown>): string | null {
+  const value = context.tenantId;
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
 function toLegacyApprovalView(record: ApprovalRecord): LegacyApprovalView {

@@ -7,7 +7,10 @@ import { ConnectorFrameworkService } from "../../../src/scale-ecosystem/integrat
 import { FeedbackImprovementService } from "../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
 import { CapacityPlanningService } from "../../../src/ops-maturity/capacity-planner/capacity-planning-service.js";
 import { CostOptimizationService } from "../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
-import { PlatformOpsAgentService } from "../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import {
+  DEFAULT_OPS_DATA_BOUNDARY,
+  PlatformOpsAgentService,
+} from "../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 import { PlatformPanicService } from "../../../src/ops-maturity/emergency/platform-panic-service.js";
 import { ExplanationPipelineService } from "../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
 import { WorkflowDebuggerService } from "../../../src/ops-maturity/workflow-debugger/workflow-debugger-service.js";
@@ -220,6 +223,7 @@ test("integration: scale-ops mainline composes routing, connectors, feedback, op
       requiredApprovals: [],
       maxAutonomyLevel: "trusted_automation",
       evidenceRequirements: ["connector_run", "capacity_forecast", "cost_dashboard"],
+      ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
     });
     const opsProposal = opsAgent.createProposal({
       probes: [

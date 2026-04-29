@@ -4,7 +4,7 @@ import test from "node:test";
 import { OrgGovernanceSaga } from "../../../../src/org-governance/org-model/org-governance-saga.js";
 import type { OrgGovernanceSagaStep, OrgGovernancePhase } from "../../../../src/org-governance/org-model/org-governance-saga.js";
 
-test("OrgGovernanceSaga executes prepare commit compensate audit in correct order", () => {
+test("OrgGovernanceSaga executes prepare commit audit in correct order when no failure occurs", () => {
   const calls: string[] = [];
   const saga = new OrgGovernanceSaga({
     prepare: (step) => calls.push(`prepare:${step.targetOrgNodeId}`),
@@ -20,11 +20,11 @@ test("OrgGovernanceSaga executes prepare commit compensate audit in correct orde
     { stepId: "audit-1", targetOrgNodeId: "org-1", action: "audit", phase: "identity" },
   ]);
 
-  assert.equal(result.status, "compensated");
+  assert.equal(result.status, "committed");
   assert.equal(result.sagaId, "saga-1");
   assert.deepEqual(result.preparedNodeIds, ["org-1"]);
   assert.deepEqual(result.committedNodeIds, ["org-1"]);
-  assert.deepEqual(result.compensatedNodeIds, ["org-1"]);
+  assert.deepEqual(result.compensatedNodeIds, []);
   assert.deepEqual(result.auditStepIds, ["audit-1"]);
   assert.equal(result.failedStepId, null);
 });
@@ -95,7 +95,6 @@ test("OrgGovernanceSaga skips commit for unprepared nodes", () => {
 
   const result = saga.execute("saga-4", [
     { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
-    { stepId: "prepare-2", targetOrgNodeId: "org-2", action: "prepare", phase: "identity" },
     { stepId: "commit-1", targetOrgNodeId: "org-1", action: "commit", phase: "identity" },
     { stepId: "commit-2", targetOrgNodeId: "org-2", action: "commit", phase: "identity" },
   ]);
@@ -134,7 +133,7 @@ test("OrgGovernanceSaga executes compensation handlers on prepare failure", () =
   ]);
 });
 
-test("OrgGovernanceSaga executes explicit compensate steps when no failure", () => {
+test("OrgGovernanceSaga ignores explicit compensate steps when no failure occurs", () => {
   const calls: string[] = [];
   const saga = new OrgGovernanceSaga({
     prepare: (step) => calls.push(`prepare:${step.targetOrgNodeId}`),
@@ -148,8 +147,8 @@ test("OrgGovernanceSaga executes explicit compensate steps when no failure", () 
     { stepId: "compensate-1", targetOrgNodeId: "org-1", action: "compensate", phase: "identity" },
   ]);
 
-  assert.equal(result.status, "compensated");
-  assert.deepEqual(calls, ["prepare:org-1", "commit:org-1", "compensate:org-1"]);
+  assert.equal(result.status, "committed");
+  assert.deepEqual(calls, ["prepare:org-1", "commit:org-1"]);
 });
 
 test("OrgGovernanceSaga status is committed when no compensation needed", () => {
@@ -200,6 +199,7 @@ test("OrgGovernanceSaga executeWithReceipt tracks failed phase", () => {
   const receipt = saga.executeWithReceipt("saga-9", [
     { stepId: "p-identity", targetOrgNodeId: "org-identity", action: "prepare", phase: "identity" },
     { stepId: "p-budget", targetOrgNodeId: "org-budget", action: "prepare", phase: "budget" },
+    { stepId: "c-identity", targetOrgNodeId: "org-identity", action: "compensate", phase: "identity" },
     { stepId: "p-agent", targetOrgNodeId: "org-agent", action: "prepare", phase: "agent" },
   ]);
 
@@ -320,7 +320,12 @@ test("OrgGovernanceSaga compensation reverses committed then prepared nodes", ()
   const calls: string[] = [];
   const saga = new OrgGovernanceSaga({
     prepare: (step) => calls.push(`prepare:${step.targetOrgNodeId}`),
-    commit: (step) => calls.push(`commit:${step.targetOrgNodeId}`),
+    commit: (step) => {
+      calls.push(`commit:${step.targetOrgNodeId}`);
+      if (step.targetOrgNodeId === "org-3") {
+        throw new Error("commit failed");
+      }
+    },
     compensate: (step) => calls.push(`compensate:${step.targetOrgNodeId}`),
   });
 

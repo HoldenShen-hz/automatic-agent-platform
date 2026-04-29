@@ -17,14 +17,18 @@ import {
 describe("EdgeRuntimeSyncService", () => {
   const defaultProfile: EdgeRuntimeProfile = {
     edgeNodeId: "node-001",
+    deviceId: "device-001",
     capabilities: ["offline-execution", "local-model"],
     connectivityMode: "offline",
     maxLocalRetentionHours: 24,
+    offlineMaxDuration: 3600,
+    keyLease: "lease-edge-001",
     allowedModels: ["model-a", "model-b"],
     syncPolicy: {
       allowRestrictedDataUpload: false,
       requireOrdering: false,
     },
+    riskLevel: "low",
   };
 
   const defaultModels: { modelId: string; modalities: readonly string[]; maxTokens: number }[] = [
@@ -271,7 +275,7 @@ describe("EdgeRuntimeSyncService", () => {
       assert.ok(receipt.decisions[0]?.rationale.includes("restricted_data_denied"));
     });
 
-    test("merges when digest differs from cloud", () => {
+    test("central-wins and rejects edge version when digest differs from cloud", () => {
       const service = new EdgeRuntimeSyncService();
       const envelopes = [
         createEnvelope(service, {
@@ -287,11 +291,13 @@ describe("EdgeRuntimeSyncService", () => {
 
       const receipt = service.sync(defaultProfile, envelopes, cloudDigests);
 
-      assert.equal(receipt.acceptedEnvelopeIds.length, 1);
-      assert.equal(receipt.decisions[0]?.resolution, "merge");
+      assert.equal(receipt.acceptedEnvelopeIds.length, 0);
+      assert.equal(receipt.rejectedEnvelopeIds.length, 1);
+      assert.equal(receipt.decisions[0]?.resolution, "accept_central");
+      assert.ok(typeof receipt.decisions[0]?.incidentId === "string");
     });
 
-    test("accepts edge when digest matches cloud", () => {
+    test("accepts envelope under central-wins policy when digest matches cloud", () => {
       const service = new EdgeRuntimeSyncService();
       const envelopes = [
         createEnvelope(service, {
@@ -308,7 +314,7 @@ describe("EdgeRuntimeSyncService", () => {
       const receipt = service.sync(defaultProfile, envelopes, cloudDigests);
 
       assert.equal(receipt.acceptedEnvelopeIds.length, 1);
-      assert.equal(receipt.decisions[0]?.resolution, "accept_edge");
+      assert.equal(receipt.decisions[0]?.resolution, "accept_central");
     });
 
     test("honors requireOrdering policy", () => {

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeEntryGuard } from "../../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { RuntimeEntryGuard } from "../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { ValidationError } from "../../src/platform/contracts/errors.js";
 
 /**
  * INV-POLICY-001: Undefined or unproven capability must converge to deny,
@@ -28,7 +29,8 @@ test("INV-POLICY-001: RuntimeEntryGuard blocks legacy contract writes", () => {
   for (const legacy of legacyContracts) {
     assert.throws(
       () => guard.assertNoLegacyTruthWrite(legacy),
-      /legacy_contract_forbidden/,
+      (error: unknown) =>
+        error instanceof ValidationError && error.code === "runtime_entry_guard.legacy_contract_forbidden",
       `${legacy.contractName} must be blocked`,
     );
   }
@@ -49,7 +51,8 @@ test("INV-POLICY-001: Non-platform event types are rejected", () => {
   for (const invalid of invalidEventTypes) {
     assert.throws(
       () => guard.assertNoLegacyTruthWrite(invalid),
-      /platform_fact_required/,
+      (error: unknown) =>
+        error instanceof ValidationError && error.code === "runtime_entry_guard.platform_fact_required",
       `${invalid.eventType} must be rejected`,
     );
   }
@@ -105,14 +108,16 @@ test("INV-POLICY-001: Non-PlanGraphBundle inputs are rejected", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(legacyPlan),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "Legacy execution plan must be rejected",
   );
 
   // Null/undefined
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(null),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "Null must be rejected",
   );
 
@@ -124,7 +129,8 @@ test("INV-POLICY-001: Non-PlanGraphBundle inputs are rejected", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(partialBundle),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "Incomplete PlanGraphBundle must be rejected",
   );
 });
@@ -144,7 +150,8 @@ test("INV-POLICY-001: Deny-by-default for unknown capabilities", () => {
 
   assert.throws(
     () => guard.assertNoLegacyTruthWrite(unknownWithEvent),
-    /platform_fact_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.platform_fact_required",
     "Non-platform event types default to deny",
   );
 });

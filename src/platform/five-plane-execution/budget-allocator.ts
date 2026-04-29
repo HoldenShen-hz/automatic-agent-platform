@@ -19,6 +19,8 @@ export interface BudgetAllocatorContext {
   readonly tenantId: string;
   readonly traceId: string;
   readonly emittedBy: string;
+  readonly leaseId?: string;
+  readonly fencingToken?: string;
 }
 
 export interface BudgetSettlementResult {
@@ -63,29 +65,34 @@ export class BudgetAllocator {
     const newStatus = activeCommittedAmount + input.amount >= input.ledger.hardCap ? "hard_cap_reached" : input.ledger.status;
 
     // Route through state machine for proper CAS + event emission per §25.9
-    const ledgerTransition = this.stateMachine.transition({
-      commandId: newId("cmd"),
-      entityType: "BudgetLedger",
-      entityId: input.ledger.budgetLedgerId,
-      principal: input.context.emittedBy,
-      aggregateType: "BudgetLedger",
-      aggregate: input.ledger,
-      fromStatus: input.ledger.status,
-      toStatus: newStatus,
-      tenantId: input.context.tenantId,
-      traceId: input.context.traceId,
-      reasonCode: "budget.reserved",
-      emittedBy: input.context.emittedBy,
-      auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/reserve`,
-    });
+    const ledgerForReservation =
+      newStatus === input.ledger.status
+        ? input.ledger
+        : this.stateMachine.transition({
+            commandId: newId("cmd"),
+            entityType: "BudgetLedger",
+            entityId: input.ledger.budgetLedgerId,
+            principal: input.context.emittedBy,
+            aggregateType: "BudgetLedger",
+            aggregate: input.ledger,
+            fromStatus: input.ledger.status,
+            toStatus: newStatus,
+            tenantId: input.context.tenantId,
+            traceId: input.context.traceId,
+            reasonCode: "budget.reserved",
+            emittedBy: input.context.emittedBy,
+            leaseId: input.context.leaseId,
+            fencingToken: input.context.fencingToken,
+            auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/reserve`,
+          }).aggregate;
 
     // Create reservation through state machine for event emission
     const reservationResult = reserveBudgetHardCap({
-      ledger: ledgerTransition.aggregate,
+      ledger: ledgerForReservation,
       amount: input.amount,
       resourceKind: input.resourceKind,
       expiresAt: input.expiresAt,
-      expectedVersion: ledgerTransition.aggregate.version,
+      expectedVersion: ledgerForReservation.version,
       nodeRunId: input.nodeRunId,
     });
 

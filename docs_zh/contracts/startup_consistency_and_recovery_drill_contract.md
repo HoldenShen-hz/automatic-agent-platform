@@ -23,14 +23,14 @@
 | 检查项 | 判定规则 | 失败动作 |
 | --- | --- | --- |
 | 迁移版本 | schema 版本与 ledger 一致 | fail-closed |
-| 活跃任务与 workflow 对齐 | `in_progress / awaiting_decision` 任务必须有对应 workflow_state 或可解释缺失 | 标记恢复 |
-| 非法 step index | `current_step_index` 不得越界 | fail-closed 或人工修复 |
+| 活跃任务与运行链对齐 | `running / waiting_hitl / sleeping / recovering` 的 `HarnessRun` 必须能关联到对应 `NodeRun` / `PlanGraphBundle`，缺失必须可解释 | 标记恢复 |
+| 非法节点游标 | `currentNodeRunId` / `PlanGraph` entry/terminal 指针不得悬空或越图 | fail-closed 或人工修复 |
 | stale execution | `prechecking / executing` 且心跳过期（注：`retrying` 已废弃，重试通过新 execution attempt 实现） | 标记 recoverable |
 | 悬挂 session | session 处于活跃态但 task 已终态 | 自动收口或告警 |
 | 过期 file lock | `expires_at < now` 且 holder 已失活 | 清理并记事件 |
 | Tier 1 ack 积压 | 存在长期未 ack 的关键事件 | 告警并进入补发 |
 | 活跃 execution 所有权冲突 | 同一 task 同时存在多个活跃 execution | fail-closed 或人工修复 |
-| OAPEFLIR stage 一致性 | workflow `current_stage / loop_iteration` 与 execution / timeline / evidence 一致 | fail-closed 或标记 recoverable |
+| OAPEFLIR stage 一致性 | `HarnessRun.currentStage / loopIteration` 与 `NodeRun` / timeline / evidence 一致 | fail-closed 或标记 recoverable |
 | rollout 记录一致性 | rollout level / status / approval / strategy lineage 可闭合 | fail-closed 或人工修复 |
 
 ## 4. 启动流程

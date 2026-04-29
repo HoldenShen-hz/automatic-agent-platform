@@ -29,6 +29,7 @@
 | `visibility_labels` | `string[]?` | 可见性标签（如 `internal`/`confidential`/`public`） |
 | `confidence` | `number?` | 置信度（0-1） |
 | `alternatives` | `string[]?` | 候选方案列表（用于审计对比） |
+| `rendered_explanation` | `string?` | 面向用户或审计员的渲染结果 |
 | `risk_notes` | `string?` | 风险备注 |
 | `generated_at` | `timestamp` | 生成时间 |
 
@@ -44,18 +45,22 @@
 
 `ExplanationDepth` 固定为：
 
-- `brief`
-- `standard`
-- `audit`
+- `L1`
+- `L2`
+- `L3`
 
 规则：
 
+- `L1` 对应 Summary，`L2` 对应 Reasoning，`L3` 对应 Forensic。
 - 更高深度只能增加证据与上下文，不得改变事实结论。
 - 解释内容必须遵守数据分级与脱敏规则。
+- 解释必须 permission-aware，任何超权限证据只能以 redacted refs 暴露。
+- 解释对象必须纳入 Evidence Plane，不得以临时 UI 文本替代 authoritative rationale。
 
 ## v4.3 Contract Remediation
 
 - T-68: 本文原先把 `task_id + stage` 写成 `StageRationale` 主键，根因是解释层复用了旧认知视图草案，没有把解释对象绑定到具体运行链。修复：正文现以 `harness_run_id / node_run_id / stage_view_ref` 为权威键，`task_id` 仅保留用户视角查询用途。
+- T-77 / T-80: 本文原先沿用 `brief / standard / audit` 深度名，且没有把 permission-aware / Evidence Plane 约束写成显式规则。修复：正文现统一到 `L1 / L2 / L3`，并要求解释对象进入 Evidence Plane 且遵守权限感知渲染。
 
 ## 5. 测试要求
 

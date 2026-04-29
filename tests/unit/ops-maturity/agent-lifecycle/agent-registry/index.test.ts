@@ -13,7 +13,7 @@ import {
 } from "../../../../../src/ops-maturity/agent-lifecycle/agent-registry/index.js";
 
 test("AgentLifecycleStateSchema accepts valid states", () => {
-  const states = ["draft", "testing", "staging", "canary", "active", "paused", "deprecated", "archived"] as const;
+  const states = ["draft", "testing", "staging", "canary", "active", "paused", "deprecated", "archived", "removed"] as const;
   for (const state of states) {
     const result = AgentLifecycleStateSchema.parse(state);
     assert.equal(result, state);
@@ -83,10 +83,10 @@ test("isValidLifecycleTransition allows staging to canary or testing", () => {
   assert.equal(isValidLifecycleTransition("staging", "testing"), true);
 });
 
-test("isValidLifecycleTransition allows canary to active or staging but not paused", () => {
+test("isValidLifecycleTransition allows canary to active, staging, or paused", () => {
   assert.equal(isValidLifecycleTransition("canary", "active"), true);
   assert.equal(isValidLifecycleTransition("canary", "staging"), true);
-  assert.equal(isValidLifecycleTransition("canary", "paused"), false);
+  assert.equal(isValidLifecycleTransition("canary", "paused"), true);
 });
 
 test("isValidLifecycleTransition allows active to paused or deprecated", () => {
@@ -104,8 +104,9 @@ test("isValidLifecycleTransition allows deprecated to archived or active", () =>
   assert.equal(isValidLifecycleTransition("deprecated", "active"), true);
 });
 
-test("isValidLifecycleTransition disallows archived transitions", () => {
-  assert.equal(isValidLifecycleTransition("archived", "active"), false);
+test("isValidLifecycleTransition allows archived to removed or active", () => {
+  assert.equal(isValidLifecycleTransition("archived", "active"), true);
+  assert.equal(isValidLifecycleTransition("archived", "removed"), true);
   assert.equal(isValidLifecycleTransition("archived", "draft"), false);
 });
 
@@ -124,17 +125,19 @@ test("canAutoPromote returns true only for canary state", () => {
   assert.equal(canAutoPromote("archived"), false);
 });
 
-test("isTerminalState returns true only for archived state", () => {
-  assert.equal(isTerminalState("archived"), true);
+test("isTerminalState returns true only for removed state", () => {
+  assert.equal(isTerminalState("removed"), true);
+  assert.equal(isTerminalState("archived"), false);
   assert.equal(isTerminalState("active"), false);
   assert.equal(isTerminalState("paused"), false);
   assert.equal(isTerminalState("deprecated"), false);
 });
 
 test("VALID_LIFECYCLE_TRANSITIONS has correct structure", () => {
-  assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, 8);
+  assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, 9);
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("draft"), ["testing"]);
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), []);
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed", "active"]);
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("removed"), []);
 });
 
 test("AgentComponentsSchema accepts valid components", () => {

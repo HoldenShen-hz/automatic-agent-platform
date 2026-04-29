@@ -57,6 +57,15 @@ test("EscalationManager createEscalation creates new level", () => {
   assert.equal(escalation.reason, EscalationReason.TIMEOUT);
 });
 
+test("EscalationManager timeout context backfills canonical harnessRunId from legacy executionId", () => {
+  const manager = new EscalationManager();
+  const context = manager.createTimeoutContext("approval-timeout", "task-timeout", "exec-timeout", 1);
+
+  assert.equal(context.harnessRunId, "exec-timeout");
+  assert.equal(context.executionId, "exec-timeout");
+  assert.equal(context.nodeRunId, null);
+});
+
 test("EscalationManager createEscalation increments level", () => {
   const manager = new EscalationManager();
   const rule: EscalationRule = {

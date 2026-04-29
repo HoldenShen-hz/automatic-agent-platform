@@ -27,11 +27,13 @@
 - `producer`
 - `consumers`
 - `compatibility_policy`
+- `derivedFromEventId?`
 
 要求：
 
 - 所有 OAPEFLIR hub 事件必须同时拥有 schema ref 和稳定的 TypeScript payload type name。
 - `stage` 若存在，必须来自 canonical OAPEFLIR stage 枚举，而不是消费方自定义标签。
+- 若事件由其他事实事件、rationale 事件或 replay 过程派生，必须显式声明 `derivedFromEventId`。
 - **v4.3 强制规则**：OAPEFLIR 事件 payload 必须使用 `harnessRunId`、`nodeRunId`、`planGraphId` 作为运行链锚点；禁止使用废弃的 `task_id`、`workflow_id`、`execution_id` 作为主键字段。
 
 ## 3A. OAPEFLIR Event Payload Types

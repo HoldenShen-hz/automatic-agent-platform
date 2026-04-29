@@ -56,6 +56,7 @@ import {
   mapHealthDegradationModeToUnifiedRuntimeMode,
   mapAutonomyLevelToUnifiedRuntimeMode,
 } from "../../../../../src/platform/contracts/types/index.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("newId generates unique IDs with semantic prefix", () => {
   const id = newId("task");
@@ -382,84 +383,74 @@ test("createRequestEnvelope accepts custom values", () => {
 });
 
 test("createControlDirective creates directive with minimal input", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "maintenance",
+        kind: "pause",
+        targetRef: "execution:123",
+        reasonCode: "maintenance",
+        issuedBy: "user_123",
+        tenantId: null,
+        executionId: null,
+        metadata: {},
       }),
     (error: unknown) =>
-      error instanceof Error
-      && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      error instanceof ValidationError
+      && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createControlDirective accepts all directive types", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
-  const types = ["mode_switch", "pause", "resume", "rollback", "quota_adjust", "kill"] as const;
-  for (const type of types) {
+  const kinds = ["pause", "resume", "cancel", "rollback", "escalate"] as const;
+  for (const kind of kinds) {
     assert.throws(
       () =>
         createControlDirective({
-          type,
-          issuedBy: principal,
-          reason: `testing ${type}`,
+          kind,
+          targetRef: "execution:123",
+          reasonCode: `testing.${kind}`,
+          issuedBy: "user_123",
+          tenantId: null,
+          executionId: null,
+          metadata: {},
         }),
       (error: unknown) =>
-        error instanceof Error
-        && "code" in error
-        && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+        error instanceof ValidationError
+        && error.code === "control_directive.legacy_contract_forbidden",
     );
   }
 });
 
 test("createControlDirective accepts target scope", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
   assert.throws(
     () =>
       createControlDirective({
-        type: "pause",
-        issuedBy: principal,
-        reason: "targeted pause",
-        targetScope: { tenantId: "tenant_abc", workflowId: "workflow_123" },
+        kind: "pause",
+        targetRef: "workflow:workflow_123",
+        reasonCode: "targeted.pause",
+        issuedBy: "user_123",
+        tenantId: "tenant_abc",
+        executionId: "exec_123",
+        metadata: { workflowId: "workflow_123" },
       }),
-    (error: unknown) =>
-      error instanceof Error
-      && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_control_directive_forbidden",
+      (error: unknown) =>
+      error instanceof ValidationError
+      && error.code === "control_directive.legacy_contract_forbidden",
   );
 });
 
 test("createExecutionPlan creates plan with minimal input", () => {
-  const principal = createPlatformPrincipal({
-    actorId: "user_123",
-    tenantId: null,
-  });
   assert.throws(
     () =>
       createExecutionPlan({
-        traceId: "trace_123",
-        principal,
-        workflowRunId: "workflow_abc",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        version: 1,
         steps: [],
-        budget: { maxSteps: 10, maxDurationMs: 60000, maxCost: 100 },
       }),
     (error: unknown) =>
-      error instanceof Error
-      && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_plan_forbidden",
+      error instanceof ValidationError
+      && error.code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -469,13 +460,16 @@ test("createExecutionReceipt creates receipt with minimal input", () => {
       createExecutionReceipt({
         planId: "plan_123",
         stepId: "step_456",
-        status: "succeeded",
-        durationMs: 1500,
+        status: "completed",
+        workerId: null,
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        resultRef: null,
+        errorCode: null,
       }),
     (error: unknown) =>
-      error instanceof Error
-      && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      error instanceof ValidationError
+      && error.code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 
@@ -486,13 +480,15 @@ test("createExecutionReceipt accepts error detail", () => {
         planId: "plan_123",
         stepId: "step_456",
         status: "failed",
-        durationMs: 500,
-        errorDetail: { code: "E001", message: "Step failed", retryable: true },
+        workerId: "worker_1",
+        taskId: "task_123",
+        tenantId: "tenant_abc",
+        resultRef: null,
+        errorCode: "E001",
       }),
     (error: unknown) =>
-      error instanceof Error
-      && "code" in error
-      && (error as Error & { code?: string }).code === "platform_contracts.legacy_execution_receipt_forbidden",
+      error instanceof ValidationError
+      && error.code === "execution_receipt.legacy_contract_forbidden",
   );
 });
 

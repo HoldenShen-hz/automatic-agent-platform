@@ -49,6 +49,8 @@ test("RuntimeStateMachine transitions HarnessRun and appends platform fact event
     tenantId: "tenant-1",
     reasonCode: "admission_ok",
     emittedBy: "admission-controller",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
     runVersionLockId: "rvlock-1",
     policyGuard: {
       allowed: true,
@@ -414,6 +416,8 @@ test("RuntimeStateMachine transitions budget ledger and reservation with version
     tenantId: "tenant-1",
     reasonCode: "soft_cap",
     emittedBy: "budget-allocator",
+    leaseId: "lease-budget-1",
+    fencingToken: "fence-budget-1",
   });
 
   const reservation = createBudgetReservation({

@@ -53,6 +53,14 @@ export interface DebuggerActor {
 export class WorkflowDebuggerService {
   private readonly breakpoints = new Map<string, DebugBreakpointDefinition[]>();
 
+  private resolvePlanGraphId(input: Pick<DebugBreakpointDefinition, "planGraphId" | "workflowId"> | Pick<WorkflowTraceFrame, "planGraphId" | "workflowId">): string {
+    return input.planGraphId ?? input.workflowId ?? "";
+  }
+
+  private resolveNodeRunId(input: Pick<DebugBreakpointDefinition, "nodeRunSelector" | "stepSelector"> | Pick<WorkflowTraceFrame, "nodeRunId" | "stepId">): string {
+    return input.nodeRunSelector ?? input.stepSelector ?? input.nodeRunId ?? input.stepId ?? "";
+  }
+
   public registerBreakpoint(
     actor: DebuggerActor,
     environment: "prod" | "staging" | "dev",
@@ -61,12 +69,17 @@ export class WorkflowDebuggerService {
     if (environment === "prod" && actor.allowedRuntime !== "replay_sandbox") {
       throw new Error(`workflow_debugger.prod_breakpoint_forbidden:${actor.actorId}`);
     }
-    const key = breakpoint.planGraphId;
+    const normalizedBreakpoint: DebugBreakpointDefinition = {
+      ...breakpoint,
+      planGraphId: this.resolvePlanGraphId(breakpoint),
+      nodeRunSelector: this.resolveNodeRunId(breakpoint),
+    };
+    const key = normalizedBreakpoint.planGraphId;
     this.breakpoints.set(
       key,
-      [...(this.breakpoints.get(key) ?? []), breakpoint],
+      [...(this.breakpoints.get(key) ?? []), normalizedBreakpoint],
     );
-    return breakpoint;
+    return normalizedBreakpoint;
   }
 
   public listBreakpoints(planGraphId: string): DebugBreakpointDefinition[] {
@@ -77,19 +90,21 @@ export class WorkflowDebuggerService {
     if (frames.length === 0) {
       return [];
     }
-    const planGraphId = frames[0]!.planGraphId;
+    const planGraphId = this.resolvePlanGraphId(frames[0]!);
     const breakpoints = (this.breakpoints.get(planGraphId) ?? []).map((item) => ({
       breakpointId: item.breakpointId,
-      nodeRunId: item.nodeRunSelector,
+      nodeRunId: this.resolveNodeRunId(item),
     }));
     return frames
-      .filter((frame) => isBreakpointHit(breakpoints, frame.nodeRunId))
+      .filter((frame) => isBreakpointHit(breakpoints, this.resolveNodeRunId(frame)))
       .map((frame) => {
-        const matched = (this.breakpoints.get(frame.planGraphId) ?? []).find((item) => item.nodeRunSelector === frame.nodeRunId)!;
+        const framePlanGraphId = this.resolvePlanGraphId(frame);
+        const frameNodeRunId = this.resolveNodeRunId(frame);
+        const matched = (this.breakpoints.get(framePlanGraphId) ?? []).find((item) => this.resolveNodeRunId(item) === frameNodeRunId)!;
         return {
           breakpointId: matched.breakpointId,
-          planGraphId: frame.planGraphId,
-          nodeRunId: frame.nodeRunId,
+          planGraphId: framePlanGraphId,
+          nodeRunId: frameNodeRunId,
           action: matched.action,
           timestamp: frame.timestamp,
         };
@@ -101,8 +116,14 @@ export class WorkflowDebuggerService {
     leftFrames: readonly WorkflowTraceFrame[],
     rightFrames: readonly WorkflowTraceFrame[],
   ): RunComparisonReport {
-    const leftSnapshots: RunSnapshot[] = leftFrames.map((frame) => ({ stepId: frame.nodeRunId, status: frame.status }));
-    const rightSnapshots: RunSnapshot[] = rightFrames.map((frame) => ({ stepId: frame.nodeRunId, status: frame.status }));
+    const leftSnapshots: RunSnapshot[] = leftFrames.map((frame) => {
+      const nodeRunId = this.resolveNodeRunId(frame);
+      return { nodeRunId, stepId: nodeRunId, status: frame.status };
+    });
+    const rightSnapshots: RunSnapshot[] = rightFrames.map((frame) => {
+      const nodeRunId = this.resolveNodeRunId(frame);
+      return { nodeRunId, stepId: nodeRunId, status: frame.status };
+    });
 
     return {
       planGraphId,

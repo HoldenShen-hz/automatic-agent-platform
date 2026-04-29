@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateTrustScore, mapTrustLevel, mapTrustLevelToAutonomyLevel } from "../../../../../src/interaction/autonomy/trust-scorer/index.js";
+import {
+  calculateTrustScore,
+  mapTrustLevel,
+  mapTrustLevelToAutonomyLevel,
+} from "../../../../../src/interaction/autonomy/trust-scorer/index.js";
 import type { CapabilityTrustScore } from "../../../../../src/interaction/autonomy/index.js";
 
 function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTrustScore {
@@ -69,9 +73,20 @@ test("mapTrustLevel returns fully_trusted for score >= 95", () => {
   assert.equal(mapTrustLevel(100), "fully_trusted");
 });
 
-test("mapTrustLevelToAutonomyLevel does not grant full_auto from trust score alone", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted"), "semi_auto");
+test("mapTrustLevelToAutonomyLevel grants full_auto only for low-risk fully_trusted paths", () => {
+  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted"), "full_auto");
   assert.equal(mapTrustLevelToAutonomyLevel("trusted"), "semi_auto");
+});
+
+test("mapTrustLevelToAutonomyLevel downgrades fully_trusted to semi_auto when inherent risk is present", () => {
+  assert.equal(
+    mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "high" }),
+    "semi_auto",
+  );
+  assert.equal(
+    mapTrustLevelToAutonomyLevel("fully_trusted", { requiresHumanAccountable: true }),
+    "semi_auto",
+  );
 });
 
 test("mapTrustLevel returns trusted for score >= 85 and < 95", () => {

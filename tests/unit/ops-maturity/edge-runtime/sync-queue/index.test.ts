@@ -12,13 +12,27 @@ import {
   type EdgeSyncEnvelope,
 } from "../../../../../src/ops-maturity/edge-runtime/sync-queue/index.js";
 
+function makeEnvelope(overrides: Partial<EdgeSyncEnvelope> & Pick<EdgeSyncEnvelope, "envelopeId" | "priority">): EdgeSyncEnvelope {
+  return {
+    envelopeId: overrides.envelopeId,
+    device_id: overrides.device_id ?? "device-1",
+    sequence_no: overrides.sequence_no ?? 1,
+    priority: overrides.priority,
+    createdAt: overrides.createdAt ?? "2026-04-20T00:00:00.000Z",
+    local_time_offset: overrides.local_time_offset ?? 0,
+    prev_hash: overrides.prev_hash ?? null,
+    side_effect_dependency_refs: overrides.side_effect_dependency_refs ?? [],
+    signature: overrides.signature ?? "sig-1",
+  };
+}
+
 test.describe("sync-queue", () => {
   test.describe("orderEdgeSyncQueue", () => {
     test("sorts by priority descending", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
-        { envelopeId: "b", priority: 5, createdAt: "2026-04-20T00:01:00.000Z" },
-        { envelopeId: "c", priority: 3, createdAt: "2026-04-20T00:02:00.000Z" },
+        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 5, createdAt: "2026-04-20T00:01:00.000Z" }),
+        makeEnvelope({ envelopeId: "c", priority: 3, createdAt: "2026-04-20T00:02:00.000Z" }),
       ];
 
       const result = orderEdgeSyncQueue(items);
@@ -30,9 +44,9 @@ test.describe("sync-queue", () => {
 
     test("sorts by createdAt ascending when priorities are equal", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:02:00.000Z" },
-        { envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
-        { envelopeId: "c", priority: 1, createdAt: "2026-04-20T00:01:00.000Z" },
+        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:02:00.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "c", priority: 1, createdAt: "2026-04-20T00:01:00.000Z" }),
       ];
 
       const result = orderEdgeSyncQueue(items);
@@ -42,15 +56,16 @@ test.describe("sync-queue", () => {
       assert.equal(result[2]?.envelopeId, "a"); // latest
     });
 
-    test("handles items with no createdAt", () => {
+    test("handles items with canonical required metadata", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "a", priority: 1 },
-        { envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
+        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:01.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
       ];
 
       const result = orderEdgeSyncQueue(items);
 
       assert.equal(result.length, 2);
+      assert.equal(result[0]?.envelopeId, "b");
     });
 
     test("returns empty array for empty input", () => {
@@ -60,8 +75,8 @@ test.describe("sync-queue", () => {
 
     test("does not mutate original array", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "a", priority: 2 },
-        { envelopeId: "b", priority: 1 },
+        makeEnvelope({ envelopeId: "a", priority: 2 }),
+        makeEnvelope({ envelopeId: "b", priority: 1 }),
       ];
       const original = [...items];
 
@@ -75,9 +90,9 @@ test.describe("sync-queue", () => {
   test.describe("dedupeEdgeSyncQueue", () => {
     test("removes duplicate envelopes keeping the latest by createdAt", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
-        { envelopeId: "a", priority: 2, createdAt: "2026-04-20T00:05:00.000Z" },
-        { envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:02:00.000Z" },
+        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "a", priority: 2, createdAt: "2026-04-20T00:05:00.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:02:00.000Z" }),
       ];
 
       const result = dedupeEdgeSyncQueue(items);
@@ -90,9 +105,9 @@ test.describe("sync-queue", () => {
 
     test("removes duplicates when priorities differ", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "dup", priority: 1, createdAt: "2026-04-20T00:01:00.000Z" },
-        { envelopeId: "dup", priority: 3, createdAt: "2026-04-20T00:02:00.000Z" },
-        { envelopeId: "dup", priority: 2, createdAt: "2026-04-20T00:03:00.000Z" },
+        makeEnvelope({ envelopeId: "dup", priority: 1, createdAt: "2026-04-20T00:01:00.000Z" }),
+        makeEnvelope({ envelopeId: "dup", priority: 3, createdAt: "2026-04-20T00:02:00.000Z" }),
+        makeEnvelope({ envelopeId: "dup", priority: 2, createdAt: "2026-04-20T00:03:00.000Z" }),
       ];
 
       const result = dedupeEdgeSyncQueue(items);
@@ -109,8 +124,8 @@ test.describe("sync-queue", () => {
 
     test("returns same items when no duplicates", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
-        { envelopeId: "b", priority: 2, createdAt: "2026-04-20T00:01:00.000Z" },
+        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 2, createdAt: "2026-04-20T00:01:00.000Z" }),
       ];
 
       const result = dedupeEdgeSyncQueue(items);
@@ -120,10 +135,10 @@ test.describe("sync-queue", () => {
 
     test("orders results by priority after deduplication", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "low", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
-        { envelopeId: "high", priority: 5, createdAt: "2026-04-20T00:00:00.000Z" },
-        { envelopeId: "dup", priority: 3, createdAt: "2026-04-20T00:01:00.000Z" },
-        { envelopeId: "dup", priority: 2, createdAt: "2026-04-20T00:02:00.000Z" },
+        makeEnvelope({ envelopeId: "low", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "high", priority: 5, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "dup", priority: 3, createdAt: "2026-04-20T00:01:00.000Z" }),
+        makeEnvelope({ envelopeId: "dup", priority: 2, createdAt: "2026-04-20T00:02:00.000Z" }),
       ];
 
       const result = dedupeEdgeSyncQueue(items);
@@ -135,7 +150,7 @@ test.describe("sync-queue", () => {
 
     test("handles single item", () => {
       const items: EdgeSyncEnvelope[] = [
-        { envelopeId: "only", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" },
+        makeEnvelope({ envelopeId: "only", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
       ];
 
       const result = dedupeEdgeSyncQueue(items);

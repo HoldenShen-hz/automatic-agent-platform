@@ -27,7 +27,10 @@ import { FairSchedulingService } from "../../../../src/scale-ecosystem/resource-
 import { SlaOperationsService } from "../../../../src/scale-ecosystem/sla-engine/sla-operations-service.js";
 import { PlatformPanicService } from "../../../../src/ops-maturity/emergency/platform-panic-service.js";
 import { ExplanationPipelineService } from "../../../../src/ops-maturity/explainability/explanation-pipeline-service.js";
-import { PlatformOpsAgentService } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import {
+  DEFAULT_OPS_DATA_BOUNDARY,
+  PlatformOpsAgentService,
+} from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 import { ComplianceReportPipelineService } from "../../../../src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.js";
 import { EdgeRuntimeSyncService } from "../../../../src/ops-maturity/edge-runtime/edge-runtime-sync-service.js";
 import { WorkflowDebuggerService } from "../../../../src/ops-maturity/workflow-debugger/workflow-debugger-service.js";
@@ -652,6 +655,7 @@ test("contract: PlatformOpsAgentService requires approval for high-risk actions 
     requiredApprovals: ["sre_manager"],
     maxAutonomyLevel: "supervised_execution",
     evidenceRequirements: ["runbook:incident"],
+    ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
   });
 
   const pendingProposal = service.createProposal({
@@ -707,14 +711,18 @@ test("contract: EdgeRuntimeSyncService blocks restricted uploads when sync polic
   const service = new EdgeRuntimeSyncService();
   const profile = {
     edgeNodeId: "edge_store_1",
+    deviceId: "device_edge_store_1",
     capabilities: ["text", "sync"],
     connectivityMode: "offline" as const,
     maxLocalRetentionHours: 12,
+    offlineMaxDuration: 1800,
+    keyLease: "lease_edge_store_1",
     allowedModels: ["local-text"],
     syncPolicy: {
       allowRestrictedDataUpload: false,
       requireOrdering: true,
     },
+    riskLevel: "low" as const,
   };
   const execution = service.executeOffline(
     profile,
@@ -1019,6 +1027,7 @@ test("contract: residency, quota, and SLA violations must surface as explicit st
       successRate: 0.99,
       queueWaitMs: 1200,
     },
+    workflowClass: "llm_assisted",
     totalCapacityUnits: 20,
     observedAt: "2026-04-20T00:00:00.000Z",
   });

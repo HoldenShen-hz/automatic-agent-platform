@@ -14,6 +14,7 @@ import {
   resolveAmountRoute,
   applySodPolicy,
   resolveApprovalRoute,
+  revalidateApprovalRoute,
   buildParallelSignoffGroups,
   resolveApprovalSteps,
   type ApprovalRouteDecision,
@@ -166,7 +167,7 @@ test("buildParallelSignoffGroups creates single group for two approvers when fir
   // chain: first=manager (is manager), remaining=[second]
   const groups = buildParallelSignoffGroups(["manager", "second"], nodes, "dept-1");
   assert.equal(groups.length, 1);
-  assert.equal(groups[0].groupId, "parallel:dept-1");
+  assert.equal(groups[0].groupId, "parallel:dept-1:0");
   assert.deepStrictEqual(groups[0].approverIds, ["second"]);
 });
 
@@ -177,7 +178,7 @@ test("buildParallelSignoffGroups creates single group when first is not manager"
   // firstApproverNode has no parent, so isFirstManager = false
   const groups = buildParallelSignoffGroups(["director", "second", "third"], nodes, "dept-1");
   assert.equal(groups.length, 1);
-  assert.equal(groups[0].groupId, "parallel:dept-1");
+  assert.equal(groups[0].groupId, "parallel:dept-1:0");
   assert.deepStrictEqual(groups[0].approverIds, ["second", "third"]);
 });
 
@@ -305,26 +306,20 @@ test("normalizeThresholdCny uses maxAmountCny directly", () => {
   assert.equal(selected.orgNodeId, "dept-1");
 });
 
-test("normalizeThresholdCny applies FX rate for USD maxAmountUsd", () => {
+test("normalizeThresholdCny requires FX snapshot when USD thresholds are applied to non-USD request amounts", () => {
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", nodeType: "department", active: true, ownerUserIds: ["director"] }),
     createOrgNode({ orgNodeId: "company-1", nodeType: "company", active: true, ownerUserIds: ["admin"] }),
   ];
   const strategy = new AmountBasedRoutingStrategy([
-    { maxAmountUsd: 1000, targetNodeTypes: ["department"] }, // 1000 * 7.2 = 7200 CNY
+    { maxAmountUsd: 1000, targetNodeTypes: ["department"] },
   ]);
-  // Amount 5000 CNY > 7200 CNY threshold, so should fall back to company
-  const selected = strategy.selectNode(nodes, ApprovalRouteRequestSchema.parse({
+  assert.throws(() => strategy.selectNode(nodes, ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
     orgNodeId: "dept-1",
     riskLevel: "low",
     amount: { value: 5000, currency: "CNY" },
-  }));
-  // No FX snapshot provided for USD maxAmountUsd, uses default 7.2
-  // threshold = 1000 * 7.2 = 7200 CNY
-  // 5000 < 7200, so dept-1 is selected
-  assert.ok(selected != null);
-  assert.equal(selected.orgNodeId, "dept-1");
+  })), { message: /approval_route.fx_snapshot_required/ });
 });
 
 test("normalizeThresholdCny uses provided FX snapshot for USD conversion", () => {
@@ -454,12 +449,21 @@ test("AmountBasedRoutingStrategy falls back to first active node when orgNodeId 
   const strategy = new AmountBasedRoutingStrategy([
     { maxAmountUsd: 5000, targetNodeTypes: ["team"] },
   ]);
-  // Amount is low, but team-1 rule applies
   const selected = strategy.selectNode(nodes, ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
     orgNodeId: "team-1",
     riskLevel: "low",
-    amount: { value: 100, currency: "CNY" },
+    amount: {
+      value: 100,
+      currency: "USD",
+      fxRateSnapshot: {
+        baseCurrency: "USD",
+        quoteCurrency: "CNY",
+        rate: 7.1,
+        source: "treasury",
+        capturedAt: "2026-04-28T00:00:00.000Z",
+      },
+    },
   }));
   assert.ok(selected != null);
   assert.equal(selected.orgNodeId, "team-1");

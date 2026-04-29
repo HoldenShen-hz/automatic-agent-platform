@@ -16,7 +16,9 @@ export type TraceStatus = "active" | "paused" | "completed" | "aborted";
 
 export interface TraceEvent {
   readonly eventId: string;
-  readonly stepId: string;
+  readonly nodeRunId: string;
+  /** @deprecated compatibility alias; use nodeRunId */
+  readonly stepId?: string;
   readonly eventType: "enter" | "exit" | "error" | "variable_change" | "checkpoint";
   readonly timestamp: string;
   readonly durationMs: number | null;
@@ -25,8 +27,12 @@ export interface TraceEvent {
 
 export interface ExecutionTrace {
   readonly traceId: string;
-  readonly workflowId: string;
-  readonly executionId: string;
+  readonly planGraphId: string;
+  readonly harnessRunId: string;
+  /** @deprecated compatibility alias; use planGraphId */
+  readonly workflowId?: string;
+  /** @deprecated compatibility alias; use harnessRunId */
+  readonly executionId?: string;
   readonly status: TraceStatus;
   readonly events: readonly TraceEvent[];
   readonly startedAt: string;
@@ -35,6 +41,8 @@ export interface ExecutionTrace {
 }
 
 export interface TraceFilter {
+  readonly nodeRunId?: string;
+  /** @deprecated compatibility alias; use nodeRunId */
   readonly stepId?: string;
   readonly eventType?: TraceEvent["eventType"];
   readonly fromTimestamp?: string;
@@ -61,15 +69,17 @@ export class ExecutionTracer {
     this.measurePerformance = options.measurePerformance ?? true;
   }
 
-  public startTrace(workflowId: string, executionId: string): ExecutionTrace {
+  public startTrace(planGraphId: string, harnessRunId: string): ExecutionTrace {
     const traceId = newId("trace");
     const startedAt = nowIso();
     this.traceStartTimes.set(traceId, Date.now());
 
     const trace: ExecutionTrace = {
       traceId,
-      workflowId,
-      executionId,
+      planGraphId,
+      harnessRunId,
+      workflowId: planGraphId,
+      executionId: harnessRunId,
       status: "active",
       events: [],
       startedAt,
@@ -85,7 +95,7 @@ export class ExecutionTracer {
 
   public recordEvent(
     traceId: string,
-    stepId: string,
+    nodeRunId: string,
     eventType: TraceEvent["eventType"],
     metadata: Record<string, unknown> = {},
   ): TraceEvent | null {
@@ -104,7 +114,8 @@ export class ExecutionTracer {
 
     const event: TraceEvent = {
       eventId: newId("evt"),
-      stepId,
+      nodeRunId,
+      stepId: nodeRunId,
       eventType,
       timestamp: nowIso(),
       durationMs,
@@ -220,7 +231,8 @@ export class ExecutionTracer {
     const events = this.activeEvents.get(traceId) ?? trace.events ?? [];
 
     return events.filter((event) => {
-      if (filter.stepId && event.stepId !== filter.stepId) {
+      const filterNodeRunId = filter.nodeRunId ?? filter.stepId;
+      if (filterNodeRunId && event.nodeRunId !== filterNodeRunId && event.stepId !== filterNodeRunId) {
         return false;
       }
       if (filter.eventType && event.eventType !== filter.eventType) {
@@ -236,12 +248,22 @@ export class ExecutionTracer {
     });
   }
 
-  public getTracesByWorkflow(workflowId: string): readonly ExecutionTrace[] {
-    return [...this.activeTraces.values()].filter((t) => t.workflowId === workflowId);
+  public getTracesByPlanGraph(planGraphId: string): readonly ExecutionTrace[] {
+    return [...this.activeTraces.values()].filter((t) => t.planGraphId === planGraphId || t.workflowId === planGraphId);
   }
 
+  public getTracesByHarnessRun(harnessRunId: string): readonly ExecutionTrace[] {
+    return [...this.activeTraces.values()].filter((t) => t.harnessRunId === harnessRunId || t.executionId === harnessRunId);
+  }
+
+  /** @deprecated use getTracesByPlanGraph */
+  public getTracesByWorkflow(workflowId: string): readonly ExecutionTrace[] {
+    return this.getTracesByPlanGraph(workflowId);
+  }
+
+  /** @deprecated use getTracesByHarnessRun */
   public getTracesByExecution(executionId: string): readonly ExecutionTrace[] {
-    return [...this.activeTraces.values()].filter((t) => t.executionId === executionId);
+    return this.getTracesByHarnessRun(executionId);
   }
 
   public getActiveTraceCount(): number {

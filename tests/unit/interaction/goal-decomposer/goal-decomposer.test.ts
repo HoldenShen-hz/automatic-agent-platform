@@ -40,6 +40,7 @@ test("GoalDecompositionService enforces maxDelegationDepth via delegation_depth_
 
 test("GoalDecompositionService enforces callDepth cap via call_depth_exceeded error", async () => {
   const service = new GoalDecompositionService({
+    maxDelegationDepth: 10,
     callDepth: 5,
     currentDepth: 6, // exceeds callDepth of 5
   });
@@ -195,7 +196,7 @@ test("GoalDecompositionService calculates proportional budget allocation based o
     (sum, alloc) => sum + alloc.budgetUsd,
     0,
   );
-  assert.ok(totalAllocated <= 5000, "Total allocated should not exceed budget limit");
+  assert.ok(totalAllocated <= 5000.01, "Total allocated should not exceed budget limit after rounding");
 });
 
 test("GoalDecompositionService distributes budget proportionally based on estimated costs", async () => {
@@ -244,8 +245,8 @@ test("GoalDecompositionService applies risk multiplier to budget allocation", as
   };
 
   const result = await service.decompose(goal);
-  const allocations = envelope.budgetAllocations!;
   const envelope = result.plannerHandoff.constraintEnvelope;
+  const allocations = envelope.budgetAllocations!;
 
   // Critical priority tasks should have higher risk multipliers
   const criticalTasks = allocations.filter((a) => {
@@ -567,8 +568,17 @@ test("GoalDecompositionService detects cycles in dependency graph", async () => 
   };
 
   const service = new GoalDecompositionService({ llmPlanGenerator });
-  const result = await service.decompose("复杂任务");
+  const result = await service.decompose({
+    goalId: "cycle_goal",
+    description:
+      "这是一个需要多个相互依赖步骤、跨多个执行阶段持续协作并带有复杂依赖关系的任务，用于验证 LLM 规划分支中的循环检测逻辑是否生效。",
+    owner: "user_1",
+    successCriteria: [],
+    constraints: [],
+    priority: "normal",
+  });
 
+  assert.equal(result.decompositionStrategy, "llm_plan");
   assert.equal(result.taskGraphDraft.validationMessages.some((m) => m.includes("cycle")), true);
 });
 

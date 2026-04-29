@@ -453,6 +453,35 @@ test("BudgetGuard evaluateExecutionChain all three warning scopes", () => {
   assert.deepEqual(result.warningScopes, ["task", "daily", "monthly"]);
 });
 
+test("BudgetGuard evaluateExecutionChain reports pack and platform warning scopes", () => {
+  const guard = new BudgetGuard();
+  const result = guard.evaluateExecutionChain({
+    policy: {
+      maxTaskCostUsd: 100,
+      maxPackCostUsd: 100,
+      maxPlatformCostUsd: 100,
+      maxDailyCostUsd: 1000,
+      maxMonthlyCostUsd: 10000,
+      warnAtRatio: 0.8,
+      mode: "auto",
+    },
+    spend: {
+      currentTaskCostUsd: 10,
+      nextEstimatedCostUsd: 5,
+      currentPackCostUsd: 78,
+      currentPlatformCostUsd: 79,
+      currentDailyCostUsd: 10,
+      currentMonthlyCostUsd: 10,
+    },
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.violatedScope, null);
+  assert.deepEqual(result.warningScopes, ["pack", "platform"]);
+  assert.equal(result.projectedPackCostUsd, 83);
+  assert.equal(result.projectedPlatformCostUsd, 84);
+});
+
 test("BudgetGuard evaluateTaskSpend with warnAtRatio 1.0", () => {
   const guard = new BudgetGuard();
   const policy: BudgetPolicy = {

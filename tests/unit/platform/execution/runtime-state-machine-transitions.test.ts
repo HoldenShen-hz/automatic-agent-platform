@@ -22,6 +22,17 @@ function createMachine(): RuntimeStateMachine {
 
 test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
   const machine = createMachine();
+  const harnessExecutionStatuses = new Set([
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+  ]);
 
   const validTransitions: Array<[HarnessRunStatus, HarnessRunStatus]> = [
     ["created", "admitted"],
@@ -66,6 +77,7 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
   ];
 
   for (const [from, to] of validTransitions) {
+    const needsLease = harnessExecutionStatuses.has(to);
     const run = createHarnessRun({
       harnessRunId: `run-${from}-${to}`,
       tenantId: "tenant-1",
@@ -77,6 +89,8 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
       budgetLedgerId: "ledger-1",
       status: from,
       currentSeq: 0,
+      leaseId: needsLease ? "lease-1" : undefined,
+      fencingToken: needsLease ? "fence-1" : undefined,
     });
 
     const command = {
@@ -89,6 +103,8 @@ test("RuntimeStateMachine allows valid HarnessRun transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
+      leaseId: needsLease ? "lease-1" : undefined,
+      fencingToken: needsLease ? "fence-1" : undefined,
       runVersionLockId: "rvlock-1",
       policyGuard: { allowed: true, policyProofRef: "proof-1" },
       auditRef: "audit-1",
@@ -362,6 +378,8 @@ test("RuntimeStateMachine allows SideEffectRecord commit-path transitions with s
       status: from,
       riskClass: "low",
       preCommitPolicyProofRef: {} as any,
+      leaseId: "lease-1",
+      fencingToken: "fence-1",
     });
 
     const result = machine.transition({
@@ -373,6 +391,8 @@ test("RuntimeStateMachine allows SideEffectRecord commit-path transitions with s
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
+      leaseId: "lease-1",
+      fencingToken: "fence-1",
       sideEffectSafety: {
         preCommitPolicyProofRef: "proof-ref-1",
       },
@@ -460,6 +480,8 @@ test("RuntimeStateMachine allows valid BudgetLedger transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
+      leaseId: "lease-1",
+      fencingToken: "fence-1",
     });
 
     assert.equal(result.aggregate.status, to, `Failed for ${from} -> ${to}`);

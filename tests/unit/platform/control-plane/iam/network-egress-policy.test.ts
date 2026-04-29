@@ -80,6 +80,14 @@ test("NetworkEgressPolicyService evaluate blocks internal hostnames in enforce m
   assert.equal(decision.reasonCode, "EGRESS_INTERNAL_BLOCKED");
 });
 
+test("NetworkEgressPolicyService default deny mode actually blocks prohibited egress", () => {
+  const policy = new NetworkEgressPolicyService({ blockedDomains: ["evil.example.test"] });
+  const decision = policy.evaluate("https://evil.example.test/api");
+  assert.equal(policy.getMode(), "deny");
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "EGRESS_DOMAIN_BLOCKED");
+});
+
 test("NetworkEgressPolicyService evaluate allows internal hostnames when configured", () => {
   const policy = new NetworkEgressPolicyService({ mode: "enforce", allowInternalHosts: true });
   const decision = policy.evaluate("https://127.0.0.1/api");

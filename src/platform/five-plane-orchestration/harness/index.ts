@@ -1,9 +1,16 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import {
   createBudgetLedger,
+  createDecisionInputBundle as createCanonicalDecisionInputBundle,
+  createHarnessDecision as createCanonicalHarnessDecision,
+  type ArtifactRef,
+  type DecisionInputBundle as CanonicalDecisionInputBundle,
+  type HarnessDecision as CanonicalHarnessDecision,
   type HarnessRun as CanonicalHarnessRun,
   type HarnessRunStatus as CanonicalHarnessRunStatus,
   type PlanGraphBundle,
+  type PolicyFinding,
+  type RiskClass,
 } from "../../../platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../platform/execution/runtime-state-machine.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
@@ -168,6 +175,13 @@ export interface HarnessStep {
 
 export interface HarnessDecision {
   readonly decisionId: string;
+  readonly harnessDecisionId?: string;
+  readonly decisionInputBundleId?: string;
+  readonly decisionKind?: CanonicalDecisionInputBundle["decisionKind"];
+  readonly decision?: CanonicalHarnessDecision["decision"];
+  readonly deciderType?: CanonicalHarnessDecision["deciderType"];
+  readonly deciderRef?: string;
+  readonly reasonCode?: string;
   readonly action: HarnessDecisionAction;
   readonly reasonCodes: readonly string[];
   readonly confidence: number;
@@ -282,6 +296,17 @@ export interface PromptExecutionRecord {
 }
 
 export interface DecisionInputBundle {
+  readonly decisionInputBundleId: string;
+  readonly harnessRunId: string;
+  readonly nodeRunId?: string;
+  readonly decisionKind: CanonicalDecisionInputBundle["decisionKind"];
+  readonly riskClass: RiskClass;
+  readonly contextRefs: readonly ArtifactRef[];
+  readonly evidenceRefs: readonly ArtifactRef[];
+  readonly policyFindings: readonly PolicyFinding[];
+  readonly budgetSnapshotRef?: ArtifactRef;
+  readonly sideEffectRefs: readonly string[];
+  /** @deprecated compatibility alias; use decisionInputBundleId */
   readonly bundleId: string;
   readonly evaluator: Readonly<{
     readonly score: number;
@@ -315,7 +340,9 @@ export interface DecisionInputBundle {
     readonly requestId: string | null;
   }>;
   readonly guardrail: GuardrailAssessment | null;
+  /** @deprecated compatibility alias; use createdAt */
   readonly capturedAt: string;
+  readonly createdAt: string;
 }
 
 export interface TaintPolicy {
@@ -815,6 +842,11 @@ export class HarnessRuntimeService {
     requiresHuman?: boolean;
     maxIterationsReached?: boolean;
     riskScore?: number;
+    harnessRunId?: string;
+    nodeRunId?: string;
+    evidenceRefs?: readonly string[];
+    sideEffectRefs?: readonly string[];
+    deciderRef?: string;
   }): HarnessDecision {
     let action: HarnessDecisionAction = "accept";
     const reasonCodes: string[] = [];
@@ -838,12 +870,39 @@ export class HarnessRuntimeService {
       reasonCodes.push("harness.accepted");
     }
 
+    const decisionKind = this.mapDecisionKind(action);
+    const decisionInputBundle = createCanonicalDecisionInputBundle({
+      harnessRunId: input.harnessRunId ?? "harness_run:compat",
+      ...(input.nodeRunId != null ? { nodeRunId: input.nodeRunId } : {}),
+      decisionKind,
+      riskClass: this.resolveRiskClass(input.riskScore),
+      evidenceRefs: this.asArtifactRefs(input.evidenceRefs ?? []),
+      sideEffectRefs: input.sideEffectRefs ?? [],
+    });
+    const harnessDecisionId = newId("harness_decision");
+    const canonicalDecision = createCanonicalHarnessDecision({
+      decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
+      decisionKind,
+      decision: this.mapDecisionOutcome(action),
+      deciderType: this.resolveDeciderType(action, input.requiresHuman === true, input.maxIterationsReached === true),
+      deciderRef: input.deciderRef ?? "harness.runtime_service",
+      reasonCode: reasonCodes[0] ?? "harness.accepted",
+      harnessDecisionId,
+    });
+
     return {
-      decisionId: newId("harness_decision"),
+      decisionId: canonicalDecision.harnessDecisionId,
+      harnessDecisionId: canonicalDecision.harnessDecisionId,
+      decisionInputBundleId: canonicalDecision.decisionInputBundleId,
+      decisionKind: canonicalDecision.decisionKind,
+      decision: canonicalDecision.decision,
+      deciderType: canonicalDecision.deciderType,
+      deciderRef: canonicalDecision.deciderRef,
+      reasonCode: canonicalDecision.reasonCode,
       action,
       reasonCodes,
       confidence: Number(input.evaluatorScore.toFixed(4)),
-      createdAt: nowIso(),
+      createdAt: canonicalDecision.createdAt,
     };
   }
 
@@ -907,6 +966,11 @@ export class HarnessRuntimeService {
         evaluatorScore: input.evaluatorScore,
         requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman,
         maxIterationsReached: run.steps.length >= input.constraintPack.budget.maxSteps,
+        riskScore: input.riskScore,
+        harnessRunId: run.harnessRunId,
+        nodeRunId: run.nodeRunIds.at(-1),
+        evidenceRefs: input.producedEvidenceRefs,
+        deciderRef: "harness.run_loop",
       });
       const contextSnapshot = this.captureContextSnapshot({
         ...run,
@@ -987,12 +1051,20 @@ export class HarnessRuntimeService {
       const shouldStop = baseRun.status !== "running" || !progress.shouldContinue;
 
       if (shouldStop) {
+        const guardAbortDecisionId = newId("harness_decision");
         let finalRun: HarnessRun = progress.violation !== null && baseRun.status === "running"
           ? {
               ...baseRun,
               loopMetrics: currentMetrics,
               decision: {
-                decisionId: newId("harness_decision"),
+                decisionId: guardAbortDecisionId,
+                harnessDecisionId: guardAbortDecisionId,
+                decisionInputBundleId: newId("dib"),
+                decisionKind: "abort",
+                decision: "abort",
+                deciderType: "system",
+                deciderRef: "harness.loop_controller",
+                reasonCode: progress.reasonCodes[0] ?? "harness.guard.max_iterations_reached",
                 action: "abort" as const,
                 reasonCodes: progress.reasonCodes,
                 confidence: baseRun.decision?.confidence ?? 0,
@@ -1153,6 +1225,91 @@ export class HarnessRuntimeService {
     };
 
     return Number((extract(input.plannerOutput) + extract(input.generatorOutput) + extract(input.evaluatorOutput)).toFixed(6));
+  }
+
+  private mapDecisionKind(action: HarnessDecisionAction): CanonicalDecisionInputBundle["decisionKind"] {
+    switch (action) {
+      case "accept":
+        return "approve";
+      case "retry_same_plan":
+        return "retry";
+      case "replan":
+        return "replan";
+      case "escalate_to_human":
+        return "takeover";
+      case "abort":
+      case "quarantine":
+      case "revoke_approval":
+        return "abort";
+      case "pause_for_external":
+        return "resume";
+      case "downgrade_mode":
+      case "require_revalidation":
+      default:
+        return "patch";
+    }
+  }
+
+  private mapDecisionOutcome(action: HarnessDecisionAction): CanonicalHarnessDecision["decision"] {
+    switch (action) {
+      case "accept":
+        return "accept";
+      case "retry_same_plan":
+        return "retry";
+      case "replan":
+        return "replan";
+      case "escalate_to_human":
+        return "escalate";
+      case "abort":
+        return "abort";
+      case "quarantine":
+      case "revoke_approval":
+        return "reject";
+      case "pause_for_external":
+        return "takeover";
+      case "downgrade_mode":
+      case "require_revalidation":
+      default:
+        return "patch";
+    }
+  }
+
+  private resolveDeciderType(
+    action: HarnessDecisionAction,
+    requiresHuman: boolean,
+    maxIterationsReached: boolean,
+  ): CanonicalHarnessDecision["deciderType"] {
+    if (action === "escalate_to_human") {
+      return "policy";
+    }
+    if (requiresHuman || maxIterationsReached || action === "abort") {
+      return "system";
+    }
+    return "evaluator";
+  }
+
+  private resolveRiskClass(riskScore: number | undefined): RiskClass {
+    if (riskScore == null) {
+      return "medium";
+    }
+    const normalized = riskScore <= 1 ? riskScore * 100 : riskScore;
+    if (normalized >= 85) {
+      return "critical";
+    }
+    if (normalized >= 60) {
+      return "high";
+    }
+    if (normalized >= 30) {
+      return "medium";
+    }
+    return "low";
+  }
+
+  private asArtifactRefs(refs: readonly string[]): ArtifactRef[] {
+    return refs.map((ref) => ({
+      artifactId: ref,
+      uri: `memory://${ref}`,
+    }));
   }
 }
 

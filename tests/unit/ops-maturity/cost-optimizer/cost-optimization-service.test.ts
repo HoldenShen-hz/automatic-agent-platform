@@ -7,6 +7,19 @@ import {
   CostOptimizationService,
 } from "../../../../src/ops-maturity/cost-optimizer/index.js";
 
+function makeCostRecord(overrides: Record<string, unknown>) {
+  return {
+    costType: "llm",
+    llmCostUsd: 0,
+    toolCostUsd: 0,
+    computeCostUsd: 0,
+    storageCostUsd: 0,
+    egressCostUsd: 0,
+    humanReviewCostUsd: 0,
+    ...overrides,
+  };
+}
+
 test("aggregateCostAttribution sums amounts per subjectId", () => {
   const entries = [
     { subjectId: "task_1", amountUsd: 10 },
@@ -24,15 +37,15 @@ test("aggregateCostAttribution handles empty input", () => {
 
 test("CostOptimizationService.recordCost stores a valid record", () => {
   const service = new CostOptimizationService();
-  const record = service.recordCost({
+  const record = service.recordCost(makeCostRecord({
     subjectType: "task",
     subjectId: "task_x",
-    costType: "model",
+    costType: "llm",
     amountUsd: 25,
     decisionRef: "dec_001",
     modelRef: "claude-3-7",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
   assert.equal(record.subjectId, "task_x");
   assert.equal(record.amountUsd, 25);
   assert.deepEqual(service.listRecords(), [record]);
@@ -43,9 +56,15 @@ test("CostOptimizationService.recordCost throws for empty decisionRef", () => {
   assert.throws(
     () =>
       service.recordCost({
+        llmCostUsd: 0,
+        toolCostUsd: 0,
+        computeCostUsd: 0,
+        storageCostUsd: 0,
+        egressCostUsd: 0,
+        humanReviewCostUsd: 0,
         subjectType: "task",
         subjectId: "task_y",
-        costType: "model",
+        costType: "llm",
         amountUsd: 2,
         decisionRef: "   ",
         capturedAt: "2026-04-21T00:00:00.000Z",
@@ -56,31 +75,31 @@ test("CostOptimizationService.recordCost throws for empty decisionRef", () => {
 
 test("CostOptimizationService.aggregate returns per-subject totals", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "agent",
     subjectId: "agent_alpha",
-    costType: "runtime",
+    costType: "compute",
     amountUsd: 10,
     decisionRef: "dec_1",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
-  service.recordCost({
+  }));
+  service.recordCost(makeCostRecord({
     subjectType: "agent",
     subjectId: "agent_alpha",
     costType: "storage",
     amountUsd: 5,
     decisionRef: "dec_2",
     capturedAt: "2026-04-21T00:01:00.000Z",
-  });
-  service.recordCost({
+  }));
+  service.recordCost(makeCostRecord({
     subjectType: "model",
     subjectId: "model_beta",
-    costType: "model",
+    costType: "llm",
     amountUsd: 20,
     decisionRef: "dec_3",
     modelRef: "gpt-5",
     capturedAt: "2026-04-21T00:02:00.000Z",
-  });
+  }));
 
   const all = service.aggregate();
   assert.equal(all["agent_alpha"], 15);
@@ -93,14 +112,14 @@ test("CostOptimizationService.aggregate returns per-subject totals", () => {
 
 test("CostOptimizationService.aggregate returns empty when no records match filter", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "task",
     subjectId: "task_z",
-    costType: "network",
+    costType: "egress",
     amountUsd: 1,
     decisionRef: "dec_1",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
   const result = service.aggregate("domain");
   assert.deepEqual(result, {});
 });
@@ -137,31 +156,31 @@ test("buildCostOptimizationRecommendation suggests model downgrade when a cheape
 
 test("CostOptimizationService.buildRecommendations generates recommendations for subjects with cost >= 10", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "workflow",
     subjectId: "wf_cheap",
     costType: "tool",
     amountUsd: 5,
     decisionRef: "dec_wf_cheap",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
-  service.recordCost({
+  }));
+  service.recordCost(makeCostRecord({
     subjectType: "workflow",
     subjectId: "wf_normal",
-    costType: "model",
+    costType: "llm",
     amountUsd: 50,
     decisionRef: "dec_wf_normal",
     modelRef: "claude-3-7",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
-  service.recordCost({
+  }));
+  service.recordCost(makeCostRecord({
     subjectType: "agent",
     subjectId: "agent_expensive",
-    costType: "runtime",
+    costType: "compute",
     amountUsd: 200,
     decisionRef: "dec_agent_expensive",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
 
   const recommendations = service.buildRecommendations();
   assert.equal(recommendations.length, 2);
@@ -178,15 +197,15 @@ test("CostOptimizationService.buildRecommendations generates recommendations for
 
 test("CostOptimizationService.upgrades risk to medium when subject has model costType and base risk is low", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "model",
     subjectId: "model_with_model_cost",
-    costType: "model",
+    costType: "llm",
     amountUsd: 50,
     decisionRef: "dec_model",
     modelRef: "claude-3-7",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
 
   const recommendations = service.buildRecommendations("model");
   assert.equal(recommendations.length, 1);
@@ -195,14 +214,14 @@ test("CostOptimizationService.upgrades risk to medium when subject has model cos
 
 test("CostOptimizationService.buildDashboardSlice includes all expected fields", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "task",
     subjectId: "dash_task",
-    costType: "model",
+    costType: "llm",
     amountUsd: 120,
     decisionRef: "dec_dash",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
 
   const slice = service.buildDashboardSlice("2026-04-21T12:00:00.000Z");
   assert.equal(slice.generatedAt, "2026-04-21T12:00:00.000Z");
@@ -214,31 +233,31 @@ test("CostOptimizationService.buildDashboardSlice includes all expected fields",
 
 test("CostOptimizationService.listRecords returns a copy of records", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "task",
     subjectId: "list_task",
-    costType: "runtime",
+    costType: "compute",
     amountUsd: 1,
     decisionRef: "dec_list",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
 
   const records = service.listRecords();
-  records.push({ subjectType: "task", subjectId: "tampered", costType: "tool", amountUsd: 0, decisionRef: "x", capturedAt: "2026-04-21T00:00:00.000Z" });
+  records.push(makeCostRecord({ subjectType: "task", subjectId: "tampered", costType: "tool", amountUsd: 0, decisionRef: "x", capturedAt: "2026-04-21T00:00:00.000Z" }) as any);
 
   assert.equal(service.listRecords().length, 1);
 });
 
 test("CostOptimizationService.simulate returns correct delta and values", () => {
   const service = new CostOptimizationService();
-  service.recordCost({
+  service.recordCost(makeCostRecord({
     subjectType: "task",
     subjectId: "sim_task",
-    costType: "model",
+    costType: "llm",
     amountUsd: 100,
     decisionRef: "dec_sim",
     capturedAt: "2026-04-21T00:00:00.000Z",
-  });
+  }));
 
   const results = service.simulate([
     { scenarioId: "cut_20", subjectId: "sim_task", reductionPercent: 20 },

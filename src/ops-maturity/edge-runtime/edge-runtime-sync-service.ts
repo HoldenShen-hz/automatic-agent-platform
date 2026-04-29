@@ -123,7 +123,17 @@ export class EdgeRuntimeSyncService {
     cloudPayloadDigests: Readonly<Record<string, string>>,
   ): EdgeSyncReceipt {
     const ordered = profile.syncPolicy.requireOrdering
-      ? orderEdgeSyncQueue(envelopes.map((item) => ({ envelopeId: item.envelopeId, priority: item.priority })))
+      ? orderEdgeSyncQueue(envelopes.map((item, index) => ({
+        envelopeId: item.envelopeId,
+        device_id: profile.deviceId ?? profile.edgeNodeId,
+        sequence_no: index + 1,
+        priority: item.priority,
+        createdAt: item.createdAt,
+        local_time_offset: 0,
+        prev_hash: item.prevHash,
+        side_effect_dependency_refs: [],
+        signature: item.signature,
+      })))
         .reverse()
         .map((orderedItem) => envelopes.find((item) => item.envelopeId === orderedItem.envelopeId)!)
       : [...envelopes];

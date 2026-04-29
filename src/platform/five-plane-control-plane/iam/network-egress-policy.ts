@@ -2,7 +2,7 @@
  * Network Egress Policy
  *
  * Enforces network egress policies for outbound connections.
- * Supports both audit-only and enforcement modes.
+ * Supports audit-only and blocking modes.
  *
  * ## Purpose
  *
@@ -15,12 +15,13 @@
  * ## Modes
  *
  * - `audit_only`: Records decisions and logs, but doesn't block
- * - `enforce`: Actually blocks prohibited connections
+ * - `deny`: Blocks prohibited connections (default)
+ * - `enforce`: Alias for `deny`
  *
  * ## Configuration (Environment Variables)
  *
  * - AA_EGRESS_POLICY_ENABLED: Set to 0 to disable
- * - AA_EGRESS_POLICY_MODE: "audit_only" or "enforce"
+ * - AA_EGRESS_POLICY_MODE: "audit_only", "deny", or "enforce"
  * - AA_EGRESS_ALLOWED_DOMAINS: Comma-separated allowed domains
  * - AA_EGRESS_BLOCKED_DOMAINS: Comma-separated blocked domains
  * - AA_EGRESS_ALLOWED_TYPES: Comma-separated allowed destination types
@@ -220,7 +221,11 @@ export function loadNetworkEgressPolicyConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): NetworkEgressPolicyConfig {
   const modeValue = (env["AA_EGRESS_POLICY_MODE"] ?? "deny").trim().toLowerCase();
-  const mode: NetworkEgressPolicyMode = modeValue === "enforce" ? "enforce" : "deny";
+  const mode: NetworkEgressPolicyMode = modeValue === "audit_only"
+    ? "audit_only"
+    : modeValue === "enforce"
+      ? "enforce"
+      : "deny";
   return {
     enabled: env["AA_EGRESS_POLICY_ENABLED"] !== "0",
     mode,
@@ -236,7 +241,7 @@ export function loadNetworkEgressPolicyConfigFromEnv(
  * Network Egress Policy Service
  *
  * Evaluates outbound connection requests against configured policies.
- * Can operate in audit-only mode (log only) or enforce mode (block).
+ * Can operate in audit-only mode (log only) or blocking mode (`deny` / `enforce`).
  */
 export class NetworkEgressPolicyService {
   private readonly enabled: boolean;
@@ -266,6 +271,10 @@ export class NetworkEgressPolicyService {
     return this.mode;
   }
 
+  private isBlockingMode(): boolean {
+    return this.mode !== "audit_only";
+  }
+
   /**
    * Evaluates a URL against the policy.
    * Returns a decision object indicating whether the URL is allowed.
@@ -288,7 +297,7 @@ export class NetworkEgressPolicyService {
     // Check internal hostname block
     if (!this.allowInternalHosts && isInternalHostname(hostname)) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed: !this.isBlockingMode(),
         destinationType,
         destination,
         reasonCode: "EGRESS_INTERNAL_BLOCKED",
@@ -298,7 +307,7 @@ export class NetworkEgressPolicyService {
     // Check blocked destination types
     if (this.blockedDestinationTypes.includes(destinationType)) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed: !this.isBlockingMode(),
         destinationType,
         destination,
         reasonCode: "EGRESS_TYPE_BLOCKED",
@@ -311,7 +320,7 @@ export class NetworkEgressPolicyService {
       && !this.allowedDestinationTypes.includes(destinationType)
     ) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed: !this.isBlockingMode(),
         destinationType,
         destination,
         reasonCode: "EGRESS_TYPE_NOT_ALLOWED",
@@ -321,7 +330,7 @@ export class NetworkEgressPolicyService {
     // Check blocked domains
     if (this.blockedDomains.some((item) => domainMatches(hostname, item))) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed: !this.isBlockingMode(),
         destinationType,
         destination,
         reasonCode: "EGRESS_DOMAIN_BLOCKED",
@@ -334,7 +343,7 @@ export class NetworkEgressPolicyService {
       && !this.allowedDomains.some((item) => domainMatches(hostname, item))
     ) {
       return {
-        allowed: this.mode !== "enforce",
+        allowed: !this.isBlockingMode(),
         destinationType,
         destination,
         reasonCode: "EGRESS_DOMAIN_NOT_ALLOWED",

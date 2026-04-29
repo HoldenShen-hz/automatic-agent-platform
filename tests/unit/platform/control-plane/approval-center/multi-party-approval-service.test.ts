@@ -218,6 +218,18 @@ test("createMultiPartyRequest with executionId sets executionId", () => {
   const result = service.createMultiPartyRequest(request);
 
   assert.strictEqual(result.executionId, "exec_789");
+  assert.strictEqual(result.harnessRunId, "exec_789");
+});
+
+test("createMultiPartyRequest does not synthesize taskId into harness runtime id", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new MultiPartyApprovalService(db, store as any);
+
+  const result = service.createMultiPartyRequest(createBaseRequest());
+
+  assert.strictEqual(result.harnessRunId, null);
+  assert.strictEqual(result.executionId, null);
 });
 
 test("getPendingApproval returns null for non-existent approval", () => {

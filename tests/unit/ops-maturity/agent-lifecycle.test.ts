@@ -120,8 +120,8 @@ test("canAutoPromote returns true only for canary state per R3-35", () => {
   assert.equal(canAutoPromote("removed"), false);
 });
 
-test("isTerminalState returns true only for archived state per R3-35", () => {
-  assert.equal(isTerminalState("archived"), true, "archived should be terminal");
+test("isTerminalState returns true only for removed state per R3-35", () => {
+  assert.equal(isTerminalState("archived"), false, "archived should be resumable toward removed or active");
   assert.equal(isTerminalState("draft"), false);
   assert.equal(isTerminalState("testing"), false);
   assert.equal(isTerminalState("staging"), false);
@@ -129,7 +129,7 @@ test("isTerminalState returns true only for archived state per R3-35", () => {
   assert.equal(isTerminalState("active"), false);
   assert.equal(isTerminalState("paused"), false);
   assert.equal(isTerminalState("deprecated"), false);
-  assert.equal(isTerminalState("removed"), false);
+  assert.equal(isTerminalState("removed"), true);
 });
 
 test("listActiveAgents filters active and canary agents", () => {

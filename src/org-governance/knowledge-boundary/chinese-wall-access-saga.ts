@@ -35,7 +35,7 @@ export class ChineseWallAccessSaga {
   public constructor(private readonly handlers: ChineseWallAccessSagaHandlers = {}) {}
 
   public execute(accessId: string, steps: readonly ChineseWallAccessStep[]): ChineseWallAccessSagaReceipt {
-    const committedActions: ChineseWallAccessStep["action"][] = [];
+    const successfulActions: ChineseWallAccessStep["action"][] = [];
     const executionLog: Array<ChineseWallAccessSagaReceipt["executionLog"][number]> = [];
     let failedAction: ChineseWallAccessStep["action"] | null = null;
     const context = (): ChineseWallAccessSagaHandlerContext => ({ accessId, failedAction });
@@ -54,18 +54,29 @@ export class ChineseWallAccessSaga {
       }
 
       if (step.action === "prepare_grant" || step.action === "prepare_release") {
-        this.handlers.prepareGrant?.(step, context());
-        preparedSet.add(step.stepId);
-        executionLog.push({
-          stepId: step.stepId,
-          action: step.action,
-          outcome: "prepared",
-        });
+        try {
+          this.runAction(step, context());
+          preparedSet.add(step.stepId);
+          successfulActions.push(step.action);
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "prepared",
+          });
+        } catch {
+          failedAction = step.action;
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "failed",
+          });
+          break;
+        }
         continue;
       }
 
       if (step.action === "commit_grant" || step.action === "commit_release") {
-        if (!preparedSet.has(step.stepId.replace("commit_", "prepare_"))) {
+        if (!hasMatchingPrepareStep(preparedSet, step.stepId)) {
           failedAction = step.action;
           executionLog.push({
             stepId: step.stepId,
@@ -83,25 +94,31 @@ export class ChineseWallAccessSaga {
           });
           break;
         }
-        this.runAction(step, context());
-        committedActions.push(step.action);
-        executionLog.push({
-          stepId: step.stepId,
-          action: step.action,
-          outcome: "committed",
-        });
+        try {
+          this.runAction(step, context());
+          successfulActions.push(step.action);
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "committed",
+          });
+        } catch {
+          failedAction = step.action;
+          executionLog.push({
+            stepId: step.stepId,
+            action: step.action,
+            outcome: "failed",
+          });
+          break;
+        }
       }
     }
 
     const failed = failedAction != null;
     const compensatedActions = failed
-      ? [...committedActions]
+      ? [...successfulActions]
         .reverse()
-        .map((action) => action === "commit_grant"
-          ? "prepare_release"
-          : action === "prepare_grant"
-            ? "commit_release"
-            : action)
+        .map(invertActionForCompensation)
       : [];
     if (failed) {
       for (const action of compensatedActions) {
@@ -122,7 +139,7 @@ export class ChineseWallAccessSaga {
     return {
       accessId,
       status: failed ? "rolled_back" : "committed",
-      committedActions: failed ? [] : committedActions,
+      committedActions: failed ? [] : successfulActions,
       rollbackRequired: failed,
       compensatedActions,
       failedAction,
@@ -148,5 +165,42 @@ export class ChineseWallAccessSaga {
         this.handlers.audit?.(step, context);
         return;
     }
+  }
+}
+
+function hasMatchingPrepareStep(preparedSet: ReadonlySet<string>, commitStepId: string): boolean {
+  for (const candidate of derivePrepareStepCandidates(commitStepId)) {
+    if (preparedSet.has(candidate)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function derivePrepareStepCandidates(commitStepId: string): readonly string[] {
+  const candidates = new Set<string>([commitStepId]);
+  if (commitStepId.includes("commit")) {
+    candidates.add(commitStepId.replace("commit", "prepare"));
+  }
+  if (commitStepId.startsWith("commit_")) {
+    candidates.add(`prepare_${commitStepId.slice("commit_".length)}`);
+  }
+  return [...candidates];
+}
+
+function invertActionForCompensation(
+  action: ChineseWallAccessStep["action"],
+): ChineseWallAccessStep["action"] {
+  switch (action) {
+    case "prepare_grant":
+      return "prepare_release";
+    case "commit_grant":
+      return "commit_release";
+    case "prepare_release":
+      return "prepare_grant";
+    case "commit_release":
+      return "commit_grant";
+    case "audit":
+      return "audit";
   }
 }

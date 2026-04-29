@@ -169,5 +169,5 @@ export function canAutoPromote(state: AgentLifecycleState): boolean {
  * Checks if agent is in a terminal state.
  */
 export function isTerminalState(state: AgentLifecycleState): boolean {
-  return state === "archived";
+  return state === "removed";
 }

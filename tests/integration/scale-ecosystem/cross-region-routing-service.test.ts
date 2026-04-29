@@ -42,7 +42,7 @@ test("cross region routing falls back to lowest latency region when preferred is
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     { regionId: "us-east-1", countryCode: "US", jurisdiction: "US", capabilities: ["compute", "storage"], status: "active", latencyScore: 45, residencyAllowed: true },
-    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "disabled", latencyScore: 120, residencyAllowed: true },
+    { regionId: "eu-west-1", countryCode: "IE", jurisdiction: "EU", capabilities: ["compute"], status: "draining", latencyScore: 120, residencyAllowed: true },
   ];
 
   const request: CrossRegionRouteRequest = {

@@ -5,6 +5,18 @@ import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
 
+const DEFAULT_CONTEXT = {
+  tenantId: "tenant-1",
+  traceId: "trace-1",
+  emittedBy: "budget-allocator",
+} as const;
+
+const LOCKED_CONTEXT = {
+  ...DEFAULT_CONTEXT,
+  leaseId: "lease-budget-1",
+  fencingToken: "fence-budget-1",
+} as const;
+
 test("BudgetAllocator reserves against hard cap and settles reservation with ledger accounting", () => {
   const allocator = new BudgetAllocator();
   const ledger = createBudgetLedger({
@@ -22,15 +34,14 @@ test("BudgetAllocator reserves against hard cap and settles reservation with led
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
     nodeRunId: "node-run-1",
+    context: LOCKED_CONTEXT,
   });
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
     context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "budget-allocator",
+      ...DEFAULT_CONTEXT,
     },
   });
 
@@ -57,6 +68,7 @@ test("BudgetAllocator rejects settlement that exceeds the hard cap or reservatio
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
     nodeRunId: "node-run-1",
+    context: LOCKED_CONTEXT,
   });
 
   assert.throws(
@@ -66,9 +78,7 @@ test("BudgetAllocator rejects settlement that exceeds the hard cap or reservatio
         reservation: reserved.reservation,
         actualAmount: 11,
         context: {
-          tenantId: "tenant-1",
-          traceId: "trace-1",
-          emittedBy: "budget-allocator",
+          ...DEFAULT_CONTEXT,
         },
       }),
     (error: unknown) =>
@@ -93,14 +103,13 @@ test("BudgetAllocator can release a reservation when execution never starts", ()
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: DEFAULT_CONTEXT,
   });
   const released = allocator.release({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "budget-allocator",
+      ...DEFAULT_CONTEXT,
     },
   });
 

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PlatformOpsAgentService } from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
+import {
+  DEFAULT_OPS_DATA_BOUNDARY,
+  PlatformOpsAgentService,
+} from "../../../../src/ops-maturity/platform-ops-agent/platform-ops-agent-service.js";
 import type { OpsHealthProbe } from "../../../../src/ops-maturity/platform-ops-agent/health-monitor/index.js";
 
 function makeProbe(status: "healthy" | "degraded" | "failed", component = "test_component"): OpsHealthProbe {
@@ -47,6 +50,7 @@ function makeAgentDefinition(overrides: {
     requiredApprovals: overrides.requiredApprovals ?? [],
     maxAutonomyLevel: overrides.maxAutonomyLevel ?? "supervised_execution",
     evidenceRequirements: [],
+    ops_data_boundary: DEFAULT_OPS_DATA_BOUNDARY,
   };
 }
 
@@ -262,6 +266,20 @@ test("PlatformOpsAgentService.canExecuteAtLevel observe_only cannot execute", ()
 
   assert.equal(proposal.executable, false);
   assert.ok(proposal.blockedBy.includes("ops_agent.autonomy_limit_reached"));
+});
+
+test("PlatformOpsAgentService rejects business payload access in ops_data_boundary", () => {
+  assert.throws(
+    () =>
+      new PlatformOpsAgentService({
+        ...makeAgentDefinition(),
+        ops_data_boundary: {
+          allowedPayloadTypes: ["platform_metrics"],
+          businessPayloadAllowed: true,
+        },
+      }),
+    /ops_agent\.invalid_ops_data_boundary:business_payload_not_allowed/,
+  );
 });
 
 test("PlatformOpsAgentService.canExecuteAtLevel supervised_execution allows low risk without approval", () => {

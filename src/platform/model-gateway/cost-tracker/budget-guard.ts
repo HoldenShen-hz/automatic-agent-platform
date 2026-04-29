@@ -61,10 +61,12 @@ export interface ExecutionChainBudgetSpend {
 
 export interface BudgetGuardCascadeResult extends BudgetGuardResult {
   readonly projectedTaskCostUsd: number;
+  readonly projectedPackCostUsd: number;
+  readonly projectedPlatformCostUsd: number;
   readonly projectedDailyCostUsd: number;
   readonly projectedMonthlyCostUsd: number;
-  readonly violatedScope: "task" | "daily" | "monthly" | null;
-  readonly warningScopes: readonly ("task" | "daily" | "monthly")[];
+  readonly violatedScope: "task" | "pack" | "platform" | "daily" | "monthly" | null;
+  readonly warningScopes: readonly ("task" | "pack" | "platform" | "daily" | "monthly")[];
 }
 
 export interface BudgetReservationRequest {
@@ -83,6 +85,34 @@ export interface BudgetReservationExecutionResult extends BudgetGuardCascadeResu
   readonly ledger: BudgetLedger;
   readonly reservation: BudgetReservationResult["reservation"] | null;
   readonly reservationReasonCode: string | null;
+}
+
+interface NormalizedBudgetPolicy extends BudgetPolicy {
+  readonly maxPackCostUsd: number;
+  readonly maxPlatformCostUsd: number;
+}
+
+interface NormalizedExecutionChainBudgetSpend extends ExecutionChainBudgetSpend {
+  readonly currentPackCostUsd: number;
+  readonly currentPlatformCostUsd: number;
+}
+
+function normalizePolicy(policy: BudgetPolicy): NormalizedBudgetPolicy {
+  return {
+    ...policy,
+    // Legacy callers may not provide pack/platform caps yet. Keep their
+    // projected values observable without fabricating new enforcement scopes.
+    maxPackCostUsd: Number.isFinite(policy.maxPackCostUsd) ? policy.maxPackCostUsd : Number.POSITIVE_INFINITY,
+    maxPlatformCostUsd: Number.isFinite(policy.maxPlatformCostUsd) ? policy.maxPlatformCostUsd : Number.POSITIVE_INFINITY,
+  };
+}
+
+function normalizeSpend(spend: ExecutionChainBudgetSpend): NormalizedExecutionChainBudgetSpend {
+  return {
+    ...spend,
+    currentPackCostUsd: Number.isFinite(spend.currentPackCostUsd) ? spend.currentPackCostUsd : spend.currentTaskCostUsd,
+    currentPlatformCostUsd: Number.isFinite(spend.currentPlatformCostUsd) ? spend.currentPlatformCostUsd : spend.currentDailyCostUsd,
+  };
 }
 
 /**
@@ -129,20 +159,22 @@ export class BudgetGuard {
     policy: BudgetPolicy;
     spend: ExecutionChainBudgetSpend;
   }): BudgetGuardCascadeResult {
-    const next = input.spend.nextEstimatedCostUsd;
+    const policy = normalizePolicy(input.policy);
+    const spend = normalizeSpend(input.spend);
+    const next = spend.nextEstimatedCostUsd;
     // §18: Three-level budget hierarchy - task/pack/platform
-    const projectedTask = input.spend.currentTaskCostUsd + next;
-    const projectedPack = input.spend.currentPackCostUsd + next;
-    const projectedPlatform = input.spend.currentPlatformCostUsd + next;
-    const projectedDaily = input.spend.currentDailyCostUsd + next;
-    const projectedMonthly = input.spend.currentMonthlyCostUsd + next;
+    const projectedTask = spend.currentTaskCostUsd + next;
+    const projectedPack = spend.currentPackCostUsd + next;
+    const projectedPlatform = spend.currentPlatformCostUsd + next;
+    const projectedDaily = spend.currentDailyCostUsd + next;
+    const projectedMonthly = spend.currentMonthlyCostUsd + next;
 
     const checks = [
-      { scope: "task" as const, projected: projectedTask, limit: input.policy.maxTaskCostUsd },
-      { scope: "pack" as const, projected: projectedPack, limit: input.policy.maxPackCostUsd },
-      { scope: "platform" as const, projected: projectedPlatform, limit: input.policy.maxPlatformCostUsd },
-      { scope: "daily" as const, projected: projectedDaily, limit: input.policy.maxDailyCostUsd },
-      { scope: "monthly" as const, projected: projectedMonthly, limit: input.policy.maxMonthlyCostUsd },
+      { scope: "task" as const, projected: projectedTask, limit: policy.maxTaskCostUsd },
+      { scope: "pack" as const, projected: projectedPack, limit: policy.maxPackCostUsd },
+      { scope: "platform" as const, projected: projectedPlatform, limit: policy.maxPlatformCostUsd },
+      { scope: "daily" as const, projected: projectedDaily, limit: policy.maxDailyCostUsd },
+      { scope: "monthly" as const, projected: projectedMonthly, limit: policy.maxMonthlyCostUsd },
     ];
     const violation = checks.find((check) => check.projected > check.limit) ?? null;
     const warningScopes = checks
@@ -152,10 +184,10 @@ export class BudgetGuard {
       0,
       Math.min(
         input.policy.maxTaskCostUsd - projectedTask,
-        input.policy.maxPackCostUsd - projectedPack,
-        input.policy.maxPlatformCostUsd - projectedPlatform,
-        input.policy.maxDailyCostUsd - projectedDaily,
-        input.policy.maxMonthlyCostUsd - projectedMonthly,
+        policy.maxPackCostUsd - projectedPack,
+        policy.maxPlatformCostUsd - projectedPlatform,
+        policy.maxDailyCostUsd - projectedDaily,
+        policy.maxMonthlyCostUsd - projectedMonthly,
       ),
     );
 
@@ -166,10 +198,12 @@ export class BudgetGuard {
         reasonCode: `budget.${violation.scope}_limit_exceeded`,
         remainingBudgetUsd,
         projectedTaskCostUsd: projectedTask,
+        projectedPackCostUsd: projectedPack,
+        projectedPlatformCostUsd: projectedPlatform,
         projectedDailyCostUsd: projectedDaily,
         projectedMonthlyCostUsd: projectedMonthly,
-        violatedScope: violation.scope as "task" | "daily" | "monthly" | null,
-        warningScopes: warningScopes as readonly ("task" | "daily" | "monthly")[],
+        violatedScope: violation.scope,
+        warningScopes,
       };
     }
 
@@ -179,10 +213,12 @@ export class BudgetGuard {
       reasonCode: warningScopes.length > 0 ? "budget.cascade_approaching_limit" : null,
       remainingBudgetUsd,
       projectedTaskCostUsd: projectedTask,
+      projectedPackCostUsd: projectedPack,
+      projectedPlatformCostUsd: projectedPlatform,
       projectedDailyCostUsd: projectedDaily,
       projectedMonthlyCostUsd: projectedMonthly,
       violatedScope: null,
-      warningScopes: warningScopes as readonly ("task" | "daily" | "monthly")[],
+      warningScopes,
     };
   }
 

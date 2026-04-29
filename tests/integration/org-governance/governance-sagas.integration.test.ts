@@ -110,7 +110,7 @@ test("integration: GovernanceDelegationRevocationSaga triggers compensation on f
 
     assert.equal(receipt.status, "compensated");
     assert.equal(receipt.failedStage, "prepare");
-    assert.deepEqual(receipt.compensationResourceIds, ["resource_ok_2", "resource_ok_1"]);
+    assert.deepEqual(receipt.compensationResourceIds, ["resource_ok_1"]);
     assert.ok(compensationCalls.length > 0);
   } finally {
     ctx.cleanup();
@@ -122,6 +122,7 @@ test("integration: GovernanceDelegationRevocationSaga with database persistence"
   try {
     const delegationId = "del_db_001";
     const resourceIds = ["resource_a", "resource_b", "resource_c"];
+    let nextAttempt = 2;
 
     ctx.db.transaction(() => {
       ctx.store.insertTask({
@@ -189,7 +190,7 @@ test("integration: GovernanceDelegationRevocationSaga with database persistence"
             status: "executing",
             inputRef: null,
             traceId: `trace-${resourceId}`,
-            attempt: 1,
+            attempt: nextAttempt++,
             timeoutMs: 60000,
             budgetUsdLimit: 1,
             requiresApproval: 0,
@@ -228,9 +229,10 @@ test("integration: GovernanceDelegationRevocationSaga with database persistence"
     assert.equal(receipt.status, "completed");
     assert.deepEqual(receipt.frozenResourceIds, resourceIds);
 
-    // Verify executions were created
-    const execs = ctx.store.listExecutions("task_saga_001", null);
-    assert.ok(execs.length >= resourceIds.length);
+    // Verify executions were created through the authoritative execution repository
+    for (const resourceId of resourceIds) {
+      assert.notEqual(ctx.store.getExecution(`exec_${resourceId}`, null), null);
+    }
   } finally {
     ctx.cleanup();
   }
@@ -500,6 +502,7 @@ test("integration: OrgGovernanceSaga with executeWithReceipt returns phase break
 test("integration: OrgGovernanceSaga with database state tracking", () => {
   const ctx = createIntegrationContext("aa-org-governance-db-");
   try {
+    const insertedExecutionIds: string[] = [];
     ctx.db.transaction(() => {
       ctx.store.insertTask({
         id: "task_org_001",
@@ -526,8 +529,10 @@ test("integration: OrgGovernanceSaga with database state tracking", () => {
     const saga = new OrgGovernanceSaga({
       prepare: (_step, _context) => {
         ctx.db.transaction(() => {
+          const executionId = `exec_prepare_${newId()}`;
+          insertedExecutionIds.push(executionId);
           ctx.store.insertExecution({
-            id: `exec_prepare_${newId()}`,
+            id: executionId,
             taskId: "task_org_001",
             workflowId: "org_prepare",
             parentExecutionId: null,
@@ -571,8 +576,10 @@ test("integration: OrgGovernanceSaga with database state tracking", () => {
     const result = saga.execute("saga_db_001", steps);
 
     assert.equal(result.status, "committed");
-    const execs = ctx.store.listExecutions("task_org_001", null);
-    assert.ok(execs.length > 0);
+    for (const executionId of insertedExecutionIds) {
+      assert.notEqual(ctx.store.getExecution(executionId, null), null);
+    }
+    assert.equal(result.preparedNodeIds.includes("org_db_1"), true);
   } finally {
     ctx.cleanup();
   }
@@ -600,8 +607,10 @@ test("integration: Multi-saga coordination between GovernanceDelegationRevocatio
 
     // Second saga: Org governance
     const orgSaga = new OrgGovernanceSaga({
-      prepare: (_step, _context) => {
-        // no-op
+      prepare: (step, _context) => {
+        if (step.targetOrgNodeId === "org_chained_2") {
+          throw new Error("governance rollback required");
+        }
       },
       commit: (_step, _context) => {
         // no-op
@@ -660,8 +669,10 @@ test("integration: Multi-saga coordination with ChineseWallAccessSaga triggering
     });
 
     const orgSaga = new OrgGovernanceSaga({
-      prepare: (_step, _context) => {
-        // no-op
+      prepare: (step, _context) => {
+        if (step.targetOrgNodeId === "org_chained_2") {
+          throw new Error("governance rollback required");
+        }
       },
       commit: (_step, _context) => {
         // no-op
@@ -686,10 +697,12 @@ test("integration: Multi-saga coordination with ChineseWallAccessSaga triggering
     // If rollback occurred, trigger org governance compensation
     if (cwReceipt.rollbackRequired) {
       const orgSteps = [
+        { stepId: "org_prepare_1", targetOrgNodeId: "org_chained_1", action: "prepare" as const, phase: "domain" },
+        { stepId: "org_prepare_2", targetOrgNodeId: "org_chained_2", action: "prepare" as const, phase: "domain" },
         { stepId: "org_compensate_1", targetOrgNodeId: "org_chained_1", action: "compensate" as const, phase: "domain" },
       ];
       const orgResult = orgSaga.execute("saga_chained_001", orgSteps);
-      assert.ok(orgResult.compensatedNodeIds.length > 0 || orgResult.executionLog.length > 0);
+      assert.deepEqual(orgResult.compensatedNodeIds, ["org_chained_1"]);
     }
   } finally {
     ctx.cleanup();

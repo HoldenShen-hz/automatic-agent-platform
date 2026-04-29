@@ -13,8 +13,8 @@ test("ChineseWallAccessSaga completes grant flow successfully", () => {
   });
 
   const receipt = saga.execute("access-1", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
     { stepId: "audit", action: "audit", succeeded: true },
   ]);
 
@@ -39,8 +39,8 @@ test("ChineseWallAccessSaga rolls back when commit grant fails", () => {
   });
 
   const receipt = saga.execute("access-2", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: false },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: false },
   ]);
 
   assert.equal(receipt.status, "rolled_back");
@@ -63,13 +63,13 @@ test("ChineseWallAccessSaga rolls back release path when commit release fails", 
   });
 
   const receipt = saga.execute("access-3", [
-    { stepId: "prepare", action: "prepare_release", succeeded: true },
-    { stepId: "commit", action: "commit_release", succeeded: false },
+    { stepId: "release-1", action: "prepare_release", succeeded: true },
+    { stepId: "release-1", action: "commit_release", succeeded: false },
   ]);
 
   assert.equal(receipt.status, "rolled_back");
   assert.equal(receipt.rollbackRequired, true);
-  assert.deepEqual(receipt.compensatedActions, ["commit_grant"]);
+  assert.deepEqual(receipt.compensatedActions, ["prepare_grant"]);
   assert.equal(receipt.failedAction, "commit_release");
 });
 
@@ -104,7 +104,7 @@ test("ChineseWallAccessSaga handles multiple grant steps", () => {
   ]);
 
   assert.equal(receipt.status, "committed");
-  assert.deepEqual(receipt.committedActions, ["prepare_grant", "commit_grant", "prepare_grant", "commit_grant"]);
+  assert.deepEqual(receipt.committedActions, ["prepare_grant", "prepare_grant", "commit_grant", "commit_grant"]);
   assert.deepEqual(calls, ["prepare:grant-1", "prepare:grant-2", "commit:grant-1", "commit:grant-2"]);
 });
 
@@ -118,10 +118,10 @@ test("ChineseWallAccessSaga handles mixed grant and release steps", () => {
   });
 
   const receipt = saga.execute("access-6", [
-    { stepId: "grant-prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "grant-commit", action: "commit_grant", succeeded: true },
-    { stepId: "release-prepare", action: "prepare_release", succeeded: true },
-    { stepId: "release-commit", action: "commit_release", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
+    { stepId: "release-1", action: "prepare_release", succeeded: true },
+    { stepId: "release-1", action: "commit_release", succeeded: true },
   ]);
 
   assert.equal(receipt.status, "committed");
@@ -152,7 +152,12 @@ test("ChineseWallAccessSaga compensates in reverse order on failure", () => {
 
   assert.equal(receipt.status, "rolled_back");
   assert.deepEqual(receipt.committedActions, []);
-  assert.deepEqual(receipt.compensatedActions, ["prepare_release", "prepare_release"]);
+  assert.deepEqual(receipt.compensatedActions, [
+    "commit_release",
+    "commit_release",
+    "prepare_release",
+    "prepare_release",
+  ]);
   assert.ok(calls.includes("release:access-7:prepare_release"));
 });
 
@@ -167,8 +172,8 @@ test("ChineseWallAccessSaga execution log tracks all outcomes", () => {
   });
 
   const receipt = saga.execute("access-8", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
   ]);
 
   const prepared = receipt.executionLog.filter((e) => e.outcome === "prepared");
@@ -189,7 +194,7 @@ test("ChineseWallAccessSaga provides correct context to handlers", () => {
   });
 
   saga.execute("access-9", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
   ]);
 
   assert.notEqual(capturedContext, null);
@@ -213,8 +218,8 @@ test("ChineseWallAccessSaga updates context when failure occurs", () => {
   });
 
   saga.execute("access-10", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
   ]);
 
   const lastContext = capturedContexts[capturedContexts.length - 1];
@@ -230,8 +235,8 @@ test("ChineseWallAccessSaga handles audit at end of successful flow", () => {
   });
 
   const receipt = saga.execute("access-11", [
-    { stepId: "audit-1", action: "prepare_grant", succeeded: true },
-    { stepId: "audit-2", action: "commit_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
     { stepId: "audit-3", action: "audit", succeeded: true },
   ]);
 
@@ -255,7 +260,7 @@ test("ChineseWallAccessSaga skips uncommitted actions in rollback", () => {
   ]);
 
   assert.equal(receipt.status, "rolled_back");
-  assert.deepEqual(receipt.compensatedActions, ["prepare_release"]);
+  assert.deepEqual(receipt.compensatedActions, ["commit_release", "prepare_release"]);
 });
 
 test("ChineseWallAccessSaga handles empty steps array", () => {
@@ -273,8 +278,8 @@ test("ChineseWallAccessSaga handles missing optional handlers gracefully", () =>
   const saga = new ChineseWallAccessSaga({});
 
   const receipt = saga.execute("access-14", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
   ]);
 
   assert.equal(receipt.status, "committed");
@@ -287,8 +292,8 @@ test("ChineseWallAccessSaga step succeeded flag is checked", () => {
   });
 
   const receipt = saga.execute("access-15", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: false },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: false },
   ]);
 
   assert.equal(receipt.status, "rolled_back");
@@ -298,8 +303,8 @@ test("ChineseWallAccessSaga step succeeded flag is checked", () => {
 test("ChineseWallAccessSaga receipt contains all expected fields", () => {
   const saga = new ChineseWallAccessSaga({});
   const receipt = saga.execute("access-16", [
-    { stepId: "prepare", action: "prepare_grant", succeeded: true },
-    { stepId: "commit", action: "commit_grant", succeeded: true },
+    { stepId: "grant-1", action: "prepare_grant", succeeded: true },
+    { stepId: "grant-1", action: "commit_grant", succeeded: true },
   ]);
 
   assert.ok("accessId" in receipt);

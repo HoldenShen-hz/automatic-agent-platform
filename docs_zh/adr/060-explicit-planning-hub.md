@@ -21,7 +21,7 @@ OAPEFLIR Loop 模型（ADR-016）要求 Plan 作为独立 Hub，形成 Assess→
 Plan Hub 作为 OAPEFLIR 第 3 阶段（介于 Assess 和 Execute 之间），职责为：
 
 - 接收 `UnifiedAssessment`（来自 Assess Hub）
-- 输出 `Plan` DTO（作为 Execute Hub 的唯一输入）
+- 输出 `PlanGraphBundle`（作为 Execute Hub 的唯一 canonical 输入）
 - 支持多种规划策略（linear/dag/conditional/reactive/hierarchical/multi-agent/adaptive/uncertainty-aware）
 - 维护 Plan 版本链（每次 replan 生成 version N+1）
 
@@ -53,9 +53,9 @@ interface PlanGraphBundle {
 | **R3-VERSION** | 每次 replan 必须生成 version +1，不得覆盖历史版本 |
 | **R3-NOBYPASS** | Execute 层必须拒绝无有效 Plan 的输入 |
 
-### 4. Plan→Execute 桥接
+### 4. Plan→Execute 兼容桥接
 
-通过 `RuntimeExecuteBridge` 接口实现 PlanGraphBundle 到执行引擎的解耦：
+运行时唯一 canonical handoff 仍然是 `PlanGraphBundle -> HarnessRuntime / NodeAttemptReceipt`。如需做适配，可在边界层保留兼容桥接接口：
 
 ```typescript
 interface RuntimeExecuteBridge {
@@ -64,7 +64,7 @@ interface RuntimeExecuteBridge {
 }
 ```
 
-Execute 层通过此接口接收 Plan，不得绕过。
+`RuntimeExecuteBridge` 仅允许作为 compatibility seam，不得替代 `PlanGraphBundle` 作为 P3→P4 的权威 contract。
 
 ### 5. 8 种规划策略
 
@@ -105,7 +105,7 @@ Execute 层通过此接口接收 Plan，不得绕过。
 ## 后果
 
 - 新增 `src/core/planning/` 模块（约 9 文件，2000 行）。
-- `RuntimeExecuteBridge` 作为 `PlanGraphBundle -> NodeAttemptReceipt` 解耦层。
+- `PlanGraphBundle` 作为唯一 P3→P4 handoff；`RuntimeExecuteBridge` 仅保留为 compatibility seam。
 
 ## v4.3 ADR Remediation
 

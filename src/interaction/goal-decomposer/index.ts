@@ -1,9 +1,27 @@
 import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
-import type { BudgetLedger, BudgetResourceKind } from "../../platform/contracts/executable-contracts/index.js";
+import { nowIso } from "../../platform/contracts/types/ids.js";
+import {
+  createHarnessRun,
+  createPlanGraphBundle,
+  type BudgetLedger,
+  type BudgetResourceKind,
+  type HarnessRun,
+  type PlanEdge,
+  type PlanGraphBundle,
+  type PlanNode,
+  type RiskClass,
+  type RiskPreview as ExecutableRiskPreview,
+} from "../../platform/contracts/executable-contracts/index.js";
 import {
   BudgetGuard,
   type BudgetPolicy,
 } from "../../platform/model-gateway/cost-tracker/index.js";
+import {
+  PlanGraphAnalyzer,
+  PlanGraphHarnessRuntime,
+  type PlanGraphHarnessRuntimeContext,
+  type PlanGraphHarnessRuntimeStepResult,
+} from "../../platform/orchestration/harness/runtime/plan-graph-harness-runtime.js";
 import type { RiskPreview } from "../nl-gateway/index.js";
 import type { LlmPlanGenerator } from "./llm-plan-generator.js";
 export * from "./llm-plan-generator.js";
@@ -70,6 +88,7 @@ export interface GoalDecomposition {
   readonly goalGraphDraft: GoalGraphDraft;
   readonly taskGraphDraft: TaskGraphDraft;
   readonly plannerHandoff: PlannerHandoffReceipt;
+  readonly harnessRouting: GoalHarnessRoutingReceipt;
 }
 
 export type GoalLifecycleState =
@@ -121,6 +140,18 @@ export interface PlannerHandoffReceipt {
   readonly budgetLedgerId?: string;
   readonly budgetReservationId?: string;
   readonly reservedBudgetUsd?: number | null;
+  readonly harnessRunId?: string;
+  readonly planGraphBundleId?: string;
+  readonly initialNodeRunId?: string;
+  readonly initialReceiptStatus?: PlanGraphHarnessRuntimeStepResult["receipt"]["status"];
+  readonly routedAt?: string;
+}
+
+export interface GoalHarnessRoutingReceipt {
+  readonly harnessRun: HarnessRun;
+  readonly planGraphBundle: PlanGraphBundle;
+  readonly initialStep: PlanGraphHarnessRuntimeStepResult;
+  readonly routedAt: string;
 }
 
 export type GoalDecompositionResult = GoalDecomposition;
@@ -155,6 +186,9 @@ export interface GoalDecompositionServiceOptions {
     readonly resourceKind?: BudgetResourceKind;
     readonly expiresAt?: string;
   };
+  readonly planGraphHarnessRuntime?: PlanGraphHarnessRuntime | null;
+  readonly planGraphAnalyzer?: PlanGraphAnalyzer | null;
+  readonly harnessRuntimeContext?: Partial<PlanGraphHarnessRuntimeContext>;
 }
 
 const DEFAULT_COST_ESTIMATE: CostEstimate = {
@@ -465,6 +499,15 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };
+    const harnessRouting = this.routeToHarness(goal, tasks, dependencyGraph, riskSummary);
+    const routedPlannerHandoff: PlannerHandoffReceipt = {
+      ...plannerHandoff,
+      harnessRunId: harnessRouting.harnessRun.harnessRunId,
+      planGraphBundleId: harnessRouting.planGraphBundle.planGraphBundleId,
+      initialNodeRunId: harnessRouting.initialStep.nodeRun.nodeRunId,
+      initialReceiptStatus: harnessRouting.initialStep.receipt.status,
+      routedAt: harnessRouting.routedAt,
+    };
 
     return {
       goalId: goal.goalId,
@@ -488,7 +531,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       lifecycleState,
       goalGraphDraft,
       taskGraphDraft,
-      plannerHandoff,
+      plannerHandoff: routedPlannerHandoff,
+      harnessRouting,
     };
   }
 
@@ -638,6 +682,159 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       constraintEnvelope,
       delegationDepth,
       isSubdelegation,
+    };
+  }
+
+  private routeToHarness(
+    goal: Goal,
+    tasks: readonly PlannedTask[],
+    dependencyGraph: readonly TaskDependency[],
+    riskSummary: RiskPreview,
+  ): GoalHarnessRoutingReceipt {
+    const harnessContext = this.buildHarnessRuntimeContext(goal);
+    const bootstrapRun = createHarnessRun({
+      harnessRunId: `${goal.goalId}:harness_run`,
+      tenantId: harnessContext.tenantId,
+      confirmedTaskSpecId: `${goal.goalId}:confirmed_task_spec`,
+      requestEnvelopeId: `${goal.goalId}:request_envelope`,
+      requestHash: `${goal.goalId}:request_hash`,
+      constraintPackRef: `${goal.goalId}:constraint_pack`,
+      versionLockId: `${goal.goalId}:version_lock`,
+      budgetLedgerId: this.options.budgetControl?.ledger?.budgetLedgerId ?? `${goal.goalId}:budget_ledger`,
+    });
+    const graphNodes = this.buildPlanNodes(tasks, riskSummary);
+    const graphEdges = this.buildPlanEdges(dependencyGraph);
+    const planGraphBundle = (this.options.planGraphAnalyzer ?? new PlanGraphAnalyzer()).normalize(createPlanGraphBundle({
+      planGraphBundleId: `${goal.goalId}:plan_graph_bundle`,
+      harnessRunId: bootstrapRun.harnessRunId,
+      graph: {
+        graphId: `${goal.goalId}:plan_graph`,
+        nodes: graphNodes,
+        edges: graphEdges,
+        entryNodeIds: graphNodes
+          .filter((node) => graphEdges.every((edge) => edge.toNodeId !== node.nodeId))
+          .map((node) => node.nodeId),
+        terminalNodeIds: graphNodes
+          .filter((node) => graphEdges.every((edge) => edge.fromNodeId !== node.nodeId))
+          .map((node) => node.nodeId),
+        joinStrategy: "all",
+        graphHash: [
+          goal.goalId,
+          ...graphNodes.map((node) => node.nodeId),
+          ...graphEdges.map((edge) => `${edge.fromNodeId}->${edge.toNodeId}`),
+        ].join("|"),
+      },
+      schedulerPolicy: {
+        policyId: `${goal.goalId}:scheduler_policy`,
+        strategy: "deterministic_fifo",
+      },
+      budgetPlanRef: `${goal.goalId}:budget_plan`,
+      riskProfile: this.toExecutableRiskProfile(riskSummary),
+    }));
+    const harnessRun = createHarnessRun({
+      harnessRunId: bootstrapRun.harnessRunId,
+      tenantId: bootstrapRun.tenantId,
+      confirmedTaskSpecId: bootstrapRun.confirmedTaskSpecId,
+      requestEnvelopeId: bootstrapRun.requestEnvelopeId,
+      requestHash: bootstrapRun.requestHash,
+      constraintPackRef: bootstrapRun.constraintPackRef,
+      versionLockId: bootstrapRun.versionLockId,
+      budgetLedgerId: bootstrapRun.budgetLedgerId,
+      planGraphBundleId: planGraphBundle.planGraphBundleId,
+      createdAt: bootstrapRun.createdAt,
+      updatedAt: bootstrapRun.updatedAt,
+    });
+    const initialStep = (this.options.planGraphHarnessRuntime ?? new PlanGraphHarnessRuntime()).executeNext({
+      harnessRun,
+      planGraphBundle,
+      context: harnessContext,
+    });
+
+    return {
+      harnessRun,
+      planGraphBundle,
+      initialStep,
+      routedAt: nowIso(),
+    };
+  }
+
+  private buildHarnessRuntimeContext(goal: Goal): PlanGraphHarnessRuntimeContext {
+    return {
+      tenantId: this.options.harnessRuntimeContext?.tenantId ?? this.options.budgetControl?.tenantId ?? "tenant:local",
+      traceId: this.options.harnessRuntimeContext?.traceId ?? this.options.budgetControl?.traceId ?? `trace:${goal.goalId}`,
+      emittedBy: this.options.harnessRuntimeContext?.emittedBy ?? this.options.budgetControl?.emittedBy ?? "goal-decomposer",
+      executorRef: this.options.harnessRuntimeContext?.executorRef ?? "goal-decomposer.harness-router",
+    };
+  }
+
+  private buildPlanNodes(tasks: readonly PlannedTask[], riskSummary: RiskPreview): PlanNode[] {
+    return tasks.map((task) => {
+      const nodeType = this.resolvePlanNodeType(task);
+      return {
+        nodeId: task.taskId,
+        nodeType,
+        inputRefs: task.dependsOn ?? [],
+        outputSchemaRef: `schema://goal-decomposer/${task.taskId}/output`,
+        riskClass: this.resolveTaskRiskClass(task, riskSummary),
+        budgetIntent: {
+          amount: Number(task.estimatedCost.estimatedCostUsd.toFixed(4)),
+          currency: "USD",
+          resourceKinds: [this.options.budgetControl?.resourceKind ?? (nodeType === "llm" ? "llm" : "tool")],
+        },
+        sideEffectProfile: {
+          mayCommitExternalEffect: /(deploy|release|publish|advertising|operations)/i.test(`${task.domainId} ${task.description}`),
+          reversible: !/(delete|drop|remove|rollback|revoke|删除|清空)/i.test(task.description),
+        },
+        retryPolicyRef: `retry://goal-decomposer/${task.taskId}`,
+        timeoutMs: Math.max(60_000, parseDurationHours(task.estimatedDuration) * 60 * 60 * 1000),
+      };
+    });
+  }
+
+  private buildPlanEdges(dependencyGraph: readonly TaskDependency[]): PlanEdge[] {
+    return dependencyGraph.map((dependency, index) => ({
+      edgeId: `${dependency.fromTask}->${dependency.toTask}:${index + 1}`,
+      fromNodeId: dependency.fromTask,
+      toNodeId: dependency.toTask,
+      condition: dependency.dataContract == null ? {} : { dataContract: dependency.dataContract },
+      dependencyType: dependency.type === "soft_dependency" ? "soft" : "hard",
+    }));
+  }
+
+  private resolvePlanNodeType(task: PlannedTask): PlanNode["nodeType"] {
+    if (task.delegationMode === "manual" || task.constraintEnvelope?.requiresApproval === true) {
+      return "hitl_wait";
+    }
+    if (/(analysis|content|general_ops|legal|finance|hr|communications)/i.test(task.domainId)) {
+      return "llm";
+    }
+    return "tool";
+  }
+
+  private resolveTaskRiskClass(task: PlannedTask, riskSummary: RiskPreview): RiskClass {
+    const taskRisk = task.constraintEnvelope?.riskTolerance;
+    if (taskRisk === "critical" || riskSummary.overallRisk === "critical") {
+      return "critical";
+    }
+    if (taskRisk === "high" || riskSummary.overallRisk === "high") {
+      return "high";
+    }
+    if (taskRisk === "medium" || riskSummary.overallRisk === "medium") {
+      return "medium";
+    }
+    return "low";
+  }
+
+  private toExecutableRiskProfile(riskSummary: RiskPreview): ExecutableRiskPreview {
+    return {
+      riskClass: riskSummary.overallRisk === "critical"
+        ? "critical"
+        : riskSummary.overallRisk === "high"
+          ? "high"
+          : riskSummary.overallRisk === "medium"
+            ? "medium"
+            : "low",
+      reasons: riskSummary.riskFactors,
     };
   }
 

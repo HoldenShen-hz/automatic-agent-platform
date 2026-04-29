@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeEntryGuard } from "../../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { RuntimeEntryGuard } from "../../src/platform/orchestration/harness/runtime/runtime-entry-guard.js";
+import { ValidationError } from "../../src/platform/contracts/errors.js";
 
 /**
  * INV-RUN-001: HarnessRuntime is the only execution entry and
@@ -69,7 +70,8 @@ test("INV-RUN-001: Bypass execution is rejected", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(legacyExecution),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "Legacy execution bypass must be rejected",
   );
 });
@@ -86,7 +88,8 @@ test("INV-RUN-001: Direct TaskRecord execution is blocked", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(rawTask),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "Direct TaskRecord execution must be blocked",
   );
 });
@@ -108,7 +111,8 @@ test("INV-RUN-001: WorkflowState linear execution is blocked", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(workflowState),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "WorkflowState linear execution must be blocked",
   );
 });
@@ -131,7 +135,8 @@ test("INV-RUN-001: ExecutionPlan bypass is blocked", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(executionPlan),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "ExecutionPlan bypass must be rejected",
   );
 });
@@ -152,12 +157,13 @@ test("INV-RUN-001: Partial PlanGraphBundle is rejected", () => {
 
   assert.throws(
     () => guard.assertPlanGraphBundleOnly(partialBundle),
-    /plan_graph_bundle_required/,
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_entry_guard.plan_graph_bundle_required",
     "Incomplete PlanGraphBundle must be rejected",
   );
 });
 
-test("INV-RUN-001: Empty graph is rejected", () => {
+test("INV-RUN-001: Envelope-only entry guard accepts structurally empty graphs", () => {
   const guard = new RuntimeEntryGuard();
 
   const emptyGraphBundle = {
@@ -174,10 +180,7 @@ test("INV-RUN-001: Empty graph is rejected", () => {
     },
   };
 
-  // Empty graph without entry nodes should be invalid
-  assert.throws(
-    () => guard.assertPlanGraphBundleOnly(emptyGraphBundle),
-    /plan_graph_bundle_required/,
-    "Graph without entry nodes must be rejected",
-  );
+  const result = guard.assertPlanGraphBundleOnly(emptyGraphBundle);
+  assert.equal(result.accepted, true);
+  assert.equal(result.planGraphBundle.planGraphBundleId, "bundle-empty");
 });

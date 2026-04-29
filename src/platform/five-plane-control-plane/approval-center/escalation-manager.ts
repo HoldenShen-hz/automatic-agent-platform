@@ -90,6 +90,9 @@ export interface EscalationLevel {
 export interface EscalationContext {
   approvalId: string;
   taskId: string;
+  harnessRunId?: string | null;
+  nodeRunId?: string | null;
+  /** @deprecated compatibility alias; use harnessRunId */
   executionId?: string | null;
   currentLevel: number;
   reason: EscalationReason;
@@ -295,6 +298,8 @@ export class EscalationManager {
           body: `Approval ${context.approvalId} has been escalated to ${rule.escalateTo.identifier}`,
           metadata: {
             taskId: context.taskId,
+            harnessRunId: context.harnessRunId ?? context.executionId ?? null,
+            nodeRunId: context.nodeRunId ?? null,
             executionId: context.executionId,
             escalationLevel: newLevel.level,
             reason: context.reason,
@@ -610,6 +615,8 @@ export class EscalationManager {
     return {
       approvalId,
       taskId,
+      harnessRunId: executionId,
+      nodeRunId: null,
       executionId,
       currentLevel,
       reason: EscalationReason.TIMEOUT,
@@ -628,6 +635,8 @@ export class EscalationManager {
     return {
       approvalId,
       taskId,
+      harnessRunId: executionId,
+      nodeRunId: null,
       executionId,
       currentLevel,
       reason: EscalationReason.QUORUM_NOT_MET,
