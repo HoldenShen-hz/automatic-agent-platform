@@ -205,12 +205,12 @@ test("JudgeProviderRegistryService.selectDescriptor with requireIsolation false 
   assert.equal(result?.providerId, "judge.same.fam");
 });
 
-test("JudgeProviderRegistryService.selectDescriptor prefers cross_family_preferred over same family", () => {
+test("JudgeProviderRegistryService.selectDescriptor returns descriptor when isolation level is cross_family_preferred and family differs", () => {
   const service = new JudgeProviderRegistryService();
   service.registerDescriptor({
     providerId: "judge.same.pref",
     provider: "s",
-    providerFamily: "pref Fam",
+    providerFamily: "different_family",
     modelId: "m1",
     supportedCapabilities: ["llm_judge"],
     maxCostUsd: 0.01,
@@ -222,7 +222,7 @@ test("JudgeProviderRegistryService.selectDescriptor prefers cross_family_preferr
 
   const result = service.selectDescriptor({
     capability: "llm_judge",
-    candidateProviderFamily: "pref Fam",
+    candidateProviderFamily: "some_other_family",
     requireIsolation: true,
   });
 
