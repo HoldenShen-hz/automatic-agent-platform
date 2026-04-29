@@ -612,4 +612,11 @@ export class TypedEventBus {
   public pendingForConsumer(consumerId: string) {
     return this.bus.pendingForConsumer(consumerId);
   }
+
+  /**
+   * Disposes the typed event bus and releases all resources.
+   */
+  public dispose(): void {
+    this.bus.dispose();
+  }
 }

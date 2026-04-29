@@ -198,7 +198,7 @@ test("event bus: Publish latency P99 <5ms", (t) => {
 // Event Delivery Benchmarks
 // ============================================================================
 
-test("event bus: Delivery latency P99 <10ms", (t) => {
+test("event bus: Delivery latency P99 <10ms", async (t) => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStore(db);
   const eventBus = new TypedEventBus(db, store);
@@ -266,7 +266,7 @@ test("event bus: Delivery latency P99 <10ms", (t) => {
   }
 });
 
-test("event bus: Batch delivery throughput >5000 events/sec", (t) => {
+test("event bus: Batch delivery throughput >5000 events/sec", async (t) => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStore(db);
   const eventBus = new TypedEventBus(db, store);
@@ -322,12 +322,12 @@ test("event bus: Multi-event-type publish throughput >3000 events/sec", (t) => {
   const eventBus = new TypedEventBus(db, store);
 
   try {
+    // Use perf event types which accept flexible payloads
     const eventTypes = [
-      "task:status_changed",
-      "workflow:step_completed",
-      "dispatch:ticket_created",
-      "worker:heartbeat_recorded",
-      "cost:limit_reached",
+      "perf:test_event",
+      "perf:burst_event",
+      "test:capacity",
+      "test:many_events",
     ] as const;
 
     const iterations = 3000;
@@ -338,7 +338,7 @@ test("event bus: Multi-event-type publish throughput >3000 events/sec", (t) => {
       eventBus.publish({
         eventType,
         taskId: newId("task"),
-        payload: { index: i, eventType } as Record<string, unknown>,
+        payload: { index: i, eventType, timestamp: Date.now() },
       });
     }
 
@@ -409,7 +409,7 @@ test("event bus: Subscribe/unsubscribe throughput >1000 ops/sec", (t) => {
 // High-Volume Stress Tests
 // ============================================================================
 
-test("event bus: Sustained high-volume throughput >8000 events/sec", (t) => {
+test("event bus: Sustained high-volume throughput >8000 events/sec", async (t) => {
   const db = createTempDb();
   const store = new AuthoritativeTaskStore(db);
   const eventBus = new TypedEventBus(db, store);

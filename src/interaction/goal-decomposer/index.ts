@@ -346,10 +346,12 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       high: 2.0,
       critical: 3.0,
     };
-    const totalCost = tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0);
+    const totalEstimatedTaskCostUsd = tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0);
     const budgetAllocations = rawConstraintEnvelope.budgetLimitUsd != null
       ? tasks.map((task) => {
-          const proportion = totalCost > 0 ? task.estimatedCost.estimatedCostUsd / totalCost : 1 / tasks.length;
+          const proportion = totalEstimatedTaskCostUsd > 0
+            ? task.estimatedCost.estimatedCostUsd / totalEstimatedTaskCostUsd
+            : 1 / tasks.length;
           const riskMultiplier = riskMultiplierMap[task.constraintEnvelope?.riskTolerance ?? "medium"] ?? 1.5;
           return {
             taskId: task.taskId,
@@ -388,31 +390,23 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       try {
         if (this.options.budgetControl != null) {
           const guard = new BudgetGuard();
-          // R1-7 fix: Use reserve-before-execute pattern per INV-BUDGET-001
-          // Reserve budget BEFORE the LLM call to atomically enforce budget constraints
-          const reservationResult = guard.reserveExecutionChainBudget({
+          // The top-level decomposer only performs policy gating.
+          // The concrete LLM plan generator owns reservation/settlement to avoid double reservation.
+          const evaluation = guard.evaluateExecutionChain({
             policy: this.options.budgetControl.policy,
             spend: {
               currentTaskCostUsd: this.options.budgetControl.currentTaskCostUsd ?? 0,
+              currentPackCostUsd: this.options.budgetControl.currentDailyCostUsd ?? 0,
+              currentPlatformCostUsd: this.options.budgetControl.currentMonthlyCostUsd ?? 0,
               currentDailyCostUsd: this.options.budgetControl.currentDailyCostUsd ?? 0,
               currentMonthlyCostUsd: this.options.budgetControl.currentMonthlyCostUsd ?? 0,
               nextEstimatedCostUsd: this.options.budgetControl.estimatedLlmPlanCostUsd ?? 0.25,
             },
-            tenantId: this.options.budgetControl.tenantId ?? "tenant:local",
-            harnessRunId: this.options.budgetControl.harnessRunId ?? "goal-decompose",
-            traceId: this.options.budgetControl.traceId ?? `trace:goal:${goal.goalId}`,
-            emittedBy: "goal-decomposer",
           });
-          budgetBlockedLlmPlan = !reservationResult.allowed;
-          if (!reservationResult.allowed || reservationResult.reservation == null) {
-            // Release the reservation since we won't proceed with LLM plan
-            if (reservationResult.reservation != null) {
-              // Reservation was made but not used - release it
-              // Note: BudgetAllocator.release should be called here if reservation tracking is needed
-            }
+          budgetBlockedLlmPlan = !evaluation.allowed;
+          if (budgetBlockedLlmPlan) {
             throw new Error("goal_decomposer.budget_reservation_required");
           }
-          // R1-7 fix: Budget reservation succeeded - proceed with LLM plan generation
         }
         const llmPlan = await this.withTimeout(
           this.options.llmPlanGenerator.generate(goal),

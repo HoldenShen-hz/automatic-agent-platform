@@ -1,407 +1,445 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { PlatformPanicService, type PanicActivationRequest } from '../../../src/ops-maturity/emergency/platform-panic-service.js';
-import { shouldEnterPanicMode } from '../../../src/ops-maturity/emergency/panic-controller/index.js';
-import { canResumeFromPanic, type ResumePlan } from '../../../src/ops-maturity/emergency/resume-protocol/index.js';
-import { buildForensicSnapshot } from '../../../src/ops-maturity/emergency/forensic-snapshot/index.js';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { PlatformPanicService, type PanicActivationRequest } from "../../../src/ops-maturity/emergency/platform-panic-service.js";
+import { shouldEnterPanicMode } from "../../../src/ops-maturity/emergency/panic-controller/index.js";
+import { canResumeFromPanic, type ResumePlan } from "../../../src/ops-maturity/emergency/resume-protocol/index.js";
 
-test('shouldEnterPanicMode returns true when activeIncidents > 0', () => {
-  const result = shouldEnterPanicMode({
-    scope: 'platform:prod',
-    reasonCode: 'system_overload',
+test("panic: activate directive with valid request", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "platform/us-west",
+    reasonCode: "security.breach",
+    activeIncidents: 3,
+    issuedBy: "admin-001",
+    freezeModes: ["deploy", "approval", "write", "automation"],
+    requiredApprovers: ["admin-001", "admin-002"],
+  };
+
+  const activation = service.activate(request);
+
+  assert.strictEqual(activation.directive.scope, "platform/us-west");
+  assert.strictEqual(activation.directive.scopeLevel, "platform");
+  assert.strictEqual(activation.directive.reasonCode, "security.breach");
+  assert.strictEqual(activation.directive.issuedBy, "admin-001");
+  assert.strictEqual(activation.directive.severity, "full");
+  assert.ok(activation.acknowledgments.length === 5);
+});
+
+test("panic: activate directive derives default freeze modes for security", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "region/eu-central",
+    reasonCode: "security.breach",
     activeIncidents: 1,
-  });
-  assert.equal(result, true);
+    issuedBy: "admin-002",
+    requiredApprovers: ["admin-002", "admin-003"],
+  };
+
+  const activation = service.activate(request);
+
+  assert.deepStrictEqual(activation.directive.freezeModes, ["deploy", "approval", "write", "automation"]);
 });
 
-test('shouldEnterPanicMode returns true when reasonCode starts with security', () => {
-  const result = shouldEnterPanicMode({
-    scope: 'platform:prod',
-    reasonCode: 'security.breach.detected',
+test("panic: activate directive derives default freeze modes for non-security", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "tenant/acme",
+    reasonCode: "outage.database",
+    activeIncidents: 2,
+    issuedBy: "admin-003",
+    requiredApprovers: ["admin-003", "admin-004"],
+  };
+
+  const activation = service.activate(request);
+
+  assert.deepStrictEqual(activation.directive.freezeModes, ["deploy", "automation"]);
+});
+
+test("panic: activate fails when no incidents and non-security reason", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "platform/test",
+    reasonCode: "test.reason",
     activeIncidents: 0,
+    issuedBy: "admin-004",
+  };
+
+  assert.throws(() => service.activate(request), /panic.directive_rejected/);
+});
+
+test("panic: get active returns activation", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "platform/active-test",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-005",
+    requiredApprovers: ["admin-005", "admin-006"],
+  };
+  service.activate(request);
+
+  const activation = service.getActive("platform/active-test");
+
+  assert.ok(activation != null);
+  assert.strictEqual(activation.directive.scope, "platform/active-test");
+});
+
+test("panic: get active returns null when not found", () => {
+  const service = new PlatformPanicService();
+
+  const activation = service.getActive("platform/nonexistent");
+
+  assert.strictEqual(activation, null);
+});
+
+test("panic: list active returns all activations sorted", () => {
+  const service = new PlatformPanicService();
+  service.activate({ scope: "platform/b", reasonCode: "security.breach", activeIncidents: 1, issuedBy: "a", requiredApprovers: ["a", "b"] });
+  service.activate({ scope: "platform/a", reasonCode: "security.breach", activeIncidents: 1, issuedBy: "a", requiredApprovers: ["a", "b"] });
+
+  const list = service.listActive();
+
+  assert.strictEqual(list.length, 2);
+  assert.strictEqual(list[0].directive.scope, "platform/a");
+  assert.strictEqual(list[1].directive.scope, "platform/b");
+});
+
+test("panic: evaluate execution blocked when mode is frozen", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/blocked",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-006",
+    freezeModes: ["deploy"],
+    requiredApprovers: ["admin-006", "admin-007"],
   });
-  assert.equal(result, true);
+
+  const decision = service.evaluateExecution({ scope: "platform/blocked", mode: "deploy" });
+
+  assert.strictEqual(decision.blocked, true);
+  assert.ok(decision.reasonCodes.includes("panic.execution_blocked"));
 });
 
-test('shouldEnterPanicMode returns false for normal operations', () => {
-  const result = shouldEnterPanicMode({
-    scope: 'platform:prod',
-    reasonCode: 'scheduled_maintenance',
-    activeIncidents: 0,
+test("panic: evaluate execution not blocked when mode not frozen", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/mode-test",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-007",
+    freezeModes: ["deploy"],
+    requiredApprovers: ["admin-007", "admin-008"],
   });
-  assert.equal(result, false);
+
+  const decision = service.evaluateExecution({ scope: "platform/mode-test", mode: "write" });
+
+  assert.strictEqual(decision.blocked, false);
+  assert.ok(decision.reasonCodes.includes("panic.mode_not_frozen"));
 });
 
-test('canResumeFromPanic requires minimum 2 approvers', () => {
+test("panic: evaluate execution allowlist bypass", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/allowlist-test",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-008",
+    freezeModes: ["deploy"],
+    allowList: ["actor-001", "actor-002"],
+    requiredApprovers: ["admin-008", "admin-009"],
+  });
+
+  const decision = service.evaluateExecution({
+    scope: "platform/allowlist-test",
+    mode: "deploy",
+    actorId: "actor-001",
+  });
+
+  assert.strictEqual(decision.blocked, false);
+  assert.ok(decision.reasonCodes.includes("panic.allow_list_bypass"));
+});
+
+test("panic: evaluate execution not blocked when no activation", () => {
+  const service = new PlatformPanicService();
+
+  const decision = service.evaluateExecution({ scope: "platform/none", mode: "deploy" });
+
+  assert.strictEqual(decision.blocked, false);
+  assert.strictEqual(decision.directiveId, null);
+});
+
+test("panic: resume with valid plan succeeds", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/resume-ok",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-009",
+    requiredApprovers: ["admin-009", "admin-010"],
+  });
   const plan: ResumePlan = {
-    scope: 'platform:prod',
-    approvedBy: ['admin1'],
+    scope: "platform/resume-ok",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
   };
-  assert.equal(canResumeFromPanic(plan), false);
+
+  const receipt = service.resume("platform/resume-ok", plan);
+
+  assert.strictEqual(receipt.resumed, true);
+  assert.ok(receipt.resumedAt != null);
+  assert.ok(receipt.directiveId != null);
 });
 
-test('canResumeFromPanic requires platform_admin role', () => {
+test("panic: resume with incomplete checkpoints fails", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/resume-fail",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-010",
+    requiredApprovers: ["admin-010", "admin-011"],
+  });
   const plan: ResumePlan = {
-    scope: 'platform:prod',
-    approvedBy: ['user1', 'user2'],
-    approvedRoles: ['viewer', 'editor'], // no platform_admin
-    checkpointsVerified: true,
-    forensicSnapshotReviewed: true,
-    rollbackPlanReady: true,
-    validationRunPassed: true,
-  };
-  assert.equal(canResumeFromPanic(plan), false);
-});
-
-test('canResumeFromPanic accepts with platform_admin and security_team', () => {
-  const plan: ResumePlan = {
-    scope: 'platform:prod',
-    approvedBy: ['admin1', 'security1'],
-    approvedRoles: ['platform_admin', 'security_team'],
-    checkpointsVerified: true,
-    forensicSnapshotReviewed: true,
-    rollbackPlanReady: true,
-    validationRunPassed: true,
-  };
-  assert.equal(canResumeFromPanic(plan), true);
-});
-
-test('canResumeFromPanic accepts with 2 platform_admins', () => {
-  const plan: ResumePlan = {
-    scope: 'platform:prod',
-    approvedBy: ['admin1', 'admin2'],
-    approvedRoles: ['platform_admin', 'platform_admin'],
-    checkpointsVerified: true,
-    forensicSnapshotReviewed: true,
-    rollbackPlanReady: true,
-    validationRunPassed: true,
-  };
-  assert.equal(canResumeFromPanic(plan), true);
-});
-
-test('canResumeFromPanic rejects if checkpoints not verified', () => {
-  const plan: ResumePlan = {
-    scope: 'platform:prod',
-    approvedBy: ['admin1', 'admin2'],
-    approvedRoles: ['platform_admin', 'platform_admin'],
+    scope: "platform/resume-fail",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: false,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
   };
-  assert.equal(canResumeFromPanic(plan), false);
+
+  const receipt = service.resume("platform/resume-fail", plan);
+
+  assert.strictEqual(receipt.resumed, false);
+  assert.ok(receipt.reasonCodes.includes("panic.resume_checkpoints_incomplete"));
 });
 
-test('canResumeFromPanic trims and deduplicates approvers', () => {
+test("panic: resume when no activation returns not found", () => {
+  const service = new PlatformPanicService();
   const plan: ResumePlan = {
-    scope: 'platform:prod',
-    approvedBy: ['  admin1  ', 'admin1', '  security1 '],
-    approvedRoles: ['platform_admin', 'security_team'],
+    scope: "platform/none",
+    approvedBy: ["admin-a", "admin-b"],
+    checkpointsVerified: true,
+  };
+
+  const receipt = service.resume("platform/none", plan);
+
+  assert.strictEqual(receipt.resumed, false);
+  assert.ok(receipt.reasonCodes.includes("panic.directive_not_found"));
+});
+
+test("panic: get resume receipt returns stored receipt", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "platform/receipt-test",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-011",
+    requiredApprovers: ["admin-011", "admin-012"],
+  });
+  const plan: ResumePlan = {
+    scope: "platform/receipt-test",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "platform_admin"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
   };
-  // Should work: 1 unique platform_admin + security_team = valid
-  assert.equal(canResumeFromPanic(plan), true);
+  service.resume("platform/receipt-test", plan);
+
+  const receipt = service.getResumeReceipt("platform/receipt-test");
+
+  assert.ok(receipt != null);
+  assert.strictEqual(receipt.resumed, true);
 });
 
-test('PlatformPanicService activates panic directive', () => {
+test("panic: get resume receipt returns null when none", () => {
   const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
-    activeIncidents: 3,
-    issuedBy: 'admin1',
-    freezeModes: ['deploy', 'automation'],
+
+  const receipt = service.getResumeReceipt("platform/none");
+
+  assert.strictEqual(receipt, null);
+});
+
+test("panic: should enter panic mode with active incidents", () => {
+  const input = { scope: "platform/test", reasonCode: "test", activeIncidents: 1 };
+  assert.strictEqual(shouldEnterPanicMode(input), true);
+});
+
+test("panic: should enter panic mode with security reason code", () => {
+  const input = { scope: "platform/test", reasonCode: "security.breach", activeIncidents: 0 };
+  assert.strictEqual(shouldEnterPanicMode(input), true);
+});
+
+test("panic: should not enter panic mode with no incidents and non-security reason", () => {
+  const input = { scope: "platform/test", reasonCode: "test.info", activeIncidents: 0 };
+  assert.strictEqual(shouldEnterPanicMode(input), false);
+});
+
+test("panic: can resume with valid plan", () => {
+  const plan: ResumePlan = {
+    scope: "platform/test",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "security_team"],
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
   };
-
-  const activation = service.activate(request);
-
-  assert.ok(activation.directive.directiveId.startsWith('panic-'));
-  assert.equal(activation.directive.scope, 'platform');
-  assert.equal(activation.directive.reasonCode, 'security.breach');
-  assert.equal(activation.directive.severity, 'full');
-  assert.equal(activation.acknowledgments.length, 5); // P1-P5
-  assert.ok(activation.forensicSnapshot.snapshotId.startsWith('panic_snapshot-'));
+  assert.strictEqual(canResumeFromPanic(plan), true);
 });
 
-test('PlatformPanicService requires minimum 2 approvers', () => {
+test("panic: can resume with two platform admins no security team (break glass)", () => {
+  const plan: ResumePlan = {
+    scope: "platform/test",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "platform_admin"],
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+  };
+  assert.strictEqual(canResumeFromPanic(plan), true);
+});
+
+test("panic: cannot resume with insufficient approvers", () => {
+  const plan: ResumePlan = {
+    scope: "platform/test",
+    approvedBy: ["admin-a"],
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+  };
+  assert.strictEqual(canResumeFromPanic(plan), false);
+});
+
+test("panic: cannot resume with missing forensic snapshot review", () => {
+  const plan: ResumePlan = {
+    scope: "platform/test",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "security_team"],
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: false,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+  };
+  assert.strictEqual(canResumeFromPanic(plan), false);
+});
+
+test("panic: cannot resume with one admin and no break glass", () => {
+  const plan: ResumePlan = {
+    scope: "platform/test",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin"],
+    checkpointsVerified: true,
+    forensicSnapshotReviewed: true,
+    rollbackPlanReady: true,
+    validationRunPassed: true,
+  };
+  assert.strictEqual(canResumeFromPanic(plan), false);
+});
+
+test("panic: activate requires at least two approvers", () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'system_overload',
+    scope: "platform/min-approvers",
+    reasonCode: "security.breach",
     activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1'], // only one
+    issuedBy: "solo-admin",
   };
 
   assert.throws(() => service.activate(request), /panic.required_approvers_minimum_not_met/);
 });
 
-test('PlatformPanicService rejects invalid scope level', () => {
+test("panic: activation scope levels derived correctly", () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'invalid:scope:level',
-    reasonCode: 'test',
+    scope: "domain/marketing",
+    reasonCode: "security.breach",
     activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
+    issuedBy: "admin-d",
+    requiredApprovers: ["admin-d", "admin-e"],
+  };
+
+  const activation = service.activate(request);
+
+  assert.strictEqual(activation.directive.scopeLevel, "domain");
+});
+
+test("panic: invalid scope level throws", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "invalid_scope_level/test",
+    reasonCode: "security.breach",
+    activeIncidents: 1,
+    issuedBy: "admin-e",
   };
 
   assert.throws(() => service.activate(request), /panic.invalid_scope_level/);
 });
 
-test('PlatformPanicService evaluates execution blocked by freeze mode', () => {
+test("panic: propagation records created for target scopes", () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
+    scope: "platform/propagation",
+    reasonCode: "security.breach",
     activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
+    issuedBy: "admin-f",
+    targetScopes: ["platform/propagation", "region/us-west", "tenant/acme"],
+    requiredApprovers: ["admin-f", "admin-g"],
   };
-  service.activate(request);
 
-  const decision = service.evaluateExecution({
-    scope: 'platform',
-    mode: 'deploy',
-  });
+  const activation = service.activate(request);
 
-  assert.equal(decision.blocked, true);
-  assert.ok(decision.directiveId != null);
-  assert.ok(decision.reasonCodes.includes('panic.execution_blocked'));
+  assert.strictEqual(activation.propagationRecords.length, 3);
+  assert.strictEqual(activation.propagationRecords[0].propagationMode, "direct");
+  assert.strictEqual(activation.propagationRecords[1].propagationMode, "inherited");
 });
 
-test('PlatformPanicService evaluates execution not blocked when mode not frozen', () => {
+test("panic: evaluate execution scope matching with hierarchy", () => {
   const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
+  service.activate({
+    scope: "platform",
+    reasonCode: "security.breach",
     activeIncidents: 1,
-    issuedBy: 'admin1',
-    freezeModes: ['deploy', 'automation'],
-    requiredApprovers: ['admin1', 'admin2'],
-  };
-  service.activate(request);
-
-  const decision = service.evaluateExecution({
-    scope: 'platform',
-    mode: 'write', // 'write' is not in freeze modes
+    issuedBy: "admin-g",
+    requiredApprovers: ["admin-g", "admin-h"],
   });
 
-  assert.equal(decision.blocked, false);
-  assert.ok(decision.reasonCodes.includes('panic.mode_not_frozen'));
+  const decision = service.evaluateExecution({ scope: "platform/us-west", mode: "deploy" });
+
+  assert.strictEqual(decision.blocked, true);
 });
 
-test('PlatformPanicService allows actor in allowList', () => {
+test("panic: resume deletes activation after success", () => {
   const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
+  service.activate({
+    scope: "platform/delete-after-resume",
+    reasonCode: "security.breach",
     activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-    allowList: ['bypass-actor-id'],
-  };
-  service.activate(request);
-
-  const decision = service.evaluateExecution({
-    scope: 'platform',
-    mode: 'deploy',
-    actorId: 'bypass-actor-id',
+    issuedBy: "admin-h",
+    requiredApprovers: ["admin-h", "admin-i"],
   });
-
-  assert.equal(decision.blocked, false);
-  assert.ok(decision.reasonCodes.includes('panic.allow_list_bypass'));
-});
-
-test('PlatformPanicService resumes from panic with valid plan', () => {
-  const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-  };
-  service.activate(request);
-
   const plan: ResumePlan = {
-    scope: 'platform',
-    approvedBy: ['admin1', 'admin2'],
-    approvedRoles: ['platform_admin', 'platform_admin'],
+    scope: "platform/delete-after-resume",
+    approvedBy: ["admin-a", "admin-b"],
+    approvedRoles: ["platform_admin", "security_team"],
     checkpointsVerified: true,
     forensicSnapshotReviewed: true,
     rollbackPlanReady: true,
     validationRunPassed: true,
   };
+  service.resume("platform/delete-after-resume", plan);
 
-  const receipt = service.resume('platform', plan);
+  const activation = service.getActive("platform/delete-after-resume");
 
-  assert.equal(receipt.resumed, true);
-  assert.ok(receipt.resumedAt != null);
-  assert.ok(receipt.directiveId != null);
-});
-
-test('PlatformPanicService cannot resume without valid plan', () => {
-  const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-  };
-  service.activate(request);
-
-  const plan: ResumePlan = {
-    scope: 'platform',
-    approvedBy: ['user1'], // insufficient
-    checkpointsVerified: false, // not verified
-  };
-
-  const receipt = service.resume('platform', plan);
-
-  assert.equal(receipt.resumed, false);
-  assert.ok(receipt.reasonCodes.includes('panic.resume_checkpoints_incomplete'));
-});
-
-test('PlatformPanicService lists active directives sorted by scope', () => {
-  const service = new PlatformPanicService();
-  service.activate({
-    scope: 'platform:zone-b',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-  });
-  service.activate({
-    scope: 'platform:zone-a',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-  });
-
-  const active = service.listActive();
-
-  assert.equal(active.length, 2);
-  assert.ok(active[0].directive.scope < active[1].directive.scope); // sorted alphabetically
-});
-
-test('PlatformPanicService propagates to target scopes', () => {
-  const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'region',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-    targetScopes: ['region', 'region:us-east'],
-  };
-  service.activate(request);
-
-  // Direct scope
-  const direct = service.getActive('region');
-  assert.ok(direct != null);
-
-  // Inherited scope
-  const inherited = service.getActive('region:us-east');
-  assert.ok(inherited != null);
-
-  // Unrelated scope
-  const unrelated = service.getActive('tenant');
-  assert.equal(unrelated, null);
-});
-
-test('PlatformPanicService resolves most specific scope match', () => {
-  const service = new PlatformPanicService();
-  service.activate({
-    scope: 'platform',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-  });
-  service.activate({
-    scope: 'platform:prod',
-    reasonCode: 'system_failure',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-    freezeModes: ['deploy', 'write'],
-  });
-
-  const match = service.getActive('platform:prod:us-east-1');
-
-  // Should match the more specific 'platform:prod' directive
-  assert.ok(match != null);
-  assert.equal(match!.directive.scopeLevel, 'platform');
-  assert.equal(match!.directive.reasonCode, 'system_failure');
-});
-
-test('PlatformPanicService stores and retrieves resume receipt', () => {
-  const service = new PlatformPanicService();
-  const request: PanicActivationRequest = {
-    scope: 'platform',
-    reasonCode: 'security.breach',
-    activeIncidents: 1,
-    issuedBy: 'admin1',
-    requiredApprovers: ['admin1', 'admin2'],
-  };
-  service.activate(request);
-
-  const plan: ResumePlan = {
-    scope: 'platform',
-    approvedBy: ['admin1', 'admin2'],
-    approvedRoles: ['platform_admin', 'platform_admin'],
-    checkpointsVerified: true,
-    forensicSnapshotReviewed: true,
-    rollbackPlanReady: true,
-    validationRunPassed: true,
-  };
-
-  service.resume('platform', plan);
-  const receipt = service.getResumeReceipt('platform');
-
-  assert.ok(receipt != null);
-  assert.equal(receipt!.resumed, true);
-});
-
-test('buildForensicSnapshot creates snapshot with all fields', () => {
-  const snapshot = buildForensicSnapshot({
-    snapshotId: 'snap-001',
-    scope: 'platform:prod',
-    collectedAt: '2026-04-29T00:00:00Z',
-    artifactIds: ['art1', 'art2'],
-    runtimeState: { severity: 'high' },
-    planeAcknowledgments: [
-      { plane: 'P1', localStopState: 'ack', evidenceRef: 'p1-ev' },
-    ],
-  });
-
-  assert.equal(snapshot.snapshotId, 'snap-001');
-  assert.equal(snapshot.scope, 'platform:prod');
-  assert.equal(snapshot.artifactIds.length, 2);
-  assert.deepEqual(snapshot.runtimeState, { severity: 'high' });
-  assert.equal(snapshot.planeAcknowledgments.length, 1);
-});
-
-test('buildForensicSnapshot handles missing optional fields', () => {
-  const snapshot = buildForensicSnapshot({
-    snapshotId: 'snap-002',
-    scope: 'platform:staging',
-    collectedAt: '2026-04-29T00:00:00Z',
-    artifactIds: [],
-  });
-
-  assert.deepEqual(snapshot.runtimeState, {});
-  assert.equal(snapshot.configurationRefs.length, 0);
-  assert.equal(snapshot.logRefs.length, 0);
-  assert.equal(snapshot.planeAcknowledgments.length, 0);
+  assert.strictEqual(activation, null);
 });

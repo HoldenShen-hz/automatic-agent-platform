@@ -327,6 +327,13 @@ export class CircuitBreaker {
     this.pruneSuccessTimestamps(now);
   }
 
+  private pruneFailureTimestamps(now: number): void {
+    const cutoff = now - this.monitorWindowMs;
+    while (this.failureTimestamps.length > 0 && this.failureTimestamps[0]! < cutoff) {
+      this.failureTimestamps.shift();
+    }
+  }
+
   private onFailureInternal(): void {
     const now = Date.now();
     this.lastFailureAt = now;

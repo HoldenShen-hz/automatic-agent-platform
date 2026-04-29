@@ -6,7 +6,7 @@ import {
   getSchemaRegistry,
   resetSchemaRegistry,
   type SchemaVersionEntry,
-} from "../../../src/domains/registry/schema-registry.js";
+} from "../../../../src/domains/registry/schema-registry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SchemaRegistry Registration Tests

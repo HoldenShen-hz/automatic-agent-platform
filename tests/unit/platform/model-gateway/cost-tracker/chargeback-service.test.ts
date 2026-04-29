@@ -58,6 +58,39 @@ test("ChargebackService aggregates multiple resources across reports", () => {
   assert.equal(s3Allocation?.costUsd, 20);
 });
 
+test("ChargebackService preserves cost source metadata and falls back to resource type", () => {
+  const costReports = new CostReportService();
+  costReports.createReport({
+    tenantId: "tenant-1",
+    periodStart: "2026-04-01T00:00:00.000Z",
+    periodEnd: "2026-04-01T23:59:59.000Z",
+    totalCostUsd: 100,
+    resourceCosts: [
+      {
+        resourceId: "openai:gpt-5",
+        resourceType: "api",
+        costUsd: 80,
+        currency: "USD",
+        metadata: { costSource: "token" },
+      },
+      {
+        resourceId: "aws:batch",
+        resourceType: "compute",
+        costUsd: 20,
+        currency: "USD",
+      },
+    ],
+    submittedBy: "operator-1",
+  });
+
+  const report = new ChargebackService(costReports).buildReport({ tenantId: "tenant-1" });
+  const modelAllocation = report.allocations.find((a) => a.resourceId === "openai:gpt-5");
+  const computeAllocation = report.allocations.find((a) => a.resourceId === "aws:batch");
+
+  assert.equal(modelAllocation?.costSource, "token");
+  assert.equal(computeAllocation?.costSource, "compute");
+});
+
 test("ChargebackService handles platform-level reports without tenant", () => {
   const costReports = new CostReportService();
   costReports.createReport({
@@ -306,7 +339,7 @@ test("ChargebackService generatedAt is ISO string", () => {
   assert.doesNotThrow(() => new Date(report.generatedAt));
 });
 
-test("ChargebackService currency from last report", () => {
+test("ChargebackService normalizes report currency to the base currency", () => {
   const costReports = new CostReportService();
   costReports.createReport({
     tenantId: "tenant-1",
@@ -329,8 +362,7 @@ test("ChargebackService currency from last report", () => {
 
   const report = new ChargebackService(costReports).buildReport({ tenantId: "tenant-1" });
 
-  // Currency is taken from last report in iteration
-  assert.equal(report.currency, "EUR");
+  assert.equal(report.currency, "USD");
 });
 
 test("ChargebackService returns null tenantId when not specified", () => {

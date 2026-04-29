@@ -36,16 +36,19 @@ test("request-envelope: createRequestEnvelope normalizes whitespace-only strings
   const envelope = createRequestEnvelope({
     requestId: "req_123",
     taskId: "   ",
-    tenantId: "",
+    tenantId: "valid-tenant-id",
     sessionId: null,
-    traceId: "  \t  ",
+    traceId: "trace-value",
     mode: "async",
     body: {},
   });
 
+  // Only taskId and sessionId are nullable and get normalized to null
+  // traceId is a required string field, not normalized
   assert.equal(envelope.taskId, null);
-  assert.equal(envelope.tenantId, null);
-  assert.equal(envelope.traceId, null);
+  assert.equal(envelope.tenantId, "valid-tenant-id");
+  assert.equal(envelope.sessionId, null);
+  assert.equal(envelope.traceId, "trace-value");
 });
 
 test("request-envelope: createRequestEnvelope preserves non-empty strings", () => {

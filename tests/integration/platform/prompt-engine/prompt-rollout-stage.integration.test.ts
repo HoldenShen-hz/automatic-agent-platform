@@ -1,0 +1,285 @@
+/**
+ * Integration tests for prompt rollout stage
+ * Tests the full rollout lifecycle: create -> activate -> rollback
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  PromptRolloutService,
+  PromptRolloutMode,
+  PromptRolloutStatus,
+  type PromptTemplateRecord,
+} from "../../../../src/platform/prompt-engine/rollout/index.js";
+
+test("PromptRolloutService.createRollout creates a ready rollout when regression passes", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_1", "v1.0");
+  const record = service.createRollout({
+    template,
+    mode: "off",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_123",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.status, "ready");
+  assert.equal(record.templateKey, "tpl_test_1");
+  assert.equal(record.version, "v1.0");
+  assert.ok(record.rolloutId.startsWith("prompt_rollout_"));
+});
+
+test("PromptRolloutService.createRollout creates a blocked rollout when regression fails", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_2", "v1.0");
+  const record = service.createRollout({
+    template,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_456",
+    regressionPassed: false,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(record.status, "blocked");
+  assert.ok(record.guardrailSummary.includes("regression_gate_failed"));
+});
+
+test("PromptRolloutService.createRollout blocks when domain block incompatible", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_3", "v1.0");
+  const record = service.createRollout({
+    template,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_789",
+    regressionPassed: true,
+    domainBlockCompatible: false,
+  });
+
+  assert.equal(record.status, "blocked");
+  assert.ok(record.guardrailSummary.includes("domain_block_incompatible"));
+});
+
+test("PromptRolloutService.activateRollout transitions ready to active", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_4", "v1.0");
+  const created = service.createRollout({
+    template,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_abc",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(created.status, "ready");
+
+  const activated = service.activateRollout(created.rolloutId);
+  assert.equal(activated.status, "active");
+});
+
+test("PromptRolloutService.activateRollout throws for non-ready rollout", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_5", "v1.0");
+  const created = service.createRollout({
+    template,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_def",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  // Already ready, activate first
+  service.activateRollout(created.rolloutId);
+
+  // Try to activate again - should throw
+  assert.throws(
+    () => service.activateRollout(created.rolloutId),
+    /cannot transition to active/,
+  );
+});
+
+test("PromptRolloutService.rollbackRollout sets status to rolled_back", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_6", "v1.0");
+  const created = service.createRollout({
+    template,
+    mode: "shadow",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_ghi",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  const rolledBack = service.rollbackRollout(created.rolloutId, "Test rollback reason");
+
+  assert.equal(rolledBack.status, "rolled_back");
+  assert.equal(rolledBack.guardrailSummary, "Test rollback reason");
+});
+
+test("PromptRolloutService.rollbackRollout works on any status", () => {
+  const service = new PromptRolloutService();
+
+  const template = createMockTemplate("tpl_test_7", "v1.0");
+  const created = service.createRollout({
+    template,
+    mode: "off",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_jkl",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  // Rollback directly from ready status
+  const rolledBack = service.rollbackRollout(created.rolloutId, "Emergency rollback");
+
+  assert.equal(rolledBack.status, "rolled_back");
+});
+
+test("PromptRolloutService.listRollouts returns all rollouts when no filter", () => {
+  const service = new PromptRolloutService();
+
+  const tpl1 = createMockTemplate("tpl_list_1", "v1.0");
+  const tpl2 = createMockTemplate("tpl_list_2", "v1.0");
+
+  service.createRollout({
+    template: tpl1,
+    mode: "off",
+    owner: "owner1@example.com",
+    regressionSuiteId: "s1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  service.createRollout({
+    template: tpl2,
+    mode: "suggest",
+    owner: "owner2@example.com",
+    regressionSuiteId: "s2",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  const all = service.listRollouts();
+  assert.ok(all.length >= 2);
+});
+
+test("PromptRolloutService.listRollouts filters by templateKey", () => {
+  const service = new PromptRolloutService();
+
+  const tplA = createMockTemplate("tpl_filter_a", "v1.0");
+  const tplB = createMockTemplate("tpl_filter_b", "v1.0");
+
+  service.createRollout({
+    template: tplA,
+    mode: "off",
+    owner: "owner@example.com",
+    regressionSuiteId: "sA",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  service.createRollout({
+    template: tplB,
+    mode: "suggest",
+    owner: "owner@example.com",
+    regressionSuiteId: "sB",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  const filtered = service.listRollouts("tpl_filter_a");
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0]!.templateKey, "tpl_filter_a");
+});
+
+test("PromptRolloutService.evaluateGuardrail allows shadow mode with passing regression", () => {
+  const service = new PromptRolloutService();
+
+  const decision = service.evaluateGuardrail({
+    mode: "shadow",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.nextStatus, "ready");
+  assert.ok(decision.reason.includes("shadow"));
+});
+
+test("PromptRolloutService.evaluateGuardrail blocks failed regression", () => {
+  const service = new PromptRolloutService();
+
+  const decision = service.evaluateGuardrail({
+    mode: "off",
+    regressionPassed: false,
+    domainBlockCompatible: true,
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.nextStatus, "blocked");
+  assert.ok(decision.reason.includes("regression"));
+});
+
+test("PromptRolloutService evaluateGuardrail blocks incompatible domain", () => {
+  const service = new PromptRolloutService();
+
+  const decision = service.evaluateGuardrail({
+    mode: "suggest",
+    regressionPassed: true,
+    domainBlockCompatible: false,
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.nextStatus, "blocked");
+  assert.ok(decision.reason.includes("domain_block"));
+});
+
+test("PromptRolloutService multiple rollouts can coexist", () => {
+  const service = new PromptRolloutService();
+
+  const rollouts = [];
+  for (let i = 0; i < 5; i++) {
+    const tpl = createMockTemplate(`tpl_multi_${i}`, "v1.0");
+    const record = service.createRollout({
+      template: tpl,
+      mode: "off",
+      owner: `owner${i}@example.com`,
+      regressionSuiteId: `suite_${i}`,
+      regressionPassed: true,
+      domainBlockCompatible: true,
+    });
+    rollouts.push(record);
+  }
+
+  const all = service.listRollouts();
+  assert.ok(all.length >= 5);
+});
+
+// Helper
+function createMockTemplate(key: string, version: string): PromptTemplateRecord {
+  return {
+    templateKey: key,
+    version,
+    owner: "test@example.com",
+    channel: "system",
+    fixedPrefix: "Test prefix",
+    domainBlock: "Test domain",
+    variableSuffixTemplate: "",
+    variableSpecs: [],
+    compatibilityTags: [],
+    fixedPrefixHash: "abc123def456",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}

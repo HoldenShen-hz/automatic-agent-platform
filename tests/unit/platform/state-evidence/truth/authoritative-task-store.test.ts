@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 
 function createTestDb(): { db: SqliteDatabase; cleanup: () => void } {
   const db = new SqliteDatabase(":memory:");

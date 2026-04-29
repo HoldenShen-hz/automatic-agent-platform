@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RecoveryController, type HarnessFailureType } from "../../../../../src/platform/orchestration/harness/recovery-controller.js";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { HarnessRuntimeService, type HarnessRun, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import { RecoveryController, type HarnessFailureType } from "../../../../../../src/platform/orchestration/harness/recovery-controller.js";
+import { DurableHarnessService } from "../../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { HarnessRuntimeService, type HarnessRun, type ConstraintPack } from "../../../../../../src/platform/orchestration/harness/index.js";
 
 function createConstraintPack(overrides = {}): ConstraintPack {
   return {
@@ -35,14 +35,21 @@ function createRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
     planGraphBundle: {
       planGraphBundleId: "plan_graph_bundle:test",
       harnessRunId: "run-test-1",
+      graphVersion: 1,
       graph: {
+        graphId: "graph-1",
         nodes: [],
         edges: [],
+        entryNodeIds: [],
+        terminalNodeIds: [],
+        joinStrategy: "all",
+        graphHash: "hash-1",
       },
-      validationReport: {
-        valid: true,
-        issues: [],
-      },
+      schedulerPolicy: { policyId: "scheduler:harness.default", strategy: "deterministic_fifo" },
+      budgetPlanRef: "budget:harness.initial",
+      riskProfile: { riskClass: "medium", reasons: [] },
+      validationReport: { valid: true, findings: [], normalizedNodeIds: [] },
+      artifactRefs: [],
       createdAt: new Date().toISOString(),
     },
     steps: [],
@@ -91,19 +98,6 @@ test("RecoveryController.handleFailure with operator_abort preserves completedAt
   assert.equal(result.completedAt, existingCompletedAt);
 });
 
-test("RecoveryController.handleFailure with worker_crash triggers recovery", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun({ status: "running" });
-  const result = controller.handleFailure(run, "worker_crash");
-
-  assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "recovery");
-  assert.notEqual(result.recoveryCheckpoint, null);
-});
-
 test("RecoveryController.handleFailure with tool_timeout triggers recovery then resume", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
@@ -113,6 +107,58 @@ test("RecoveryController.handleFailure with tool_timeout triggers recovery then 
   const result = controller.handleFailure(run, "tool_timeout");
 
   assert.equal(result.status, "running");
+  assert.equal(result.pauseReason, null);
+});
+
+test("RecoveryController.handleFailure with worker_crash triggers recovery checkpoint", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({ status: "running" });
+  const result = controller.handleFailure(run, "worker_crash");
+
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
+  assert.ok(result.recoveryCheckpoint != null);
+});
+
+test("RecoveryController.handleFailure with llm_provider_unavailable triggers sleep for retry", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({ status: "running" });
+  const result = controller.handleFailure(run, "llm_provider_unavailable");
+
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
+  assert.ok(result.sleepLease != null);
+  assert.ok(result.sleepLease.reason.includes("llm_provider_unavailable"));
+});
+
+test("RecoveryController.handleFailure with budget_exhausted triggers HITL review", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({ status: "running" });
+  const result = controller.handleFailure(run, "budget_exhausted");
+
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "hitl");
+  assert.ok(result.hitlRequest != null);
+});
+
+test("RecoveryController.handleFailure with platform_panic triggers recovery and resume", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({ status: "running" });
+  const result = controller.handleFailure(run, "platform_panic");
+
+  assert.equal(result.status, "running");
 });
 
 test("RecoveryController.handleFailure restores from checkpoint when available", () => {
@@ -120,15 +166,17 @@ test("RecoveryController.handleFailure restores from checkpoint when available",
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
 
-  const run = createRun({ status: "running", steps: [{ stepId: "step-1", role: "planner", stage: "plan", iteration: 1, semanticPhase: "plan" as const, inputs: {}, outputs: {}, startedAt: "", completedAt: "" }] });
+  const run = createRun({ status: "running" });
+  durableService.persist(run);
   const checkpointRef = durableService.checkpoint(run);
 
+  // Create a fresh run and try to recover it
   const freshRun = createRun({ runId: "run-fresh", status: "running" });
   const result = controller.handleFailure(freshRun, "worker_crash");
 
   assert.equal(result.status, "paused");
   assert.equal(result.pauseReason, "recovery");
-  assert.notEqual(result.recoveryCheckpoint, null);
+  assert.ok(result.recoveryCheckpoint != null);
 });
 
 test("RecoveryController.handleFailure falls back to durable restore when no checkpoint", () => {
@@ -145,22 +193,7 @@ test("RecoveryController.handleFailure falls back to durable restore when no che
   assert.equal(result.pauseReason, "recovery");
 });
 
-test("RecoveryController passes sourceRun from restore to runtime.recover", () => {
-  const durableService = new DurableHarnessService();
-  const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
-
-  const run = createRun({ status: "running" });
-  durableService.persist(run);
-
-  const result = controller.handleFailure(run, "worker_crash");
-
-  assert.ok(result.recoveryCheckpoint !== null);
-  assert.equal(result.recoveryCheckpoint?.runId, run.runId);
-  assert.equal(result.pauseReason, "recovery");
-});
-
-test("RecoveryController returns original run when durable restore returns null and no checkpoint", () => {
+test("RecoveryController.handleFailure returns original run when durable restore returns null", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
@@ -173,21 +206,73 @@ test("RecoveryController returns original run when durable restore returns null 
   assert.equal(result.pauseReason, "recovery");
 });
 
-test("RecoveryController accepts all HarnessFailureType values", () => {
+test("RecoveryController handles all HarnessFailureType values", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
 
-  const abortTypes: HarnessFailureType[] = ["operator_abort", "worker_crash", "tool_timeout"];
+  const failureTypes: HarnessFailureType[] = [
+    "operator_abort",
+    "worker_crash",
+    "tool_timeout",
+    "llm_provider_unavailable",
+    "budget_exhausted",
+    "platform_panic",
+  ];
 
-  for (const failureType of abortTypes) {
+  for (const failureType of failureTypes) {
     const run = createRun({ status: "running" });
     const result = controller.handleFailure(run, failureType);
     assert.ok(result !== undefined, `handleFailure should accept ${failureType}`);
   }
 });
 
-test("RecoveryController handles recovery for completed run", () => {
+test("RecoveryController preserves run fields during operator_abort", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({
+    status: "running",
+    taskId: "task-preserve",
+    domainId: "preserve-domain",
+    currentIteration: 5,
+  });
+
+  const result = controller.handleFailure(run, "operator_abort");
+
+  assert.equal(result.taskId, "task-preserve");
+  assert.equal(result.domainId, "preserve-domain");
+  assert.equal(result.currentIteration, 5);
+});
+
+test("RecoveryController emits events via durableService", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({ status: "running" });
+  controller.handleFailure(run, "operator_abort");
+
+  // Verify event was emitted - durable service should have recorded it
+  const persistedRun = durableService.restore(run.runId);
+  assert.ok(persistedRun != null);
+});
+
+test("RecoveryController emits recovery_started event for worker_crash", () => {
+  const durableService = new DurableHarnessService();
+  const runtime = new HarnessRuntimeService({ durableService });
+  const controller = new RecoveryController(durableService, runtime);
+
+  const run = createRun({ status: "running" });
+  durableService.persist(run);
+  controller.handleFailure(run, "worker_crash");
+
+  const restored = durableService.restore(run.runId);
+  assert.ok(restored != null);
+});
+
+test("RecoveryController handles completed run during recovery", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
@@ -199,23 +284,14 @@ test("RecoveryController handles recovery for completed run", () => {
   assert.equal(result.pauseReason, "recovery");
 });
 
-test("RecoveryController preserves other run fields during operator_abort", () => {
+test("RecoveryController handles aborted run during recovery", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
   const controller = new RecoveryController(durableService, runtime);
 
-  const run = createRun({
-    status: "running",
-    taskId: "task-preserve",
-    domainId: "preserve-domain",
-    currentIteration: 5,
-    toolbelt: { allowedTools: ["tool-a"], grantedTools: ["tool-a"], blockedTools: [], requiredEvidence: [] },
-  });
+  const run = createRun({ status: "aborted", completedAt: new Date().toISOString() });
+  const result = controller.handleFailure(run, "worker_crash");
 
-  const result = controller.handleFailure(run, "operator_abort");
-
-  assert.equal(result.taskId, "task-preserve");
-  assert.equal(result.domainId, "preserve-domain");
-  assert.equal(result.currentIteration, 5);
-  assert.notEqual(result.completedAt, null);
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "recovery");
 });

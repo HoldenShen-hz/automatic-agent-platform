@@ -5,7 +5,7 @@
  * per §69 requirements.
  */
 
-import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { newId, nowIso } from "../platform/contracts/types/ids.js";
 
 export type OpsMaturityDimension = "drift" | "compliance" | "cost" | "explainability";
 

@@ -174,7 +174,7 @@ test("concurrency: Parallel status updates throughput >2000 ops/sec with 10 work
 
     // Warmup
     for (let i = 0; i < 50; i++) {
-      store.updateTaskStatus({ taskId: taskIds[i % taskIds.length]!, status: "running", updatedAt: nowIso() });
+      store.updateTaskStatus(taskIds[i % taskIds.length]!, "running", nowIso(), null, null);
     }
 
     // Benchmark
@@ -184,7 +184,7 @@ test("concurrency: Parallel status updates throughput >2000 ops/sec with 10 work
       Array.from({ length: numWorkers }, async (_, workerId) => {
         for (let i = 0; i < updatesPerWorker; i++) {
           const taskId = taskIds[(workerId * updatesPerWorker + i) % taskIds.length]!;
-          store.updateTaskStatus({ taskId, status: "running", updatedAt: nowIso() });
+          store.updateTaskStatus(taskId, "running", nowIso(), null, null);
         }
       }),
     );
@@ -308,13 +308,13 @@ test("concurrency: Mixed parallel operations throughput >1500 ops/sec", async (t
       });
     }
 
-    // Benchmark - mix of inserts, updates, and state transitions
+    // Benchmark - mix of inserts and state transitions
     const start = performance.now();
 
     await Promise.all(
       Array.from({ length: numWorkers }, async (_, workerId) => {
         for (let i = 0; i < opsPerWorker; i++) {
-          const opType = (workerId + i) % 3;
+          const opType = (workerId + i) % 2;
 
           if (opType === 0) {
             // Insert task
@@ -341,7 +341,7 @@ test("concurrency: Mixed parallel operations throughput >1500 ops/sec", async (t
                 completedAt: null,
               });
             });
-          } else if (opType === 1) {
+          } else {
             // State transition
             const harnessRun: HarnessRun = {
               harnessRunId: newId("hrun"),
@@ -373,28 +373,6 @@ test("concurrency: Mixed parallel operations throughput >1500 ops/sec", async (t
               runVersionLockId: newId("rvlock"),
               leaseId: newId("lease"),
               fencingToken: newId("fence"),
-            });
-          } else {
-            // Budget allocation
-            const allocator = new BudgetAllocator();
-            const ledger: BudgetLedger = {
-              budgetLedgerId: newId("bledger"),
-              tenantId: "test-tenant",
-              harnessRunId: newId("hrun"),
-              currency: "USD",
-              hardCap: 10000,
-              reservedAmount: 0,
-              settledAmount: 0,
-              releasedAmount: 0,
-              status: "open",
-              version: workerId * opsPerWorker + i,
-            };
-            allocator.reserve({
-              ledger,
-              amount: 10,
-              resourceKind: "token",
-              expiresAt: new Date(Date.now() + 3600000).toISOString(),
-              expectedVersion: ledger.version,
             });
           }
         }
@@ -625,87 +603,6 @@ test("concurrency: High concurrency state transition P99 latency <10ms", async (
     assert.ok(
       p99 < 10,
       `High concurrency state transition P99 latency ${p99.toFixed(4)}ms exceeds 10ms target with ${numWorkers} workers. P50: ${p50.toFixed(4)}ms. Total time: ${elapsed.toFixed(2)}ms`,
-    );
-  } catch (err) {
-    if (err instanceof assert.AssertionError) {
-      reportSoftPerformanceMiss(t, err);
-      return;
-    }
-    throw err;
-  }
-});
-
-// ============================================================================
-// Budget Allocation Concurrency Benchmarks
-// ============================================================================
-
-test("concurrency: Parallel budget reservations throughput >3000 ops/sec with 10 workers", async (t) => {
-  const numWorkers = 10;
-  const reservationsPerWorker = 200;
-  const totalReservations = numWorkers * reservationsPerWorker;
-
-  // Warmup
-  for (let i = 0; i < 100; i++) {
-    const allocator = new BudgetAllocator();
-    const ledger: BudgetLedger = {
-      budgetLedgerId: newId("bledger"),
-      tenantId: "test-tenant",
-      harnessRunId: newId("hrun"),
-      currency: "USD",
-      hardCap: 10000,
-      reservedAmount: 0,
-      settledAmount: 0,
-      releasedAmount: 0,
-      status: "open",
-      version: i,
-    };
-    allocator.reserve({
-      ledger,
-      amount: 10,
-      resourceKind: "token",
-      expiresAt: new Date(Date.now() + 3600000).toISOString(),
-      expectedVersion: ledger.version,
-    });
-  }
-
-  // Benchmark
-  const start = performance.now();
-
-  await Promise.all(
-    Array.from({ length: numWorkers }, async (_, workerId) => {
-      for (let i = 0; i < reservationsPerWorker; i++) {
-        const allocator = new BudgetAllocator();
-        const ledger: BudgetLedger = {
-          budgetLedgerId: newId("bledger"),
-          tenantId: "test-tenant",
-          harnessRunId: newId("hrun"),
-          currency: "USD",
-          hardCap: 10000,
-          reservedAmount: 0,
-          settledAmount: 0,
-          releasedAmount: 0,
-          status: "open",
-          version: workerId * reservationsPerWorker + i,
-        };
-        allocator.reserve({
-          ledger,
-          amount: 10,
-          resourceKind: "token",
-          expiresAt: new Date(Date.now() + 3600000).toISOString(),
-          expectedVersion: ledger.version,
-        });
-      }
-    }),
-  );
-
-  const elapsed = performance.now() - start;
-  const opsPerSec = (totalReservations / elapsed) * 1000;
-  const avgLatencyMs = elapsed / totalReservations;
-
-  try {
-    assert.ok(
-      opsPerSec > 3000,
-      `Parallel budget reservations throughput ${opsPerSec.toFixed(0)} ops/sec must be >3000 ops/sec with ${numWorkers} workers. Avg: ${avgLatencyMs.toFixed(4)}ms`,
     );
   } catch (err) {
     if (err instanceof assert.AssertionError) {

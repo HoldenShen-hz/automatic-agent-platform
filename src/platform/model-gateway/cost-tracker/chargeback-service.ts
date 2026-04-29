@@ -67,6 +67,13 @@ function convertCurrency(amount: number, fromCurrency: string, toCurrency: strin
   return amountInUsd / targetRate;
 }
 
+function resolveCostSource(resource: CostReportResourceCost): string {
+  const metadataCostSource = resource.metadata?.["costSource"];
+  return typeof metadataCostSource === "string" && metadataCostSource.trim().length > 0
+    ? metadataCostSource
+    : resource.resourceType;
+}
+
 export class ChargebackService {
   public constructor(private readonly source: ChargebackReportSource) {}
 
@@ -112,6 +119,7 @@ export class ChargebackService {
             fxRateToBase: fxRate,
             costOriginal: resource.costUsd,
             costUsd: costInBase,
+            costSource: resolveCostSource(resource),
             reportCount: 1,
             firstPeriodStart: report.periodStart,
             latestPeriodEnd: report.periodEnd,

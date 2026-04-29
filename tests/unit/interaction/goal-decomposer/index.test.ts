@@ -118,3 +118,65 @@ test("GoalDecompositionService falls back to hybrid when llm_plan generator fail
   assert.equal(result.decompositionStrategy, "hybrid");
   assert.equal(result.tasks.length, 3);
 });
+
+test("GoalDecompositionService only gates budget and still delegates zero-cost reservation handling to generator", async () => {
+  let generateCalls = 0;
+  const llmPlanGenerator: LlmPlanGenerator = {
+    managesBudgetReservations: true,
+    async generate(goal) {
+      generateCalls += 1;
+      return {
+        tasks: [
+          {
+            taskId: `${goal.goalId}:llm:1`,
+            domainId: "operations",
+            description: "生成零成本计划",
+            inputs: {},
+            expectedOutputs: ["plan"],
+            delegationMode: "supervised",
+            estimatedDuration: "1h",
+            estimatedCost: {
+              estimatedCostUsd: 0,
+              confidence: "low",
+              sampleCount: 0,
+              divisionId: null,
+              basedOn: "default",
+            },
+          },
+        ],
+        dependencyGraph: [],
+      };
+    },
+  };
+
+  const service = new GoalDecompositionService({
+    llmPlanGenerator,
+    budgetControl: {
+      policy: {
+        maxTaskCostUsd: 10,
+        maxPackCostUsd: 20,
+        maxPlatformCostUsd: 30,
+        maxDailyCostUsd: 20,
+        maxMonthlyCostUsd: 30,
+        warnAtRatio: 0.8,
+        mode: "supervised",
+      },
+      currentTaskCostUsd: 0,
+      currentDailyCostUsd: 0,
+      currentMonthlyCostUsd: 0,
+      tenantId: "tenant:test",
+      harnessRunId: "harness:test",
+      traceId: "trace:test",
+      emittedBy: "goal-decomposer-test",
+      estimatedLlmPlanCostUsd: 0,
+    },
+  });
+
+  const result = await service.decompose(
+    "请为这个跨多个事业部、跨预算池、跨交付节奏的复杂组织转型项目生成详细计划和依赖图，并补齐审批约束、执行顺序、预算边界和风险缓解方案，以便直接进入执行编排。",
+  );
+
+  assert.equal(generateCalls, 1);
+  assert.equal(result.decompositionStrategy, "llm_plan");
+  assert.equal(result.tasks.length, 1);
+});
