@@ -754,7 +754,7 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
-    for (const consumerId of this.subscribers.keys()) {
+    for (const consumerId of this.subscriberRegistry.getAllConsumerIds()) {
       this.scheduleDelivery(consumerId);
     }
   }

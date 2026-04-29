@@ -379,8 +379,8 @@ export const workflowTimelineProjectionHandler: ProjectionHandler = (
   };
   newState.events = [...newState.events, eventEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // Mark event as processed using O(1) Set add
+  newState._processedEventIdSet.add(event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type
