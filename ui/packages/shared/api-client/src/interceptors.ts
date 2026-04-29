@@ -26,6 +26,21 @@ export function createTraceInterceptor(): RestClientInterceptor {
   };
 }
 
+export function createContractVersionInterceptor(supportedVersions: string[] = ["v1"]): RestClientInterceptor {
+  return {
+    onRequest(request) {
+      request.headers.set("Accept-Version", supportedVersions.join(","));
+      return request;
+    },
+    onResponse<T>(response: RestClientResponse<T>): RestClientResponse<T> {
+      if (response.status === 406) {
+        console.error(`[ContractVersion] Server rejected version negotiation. Supported: ${supportedVersions.join(", ")}`);
+      }
+      return response;
+    },
+  };
+}
+
 export function createAuthInterceptor(token: string | null): RestClientInterceptor {
   return {
     onRequest(request) {
@@ -70,6 +85,8 @@ export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientIn
           body: request.body,
           createdAt: new Date().toISOString(),
         });
+        // §5.5: Short-circuit request when offline - return optimistic response
+        throw new Error("rest.offline:Request queued for offline sync");
       }
       return request;
     },

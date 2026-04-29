@@ -39,9 +39,18 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
       pathname: "/v1/prompts",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
-        const payload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse) as Record<string, unknown>;
+        // §7.1: Use Zod inferred output type to preserve validated type safety
+        // The payload is schema-validated at the HTTP boundary per §5.2
+        const payload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse);
         const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
-        const bundle = deps.promptRegistryService.registerBundle(payload as any, level, payload.domain as string | undefined, payload.packId as string | undefined);
+        // §7.1: Replace 'as any' with explicit unsafe cast through unknown to make type bypass intentional
+        // Zod has validated level/domain/packId; registerBundle requires additional fields not in this schema
+        const bundle = deps.promptRegistryService.registerBundle(
+          payload as unknown as Parameters<typeof deps.promptRegistryService.registerBundle>[0],
+          level,
+          payload.domain as string | undefined,
+          payload.packId as string | undefined,
+        );
         return buildJsonResponse(ctx.requestId, 201, { bundle });
       },
     },

@@ -107,6 +107,60 @@ export type DomainEvalSpec = z.infer<typeof DomainEvalSpecSchema>;
 export type DomainGovernanceSpec = z.infer<typeof DomainGovernanceSpecSchema>;
 export type DomainInteractionSpec = z.infer<typeof DomainInteractionSpecSchema>;
 
+/**
+ * ResponsibilityBoundary defines how a domain constrains agent autonomy.
+ * - advisory_only: domain is informational; no blocking enforcement
+ * - human_accountable: domain requires human acknowledgment before autonomous action
+ * - deterministic_hot_path_only: domain permits only deterministic (non-LLM) execution in hot path
+ * - fully_autonomous: domain permits full autonomous execution
+ */
+export type ResponsibilityBoundary =
+  | "advisory_only"
+  | "human_accountable"
+  | "deterministic_hot_path_only"
+  | "fully_autonomous";
+
+/**
+ * Maps DomainRiskSpec flags to a single ResponsibilityBoundary for runtime evaluation.
+ */
+export function toResponsibilityBoundary(spec: DomainRiskSpec): ResponsibilityBoundary {
+  if (spec.deterministicHotPathOnly) {
+    return "deterministic_hot_path_only";
+  }
+  if (spec.humanAccountable) {
+    return "human_accountable";
+  }
+  if (spec.advisoryOnly) {
+    return "advisory_only";
+  }
+  return "fully_autonomous";
+}
+
+/**
+ * Enforces that a given boundary level is respected at runtime.
+ * Returns an error code string if violated, or null if permitted.
+ */
+export function enforceResponsibilityBoundary(
+  boundary: ResponsibilityBoundary,
+  proposedAutonomy: "full_auto" | "llm_assisted" | "human_required",
+): string | null {
+  switch (boundary) {
+    case "deterministic_hot_path_only":
+      if (proposedAutonomy !== "human_required") {
+        return "domain.responsibility_boundary.deterministic_only_violation";
+      }
+      return null;
+    case "human_accountable":
+      if (proposedAutonomy === "full_auto") {
+        return "domain.responsibility_boundary.human_accountable_violation";
+      }
+      return null;
+    case "advisory_only":
+    case "fully_autonomous":
+      return null;
+  }
+}
+
 const DEFAULT_DOMAIN_RISK_SPECS = {
   healthcare: {
     domainId: "healthcare",

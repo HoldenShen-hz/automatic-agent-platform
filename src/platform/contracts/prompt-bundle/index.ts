@@ -3,12 +3,30 @@
  *
  * Defines the PromptBundle type as specified in architecture document §16.
  * A PromptBundle is a composition of system prompt + user prompt + few-shot examples + constraints.
+ *
+ * §16.2: version is an incrementing integer (not semver) for deterministic ordering.
+ * Use semver format only in display/metadata, not for version comparison.
  */
+
+/** §16.4: Compatibility matrix for a PromptBundle covering Tool/Evaluator/Domain/Model compatibility */
+export interface PromptBundleCompatibilityMatrix {
+  /** Tool schema versions this bundle is compatible with */
+  toolSchemaVersions: ReadonlyArray<{ toolName: string; schemaVersion: number }>;
+  /** Evaluator schema versions this bundle is compatible with */
+  evaluatorSchemaVersions: ReadonlyArray<{ evaluatorName: string; schemaVersion: number }>;
+  /** DomainDescriptor versions this bundle is compatible with */
+  domainDescriptorVersions: ReadonlyArray<{ domainId: string; version: number }>;
+  /** Model routing profiles this bundle is compatible with */
+  modelRoutingProfiles: ReadonlyArray<{ modelId: string; profileVersion: number }>;
+}
 
 export interface PromptBundle {
   bundleId: string;
   name: string;
-  version: string;
+  /** §16.2: Incrementing integer version for deterministic ordering */
+  version: number;
+  /** Display version in semver format (for human readability only, not for comparison) */
+  displayVersion: string;
   domain: string;
   taskType: string;
   packId: string | undefined;
@@ -16,6 +34,8 @@ export interface PromptBundle {
   userPrompt: PromptBundleSegment | undefined;
   fewShotExamples: FewShotExample[];
   constraints: PromptBundleConstraints;
+  /** §16.4: Compatibility matrix - must cover Tool/Evaluator/DomainDescriptor/Model routing */
+  compatibilityMatrix: PromptBundleCompatibilityMatrix;
   metadata: PromptBundleMetadata;
   createdAt: string;
   updatedAt: string;
@@ -78,7 +98,10 @@ export interface TrafficTargeting {
 
 export interface PromptBundleRegistrationInput {
   name: string;
-  version: string;
+  /** §16.2: Incrementing integer version for deterministic ordering */
+  version: number;
+  /** Display version in semver format (for human readability only) */
+  displayVersion: string;
   domain: string;
   taskType: string;
   packId: string | undefined;
@@ -86,11 +109,16 @@ export interface PromptBundleRegistrationInput {
   userPrompt: PromptBundleSegment | undefined;
   fewShotExamples: FewShotExample[] | undefined;
   constraints: PromptBundleConstraints | undefined;
+  /** §16.4: Compatibility matrix - must cover Tool/Evaluator/DomainDescriptor/Model routing */
+  compatibilityMatrix: PromptBundleCompatibilityMatrix;
   metadata: PromptBundleMetadata | undefined;
 }
 
 export interface PromptBundleVersion {
-  version: string;
+  /** §16.2: Incrementing integer version for deterministic ordering */
+  version: number;
+  /** Display version in semver format (for human readability only) */
+  displayVersion: string;
   isCurrent: boolean;
   isDefault: boolean;
   trafficWeight: number;

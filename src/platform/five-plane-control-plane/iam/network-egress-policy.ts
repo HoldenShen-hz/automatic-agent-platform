@@ -296,8 +296,10 @@ export class NetworkEgressPolicyService {
 
     // Check internal hostname block
     if (!this.allowInternalHosts && isInternalHostname(hostname)) {
+      // R12-20 fix: blocked destinations always report allowed:false per §11.5
+      // The mode (audit_only vs deny) only controls enforcement, not the decision fact
       return {
-        allowed: !this.isBlockingMode(),
+        allowed: false,
         destinationType,
         destination,
         reasonCode: "EGRESS_INTERNAL_BLOCKED",
@@ -307,7 +309,7 @@ export class NetworkEgressPolicyService {
     // Check blocked destination types
     if (this.blockedDestinationTypes.includes(destinationType)) {
       return {
-        allowed: !this.isBlockingMode(),
+        allowed: false,
         destinationType,
         destination,
         reasonCode: "EGRESS_TYPE_BLOCKED",
@@ -320,7 +322,7 @@ export class NetworkEgressPolicyService {
       && !this.allowedDestinationTypes.includes(destinationType)
     ) {
       return {
-        allowed: !this.isBlockingMode(),
+        allowed: false,
         destinationType,
         destination,
         reasonCode: "EGRESS_TYPE_NOT_ALLOWED",
@@ -330,7 +332,7 @@ export class NetworkEgressPolicyService {
     // Check blocked domains
     if (this.blockedDomains.some((item) => domainMatches(hostname, item))) {
       return {
-        allowed: !this.isBlockingMode(),
+        allowed: false,
         destinationType,
         destination,
         reasonCode: "EGRESS_DOMAIN_BLOCKED",
@@ -343,7 +345,7 @@ export class NetworkEgressPolicyService {
       && !this.allowedDomains.some((item) => domainMatches(hostname, item))
     ) {
       return {
-        allowed: !this.isBlockingMode(),
+        allowed: false,
         destinationType,
         destination,
         reasonCode: "EGRESS_DOMAIN_NOT_ALLOWED",
@@ -418,7 +420,8 @@ export function createPolicyAwareFetch(
     const url = extractUrlString(input);
     const decision = policy.evaluate(url);
 
-    // If blocked, record and throw
+    // Record the decision to audit log
+    // §11.5: All egress decisions must be recorded
     if (!decision.allowed) {
       policy.record(url, options.action, false, {
         errorCode: decision.reasonCode ?? "EGRESS_BLOCKED",
@@ -427,13 +430,18 @@ export function createPolicyAwareFetch(
           destinationType: decision.destinationType,
         },
       });
-      throw new PolicyDeniedError("egress.blocked", `egress.blocked:${decision.reasonCode ?? "EGRESS_DOMAIN_BLOCKED"}:${decision.destination}`, {
-        details: {
-          destination: decision.destination,
-          reasonCode: decision.reasonCode ?? "EGRESS_BLOCKED",
-          destinationType: decision.destinationType,
-        },
-      });
+      // In blocking mode (deny/enforce), throw on blocked destinations
+      // In audit_only mode, log and continue
+      if (policy.getMode() !== "audit_only") {
+        throw new PolicyDeniedError("egress.blocked", `egress.blocked:${decision.reasonCode ?? "EGRESS_DOMAIN_BLOCKED"}:${decision.destination}`, {
+          details: {
+            destination: decision.destination,
+            reasonCode: decision.reasonCode ?? "EGRESS_BLOCKED",
+            destinationType: decision.destinationType,
+          },
+        });
+      }
+      // Fall through in audit_only mode - request proceeds but is logged
     }
 
     // Attempt the fetch

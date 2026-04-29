@@ -7,7 +7,7 @@
 - **Observe**: 读取 run、checkpoint、sleep lease 与恢复状态
 - **Assess**: 判断是否需要恢复或重放
 - **Plan**: 规划 persist/checkpoint/resume 边界
-- **Execute**: 落盘 HarnessRun、NodeRun、decision 与上下文
+- **Execute**: 落盘 HarnessRun、NodeRun、NodeAttempt 与上下文（step 为语义投影，非持久 truth；NodeRun/NodeAttempt 为持久执行单元）
 - **Feedback**: 标记恢复结果与未决风险
 - **Learn**: 分析故障恢复模式
 - **Improve**: 优化 durable boundary

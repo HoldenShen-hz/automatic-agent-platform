@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ConstraintPack } from "../../../../../src/platform/orchestration/harness/constraints/index.js";
+import {
+  getConstraintOutputPolicy,
+  getConstraintRiskPolicy,
+  normalizeConstraintPack,
+  type ConstraintPack,
+} from "../../../../../src/platform/orchestration/harness/constraints/index.js";
 
 test("ConstraintPack type is exported and can be constructed", () => {
   const pack: ConstraintPack = {
@@ -83,4 +88,41 @@ test("ConstraintPack allows different autonomy modes", () => {
     };
     assert.equal(pack.autonomyMode, mode);
   }
+});
+
+test("normalizeConstraintPack canonicalizes legacy snake_case policy fields", () => {
+  const pack: ConstraintPack = {
+    policyIds: ["policy-1"],
+    approvalMode: "required",
+    autonomyMode: "supervised",
+    toolPolicy: { allowedTools: ["read"] },
+    risk_policy: { maxRiskScore: 9, escalationThreshold: 7 },
+    output_policy: { requiredEvidence: ["evidence-1"], redactSensitiveData: true },
+    budget: { maxSteps: 12, maxCost: 3, maxDurationMs: 30_000 },
+  };
+
+  const normalized = normalizeConstraintPack(pack);
+
+  assert.deepEqual(normalized.riskPolicy, { maxRiskScore: 9, escalationThreshold: 7 });
+  assert.deepEqual(normalized.outputPolicy, {
+    requiredEvidence: ["evidence-1"],
+    redactSensitiveData: true,
+  });
+  assert.equal("risk_policy" in normalized, false);
+  assert.equal("output_policy" in normalized, false);
+});
+
+test("ConstraintPack helpers accept both canonical and legacy policy fields", () => {
+  const canonical: ConstraintPack = {
+    policyIds: [],
+    approvalMode: "none",
+    autonomyMode: "full_auto",
+    toolPolicy: { allowedTools: [] },
+    riskPolicy: { maxRiskScore: 5, escalationThreshold: 4 },
+    outputPolicy: { requiredEvidence: [], redactSensitiveData: false },
+    budget: { maxSteps: 5, maxCost: 1, maxDurationMs: 1_000 },
+  };
+
+  assert.equal(getConstraintRiskPolicy(canonical).maxRiskScore, 5);
+  assert.equal(getConstraintOutputPolicy(canonical).requiredEvidence.length, 0);
 });

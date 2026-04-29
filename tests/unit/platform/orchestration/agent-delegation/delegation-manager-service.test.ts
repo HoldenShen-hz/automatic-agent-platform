@@ -225,7 +225,34 @@ test("DelegationManagerService.narrowPermissions intersects actions", async () =
 
   const handle = await service.delegate(parent, spec);
   const delegation = service.getDelegation(handle.delegationId);
-  
+
   assert.ok(delegation !== null);
   // Verify that permissions were narrowed
+  assert.deepEqual(delegation?.permissions.actions, ["a2"]);
+  assert.deepEqual(delegation?.permissions.resources, ["r1", "r2"]);
+});
+
+test("DelegationManagerService.narrowPermissions intersects resources instead of replacing them", async () => {
+  const service = new DelegationManagerService();
+  const parent = createTestContext({
+    permissions: {
+      resources: ["repo:alpha", "repo:beta"],
+      actions: ["read", "write"],
+      constraints: { maxDurationMs: 1000 },
+    },
+  });
+  const spec = createTestSpec({
+    requiredPermissions: {
+      resources: ["repo:beta", "repo:gamma"],
+      actions: ["read"],
+      constraints: { maxDurationMs: 500 },
+    },
+  });
+
+  const handle = await service.delegate(parent, spec);
+  const delegation = service.getDelegation(handle.delegationId);
+
+  assert.ok(delegation !== null);
+  assert.deepEqual(delegation?.permissions.resources, ["repo:beta"]);
+  assert.deepEqual(delegation?.permissions.actions, ["read"]);
 });

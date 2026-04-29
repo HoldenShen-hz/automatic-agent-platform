@@ -143,17 +143,16 @@ export class UxEventTrackingService {
   ): UxEventTrack {
     const eventId = newId("uxevt");
     const occurredAt = nowIso();
-    const p = payload as Record<string, unknown>;
     const trackEntry: UxEventTrack = {
       eventId,
       eventType,
       userId: payload.userId,
-      sessionId: (p.sessionId as string | null) ?? null,
-      taskId: (p.taskId as string | null) ?? null,
-      abTestGroup: (p.abTestGroup as string | null) ?? null,
-      elementId: (p.elementId as string | null) ?? null,
-      interactionType: (p.interactionType as UxEventTrack["interactionType"]) ?? "click",
-      metadata: (p.metadata as Record<string, string>) ?? {},
+      sessionId: payload.sessionId ?? null,
+      taskId: payload.taskId ?? null,
+      abTestGroup: payload.abTestGroup ?? null,
+      elementId: (payload.elementId as string | null) ?? null,
+      interactionType: (payload.interactionType as UxEventTrack["interactionType"]) ?? "click",
+      metadata: payload.metadata ?? {},
       occurredAt,
     };
 
@@ -170,13 +169,13 @@ export class UxEventTrackingService {
           eventId,
           occurredAt,
           userId: payload.userId,
-          sessionId: (p.sessionId as string | null) ?? null,
-          taskId: (p.taskId as string | null) ?? null,
-          abTestGroup: (p.abTestGroup as string | null) ?? null,
-          elementId: (p.elementId as string | null) ?? null,
+          sessionId: payload.sessionId ?? null,
+          taskId: payload.taskId ?? null,
+          abTestGroup: payload.abTestGroup ?? null,
+          elementId: (payload.elementId as string | null) ?? null,
           interactionType: trackEntry.interactionType,
           eventType: trackEntry.eventType,
-          metadata: (p.metadata as Record<string, string>) ?? {},
+          metadata: payload.metadata ?? {},
         },
       });
     }

@@ -207,6 +207,7 @@ export class OapeflirLoopService {
         const taskObservation = await this.runStage<UnifiedObservation>("observe", async () => {
           const taskSituation: TaskSituation = this.situationBuilder.build({
             taskId: currentInput.taskId,
+            domainId: currentInput.workflow.workflow.divisionId,
             objective: currentInput.objective,
             currentPhase: "planning",
             blockers: currentInput.blockerSummaries ?? [],
@@ -247,6 +248,7 @@ export class OapeflirLoopService {
           });
           return {
             taskId: currentInput.taskId,
+            domainId: currentInput.workflow.workflow.divisionId,
             timestamp: Date.now(),
             objective: currentInput.objective,
             currentPhase: "planning",
@@ -518,6 +520,7 @@ export class OapeflirLoopService {
               learningObjectCount: validatedLearningObjects.length,
             });
             if (boundary.allowed) {
+              // R5-8: Register candidate in "proposed" status - approval is handled by rollout.startWithGating per §13.14
               const candidate = this.candidateRegistry.register({
                 taskId: currentInput.taskId,
                 target: "planning_policy",
@@ -525,19 +528,18 @@ export class OapeflirLoopService {
                 description: "Promote feedback-derived planning guidance into the shadow rollout lane.",
                 expectedBenefit: "Reduce repeat repair loops without changing live execution.",
               });
-              const approved = this.candidateRegistry.updateStatus(candidate.candidateId, "approved") ?? candidate;
-              timeline.record("improve", "completed", approved.candidateId, null, "Registered and approved an improvement candidate for shadow rollout.");
+              timeline.record("improve", "completed", candidate.candidateId, null, "Registered an improvement candidate for shadow rollout - approval deferred to rollout service.");
               const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
 
               // R5-8: Release stage with EvaluationGate/approval/canary/rollback per §13.14
-              const releaseResult = await this.runStage("release", () => this.rollout.startWithGating(approved, strategyVersion, "system", {
+              const releaseResult = await this.runStage("release", () => this.rollout.startWithGating(candidate, strategyVersion, "system", {
                 evaluationGate: evaluationReport,
                 requireApproval: assessment.risk === "high" || assessment.risk === "critical",
                 canaryPercent: 10,
                 rollbackOnFailure: true,
               }), {
                 taskId: currentInput.taskId,
-                candidateId: approved.candidateId,
+                candidateId: candidate.candidateId,
               });
               let rawRolloutRecord = releaseResult.record;
               // I→R boundary: validate rollout record — skip release on failure (per §L.14)

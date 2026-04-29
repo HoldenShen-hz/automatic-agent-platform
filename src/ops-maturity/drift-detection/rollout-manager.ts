@@ -9,7 +9,7 @@ import type { ImprovementProposal } from './proposal-engine.js';
 
 export type RolloutStage = 'shadow' | 'canary' | 'partial' | 'stable';
 
-export type RolloutStatus = 'running' | 'succeeded' | 'failed' | 'rolled_back';
+export type RolloutStatus = 'running' | 'succeeded' | 'failed' | 'rollback_pending' | 'rolled_back';
 
 export interface RolloutRecord {
   proposalId: string;
@@ -29,9 +29,23 @@ export interface RolloutMetrics {
   costUsd: number;
 }
 
+export interface MetricThresholds {
+  minSuccessRate?: number;    // e.g., 0.95 for 95%
+  maxErrorRate?: number;       // e.g., 0.05 for 5%
+  maxLatencyMs?: number;       // e.g., 2000 for 2s
+  maxCostUsd?: number;         // e.g., 0.10 per execution
+}
+
+export const DEFAULT_THRESHOLDS: MetricThresholds = {
+  minSuccessRate: 0.95,
+  maxErrorRate: 0.05,
+  maxLatencyMs: 2000,
+  maxCostUsd: 0.10,
+};
+
 export interface RolloutManager {
   start(proposal: ImprovementProposal, stage: RolloutStage, percentage: number): Promise<RolloutRecord>;
-  updateMetrics(proposalId: string, metrics: RolloutMetrics): Promise<void>;
+  updateMetrics(proposalId: string, metrics: RolloutMetrics, thresholds?: MetricThresholds): Promise<void>;
   complete(proposalId: string): Promise<void>;
   fail(proposalId: string, reason: string): Promise<void>;
   rollback(proposalId: string, reason: string): Promise<void>;
@@ -59,10 +73,35 @@ export class SimpleRolloutManager implements RolloutManager {
     return record;
   }
 
-  async updateMetrics(proposalId: string, metrics: RolloutMetrics): Promise<void> {
+  async updateMetrics(
+    proposalId: string,
+    metrics: RolloutMetrics,
+    thresholds: MetricThresholds = DEFAULT_THRESHOLDS
+  ): Promise<void> {
     const record = this.rollouts.get(proposalId);
-    if (record) {
-      record.metrics = metrics;
+    if (!record) return;
+
+    record.metrics = metrics;
+
+    // Check quality/cost/security thresholds per §56.4
+    const violations: string[] = [];
+
+    if (thresholds.minSuccessRate !== undefined && metrics.successRate < thresholds.minSuccessRate) {
+      violations.push(`successRate ${metrics.successRate} below threshold ${thresholds.minSuccessRate}`);
+    }
+    if (thresholds.maxErrorRate !== undefined && metrics.errorRate > thresholds.maxErrorRate) {
+      violations.push(`errorRate ${metrics.errorRate} above threshold ${thresholds.maxErrorRate}`);
+    }
+    if (thresholds.maxLatencyMs !== undefined && metrics.latencyMs > thresholds.maxLatencyMs) {
+      violations.push(`latencyMs ${metrics.latencyMs} above threshold ${thresholds.maxLatencyMs}`);
+    }
+    if (thresholds.maxCostUsd !== undefined && metrics.costUsd > thresholds.maxCostUsd) {
+      violations.push(`costUsd ${metrics.costUsd} above threshold ${thresholds.maxCostUsd}`);
+    }
+
+    if (violations.length > 0) {
+      record.status = 'rollback_pending';
+      record.failureReason = `Metric threshold breach: ${violations.join('; ')}`;
     }
   }
 
@@ -97,7 +136,9 @@ export class SimpleRolloutManager implements RolloutManager {
   }
 
   async getActiveRollouts(): Promise<RolloutRecord[]> {
-    return Array.from(this.rollouts.values()).filter((r) => r.status === 'running');
+    return Array.from(this.rollouts.values()).filter(
+      (r) => r.status === 'running' || r.status === 'rollback_pending'
+    );
   }
 
   getDefaultStageSequence(): RolloutStage[] {

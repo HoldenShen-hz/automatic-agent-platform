@@ -24,7 +24,7 @@ import {
   DEFAULT_ML_CLASSIFIER_CONFIG,
   type PromptInjectionClassification,
   type PromptProtectionPlan,
-} from "../../src/platform/stability/prompt-injection-guard.js";
+} from "../../src/platform/prompt-engine/index.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

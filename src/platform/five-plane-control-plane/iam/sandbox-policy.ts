@@ -79,6 +79,52 @@ export type SymlinkPolicy = "deny" | "allow_explicit";
 export type ProcessRuleMode = "allow" | "deny";
 
 /**
+ * Per-tier resource limits for sandbox execution.
+ * §10.3 requires per-tier time limits, memory limits, and network isolation.
+ */
+export interface SandboxResourceLimits {
+  /** Maximum CPU time in milliseconds */
+  maxCpuTimeMs: number;
+  /** Maximum memory usage in bytes */
+  maxMemoryBytes: number;
+  /** Maximum network bandwidth in bytes per second (0 = unlimited) */
+  maxNetworkBandwidthBps: number;
+  /** Whether network access is allowed */
+  networkIsolationEnabled: boolean;
+}
+
+/**
+ * Default resource limits per sandbox mode/tier.
+ * These can be overridden per-policy.
+ */
+export const DEFAULT_SANDBOX_RESOURCE_LIMITS: Readonly<Record<SandboxMode, SandboxResourceLimits>> = {
+  read_only: {
+    maxCpuTimeMs: 30_000,      // 30 seconds
+    maxMemoryBytes: 256 * 1024 * 1024,  // 256 MB
+    maxNetworkBandwidthBps: 0,
+    networkIsolationEnabled: true,
+  },
+  workspace_write: {
+    maxCpuTimeMs: 120_000,     // 2 minutes
+    maxMemoryBytes: 512 * 1024 * 1024,  // 512 MB
+    maxNetworkBandwidthBps: 1024 * 1024, // 1 MB/s
+    networkIsolationEnabled: false,
+  },
+  scoped_external_access: {
+    maxCpuTimeMs: 300_000,     // 5 minutes
+    maxMemoryBytes: 1024 * 1024 * 1024,  // 1 GB
+    maxNetworkBandwidthBps: 10 * 1024 * 1024, // 10 MB/s
+    networkIsolationEnabled: false,
+  },
+  restricted_exec: {
+    maxCpuTimeMs: 60_000,      // 1 minute
+    maxMemoryBytes: 128 * 1024 * 1024,  // 128 MB
+    maxNetworkBandwidthBps: 0,
+    networkIsolationEnabled: true,
+  },
+};
+
+/**
  * Complete sandbox policy configuration defining access boundaries for tool execution.
  * This policy is evaluated before any file system operations are permitted.
  */
@@ -103,6 +149,45 @@ export interface SandboxPolicy {
 
   /** Default rule for process execution */
   processRuleMode: ProcessRuleMode;
+
+  /**
+   * Per-tier resource limits (time, memory, network).
+   * §10.3 requires per-tier time limits, memory limits, and network isolation.
+   * If not specified, defaults from DEFAULT_SANDBOX_RESOURCE_LIMITS are used.
+   */
+  resourceLimits?: Readonly<SandboxResourceLimits>;
+}
+
+/**
+ * Result of checking a path against the sandbox policy.
+ * Contains the normalized path and whether access is permitted.
+ */
+export interface SandboxPathCheckResult {
+  /** Whether the path access is permitted under the policy */
+  allowed: boolean;
+
+  /** Canonical path after normalization (resolves symlinks, relative paths) */
+  normalizedPath: string;
+
+  /** Error code if access was denied, null if allowed */
+  reasonCode: string | null;
+
+  /**
+   * Effective resource limits applied for this check.
+   * Returns the limits that would be enforced if the path were accessed.
+   */
+  effectiveResourceLimits: SandboxResourceLimits;
+}
+
+/**
+ * Gets the effective resource limits for a sandbox policy.
+ * Returns the policy's limits if specified, otherwise the defaults for the mode.
+ */
+export function getEffectiveResourceLimits(policy: SandboxPolicy): SandboxResourceLimits {
+  if (policy.resourceLimits != null) {
+    return policy.resourceLimits;
+  }
+  return DEFAULT_SANDBOX_RESOURCE_LIMITS[policy.mode];
 }
 
 /**
@@ -340,15 +425,19 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
       allowed: false,
       normalizedPath: resolvedInputPath,
       reasonCode: "sandbox.path_in_denied_root",
+      effectiveResourceLimits: getEffectiveResourceLimits(policy),
     };
   }
 
-  // Second check: Is path outside allowed roots (except for restricted_exec mode)?
-  if (policy.mode !== "restricted_exec" && containsPathTraversalOutside(resolvedInputPath, rawAllowedRoots)) {
+  // Second check: Is path outside allowed roots?
+  // §10.3 filesystem jail requires ALL modes (including restricted_exec)
+  // to enforce path boundaries - the exemption was a security flaw
+  if (containsPathTraversalOutside(resolvedInputPath, rawAllowedRoots)) {
     return {
       allowed: false,
       normalizedPath: resolvedInputPath,
       reasonCode: "sandbox.path_outside_allowed_roots",
+      effectiveResourceLimits: getEffectiveResourceLimits(policy),
     };
   }
 
@@ -361,6 +450,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
       allowed: false,
       normalizedPath: resolvedInputPath,
       reasonCode: "sandbox.symlink_denied",
+      effectiveResourceLimits: getEffectiveResourceLimits(policy),
     };
   }
 
@@ -374,6 +464,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
         allowed: false,
         normalizedPath: resolvedInputPath,
         reasonCode: `sandbox.path_unresolvable:${error instanceof Error ? error.message : String(error)}`,
+        effectiveResourceLimits: getEffectiveResourceLimits(policy),
       };
     }
   }
@@ -387,18 +478,18 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
       allowed: false,
       normalizedPath,
       reasonCode: "sandbox.path_in_denied_root",
+      effectiveResourceLimits: getEffectiveResourceLimits(policy),
     };
   }
 
   // Sixth check: Is resolved path outside allowed roots?
-  if (
-    policy.mode !== "restricted_exec" &&
-    containsPathTraversalOutside(normalizedPath, effectiveAllowedRoots)
-  ) {
+  // §10.3: All modes must enforce path boundaries
+  if (containsPathTraversalOutside(normalizedPath, effectiveAllowedRoots)) {
     return {
       allowed: false,
       normalizedPath,
       reasonCode: "sandbox.path_outside_allowed_roots",
+      effectiveResourceLimits: getEffectiveResourceLimits(policy),
     };
   }
 
@@ -406,6 +497,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
     allowed: true,
     normalizedPath,
     reasonCode: null,
+    effectiveResourceLimits: getEffectiveResourceLimits(policy),
   };
 }
 

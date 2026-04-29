@@ -2109,3 +2109,907 @@
 | R23-74 | P2     | (缺失)                               | BYOK 成本隔离逻辑不存在——平台治理成本 vs 用户模型成本混合                                                                 |
 | R23-75 | P2     | sandbox-policy.ts                    | Contract 要求 PKCE 为 OAuth 默认——IAM 无 PKCE 实现                                                                        |
 | R23-76 | P2     | compliance/ (全模块)                 | Contract 5/6 canonical types 缺失(EvidenceMappingRule/ComplianceReportRequest/Artifact/EvidenceRecord/AuditAppendCommand) |
+
+### §119 Marketplace / SLA Engine / Resource Manager 缺陷
+
+| #      | 严重度 | 文件/位置                                 | 问题                                                                             |
+| ------ | ------ | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| R24-01 | P0     | certification/index.ts:6                  | 认证状态 pending/approved/revoked——缺 reviewing/published/suspended(3个必须状态) |
+| R24-02 | P0     | catalog/index.ts:22                       | reviewStatus 缺 reviewing/published/suspended                                    |
+| R24-03 | P0     | pack-security-service.ts:204              | 静态分析扫描 URI string 而非实际代码——安全检查是 no-op                           |
+| R24-04 | P0     | pack-security-service.ts:65-79            | 无依赖供应链安全审计(CVE/漏洞扫描)——仅检查版本冲突                               |
+| R24-05 | P0     | resource-pool-service.ts:21-77            | 无 per-consumer 资源分解——不可能检测 noisy neighbor                              |
+| R24-06 | P0     | fair-queue/index.ts:15-20                 | 按 orgId 字典序排序优先于 score——"aaa" 永远优先于 "zzz" 不论 SLA                 |
+| R24-07 | P1     | quota-enforcer/index.ts:28                | 用 burstLimit 而非 hardLimit 作拒绝阈值——hard limit 无强制                       |
+| R24-08 | P1     | sla-operations-service.ts:104-108         | 惩罚为 string enum 无金额/无 credit 发放/无补偿跟踪                              |
+| R24-09 | P1     | tier-resolver/index.ts:16-17              | 无 tenantId 参数——无法做 per-tenant tier 解析                                    |
+| R24-10 | P1     | sla-operations-service.ts:111             | preemptionCapApplied 永远 true——死常量                                           |
+| R24-11 | P1     | resource-allocator/index.ts:6-10          | reservedPercent 总和不验证 ≤100——可超额分配                                      |
+| R24-12 | P1     | fair-scheduling-service.ts:50             | 抢占用 burstLimit 而非 hardLimit 触发——太晚                                      |
+| R24-13 | P1     | marketplace-governance-service.ts:501-506 | reviewRequired=false 的 package 仍必须有 review record 才能 publish              |
+| R24-14 | P2     | service-registry.ts:146-148               | Dead code: if(!has) delete——no-op                                                |
+| R24-15 | P2     | structured-logger.ts:412-414              | Race: sync statSync + async appendFile——并发写可超 maxBytes                      |
+| R24-16 | P2     | preemption/index.ts:7-13                  | 无 protected/minPriority 阈值——系统执行也可被驱逐                                |
+| R24-17 | P2     | resource-pool-service.ts:55-63            | release 无 consumerId——任何调用者可释放任何 pool 资源                            |
+
+### §120 Knowledge / Memory / Checkpoints / Truth 缺陷
+
+| #      | 严重度 | 文件/位置                                         | 问题                                                                         |
+| ------ | ------ | ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| R24-18 | P0     | knowledge-retrieval.ts:296                        | 语义搜索反转: vectorStore 存在时返回[]——配置 vector store 后丢失全部语义匹配 |
+| R24-19 | P0     | memory-layer-model.ts:337                         | shouldEvict 对 LRU 层永不触发——priority=epoch ms(~10¹²)永远>0.5              |
+| R24-20 | P0     | workflow-step-checkpoint.ts:255-258               | 验证拒绝有效 checkpoint——compensationModel typeof!=="string" 但实际为 object |
+| R24-21 | P1     | semantic-knowledge-graph.ts:4                     | 仅3种 edge type——缺 derives_from/contradicts/specializes/related_to          |
+| R24-22 | P1     | semantic-knowledge-graph.ts:225                   | collectAdjacent O(V×E)——遍历全部 edges 而非用 adjacencyByNodeId              |
+| R24-23 | P1     | semantic-knowledge-graph.ts:269-271               | addEdge 无去重——重复 upsert 导致 adjacency 无界增长                          |
+| R24-24 | P1     | memory-layer-model.ts vs layer-transition-service | 双重不一致 promotion 规则集(4 rules vs 5 rules,不同阈值/层名)                |
+| R24-25 | P1     | knowledge/ (全目录)                               | 无跨域知识联邦——单 namespace 查询无路由/merge/冲突解决                       |
+| R24-26 | P1     | knowledge/archive/knowledge-archive.ts:19-46      | 无版本历史——upsert 覆盖前版本无回滚/diff                                     |
+| R24-27 | P1     | checkpoints/ (全目录)                             | 无 checkpoint 恢复逻辑——有创建无 restoreFromCheckpoint                       |
+| R24-28 | P1     | checkpoints/ (全目录)                             | 无 checkpoint 版本管理——单一 v1 无迁移/比较/回滚                             |
+| R24-29 | P1     | memory/ (全目录)                                  | 无 ContextTruncationReport——spec 要求记录被压缩/排除/降级内容                |
+| R24-30 | P1     | truth/sqlite/repositories/ (全部)                 | 无乐观锁——直接 INSERT/UPDATE 无 version/CAS 检查                             |
+| R24-31 | P2     | projections/ (artifact/governance/risk)           | processedEventIds 用 Array.includes() O(n²) + 无界增长                       |
+| R24-32 | P2     | memory-consolidation.ts:36-101                    | 无 loss report——spec 要求压缩时记录丢失内容                                  |
+| R24-33 | P2     | memory-layer-model.ts:193-195                     | 未知层 silent fallback "project"——错误配置静默错路由                         |
+| R24-34 | P2     | truth/ (全部 repositories)                        | 非 event-sourced——直接 CRUD 而非从事件 replay 投影                           |
+
+### §121 UI i18n / Tools / Design System / Features 缺陷
+
+| #      | 严重度 | 文件/位置                                | 问题                                                                                    |
+| ------ | ------ | ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| R24-35 | P0     | i18n/index.ts:62-81                      | Locale catalogs 内联硬编码而非 lazy-loaded bundles——全部语言打入初始包                  |
+| R24-36 | P0     | i18n/ (全目录)                           | 无 RTL 支持——无 dir 属性/logical CSS/RTL 检测                                           |
+| R24-37 | P0     | features/alerts/ (全目录)                | 无实时 alert stream——仅 REST polling 无 WebSocket 订阅                                  |
+| R24-38 | P0     | features/alerts/hooks/index.ts:9-16      | 缺 snooze/dismiss/alert history——仅有 ack/mute/escalate 且无 mutation 实现              |
+| R24-39 | P0     | features/domain-wizard/ (全目录)         | 无多步骤 wizard——flat list 无 step state machine/stepper/表单验证/持久化/预览           |
+| R24-40 | P0     | tools/e2e/index.ts                       | 无 Playwright 测试——仅静态场景目录数组无 test()/browser launch                          |
+| R24-41 | P0     | tools/codegen/index.ts                   | 无 OpenAPI codegen——仅从手写数组生成路径常量字符串                                      |
+| R24-42 | P0     | tools/mock-server/index.ts               | 无 HTTP server——3个纯函数返回内存对象无端口/请求处理                                    |
+| R24-43 | P1     | ui-core/design-tokens/index.ts:69-84     | 原始 hex 值非语义 token——无 primitive→semantic 间接层                                   |
+| R24-44 | P1     | ui-core/components/index.ts:6-306        | 几乎零 accessibility——1个 aria-label,无 role/aria-selected/keyboard nav/focus/aria-live |
+| R24-45 | P1     | ui-core/layouts/index.ts:30              | ThreePaneLayout 无响应式——固定 grid 无 @media 断点折叠                                  |
+| R24-46 | P1     | ui-core/design-tokens/index.ts:119-123   | Breakpoint 值 640/960/1280 vs spec 768/1024/1440——不匹配                                |
+| R24-47 | P1     | features/settings/hooks/index.ts:105-107 | save() 同步翻转状态无 API 调用——偏好不持久化到后端                                      |
+| R24-48 | P1     | features/settings/ (全目录)              | 缺 API key management 和 notification settings                                          |
+| R24-49 | P1     | .github/workflows/ui-quality.yml         | CI workflow 文件不存在                                                                  |
+| R24-50 | P1     | ui/ (全目录)                             | 无 visual regression testing——零截图对比工具                                            |
+| R24-51 | P2     | i18n/index.ts:17-18                      | setLocale 无事件发射——组件不会因语言切换 re-render                                      |
+| R24-52 | P2     | ui-core/components/index.ts:93,128-129   | 硬编码中文字符串绕过 i18n                                                               |
+| R24-53 | P2     | ui-core/components/index.ts:201          | 硬编码 #12201a 不在 design tokens 中                                                    |
+| R24-54 | P2     | scripts/perf-budget.mjs:6-9              | 仅检查文件大小——无 Lighthouse CI/Core Web Vitals 强制                                   |
+| R24-55 | P2     | features/settings/web/index.tsx:21       | 语言选择器是 free-text input 非 select——可输入无效 locale                               |
+
+### §122 ADR 实现偏差 + E2E/Integration Tests 缺陷
+
+| #      | 严重度 | 文件/位置                                    | 问题                                                                                         |
+| ------ | ------ | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| R24-56 | P0     | risk-evaluation-engine.ts:122-158            | ADR-026 8因子模型未实现——仍用 legacy 6因子+除数75(应为8因子+除数18)                          |
+| R24-57 | P0     | risk-control/types.ts:42-49                  | RiskFactorsSchema 用废弃字段名——缺 autonomyModeRisk/tenantImpact/evidenceConfidence          |
+| R24-58 | P0     | contracts/request-envelope/index.ts:4-14     | ADR-021 RequestEnvelope 缺4/8必须字段(principal/source_plane/target_plane/directives)        |
+| R24-59 | P0     | src/ (全代码库)                              | ADR-021 OperationalDirective/DecisionDirective 完全未实现——directive-based P2→P3/P4 控制缺失 |
+| R24-60 | P1     | memory-layer-model.ts:48-49                  | ADR-020 promotion 阈值偏离 spec ~20-40%(accessCount 10→8, qualityScore 0.8→0.75 等)          |
+| R24-61 | P1     | memory-layer-model.ts:50                     | ADR-020 L5→L6 要求 manual-only——实现有自动 rule(minHitCount:20)                              |
+| R24-62 | P1     | tests/e2e/workflow-state-transitions.test.ts | E2E 全测 legacy(TransitionService/WorkflowState)——零 RuntimeStateMachine 覆盖                |
+| R24-63 | P1     | tests/e2e/execution-flow.test.ts             | E2E 8个测试全 legacy path——无 canonical HarnessRun/NodeRun/PlanGraphBundle                   |
+| R24-64 | P1     | tests/e2e/task-lifecycle.test.ts             | E2E 10个测试全 legacy——无 RSM.transition(command) 使用                                       |
+| R24-65 | P1     | tests/e2e/multi-step-workflow.test.ts        | 直接 updateWorkflowState 绕过 RSM——验证已被 ADR-030 禁止的行为                               |
+| R24-66 | P1     | tests/e2e/harness-loop-e2e.test.ts:347-377   | INV-BUDGET 无 E2E 覆盖——maxCost 是死代码,注释承认 guard 不会触发                             |
+| R24-67 | P1     | tests/e2e/ (全目录)                          | 无 PlanGraphBundle→NodeAttemptReceipt 端到端测试——canonical P3→P4→P5 零覆盖                  |
+| R24-68 | P2     | tests/e2e/oapeflir-full-loop.test.ts:19      | OAPEFLIR 独立运行不经 HarnessRuntime——违反 ADR-029 架构分层                                  |
+| R24-69 | P2     | risk-evaluation-engine.ts:57                 | MAX_POSSIBLE_SCORE=75 vs ADR-026 应为18——归一化分数完全错误                                  |
+| R24-70 | P2     | tests/e2e/execution-flow.test.ts:379         | 测试验证 blocked→executing 有效——RSM 明确拒绝此转换                                          |
+| R24-71 | P2     | memory-layer-model.ts:157                    | L5 supportsPromotion=false 但有 user→evolution rule——模块内自相矛盾                          |
+| R24-72 | P2     | tests/e2e/ (~75文件)                         | ~95% E2E 仅测 legacy 类型——canonical runtime 接近零 E2E 覆盖                                 |
+
+### §124 Platform Interface / API / Channel Gateway 缺陷
+
+| #      | 严重度 | 文件/位置                                 | 问题                                                                                            |
+| ------ | ------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| R25-01 | P0     | request-helpers.ts:19                     | matchRoute 仅允许 GET/POST/OPTIONS——PATCH/DELETE handler 完全不可达(task-routes 定义但永远404)  |
+| R25-02 | P0     | response-hardening.ts:13                  | CORS allowedOrigins=["*"]+credentials=true——生产默认 wildcard,§6 明确禁止                       |
+| R25-03 | P1     | api-error.ts:65-77                        | instanceof 检查顺序错——GatewayTarget\*Error extends AppError 被先匹配为 AppError,特殊处理死代码 |
+| R25-04 | P1     | utils.ts:192 / http-api-server.ts:604     | 错误响应缺 traceId 和 details 字段——不符 §7 标准化错误格式                                      |
+| R25-05 | P1     | channel-gateway-delivery-service.ts:287   | generateNonce 产生16字节而非32字节熵(64 hex truncate to 32)                                     |
+| R25-06 | P1     | channel-gateway-delivery-service.ts:336   | createDeliveryMessage 未尝试即返回 finalStatus:"success"——消费者收到虚假投递确认                |
+| R25-07 | P1     | channel-gateway-delivery-service.ts:77-82 | Rate limiting per-channel 而非 per-tenant——§7 要求 per-tenant                                   |
+| R25-08 | P1     | websocket-bridge.ts:97-160                | 无 server-initiated heartbeat——死连接不可检测,clients map 无界增长                              |
+| R25-09 | P2     | stream-bridge.ts:180-395                  | 无 backpressure——producer 无流控信号,replay buffer 无界增长                                     |
+| R25-10 | P2     | websocket-bridge.ts:133-139               | 无 WS 消息大小限制——可 OOM DoS                                                                  |
+| R25-11 | P2     | websocket-bridge.ts:128-129               | 无 tenant scope 检查——任何用户可订阅任何 task 更新                                              |
+| R25-12 | P2     | http-api-server.ts:375-378                | Rate limit key 含 path params——每个唯一 taskId 独立 bucket,有效无限流                           |
+| R25-13 | P2     | http-api-server.ts:362-368                | Body read 在 timeout wrapper 外——slow-drip request 绕过超时保护                                 |
+
+### §125 Platform Contracts / Domain Types / Dispatch 缺陷
+
+| #      | 严重度 | 文件/位置                                       | 问题                                                                                          |
+| ------ | ------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| R25-14 | P0     | contracts/state-command/index.ts:6-15           | StateCommand 缺 §5.3 必须字段(leaseId/fencingToken/event/principal/traceId/expectedStatus)    |
+| R25-15 | P0     | contracts/types/domain/core-types.ts:72-77      | TransitionCommand 缺 leaseId/fencingToken/event/payload/expectedVersion/principal             |
+| R25-16 | P0     | domain types (全目录)                           | §5.5 五核心对象(HarnessRun/NodeRun/NodeAttempt/BudgetReservation/SideEffectRecord)均不存在    |
+| R25-17 | P1     | contracts/execution-plan/index.ts:4-19          | 第三份重复 ExecutionPlan——仍用 flat steps[] 非 PlanGraph(node/edge/entry/terminal)            |
+| R25-18 | P1     | contracts/execution-receipt/index.ts:6-17       | Legacy ExecutionReceipt 作一等 contract 导出——缺 harnessRunId/planGraphId/nodeRunId/attemptId |
+| R25-19 | P1     | contracts/model-request/index.ts:9-18           | ModelRequest 无 budgetReservationId——LLM 调用不引用预算预留                                   |
+| R25-20 | P1     | contracts/delegation-request/index.ts:6-17      | DelegationRequest 无 budgetEnvelope/budgetReservationId                                       |
+| R25-21 | P1     | contracts/types/domain/primitives.ts:55         | RunKind 缺 "node_run"——canonical 最小执行单元无法表达                                         |
+| R25-22 | P1     | contracts/types/domain/execution-types.ts:33-61 | ExecutionRecord 用 agentId/roleId 而非 nodeRunId/planGraphId——身份模型偏离 canonical          |
+| R25-23 | P1     | contracts/types/domain/workspace-types.ts:101   | TenantRecord.quotas optional——dispatch 可绕过租户配额限制                                     |
+| R25-24 | P2     | contracts/projection-update/index.ts            | 从 legacy platform-contracts.ts re-export 而非 executable-contracts/                          |
+| R25-25 | P2     | contracts/prompt-bundle/index.ts:8-99           | PromptBundle 无 factory/validation 函数——无输入验证                                           |
+
+### §126 ADR 001-019 + Stability 缺陷
+
+| #      | 严重度 | 文件/位置                                | 问题                                                                                                |
+| ------ | ------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| R25-26 | P1     | ADR-005 / harness/index.ts:60            | ConstraintPack.autonomyMode 用 legacy 4值 enum——ADR-005 canonical 为8-mode UnifiedRuntimeMode       |
+| R25-27 | P1     | ADR-007+001 / learning-object-model.ts:5 | learningType 5种超出 ADR-007 Phase 1 scope(仅3种)——无 superseding ADR                               |
+| R25-28 | P1     | ADR-019 / handoff-serializer.ts:7-13     | Layer 语义反转(L1=FactLayer vs ADR L1=ContextSummary) + 无 L4(Full) + token budgets 不匹配          |
+| R25-29 | P1     | ADR-016 / oapeflir-loop-service.ts:86    | ADR-016 A-1 废弃独立 OapeflirLoopService——仍作为 primary export 独立编排执行                        |
+| R25-30 | P2     | ADR-003 / 003-memory-seven-layers.md     | 文件名 "seven-layers" 实际内容为6层——文件名过时                                                     |
+| R25-31 | P2     | stability/stable-evidence-bundle.ts      | Evidence bundle 遗漏 3个 rehearsal(dispatch/worker-handshake/worker-writeback)——release gate 不验证 |
+| R25-32 | P2     | ADR-005 / agent-registry/index.ts:52     | Agent registry 用独立4值 autonomy enum——与 ConstraintPack 同问题但不同子系统,两套不互通             |
+| R25-33 | P2     | ADR-019 / handoff-model.ts               | 无 HandoffLevel enum——serializeHandoff 仅接受 totalMaxTokens,不支持 per-level 查询                  |
+
+### §127 UI Mobile / Charts / Feature Mutations 缺陷
+
+| #      | 严重度 | 文件/位置                               | 问题                                                                                             |
+| ------ | ------ | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| R25-34 | P0     | vitest.config.ts:16-19                  | Coverage 阈值 30/30/30/20%——§7.2.6 要求 >80%                                                     |
+| R25-35 | P0     | mobile/App.tsx:7                        | 渲染 div/span(React DOM)——§11 要求 React Native 0.79+Hermes+Fabric                               |
+| R25-36 | P0     | ws-client.ts:100-102                    | onclose 后永不重连——WS 永久丢失违反 §5.3 UP-5                                                    |
+| R25-37 | P0     | task-cockpit/hooks:58-78                | mutation 仅 setState 无 API 调用——optimistic update with rollback 完全缺失(同 workflow/approval) |
+| R25-38 | P1     | charts/echart-surface-runtime.tsx:8     | 缺 DataZoomComponent——§4.2.8 要求 data zoom                                                      |
+| R25-39 | P1     | charts/echart-surface-runtime.tsx:38,46 | 硬编码颜色绕过 theme——§6.3.3 要求 theme-aware chart colors                                       |
+| R25-40 | P1     | charts/echart-surface-runtime.tsx:52-53 | Resize 用 window event 非 ResizeObserver——sidebar toggle 不触发 reflow                           |
+| R25-41 | P1     | charts/ (全目录)                        | 无 D3 集成——仅 ECharts LineChart,缺 bar/pie/scatter/gauge/heatmap/sparkline(7种中缺6)            |
+| R25-42 | P1     | conversation/hooks/index.ts:18-65       | 无 TanStack Query/无 WS 集成——raw useState 违反 §4/§5.1.2                                        |
+| R25-43 | P1     | ui-mobile/navigation/index.ts:3-9       | Tab list 缺 conversation——§4.4.2 NL 为 mobile 主入口                                             |
+| R25-44 | P1     | ui-mobile/native-modules/index.ts:1-9   | Native modules 仅 boolean flags——无 NativeModules/TurboModule 绑定                               |
+| R25-45 | P1     | pnpm-workspace.yaml + turbo.json        | 用 pnpm+Turborepo——ADR-UI-001 选型为 npm workspaces                                              |
+| R25-46 | P1     | state/query-client.ts:4-12              | 缺 refetchOnWindowFocus/refetchOnReconnect/per-domain staleTime                                  |
+| R25-47 | P2     | charts/echart-surface-runtime.tsx:27-50 | 无 aria enabled/decal——screen reader 无法叙述图表                                                |
+| R25-48 | P2     | rest-client.ts:200-218                  | 无 Accept-Version header——§1.8 版本协商缺失                                                      |
+| R25-49 | P2     | analytics/web/index.tsx:8               | 仅单一 LineChart——§4.2.8 要求7种图表类型                                                         |
+
+### §129 Dispatch / Delegation / Lease 缺陷
+
+| #      | 严重度 | 文件/位置                                      | 问题                                                                        |
+| ------ | ------ | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| R26-01 | P0     | context-isolator.ts:175                        | Division by zero: parent 0 actions→Infinity→匹配>=0.9→授予 FULL 权限        |
+| R26-02 | P0     | delegation-audit-service.ts:47                 | Audit trail 纯内存 array——重启丢失全部委托审计历史                          |
+| R26-03 | P1     | context-isolator.ts:216-220                    | MINIMAL 隔离在 resources/actions 为空时回退到 parent 全部权限——权限提升     |
+| R26-04 | P1     | context-isolator.ts:151                        | mergePermissions 不取交集——override resources 可超出 base 范围              |
+| R26-05 | P1     | context-isolator.ts:281-289                    | mergeDomainLists denied 域用交集而非并集——denied 域可被丢弃                 |
+| R26-06 | P1     | invariant-enforcer.ts:82                       | checkDepthLimit 比较 message.depth<=context.globalCallDepth——允许无限嵌套   |
+| R26-07 | P1     | delegation-audit-service.ts:122,140            | recordDelegation Completed/Failed 硬编码 depth:0——实际深度丢失              |
+| R26-08 | P1     | lease-repository-sqlite.ts:90-94               | updateLeaseStatus 无状态机 guard——允许反向转换(closed→active)               |
+| R26-09 | P2     | lease-repository-sqlite.ts:102-110             | updateLeaseRelease 无条件覆盖 status=released——已 closed/expired 的也被重写 |
+| R26-10 | P2     | lease-repository-sqlite.ts:96-99               | updateLeaseHeartbeat 不延长 expires_at——lease TTL 实际不可续期              |
+| R26-11 | P2     | execution-worker-writeback-service-async.ts:46 | CJS require() in ESM via createRequire——脆弱模块解析,破坏 tree-shaking      |
+
+### §130 Compliance / Gateway / Eval 缺陷
+
+| #      | 严重度 | 文件/位置                                           | 问题                                                                                      |
+| ------ | ------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| R26-12 | P0     | crypto-shredding-service.ts:encryptRecordForSubject | 返回值含明文 PII 字段——加密后仍泄漏原始数据                                               |
+| R26-13 | P0     | compliance/encryption/index.ts:protectValue         | 使用 base64url 编码伪装加密——无密钥、无 IV、可逆                                          |
+| R26-14 | P0     | dek-manager.ts:markRotated                          | 删除旧 DEK——已加密密文永久不可解密                                                        |
+| R26-15 | P1     | fallback/index.ts                                   | selectFallback 选最便宜模型忽略 tier 兼容性——降级可能违反 SLA                             |
+| R26-16 | P1     | degradation/index.ts                                | deterministic-hot-path-gate allowed:false 但 routeMode:"deterministic_hot_path_only" 矛盾 |
+| R26-17 | P1     | metric-aggregator/index.ts                          | 仅维护计数器——无 real-time windowed rollup/percentile                                     |
+| R26-18 | P1     | health-scorer/index.ts                              | 无 composite indicator weighting——单维度健康评分                                          |
+| R26-19 | P1     | alert-router/index.ts                               | 仅按严重度排序——无实际路由/升级/通知逻辑                                                  |
+| R26-20 | P1     | llm-eval-service.ts                                 | A/B test 硬编码 mock scores 0.85/0.90——非真实评估                                         |
+| R26-21 | P1     | execution-outcome-evaluator.ts                      | qualityScoreWeights 总和 1.2 非 1.0——加权平均偏高                                         |
+| R26-22 | P1     | quality-config-loader.ts                            | bare catch 吞噬所有错误——配置加载失败静默使用默认值                                       |
+| R26-23 | P1     | prompt-injection-guard.ts                           | 输出含任何 URL 即 block——误杀合法 URL 引用                                                |
+| R26-24 | P2     | dek-manager.ts:encryptForSubject                    | 返回错误 IV（固定值非随机生成）                                                           |
+| R26-25 | P2     | compliance-case-orchestration-service.ts            | governance 调用无 try/catch——异常中断整个合规流程                                         |
+| R26-26 | P2     | lineage/index.ts                                    | cloneMetadata shallow clone——嵌套对象共享引用导致污染                                     |
+| R26-27 | P2     | fallback/index.ts                                   | attemptedProfiles 含未尝试的 provider——误导重试逻辑                                       |
+| R26-28 | P2     | cross-provider-judge-service.ts                     | "fastest" 策略实为 "cheapest"（按 cost 排序）                                             |
+| R26-29 | P2     | dashboard-projection-service.ts                     | attention queue 按 createdAt 排序非 priority——紧急事项被埋没                              |
+
+### §131 ADR 080-109 + Contract 偏差
+
+| #      | 严重度 | 文件/位置                                     | 问题                                                                                                     |
+| ------ | ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| R26-30 | P0     | ADR-098 vs harness/index.ts                   | harness 用 waiting_hitl vs canonical awaiting_hitl——两个冲突状态值共存                                   |
+| R26-31 | P0     | contracts/model_gateway_routing vs 实现       | ModelRouteRequest 接口完全不同(routeClass/riskLevel vs requestId/taskId/purpose/routingStrategy)         |
+| R26-32 | P0     | contracts/model_gateway_routing vs 实现       | ModelRouteDecision 字段完全偏离——contract 和代码无重叠字段                                               |
+| R26-33 | P0     | contracts/model_gateway_routing vs 实现       | RouteFailureCode 5个 contract 值(no_capacity/budget_exceeded/risk_blocked/provider_down/timeout)全不存在 |
+| R26-34 | P1     | ADR-080 vs learn/index.ts                     | learningType 5种超出 Phase 1 scope(仅3种)——实现与 ADR 范围不匹配                                         |
+| R26-35 | P1     | ADR-080 vs learn/index.ts                     | LearningObject 字段名/结构偏离(learningObjectId vs objectId, flat vs union discriminator)                |
+| R26-36 | P1     | ADR-093 vs 实现                               | ConstraintPack 缺 sandbox_requirement/approval_requirement 字段                                          |
+| R26-37 | P1     | ADR-097 vs guardrails/                        | guardrail layers 仅 tool 重叠——缺 input/planning/memory/output 四层                                      |
+| R26-38 | P1     | contracts/observability vs metrics-service.ts | RuntimeMetricsSummary 9/14 维度缺失                                                                      |
+| R26-39 | P1     | ADR-096                                       | 仍用 "phase 8b" 未迁移到 "Ring 2" 术语                                                                   |
+| R26-40 | P1     | ADR-106 vs quant-trading/                     | trading 无 PreTradeRisk guard/position limits/loss limits                                                |
+| R26-41 | P2     | ADR-108 vs legal/                             | legal domain 无 attorney-review 强制流程                                                                 |
+| R26-42 | P2     | ADR-105 vs provider-registry                  | latency tier "interactive" 不在 ADR 定义中                                                               |
+| R26-43 | P2     | contracts/observability vs 实现               | metrics 命名不符 oapeflir*<stage>*<metric> 规范                                                          |
+| R26-44 | P2     | ADR-081 vs domain-specs.ts                    | DomainDescriptor 缺 governancePolicy/interactionPolicy 字段                                              |
+
+### §132 UI State / API Deep 缺陷
+
+| #      | 严重度 | 文件/位置                                      | 问题                                                                                                  |
+| ------ | ------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| R26-45 | P0     | ui/packages/shared/state/stores/auth-store     | 仅 boolean isAuthenticated——缺 token/permissions/user/tenantId/login/logout/refreshToken/switchTenant |
+| R26-46 | P0     | ui/packages/shared/state/stores/auth-store     | 无 auth state machine(unauthenticated→authenticating→authenticated→refreshing→expired)                |
+| R26-47 | P0     | ui/packages/shared/api-client/ws-client        | WS 从不重连 + 无 event replay——断线后状态永久丢失                                                     |
+| R26-48 | P0     | ui/packages/shared/state/stores/\*             | 4个 Zustand stores 零 middleware(无 persist/devtools/immer)                                           |
+| R26-49 | P0     | ui/packages/shared/state/stores/\*             | useAuthState/useUiState/useSyncState select 全量 store——破坏 selector-based 性能优化                  |
+| R26-50 | P1     | ui/packages/shared/state/stores/ui-store       | 缺 theme/sidebar/NL panel/command palette state                                                       |
+| R26-51 | P1     | ui/packages/shared/state/stores/realtime-store | 缺 subscription tracking/incident counters                                                            |
+| R26-52 | P1     | ui/packages/shared/state/stores/sync-store     | 缺 online flag/conflicts/error status/retrySync                                                       |
+| R26-53 | P1     | ui/packages/shared/state/query-client          | staleTime 30s vs spec 5min + 缺 refetchOnWindowFocus/Reconnect                                        |
+| R26-54 | P1     | ui/packages/shared/api-client/interceptors     | 缺 RetryInterceptor/DedupeInterceptor                                                                 |
+| R26-55 | P1     | ui/packages/shared/api-client/endpoints        | 缺 body/response type fields——类型不安全                                                              |
+| R26-56 | P1     | ui/packages/shared/api-client/interceptors     | auth interceptor 静态 token 无动态获取/401 refresh/并发队列                                           |
+| R26-57 | P1     | ui/packages/shared/api-client/ws-event-router  | 无 heartbeat 管理——无法检测 zombie 连接                                                               |
+| R26-58 | P1     | ui/turbo.json                                  | 无 inputs/outputs hash/globalDependencies/env passthrough                                             |
+| R26-59 | P1     | ui/apps/web/vite.config.ts                     | 无 source-map staging-only 配置                                                                       |
+| R26-60 | P1     | ui/packages/features/\*                        | 28个 feature 无 i18n keys/独立 route definition                                                       |
+| R26-61 | P2     | ui/apps/web/main.tsx                           | UiRuntimeProvider 硬编码 mock token                                                                   |
+| R26-62 | P2     | ui/packages/shared/api-client/rest-client      | DefaultRESTClient 默认 MockTransport——生产请求不发出                                                  |
+| R26-63 | P2     | ui/packages/shared/api-client/ws-client        | WS token 在 URL query 中——日志/代理可截获                                                             |
+| R26-64 | P2     | ui/packages/shared/state/stores/\*             | 无 state normalization for collections——O(n) lookup                                                   |
+| R26-65 | P2     | ui/packages/shared/state/query-client          | 无 per-type staleTime 覆盖——所有查询同一缓存策略                                                      |
+| R26-66 | P2     | ui/packages/shared/api-client/interceptors     | 无 X-Idempotency-Key interceptor——重试可重复写入                                                      |
+### §129 Dispatch / Delegation / Lease 缺陷
+
+| #      | 严重度 | 文件/位置                                      | 问题                                                                        |
+| ------ | ------ | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| R26-01 | P0     | context-isolator.ts:175                        | Division by zero: parent 0 actions→Infinity→匹配>=0.9→授予 FULL 权限        |
+| R26-02 | P0     | delegation-audit-service.ts:47                 | Audit trail 纯内存 array——重启丢失全部委托审计历史                          |
+| R26-03 | P1     | context-isolator.ts:216-220                    | MINIMAL 隔离在 resources/actions 为空时回退到 parent 全部权限——权限提升     |
+| R26-04 | P1     | context-isolator.ts:151                        | mergePermissions 不取交集——override resources 可超出 base 范围              |
+| R26-05 | P1     | context-isolator.ts:281-289                    | mergeDomainLists denied 域用交集而非并集——denied 域可被丢弃                 |
+| R26-06 | P1     | invariant-enforcer.ts:82                       | checkDepthLimit 比较 message.depth<=context.globalCallDepth——允许无限嵌套   |
+| R26-07 | P1     | delegation-audit-service.ts:122,140            | recordDelegation Completed/Failed 硬编码 depth:0——实际深度丢失              |
+| R26-08 | P1     | lease-repository-sqlite.ts:90-94               | updateLeaseStatus 无状态机 guard——允许反向转换(closed→active)               |
+| R26-09 | P2     | lease-repository-sqlite.ts:102-110             | updateLeaseRelease 无条件覆盖 status=released——已 closed/expired 的也被重写 |
+| R26-10 | P2     | lease-repository-sqlite.ts:96-99               | updateLeaseHeartbeat 不延长 expires_at——lease TTL 实际不可续期              |
+| R26-11 | P2     | execution-worker-writeback-service-async.ts:46 | CJS require() in ESM via createRequire——脆弱模块解析,破坏 tree-shaking      |
+
+### §130 Compliance / Gateway / Eval 缺陷
+
+| #      | 严重度 | 文件/位置                                           | 问题                                                                                      |
+| ------ | ------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| R26-12 | P0     | crypto-shredding-service.ts:encryptRecordForSubject | 返回值含明文 PII 字段——加密后仍泄漏原始数据                                               |
+| R26-13 | P0     | compliance/encryption/index.ts:protectValue         | 使用 base64url 编码伪装加密——无密钥、无 IV、可逆                                          |
+| R26-14 | P0     | dek-manager.ts:markRotated                          | 删除旧 DEK——已加密密文永久不可解密                                                        |
+| R26-15 | P1     | fallback/index.ts                                   | selectFallback 选最便宜模型忽略 tier 兼容性——降级可能违反 SLA                             |
+| R26-16 | P1     | degradation/index.ts                                | deterministic-hot-path-gate allowed:false 但 routeMode:"deterministic_hot_path_only" 矛盾 |
+| R26-17 | P1     | metric-aggregator/index.ts                          | 仅维护计数器——无 real-time windowed rollup/percentile                                     |
+| R26-18 | P1     | health-scorer/index.ts                              | 无 composite indicator weighting——单维度健康评分                                          |
+| R26-19 | P1     | alert-router/index.ts                               | 仅按严重度排序——无实际路由/升级/通知逻辑                                                  |
+| R26-20 | P1     | llm-eval-service.ts                                 | A/B test 硬编码 mock scores 0.85/0.90——非真实评估                                         |
+| R26-21 | P1     | execution-outcome-evaluator.ts                      | qualityScoreWeights 总和 1.2 非 1.0——加权平均偏高                                         |
+| R26-22 | P1     | quality-config-loader.ts                            | bare catch 吞噬所有错误——配置加载失败静默使用默认值                                       |
+| R26-23 | P1     | prompt-injection-guard.ts                           | 输出含任何 URL 即 block——误杀合法 URL 引用                                                |
+| R26-24 | P2     | dek-manager.ts:encryptForSubject                    | 返回错误 IV（固定值非随机生成）                                                           |
+| R26-25 | P2     | compliance-case-orchestration-service.ts            | governance 调用无 try/catch——异常中断整个合规流程                                         |
+| R26-26 | P2     | lineage/index.ts                                    | cloneMetadata shallow clone——嵌套对象共享引用导致污染                                     |
+| R26-27 | P2     | fallback/index.ts                                   | attemptedProfiles 含未尝试的 provider——误导重试逻辑                                       |
+| R26-28 | P2     | cross-provider-judge-service.ts                     | "fastest" 策略实为 "cheapest"（按 cost 排序）                                             |
+| R26-29 | P2     | dashboard-projection-service.ts                     | attention queue 按 createdAt 排序非 priority——紧急事项被埋没                              |
+
+### §131 ADR 080-109 + Contract 偏差
+
+| #      | 严重度 | 文件/位置                                     | 问题                                                                                                     |
+| ------ | ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| R26-30 | P0     | ADR-098 vs harness/index.ts                   | harness 用 waiting_hitl vs canonical awaiting_hitl——两个冲突状态值共存                                   |
+| R26-31 | P0     | contracts/model_gateway_routing vs 实现       | ModelRouteRequest 接口完全不同(routeClass/riskLevel vs requestId/taskId/purpose/routingStrategy)         |
+| R26-32 | P0     | contracts/model_gateway_routing vs 实现       | ModelRouteDecision 字段完全偏离——contract 和代码无重叠字段                                               |
+| R26-33 | P0     | contracts/model_gateway_routing vs 实现       | RouteFailureCode 5个 contract 值(no_capacity/budget_exceeded/risk_blocked/provider_down/timeout)全不存在 |
+| R26-34 | P1     | ADR-080 vs learn/index.ts                     | learningType 5种超出 Phase 1 scope(仅3种)——实现与 ADR 范围不匹配                                         |
+| R26-35 | P1     | ADR-080 vs learn/index.ts                     | LearningObject 字段名/结构偏离(learningObjectId vs objectId, flat vs union discriminator)                |
+| R26-36 | P1     | ADR-093 vs 实现                               | ConstraintPack 缺 sandbox_requirement/approval_requirement 字段                                          |
+| R26-37 | P1     | ADR-097 vs guardrails/                        | guardrail layers 仅 tool 重叠——缺 input/planning/memory/output 四层                                      |
+| R26-38 | P1     | contracts/observability vs metrics-service.ts | RuntimeMetricsSummary 9/14 维度缺失                                                                      |
+| R26-39 | P1     | ADR-096                                       | 仍用 "phase 8b" 未迁移到 "Ring 2" 术语                                                                   |
+| R26-40 | P1     | ADR-106 vs quant-trading/                     | trading 无 PreTradeRisk guard/position limits/loss limits                                                |
+| R26-41 | P2     | ADR-108 vs legal/                             | legal domain 无 attorney-review 强制流程                                                                 |
+| R26-42 | P2     | ADR-105 vs provider-registry                  | latency tier "interactive" 不在 ADR 定义中                                                               |
+| R26-43 | P2     | contracts/observability vs 实现               | metrics 命名不符 oapeflir*<stage>*<metric> 规范                                                          |
+| R26-44 | P2     | ADR-081 vs domain-specs.ts                    | DomainDescriptor 缺 governancePolicy/interactionPolicy 字段                                              |
+
+### §132 UI State / API Deep 缺陷
+
+| #      | 严重度 | 文件/位置                                      | 问题                                                                                                  |
+| ------ | ------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| R26-45 | P0     | ui/packages/shared/state/stores/auth-store     | 仅 boolean isAuthenticated——缺 token/permissions/user/tenantId/login/logout/refreshToken/switchTenant |
+| R26-46 | P0     | ui/packages/shared/state/stores/auth-store     | 无 auth state machine(unauthenticated→authenticating→authenticated→refreshing→expired)                |
+| R26-47 | P0     | ui/packages/shared/api-client/ws-client        | WS 从不重连 + 无 event replay——断线后状态永久丢失                                                     |
+| R26-48 | P0     | ui/packages/shared/state/stores/\*             | 4个 Zustand stores 零 middleware(无 persist/devtools/immer)                                           |
+| R26-49 | P0     | ui/packages/shared/state/stores/\*             | useAuthState/useUiState/useSyncState select 全量 store——破坏 selector-based 性能优化                  |
+| R26-50 | P1     | ui/packages/shared/state/stores/ui-store       | 缺 theme/sidebar/NL panel/command palette state                                                       |
+| R26-51 | P1     | ui/packages/shared/state/stores/realtime-store | 缺 subscription tracking/incident counters                                                            |
+| R26-52 | P1     | ui/packages/shared/state/stores/sync-store     | 缺 online flag/conflicts/error status/retrySync                                                       |
+| R26-53 | P1     | ui/packages/shared/state/query-client          | staleTime 30s vs spec 5min + 缺 refetchOnWindowFocus/Reconnect                                        |
+| R26-54 | P1     | ui/packages/shared/api-client/interceptors     | 缺 RetryInterceptor/DedupeInterceptor                                                                 |
+| R26-55 | P1     | ui/packages/shared/api-client/endpoints        | 缺 body/response type fields——类型不安全                                                              |
+| R26-56 | P1     | ui/packages/shared/api-client/interceptors     | auth interceptor 静态 token 无动态获取/401 refresh/并发队列                                           |
+| R26-57 | P1     | ui/packages/shared/api-client/ws-event-router  | 无 heartbeat 管理——无法检测 zombie 连接                                                               |
+| R26-58 | P1     | ui/turbo.json                                  | 无 inputs/outputs hash/globalDependencies/env passthrough                                             |
+| R26-59 | P1     | ui/apps/web/vite.config.ts                     | 无 source-map staging-only 配置                                                                       |
+| R26-60 | P1     | ui/packages/features/\*                        | 28个 feature 无 i18n keys/独立 route definition                                                       |
+| R26-61 | P2     | ui/apps/web/main.tsx                           | UiRuntimeProvider 硬编码 mock token                                                                   |
+| R26-62 | P2     | ui/packages/shared/api-client/rest-client      | DefaultRESTClient 默认 MockTransport——生产请求不发出                                                  |
+| R26-63 | P2     | ui/packages/shared/api-client/ws-client        | WS token 在 URL query 中——日志/代理可截获                                                             |
+| R26-64 | P2     | ui/packages/shared/state/stores/\*             | 无 state normalization for collections——O(n) lookup                                                   |
+| R26-65 | P2     | ui/packages/shared/state/query-client          | 无 per-type staleTime 覆盖——所有查询同一缓存策略                                                      |
+| R26-66 | P2     | ui/packages/shared/api-client/interceptors     | 无 X-Idempotency-Key interceptor——重试可重复写入                                                      |
+
+### §134 Execution / Model-Gateway / Ops-Maturity 缺陷
+
+| #      | 严重度 | 文件/位置                                                               | 问题                                                                                                                          |
+| ------ | ------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| R27-01 | P0     | shared/observability/transports/fluentd-transport.ts:119                | flush() 监听 drain 事件但 socket 已可写时 drain 永不触发——Promise 永久挂起(死锁)                                              |
+| R27-02 | P0     | model-gateway/provider-registry/minimax/minimax-chat-service.ts:391     | streaming 中 assertMiniMaxBusinessSuccess 异常被 generic catch 以 debug 级别吞噬——业务错误静默丢失                            |
+| R27-03 | P0     | model-gateway/provider-registry/openai/openai-chat-service.ts:464       | streaming 从 first chunk 取 finalFinishReason 但首 SSE chunk finish_reason 恒为 null——content_filter/tool_calls/length 全丢失 |
+| R27-04 | P1     | worker-pool/worker/worker-registry-service.ts:240                       | parseJsonArray() 无 try/catch(对比 handshake-support.ts 有)——corrupt JSON 直接 crash                                          |
+| R27-05 | P1     | worker-pool/worker/ (handshake+writeback)                               | parseJsonArray/toWorkerStatus/buildAgentExecutionRecord/persistRemoteLogs 跨文件复制粘贴——维护分歧                            |
+| R27-06 | P1     | worker-pool/worker/worker-registry-service.ts:577                       | getWorker() unsafe `as` cast 访问 legacy store 方法——绕过类型安全,死代码路径                                                  |
+| R27-07 | P1     | agent-lifecycle/version-manager/agent-version-manager.ts:84             | assignDeploymentSlot() 在 zod-parsed 不可变对象上直接 mutate 字段——共享引用数据损坏                                           |
+| R27-08 | P1     | agent-lifecycle/version-manager/agent-version-manager.ts:86-122         | assignDeploymentSlot 清除对面 slot vs switchSlot 注释"保持双活"——blue-green 语义矛盾                                          |
+| R27-09 | P1     | shared/observability/transports/datadog-transport.ts:59                 | flushInternal HTTP 错误时 resolve() 静默——日志条目丢失无重试/无指标/无背压                                                    |
+| R27-10 | P1     | model-gateway/provider-registry/anthropic/anthropic-chat-service.ts:463 | streaming message_delta 不提取 stop_reason/usage——finalStopReason 永为 null                                                   |
+| R27-11 | P2     | drift-detection/cross-agent-analyzer/index.ts:28                        | metrics.length===1 时 bestAgentId===worstAgentId——误导输出                                                                    |
+| R27-12 | P2     | drift-detection/changepoint-detector/index.ts:93                        | DRIFT_THRESHOLD+EPSILON 使阈值比文档-10%微偏——实际~-9.9999999%触发                                                            |
+| R27-13 | P2     | shared/observability/transports/fluentd-transport.ts:65                 | handleConnected drain loop 无 write 错误处理——中途失败剩余条目丢失                                                            |
+| R27-14 | P2     | agent-lifecycle/retirement/index.ts:45                                  | canRetireAgent ISO 字符串比较忽略时区——混合 UTC/local 结果错误                                                                |
+
+### §135 ADR 020-039 / 061-069 偏差
+
+| #      | 严重度 | ADR + 代码文件                              | 问题                                                                                                     |
+| ------ | ------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| R27-15 | P0     | ADR-026 vs risk-evaluation-engine.ts        | ADR 要求 8 因子风险模型(/18 除数)；代码仍为 legacy 6 因子(MAX_POSSIBLE_SCORE=75)                         |
+| R27-16 | P0     | ADR-021 vs platform-contracts.ts            | ADR 要求 OperationalDirective/DecisionDirective 替代 ControlDirective——新类型完全不存在                  |
+| R27-17 | P0     | ADR-021 vs platform-contracts.ts:12         | RequestEnvelope 缺 ADR 要求的 source_plane/target_plane 字段——无跨平面路由                               |
+| R27-18 | P1     | ADR-027 vs plugin-definition.ts:26          | ADR 禁止 SANDBOX_NONE；代码允许 sandboxTier:"none" 跨 plugin/pack/delegation 类型                        |
+| R27-19 | P1     | ADR-020 vs memory-promotion-engine.ts       | ADR 要求 evaluateDemotion()+runPromotionCycle()→PromotionResult；代码仅有同步 promote()                  |
+| R27-20 | P1     | ADR-020 vs memory-layer-model.ts:48         | ADR L3→L4: accessCount≥10, qualityScore≥0.8；代码用 minHitCount:8, minQualityScore:0.75                  |
+| R27-21 | P1     | ADR-025 vs policy-center/index.ts:35        | PolicyMode 保留 ADR 已删除的 supervised/degraded/maintenance/emergency 值                                |
+| R27-22 | P1     | ADR-027 vs executable-contracts/index.ts:60 | PrincipalRef 缺 type discriminant——ADR 要求 6 种 typed variants                                          |
+| R27-23 | P1     | ADR-029/039 vs nl-gateway/index.ts:66       | DetectedIntent 5 types 缺 ADR 要求的 cancel_task/create_goal/decompress_goal                             |
+| R27-24 | P1     | ADR-064 vs cost-optimization-service.ts:24  | CostAttributionRecord 维度用 subjectType/subjectId——ADR 要求 harness_run_id/node_run_id                  |
+| R27-25 | P1     | ADR-062 vs edge-runtime-sync-service.ts:39  | 冲突解决策略 taxonomy 不匹配(accept_edge/cloud/merge/reject vs last_write_wins/server_wins/merge/manual) |
+| R27-26 | P1     | ADR-061 vs agent-registry/index.ts:6        | lifecycle 状态偏离：production→active, retired→archived, 多出 canary/paused                              |
+| R27-27 | P2     | ADR-020 vs memory-layer-model.ts:17         | 层名不匹配：ADR L1-L6 RuntimeCache/.../Evolution vs 代码 working/session/.../meta                        |
+| R27-28 | P2     | ADR-039 vs nl-gateway/index.ts:96           | RiskPreview 字段 snake_case(ADR) vs camelCase(代码)命名规范不一致                                        |
+| R27-29 | P2     | ADR-026 vs risk-evaluation-engine.ts:11     | 代码注释引用旧 §10.2 权重=4；ADR 规定所有因子权重 1-3                                                    |
+
+### §136 未审计 Contract 偏差
+
+| #      | 严重度 | Contract + 代码文件                                                     | 问题                                                                                                                                              |
+| ------ | ------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R27-30 | P0     | approval_and_hitl_contract vs approval-service.ts:54                    | ApprovalRequest 缺 contract 要求的 escalation_chain/timeout_auto_action/stage_view_ref/harness_run_id/node_run_id                                 |
+| R27-31 | P0     | policy_engine_contract vs iam/policy-engine.ts:121                      | mode 仅3 legacy 值(supervised/auto/full-auto)；contract 要求 8 canonical modes                                                                    |
+| R27-32 | P0     | policy_engine_contract vs iam/policy-engine.ts:100                      | action 缺 contract 要求值：dispatch_execution/set_isolation_level/promote_improvement/advance_rollout/modify_knowledge_trust/promote_memory_layer |
+| R27-33 | P0     | policy_engine_contract vs iam/policy-engine.ts:112                      | riskCategory 缺 contract 要求的 strategy_affecting/governance_sensitive                                                                           |
+| R27-34 | P0     | distributed_locking_contract vs src/                                    | LockTransitionCommand 类型完全不存在——contract 要求与 RSM.transition(command) 集成                                                                |
+| R27-35 | P0     | edge_runtime_contract vs edge-runtime-sync-service.ts:8                 | EdgeRuntimeProfile 缺 contract 要求的 stateful/lease_migration_supported/checkpoint_required_before_preempt                                       |
+| R27-36 | P1     | policy_engine_contract vs policy-engine.ts:134                          | PolicyDecisionResult 缺 decisionTtlMs/matchedRuleRefs；无 PolicyDecisionExplain/PolicyAuditRecord 类型                                            |
+| R27-37 | P1     | policy_engine_contract vs policy-center/index.ts:35                     | PolicyMode 用非 canonical 名(read-only/maintenance/degraded/emergency vs contract 的 read_only/no-write/no-external-call/no-rollout/manual_only)  |
+| R27-38 | P1     | knowledge_boundary_contract vs boundary-manager/index.ts:3              | KnowledgeBoundary 缺 contract 要求的 classification_rules/share_policy                                                                            |
+| R27-39 | P1     | knowledge_boundary_contract vs src/                                     | FederatedSearchRequest/FederatedSearchResult canonical 类型不存在——用 ad-hoc 无类型接口                                                           |
+| R27-40 | P1     | knowledge_boundary_contract vs src/                                     | ChineseWallConstraint canonical 类型不存在——用 inline policy objects                                                                              |
+| R27-41 | P1     | org_hierarchy_contract vs org-node/index.ts:14                          | OrgNodeType 用 company/division/department/team；contract 要求 enterprise/business_unit/department/team/seat                                      |
+| R27-42 | P1     | org_hierarchy_contract vs org-node/index.ts:88                          | OrgNode 缺 contract 要求的 effective_policies/status 字段                                                                                         |
+| R27-43 | P1     | org_hierarchy_contract vs src/                                          | OrgHierarchySnapshot/ApprovalLimitMatrix/CompliancePolicyBinding canonical 类型不存在                                                             |
+| R27-44 | P1     | approval_and_hitl_contract vs hitl-approval-orchestration-service.ts:28 | ApprovalFeedbackLink 缺 loop_iteration/ref_id/feedback_signal_id                                                                                  |
+| R27-45 | P1     | slo_alerting_contract vs operations-governance-service.ts:57            | Runbook catalog 缺 contract 要求的 oapeflir_loop_stalled/rollout_blocked_or_rollback                                                              |
+| R27-46 | P1     | tenant_isolation_contract vs src/                                       | 无自动隔离触发(failure_rate>30% min_sample≥20)——contract §5A 要求                                                                                 |
+| R27-47 | P2     | approval_and_hitl_contract vs approval-service.ts:54                    | ApprovalRequest 用 taskId 而非 contract 的 harness_run_id 作关联键                                                                                |
+| R27-48 | P2     | remote_coordination_contract vs src/                                    | Remote worker session states(connecting/connected/reconnecting/degraded/failed/viewer_only)未实现                                                 |
+| R27-49 | P2     | ha_coordinator_contract vs execution/ha/types.ts:1                      | CoordinatorNode 缺 metadata 限制 follower 动作——无类型级 guard                                                                                    |
+
+### §137 Org-Governance / Scale-Ecosystem / Interaction 缺陷
+
+| #      | 严重度 | 文件/位置                                                                       | 问题                                                                                                |
+| ------ | ------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| R27-50 | P0     | interaction/proactive-agent/trigger-engine/index.ts:7                           | high-risk actions auto-execute 当 requireConfirmation=false——§42/§10 要求 high 级审批               |
+| R27-51 | P0     | org-governance/sso-scim/scim-service.ts:300-325                                 | listUsers/listGroups 无租户隔离——返回所有租户用户,违反 §11 多租户安全                               |
+| R27-52 | P0     | org-governance/sso-scim/api-key-service.ts:94                                   | 过期 API key 在 validateApiKey 中不标记 expired——保持 active 状态,可在竞态窗口被轮换                |
+| R27-53 | P1     | org-governance/delegated-governance/governance-delegation-revocation-saga.ts:28 | cascadeWithinSlo 条件 >=0 恒为 true(数组长度不可能负)——SLO 检查是死代码                             |
+| R27-54 | P1     | org-governance/sso-scim/scim-service.ts:532                                     | SCIM patchGroup remove members 清除全部成员而非解析 path 表达式指定的特定成员                       |
+| R27-55 | P1     | org-governance/sso-scim/scim-service.ts:791                                     | applyFilter 忽略属性名——displayName eq "x" 实际匹配 userName                                        |
+| R27-56 | P1     | org-governance/knowledge-boundary/knowledge-boundary-service.ts:163             | requiredGrantBoundaryIds 检查逻辑错误——跨 boundary 授权请求永远失败                                 |
+| R27-57 | P1     | scale-ecosystem/multi-region/region-health-check-service.ts:330                 | determineStatus 用 reference equality(===)找 regionId——永不匹配,延迟降级是死代码                    |
+| R27-58 | P1     | org-governance/sso-scim/scim-service.ts:419                                     | deleteGroup 不发 provision event——与 deleteUser 发 user_deleted 不一致                              |
+| R27-59 | P1     | org-governance/sso-scim/scim-service.ts:497                                     | removeMemberFromGroup 传空字符串 tenantId 给 updateGroup——审计事件无租户上下文                      |
+| R27-60 | P1     | org-governance/delegated-governance/delegated-governance-service.ts:77          | checkOperation 仅评估 grantorId==="platform_team" 的护栏——忽略 §51.2 层级继承                       |
+| R27-61 | P1     | interaction/autonomy/level-manager/index.ts:3                                   | AUTONOMY_LEVEL_ORDER frozen 在 index 4(>full_auto)——compareAutonomyLevels 视 frozen 为最高级别      |
+| R27-62 | P2     | org-governance/knowledge-boundary/chinese-wall-access-saga.ts:15                | Chinese Wall saga 无 prepare/commit/compensate/audit——仅纯 boolean 检查,违反 §2.4 saga              |
+| R27-63 | P2     | scale-ecosystem/sla-engine/sla-operations-service.ts:111                        | preemptionCapApplied <= 对最高优先级恒 true——条件是 no-op                                           |
+| R27-64 | P2     | interaction/autonomy/promotion-engine/index.ts:16                               | failedExecutions>2(strictly greater)——恰好2次失败+低rate仍可晋升                                    |
+| R27-65 | P2     | org-governance/compliance-engine/evidence-collector.ts:21                       | normalizeEvidenceInput ?? "unknown" 掩盖 required 字段缺失——静默生成坏数据                          |
+| R27-66 | P2     | scale-ecosystem/multi-region/cdc-replication-service.ts:277                     | 复制队列无界增长——enqueueBatch 只推不排,无背压/max_queue_depth                                      |
+| R27-67 | P2     | scale-ecosystem/marketplace/catalog/index.ts:71                                 | validateListingDependencies 检查自身 compatibility 而非依赖方——逻辑反转                             |
+| R27-68 | P2     | org-governance/knowledge-boundary/boundary-manager/index.ts:7                   | defaultVisibility "public" 选项存在但 canAccessKnowledgeBoundary 不检查——public boundary 仍拒绝访问 |
+### §134 Execution / Model-Gateway / Ops-Maturity 缺陷
+
+| #      | 严重度 | 文件/位置                                                               | 问题                                                                                                                          |
+| ------ | ------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| R27-01 | P0     | shared/observability/transports/fluentd-transport.ts:119                | flush() 监听 drain 事件但 socket 已可写时 drain 永不触发——Promise 永久挂起(死锁)                                              |
+| R27-02 | P0     | model-gateway/provider-registry/minimax/minimax-chat-service.ts:391     | streaming 中 assertMiniMaxBusinessSuccess 异常被 generic catch 以 debug 级别吞噬——业务错误静默丢失                            |
+| R27-03 | P0     | model-gateway/provider-registry/openai/openai-chat-service.ts:464       | streaming 从 first chunk 取 finalFinishReason 但首 SSE chunk finish_reason 恒为 null——content_filter/tool_calls/length 全丢失 |
+| R27-04 | P1     | worker-pool/worker/worker-registry-service.ts:240                       | parseJsonArray() 无 try/catch(对比 handshake-support.ts 有)——corrupt JSON 直接 crash                                          |
+| R27-05 | P1     | worker-pool/worker/ (handshake+writeback)                               | parseJsonArray/toWorkerStatus/buildAgentExecutionRecord/persistRemoteLogs 跨文件复制粘贴——维护分歧                            |
+| R27-06 | P1     | worker-pool/worker/worker-registry-service.ts:577                       | getWorker() unsafe `as` cast 访问 legacy store 方法——绕过类型安全,死代码路径                                                  |
+| R27-07 | P1     | agent-lifecycle/version-manager/agent-version-manager.ts:84             | assignDeploymentSlot() 在 zod-parsed 不可变对象上直接 mutate 字段——共享引用数据损坏                                           |
+| R27-08 | P1     | agent-lifecycle/version-manager/agent-version-manager.ts:86-122         | assignDeploymentSlot 清除对面 slot vs switchSlot 注释"保持双活"——blue-green 语义矛盾                                          |
+| R27-09 | P1     | shared/observability/transports/datadog-transport.ts:59                 | flushInternal HTTP 错误时 resolve() 静默——日志条目丢失无重试/无指标/无背压                                                    |
+| R27-10 | P1     | model-gateway/provider-registry/anthropic/anthropic-chat-service.ts:463 | streaming message_delta 不提取 stop_reason/usage——finalStopReason 永为 null                                                   |
+| R27-11 | P2     | drift-detection/cross-agent-analyzer/index.ts:28                        | metrics.length===1 时 bestAgentId===worstAgentId——误导输出                                                                    |
+| R27-12 | P2     | drift-detection/changepoint-detector/index.ts:93                        | DRIFT_THRESHOLD+EPSILON 使阈值比文档-10%微偏——实际~-9.9999999%触发                                                            |
+| R27-13 | P2     | shared/observability/transports/fluentd-transport.ts:65                 | handleConnected drain loop 无 write 错误处理——中途失败剩余条目丢失                                                            |
+| R27-14 | P2     | agent-lifecycle/retirement/index.ts:45                                  | canRetireAgent ISO 字符串比较忽略时区——混合 UTC/local 结果错误                                                                |
+
+### §135 ADR 020-039 / 061-069 偏差
+
+| #      | 严重度 | ADR + 代码文件                              | 问题                                                                                                     |
+| ------ | ------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| R27-15 | P0     | ADR-026 vs risk-evaluation-engine.ts        | ADR 要求 8 因子风险模型(/18 除数)；代码仍为 legacy 6 因子(MAX_POSSIBLE_SCORE=75)                         |
+| R27-16 | P0     | ADR-021 vs platform-contracts.ts            | ADR 要求 OperationalDirective/DecisionDirective 替代 ControlDirective——新类型完全不存在                  |
+| R27-17 | P0     | ADR-021 vs platform-contracts.ts:12         | RequestEnvelope 缺 ADR 要求的 source_plane/target_plane 字段——无跨平面路由                               |
+| R27-18 | P1     | ADR-027 vs plugin-definition.ts:26          | ADR 禁止 SANDBOX_NONE；代码允许 sandboxTier:"none" 跨 plugin/pack/delegation 类型                        |
+| R27-19 | P1     | ADR-020 vs memory-promotion-engine.ts       | ADR 要求 evaluateDemotion()+runPromotionCycle()→PromotionResult；代码仅有同步 promote()                  |
+| R27-20 | P1     | ADR-020 vs memory-layer-model.ts:48         | ADR L3→L4: accessCount≥10, qualityScore≥0.8；代码用 minHitCount:8, minQualityScore:0.75                  |
+| R27-21 | P1     | ADR-025 vs policy-center/index.ts:35        | PolicyMode 保留 ADR 已删除的 supervised/degraded/maintenance/emergency 值                                |
+| R27-22 | P1     | ADR-027 vs executable-contracts/index.ts:60 | PrincipalRef 缺 type discriminant——ADR 要求 6 种 typed variants                                          |
+| R27-23 | P1     | ADR-029/039 vs nl-gateway/index.ts:66       | DetectedIntent 5 types 缺 ADR 要求的 cancel_task/create_goal/decompress_goal                             |
+| R27-24 | P1     | ADR-064 vs cost-optimization-service.ts:24  | CostAttributionRecord 维度用 subjectType/subjectId——ADR 要求 harness_run_id/node_run_id                  |
+| R27-25 | P1     | ADR-062 vs edge-runtime-sync-service.ts:39  | 冲突解决策略 taxonomy 不匹配(accept_edge/cloud/merge/reject vs last_write_wins/server_wins/merge/manual) |
+| R27-26 | P1     | ADR-061 vs agent-registry/index.ts:6        | lifecycle 状态偏离：production→active, retired→archived, 多出 canary/paused                              |
+| R27-27 | P2     | ADR-020 vs memory-layer-model.ts:17         | 层名不匹配：ADR L1-L6 RuntimeCache/.../Evolution vs 代码 working/session/.../meta                        |
+| R27-28 | P2     | ADR-039 vs nl-gateway/index.ts:96           | RiskPreview 字段 snake_case(ADR) vs camelCase(代码)命名规范不一致                                        |
+| R27-29 | P2     | ADR-026 vs risk-evaluation-engine.ts:11     | 代码注释引用旧 §10.2 权重=4；ADR 规定所有因子权重 1-3                                                    |
+
+### §136 未审计 Contract 偏差
+
+| #      | 严重度 | Contract + 代码文件                                                     | 问题                                                                                                                                              |
+| ------ | ------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R27-30 | P0     | approval_and_hitl_contract vs approval-service.ts:54                    | ApprovalRequest 缺 contract 要求的 escalation_chain/timeout_auto_action/stage_view_ref/harness_run_id/node_run_id                                 |
+| R27-31 | P0     | policy_engine_contract vs iam/policy-engine.ts:121                      | mode 仅3 legacy 值(supervised/auto/full-auto)；contract 要求 8 canonical modes                                                                    |
+| R27-32 | P0     | policy_engine_contract vs iam/policy-engine.ts:100                      | action 缺 contract 要求值：dispatch_execution/set_isolation_level/promote_improvement/advance_rollout/modify_knowledge_trust/promote_memory_layer |
+| R27-33 | P0     | policy_engine_contract vs iam/policy-engine.ts:112                      | riskCategory 缺 contract 要求的 strategy_affecting/governance_sensitive                                                                           |
+| R27-34 | P0     | distributed_locking_contract vs src/                                    | LockTransitionCommand 类型完全不存在——contract 要求与 RSM.transition(command) 集成                                                                |
+| R27-35 | P0     | edge_runtime_contract vs edge-runtime-sync-service.ts:8                 | EdgeRuntimeProfile 缺 contract 要求的 stateful/lease_migration_supported/checkpoint_required_before_preempt                                       |
+| R27-36 | P1     | policy_engine_contract vs policy-engine.ts:134                          | PolicyDecisionResult 缺 decisionTtlMs/matchedRuleRefs；无 PolicyDecisionExplain/PolicyAuditRecord 类型                                            |
+| R27-37 | P1     | policy_engine_contract vs policy-center/index.ts:35                     | PolicyMode 用非 canonical 名(read-only/maintenance/degraded/emergency vs contract 的 read_only/no-write/no-external-call/no-rollout/manual_only)  |
+| R27-38 | P1     | knowledge_boundary_contract vs boundary-manager/index.ts:3              | KnowledgeBoundary 缺 contract 要求的 classification_rules/share_policy                                                                            |
+| R27-39 | P1     | knowledge_boundary_contract vs src/                                     | FederatedSearchRequest/FederatedSearchResult canonical 类型不存在——用 ad-hoc 无类型接口                                                           |
+| R27-40 | P1     | knowledge_boundary_contract vs src/                                     | ChineseWallConstraint canonical 类型不存在——用 inline policy objects                                                                              |
+| R27-41 | P1     | org_hierarchy_contract vs org-node/index.ts:14                          | OrgNodeType 用 company/division/department/team；contract 要求 enterprise/business_unit/department/team/seat                                      |
+| R27-42 | P1     | org_hierarchy_contract vs org-node/index.ts:88                          | OrgNode 缺 contract 要求的 effective_policies/status 字段                                                                                         |
+| R27-43 | P1     | org_hierarchy_contract vs src/                                          | OrgHierarchySnapshot/ApprovalLimitMatrix/CompliancePolicyBinding canonical 类型不存在                                                             |
+| R27-44 | P1     | approval_and_hitl_contract vs hitl-approval-orchestration-service.ts:28 | ApprovalFeedbackLink 缺 loop_iteration/ref_id/feedback_signal_id                                                                                  |
+| R27-45 | P1     | slo_alerting_contract vs operations-governance-service.ts:57            | Runbook catalog 缺 contract 要求的 oapeflir_loop_stalled/rollout_blocked_or_rollback                                                              |
+| R27-46 | P1     | tenant_isolation_contract vs src/                                       | 无自动隔离触发(failure_rate>30% min_sample≥20)——contract §5A 要求                                                                                 |
+| R27-47 | P2     | approval_and_hitl_contract vs approval-service.ts:54                    | ApprovalRequest 用 taskId 而非 contract 的 harness_run_id 作关联键                                                                                |
+| R27-48 | P2     | remote_coordination_contract vs src/                                    | Remote worker session states(connecting/connected/reconnecting/degraded/failed/viewer_only)未实现                                                 |
+| R27-49 | P2     | ha_coordinator_contract vs execution/ha/types.ts:1                      | CoordinatorNode 缺 metadata 限制 follower 动作——无类型级 guard                                                                                    |
+
+### §137 Org-Governance / Scale-Ecosystem / Interaction 缺陷
+
+| #      | 严重度 | 文件/位置                                                                       | 问题                                                                                                |
+| ------ | ------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| R27-50 | P0     | interaction/proactive-agent/trigger-engine/index.ts:7                           | high-risk actions auto-execute 当 requireConfirmation=false——§42/§10 要求 high 级审批               |
+| R27-51 | P0     | org-governance/sso-scim/scim-service.ts:300-325                                 | listUsers/listGroups 无租户隔离——返回所有租户用户,违反 §11 多租户安全                               |
+| R27-52 | P0     | org-governance/sso-scim/api-key-service.ts:94                                   | 过期 API key 在 validateApiKey 中不标记 expired——保持 active 状态,可在竞态窗口被轮换                |
+| R27-53 | P1     | org-governance/delegated-governance/governance-delegation-revocation-saga.ts:28 | cascadeWithinSlo 条件 >=0 恒为 true(数组长度不可能负)——SLO 检查是死代码                             |
+| R27-54 | P1     | org-governance/sso-scim/scim-service.ts:532                                     | SCIM patchGroup remove members 清除全部成员而非解析 path 表达式指定的特定成员                       |
+| R27-55 | P1     | org-governance/sso-scim/scim-service.ts:791                                     | applyFilter 忽略属性名——displayName eq "x" 实际匹配 userName                                        |
+| R27-56 | P1     | org-governance/knowledge-boundary/knowledge-boundary-service.ts:163             | requiredGrantBoundaryIds 检查逻辑错误——跨 boundary 授权请求永远失败                                 |
+| R27-57 | P1     | scale-ecosystem/multi-region/region-health-check-service.ts:330                 | determineStatus 用 reference equality(===)找 regionId——永不匹配,延迟降级是死代码                    |
+| R27-58 | P1     | org-governance/sso-scim/scim-service.ts:419                                     | deleteGroup 不发 provision event——与 deleteUser 发 user_deleted 不一致                              |
+| R27-59 | P1     | org-governance/sso-scim/scim-service.ts:497                                     | removeMemberFromGroup 传空字符串 tenantId 给 updateGroup——审计事件无租户上下文                      |
+| R27-60 | P1     | org-governance/delegated-governance/delegated-governance-service.ts:77          | checkOperation 仅评估 grantorId==="platform_team" 的护栏——忽略 §51.2 层级继承                       |
+| R27-61 | P1     | interaction/autonomy/level-manager/index.ts:3                                   | AUTONOMY_LEVEL_ORDER frozen 在 index 4(>full_auto)——compareAutonomyLevels 视 frozen 为最高级别      |
+| R27-62 | P2     | org-governance/knowledge-boundary/chinese-wall-access-saga.ts:15                | Chinese Wall saga 无 prepare/commit/compensate/audit——仅纯 boolean 检查,违反 §2.4 saga              |
+| R27-63 | P2     | scale-ecosystem/sla-engine/sla-operations-service.ts:111                        | preemptionCapApplied <= 对最高优先级恒 true——条件是 no-op                                           |
+| R27-64 | P2     | interaction/autonomy/promotion-engine/index.ts:16                               | failedExecutions>2(strictly greater)——恰好2次失败+低rate仍可晋升                                    |
+| R27-65 | P2     | org-governance/compliance-engine/evidence-collector.ts:21                       | normalizeEvidenceInput ?? "unknown" 掩盖 required 字段缺失——静默生成坏数据                          |
+| R27-66 | P2     | scale-ecosystem/multi-region/cdc-replication-service.ts:277                     | 复制队列无界增长——enqueueBatch 只推不排,无背压/max_queue_depth                                      |
+| R27-67 | P2     | scale-ecosystem/marketplace/catalog/index.ts:71                                 | validateListingDependencies 检查自身 compatibility 而非依赖方——逻辑反转                             |
+| R27-68 | P2     | org-governance/knowledge-boundary/boundary-manager/index.ts:7                   | defaultVisibility "public" 选项存在但 canAccessKnowledgeBoundary 不检查——public boundary 仍拒绝访问 |
+
+### §139 State-Evidence / Repository SQL 缺陷
+
+| #      | 严重度 | 文件/位置                         | 问题                                                                        |
+| ------ | ------ | --------------------------------- | --------------------------------------------------------------------------- |
+| R28-01 | P0     | release-repository.ts:65          | INSERT 26列但仅25个 VALUES 占位符($1-$25)——exported_at 无 $26,INSERT 恒失败 |
+| R28-02 | P0     | release-repository.ts:105         | INSERT 28列但仅27个 VALUES 占位符($1-$27)——同类 off-by-one,INSERT 恒失败    |
+| R28-03 | P0     | release-repository.ts:228         | `WHERE environment IS $1`——无效 PG 语法(IS 仅接 NULL/TRUE/FALSE 字面量)     |
+| R28-04 | P0     | marketplace-repository.ts:169+8处 | `tenant_id IS $N`——无效 PG 语法,影响9个查询位置                             |
+| R28-05 | P0     | operations-repository.ts:175+2处  | `tenant_id IS $N`——无效 PG 语法,影响3个查询位置                             |
+| R28-06 | P1     | prompt-repository.ts:266          | setCurrentVersion 两次 UPDATE 无事务——并发可导致 0 或多个 current version   |
+| R28-07 | P1     | prompt-repository.ts:191,215,240  | PG async repo 用 SQLite boolean 字面量 `deprecated = 0`——PG 需 `= false`    |
+| R28-08 | P1     | prompt-repository.ts:329          | `is_current = 1` SQLite 风格——PG boolean 需 `= true`                        |
+| R28-09 | P2     | marketplace-repository-ext.ts:344 | listDownloadsByListing limit 无 sanitization(无 Math.max/Math.trunc)        |
+| R28-10 | P2     | prompt-repository.ts:62,250,340   | 直接 this.conn.execute() 跳过 asyncExecute() helper——不一致                 |
+
+### §140 Prompt-Engine / Plugins / SDK / Channel-Gateway 缺陷
+
+| #      | 严重度 | 文件/位置                                                   | 问题                                                                                  |
+| ------ | ------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| R28-11 | P0     | plugins/adapters/crm-adapter.ts:56                          | action 参数未过滤直接拼入 URL 路径(`/crm/v3/objects/${action}`)——路径遍历到任意 API   |
+| R28-12 | P0     | plugins/adapters/crm-adapter.ts:55                          | execute() 不检查 credentialFingerprint——未认证即执行(github-adapter 有门控)           |
+| R28-13 | P0     | plugins/adapters/game-dev-adapter.ts:29                     | execute() 无 auth 检查+无 egress policy——任何调用者可无认证调用                       |
+| R28-14 | P0     | plugins/adapters/asset-production-adapter.ts:29             | execute() 无 auth 检查+无 egress policy——同上                                         |
+| R28-15 | P0     | plugins/adapters/livestream-adapter.ts:30                   | execute() 无 auth 检查+无 egress policy——同上                                         |
+| R28-16 | P0     | channel-gateway-delivery-service.ts:287                     | generateNonce `randomBytes(len).toString("hex").slice(0,len)` 熵减半(32 hex=16 bytes) |
+| R28-17 | P1     | prompt-engine/rollout/prompt-rollout-stage.ts:26            | nextPromptRolloutStage("stable") 返回 "rolled_back"——terminal 阶段应返回 null         |
+| R28-18 | P1     | prompt-engine/registry/hierarchical-registry-service.ts:395 | findBundle 接受 version 参数但从不使用——总返回默认 bundle 忽略版本请求                |
+| R28-19 | P1     | prompt-engine/registry/prompt-version-manager.ts:89         | compareVersions 文档说返回 -1/0/1 但返回原始差值(如5)——调用方依赖符号会 break         |
+| R28-20 | P1     | plugins/adapters/game-dev+asset+livestream:authenticate()   | authenticate() 是 no-op——凭证接受但从不验证或存储                                     |
+| R28-21 | P1     | plugins/adapters/game-dev+asset+livestream:healthCheck()    | healthCheck() 硬编码 return true——永不验证连通性,掩盖故障                             |
+| R28-22 | P1     | prompt-engine/registry/prompt-version-manager.ts:234        | VersionLineage interface 重复声明(line 18 和 234)——类型冲突/覆盖                      |
+| R28-23 | P1     | sdk/pack-sdk/pack-scaffold-service.ts:267                   | packId 含 $ 字符时 regex replace 静默损坏生成代码                                     |
+| R28-24 | P2     | prompt-engine/registry/prompt-version-manager.ts:42         | versionCache Map 声明但从未 populate/read——死代码                                     |
+| R28-25 | P2     | channel-gateway/websocket-bridge.ts:99                      | JWT token 作 URL query 参数——泄漏到 access log/referrer header                        |
+| R28-26 | P2     | plugins/adapters/crm-adapter.ts:61                          | execute() 返回硬编码 stub 字符串"CRM ${action} stub"——生产代码返回假数据              |
+| R28-27 | P2     | channel-gateway-delivery-service.ts:336                     | createDeliveryMessage 创建时即设 finalStatus:"success"——未投递就标记成功              |
+| R28-28 | P2     | sdk/pack-sdk/pack-scaffold-service.ts:302                   | packId regex 允许点和下划线——拼入目录路径时产生歧义                                   |
+
+### §141 UI Deep Dive 缺陷
+
+| #      | 严重度 | 文件/位置                                  | 问题                                                                                |
+| ------ | ------ | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| R28-29 | P0     | shared/platform/web-platform-adapter.ts:9  | "Secure" 值存 plaintext localStorage(`aa.secure.*`)——XSS 可直接读取                 |
+| R28-30 | P0     | shared/auth/auth-service.ts:37             | handleSsoCallback 参数缺失时回退到硬编码 "mock-access-token"——生产 SSO 返回假 token |
+| R28-31 | P0     | apps/web/runtime.ts:44-46                  | wsUrl 配置被忽略——两个分支创建相同 BrowserWSClient(WebSocket, InMemoryWSClient())   |
+| R28-32 | P0     | apps/web/app-shell.tsx:1-124               | 无 ErrorBoundary——未捕获渲染错误导致整个 UI 白屏崩溃                                |
+| R28-33 | P1     | shared/sync/conflict-resolver.ts:15        | spec 要求 CRDT 冲突解决；merge 策略仅 shallow spread({...server,...local})——非 CRDT |
+| R28-34 | P1     | features/hitl/hooks/index.ts:5-13          | HITL hook 返回硬编码静态字符串——无 API 调用/无状态/完全惰性                         |
+| R28-35 | P1     | features/approval/hooks/index.ts:80-85     | approve()/reject() 仅更新本地 state 不调 REST API——审批决策静默丢弃                 |
+| R28-36 | P1     | shared/auth/auth-service.ts:7              | refreshToken 存储但从不使用——无 token 刷新流程,过期即断线                           |
+| R28-37 | P1     | shared/api-client/interceptors.ts:65       | offline queue interceptor enqueue 后仍放行请求到网络(无 early return)——重复提交     |
+| R28-38 | P1     | apps/web/app-shell.tsx:8-22                | Guard context 硬编码全部权限——无动态用户权限解析,所有功能对所有人开放               |
+| R28-39 | P1     | ui-core/index.tsx:61                       | 所有 feature 设 codeSplit:false——无路由级代码分割,违反 <200KB bundle 预算           |
+| R28-40 | P1     | features/approval/web/index.tsx:46         | Delegate input 无 aria-label；Approve/Reject 无 aria-describedby——WCAG 2.1 AA 缺口  |
+| R28-41 | P1     | features/alerts/hooks/index.ts:19-21       | alerts VM 只读；ack/mute/escalate 按钮从不调后端 API                                |
+| R28-42 | P2     | shared/telemetry/index.ts:28               | TelemetrySink.record() void Promise.all——export 错误静默丢失                        |
+| R28-43 | P2     | ui-core/components/index.ts:28             | ListCard 用 item.title 作 React key——重复标题导致 key 冲突和渲染 bug                |
+| R28-44 | P2     | shared/sync/offline-queue.ts:19-22         | enqueue() 同步但 void persist()——标签关闭前 mutation 可丢失                         |
+| R28-45 | P2     | features/conversation/hooks/index.ts:19    | ConversationClient per-hook useMemo 实例化——无共享实例,remount 丢状态               |
+| R28-46 | P2     | ui-core/themes/index.ts:1-50               | resolveTheme 存在但 designTokens 是模块常量——组件直接 import,切换主题无效           |
+| R28-47 | P2     | features/task-cockpit/hooks/index.ts:58-63 | claimTask/escalateTask 仅本地 mutate——无 API/无乐观更新回滚                         |
+
+### §142 Tests / Config / Bootstrap 缺陷
+
+| #      | 严重度 | 文件/位置                                                          | 问题                                                                                                   |
+| ------ | ------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| R28-48 | P0     | tests/integration/security/input-validation.test.ts:414            | "blocks control characters" 测试用 maliciousCommand="echo"(干净字符串)断言 blocked——验证错误行为为正确 |
+| R28-49 | P0     | platform-architecture-bootstrap.ts:150                             | getPlatformArchitectureServices 每次调用重新 register——掩盖幂等性 bug                                  |
+| R28-50 | P0     | shared/lifecycle/service-registry.ts:146                           | register() 条件 `if(!has(name)){delete(name)}`——反逻辑,stale 实例永不被重注册驱逐                      |
+| R28-51 | P1     | tests/integration/orchestration/\*-integration.test.ts             | "Integration" 测试零真实服务导入——全部 mock 对象+手动赋值,实为 unit test                               |
+| R28-52 | P1     | tests/integration/stability/\*-integration.test.ts                 | 同上：仅测试数据结构构造,无真实服务集成                                                                |
+| R28-53 | P1     | config/security/default.json:7                                     | allowedCapabilities 含 "mcp" 但无 MCP 沙箱约束/速率限制/egress policy                                  |
+| R28-54 | P1     | config/risk/default.json:62-66                                     | riskLevelActions.medium autoExecute:true + requiresApproval:false——中风险操作无审批自动执行            |
+| R28-55 | P1     | config/gateways/default.json:3                                     | sseEnabled:true 无 sseMaxConnections/sseIdleTimeoutMs——资源耗尽攻击向量                                |
+| R28-56 | P1     | config/runtime/default.json:2                                      | maxConcurrentTasks:1——无法验证并发行为,无集成测试覆盖并发场景                                          |
+| R28-57 | P1     | divisions/ trigger overlap                                         | "fix" 同时匹配 engineering_ops(pri50)+support(pri25)；"bug" 匹配3个 division——无消歧测试               |
+| R28-58 | P1     | tests/integration/security/                                        | 无 sandbox deniedRoots:[] 测试——默认配置 workspace_write 模式下 /etc /proc /sys 未显式拒绝             |
+| R28-59 | P2     | config/bootstrap/default.json:3                                    | phase:"phase_1a" 固定——无配置级 guard 阻止此早期 phase 进入生产                                        |
+| R28-60 | P2     | config/domains/default.json:96                                     | coding domain 含 shell_exec 工具但 securityLevel:"standard"——应为 "elevated"                           |
+| R28-61 | P2     | tests/integration/plugins/plugin-execution-integration.test.ts:138 | 硬编码 `ghp_test_token_12345`——匹配 GitHub PAT 前缀,可触发 secret scanner                              |
+| R28-62 | P2     | shared/lifecycle/service-registry.ts:316                           | topological sort 循环依赖仅 warn 不 throw——静默允许破坏 teardown 顺序                                  |
+| R28-63 | P2     | divisions/operations/division.yaml:11                              | "deployment" trigger 同时匹配 operations(pri20)+devops(pri45)——路由歧义                                |
+
+### §144 Orchestration / Planner / Escalation / Learn / Improve-Rollout 缺陷
+
+| #      | 严重度 | 文件/位置                                | 问题                                                                                                        |
+| ------ | ------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| R29-01 | P0     | learning-artifact-model.ts:74            | fallback checksum 用 learningObjectId 填充(含 `_`/`g-z`)——不满足 `^[a-f0-9]{64}$` 校验恒 throw              |
+| R29-02 | P1     | plan-strategy-selector.ts:23             | hierarchical 策略在 critical-risk 检查前选定——critical-risk multi-division 得到 hierarchical 而非 reflexive |
+| R29-03 | P1     | plan-builder.ts:41-50                    | DAG valid===false 时仍用 orderedSteps 构建 plan——循环图/缺失依赖被静默接受                                  |
+| R29-04 | P1     | rollout-state-machine.ts:29              | paused 可直接跳转 stable——绕过 canary→partial→stable 渐进发布                                               |
+| R29-05 | P1     | autonomy-boundary-policy.ts:31           | learningObjects.every() 对空数组返回 true——零证据即允许 auto-rollout                                        |
+| R29-06 | P1     | knowledge-promotion-service.ts:102       | batch promotion event 仅引用 learningObjects[0]——误导下游 consumer                                          |
+| R29-07 | P1     | escalation/index.ts:5-14                 | EscalationRequest 无 SLA/timeout 字段；decide() 无超时/SLA-aware 路由                                       |
+| R29-08 | P1     | policy-rollout-service.ts:59             | approval gate 仅对 shadow 级强制——非 shadow 的 candidate 可直接 start() 跳过审批                            |
+| R29-09 | P2     | truncation-detector.ts:26                | finishReasonLength 计算后从未引用——死代码                                                                   |
+| R29-10 | P2     | plan-repository.ts:6-10                  | save() 无去重——同一 plan 多次 save 产生重复条目                                                             |
+| R29-11 | P2     | plan-evaluator.ts:23                     | 资源估算 flat `steps.length*1000`——忽略 per-step 工具差异,系统性低估                                        |
+| R29-12 | P2     | canary-traffic-router.ts:32              | hashToBucket 弱乘法哈希(\*31)——短 taskId 产生非均匀分布,偏斜 canary 流量                                    |
+| R29-13 | P2     | experience-distillation-service.ts:22-30 | buildRecommendation 仅处理 failure_pattern/recovery_playbook——3种类型落入 generic default                   |
+
+### §145 Dispatcher / HA / Recovery / State-Transition 缺陷
+
+| #      | 严重度 | 文件/位置                                     | 问题                                                                                               |
+| ------ | ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| R29-14 | P0     | ha-coordinator-service-inner.ts:353           | renewLeadership 返回 fencingToken=currentLease.ttlMs——TTL 毫秒值冒充 fencing token                 |
+| R29-15 | P1     | ha-coordinator-service-inner.ts:77,701        | fencingTokenCounter 每次实例化重置——重启后重发旧 token,破坏 fencing 安全                           |
+| R29-16 | P1     | ha-coordinator-service-inner.ts:530-543       | authorizeAction leader_only: activeLease===null 时 fallthrough 到 authorized:true——无 lease 即授权 |
+| R29-17 | P1     | cross-region-event-replication-service.ts:178 | processReplicationQueue() async 无 await——Promise 丢弃,错误静默,replicate() 提前返回               |
+| R29-18 | P1     | patch-bundle.ts:107                           | 错误消息 copy-paste bug: 显示实际值两次,不显示限制值                                               |
+| R29-19 | P1     | exception-recovery-config-loader.ts:28        | 模块级 cachedConfig 忽略 configPath 参数——第二次不同路径调用静默返回 stale config                  |
+| R29-20 | P1     | cross-region-deployment-service.ts:548-558    | completeFailoverStep failure 时剩余 steps 保持 "pending"——不标记 "skipped",状态不一致              |
+| R29-21 | P1     | ha-coordinator-service-inner.ts:640-648       | triggerFailover 记录 FailoverDecision 用 stale fencingToken(acquireLeadership 前的值)              |
+| R29-22 | P2     | execution-recovery-worker.ts:49-54            | runRecoveryCycle 列出候选但从不执行恢复动作——itemsRecovered 是计数非实际恢复                       |
+| R29-23 | P2     | cross-region-event-replication-service.ts:356 | retry setTimeout 重入 processReplicationQueue 但队列已排空——重试是 no-op                           |
+
+### §146 Interaction / API Routes / NL-Gateway / Dashboard 缺陷
+
+| #      | 严重度 | 文件/位置                             | 问题                                                                                   |
+| ------ | ------ | ------------------------------------- | -------------------------------------------------------------------------------------- |
+| R29-24 | P0     | billing-routes.ts:47-51               | 任何 Authorization/x-api-key header(即使无效)即跳过 webhook 签名验证——auth bypass      |
+| R29-25 | P0     | request-helpers.ts:19                 | matchRoute 仅允许 GET/POST/OPTIONS——所有 PATCH/PUT/DELETE 路由不可达(死代码)           |
+| R29-26 | P1     | conversation-history-service.ts:207   | getSession 忽略 tenantId——任何租户可检索任何 session(IDOR)                             |
+| R29-27 | P1     | task-routes.ts:255-256                | PATCH title: 调用 updateTaskInput 传旧 inputJson,新 title 从未写入——更新是 no-op       |
+| R29-28 | P1     | intent-parser/index.ts:17             | fallback normalized.length>12 一律 classify 为 task_create——误分类                     |
+| R29-29 | P1     | nl-gateway/index.ts:1-2               | named export detectAmbiguity 覆盖 `export *` 中同名——调用方获得错误实现                |
+| R29-30 | P1     | dashboard-websocket-server.ts:337-345 | performHeartbeat 标记超时 client isConnected=false 但不移除——死连接累积阻塞 maxClients |
+| R29-31 | P1     | conversation-history-service.ts:121   | memoryLayer==="layer_3"时 addTurn 跳过持久化——但 persistSession 默认 layer_3,逻辑矛盾  |
+| R29-32 | P2     | incident-routes.ts:86                 | incidentId 无 validation(task routes 有 validateTaskId)——不一致                        |
+| R29-33 | P2     | incident-routes.ts:91                 | 用户提供的 incidentId 直接反射到错误消息——日志注入/信息泄漏                            |
+| R29-34 | P2     | conversation-history-service.ts:246   | listUserSessions limit 在排序前截断——返回任意子集而非最新 N 条                         |
+| R29-35 | P2     | ux-event-tracking-service.ts:91       | eventLog 数组无界增长无驱逐——长时间运行进程内存泄漏                                    |
+| R29-36 | P2     | ux-event-tracking-service.ts:122      | UX analytics 发布硬编码 "test:many_events" type via `as any`——生产错误事件类型         |
+| R29-37 | P2     | task-routes.ts:73                     | 内部 hardcoded limit:200——>200 tasks 在 cursor 分页前静默截断                          |
+| R29-38 | P2     | billing-routes.ts:39-106              | /billing/ 和 /v1/billing/ 逻辑完全重复——维护风险                                       |
+| R29-39 | P2     | prompt-routes.ts:12                   | schema .passthrough() + `payload as any`——任意字段未验证直接转发 registry              |
+
+### §147 Compliance / Model-Gateway / Incident-Control / IAM / Chaos 缺陷
+
+| #      | 严重度 | 文件/位置                                 | 问题                                                                                                       |
+| ------ | ------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| R29-40 | P0     | auto-stop-loss-service.ts:731             | approvePendingExecution 标记 approved 但从不执行保护动作——审批是 no-op                                     |
+| R29-41 | P0     | degradation-controller.ts:430             | deescalate() 重置 consecutiveHealthyCount=0 后引用——报告永远显示 recovered_after_0                         |
+| R29-42 | P1     | auto-stop-loss-service.ts:715             | getHourKey month+day 无分隔符——1月11日与11月1日碰撞,速率限制被绕过                                         |
+| R29-43 | P1     | auto-stop-loss-service.ts:627             | 人工审批路径不调 lastExecutionTime.set()——审批后 playbook 冷却期不生效                                     |
+| R29-44 | P1     | tenant-execution-isolation-service.ts:323 | usage.status==="critical" 重置 overallStatus="active"——反逻辑,critical 应升级非重置                        |
+| R29-45 | P1     | unified-chat-provider.ts:329              | MiniMax streaming 始终 isFinal=false——consumer 永收不到流结束信号                                          |
+| R29-46 | P1     | model-routing-service.ts:343              | compareProfiles 次排序 a.maxOutputTokens-b.maxOutputTokens 偏好较低值——注释说 higher=more capable,排序反转 |
+| R29-47 | P1     | chaos-experiment-scheduler.ts:148         | 完成检查不按 hypothesis name 去重——重复调用同 hypothesis 触发 premature completion                         |
+| R29-48 | P1     | data-classification-service.ts:720        | matchesRule 将用户 rule.patterns 直接传给 new RegExp()——ReDoS via defineRule()                             |
+| R29-49 | P1     | auto-stop-loss-service.ts:619             | 升级级别用 string.includes("emergency")——应使用 severity 参数而非字符串匹配                                |
+| R29-50 | P1     | cve-intelligence-service.ts:281           | source.url! non-null assertion 但 CveSourceConfig.url 是 optional——undefined 传入 fetch crash              |
+| R29-51 | P1     | vault-http-secret-provider.ts:209         | 单段 ref `secret://mykey` 产生空路径段 `secret/data/`——Vault 返回 404                                      |
+| R29-52 | P2     | degradation-controller.ts:236             | D0 failure 递归 this.route 最多4层无显式深度 guard——修改 enum 可致栈溢出                                   |
+| R29-53 | P2     | compliance-report-pipeline-service.ts:119 | ISO 日期字典序比较在混合时区/精度下失败                                                                    |
+| R29-54 | P2     | auto-stop-loss-service.ts:697             | executionHistory splice O(n) shift each recordEvent + executionCounts map key 永不清理                     |
+| R29-55 | P2     | audit-event-integrity.ts:256              | latestChainHash 从未排序 entries.at(-1) 读取——输入非预排序时报告错误 hash                                  |
+### §144 Orchestration / Planner / Escalation / Learn / Improve-Rollout 缺陷
+
+| #      | 严重度 | 文件/位置                                | 问题                                                                                                        |
+| ------ | ------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| R29-01 | P0     | learning-artifact-model.ts:74            | fallback checksum 用 learningObjectId 填充(含 `_`/`g-z`)——不满足 `^[a-f0-9]{64}$` 校验恒 throw              |
+| R29-02 | P1     | plan-strategy-selector.ts:23             | hierarchical 策略在 critical-risk 检查前选定——critical-risk multi-division 得到 hierarchical 而非 reflexive |
+| R29-03 | P1     | plan-builder.ts:41-50                    | DAG valid===false 时仍用 orderedSteps 构建 plan——循环图/缺失依赖被静默接受                                  |
+| R29-04 | P1     | rollout-state-machine.ts:29              | paused 可直接跳转 stable——绕过 canary→partial→stable 渐进发布                                               |
+| R29-05 | P1     | autonomy-boundary-policy.ts:31           | learningObjects.every() 对空数组返回 true——零证据即允许 auto-rollout                                        |
+| R29-06 | P1     | knowledge-promotion-service.ts:102       | batch promotion event 仅引用 learningObjects[0]——误导下游 consumer                                          |
+| R29-07 | P1     | escalation/index.ts:5-14                 | EscalationRequest 无 SLA/timeout 字段；decide() 无超时/SLA-aware 路由                                       |
+| R29-08 | P1     | policy-rollout-service.ts:59             | approval gate 仅对 shadow 级强制——非 shadow 的 candidate 可直接 start() 跳过审批                            |
+| R29-09 | P2     | truncation-detector.ts:26                | finishReasonLength 计算后从未引用——死代码                                                                   |
+| R29-10 | P2     | plan-repository.ts:6-10                  | save() 无去重——同一 plan 多次 save 产生重复条目                                                             |
+| R29-11 | P2     | plan-evaluator.ts:23                     | 资源估算 flat `steps.length*1000`——忽略 per-step 工具差异,系统性低估                                        |
+| R29-12 | P2     | canary-traffic-router.ts:32              | hashToBucket 弱乘法哈希(\*31)——短 taskId 产生非均匀分布,偏斜 canary 流量                                    |
+| R29-13 | P2     | experience-distillation-service.ts:22-30 | buildRecommendation 仅处理 failure_pattern/recovery_playbook——3种类型落入 generic default                   |
+
+### §145 Dispatcher / HA / Recovery / State-Transition 缺陷
+
+| #      | 严重度 | 文件/位置                                     | 问题                                                                                               |
+| ------ | ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| R29-14 | P0     | ha-coordinator-service-inner.ts:353           | renewLeadership 返回 fencingToken=currentLease.ttlMs——TTL 毫秒值冒充 fencing token                 |
+| R29-15 | P1     | ha-coordinator-service-inner.ts:77,701        | fencingTokenCounter 每次实例化重置——重启后重发旧 token,破坏 fencing 安全                           |
+| R29-16 | P1     | ha-coordinator-service-inner.ts:530-543       | authorizeAction leader_only: activeLease===null 时 fallthrough 到 authorized:true——无 lease 即授权 |
+| R29-17 | P1     | cross-region-event-replication-service.ts:178 | processReplicationQueue() async 无 await——Promise 丢弃,错误静默,replicate() 提前返回               |
+| R29-18 | P1     | patch-bundle.ts:107                           | 错误消息 copy-paste bug: 显示实际值两次,不显示限制值                                               |
+| R29-19 | P1     | exception-recovery-config-loader.ts:28        | 模块级 cachedConfig 忽略 configPath 参数——第二次不同路径调用静默返回 stale config                  |
+| R29-20 | P1     | cross-region-deployment-service.ts:548-558    | completeFailoverStep failure 时剩余 steps 保持 "pending"——不标记 "skipped",状态不一致              |
+| R29-21 | P1     | ha-coordinator-service-inner.ts:640-648       | triggerFailover 记录 FailoverDecision 用 stale fencingToken(acquireLeadership 前的值)              |
+| R29-22 | P2     | execution-recovery-worker.ts:49-54            | runRecoveryCycle 列出候选但从不执行恢复动作——itemsRecovered 是计数非实际恢复                       |
+| R29-23 | P2     | cross-region-event-replication-service.ts:356 | retry setTimeout 重入 processReplicationQueue 但队列已排空——重试是 no-op                           |
+
+### §146 Interaction / API Routes / NL-Gateway / Dashboard 缺陷
+
+| #      | 严重度 | 文件/位置                             | 问题                                                                                   |
+| ------ | ------ | ------------------------------------- | -------------------------------------------------------------------------------------- |
+| R29-24 | P0     | billing-routes.ts:47-51               | 任何 Authorization/x-api-key header(即使无效)即跳过 webhook 签名验证——auth bypass      |
+| R29-25 | P0     | request-helpers.ts:19                 | matchRoute 仅允许 GET/POST/OPTIONS——所有 PATCH/PUT/DELETE 路由不可达(死代码)           |
+| R29-26 | P1     | conversation-history-service.ts:207   | getSession 忽略 tenantId——任何租户可检索任何 session(IDOR)                             |
+| R29-27 | P1     | task-routes.ts:255-256                | PATCH title: 调用 updateTaskInput 传旧 inputJson,新 title 从未写入——更新是 no-op       |
+| R29-28 | P1     | intent-parser/index.ts:17             | fallback normalized.length>12 一律 classify 为 task_create——误分类                     |
+| R29-29 | P1     | nl-gateway/index.ts:1-2               | named export detectAmbiguity 覆盖 `export *` 中同名——调用方获得错误实现                |
+| R29-30 | P1     | dashboard-websocket-server.ts:337-345 | performHeartbeat 标记超时 client isConnected=false 但不移除——死连接累积阻塞 maxClients |
+| R29-31 | P1     | conversation-history-service.ts:121   | memoryLayer==="layer_3"时 addTurn 跳过持久化——但 persistSession 默认 layer_3,逻辑矛盾  |
+| R29-32 | P2     | incident-routes.ts:86                 | incidentId 无 validation(task routes 有 validateTaskId)——不一致                        |
+| R29-33 | P2     | incident-routes.ts:91                 | 用户提供的 incidentId 直接反射到错误消息——日志注入/信息泄漏                            |
+| R29-34 | P2     | conversation-history-service.ts:246   | listUserSessions limit 在排序前截断——返回任意子集而非最新 N 条                         |
+| R29-35 | P2     | ux-event-tracking-service.ts:91       | eventLog 数组无界增长无驱逐——长时间运行进程内存泄漏                                    |
+| R29-36 | P2     | ux-event-tracking-service.ts:122      | UX analytics 发布硬编码 "test:many_events" type via `as any`——生产错误事件类型         |
+| R29-37 | P2     | task-routes.ts:73                     | 内部 hardcoded limit:200——>200 tasks 在 cursor 分页前静默截断                          |
+| R29-38 | P2     | billing-routes.ts:39-106              | /billing/ 和 /v1/billing/ 逻辑完全重复——维护风险                                       |
+| R29-39 | P2     | prompt-routes.ts:12                   | schema .passthrough() + `payload as any`——任意字段未验证直接转发 registry              |
+
+### §147 Compliance / Model-Gateway / Incident-Control / IAM / Chaos 缺陷
+
+| #      | 严重度 | 文件/位置                                 | 问题                                                                                                       |
+| ------ | ------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| R29-40 | P0     | auto-stop-loss-service.ts:731             | approvePendingExecution 标记 approved 但从不执行保护动作——审批是 no-op                                     |
+| R29-41 | P0     | degradation-controller.ts:430             | deescalate() 重置 consecutiveHealthyCount=0 后引用——报告永远显示 recovered_after_0                         |
+| R29-42 | P1     | auto-stop-loss-service.ts:715             | getHourKey month+day 无分隔符——1月11日与11月1日碰撞,速率限制被绕过                                         |
+| R29-43 | P1     | auto-stop-loss-service.ts:627             | 人工审批路径不调 lastExecutionTime.set()——审批后 playbook 冷却期不生效                                     |
+| R29-44 | P1     | tenant-execution-isolation-service.ts:323 | usage.status==="critical" 重置 overallStatus="active"——反逻辑,critical 应升级非重置                        |
+| R29-45 | P1     | unified-chat-provider.ts:329              | MiniMax streaming 始终 isFinal=false——consumer 永收不到流结束信号                                          |
+| R29-46 | P1     | model-routing-service.ts:343              | compareProfiles 次排序 a.maxOutputTokens-b.maxOutputTokens 偏好较低值——注释说 higher=more capable,排序反转 |
+| R29-47 | P1     | chaos-experiment-scheduler.ts:148         | 完成检查不按 hypothesis name 去重——重复调用同 hypothesis 触发 premature completion                         |
+| R29-48 | P1     | data-classification-service.ts:720        | matchesRule 将用户 rule.patterns 直接传给 new RegExp()——ReDoS via defineRule()                             |
+| R29-49 | P1     | auto-stop-loss-service.ts:619             | 升级级别用 string.includes("emergency")——应使用 severity 参数而非字符串匹配                                |
+| R29-50 | P1     | cve-intelligence-service.ts:281           | source.url! non-null assertion 但 CveSourceConfig.url 是 optional——undefined 传入 fetch crash              |
+| R29-51 | P1     | vault-http-secret-provider.ts:209         | 单段 ref `secret://mykey` 产生空路径段 `secret/data/`——Vault 返回 404                                      |
+| R29-52 | P2     | degradation-controller.ts:236             | D0 failure 递归 this.route 最多4层无显式深度 guard——修改 enum 可致栈溢出                                   |
+| R29-53 | P2     | compliance-report-pipeline-service.ts:119 | ISO 日期字典序比较在混合时区/精度下失败                                                                    |
+| R29-54 | P2     | auto-stop-loss-service.ts:697             | executionHistory splice O(n) shift each recordEvent + executionCounts map key 永不清理                     |
+| R29-55 | P2     | audit-event-integrity.ts:256              | latestChainHash 从未排序 entries.at(-1) 读取——输入非预排序时报告错误 hash                                  |
+
+
+### §149 State-Evidence / CAS / Projections / Knowledge / Memory 缺陷
+
+| #      | 严重度 | 文件/位置                                       | 问题                                                                                          |
+| ------ | ------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| R30-01 | P0     | fencing-token-service.ts:100                    | validateFencingToken split("-") 但 executionId 含连字符(UUID)——parts[1] 提取错误段,验证恒失败 |
+| R30-02 | P1     | knowledge-archive.ts:20-41                      | upsert 新 checksum 时旧 documentsByChecksum 条目未移除——stale 记录泄漏                        |
+| R30-03 | P1     | knowledge-archive.ts:36-38                      | upsert checksum 匹配时旧 chunks 不从 recordsByChunkId 清除——stale chunks 仍可查询             |
+| R30-04 | P1     | semantic-knowledge-graph.ts:269                 | addEdge 无去重——重复 upsertRecord 产生重复边,膨胀图查询结果                                   |
+| R30-05 | P1     | cas-service.ts:183                              | setValue 无条件重置 version=1——破坏并发 compareAndSet 的单调版本预期                          |
+| R30-06 | P1     | fencing-token-service.ts:61                     | tokenCounter per-instance 但 activeFences static——多实例产生碰撞 token 值                     |
+| R30-07 | P1     | approval-queue-projection.ts:356                | handleDecisionRejected 设 rejectionsReceived=approvalsRequired——单次拒绝计为全员拒绝          |
+| R30-08 | P1     | fencing-token-service.ts:149-156                | acquireFence 不阻止同节点重获 exclusive 也不检查他节点 shared fence——锁语义损坏               |
+| R30-09 | P2     | semantic-knowledge-graph.ts:225                 | collectAdjacent 遍历全部 edges 而非用 adjacencyByNodeId——O(V·E) vs O(V+E)                     |
+| R30-10 | P2     | workflow-run-projection.ts:135 (9个 projection) | isEventProcessed 用 Array.includes()——O(n) per event 使 replay O(n²)                          |
+| R30-11 | P2     | layered-event-inbox.ts:21                       | records 无界增长无 compaction——长时间运行内存泄漏                                             |
+| R30-12 | P2     | tool-usage-projection.ts:224                    | invocation_completed 时 successCount++ 但不设 status——状态停留 "started"                      |
+| R30-13 | P2     | knowledge-snapshot-store.ts:54                  | load() JSON.parse 无 schema validation——损坏/篡改快照静默返回无效数据                         |
+| R30-14 | P2     | layer-transition-service.ts:315                 | age 用 createdAt 非 time-in-current-layer——晋升后下次转换过早触发                             |
+
+### §150 Harness / Sandbox / Tool-Executor / Guardrails 缺陷
+
+| #      | 严重度 | 文件/位置                    | 问题                                                                                           |
+| ------ | ------ | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| R30-15 | P0     | command-security.ts:97       | chmod writePathArgPositions:[0] 校验 mode 字符串而非 arg[1] 实际路径——sandbox 路径检查绕过     |
+| R30-16 | P0     | command-security.ts:98       | chown writePathArgPositions:[0] 校验 owner:group 而非 arg[1] 实际路径——同上                    |
+| R30-17 | P1     | hitl-runtime.ts:42-53        | resolve() 允许对已决议请求再次决议(approved→rejected)——无状态 guard                            |
+| R30-18 | P1     | tool-output-sanitizer.ts:20  | ANSI_REGEX 仅匹配 SGR(\e[…m)——CSI cursor/erase、OSC 等终端控制序列未剥离                       |
+| R30-19 | P1     | tool-metadata.ts:491-495     | WEB_SEARCH readOnly:false + approvalMode:"never"——搜索为只读却标记可变且免审批                 |
+| R30-20 | P1     | tool-metadata.ts:522-525     | WEB_FETCH readOnly:false + approvalMode:"never"——同上,HTTP GET 标记为可变                      |
+| R30-21 | P1     | command-security.ts:70-71    | grep/rg pathArgPositions:[-1] 仅验证最后 arg——`grep pattern file1 file2` 中 file1 绕过检查     |
+| R30-22 | P1     | web-fetch.ts:156             | isInternalUrl 检查 hostname 字符串非解析后 IP——DNS rebinding(域解析到 127.0.0.1)绕过 SSRF 防护 |
+| R30-23 | P1     | command-security.ts:259      | 脚本解释器 flag 检查阻止所有 `-` 前缀参数——`python script.py --verbose` 被误拒                 |
+| R30-24 | P2     | loop/index.ts:74,77          | iterations 用 `>=`(0-indexed) 但 replans 用 `>`——允许 maxReplans+1 次 replan                   |
+| R30-25 | P2     | command-security.ts:92,109   | mkdir/touch 重复条目——Map last-wins 使第一条(无 writePathArgPositions)成死代码                 |
+| R30-26 | P2     | guardrail-engine.ts:91-95    | suggestedAction 含 "retry_same_plan" 但 engine 从不返回——consumer 死代码路径                   |
+| R30-27 | P2     | tool-output-sanitizer.ts:28  | CONTROL_CHARS \u000B-\u001A 不含 ESC(\u001B)——裸 ESC 字节通过未剥离                            |
+| R30-28 | P2     | recovery-controller.ts:26-30 | worker_crash 只调 recover() 不调 resume()——恢复的 run 停留非运行态                             |
+
+### §151 Middleware / Approval-Routing / Domains / Async 缺陷
+
+| #      | 严重度 | 文件/位置                                                | 问题                                                                                             |
+| ------ | ------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --- | ----------------------------------------------------- |
+| R30-29 | P0     | shared/async/sync-backed-async-service.ts:9              | asPromise 在 Promise.resolve() 前同步执行 operation——同步抛出变为未捕获异常而非 rejected Promise |
+| R30-30 | P0     | approval-routing/route-engine/index.ts:97                | OrgChartRoutingStrategy selectNode fallback nodes[0]——orgNodeId 未找到时静默路由到任意节点       |
+| R30-31 | P1     | domains/registry/plugin-ecosystem-runtime-service.ts:134 | buildPlan 调用两次(L108,L134)——状态可在两次间变化(TOCTOU),产生不同 plan                          |
+| R30-32 | P1     | approval-routing/approval-routing-service.ts:79          | audit recordId=requesterId_orgNodeId 无时间戳——同人同节点重复审批请求 ID 碰撞                    |
+| R30-33 | P1     | api/middleware/sdk-version-handshake.ts:86               | parseInt(part,10)                                                                                |     | 0 将恶意版本 "a.b.c" 解析为 0.0.0——可绕过最低版本检查 |
+| R30-34 | P1     | approval-routing/route-engine/index.ts:118               | amountCny < threshold 严格小于——恰好等于阈值跳过匹配规则,非预期升级到公司级审批                  |
+| R30-35 | P1     | approval-routing/delegation/index.ts:27-28               | ISO 日期 string <= 比较在不同 offset 格式下失败(Z vs +00:00 vs +08:00)                           |
+| R30-36 | P1     | approval-routing/route-engine/index.ts:147               | SoD 阻止全部 node owner 后可产生空 approverChain——无 fallback/escalation guard                   |
+| R30-37 | P1     | domains/registry/plugin-runtime-host.ts:255              | IPC 消息 cast as PluginRuntimeMessage 无 schema validation——被攻破子进程可注入任意数据           |
+| R30-38 | P2     | domains/recipes/recipe-executor.ts:34                    | workflow existence check 是 regex stub(/^nonexistent/)——任何 ID "成功"                           |
+| R30-39 | P2     | domains/registry/plugin-runtime-child.ts:12,123          | 变量名 stdoutBuffer 实际累积 stdin 数据——copy-paste 命名错误                                     |
+| R30-40 | P2     | domains/registry/domain-registry-service.ts:107          | deprecate() 无状态 guard——允许从 draft/archived 直接 deprecate                                   |
+| R30-41 | P2     | approval-routing/route-engine/index.ts:288               | USD→CNY 硬编码汇率 7.2 无 staleness check/rate source 验证                                       |
+| R30-42 | P2     | shared/async/sync-backed-async-service.ts.bak            | .bak 备份文件残留在源码树——不应被跟踪/部署                                                       |
+
+### §152 UI Features / Electron / Tauri / Charts 缺陷
+
+| #      | 严重度 | 文件/位置                                       | 问题                                                                                        |
+| ------ | ------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| R30-43 | P0     | electron-win/src/preload.ts:33                  | installElectronBridge 直接赋值 window.**AA_ELECTRON** 绕过 contextBridge——破坏上下文隔离    |
+| R30-44 | P0     | electron-win/src/preload.ts:6-7                 | preload 暴露 shell:run/shell:spawn 通道无命令白名单——renderer 可执行任意 shell 命令         |
+| R30-45 | P0     | tauri-macos/src-tauri/tauri.conf.json:1         | 无 security section——缺 CSP/dangerousRemoteDomainIpcAccess/capability scoping               |
+| R30-46 | P0     | tauri-linux/src-tauri/tauri.conf.json:1         | 同上：无 security/CSP 配置                                                                  |
+| R30-47 | P0     | electron-win/index.html:3                       | 无 Content-Security-Policy meta tag——spec §6.5.4 要求 CSP baseline                          |
+| R30-48 | P1     | features/governance-compliance/hooks/index.ts:6 | hook 返回硬编码静态数组——无 API 调用,spec 要求完整审计轨迹+后端集成                         |
+| R30-49 | P1     | features/takeover/hooks/index.ts:5              | hook 返回硬编码静态数组——无 WS 订阅/状态传输逻辑,spec 要求 live state transfer              |
+| R30-50 | P1     | ui-core/charts/echart-surface-runtime.tsx:26    | init() 仅接受静态 values prop+全量重建——无 appendData/streaming 支持                        |
+| R30-51 | P1     | ui-core/charts/index.tsx:18                     | MiniTrendBars 无 role/aria-label——`<span>` 无语义,WCAG 2.1 AA 失败                          |
+| R30-52 | P1     | ui-core/layouts/index.ts:30                     | ThreePaneLayout 固定 gridTemplateColumns——无响应式断点,违反 spec §2.5.1                     |
+| R30-53 | P1     | features/analytics/hooks/index.ts:12            | trendSummary 映射 "up"/"flat"/"down" 到 3/2/1——chart 收到无意义序数非真实指标值             |
+| R30-54 | P1     | features/governance-compliance/web/index.tsx:11 | actions 定义 id/label/tone 但无 onClick——governance 操作(escalate/review)完全惰性           |
+| R30-55 | P1     | features/takeover/web/index.tsx:11              | takeover actions(start/annotate/resume)无 onClick——关键管理操作不可执行                     |
+| R30-56 | P1     | ui-mobile/native-modules/index.ts:1             | nativeModulesBaseline 是 flat boolean 配置——无实际 bridge/permission/capability negotiation |
+| R30-57 | P2     | ui-core/charts/index.tsx:5                      | MetricGrid 无 role="group"/aria-label——screen reader 无法识别指标区域                       |
+| R30-58 | P2     | features/workflow-cockpit/hooks/index.ts:41     | selectedWorkflow fallback workflows[0]——删除后 stale selection 显示错误 workflow            |
+| R30-59 | P2     | features/settings/hooks/index.ts:42-47          | useEffect 依赖 primitive 但内部读 object property——identity mismatch 可跳过同步             |
+| R30-60 | P2     | electron-win/src/main.ts:15-16                  | channels 无 tier/permission 分组——shell:run 与 secure-store 同信任级别                      |
+| R30-61 | P2     | features/domain-wizard/hooks/index.ts:12        | 用户控制的 domain.owner 直接嵌入模板——若渲染为 HTML 存 XSS 风险                             |
+| R30-62 | P2     | ui-core/charts/echart-surface-runtime.tsx:52    | resize 监听 window 非 ResizeObserver on container——panel 变化时 chart 不刷新                |
+### §149 State-Evidence / CAS / Projections / Knowledge / Memory 缺陷
+
+| #      | 严重度 | 文件/位置                                       | 问题                                                                                          |
+| ------ | ------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| R30-01 | P0     | fencing-token-service.ts:100                    | validateFencingToken split("-") 但 executionId 含连字符(UUID)——parts[1] 提取错误段,验证恒失败 |
+| R30-02 | P1     | knowledge-archive.ts:20-41                      | upsert 新 checksum 时旧 documentsByChecksum 条目未移除——stale 记录泄漏                        |
+| R30-03 | P1     | knowledge-archive.ts:36-38                      | upsert checksum 匹配时旧 chunks 不从 recordsByChunkId 清除——stale chunks 仍可查询             |
+| R30-04 | P1     | semantic-knowledge-graph.ts:269                 | addEdge 无去重——重复 upsertRecord 产生重复边,膨胀图查询结果                                   |
+| R30-05 | P1     | cas-service.ts:183                              | setValue 无条件重置 version=1——破坏并发 compareAndSet 的单调版本预期                          |
+| R30-06 | P1     | fencing-token-service.ts:61                     | tokenCounter per-instance 但 activeFences static——多实例产生碰撞 token 值                     |
+| R30-07 | P1     | approval-queue-projection.ts:356                | handleDecisionRejected 设 rejectionsReceived=approvalsRequired——单次拒绝计为全员拒绝          |
+| R30-08 | P1     | fencing-token-service.ts:149-156                | acquireFence 不阻止同节点重获 exclusive 也不检查他节点 shared fence——锁语义损坏               |
+| R30-09 | P2     | semantic-knowledge-graph.ts:225                 | collectAdjacent 遍历全部 edges 而非用 adjacencyByNodeId——O(V·E) vs O(V+E)                     |
+| R30-10 | P2     | workflow-run-projection.ts:135 (9个 projection) | isEventProcessed 用 Array.includes()——O(n) per event 使 replay O(n²)                          |
+| R30-11 | P2     | layered-event-inbox.ts:21                       | records 无界增长无 compaction——长时间运行内存泄漏                                             |
+| R30-12 | P2     | tool-usage-projection.ts:224                    | invocation_completed 时 successCount++ 但不设 status——状态停留 "started"                      |
+| R30-13 | P2     | knowledge-snapshot-store.ts:54                  | load() JSON.parse 无 schema validation——损坏/篡改快照静默返回无效数据                         |
+| R30-14 | P2     | layer-transition-service.ts:315                 | age 用 createdAt 非 time-in-current-layer——晋升后下次转换过早触发                             |
+
+### §150 Harness / Sandbox / Tool-Executor / Guardrails 缺陷
+
+| #      | 严重度 | 文件/位置                    | 问题                                                                                           |
+| ------ | ------ | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| R30-15 | P0     | command-security.ts:97       | chmod writePathArgPositions:[0] 校验 mode 字符串而非 arg[1] 实际路径——sandbox 路径检查绕过     |
+| R30-16 | P0     | command-security.ts:98       | chown writePathArgPositions:[0] 校验 owner:group 而非 arg[1] 实际路径——同上                    |
+| R30-17 | P1     | hitl-runtime.ts:42-53        | resolve() 允许对已决议请求再次决议(approved→rejected)——无状态 guard                            |
+| R30-18 | P1     | tool-output-sanitizer.ts:20  | ANSI_REGEX 仅匹配 SGR(\e[…m)——CSI cursor/erase、OSC 等终端控制序列未剥离                       |
+| R30-19 | P1     | tool-metadata.ts:491-495     | WEB_SEARCH readOnly:false + approvalMode:"never"——搜索为只读却标记可变且免审批                 |
+| R30-20 | P1     | tool-metadata.ts:522-525     | WEB_FETCH readOnly:false + approvalMode:"never"——同上,HTTP GET 标记为可变                      |
+| R30-21 | P1     | command-security.ts:70-71    | grep/rg pathArgPositions:[-1] 仅验证最后 arg——`grep pattern file1 file2` 中 file1 绕过检查     |
+| R30-22 | P1     | web-fetch.ts:156             | isInternalUrl 检查 hostname 字符串非解析后 IP——DNS rebinding(域解析到 127.0.0.1)绕过 SSRF 防护 |
+| R30-23 | P1     | command-security.ts:259      | 脚本解释器 flag 检查阻止所有 `-` 前缀参数——`python script.py --verbose` 被误拒                 |
+| R30-24 | P2     | loop/index.ts:74,77          | iterations 用 `>=`(0-indexed) 但 replans 用 `>`——允许 maxReplans+1 次 replan                   |
+| R30-25 | P2     | command-security.ts:92,109   | mkdir/touch 重复条目——Map last-wins 使第一条(无 writePathArgPositions)成死代码                 |
+| R30-26 | P2     | guardrail-engine.ts:91-95    | suggestedAction 含 "retry_same_plan" 但 engine 从不返回——consumer 死代码路径                   |
+| R30-27 | P2     | tool-output-sanitizer.ts:28  | CONTROL_CHARS \u000B-\u001A 不含 ESC(\u001B)——裸 ESC 字节通过未剥离                            |
+| R30-28 | P2     | recovery-controller.ts:26-30 | worker_crash 只调 recover() 不调 resume()——恢复的 run 停留非运行态                             |
+
+### §151 Middleware / Approval-Routing / Domains / Async 缺陷
+
+| #      | 严重度 | 文件/位置                                                | 问题                                                                                             |
+| ------ | ------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --- | ----------------------------------------------------- |
+| R30-29 | P0     | shared/async/sync-backed-async-service.ts:9              | asPromise 在 Promise.resolve() 前同步执行 operation——同步抛出变为未捕获异常而非 rejected Promise |
+| R30-30 | P0     | approval-routing/route-engine/index.ts:97                | OrgChartRoutingStrategy selectNode fallback nodes[0]——orgNodeId 未找到时静默路由到任意节点       |
+| R30-31 | P1     | domains/registry/plugin-ecosystem-runtime-service.ts:134 | buildPlan 调用两次(L108,L134)——状态可在两次间变化(TOCTOU),产生不同 plan                          |
+| R30-32 | P1     | approval-routing/approval-routing-service.ts:79          | audit recordId=requesterId_orgNodeId 无时间戳——同人同节点重复审批请求 ID 碰撞                    |
+| R30-33 | P1     | api/middleware/sdk-version-handshake.ts:86               | parseInt(part,10)                                                                                |     | 0 将恶意版本 "a.b.c" 解析为 0.0.0——可绕过最低版本检查 |
+| R30-34 | P1     | approval-routing/route-engine/index.ts:118               | amountCny < threshold 严格小于——恰好等于阈值跳过匹配规则,非预期升级到公司级审批                  |
+| R30-35 | P1     | approval-routing/delegation/index.ts:27-28               | ISO 日期 string <= 比较在不同 offset 格式下失败(Z vs +00:00 vs +08:00)                           |
+| R30-36 | P1     | approval-routing/route-engine/index.ts:147               | SoD 阻止全部 node owner 后可产生空 approverChain——无 fallback/escalation guard                   |
+| R30-37 | P1     | domains/registry/plugin-runtime-host.ts:255              | IPC 消息 cast as PluginRuntimeMessage 无 schema validation——被攻破子进程可注入任意数据           |
+| R30-38 | P2     | domains/recipes/recipe-executor.ts:34                    | workflow existence check 是 regex stub(/^nonexistent/)——任何 ID "成功"                           |
+| R30-39 | P2     | domains/registry/plugin-runtime-child.ts:12,123          | 变量名 stdoutBuffer 实际累积 stdin 数据——copy-paste 命名错误                                     |
+| R30-40 | P2     | domains/registry/domain-registry-service.ts:107          | deprecate() 无状态 guard——允许从 draft/archived 直接 deprecate                                   |
+| R30-41 | P2     | approval-routing/route-engine/index.ts:288               | USD→CNY 硬编码汇率 7.2 无 staleness check/rate source 验证                                       |
+| R30-42 | P2     | shared/async/sync-backed-async-service.ts.bak            | .bak 备份文件残留在源码树——不应被跟踪/部署                                                       |
+
+### §152 UI Features / Electron / Tauri / Charts 缺陷
+
+| #      | 严重度 | 文件/位置                                       | 问题                                                                                        |
+| ------ | ------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| R30-43 | P0     | electron-win/src/preload.ts:33                  | installElectronBridge 直接赋值 window.**AA_ELECTRON** 绕过 contextBridge——破坏上下文隔离    |
+| R30-44 | P0     | electron-win/src/preload.ts:6-7                 | preload 暴露 shell:run/shell:spawn 通道无命令白名单——renderer 可执行任意 shell 命令         |
+| R30-45 | P0     | tauri-macos/src-tauri/tauri.conf.json:1         | 无 security section——缺 CSP/dangerousRemoteDomainIpcAccess/capability scoping               |
+| R30-46 | P0     | tauri-linux/src-tauri/tauri.conf.json:1         | 同上：无 security/CSP 配置                                                                  |
+| R30-47 | P0     | electron-win/index.html:3                       | 无 Content-Security-Policy meta tag——spec §6.5.4 要求 CSP baseline                          |
+| R30-48 | P1     | features/governance-compliance/hooks/index.ts:6 | hook 返回硬编码静态数组——无 API 调用,spec 要求完整审计轨迹+后端集成                         |
+| R30-49 | P1     | features/takeover/hooks/index.ts:5              | hook 返回硬编码静态数组——无 WS 订阅/状态传输逻辑,spec 要求 live state transfer              |
+| R30-50 | P1     | ui-core/charts/echart-surface-runtime.tsx:26    | init() 仅接受静态 values prop+全量重建——无 appendData/streaming 支持                        |
+| R30-51 | P1     | ui-core/charts/index.tsx:18                     | MiniTrendBars 无 role/aria-label——`<span>` 无语义,WCAG 2.1 AA 失败                          |
+| R30-52 | P1     | ui-core/layouts/index.ts:30                     | ThreePaneLayout 固定 gridTemplateColumns——无响应式断点,违反 spec §2.5.1                     |
+| R30-53 | P1     | features/analytics/hooks/index.ts:12            | trendSummary 映射 "up"/"flat"/"down" 到 3/2/1——chart 收到无意义序数非真实指标值             |
+| R30-54 | P1     | features/governance-compliance/web/index.tsx:11 | actions 定义 id/label/tone 但无 onClick——governance 操作(escalate/review)完全惰性           |
+| R30-55 | P1     | features/takeover/web/index.tsx:11              | takeover actions(start/annotate/resume)无 onClick——关键管理操作不可执行                     |
+| R30-56 | P1     | ui-mobile/native-modules/index.ts:1             | nativeModulesBaseline 是 flat boolean 配置——无实际 bridge/permission/capability negotiation |
+| R30-57 | P2     | ui-core/charts/index.tsx:5                      | MetricGrid 无 role="group"/aria-label——screen reader 无法识别指标区域                       |
+| R30-58 | P2     | features/workflow-cockpit/hooks/index.ts:41     | selectedWorkflow fallback workflows[0]——删除后 stale selection 显示错误 workflow            |
+| R30-59 | P2     | features/settings/hooks/index.ts:42-47          | useEffect 依赖 primitive 但内部读 object property——identity mismatch 可跳过同步             |
+| R30-60 | P2     | electron-win/src/main.ts:15-16                  | channels 无 tier/permission 分组——shell:run 与 secure-store 同信任级别                      |
+| R30-61 | P2     | features/domain-wizard/hooks/index.ts:12        | 用户控制的 domain.owner 直接嵌入模板——若渲染为 HTML 存 XSS 风险                             |
+| R30-62 | P2     | ui-core/charts/echart-surface-runtime.tsx:52    | resize 监听 window 非 ResizeObserver on container——panel 变化时 chart 不刷新                |
+

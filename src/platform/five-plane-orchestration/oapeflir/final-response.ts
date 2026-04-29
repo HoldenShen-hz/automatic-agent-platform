@@ -35,6 +35,12 @@ export interface FinalResponse {
   planVersion: number;
   /** Structured human-readable output */
   human: HumanOutput;
+  /** End-to-end execution duration in milliseconds */
+  executionDurationMs: number;
+  /** Primary model identifier that produced the final answer */
+  modelId: string;
+  /** Number of retries consumed before the final answer was produced */
+  retryCount: number;
   /** References to artifacts produced during execution */
   artifacts: ArtifactRef[];
   /** References to knowledge sources cited in the response */

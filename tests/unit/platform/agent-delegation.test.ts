@@ -45,8 +45,8 @@ import type {
 // TopologyValidator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DEFAULT_MAX_DEPTH is 3", () => {
-  assert.equal(DEFAULT_MAX_DEPTH, 3);
+test("DEFAULT_MAX_DEPTH is 8", () => {
+  assert.equal(DEFAULT_MAX_DEPTH, 8);
 });
 
 test("DEFAULT_MAX_FANOUT is 10", () => {

@@ -211,6 +211,8 @@ test("AbTestResult structure is correct", () => {
     improvement: 0.02,
     significant: true,
     verdict: "pass",
+    zScore: 1.96,
+    pValue: 0.05,
   };
   assert.equal(result.improvement, 0.02);
   assert.equal(result.significant, true);

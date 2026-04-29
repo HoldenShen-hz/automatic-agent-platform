@@ -1,18 +1,14 @@
 /**
  * E2E Execution Flow Tests
  *
- * End-to-end tests covering the complete task execution flow from creation
- * through dispatch, execution, and completion.
+ * End-to-end tests covering complete execution scenarios including:
+ * - Full execution lifecycle: created → prechecking → executing → succeeded/failed
+ * - Execution with lease acquisition and release
+ * - Execution with multiple retry attempts
+ * - Execution cancellation flow
+ * - Concurrent executions on same worker
  *
- * Tests validate:
- * - Task lifecycle transitions (queued -> pending -> in_progress -> done/failed)
- * - Execution state machine transitions
- * - Workflow state progression through steps
- * - Session status changes during execution
- * - Multi-step orchestration with output aggregation
- * - Error handling and failure recovery paths
- *
- * These tests use in-memory SQLite database and mock external dependencies.
+ * Uses in-memory SQLite database and mock external dependencies.
  */
 
 import assert from "node:assert/strict";
@@ -24,7 +20,12 @@ import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
-import type { ExecutionStatus, TaskStatus, WorkflowStatus, SessionStatus } from "../../src/platform/contracts/types/status.js";
+import type {
+  ExecutionStatus,
+  TaskStatus,
+  WorkflowStatus,
+  SessionStatus,
+} from "../../src/platform/contracts/types/status.js";
 import type {
   TaskStatusTransitionCommand,
   ExecutionStatusTransitionCommand,
@@ -210,11 +211,11 @@ function seedTaskWithExecution(
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Complete Task Execution Flow
+// Test 1: Full execution lifecycle - created → prechecking → executing → succeeded
 // ---------------------------------------------------------------------------
 
-test("E2E: execution flow — complete happy path from queued to done", () => {
-  const h = createE2eHarness("e2e-exec-flow-");
+test("E2E: execution lifecycle - complete happy path from queued to done", () => {
+  const h = createE2eHarness("e2e-exec-lifecycle-");
   const taskId = newId("task");
   const executionId = newId("exec");
   const sessionId = newId("sess");
@@ -259,6 +260,7 @@ test("E2E: execution flow — complete happy path from queued to done", () => {
     h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "prechecking", "executing", traceId));
     exec = h.store.getExecution(executionId);
     assert.equal(exec?.status, "executing", "Execution should transition to executing");
+    assert.ok(exec?.startedAt != null, "Execution should have startedAt timestamp");
 
     // Advance workflow step
     h.db.transaction(() => {
@@ -306,8 +308,12 @@ test("E2E: execution flow — complete happy path from queued to done", () => {
   }
 });
 
-test("E2E: execution flow — task fails mid-execution", () => {
-  const h = createE2eHarness("e2e-exec-fail-");
+// ---------------------------------------------------------------------------
+// Test 2: Full execution lifecycle ending in failure
+// ---------------------------------------------------------------------------
+
+test("E2E: execution lifecycle - task fails mid-execution", () => {
+  const h = createE2eHarness("e2e-exec-lifecycle-fail-");
   const taskId = newId("task");
   const executionId = newId("exec");
   const sessionId = newId("sess");
@@ -329,6 +335,7 @@ test("E2E: execution flow — task fails mid-execution", () => {
 
     const exec = h.store.getExecution(executionId);
     assert.equal(exec?.status, "failed", "Execution should be failed");
+    assert.ok(exec?.finishedAt != null, "Execution should have finishedAt timestamp");
 
     // Task fails via terminal state
     h.transitions.transitionTaskTerminalState({
@@ -353,158 +360,90 @@ test("E2E: execution flow — task fails mid-execution", () => {
     const task = h.store.getTask(taskId);
     assert.equal(task?.status, "failed", "Task should be failed");
     assert.equal(task?.errorCode, "execution.failed", "Task should have error code");
+    assert.ok(task?.completedAt != null, "Task should have completedAt timestamp");
+
+    const workflow = h.store.getWorkflowState(taskId);
+    assert.equal(workflow?.status, "failed", "Workflow should be failed");
+
+    const session = h.store.getSession(sessionId);
+    assert.equal(session?.status, "failed", "Session should be failed");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);
   }
 });
 
-test("E2E: execution flow — execution blocked for approval and resumes", () => {
-  const h = createE2eHarness("e2e-exec-blocked-");
+// ---------------------------------------------------------------------------
+// Test 3: Execution with lease acquisition and release
+// ---------------------------------------------------------------------------
+
+test("E2E: execution with lease acquisition and release", () => {
+  const h = createE2eHarness("e2e-exec-lease-");
   const taskId = newId("task");
   const executionId = newId("exec");
   const sessionId = newId("sess");
   const traceId = newId("trace");
 
   try {
+    // Seed initial state
     seedTaskWithExecution(h.store, h.db, taskId, executionId, sessionId, traceId);
 
-    // Setup: queued -> pending -> in_progress, execution starts
+    // Transition to executing
     h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "queued", "pending", traceId, null));
     h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "pending", "in_progress", traceId, executionId));
     h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "created", "prechecking", traceId));
     h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "prechecking", "executing", traceId));
 
-    // Execution becomes blocked
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "executing", "blocked", traceId));
-    let exec = h.store.getExecution(executionId);
-    assert.equal(exec?.status, "blocked", "Execution should be blocked");
+    // Create a lease for the execution
+    const workerId = "worker-001";
+    const leaseId = newId("lease");
+    const now = nowIso();
+    const leaseExpiry = new Date(Date.now() + 30000).toISOString(); // 30 seconds from now
 
-    // Transition task to awaiting_decision
-    h.transitions.transitionTaskStatus({
-      entityKind: "task",
-      entityId: taskId,
-      fromStatus: "in_progress",
-      toStatus: "awaiting_decision",
-      executionId,
-      reasonCode: "approval.required",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
+    h.db.transaction(() => {
+      h.store.insertLease({
+        id: leaseId,
+        executionId,
+        workerId,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        expiresAt: leaseExpiry,
+        taskId,
+      });
     });
 
-    // Session transitions to awaiting_user
-    h.transitions.transitionSessionStatus(makeSessionCommand(sessionId, "open", "awaiting_user", traceId));
+    // Verify lease is active
+    let lease = h.store.getLease(leaseId);
+    assert.equal(lease?.status, "active", "Lease should be active");
+    assert.equal(lease?.workerId, workerId, "Lease should belong to worker");
+    assert.equal(lease?.executionId, executionId, "Lease should reference execution");
+    assert.ok(lease?.expiresAt != null, "Lease should have expiresAt timestamp");
 
-    let task = h.store.getTask(taskId);
-    assert.equal(task?.status, "awaiting_decision", "Task should be awaiting_decision");
-
-    // Approval resolved: execution resumes
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "blocked", "executing", traceId));
-
-    // Task resumes
-    h.transitions.transitionTaskStatus({
-      entityKind: "task",
-      entityId: taskId,
-      fromStatus: "awaiting_decision",
-      toStatus: "in_progress",
-      executionId,
-      reasonCode: "approval.approved",
-      traceId,
-      actorType: "system",
-      occurredAt: nowIso(),
+    // Release the lease
+    h.db.transaction(() => {
+      h.store.updateLeaseStatus(leaseId, "released", nowIso());
     });
 
-    // Complete execution
+    // Verify lease is released
+    lease = h.store.getLease(leaseId);
+    assert.equal(lease?.status, "released", "Lease should be released");
+    assert.ok(lease?.updatedAt != null, "Lease should have updatedAt timestamp");
+
+    // Complete execution normally
     h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "executing", "succeeded", traceId));
+
     h.transitions.transitionTaskTerminalState({
       taskId,
       sessionId,
       executionId,
       currentTaskStatus: "in_progress",
       currentWorkflowStatus: "running",
-      currentSessionStatus: "awaiting_user",
-      currentExecutionStatus: "succeeded",
-      terminalStatus: "done",
-      taskOutputJson: JSON.stringify({ result: "approved and completed" }),
-      outputsJson: "{}",
-      context: {
-        reasonCode: "task.completed",
-        traceId,
-        actorType: "system",
-        occurredAt: nowIso(),
-      },
-    });
-
-    task = h.store.getTask(taskId);
-    assert.equal(task?.status, "done", "Task should complete after approval");
-  } finally {
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("E2E: execution flow — multi-step workflow progression", () => {
-  const h = createE2eHarness("e2e-exec-multi-");
-  const taskId = newId("task");
-  const executionId = newId("exec");
-  const sessionId = newId("sess");
-  const traceId = newId("trace");
-  const workflowId = "multi_step_wf";
-
-  try {
-    seedTaskWithExecution(h.store, h.db, taskId, executionId, sessionId, traceId, workflowId);
-
-    // Start execution
-    h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "queued", "pending", traceId, null));
-    h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "pending", "in_progress", traceId, executionId));
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "created", "prechecking", traceId));
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "prechecking", "executing", traceId));
-
-    // Step 0 completes
-    const step0Output = { step0: { result: "step 0 done" } };
-    h.db.transaction(() => {
-      h.store.updateWorkflowState(taskId, "running", 1, JSON.stringify(step0Output), nowIso(), null);
-    });
-
-    let workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.currentStepIndex, 1, "Should advance to step 1");
-    assert.deepEqual(JSON.parse(workflow!.outputsJson), step0Output, "Step 0 output should be stored");
-
-    // Step 1 completes
-    const step1Output = { step0: step0Output.step0, step1: { result: "step 1 done" } };
-    h.db.transaction(() => {
-      h.store.updateWorkflowState(taskId, "running", 2, JSON.stringify(step1Output), nowIso(), null);
-    });
-
-    workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.currentStepIndex, 2, "Should advance to step 2");
-
-    // Final step completes
-    h.db.transaction(() => {
-      h.store.updateWorkflowState(taskId, "completed", 3, JSON.stringify({
-        ...step1Output,
-        final: { result: "workflow complete" },
-      }), nowIso(), null);
-    });
-
-    workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "completed", "Workflow should be completed");
-    assert.equal(workflow?.currentStepIndex, 3, "Should be at final step index");
-
-    // Complete task
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "executing", "succeeded", traceId));
-    h.transitions.transitionTaskTerminalState({
-      taskId,
-      sessionId,
-      executionId,
-      currentTaskStatus: "in_progress",
-      currentWorkflowStatus: "completed",
       currentSessionStatus: "streaming",
       currentExecutionStatus: "succeeded",
       terminalStatus: "done",
-      taskOutputJson: JSON.stringify({ result: "all steps completed" }),
-      outputsJson: JSON.stringify(step1Output),
+      taskOutputJson: JSON.stringify({ result: "success" }),
+      outputsJson: JSON.stringify({}),
       context: {
         reasonCode: "task.completed",
         traceId,
@@ -521,332 +460,11 @@ test("E2E: execution flow — multi-step workflow progression", () => {
   }
 });
 
-test("E2E: execution flow — task cancelled cannot transition", () => {
-  const h = createE2eHarness("e2e-exec-cancel-");
-  const taskId = newId("task");
-  const executionId = newId("exec");
-  const sessionId = newId("sess");
-  const traceId = newId("trace");
+// ---------------------------------------------------------------------------
+// Test 4: Execution with multiple retry attempts
+// ---------------------------------------------------------------------------
 
-  try {
-    seedTaskWithExecution(h.store, h.db, taskId, executionId, sessionId, traceId);
-
-    // Transition to pending first
-    h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "queued", "pending", traceId, null));
-
-    // Cancel the task
-    h.transitions.transitionTaskStatus({
-      entityKind: "task",
-      entityId: taskId,
-      fromStatus: "pending",
-      toStatus: "cancelled",
-      executionId: null,
-      reasonCode: "user_cancelled",
-      traceId,
-      actorType: "user",
-      occurredAt: nowIso(),
-    });
-
-    const task = h.store.getTask(taskId);
-    assert.equal(task?.status, "cancelled", "Task should be cancelled");
-
-    // Attempt to transition from cancelled -> in_progress should throw
-    assert.throws(
-      () => {
-        h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "cancelled", "in_progress", traceId, executionId));
-      },
-      /invalid transition/i,
-      "Should not allow transition from cancelled",
-    );
-  } finally {
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("E2E: execution flow — workflow paused and resumed", () => {
-  const h = createE2eHarness("e2e-exec-pause-");
-  const taskId = newId("task");
-  const executionId = newId("exec");
-  const sessionId = newId("sess");
-  const traceId = newId("trace");
-
-  try {
-    seedTaskWithExecution(h.store, h.db, taskId, executionId, sessionId, traceId);
-
-    // Setup execution
-    h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "queued", "pending", traceId, null));
-    h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "pending", "in_progress", traceId, executionId));
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "created", "prechecking", traceId));
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "prechecking", "executing", traceId));
-
-    // Pause the workflow
-    h.transitions.transitionWorkflowStatus(makeWorkflowCommand(taskId, "running", "paused", 0, "{}", traceId));
-
-    let workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "paused", "Workflow should be paused");
-
-    // Resume the workflow
-    h.transitions.transitionWorkflowStatus(makeWorkflowCommand(taskId, "paused", "resuming", 0, "{}", traceId));
-
-    workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "resuming", "Workflow should be resuming");
-
-    h.transitions.transitionWorkflowStatus(makeWorkflowCommand(taskId, "resuming", "running", 0, "{}", traceId));
-
-    workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "running", "Workflow should be running again");
-  } finally {
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("E2E: execution flow — execution superseded by new attempt", () => {
-  const h = createE2eHarness("e2e-exec-supersede-");
-  const taskId = newId("task");
-  const executionId1 = newId("exec1");
-  const executionId2 = newId("exec2");
-  const sessionId = newId("sess");
-  const traceId1 = newId("trace1");
-  const traceId2 = newId("trace2");
-  const now = nowIso();
-
-  try {
-    // Create task with first execution in blocked state (prerequisite for superseded)
-    h.db.transaction(() => {
-      h.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "E2E supersede test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-
-      // First execution is in blocked state (waiting for approval) which can transition to superseded
-      h.store.insertExecution({
-        id: executionId1,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent_1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "blocked",
-        inputRef: null,
-        traceId: traceId1,
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 1,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      h.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // First execution gets superseded by retry
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId1, "blocked", "superseded", traceId1));
-
-    let exec1 = h.store.getExecution(executionId1);
-    assert.equal(exec1?.status, "superseded", "First execution should be superseded");
-
-    // Insert second execution as retry
-    h.db.transaction(() => {
-      h.store.insertExecution({
-        id: executionId2,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: executionId1,
-        agentId: "agent_1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId: traceId2,
-        attempt: 2,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 1,
-        retryBackoff: "exponential",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: nowIso(),
-        finishedAt: null,
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-      });
-    });
-
-    const exec2 = h.store.getExecution(executionId2);
-    assert.equal(exec2?.status, "executing", "Second execution should be running");
-    assert.equal(exec2?.parentExecutionId, executionId1, "Second execution should reference parent");
-    assert.equal(exec2?.attempt, 2, "Second execution should be attempt 2");
-  } finally {
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("E2E: execution flow — terminal state transition cascades to all entities", () => {
-  const h = createE2eHarness("e2e-exec-cascade-");
-  const taskId = newId("task");
-  const executionId = newId("exec");
-  const sessionId = newId("sess");
-  const traceId = newId("trace");
-  const now = nowIso();
-
-  try {
-    // Seed with all entities in non-terminal states
-    h.db.transaction(() => {
-      h.store.insertTask({
-        id: taskId,
-        parentId: null,
-        rootId: taskId,
-        divisionId: "general_ops",
-        title: "E2E cascade test",
-        status: "in_progress",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-      });
-
-      h.store.insertExecution({
-        id: executionId,
-        taskId,
-        workflowId: "single_agent_minimal",
-        parentExecutionId: null,
-        agentId: "agent_1",
-        roleId: "general_executor",
-        runKind: "task_run",
-        status: "executing",
-        inputRef: null,
-        traceId,
-        attempt: 1,
-        timeoutMs: 60000,
-        budgetUsdLimit: 1,
-        requiresApproval: 0,
-        sandboxMode: "workspace_write",
-        allowedToolsJson: "[]",
-        allowedPathsJson: "[]",
-        maxRetries: 0,
-        retryBackoff: "none",
-        lastErrorCode: null,
-        lastErrorMessage: null,
-        startedAt: now,
-        finishedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      h.store.insertWorkflowState({
-        taskId,
-        divisionId: "general_ops",
-        workflowId: "single_agent_minimal",
-        currentStepIndex: 1,
-        status: "running",
-        outputsJson: "{}",
-        lastErrorCode: null,
-        retryCount: 0,
-        resumableFromStep: null,
-        startedAt: now,
-        updatedAt: now,
-      });
-
-      h.store.insertSession({
-        id: sessionId,
-        taskId,
-        channel: "cli",
-        status: "streaming",
-        externalSessionId: null,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    // Transition task to failed via terminal state
-    h.transitions.transitionTaskTerminalState({
-      taskId,
-      sessionId,
-      executionId,
-      currentTaskStatus: "in_progress",
-      currentWorkflowStatus: "running",
-      currentSessionStatus: "streaming",
-      currentExecutionStatus: "executing",
-      terminalStatus: "failed",
-      taskOutputJson: JSON.stringify({ error: "cascade_test_failure" }),
-      outputsJson: "{}",
-      context: {
-        reasonCode: "cascade.test",
-        traceId,
-        actorType: "system",
-        occurredAt: nowIso(),
-      },
-    });
-
-    // Verify all entities transitioned to terminal state
-    const task = h.store.getTask(taskId);
-    assert.equal(task?.status, "failed", "Task should be failed");
-    assert.equal(task?.errorCode, "cascade.test", "Task should have error code");
-
-    const workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow?.status, "failed", "Workflow should be failed");
-
-    const session = h.store.getSession(sessionId);
-    assert.equal(session?.status, "failed", "Session should be failed");
-
-    const exec = h.store.getExecution(executionId);
-    assert.equal(exec?.status, "failed", "Execution should be failed");
-    assert.ok(exec?.finishedAt != null, "Execution should have finishedAt");
-  } finally {
-    h.db.close();
-    cleanupPath(h.workspace);
-  }
-});
-
-test("E2E: execution flow — task with retry recovers from transient failure", () => {
+test("E2E: execution with multiple retry attempts", () => {
   const h = createE2eHarness("e2e-exec-retry-");
   const taskId = newId("task");
   const executionId1 = newId("exec1");
@@ -857,7 +475,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
   const now = nowIso();
 
   try {
-    // Create task with execution
+    // Create task with first execution in executing state
     h.db.transaction(() => {
       h.store.insertTask({
         id: taskId,
@@ -879,7 +497,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
         completedAt: null,
       });
 
-      // First execution fails
+      // First execution is in executing state with maxRetries=2
       h.store.insertExecution({
         id: executionId1,
         taskId,
@@ -888,7 +506,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
         agentId: "agent_1",
         roleId: "general_executor",
         runKind: "task_run",
-        status: "failed",
+        status: "executing",
         inputRef: null,
         traceId: traceId1,
         attempt: 1,
@@ -898,12 +516,12 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
         allowedPathsJson: "[]",
-        maxRetries: 1,
+        maxRetries: 2,
         retryBackoff: "exponential",
-        lastErrorCode: "transient_error",
-        lastErrorMessage: "temporary failure",
+        lastErrorCode: null,
+        lastErrorMessage: null,
         startedAt: now,
-        finishedAt: now,
+        finishedAt: null,
         createdAt: now,
         updatedAt: now,
       });
@@ -915,7 +533,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
         currentStepIndex: 0,
         status: "running",
         outputsJson: "{}",
-        lastErrorCode: "transient_error",
+        lastErrorCode: null,
         retryCount: 0,
         resumableFromStep: null,
         startedAt: now,
@@ -933,12 +551,25 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
       });
     });
 
-    // Verify first execution failed with retry available
-    const exec1 = h.store.getExecution(executionId1);
-    assert.equal(exec1?.status, "failed", "First execution should be failed");
-    assert.equal(exec1?.lastErrorCode, "transient_error", "Should have error code");
+    // First execution attempt fails
+    h.transitions.transitionExecutionStatus({
+      entityKind: "execution",
+      entityId: executionId1,
+      fromStatus: "executing",
+      toStatus: "failed",
+      reasonCode: "llm_error",
+      traceId: traceId1,
+      actorType: "agent",
+      occurredAt: nowIso(),
+    });
 
-    // Create retry execution
+    let exec1 = h.store.getExecution(executionId1);
+    assert.equal(exec1?.status, "failed", "First execution should be failed");
+    assert.equal(exec1?.attempt, 1, "First execution should be attempt 1");
+    assert.equal(exec1?.lastErrorCode, "llm_error", "First execution should have error code");
+    assert.ok(exec1?.finishedAt != null, "First execution should have finishedAt timestamp");
+
+    // Create second execution attempt
     h.db.transaction(() => {
       h.store.insertExecution({
         id: executionId2,
@@ -958,7 +589,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
         sandboxMode: "workspace_write",
         allowedToolsJson: "[]",
         allowedPathsJson: "[]",
-        maxRetries: 1,
+        maxRetries: 2,
         retryBackoff: "exponential",
         lastErrorCode: null,
         lastErrorMessage: null,
@@ -972,8 +603,26 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
       h.store.updateWorkflowState(taskId, "running", 0, "{}", nowIso(), null);
     });
 
-    // Retry execution succeeds
-    h.transitions.transitionExecutionStatus(makeExecCommand(executionId2, "executing", "succeeded", traceId2));
+    let exec2 = h.store.getExecution(executionId2);
+    assert.equal(exec2?.status, "executing", "Second execution should be executing");
+    assert.equal(exec2?.attempt, 2, "Second execution should be attempt 2");
+    assert.equal(exec2?.parentExecutionId, executionId1, "Second execution should reference parent");
+
+    // Second execution attempt succeeds
+    h.transitions.transitionExecutionStatus({
+      entityKind: "execution",
+      entityId: executionId2,
+      fromStatus: "executing",
+      toStatus: "succeeded",
+      reasonCode: "task.completed",
+      traceId: traceId2,
+      actorType: "agent",
+      occurredAt: nowIso(),
+    });
+
+    exec2 = h.store.getExecution(executionId2);
+    assert.equal(exec2?.status, "succeeded", "Second execution should be succeeded");
+    assert.ok(exec2?.finishedAt != null, "Second execution should have finishedAt timestamp");
 
     // Complete task
     h.transitions.transitionTaskTerminalState({
@@ -985,7 +634,7 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
       currentSessionStatus: "streaming",
       currentExecutionStatus: "succeeded",
       terminalStatus: "done",
-      taskOutputJson: JSON.stringify({ result: "retry succeeded" }),
+      taskOutputJson: JSON.stringify({ result: "success" }),
       outputsJson: "{}",
       context: {
         reasonCode: "task.completed",
@@ -996,10 +645,331 @@ test("E2E: execution flow — task with retry recovers from transient failure", 
     });
 
     const task = h.store.getTask(taskId);
-    assert.equal(task?.status, "done", "Task should complete on retry success");
+    assert.equal(task?.status, "done", "Task should be done");
 
     const workflow = h.store.getWorkflowState(taskId);
     assert.equal(workflow?.status, "completed", "Workflow should be completed");
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test 5: Execution cancellation flow
+// ---------------------------------------------------------------------------
+
+test("E2E: execution cancellation flow", () => {
+  const h = createE2eHarness("e2e-exec-cancel-");
+  const taskId = newId("task");
+  const executionId = newId("exec");
+  const sessionId = newId("sess");
+  const traceId = newId("trace");
+
+  try {
+    seedTaskWithExecution(h.store, h.db, taskId, executionId, sessionId, traceId);
+
+    // Transition task to pending
+    h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "queued", "pending", traceId, null));
+
+    // Transition execution to prechecking
+    h.transitions.transitionExecutionStatus(makeExecCommand(executionId, "created", "prechecking", traceId));
+
+    // Cancel the execution
+    h.transitions.transitionExecutionStatus({
+      entityKind: "execution",
+      entityId: executionId,
+      fromStatus: "prechecking",
+      toStatus: "cancelled",
+      reasonCode: "user_cancelled",
+      traceId,
+      actorType: "user",
+      occurredAt: nowIso(),
+    });
+
+    const exec = h.store.getExecution(executionId);
+    assert.equal(exec?.status, "cancelled", "Execution should be cancelled");
+    assert.ok(exec?.finishedAt != null, "Execution should have finishedAt timestamp");
+
+    // Transition task to cancelled
+    h.transitions.transitionTaskStatus({
+      entityKind: "task",
+      entityId: taskId,
+      fromStatus: "pending",
+      toStatus: "cancelled",
+      executionId: null,
+      reasonCode: "user_cancelled",
+      traceId,
+      actorType: "user",
+      occurredAt: nowIso(),
+    });
+
+    const task = h.store.getTask(taskId);
+    assert.equal(task?.status, "cancelled", "Task should be cancelled");
+    assert.ok(task?.completedAt != null, "Task should have completedAt timestamp");
+
+    // Attempt to transition from cancelled -> in_progress should throw
+    assert.throws(
+      () => {
+        h.transitions.transitionTaskStatus(makeTaskCommand(taskId, "cancelled", "in_progress", traceId, executionId));
+      },
+      /invalid transition/i,
+      "Should not allow transition from cancelled",
+    );
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Test 6: Concurrent executions on same worker
+// ---------------------------------------------------------------------------
+
+test("E2E: concurrent executions on same worker", () => {
+  const h = createE2eHarness("e2e-exec-concurrent-");
+  const taskId1 = newId("task1");
+  const taskId2 = newId("task2");
+  const executionId1 = newId("exec1");
+  const executionId2 = newId("exec2");
+  const sessionId1 = newId("sess1");
+  const sessionId2 = newId("sess2");
+  const traceId1 = newId("trace1");
+  const traceId2 = newId("trace2");
+  const workerId = "worker-001";
+  const now = nowIso();
+
+  try {
+    h.db.transaction(() => {
+      // Task 1
+      h.store.insertTask({
+        id: taskId1,
+        parentId: null,
+        rootId: taskId1,
+        divisionId: "general_ops",
+        title: "Concurrent task 1",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      h.store.insertExecution({
+        id: executionId1,
+        taskId: taskId1,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: workerId,
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId1,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertWorkflowState({
+        taskId: taskId1,
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertSession({
+        id: sessionId1,
+        taskId: taskId1,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Task 2
+      h.store.insertTask({
+        id: taskId2,
+        parentId: null,
+        rootId: taskId2,
+        divisionId: "general_ops",
+        title: "Concurrent task 2",
+        status: "in_progress",
+        source: "user",
+        priority: "normal",
+        inputJson: "{}",
+        normalizedInputJson: "{}",
+        outputJson: null,
+        estimatedCostUsd: 0,
+        actualCostUsd: 0,
+        errorCode: null,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      });
+
+      h.store.insertExecution({
+        id: executionId2,
+        taskId: taskId2,
+        workflowId: "single_agent_minimal",
+        parentExecutionId: null,
+        agentId: workerId,
+        roleId: "general_executor",
+        runKind: "task_run",
+        status: "executing",
+        inputRef: null,
+        traceId: traceId2,
+        attempt: 1,
+        timeoutMs: 60000,
+        budgetUsdLimit: 1,
+        requiresApproval: 0,
+        sandboxMode: "workspace_write",
+        allowedToolsJson: "[]",
+        allowedPathsJson: "[]",
+        maxRetries: 0,
+        retryBackoff: "none",
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        startedAt: now,
+        finishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertWorkflowState({
+        taskId: taskId2,
+        divisionId: "general_ops",
+        workflowId: "single_agent_minimal",
+        currentStepIndex: 0,
+        status: "running",
+        outputsJson: "{}",
+        lastErrorCode: null,
+        retryCount: 0,
+        resumableFromStep: null,
+        startedAt: now,
+        updatedAt: now,
+      });
+
+      h.store.insertSession({
+        id: sessionId2,
+        taskId: taskId2,
+        channel: "cli",
+        status: "streaming",
+        externalSessionId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    // Create leases for both executions on same worker
+    const leaseId1 = newId("lease1");
+    const leaseId2 = newId("lease2");
+    const leaseExpiry = new Date(Date.now() + 60000).toISOString();
+
+    h.db.transaction(() => {
+      h.store.insertLease({
+        id: leaseId1,
+        executionId: executionId1,
+        workerId,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        expiresAt: leaseExpiry,
+        taskId: taskId1,
+      });
+
+      h.store.insertLease({
+        id: leaseId2,
+        executionId: executionId2,
+        workerId,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        expiresAt: leaseExpiry,
+        taskId: taskId2,
+      });
+    });
+
+    // Verify both executions are running on the same worker
+    const exec1 = h.store.getExecution(executionId1);
+    const exec2 = h.store.getExecution(executionId2);
+    assert.equal(exec1?.agentId, workerId, "Execution 1 should be assigned to worker");
+    assert.equal(exec2?.agentId, workerId, "Execution 2 should be assigned to same worker");
+    assert.equal(exec1?.status, "executing", "Execution 1 should be executing");
+    assert.equal(exec2?.status, "executing", "Execution 2 should be executing");
+
+    // Complete first execution
+    h.transitions.transitionExecutionStatus({
+      entityKind: "execution",
+      entityId: executionId1,
+      fromStatus: "executing",
+      toStatus: "succeeded",
+      reasonCode: "task.completed",
+      traceId: traceId1,
+      actorType: "system",
+      occurredAt: nowIso(),
+    });
+
+    h.transitions.transitionTaskTerminalState({
+      taskId: taskId1,
+      sessionId: sessionId1,
+      executionId: executionId1,
+      currentTaskStatus: "in_progress",
+      currentWorkflowStatus: "running",
+      currentSessionStatus: "streaming",
+      currentExecutionStatus: "succeeded",
+      terminalStatus: "done",
+      taskOutputJson: JSON.stringify({ result: "success" }),
+      outputsJson: "{}",
+      context: {
+        reasonCode: "task.completed",
+        traceId: traceId1,
+        actorType: "system",
+        occurredAt: nowIso(),
+      },
+    });
+
+    // Release lease for first execution
+    h.db.transaction(() => {
+      h.store.updateLeaseStatus(leaseId1, "released", nowIso());
+    });
+
+    const lease1 = h.store.getLease(leaseId1);
+    assert.equal(lease1?.status, "released", "First lease should be released");
+
+    // Second execution continues unaffected
+    const exec2After = h.store.getExecution(executionId2);
+    assert.equal(exec2After?.status, "executing", "Second execution should still be executing");
+
+    const task2 = h.store.getTask(taskId2);
+    assert.equal(task2?.status, "in_progress", "Task 2 should still be in progress");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

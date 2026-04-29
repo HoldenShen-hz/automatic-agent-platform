@@ -1,138 +1,78 @@
 /**
  * PromptVersionManager
  *
- * Implements semantic version management for prompt bundles.
- * Supports: v{major}.{minor} format, version lineage, and deprecation tracking.
+ * Implements integer version management for prompt bundles per §16.2.
+ * Supports integer incrementing versions, version lineage, and deprecation tracking.
+ * Display version (semver format) is stored separately in PromptBundle.displayVersion.
  */
 
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { PromptBundle, PromptBundleVersion } from "../../contracts/prompt-bundle/index.js";
 
-export interface SemanticVersion {
-  major: number;
-  minor: number;
-  patch?: number;
-}
-
 export interface VersionLineage {
-  current: string;
-  previous?: string;
-  next?: string;
+  current: number;
+  previous?: number;
+  next?: number;
 }
 
 export interface VersionManagerConfig {
-  allowPrerelease: boolean;
   maxVersionsPerBundle: number;
   autoDeprecateOldVersions: boolean;
   deprecationThresholdDays: number;
 }
 
 const DEFAULT_VERSION_CONFIG: VersionManagerConfig = {
-  allowPrerelease: false,
   maxVersionsPerBundle: 50,
   autoDeprecateOldVersions: false,
   deprecationThresholdDays: 90,
 };
 
-const VERSION_REGEX = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/;
-
+/**
+ * §16.2: Integer version manager for deterministic ordering.
+ * Display version (semver) is handled separately via PromptBundle.displayVersion.
+ */
 export class PromptVersionManager {
   private readonly config: VersionManagerConfig;
-  private readonly versionCache = new Map<string, SemanticVersion>();
-  private readonly bundleVersions = new Map<string, Map<string, { bundle: PromptBundle; createdAt: string }>>();
+  private readonly bundleVersions = new Map<string, Map<number, { bundle: PromptBundle; createdAt: string }>>();
 
   public constructor(config: Partial<VersionManagerConfig> = {}) {
     this.config = { ...DEFAULT_VERSION_CONFIG, ...config };
   }
 
   /**
-   * Parses a version string into a SemanticVersion.
-   * Supports formats: v1.0, v1.0.0, 1.0, 1.0.0
+   * Validates that a version is a positive integer.
    */
-  public parseVersion(version: string): SemanticVersion {
-    const normalized = version.trim().toLowerCase();
-    const match = normalized.match(VERSION_REGEX);
-
-    if (!match) {
-      throw new ValidationError(
-        "prompt_version.invalid_format",
-        `Version "${version}" does not match semantic version format (v{major}.{minor} or v{major}.{minor}.{patch})`,
-      );
-    }
-
-    const major = parseInt(match[1]!, 10);
-    const minor = parseInt(match[2]!, 10);
-    const patchMatch = match[3];
-    const patch = patchMatch !== undefined ? parseInt(patchMatch, 10) : undefined;
-    const result: SemanticVersion = { major, minor };
-    if (patch !== undefined) {
-      result.patch = patch;
-    }
-    return result;
+  public isValidVersion(version: number): boolean {
+    return Number.isInteger(version) && version > 0;
   }
 
   /**
-   * Formats a SemanticVersion back to a version string.
-   */
-  public formatVersion(version: SemanticVersion, includePatch = false): string {
-    if (includePatch && version.patch !== undefined) {
-      return `v${version.major}.${version.minor}.${version.patch}`;
-    }
-    return `v${version.major}.${version.minor}`;
-  }
-
-  /**
-   * Compares two version strings.
+   * Compares two integer versions.
    * Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
    */
-  public compareVersions(v1: string, v2: string): number {
-    const parsed1 = this.parseVersion(v1);
-    const parsed2 = this.parseVersion(v2);
-
-    if (parsed1.major !== parsed2.major) {
-      return parsed1.major - parsed2.major;
-    }
-    if (parsed1.minor !== parsed2.minor) {
-      return parsed1.minor - parsed2.minor;
-    }
-    if (parsed1.patch !== undefined && parsed2.patch !== undefined) {
-      return parsed1.patch - parsed2.patch;
-    }
-    if (parsed1.patch !== undefined) return 1;
-    if (parsed2.patch !== undefined) return -1;
+  public compareVersions(v1: number, v2: number): number {
+    if (v1 < v2) return -1;
+    if (v1 > v2) return 1;
     return 0;
   }
 
   /**
-   * Determines the next version based on current version and update type.
+   * Gets the next version by incrementing the current version.
    */
-  public getNextVersion(currentVersion: string, updateType: "major" | "minor" | "patch"): SemanticVersion {
-    const current = this.parseVersion(currentVersion);
-
-    switch (updateType) {
-      case "major":
-        return { major: current.major + 1, minor: 0, patch: 0 };
-      case "minor":
-        return { major: current.major, minor: current.minor + 1, patch: 0 };
-      case "patch":
-        return {
-          major: current.major,
-          minor: current.minor,
-          patch: (current.patch ?? 0) + 1,
-        };
-    }
+  public getNextVersion(currentVersion: number): number {
+    return currentVersion + 1;
   }
 
   /**
    * Gets the version lineage (previous, current, next candidate).
    */
-  public getVersionLineage(bundleName: string, currentVersion: string): VersionLineage {
+  public getVersionLineage(bundleName: string, currentVersion: number): VersionLineage {
     const versions = this.getSortedVersions(bundleName);
     const currentIndex = versions.indexOf(currentVersion);
 
-    const previous: string | undefined = currentIndex > 0 ? versions[currentIndex - 1]! : undefined;
-    const next: string | undefined = currentIndex < versions.length - 1 ? versions[currentIndex + 1]! : undefined;
+    const previous: number | undefined = currentIndex > 0 ? versions[currentIndex - 1]! : undefined;
+    const next: number | undefined = currentIndex < versions.length - 1 ? versions[currentIndex + 1]! : undefined;
     const lineage: VersionLineage = { current: currentVersion };
     if (previous !== undefined) {
       lineage.previous = previous;
@@ -144,44 +84,22 @@ export class PromptVersionManager {
   }
 
   /**
-   * Checks if a version is considered "current" (latest minor for a major).
+   * Checks if a version is considered "current" (latest).
    */
-  public isCurrentVersion(bundleName: string, version: string): boolean {
+  public isCurrentVersion(bundleName: string, version: number): boolean {
     const versions = this.getSortedVersions(bundleName);
     if (versions.length === 0) return true;
-
-    const latestVersion = versions[versions.length - 1]!;
-    const current = this.parseVersion(version);
-    const latest = this.parseVersion(latestVersion);
-
-    // Same major, same minor (or patch exists and version is without patch)
-    if (current.major === latest.major && current.minor === latest.minor) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Validates version format without throwing.
-   */
-  public isValidVersionFormat(version: string): boolean {
-    try {
-      this.parseVersion(version);
-      return true;
-    } catch {
-      return false;
-    }
+    return versions[versions.length - 1] === version;
   }
 
   /**
    * Gets all versions for a bundle sorted by version order.
    */
-  public getSortedVersions(bundleName: string): string[] {
+  public getSortedVersions(bundleName: string): number[] {
     const bundleVersionMap = this.bundleVersions.get(bundleName);
     if (!bundleVersionMap) return [];
 
-    return [...bundleVersionMap.keys()].sort((a, b) => this.compareVersions(a, b));
+    return Array.from(bundleVersionMap.keys()).sort((a, b) => a - b);
   }
 
   /**
@@ -201,7 +119,7 @@ export class PromptVersionManager {
     const versions = this.getSortedVersions(bundle.name);
     while (versions.length > this.config.maxVersionsPerBundle) {
       const oldest = versions.shift();
-      if (oldest) {
+      if (oldest !== undefined) {
         this.bundleVersions.get(bundle.name)!.delete(oldest);
       }
     }
@@ -221,6 +139,7 @@ export class PromptVersionManager {
       const entry = bundleVersionMap.get(version)!;
       return {
         version,
+        displayVersion: entry.bundle.displayVersion,
         isCurrent: version === current,
         isDefault: entry.bundle.metadata.trafficAllocation.weight === 100,
         trafficWeight: entry.bundle.metadata.trafficAllocation.weight,
@@ -229,10 +148,28 @@ export class PromptVersionManager {
       };
     });
   }
-}
 
-export interface VersionLineage {
-  current: string;
-  previous?: string;
-  next?: string;
+  /**
+   * Validates PromptBundleCompatibilityMatrix.
+   * §16.4: Must cover Tool schema, Evaluator schema, DomainDescriptor schema, and Model routing profile.
+   */
+  public validateCompatibilityMatrix(bundle: PromptBundle): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    const matrix = bundle.compatibilityMatrix;
+
+    if (!matrix.toolSchemaVersions || matrix.toolSchemaVersions.length === 0) {
+      errors.push("compatibilityMatrix.toolSchemaVersions is required");
+    }
+    if (!matrix.evaluatorSchemaVersions || matrix.evaluatorSchemaVersions.length === 0) {
+      errors.push("compatibilityMatrix.evaluatorSchemaVersions is required");
+    }
+    if (!matrix.domainDescriptorVersions || matrix.domainDescriptorVersions.length === 0) {
+      errors.push("compatibilityMatrix.domainDescriptorVersions is required");
+    }
+    if (!matrix.modelRoutingProfiles || matrix.modelRoutingProfiles.length === 0) {
+      errors.push("compatibilityMatrix.modelRoutingProfiles is required");
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
 }

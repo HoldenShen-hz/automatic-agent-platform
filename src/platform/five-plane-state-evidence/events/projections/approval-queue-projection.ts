@@ -51,12 +51,20 @@ export interface ApprovalQueueState {
   timeline: ApprovalQueueTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
+  /**
+   * Set of processed event IDs for idempotency (O(1) lookup).
+   * Stored as array for JSON serialization but converted to Set internally.
+   */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
+  /**
+   * Timestamp when this projection was last updated.
+   * Used for freshness monitoring and stale projection detection.
+   */
+  lastProjectedAt: string | null;
   /** Decision type */
   decisionType: string | null;
   /** Selected option ID */
@@ -69,6 +77,13 @@ export interface ApprovalQueueState {
   cascadeSourceApprovalId: string | null;
   /** Session ID for cascade denials */
   cascadeSessionId: string | null;
+}
+
+/**
+ * Internal state with Set for O(1) idempotency checks.
+ */
+interface ApprovalQueueStateInternal extends Omit<ApprovalQueueState, "processedEventIds"> {
+  _processedEventIdSet: Set<string>;
 }
 
 export type ApprovalQueueStatus =
@@ -112,12 +127,33 @@ export function createEmptyApprovalQueueState(): ApprovalQueueState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
+    lastProjectedAt: null,
     decisionType: null,
     selectedOptionId: null,
     inputText: null,
     cascadeDeny: false,
     cascadeSourceApprovalId: null,
     cascadeSessionId: null,
+  };
+}
+
+/**
+ * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
+ */
+function toInternalState(state: ApprovalQueueState): ApprovalQueueStateInternal {
+  return {
+    ...state,
+    _processedEventIdSet: new Set(state.processedEventIds),
+  };
+}
+
+/**
+ * Converts internal state (with Set) back to serialized state (with array for JSON).
+ */
+function toSerializedState(state: ApprovalQueueStateInternal): ApprovalQueueState {
+  return {
+    ...state,
+    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -136,10 +172,11 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check)
+ * Checks if an event has already been processed (idempotency check).
+ * Uses O(1) Set lookup for efficiency.
  */
-function isEventProcessed(state: ApprovalQueueState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
+function isEventProcessed(state: ApprovalQueueStateInternal, eventId: string): boolean {
+  return state._processedEventIdSet.has(eventId);
 }
 
 /**
@@ -161,13 +198,14 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null
+  // Initialize state if null, convert to internal state with Set for O(1) lookup
   const currentState = state as unknown as ApprovalQueueState | null;
-  const newState = currentState ? { ...currentState } : createEmptyApprovalQueueState();
+  const baseState = currentState ? { ...currentState } : createEmptyApprovalQueueState();
+  const newState = toInternalState(baseState);
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return toSerializedState(newState) as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -191,6 +229,7 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
+  newState.lastProjectedAt = event.createdAt;
 
   // Add to timeline
   const timelineEntry: ApprovalQueueTimelineEntry = {
@@ -202,8 +241,8 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // Mark event as processed using O(1) Set add
+  newState._processedEventIdSet.add(event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Extract multi-party counts from context if available

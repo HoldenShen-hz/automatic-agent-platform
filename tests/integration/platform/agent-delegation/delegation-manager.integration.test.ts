@@ -243,7 +243,7 @@ test("service respects maxFanout limit", async () => {
 // Depth Limit Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("service throws when depth limit exceeded", async () => {
+test("service throws topology depth error when configured depth limit is exceeded", async () => {
   const service = createDelegationManager({ maxDepth: 3 });
 
   // Create chain at depth 0
@@ -269,7 +269,7 @@ test("service throws when depth limit exceeded", async () => {
   const spec2 = createDelegationSpec({ targetAgentId: "d3", targetPackId: "p3" });
   const h2 = await service.delegate(d2, spec2);
 
-  // At depth 3, next delegation should fail
+  // At depth 3, next delegation should fail due to the explicit topology maxDepth=3
   const d3 = service.createDelegationContext(h2.delegationId, {
     agentId: "d3",
     delegationDepth: 3,
@@ -277,15 +277,10 @@ test("service throws when depth limit exceeded", async () => {
   });
   const spec3 = createDelegationSpec({ targetAgentId: "d4", targetPackId: "p4" });
 
-  // At depth 3, call depth budget fails first (effective depth 9 > max 8)
-  // So we get a ValidationError with delegation.call_depth_exceeded code
-  try {
-    service.delegate(d3, spec3);
-    assert.fail("Expected error to be thrown");
-  } catch (err: unknown) {
-    // The call depth budget throws ValidationError first at depth 3+
-    assert.equal((err as { code?: string }).code, "delegation.call_depth_exceeded");
-  }
+  assert.throws(
+    () => service.delegate(d3, spec3),
+    DelegationDepthExceededError,
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

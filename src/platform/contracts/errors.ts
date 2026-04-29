@@ -26,6 +26,9 @@ export type AppErrorCategory =
   | "tenant"        // Multi-tenant boundary violations
   | "monetization"  // Billing and payment errors
   | "external"      // External service integration errors
+  | "resource"      // Resource exhaustion or unavailability
+  | "security"      // Security policy violations
+  | "business-rule" // Business rule violations
   | "internal";     // Unclassified internal errors
 
 /**
@@ -396,6 +399,57 @@ export class PermanentExternalError extends AppError {
       retryable: options.retryable ?? false,
     });
     this.name = "PermanentExternalError";
+  }
+}
+
+/**
+ * Error for resource exhaustion or unavailability (e.g., quota exceeded, capacity reached).
+ * Default HTTP status: 503 Service Unavailable, retryable by default
+ */
+export class ResourceError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "resource",
+      source: options.source ?? "internal",
+      statusCode: options.statusCode ?? 503,
+      retryable: options.retryable ?? true,
+    });
+    this.name = "ResourceError";
+  }
+}
+
+/**
+ * Error for security policy violations (e.g., permission denied, access forbidden).
+ * Default HTTP status: 403 Forbidden, NOT retryable
+ */
+export class SecurityError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "security",
+      source: options.source ?? "policy",
+      statusCode: options.statusCode ?? 403,
+      retryable: options.retryable ?? false,
+    });
+    this.name = "SecurityError";
+  }
+}
+
+/**
+ * Error for business rule violations (e.g., invalid state transition, constraint violation).
+ * Default HTTP status: 409 Conflict, NOT retryable
+ */
+export class BusinessRuleError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "business-rule",
+      source: options.source ?? "workflow",
+      statusCode: options.statusCode ?? 409,
+      retryable: options.retryable ?? false,
+    });
+    this.name = "BusinessRuleError";
   }
 }
 

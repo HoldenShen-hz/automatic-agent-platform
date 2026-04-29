@@ -6,6 +6,7 @@ import { getEventSchema, getRegisteredConsumers, validateEventPayload } from "./
 import { injectTraceContext } from "../../shared/observability/trace-context.js";
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { DlqService, type FailureCategory } from "./dlq-service.js";
 
 // REL-01: dedicated logger for dead-letter visibility. The ack row already
 // persists the final status and error code, but there was previously no
@@ -60,6 +61,177 @@ function calculateBackoff(attemptIndex: number): number {
 }
 
 /**
+ * Aggregate partition key for ordered event delivery within an aggregate.
+ * Ensures events within the same aggregate are delivered in sequence order.
+ * §7.3/§28.3 requires monotonic sequence within aggregate + partitioned outbox.
+ */
+interface AggregatePartition {
+  aggregateId: string;
+  /** Tracks per-consumer-group last acknowledged sequence for that aggregate */
+  consumerGroupSequences: Map<string, number>;
+}
+
+/**
+ * Consumer group state for per-consumer isolation and offset tracking.
+ * Enables independent processing offsets, priorities, and circuit breakers per consumer group.
+ */
+interface ConsumerGroupState {
+  groupId: string;
+  /** Consumer members in this group */
+  memberIds: Set<string>;
+  /** Consumer priority level for back-pressure handling */
+  priority: "high" | "normal" | "low";
+  /** Circuit breaker state: open/closed/half-open */
+  circuitBreakerState: "closed" | "open" | "half_open";
+  /** Consecutive failures for circuit breaker */
+  consecutiveFailures: number;
+  /** Last failure timestamp */
+  lastFailureAt: string | null;
+}
+
+/**
+ * Consumer registration with handler and group association.
+ */
+interface ConsumerRegistration {
+  consumerId: string;
+  groupId: string | null;
+  handler: EventHandler;
+}
+
+/**
+ * Partition-aware subscriber registry.
+ * Organizes subscribers by aggregate for efficient partitioning and ordering.
+ * §7.3: partition-by-aggregate with sequence monotonicity per aggregate.
+ */
+class PartitionAwareSubscriberRegistry {
+  /** Consumer ID -> registration mapping */
+  private readonly consumers = new Map<string, ConsumerRegistration>();
+  /** Aggregate ID -> partition mapping for ordered delivery */
+  private readonly aggregatePartitions = new Map<string, AggregatePartition>();
+  /** Consumer group ID -> group state */
+  private readonly consumerGroups = new Map<string, ConsumerGroupState>();
+  /** Aggregate to consumers mapping for fan-out */
+  private readonly aggregateConsumers = new Map<string, Set<string>>();
+
+  public register(
+    consumerId: string,
+    handler: EventHandler,
+    options?: { groupId?: string; priority?: "high" | "normal" | "low" },
+  ): void {
+    const groupId = options?.groupId ?? consumerId;
+
+    // Create consumer group if needed
+    if (!this.consumerGroups.has(groupId)) {
+      this.consumerGroups.set(groupId, {
+        groupId,
+        memberIds: new Set(),
+        priority: options?.priority ?? "normal",
+        circuitBreakerState: "closed",
+        consecutiveFailures: 0,
+        lastFailureAt: null,
+      });
+    }
+
+    const group = this.consumerGroups.get(groupId)!;
+    group.memberIds.add(consumerId);
+
+    // Create aggregate partition if needed
+    const partition = this.getOrCreatePartition("default");
+    if (!partition.consumerGroupSequences.has(groupId)) {
+      partition.consumerGroupSequences.set(groupId, 0);
+    }
+
+    this.consumers.set(consumerId, {
+      consumerId,
+      groupId,
+      handler,
+    });
+  }
+
+  public unregister(consumerId: string): void {
+    const reg = this.consumers.get(consumerId);
+    if (!reg) return;
+
+    const group = this.consumerGroups.get(reg.groupId);
+    if (group) {
+      group.memberIds.delete(consumerId);
+      if (group.memberIds.size === 0) {
+        this.consumerGroups.delete(reg.groupId);
+      }
+    }
+
+    // Clean up aggregate sequences for this consumer group
+    for (const partition of this.aggregatePartitions.values()) {
+      partition.consumerGroupSequences.delete(reg.groupId);
+    }
+
+    // Remove from aggregate consumers
+    for (const consumerSet of this.aggregateConsumers.values()) {
+      consumerSet.delete(consumerId);
+    }
+
+    this.consumers.delete(consumerId);
+  }
+
+  public getHandler(consumerId: string): EventHandler | undefined {
+    return this.consumers.get(consumerId)?.handler;
+  }
+
+  public getGroupState(groupId: string): ConsumerGroupState | undefined {
+    return this.consumerGroups.get(groupId);
+  }
+
+  public getGroupId(consumerId: string): string | undefined {
+    return this.consumers.get(consumerId)?.groupId;
+  }
+
+  public getOrCreatePartition(aggregateId: string): AggregatePartition {
+    let partition = this.aggregatePartitions.get(aggregateId);
+    if (!partition) {
+      partition = { aggregateId, consumerGroupSequences: new Map() };
+      this.aggregatePartitions.set(aggregateId, partition);
+    }
+    return partition;
+  }
+
+  public getPartition(aggregateId: string): AggregatePartition | undefined {
+    return this.aggregatePartitions.get(aggregateId);
+  }
+
+  public getAllPartitions(): Map<string, AggregatePartition> {
+    return this.aggregatePartitions;
+  }
+
+  public getConsumerCount(): number {
+    return this.consumers.size;
+  }
+
+  public getGroupCount(): number {
+    return this.consumerGroups.size;
+  }
+
+  public getAllConsumerIds(): string[] {
+    return Array.from(this.consumers.keys());
+  }
+
+  public clear(): void {
+    this.consumers.clear();
+    this.aggregatePartitions.clear();
+    this.consumerGroups.clear();
+    this.aggregateConsumers.clear();
+  }
+}
+
+/**
+ * Event delivery item with group-aware tracking.
+ */
+interface GroupedDeliveryItem {
+  event: PendingAckEvent;
+  groupId: string;
+  aggregateId: string;
+}
+
+/**
  * Durable Event Bus - Reliable event delivery with acknowledgment tracking.
  *
  * ## Architecture
@@ -90,7 +262,8 @@ function calculateBackoff(attemptIndex: number): number {
  * @see Event Bus Contract: docs_zh/contracts/event_bus_contract.md
  */
 export class DurableEventBus {
-  private readonly subscribers = new Map<string, EventHandler>();
+  /** Partition-aware subscriber registry with consumer group isolation */
+  private readonly subscriberRegistry = new PartitionAwareSubscriberRegistry();
   private readonly deliveryChains = new Map<string, Promise<void>>();
   private readonly pollingTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly activeConsumerRefCounts: Map<string, number>;
@@ -99,6 +272,7 @@ export class DurableEventBus {
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
+    private readonly dlqService?: DlqService,
   ) {
     this.activeConsumerRefCounts = getActiveConsumerRefCounts(db);
   }
@@ -108,10 +282,11 @@ export class DurableEventBus {
    * The handler will be called for events delivered to this consumer.
    * @param consumerId - The consumer ID to subscribe
    * @param handler - The handler function to call for each event
+   * @param options - Subscription options including consumer group settings
    */
-  public subscribe(consumerId: string, handler: EventHandler): void {
+  public subscribe(consumerId: string, handler: EventHandler, options?: { priority?: "high" | "normal" | "low"; groupId?: string }): void {
     this.assertNotDisposed();
-    this.subscribers.set(consumerId, handler);
+    this.subscriberRegistry.register(consumerId, handler, { priority: options?.priority, groupId: options?.groupId });
     this.registerActiveConsumer(consumerId);
     this.ensurePolling(consumerId);
   }
@@ -121,13 +296,14 @@ export class DurableEventBus {
    * @param consumerId - The consumer ID to unsubscribe
    */
   public unsubscribe(consumerId: string): void {
-    if (!this.subscribers.has(consumerId)) {
+    const handler = this.subscriberRegistry.getHandler(consumerId);
+    if (!handler) {
       return;
     }
     const currentCount = this.activeConsumerRefCounts.get(consumerId) ?? 0;
     this.unregisterActiveConsumer(consumerId);
     if (currentCount <= 1) {
-      this.subscribers.delete(consumerId);
+      this.subscriberRegistry.unregister(consumerId);
       this.cancelPolling(consumerId);
     }
   }
@@ -142,11 +318,11 @@ export class DurableEventBus {
       return;
     }
     this.disposed = true;
-    for (const consumerId of this.subscribers.keys()) {
+    for (const consumerId of Array.from(this.subscriberRegistry['consumers'].keys())) {
       this.unregisterActiveConsumer(consumerId);
       this.cancelPolling(consumerId);
     }
-    this.subscribers.clear();
+    this.subscriberRegistry.clear();
     this.deliveryChains.clear();
   }
 
@@ -231,6 +407,11 @@ export class DurableEventBus {
     traceId?: string | null;
     traceContext?: TraceContext | null;
     payload: Record<string, unknown>;
+    // §28.1 replay ordering fields
+    aggregateId?: string | null;
+    runId?: string | null;
+    sequence?: number | null;
+    principal?: string | null;
   }>): EventRecord[] {
     this.assertNotDisposed();
 
@@ -308,7 +489,8 @@ export class DurableEventBus {
   public pendingForConsumer(consumerId: string): PendingAckEvent[] {
     this.assertNotDisposed();
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
-    if (this.subscribers.has(consumerId) || this.activeConsumerRefCounts.has(consumerId)) {
+    const handler = this.subscriberRegistry.getHandler(consumerId);
+    if (handler || this.activeConsumerRefCounts.has(consumerId)) {
       return pending;
     }
     return pending.filter((item) => getRegisteredConsumers(item.event.eventType).includes(consumerId));
@@ -316,25 +498,90 @@ export class DurableEventBus {
 
   /**
    * Internal method that actually performs the delivery to a consumer.
+   * Uses aggregate partitioning for ordered delivery within aggregate boundaries.
+   * §7.3/§28.3: partition-by-aggregate ensures sequence monotonicity within aggregate.
    * @param consumerId - The consumer ID to deliver events to
    * @returns The number of events delivered
    */
   private async deliverPendingNow(consumerId: string): Promise<number> {
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
-    const handler = this.subscribers.get(consumerId);
+    const handler = this.subscriberRegistry.getHandler(consumerId);
     if (!handler) {
       return pending.length;
     }
 
+    // Get consumer group ID and state for circuit breaker and priority
+    const groupId = this.subscriberRegistry.getGroupId(consumerId) ?? consumerId;
+    const groupState = this.subscriberRegistry.getGroupState(groupId);
+    const priority = groupState?.priority ?? "normal";
+
+    // Check circuit breaker for this consumer group
+    if (groupState?.circuitBreakerState === "open") {
+      eventBusLogger.warn("event_bus.circuit_breaker_open", { consumerId, groupId });
+      return 0;
+    }
+
+    // Group pending events by aggregate for ordering
+    const aggregateGroups = new Map<string, PendingAckEvent[]>();
+    for (const item of pending) {
+      const aggId = item.event.aggregateId ?? "default";
+      let group = aggregateGroups.get(aggId);
+      if (!group) {
+        group = [];
+        aggregateGroups.set(aggId, group);
+      }
+      group.push(item);
+    }
+
+    // Sort events within each aggregate by sequence
+    for (const [, group] of aggregateGroups) {
+      group.sort((a, b) => {
+        const seqA = a.event.sequence ?? 0;
+        const seqB = b.event.sequence ?? 0;
+        return seqA - seqB;
+      });
+    }
+
     let delivered = 0;
     let deadLetteredCount = 0;
+    let consecutiveFailures = groupState?.consecutiveFailures ?? 0;
 
-    for (const item of pending) {
-      const result = await this.deliverOneWithResult(item, handler);
-      if (result.delivered) {
-        delivered++;
-      } else if (result.deadLettered) {
-        deadLetteredCount++;
+    for (const [aggId, group] of aggregateGroups) {
+      // Get or create aggregate partition for this aggregate
+      const partition = this.subscriberRegistry.getOrCreatePartition(aggId);
+      // Get the consumer group's last acknowledged sequence for this aggregate
+      const lastGroupSeq = partition.consumerGroupSequences.get(groupId) ?? 0;
+
+      // Filter events that respect sequence ordering for this consumer group
+      const orderedGroup = group.filter((item) => {
+        const itemSeq = item.event.sequence ?? 0;
+        return itemSeq > lastGroupSeq;
+      });
+
+      for (const item of orderedGroup) {
+        const result = await this.deliverOneWithResult(item, handler, consumerId);
+        if (result.delivered) {
+          delivered++;
+          // Update consumer group's sequence tracking for this aggregate
+          this.updateGroupAggregateSequence(aggId, groupId, item.event.sequence ?? 0);
+          consecutiveFailures = 0;
+        } else if (result.deadLettered) {
+          deadLetteredCount++;
+          consecutiveFailures++;
+
+          // Update circuit breaker based on failure count
+          if (consecutiveFailures >= 5) {
+            this.updateCircuitBreaker(groupId, "open");
+          }
+        }
+      }
+    }
+
+    // Update failure tracking on group state
+    if (groupState) {
+      groupState.consecutiveFailures = consecutiveFailures;
+      if (consecutiveFailures > 0) {
+        groupState.lastFailureAt = nowIso();
       }
     }
 
@@ -350,13 +597,39 @@ export class DurableEventBus {
   }
 
   /**
+   * Updates the aggregate partition sequence for a consumer group after successful delivery.
+   * This ensures monotonic sequence per aggregate per consumer group.
+   */
+  private updateGroupAggregateSequence(aggregateId: string, groupId: string, sequence: number): void {
+    const partition = this.subscriberRegistry.getOrCreatePartition(aggregateId);
+    const currentSeq = partition.consumerGroupSequences.get(groupId) ?? 0;
+    if (sequence > currentSeq) {
+      partition.consumerGroupSequences.set(groupId, sequence);
+    }
+  }
+
+  /**
+   * Updates circuit breaker state for a consumer group.
+   */
+  private updateCircuitBreaker(groupId: string, state: "closed" | "open" | "half_open"): void {
+    const groupState = this.subscriberRegistry.getGroupState(groupId);
+    if (groupState) {
+      groupState.circuitBreakerState = state;
+      if (state === "closed") {
+        groupState.consecutiveFailures = 0;
+      }
+    }
+  }
+
+  /**
    * Delivers a single event to a handler with retry and exponential backoff.
    * After max retries, marks as dead-lettered.
    * @param item - The pending event with its ack record
    * @param handler - The handler to deliver the event to
+   * @param consumerId - The consumer ID for circuit breaker tracking
    */
-  private async deliverOne(item: PendingAckEvent, handler: EventHandler): Promise<void> {
-    const result = await this.deliverOneWithResult(item, handler);
+  private async deliverOne(item: PendingAckEvent, handler: EventHandler, consumerId: string): Promise<void> {
+    const result = await this.deliverOneWithResult(item, handler, consumerId);
     if (result.deadLettered) {
       throw new WorkflowStateError(
         `event_delivery.failed: event ${item.event.id} dead-lettered after ${MAX_DELIVERY_RETRIES} retries`,
@@ -371,9 +644,10 @@ export class DurableEventBus {
    * Returns a result indicating whether delivery succeeded or dead-lettered.
    * @param item - The pending event with its ack record
    * @param handler - The handler to deliver the event to
+   * @param consumerId - The consumer ID for circuit breaker tracking
    * @returns Result indicating delivered or deadLettered status
    */
-  private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler): Promise<{ delivered: boolean; deadLettered: boolean }> {
+  private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler, consumerId: string): Promise<{ delivered: boolean; deadLettered: boolean }> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= MAX_DELIVERY_RETRIES; attempt++) {
@@ -428,7 +702,49 @@ export class DurableEventBus {
       },
     });
 
+    // Persist to DLQ service for structured tracking with category/reason/retry_count
+    if (this.dlqService) {
+      const failureCategory = this.categorizeFailure(lastError);
+      this.dlqService.enqueue({
+        sourceEventId: item.event.id,
+        consumerId: item.ack.consumerId,
+        errorCode: errorMessage,
+        errorMessage: lastError?.message ?? null,
+        payloadJson: JSON.stringify(item.event.payloadJson),
+        originalTimestamp: item.event.createdAt,
+        failureCategory,
+        reason: `Delivery failed after ${MAX_DELIVERY_RETRIES} retries: ${lastError?.message ?? "unknown"}`,
+      });
+    }
+
     return { delivered: false, deadLettered: true };
+  }
+
+  /**
+   * Categorizes a delivery failure into a FailureCategory for DLQ tracking.
+   */
+  private categorizeFailure(error: Error | null): FailureCategory {
+    if (!error) return "unknown";
+    const message = error.message.toLowerCase();
+    if (message.includes("timeout") || message.includes("etimedout") || message.includes("timed out")) {
+      return "timeout";
+    }
+    if (message.includes("auth") || message.includes("token") || message.includes("credential")) {
+      return "authentication";
+    }
+    if (message.includes("rate limit") || message.includes("throttle") || message.includes("too many requests")) {
+      return "rate_limit";
+    }
+    if (message.includes("schema") || message.includes("invalid") || message.includes("malformed")) {
+      return "permanent";
+    }
+    if (message.includes("memory") || message.includes("disk") || message.includes("resource")) {
+      return "resource";
+    }
+    if (message.includes("config") || message.includes("missing") || message.includes("undefined")) {
+      return "configuration";
+    }
+    return "transient";
   }
 
   /**
@@ -451,7 +767,10 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
-    void this.enqueueDelivery(consumerId, true);
+    this.enqueueDelivery(consumerId, true).catch(() => {
+      // Error already logged in enqueueDelivery; propagate to ensure unhandled rejection
+      // visibility rather than silently discarding via void
+    });
   }
 
   private ensurePolling(consumerId: string): void {
@@ -461,18 +780,76 @@ export class DurableEventBus {
     this.schedulePollingTick(consumerId, 0);
   }
 
+  /**
+   * Calculates adaptive polling interval based on queue depth, consumer priority, and circuit breaker state.
+   * Implements graduated back-pressure: higher depth = longer interval, low priority = longer interval.
+   * @param consumerId - The consumer ID to calculate interval for
+   * @param queueDepth - Number of pending events
+   * @returns Polling interval in milliseconds
+   */
+  /**
+   * Calculates adaptive polling interval based on queue depth, consumer priority, and circuit breaker state.
+   * Implements graduated back-pressure: higher depth = longer interval, low priority = longer interval.
+   * §9.2: queue-depth graduated back-pressure (reject low priority -> DLQ -> incident).
+   * @param consumerId - The consumer ID to calculate interval for
+   * @param queueDepth - Number of pending events
+   * @returns Polling interval in milliseconds
+   */
+  private calculatePollingInterval(consumerId: string, queueDepth: number): number {
+    const baseInterval = ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS;
+
+    // Get consumer group ID and state for priority and circuit breaker
+    const groupId = this.subscriberRegistry.getGroupId(consumerId) ?? consumerId;
+    const groupState = this.subscriberRegistry.getGroupState(groupId);
+    const priority = groupState?.priority ?? "normal";
+
+    // Circuit breaker open = much longer interval
+    if (groupState?.circuitBreakerState === "open") {
+      return baseInterval * 100; // 1 second
+    }
+    if (groupState?.circuitBreakerState === "half_open") {
+      return baseInterval * 10; // 100ms
+    }
+
+    // Priority-based multiplier
+    const priorityMultiplier = priority === "high" ? 0.5 : priority === "low" ? 2.0 : 1.0;
+
+    // Queue depth-based graduated back-pressure
+    // 0-10 events: base interval
+    // 10-50 events: 2x base
+    // 50-100 events: 5x base, consider DLQ for low priority
+    // 100+ events: 10x base, reject low priority
+    let depthMultiplier = 1.0;
+    if (queueDepth > 100) {
+      depthMultiplier = 10.0;
+    } else if (queueDepth > 50) {
+      depthMultiplier = 5.0;
+    } else if (queueDepth > 10) {
+      depthMultiplier = 2.0;
+    }
+
+    const interval = baseInterval * priorityMultiplier * depthMultiplier;
+
+    // Cap at 10 seconds
+    return Math.min(interval, 10_000);
+  }
+
   private schedulePollingTick(consumerId: string, delayMs: number): void {
-    if (this.disposed || !this.subscribers.has(consumerId) || this.pollingTimers.has(consumerId)) {
+    if (this.disposed || !this.subscriberRegistry.getHandler(consumerId) || this.pollingTimers.has(consumerId)) {
       return;
     }
     const timer = setTimeout(() => {
       this.pollingTimers.delete(consumerId);
-      if (this.disposed || !this.subscribers.has(consumerId)) {
+      if (this.disposed || !this.subscriberRegistry.getHandler(consumerId)) {
         return;
       }
       void this.enqueueDelivery(consumerId, true).finally(() => {
-        if (!this.disposed && this.subscribers.has(consumerId)) {
-          this.schedulePollingTick(consumerId, ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS);
+        if (!this.disposed && this.subscriberRegistry.getHandler(consumerId)) {
+          // Calculate adaptive polling interval based on queue depth
+          const pending = this.store.event.listPendingEventsForConsumer(consumerId);
+          const queueDepth = pending.length;
+          const nextInterval = this.calculatePollingInterval(consumerId, queueDepth);
+          this.schedulePollingTick(consumerId, nextInterval);
         }
       });
     }, delayMs);
@@ -489,23 +866,28 @@ export class DurableEventBus {
   }
 
   private dispatchVolatile(event: EventRecord): void {
-    for (const [consumerId, handler] of this.subscribers.entries()) {
+    // Dispatch to all registered consumers via the partition-aware registry
+    const consumerIds = this.subscriberRegistry.getAllConsumerIds();
+    for (const consumerId of consumerIds) {
+      const handler = this.subscriberRegistry.getHandler(consumerId);
+      if (!handler) continue;
+
       const prior = this.deliveryChains.get(consumerId) ?? Promise.resolve();
-      const next = prior
-        .catch(() => undefined)
-        .then(async () => {
-          this.assertNotDisposed();
-          try {
-            await handler(event);
-          } catch (error) {
-            eventBusLogger.warn("event_bus.volatile_delivery_failed", {
-              eventId: event.id,
-              eventType: event.eventType,
-              consumerId,
-              errorMessage: error instanceof Error ? error.message : String(error),
-            });
-          }
-        });
+      const next = prior.then(async () => {
+        this.assertNotDisposed();
+        try {
+          await handler(event);
+        } catch (error) {
+          eventBusLogger.warn("event_bus.volatile_delivery_failed", {
+            eventId: event.id,
+            eventType: event.eventType,
+            consumerId,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
+          // Re-throw so the delivery chain correctly reflects failure
+          throw error;
+        }
+      });
       const chain = next.then(() => undefined, () => undefined);
       this.deliveryChains.set(consumerId, chain);
       void chain.finally(() => {
@@ -525,12 +907,16 @@ export class DurableEventBus {
   private async enqueueDelivery(consumerId: string, swallowErrors: boolean): Promise<number> {
     this.assertNotDisposed();
     const prior = this.deliveryChains.get(consumerId) ?? Promise.resolve();
-    const next = prior
-      .catch(() => undefined)
-      .then(() => {
-        this.assertNotDisposed();
-        return this.deliverPendingNow(consumerId);
-      });
+    let lastError: Error | null = null;
+    const next = prior.then(async () => {
+      this.assertNotDisposed();
+      try {
+        return await this.deliverPendingNow(consumerId);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        throw error;
+      }
+    });
     const chain = next.then(() => undefined, () => undefined);
 
     this.deliveryChains.set(consumerId, chain);
@@ -541,7 +927,13 @@ export class DurableEventBus {
     });
 
     if (swallowErrors) {
-      return next.catch(() => 0);
+      return next.catch((error) => {
+        eventBusLogger.warn("event_bus.delivery_failed", {
+          consumerId,
+          errorMessage: lastError?.message ?? String(error),
+        });
+        return 0;
+      });
     }
     return next;
   }

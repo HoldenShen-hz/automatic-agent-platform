@@ -68,6 +68,10 @@ export interface AgentExecutionRecord {
  *
  * placement distinguishes local workers (same process) from remote workers
  * (connected via bridge). Remote workers have additional session/sync state.
+ *
+ * version supports optimistic concurrency control (CAS) per §25.3/§25.10.
+ * The version is incremented on each update. Callers can detect concurrent
+ * modifications by checking if the version changed since their last read.
  */
 export interface WorkerSnapshotRecord {
   workerId: string;
@@ -90,6 +94,12 @@ export interface WorkerSnapshotRecord {
   repoCacheHitRate?: number | null;
   registrationVerifiedAt?: Timestamp | null;
   registrationChallengeId?: string | null;
+  /** Service identity for mTLS authentication per §8.2 */
+  serviceIdentity?: string | null;
+  /** mTLS peer fingerprint for worker identity verification per §8.2 */
+  mtlsPeerFingerprint?: string | null;
+  /** Allowed tenant IDs for node run claims per §8.2 */
+  allowedNodeRunTenants?: readonly string[] | null;
   capabilitiesJson: string;
   runningExecutionsJson: string;
   maxConcurrency: number;
@@ -104,6 +114,12 @@ export interface WorkerSnapshotRecord {
   lastProgressAt: Timestamp | null;
   lastHeartbeatAt: Timestamp;
   updatedAt: Timestamp;
+  /**
+   * Version number for optimistic concurrency control.
+   * Incremented on each update. Use compare-and-swap (CAS) patterns
+   * to detect concurrent modifications.
+   */
+  version: number;
 }
 
 // ---------------------------------------------------------------------------

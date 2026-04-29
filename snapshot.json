@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-04-29T06:33:30.600Z",
+  "namespaces": [
+    {
+      "namespaceId": "ns-test-001",
+      "path": "/test/knowledge",
+      "description": "Test namespace",
+      "ownerDomainId": "engineering_ops",
+      "accessPolicy": "public",
+      "freshnessPolicy": {
+        "maxAgeDays": 30,
+        "staleAction": "warn",
+        "refreshStrategy": "manual",
+        "refreshIntervalHours": null
+      },
+      "trustLevel": "verified",
+      "maxDocuments": 100,
+      "maxTotalSizeBytes": 1048576
+    }
+  ],
+  "records": []
+}

@@ -421,6 +421,50 @@ export class ExecutionLeaseService {
         };
       }
 
+      // R13-20: Verify new worker meets execution requirements (capabilities, isolation, repo version)
+      const ticket = this.store.worker.getActiveExecutionTicket(previousLease.executionId, execution.attempt);
+      if (ticket) {
+        // Check required capabilities
+        if (ticket.requiredCapabilitiesJson) {
+          const requiredCaps = parseJsonArray(ticket.requiredCapabilitiesJson, logger);
+          const workerCaps = parseJsonArray(nextWorker.capabilitiesJson, logger);
+          const missingCaps = requiredCaps.filter((cap) => !workerCaps.includes(cap));
+          if (missingCaps.length > 0) {
+            return {
+              outcome: "blocked",
+              reasonCode: "worker_missing_capabilities",
+              previousLease: previousLease ?? null,
+              lease: null,
+            };
+          }
+        }
+
+        // Check required isolation level
+        if (ticket.requiredIsolationLevel) {
+          const ISOLATION_ORDER: Record<string, number> = { standard: 0, hardened: 1, strict: 2 };
+          const requiredLevel = ISOLATION_ORDER[ticket.requiredIsolationLevel] ?? 0;
+          const workerLevel = ISOLATION_ORDER[nextWorker.isolationLevel ?? "standard"] ?? 0;
+          if (workerLevel < requiredLevel) {
+            return {
+              outcome: "blocked",
+              reasonCode: "worker_insufficient_isolation",
+              previousLease: previousLease ?? null,
+              lease: null,
+            };
+          }
+        }
+
+        // Check required repo version
+        if (ticket.requiredRepoVersion && nextWorker.repoVersion !== ticket.requiredRepoVersion) {
+          return {
+            outcome: "blocked",
+            reasonCode: "worker_repo_version_mismatch",
+            previousLease: previousLease ?? null,
+            lease: null,
+          };
+        }
+      }
+
       const nextWorkerRunningExecutionIds = parseJsonArray(nextWorker.runningExecutionsJson, logger);
       if (
         !nextWorkerRunningExecutionIds.includes(previousLease.executionId)

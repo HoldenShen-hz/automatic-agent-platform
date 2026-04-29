@@ -22,6 +22,14 @@ test("EVENT_SCHEMA_REGISTRY contains known event types", () => {
   assert.ok(EVENT_SCHEMA_REGISTRY["plugin:invocation_started"]);
   assert.ok(EVENT_SCHEMA_REGISTRY["plugin:invocation_completed"]);
   assert.ok(EVENT_SCHEMA_REGISTRY["knowledge:chunk_indexed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.request_envelope.admitted"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.harness_run.status_changed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.node_run.status_changed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.side_effect.status_changed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.budget_ledger.status_changed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.budget_reservation.status_changed"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["platform.graph_scheduler.decision_recorded"]);
+  assert.ok(EVENT_SCHEMA_REGISTRY["oapeflir.view.run_lifecycle"]);
 });
 
 test("hasEventSchema returns true for known event types", () => {
@@ -61,12 +69,13 @@ test("getEventSchema returns schema for known event", () => {
   assert.ok(Array.isArray(schema.consumers));
 });
 
-test("runtime platform events expose replay metadata and synthesized registry schema", () => {
+test("runtime platform events expose replay metadata and first-class registry schema", () => {
   assert.equal(hasEventSchema("platform.harness_run.status_changed"), true);
 
   const schema = getEventSchema("platform.harness_run.status_changed");
   const metadata = getEventReplayMetadata("platform.harness_run.status_changed");
 
+  assert.equal(Object.hasOwn(EVENT_SCHEMA_REGISTRY, "platform.harness_run.status_changed"), true);
   assert.equal(schema.producer, "runtime-state-machine");
   assert.equal(metadata.sourceOfTruth, "platform");
   assert.equal(metadata.replayBehavior, "replay_as_fact");
@@ -212,6 +221,7 @@ test("validateEventPayload rejects subtask payload missing both stepId and subta
 
 test("R5-34 platform namespace events are registered and accessible", () => {
   const platformEvents = [
+    "platform.request_envelope.admitted",
     "platform.harness_run.status_changed",
     "platform.node_run.status_changed",
     "platform.side_effect.status_changed",
@@ -262,8 +272,8 @@ test("platform.budget_ledger and budget_reservation events are replayable", () =
 
   for (const event of events) {
     const metadata = getEventReplayMetadata(event);
-    assert.equal(metadata.replayable, true, `${event} should be replayable`);
-    assert.equal(metadata.sideEffectSafeToReplay, true, `${event} should be safe to replay`);
+  assert.equal(metadata.replayable, true, `${event} should be replayable`);
+  assert.equal(metadata.sideEffectSafeToReplay, true, `${event} should be safe to replay`);
   }
 });
 
@@ -273,14 +283,15 @@ test("platform.graph_scheduler.decision_recorded is replayable per R5-34", () =>
 
   assert.equal(schema.producer, "graph-scheduler");
   assert.equal(metadata.replayable, true);
-  assert.equal(metadata.replayBehavior, "simulate");
-  assert.equal(metadata.sourceOfTruth, "projection");
+  assert.equal(metadata.replayBehavior, "replay_as_fact");
+  assert.equal(metadata.sourceOfTruth, "platform");
 });
 
 test("oapeflir.view.run_lifecycle has simulation replay behavior", () => {
   const schema = getEventSchema("oapeflir.view.run_lifecycle");
   const metadata = getEventReplayMetadata("oapeflir.view.run_lifecycle");
 
+  assert.equal(schema.producer, "oapeflir-projection");
   assert.equal(metadata.replayBehavior, "simulate");
   assert.equal(metadata.sourceOfTruth, "projection");
 });
@@ -305,6 +316,7 @@ test("all platform namespace events use backward_compatible_additive policy", ()
 test("platform events have inspect_projection consumer when source is projection", () => {
   const schema = getEventSchema("oapeflir.view.run_lifecycle");
   assert.ok(schema.consumers.includes("oapeflir_projection"));
+  assert.ok(schema.consumers.includes("inspect_projection"));
 });
 
 test("platform events have truth_projector and audit_projection consumers when source is platform", () => {
@@ -315,6 +327,7 @@ test("platform events have truth_projector and audit_projection consumers when s
 
 test("R5-34 consumer contract tests are defined for platform events", () => {
   const eventsWithContractTests = [
+    "platform.request_envelope.admitted",
     "platform.harness_run.status_changed",
     "platform.node_run.status_changed",
     "platform.side_effect.status_changed",
@@ -345,6 +358,67 @@ test("validateEventPayload accepts valid decision:requested payload", () => {
   const result = validateEventPayload("decision:requested", validPayload);
   assert.equal(result.approvalId, "approval-123");
   assert.equal(result.reason, "policy.high_risk");
+});
+
+test("validateEventPayload accepts valid platform.request_envelope.admitted payload", () => {
+  const validPayload = {
+    confirmedTaskSpecId: "cts-123",
+    harnessRunId: "hrun-456",
+    runVersionLockId: "rvl-789",
+    clarificationSession: { sessionId: "clar-001" },
+  };
+
+  const result = validateEventPayload("platform.request_envelope.admitted", validPayload);
+  assert.equal(result.confirmedTaskSpecId, "cts-123");
+  assert.equal(result.runVersionLockId, "rvl-789");
+});
+
+test("validateEventPayload accepts valid platform.harness_run.status_changed payload", () => {
+  const validPayload = {
+    aggregateType: "HarnessRun",
+    fromStatus: "created",
+    toStatus: "admitted",
+    reasonCode: "admission.accepted",
+    emittedBy: "intake-admission-service",
+    runVersionLockId: "rvl-123",
+    policyGuard: {
+      allowed: true,
+      policyProofRef: "policy://proof",
+    },
+    budgetPrecondition: {
+      reservationId: "bledger-123",
+      hardCapSatisfied: true,
+    },
+    auditRef: "audit://harness-runs/hrun-123/admission",
+  };
+
+  const result = validateEventPayload("platform.harness_run.status_changed", validPayload);
+  assert.equal(result.toStatus, "admitted");
+  assert.equal((result.policyGuard as { allowed: boolean }).allowed, true);
+});
+
+test("validateEventPayload rejects invalid platform.graph_scheduler.decision_recorded payload", () => {
+  const invalidPayload = {
+    schedulerPolicy: "critical-path",
+    readyNodeIds: "node-1",
+  };
+
+  assert.throws(
+    () => validateEventPayload("platform.graph_scheduler.decision_recorded", invalidPayload),
+    (error: any) => error.code === "event.payload_invalid"
+  );
+});
+
+test("validateEventPayload accepts valid oapeflir.view.run_lifecycle payload", () => {
+  const validPayload = {
+    stage: "feedback",
+    runId: "hrun-123",
+    taskId: "task-123",
+    occurredAt: "2026-04-28T00:00:00.000Z",
+  };
+
+  const result = validateEventPayload("oapeflir.view.run_lifecycle", validPayload);
+  assert.equal(result.stage, "feedback");
 });
 
 test("validateEventPayload accepts valid decision:responded payload", () => {

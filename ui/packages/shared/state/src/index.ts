@@ -33,7 +33,7 @@ import {
   createQueuesQuery,
   createWorkersQuery,
 } from "./queries/mission-control-queries";
-import { createTasksQuery, createWorkflowsQuery } from "./queries/task-queries";
+import { createTasksQuery, createWorkflowsQuery, createWorkflowRunStepsQuery } from "./queries/task-queries";
 import { createQueryClientFactory } from "./query-client";
 import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
 import { createRealtimeStore } from "./stores/realtime-store";
@@ -48,6 +48,10 @@ export type { RealtimeStoreState } from "./stores/realtime-store";
 export { createRealtimeStore } from "./stores/realtime-store";
 export type { SyncStoreState } from "./stores/sync-store";
 export { createSyncStore } from "./stores/sync-store";
+export type { NotificationStoreState, Notification, NotificationKind } from "./stores/notification-store";
+export { createNotificationStore } from "./stores/notification-store";
+export type { ThemeStoreState, ThemeMode, ColorScheme } from "./stores/theme-store";
+export { createThemeStore } from "./stores/theme-store";
 export { createQueryClientFactory } from "./query-client";
 
 const ApiClientContext = createContext<RESTClient | null>(null);
@@ -56,12 +60,16 @@ const AuthStoreContext = createContext<ReturnType<typeof createAuthStore> | null
 const UiStoreContext = createContext<ReturnType<typeof createUiStore> | null>(null);
 const RealtimeStoreContext = createContext<ReturnType<typeof createRealtimeStore> | null>(null);
 const SyncStoreContext = createContext<ReturnType<typeof createSyncStore> | null>(null);
+const NotificationStoreContext = createContext<ReturnType<typeof createNotificationStore> | null>(null);
+const ThemeStoreContext = createContext<ReturnType<typeof createThemeStore> | null>(null);
 const AuthServiceContext = createContext<AuthService | null>(null);
 const SyncCoordinatorContext = createContext<SyncCoordinator | null>(null);
 const fallbackAuthStore = createAuthStore();
 const fallbackUiStore = createUiStore();
 const fallbackRealtimeStore = createRealtimeStore();
 const fallbackSyncStore = createSyncStore();
+const fallbackNotificationStore = createNotificationStore();
+const fallbackThemeStore = createThemeStore();
 
 export function UiRuntimeProvider(
   { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
@@ -73,6 +81,8 @@ export function UiRuntimeProvider(
   const uiStore = useMemo(() => createUiStore(), []);
   const realtimeStore = useMemo(() => createRealtimeStore(), []);
   const syncStore = useMemo(() => createSyncStore(), []);
+  const notificationStore = useMemo(() => createNotificationStore(), []);
+  const themeStore = useMemo(() => createThemeStore(), []);
   const authService = useMemo(() => new AuthService(), []);
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
@@ -153,7 +163,15 @@ export function UiRuntimeProvider(
                 createElement(
                   SyncStoreContext.Provider,
                   { value: syncStore },
-                  createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+                  createElement(
+                    NotificationStoreContext.Provider,
+                    { value: notificationStore },
+                    createElement(
+                      ThemeStoreContext.Provider,
+                      { value: themeStore },
+                      createElement(QueryClientProvider, { client: resolvedQueryClient }, children),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -184,6 +202,16 @@ export function useUiState(): UiStoreState {
 
 export function useSyncState(): SyncStoreState {
   const store = useContext(SyncStoreContext) ?? fallbackSyncStore;
+  return useStore(store, (state) => state);
+}
+
+export function useNotificationState(): NotificationStoreState {
+  const store = useContext(NotificationStoreContext) ?? fallbackNotificationStore;
+  return useStore(store, (state) => state);
+}
+
+export function useThemeState(): ThemeStoreState {
+  const store = useContext(ThemeStoreContext) ?? fallbackThemeStore;
   return useStore(store, (state) => state);
 }
 
@@ -316,4 +344,9 @@ export function usePreferencesQuery() {
     queryKey: ["preferences"],
     queryFn: () => fetchPreferences(client),
   });
+}
+
+export function useWorkflowRunStepsQuery(workflowRunId: string) {
+  const client = useRestClient();
+  return useQuery(createWorkflowRunStepsQuery(client, workflowRunId));
 }

@@ -1,4 +1,4 @@
-import type { HarnessRun } from "../index.js";
+import { getConstraintOutputPolicy, type HarnessRun } from "../index.js";
 import { TaskOutcomeGrader, type TaskOutcomeGrade } from "./task-outcome-grader.js";
 
 export interface HarnessEvaluationReport {
@@ -19,7 +19,7 @@ export class EvalRunService {
   public evaluate(run: HarnessRun): HarnessEvaluationReport {
     const grade = this.grader.grade({
       evaluatorScore: run.decision?.confidence ?? 0,
-      expectedEvidenceRefs: run.constraintPack.output_policy.requiredEvidence,
+      expectedEvidenceRefs: getConstraintOutputPolicy(run.constraintPack).requiredEvidence,
       actualEvidenceRefs: run.feedbackEnvelope?.signals ?? [],
       decisionAction: run.decision?.action ?? null,
     });

@@ -485,7 +485,9 @@ export class PluginSpiRegistry {
             details: { pluginId: record.manifest.pluginId, phase, timeoutMs },
           }));
         }, timeoutMs);
-        promise.finally(() => clearTimeout(timer)).catch(() => undefined);
+        promise.finally(() => clearTimeout(timer)).catch(() => {
+        // Suppress unhandled rejection warning; error is re-thrown via ValidationError above
+      });
       });
       try {
         return await Promise.race([promise, timeoutPromise]);

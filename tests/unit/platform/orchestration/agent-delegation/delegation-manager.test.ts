@@ -212,6 +212,12 @@ test("DelegationManagerService validates collaboration messages and takeover not
     messageType: "takeover_notice" as const,
     correlation_id: "corr-1",
     parent_run_id: handle.delegationId,
+    delegationId: handle.delegationId,
+    childRunId: handle.childAgentId,
+    capabilityIntersection: ["action-read", "resource-a"],
+    budgetCap: 10,
+    dataBoundary: "delegation",
+    deadline: "2026-04-22T01:00:00.000Z",
     depth: 1,
     sender_agent_id: handle.childAgentId,
     receiver_agent_id: handle.parentAgentId,
@@ -452,14 +458,16 @@ test("DelegationManagerService revokeExpiredDelegations handles empty store", ()
 
 test("DelegationManagerService uses DEFAULT_MAX_DEPTH when no maxDepth provided", () => {
   const service = createDelegationManager();
-  const parent = createParentContext({ delegationDepth: 3 }); // DEFAULT_MAX_DEPTH = 3
+  const parent = createParentContext({ delegationDepth: 8, currentCallDepth: 8 });
   const spec = createDelegationSpec();
 
-  // Depth 3 + 1 = 4 > 3 should fail
-  assert.rejects(async () => service.delegate(parent, spec), DelegationDepthExceededError);
+  assert.rejects(
+    async () => service.delegate(parent, spec),
+    (err: unknown) => (err as { code?: string }).code === "delegation.call_depth_exceeded",
+  );
 });
 
-test("DelegationManagerService depth validation allows depth 3 and rejects depth 4 by default", async () => {
+test("DelegationManagerService depth validation allows delegation chain through depth 8 and rejects depth 9 by default", async () => {
   const service = createDelegationManager();
   const parentDepth0 = createParentContext({ delegationDepth: 0 });
   const spec = createDelegationSpec();
@@ -490,13 +498,57 @@ test("DelegationManagerService depth validation allows depth 3 and rejects depth
   const handle3 = await service.delegate(parentDepth2, createDelegationSpec({ targetPackId: "pack-child-3" }));
   assert.equal(handle3.depth, 3);
 
-  // Fourth delegation - depth 4 (rejected)
   const parentDepth3 = createParentContext({
     delegationDepth: 3,
     agentId: handle3.childAgentId,
   });
+  const handle4 = await service.delegate(parentDepth3, createDelegationSpec({ targetPackId: "pack-child-4" }));
+  assert.equal(handle4.depth, 4);
+
+  const parentDepth4 = createParentContext({
+    delegationDepth: 4,
+    agentId: handle4.childAgentId,
+  });
+  const handle5 = await service.delegate(parentDepth4, createDelegationSpec({ targetPackId: "pack-child-5" }));
+  assert.equal(handle5.depth, 5);
+
+  const parentDepth5 = createParentContext({
+    delegationDepth: 5,
+    agentId: handle5.childAgentId,
+  });
+  const handle6 = await service.delegate(parentDepth5, createDelegationSpec({ targetPackId: "pack-child-6" }));
+  assert.equal(handle6.depth, 6);
+
+  const parentDepth6 = createParentContext({
+    delegationDepth: 6,
+    agentId: handle6.childAgentId,
+  });
+  const handle7 = await service.delegate(parentDepth6, createDelegationSpec({ targetPackId: "pack-child-7" }));
+  assert.equal(handle7.depth, 7);
+
+  const parentDepth7 = createParentContext({
+    delegationDepth: 7,
+    agentId: handle7.childAgentId,
+  });
+  const handle8 = await service.delegate(parentDepth7, createDelegationSpec({ targetPackId: "pack-child-8" }));
+  assert.equal(handle8.depth, 8);
+
+  const parentDepth8 = createParentContext({
+    delegationDepth: 8,
+    currentCallDepth: 8,
+    agentId: handle8.childAgentId,
+  });
   await assert.rejects(
-    async () => service.delegate(parentDepth3, spec),
-    DelegationDepthExceededError,
+    async () => service.delegate(parentDepth8, spec),
+    (err: unknown) => (err as { code?: string }).code === "delegation.call_depth_exceeded",
   );
+});
+
+test("DelegationManagerService does not triple-count delegationDepth in call-depth budget", async () => {
+  const service = createDelegationManager();
+  const parent = createParentContext({ delegationDepth: 3, currentCallDepth: 3 });
+
+  const handle = await service.delegate(parent, createDelegationSpec({ targetPackId: "pack-child-4" }));
+
+  assert.equal(handle.depth, 4);
 });

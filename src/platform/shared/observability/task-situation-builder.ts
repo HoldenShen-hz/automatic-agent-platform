@@ -5,6 +5,7 @@ export type { TaskSituation };
 
 export interface TaskSituationInput {
   taskId: string;
+  domainId?: string;
   objective: string;
   currentPhase: TaskPhase;
   userInput?: string;
@@ -33,6 +34,7 @@ export class TaskSituationBuilder {
     const relevantFiles = [...(input.relevantFiles ?? fileRefs.map((path) => ({ path })))];
     return parseTaskSituation({
       taskId: input.taskId,
+      ...(input.domainId != null ? { domainId: input.domainId } : {}),
       timestamp: Date.now(),
       objective: input.objective,
       currentPhase: input.currentPhase,

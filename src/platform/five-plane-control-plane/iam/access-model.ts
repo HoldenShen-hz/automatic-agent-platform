@@ -64,68 +64,95 @@ export interface AuthorizationContextDecision {
   readonly explainSummary: string;
 }
 
-const ROLE_CAPABILITY_MAP = {
-  viewer: [],
-  human_operator: [
-    "model:invoke",
-    "tool:invoke",
-    "fs:write",
-    "exec:command",
-    "network:access",
-  ],
-  approver: [
-    "model:invoke",
-    "tool:invoke",
-    "network:access",
-  ],
-  platform_admin: [
-    "model:invoke",
-    "tool:invoke",
-    "fs:write",
-    "exec:command",
-    "network:access",
-    "extension:install",
-    "org:change",
-    "execution:dispatch",
-    "improvement:promote",
-    "rollout:advance",
-    "memory:promote",
-    "knowledge:trust:modify",
-  ],
-  agent_runtime: [
-    "model:invoke",
-    "tool:invoke",
-    "fs:write",
-    "exec:command",
-    "network:access",
-  ],
-  service_operator: [
-    "model:invoke",
-    "tool:invoke",
-    "network:access",
-    "execution:dispatch",
-    "rollout:advance",
-    "knowledge:trust:modify",
-  ],
-  worker_runtime: [
-    "tool:invoke",
-    "fs:write",
-    "exec:command",
-  ],
-  plugin_runtime: [
-    "tool:invoke",
-    "fs:write",
-    "network:access",
-  ],
-  system_runtime: [
-    "model:invoke",
-    "tool:invoke",
-    "fs:write",
-    "exec:command",
-    "network:access",
-    "execution:dispatch",
-    "memory:promote",
-  ],
+/**
+ * Role hierarchy for three-layer authorization model (RBAC → Capability → Context-aware).
+ * §11.2 requires hierarchical role inheritance where child roles inherit parent capabilities.
+ * Inheritance chain: base → standard → operator → admin
+ */
+const ROLE_HIERARCHY: Record<PlatformRole, PlatformRole | null> = {
+  viewer: null,                              // Base role - no inheritance
+  human_operator: "viewer",                  // Inherits viewer
+  approver: "viewer",                       // Inherits viewer
+  worker_runtime: "viewer",                  // Inherits viewer
+  plugin_runtime: "viewer",                  // Inherits viewer
+  agent_runtime: "viewer",                   // Runtime agent stays below operator-grade privileges
+  service_operator: "human_operator",        // Service operator inherits operator-grade privileges
+  system_runtime: "service_operator",        // Inherits service_operator
+  platform_admin: "system_runtime",          // Inherits system_runtime - top of hierarchy
+};
+
+/**
+ * Base capabilities at RBAC Layer 1. Higher roles inherit these.
+ * §11.2 requires flat capability lists to be replaced with hierarchical chain.
+ */
+const BASE_CAPABILITIES: readonly PlatformCapability[] = [];
+
+/**
+ * Standard operator capabilities - inherited by operator and admin roles.
+ */
+const STANDARD_CAPABILITIES: readonly PlatformCapability[] = [
+  "model:invoke",
+  "tool:invoke",
+  "network:access",
+];
+
+/**
+ * Extended operator capabilities - inherited by service and admin roles.
+ */
+const EXTENDED_CAPABILITIES: readonly PlatformCapability[] = [
+  ...STANDARD_CAPABILITIES,
+  "fs:write",
+  "exec:command",
+];
+
+/**
+ * Service operator capabilities - can act on execution/rollout paths but not org-wide admin.
+ */
+const SERVICE_OPERATOR_CAPABILITIES: readonly PlatformCapability[] = [
+  ...EXTENDED_CAPABILITIES,
+  "execution:dispatch",
+  "rollout:advance",
+  "knowledge:trust:modify",
+];
+
+/**
+ * System runtime capabilities - broader than service operators but below full admin.
+ */
+const SYSTEM_RUNTIME_CAPABILITIES: readonly PlatformCapability[] = [
+  ...SERVICE_OPERATOR_CAPABILITIES,
+  "memory:promote",
+  "knowledge:trust:modify",
+];
+
+/**
+ * Admin capabilities - top-level role gets all capabilities.
+ */
+const ADMIN_CAPABILITIES: readonly PlatformCapability[] = [
+  ...EXTENDED_CAPABILITIES,
+  "extension:install",
+  "org:change",
+  "execution:dispatch",
+  "improvement:promote",
+  "rollout:advance",
+  "memory:promote",
+  "knowledge:trust:modify",
+];
+
+/**
+ * Role capability map with hierarchical inheritance.
+ * Each role's capabilities are computed by walking the inheritance chain.
+ * §11.2: RBAC → Capability → Context-aware three-layer model.
+ */
+const ROLE_CAPABILITY_MAP: Record<PlatformRole, readonly PlatformCapability[]> = {
+  viewer: BASE_CAPABILITIES,
+  human_operator: EXTENDED_CAPABILITIES,
+  approver: STANDARD_CAPABILITIES,
+  worker_runtime: BASE_CAPABILITIES,
+  plugin_runtime: ["network:access"],
+  agent_runtime: STANDARD_CAPABILITIES,
+  service_operator: SERVICE_OPERATOR_CAPABILITIES,
+  system_runtime: SYSTEM_RUNTIME_CAPABILITIES,
+  platform_admin: ADMIN_CAPABILITIES,
 } as const satisfies Record<PlatformRole, readonly PlatformCapability[]>;
 
 const DEFAULT_ROLES_BY_PRINCIPAL = {
@@ -165,22 +192,58 @@ export function defaultRolesForPrincipalType(principalType: PlatformPrincipalTyp
   return DEFAULT_ROLES_BY_PRINCIPAL[principalType];
 }
 
+/**
+ * Walk the role inheritance chain to collect all capabilities.
+ * §11.2 RBAC Layer 1: hierarchical role inheritance.
+ */
 export function capabilitiesForRole(role: PlatformRole): readonly PlatformCapability[] {
-  return ROLE_CAPABILITY_MAP[role];
+  const capabilities = new Set<PlatformCapability>();
+  let currentRole: PlatformRole | null = role;
+  while (currentRole !== null) {
+    const caps = ROLE_CAPABILITY_MAP[currentRole];
+    for (let i = 0; i < caps.length; i++) {
+      capabilities.add(caps[i]);
+    }
+    currentRole = ROLE_HIERARCHY[currentRole];
+  }
+  return Array.from(capabilities);
+}
+
+/**
+ * Get the full inheritance chain for a role (for audit/debugging).
+ * §11.2 RBAC Layer 1: role hierarchy visualization.
+ */
+export function getRoleInheritanceChain(role: PlatformRole): readonly PlatformRole[] {
+  const chain: PlatformRole[] = [];
+  let current: PlatformRole | null = role;
+  while (current !== null) {
+    chain.push(current);
+    current = ROLE_HIERARCHY[current];
+  }
+  return chain;
 }
 
 export function inferCapabilitiesForAction(action: AuthorizationAction): readonly PlatformCapability[] {
   return ACTION_CAPABILITY_MAP[action];
 }
 
+/**
+ * Resolve principal access profile with hierarchical capability resolution.
+ * §11.2: RBAC Layer 1 (role inheritance) → Capability aggregation.
+ */
 export function resolvePrincipalAccessProfile(input: {
   principalType: PlatformPrincipalType;
   roles?: readonly PlatformRole[];
   capabilities?: readonly PlatformCapability[];
 }): PrincipalAccessProfile {
   const roles = dedupeRoles(input.roles?.length ? input.roles : defaultRolesForPrincipalType(input.principalType));
-  const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => ROLE_CAPABILITY_MAP[role]));
-  const capabilities = dedupeCapabilities(input.capabilities?.length ? input.capabilities : roleCapabilities);
+  // Walk inheritance chain for each role to collect all inherited capabilities
+  const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => capabilitiesForRole(role)));
+  const capabilities = dedupeCapabilities(
+    input.capabilities?.length
+      ? input.capabilities.filter((capability) => roleCapabilities.includes(capability))
+      : roleCapabilities,
+  );
   return {
     principalType: input.principalType,
     roles,
@@ -188,12 +251,19 @@ export function resolvePrincipalAccessProfile(input: {
   };
 }
 
+/**
+ * Check if roles grant required capabilities using hierarchical resolution.
+ * §11.2: RBAC Layer 1 with inheritance chain.
+ */
 export function roleGrantsCapabilities(
   roles: readonly PlatformRole[],
   requiredCapabilities: readonly PlatformCapability[],
 ): boolean {
-  const granted = new Set(roles.flatMap((role) => ROLE_CAPABILITY_MAP[role]));
-  return requiredCapabilities.every((capability) => granted.has(capability));
+  const granted = new Set(roles.flatMap((role) => capabilitiesForRole(role)));
+  for (let i = 0; i < requiredCapabilities.length; i++) {
+    if (!granted.has(requiredCapabilities[i])) return false;
+  }
+  return true;
 }
 
 export function evaluateAuthorizationContext(input: {
@@ -205,6 +275,8 @@ export function evaluateAuthorizationContext(input: {
   mode?: string;
 }): AuthorizationContextDecision {
   const context = input.context;
+  const requiredCapabilities = inferCapabilitiesForAction(input.action);
+  const hasRequiredCapabilities = roleGrantsCapabilities(input.roles, requiredCapabilities);
   if (context?.requiresTenantScope === true && (context.tenantId == null || context.tenantId.length === 0)) {
     return {
       allowed: false,
@@ -246,6 +318,16 @@ export function evaluateAuthorizationContext(input: {
     context?.dataClassification === "regulated"
     && (input.mode === "full-auto" || input.riskCategory === "sensitive_data")
   ) {
+    if (!hasRequiredCapabilities) {
+      return {
+        allowed: false,
+        requiresApproval: false,
+        reasonCode: "policy.capability_required",
+        matchedRuleRefs: ["context.default_deny", "capability.required"],
+        constraints: { requiredCapabilities },
+        explainSummary: "The principal does not hold the capabilities required for this action.",
+      };
+    }
     return {
       allowed: true,
       requiresApproval: true,
@@ -257,6 +339,16 @@ export function evaluateAuthorizationContext(input: {
   }
 
   if (context?.manualTakeoverActive === true) {
+    if (!input.roles.some((role) => role === "platform_admin" || role === "human_operator" || role === "service_operator")) {
+      return {
+        allowed: false,
+        requiresApproval: false,
+        reasonCode: "policy.context_manual_takeover_operator_required",
+        matchedRuleRefs: ["context.manual_takeover_operator_required"],
+        constraints: { requiredRoles: ["platform_admin", "human_operator", "service_operator"] },
+        explainSummary: "Manual takeover is restricted to operator-grade principals.",
+      };
+    }
     return {
       allowed: true,
       requiresApproval: false,
@@ -267,20 +359,49 @@ export function evaluateAuthorizationContext(input: {
     };
   }
 
+  if (!hasRequiredCapabilities) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      reasonCode: "policy.capability_required",
+      matchedRuleRefs: ["context.default_deny", "capability.required"],
+      constraints: { requiredCapabilities },
+      explainSummary: "The principal does not hold the capabilities required for this action.",
+    };
+  }
+
+  // §10.1: deny-by-default - no match means denial
+  // Fall-through case: no specific context rule matched, deny by default
   return {
-    allowed: true,
+    allowed: false,
     requiresApproval: false,
-    reasonCode: null,
-    matchedRuleRefs: ["context.default_allow"],
+    reasonCode: "policy.default_deny",
+    matchedRuleRefs: ["context.default_deny"],
     constraints: {},
-    explainSummary: "Context-aware authorization allows this action.",
+    explainSummary: "Action denied: no matching policy rule found (deny-by-default per §10.1).",
   };
 }
 
 function dedupeRoles(roles: readonly PlatformRole[]): readonly PlatformRole[] {
-  return [...new Set(roles)];
+  const seen = new Set<PlatformRole>();
+  const result: PlatformRole[] = [];
+  for (let i = 0; i < roles.length; i++) {
+    if (!seen.has(roles[i])) {
+      seen.add(roles[i]);
+      result.push(roles[i]);
+    }
+  }
+  return result;
 }
 
 function dedupeCapabilities(capabilities: readonly PlatformCapability[]): readonly PlatformCapability[] {
-  return [...new Set(capabilities)];
+  const seen = new Set<PlatformCapability>();
+  const result: PlatformCapability[] = [];
+  for (let i = 0; i < capabilities.length; i++) {
+    if (!seen.has(capabilities[i])) {
+      seen.add(capabilities[i]);
+      result.push(capabilities[i]);
+    }
+  }
+  return result;
 }

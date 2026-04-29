@@ -1,3 +1,4 @@
+import type { CostEstimate } from "../../scale-ecosystem/marketplace/cost-estimation-service.js";
 import type { UnifiedChatProvider } from "../../platform/model-gateway/provider-registry/index.js";
 import type {
   BudgetLedger,
@@ -92,27 +93,49 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
       }
 
       return {
-        tasks: parsed.tasks.map((task, index) => ({
-          taskId: `${goal.goalId}:llm:${index + 1}`,
-          domainId: task.domainId,
-          description: task.description,
-          inputs: {
-            goalDescription: goal.description,
-            successCriteria: goal.successCriteria,
-            constraints: goal.constraints,
-            deadline: goal.deadline ?? null,
-          },
-          expectedOutputs: task.expectedOutputs,
-          delegationMode: task.delegationMode,
-          estimatedDuration: task.estimatedDuration,
-          estimatedCost: {
-            estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
-            confidence: "low",
-            sampleCount: 0,
-            divisionId: null,
-            basedOn: "default",
-          },
-        })),
+        tasks: parsed.tasks.map((task, index) => {
+          // §40.2: Proportional budget allocation to subtasks
+          const totalTaskCost = parsed.tasks.reduce((sum, t) => sum + t.estimatedCostUsd, 0);
+          const taskProportion = totalTaskCost > 0 ? task.estimatedCostUsd / totalTaskCost : 1 / parsed.tasks.length;
+          const goalBudgetLimit = this.options.budgetControl?.estimatedCostUsd ?? 0;
+          const taskBudgetAllocation = goalBudgetLimit > 0 ? goalBudgetLimit * taskProportion : 0;
+
+          // Derive confidence from response completeness and cost ratio
+          const confidence: CostEstimate["confidence"] =
+            task.estimatedCostUsd > 0 && taskProportion > 0.05 ? "medium" : "low";
+
+          return {
+            taskId: `${goal.goalId}:llm:${index + 1}`,
+            domainId: task.domainId,
+            description: task.description,
+            inputs: {
+              goalDescription: goal.description,
+              successCriteria: goal.successCriteria,
+              constraints: goal.constraints,
+              deadline: goal.deadline ?? null,
+            },
+            expectedOutputs: task.expectedOutputs,
+            delegationMode: task.delegationMode,
+            estimatedDuration: task.estimatedDuration,
+            estimatedCost: {
+              estimatedCostUsd: Number(task.estimatedCostUsd.toFixed(4)),
+              confidence,
+              sampleCount: confidence === "medium" ? 3 : 1,
+              divisionId: null,
+              basedOn: "llm_plan_proportional",
+            },
+            constraintEnvelope: {
+              budgetLimitUsd: taskBudgetAllocation > 0 ? Number(taskBudgetAllocation.toFixed(4)) : null,
+              budgetAllocations: taskBudgetAllocation > 0
+                ? [{ taskId: `${goal.goalId}:llm:${index + 1}`, budgetUsd: Number(taskBudgetAllocation.toFixed(4)), riskMultiplier: 1.0 }]
+                : undefined,
+              riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
+              requiresApproval: false,
+              requiredPermissions: [],
+              requiredCapabilities: [],
+            },
+          };
+        }),
         dependencyGraph: parsed.dependencyGraph.map((edge) => ({
           ...edge,
           fromTask: this.normalizeTaskReference(goal.goalId, edge.fromTask),

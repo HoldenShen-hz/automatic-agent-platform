@@ -18,7 +18,7 @@ export interface WSClient {
 }
 
 export interface WebSocketFactory {
-  new(url: string): WebSocket;
+  new(url: string, protocols?: string | string[]): WebSocket;
 }
 
 export class InMemoryWSClient implements WSClient {
@@ -76,19 +76,51 @@ export class BrowserWSClient implements WSClient {
   private socket: WebSocket | null = null;
   private status: WSStatus = "disconnected";
   private subscribedChannels = new Set<string>();
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private currentUrl: string | null = null;
+  private currentToken: string | null = null;
+  private readonly maxReconnectDelayMs = 30000;
+  private readonly baseReconnectDelayMs = 1000;
 
   public constructor(
     private readonly websocketFactory: WebSocketFactory = WebSocket,
     private readonly fallbackClient: InMemoryWSClient | null = null,
   ) {}
 
-  public connect(url: string, token: string): void {
+  private calculateBackoffDelay(): number {
+    const exponentialDelay = Math.min(
+      this.baseReconnectDelayMs * Math.pow(2, this.reconnectAttempt),
+      this.maxReconnectDelayMs,
+    );
+    const jitter = exponentialDelay * (Math.random() * 0.3 - 0.15);
+    return Math.floor(exponentialDelay + jitter);
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+    }
+    const delay = this.calculateBackoffDelay();
+    this.reconnectAttempt++;
+    this.reconnectTimer = setTimeout(() => {
+      if (this.currentUrl != null && this.currentToken != null) {
+        this.doConnect(this.currentUrl, this.currentToken);
+      }
+    }, delay);
+  }
+
+  private doConnect(url: string, token: string): void {
     this.setStatus("connecting");
     try {
-      const socket = new this.websocketFactory(`${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`);
+      // §6.5.4: Use WebSocket subprotocol for auth - token must not appear in URL (avoid CDN/proxy log exposure)
+      const socket = new this.websocketFactory(url, "v1.auth.token");
       this.socket = socket;
       socket.onopen = () => {
+        this.reconnectAttempt = 0;
         this.setStatus("connected");
+        // §6.5.4: Send auth token in first message after connection, not in URL
+        socket.send(JSON.stringify({ action: "auth", token }));
         for (const channel of this.subscribedChannels) {
           socket.send(JSON.stringify({ action: "subscribe", channel }));
         }
@@ -99,22 +131,39 @@ export class BrowserWSClient implements WSClient {
       };
       socket.onclose = () => {
         this.setStatus("reconnecting");
+        this.scheduleReconnect();
       };
       socket.onerror = () => {
         this.setStatus("reconnecting");
+        this.scheduleReconnect();
         if (this.fallbackClient != null) {
           this.fallbackClient.connect(url, token);
         }
       };
     } catch {
       this.setStatus("reconnecting");
+      this.scheduleReconnect();
       if (this.fallbackClient != null) {
         this.fallbackClient.connect(url, token);
       }
     }
   }
 
+  public connect(url: string, token: string): void {
+    this.currentUrl = url;
+    this.currentToken = token;
+    this.reconnectAttempt = 0;
+    this.doConnect(url, token);
+  }
+
   public disconnect(): void {
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempt = 0;
+    this.currentUrl = null;
+    this.currentToken = null;
     this.socket?.close();
     this.socket = null;
     this.fallbackClient?.disconnect();

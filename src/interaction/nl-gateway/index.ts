@@ -1,4 +1,3 @@
-export { detectAmbiguity } from "./ambiguity-handler/index.js";
 export * from "./disambiguation-handler/index.js";
 export * from "./intent-parser/index.js";
 export * from "./slot-resolver/index.js";
@@ -128,6 +127,8 @@ export interface IntentParseResult {
   readonly context: ContextEnrichment;
   readonly securityFindings: readonly PromptInjectionFinding[];
   readonly blockedByPolicy: boolean;
+  /** §39.5: Prior conversation turns for context carry-across (Memory §29.2) */
+  readonly priorConversationTurns: readonly ConversationTurn[];
 }
 
 export interface RiskPreview {
@@ -618,6 +619,7 @@ export class NlEntryService implements NlEntryPort {
   private readonly nlConfig: NlGatewayConfig;
   private readonly contextEnricher = new ContextEnricher();
   private readonly responseFormatter = new ResponseFormatter();
+  private readonly conversationContextManager: ConversationContextManager;
 
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
@@ -630,6 +632,7 @@ export class NlEntryService implements NlEntryPort {
     this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
+    this.conversationContextManager = new ConversationContextManager(this.nlConfig);
   }
 
   /**
@@ -666,7 +669,12 @@ export class NlEntryService implements NlEntryPort {
   }
 
   public async parseDetailed(request: NlEntryRequest): Promise<IntentParseResult> {
-    const route = this.intakeRouter.route({
+    // §39.5: Retrieve prior conversation turns for context carry-across
+    const priorContext = this.conversationContextManager.getContext(
+      request.tenantId,
+      request.userId,
+    );
+    const route = await this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
     });
@@ -722,6 +730,7 @@ export class NlEntryService implements NlEntryPort {
       context,
       securityFindings,
       blockedByPolicy,
+      priorConversationTurns: priorContext.turns,
       ...(clarificationQuestions.length > 0 ? { clarificationQuestions } : {}),
     };
   }
@@ -826,6 +835,14 @@ export class NlEntryService implements NlEntryPort {
             locale: detailed.locale,
           },
         });
+
+    // §39.5: Record this turn in conversation context for subsequent turns
+    this.conversationContextManager.addTurn(
+      request.tenantId,
+      request.userId,
+      request.message,
+      primaryIntent,
+    );
 
     return {
       requestEnvelope,

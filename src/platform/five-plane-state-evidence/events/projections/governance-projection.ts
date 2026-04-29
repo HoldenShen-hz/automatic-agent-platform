@@ -58,12 +58,27 @@ export interface GovernanceState {
   timeline: GovernanceTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
+  /**
+   * Set of processed event IDs for idempotency (O(1) lookup).
+   * Stored as array for JSON serialization but converted to Set internally.
+   */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
+  /**
+   * Timestamp when this projection was last updated.
+   * Used for freshness monitoring and stale projection detection.
+   */
+  lastProjectedAt: string | null;
+}
+
+/**
+ * Internal state with Set for O(1) idempotency checks.
+ */
+interface GovernanceStateInternal extends Omit<GovernanceState, "processedEventIds"> {
+  _processedEventIdSet: Set<string>;
 }
 
 export type GovernanceActionType =
@@ -129,6 +144,27 @@ export function createEmptyGovernanceState(): GovernanceState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
+    lastProjectedAt: null,
+  };
+}
+
+/**
+ * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
+ */
+function toInternalState(state: GovernanceState): GovernanceStateInternal {
+  return {
+    ...state,
+    _processedEventIdSet: new Set(state.processedEventIds),
+  };
+}
+
+/**
+ * Converts internal state (with Set) back to serialized state (with array for JSON).
+ */
+function toSerializedState(state: GovernanceStateInternal): GovernanceState {
+  return {
+    ...state,
+    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -147,10 +183,11 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check)
+ * Checks if an event has already been processed (idempotency check).
+ * Uses O(1) Set lookup for efficiency.
  */
-function isEventProcessed(state: GovernanceState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
+function isEventProcessed(state: GovernanceStateInternal, eventId: string): boolean {
+  return state._processedEventIdSet.has(eventId);
 }
 
 /**
@@ -230,13 +267,14 @@ export const governanceProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null
+  // Initialize state if null, convert to internal state with Set for O(1) lookup
   const currentState = state as unknown as GovernanceState | null;
-  const newState = currentState ? { ...currentState } : createEmptyGovernanceState();
+  const baseState = currentState ? { ...currentState } : createEmptyGovernanceState();
+  const newState = toInternalState(baseState);
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return toSerializedState(newState) as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -270,6 +308,7 @@ export const governanceProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
+  newState.lastProjectedAt = event.createdAt;
 
   // Update action type
   if (newState.actionType === null) {
@@ -295,8 +334,8 @@ export const governanceProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // Mark event as processed using O(1) Set add
+  newState._processedEventIdSet.add(event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Update metadata

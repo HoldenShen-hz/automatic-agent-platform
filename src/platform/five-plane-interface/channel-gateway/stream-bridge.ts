@@ -31,6 +31,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { EventRecord } from "../../contracts/types/domain.js";
+import { z } from "zod";
 
 /**
  * Event types that can be dropped from the replay buffer when it exceeds max size.
@@ -38,6 +39,20 @@ import type { EventRecord } from "../../contracts/types/domain.js";
  * Critical events like "completed", "failed", and "approval_requested" are always retained.
  */
 const DROPPABLE_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>(["status_changed", "progress", "message_delta"]);
+
+/**
+ * Schema for validating event payload JSON in mapEventType.
+ * §5.2: All inter-plane boundary JSON must be schema-validated.
+ */
+const taskStatusChangedPayloadSchema = z.object({
+  toStatus: z.string().optional(),
+});
+
+/**
+ * Schema for validating event payload JSON in emitFromEvent.
+ * §5.2: All inter-plane boundary JSON must be schema-validated.
+ */
+const genericEventPayloadSchema = z.record(z.unknown());
 
 /**
  * A single frame in the event stream.
@@ -144,7 +159,9 @@ export interface SseFrame {
 function mapEventType(event: EventRecord): StreamEventFrame["eventType"] {
   switch (event.eventType) {
     case "task:status_changed": {
-      const payload = JSON.parse(event.payloadJson) as { toStatus?: string };
+      // §5.2: Schema-validated parsing at inter-plane boundary
+      const parsed = taskStatusChangedPayloadSchema.safeParse(JSON.parse(event.payloadJson));
+      const payload = parsed.success ? parsed.data : { toStatus: undefined };
       if (payload.toStatus === "done") {
         return "completed";
       }
@@ -243,12 +260,15 @@ export class StreamBridge {
    * @returns The emitted frame with assigned sequence number
    */
   public emitFromEvent(input: { streamId: string; channel: string; event: EventRecord }): StreamEventFrame {
+    // §5.2: Schema-validated parsing at inter-plane boundary
+    const parsed = genericEventPayloadSchema.safeParse(JSON.parse(input.event.payloadJson));
+    const payload = parsed.success ? parsed.data : {};
     return this.emitFrame({
       streamId: input.streamId,
       taskId: input.event.taskId ?? "unknown_task",
       channel: input.channel,
       eventType: mapEventType(input.event),
-      payload: JSON.parse(input.event.payloadJson) as Record<string, unknown>,
+      payload,
       createdAt: input.event.createdAt,
     });
   }
@@ -367,27 +387,48 @@ export class StreamBridge {
   }
 
   /**
+   * Critical event types that must NEVER be dropped from replay buffer.
+   * These terminal states and approval requests are essential for clients
+   * to receive final workflow outcomes.
+   */
+const CRITICAL_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>([
+    "completed",
+    "failed",
+    "approval_requested",
+    "artifact_ready",
+  ]);
+
+  /**
    * Appends a frame to the replay buffer, evicting old frames if necessary.
    *
    * When the buffer exceeds maxReplayFrames, it attempts to drop the oldest
-   * frame that is marked as droppable. If no droppable frames exist, it drops
-   * the oldest frame regardless of type. Critical events (completed, failed,
-   * approval_requested) are preserved by checking the type before dropping.
+   * droppable frame (status_changed, progress, message_delta). Critical events
+   * (completed, failed, approval_requested, artifact_ready) are NEVER dropped.
+   * If all buffered frames are critical, the new frame is dropped instead.
    *
    * @param frame - The frame to append
    */
   private appendToReplayBuffer(frame: StreamEventFrame): void {
     const next = [...(this.replayBuffer.get(frame.streamId) ?? []), frame];
 
+    // If buffer exceeds limit, try to evict oldest droppable frame
     while (next.length > this.options.maxReplayFrames) {
-      // Find the first droppable frame (search from oldest)
+      // Find the first droppable frame from oldest (index 0) onwards
       const indexToDrop = next.findIndex((candidate) => DROPPABLE_EVENT_TYPES.has(candidate.eventType));
-      // If no droppable found, fall back to oldest (index 0)
-      const removed = next.splice(indexToDrop >= 0 ? indexToDrop : 0, 1)[0];
-      if (removed != null) {
-        // Track the lowest dropped sequence so clients know buffer was truncated
-        const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;
-        this.droppedBeforeSequenceByStream.set(frame.streamId, Math.max(previousDropped, removed.sequence));
+
+      // Only drop if we found a droppable frame; never drop critical events
+      if (indexToDrop >= 0) {
+        const removed = next.splice(indexToDrop, 1)[0];
+        if (removed != null) {
+          // Track the lowest dropped sequence so clients know buffer was truncated
+          const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;
+          this.droppedBeforeSequenceByStream.set(frame.streamId, Math.max(previousDropped, removed.sequence));
+        }
+      } else {
+        // All frames are critical - drop the NEW frame (the one we just appended)
+        // This preserves historical critical events at the cost of losing the new one
+        next.pop();
+        break;
       }
     }
 

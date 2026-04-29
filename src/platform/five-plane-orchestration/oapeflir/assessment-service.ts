@@ -8,13 +8,16 @@ import {
 
 export interface AssessmentServiceOptions {
   highRiskTools?: readonly string[];
+  defaultDivision?: string;
 }
 
 export class AssessmentService {
   private readonly highRiskTools: ReadonlySet<string>;
+  private readonly defaultDivision: string;
 
   public constructor(options: AssessmentServiceOptions = {}) {
     this.highRiskTools = new Set(options.highRiskTools ?? ["apply_patch", "shell", "deploy"]);
+    this.defaultDivision = options.defaultDivision ?? "coding";
   }
 
   public assess(input: TaskSituation): UnifiedAssessment {
@@ -62,7 +65,7 @@ export class AssessmentService {
         factors: riskFactors,
       },
       routingDecision: {
-        division: "coding",
+        division: situation.domainId ?? this.defaultDivision,
         workflow,
         rationale: `complexity=${complexity};risk=${risk};files=${situation.fileRefs.length}`,
       },

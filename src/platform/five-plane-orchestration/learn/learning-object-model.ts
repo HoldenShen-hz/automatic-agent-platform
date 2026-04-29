@@ -10,7 +10,7 @@ export const LearningObjectSchema = z.object({
   sourceSignalIds: z.array(z.string()).default([]),
   recommendation: z.string().min(1),
   validatedBy: z.enum(["none", "evidence", "human_review", "shadow_execution"]).default("none"),
-  promotionStatus: z.enum(["draft", "validated", "promoted", "retired"]).default("draft"),
+  promotionStatus: z.enum(["draft", "quarantine", "validated", "promoted", "retired"]).default("quarantine"),
   createdAt: z.number().int().nonnegative(),
 });
 

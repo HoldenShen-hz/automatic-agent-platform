@@ -35,10 +35,9 @@ test("golden: config governance service loads bundle structure", () => {
       assert.ok(bundle, "Bundle should be loaded");
       assert.ok(bundle.version, "Should have version");
       assert.ok(bundle.layers, "Should have layers");
-    } catch {
-      // Schema validation may fail - that's ok for this test
-      // We're testing the service can be instantiated with custom root
-      assert.ok(true, "Config service instantiated");
+    } catch (err) {
+      // Schema validation may fail - fail the test with actual error for debugging
+      assert.fail(`Schema validation failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   } finally {
     cleanupPath(workspace);
@@ -69,9 +68,9 @@ test("golden: config bundle version structure", () => {
 
       // Verify version format matches expected pattern
       assert.match(bundle.version.versionId, /^\d+\.\d+\.\d+$/, "Version ID should match semver pattern");
-    } catch {
-      // Validation may fail for incomplete files
-      assert.ok(true, "Service instantiated correctly");
+    } catch (err) {
+      // Validation may fail for incomplete files - fail with actual error
+      assert.fail(`Validation failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   } finally {
     cleanupPath(workspace);
@@ -101,8 +100,9 @@ test("golden: config layer hashes are deterministic", () => {
       const runtimeHash2 = bundle2.version.layerHashes["runtime"];
 
       assert.equal(runtimeHash1, runtimeHash2, "Same layer should produce same hash");
-    } catch {
-      assert.ok(true, "Service instantiated");
+    } catch (err) {
+      // Hash computation failed - fail with actual error
+      assert.fail(`Hash computation failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   } finally {
     cleanupPath(workspace);

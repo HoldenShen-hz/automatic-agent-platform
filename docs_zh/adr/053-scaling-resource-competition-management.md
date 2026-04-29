@@ -27,6 +27,8 @@ interface ResourceAllocation {
 }
 ```
 
+注：ResourcePool / ResourceAllocation（reserved/used）与 §1.5 冻结的 BudgetLedger / BudgetReservation / BudgetSettlement 并行运作——ResourcePool 负责运行时计算资源配额，BudgetLedger 负责财务预算结算，两者通过 `tenant_id` 关联，共同构成完整的资源+预算双重保障体系。
+
 ### 资源类型
 
 | 类型 | 说明 |

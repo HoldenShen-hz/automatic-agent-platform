@@ -8,6 +8,38 @@
 import { ValidationError } from "../../contracts/errors.js";
 
 /**
+ * Deep equality check for comparing two values including nested objects and arrays.
+ * Handles primitives by reference, objects/arrays recursively.
+ */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return a === b;
+  if (typeof a !== "object" || typeof b !== "object") return false;
+
+  const aObj = a as Record<string, unknown>;
+  const bObj = b as Record<string, unknown>;
+
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  if (Array.isArray(a)) {
+    if (a.length !== bObj.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], bObj[i])) return false;
+    }
+    return true;
+  }
+
+  const aKeys = Object.keys(aObj);
+  const bKeys = Object.keys(bObj);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (!bKeys.includes(key)) return false;
+    if (!deepEqual(aObj[key], bObj[key])) return false;
+  }
+  return true;
+}
+
+/**
  * Represents a configuration entry with metadata.
  */
 export interface ConfigEntry<T = unknown> {
@@ -112,8 +144,9 @@ export class ConfigStore {
     this.entries.set(key, entry);
     this.version++;
 
-    // Notify listeners
-    if (oldEntry?.value !== value) {
+    // Notify listeners only when value has actually changed (deep equality).
+    // Reference equality (===) fails for objects/arrays and misses in-place mutations.
+    if (!deepEqual(oldEntry?.value, value)) {
       for (const listener of this.changeListeners) {
         listener(key, oldEntry?.value, value);
       }

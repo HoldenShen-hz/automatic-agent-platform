@@ -162,6 +162,22 @@ export interface RetireExtensionInput {
   retiredAt?: string;
 }
 
+/**
+ * Per §55.5, sunset phase blocks new installations for 180 days.
+ * After sunset period, packages can be retired.
+ */
+export interface SunsetExtensionInput {
+  packageId: string;
+  tenantId?: string | null;
+  reasonCode: string;
+  migrationTarget?: string | null;
+  replacementSuggestions?: readonly string[];
+  /** Migration threshold percentage (0-100), default 95 per §55.5 */
+  migrationThreshold?: number;
+  sunsetStartsAt?: string;
+  sunsetEndsAt?: string;
+}
+
 /** Entry in the marketplace catalog */
 export interface MarketplaceCatalogEntry {
   packageId: string;
@@ -656,6 +672,63 @@ export class MarketplaceGovernanceService {
         status: "retired",
         revocationReasonCode: assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_retirement_reason"),
         updatedAt: retiredAt,
+      });
+    }
+    return updatedPackage;
+  }
+
+  /**
+   * Sunset a package - blocks new installations for 180 days per §55.5.
+   *
+   * During sunset period:
+   * - New installations are blocked (migration_threshold must be >= 95%)
+   * - Existing installations continue to work
+   * - After sunset period ends, package can be retired
+   *
+   * @param input - Sunset parameters
+   * @returns The updated package record
+   */
+  public sunsetPackage(input: SunsetExtensionInput): ExtensionPackageRecord {
+    const packageRecord = this.requirePackage(input.packageId, input.tenantId);
+    const now = nowIso();
+    const sunsetStartsAt = input.sunsetStartsAt == null ? now : assertTimestamp(input.sunsetStartsAt, "marketplace.invalid_sunset_starts_at");
+
+    // §55.5: sunset period is 180 days, ends automatically
+    const sunsetEndsAt = input.sunsetEndsAt ?? (() => {
+      const ends = new Date(sunsetStartsAt);
+      ends.setDate(ends.getDate() + 180);
+      return ends.toISOString();
+    })();
+
+    const migrationThreshold = input.migrationThreshold ?? 95;
+    if (migrationThreshold < 95) {
+      throw new PolicyDeniedError("marketplace.migration_threshold_too_low", "marketplace.migration_threshold_too_low", {
+        retryable: false,
+        details: { packageId: input.packageId, migrationThreshold, minimumRequired: 95 },
+      });
+    }
+
+    const updatedPackage: ExtensionPackageRecord = {
+      ...packageRecord,
+      lifecycleState: "sunset",
+      updatedAt: now,
+    };
+    this.store.marketplace.upsertExtensionPackage(updatedPackage);
+
+    const publication = this.store.marketplace.getActiveMarketplacePublicationForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined);
+    if (publication != null) {
+      this.store.marketplace.upsertMarketplacePublication({
+        ...publication,
+        status: "sunset",
+        revocationReasonCode: [
+          assertSimpleIdentifier(input.reasonCode, "marketplace.invalid_sunset_reason"),
+          `migration_threshold:${migrationThreshold}`,
+          `sunset_starts:${sunsetStartsAt}`,
+          `sunset_ends:${sunsetEndsAt}`,
+          input.migrationTarget == null ? null : `migration_target:${assertSimpleIdentifier(input.migrationTarget, "marketplace.invalid_migration_target")}`,
+          ...(input.replacementSuggestions ?? []).map((item) => `replacement:${assertSimpleIdentifier(item, "marketplace.invalid_replacement_suggestion")}`),
+        ].filter((item): item is string => item != null).join("|"),
+        updatedAt: now,
       });
     }
     return updatedPackage;

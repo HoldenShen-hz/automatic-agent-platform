@@ -31,7 +31,7 @@ export class LearningObjectValidator {
         learningObject: {
           ...learningObject,
           validatedBy: "none",
-          promotionStatus: "draft",
+          promotionStatus: "quarantine",
         },
       };
     }
@@ -44,7 +44,55 @@ export class LearningObjectValidator {
         learningObject: {
           ...learningObject,
           validatedBy: "none",
-          promotionStatus: "draft",
+          promotionStatus: "quarantine",
+        },
+      };
+    }
+
+    if (!this.checkPiiSecretScan(learningObject)) {
+      return {
+        valid: false,
+        reasonCode: "learning.pii_secret_detected",
+        learningObject: {
+          ...learningObject,
+          validatedBy: "none",
+          promotionStatus: "quarantine",
+        },
+      };
+    }
+
+    if (!this.checkHoldoutDedup(learningObject)) {
+      return {
+        valid: false,
+        reasonCode: "learning.holdout_duplicate",
+        learningObject: {
+          ...learningObject,
+          validatedBy: "none",
+          promotionStatus: "quarantine",
+        },
+      };
+    }
+
+    if (!this.checkContamination(learningObject)) {
+      return {
+        valid: false,
+        reasonCode: "learning.contamination_detected",
+        learningObject: {
+          ...learningObject,
+          validatedBy: "none",
+          promotionStatus: "quarantine",
+        },
+      };
+    }
+
+    if (!this.checkDiversity(learningObject)) {
+      return {
+        valid: false,
+        reasonCode: "learning.insufficient_diversity",
+        learningObject: {
+          ...learningObject,
+          validatedBy: "none",
+          promotionStatus: "quarantine",
         },
       };
     }
@@ -55,9 +103,35 @@ export class LearningObjectValidator {
       learningObject: {
         ...learningObject,
         validatedBy: learningObject.validatedBy === "none" ? "evidence" : learningObject.validatedBy,
-        promotionStatus: learningObject.promotionStatus === "draft" ? "validated" : learningObject.promotionStatus,
+        promotionStatus: learningObject.promotionStatus === "quarantine" || learningObject.promotionStatus === "draft" ? "validated" : learningObject.promotionStatus,
       },
     };
+  }
+
+  private checkPiiSecretScan(obj: LearningObject): boolean {
+    const text = `${obj.title} ${obj.summary} ${obj.recommendation}`.toLowerCase();
+    const piiPatterns = [
+      /\b\d{3}-\d{2}-\d{4}\b/, // SSN
+      /\b\d{16}\b/,            // credit card
+      /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // email
+      /password|secret|api[_-]?key|token|credential/i,
+    ];
+    return !piiPatterns.some((pattern) => pattern.test(text));
+  }
+
+  private checkHoldoutDedup(_obj: LearningObject): boolean {
+    // TODO: implement against holdout dataset
+    return true;
+  }
+
+  private checkContamination(_obj: LearningObject): boolean {
+    // TODO: implement cross-contamination check
+    return true;
+  }
+
+  private checkDiversity(_obj: LearningObject): boolean {
+    // TODO: implement diversity check against existing objects
+    return true;
   }
 
   public validateMany(inputs: readonly LearningObject[]): LearningObject[] {

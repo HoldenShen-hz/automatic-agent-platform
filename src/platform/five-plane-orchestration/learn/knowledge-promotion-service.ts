@@ -65,7 +65,7 @@ export class KnowledgePromotionService {
    * @returns Promotion result with counts and document IDs
    */
   public promote(learningObjects: readonly LearningObject[], taskId: string): KnowledgePromotionResult {
-    const promoted: string[] = [];
+    const promoted: Array<{ objectId: string; documentId: string }> = [];
     const failed: string[] = [];
 
     for (const obj of learningObjects) {
@@ -85,7 +85,7 @@ export class KnowledgePromotionService {
           tags: [obj.learningType, `confidence:${obj.confidence.toFixed(2)}`],
         });
 
-        promoted.push(result.document.documentId);
+        promoted.push({ objectId: obj.learningObjectId, documentId: result.document.documentId });
       } catch (err) {
         failed.push(obj.learningObjectId);
         // Log but don't throw — promotion failure should not block the loop
@@ -93,27 +93,35 @@ export class KnowledgePromotionService {
       }
     }
 
-    // Emit learning:knowledge_promoted event (Tier 2) for downstream consumers
+    // Emit learning:knowledge_promoted event (Tier 2) for each promoted object
+    // to satisfy §28 traceability requirements — each fact event must be independently traceable
     if (promoted.length > 0 && this.eventPublisher) {
-      this.eventPublisher.publish({
-        eventType: "learning:knowledge_promoted",
-        taskId,
-        payload: {
-          learningObjectId: learningObjects[0]?.learningObjectId ?? "",
-          learningType: learningObjects[0]?.learningType ?? "unknown",
-          documentId: promoted[0] ?? "",
-          namespace: "system.learned.patterns",
-          trustLevel: "reviewed",
-          promotedCount: promoted.length,
-          occurredAt: nowIso(),
-        },
-      });
+      const totalCount = promoted.length;
+      for (const { objectId, documentId } of promoted) {
+        const obj = learningObjects.find((o) => o.learningObjectId === objectId);
+        if (!obj) {
+          continue;
+        }
+        this.eventPublisher.publish({
+          eventType: "learning:knowledge_promoted",
+          taskId,
+          payload: {
+            learningObjectId: obj.learningObjectId,
+            learningType: obj.learningType,
+            documentId,
+            namespace: "system.learned.patterns",
+            trustLevel: "reviewed",
+            promotedCount: totalCount,
+            occurredAt: nowIso(),
+          },
+        });
+      }
     }
 
     return {
       promotedCount: promoted.length,
       failedCount: failed.length,
-      knowledgeDocumentIds: promoted,
+      knowledgeDocumentIds: promoted.map((p) => p.documentId),
     };
   }
 

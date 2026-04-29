@@ -140,7 +140,7 @@ export class SimpleProposalEngine implements ProposalEngine {
         target: 'complex_task_template',
         patch: this.generateWorkflowPatch(reflection),
         rationale: `Improve workflow template for complex tasks`,
-        risk: 'medium',
+        risk: 'high',  // workflow_template is in MANUAL_ONLY_KINDS = requires manual approval
         evidenceIds: reflection.evidenceIds,
         status: 'proposed',
         createdAt: now,

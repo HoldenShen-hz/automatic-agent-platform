@@ -245,6 +245,43 @@ test("acquireLease throws when execution not found", () => {
   );
 });
 
+test("acquireLease expires expired active lease and grants new lease", () => {
+  // An expired lease that should be auto-expired by expireActiveLeaseIfNeeded
+  const expiredLease = createLease({
+    id: "lease-expired",
+    executionId: "exec-1",
+    workerId: "worker-old",
+    status: "active",
+    expiresAt: new Date(Date.now() - 5000).toISOString(), // expired 5 seconds ago
+  });
+  const state: MockStoreState = {
+    leases: new Map([[expiredLease.id, expiredLease]]),
+    activeLeaseByExecution: new Map([[expiredLease.executionId, expiredLease]]),
+    latestLeaseByExecution: new Map([[expiredLease.executionId, expiredLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-new",
+    ttlMs: 10_000,
+  });
+
+  // Should grant a new lease (the expired one was auto-expired)
+  assert.equal(result.outcome, "granted");
+  assert.ok(result.lease != null);
+  assert.equal(result.lease!.workerId, "worker-new");
+  assert.notEqual(result.lease!.id, "lease-expired");
+  // Audit should have been created for the expired lease
+  assert.ok(state.audits.some((a) => a.eventType === "lease_expired"));
+});
+
 test("acquireLease grants lease with fencing token 1 when no previous lease exists", () => {
   const state: MockStoreState = {
     leases: new Map(),
@@ -267,6 +304,106 @@ test("acquireLease grants lease with fencing token 1 when no previous lease exis
 
   assert.equal(result.outcome, "granted");
   assert.equal(result.lease!.fencingToken, 1); // first lease has token 1
+});
+
+test("acquireLease blocks when TTL below minimum", () => {
+  const state: MockStoreState = {
+    leases: new Map(),
+    activeLeaseByExecution: new Map(),
+    latestLeaseByExecution: new Map(),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    ttlMs: 1_000, // below MIN_LEASE_TTL_MS (5_000)
+  });
+
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "ttl_out_of_bounds");
+  assert.ok(result.lease == null);
+});
+
+test("acquireLease blocks when TTL above maximum", () => {
+  const state: MockStoreState = {
+    leases: new Map(),
+    activeLeaseByExecution: new Map(),
+    latestLeaseByExecution: new Map(),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    ttlMs: 60_000, // above MAX_LEASE_TTL_MS (30_000)
+  });
+
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "ttl_out_of_bounds");
+  assert.ok(result.lease == null);
+});
+
+test("acquireLease grants lease with valid TTL at minimum boundary", () => {
+  const state: MockStoreState = {
+    leases: new Map(),
+    activeLeaseByExecution: new Map(),
+    latestLeaseByExecution: new Map(),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    ttlMs: 5_000, // exactly MIN_LEASE_TTL_MS
+  });
+
+  assert.equal(result.outcome, "granted");
+  assert.ok(result.lease != null);
+  assert.equal(result.lease!.status, "active");
+});
+
+test("acquireLease grants lease with valid TTL at maximum boundary", () => {
+  const state: MockStoreState = {
+    leases: new Map(),
+    activeLeaseByExecution: new Map(),
+    latestLeaseByExecution: new Map(),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    ttlMs: 30_000, // exactly MAX_LEASE_TTL_MS
+  });
+
+  assert.equal(result.outcome, "granted");
+  assert.ok(result.lease != null);
+  assert.equal(result.lease!.status, "active");
 });
 
 test("acquireLease creates audit record", () => {
@@ -678,6 +815,117 @@ test("validateWriteAccess denies when worker mismatch", () => {
 
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "worker_mismatch");
+});
+
+test("validateWriteAccess denies when lease expired", () => {
+  const expiredTime = new Date(Date.now() - 5000).toISOString(); // 5 seconds ago
+  const existingLease = createLease({
+    id: "lease-1",
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 5,
+    expiresAt: expiredTime,
+  });
+  const state: MockStoreState = {
+    leases: new Map([[existingLease.id, existingLease]]),
+    activeLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    latestLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.validateWriteAccess({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 5,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "lease_expired");
+  assert.equal(result.authoritativeFencingToken, 5);
+  assert.equal(result.activeLeaseId, "lease-1");
+});
+
+test("validateWriteAccess denies when no active lease but latest exists", () => {
+  const latestLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
+  const state: MockStoreState = {
+    leases: new Map([[latestLease.id, latestLease]]),
+    activeLeaseByExecution: new Map(), // no active lease
+    latestLeaseByExecution: new Map([[latestLease.executionId, latestLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.validateWriteAccess({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 5,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "no_active_lease");
+});
+
+test("validateWriteAccess denies when leaseId mismatch", () => {
+  const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
+  const state: MockStoreState = {
+    leases: new Map([[existingLease.id, existingLease]]),
+    activeLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    latestLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.validateWriteAccess({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 5,
+    leaseId: "lease-wrong", // mismatched lease ID
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "lease_mismatch");
+});
+
+test("validateWriteAccess allows when leaseId matches", () => {
+  const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
+  const state: MockStoreState = {
+    leases: new Map([[existingLease.id, existingLease]]),
+    activeLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    latestLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, store);
+
+  const result = service.validateWriteAccess({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 5,
+    leaseId: "lease-1", // matches
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.activeLeaseId, "lease-1");
 });
 
 test("validateWriteAccess creates audit on stale write", () => {

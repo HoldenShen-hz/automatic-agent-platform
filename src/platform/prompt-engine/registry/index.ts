@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
 
-export type PromptTemplateChannel = "system" | "developer" | "user";
+export type PromptTemplateChannel = "planner" | "generator" | "evaluator" | "system";
 
 export interface PromptTemplateVariableSpec {
   key: string;
@@ -12,9 +12,12 @@ export interface PromptTemplateVariableSpec {
   defaultValue?: string;
 }
 
+export type PromptTemplateStatus = "draft" | "review" | "staging" | "canary" | "stable" | "deprecated";
+
 export interface PromptTemplateRecord {
   templateKey: string;
   version: string;
+  status: PromptTemplateStatus;
   owner: string;
   channel: PromptTemplateChannel;
   fixedPrefix: string;
@@ -30,6 +33,7 @@ export interface PromptTemplateRecord {
 export interface PromptTemplateRegistrationInput {
   templateKey: string;
   version: string;
+  status?: PromptTemplateStatus;
   owner: string;
   channel?: PromptTemplateChannel;
   fixedPrefix: string;
@@ -64,6 +68,7 @@ export class PromptTemplateRegistryService {
     const record: PromptTemplateRecord = {
       templateKey,
       version,
+      status: input.status ?? "draft",
       owner,
       channel: input.channel ?? "system",
       fixedPrefix,

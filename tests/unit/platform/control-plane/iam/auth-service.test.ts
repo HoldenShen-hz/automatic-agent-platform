@@ -79,7 +79,9 @@ test("capabilitiesForRole returns correct capabilities for platform_admin", () =
 test("capabilitiesForRole returns correct capabilities for agent_runtime", () => {
   const caps = capabilitiesForRole("agent_runtime");
   assert.ok(caps.includes("tool:invoke"));
-  assert.ok(caps.includes("fs:write"));
+  assert.ok(caps.includes("model:invoke"));
+  assert.ok(!caps.includes("fs:write"));
+  assert.ok(!caps.includes("exec:command"));
   assert.ok(!caps.includes("org:change"));
 });
 
@@ -114,18 +116,18 @@ test("resolvePrincipalAccessProfile derives capabilities from roles", () => {
     roles: ["agent_runtime"],
   });
   assert.ok(profile.capabilities.includes("tool:invoke"));
-  assert.ok(profile.capabilities.includes("fs:write"));
+  assert.ok(profile.capabilities.includes("model:invoke"));
+  assert.ok(!profile.capabilities.includes("fs:write"));
   assert.equal(profile.principalType, "agent");
 });
 
-test("resolvePrincipalAccessProfile uses explicit capabilities when provided", () => {
+test("resolvePrincipalAccessProfile filters explicit capabilities through role grants", () => {
   const profile = resolvePrincipalAccessProfile({
     principalType: "user",
     roles: ["viewer"],
     capabilities: ["model:invoke", "tool:invoke"],
   });
-  assert.ok(profile.capabilities.includes("model:invoke"));
-  assert.ok(profile.capabilities.includes("tool:invoke"));
+  assert.deepEqual(profile.capabilities, []);
 });
 
 test("resolvePrincipalAccessProfile deduplicates roles", () => {

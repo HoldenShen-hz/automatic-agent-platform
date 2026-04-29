@@ -15,6 +15,9 @@ EU AI Act 等法规要求 AI 决策可解释，平台需要提供决策透明度
 interface DecisionRecord {
   decision_id: string;
   agent_id: string;
+  harness_run_id?: string;   // §5.5 所有决策须链接到 HarnessRun
+  node_run_id?: string;      // §5.5 决策上下文节点
+  plan_graph_id?: string;    // §5.5 决策关联的计划图
   context: DecisionContext;
   reasoning: string;
   evidence: Evidence[];
@@ -22,6 +25,8 @@ interface DecisionRecord {
   timestamp: string;
 }
 ```
+
+注：所有 DecisionRecord 必须通过 `harness_run_id` / `node_run_id` / `plan_graph_id` 链接到 HarnessRun，以满足 §5.5 决策追溯要求。
 
 ### 可解释性层次
 

@@ -57,25 +57,76 @@ export type HarnessDecisionAction =
 // R6-13: Re-export canonical HarnessRunStatus to consolidate to single interface
 export type HarnessRunStatus = CanonicalHarnessRunStatus;
 
+export interface ConstraintToolPolicy {
+  readonly allowedTools: readonly string[];
+}
+
+export interface ConstraintRiskPolicy {
+  readonly maxRiskScore: number;
+  readonly escalationThreshold: number;
+}
+
+export interface ConstraintOutputPolicy {
+  readonly requiredEvidence: readonly string[];
+  readonly redactSensitiveData: boolean;
+}
+
 export interface ConstraintPack {
   readonly policyIds: readonly string[];
   readonly approvalMode: "none" | "required" | "supervised";
   readonly autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
-  readonly toolPolicy: {
-    readonly allowedTools: readonly string[];
-  };
-  readonly risk_policy: {
-    readonly maxRiskScore: number;
-    readonly escalationThreshold: number;
-  };
-  readonly output_policy: {
-    readonly requiredEvidence: readonly string[];
-    readonly redactSensitiveData: boolean;
-  };
+  readonly toolPolicy: ConstraintToolPolicy;
+  readonly riskPolicy?: ConstraintRiskPolicy;
+  readonly outputPolicy?: ConstraintOutputPolicy;
+  readonly risk_policy?: ConstraintRiskPolicy;
+  readonly output_policy?: ConstraintOutputPolicy;
   readonly budget: {
     readonly maxSteps: number;
     readonly maxCost: number;
     readonly maxDurationMs: number;
+  };
+}
+
+export function getConstraintRiskPolicy(constraintPack: ConstraintPack): ConstraintRiskPolicy {
+  const riskPolicy = constraintPack.riskPolicy ?? constraintPack.risk_policy;
+  if (riskPolicy == null) {
+    throw new Error("harness.constraint_pack.missing_risk_policy");
+  }
+  return riskPolicy;
+}
+
+export function getConstraintOutputPolicy(constraintPack: ConstraintPack): ConstraintOutputPolicy {
+  const outputPolicy = constraintPack.outputPolicy ?? constraintPack.output_policy;
+  if (outputPolicy == null) {
+    throw new Error("harness.constraint_pack.missing_output_policy");
+  }
+  return outputPolicy;
+}
+
+export function normalizeConstraintPack(constraintPack: ConstraintPack): ConstraintPack {
+  const riskPolicy = getConstraintRiskPolicy(constraintPack);
+  const outputPolicy = getConstraintOutputPolicy(constraintPack);
+
+  return {
+    policyIds: [...constraintPack.policyIds],
+    approvalMode: constraintPack.approvalMode,
+    autonomyMode: constraintPack.autonomyMode,
+    toolPolicy: {
+      allowedTools: [...constraintPack.toolPolicy.allowedTools],
+    },
+    riskPolicy: {
+      maxRiskScore: riskPolicy.maxRiskScore,
+      escalationThreshold: riskPolicy.escalationThreshold,
+    },
+    outputPolicy: {
+      requiredEvidence: [...outputPolicy.requiredEvidence],
+      redactSensitiveData: outputPolicy.redactSensitiveData,
+    },
+    budget: {
+      maxSteps: constraintPack.budget.maxSteps,
+      maxCost: constraintPack.budget.maxCost,
+      maxDurationMs: constraintPack.budget.maxDurationMs,
+    },
   };
 }
 
@@ -122,6 +173,8 @@ export interface WorkflowSleepLease {
   readonly reason: string;
   readonly resumeAt: string;
   readonly createdAt: string;
+  /** Current retry attempt number (0-indexed, so 0 = first attempt) */
+  readonly retryAttempt: number;
 }
 
 export interface RecoveryCheckpoint {
@@ -445,12 +498,13 @@ export class HarnessRuntimeService {
     constraintPack: ConstraintPack;
     planGraphBundle?: PlanGraphBundle;
   }): HarnessRunRuntimeState {
+    const constraintPack = normalizeConstraintPack(input.constraintPack);
     const runId = newId("harness_run");
     const budgetLedger = createBudgetLedger({
       tenantId: "tenant:local",
       harnessRunId: runId,
       currency: "USD",
-      hardCap: input.constraintPack.budget.maxCost,
+      hardCap: constraintPack.budget.maxCost,
     });
     const run: HarnessRunRuntimeState = {
       harnessRunId: runId,
@@ -465,16 +519,16 @@ export class HarnessRuntimeService {
       currentSeq: 0,
       taskId: input.taskId,
       domainId: input.domainId,
-      constraintPack: input.constraintPack,
+      constraintPack,
       planGraphBundle: input.planGraphBundle ?? createInitialPlanGraphBundle({
         runId,
         taskId: input.taskId,
         domainId: input.domainId,
-        constraintPack: input.constraintPack,
+        constraintPack,
       }),
       steps: [],
       nodeRunIds: [],
-      maxIterations: input.constraintPack.budget.maxSteps,
+      maxIterations: constraintPack.budget.maxSteps,
       currentIteration: 0,
       status: "created",
       createdAt: nowIso(),
@@ -495,9 +549,9 @@ export class HarnessRuntimeService {
         replanCount: 0,
         totalCost: 0,
         durationMs: 0,
-        maxIterations: input.constraintPack.budget.maxSteps,
-        maxCost: input.constraintPack.budget.maxCost,
-        maxDurationMs: input.constraintPack.budget.maxDurationMs,
+        maxIterations: constraintPack.budget.maxSteps,
+        maxCost: constraintPack.budget.maxCost,
+        maxDurationMs: constraintPack.budget.maxDurationMs,
       },
     };
     return this.appendTimelineEvent(run, "run_created", {
@@ -568,7 +622,7 @@ export class HarnessRuntimeService {
     return this.contextAssembler.snapshot(run, context);
   }
 
-  public sleep(run: HarnessRunRuntimeState, reason: string, resumeAt: string): HarnessRunRuntimeState {
+  public sleep(run: HarnessRunRuntimeState, reason: string, resumeAt: string, retryAttempt = 0): HarnessRunRuntimeState {
     const paused = this.pauseRun(this.ensureRunning(run), "sleep");
     return {
       ...paused,
@@ -579,6 +633,7 @@ export class HarnessRuntimeService {
         reason,
         resumeAt,
         createdAt: nowIso(),
+        retryAttempt,
       },
       timeline: [
         ...paused.timeline,
@@ -662,6 +717,7 @@ export class HarnessRuntimeService {
     if (run.hitlRequest == null) {
       throw new Error(`harness.hitl.request_not_found_for_run:${run.runId}`);
     }
+    this.hydrateHitlRuntime(run.hitlRequest);
     const resolved = this.hitlRuntime.resolve(run.hitlRequest.requestId, resolution, actorId);
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
@@ -801,6 +857,7 @@ export class HarnessRuntimeService {
     const run = this.durableService.restore(runId);
     if (run) {
       this.ensureInvariantSafe(run);
+      this.hydrateHitlRuntime(run.hitlRequest);
     }
     return run;
   }
@@ -809,12 +866,20 @@ export class HarnessRuntimeService {
     const run = this.durableService.restoreFromCheckpoint(checkpointRef);
     if (run) {
       this.ensureInvariantSafe(run);
+      this.hydrateHitlRuntime(run.hitlRequest);
     }
     return run;
   }
 
   public handleFailure(run: HarnessRunRuntimeState, failure: HarnessFailureType): HarnessRunRuntimeState {
     return this.recoveryController.handleFailure(run, failure);
+  }
+
+  private hydrateHitlRuntime(request: HitlRequest | null): void {
+    if (request == null || this.hitlRuntime.get(request.requestId) != null) {
+      return;
+    }
+    this.hitlRuntime.hydrate(request);
   }
 
   private appendTimelineEvent(
@@ -945,17 +1010,19 @@ export class HarnessRuntimeService {
         iteration,
       });
 
+      const outputPolicy = getConstraintOutputPolicy(input.constraintPack);
+      const riskPolicy = getConstraintRiskPolicy(input.constraintPack);
       const toolbelt = this.toolbeltAssembler.assemble({
         allowedTools: input.constraintPack.toolPolicy.allowedTools,
         requestedTools: [...(input.requestedTools ?? [])],
-        requiredEvidence: input.constraintPack.output_policy.requiredEvidence,
+        requiredEvidence: outputPolicy.requiredEvidence,
       });
       const guardrailAssessment = this.guardrailEngine.assess({
         toolbelt,
         evidenceRefs: [...(input.producedEvidenceRefs ?? [])],
-        riskScore: input.riskScore ?? Math.max(0, input.constraintPack.risk_policy.escalationThreshold - 1),
-        maxRiskScore: input.constraintPack.risk_policy.maxRiskScore,
-        escalationThreshold: input.constraintPack.risk_policy.escalationThreshold,
+        riskScore: input.riskScore ?? Math.max(0, riskPolicy.escalationThreshold - 1),
+        maxRiskScore: riskPolicy.maxRiskScore,
+        escalationThreshold: riskPolicy.escalationThreshold,
         currentStepCount: run.steps.length,
         maxSteps: input.constraintPack.budget.maxSteps,
       });

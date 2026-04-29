@@ -1,0 +1,395 @@
+/**
+ * Session Management Module
+ * §11.1/§11.2: access_token TTL=15min, refresh_token=24h, revocation, rotation
+ *
+ * Implements three-layer auth model:
+ * - Layer 1: RBAC with hierarchical role inheritance (access-model.ts)
+ * - Layer 2: Capability-based access control
+ * - Layer 3: Context-aware authorization
+ */
+
+import { randomBytes } from "node:crypto";
+import { ValidationError } from "../../contracts/errors.js";
+
+// ============================================================================
+// Session Token Configuration
+// ============================================================================
+
+const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;        // 15 minutes
+const REFRESH_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const TOKEN_SIZE = 32;
+
+// ============================================================================
+// Session Types
+// ============================================================================
+
+export type SessionStatus = "active" | "refreshed" | "revoked" | "expired";
+
+export interface AccessToken {
+  readonly tokenId: string;
+  readonly sessionId: string;
+  readonly principalId: string;
+  readonly principalType: string;
+  readonly issuedAt: number;
+  readonly expiresAt: number;
+  readonly refreshTokenId: string;
+}
+
+export interface RefreshToken {
+  readonly tokenId: string;
+  readonly sessionId: string;
+  readonly principalId: string;
+  readonly issuedAt: number;
+  readonly expiresAt: number;
+  readonly rotatedCount: number;
+  readonly isRotated: boolean;
+}
+
+export interface Session {
+  readonly sessionId: string;
+  readonly principalId: string;
+  readonly principalType: string;
+  readonly status: SessionStatus;
+  readonly accessToken: AccessToken;
+  readonly refreshToken: RefreshToken;
+  readonly createdAt: number;
+  readonly lastAccessedAt: number;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+export interface SessionValidationResult {
+  readonly valid: boolean;
+  readonly session: Session | null;
+  readonly reason: SessionValidationError | null;
+}
+
+export type SessionValidationError =
+  | "session_not_found"
+  | "session_expired"
+  | "session_revoked"
+  | "access_token_expired"
+  | "access_token_invalid";
+
+// ============================================================================
+// In-Memory Session Store (per §11.2 - production would use distributed cache)
+// ============================================================================
+
+interface SessionEntry {
+  session: Session;
+  accessTokenSecretHash: string;
+  refreshTokenSecretHash: string;
+}
+
+const sessions = new Map<string, SessionEntry>();
+const accessTokenIndex = new Map<string, string>(); // tokenId -> sessionId
+const refreshTokenIndex = new Map<string, string>(); // tokenId -> sessionId
+
+// ============================================================================
+// Token Generation
+// ============================================================================
+
+function generateTokenId(): string {
+  return randomBytes(TOKEN_SIZE).toString("base64url");
+}
+
+function hashToken(token: string): string {
+  // Use a simple hash for index lookup (not for password storage)
+  // In production, use a proper HMAC-based token storage
+  const { createHash } = require("node:crypto");
+  return createHash("sha256").update(token).digest("base64url");
+}
+
+// ============================================================================
+// Session Lifecycle Operations
+// ============================================================================
+
+/**
+ * Create a new session with access token and refresh token.
+ * §11.1/§11.2: access_token TTL=15min, refresh_token=24h
+ */
+export function createSession(input: {
+  principalId: string;
+  principalType: string;
+  metadata?: Record<string, unknown>;
+}): Session {
+  const sessionId = generateTokenId();
+  const now = Date.now();
+
+  const refreshTokenId = generateTokenId();
+  const accessTokenId = generateTokenId();
+
+  // Create refresh token first
+  const refreshToken: RefreshToken = {
+    tokenId: refreshTokenId,
+    sessionId,
+    principalId: input.principalId,
+    issuedAt: now,
+    expiresAt: now + REFRESH_TOKEN_TTL_MS,
+    rotatedCount: 0,
+    isRotated: false,
+  };
+
+  // Create access token with refresh token back-reference
+  const accessToken: AccessToken = {
+    tokenId: accessTokenId,
+    sessionId,
+    principalId: input.principalId,
+    principalType: input.principalType,
+    issuedAt: now,
+    expiresAt: now + ACCESS_TOKEN_TTL_MS,
+    refreshTokenId, // Back-reference set during construction
+  };
+
+  const session: Session = {
+    sessionId,
+    principalId: input.principalId,
+    principalType: input.principalType,
+    status: "active",
+    accessToken,
+    refreshToken,
+    createdAt: now,
+    lastAccessedAt: now,
+    metadata: Object.freeze(input.metadata ?? {}),
+  };
+
+  const entry: SessionEntry = {
+    session,
+    accessTokenSecretHash: hashToken(accessTokenId),
+    refreshTokenSecretHash: hashToken(refreshTokenId),
+  };
+
+  sessions.set(sessionId, entry);
+  accessTokenIndex.set(accessTokenId, sessionId);
+  refreshTokenIndex.set(refreshTokenId, sessionId);
+
+  return session;
+}
+
+/**
+ * Validate an access token.
+ * §11.2: Token validation with expiry check.
+ */
+export function validateAccessToken(accessTokenString: string): SessionValidationResult {
+  const tokenId = accessTokenString; // In production, parse JWT or opaque token
+  const sessionId = accessTokenIndex.get(tokenId);
+
+  if (!sessionId) {
+    return { valid: false, session: null, reason: "access_token_invalid" };
+  }
+
+  const entry = sessions.get(sessionId);
+  if (!entry) {
+    return { valid: false, session: null, reason: "session_not_found" };
+  }
+
+  const session = entry.session;
+
+  if (session.status === "revoked") {
+    return { valid: false, session, reason: "session_revoked" };
+  }
+
+  if (session.status === "expired") {
+    return { valid: false, session, reason: "session_expired" };
+  }
+
+  const now = Date.now();
+  if (session.accessToken.expiresAt < now) {
+    return { valid: false, session, reason: "access_token_expired" };
+  }
+
+  return { valid: true, session, reason: null };
+}
+
+/**
+ * Refresh tokens with rotation.
+ * §11.2: refresh_token rotation with 24h TTL, old token invalidated.
+ */
+export function refreshSession(refreshTokenString: string): Session {
+  const tokenId = refreshTokenString;
+  const sessionId = refreshTokenIndex.get(tokenId);
+
+  if (!sessionId) {
+    throw new ValidationError("session.refresh_token_invalid", "session.refresh_token_invalid");
+  }
+
+  const entry = sessions.get(sessionId);
+  if (!entry) {
+    throw new ValidationError("session.not_found", "session.not_found");
+  }
+
+  const session = entry.session;
+
+  if (session.status === "revoked" || session.status === "expired") {
+    throw new ValidationError("session.invalid_state", "session.invalid_state");
+  }
+
+  const now = Date.now();
+  if (session.refreshToken.expiresAt < now) {
+    throw new ValidationError("session.refresh_token_expired", "session.refresh_token_expired");
+  }
+
+  if (session.refreshToken.isRotated && session.refreshToken.tokenId !== tokenId) {
+    throw new ValidationError("session.refresh_token_reused", "session.refresh_token_reused");
+  }
+
+  // Invalidate old tokens
+  accessTokenIndex.delete(session.accessToken.tokenId);
+  refreshTokenIndex.delete(session.refreshToken.tokenId);
+
+  // Issue new tokens with rotation
+  const newAccessTokenId = generateTokenId();
+  const newRefreshTokenId = generateTokenId();
+
+  const newAccessToken: AccessToken = {
+    tokenId: newAccessTokenId,
+    sessionId: session.sessionId,
+    principalId: session.principalId,
+    principalType: session.principalType,
+    issuedAt: now,
+    expiresAt: now + ACCESS_TOKEN_TTL_MS,
+    refreshTokenId: newRefreshTokenId,
+  };
+
+  const newRefreshToken: RefreshToken = {
+    tokenId: newRefreshTokenId,
+    sessionId: session.sessionId,
+    principalId: session.principalId,
+    issuedAt: now,
+    expiresAt: now + REFRESH_TOKEN_TTL_MS,
+    rotatedCount: session.refreshToken.rotatedCount + 1,
+    isRotated: true,
+  };
+
+  const newSession: Session = {
+    ...session,
+    status: "refreshed",
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+    lastAccessedAt: now,
+  };
+
+  const newEntry: SessionEntry = {
+    session: newSession,
+    accessTokenSecretHash: hashToken(newAccessTokenId),
+    refreshTokenSecretHash: hashToken(newRefreshTokenId),
+  };
+
+  sessions.set(sessionId, newEntry);
+  accessTokenIndex.set(newAccessTokenId, sessionId);
+  refreshTokenIndex.set(newRefreshTokenId, sessionId);
+
+  return newSession;
+}
+
+/**
+ * Revoke a session (logout).
+ * §11.2: Immediate revocation with token invalidation.
+ */
+export function revokeSession(sessionId: string): void {
+  const entry = sessions.get(sessionId);
+  if (!entry) {
+    throw new ValidationError("session.not_found", "session.not_found");
+  }
+
+  // Invalidate tokens
+  accessTokenIndex.delete(entry.session.accessToken.tokenId);
+  refreshTokenIndex.delete(entry.session.refreshToken.tokenId);
+
+  // Mark session as revoked
+  const revokedSession: Session = {
+    ...entry.session,
+    status: "revoked",
+  };
+
+  sessions.set(sessionId, { ...entry, session: revokedSession });
+}
+
+/**
+ * Revoke all sessions for a principal.
+ * §11.2: Bulk revocation for security events (e.g., password change, MFA disable).
+ */
+export function revokeAllPrincipalSessions(principalId: string): number {
+  let count = 0;
+  const sessionIds = Array.from(sessions.keys());
+  for (const sessionId of sessionIds) {
+    const entry = sessions.get(sessionId);
+    if (entry && entry.session.principalId === principalId) {
+      revokeSession(sessionId);
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Get session by ID.
+ */
+export function getSession(sessionId: string): Session | null {
+  return sessions.get(sessionId)?.session ?? null;
+}
+
+/**
+ * Get all active sessions for a principal.
+ */
+export function getPrincipalSessions(principalId: string): readonly Session[] {
+  const result: Session[] = [];
+  const entries = Array.from(sessions.values());
+  for (const entry of entries) {
+    if (entry.session.principalId === principalId && entry.session.status === "active") {
+      result.push(entry.session);
+    }
+  }
+  return result;
+}
+
+// ============================================================================
+// Token Extraction Helpers
+// ============================================================================
+
+/**
+ * Extract bearer token from Authorization header.
+ */
+export function extractBearerToken(authHeader: string | null): string | null {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  return authHeader.slice(7);
+}
+
+// ============================================================================
+// Audit & Metrics
+// ============================================================================
+
+export function getSessionStats(): {
+  totalSessions: number;
+  activeSessions: number;
+  revokedSessions: number;
+  expiredSessions: number;
+} {
+  let active = 0;
+  let revoked = 0;
+  let expired = 0;
+
+  const entries = Array.from(sessions.values());
+  for (const entry of entries) {
+    switch (entry.session.status) {
+      case "active":
+      case "refreshed":
+        active++;
+        break;
+      case "revoked":
+        revoked++;
+        break;
+      case "expired":
+        expired++;
+        break;
+    }
+  }
+
+  return {
+    totalSessions: sessions.size,
+    activeSessions: active,
+    revokedSessions: revoked,
+    expiredSessions: expired,
+  };
+}

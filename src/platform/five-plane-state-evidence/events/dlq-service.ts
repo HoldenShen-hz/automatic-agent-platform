@@ -106,10 +106,75 @@ const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_RETRY_BACKOFF_MS = 30_000;
 
 /**
- * DLQ Service - Handles dead letter queue operations with audit trail
+ * Repository interface for DLQ persistence in dlq-service.
+ * Extends the base DeadLetterRecord with operator action log support.
+ */
+export interface DlqRepository {
+  /** Insert a new DLQ record */
+  insert(record: ExtendedDeadLetterRecord): void;
+  /** Find a DLQ record by ID */
+  findById(deadLetterId: string): ExtendedDeadLetterRecord | null;
+  /** Update an existing DLQ record */
+  update(record: ExtendedDeadLetterRecord): void;
+  /** List all DLQ records */
+  listAll(): ExtendedDeadLetterRecord[];
+  /** List DLQ records by consumer ID */
+  listByConsumer(consumerId: string): ExtendedDeadLetterRecord[];
+  /** List retryable DLQ records due by the specified instant */
+  listRetryable(asOf: string): ExtendedDeadLetterRecord[];
+}
+
+/**
+ * In-memory implementation of DLQ repository for backward compatibility
+ * and environments without persistent storage.
+ */
+export class InMemoryDlqRepository implements DlqRepository {
+  private readonly records = new Map<string, ExtendedDeadLetterRecord>();
+
+  public insert(record: ExtendedDeadLetterRecord): void {
+    this.records.set(record.deadLetterId, record);
+  }
+
+  public findById(deadLetterId: string): ExtendedDeadLetterRecord | null {
+    return this.records.get(deadLetterId) ?? null;
+  }
+
+  public update(record: ExtendedDeadLetterRecord): void {
+    if (!this.records.has(record.deadLetterId)) {
+      throw new ValidationError(`dlq.not_found:${record.deadLetterId}`, `Dead-letter record ${record.deadLetterId} was not found.`);
+    }
+    this.records.set(record.deadLetterId, record);
+  }
+
+  public listAll(): ExtendedDeadLetterRecord[] {
+    return [...this.records.values()].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  public listByConsumer(consumerId: string): ExtendedDeadLetterRecord[] {
+    return [...this.records.values()].filter((record) => record.consumerId === consumerId);
+  }
+
+  public listRetryable(asOf: string): ExtendedDeadLetterRecord[] {
+    return [...this.records.values()]
+      .filter((record) => record.status === "retrying" && record.nextRetryAt != null && record.nextRetryAt <= asOf)
+      .sort((left, right) => left.nextRetryAt!.localeCompare(right.nextRetryAt!));
+  }
+}
+
+/**
+ * DLQ Service - Handles dead letter queue operations with audit trail.
+ * Supports both in-memory and persistent repository implementations.
  */
 export class DlqService {
-  private readonly records = new Map<string, ExtendedDeadLetterRecord>();
+  private readonly repo: DlqRepository;
+
+  /**
+   * Create a DLQ service with an optional repository.
+   * @param repo - Optional repository for persistence. Defaults to in-memory storage.
+   */
+  public constructor(repo?: DlqRepository) {
+    this.repo = repo ?? new InMemoryDlqRepository();
+  }
 
   /**
    * Enqueue a new dead letter entry
@@ -144,7 +209,7 @@ export class DlqService {
       retryExhaustedAt: null,
       operatorActionLog: [],
     };
-    this.records.set(record.deadLetterId, record);
+    this.repo.insert(record);
     return record;
   }
 
@@ -170,7 +235,7 @@ export class DlqService {
       nextRetryAt,
       updatedAt: now,
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -198,7 +263,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -227,7 +292,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -257,7 +322,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -288,7 +353,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -304,7 +369,7 @@ export class DlqService {
       reason,
       updatedAt: now,
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -335,7 +400,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -363,7 +428,7 @@ export class DlqService {
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
-    this.records.set(deadLetterId, updated);
+    this.repo.update(updated);
     return updated;
   }
 
@@ -371,28 +436,28 @@ export class DlqService {
    * List all dead letter records for a consumer
    */
   public listByConsumer(consumerId: string): ExtendedDeadLetterRecord[] {
-    return Array.from(this.records.values()).filter((record) => record.consumerId === consumerId);
+    return this.repo.listByConsumer(consumerId);
   }
 
   /**
    * List all dead letter records
    */
   public listAll(): ExtendedDeadLetterRecord[] {
-    return Array.from(this.records.values()).sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return this.repo.listAll();
   }
 
   /**
    * List dead letter records by status
    */
   public listByStatus(status: DeadLetterStatus): ExtendedDeadLetterRecord[] {
-    return Array.from(this.records.values()).filter((record) => record.status === status);
+    return this.repo.listAll().filter((record) => record.status === status);
   }
 
   /**
    * Get a specific dead letter record
    */
   public get(deadLetterId: string): ExtendedDeadLetterRecord | undefined {
-    return this.records.get(deadLetterId);
+    return this.repo.findById(deadLetterId);
   }
 
   /**
@@ -447,7 +512,7 @@ export class DlqService {
    * Get a required record or throw
    */
   private getRequired(deadLetterId: string): ExtendedDeadLetterRecord {
-    const record = this.records.get(deadLetterId);
+    const record = this.repo.findById(deadLetterId);
     if (record == null) {
       throw new ValidationError(
         `dlq.not_found:${deadLetterId}`,

@@ -37,7 +37,11 @@ export interface WorkflowRunState {
   failedSteps: string[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
+  /**
+   * Set of processed event IDs for idempotency.
+   * Stored as array for JSON serialization but converted to Set internally.
+   * Use processedEventIdSet() getter for O(1) lookup.
+   */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
@@ -51,6 +55,14 @@ export interface WorkflowRunState {
   completedAt: string | null;
   /** Failed timestamp if workflow failed */
   failedAt: string | null;
+}
+
+/**
+ * Internal state interface with Set for efficient O(1) lookups.
+ * Used during event processing; serialized to WorkflowRunState for storage.
+ */
+interface WorkflowRunStateInternal extends Omit<WorkflowRunState, "processedEventIds"> {
+  _processedEventIdSet: Set<string>;
 }
 
 export type WorkflowRunStatus =
@@ -115,6 +127,26 @@ export function createEmptyWorkflowRunState(): WorkflowRunState {
 }
 
 /**
+ * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
+ */
+function toInternalState(state: WorkflowRunState): WorkflowRunStateInternal {
+  return {
+    ...state,
+    _processedEventIdSet: new Set(state.processedEventIds),
+  };
+}
+
+/**
+ * Converts internal state (with Set) back to serialized state (with array for JSON).
+ */
+function toSerializedState(state: WorkflowRunStateInternal): WorkflowRunState {
+  return {
+    ...state,
+    processedEventIds: Array.from(state._processedEventIdSet),
+  };
+}
+
+/**
  * Parses JSON payload safely
  */
 function parsePayload(payloadJson: string): Record<string, unknown> {
@@ -129,10 +161,11 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check)
+ * Checks if an event has already been processed (idempotency check).
+ * Uses O(1) Set lookup for efficiency.
  */
-function isEventProcessed(state: WorkflowRunState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
+function isEventProcessed(state: WorkflowRunStateInternal, eventId: string): boolean {
+  return state._processedEventIdSet.has(eventId);
 }
 
 /**
@@ -154,13 +187,14 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null
+  // Initialize state if null, convert to internal state with Set for O(1) lookup
   const currentState = state as unknown as WorkflowRunState | null;
-  const newState = currentState ? { ...currentState } : createEmptyWorkflowRunState();
+  const baseState = currentState ? { ...currentState } : createEmptyWorkflowRunState();
+  const newState = toInternalState(baseState);
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return toSerializedState(newState) as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -192,8 +226,8 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // Mark event as processed using O(1) Set add
+  newState._processedEventIdSet.add(event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type
@@ -227,14 +261,14 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return toSerializedState(newState) as unknown as Record<string, unknown>;
 };
 
 /**
  * Handle workflow:step_completed event
  */
 function handleStepCompleted(
-  state: WorkflowRunState,
+  state: WorkflowRunStateInternal,
   payload: Record<string, unknown>,
 ): void {
   const stepId = payload.stepId as string | undefined;
@@ -250,7 +284,7 @@ function handleStepCompleted(
  * Handle division:completed event
  */
 function handleDivisionCompleted(
-  state: WorkflowRunState,
+  state: WorkflowRunStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -273,7 +307,7 @@ function handleDivisionCompleted(
  * Handle division:failed event
  */
 function handleDivisionFailed(
-  state: WorkflowRunState,
+  state: WorkflowRunStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -295,7 +329,7 @@ function handleDivisionFailed(
  * Handle subtask:completed event (maps to step completion)
  */
 function handleSubtaskCompleted(
-  state: WorkflowRunState,
+  state: WorkflowRunStateInternal,
   payload: Record<string, unknown>,
 ): void {
   const stepId = (payload.stepId ?? payload.subtaskId) as string | undefined;
@@ -311,7 +345,7 @@ function handleSubtaskCompleted(
  * Handle subtask:failed event
  */
 function handleSubtaskFailed(
-  state: WorkflowRunState,
+  state: WorkflowRunStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {
@@ -333,7 +367,7 @@ function handleSubtaskFailed(
  * Handle task:status_changed event for workflow lifecycle
  */
 function handleTaskStatusChanged(
-  state: WorkflowRunState,
+  state: WorkflowRunStateInternal,
   payload: Record<string, unknown>,
   timestamp: string,
 ): void {

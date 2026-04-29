@@ -59,7 +59,14 @@ export interface ExecutionLeaseHandoverDecision {
 
 export interface ExecutionWriteValidationResult {
   allowed: boolean;
-  reasonCode: "lease_not_found" | "no_active_lease" | "stale_fencing_token" | "worker_mismatch" | "lease_mismatch" | null;
+  reasonCode:
+    | "lease_not_found"
+    | "no_active_lease"
+    | "stale_fencing_token"
+    | "worker_mismatch"
+    | "lease_mismatch"
+    | "lease_expired"
+    | null;
   authoritativeFencingToken: number;
   activeLeaseId: string | null;
 }

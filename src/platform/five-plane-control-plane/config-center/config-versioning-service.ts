@@ -89,19 +89,50 @@ export interface ConfigVersionDiff {
  * Options for ConfigVersioningService.
  */
 export interface ConfigVersioningServiceOptions {
-  /** Optional event bus for emitting version events */
+  /** Event bus for emitting and subscribing to version events */
   eventBus?: DurableEventBus | null;
   /** Maximum number of versions to retain per config path (default: 50) */
   maxVersionsPerPath?: number;
   /** Maximum age of versions in milliseconds (default: 30 days) */
   maxVersionAgeMs?: number;
+  /** Whether to persist events for replay on startup (default: true) */
+  persistEvents?: boolean;
+}
+
+/**
+ * Event payload for version creation (for event sourcing).
+ */
+interface ConfigVersionCreatedPayload {
+  versionId: string;
+  configPath: string;
+  layer: string;
+  sourceId: string | null;
+  content: Record<string, unknown>;
+  contentHash: string;
+  createdAt: string;
+  createdBy: string | null;
+  reason: string | null;
+  parentVersionId: string | null;
+}
+
+/**
+ * Event payload for rollback point creation.
+ */
+interface ConfigRollbackPointCreatedPayload {
+  rollbackId: string;
+  versionId: string;
+  configPath: string;
+  layer: string;
+  createdAt: string;
+  createdBy: string;
 }
 
 /**
  * Service for managing configuration versioning, diffs, and rollbacks.
+ * Per §24.2: Implements event sourcing for complete history + rollback capability.
  *
  * Stores snapshots of configuration at each change, enabling:
- * - Tracking configuration history
+ * - Tracking configuration history (event-sourced via DurableEventBus)
  * - Comparing any two versions
  * - Rolling back to previous configurations
  * - Audit trail of changes
@@ -110,17 +141,43 @@ export class ConfigVersioningService {
   private readonly eventBus: DurableEventBus | null;
   private readonly maxVersionsPerPath: number;
   private readonly maxVersionAgeMs: number;
+  private readonly persistEvents: boolean;
+  private _initialized = false;
 
-  /** In-memory storage for version snapshots */
+  /** In-memory storage for version snapshots (rebuilt from events on init) */
   private readonly snapshots = new Map<string, ConfigVersionSnapshot[]>();
 
-  /** In-memory storage for rollback points */
+  /** In-memory storage for rollback points (rebuilt from events on init) */
   private readonly rollbackPoints = new Map<string, ConfigRollbackPoint[]>();
 
   public constructor(options: ConfigVersioningServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
     this.maxVersionsPerPath = options.maxVersionsPerPath ?? 50;
     this.maxVersionAgeMs = options.maxVersionAgeMs ?? 30 * 24 * 60 * 60 * 1000;
+    this.persistEvents = options.persistEvents ?? true;
+  }
+
+  /**
+   * Initializes the service by subscribing to events and rebuilding state.
+   * Must be called before using the service if persistEvents is enabled.
+   */
+  public async initialize(): Promise<void> {
+    if (this._initialized || !this.eventBus) {
+      this._initialized = true;
+      return;
+    }
+
+    // Subscribe to version events for replay
+    await this.eventBus.subscribe(
+      "config.version.created",
+      this.handleVersionCreatedEvent.bind(this),
+    );
+    await this.eventBus.subscribe(
+      "config.rollback_point.created",
+      this.handleRollbackPointCreatedEvent.bind(this),
+    );
+
+    this._initialized = true;
   }
 
   /**
@@ -429,7 +486,7 @@ export class ConfigVersioningService {
   }
 
   /**
-   * Emits a version event to the event bus.
+   * Emits a version event to the event bus for persistence and replay.
    */
   private emitVersionEvent(eventType: string, snapshot: ConfigVersionSnapshot): void {
     if (!this.eventBus) {
@@ -443,6 +500,7 @@ export class ConfigVersioningService {
         configPath: snapshot.configPath,
         layer: snapshot.layer,
         sourceId: snapshot.sourceId,
+        content: snapshot.content, // Include content for full event replay
         contentHash: snapshot.contentHash,
         createdAt: snapshot.createdAt,
         createdBy: snapshot.createdBy,
@@ -471,5 +529,51 @@ export class ConfigVersioningService {
         createdBy: rollbackPoint.createdBy,
       },
     });
+  }
+
+  /**
+   * Handles version created event for event sourcing replay.
+   */
+  private handleVersionCreatedEvent(payload: ConfigVersionCreatedPayload): void {
+    const key = this.buildKey(payload.configPath, payload.layer, payload.sourceId);
+    const versions = this.snapshots.get(key) ?? [];
+
+    // Only add if not already present (idempotent replay)
+    if (!versions.find((v) => v.versionId === payload.versionId)) {
+      versions.push({
+        versionId: payload.versionId,
+        configPath: payload.configPath,
+        layer: payload.layer,
+        sourceId: payload.sourceId,
+        content: payload.content,
+        contentHash: payload.contentHash,
+        createdAt: payload.createdAt,
+        createdBy: payload.createdBy,
+        reason: payload.reason,
+        parentVersionId: payload.parentVersionId,
+      });
+      this.snapshots.set(key, versions);
+    }
+  }
+
+  /**
+   * Handles rollback point created event for event sourcing replay.
+   */
+  private handleRollbackPointCreatedEvent(payload: ConfigRollbackPointCreatedPayload): void {
+    const key = this.buildKey(payload.configPath, payload.layer, null);
+    const points = this.rollbackPoints.get(key) ?? [];
+
+    // Only add if not already present (idempotent replay)
+    if (!points.find((p) => p.rollbackId === payload.rollbackId)) {
+      points.push({
+        rollbackId: payload.rollbackId,
+        versionId: payload.versionId,
+        configPath: payload.configPath,
+        layer: payload.layer,
+        createdAt: payload.createdAt,
+        createdBy: payload.createdBy,
+      });
+      this.rollbackPoints.set(key, points);
+    }
   }
 }

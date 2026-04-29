@@ -76,8 +76,9 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["sed", { allowed: true, riskLevel: "medium" }],
   ["tr", { allowed: true, riskLevel: "low" }],
   ["sleep", { allowed: true, riskLevel: "low" }],
-  ["env", { allowed: true, riskLevel: "medium" }],
-  ["printenv", { allowed: true, riskLevel: "medium" }],
+  // R12-23 fix: env/printenv expose AA*VAULT_TOKEN/AA_SECRET* variables - blocked by default
+  ["env", { allowed: false, riskLevel: "critical", reasonCode: "tool.env_blocked_exposes_secrets" }],
+  ["printenv", { allowed: false, riskLevel: "critical", reasonCode: "tool.printenv_blocked_exposes_secrets" }],
   ["which", { allowed: true, riskLevel: "low" }],
   ["ps", { allowed: true, riskLevel: "medium" }],
   ["git", { allowed: true, riskLevel: "high" }],
@@ -96,8 +97,10 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
-  ["curl", { allowed: true, riskLevel: "high" }],
-  ["wget", { allowed: true, riskLevel: "high" }],
+  // R12-22 fix: curl/wget must route through NetworkEgressPolicyService - blocked by default
+  // until proper egress policy integration is implemented
+  ["curl", { allowed: false, riskLevel: "critical", reasonCode: "tool.curl_blocked_requires_egress_policy" }],
+  ["wget", { allowed: false, riskLevel: "critical", reasonCode: "tool.wget_blocked_requires_egress_policy" }],
   ["tar", { allowed: true, riskLevel: "high" }],
   ["unzip", { allowed: true, riskLevel: "high" }],
   ["zip", { allowed: true, riskLevel: "high" }],

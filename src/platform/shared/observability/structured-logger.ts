@@ -55,6 +55,10 @@ export interface StructuredLogEntry {
   spanId?: string;
   parentSpanId?: string;
   correlationId?: string;
+  /** Tenant identifier per §7.1: every log entry must include tenantId for multi-tenant isolation */
+  tenantId?: string;
+  /** Harness run identifier per §7.1: every log entry must include harnessRunId for test correlation */
+  harnessRunId?: string;
   data?: Record<string, unknown> | null;
   structuredPayload?: Record<string, unknown>;
   createdAt: string;
@@ -264,6 +268,9 @@ export class StructuredLogger {
       readStringField(rawData, "correlationId") ??
       traceId ??
       activeTelemetryContext?.traceId;
+    // §7.1: tenantId and harnessRunId are required for every log entry
+    const tenantId = entry.tenantId ?? readStringField(rawData, "tenantId");
+    const harnessRunId = entry.harnessRunId ?? readStringField(rawData, "harnessRunId");
 
     const timestamp = entry.timestamp ?? new Date().toISOString();
     const data = rawData;
@@ -280,6 +287,8 @@ export class StructuredLogger {
       ...(spanId !== undefined ? { spanId } : {}),
       ...(parentSpanId !== undefined ? { parentSpanId } : {}),
       ...(correlationId !== undefined && correlationId !== null ? { correlationId } : {}),
+      ...(tenantId !== undefined ? { tenantId } : {}),
+      ...(harnessRunId !== undefined ? { harnessRunId } : {}),
       ...(data !== undefined ? { data, structuredPayload: data } : {}),
       createdAt: timestamp,
       timestamp,

@@ -37,7 +37,7 @@ export interface ConfigAuditEntry {
   auditId: string;
   /** Dot-notation config path */
   configPath: string;
-  /** Hierarchy layer (platform, tenant, pack, task_type) */
+  /** Hierarchy layer (platform, environment, tenant, pack, runtime) per §24.1 */
   layer: string;
   /** Source ID (e.g., tenantId) if applicable */
   sourceId: string | null;
@@ -113,16 +113,43 @@ export interface ConfigAuditResult {
  * Options for ConfigAuditService.
  */
 export interface ConfigAuditServiceOptions {
-  /** Optional event bus for emitting audit events */
+  /** Event bus for emitting and subscribing to audit events */
   eventBus?: DurableEventBus | null;
   /** Maximum number of audit entries to retain per config path (default: 1000) */
   maxEntriesPerPath?: number;
   /** Maximum age of audit entries in milliseconds (default: 90 days) */
   maxEntryAgeMs?: number;
+  /** Whether to persist events for replay on startup (default: true) */
+  persistEvents?: boolean;
+}
+
+/**
+ * Event payload for audit entry creation (for event sourcing).
+ */
+interface ConfigAuditEntryPayload {
+  auditId: string;
+  configPath: string;
+  layer: string;
+  sourceId: string | null;
+  action: ConfigAuditAction;
+  actor: string | null;
+  timestamp: string;
+  beforeHash: string | null;
+  afterHash: string | null;
+  changes: ConfigDiffEntry[];
+  reason: string | null;
+  approvalRequired: boolean;
+  approvalStatus: ConfigApprovalStatus | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  versionId: string | null;
+  previousVersionId: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 /**
  * Service for auditing configuration changes.
+ * Per §24.4: Implements event sourcing for who/when/what/why compliance persistence.
  *
  * Maintains a complete audit trail recording:
  * - Who made each change
@@ -137,14 +164,36 @@ export class ConfigAuditService {
   private readonly eventBus: DurableEventBus | null;
   private readonly maxEntriesPerPath: number;
   private readonly maxEntryAgeMs: number;
+  private readonly persistEvents: boolean;
+  private _initialized = false;
 
-  /** In-memory storage for audit entries */
+  /** In-memory storage for audit entries (rebuilt from events on init) */
   private readonly entries: ConfigAuditEntry[] = [];
 
   public constructor(options: ConfigAuditServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
     this.maxEntriesPerPath = options.maxEntriesPerPath ?? 1000;
     this.maxEntryAgeMs = options.maxEntryAgeMs ?? 90 * 24 * 60 * 60 * 1000;
+    this.persistEvents = options.persistEvents ?? true;
+  }
+
+  /**
+   * Initializes the service by subscribing to events and rebuilding state.
+   * Must be called before using the service if persistEvents is enabled.
+   */
+  public async initialize(): Promise<void> {
+    if (this._initialized || !this.eventBus) {
+      this._initialized = true;
+      return;
+    }
+
+    // Subscribe to audit events for replay
+    await this.eventBus.subscribe(
+      "config.audit.recorded",
+      this.handleAuditRecordedEvent.bind(this),
+    );
+
+    this._initialized = true;
   }
 
   /**
@@ -688,7 +737,42 @@ export class ConfigAuditService {
         approvedAt: entry.approvedAt,
         versionId: entry.versionId,
         previousVersionId: entry.previousVersionId,
+        metadata: entry.metadata,
       },
     });
+  }
+
+  /**
+   * Handles audit recorded event for event sourcing replay.
+   */
+  private handleAuditRecordedEvent(payload: ConfigAuditEntryPayload): void {
+    // Only add if not already present (idempotent replay)
+    const existing = this.entries.find((e) => e.auditId === payload.auditId);
+    if (existing) {
+      return;
+    }
+
+    const entry: ConfigAuditEntry = {
+      auditId: payload.auditId,
+      configPath: payload.configPath,
+      layer: payload.layer,
+      sourceId: payload.sourceId,
+      action: payload.action,
+      actor: payload.actor,
+      timestamp: payload.timestamp,
+      beforeHash: payload.beforeHash,
+      afterHash: payload.afterHash,
+      changes: payload.changes,
+      reason: payload.reason,
+      approvalRequired: payload.approvalRequired,
+      approvalStatus: payload.approvalStatus,
+      approvedBy: payload.approvedBy,
+      approvedAt: payload.approvedAt,
+      versionId: payload.versionId,
+      previousVersionId: payload.previousVersionId,
+      metadata: payload.metadata,
+    };
+
+    this.entries.push(entry);
   }
 }

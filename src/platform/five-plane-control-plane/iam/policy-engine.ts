@@ -34,6 +34,9 @@
 import type { ToolRiskLevel } from "../../execution/tool-executor/tool-metadata.js";
 import { BudgetGuard, type BudgetPolicy, type BudgetGuardResult } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { PolicyDeniedError, ValidationError } from "../../contracts/errors.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const policyEngineLogger = new StructuredLogger({ retentionLimit: 200 });
 
 /**
  * Validates PolicyDecisionRequest input fields.
@@ -169,14 +172,134 @@ export interface PolicyEngineOptions {
 }
 
 /**
+ * Audit service interface for policy decision logging.
+ * §11.5 requires all authorization decisions produce audit records.
+ */
+export interface PolicyAuditService {
+  /**
+   * Records a policy decision to the audit log.
+   * @param decision - The policy decision result
+   * @param request - The original request that was evaluated
+   */
+  recordDecision(decision: PolicyDecisionResult, request: PolicyDecisionRequest): void;
+}
+
+/**
+ * Default no-op audit service for environments where auditing is not required.
+ */
+export class NoOpPolicyAuditService implements PolicyAuditService {
+  public recordDecision(_decision: PolicyDecisionResult, _request: PolicyDecisionRequest): void {
+    // No-op: audit recording disabled
+  }
+}
+
+/**
+ * Structured logger-based audit service.
+ * Emits policy decisions to the structured logging system.
+ */
+export class StructuredLoggerPolicyAuditService implements PolicyAuditService {
+  private readonly logger: StructuredLogger;
+
+  public constructor(logger?: StructuredLogger) {
+    this.logger = logger ?? new StructuredLogger({ retentionLimit: 200 });
+  }
+
+  public recordDecision(decision: PolicyDecisionResult, request: PolicyDecisionRequest): void {
+    // §11.5: All authorization decisions must produce audit records
+    this.logger.log({
+      level: decision.decision === "deny" ? "warn" : "info",
+      message: "policy_decision",
+      data: {
+        decisionId: request.decisionId,
+        taskId: request.taskId,
+        executionId: request.executionId,
+        sessionId: request.sessionId,
+        subjectType: request.subjectType,
+        subjectId: request.subjectId,
+        action: request.action,
+        riskCategory: request.riskCategory,
+        mode: request.mode,
+        decision: decision.decision,
+        reasonCode: decision.reasonCode,
+        requiresApproval: decision.requiresApproval,
+        killSwitchApplied: decision.killSwitchApplied,
+        estimatedCostUsd: request.estimatedCostUsd,
+        evaluatedPolicyVersion: decision.evaluatedPolicyVersion,
+        auditPayload: decision.auditPayload,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+}
+
+/**
+ * Token bucket rate limiter for policy evaluation.
+ * R12-21: Prevents flooding the PDP with requests.
+ */
+class PolicyEvaluationRateLimiter {
+  private readonly buckets = new Map<string, { tokens: number; lastRefill: number }>();
+  private readonly maxTokens: number;
+  private readonly refillPeriodMs: number;
+
+  public constructor(maxRequestsPerMinute: number = 1000) {
+    this.maxTokens = maxRequestsPerMinute;
+    this.refillPeriodMs = 60_000;
+  }
+
+  /**
+   * Try to consume a token for the given subject.
+   * @returns true if allowed, false if rate limited
+   */
+  public tryConsume(subjectId: string): boolean {
+    const now = Date.now();
+    let bucket = this.buckets.get(subjectId);
+
+    if (!bucket) {
+      bucket = { tokens: this.maxTokens - 1, lastRefill: now };
+      this.buckets.set(subjectId, bucket);
+      return true;
+    }
+
+    const elapsed = now - bucket.lastRefill;
+    if (elapsed >= this.refillPeriodMs) {
+      bucket.tokens = this.maxTokens - 1;
+      bucket.lastRefill = now;
+      return true;
+    }
+
+    const tokensToAdd = Math.floor((elapsed / this.refillPeriodMs) * this.maxTokens);
+    if (tokensToAdd > 0) {
+      bucket.tokens = Math.min(this.maxTokens, bucket.tokens + tokensToAdd);
+      bucket.lastRefill = now;
+    }
+
+    if (bucket.tokens <= 0) {
+      return false;
+    }
+
+    bucket.tokens--;
+    return true;
+  }
+}
+
+// Global rate limiter - 1000 policy evaluations per minute per subject
+const POLICY_EVALUATION_RATE_LIMITER = new PolicyEvaluationRateLimiter(1000);
+
+/**
  * Policy Engine
  *
  * Evaluates actions against security and budget policies.
  */
 export class PolicyEngine {
   private readonly budgetGuard = new BudgetGuard();
+  private readonly auditService: PolicyAuditService;
 
-  public constructor(private readonly options: PolicyEngineOptions) {}
+  public constructor(
+    private readonly options: PolicyEngineOptions,
+    auditService?: PolicyAuditService,
+  ) {
+    this.auditService = auditService ?? new NoOpPolicyAuditService();
+  }
 
   /**
    * Evaluates a policy decision request.
@@ -195,9 +318,28 @@ export class PolicyEngine {
     // V-01: Validate input before processing
     validatePolicyRequest(input);
 
+    // R12-21: Rate limit policy evaluation to prevent flooding the PDP
+    if (!POLICY_EVALUATION_RATE_LIMITER.tryConsume(input.subjectId)) {
+      // Return a denial result due to rate limiting
+      const rateLimitResult: PolicyDecisionResult = {
+        decision: "deny",
+        reasonCode: "policy.rate_limited",
+        requiresApproval: false,
+        enforcedConstraints: {},
+        killSwitchApplied: false,
+        auditPayload: { action: input.action, subjectId: input.subjectId, rateLimited: true },
+        evaluatedPolicyVersion: "authoritative.v1",
+        explainSummary: "Policy evaluation rate limited. Too many requests.",
+      };
+      this.auditService.recordDecision(rateLimitResult, input);
+      return rateLimitResult;
+    }
+
+    let result: PolicyDecisionResult;
+
     // Step 1: Kill switch check
     if (this.options.killSwitchEnabled) {
-      return {
+      result = {
         decision: "deny",
         reasonCode: "policy.kill_switch_active",
         requiresApproval: false,
@@ -207,59 +349,67 @@ export class PolicyEngine {
         evaluatedPolicyVersion: "authoritative.v1",
         explainSummary: "Action denied because kill switch is active.",
       };
+    } else {
+      // Step 2: Budget check
+      const budget = this.evaluateBudget(input);
+      if (!budget.allowed) {
+        result = {
+          decision: "deny",
+          reasonCode: budget.reasonCode ?? "budget.denied",
+          requiresApproval: false,
+          enforcedConstraints: {
+            remainingBudgetUsd: budget.remainingBudgetUsd,
+          },
+          killSwitchApplied: false,
+          auditPayload: { action: input.action, estimatedCostUsd: input.estimatedCostUsd ?? 0 },
+          evaluatedPolicyVersion: "authoritative.v1",
+          explainSummary: "Action denied because task budget would be exceeded.",
+        };
+      } else {
+        // Step 3: Risk-based escalation
+        const isHighRisk =
+          input.riskCategory === "destructive" ||
+          input.riskCategory === "irreversible" ||
+          input.riskCategory === "prod_affecting" ||
+          input.riskCategory === "org_changing";
+
+        // In supervised mode, high-risk or budget-warning actions escalate
+        if (input.mode === "supervised" && (isHighRisk || budget.requiresApproval)) {
+          result = this.escalate(input, budget, "policy.supervised_escalation");
+        } else if (input.mode === "auto" && isHighRisk) {
+          // In auto mode, high-risk actions require approval
+          result = this.escalate(input, budget, "policy.high_risk_requires_approval");
+        } else if (input.mode === "full-auto" && isHighRisk) {
+          // §10.1: full-auto mode requires deny-by-default + high-risk forced escalation
+          // Even in full-auto, destructive/irreversible/prod_affecting actions must escalate
+          result = this.escalate(input, budget, "policy.full_auto_high_risk_escalation");
+        } else {
+          // Default: allow with constraints
+          result = {
+            decision: "allow_with_constraints",
+            reasonCode: budget.requiresApproval ? "policy.allow_under_budget_warning" : "policy.allow",
+            requiresApproval: false,
+            enforcedConstraints: {
+              remainingBudgetUsd: budget.remainingBudgetUsd,
+            },
+            killSwitchApplied: false,
+            auditPayload: {
+              action: input.action,
+              riskCategory: input.riskCategory,
+              estimatedCostUsd: input.estimatedCostUsd ?? 0,
+            },
+            evaluatedPolicyVersion: "authoritative.v1",
+            explainSummary: "Action allowed under current mode and budget constraints.",
+          };
+        }
+      }
     }
 
-    // Step 2: Budget check
-    const budget = this.evaluateBudget(input);
-    if (!budget.allowed) {
-      return {
-        decision: "deny",
-        reasonCode: budget.reasonCode ?? "budget.denied",
-        requiresApproval: false,
-        enforcedConstraints: {
-          remainingBudgetUsd: budget.remainingBudgetUsd,
-        },
-        killSwitchApplied: false,
-        auditPayload: { action: input.action, estimatedCostUsd: input.estimatedCostUsd ?? 0 },
-        evaluatedPolicyVersion: "authoritative.v1",
-        explainSummary: "Action denied because task budget would be exceeded.",
-      };
-    }
+    // §11.5: All authorization decisions must produce audit records
+    // Emit audit event before returning
+    this.auditService.recordDecision(result, input);
 
-    // Step 3: Risk-based escalation
-    const isHighRisk =
-      input.riskCategory === "destructive" ||
-      input.riskCategory === "irreversible" ||
-      input.riskCategory === "prod_affecting" ||
-      input.riskCategory === "org_changing";
-
-    // In supervised mode, high-risk or budget-warning actions escalate
-    if (input.mode === "supervised" && (isHighRisk || budget.requiresApproval)) {
-      return this.escalate(input, budget, "policy.supervised_escalation");
-    }
-
-    // In auto mode, high-risk actions require approval
-    if (input.mode === "auto" && isHighRisk) {
-      return this.escalate(input, budget, "policy.high_risk_requires_approval");
-    }
-
-    // Default: allow with constraints
-    return {
-      decision: "allow_with_constraints",
-      reasonCode: budget.requiresApproval ? "policy.allow_under_budget_warning" : "policy.allow",
-      requiresApproval: false,
-      enforcedConstraints: {
-        remainingBudgetUsd: budget.remainingBudgetUsd,
-      },
-      killSwitchApplied: false,
-      auditPayload: {
-        action: input.action,
-        riskCategory: input.riskCategory,
-        estimatedCostUsd: input.estimatedCostUsd ?? 0,
-      },
-      evaluatedPolicyVersion: "authoritative.v1",
-      explainSummary: "Action allowed under current mode and budget constraints.",
-    };
+    return result;
   }
 
   /**

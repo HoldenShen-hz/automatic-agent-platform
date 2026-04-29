@@ -69,7 +69,7 @@ test("E2E: access governance bridges principal context decisions into approval f
     const regulatedDecision = evaluateAuthorizationContext({
       principalType: agentProfile.principalType,
       roles: agentProfile.roles,
-      action: "write_file",
+      action: "invoke_model",
       mode: "full-auto",
       riskCategory: "sensitive_data",
       context: {

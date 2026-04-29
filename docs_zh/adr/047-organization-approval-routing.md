@@ -40,7 +40,7 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 | escalate | 超时后升级 |
 | auto_action | 超时后自动执行预设动作 |
 
-注：auto_action 执行须遵循 §10.3 风险级别守卫——high/critical 风险级别默认 deny，auto_action 不得在未经显式审批的情况下自动执行高风险操作。
+注：auto_action 执行须遵循 §10.3 风险级别守卫——high/critical 风险级别默认 deny，auto_action 不得在未经显式审批的情况下自动执行高风险操作。§2.1 审批延迟时应"安全停住"而非自动执行，critical 操作要求 break-glass + 双人审批机制。
 
 ### 路由规则引擎
 

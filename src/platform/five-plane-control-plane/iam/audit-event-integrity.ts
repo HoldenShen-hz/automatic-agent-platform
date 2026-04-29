@@ -29,7 +29,7 @@
  * @see Tier 1 audit contract: docs_zh/contracts/audit_event_integrity_contract.md
  */
 
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import type { EventRecord } from "../../contracts/types/domain.js";
 
@@ -61,6 +61,19 @@ export interface Tier1AuditIntegrityRecord {
 
   /** When this integrity record was computed */
   recordedAt: string;
+}
+
+/**
+ * Configuration for audit event integrity service.
+ */
+export interface AuditEventIntegrityOptions {
+  /**
+   * HMAC signing key for tamper-evident chain.
+   * §11.5 requires tamper-evident audit - without a signing key,
+   * an attacker with DB write access could recompute the entire chain.
+   * If not provided, falls back to plain SHA-256 (less secure).
+   */
+  signingKey?: string;
 }
 
 /**
@@ -120,15 +133,44 @@ type Tier1AuditEventShape = Pick<
 >;
 
 /**
- * Computes a SHA-256 checksum for a Tier 1 audit event.
+ * Internal SHA-256 hashing utility.
+ * Uses Node.js crypto module for fast, reliable hashing.
+ *
+ * @param value - String to hash
+ * @returns Hex-encoded hash string
+ */
+function sha256(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+/**
+ * Internal HMAC-SHA-256 hashing utility for tamper-evident signing.
+ * §11.5: Uses HMAC with a signing key so attackers with DB write access
+ * cannot recompute the chain after modifying events.
+ *
+ * @param value - String to hash
+ * @param key - HMAC signing key
+ * @returns Hex-encoded HMAC hash string
+ */
+function hmacSha256(value: string, key: string): string {
+  return createHmac("sha256", key).update(value, "utf8").digest("hex");
+}
+
+/**
+ * Computes a checksum for a Tier 1 audit event.
+ * Uses HMAC-SHA-256 if a signing key is configured, otherwise plain SHA-256.
  * The checksum covers all fields that must remain immutable for integrity.
  * Changes to any of these fields would indicate tampering.
  *
  * @param event - The event to compute checksum for
- * @returns Hex-encoded SHA-256 checksum string
+ * @param signingKey - Optional HMAC signing key for tamper-evident audit
+ * @returns Hex-encoded checksum string
  */
-export function computeTier1AuditEventChecksum(event: Tier1AuditEventShape): string {
-  return sha256(JSON.stringify({
+export function computeTier1AuditEventChecksum(
+  event: Tier1AuditEventShape,
+  signingKey?: string,
+): string {
+  const data = JSON.stringify({
     id: event.id,
     taskId: event.taskId,
     sessionId: event.sessionId,
@@ -138,33 +180,36 @@ export function computeTier1AuditEventChecksum(event: Tier1AuditEventShape): str
     payloadJson: event.payloadJson,
     traceId: event.traceId,
     createdAt: event.createdAt,
-  }));
+  });
+  return signingKey != null ? hmacSha256(data, signingKey) : sha256(data);
 }
 
 /**
  * Computes the chain hash that links this event to the previous one.
  * This creates the tamper-evident chain property - changing any event
  * breaks all subsequent chain hashes.
+ * Uses HMAC-SHA-256 if a signing key is configured.
  *
  * @param input - Components needed for chain hash computation
- * @param input.chainPosition - Position in the chain (1-indexed)
- * @param input.previousChainHash - Hash of the previous event (null for first)
- * @param input.eventChecksum - Checksum of this event
- * @param input.eventId - ID of this event
+ * @param signingKey - Optional HMAC signing key for tamper-evident audit
  * @returns Hex-encoded chain hash
  */
-export function computeTier1AuditChainHash(input: {
-  chainPosition: number;
-  previousChainHash: string | null;
-  eventChecksum: string;
-  eventId: string;
-}): string {
-  return sha256(JSON.stringify({
+export function computeTier1AuditChainHash(
+  input: {
+    chainPosition: number;
+    previousChainHash: string | null;
+    eventChecksum: string;
+    eventId: string;
+  },
+  signingKey?: string,
+): string {
+  const data = JSON.stringify({
     chainPosition: input.chainPosition,
     previousChainHash: input.previousChainHash,
     eventChecksum: input.eventChecksum,
     eventId: input.eventId,
-  }));
+  });
+  return signingKey != null ? hmacSha256(data, signingKey) : sha256(data);
 }
 
 /**

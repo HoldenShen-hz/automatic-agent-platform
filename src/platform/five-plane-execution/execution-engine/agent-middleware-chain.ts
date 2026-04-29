@@ -102,6 +102,22 @@ export interface AfterAgentHook extends MiddlewareHook {
   run(ctx: MiddlewareContext, input: { response: unknown; toolsUsed: string[] }): MiddlewareResult | Promise<MiddlewareResult>;
 }
 
+/**
+ * R9-23 fix: onSucceeded - Called when agent execution completes successfully.
+ * Used for cleanup, metric recording, and post-execution hooks.
+ */
+export interface OnSucceededHook extends MiddlewareHook {
+  run(ctx: MiddlewareContext, input: { result: unknown; durationMs: number }): MiddlewareResult | Promise<MiddlewareResult>;
+}
+
+/**
+ * R9-23 fix: onFailed - Called when agent execution fails.
+ * Used for error handling, cleanup, and failure reporting.
+ */
+export interface OnFailedHook extends MiddlewareHook {
+  run(ctx: MiddlewareContext, input: { error: unknown; durationMs: number }): MiddlewareResult | Promise<MiddlewareResult>;
+}
+
 export class AgentMiddlewareChain {
   // C-04: Use copy-on-write pattern for atomic array updates
   // Array reassignment is atomic in JS, avoiding race conditions in sortedInsert
@@ -111,6 +127,9 @@ export class AgentMiddlewareChain {
   private _wrapModelCallHooks: WrapModelCallHook[] = [];
   private _wrapToolCallHooks: WrapToolCallHook[] = [];
   private _afterAgentHooks: AfterAgentHook[] = [];
+  // R9-23 fix: Add lifecycle hooks for succeeded/failed
+  private _onSucceededHooks: OnSucceededHook[] = [];
+  private _onFailedHooks: OnFailedHook[] = [];
 
   constructor(
     private readonly options: {
@@ -154,6 +173,9 @@ export class AgentMiddlewareChain {
     this._wrapModelCallHooks = [];
     this._wrapToolCallHooks = [];
     this._afterAgentHooks = [];
+    // R9-23 fix: Reset lifecycle hooks
+    this._onSucceededHooks = [];
+    this._onFailedHooks = [];
   }
 
   registerBeforeAgent(hook: BeforeAgentHook): void {
@@ -178,6 +200,15 @@ export class AgentMiddlewareChain {
 
   registerAfterAgent(hook: AfterAgentHook): void {
     this._afterAgentHooks = this.sortedInsert(this._afterAgentHooks, hook);
+  }
+
+  // R9-23 fix: Register lifecycle hooks
+  registerOnSucceeded(hook: OnSucceededHook): void {
+    this._onSucceededHooks = this.sortedInsert(this._onSucceededHooks, hook);
+  }
+
+  registerOnFailed(hook: OnFailedHook): void {
+    this._onFailedHooks = this.sortedInsert(this._onFailedHooks, hook);
   }
 
   private logWarning(code: string, message: string, ctx: MiddlewareContext): void {
@@ -402,6 +433,36 @@ export class AgentMiddlewareChain {
     };
   }
 
+  // R9-23 fix: Lifecycle method called when agent execution succeeds
+  async onSucceeded(
+    input: { result: unknown; durationMs: number },
+    opts: { agentRound?: number; stepId?: string; ctx?: MiddlewareContext } = {},
+  ): Promise<{ warnings: string[] }> {
+    const ctx = opts.ctx ?? this.buildContext(opts.agentRound ?? 0, opts.stepId);
+    const { errors } = await this.runHookChain(
+      this._onSucceededHooks,
+      ctx,
+      input,
+      (hook, inp) => (hook as OnSucceededHook).run(ctx, inp),
+    );
+    return { warnings: errors };
+  }
+
+  // R9-23 fix: Lifecycle method called when agent execution fails
+  async onFailed(
+    input: { error: unknown; durationMs: number },
+    opts: { agentRound?: number; stepId?: string; ctx?: MiddlewareContext } = {},
+  ): Promise<{ warnings: string[] }> {
+    const ctx = opts.ctx ?? this.buildContext(opts.agentRound ?? 0, opts.stepId);
+    const { errors } = await this.runHookChain(
+      this._onFailedHooks,
+      ctx,
+      input,
+      (hook, inp) => (hook as OnFailedHook).run(ctx, inp),
+    );
+    return { warnings: errors };
+  }
+
   private buildContext(agentRound: number, stepId?: string): MiddlewareContext {
     let runtime: RuntimeContextSnapshot;
     try {
@@ -435,6 +496,8 @@ export class AgentMiddlewareChain {
     wrapModelCall: string[];
     wrapToolCall: string[];
     afterAgent: string[];
+    onSucceeded: string[];
+    onFailed: string[];
   } {
     return {
       beforeAgent: this._beforeAgentHooks.map((h: BeforeAgentHook) => h.name),
@@ -443,6 +506,8 @@ export class AgentMiddlewareChain {
       wrapModelCall: this._wrapModelCallHooks.map((h: WrapModelCallHook) => h.name),
       wrapToolCall: this._wrapToolCallHooks.map((h: WrapToolCallHook) => h.name),
       afterAgent: this._afterAgentHooks.map((h: AfterAgentHook) => h.name),
+      onSucceeded: this._onSucceededHooks.map((h: OnSucceededHook) => h.name),
+      onFailed: this._onFailedHooks.map((h: OnFailedHook) => h.name),
     };
   }
 }

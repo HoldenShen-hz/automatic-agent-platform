@@ -52,6 +52,8 @@ import {
   type DispatchQueueAvailabilitySnapshot,
   type ExecutionTicketDecision,
 } from "./execution-dispatch-support.js";
+import { HorizontalScalingController, DEFAULT_SCALING_POLICY } from "../../shared/scaling/horizontal-scaling-controller.js";
+import { nowIso as nowDate } from "../../contracts/types/ids.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -68,6 +70,7 @@ export class ExecutionDispatchService {
   private readonly preemption: ExecutionPriorityPreemptionService;
   private readonly workers: WorkerRegistryService;
   private cachedHealthService: HealthService | null = null;
+  private readonly scalingController: HorizontalScalingController;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -77,6 +80,7 @@ export class ExecutionDispatchService {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
+    this.scalingController = new HorizontalScalingController("default", DEFAULT_SCALING_POLICY);
   }
 
   private getOrCreateHealthService(occurredAt: string): HealthService {
@@ -237,6 +241,52 @@ export class ExecutionDispatchService {
       };
     }
 
+    // R9-10 fix: Compute backpressure once outside ticket loop (was O(n) health scans per ticket)
+    const backpressure =
+      this.backpressureSnapshot?.() ??
+      this.getOrCreateHealthService(occurredAt).getReport();
+
+    // R13-18: §8.1 Queue backlog > threshold → emit scale_up/scale_down signals
+    const queueAvailability = this.queueAvailabilitySnapshot?.();
+    const pendingTickets = tickets.length;
+    const activeWorkers = this.workers.listWorkers().filter((w) => w.status !== "offline" && w.status !== "unavailable").length;
+    const busyWorkers = this.workers.listWorkers().filter((w) => w.status === "busy").length;
+    const utilizationPercent = activeWorkers > 0 ? (busyWorkers / activeWorkers) * 100 : 0;
+    const scaleEvent = this.scalingController.processMetrics(
+      {
+        queueName: options.queueName ?? "default",
+        waiting: pendingTickets,
+        delayed: 0,
+        active: busyWorkers,
+        completed: 0,
+        failed: 0,
+        deadLetter: 0,
+      },
+      {
+        activeWorkers,
+        busyWorkers,
+        utilizationPercent,
+        queueDepth: pendingTickets,
+        avgLatencyMs: 0,
+      },
+    );
+    if (scaleEvent) {
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: null,
+        executionId: null,
+        eventType: `worker_pool:${scaleEvent.eventType}`,
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          workerPool: scaleEvent.workerPool,
+          action: scaleEvent.action,
+          cooldownRemainingMs: scaleEvent.cooldownRemainingMs,
+        }),
+        traceId: null,
+        createdAt: occurredAt,
+      });
+    }
+
     let blockedReason: string | null = null;
     let lastTrace: DispatchDecisionTrace | null = null;
 
@@ -244,9 +294,6 @@ export class ExecutionDispatchService {
       const dispatchTarget = resolveDispatchTarget(ticket.dispatchTarget);
       const requiredIsolationLevel = resolveRequiredIsolationLevel(ticket.requiredIsolationLevel);
       const requiredRepoVersion = resolveRequiredRepoVersion(ticket.requiredRepoVersion);
-      const backpressure =
-        this.backpressureSnapshot?.() ??
-        this.getOrCreateHealthService(occurredAt).getReport();
       const blockedByBackpressure = resolveDispatchBackpressureReason(ticket, backpressure);
       if (blockedByBackpressure) {
         blockedReason = blockedByBackpressure;

@@ -55,16 +55,31 @@ export interface WorkerStatusState {
   timeline: WorkerStatusTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
+  /**
+   * Set of processed event IDs for idempotency (O(1) lookup).
+   * Stored as array for JSON serialization but converted to Set internally.
+   */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
+  /**
+   * Timestamp when this projection was last updated.
+   * Used for freshness monitoring and stale projection detection.
+   */
+  lastProjectedAt: string | null;
   /** First claim accepted timestamp */
   firstClaimAcceptedAt: string | null;
   /** Last claim accepted timestamp */
   lastClaimAcceptedAt: string | null;
+}
+
+/**
+ * Internal state with Set for O(1) idempotency checks.
+ */
+interface WorkerStatusStateInternal extends Omit<WorkerStatusState, "processedEventIds"> {
+  _processedEventIdSet: Set<string>;
 }
 
 export type WorkerLifecycleStatus =
@@ -111,8 +126,29 @@ export function createEmptyWorkerStatusState(): WorkerStatusState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
+    lastProjectedAt: null,
     firstClaimAcceptedAt: null,
     lastClaimAcceptedAt: null,
+  };
+}
+
+/**
+ * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
+ */
+function toInternalState(state: WorkerStatusState): WorkerStatusStateInternal {
+  return {
+    ...state,
+    _processedEventIdSet: new Set(state.processedEventIds),
+  };
+}
+
+/**
+ * Converts internal state (with Set) back to serialized state (with array for JSON).
+ */
+function toSerializedState(state: WorkerStatusStateInternal): WorkerStatusState {
+  return {
+    ...state,
+    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -131,10 +167,11 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check)
+ * Checks if an event has already been processed (idempotency check).
+ * Uses O(1) Set lookup for efficiency.
  */
-function isEventProcessed(state: WorkerStatusState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
+function isEventProcessed(state: WorkerStatusStateInternal, eventId: string): boolean {
+  return state._processedEventIdSet.has(eventId);
 }
 
 /**
@@ -157,13 +194,14 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null
+  // Initialize state if null, convert to internal state with Set for O(1) lookup
   const currentState = state as unknown as WorkerStatusState | null;
-  const newState = currentState ? { ...currentState } : createEmptyWorkerStatusState();
+  const baseState = currentState ? { ...currentState } : createEmptyWorkerStatusState();
+  const newState = toInternalState(baseState);
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return toSerializedState(newState) as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -188,6 +226,7 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
+  newState.lastProjectedAt = event.createdAt;
 
   // Extract details for timeline
   const details: Record<string, unknown> = {};
@@ -207,8 +246,8 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // Mark event as processed using O(1) Set add
+  newState._processedEventIdSet.add(event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type

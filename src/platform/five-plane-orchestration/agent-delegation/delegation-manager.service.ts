@@ -149,11 +149,13 @@ export class DelegationManagerService {
     parent: AgentContext,
     spec: DelegationSpec,
   ): AwaitableDelegationHandle {
-    // Step 0: Call depth budget evaluation - R5-47
+    // Step 0: Call depth budget evaluation - each dimension is distinct.
+    // A plain delegation adds one new delegation frame; it does not triple-count
+    // the current delegation depth as goal decomposition or global call depth.
     const depthDecision = this.callDepthBudget.evaluate({
-      currentCallDepth: parent.delegationDepth,
-      goalDecompositionDepth: parent.delegationDepth,
-      delegationDepth: parent.delegationDepth,
+      currentCallDepth: parent.currentCallDepth ?? parent.delegationDepth,
+      goalDecompositionDepth: parent.goalDecompositionDepth ?? 0,
+      delegationDepth: 1,
     });
     if (!depthDecision.allowed) {
       throw new ValidationError(
@@ -234,10 +236,17 @@ export class DelegationManagerService {
 
   public async completeWithEvidence(delegationId: string, evidence: readonly string[], outputRef?: string): Promise<void> {
     const delegation = this.requireDelegation(delegationId);
+    const capabilityIntersection = this.buildAcpCapabilityIntersection(delegation.permissions);
     const validation = this.collaborationProtocol.validateAndSend(
       this.collaborationProtocol.createMessage("completion_report", {
         correlation_id: delegationId,
         parent_run_id: delegationId,
+        delegationId: delegation.delegationId,
+        childRunId: delegation.childAgentId,
+        capabilityIntersection,
+        budgetCap: delegation.permissions.constraints.maxTokens ?? delegation.permissions.constraints.maxDurationMs ?? 0,
+        dataBoundary: delegation.data_class ?? "delegation",
+        deadline: delegation.expiresAt,
         depth: delegation.depth,
         sender_agent_id: delegation.childAgentId,
         receiver_agent_id: delegation.parentAgentId,
@@ -301,6 +310,8 @@ export class DelegationManagerService {
       agentType: overrides.agentType ?? "worker",
       packId: overrides.packId ?? delegation.childAgentId,
       delegationDepth: overrides.delegationDepth ?? delegation.depth,
+      currentCallDepth: overrides.currentCallDepth ?? delegation.depth,
+      goalDecompositionDepth: overrides.goalDecompositionDepth ?? 0,
       activeDelegations,
       permissions: delegation.permissions,
       sandboxTier: overrides.sandboxTier ?? "workspace_write",
@@ -467,6 +478,13 @@ export class DelegationManagerService {
       return [...parentActions];
     }
     return parentActions.filter((action) => childActions.includes(action));
+  }
+
+  private buildAcpCapabilityIntersection(permissions: PermissionSet): string[] {
+    const intersection = [...permissions.actions, ...permissions.resources].filter(
+      (value, index, array) => array.indexOf(value) === index,
+    );
+    return intersection.length > 0 ? intersection : ["delegation"];
   }
 
   private createIsolatedContext(

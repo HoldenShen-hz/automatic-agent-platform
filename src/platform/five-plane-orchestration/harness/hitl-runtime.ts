@@ -37,6 +37,13 @@ export class HitlRuntime {
   private readonly requests = new Map<string, HitlRequest>();
   private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord>();
 
+  public hydrate(request: HitlRequest, record?: HumanResponsibilityRecord | null): void {
+    this.requests.set(request.requestId, request);
+    if (record != null) {
+      this.responsibilityRecords.set(request.requestId, record);
+    }
+  }
+
   public open(input: {
     runId: string;
     domainId: string;

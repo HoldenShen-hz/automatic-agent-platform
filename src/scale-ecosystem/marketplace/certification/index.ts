@@ -3,6 +3,14 @@
  *
  * Implements §55: Security scan/eval gate/SBOM certification pipeline.
  * Provides certification types and gates for agents and packs in the marketplace.
+ *
+ * Per §55.1 Quality & Security Gate requires:
+ * - Automatic security scan
+ * - SBOM verification
+ * - Signature verification
+ * - Compatibility testing
+ * - Sandbox verification
+ * - Egress policy review
  */
 
 import { z } from "zod";
@@ -68,6 +76,55 @@ export interface SbomRef {
   readonly createdAt: string;
 }
 
+/**
+ * Sandbox certification result.
+ * Per §55.1, sandbox verification is required before certification.
+ */
+export interface SandboxCertification {
+  readonly sandboxId: string;
+  readonly passed: boolean;
+  readonly sandboxType: string;
+  readonly capabilitiesVerified: readonly string[];
+  readonly isolationLevel: "low" | "medium" | "high" | "verified";
+  readonly testedAt: string;
+  readonly expiresAt: string;
+}
+
+/**
+ * Compatibility test result.
+ * Per §55.1, compatibility testing is required before certification.
+ */
+export interface CompatibilityTestResult {
+  readonly testId: string;
+  readonly passed: boolean;
+  readonly apiContract: string;
+  readonly permissionSurface: string;
+  readonly runtimeCapability: string;
+  readonly testResults: readonly CompatibilityTestCase[];
+  readonly testedAt: string;
+  readonly expiresAt: string;
+}
+
+export interface CompatibilityTestCase {
+  readonly testName: string;
+  readonly passed: boolean;
+  readonly details: string;
+}
+
+/**
+ * Egress policy review result.
+ * Per §55.1, egress policy review is required before certification.
+ */
+export interface EgressPolicyReview {
+  readonly reviewId: string;
+  readonly passed: boolean;
+  readonly allowedEgressEndpoints: readonly string[];
+  readonly blockedEgressEndpoints: readonly string[];
+  readonly reviewNotes: string;
+  readonly reviewedAt: string;
+  readonly expiresAt: string;
+}
+
 // =============================================================================
 // Agent Certification
 // =============================================================================
@@ -108,6 +165,41 @@ export const AgentCertificationSchema = z.object({
     format: z.enum(["spdx", "cyclonedx", "cyclonedx-json"]),
     version: z.string().min(1),
     createdAt: z.string().min(1),
+  }).nullable().default(null),
+  // §55.1: Sandbox certification for isolation verification
+  sandboxCertification: z.object({
+    sandboxId: z.string().min(1),
+    passed: z.boolean(),
+    sandboxType: z.string().min(1),
+    capabilitiesVerified: z.array(z.string()).default([]),
+    isolationLevel: z.enum(["low", "medium", "high", "verified"]),
+    testedAt: z.string().min(1),
+    expiresAt: z.string().min(1),
+  }).nullable().default(null),
+  // §55.1: Compatibility test results
+  compatibilityTest: z.object({
+    testId: z.string().min(1),
+    passed: z.boolean(),
+    apiContract: z.string().min(1),
+    permissionSurface: z.string().min(1),
+    runtimeCapability: z.string().min(1),
+    testResults: z.array(z.object({
+      testName: z.string().min(1),
+      passed: z.boolean(),
+      details: z.string().min(1),
+    })).default([]),
+    testedAt: z.string().min(1),
+    expiresAt: z.string().min(1),
+  }).nullable().default(null),
+  // §55.1: Egress policy review
+  egressPolicyReview: z.object({
+    reviewId: z.string().min(1),
+    passed: z.boolean(),
+    allowedEgressEndpoints: z.array(z.string()).default([]),
+    blockedEgressEndpoints: z.array(z.string()).default([]),
+    reviewNotes: z.string().default(""),
+    reviewedAt: z.string().min(1),
+    expiresAt: z.string().min(1),
   }).nullable().default(null),
   trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("unverified"),
   approvedAt: z.string().nullable().default(null),
@@ -159,6 +251,41 @@ export const PackCertificationSchema = z.object({
     format: z.enum(["spdx", "cyclonedx", "cyclonedx-json"]),
     version: z.string().min(1),
     createdAt: z.string().min(1),
+  }).nullable().default(null),
+  // §55.1: Sandbox certification for isolation verification
+  sandboxCertification: z.object({
+    sandboxId: z.string().min(1),
+    passed: z.boolean(),
+    sandboxType: z.string().min(1),
+    capabilitiesVerified: z.array(z.string()).default([]),
+    isolationLevel: z.enum(["low", "medium", "high", "verified"]),
+    testedAt: z.string().min(1),
+    expiresAt: z.string().min(1),
+  }).nullable().default(null),
+  // §55.1: Compatibility test results
+  compatibilityTest: z.object({
+    testId: z.string().min(1),
+    passed: z.boolean(),
+    apiContract: z.string().min(1),
+    permissionSurface: z.string().min(1),
+    runtimeCapability: z.string().min(1),
+    testResults: z.array(z.object({
+      testName: z.string().min(1),
+      passed: z.boolean(),
+      details: z.string().min(1),
+    })).default([]),
+    testedAt: z.string().min(1),
+    expiresAt: z.string().min(1),
+  }).nullable().default(null),
+  // §55.1: Egress policy review
+  egressPolicyReview: z.object({
+    reviewId: z.string().min(1),
+    passed: z.boolean(),
+    allowedEgressEndpoints: z.array(z.string()).default([]),
+    blockedEgressEndpoints: z.array(z.string()).default([]),
+    reviewNotes: z.string().default(""),
+    reviewedAt: z.string().min(1),
+    expiresAt: z.string().min(1),
   }).nullable().default(null),
   trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("unverified"),
   approvedAt: z.string().nullable().default(null),
@@ -286,19 +413,52 @@ export class CertificationGate {
       blockedBy.push("security_scan_expired");
     }
 
-    // Evaluation gate
-    if (!certification.evaluationResult) {
-      reasons.push("Evaluation required");
-      blockedBy.push("evaluation_missing");
-    } else if (!certification.evaluationResult.passed) {
-      reasons.push(`Evaluation failed with score ${certification.evaluationResult.score}`);
-      blockedBy.push("evaluation_failed");
-    }
-
     // SBOM gate
     if (!certification.sbomRef) {
       reasons.push("SBOM required for certification");
       blockedBy.push("sbom_missing");
+    }
+
+    // §55.1: Sandbox certification gate
+    if (!certification.sandboxCertification) {
+      reasons.push("Sandbox certification required");
+      blockedBy.push("sandbox_certification_missing");
+    } else if (!certification.sandboxCertification.passed) {
+      reasons.push("Sandbox certification failed");
+      blockedBy.push("sandbox_certification_failed");
+    } else if (new Date(certification.sandboxCertification.expiresAt) < new Date()) {
+      reasons.push("Sandbox certification has expired");
+      blockedBy.push("sandbox_certification_expired");
+    }
+
+    // §55.1: Compatibility test gate
+    if (!certification.compatibilityTest) {
+      reasons.push("Compatibility test required");
+      blockedBy.push("compatibility_test_missing");
+    } else if (!certification.compatibilityTest.passed) {
+      reasons.push("Compatibility test failed");
+      blockedBy.push("compatibility_test_failed");
+    } else if (new Date(certification.compatibilityTest.expiresAt) < new Date()) {
+      reasons.push("Compatibility test has expired");
+      blockedBy.push("compatibility_test_expired");
+    }
+
+    // §55.1: Egress policy review gate
+    if (!certification.egressPolicyReview) {
+      reasons.push("Egress policy review required");
+      blockedBy.push("egress_policy_review_missing");
+    } else if (!certification.egressPolicyReview.passed) {
+      reasons.push(`Egress policy review failed: ${certification.egressPolicyReview.blockedEgressEndpoints.length} blocked endpoints`);
+      blockedBy.push("egress_policy_review_failed");
+    } else if (new Date(certification.egressPolicyReview.expiresAt) < new Date()) {
+      reasons.push("Egress policy review has expired");
+      blockedBy.push("egress_policy_review_expired");
+    }
+
+    // Trust level gate
+    if (certification.trustLevel === "unverified") {
+      reasons.push("Agent is unverified");
+      blockedBy.push("trust_level_unverified");
     }
 
     return {

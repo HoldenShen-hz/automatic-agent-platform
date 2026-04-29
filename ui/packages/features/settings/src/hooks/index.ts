@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useDomainConfigsQuery,
   useFeatureFlagsQuery,
@@ -7,7 +7,9 @@ import {
   useRolesQuery,
   useTenantsQuery,
   useWebhooksQuery,
+  useRestClient,
 } from "@aa/shared-state";
+import { updatePreferences } from "@aa/shared-api-client";
 
 export interface SettingsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
@@ -21,10 +23,11 @@ export interface SettingsVm {
   readonly activityItems: readonly { title: string; description: string }[];
   setDraftTheme(theme: "light" | "dark" | "high-contrast"): void;
   setDraftLocale(locale: string): void;
-  save(): void;
+  save(): Promise<void>;
 }
 
 export function useSettingsVm(): SettingsVm {
+  const client = useRestClient();
   const preferences = usePreferencesQuery().data;
   const roles = useRolesQuery().data ?? [];
   const flags = useFeatureFlagsQuery().data ?? [];
@@ -53,6 +56,23 @@ export function useSettingsVm(): SettingsVm {
     { key: "Roles", value: roles.map((role) => `${role.name} (${role.userCount})`).join(", ") },
     { key: "Flags", value: flags.map((flag) => `${flag.id}:${flag.rolloutPercentage}%`).join(", ") },
   ], [draftLocale, draftTheme, flags, preferences, roles]);
+
+  const save = useCallback(async (): Promise<void> => {
+    setSaveState("saving");
+    try {
+      await updatePreferences(client, { theme: draftTheme, locale: draftLocale });
+      setSaveState("saved");
+      setActivityItems((current) => [
+        {
+          title: "Configuration saved",
+          description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
+        },
+        ...current,
+      ]);
+    } catch {
+      setSaveState("idle");
+    }
+  }, [client, draftTheme, draftLocale]);
 
   return {
     loading: preferences == null,
@@ -102,16 +122,6 @@ export function useSettingsVm(): SettingsVm {
       setDraftLocale(locale);
       setSaveState("idle");
     },
-    save() {
-      setSaveState("saving");
-      setSaveState("saved");
-      setActivityItems((current) => [
-        {
-          title: "Configuration saved",
-          description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
-        },
-        ...current,
-      ]);
-    },
+    save,
   };
 }

@@ -36,6 +36,7 @@ import { WorkerRegistryService } from "../worker-pool/worker-registry-service.js
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { StorageError } from "../../contracts/errors.js";
 import type { LeaseRepository } from "./lease-repository.js";
+import type { LeaseAuditRecord } from "../../contracts/types/domain/lease-types.js";
 import type {
   AcquireExecutionLeaseInput,
   ExecutionLeaseDecision,
@@ -46,6 +47,7 @@ import type {
   RenewExecutionLeaseInput,
   ValidateExecutionWriteInput,
 } from "./types.js";
+import { MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "./types.js";
 import {
   buildWorkerSnapshotRefreshInput,
   mergeExecutionIds,
@@ -117,6 +119,14 @@ export class ExecutionLeaseServiceAsync {
         details: { executionId: input.executionId },
         executionId: input.executionId,
       });
+    }
+
+    if (!this.isTtlWithinBounds(input.ttlMs)) {
+      return {
+        outcome: "blocked",
+        reasonCode: "ttl_out_of_bounds",
+        lease: null,
+      };
     }
 
     // Expire any lease that has already passed its expiration time
@@ -212,6 +222,14 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    if (!this.isTtlWithinBounds(input.ttlMs)) {
+      return {
+        outcome: "blocked",
+        reasonCode: "ttl_out_of_bounds",
+        lease,
+      };
+    }
+
     const newExpiresAt = plusMs(occurredAt, input.ttlMs);
     this.store.worker.renewExecutionLease(input.leaseId, newExpiresAt, occurredAt);
     this.insertLeaseAudit({
@@ -267,6 +285,18 @@ export class ExecutionLeaseServiceAsync {
         outcome: "blocked",
         reasonCode: "lease_not_active",
         lease,
+      };
+    }
+
+    // R9-03 fix: Re-check status inside transaction to prevent TOCTOU
+    // Between the check above and the close below, another thread could have
+    // already released the lease. Re-verify before closing.
+    const currentLease = this.store.worker.getExecutionLease(input.leaseId);
+    if (!currentLease || currentLease.status !== "active") {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_not_active",
+        lease: currentLease ?? null,
       };
     }
 
@@ -356,6 +386,41 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    if (activeLease.expiresAt <= occurredAt) {
+      this.store.worker.closeExecutionLease({
+        leaseId: activeLease.id,
+        status: "expired",
+        releasedAt: occurredAt,
+        reasonCode: "lease_expired",
+      });
+      this.insertLeaseAudit({
+        id: newId("audit"),
+        executionId: input.executionId,
+        leaseId: activeLease.id,
+        workerId: input.workerId,
+        fencingToken: input.fencingToken,
+        eventType: "stale_write_rejected",
+        reasonCode: "lease_expired",
+        recordedAt: occurredAt,
+      });
+      this.insertLeaseAudit({
+        id: newId("audit"),
+        executionId: input.executionId,
+        leaseId: activeLease.id,
+        workerId: activeLease.workerId,
+        fencingToken: activeLease.fencingToken,
+        eventType: "lease_expired",
+        reasonCode: "lease_expired",
+        recordedAt: occurredAt,
+      });
+      return {
+        allowed: false,
+        reasonCode: "lease_expired",
+        authoritativeFencingToken: activeLease.fencingToken,
+        activeLeaseId: activeLease.id,
+      };
+    }
+
     return {
       allowed: true,
       reasonCode: null,
@@ -429,6 +494,15 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    if (!this.isTtlWithinBounds(input.ttlMs)) {
+      return {
+        outcome: "blocked",
+        reasonCode: "ttl_out_of_bounds",
+        previousLease,
+        lease: null,
+      };
+    }
+
     // Close the previous lease
     this.store.worker.closeExecutionLease({
       leaseId: input.leaseId,
@@ -497,16 +571,11 @@ export class ExecutionLeaseServiceAsync {
     }
   }
 
-  private insertLeaseAudit(audit: {
-    id: string;
-    executionId: string;
-    leaseId: string;
-    workerId: string;
-    fencingToken: number;
-    eventType: "lease_granted" | "lease_renewed" | "lease_expired" | "lease_reclaimed" | "stale_write_rejected" | "lease_released" | "lease_handover";
-    reasonCode: string | null;
-    recordedAt: string;
-  }): void {
-    this.store.worker.insertLeaseAudit(audit as import("../../contracts/types/domain/lease-types.js").LeaseAuditRecord);
+  private isTtlWithinBounds(ttlMs: number): boolean {
+    return ttlMs >= MIN_LEASE_TTL_MS && ttlMs <= MAX_LEASE_TTL_MS;
+  }
+
+  private insertLeaseAudit(audit: LeaseAuditRecord): void {
+    this.store.worker.insertLeaseAudit(audit);
   }
 }

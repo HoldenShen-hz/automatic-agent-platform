@@ -214,15 +214,28 @@ export class ContextIsolator {
         };
 
       case IsolationLevel.MINIMAL:
-        // Child only gets explicitly required permissions
+        // Child only gets intersection of parent and required permissions
+        // R9-07 fix: §19 requires intersection, not replacement
+        // Child agent cannot request resources/actions parent doesn't already have
         return {
           resources: requiredPermissions.resources.length > 0
-            ? requiredPermissions.resources
+            ? parentPermissions.resources.filter((r) => requiredPermissions.resources.includes(r))
             : parentPermissions.resources,
           actions: requiredPermissions.actions.length > 0
-            ? requiredPermissions.actions
+            ? parentPermissions.actions.filter((a) => requiredPermissions.actions.includes(a))
             : parentPermissions.actions,
-          constraints: requiredPermissions.constraints,
+          constraints: {
+            ...parentPermissions.constraints,
+            ...requiredPermissions.constraints,
+            maxDurationMs: Math.min(
+              parentPermissions.constraints.maxDurationMs ?? Infinity,
+              requiredPermissions.constraints.maxDurationMs ?? Infinity,
+            ),
+            maxTokens: Math.min(
+              parentPermissions.constraints.maxTokens ?? Infinity,
+              requiredPermissions.constraints.maxTokens ?? Infinity,
+            ),
+          },
         };
 
       case IsolationLevel.SANDBOXED:

@@ -93,10 +93,9 @@ export class TransactionalEventAppender {
       createdAt: now,
     };
 
-    // Use a transaction to ensure atomicity
-    this.db.connection.exec("BEGIN TRANSACTION");
-
-    try {
+    // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
+    // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
+    return this.db.transaction(() => {
       // Step 1: Insert event into event store
       const insertedEvent = this.insertEventInternal(event);
 
@@ -109,16 +108,11 @@ export class TransactionalEventAppender {
         );
       }
 
-      this.db.connection.exec("COMMIT");
-
       return {
         event: insertedEvent,
         outboxEntryId,
       };
-    } catch (error) {
-      this.db.connection.exec("ROLLBACK");
-      throw error;
-    }
+    });
   }
 
   /**
@@ -134,11 +128,11 @@ export class TransactionalEventAppender {
     }>,
     options: TransactionalAppendOptions = {},
   ): TransactionalAppendResult[] {
-    const results: TransactionalAppendResult[] = [];
+    // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
+    // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
+    return this.db.transaction(() => {
+      const results: TransactionalAppendResult[] = [];
 
-    this.db.connection.exec("BEGIN TRANSACTION");
-
-    try {
       for (const eventData of events) {
         const eventId = eventData.id ?? newId("evt");
         const now = nowIso();
@@ -165,12 +159,8 @@ export class TransactionalEventAppender {
         results.push({ event: insertedEvent, outboxEntryId });
       }
 
-      this.db.connection.exec("COMMIT");
       return results;
-    } catch (error) {
-      this.db.connection.exec("ROLLBACK");
-      throw error;
-    }
+    });
   }
 
   /**

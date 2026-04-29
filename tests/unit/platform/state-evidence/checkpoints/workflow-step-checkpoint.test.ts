@@ -5,7 +5,7 @@ import {
   createWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
   WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
-} from "../../../../../../src/platform/state-evidence/checkpoints/workflow-step-checkpoint.js";
+} from "../../../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 
 /**
  * Tests for WorkflowStepCheckpoint focusing on:

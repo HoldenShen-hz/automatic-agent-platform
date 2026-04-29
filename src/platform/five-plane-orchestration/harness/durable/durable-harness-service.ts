@@ -127,9 +127,18 @@ export class SqliteDurableHarnessStore implements DurableHarnessStore {
   }
 }
 
+export interface DurableHarnessTimelineEvent {
+  readonly eventId: string;
+  readonly eventType: string;
+  readonly runId: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly recordedAt: string;
+}
+
 export class DurableHarnessService {
   private readonly store: DurableHarnessStore;
   private readonly validateRun: ((run: HarnessRun) => void) | null;
+  private readonly timeline: DurableHarnessTimelineEvent[] = [];
 
   public constructor(options: {
     store?: DurableHarnessStore;
@@ -190,5 +199,23 @@ export class DurableHarnessService {
       .listRecords()
       .map((record) => record.run.sleepLease)
       .filter((lease): lease is WorkflowSleepLease => lease != null && lease.resumeAt <= referenceTime);
+  }
+
+  public emitEvent(event: {
+    eventType: string;
+    runId: string;
+    payload: Readonly<Record<string, unknown>>;
+  }): void {
+    this.timeline.push({
+      eventId: newId("harness_event"),
+      eventType: event.eventType,
+      runId: event.runId,
+      payload: event.payload,
+      recordedAt: nowIso(),
+    });
+  }
+
+  public listEvents(runId: string): readonly DurableHarnessTimelineEvent[] {
+    return this.timeline.filter((e) => e.runId === runId);
   }
 }

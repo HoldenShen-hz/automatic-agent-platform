@@ -74,6 +74,16 @@ export interface ModelRouteRequest {
   maxInputPer1kUsd?: number | null;
   // Allow fallback to higher-cost tiers if needed
   allowStrongUpgrade?: boolean;
+  // §15.3: Data residency constraint - required region for model execution
+  data_residency?: string | null;
+  // §15.3: PII detection flag - input may contain personally identifiable information
+  pii_input_detected?: boolean;
+  // §15.3: PII possibility flag - output may contain personally identifiable information
+  pii_output_possible?: boolean;
+  // §15.3: Model training opt-out - data should not be used for training
+  model_training_opt_out?: boolean;
+  // §15.3: Judge independence flag - routing decision should be independent of content
+  judge_independence?: boolean;
 }
 
 /**

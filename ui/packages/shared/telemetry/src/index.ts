@@ -13,6 +13,92 @@ export interface TelemetryExporter {
   export(events: readonly TelemetryEvent[]): Promise<void>;
 }
 
+/**
+ * Core Web Vitals metric names per §7.3.
+ * - LCP: Largest Contentful Paint (target < 2.5s)
+ * - FCP: First Contentful Paint (target < 1.8s)
+ * - CLS: Cumulative Layout Shift (target < 0.1)
+ * - INP: Interaction to Next Paint (target < 200ms)
+ */
+export interface CoreWebVitals {
+  readonly lcp: number | null;
+  readonly fcp: number | null;
+  readonly cls: number | null;
+  readonly inp: number | null;
+}
+
+interface WebVitalsMetric {
+  name: string;
+  value: number;
+  rating: "good" | "needs-improvement" | "poor";
+  delta: number;
+  id: string;
+  entries: unknown[];
+}
+
+/**
+ * Starts Web Vitals collection using the web-vitals library.
+ * Reports LCP, FCP, CLS, and INP to the provided TelemetrySink.
+ *
+ * @param sink - TelemetrySink to record Core Web Vitals events to
+ * @param reportAll - if true, reports every metric; if false, only reports on final value (default: true)
+ * @returns stop function - call to remove event listeners
+ */
+export function startWebVitalsCollection(
+  sink: TelemetrySink,
+  reportAll = true,
+): () => void {
+  // Dynamically import web-vitals to avoid blocking the initial render
+  const onMetric = (metric: WebVitalsMetric) => {
+    sink.record(`web_vitals.${metric.name}`, {
+      value: metric.value,
+      rating: metric.rating,
+      delta: metric.delta,
+      id: metric.id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      entries: (metric.entries as any[]).map((e) => ({ type: e?.constructor?.name ?? "unknown" })),
+    });
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onReady = (metric: WebVitalsMetric) => {
+    if (!reportAll) {
+      onMetric(metric);
+    }
+  };
+
+  // We use dynamic import so the module can be loaded lazily
+  // and does not block the main thread during initial render
+  let cleanup: (() => void) | undefined;
+
+  import("web-vitals").then((vl) => {
+    const onLCP = (metric: WebVitalsMetric) => onMetric(metric);
+    const onFCP = (metric: WebVitalsMetric) => onMetric(metric);
+    const onCLS = (metric: WebVitalsMetric) => onMetric(metric);
+    const onINP = (metric: WebVitalsMetric) => onMetric(metric);
+
+    void vl.onLCP(onLCP, { reportAll });
+    void vl.onFCP(onFCP, { reportAll });
+    void vl.onCLS(onCLS, { reportAll });
+    void vl.onINP(onINP, { reportAll });
+
+    cleanup = () => {
+      void vl.onLCP(() => {});
+      void vl.onFCP(() => {});
+      void vl.onCLS(() => {});
+      void vl.onINP(() => {});
+    };
+  }).catch(() => {
+    // web-vitals not available in non-browser environments
+  });
+
+  return () => {
+    if (cleanup) {
+      cleanup();
+    }
+  };
+}
+
 export class TelemetrySink {
   private readonly events: TelemetryEvent[] = [];
 

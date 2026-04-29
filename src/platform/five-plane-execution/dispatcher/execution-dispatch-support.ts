@@ -25,6 +25,8 @@ export interface DispatchExecutionOptions {
 
 export interface DispatchQueueAvailabilitySnapshot {
   state: "available" | "degraded" | "unavailable";
+  queueDepth: number;
+  maxQueueDepth: number;
   reasonCode?: string | null;
 }
 

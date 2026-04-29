@@ -187,6 +187,74 @@ const HEALTH_TO_ESCALATION: Record<string, EscalationLevel> = {
 
 // ── Service ─────────────────────────────────────────────────────────────
 
+// ── Error Classification for §9.6 ───────────────────────────────────
+
+/**
+ * Error classification for playbook execution failures.
+ * §9.6 requires categorized error recording with evidence.
+ */
+type PlaybookErrorCategory =
+  | "handler_not_found"
+  | "handler_execution_failed"
+  | "context_validation_failed"
+  | "timeout"
+  | "unknown";
+
+interface PlaybookErrorRecord {
+  readonly eventId: string;
+  readonly playbookId: string;
+  readonly playbookName: string;
+  readonly category: PlaybookErrorCategory;
+  readonly errorMessage: string;
+  readonly timestamp: string;
+  readonly healthStatus: string;
+  readonly retryable: boolean;
+}
+
+const PLAYBOOK_ERROR_CATEGORY: Record<string, PlaybookErrorCategory> = {
+  "No handler for action": "handler_not_found",
+  "timeout": "timeout",
+};
+
+function classifyPlaybookError(
+  error: unknown,
+  playbookId: string,
+  playbookName: string,
+  healthStatus: string,
+): PlaybookErrorRecord {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  let category: PlaybookErrorCategory = "unknown";
+  let retryable = false;
+
+  for (const [pattern, cat] of Object.entries(PLAYBOOK_ERROR_CATEGORY)) {
+    if (errorMessage.includes(pattern)) {
+      category = cat;
+      break;
+    }
+  }
+
+  if (category === "unknown") {
+    // Check for execution failures
+    if (errorMessage.includes("failed") || errorMessage.includes("error")) {
+      category = "handler_execution_failed";
+      retryable = true;
+    }
+  }
+
+  return {
+    eventId: newId("playbook_err"),
+    playbookId,
+    playbookName,
+    category,
+    errorMessage,
+    timestamp: nowIso(),
+    healthStatus,
+    retryable,
+  };
+}
+
+// ── Service ─────────────────────────────────────────────────────────────
+
 export interface AutoStopLossServiceOptions {
   config?: Partial<AutoStopLossConfig>;
   playbooks?: StopLossPlaybook[];
@@ -205,6 +273,7 @@ export class AutoStopLossService {
   private readonly executionCounts: Map<string, number> = new Map();
   private readonly lastExecutionTime: Map<string, number> = new Map();
   private readonly actionHandlers: Map<StopLossAction, ActionHandler> = new Map();
+  private readonly errorRecords: PlaybookErrorRecord[] = [];
   private lastHealthCheck: SystemHealthSnapshot | null = null;
 
   constructor(options?: AutoStopLossServiceOptions) {
@@ -800,10 +869,36 @@ export class AutoStopLossService {
       this.executePlaybook(playbook, `Health check: ${snapshot.status}`, {
         healthStatus: snapshot.status,
         ...snapshot,
-      }).catch(() => {
-        // Log error but don't block the health check loop
+      }).catch((err) => {
+        // §9.6: Classify and record playbook failure with evidence
+        const errorRecord = classifyPlaybookError(
+          err,
+          playbook.id,
+          playbook.name,
+          snapshot.status,
+        );
+        this.recordError(errorRecord);
       });
     }
+  }
+
+  /**
+   * Records a playbook error with classification for §9.6 audit trail.
+   * Keeps error records bounded to prevent memory exhaustion.
+   */
+  private recordError(record: PlaybookErrorRecord): void {
+    this.errorRecords.push(record);
+    if (this.errorRecords.length > 500) {
+      this.errorRecords.splice(0, this.errorRecords.length - 500);
+    }
+  }
+
+  /**
+   * Returns recent playbook error records for debugging and audit.
+   * §9.6 requires evidence of playbook failures during health events.
+   */
+  getRecentErrors(limit: number = 50): readonly PlaybookErrorRecord[] {
+    return this.errorRecords.slice(-limit);
   }
 
   /**

@@ -161,9 +161,58 @@ function createMockRepo(state: MockStoreState) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests: Lease Expiry Validation (R9-01)
-// Note: Async version does NOT enforce TTL bounds (R9-08) - those tests removed
+// Tests: Lease TTL Bounds + Expiry Validation (R9-01 / R9-08)
 // ---------------------------------------------------------------------------
+
+test("acquireLease rejects TTL below MIN_LEASE_TTL_MS", async () => {
+  const state: MockStoreState = {
+    leases: new Map(),
+    activeLeaseByExecution: new Map(),
+    latestLeaseByExecution: new Map(),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseServiceAsync(db, store, {} as any);
+
+  const result = await service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    ttlMs: MIN_LEASE_TTL_MS - 1,
+  });
+
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "ttl_out_of_bounds");
+  assert.equal(result.lease, null);
+});
+
+test("acquireLease rejects TTL above MAX_LEASE_TTL_MS", async () => {
+  const state: MockStoreState = {
+    leases: new Map(),
+    activeLeaseByExecution: new Map(),
+    latestLeaseByExecution: new Map(),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseServiceAsync(db, store, {} as any);
+
+  const result = await service.acquireLease({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    ttlMs: MAX_LEASE_TTL_MS + 1,
+  });
+
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "ttl_out_of_bounds");
+  assert.equal(result.lease, null);
+});
 
 test("acquireLease increments fencing token from previous lease for same execution", async () => {
   const previousLease = createLease({
@@ -333,12 +382,43 @@ test("releaseLease blocks when trying to release expired lease", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests: Fencing Token Enforcement
-// Note: The async version does not check expiresAt in validateWriteAccess
-// (fencing token check passes before any expiry validation).
-// Only testing positive case for async - see execution-lease-service-r9.test.ts
-// for full expiry validation tests on the sync version.
+// Tests: Fencing Token + Lease Expiry Enforcement
 // ---------------------------------------------------------------------------
+
+test("validateWriteAccess denies when lease has expired even if other fields match", () => {
+  const expiredTime = new Date(Date.now() - 5000).toISOString();
+  const existingLease = createLease({
+    id: "lease-1",
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 42,
+    expiresAt: expiredTime,
+  });
+
+  const state: MockStoreState = {
+    leases: new Map([["lease-1", existingLease]]),
+    activeLeaseByExecution: new Map([["exec-1", existingLease]]),
+    latestLeaseByExecution: new Map([["exec-1", existingLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const store = createMockStore(state);
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseServiceAsync(db, store, {} as any);
+
+  const result = service.validateWriteAccess({
+    executionId: "exec-1",
+    leaseId: "lease-1",
+    workerId: "worker-1",
+    fencingToken: 42,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "lease_expired");
+  assert.ok(state.audits.some((audit) => audit.eventType === "lease_expired"));
+});
 
 test("validateWriteAccess allows access when fence token matches and lease is active", () => {
   const existingLease = createLease({

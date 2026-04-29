@@ -9,7 +9,11 @@ export type KnowledgeGraphEdgeType =
   | "derives_from"      // Knowledge derives from source
   | "contradicts"       // Contradicting knowledge
   | "trust_boost"       // Trust propagation edge
-  | "trust_degrades";   // Trust degradation edge
+  | "trust_degrades"   // Trust degradation edge
+  | "learned_from"     // R13-07: Learned knowledge edge - knowledge learned from another source
+  | "failure_pattern"  // R13-07: Failure pattern edge - marks recurring failure patterns
+  | "causal_relationship" // R13-07: Causal relationship edge - cause-effect relationship
+  | "temporal_correlation"; // R13-07: Temporal correlation edge - time-based correlation
 
 export interface KnowledgeGraphNode {
   nodeId: string;

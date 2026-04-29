@@ -34,15 +34,32 @@ export interface QueueMetricsSnapshot {
 
 /**
  * QueueMetricCollector tracks metrics for a single queue.
+ * R9-21 fix: Added TTL-based eviction for waitTimes/failureReasons arrays
+ * to prevent unbounded memory growth.
  */
 export class QueueMetricCollector {
   private enqueued = 0;
   private dequeued = 0;
   private failed = 0;
-  private waitTimes: number[] = [];
-  private failureReasons: string[] = [];
+  private waitTimes: { value: number; timestamp: number }[] = [];
+  private failureReasons: { value: string; timestamp: number }[] = [];
+  private readonly ttlMs: number;
+  private readonly maxSize: number;
 
-  public constructor(public readonly queueName: string) {}
+  public constructor(
+    public readonly queueName: string,
+    options: { ttlMs?: number; maxSize?: number } = {},
+  ) {
+    this.ttlMs = options.ttlMs ?? 3600000; // Default 1 hour TTL
+    this.maxSize = options.maxSize ?? 10000; // Default max 10000 entries
+  }
+
+  private evictOldEntries(): void {
+    const now = Date.now();
+    const cutoff = now - this.ttlMs;
+    this.waitTimes = this.waitTimes.filter((e) => e.timestamp > cutoff);
+    this.failureReasons = this.failureReasons.filter((e) => e.timestamp > cutoff);
+  }
 
   public recordEnqueue(): void {
     this.enqueued += 1;
@@ -54,11 +71,21 @@ export class QueueMetricCollector {
 
   public recordFailed(reason: string): void {
     this.failed += 1;
-    this.failureReasons.push(reason);
+    this.evictOldEntries();
+    this.failureReasons.push({ value: reason, timestamp: Date.now() });
+    // Safety bound: trim to maxSize if exceeded
+    if (this.failureReasons.length > this.maxSize) {
+      this.failureReasons = this.failureReasons.slice(-this.maxSize);
+    }
   }
 
   public recordWaitTime(waitTimeMs: number): void {
-    this.waitTimes.push(waitTimeMs);
+    this.evictOldEntries();
+    this.waitTimes.push({ value: waitTimeMs, timestamp: Date.now() });
+    // Safety bound: trim to maxSize if exceeded
+    if (this.waitTimes.length > this.maxSize) {
+      this.waitTimes = this.waitTimes.slice(-this.maxSize);
+    }
   }
 
   public snapshot(): {
@@ -80,15 +107,31 @@ export class QueueMetricCollector {
     successRate: number;
   } {
     const depth = this.enqueued - this.dequeued;
+    const waitTimeValues = this.waitTimes.map((e) => e.value);
     const avgWaitTime =
-      this.waitTimes.length > 0
-        ? this.waitTimes.reduce((sum, t) => sum + t, 0) / this.waitTimes.length
+      waitTimeValues.length > 0
+        ? waitTimeValues.reduce((sum, t) => sum + t, 0) / waitTimeValues.length
         : 0;
-    const sortedWaitTimes = [...this.waitTimes].sort((a, b) => a - b);
+    const sortedWaitTimes = [...waitTimeValues].sort((a, b) => a - b);
     const p95Index = Math.floor(sortedWaitTimes.length * 0.95);
     const p99Index = Math.floor(sortedWaitTimes.length * 0.99);
     const p95WaitTime =
       sortedWaitTimes.length > 0 ? sortedWaitTimes[p95Index] ?? sortedWaitTimes[sortedWaitTimes.length - 1]! : 0;
+    const p99WaitTime =
+      sortedWaitTimes.length > 0 ? sortedWaitTimes[p99Index] ?? sortedWaitTimes[sortedWaitTimes.length - 1]! : 0;
+
+    return {
+      queueName: this.queueName,
+      timestamp: Date.now(),
+      totalEnqueued: this.enqueued,
+      totalDequeued: this.dequeued,
+      totalFailed: this.failed,
+      depth,
+      averageWaitTimeMs: avgWaitTime,
+      p95WaitTimeMs: p95WaitTime,
+      p99WaitTimeMs: p99WaitTime,
+      waitTimes: waitTimeValues,
+      failureReasons: this.failureReasons.map((e) => e.value), 1]! : 0;
     const p99WaitTime =
       sortedWaitTimes.length > 0 ? sortedWaitTimes[p99Index] ?? sortedWaitTimes[sortedWaitTimes.length - 1]! : 0;
 

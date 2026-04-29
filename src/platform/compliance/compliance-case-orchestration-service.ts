@@ -1,7 +1,6 @@
 import type { DataClassificationService } from "../control-plane/iam/data-classification-service.js";
 import type { ClassificationResult, HandlingDecision, PiiAnnotation } from "../control-plane/iam/data-classification-service.js";
 import { newId, nowIso } from "../contracts/types/ids.js";
-import type { ComplianceGovernanceService, ComplianceEvaluationResult } from "../../org-governance/compliance-engine/compliance-governance-service.js";
 import type { ResidencyCheckResult, ResidencyPolicy } from "./data-residency/index.js";
 import { DataResidencyPolicyService } from "./data-residency/index.js";
 import type { FieldProtectionResult, FieldProtectionRule } from "./encryption/index.js";
@@ -13,6 +12,23 @@ import { DataLineageService } from "./lineage/index.js";
 
 export type ComplianceTransferStatus = "approved" | "requires_redaction" | "blocked";
 export type ComplianceErasureStatus = "ready" | "blocked";
+
+/**
+ * Minimal governance evaluation result interface.
+ * Defines the subset of ComplianceEvaluationResult needed by platform/compliance plane.
+ * Full interface is defined in org-governance/compliance-engine/compliance-governance-service.ts.
+ */
+export interface ComplianceEvaluationResult {
+  readonly orgNodeId: string;
+  readonly effectivePolicy: Record<string, unknown>;
+  readonly allowed: boolean;
+  readonly missingKeys: readonly string[];
+  readonly auditRecord: ComplianceGovernanceAuditRecord;
+}
+
+export interface ComplianceGovernanceAuditRecord {
+  readonly recordId: string | null;
+}
 
 export interface ComplianceTransferPackage {
   transferId: string;
@@ -43,15 +59,30 @@ export interface ComplianceErasurePackage {
 
 export interface ComplianceCaseOrchestrationServiceOptions {
   classification: DataClassificationService;
-  governance?: ComplianceGovernanceService | null;
+  governance?: ComplianceGovernanceEvaluator | null;
   encryption?: FieldEncryptionService;
   residency?: DataResidencyPolicyService;
   lineage?: DataLineageService;
   erasure?: ErasurePlanningService;
 }
 
+/**
+ * Interface for compliance governance evaluation.
+ * Platform/compliance plane uses this interface to call org-governance services
+ * without creating a direct compile-time dependency on the org-governance module.
+ */
+export interface ComplianceGovernanceEvaluator {
+  evaluate(input: {
+    actorId: string;
+    orgNodeId: string;
+    action: string;
+    requiredPolicyKeys?: readonly string[];
+    occurredAt?: string;
+  }): ComplianceEvaluationResult | null;
+}
+
 export class ComplianceCaseOrchestrationService {
-  private readonly governance: ComplianceGovernanceService | null;
+  private readonly governance: ComplianceGovernanceEvaluator | null;
   private readonly encryption: FieldEncryptionService;
   private readonly residency: DataResidencyPolicyService;
   private readonly lineage: DataLineageService;

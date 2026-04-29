@@ -116,6 +116,8 @@ export interface AbTestResult {
   improvement: number;
   significant: boolean;
   verdict: QualityVerdict;
+  zScore: number;
+  pValue: number;
 }
 
 /**
@@ -173,6 +175,14 @@ export interface CiGateOptions {
 }
 
 type RawRow = Record<string, unknown>;
+
+/**
+ * Configuration for real LLM evaluation in A/B test.
+ */
+interface LlmAbTestEvaluatorConfig {
+  /** LLM evaluation function - takes input text, returns score 0-1 */
+  evaluateWithLlm: (input: string, expectedOutput: string, actualOutput: string) => Promise<number>;
+}
 
 // -- Service ------------------------------------------------------------
 
@@ -346,73 +356,6 @@ export class LlmEvalService {
   // -- A/B Testing ----------------------------------------------------
 
 /**
- * Statistical helper for computing significance.
- * Uses two-proportion z-test for comparing pass rates.
- */
-function computeStatisticalSignificance(
-  controlPassed: number,
-  controlTotal: number,
-  treatmentPassed: number,
-  treatmentTotal: number,
-): { zScore: number; pValue: number; significant: boolean } {
-  if (controlTotal === 0 || treatmentTotal === 0) {
-    return { zScore: 0, pValue: 1, significant: false };
-  }
-
-  const p1 = controlPassed / controlTotal;
-  const p2 = treatmentPassed / treatmentTotal;
-  const pPool = (controlPassed + treatmentPassed) / (controlTotal + treatmentTotal);
-
-  if (pPool === 0 || pPool === 1) {
-    return { zScore: 0, pValue: 1, significant: false };
-  }
-
-  const se = Math.sqrt(pPool * (1 - pPool) * (1 / controlTotal + 1 / treatmentTotal));
-  if (se === 0) {
-    return { zScore: 0, pValue: 1, significant: false };
-  }
-
-  const zScore = (p2 - p1) / se;
-  // Standard normal CDF approximation for p-value
-  const pValue = 2 * (1 - normalCDF(Math.abs(zScore)));
-
-  return {
-    zScore,
-    pValue,
-    significant: pValue < 0.05, // 95% confidence level
-  };
-}
-
-/**
- * Approximation of standard normal CDF.
- */
-function normalCDF(x: number): number {
-  const a1 = 0.254829592;
-  const a2 = -0.284496736;
-  const a3 = 1.421413741;
-  const a4 = -1.453152027;
-  const a5 = 1.061405429;
-  const p = 0.3275911;
-
-  const sign = x < 0 ? -1 : 1;
-  x = Math.abs(x) / Math.sqrt(2);
-
-  const t = 1.0 / (1.0 + p * x);
-  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-
-  const result = 0.5 * (1.0 + sign * y);
-  return result;
-}
-
-/**
- * Configuration for real LLM evaluation in A/B test.
- */
-export interface LlmAbTestEvaluatorConfig {
-  /** LLM evaluation function - takes input text, returns score 0-1 */
-  evaluateWithLlm: (input: string, expectedOutput: string, actualOutput: string) => Promise<number>;
-}
-
-/**
  * Runs an A/B test comparing two model/prompt combinations.
  *
  * Executes the same evaluation suite against control and treatment configurations,
@@ -420,11 +363,11 @@ export interface LlmAbTestEvaluatorConfig {
  *
  * Now uses real LLM evaluation when llmEvaluator is provided.
  */
-runAbTest(
+async runAbTest(
   suiteId: string,
   config: AbTestConfig,
   options: { llmEvaluator?: LlmAbTestEvaluatorConfig } = {},
-): AbTestResult {
+): Promise<AbTestResult> {
   const controlRun = this.startRun(suiteId, config.controlModelId, config.controlPromptVersion, "ab_test");
   const treatmentRun = this.startRun(suiteId, config.treatmentModelId, config.treatmentPromptVersion, "ab_test");
 
@@ -538,41 +481,6 @@ runAbTest(
     significant: finalSignificant,
     verdict: finalSignificant && improvement > 0 ? "pass" : (finalSignificant && improvement < 0 ? "fail" : "inconclusive"),
   };
-}
-
-/**
- * Computes Levenshtein-based string similarity (0-1).
- */
-function computeStringSimilarity(a: string, b: string): number {
-  if (a === b) return 1;
-  if (a.length === 0 || b.length === 0) return 0;
-
-  const matrix: number[][] = [];
-
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1, // insertion
-          matrix[i - 1][j] + 1, // deletion
-        );
-      }
-    }
-  }
-
-  const distance = matrix[b.length][a.length];
-  const maxLen = Math.max(a.length, b.length);
-  return 1 - distance / maxLen;
 }
 
   // -- CI Gate -------------------------------------------------------
@@ -781,6 +689,102 @@ function computeStringSimilarity(a: string, b: string): number {
   private parseCases(suite: EvalSuiteRecord): EvalCaseDefinition[] {
     return JSON.parse(suite.cases) as EvalCaseDefinition[];
   }
+}
+
+// -- Standalone Statistical Helpers ------------------------------------
+
+/**
+ * Statistical helper for computing significance.
+ * Uses two-proportion z-test for comparing pass rates.
+ */
+function computeStatisticalSignificance(
+  controlPassed: number,
+  controlTotal: number,
+  treatmentPassed: number,
+  treatmentTotal: number,
+): { zScore: number; pValue: number; significant: boolean } {
+  if (controlTotal === 0 || treatmentTotal === 0) {
+    return { zScore: 0, pValue: 1, significant: false };
+  }
+
+  const p1 = controlPassed / controlTotal;
+  const p2 = treatmentPassed / treatmentTotal;
+  const pPool = (controlPassed + treatmentPassed) / (controlTotal + treatmentTotal);
+
+  if (pPool === 0 || pPool === 1) {
+    return { zScore: 0, pValue: 1, significant: false };
+  }
+
+  const se = Math.sqrt(pPool * (1 - pPool) * (1 / controlTotal + 1 / treatmentTotal));
+  if (se === 0) {
+    return { zScore: 0, pValue: 1, significant: false };
+  }
+
+  const zScore = (p2 - p1) / se;
+  // Standard normal CDF approximation for p-value
+  const pValue = 2 * (1 - normalCDF(Math.abs(zScore)));
+
+  return {
+    zScore,
+    pValue,
+    significant: pValue < 0.05, // 95% confidence level
+  };
+}
+
+/**
+ * Approximation of standard normal CDF.
+ */
+function normalCDF(x: number): number {
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
+
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.sqrt(2);
+
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+
+  const result = 0.5 * (1.0 + sign * y);
+  return result;
+}
+
+/**
+ * Computes Levenshtein-based string similarity (0-1).
+ */
+function computeStringSimilarity(a: string, b: string): number {
+  if (a === b) return 1;
+  if (a.length === 0 || b.length === 0) return 0;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0]![j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i]![j] = matrix[i - 1]![j - 1]!;
+      } else {
+        matrix[i]![j] = Math.min(
+          matrix[i - 1]![j - 1]! + 1, // substitution
+          matrix[i]![j - 1]! + 1, // insertion
+          matrix[i - 1]![j]! + 1, // deletion
+        );
+      }
+    }
+  }
+
+  const distance = matrix[b.length]![a.length]!;
+  const maxLen = Math.max(a.length, b.length);
+  return 1 - distance / maxLen;
 }
 
 /**

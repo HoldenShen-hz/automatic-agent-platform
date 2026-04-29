@@ -1,1 +1,6 @@
-export type { ConstraintPack } from "../index.js";
+export {
+  getConstraintOutputPolicy,
+  getConstraintRiskPolicy,
+  normalizeConstraintPack,
+  type ConstraintPack,
+} from "../index.js";

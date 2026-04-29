@@ -7,7 +7,7 @@
 - **Observe**: 收集 task/domain/shared context sources
 - **Assess**: 对 token budget 与敏感信息进行评估
 - **Plan**: 组装 context block 与 snapshot 粒度
-- **Execute**: 为 Harness node execution 提供上下文输入
+- **Execute**: 为 Harness NodeRun 执行组提供上下文输入（注：上下文按 NodeRun 组装，非 step；step 仅语义投影，NodeRun/NodeAttempt 才是执行层事实）
 - **Feedback**: 记录上下文缺失与压缩结果
 - **Learn**: 识别最有价值的上下文来源
 - **Improve**: 优化压缩和命名空间策略

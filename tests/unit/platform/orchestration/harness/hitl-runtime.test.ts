@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { HitlRuntime } from "../../../../../src/platform/orchestration/harness/hitl-runtime.js";
 import type { HarnessRun } from "../../../../../src/platform/orchestration/harness/index.js";
 import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
-import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import {
+  DurableHarnessService,
+  InMemoryDurableHarnessStore,
+} from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
 import { RecoveryController } from "../../../../../src/platform/orchestration/harness/recovery-controller.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,6 +225,53 @@ test("HarnessRuntimeService.resolveHitlReview approves and resumes run", () => {
   assert.ok(resumed.hitlRequest !== null);
   assert.equal(resumed.hitlRequest?.status, "approved");
   assert.ok(resumed.timeline.some(e => e.type === "hitl_resolved"));
+});
+
+test("HarnessRuntimeService restores persisted HITL requests into a fresh runtime", () => {
+  const store = new InMemoryDurableHarnessStore();
+  const hitlRuntime1 = new HitlRuntime();
+  const service1 = new HarnessRuntimeService({
+    durableService: new DurableHarnessService({ store }),
+    hitlRuntime: hitlRuntime1,
+  });
+
+  const baseRun = service1.createRun({
+      taskId: "task-hitl-restore",
+      domainId: "coding",
+      constraintPack: {
+        policyIds: [],
+        approvalMode: "none",
+        autonomyMode: "auto",
+        toolPolicy: { allowedTools: ["read"] },
+        risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
+        output_policy: { requiredEvidence: [], redactSensitiveData: false },
+        budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
+      },
+    });
+  const request = hitlRuntime1.open({
+    runId: baseRun.runId,
+    domainId: baseRun.domainId,
+    reason: "manual approval required",
+    evidenceRefs: ["evidence-1"],
+  });
+  const paused = {
+    ...baseRun,
+    status: "paused" as const,
+    pauseReason: "hitl" as const,
+    hitlRequest: request,
+  };
+  service1.persistRun(paused);
+
+  const hitlRuntime2 = new HitlRuntime();
+  const service2 = new HarnessRuntimeService({
+    durableService: new DurableHarnessService({ store }),
+    hitlRuntime: hitlRuntime2,
+  });
+
+  const restored = service2.restoreRun(paused.runId);
+  assert.ok(restored != null);
+  assert.equal(restored?.hitlRequest?.status, "pending");
+  assert.equal(hitlRuntime2.get(request.requestId)?.status, "pending");
 });
 
 test("HarnessRuntimeService.resolveHitlReview rejects and aborts run", () => {

@@ -13,8 +13,8 @@
  *
  * ## Usage
  *
- * Connect to `/ws?token=<jwt_token>&taskId=<task_id>` for task-specific updates.
- * Or connect to `/ws?token=<jwt_token>` for general broadcasts.
+ * Connect to `/ws/v1/stream?token=<jwt_token>&taskId=<task_id>` for task-specific updates.
+ * Or connect to `/ws/v1/stream?token=<jwt_token>` for general broadcasts.
  *
  * @see SSE/StreamBridge: src/gateway/stream/stream-bridge.ts
  * @see Gateway Streaming Contract: docs_zh/contracts/gateway_streaming_contract.md
@@ -24,6 +24,7 @@ import type { IncomingMessage } from "node:http";
 import type { Server } from "node:http";
 import type { WebSocket } from "ws";
 import { WebSocketServer } from "ws";
+import { z } from "zod";
 import type { ApiAuthService } from "../api/api-auth-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { TenantScopeFilter, type TaskProjectionScopeResolver } from "./tenant-scope-filter.js";
@@ -31,7 +32,24 @@ import { TenantScopeFilter, type TaskProjectionScopeResolver } from "./tenant-sc
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
+ * Schema for validating incoming WebSocket messages at the entry boundary.
+ * §5.2 / §7.1: External client input at the entry boundary requires runtime schema check.
+ * Uses strict objects to ensure all fields are required (matching WebSocketMessageType).
+ */
+const webSocketMessageSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("ping") }),
+  z.strictObject({ type: z.literal("pong") }),
+  z.strictObject({ type: z.literal("subscribe"), taskId: z.string().min(1) }),
+  z.strictObject({ type: z.literal("unsubscribe"), taskId: z.string().min(1) }),
+  z.strictObject({ type: z.literal("subscribed"), taskId: z.string().min(1) }),
+  z.strictObject({ type: z.literal("unsubscribed"), taskId: z.string().min(1) }),
+  z.strictObject({ type: z.literal("task_update"), taskId: z.string().min(1), event: z.record(z.unknown()) }),
+  z.strictObject({ type: z.literal("error"), code: z.string(), message: z.string() }),
+]);
+
+/**
  * WebSocket message types for client-server communication.
+ * §7: Includes stream_gap for gap detection and event_id for resume tracking.
  */
 export type WebSocketMessageType =
   | { type: "ping" }
@@ -40,8 +58,10 @@ export type WebSocketMessageType =
   | { type: "unsubscribe"; taskId: string }
   | { type: "subscribed"; taskId: string }
   | { type: "unsubscribed"; taskId: string }
-  | { type: "task_update"; taskId: string; event: TaskWebSocketEvent }
-  | { type: "error"; code: string; message: string };
+  | { type: "task_update"; taskId: string; eventId: string; event: TaskWebSocketEvent }
+  | { type: "error"; code: string; message: string }
+  | { type: "stream_gap"; taskId: string; fromEventId: string; toEventId: string; reason: string }
+  | { type: "backpressure_warning"; taskId: string; bufferedCount: number; reason: string };
 
 /**
  * Task-related events broadcast over WebSocket.
@@ -62,13 +82,17 @@ interface ClientConnection {
   webSocket: WebSocket;
   principal: { actorId: string; tenantId: string | null; scopes: readonly string[] };
   subscribedTasks: Set<string>;
+  /** Last event ID received by this client for resume/replay */
+  lastEventId: string | null;
+  /** Buffered event count for back-pressure monitoring */
+  bufferedEventCount: number;
 }
 
 /**
  * WebSocket bridge for real-time task status updates.
  *
  * This bridge:
- * - Accepts WebSocket connections at `/ws` path
+ * - Accepts WebSocket connections at `/ws/v1/stream`
  * - Authenticates clients via JWT token in query parameter
  * - Allows clients to subscribe to specific task updates
  * - Broadcasts task events to subscribed clients
@@ -98,6 +122,8 @@ export class WebSocketBridge {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const token = url.searchParams.get("token");
     const initialTaskId = url.searchParams.get("taskId");
+    // §7: last_event_id for resume/replay on reconnect
+    const lastEventId = url.searchParams.get("last_event_id");
 
     // Authenticate the connection
     if (!token) {
@@ -121,6 +147,8 @@ export class WebSocketBridge {
       webSocket: ws,
       principal,
       subscribedTasks: new Set(),
+      lastEventId,
+      bufferedEventCount: 0,
     };
     this.clients.set(ws, client);
 
@@ -132,7 +160,15 @@ export class WebSocketBridge {
     // Handle incoming messages
     ws.on("message", (data) => {
       try {
-        const message = JSON.parse(data.toString()) as WebSocketMessageType;
+        const parsed = JSON.parse(data.toString());
+        // §5.2 / §7.1: Schema-validated parsing at entry boundary for external client input
+        const result = webSocketMessageSchema.safeParse(parsed);
+        if (!result.success) {
+          ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Failed to parse message" }));
+          return;
+        }
+        // Cast to WebSocketMessageType - Zod has validated the structure
+        const message = result.data as WebSocketMessageType;
         this.handleMessage(ws, message);
       } catch {
         ws.send(JSON.stringify({ type: "error", code: "invalid_message", message: "Failed to parse message" }));
@@ -265,35 +301,79 @@ export class WebSocketBridge {
 
   /**
    * Broadcast a task event to all subscribers of that task.
+   * Implements back-pressure by checking buffered amount before sending.
+   * §7: Includes event_id for resume/replay support.
    */
-  broadcastToTask(taskId: string, event: TaskWebSocketEvent): void {
+  broadcastToTask(taskId: string, event: TaskWebSocketEvent, eventId?: string): void {
     const subscribers = this.taskSubscribers.get(taskId);
     if (!subscribers || subscribers.size === 0) {
       return;
     }
 
-    const message = JSON.stringify({
-      type: "task_update",
-      taskId,
-      event,
-    });
-
     let deliveredCount = 0;
     for (const ws of subscribers) {
       const client = this.clients.get(ws);
-      const scopeDecision = client == null ? null : this.tenantScopeFilter?.evaluate(client.principal, taskId);
-      if (ws.readyState === ws.OPEN && (scopeDecision == null || scopeDecision.allowed)) {
-        ws.send(message);
-        deliveredCount++;
+      if (!client) continue;
+
+      const scopeDecision = this.tenantScopeFilter?.evaluate(client.principal, taskId);
+      if (ws.readyState !== ws.OPEN || (scopeDecision != null && !scopeDecision.allowed)) {
+        continue;
       }
+
+      // §7: Back-pressure check - skip slow clients with large send buffers
+      // Check buffered amount to prevent memory buildup from slow consumers
+      const bufferedAmount = ws.bufferedAmount;
+      const maxBufferedAmount = 1_000_000; // 1MB threshold
+      if (bufferedAmount > maxBufferedAmount) {
+        // §9.2: Graduated back-pressure - warn client and skip delivery
+        const warningMsg = JSON.stringify({
+          type: "backpressure_warning",
+          taskId,
+          bufferedCount: client.bufferedEventCount,
+          reason: "send_buffer_full",
+        });
+        ws.send(warningMsg);
+        logger.warn("WebSocket client back-pressure, skipping delivery", {
+          actorId: client.principal.actorId,
+          taskId,
+          bufferedAmount,
+        });
+        continue;
+      }
+
+      // §7: Include eventId for resume/replay support
+      const message = JSON.stringify({
+        type: "task_update",
+        taskId,
+        eventId: eventId ?? null,
+        event,
+      });
+
+      ws.send(message);
+      client.lastEventId = eventId ?? client.lastEventId;
+      client.bufferedEventCount++;
+      deliveredCount++;
     }
 
     logger.debug("Broadcast to task subscribers", {
       taskId,
       eventType: event.eventType,
+      eventId,
       subscriberCount: subscribers.size,
       deliveredCount,
     });
+  }
+
+  /**
+   * Check if client has missed events since lastEventId.
+   * Returns true if there's a gap indicating missing events.
+   */
+  private hasEventGap(client: ClientConnection, currentEventId: string): boolean {
+    if (client.lastEventId === null) {
+      return false;
+    }
+    // Simple sequence check - in production this would use proper sequence comparison
+    return currentEventId > client.lastEventId;
   }
 
   /**

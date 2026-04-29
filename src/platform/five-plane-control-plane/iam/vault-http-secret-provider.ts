@@ -39,6 +39,71 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 const vaultLogger = new StructuredLogger({ retentionLimit: 50 });
 
 /**
+ * Simple token bucket rate limiter for preventing brute-force attacks.
+ * R12-21: Secret resolution requires rate limiting to prevent enumeration.
+ */
+class SecretResolutionRateLimiter {
+  private readonly buckets = new Map<string, { tokens: number; lastRefill: number }>();
+  private readonly maxTokens: number;
+  private readonly refillRateMs: number;
+
+  constructor(maxRequestsPerWindow: number = 100, windowMs: number = 60_000) {
+    this.maxTokens = maxRequestsPerWindow;
+    this.refillRateMs = windowMs;
+  }
+
+  /**
+   * Check and consume a token for the given key.
+   * @returns true if request is allowed, false if rate limited
+   */
+  public tryConsume(key: string): boolean {
+    const now = Date.now();
+    let bucket = this.buckets.get(key);
+
+    if (!bucket) {
+      bucket = { tokens: this.maxTokens - 1, lastRefill: now };
+      this.buckets.set(key, bucket);
+      return true;
+    }
+
+    // Refill tokens based on elapsed time
+    const elapsed = now - bucket.lastRefill;
+    if (elapsed >= this.refillRateMs) {
+      bucket.tokens = this.maxTokens - 1;
+      bucket.lastRefill = now;
+      return true;
+    }
+
+    // Add tokens based on elapsed time (1 token per refillRateMs/maxTokens)
+    const tokensToAdd = Math.floor((elapsed / this.refillRateMs) * this.maxTokens);
+    if (tokensToAdd > 0) {
+      bucket.tokens = Math.min(this.maxTokens, bucket.tokens + tokensToAdd);
+      bucket.lastRefill = now;
+    }
+
+    if (bucket.tokens <= 0) {
+      return false;
+    }
+
+    bucket.tokens--;
+    return true;
+  }
+
+  /** Reset rate limit for a key */
+  public reset(key: string): void {
+    this.buckets.delete(key);
+  }
+
+  /** Reset all rate limits */
+  public resetAll(): void {
+    this.buckets.clear();
+  }
+}
+
+// Global rate limiter for secret resolution - 100 requests per minute per caller
+const SECRET_RESOLUTION_RATE_LIMITER = new SecretResolutionRateLimiter(100, 60_000);
+
+/**
  * Configuration options for Vault HTTP provider.
  */
 export interface VaultHttpProviderOptions {
@@ -170,8 +235,11 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         },
       );
     }
+    // R12-19 fix: Static tokens have no defined lease duration and may be revoked at any time.
+    // Cache with a short TTL (30s) to balance performance against revocation risk.
+    // AppRole tokens are preferred as they have proper lease_duration from Vault.
     this._cachedToken = staticToken;
-    this._tokenExpiry = Date.now() + 3600 * 1000;
+    this._tokenExpiry = Date.now() + 30_000; // 30 seconds max cache for static tokens
     return this._cachedToken;
   }
 
@@ -229,10 +297,15 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
   public async isAvailable(): Promise<boolean> {
     if (!this.env["AA_VAULT_ADDR"]) return false;
     try {
+      // R12-24 fix: Don't send X-Vault-Token header for health check
+      // - Sending "dummy" token leaks intent to Vault audit logs and may trigger lockout
+      // - The sys/health endpoint returns proper status without authentication
+      // - Vault returns 200 (initialized, unsealed), 429 (sealed), 472 (data recovery), 501 (not initialized)
       const resp = await this.fetchWithTimeout(`${this.addr}/v1/sys/health`, {
-        headers: { "X-Vault-Token": this.env["AA_VAULT_TOKEN"] ?? "dummy" },
+        // No X-Vault-Token header - unauthenticated health check
       });
-      return resp.ok;
+      // Accept 200 (healthy), 429 (sealed but responding), 472 (recovery mode) as "available"
+      return resp.status === 200 || resp.status === 429 || resp.status === 472;
     } catch (err) {
       vaultLogger.log({ level: "warn", message: "Vault health check failed", data: { error: err instanceof Error ? err.message : String(err) } });
       return false;
@@ -287,6 +360,16 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         details: { secretRef },
       });
     }
+
+    // R12-21: Rate limit secret resolution to prevent brute-force enumeration
+    const rateLimitKey = `secret:${secretRef}`;
+    if (!SECRET_RESOLUTION_RATE_LIMITER.tryConsume(rateLimitKey)) {
+      throw new ProviderError("vault.rate_limited", "vault.rate_limited:too many secret resolution requests", {
+        details: { secretRef },
+        retryable: true,
+      });
+    }
+
     const vaultPath = this.extractSecretPath(secretRef);
     const key = this.extractSecretKey(secretRef);
 

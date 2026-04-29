@@ -15,7 +15,7 @@ const ALL_ROLES = listPlatformRoles();
 test("roleGrantsCapabilities returns true when all required capabilities are granted", () => {
   assert.equal(roleGrantsCapabilities(["platform_admin"], ["model:invoke"]), true);
   assert.equal(roleGrantsCapabilities(["platform_admin"], ["model:invoke", "tool:invoke", "fs:write"]), true);
-  assert.equal(roleGrantsCapabilities(["worker_runtime"], ["tool:invoke", "fs:write", "exec:command"]), true);
+  assert.equal(roleGrantsCapabilities(["human_operator"], ["tool:invoke", "fs:write", "exec:command"]), true);
 });
 
 test("roleGrantsCapabilities returns false when any required capability is missing", () => {
@@ -25,7 +25,7 @@ test("roleGrantsCapabilities returns false when any required capability is missi
 });
 
 test("roleGrantsCapabilities returns true with multiple roles combining capabilities", () => {
-  assert.equal(roleGrantsCapabilities(["viewer", "worker_runtime"], ["tool:invoke"]), true);
+  assert.equal(roleGrantsCapabilities(["viewer", "plugin_runtime"], ["network:access"]), true);
   assert.equal(roleGrantsCapabilities(["viewer", "agent_runtime"], ["tool:invoke", "model:invoke"]), true);
 });
 
@@ -50,7 +50,7 @@ test("evaluateAuthorizationContext rejects when tenant scope is required but mis
 test("evaluateAuthorizationContext allows when tenant scope is provided", () => {
   const result = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["human_operator"],
+    roles: ["platform_admin"],
     action: "org_change",
     context: { requiresTenantScope: true, tenantId: "tenant-123" },
   });
@@ -129,7 +129,7 @@ test("evaluateAuthorizationContext rejects production install_extension without 
   assert.equal(result.reasonCode, "policy.context_production_operator_required");
 });
 
-test("evaluateAuthorizationContext allows non-production environment exec_command for agent", () => {
+test("evaluateAuthorizationContext denies non-production exec_command without capability grant", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -137,7 +137,8 @@ test("evaluateAuthorizationContext allows non-production environment exec_comman
     context: { environment: "staging" },
   });
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.capability_required");
 });
 
 test("evaluateAuthorizationContext rejects untrusted plugin network_access", () => {
@@ -240,10 +241,26 @@ test("evaluateAuthorizationContext records manual takeover and allows without ap
   assert.deepEqual(result.matchedRuleRefs, ["context.manual_takeover_active"]);
 });
 
-test("evaluateAuthorizationContext returns default allow for unrestricted actions", () => {
+test("evaluateAuthorizationContext rejects manual takeover for non-operator roles", () => {
   const result = evaluateAuthorizationContext({
-    principalType: "user",
-    roles: ["viewer"],
+    principalType: "agent",
+    roles: ["agent_runtime"],
+    action: "invoke_model",
+    context: { manualTakeoverActive: true },
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.requiresApproval, false);
+  assert.equal(result.reasonCode, "policy.context_manual_takeover_operator_required");
+  assert.deepEqual(result.constraints, {
+    requiredRoles: ["platform_admin", "human_operator", "service_operator"],
+  });
+});
+
+test("evaluateAuthorizationContext returns default allow for role-granted actions", () => {
+  const result = evaluateAuthorizationContext({
+    principalType: "agent",
+    roles: ["agent_runtime"],
     action: "invoke_model",
   });
 
@@ -256,7 +273,7 @@ test("evaluateAuthorizationContext returns default allow for unrestricted action
 test("evaluateAuthorizationContext records manualTakeoverActive for non-production-restricted actions", () => {
   const result = evaluateAuthorizationContext({
     principalType: "user",
-    roles: ["viewer"],
+    roles: ["human_operator"],
     action: "invoke_model",
     context: { environment: "production", manualTakeoverActive: true },
   });
@@ -282,7 +299,7 @@ test("inferCapabilitiesForAction maps all authorization actions to capabilities"
   assert.deepEqual(inferCapabilitiesForAction("promote_memory_layer"), ["memory:promote"]);
 });
 
-test("evaluateAuthorizationContext workspace environment does not trigger production checks", () => {
+test("evaluateAuthorizationContext workspace environment still enforces capability checks", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -290,7 +307,8 @@ test("evaluateAuthorizationContext workspace environment does not trigger produc
     context: { environment: "workspace" },
   });
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.capability_required");
 });
 
 test("evaluateAuthorizationContext context is optional", () => {
@@ -304,7 +322,7 @@ test("evaluateAuthorizationContext context is optional", () => {
   assert.equal(result.requiresApproval, false);
 });
 
-test("evaluateAuthorizationContext production with staging environment does not block", () => {
+test("evaluateAuthorizationContext staging environment does not trigger production rule but still enforces capability checks", () => {
   const result = evaluateAuthorizationContext({
     principalType: "agent",
     roles: ["agent_runtime"],
@@ -312,7 +330,8 @@ test("evaluateAuthorizationContext production with staging environment does not 
     context: { environment: "staging" },
   });
 
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "policy.capability_required");
 });
 
 test("evaluateAuthorizationContext internal data classification does not trigger approval", () => {

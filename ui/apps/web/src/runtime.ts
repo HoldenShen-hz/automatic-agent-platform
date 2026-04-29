@@ -4,6 +4,7 @@ import {
   HttpTransport,
   InMemoryWSClient,
   createAuthInterceptor,
+  createContractVersionInterceptor,
   createCsrfInterceptor,
   createOfflineQueueInterceptor,
   createTenantInterceptor,
@@ -35,8 +36,9 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
     fallbackToMock: true,
   }).send(request), [
     createTraceInterceptor(),
+    createContractVersionInterceptor(),
     createCsrfInterceptor(),
-    createAuthInterceptor("ui-runtime-access"),
+    createAuthInterceptor(null),
     createTenantInterceptor("tenant-default"),
     createOfflineQueueInterceptor(offlineQueue),
   ]);

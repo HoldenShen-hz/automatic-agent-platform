@@ -53,18 +53,33 @@ export interface ToolUsageState {
   timeline: ToolUsageTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
+  /**
+   * Set of processed event IDs for idempotency (O(1) lookup).
+   * Stored as array for JSON serialization but converted to Set internally.
+   */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
   /** Last event timestamp */
   lastEventAt: string | null;
+  /**
+   * Timestamp when this projection was last updated.
+   * Used for freshness monitoring and stale projection detection.
+   */
+  lastProjectedAt: string | null;
   /** Associated task ID */
   taskId: string | null;
   /** Associated session ID */
   sessionId: string | null;
   /** Associated execution ID */
   executionId: string | null;
+}
+
+/**
+ * Internal state with Set for O(1) idempotency checks.
+ */
+interface ToolUsageStateInternal extends Omit<ToolUsageState, "processedEventIds"> {
+  _processedEventIdSet: Set<string>;
 }
 
 export type ToolInvocationStatus = "started" | "completed" | "failed" | "retrying" | "cache_hit" | "cache_miss";
@@ -105,9 +120,30 @@ export function createEmptyToolUsageState(): ToolUsageState {
     processedEventIds: [],
     firstEventAt: null,
     lastEventAt: null,
+    lastProjectedAt: null,
     taskId: null,
     sessionId: null,
     executionId: null,
+  };
+}
+
+/**
+ * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
+ */
+function toInternalState(state: ToolUsageState): ToolUsageStateInternal {
+  return {
+    ...state,
+    _processedEventIdSet: new Set(state.processedEventIds),
+  };
+}
+
+/**
+ * Converts internal state (with Set) back to serialized state (with array for JSON).
+ */
+function toSerializedState(state: ToolUsageStateInternal): ToolUsageState {
+  return {
+    ...state,
+    processedEventIds: Array.from(state._processedEventIdSet),
   };
 }
 
@@ -126,10 +162,11 @@ function parsePayload(payloadJson: string): Record<string, unknown> {
 }
 
 /**
- * Checks if an event has already been processed (idempotency check)
+ * Checks if an event has already been processed (idempotency check).
+ * Uses O(1) Set lookup for efficiency.
  */
-function isEventProcessed(state: ToolUsageState, eventId: string): boolean {
-  return state.processedEventIds.includes(eventId);
+function isEventProcessed(state: ToolUsageStateInternal, eventId: string): boolean {
+  return state._processedEventIdSet.has(eventId);
 }
 
 /**
@@ -155,13 +192,14 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
   state: Record<string, unknown> | null,
   event: ProjectionInputEvent,
 ): Record<string, unknown> => {
-  // Initialize state if null
+  // Initialize state if null, convert to internal state with Set for O(1) lookup
   const currentState = state as unknown as ToolUsageState | null;
-  const newState = currentState ? { ...currentState } : createEmptyToolUsageState();
+  const baseState = currentState ? { ...currentState } : createEmptyToolUsageState();
+  const newState = toInternalState(baseState);
 
   // Idempotency check - skip already processed events
   if (isEventProcessed(newState, event.eventId)) {
-    return newState as unknown as Record<string, unknown>;
+    return toSerializedState(newState) as unknown as Record<string, unknown>;
   }
 
   // Parse payload
@@ -189,6 +227,7 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
     newState.firstEventAt = event.createdAt;
   }
   newState.lastEventAt = event.createdAt;
+  newState.lastProjectedAt = event.createdAt;
 
   const stepId = (payload.stepId as string | null | undefined) ?? null;
   const status = (payload.status as ToolInvocationStatus | undefined) ?? inferStatus(event.eventType);
@@ -207,8 +246,8 @@ export const toolUsageProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed
-  newState.processedEventIds = [...newState.processedEventIds, event.eventId];
+  // Mark event as processed using O(1) Set add
+  newState._processedEventIdSet.add(event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Update counters based on event type

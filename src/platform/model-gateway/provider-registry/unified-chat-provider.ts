@@ -36,6 +36,8 @@ export interface ChatCompletionUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** §15.2: Estimated cost in USD for per-provider usage metering */
+  estimatedCost: number;
 }
 
 export interface ChatCompletionResult {
@@ -562,7 +564,27 @@ export class UnifiedChatProvider {
     return result;
   }
 
+  private estimateCost(promptTokens: number, completionTokens: number, provider: ChatProviderType): number {
+    // §15.2: Per-provider usage metering - estimated cost in USD
+    // These are approximate rates for estimation; actual billing uses provider-specific pricing
+    const COST_PER_1K_PROMPT_TOKENS: Record<ChatProviderType, number> = {
+      anthropic: 0.003,   // Claude pricing approximation
+      openai: 0.001,      // GPT pricing approximation
+      minimax: 0.001,     // MiniMax pricing approximation
+    };
+    const COST_PER_1K_COMPLETION_TOKENS: Record<ChatProviderType, number> = {
+      anthropic: 0.015,
+      openai: 0.003,
+      minimax: 0.002,
+    };
+    const promptRate = COST_PER_1K_PROMPT_TOKENS[provider];
+    const completionRate = COST_PER_1K_COMPLETION_TOKENS[provider];
+    return (promptTokens / 1000) * promptRate + (completionTokens / 1000) * completionRate;
+  }
+
   private normalizeAnthropicResult(result: AnthropicChatCompletionResult, provider: ChatProviderType): ChatCompletionResult {
+    const promptTokens = result.usage.input_tokens;
+    const completionTokens = result.usage.output_tokens;
     return {
       id: result.id,
       content: result.content,
@@ -572,9 +594,10 @@ export class UnifiedChatProvider {
       stopSequence: result.stopSequence,
       toolCalls: [],
       usage: {
-        promptTokens: result.usage.input_tokens,
-        completionTokens: result.usage.output_tokens,
-        totalTokens: result.usage.input_tokens + result.usage.output_tokens,
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+        estimatedCost: this.estimateCost(promptTokens, completionTokens, provider),
       },
       model: result.model,
       provider,
@@ -582,6 +605,8 @@ export class UnifiedChatProvider {
   }
 
   private normalizeOpenAIResult(result: OpenAIChatCompletionResult, provider: ChatProviderType): ChatCompletionResult {
+    const promptTokens = result.usage.prompt_tokens;
+    const completionTokens = result.usage.completion_tokens;
     return {
       id: result.id,
       content: result.content ?? "",
@@ -595,9 +620,10 @@ export class UnifiedChatProvider {
         function: tc.function,
       })),
       usage: {
-        promptTokens: result.usage.prompt_tokens,
-        completionTokens: result.usage.completion_tokens,
+        promptTokens,
+        completionTokens,
         totalTokens: result.usage.total_tokens,
+        estimatedCost: this.estimateCost(promptTokens, completionTokens, provider),
       },
       model: result.model,
       provider,
@@ -605,6 +631,8 @@ export class UnifiedChatProvider {
   }
 
   private normalizeMiniMaxResult(result: MiniMaxChatCompletionResult, provider: ChatProviderType): ChatCompletionResult {
+    const promptTokens = result.usage.prompt_tokens ?? 0;
+    const completionTokens = result.usage.completion_tokens ?? 0;
     return {
       id: result.id,
       content: result.content,
@@ -614,9 +642,10 @@ export class UnifiedChatProvider {
       stopSequence: null,
       toolCalls: [],
       usage: {
-        promptTokens: result.usage.prompt_tokens ?? 0,
-        completionTokens: result.usage.completion_tokens ?? 0,
+        promptTokens,
+        completionTokens,
         totalTokens: result.usage.total_tokens ?? 0,
+        estimatedCost: this.estimateCost(promptTokens, completionTokens, provider),
       },
       model: result.model ?? "minimax",
       provider,

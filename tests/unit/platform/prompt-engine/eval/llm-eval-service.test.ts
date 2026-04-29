@@ -335,7 +335,7 @@ test("LlmEvalService.runCiGate detects regressions vs baseline", () => {
 // R2-10: LLM-as-Judge independence tests
 // ============================================================================
 
-test("LlmEvalService.runAbTest maintains independence between control and treatment", () => {
+test("LlmEvalService.runAbTest maintains independence between control and treatment", async () => {
   const db = createMockDatabase();
   const service = new LlmEvalService(db);
 
@@ -348,7 +348,7 @@ test("LlmEvalService.runAbTest maintains independence between control and treatm
     ],
   });
 
-  const result = service.runAbTest(suite.id, {
+  const result = await service.runAbTest(suite.id, {
     controlModelId: "gpt-4",
     treatmentModelId: "gpt-4-turbo",
     controlPromptVersion: "v1.0",
@@ -373,7 +373,7 @@ test("LlmEvalService.runAbTest maintains independence between control and treatm
   assert.ok(result.verdict === "pass" || result.verdict === "fail" || result.verdict === "inconclusive");
 });
 
-test("LlmEvalService.runAbTest computes statistical significance correctly", () => {
+test("LlmEvalService.runAbTest computes statistical significance correctly", async () => {
   const db = createMockDatabase();
   const service = new LlmEvalService(db);
 
@@ -389,7 +389,7 @@ test("LlmEvalService.runAbTest computes statistical significance correctly", () 
     ],
   });
 
-  const result = service.runAbTest(suite.id, {
+  const result = await service.runAbTest(suite.id, {
     controlModelId: "model-a",
     treatmentModelId: "model-b",
     controlPromptVersion: "v1.0",
@@ -409,7 +409,7 @@ test("LlmEvalService.runAbTest computes statistical significance correctly", () 
   }
 });
 
-test("LlmEvalService.runAbTest verdict is inconclusive when samples insufficient", () => {
+test("LlmEvalService.runAbTest verdict is inconclusive when samples insufficient", async () => {
   const db = createMockDatabase();
   const service = new LlmEvalService(db);
 
@@ -421,7 +421,7 @@ test("LlmEvalService.runAbTest verdict is inconclusive when samples insufficient
     ],
   });
 
-  const result = service.runAbTest(suite.id, {
+  const result = await service.runAbTest(suite.id, {
     controlModelId: "model-a",
     treatmentModelId: "model-b",
     controlPromptVersion: "v1.0",

@@ -3,6 +3,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { z } from "zod";
 import {
   buildDeadLetterCountQuery,
   buildDeadLetterQuery,
@@ -38,6 +39,13 @@ export {
 } from "./channel-gateway-delivery-support.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+
+/**
+ * Schema for validating deserialized DB payload_json.
+ * §5.2: All inter-plane boundary JSON must be schema-validated.
+ * DB payload_json deserialization crosses the plane boundary and requires runtime validation.
+ */
+const deliveryPayloadSchema = z.record(z.unknown());
 
 export class ChannelGatewayDeliveryService {
   private readonly deliveryConfig: DeliveryGuaranteeConfig;
@@ -537,7 +545,11 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      payload: (() => {
+        // §5.2: Schema-validated parsing at inter-plane boundary
+        const parsed = deliveryPayloadSchema.safeParse(JSON.parse(String(row.payload_json)));
+        return parsed.success ? parsed.data : {};
+      })(),
       attempts: Number(row.attempts),
       maxRetries: Number(row.max_retries),
       createdAt: String(row.created_at),
@@ -695,7 +707,11 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      payload: (() => {
+        // §5.2: Schema-validated parsing at inter-plane boundary
+        const parsed = deliveryPayloadSchema.safeParse(JSON.parse(String(row.payload_json)));
+        return parsed.success ? parsed.data : {};
+      })(),
       failureReason: String(row.failure_reason),
       lastErrorMessage: row.last_error_message as string | null,
       lastResponseStatus: row.last_response_status as number | null,
@@ -743,7 +759,11 @@ export class ChannelGatewayDeliveryService {
       messageId: String(row.message_id),
       channel: String(row.channel),
       targetId: String(row.target_id),
-      payload: JSON.parse(String(row.payload_json)) as Record<string, unknown>,
+      payload: (() => {
+        // §5.2: Schema-validated parsing at inter-plane boundary
+        const parsed = deliveryPayloadSchema.safeParse(JSON.parse(String(row.payload_json)));
+        return parsed.success ? parsed.data : {};
+      })(),
       attempts: Number(row.attempts),
       maxRetries: Number(row.max_retries),
       nextRetryAt: (row.next_retry_at as string | null) ?? null,

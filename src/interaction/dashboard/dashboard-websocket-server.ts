@@ -453,20 +453,21 @@ export class DashboardWebSocketServer {
 
   private performHeartbeat(): void {
     const now = Date.now();
+    const timedOutClientIds: string[] = [];
 
     for (const [clientId, connection] of this.connections.entries()) {
       const lastActivity = new Date(connection.lastActivityAt).getTime();
       const timeout = this.config.connectionTimeoutMs;
 
       if (now - lastActivity > timeout) {
-        // Connection has timed out
-        connection.isConnected = false;
-        if (connection.heartbeatTimer) {
-          clearInterval(connection.heartbeatTimer);
-          connection.heartbeatTimer = null;
-        }
-        // In real impl: ws.terminate()
+        // Connection has timed out - collect for removal
+        timedOutClientIds.push(clientId);
       }
+    }
+
+    // Remove timed-out connections to prevent unbounded memory growth and stale pushes
+    for (const clientId of timedOutClientIds) {
+      this.unregisterClient(clientId);
     }
   }
 

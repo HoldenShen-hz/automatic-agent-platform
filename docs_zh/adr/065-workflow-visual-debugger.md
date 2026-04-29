@@ -37,15 +37,15 @@ interface PlanGraphView {
 
 ## v4.3 ADR Remediation
 
-- A-62: 本 ADR 原先把调试器锚定在 `workflow_id / current_step / StepInspector`，根因是文档承接了旧 workflow debugger 原型，没有切换到 `HarnessRun / NodeRun` 调试模型。修复：正文现把调试锚点改为 harness/node 语义。
+- A-62: 本 ADR 原先把调试器锚定在 `workflow_id / WorkflowDAGView / StepInspector / step_over` 等废弃模型，根因是文档承接了旧 workflow debugger 原型，没有切换到 `PlanGraph + NodeRun` 调试模型。修复：正文已将调试锚点统一改为 harness / node 语义；断点类型从 step_* 改为 node_start / node_complete；调试功能从 step_over/step_into/step_out 改为 node_step_over/node_step_into/node_step_out。
 
 ### 调试功能
 
 | 功能 | 说明 |
 |------|------|
-| step_over | 单步跳过 |
-| step_into | 单步进入 |
-| step_out | 单步退出 |
+| node_step_over | 跳过当前 NodeRun，执行下一同级节点 |
+| node_step_into | 进入 NodeRun 子图或 PlanNode 详情 |
+| node_step_out | 退出当前 NodeRun 子图 |
 | resume | 继续执行 |
 | pause | 暂停 |
 | stop | 停止 |
@@ -61,8 +61,8 @@ interface PlanGraphView {
 
 | 类型 | 说明 |
 |------|------|
-| step_start | 步骤开始 |
-| step_complete | 步骤完成 |
+| node_start | NodeRun 开始 |
+| node_complete | NodeRun 完成 |
 | error | 错误发生 |
 | condition | 条件满足 |
 

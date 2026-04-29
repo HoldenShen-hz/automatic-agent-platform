@@ -36,6 +36,13 @@ export interface EndpointDefinition {
   readonly planned: boolean;
 }
 
+export interface PaginationParams {
+  readonly page?: number;
+  readonly pageSize?: number;
+  readonly sort?: string;
+  readonly filter?: string;
+}
+
 export const endpointCatalog = {
   dashboardSnapshot: { id: "dashboard.snapshot", path: "/dashboard/snapshot", method: "GET", apiLayer: "C", planned: false },
   tasks: { id: "tasks.list", path: "/tasks", method: "GET", apiLayer: "C", planned: false },
@@ -77,6 +84,7 @@ export const endpointCatalog = {
   systemConfig: { id: "admin.system-config", path: "/admin/system-config", method: "GET", apiLayer: "C", planned: false },
   webhooks: { id: "admin.webhooks", path: "/webhooks", method: "GET", apiLayer: "C", planned: false },
   preferences: { id: "user.preferences", path: "/preferences", method: "GET", apiLayer: "C", planned: false },
+  preferencesUpdate: { id: "user.preferences.update", path: "/preferences", method: "PATCH", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
   // §1.8 contract version negotiation
   contractVersion: { id: "meta.contract-version", path: "/api/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
@@ -86,12 +94,23 @@ function resolvePath(template: string, params: Record<string, string>): string {
   return Object.entries(params).reduce((resolved, [key, value]) => resolved.replace(`:${key}`, value), template);
 }
 
+function buildQueryString(pagination?: PaginationParams): string {
+  if (pagination == null) return "";
+  const params = new URLSearchParams();
+  if (pagination.page != null) params.set("page", String(pagination.page));
+  if (pagination.pageSize != null) params.set("pageSize", String(pagination.pageSize));
+  if (pagination.sort != null) params.set("sort", pagination.sort);
+  if (pagination.filter != null) params.set("filter", pagination.filter);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export async function fetchDashboardSnapshot(client: RESTClient): Promise<DashboardSnapshotDTO> {
   return client.get<DashboardSnapshotDTO>(endpointCatalog.dashboardSnapshot.path);
 }
 
-export async function fetchTasks(client: RESTClient): Promise<readonly TaskDTO[]> {
-  return client.get<readonly TaskDTO[]>(endpointCatalog.tasks.path);
+export async function fetchTasks(client: RESTClient, pagination?: PaginationParams): Promise<readonly TaskDTO[]> {
+  return client.get<readonly TaskDTO[]>(`${endpointCatalog.tasks.path}${buildQueryString(pagination)}`);
 }
 
 export async function createTask(client: RESTClient, body: Partial<TaskDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -106,8 +125,8 @@ export async function deleteTask(client: RESTClient, taskId: string): Promise<{ 
   return client.delete<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.tasksDelete.path, { taskId }));
 }
 
-export async function fetchWorkflows(client: RESTClient): Promise<readonly WorkflowDTO[]> {
-  return client.get<readonly WorkflowDTO[]>(endpointCatalog.workflows.path);
+export async function fetchWorkflows(client: RESTClient, pagination?: PaginationParams): Promise<readonly WorkflowDTO[]> {
+  return client.get<readonly WorkflowDTO[]>(`${endpointCatalog.workflows.path}${buildQueryString(pagination)}`);
 }
 
 export async function createWorkflow(client: RESTClient, body: Partial<WorkflowDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -122,6 +141,14 @@ export async function resumeWorkflow(client: RESTClient, workflowId: string): Pr
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "resume" });
 }
 
+export async function recoverWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "recover" });
+}
+
+export async function releaseWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPublish.path, { workflowId }), { action: "release" });
+}
+
 export async function publishWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPublish.path, { workflowId }), { action: "publish" });
 }
@@ -134,8 +161,8 @@ export async function fetchWorkflowRunSteps(client: RESTClient, workflowRunId: s
   return client.get<readonly WorkflowRunStepDTO[]>(resolvePath(endpointCatalog.workflowRunSteps.path, { workflowRunId }));
 }
 
-export async function fetchApprovals(client: RESTClient): Promise<readonly ApprovalDTO[]> {
-  return client.get<readonly ApprovalDTO[]>(endpointCatalog.approvals.path);
+export async function fetchApprovals(client: RESTClient, pagination?: PaginationParams): Promise<readonly ApprovalDTO[]> {
+  return client.get<readonly ApprovalDTO[]>(`${endpointCatalog.approvals.path}${buildQueryString(pagination)}`);
 }
 
 export async function approveApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
@@ -150,8 +177,8 @@ export async function delegateApproval(client: RESTClient, approvalId: string, d
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { delegateTo });
 }
 
-export async function fetchIncidents(client: RESTClient): Promise<readonly IncidentDTO[]> {
-  return client.get<readonly IncidentDTO[]>(endpointCatalog.incidents.path);
+export async function fetchIncidents(client: RESTClient, pagination?: PaginationParams): Promise<readonly IncidentDTO[]> {
+  return client.get<readonly IncidentDTO[]>(`${endpointCatalog.incidents.path}${buildQueryString(pagination)}`);
 }
 
 export async function fetchWorkers(client: RESTClient): Promise<readonly WorkerDTO[]> {
@@ -162,68 +189,68 @@ export async function fetchQueues(client: RESTClient): Promise<readonly QueueDTO
   return client.get<readonly QueueDTO[]>(endpointCatalog.queues.path);
 }
 
-export async function fetchAgents(client: RESTClient): Promise<readonly AgentDTO[]> {
-  return client.get<readonly AgentDTO[]>(endpointCatalog.agents.path);
+export async function fetchAgents(client: RESTClient, pagination?: PaginationParams): Promise<readonly AgentDTO[]> {
+  return client.get<readonly AgentDTO[]>(`${endpointCatalog.agents.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchAnalytics(client: RESTClient): Promise<readonly AnalyticsMetricDTO[]> {
-  return client.get<readonly AnalyticsMetricDTO[]>(endpointCatalog.analytics.path);
+export async function fetchAnalytics(client: RESTClient, pagination?: PaginationParams): Promise<readonly AnalyticsMetricDTO[]> {
+  return client.get<readonly AnalyticsMetricDTO[]>(`${endpointCatalog.analytics.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchCosts(client: RESTClient): Promise<readonly CostReportDTO[]> {
-  return client.get<readonly CostReportDTO[]>(endpointCatalog.costs.path);
+export async function fetchCosts(client: RESTClient, pagination?: PaginationParams): Promise<readonly CostReportDTO[]> {
+  return client.get<readonly CostReportDTO[]>(`${endpointCatalog.costs.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchMarketplace(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
-  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.marketplace.path);
+export async function fetchMarketplace(client: RESTClient, pagination?: PaginationParams): Promise<readonly MarketplacePackDTO[]> {
+  return client.get<readonly MarketplacePackDTO[]>(`${endpointCatalog.marketplace.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchKnowledge(client: RESTClient): Promise<readonly KnowledgeItemDTO[]> {
-  return client.get<readonly KnowledgeItemDTO[]>(endpointCatalog.knowledge.path);
+export async function fetchKnowledge(client: RESTClient, pagination?: PaginationParams): Promise<readonly KnowledgeItemDTO[]> {
+  return client.get<readonly KnowledgeItemDTO[]>(`${endpointCatalog.knowledge.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchPacks(client: RESTClient): Promise<readonly MarketplacePackDTO[]> {
-  return client.get<readonly MarketplacePackDTO[]>(endpointCatalog.packs.path);
+export async function fetchPacks(client: RESTClient, pagination?: PaginationParams): Promise<readonly MarketplacePackDTO[]> {
+  return client.get<readonly MarketplacePackDTO[]>(`${endpointCatalog.packs.path}${buildQueryString(pagination)}`);
 }
 
 export async function fetchPackVersions(client: RESTClient, packId: string): Promise<readonly PackVersionDTO[]> {
   return client.get<readonly PackVersionDTO[]>(resolvePath(endpointCatalog.packVersions.path, { packId }));
 }
 
-export async function fetchPlugins(client: RESTClient): Promise<readonly PluginDTO[]> {
-  return client.get<readonly PluginDTO[]>(endpointCatalog.plugins.path);
+export async function fetchPlugins(client: RESTClient, pagination?: PaginationParams): Promise<readonly PluginDTO[]> {
+  return client.get<readonly PluginDTO[]>(`${endpointCatalog.plugins.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchPrompts(client: RESTClient): Promise<readonly PromptDTO[]> {
-  return client.get<readonly PromptDTO[]>(endpointCatalog.prompts.path);
+export async function fetchPrompts(client: RESTClient, pagination?: PaginationParams): Promise<readonly PromptDTO[]> {
+  return client.get<readonly PromptDTO[]>(`${endpointCatalog.prompts.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchExplanations(client: RESTClient): Promise<readonly ExplanationDTO[]> {
-  return client.get<readonly ExplanationDTO[]>(endpointCatalog.explanations.path);
+export async function fetchExplanations(client: RESTClient, pagination?: PaginationParams): Promise<readonly ExplanationDTO[]> {
+  return client.get<readonly ExplanationDTO[]>(`${endpointCatalog.explanations.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchRoles(client: RESTClient): Promise<readonly RoleDTO[]> {
-  return client.get<readonly RoleDTO[]>(endpointCatalog.roles.path);
+export async function fetchRoles(client: RESTClient, pagination?: PaginationParams): Promise<readonly RoleDTO[]> {
+  return client.get<readonly RoleDTO[]>(`${endpointCatalog.roles.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchFeatureFlags(client: RESTClient): Promise<readonly FeatureFlagDTO[]> {
-  return client.get<readonly FeatureFlagDTO[]>(endpointCatalog.featureFlags.path);
+export async function fetchFeatureFlags(client: RESTClient, pagination?: PaginationParams): Promise<readonly FeatureFlagDTO[]> {
+  return client.get<readonly FeatureFlagDTO[]>(`${endpointCatalog.featureFlags.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchModels(client: RESTClient): Promise<readonly ModelConfigDTO[]> {
-  return client.get<readonly ModelConfigDTO[]>(endpointCatalog.models.path);
+export async function fetchModels(client: RESTClient, pagination?: PaginationParams): Promise<readonly ModelConfigDTO[]> {
+  return client.get<readonly ModelConfigDTO[]>(`${endpointCatalog.models.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchDomainConfigs(client: RESTClient): Promise<readonly DomainConfigDTO[]> {
-  return client.get<readonly DomainConfigDTO[]>(endpointCatalog.domainConfigs.path);
+export async function fetchDomainConfigs(client: RESTClient, pagination?: PaginationParams): Promise<readonly DomainConfigDTO[]> {
+  return client.get<readonly DomainConfigDTO[]>(`${endpointCatalog.domainConfigs.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchTenants(client: RESTClient): Promise<readonly TenantDTO[]> {
-  return client.get<readonly TenantDTO[]>(endpointCatalog.tenants.path);
+export async function fetchTenants(client: RESTClient, pagination?: PaginationParams): Promise<readonly TenantDTO[]> {
+  return client.get<readonly TenantDTO[]>(`${endpointCatalog.tenants.path}${buildQueryString(pagination)}`);
 }
 
-export async function fetchUsers(client: RESTClient): Promise<readonly UserDTO[]> {
-  return client.get<readonly UserDTO[]>(endpointCatalog.users.path);
+export async function fetchUsers(client: RESTClient, pagination?: PaginationParams): Promise<readonly UserDTO[]> {
+  return client.get<readonly UserDTO[]>(`${endpointCatalog.users.path}${buildQueryString(pagination)}`);
 }
 
 export async function createUser(client: RESTClient, body: Partial<UserDTO>): Promise<{ ok: true; body?: unknown }> {
@@ -244,6 +271,10 @@ export async function fetchWebhooks(client: RESTClient): Promise<readonly Webhoo
 
 export async function fetchPreferences(client: RESTClient): Promise<UserPreferenceDTO> {
   return client.get<UserPreferenceDTO>(endpointCatalog.preferences.path);
+}
+
+export async function updatePreferences(client: RESTClient, body: Partial<UserPreferenceDTO>): Promise<{ ok: true; body?: unknown }> {
+  return client.patch<{ ok: true; body?: unknown }>(endpointCatalog.preferencesUpdate.path, body);
 }
 
 // §1.8 contract version negotiation

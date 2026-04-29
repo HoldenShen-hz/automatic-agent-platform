@@ -16,6 +16,8 @@ export interface AgentContext {
   agentType: string;
   packId: string;
   delegationDepth: number;
+  currentCallDepth?: number;
+  goalDecompositionDepth?: number;
   activeDelegations: ReadonlyArray<string>;
   permissions: PermissionSet;
   sandboxTier: SandboxMode;

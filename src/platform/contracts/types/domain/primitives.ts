@@ -196,9 +196,9 @@ export type EnterpriseCapabilityStatus = "available" | "degraded" | "blocked";
 
 export type ExtensionPackageType = "tool" | "skill" | "plugin" | "mcp" | "template";
 export type ExtensionTrustLevel = "internal" | "verified" | "community" | "unknown";
-export type ExtensionLifecycleState = "discovered" | "installed" | "enabled" | "disabled" | "reloaded" | "removed" | "deprecated" | "retired";
+export type ExtensionLifecycleState = "discovered" | "installed" | "enabled" | "disabled" | "reloaded" | "removed" | "deprecated" | "sunset" | "retired";
 export type MarketplaceReviewStatus = "submitted" | "approved" | "rejected";
-export type MarketplacePublicationStatus = "published" | "deprecated" | "retired" | "revoked";
+export type MarketplacePublicationStatus = "published" | "deprecated" | "sunset" | "retired" | "revoked";
 export type PerceptionSourceType = "rss" | "web" | "github" | "api" | "custom";
 export type ActionProposalStatus = "proposed" | "approved" | "rejected" | "superseded";
 

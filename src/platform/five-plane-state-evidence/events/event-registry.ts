@@ -60,7 +60,7 @@ interface RawEventSchemaDefinition {
  *
  * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
  */
-const RAW_EVENT_SCHEMA_REGISTRY = {
+const LEGACY_EVENT_SCHEMA_REGISTRY = {
   "task:status_changed": {
     type: "task:status_changed",
     tier: "tier_1",
@@ -370,6 +370,62 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
   },
 } as const satisfies Record<string, RawEventSchemaDefinition>;
 
+const CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY = {
+  "platform.request_envelope.admitted": {
+    type: "platform.request_envelope.admitted",
+    tier: "tier_1",
+    producer: "intake-admission-service",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.harness_run.status_changed": {
+    type: "platform.harness_run.status_changed",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.status_changed"),
+  },
+  "platform.node_run.status_changed": {
+    type: "platform.node_run.status_changed",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.status_changed"),
+  },
+  "platform.side_effect.status_changed": {
+    type: "platform.side_effect.status_changed",
+    tier: "tier_1",
+    producer: "side-effect-manager",
+    consumers: getRequiredConsumers("platform.side_effect.status_changed"),
+  },
+  "platform.budget_ledger.status_changed": {
+    type: "platform.budget_ledger.status_changed",
+    tier: "tier_1",
+    producer: "budget-allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.budget_reservation.status_changed": {
+    type: "platform.budget_reservation.status_changed",
+    tier: "tier_1",
+    producer: "budget-allocator",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "platform.graph_scheduler.decision_recorded": {
+    type: "platform.graph_scheduler.decision_recorded",
+    tier: "tier_1",
+    producer: "graph-scheduler",
+    consumers: ["truth_projector", "audit_projection"],
+  },
+  "oapeflir.view.run_lifecycle": {
+    type: "oapeflir.view.run_lifecycle",
+    tier: "tier_1",
+    producer: "oapeflir-projection",
+    consumers: getRequiredConsumers("oapeflir.view.run_lifecycle"),
+  },
+} as const satisfies Record<string, RawEventSchemaDefinition>;
+
+const RAW_EVENT_SCHEMA_REGISTRY = {
+  ...LEGACY_EVENT_SCHEMA_REGISTRY,
+  ...CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY,
+} as const satisfies Record<string, RawEventSchemaDefinition>;
+
 /**
  * All known event types in the system.
  */
@@ -539,6 +595,58 @@ const learningKnowledgePromotedPayloadSchema = z.object({
   traceContext: traceContextSchema.optional(),
 }).passthrough();
 
+const runtimePolicyGuardSchema = z.object({
+  allowed: z.boolean(),
+  policyProofRef: z.string(),
+}).passthrough();
+
+const runtimeBudgetPreconditionSchema = z.object({
+  reservationId: z.string(),
+  hardCapSatisfied: z.boolean(),
+}).passthrough();
+
+const runtimeSideEffectSafetySchema = z.object({
+  idempotencyKey: optionalStringSchema,
+  preCommitPolicyProofRef: optionalStringSchema,
+  humanApprovalRef: optionalStringSchema,
+  reversible: z.boolean().optional(),
+}).passthrough();
+
+const requestEnvelopeAdmittedPayloadSchema = z.object({
+  confirmedTaskSpecId: z.string(),
+  harnessRunId: z.string(),
+  runVersionLockId: z.string(),
+  clarificationSession: z.unknown().optional(),
+}).passthrough();
+
+const runtimeStatusChangedPayloadSchema = z.object({
+  aggregateType: z.string(),
+  fromStatus: z.string(),
+  toStatus: z.string(),
+  reasonCode: z.string(),
+  emittedBy: z.string(),
+  runVersionLockId: optionalStringSchema,
+  policyGuard: runtimePolicyGuardSchema.optional(),
+  budgetPrecondition: runtimeBudgetPreconditionSchema.optional(),
+  sideEffectSafety: runtimeSideEffectSafetySchema.optional(),
+  auditRef: optionalStringSchema,
+}).passthrough();
+
+const graphSchedulerDecisionPayloadSchema = z.object({
+  schedulerPolicy: z.string(),
+  readyNodeIds: z.array(z.string()),
+  completedNodeIds: z.array(z.string()),
+  deterministicSeed: z.string(),
+  emittedBy: z.string(),
+}).passthrough();
+
+const oapeflirRunLifecyclePayloadSchema = z.object({
+  stage: z.string(),
+  runId: z.string(),
+  taskId: optionalNullableStringSchema,
+  occurredAt: optionalNullableStringSchema,
+}).passthrough();
+
 const genericEventPayloadSchema = z.record(z.unknown());
 
 const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<string, unknown>>>> = {
@@ -560,6 +668,14 @@ const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<
   "plugin:invocation_completed": pluginInvocationPayloadSchema,
   "knowledge:chunk_indexed": knowledgeChunkIndexedPayloadSchema,
   "learning:knowledge_promoted": learningKnowledgePromotedPayloadSchema,
+  "platform.request_envelope.admitted": requestEnvelopeAdmittedPayloadSchema,
+  "platform.harness_run.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.node_run.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.side_effect.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.budget_ledger.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.budget_reservation.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.graph_scheduler.decision_recorded": graphSchedulerDecisionPayloadSchema,
+  "oapeflir.view.run_lifecycle": oapeflirRunLifecyclePayloadSchema,
 };
 
 /**
@@ -668,10 +784,13 @@ export function hasEventSchema(type: string): boolean {
  * @returns Array of consumer IDs
  */
 export function getRegisteredConsumers(type: string): readonly string[] {
-  if (!hasEventSchema(type)) {
-    return [];
+  if (type in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
   }
-  return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
+  if (type in RUNTIME_EVENT_REPLAY_METADATA) {
+    return getEventSchema(type).consumers;
+  }
+  return [];
 }
 
 /**
@@ -747,5 +866,5 @@ export function validateEventPayload(type: string, payload: unknown): Record<str
  * @returns The payload schema reference URI
  */
 function buildPayloadSchemaRef(type: string): string {
-  return `event://${type.replaceAll(":", "/")}/v1`;
+  return `event://${type.replaceAll(":", "/").replaceAll(".", "/")}/v1`;
 }

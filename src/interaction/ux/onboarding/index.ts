@@ -63,11 +63,41 @@ export interface DraggableComponent {
   readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly configSchema: Record<string, unknown>;
   readonly previewDescription: string;
+  readonly requiredMode?: PlatformMode["mode"]; // Progressive disclosure: component hidden for lower modes
 }
 
 export interface ComponentCategory {
   readonly category: "trigger" | "action" | "condition" | "approval" | "output";
   readonly components: readonly DraggableComponent[];
+}
+
+/**
+ * Domain recommendation result with confidence scoring
+ */
+export interface DomainRecommendation {
+  readonly domainId: string;
+  readonly confidence: number;
+  readonly reason: string;
+}
+
+/**
+ * Interface for domain recommendation strategies.
+ * §44.4 requires business-context-aware intelligent domain recommendation
+ * via LLM, user history, or DomainRegistry.
+ */
+export interface DomainRecommenderPort {
+  /**
+   * Recommends domains based on user description and context.
+   * @param description - User's natural language description
+   * @param userId - User ID for history-based recommendations
+   * @param tenantId - Tenant ID for domain registry lookup
+   * @returns Ranked list of domain recommendations with confidence scores
+   */
+  recommendDomains(
+    description: string,
+    userId?: string,
+    tenantId?: string,
+  ): Promise<readonly DomainRecommendation[]>;
 }
 
 export interface VisualWorkflowBuilder {
@@ -98,8 +128,95 @@ interface StoredPortalSession {
   readonly context: UserPortalContext;
 }
 
+/**
+ * Domain registry entry for business-context-aware domain recommendation.
+ * Used by DefaultDomainRecommender for registry-based lookups.
+ */
+interface DomainRegistryEntry {
+  readonly domainId: string;
+  readonly keywords: readonly string[];
+  readonly description: string;
+}
+
+/**
+ * Default implementation of DomainRecommenderPort.
+ * Uses a domain registry with keyword matching as a fallback.
+ * Production implementations should use LLM-based or user-history-based recommendation.
+ */
+class DefaultDomainRecommender implements DomainRecommenderPort {
+  private readonly domainRegistry: readonly DomainRegistryEntry[] = [
+    { domainId: "advertising", keywords: ["marketing", "campaign", "广告", "投放", "增长"], description: "营销与广告投放" },
+    { domainId: "finance", keywords: ["finance", "invoice", "budget", "财务", "预算"], description: "财务与预算管理" },
+    { domainId: "hr", keywords: ["recruit", "hire", "hr", "招聘", "入职"], description: "人力资源与招聘" },
+    { domainId: "customer_support", keywords: ["support", "customer", "客服", "工单"], description: "客户服务与工单" },
+    { domainId: "engineering_ops", keywords: ["code", "engineering", "deploy", "bug", "代码", "研发", "发布"], description: "工程运维" },
+    { domainId: "legal", keywords: ["contract", "compliance", "合同", "法务", "合规"], description: "法务与合规" },
+    { domainId: "sales", keywords: ["crm", "lead", "客户", "销售", "商机"], description: "销售管理" },
+  ];
+
+  /**
+   * @deprecated Use recommendDomains() with a proper LLM-based or history-based recommender.
+   * This method provides a basic keyword-matching fallback per §44.4.
+   */
+  private legacyKeywordRecommend(description: string): string[] {
+    const normalized = description.toLowerCase();
+    const recommendations = new Set<string>();
+    for (const entry of this.domainRegistry) {
+      if (entry.keywords.some((kw) => new RegExp(kw, "i").test(description))) {
+        recommendations.add(entry.domainId);
+      }
+    }
+    if (recommendations.size === 0 && normalized.length > 0) {
+      recommendations.add("general_ops");
+    }
+    return [...recommendations];
+  }
+
+  public async recommendDomains(
+    description: string,
+    _userId?: string,
+    _tenantId?: string,
+  ): Promise<readonly DomainRecommendation[]> {
+    // §44.4: In production, this should call LLM or query user history.
+    // For now, use keyword-based registry matching with confidence scoring.
+    const normalized = description.toLowerCase();
+    const results: DomainRecommendation[] = [];
+
+    for (const entry of this.domainRegistry) {
+      const matchedKeywords = entry.keywords.filter((kw) => new RegExp(kw, "i").test(description));
+      if (matchedKeywords.length > 0) {
+        // Confidence based on keyword match ratio
+        const confidence = Math.min(0.5 + (matchedKeywords.length * 0.15), 0.95);
+        results.push({
+          domainId: entry.domainId,
+          confidence,
+          reason: `匹配关键词: ${matchedKeywords.join(", ")}`,
+        });
+      }
+    }
+
+    // Sort by confidence descending
+    results.sort((a, b) => b.confidence - a.confidence);
+
+    if (results.length === 0 && normalized.length > 0) {
+      results.push({
+        domainId: "general_ops",
+        confidence: 0.5,
+        reason: "默认推荐，基于通用操作场景",
+      });
+    }
+
+    return results;
+  }
+}
+
 export class UserPortalService implements UserPortalPort {
   private readonly sessions = new Map<string, StoredPortalSession>();
+  private readonly domainRecommender: DomainRecommenderPort;
+
+  public constructor(domainRecommender?: DomainRecommenderPort) {
+    this.domainRecommender = domainRecommender ?? new DefaultDomainRecommender();
+  }
 
   public async createSession(session: UserPortalSession, context?: UserPortalContext): Promise<string> {
     const sessionId = newId("portal_session");
@@ -186,6 +303,8 @@ export class UserPortalService implements UserPortalPort {
 
   public buildOnboardingPlan(description: string, context: UserPortalContext): PortalOnboardingPlan {
     const mode = this.resolveMode(context);
+    // §44.4: Domain recommendation now uses DomainRecommenderPort (async)
+    // For sync context, we use the legacy method; production code should await recommendDomainsAsync
     const recommendedDomains = this.recommendDomains(description);
     const recommendedNextActions = [
       "确认业务目标和首个自动化场景",
@@ -202,39 +321,72 @@ export class UserPortalService implements UserPortalPort {
   }
 
   public buildDomainOnboardingWizard(description: string, context: UserPortalContext): DomainOnboardingWizard {
+    const mode = this.resolveMode(context);
+    // §44.5: Progressive disclosure - simplify wizard steps based on mode
+    const steps = this.getWizardStepsForMode(mode.mode);
+    const recommendedDomains = this.recommendDomains(description);
+
     return {
-      steps: [
-        {
-          stepId: "business_type",
-          title: "选择业务类型",
-          description: "根据你的业务场景自动推荐领域模板。",
-        },
-        {
-          stepId: "capability_setup",
-          title: "配置核心能力",
-          description: "勾选需要的执行能力、集成和默认工作流。",
-        },
-        {
-          stepId: "risk_setup",
-          title: "设置风控规则",
-          description: "确认审批方式、预算约束和默认安全边界。",
-        },
-        {
-          stepId: "activation",
-          title: "激活上线",
-          description: "创建首个 Agent 并进入看板观察运行状态。",
-        },
-      ],
-      recommendedDomains: this.recommendDomains(description),
-      defaultMode: this.resolveMode(context),
+      steps,
+      recommendedDomains,
+      defaultMode: mode,
     };
   }
 
+  /**
+   * §44.5: Returns wizard steps filtered by platform mode for progressive disclosure.
+   * Higher complexity steps are hidden from lower modes.
+   */
+  private getWizardStepsForMode(mode: PlatformMode["mode"]): readonly DomainOnboardingWizard["steps"] {
+    const allSteps: DomainOnboardingWizard["steps"] = [
+      {
+        stepId: "business_type",
+        title: "选择业务类型",
+        description: "根据你的业务场景自动推荐领域模板。",
+      },
+      {
+        stepId: "capability_setup",
+        title: "配置核心能力",
+        description: "勾选需要的执行能力、集成和默认工作流。",
+      },
+      {
+        stepId: "risk_setup",
+        title: "设置风控规则",
+        description: "确认审批方式、预算约束和默认安全边界。",
+      },
+      {
+        stepId: "activation",
+        title: "激活上线",
+        description: "创建首个 Agent 并进入看板观察运行状态。",
+      },
+    ];
+
+    // Progressive disclosure: hide complexity from lower modes
+    switch (mode) {
+      case "solo":
+        // Solo mode: only show essential steps (skip detailed capability/risk setup)
+        return allSteps.filter((s) => s.stepId === "business_type" || s.stepId === "activation");
+      case "team":
+        // Team mode: show basic steps without advanced risk configuration
+        return allSteps.filter((s) => s.stepId !== "risk_setup" || false); // Include all but risk_setup
+      case "department":
+      case "enterprise":
+      default:
+        // Full wizard for department+ modes
+        return allSteps;
+    }
+  }
+
   public buildVisualWorkflowBuilder(description: string, selectedDomains?: readonly string[]): VisualWorkflowBuilder {
+    // §44.4: Domain recommendation now uses DomainRecommenderPort
     const domains = selectedDomains != null && selectedDomains.length > 0
       ? [...selectedDomains]
       : this.recommendDomains(description);
     const primaryDomain = domains[0] ?? "general_ops";
+
+    // §44.5: Progressive disclosure - get components filtered by mode
+    const mode = this.resolveMode({ memberCount: 1, departmentCount: 1, requiresSso: false });
+    const componentPalette = this.buildComponentPaletteForMode(domains, mode.mode);
 
     return {
       canvas: {
@@ -248,48 +400,7 @@ export class UserPortalService implements UserPortalPort {
           { fromNodeId: "node_action", toNodeId: "node_output" },
         ],
       },
-      componentPalette: [
-        {
-          category: "trigger",
-          components: [
-            {
-              componentId: "manual_trigger",
-              name: "手动触发",
-              icon: "play",
-              domainId: "platform",
-              riskLevel: "low",
-              configSchema: { type: "object", properties: {} },
-              previewDescription: "由用户手动启动流程。",
-            },
-          ],
-        },
-        {
-          category: "action",
-          components: domains.map((domainId) => ({
-            componentId: `${domainId}_action`,
-            name: `${domainId} 动作`,
-            icon: "bolt",
-            domainId,
-            riskLevel: this.resolveDomainRiskLevel(domainId, description),
-            configSchema: { type: "object", properties: { target: { type: "string" } } },
-            previewDescription: `在 ${domainId} 域中执行核心动作。`,
-          })),
-        },
-        {
-          category: "output",
-          components: [
-            {
-              componentId: "report_output",
-              name: "生成报告",
-              icon: "file-text",
-              domainId: "platform",
-              riskLevel: "low",
-              configSchema: { type: "object", properties: { format: { type: "string" } } },
-              previewDescription: "输出摘要、报表或通知。",
-            },
-          ],
-        },
-      ],
+      componentPalette,
       livePreview: {
         estimatedDuration: "15m",
         estimatedCost: "$0.20",
@@ -307,7 +418,97 @@ export class UserPortalService implements UserPortalPort {
     };
   }
 
+  /**
+   * §44.5: Builds component palette filtered by platform mode for progressive disclosure.
+   * Higher-risk or more complex components are hidden from lower modes.
+   */
+  private buildComponentPaletteForMode(domains: string[], mode: PlatformMode["mode"]): readonly ComponentCategory[] {
+    const baseCategories: ComponentCategory[] = [
+      {
+        category: "trigger",
+        components: [
+          {
+            componentId: "manual_trigger",
+            name: "手动触发",
+            icon: "play",
+            domainId: "platform",
+            riskLevel: "low",
+            configSchema: { type: "object", properties: {} },
+            previewDescription: "由用户手动启动流程。",
+          },
+        ],
+      },
+      {
+        category: "action",
+        components: domains.map((domainId) => ({
+          componentId: `${domainId}_action`,
+          name: `${domainId} 动作`,
+          icon: "bolt",
+          domainId,
+          riskLevel: this.resolveDomainRiskLevel(domainId, ""),
+          configSchema: { type: "object", properties: { target: { type: "string" } } },
+          previewDescription: `在 ${domainId} 域中执行核心动作。`,
+        })),
+      },
+      {
+        category: "output",
+        components: [
+          {
+            componentId: "report_output",
+            name: "生成报告",
+            icon: "file-text",
+            domainId: "platform",
+            riskLevel: "low",
+            configSchema: { type: "object", properties: { format: { type: "string" } } },
+            previewDescription: "输出摘要、报表或通知。",
+          },
+        ],
+      },
+    ];
+
+    // Progressive disclosure: add complexity for higher modes
+    if (mode === "department" || mode === "enterprise") {
+      // Add approval and condition categories for department+ modes
+      baseCategories.push({
+        category: "approval",
+        components: [
+          {
+            componentId: "human_approval",
+            name: "人工审批",
+            icon: "user-check",
+            domainId: "platform",
+            riskLevel: "medium",
+            configSchema: { type: "object", properties: { approvers: { type: "array" } } },
+            previewDescription: "需要人工审批后继续执行。",
+          },
+        ],
+      });
+      baseCategories.push({
+        category: "condition",
+        components: [
+          {
+            componentId: "if_condition",
+            name: "条件分支",
+            icon: "git-branch",
+            domainId: "platform",
+            riskLevel: "low",
+            configSchema: { type: "object", properties: { expression: { type: "string" } } },
+            previewDescription: "根据条件选择执行分支。",
+          },
+        ],
+      });
+    }
+
+    return baseCategories;
+  }
+
+  /**
+   * §44.4: Recommends domains using the injected DomainRecommenderPort.
+   * Falls back to legacy keyword matching if no recommender is configured.
+   * @deprecated Use recommendDomainsAsync() for production code with LLM/user-history recommendation.
+   */
   private recommendDomains(description: string): string[] {
+    // Synchronous fallback using legacy keyword matching
     const normalized = description.toLowerCase();
     const recommendations = new Set<string>();
     if (/(marketing|campaign|广告|投放|增长)/i.test(description)) recommendations.add("advertising");
@@ -317,6 +518,22 @@ export class UserPortalService implements UserPortalPort {
     if (/(code|engineering|deploy|bug|代码|研发|发布)/i.test(description)) recommendations.add("engineering_ops");
     if (recommendations.size === 0 && normalized.length > 0) recommendations.add("general_ops");
     return [...recommendations];
+  }
+
+  /**
+   * §44.4: Async domain recommendation using DomainRecommenderPort.
+   * Use this method in production for LLM-based or user-history-based recommendation.
+   */
+  public async recommendDomainsAsync(
+    description: string,
+    userId?: string,
+    tenantId?: string,
+  ): Promise<readonly DomainRecommendation[]> {
+    const recommendations = await this.domainRecommender.recommendDomains(description, userId, tenantId);
+    if (recommendations.length === 0) {
+      return [{ domainId: "general_ops", confidence: 0.5, reason: "默认推荐" }];
+    }
+    return recommendations;
   }
 
   private resolveDomainRiskLevel(domainId: string, description: string): DraggableComponent["riskLevel"] {

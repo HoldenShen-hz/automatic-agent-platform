@@ -130,8 +130,9 @@ export class ConfigRolloutService {
     const rolloutId = newId("rollout");
     const now = nowIso();
 
-    // Find the starting stage based on target percentage
-    const startStage = this.stages.find((s) => s.percentage >= targetPercentage) ?? this.stages[this.stages.length - 1]!;
+    // Always start from PENDING (index 0); §24.3 mandates canary→10%→full progression.
+    // targetPercentage caps the final reachable stage but rollout begins at PENDING.
+    const startStage = this.stages[0]!;
 
     const rollout: ConfigRollout = {
       rolloutId,
@@ -259,6 +260,10 @@ export class ConfigRolloutService {
     }
 
     const nextStage = this.stages[currentIndex + 1]!;
+    // Do not advance beyond the target percentage; §24.3 progression still stops at cap.
+    if (nextStage.percentage > rollout.targetPercentage) {
+      return rollout;
+    }
     rollout.stage = nextStage;
     rollout.currentPercentage = nextStage.percentage;
     rollout.updatedAt = nowIso();
@@ -316,6 +321,9 @@ export class ConfigRolloutService {
       const elapsedMs = now - new Date(rollout.updatedAt).getTime();
       if (elapsedMs >= rollout.stage.minDurationMs) {
         const nextStage = this.stages[currentIndex + 1]!;
+        if (nextStage.percentage > rollout.targetPercentage) {
+          continue;
+        }
         rollout.stage = nextStage;
         rollout.currentPercentage = nextStage.percentage;
         rollout.updatedAt = nowIso();

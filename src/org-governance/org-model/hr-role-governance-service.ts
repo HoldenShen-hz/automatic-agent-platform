@@ -21,7 +21,7 @@ import type {
   LoadedDivisionDefinition,
 } from "../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../domains/governance/division-loader.js";
-import { inferPromotedToolNames, expandToolNames } from "../../platform/execution/tool-executor/tool-recommend-service.js";
+import { expandToolNames, inferPromotedToolNames } from "../../platform/shared/tool-discovery/index.js";
 
 /** Reason codes for gap analysis triggers */
 export type HrGapTriggerReason = "no_role_match" | "scope_exceeded";

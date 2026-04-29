@@ -26,6 +26,19 @@
 
 `DomainRecipe` 扩展为十二种 archetype，覆盖 CRUD、Analytics、Creative、Realtime、Trading、Compliance、Research、Adversarial、Moderation、Logistics、Conversational、IncidentOps。
 
+### 与 DomainDescriptor.recipes 的绑定
+
+十二种 archetype 必须绑定到 `DomainDescriptor.recipes` 字段（见 ADR-081 §1 和 ADR-100 §1），作为领域接入的必选扩展点。每个 archetype 在领域注册时必须声明：
+
+- `archetype`: 对应十二种之一
+- `baselineRecipe`: 该 archetype 的基线 recipe bundle
+- `适配域`: 该 archetype 覆盖的具体业务域列表
+
+### 与四阶段 onboarding 的集成
+
+领域接入（ADR-103 四阶段 runbook）的第一阶段（建模）和第二阶段（开发）必须完成 archetype 选型与 baseline recipe 绑定，方可进入认证阶段。详见 ADR-081 §2 领域接入 runbook。
+
 ## 后果
 
 - 24 域 baseline 有统一而可扩展的 recipe 模型
+- archetype 选型是领域接入的必选步骤，不再是可选扩展

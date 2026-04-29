@@ -22,7 +22,7 @@
 
 ## 背景
 
-v2.7 `§46-§51` 引入组织治理层。当前仓库已有：
+v4.3 `§46-§51` 引入组织治理层。当前仓库已有：
 
 - `src/org-governance/org-model`
 - `src/org-governance/approval-routing`

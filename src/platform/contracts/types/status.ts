@@ -62,20 +62,36 @@ export const SESSION_STATUSES = [
 ] as const;
 
 /**
- * Execution lifecycle states.
+ * Execution lifecycle states (13 states per §45.13).
  *
  * State transitions:
  * - created → prechecking/cancelled/failed (execution initialized)
- * - prechecking → executing/blocked/cancelled/failed (validating resources)
- * - executing → blocked/succeeded/failed/cancelled (work being performed)
+ * - prechecking → ready/cancelled/failed (resource validation complete)
+ * - ready → queued/dispatching/cancelled/failed (resources allocated, waiting to start)
+ * - queued → dispatching/cancelled/failed (in scheduler queue)
+ * - dispatching → executing/paused/cancelled/failed (being assigned to worker)
+ * - executing → blocked/succeeded/failed/cancelled/timed_out (work being performed)
  * - blocked → prechecking/executing/cancelled/failed/superseded (waiting for approval)
+ * - paused → resuming/cancelled/failed (temporarily suspended)
+ * - resuming → executing/cancelled/failed (resuming from pause)
+ * - recovering → executing/cancelled/failed (recovering from transient failure)
+ * - timed_out → recovering/cancelled/failed (execution timeout triggered)
  * - succeeded/failed/cancelled/superseded are terminal states
+ *
+ * R9-04 fix: Added 5 missing states: queued, dispatching, paused, recovering, timed_out, resuming, ready
  */
 export const EXECUTION_STATUSES = [
   "created",
   "prechecking",
+  "ready",
+  "queued",
+  "dispatching",
   "executing",
   "blocked",
+  "paused",
+  "resuming",
+  "recovering",
+  "timed_out",
   "succeeded",
   "failed",
   "cancelled",

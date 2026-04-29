@@ -12,12 +12,14 @@ import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.j
 
 /**
  * Configuration source type in the hierarchy.
+ * Per §24.1: platform→environment→tenant→pack→runtime 5层
  */
 export type ConfigHierarchyLayer =
   | "platform"
+  | "environment"
   | "tenant"
   | "pack"
-  | "task_type";
+  | "runtime";
 
 /**
  * Represents a configuration value at a specific hierarchy level.
@@ -44,7 +46,7 @@ export interface HierarchicalConfigLoaderOptions {
 export interface HierarchicalConfigResult {
   /** Merged configuration with layer precedence applied */
   merged: Record<string, unknown>;
-  /** All sources in hierarchy order (platform first, task_type last) */
+  /** All sources in hierarchy order (platform first, runtime last) */
   sources: HierarchyConfigSource[];
   /** The most specific layer that provided each top-level key */
   layerMap: Record<string, ConfigHierarchyLayer>;
@@ -54,9 +56,10 @@ export interface HierarchicalConfigResult {
 
 /**
  * Service for loading and merging hierarchical configuration.
+ * Per §24.1: platform→environment→tenant→pack→runtime 5层
  *
  * Applies the principle that more specific layers override less specific:
- * platform < tenant < pack < task_type
+ * platform < environment < tenant < pack < runtime
  */
 export class HierarchicalConfigLoader {
   private readonly eventBus: DurableEventBus | null;
@@ -69,29 +72,34 @@ export class HierarchicalConfigLoader {
 
   /**
    * Loads and merges configurations from all hierarchy levels.
+   * Per §24.1: platform→environment→tenant→pack→runtime 5层
    *
    * @param platformConfig - Base platform configuration
+   * @param environmentConfigs - Map of environmentId to environment config (dev/staging/prod)
    * @param tenantConfigs - Map of tenantId to tenant config
    * @param packConfigs - Map of packId to pack config
-   * @param taskTypeConfigs - Map of taskTypeId to task-type config
+   * @param runtimeConfigs - Map of runtimeId to runtime config (dynamic runtime overrides)
+   * @param activeEnvironmentId - Currently active environment ID (for environment override)
    * @param activeTenantId - Currently active tenant ID (for tenant override)
    * @param activePackId - Currently active pack ID (for pack override)
-   * @param activeTaskTypeId - Currently active task type ID (for task-type override)
+   * @param activeRuntimeId - Currently active runtime ID (for runtime override)
    */
   public loadConfig(
     platformConfig: Record<string, unknown>,
+    environmentConfigs: Record<string, Record<string, unknown>> = {},
     tenantConfigs: Record<string, Record<string, unknown>> = {},
     packConfigs: Record<string, Record<string, unknown>> = {},
-    taskTypeConfigs: Record<string, Record<string, unknown>> = {},
+    runtimeConfigs: Record<string, Record<string, unknown>> = {},
+    activeEnvironmentId: string | null = null,
     activeTenantId: string | null = null,
     activePackId: string | null = null,
-    activeTaskTypeId: string | null = null,
+    activeRuntimeId: string | null = null,
   ): HierarchicalConfigResult {
     const sources: HierarchyConfigSource[] = [];
     const layerMap: Record<string, ConfigHierarchyLayer> = {};
     const now = new Date().toISOString();
 
-    // Platform layer (base)
+    // Platform layer (base, least specific)
     const platformSource: HierarchyConfigSource = {
       layer: "platform",
       sourceId: null,
@@ -100,6 +108,18 @@ export class HierarchicalConfigLoader {
       updatedAt: now,
     };
     sources.push(platformSource);
+
+    // Environment layer (e.g., dev/staging/prod)
+    if (activeEnvironmentId && environmentConfigs[activeEnvironmentId]) {
+      const envSource: HierarchyConfigSource = {
+        layer: "environment",
+        sourceId: activeEnvironmentId,
+        config: environmentConfigs[activeEnvironmentId],
+        version: this.computeVersion(environmentConfigs[activeEnvironmentId]),
+        updatedAt: now,
+      };
+      sources.push(envSource);
+    }
 
     // Tenant layer
     if (activeTenantId && tenantConfigs[activeTenantId]) {
@@ -125,16 +145,16 @@ export class HierarchicalConfigLoader {
       sources.push(packSource);
     }
 
-    // Task-type layer (most specific, highest priority)
-    if (activeTaskTypeId && taskTypeConfigs[activeTaskTypeId]) {
-      const taskTypeSource: HierarchyConfigSource = {
-        layer: "task_type",
-        sourceId: activeTaskTypeId,
-        config: taskTypeConfigs[activeTaskTypeId],
-        version: this.computeVersion(taskTypeConfigs[activeTaskTypeId]),
+    // Runtime layer (most specific, highest priority, dynamic overrides)
+    if (activeRuntimeId && runtimeConfigs[activeRuntimeId]) {
+      const runtimeSource: HierarchyConfigSource = {
+        layer: "runtime",
+        sourceId: activeRuntimeId,
+        config: runtimeConfigs[activeRuntimeId],
+        version: this.computeVersion(runtimeConfigs[activeRuntimeId]),
         updatedAt: now,
       };
-      sources.push(taskTypeSource);
+      sources.push(runtimeSource);
     }
 
     // Merge configs: later sources override earlier ones

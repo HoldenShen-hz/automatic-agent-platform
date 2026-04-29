@@ -163,7 +163,7 @@ export function createStableCli(opts: {
       : preparedArgs;
     // Support both sync and async runners (stable-package is sync)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (runner as any)(runnerArgs);
+    const result = (runner as (opts: any) => any)(runnerArgs as any);
     const report = result instanceof Promise ? await result : result;
 
     if (writer && reportFilename) {

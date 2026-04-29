@@ -11,10 +11,13 @@
 
 ### CompliancePolicy 结构
 
+`§46` OrgNode 层级（enterprise → division → department → team → seat）要求合规策略的绑定范围字段支持所有层级，不能仅限 department。
+
 ```typescript
 interface CompliancePolicy {
   policy_id: string;
-  department_id: string;
+  orgNodeId: string;          // §46 OrgNode 引用，支持 enterprise/division/department/team 各层
+  orgNodeType?: OrgNodeType; // 可选：显式标注 OrgNode 类型以加速路由
   rules: ComplianceRule[];
   enforced: boolean;
   version: string;
