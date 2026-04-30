@@ -13,7 +13,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createGameDevAdapterPlugin } from "../../../../../src/plugins/adapters/game-dev-adapter.js";
+import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/game-dev-adapter.js";
 
 // =============================================================================
 // Issue #2014: authenticate is no-op - no credentials validated

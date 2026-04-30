@@ -315,11 +315,10 @@ test("LlmIntentParser uses regex fallback for status intent", async () => {
   });
 
   const parser = new LlmIntentParser(mockGateway, true);
-  const result = await parser.parseWithLlm("check something");
+  const result = await parser.parseWithLlm("status");
 
-  // Should fall back to regex which sees no keywords and short message
-  // returns task_query (default)
-  assert.equal(result.intentType, "task_query");
+  // Should fall back to regex - "status" keyword matches
+  assert.equal(result.intentType, "status_inquiry");
 });
 
 test("LlmIntentParser defaults to null modelGateway", async () => {
