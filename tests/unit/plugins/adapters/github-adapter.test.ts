@@ -1,3 +1,9 @@
+/**
+ * Unit Tests: GitHub Adapter
+ *
+ * Tests for issue #2020: GitHub adapter repository param not sanitized, URL path traversal
+ */
+
 import assert from "node:assert/strict";
 import test from "node:test";
 

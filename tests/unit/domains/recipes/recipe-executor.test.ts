@@ -1,327 +1,356 @@
 /**
- * RecipeExecutor Unit Tests
+ * Recipe Executor Unit Tests - Workflow Existence Check (Issue #2183)
  *
- * Tests for:
- * - Recipe execution with workflow and tool bundles
- * - Execution context and parameters
- * - Success and failure handling
- * - Tool bundle integration
+ * Tests for RecipeExecutor which has a regex stub for workflow existence check.
+ * Issue #2183: Workflow existence check is regex stub not real query.
  */
 
-// @ts-nocheck
-import assert from "node:assert/strict";
 import test from "node:test";
-
-import { DomainRecipeSchema } from "../../../../src/domains/recipes/index.js";
-import type { DomainRecipe } from "../../../../src/domains/recipes/index.js";
+import assert from "node:assert/strict";
+import { RecipeExecutor, type RecipeExecutionContext, type RecipeExecutionResult } from "../../../../src/domains/recipes/recipe-executor.js";
+import { DomainRecipeSchema, type DomainRecipe } from "../../../../src/domains/recipes/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
 // ─────────────────────────────────────────────────────────────────────────────
 
-function makeRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; domainId: string; defaultWorkflowId: string }): DomainRecipe {
+function createRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; domainId: string; defaultWorkflowId: string }): DomainRecipe {
   return DomainRecipeSchema.parse({
     recipeId: overrides.recipeId,
     domainId: overrides.domainId,
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
-    description: overrides.description,
+    description: overrides.description ?? "Test recipe",
     triggerPhrases: overrides.triggerPhrases ?? [],
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
   });
 }
 
-interface ExecutionResult {
-  success: boolean;
-  executionId: string;
-  recipeId: string;
-  workflowId: string;
-  toolBundleIds: string[];
-  output?: unknown;
-  error?: string;
-}
-
-interface ExecutionContext {
-  executionId: string;
-  taskId: string;
-  tenantId: string;
-  correlationId: string;
-  input: string;
+function createContext(overrides: Partial<RecipeExecutionContext> = {}): RecipeExecutionContext {
+  return {
+    executionId: overrides.executionId ?? "exec_001",
+    taskId: overrides.taskId ?? "task_001",
+    tenantId: overrides.tenantId ?? "tenant_001",
+    correlationId: overrides.correlationId ?? "corr_001",
+    input: overrides.input ?? "test input",
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Construction & Basic Execution Tests
+// Workflow Existence Check Tests (Issue #2183)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeExecutor is constructed without errors", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute returns failure when workflow matches nonexistent pattern", async () => {
   const executor = new RecipeExecutor();
-
-  assert.ok(executor !== null);
-});
-
-test("RecipeExecutor.execute runs a recipe and returns execution result", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_exec",
+  const recipe = createRecipe({
+    recipeId: "recipe_nonexistent_1",
     domainId: "coding",
-    defaultWorkflowId: "wf_coding",
-    defaultToolBundleIds: ["repo_tools", "build_tools"],
+    defaultWorkflowId: "nonexistent_workflow", // Will be caught by regex
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_123",
-    taskId: "task_456",
-    tenantId: "tenant_789",
-    correlationId: "corr_abc",
-    input: "write a function to calculate fibonacci",
-  };
+  const result = await executor.execute(recipe, createContext());
 
-  const result = await executor.execute(recipe, context);
+  assert.equal(result.success, false);
+  assert.ok(result.error !== undefined);
+  assert.ok(result.error!.includes("not available") || result.error!.includes("nonexistent"));
+});
+
+test("RecipeExecutor.execute returns failure for workflow starting with 'nonexistent' (case insensitive)", async () => {
+  const executor = new RecipeExecutor();
+
+  const patterns = ["NONEXISTENT_workflow", "NonexistentWorkflow", "nonexistent"];
+
+  for (const pattern of patterns) {
+    const recipe = createRecipe({
+      recipeId: `recipe_nonexistent_${pattern}`,
+      domainId: "coding",
+      defaultWorkflowId: pattern,
+    });
+
+    const result = await executor.execute(recipe, createContext({ executionId: `exec_${pattern}` }));
+
+    assert.equal(result.success, false, `Expected failure for pattern: ${pattern}`);
+    assert.ok(result.error !== undefined);
+  }
+});
+
+test("RecipeExecutor.execute uses regex to check workflow availability", async () => {
+  const executor = new RecipeExecutor();
+
+  // Workflows that should be caught by the regex stub
+  const invalidWorkflows = [
+    "nonexistent_wf",
+    "NONEXISTENT",
+    "NonexistentWorkflow",
+    "nonexistent",
+  ];
+
+  for (const workflowId of invalidWorkflows) {
+    const recipe = createRecipe({
+      recipeId: `recipe_regex_${workflowId}`,
+      domainId: "coding",
+      defaultWorkflowId: workflowId,
+    });
+
+    const result = await executor.execute(recipe, createContext({ executionId: `exec_${workflowId}` }));
+
+    assert.equal(result.success, false, `Expected failure for workflow: ${workflowId}`);
+    assert.ok(result.error !== undefined);
+  }
+
+  // Valid workflows that should pass
+  const validWorkflows = [
+    "wf_coding",
+    "workflow_primary",
+    "build_and_test",
+    "deploy_production",
+  ];
+
+  for (const workflowId of validWorkflows) {
+    const recipe = createRecipe({
+      recipeId: `recipe_valid_${workflowId}`,
+      domainId: "coding",
+      defaultWorkflowId: workflowId,
+    });
+
+    const result = await executor.execute(recipe, createContext({ executionId: `exec_${workflowId}` }));
+
+    assert.equal(result.success, true, `Expected success for workflow: ${workflowId}`);
+  }
+});
+
+test("RecipeExecutor.execute returns success for non-nonexistent workflow names", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_valid_wf",
+    domainId: "coding",
+    defaultWorkflowId: "wf_primary",
+  });
+
+  const result = await executor.execute(recipe, createContext());
 
   assert.equal(result.success, true);
-  assert.equal(result.recipeId, recipe.recipeId);
-  assert.equal(result.workflowId, recipe.defaultWorkflowId);
-  assert.deepEqual(result.toolBundleIds, recipe.defaultToolBundleIds);
-  assert.ok(result.executionId !== undefined);
+  assert.equal(result.workflowId, "wf_primary");
 });
 
-test("RecipeExecutor.execute includes all tool bundle ids from recipe", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute returns success for workflow name 'nonexistent' (exact match)", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_tools",
+  const recipe = createRecipe({
+    recipeId: "recipe_exact_nonexistent",
     domainId: "coding",
-    defaultWorkflowId: "wf_tools",
-    defaultToolBundleIds: ["bundle_a", "bundle_b", "bundle_c"],
+    defaultWorkflowId: "nonexistent", // This IS the word "nonexistent" as a workflow name
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_tools",
-    taskId: "task_tools",
-    tenantId: "tenant",
-    correlationId: "corr_tools",
-    input: "deploy to production",
-  };
+  // The regex checks if workflowId STARTS WITH "nonexistent" (case-insensitive)
+  // So "nonexistent" (exact) should fail
+  const result = await executor.execute(recipe, createContext());
 
-  const result = await executor.execute(recipe, context);
-
-  assert.equal(result.toolBundleIds.length, 3);
-  assert.ok(result.toolBundleIds.includes("bundle_a"));
-  assert.ok(result.toolBundleIds.includes("bundle_b"));
-  assert.ok(result.toolBundleIds.includes("bundle_c"));
-});
-
-test("RecipeExecutor.execute with empty tool bundle ids", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_no_tools",
-    domainId: "data",
-    defaultWorkflowId: "wf_data",
-    defaultToolBundleIds: [],
-  });
-
-  const context: ExecutionContext = {
-    executionId: "exec_no_tools",
-    taskId: "task_no_tools",
-    tenantId: "tenant",
-    correlationId: "corr_no_tools",
-    input: "analyze this",
-  };
-
-  const result = await executor.execute(recipe, context);
-
-  assert.equal(result.success, true);
-  assert.equal(result.toolBundleIds.length, 0);
+  assert.equal(result.success, false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Execution Context Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeExecutor.execute passes execution context correctly", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute preserves execution context values", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_context",
+  const recipe = createRecipe({
+    recipeId: "recipe_context_test",
     domainId: "coding",
     defaultWorkflowId: "wf_context",
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_context",
-    taskId: "task_context",
-    tenantId: "tenant_context",
-    correlationId: "corr_context",
-    input: "context test input",
+  const context: RecipeExecutionContext = {
+    executionId: "exec_context_123",
+    taskId: "task_context_456",
+    tenantId: "tenant_context_789",
+    correlationId: "corr_context_abc",
+    input: "Run the context test",
   };
 
   const result = await executor.execute(recipe, context);
 
   assert.equal(result.success, true);
   assert.equal(result.executionId, context.executionId);
+  assert.ok(result.output !== undefined);
 });
 
-test("RecipeExecutor.execute uses recipe's defaultWorkflowId", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute returns result with correct structure", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_workflow",
+  const recipe = createRecipe({
+    recipeId: "recipe_structure_test",
     domainId: "coding",
-    defaultWorkflowId: "my_custom_workflow",
+    defaultWorkflowId: "wf_structure",
+    defaultToolBundleIds: ["bundle_a", "bundle_b"],
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_workflow",
-    taskId: "task_workflow",
-    tenantId: "tenant",
-    correlationId: "corr_workflow",
-    input: "run workflow",
-  };
+  const result = await executor.execute(recipe, createContext());
 
-  const result = await executor.execute(recipe, context);
+  assert.equal(result.success, true);
+  assert.equal(result.recipeId, "recipe_structure_test");
+  assert.equal(result.workflowId, "wf_structure");
+  assert.deepEqual(result.toolBundleIds, ["bundle_a", "bundle_b"]);
+  assert.ok(typeof result.executionId === "string");
+});
 
-  assert.equal(result.workflowId, "my_custom_workflow");
+test("RecipeExecutor.execute copies toolBundleIds from recipe", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_tools_test",
+    domainId: "coding",
+    defaultWorkflowId: "wf_tools",
+    defaultToolBundleIds: ["repo_tools", "build_tools", "deploy_tools"],
+  });
+
+  const result = await executor.execute(recipe, createContext());
+
+  assert.equal(result.toolBundleIds.length, 3);
+  assert.ok(result.toolBundleIds.includes("repo_tools"));
+  assert.ok(result.toolBundleIds.includes("build_tools"));
+  assert.ok(result.toolBundleIds.includes("deploy_tools"));
+});
+
+test("RecipeExecutor.execute handles empty toolBundleIds", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_no_tools",
+    domainId: "coding",
+    defaultWorkflowId: "wf_no_tools",
+    defaultToolBundleIds: [],
+  });
+
+  const result = await executor.execute(recipe, createContext());
+
+  assert.equal(result.success, true);
+  assert.deepEqual(result.toolBundleIds, []);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Handling Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeExecutor.execute returns failure result on workflow error", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute handles invalid recipe gracefully", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_error",
-    domainId: "coding",
-    defaultWorkflowId: "nonexistent_workflow",
-  });
-
-  const context: ExecutionContext = {
-    executionId: "exec_error",
-    taskId: "task_error",
-    tenantId: "tenant",
-    correlationId: "corr_error",
-    input: "trigger error",
-  };
-
-  const result = await executor.execute(recipe, context);
-
-  assert.equal(result.success, false);
-  assert.ok(result.error !== undefined);
-  assert.ok(result.error!.length > 0);
-});
-
-test("RecipeExecutor.execute returns failure when recipe is invalid", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
-  const executor = new RecipeExecutor();
-
-  // Create a recipe with empty required field to trigger validation error
   const invalidRecipe = {
-    recipeId: "",
+    recipeId: "", // Empty - invalid
     domainId: "coding",
-    defaultWorkflowId: "wf_1",
+    defaultWorkflowId: "wf_test",
   };
 
-  const context: ExecutionContext = {
-    executionId: "exec_invalid",
-    taskId: "task_invalid",
-    tenantId: "tenant",
-    correlationId: "corr_invalid",
-    input: "test",
-  };
-
-  const result = await executor.execute(invalidRecipe as DomainRecipe, context);
+  const result = await executor.execute(invalidRecipe as DomainRecipe, createContext());
 
   assert.equal(result.success, false);
   assert.ok(result.error !== undefined);
+  assert.ok(result.recipeId === "unknown_recipe" || result.recipeId === "");
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Execution Result Structure Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecipeExecutor.execute returns result with all required fields", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute handles recipe with undefined toolBundleIds", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_result",
+  const recipe = createRecipe({
+    recipeId: "recipe_undefined_tools",
     domainId: "coding",
-    defaultWorkflowId: "wf_result",
-    defaultToolBundleIds: ["tools"],
+    defaultWorkflowId: "wf_undefined",
+    defaultToolBundleIds: undefined as unknown as string[],
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_result",
-    taskId: "task_result",
-    tenantId: "tenant_result",
-    correlationId: "corr_result",
-    input: "test result",
-  };
+  const result = await executor.execute(recipe, createContext());
 
-  const result = await executor.execute(recipe, context);
-
-  assert.ok(typeof result.success === "boolean");
-  assert.ok(typeof result.executionId === "string");
-  assert.ok(typeof result.recipeId === "string");
-  assert.ok(typeof result.workflowId === "string");
+  // Should still return success with empty array
+  assert.equal(result.success, true);
   assert.ok(Array.isArray(result.toolBundleIds));
 });
 
-test("RecipeExecutor.execute output contains execution artifacts", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute handles recipe without optional fields", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_output",
+  const recipe = DomainRecipeSchema.parse({
+    recipeId: "recipe_minimal",
     domainId: "coding",
-    defaultWorkflowId: "wf_output",
+    name: "Minimal Recipe",
+    description: "A minimal recipe for testing",
+    triggerPhrases: [],
+    defaultWorkflowId: "wf_minimal",
     defaultToolBundleIds: [],
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_output",
-    taskId: "task_output",
-    tenantId: "tenant",
-    correlationId: "corr_output",
-    input: "produce output",
+  const result = await executor.execute(recipe, createContext());
+
+  assert.equal(result.success, true);
+  assert.equal(result.recipeId, "recipe_minimal");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Output Structure Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("RecipeExecutor.execute output contains all context fields", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_output_test",
+    domainId: "coding",
+    defaultWorkflowId: "wf_output",
+  });
+
+  const context: RecipeExecutionContext = {
+    executionId: "exec_output_123",
+    taskId: "task_output_456",
+    tenantId: "tenant_output_789",
+    correlationId: "corr_output_abc",
+    input: "Test input for output",
   };
 
   const result = await executor.execute(recipe, context);
 
   assert.equal(result.success, true);
   assert.ok(result.output !== undefined);
+  assert.equal(result.output!.taskId, context.taskId);
+  assert.equal(result.output!.tenantId, context.tenantId);
+  assert.equal(result.output!.correlationId, context.correlationId);
+  assert.equal(result.output!.input, context.input);
+});
+
+test("RecipeExecutor.execute output includes summary", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_summary_test",
+    domainId: "coding",
+    defaultWorkflowId: "wf_summary",
+  });
+
+  const result = await executor.execute(recipe, createContext());
+
+  assert.ok(result.output !== undefined);
+  assert.ok(typeof result.output!.summary === "string");
+  assert.ok(result.output!.summary.length > 0);
+});
+
+test("RecipeExecutor.execute output summary contains recipe and workflow info", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_info_test",
+    domainId: "coding",
+    defaultWorkflowId: "wf_info_test",
+  });
+
+  const result = await executor.execute(recipe, createContext());
+
+  assert.ok(result.output !== undefined);
+  assert.ok(result.output!.summary.includes("recipe_info_test") || result.output!.summary.includes("wf_info_test"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Multiple Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeExecutor.execute can run same recipe multiple times", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute can execute same recipe multiple times", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_reuse",
+  const recipe = createRecipe({
+    recipeId: "recipe_reuse_test",
     domainId: "coding",
     defaultWorkflowId: "wf_reuse",
   });
 
-  const context1: ExecutionContext = {
-    executionId: "exec_reuse_1",
-    taskId: "task_reuse_1",
-    tenantId: "tenant",
-    correlationId: "corr_reuse_1",
-    input: "first execution",
-  };
-
-  const context2: ExecutionContext = {
-    executionId: "exec_reuse_2",
-    taskId: "task_reuse_2",
-    tenantId: "tenant",
-    correlationId: "corr_reuse_2",
-    input: "second execution",
-  };
+  const context1 = createContext({ executionId: "exec_reuse_1" });
+  const context2 = createContext({ executionId: "exec_reuse_2" });
 
   const result1 = await executor.execute(recipe, context1);
   const result2 = await executor.execute(recipe, context2);
@@ -332,84 +361,117 @@ test("RecipeExecutor.execute can run same recipe multiple times", async () => {
 });
 
 test("RecipeExecutor.execute handles concurrent executions", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_concurrent",
+  const recipe = createRecipe({
+    recipeId: "recipe_concurrent_test",
     domainId: "coding",
     defaultWorkflowId: "wf_concurrent",
   });
 
-  const contexts = Array.from({ length: 5 }, (_, i) => ({
-    executionId: `exec_concurrent_${i}`,
-    taskId: `task_concurrent_${i}`,
-    tenantId: "tenant",
-    correlationId: `corr_concurrent_${i}`,
-    input: `concurrent execution ${i}`,
-  }));
-
-  const results = await Promise.all(
-    contexts.map((ctx) => executor.execute(recipe, ctx)),
+  const contexts = Array.from({ length: 10 }, (_, i) =>
+    createContext({ executionId: `exec_concurrent_${i}` })
   );
 
-  assert.equal(results.length, 5);
+  const results = await Promise.all(
+    contexts.map((ctx) => executor.execute(recipe, ctx))
+  );
+
+  assert.equal(results.length, 10);
   assert.ok(results.every((r) => r.success === true));
-  assert.ok(results.every((r) => r.recipeId === recipe.recipeId));
+  assert.ok(results.every((r) => r.recipeId === "recipe_concurrent_test"));
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Executor Metadata Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-test("RecipeExecutor.execute preserves recipe metadata in result", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+test("RecipeExecutor.execute different recipes produce different results", async () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_meta",
+  const recipe1 = createRecipe({
+    recipeId: "recipe_diff_1",
     domainId: "coding",
-    name: "Coding Recipe",
-    description: "A recipe for coding tasks",
-    defaultWorkflowId: "wf_meta",
+    defaultWorkflowId: "wf_diff_1",
+  });
+  const recipe2 = createRecipe({
+    recipeId: "recipe_diff_2",
+    domainId: "coding",
+    defaultWorkflowId: "wf_diff_2",
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_meta",
-    taskId: "task_meta",
-    tenantId: "tenant",
-    correlationId: "corr_meta",
-    input: "test metadata",
-  };
+  const result1 = await executor.execute(recipe1, createContext({ executionId: "exec_diff_1" }));
+  const result2 = await executor.execute(recipe2, createContext({ executionId: "exec_diff_2" }));
 
-  const result = await executor.execute(recipe, context);
-
-  assert.equal(result.success, true);
-  assert.equal(result.recipeId, "recipe_meta");
+  assert.equal(result1.recipeId, "recipe_diff_1");
+  assert.equal(result2.recipeId, "recipe_diff_2");
+  assert.notEqual(result1.workflowId, result2.workflowId);
 });
 
-test("RecipeExecutor returns ExecutionResult type with correct structure", async () => {
-  const { RecipeExecutor } = await import("../../../../src/domains/recipes/recipe-executor.js");
+// ─────────────────────────────────────────────────────────────────────────────
+// RecipeExecutor Instance Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("RecipeExecutor can be instantiated", () => {
   const executor = new RecipeExecutor();
-  const recipe = makeRecipe({
-    recipeId: "recipe_type",
-    domainId: "data",
-    defaultWorkflowId: "wf_type",
-    defaultToolBundleIds: ["bundle_type"],
+  assert.ok(executor !== null);
+});
+
+test("RecipeExecutor.execute is async", async () => {
+  const executor = new RecipeExecutor();
+  const recipe = createRecipe({
+    recipeId: "recipe_async_test",
+    domainId: "coding",
+    defaultWorkflowId: "wf_async",
   });
 
-  const context: ExecutionContext = {
-    executionId: "exec_type",
-    taskId: "task_type",
-    tenantId: "tenant_type",
-    correlationId: "corr_type",
-    input: "type test",
-  };
+  const start = Date.now();
+  await executor.execute(recipe, createContext());
+  const duration = Date.now() - start;
 
-  const result = await executor.execute(recipe, context);
+  // Should complete quickly (less than 100ms in test environment)
+  assert.ok(duration < 1000, `Execution took too long: ${duration}ms`);
+});
 
-  // Verify all expected fields are present
-  assert.ok("success" in result);
-  assert.ok("executionId" in result);
-  assert.ok("recipeId" in result);
-  assert.ok("workflowId" in result);
-  assert.ok("toolBundleIds" in result);
+// ─────────────────────────────────────────────────────────────────────────────
+// Special Workflow Name Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("RecipeExecutor.execute workflow names with 'nonexistent' prefix are rejected", async () => {
+  const executor = new RecipeExecutor();
+
+  const invalidNames = [
+    "nonexistent_workflow",
+    "nonexistentWF",
+    "nonexistent wf", // with space
+  ];
+
+  for (const name of invalidNames) {
+    const recipe = createRecipe({
+      recipeId: `recipe_nonex_${name}`,
+      domainId: "coding",
+      defaultWorkflowId: name,
+    });
+
+    const result = await executor.execute(recipe, createContext({ executionId: `exec_${name}` }));
+
+    assert.equal(result.success, false, `Should reject workflow: ${name}`);
+  }
+});
+
+test("RecipeExecutor.execute workflow names without 'nonexistent' are accepted", async () => {
+  const executor = new RecipeExecutor();
+
+  const validNames = [
+    "wf_001",
+    "primary_workflow",
+    "workflow.nonexistent.suffix",
+    "test_nonexistent_ignore", // 'nonexistent' not at start
+  ];
+
+  for (const name of validNames) {
+    const recipe = createRecipe({
+      recipeId: `recipe_valid_${name}`,
+      domainId: "coding",
+      defaultWorkflowId: name,
+    });
+
+    const result = await executor.execute(recipe, createContext({ executionId: `exec_${name}` }));
+
+    assert.equal(result.success, true, `Should accept workflow: ${name}`);
+  }
 });

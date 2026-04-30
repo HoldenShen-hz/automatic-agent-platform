@@ -1,13 +1,9 @@
 /**
- * Unit Tests: CRM Adapter
+ * Unit Tests: CRM Adapter (Extended)
  *
  * Tests for issue #2008: CRM adapter execute returns hardcoded mock, no real API
  *
- * These tests verify the CRM adapter's behavior including:
- * - Stub/mock response behavior (issue #2008)
- * - Policy enforcement
- * - Credential handling
- * - CRM type configuration (hubspot vs salesforce)
+ * These tests verify the CRM adapter's stub behavior and policy enforcement.
  */
 
 import assert from "node:assert/strict";
