@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { rmSync, mkdirSync } from "node:fs";
+import { rmSync, mkdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
-import { runStableChaosSmoke, writeStableChaosSmokeReport } from "../../../../src/platform/stability/stable-chaos-smoke.js";
+import { runStableChaosSmoke, writeStableChaosSmokeReport, type StableChaosSmokeReport } from "../../../../src/platform/stability/stable-chaos-smoke.js";
 
 test("runStableChaosSmoke runs all five scenarios", async () => {
   const outputDir = "/tmp/stable-chaos-smoke-test";
@@ -85,6 +86,24 @@ test("runStableChaosSmoke missing_ack_rebuild_and_replay scenario passes", async
   assert.equal(scenario.passed, true);
 });
 
-test("writeStableChaosSmokeReport is callable", () => {
-  assert.equal(typeof writeStableChaosSmokeReport, "function");
+test("writeStableChaosSmokeReport writes report to file", () => {
+  const outputDir = "/tmp/stable-chaos-smoke-report-test";
+  rmSync(outputDir, { recursive: true, force: true });
+  mkdirSync(outputDir, { recursive: true });
+
+  const report: StableChaosSmokeReport = {
+    startedAt: new Date().toISOString(),
+    finishedAt: new Date().toISOString(),
+    outputDir,
+    totalScenarios: 0,
+    passedScenarios: 0,
+    failedScenarios: 0,
+    scenarios: [],
+  };
+
+  const outputFile = join(outputDir, "report.json");
+  writeStableChaosSmokeReport(outputFile, report);
+
+  // Verify file was written
+  assert.ok(existsSync(outputFile), "Report file should be written");
 });

@@ -469,10 +469,8 @@ test("command-executor allows safe commands with legitimate arguments", async ()
 
     const result = await executor.execute(request);
 
-    // Safe command with safe args should NOT be blocked
-    if (result.status === "blocked") {
-      assert.fail("Safe echo command should not be blocked");
-    }
+    // Safe command with safe args should succeed (not be blocked)
+    assert.equal(result.status, "succeeded", "Safe echo command should succeed with valid args");
   } finally {
     cleanupPath(workspace);
   }

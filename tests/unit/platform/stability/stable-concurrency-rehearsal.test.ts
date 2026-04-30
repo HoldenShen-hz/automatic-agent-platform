@@ -72,10 +72,10 @@ test("runStableConcurrencyRehearsal all scenarios pass returns passedScenarios e
 
   const report = await runStableConcurrencyRehearsal({ outputDir });
 
-  if (report.failedScenarios === 0) {
-    assert.equal(report.passedScenarios, report.totalScenarios);
-    assert.equal(report.passedScenarios, 3);
-  }
+  // Always assert the relationship - regardless of pass/fail status
+  assert.equal(report.passedScenarios + report.failedScenarios, report.totalScenarios);
+  assert.equal(report.passedScenarios, report.totalScenarios, "All scenarios should pass when this test runs");
+  assert.equal(report.passedScenarios, 3);
 });
 
 test("writeStableConcurrencyRehearsalReport writes JSON file", () => {

@@ -164,20 +164,21 @@ test("security: path with shell metacharacters is not rejected by itself", () =>
   const policy = createWorkspaceWritePolicy("/workspace");
 
   // Shell metacharacters alone don't make a path invalid for sandbox
+  // Command injection would be handled at execution time
   const result = checkSandboxPath(policy, "/workspace/$(whoami).txt");
 
-  // The sandbox doesn't parse command injection - it only checks path validity
-  // Command injection would be handled at execution time
-  assert.equal(result.allowed === true || result.allowed === false, true);
+  // Path with shell chars should be ALLOWED - sandbox only checks path boundaries
+  assert.equal(result.allowed, true);
 });
 
 test("security: path with pipe character is not rejected by itself", () => {
   const policy = createWorkspaceWritePolicy("/workspace");
 
+  // Path containing shell operators - sandbox only checks path boundaries
   const result = checkSandboxPath(policy, "/workspace/flag | cat /etc/passwd");
 
-  // Path containing shell operators - sandbox only checks path boundaries
-  assert.equal(result.allowed === true || result.allowed === false, true);
+  // Should be allowed - sandbox doesn't parse command syntax
+  assert.equal(result.allowed, true);
 });
 
 test("security: path with semicolon command separator", () => {
@@ -185,7 +186,8 @@ test("security: path with semicolon command separator", () => {
 
   const result = checkSandboxPath(policy, "/workspace/; rm -rf /");
 
-  assert.equal(result.allowed === true || result.allowed === false, true);
+  // Should be allowed - sandbox doesn't parse command syntax
+  assert.equal(result.allowed, true);
 });
 
 test("security: null-byte injection in path is blocked", () => {

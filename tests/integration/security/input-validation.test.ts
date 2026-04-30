@@ -517,8 +517,8 @@ test("command-executor blocks script path with flag injection", async () => {
 
     const result = await executor.execute(request);
 
-    // Should handle this safely - either blocked or executed properly
-    assert.ok(["succeeded", "blocked", "failed"].includes(result.status), "Should handle flag injection safely");
+    // Should NOT succeed - flag injection should be blocked or fail
+    assert.notEqual(result.status, "succeeded", "Flag injection should not succeed");
   } finally {
     cleanupPath(workspace);
   }

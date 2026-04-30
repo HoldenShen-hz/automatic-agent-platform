@@ -83,9 +83,9 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
   const executor = new CommandExecutor();
 
   try {
-    // URL-encoded traversal sequence
+    // URL-encoded traversal sequence - pass directly without decoding
+    // The executor should handle URL-encoded traversal attempts
     const encodedTraversal = "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd";
-    const normalizedPath = decodeURIComponent(encodedTraversal);
 
     const request = {
       callId: newId("call"),
@@ -94,7 +94,7 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
       executionId: null,
       toolName: "bash",
       command: "cat",
-      args: [normalizedPath],
+      args: [encodedTraversal],
       cwd: workspace,
       timeoutMs: 5000,
       sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
@@ -104,6 +104,7 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
 
     const result = await executor.execute(request);
 
+    // The executor should block path traversal attempts (encoded or not)
     assert.equal(result.status, "blocked", "Encoded path traversal should be blocked");
   } finally {
     cleanupPath(workspace);
