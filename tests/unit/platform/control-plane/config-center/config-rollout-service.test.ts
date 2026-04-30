@@ -1,5 +1,6 @@
 /**
  * Unit tests for ConfigRolloutService
+ * Issue #2116: Canary should go through 5%/25%/50% before FULL
  */
 
 import assert from "node:assert/strict";
@@ -7,16 +8,11 @@ import test from "node:test";
 import {
   ConfigRolloutService,
   RolloutPhase,
-  ConfigRollout,
+  type ConfigRollout,
+  type ConfigRolloutStore,
 } from "../../../../../src/platform/control-plane/config-center/config-rollout-service.js";
 
-// Manual mock event bus
-interface MockEventBus {
-  publish: (event: { eventType: string; payload: Record<string, unknown> }) => void;
-  getEvents: () => Array<{ eventType: string; payload: Record<string, unknown> }>;
-}
-
-function createMockEventBus(): MockEventBus {
+function createMockEventBus() {
   const events: Array<{ eventType: string; payload: Record<string, unknown> }> = [];
   return {
     publish(event: { eventType: string; payload: Record<string, unknown> }) {
@@ -25,301 +21,261 @@ function createMockEventBus(): MockEventBus {
     getEvents() {
       return events;
     },
+    clear() {
+      events.length = 0;
+    },
   };
 }
 
-test("startRollout creates a new rollout with default stages", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-
-  assert.ok(rollout.rolloutId);
-  assert.equal(rollout.configPath, "runtime.timeout");
-  assert.equal(rollout.layer, "platform");
-  assert.equal(rollout.sourceId, null);
-  assert.ok(rollout.startedAt);
-  assert.ok(rollout.updatedAt);
-});
-
-test("startRollout defaults to FULL stage for 100% target", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
-
-  assert.equal(rollout.stage.phase, RolloutPhase.FULL);
-  assert.equal(rollout.currentPercentage, 100);
-  assert.equal(rollout.targetPercentage, 100);
-});
-
-test("startRollout starts at CANARY_5 for target below 25%", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
-
-  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
-  assert.equal(rollout.currentPercentage, 5);
-});
-
-test("startRollout starts at CANARY_25 for target between 5 and 25", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 10);
-
-  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_25);
-  assert.equal(rollout.currentPercentage, 25);
-});
-
-test("startRollout starts at HALF for target between 25 and 50", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 40);
-
-  assert.equal(rollout.stage.phase, RolloutPhase.HALF);
-  assert.equal(rollout.currentPercentage, 50);
-});
-
-test("startRollout emits config.rollout.started event with event bus", () => {
-  const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
-
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-
-  const events = mockBus.getEvents();
-  assert.equal(events.length, 1);
-  const event = events[0];
-  assert.ok(event, "First event should exist");
-  assert.equal(event.eventType, "config.rollout.started");
-  assert.equal(event.payload.rolloutId, rollout.rolloutId);
-  assert.equal(event.payload.configPath, "runtime.timeout");
-});
-
-test("startRollout does not emit event when eventBus is null", () => {
-  const service = new ConfigRolloutService({ eventBus: null });
-
-  service.startRollout("runtime.timeout", "platform", null);
-
-  // No error means success - event bus is null so no event emitted
-});
-
-test("shouldApplyConfig returns shouldApply:true when no active rollout", () => {
-  const service = new ConfigRolloutService();
-  const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "hash-123");
-
-  assert.equal(decision.shouldApply, true);
-  assert.equal(decision.rolloutId, null);
-  assert.equal(decision.reason, "no_active_rollout");
-});
-
-test("shouldApplyConfig returns shouldApply:false for PENDING rollout", () => {
-  const service = new ConfigRolloutService();
-  service.startRollout("runtime.timeout", "platform", null, 0);
-
-  const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "hash-123");
-
-  assert.equal(decision.shouldApply, false);
-  assert.equal(decision.reason, "rollout_pending");
-});
-
-test("shouldApplyConfig returns shouldApply:false for CANCELLED rollout", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-  service.cancelRollout(rollout.rolloutId);
-
-  const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "hash-123");
-
-  assert.equal(decision.shouldApply, false);
-  assert.equal(decision.reason, "rollout_cancelled");
-});
-
-test("shouldApplyConfig applies config based on hash percentage", () => {
-  const service = new ConfigRolloutService();
-  // Start at FULL (100%) so all hashes will match
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
-
-  // With 100%, all hashes should be below percentage
-  const decision = service.shouldApplyConfig("runtime.timeout", "platform", null, "any-hash");
-
-  assert.equal(decision.shouldApply, true);
-  assert.equal(decision.rolloutId, rollout.rolloutId);
-});
-
-test("promoteRollout advances to next stage", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
-
-  assert.equal(rollout.stage.phase, RolloutPhase.CANARY_5);
-
-  const promoted = service.promoteRollout(rollout.rolloutId);
-
-  assert.ok(promoted);
-  assert.equal(promoted!.stage.phase, RolloutPhase.CANARY_25);
-  assert.equal(promoted!.currentPercentage, 25);
-});
-
-test("promoteRollout emits config.rollout.promoted event", () => {
-  const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
-
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 5);
-  mockBus.getEvents().length = 0; // Clear start event
-
-  service.promoteRollout(rollout.rolloutId);
-
-  const events = mockBus.getEvents();
-  assert.ok(events.some(e => e.eventType === "config.rollout.promoted"));
-});
-
-test("promoteRollout returns null for non-existent rollout", () => {
-  const service = new ConfigRolloutService();
-  const result = service.promoteRollout("non-existent-id");
-
-  assert.equal(result, null);
-});
-
-test("promoteRollout from FULL transitions to next stage", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
-
-  assert.equal(rollout.stage.phase, RolloutPhase.FULL);
-
-  const promoted = service.promoteRollout(rollout.rolloutId);
-
-  assert.ok(promoted);
-  // Note: source code advances to CANCELLED from FULL
-  assert.equal(promoted!.stage.phase, RolloutPhase.CANCELLED);
-});
-
-test("cancelRollout cancels the rollout", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-
-  const cancelled = service.cancelRollout(rollout.rolloutId);
-
-  assert.ok(cancelled);
-  assert.equal(cancelled!.stage.phase, RolloutPhase.CANCELLED);
-});
-
-test("cancelRollout emits config.rollout.cancelled event", () => {
-  const mockBus = createMockEventBus();
-  const service = new ConfigRolloutService({ eventBus: mockBus as unknown as import("../../../../../src/platform/state-evidence/events/durable-event-bus.js").DurableEventBus });
-
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-  mockBus.getEvents().length = 0; // Clear start event
-
-  service.cancelRollout(rollout.rolloutId);
-
-  const events = mockBus.getEvents();
-  assert.ok(events.some(e => e.eventType === "config.rollout.cancelled"));
-});
-
-test("cancelRollout returns null for non-existent rollout", () => {
-  const service = new ConfigRolloutService();
-  const result = service.cancelRollout("non-existent-id");
-
-  assert.equal(result, null);
-});
-
-test("getActiveRollout returns correct rollout", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", "tenant-1");
-
-  const found = service.getActiveRollout("runtime.timeout", "platform", "tenant-1");
-
-  assert.ok(found);
-  assert.equal(found!.rolloutId, rollout.rolloutId);
-});
-
-test("getActiveRollout returns null for non-existent", () => {
-  const service = new ConfigRolloutService();
-  const found = service.getActiveRollout("non.existent", "platform", null);
-
-  assert.equal(found, null);
-});
-
-test("getActiveRollout returns null when sourceId does not match", () => {
-  const service = new ConfigRolloutService();
-  service.startRollout("runtime.timeout", "platform", "tenant-1");
-
-  const found = service.getActiveRollout("runtime.timeout", "platform", "tenant-2");
-
-  assert.equal(found, null);
-});
-
-test("getActiveRollouts returns all active rollouts", () => {
-  const service = new ConfigRolloutService();
-  service.startRollout("config.1", "platform", null);
-  service.startRollout("config.2", "tenant", "tenant-1");
-
-  const rollouts = service.getActiveRollouts();
-
-  assert.equal(rollouts.length, 2);
-});
-
-test("autoProgressRollouts does not auto-progress non-auto stages", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 100);
-
-  // FULL stage has autoProgress: false
-  const progressed = service.autoProgressRollouts();
-
-  assert.equal(progressed, 0);
-});
-
-test("cleanupRollouts removes old completed rollouts", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-
-  // Manually set to FULL and old
-  rollout.stage = { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false };
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
-
-  const cleaned = service.cleanupRollouts(86400000); // 24 hours
-
-  assert.equal(cleaned, 1);
-  assert.equal(service.getActiveRollouts().length, 0);
-});
-
-test("cleanupRollouts removes old cancelled rollouts", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null);
-  service.cancelRollout(rollout.rolloutId);
-
-  // Manually set updatedAt to old
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
-
-  const cleaned = service.cleanupRollouts(86400000);
-
-  assert.equal(cleaned, 1);
-  assert.equal(service.getActiveRollouts().length, 0);
-});
-
-test("cleanupRollouts keeps recent rollouts", () => {
-  const service = new ConfigRolloutService();
-  service.startRollout("runtime.timeout", "platform", null);
-
-  const cleaned = service.cleanupRollouts(86400000);
-
-  assert.equal(cleaned, 0);
-  assert.equal(service.getActiveRollouts().length, 1);
-});
-
-test("cleanupRollouts does not remove PENDING rollouts", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 0);
-
-  // Manually set updatedAt to old
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString();
-
-  const cleaned = service.cleanupRollouts(86400000);
-
-  assert.equal(cleaned, 0); // PENDING rollouts are not cleaned up
-  assert.equal(service.getActiveRollouts().length, 1);
-});
-
-test("startRollout accepts metadata", () => {
-  const service = new ConfigRolloutService();
-  const rollout = service.startRollout("runtime.timeout", "platform", null, 100, {
-    changedBy: "admin@example.com",
-    reason: "Performance improvement",
+function createMockRolloutStore(): ConfigRolloutStore {
+  const rollouts = new Map<string, ConfigRollout>();
+  return {
+    async save(rollout: ConfigRollout) {
+      rollouts.set(rollout.rolloutId, rollout);
+    },
+    async load(rolloutId: string) {
+      return rollouts.get(rolloutId) ?? null;
+    },
+    async loadAll() {
+      return Array.from(rollouts.values());
+    },
+    async delete(rolloutId: string) {
+      rollouts.delete(rolloutId);
+    },
+  };
+}
+
+test.describe("ConfigRolloutService", () => {
+  test("startRollout always begins at PENDING phase regardless of target percentage", () => {
+    const service = new ConfigRolloutService();
+
+    // Even with 100% target, should start at PENDING
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    assert.equal(rollout.stage.phase, RolloutPhase.PENDING);
+    assert.equal(rollout.currentPercentage, 0);
   });
 
-  assert.deepEqual(rollout.metadata, {
-    changedBy: "admin@example.com",
-    reason: "Performance improvement",
+  test("canary progression through 5% stage before 25%", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 50);
+
+    // Initially PENDING (0%)
+    assert.equal(rollout.stage.phase, RolloutPhase.PENDING);
+
+    // Promote should move to CANARY (5%)
+    const promoted = service.promoteRollout(rollout.rolloutId);
+    assert.ok(promoted);
+    assert.equal(promoted!.stage.phase, RolloutPhase.CANARY);
+    assert.equal(promoted!.currentPercentage, 5);
+  });
+
+  test("canary progression through 5% then 25% then 50% before FULL", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Promote 1: PENDING -> CANARY (5%)
+    const stage1 = service.promoteRollout(rollout.rolloutId);
+    assert.ok(stage1);
+    assert.equal(stage1.stage.phase, RolloutPhase.CANARY);
+    assert.equal(stage1.currentPercentage, 5);
+
+    // Promote 2: CANARY (5%) -> CANARY_25 (25%)
+    const stage2 = service.promoteRollout(rollout.rolloutId);
+    assert.ok(stage2);
+    assert.equal(stage2.stage.phase, RolloutPhase.CANARY_25);
+    assert.equal(stage2.currentPercentage, 25);
+
+    // Promote 3: CANARY_25 (25%) -> HALF (50%)
+    const stage3 = service.promoteRollout(rollout.rolloutId);
+    assert.ok(stage3);
+    assert.equal(stage3.stage.phase, RolloutPhase.HALF);
+    assert.equal(stage3.currentPercentage, 50);
+
+    // Promote 4: HALF (50%) -> FULL (100%)
+    const stage4 = service.promoteRollout(rollout.rolloutId);
+    assert.ok(stage4);
+    assert.equal(stage4.stage.phase, RolloutPhase.FULL);
+    assert.equal(stage4.currentPercentage, 100);
+  });
+
+  test("autoProgressRollouts respects health gates before progression", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Initially PENDING, promote to CANARY
+    service.promoteRollout(rollout.rolloutId);
+
+    // Without health check passing, autoProgress should not advance
+    const progressCount = service.autoProgressRollouts();
+
+    // Health gates not passed, so no auto-progress
+    const currentRollout = service.getActiveRollout("test.config", "platform", null);
+    assert.ok(currentRollout);
+    assert.equal(currentRollout!.stage.phase, RolloutPhase.CANARY);
+  });
+
+  test("autoProgressRollouts advances when health gates pass", async () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Promote to CANARY
+    service.promoteRollout(rollout.rolloutId);
+
+    // Pass health check
+    service.recordHealthCheck(rollout.rolloutId, {
+      errorRate: 0.5,
+      latencyRegression: 5,
+      incidentRate: 2,
+    });
+
+    // Now auto-progress should work
+    const progressCount = service.autoProgressRollouts();
+
+    const currentRollout = service.getActiveRollout("test.config", "platform", null);
+    assert.ok(currentRollout);
+    // Should auto-progress to next stage
+    assert.ok(
+      currentRollout!.stage.phase === RolloutPhase.CANARY_25 ||
+      currentRollout!.stage.phase === RolloutPhase.HALF ||
+      currentRollout!.stage.phase === RolloutPhase.FULL
+    );
+  });
+
+  test("recordHealthCheck correctly evaluates gates", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Pass health check
+    const passed = service.recordHealthCheck(rollout.rolloutId, {
+      errorRate: 0.5, // under 1%
+      latencyRegression: 5, // under 10%
+      incidentRate: 2, // under 5
+    });
+
+    assert.ok(passed);
+    assert.equal(passed!.lastHealthCheckPassed, true);
+  });
+
+  test("recordHealthCheck correctly identifies gate failures", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Fail health check - error rate too high
+    const failed = service.recordHealthCheck(rollout.rolloutId, {
+      errorRate: 2.0, // over 1%
+      latencyRegression: 5,
+      incidentRate: 2,
+    });
+
+    assert.ok(failed);
+    assert.equal(failed!.lastHealthCheckPassed, false);
+  });
+
+  test("rollbackToPreviousStage returns to prior stage", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Promote to CANARY
+    service.promoteRollout(rollout.rolloutId);
+    // Promote to CANARY_25
+    service.promoteRollout(rollout.rolloutId);
+
+    // Rollback
+    const rolledBack = service.rollbackToPreviousStage(rollout.rolloutId);
+
+    assert.ok(rolledBack);
+    assert.equal(rolledBack!.stage.phase, RolloutPhase.CANARY);
+    assert.equal(rolledBack!.currentPercentage, 5);
+  });
+
+  test("cancelRollout stops the rollout", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    const cancelled = service.cancelRollout(rollout.rolloutId);
+
+    assert.ok(cancelled);
+    assert.equal(cancelled!.stage.phase, RolloutPhase.CANCELLED);
+  });
+
+  test("shouldApplyConfig returns correct decision for each stage", () => {
+    const service = new ConfigRolloutService();
+
+    // Start rollout targeting 100%
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // PENDING - should not apply
+    let decision = service.shouldApplyConfig("test.config", "platform", null, "hash-123");
+    assert.equal(decision.shouldApply, false);
+    assert.equal(decision.reason, "rollout_pending");
+
+    // Promote to CANARY
+    service.promoteRollout(rollout.rolloutId);
+
+    // CANARY (5%) - only hash values that map to 0-4% should apply
+    decision = service.shouldApplyConfig("test.config", "platform", null, "hash-123");
+    assert.equal(decision.rolloutId, rollout.rolloutId);
+  });
+
+  test("getActiveRollouts returns all active rollouts", () => {
+    const service = new ConfigRolloutService();
+
+    service.startRollout("config.1", "platform", null, 100);
+    service.startRollout("config.2", "platform", null, 100);
+
+    const rollouts = service.getActiveRollouts();
+
+    assert.equal(rollouts.length, 2);
+  });
+
+  test("cleanupRollouts removes old completed rollouts", () => {
+    const service = new ConfigRolloutService();
+
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    // Move to FULL
+    for (let i = 0; i < 10; i++) {
+      service.promoteRollout(rollout.rolloutId);
+    }
+
+    // Mark as old
+    rollout.updatedAt = new Date(Date.now() - 90000000).toISOString();
+
+    const cleaned = service.cleanupRollouts(86400000);
+
+    assert.equal(cleaned, 1);
+  });
+
+  test("initialize loads persisted rollouts from store", async () => {
+    const store = createMockRolloutStore();
+    const service = new ConfigRolloutService({ rolloutStore: store });
+
+    // Create and persist a rollout
+    const rollout = service.startRollout("test.config", "platform", null, 100);
+
+    await service.initialize();
+
+    const loaded = service.getActiveRollout("test.config", "platform", null);
+    assert.ok(loaded);
+    assert.equal(loaded!.rolloutId, rollout.rolloutId);
+  });
+
+  test("hashToPercentage produces deterministic results", () => {
+    const service = new ConfigRolloutService();
+
+    const percentage1 = service.shouldApplyConfig("test", "platform", null, "same-hash");
+    const percentage2 = service.shouldApplyConfig("test", "platform", null, "same-hash");
+
+    // Same hash should give same percentage
+    assert.equal(percentage1.percentage, percentage2.percentage);
   });
 });

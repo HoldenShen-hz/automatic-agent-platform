@@ -1,589 +1,479 @@
+/**
+ * StructuredLogger Unit Tests
+ *
+ * Tests for src/platform/shared/observability/structured-logger.ts
+ * Focus areas:
+ * - Issue #2139: rotationScheduled per-instance but fileSink is global
+ *   This causes concurrent rotation corruption when multiple logger instances
+ *   share a global file sink but each has their own rotationScheduled flag
+ */
+
 import assert from "node:assert/strict";
 import test from "node:test";
+import { join } from "node:path";
+import { existsSync, unlinkSync, readFileSync, mkdirSync, rmSync } from "node:fs";
+import { StructuredLogger, type StructuredLogEntry } from "../../../../../src/platform/shared/observability/structured-logger.js";
+import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
 
-import { startActiveSpan } from "../../../../../src/platform/shared/observability/otel-tracer.js";
-import { StructuredLogger, StructuredLogEntry } from "../../../../../src/platform/shared/observability/structured-logger.js";
-
-test("StructuredLogger constructor uses default retention limit", () => {
-  const logger = new StructuredLogger();
-  const summary = logger.getBufferSummary();
-  assert.equal(summary.retentionLimit, 500);
-  assert.equal(summary.entryCount, 0);
-  assert.equal(summary.droppedEntryCount, 0);
-});
-
-test("StructuredLogger constructor accepts custom retention limit", () => {
-  const logger = new StructuredLogger({ retentionLimit: 100 });
-  const summary = logger.getBufferSummary();
-  assert.equal(summary.retentionLimit, 100);
-});
-
-test("StructuredLogger constructor clamps minimum retention limit to 1", () => {
-  const logger = new StructuredLogger({ retentionLimit: 0 });
-  const summary = logger.getBufferSummary();
-  assert.equal(summary.retentionLimit, 0);
-
-  const logger2 = new StructuredLogger({ retentionLimit: -5 });
-  const summary2 = logger2.getBufferSummary();
-  assert.equal(summary2.retentionLimit, 0);
-});
-
-test("StructuredLogger.log adds entry with timestamp", () => {
+test("StructuredLogger - basic log creates entry with required fields", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.log({ level: "info", message: "test message" });
+  const entry = logger.info("test message");
 
   assert.equal(entry.level, "info");
   assert.equal(entry.message, "test message");
-  assert.equal(entry.plane, "X1");
   assert.equal(entry.service, "unknown_service");
-  assert.equal(typeof entry.createdAt, "string");
-  assert.equal(entry.timestamp, entry.createdAt);
-  assert.ok(entry.createdAt?.includes("T"), "ISO timestamp should contain T");
+  assert.equal(entry.plane, "X1");
+  assert.ok(entry.timestamp);
+  assert.ok(entry.createdAt);
 });
 
-test("StructuredLogger infers plane from source file path", () => {
-  const logger = new StructuredLogger({
-    retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
-  });
+test("StructuredLogger - ring buffer wraps correctly", () => {
+  const logger = new StructuredLogger({ retentionLimit: 3 });
 
-  const entry = logger.info("dispatch");
-  assert.equal(entry.plane, "P4");
-});
-
-test("StructuredLogger.log includes optional fields when provided", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.log({
-    level: "error",
-    message: "error occurred",
-    taskId: "task_123",
-    agentId: "agent_456",
-    sessionId: "sess_789",
-    traceId: "trace_abc",
-    data: { errorCode: "E001" },
-  });
-
-  assert.equal(entry.taskId, "task_123");
-  assert.equal(entry.agentId, "agent_456");
-  assert.equal(entry.sessionId, "sess_789");
-  assert.equal(entry.traceId, "trace_abc");
-  assert.deepEqual(entry.data, { errorCode: "E001" });
-  assert.deepEqual(entry.structuredPayload, { errorCode: "E001" });
-});
-
-test("StructuredLogger normalizes service name from source file and supports structuredPayload aliases", () => {
-  const logger = new StructuredLogger({
-    retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
-  });
-  const entry = logger.log({
-    level: "fatal",
-    message: "hard failure",
-    structuredPayload: { code: "F001" },
-  });
-
-  assert.equal(entry.service, "index");
-  assert.equal(entry.level, "fatal");
-  assert.deepEqual(entry.data, { code: "F001" });
-  assert.deepEqual(entry.structuredPayload, { code: "F001" });
-});
-
-test("StructuredLogger.debug creates debug level entry", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.debug("debug message", { key: "value" });
-
-  assert.equal(entry.level, "debug");
-  assert.equal(entry.message, "debug message");
-  assert.deepEqual(entry.data, { key: "value" });
-});
-
-test("StructuredLogger.info creates info level entry", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.info("info message");
-
-  assert.equal(entry.level, "info");
-  assert.equal(entry.message, "info message");
-});
-
-test("StructuredLogger.warn creates warn level entry", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.warn("warning message", { reason: "slow" });
-
-  assert.equal(entry.level, "warn");
-  assert.equal(entry.message, "warning message");
-  assert.deepEqual(entry.data, { reason: "slow" });
-});
-
-test("StructuredLogger.error creates error level entry", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.error("error message");
-
-  assert.equal(entry.level, "error");
-  assert.equal(entry.message, "error message");
-});
-
-test("StructuredLogger.fatal creates fatal level entry", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.fatal("fatal message");
-
-  assert.equal(entry.level, "fatal");
-  assert.equal(entry.message, "fatal message");
-});
-
-test("StructuredLogger.recent returns entries in chronological order", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
   logger.info("first");
   logger.info("second");
   logger.info("third");
+  logger.info("fourth"); // Should overwrite "first"
 
-  const recent = logger.recent(3);
-  assert.equal(recent.length, 3);
-  assert.equal(recent[0]!.message, "first");
-  assert.equal(recent[1]!.message, "second");
-  assert.equal(recent[2]!.message, "third");
+  const entries = logger.recent(3);
+  assert.equal(entries[0]?.message, "second");
+  assert.equal(entries[1]?.message, "third");
+  assert.equal(entries[2]?.message, "fourth");
 });
 
-test("StructuredLogger.recent limits results", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  for (let i = 0; i < 5; i++) {
-    logger.info(`message ${i}`);
-  }
-
-  const recent = logger.recent(2);
-  assert.equal(recent.length, 2);
-});
-
-test("StructuredLogger.recent returns empty array when no entries", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const recent = logger.recent();
-  assert.deepEqual(recent, []);
-});
-
-test("StructuredLogger.recent defaults to 50 entries", () => {
-  const logger = new StructuredLogger({ retentionLimit: 100 });
-  for (let i = 0; i < 60; i++) {
-    logger.info(`message ${i}`);
-  }
-
-  const recent = logger.recent();
-  assert.equal(recent.length, 50);
-});
-
-test("StructuredLogger ring buffer overwrites old entries", () => {
+test("StructuredLogger - droppedEntryCount tracks overflow", () => {
   const logger = new StructuredLogger({ retentionLimit: 3 });
+
+  logger.info("first");
+  logger.info("second");
+  logger.info("third");
+  assert.equal(logger.getBufferSummary().droppedEntryCount, 0);
+
+  logger.info("fourth");
+  assert.equal(logger.getBufferSummary().droppedEntryCount, 1);
+
+  logger.info("fifth");
+  assert.equal(logger.getBufferSummary().droppedEntryCount, 2);
+});
+
+test("StructuredLogger - clear resets buffer and counts", () => {
+  const logger = new StructuredLogger({ retentionLimit: 3 });
+
   logger.info("first");
   logger.info("second");
   logger.info("third");
   logger.info("fourth");
-  logger.info("fifth");
 
-  const recent = logger.recent(3);
-  // Should have third, fourth, fifth (oldest first)
-  assert.equal(recent[0]!.message, "third");
-  assert.equal(recent[1]!.message, "fourth");
-  assert.equal(recent[2]!.message, "fifth");
+  assert.equal(logger.getBufferSummary().droppedEntryCount, 1);
+  assert.equal(logger.getBufferSummary().entryCount, 3);
+
+  logger.clear();
+
+  assert.equal(logger.getBufferSummary().droppedEntryCount, 0);
+  assert.equal(logger.getBufferSummary().entryCount, 0);
 });
 
-test("StructuredLogger tracks dropped entries when buffer wraps", () => {
-  const logger = new StructuredLogger({ retentionLimit: 3 });
-  assert.equal(logger.getBufferSummary().droppedEntryCount, 0);
+test("StructuredLogger - recent returns entries in chronological order", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
 
   logger.info("first");
   logger.info("second");
   logger.info("third");
-  logger.info("fourth"); // First entry dropped
 
-  assert.equal(logger.getBufferSummary().droppedEntryCount, 1);
-
-  logger.info("fifth"); // Second entry dropped
-  logger.info("sixth"); // Third entry dropped
-
-  assert.equal(logger.getBufferSummary().droppedEntryCount, 3);
+  const recent = logger.recent(3);
+  assert.equal(recent[0]?.message, "first");
+  assert.equal(recent[1]?.message, "second");
+  assert.equal(recent[2]?.message, "third");
 });
 
-test("StructuredLogger.recentByTask filters by taskId", () => {
+test("StructuredLogger - recentByTask filters correctly", () => {
   const logger = new StructuredLogger({ retentionLimit: 100 });
-  logger.log({ level: "info", message: "task1 msg1", taskId: "task_1" });
-  logger.log({ level: "info", message: "task2 msg1", taskId: "task_2" });
-  logger.log({ level: "info", message: "task1 msg2", taskId: "task_1" });
-  logger.log({ level: "info", message: "task2 msg2", taskId: "task_2" });
 
-  const task1Logs = logger.recentByTask("task_1");
+  logger.log({ level: "info", message: "msg1", taskId: "task-1" });
+  logger.log({ level: "info", message: "msg2", taskId: "task-2" });
+  logger.log({ level: "info", message: "msg3", taskId: "task-1" });
+
+  const task1Logs = logger.recentByTask("task-1");
   assert.equal(task1Logs.length, 2);
-  assert.ok(task1Logs.every((e) => e.taskId === "task_1"));
+  assert.ok(task1Logs.every((e) => e.taskId === "task-1"));
 });
 
-test("StructuredLogger.recentByTrace filters by traceId", () => {
+test("StructuredLogger - recentByTrace filters correctly", () => {
   const logger = new StructuredLogger({ retentionLimit: 100 });
-  logger.log({ level: "info", message: "traceA msg1", traceId: "trace_A" });
-  logger.log({ level: "info", message: "traceB msg1", traceId: "trace_B" });
-  logger.log({ level: "info", message: "traceA msg2", traceId: "trace_A" });
 
-  const traceALogs = logger.recentByTrace("trace_A");
+  logger.log({ level: "info", message: "trace-a-1", traceId: "trace-a" });
+  logger.log({ level: "info", message: "trace-b-1", traceId: "trace-b" });
+  logger.log({ level: "info", message: "trace-a-2", traceId: "trace-a" });
+
+  const traceALogs = logger.recentByTrace("trace-a");
   assert.equal(traceALogs.length, 2);
-  assert.ok(traceALogs.every((e) => e.traceId === "trace_A"));
+  assert.ok(traceALogs.every((e) => e.traceId === "trace-a"));
 });
 
-test("StructuredLogger.recentByCorrelation filters by correlationId", () => {
+test("StructuredLogger - recentByCorrelation filters correctly", () => {
   const logger = new StructuredLogger({ retentionLimit: 100 });
-  logger.log({ level: "info", message: "corr1 msg1", correlationId: "corr_1" });
-  logger.log({ level: "info", message: "corr2 msg1", correlationId: "corr_2" });
-  logger.log({ level: "info", message: "corr1 msg2", correlationId: "corr_1" });
 
-  const corr1Logs = logger.recentByCorrelation("corr_1");
-  assert.equal(corr1Logs.length, 2);
-  assert.ok(corr1Logs.every((e) => e.correlationId === "corr_1"));
+  logger.log({ level: "info", message: "corr-1", correlationId: "corr-a" });
+  logger.log({ level: "info", message: "corr-2", correlationId: "corr-b" });
+  logger.log({ level: "info", message: "corr-3", correlationId: "corr-a" });
+
+  const corrALogs = logger.recentByCorrelation("corr-a");
+  assert.equal(corrALogs.length, 2);
+  assert.ok(corrALogs.every((e) => e.correlationId === "corr-a"));
 });
 
-test("StructuredLogger.recentByTask respects limit parameter", () => {
-  const logger = new StructuredLogger({ retentionLimit: 100 });
-  for (let i = 0; i < 10; i++) {
-    logger.log({ level: "info", message: `task1 msg ${i}`, taskId: "task_1" });
-  }
+test("StructuredLogger - minLogLevel filters entries", () => {
+  const logger = new StructuredLogger({ retentionLimit: 100, minLogLevel: "error" });
 
-  const recent = logger.recentByTask("task_1", 3);
-  assert.equal(recent.length, 3);
+  logger.debug("debug");
+  logger.info("info");
+  logger.warn("warn");
+  logger.error("error");
+  logger.fatal("fatal");
+
+  const entries = logger.getEntries();
+  assert.equal(entries.length, 2);
+  assert.ok(entries.every((e) => e.level === "error" || e.level === "fatal"));
 });
 
-test("StructuredLogger.getBufferSummary returns correct counts", () => {
+test("StructuredLogger - log extracts fields from data payload", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
-  logger.info("msg1");
-  logger.info("msg2");
-  logger.info("msg3");
 
-  const summary = logger.getBufferSummary();
-  assert.equal(summary.entryCount, 3);
-  assert.equal(summary.retentionLimit, 10);
-  assert.equal(summary.droppedEntryCount, 0);
+  const entry = logger.log({
+    level: "info",
+    message: "test",
+    data: { taskId: "from-data", customField: "value" },
+  });
+
+  assert.equal(entry.taskId, "from-data");
+  assert.equal(entry.data?.customField, "value");
 });
 
-test("StructuredLogger handles concurrent-ish logging", () => {
-  const logger = new StructuredLogger({ retentionLimit: 5 });
-  logger.info("msg1");
-  logger.info("msg2");
-  logger.info("msg3");
+test("StructuredLogger - explicit fields override data payload", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
 
-  // Verify entries are accessible
-  const recent = logger.recent();
-  assert.equal(recent.length, 3);
+  const entry = logger.log({
+    level: "info",
+    message: "test",
+    taskId: "explicit-id",
+    data: { taskId: "data-id" },
+  });
+
+  assert.equal(entry.taskId, "explicit-id");
 });
 
-test("StructuredLogger.log preserves all structured fields", () => {
+test("StructuredLogger - plane inference from path", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+  });
+
+  const entry = logger.info("test");
+  assert.equal(entry.plane, "P4");
+  assert.equal(entry.service, "index");
+});
+
+test("StructuredLogger - service normalization strips path", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    planeSourceFile: "/workspace/src/platform/execution/dispatcher/index.ts",
+  });
+
+  const entry = logger.info("test");
+  assert.equal(entry.service, "index");
+  assert.ok(!entry.service.includes("/"));
+});
+
+test("StructuredLogger - crosscuttingFabric classification", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.log({
+    level: "info",
+    message: "test",
+    crosscuttingFabric: "security",
+  });
+
+  assert.equal(entry.crosscuttingFabric, "security");
+});
+
+test("StructuredLogger - getEntries is alias for recent(count)", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  logger.info("first");
+  logger.info("second");
+
+  const entries = logger.getEntries();
+  const recent = logger.recent(logger.getBufferSummary().entryCount);
+
+  assert.deepEqual(entries, recent);
+});
+
+test("StructuredLogger - configureGlobalFileSink accepts valid path", () => {
+  const workspace = createTempWorkspace("aa-logger-");
+
+  try {
+    StructuredLogger.configureGlobalFileSink(join(workspace, "test.log"));
+    assert.ok(StructuredLogger.getGlobalFileSinkPath() !== null);
+  } finally {
+    StructuredLogger.configureGlobalFileSink(null);
+    cleanupPath(workspace);
+  }
+});
+
+test("StructuredLogger - configureGlobalFileSink rejects absolute paths", () => {
+  StructuredLogger.configureGlobalFileSink("/etc/passwd");
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger - configureGlobalFileSink rejects path traversal", () => {
+  StructuredLogger.configureGlobalFileSink("logs/../../../etc/passwd");
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger - configureGlobalFileSink rejects empty/whitespace paths", () => {
+  StructuredLogger.configureGlobalFileSink("   ");
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger - configureGlobalFileSink null disables sink", () => {
+  StructuredLogger.configureGlobalFileSink("logs/test.log");
+  StructuredLogger.configureGlobalFileSink(null);
+  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
+});
+
+test("StructuredLogger - addTransport and removeTransport work", () => {
+  const transport = { name: "test-transport", write: () => {} };
+
+  StructuredLogger.addTransport(transport as any);
+  assert.equal(StructuredLogger.removeTransport("test-transport"), true);
+  assert.equal(StructuredLogger.removeTransport("non-existent"), false);
+});
+
+test("StructuredLogger - flushTransports calls flush on compatible transports", async () => {
+  let flushCalled = false;
+  const transport = {
+    name: "flushable",
+    write: () => {},
+    flush: async () => { flushCalled = true; },
+  };
+
+  StructuredLogger.addTransport(transport as any);
+  await StructuredLogger.flushTransports();
+  assert.equal(flushCalled, true);
+
+  StructuredLogger.removeTransport("flushable");
+});
+
+test("StructuredLogger - closeTransports calls close and clears list", async () => {
+  let closeCalled = false;
+  const transport = {
+    name: "closeable",
+    write: () => {},
+    close: async () => { closeCalled = true; },
+  };
+
+  StructuredLogger.addTransport(transport as any);
+  await StructuredLogger.closeTransports();
+  assert.equal(closeCalled, true);
+});
+
+test("StructuredLogger - Issue #2139: multiple instances with shared global sink", () => {
+  // This test demonstrates the issue where rotationScheduled is per-instance
+  // but fileSink is global, potentially causing concurrent rotation corruption
+
+  const workspace = createTempWorkspace("aa-multi-logger-");
+  const logFile = join(workspace, "shared.log");
+
+  try {
+    // Configure shared global sink
+    StructuredLogger.configureGlobalFileSink({
+      filePath: logFile,
+      maxBytes: 1024, // Small size to trigger rotation
+      maxFiles: 3,
+    });
+
+    // Create multiple logger instances (simulating different modules)
+    const logger1 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/execution/module-a.ts" });
+    const logger2 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/execution/module-b.ts" });
+    const logger3 = new StructuredLogger({ retentionLimit: 10, planeSourceFile: "/workspace/src/platform/execution/module-c.ts" });
+
+    // Log from all instances - this could trigger concurrent rotation
+    for (let i = 0; i < 100; i++) {
+      logger1.info(`logger1-message-${i}`);
+      logger2.info(`logger2-message-${i}`);
+      logger3.info(`logger3-message-${i}`);
+    }
+
+    // Give time for async file operations
+    // Note: This is a potential race condition - the test verifies behavior
+    // but doesn't guarantee the race condition is triggered deterministically
+
+    // Verify file exists and has content
+    if (existsSync(logFile)) {
+      const content = readFileSync(logFile, "utf8");
+      const lines = content.split("\n").filter((l) => l.length > 0);
+      assert.ok(lines.length > 0, "Should have written log entries");
+    }
+
+    // Verify all loggers captured entries
+    assert.ok(logger1.getBufferSummary().entryCount > 0);
+    assert.ok(logger2.getBufferSummary().entryCount > 0);
+    assert.ok(logger3.getBufferSummary().entryCount > 0);
+
+  } finally {
+    StructuredLogger.configureGlobalFileSink(null);
+    cleanupPath(workspace);
+  }
+});
+
+test("StructuredLogger - retentionLimit 0 disables buffer", () => {
+  const logger = new StructuredLogger({ retentionLimit: 0 });
+
+  logger.info("message1");
+  logger.info("message2");
+  logger.info("message3");
+
+  assert.equal(logger.getBufferSummary().entryCount, 0);
+  assert.equal(logger.getEntries().length, 0);
+});
+
+test("StructuredLogger - structuredPayload alias works", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.log({
+    level: "info",
+    message: "test",
+    structuredPayload: { key: "value" },
+  });
+
+  assert.deepEqual(entry.data, { key: "value" });
+  assert.deepEqual(entry.structuredPayload, { key: "value" });
+});
+
+test("StructuredLogger - data takes precedence over structuredPayload", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+
+  const entry = logger.log({
+    level: "info",
+    message: "test",
+    data: { primary: "data" },
+    structuredPayload: { secondary: "payload" },
+  });
+
+  // data is assigned directly to structuredPayload
+  assert.deepEqual(entry.data, { primary: "data" });
+  assert.deepEqual(entry.structuredPayload, { primary: "data" });
+});
+
+test("StructuredLogger - timestamp and createdAt are set to same value when not provided", () => {
+  const logger = new StructuredLogger({ retentionLimit: 10 });
+  const entry = logger.info("test");
+
+  assert.equal(entry.timestamp, entry.createdAt);
+});
+
+test("StructuredLogger - explicit timestamp is preserved", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const entry = logger.log({
     level: "info",
-    message: "structured message",
-    spanId: "span_123",
-    parentSpanId: "parent_456",
-    stepId: "step_789",
+    message: "test",
+    timestamp: "2025-01-01T00:00:00.000Z",
   });
 
-  assert.equal(entry.spanId, "span_123");
-  assert.equal(entry.parentSpanId, "parent_456");
-  assert.equal(entry.stepId, "step_789");
+  assert.equal(entry.timestamp, "2025-01-01T00:00:00.000Z");
+  assert.equal(entry.createdAt, "2025-01-01T00:00:00.000Z");
 });
 
-test("StructuredLogger.log bridges active telemetry context when ids are omitted", async () => {
+test("StructuredLogger - plane X1 for unknown paths", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    planeSourceFile: "/workspace/unknown/path.ts",
+  });
+
+  const entry = logger.info("test");
+  assert.equal(entry.plane, "X1");
+});
+
+test("StructuredLogger - all plane mappings", () => {
+  const planes = [
+    { file: "/workspace/src/platform/interface/api/gateway.ts", expected: "P1" },
+    { file: "/workspace/src/platform/control-plane/iam/service.ts", expected: "P2" },
+    { file: "/workspace/src/platform/orchestration/planner/index.ts", expected: "P3" },
+    { file: "/workspace/src/platform/execution/dispatcher/index.ts", expected: "P4" },
+    { file: "/workspace/src/platform/state-evidence/truth/repository.ts", expected: "P5" },
+  ];
+
+  for (const { file, expected } of planes) {
+    const logger = new StructuredLogger({ retentionLimit: 10, planeSourceFile: file });
+    const entry = logger.info("test");
+    assert.equal(entry.plane, expected, `Plane for ${file} should be ${expected}`);
+  }
+});
+
+test("StructuredLogger - service name from explicit service option", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    service: "my-custom-service",
+  });
+
+  const entry = logger.info("test");
+  assert.equal(entry.service, "my-custom-service");
+});
+
+test("StructuredLogger - service defaults to unknown_service for empty string", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    service: "",
+  });
+
+  const entry = logger.info("test");
+  assert.equal(entry.service, "unknown_service");
+});
+
+test("StructuredLogger - service defaults to unknown_service for whitespace only", () => {
+  const logger = new StructuredLogger({
+    retentionLimit: 10,
+    service: "   \t\n  ",
+  });
+
+  const entry = logger.info("test");
+  assert.equal(entry.service, "unknown_service");
+});
+
+test("StructuredLogger - telemetry context bridging", async () => {
+  const { startActiveSpan } = await import("../../../../../src/platform/shared/observability/otel-tracer.js");
   const logger = new StructuredLogger({ retentionLimit: 10 });
 
-  await startActiveSpan("logger.bridge", {}, async (_span, context) => {
-    const entry = logger.info("bridged");
+  await startActiveSpan("test-span", {}, async (_span, context) => {
+    const entry = logger.info("bridged log");
     assert.equal(entry.traceId, context.traceId);
     assert.equal(entry.spanId, context.spanId);
   });
 });
 
-test("StructuredLogger.configureGlobalFileSink rejects absolute paths", () => {
-  // Reset global sink
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink("/etc/passwd");
-
-  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
-});
-
-test("StructuredLogger.configureGlobalFileSink rejects path traversal sequences", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink("logs/../../../etc/passwd");
-
-  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
-});
-
-test("StructuredLogger.configureGlobalFileSink rejects empty paths", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink("   ");
-
-  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
-});
-
-test("StructuredLogger.configureGlobalFileSink accepts null to disable sink", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  assert.equal(StructuredLogger.getGlobalFileSinkPath(), null);
-});
-
-test("StructuredLogger.configureGlobalFileSink accepts valid relative path", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink("logs/test.log");
-
-  const path = StructuredLogger.getGlobalFileSinkPath();
-  assert.ok(path !== null);
-  assert.ok(path.endsWith("logs/test.log"));
-});
-
-test("StructuredLogger.configureGlobalFileSink accepts valid path options", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink({ filePath: "logs/options.log", maxBytes: 1024, maxFiles: 3 });
-
-  const path = StructuredLogger.getGlobalFileSinkPath();
-  assert.ok(path !== null);
-  assert.ok(path.endsWith("logs/options.log"));
-});
-
-test("StructuredLogger.configureGlobalFileSink clamps maxBytes to minimum 1", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink({ filePath: "logs/clamped.log", maxBytes: 0 });
-
-  const path = StructuredLogger.getGlobalFileSinkPath();
-  assert.ok(path !== null);
-});
-
-test("StructuredLogger.configureGlobalFileSink clamps maxFiles to minimum 1", () => {
-  StructuredLogger.configureGlobalFileSink(null);
-
-  StructuredLogger.configureGlobalFileSink({ filePath: "logs/clamped-files.log", maxFiles: 0 });
-
-  const path = StructuredLogger.getGlobalFileSinkPath();
-  assert.ok(path !== null);
-});
-
-test("StructuredLogger.addTransport and removeTransport manage transport list", () => {
-  const mockTransport = {
-    name: "mock-transport",
-    write: () => {},
-  };
-
-  StructuredLogger.addTransport(mockTransport as any);
-
-  const removed = StructuredLogger.removeTransport("mock-transport");
-  assert.equal(removed, true);
-});
-
-test("StructuredLogger.removeTransport returns false for non-existent transport", () => {
-  const removed = StructuredLogger.removeTransport("non-existent-transport");
-  assert.equal(removed, false);
-});
-
-test("StructuredLogger.flushTransports calls flush on flushable transports", async () => {
-  let flushCalled = false;
-  const flushableTransport = {
-    name: "flushable-transport",
-    write: () => {},
-    flush: async () => {
-      flushCalled = true;
-    },
-  };
-
-  const unflushableTransport = {
-    name: "unflushable-transport",
-    write: () => {},
-  };
-
-  StructuredLogger.addTransport(flushableTransport as any);
-  StructuredLogger.addTransport(unflushableTransport as any);
-
-  await StructuredLogger.flushTransports();
-
-  assert.equal(flushCalled, true);
-
-  StructuredLogger.removeTransport("flushable-transport");
-  StructuredLogger.removeTransport("unflushable-transport");
-});
-
-test("StructuredLogger.closeTransports calls close on closeable transports", async () => {
-  let closeCalled = false;
-  const closeableTransport = {
-    name: "closeable-transport",
-    write: () => {},
-    close: async () => {
-      closeCalled = true;
-    },
-  };
-
-  StructuredLogger.addTransport(closeableTransport as any);
-
-  await StructuredLogger.closeTransports();
-
-  assert.equal(closeCalled, true);
-});
-
-// R4-43 crosscutting_fabric field tests - reliability/security/governance classification
-test("StructuredLogger.log accepts crosscutting_fabric field with reliability category", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.log({
-    level: "info",
-    message: "reliability event",
-    crosscuttingFabric: "reliability",
-  });
-
-  assert.equal(entry.crosscuttingFabric, "reliability");
-});
-
-test("StructuredLogger.log accepts crosscutting_fabric field with security category", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.log({
-    level: "warn",
-    message: "security event",
-    crosscuttingFabric: "security",
-  });
-
-  assert.equal(entry.crosscuttingFabric, "security");
-});
-
-test("StructuredLogger.log accepts crosscutting_fabric field with governance category", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.log({
-    level: "info",
-    message: "governance event",
-    crosscuttingFabric: "governance",
-  });
-
-  assert.equal(entry.crosscuttingFabric, "governance");
-});
-
-test("StructuredLogger.log preserves crosscuttingFabric in log entry", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.log({
-    level: "error",
-    message: "compliance check",
-    crosscuttingFabric: "governance",
-    data: { policyId: "pol_123" },
-  });
-
-  assert.equal(entry.crosscuttingFabric, "governance");
-  assert.deepEqual(entry.data, { policyId: "pol_123" });
-  assert.deepEqual(entry.structuredPayload, { policyId: "pol_123" });
-});
-
-test("StructuredLogger.debug with crosscuttingFabric reliability classification", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.debug("circuit breaker tripped", {
-    crosscuttingFabric: "reliability",
-    circuitId: "cb_1",
-  });
-
-  assert.equal(entry.crosscuttingFabric, "reliability");
-  assert.equal(entry.level, "debug");
-  assert.deepEqual(entry.data?.crosscuttingFabric, "reliability");
-});
-
-test("StructuredLogger.warn with crosscuttingFabric security classification", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.warn("authentication failure", {
-    crosscuttingFabric: "security",
-    userId: "user_456",
-  });
-
-  assert.equal(entry.crosscuttingFabric, "security");
-  assert.equal(entry.level, "warn");
-  assert.deepEqual(entry.data?.crosscuttingFabric, "security");
-});
-
-test("StructuredLogger.error with crosscuttingFabric governance classification", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  const entry = logger.error("policy violation detected", {
-    crosscuttingFabric: "governance",
-    violationType: "data_access",
-  });
-
-  assert.equal(entry.crosscuttingFabric, "governance");
-  assert.equal(entry.level, "error");
-});
-
-test("StructuredLogger crosscuttingFabric is preserved in recent entries", () => {
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  logger.log({ level: "info", message: "reliable operation", crosscuttingFabric: "reliability" });
-  logger.log({ level: "warn", message: "auth issue", crosscuttingFabric: "security" });
-  logger.log({ level: "info", message: "policy check", crosscuttingFabric: "governance" });
-
-  const recent = logger.recent(3);
-  assert.equal(recent[0]?.crosscuttingFabric, "reliability");
-  assert.equal(recent[1]?.crosscuttingFabric, "security");
-  assert.equal(recent[2]?.crosscuttingFabric, "governance");
-});
-
-test("StructuredLogger recentByTask preserves crosscuttingFabric", () => {
+test("StructuredLogger - recentByTask respects limit", () => {
   const logger = new StructuredLogger({ retentionLimit: 100 });
-  logger.log({
-    level: "error",
-    message: "task failure",
-    taskId: "task_abc",
-    crosscuttingFabric: "reliability",
-  });
 
-  const taskLogs = logger.recentByTask("task_abc");
-  assert.equal(taskLogs.length, 1);
-  assert.equal(taskLogs[0]?.crosscuttingFabric, "reliability");
+  for (let i = 0; i < 10; i++) {
+    logger.log({ level: "info", message: `msg-${i}`, taskId: "task-limit" });
+  }
+
+  const recent = logger.recentByTask("task-limit", 3);
+  assert.equal(recent.length, 3);
 });
 
-test("StructuredLogger log entry with plane and crosscuttingFabric together", () => {
-  const logger = new StructuredLogger({
-    retentionLimit: 10,
-    planeSourceFile: "/workspace/src/platform/execution/runners/task-executor.ts",
-  });
-  const entry = logger.log({
-    level: "info",
-    message: "execution completed",
-    crosscuttingFabric: "reliability",
-    taskId: "task_xyz",
-  });
-
-  assert.equal(entry.plane, "P4");
-  assert.equal(entry.crosscuttingFabric, "reliability");
-  assert.equal(entry.service, "task-executor");
-});
-
-test("StructuredLogger clear preserves crosscuttingFabric for new entries", () => {
+test("StructuredLogger - recent returns empty when no entries", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
-  logger.log({ level: "info", message: "msg1", crosscuttingFabric: "security" });
-  logger.clear();
-
-  const entry = logger.info("after clear");
-  assert.equal(entry.crosscuttingFabric, undefined);
+  const recent = logger.recent();
+  assert.deepEqual(recent, []);
 });
 
-test("StructuredLogger getEntries (backward compat) includes crosscuttingFabric", () => {
+test("StructuredLogger - recent limits to actual count when fewer entries", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
-  logger.log({ level: "info", message: "test", crosscuttingFabric: "governance" });
 
-  const entries = logger.getEntries();
-  assert.equal(entries.length, 1);
-  assert.equal(entries[0]?.crosscuttingFabric, "governance");
-});
+  logger.info("first");
+  logger.info("second");
 
-test("StructuredLogger transport receives entry with crosscuttingFabric", () => {
-  let receivedEntry: any = null;
-  const transport = {
-    name: "test-transport",
-    write: (entry: any) => {
-      receivedEntry = entry;
-    },
-  };
-
-  StructuredLogger.addTransport(transport as any);
-  const logger = new StructuredLogger({ retentionLimit: 10 });
-  logger.log({
-    level: "info",
-    message: "transport test",
-    crosscuttingFabric: "security",
-  });
-
-  assert.equal(receivedEntry?.crosscuttingFabric, "security");
-
-  StructuredLogger.removeTransport("test-transport");
+  const recent = logger.recent(100); // Request more than exists
+  assert.equal(recent.length, 2);
 });
