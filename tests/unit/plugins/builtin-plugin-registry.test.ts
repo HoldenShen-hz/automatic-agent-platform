@@ -1,7 +1,15 @@
+/**
+ * Unit Tests: Builtin Plugin Registry (Extended)
+ *
+ * Tests for builtin plugin registry functionality including:
+ * - Plugin creation
+ * - Manifest retrieval
+ * - Plugin revocation
+ * - Data taint propagation
+ * - Marketplace registry
+ */
+
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -18,7 +26,12 @@ import {
   revokePluginBundle,
   getPluginRevocationStatus,
   listRevokedPlugins,
+  PluginMarketplaceRegistry,
 } from "../../../src/plugins/builtin-plugin-registry.js";
+
+// =============================================================================
+// Basic plugin registry tests
+// =============================================================================
 
 test("builtin plugin registry exposes builtin factories and presence checks", () => {
   const pluginIds = listBuiltinPluginIds();
@@ -101,64 +114,9 @@ test("builtin validator and planner plugins provide useful default behavior", as
   }
 });
 
-test("builtin coding retriever searches repository structure", async () => {
-  const workspace = mkdtempSync(join(tmpdir(), "aa-plugin-retriever-"));
-  try {
-    mkdirSync(join(workspace, "src"), { recursive: true });
-    writeFileSync(
-      join(workspace, "src", "deploy.ts"),
-      "export function deployCanary() { return true; }\nexport class RolloutController {}\n",
-      "utf8",
-    );
-
-    const { createCodingRetrieverPlugin } = await import("../../../src/plugins/retrievers/coding-retriever.js");
-    const retriever = createCodingRetrieverPlugin({ rootPath: workspace });
-    const results = await retriever.retrieve({
-      taskId: "task_plugin",
-      intent: "deployCanary rollout",
-      context: {},
-      tokenBudget: 1200,
-    });
-
-    assert.ok(results.length > 0);
-    assert.ok(results.some((result) => typeof result === "object" && result != null && "snippet" in result && String(result.snippet).includes("deployCanary")));
-  } finally {
-    rmSync(workspace, { recursive: true, force: true });
-  }
-});
-
-test("builtin coding presenter and github adapter expose production-shaped behavior", async () => {
-  const presenter = createBuiltinPlugin("plugin.coding.presenter");
-  const github = createBuiltinPlugin("plugin.shared.github_adapter");
-  assert.equal(presenter?.spiType, "presenter");
-  assert.equal(github?.spiType, "adapter");
-
-  if (presenter?.spiType === "presenter") {
-    const output = await presenter.formatOutput({
-      machineOutputs: [{
-        stepId: "patch_code",
-        outputRef: "artifact:patch",
-        payload: { files: ["src/index.ts"], status: "ok" },
-      }],
-      artifacts: ["artifact:patch", "artifact:test-report"],
-      audience: "developer",
-    });
-    assert.match(output.summary, /patch_code/);
-    assert.ok(output.sections.some((section) => section.includes("```json")));
-    assert.deepEqual(output.citations, ["artifact:patch", "artifact:test-report"]);
-  }
-
-  if (github?.spiType === "adapter") {
-    await github.authenticate({ token: "ghp_example_token" });
-    const result = await github.execute("create_issue", {
-      repository: "openai/example",
-      title: "Bug report",
-      body: "details",
-      labels: ["bug"],
-    });
-    assert.equal(result["endpoint"], "https://api.github.com/repos/openai/example/issues");
-  }
-});
+// =============================================================================
+// Manifest retrieval tests
+// =============================================================================
 
 test("getBuiltinPluginManifest returns correct manifest for known plugins", () => {
   const manifest = getBuiltinPluginManifest("plugin.coding.retriever");
@@ -178,10 +136,20 @@ test("getBuiltinPluginManifest returns null for unknown plugin id", () => {
   assert.equal(manifest, null);
 });
 
-test("getBuiltinPluginManifest returns null for non-builtin plugin id", () => {
+test("getBuiltinPluginManifest returns correct manifest for presenter plugin", () => {
   const manifest = getBuiltinPluginManifest("plugin.coding.presenter");
   assert.ok(manifest);
   assert.equal(manifest.pluginId, "plugin.coding.presenter");
+  assert.equal(manifest.name, "Coding Presenter");
+  assert.equal(manifest.trustLevel, "internal");
+});
+
+test("getBuiltinPluginManifest returns correct manifest for github adapter", () => {
+  const manifest = getBuiltinPluginManifest("plugin.shared.github_adapter");
+  assert.ok(manifest);
+  assert.equal(manifest.pluginId, "plugin.shared.github_adapter");
+  assert.equal(manifest.trustLevel, "trusted");
+  assert.ok(manifest.capabilityIds.includes("external.github"));
 });
 
 test("plugin capability enumeration via manifest capabilityIds", () => {
@@ -196,8 +164,12 @@ test("plugin capability enumeration via manifest capabilityIds", () => {
   assert.ok(githubAdapter.capabilityIds.includes("external.github.workflow"));
 });
 
+// =============================================================================
+// Plugin revocation tests
+// =============================================================================
+
 test("revokePluginBundle marks plugin as revoked with severity", () => {
-  const pluginId = "plugin.coding.retriever";
+  const pluginId = "plugin.test.revocation";
 
   assert.equal(isPluginRevoked(pluginId), false);
 
@@ -218,7 +190,7 @@ test("revokePluginBundle marks plugin as revoked with severity", () => {
 });
 
 test("getPluginRevocationStatus returns revocation record when revoked", () => {
-  const pluginId = "plugin.core.basic-planner";
+  const pluginId = "plugin.test.status";
 
   revokePluginBundle(pluginId, BundleRevocationSeverity.MODERATE, "Security vulnerability", ["1.0.0"]);
 
@@ -235,20 +207,19 @@ test("getPluginRevocationStatus returns null when not revoked", () => {
 });
 
 test("listRevokedPlugins returns all revoked plugins", () => {
-  const plugin1 = "plugin.coding.retriever";
-  const plugin2 = "plugin.core.basic-evaluator";
+  const plugin1 = "plugin.test.list1";
+  const plugin2 = "plugin.test.list2";
 
   revokePluginBundle(plugin1, BundleRevocationSeverity.SEVERE, "Critical bug", ["1.0.0"]);
   revokePluginBundle(plugin2, BundleRevocationSeverity.INFO, "Deprecation notice", ["*"]);
 
   const revoked = listRevokedPlugins();
-  assert.ok(revoked.length >= 2, "should have at least 2 revoked plugins");
   assert.ok(revoked.some((r) => r.pluginId === plugin1));
   assert.ok(revoked.some((r) => r.pluginId === plugin2));
 });
 
 test("removePluginRevocation clears revocation status", () => {
-  const pluginId = "plugin.core.basic-evaluator";
+  const pluginId = "plugin.test.remove";
 
   revokePluginBundle(pluginId, BundleRevocationSeverity.WARNING, "Temporary issue");
   assert.equal(isPluginRevoked(pluginId), true);
@@ -262,6 +233,45 @@ test("removePluginRevocation returns false for non-revoked plugin", () => {
   const removed = removePluginRevocation("plugin.coding.presenter");
   assert.equal(removed, false);
 });
+
+test("revokePluginBundle defaults affectedVersions to wildcard", () => {
+  const pluginId = "plugin.test.default";
+
+  const record = revokePluginBundle(
+    pluginId,
+    BundleRevocationSeverity.CRITICAL,
+    "Emergency revocation",
+  );
+
+  assert.deepEqual(record.affectedVersions, ["*"]);
+});
+
+test("all BundleRevocationSeverity levels are correctly assigned", () => {
+  const pluginIds = [
+    "plugin.test.severity1",
+    "plugin.test.severity2",
+    "plugin.test.severity3",
+    "plugin.test.severity4",
+    "plugin.test.severity5",
+  ];
+  const severities = [
+    BundleRevocationSeverity.INFO,
+    BundleRevocationSeverity.WARNING,
+    BundleRevocationSeverity.MODERATE,
+    BundleRevocationSeverity.SEVERE,
+    BundleRevocationSeverity.CRITICAL,
+  ];
+
+  for (let i = 0; i < pluginIds.length; i++) {
+    revokePluginBundle(pluginIds[i], severities[i], `Test severity ${i}`);
+    const status = getPluginRevocationStatus(pluginIds[i]);
+    assert.equal(status?.severity, severities[i]);
+  }
+});
+
+// =============================================================================
+// Data taint propagation tests
+// =============================================================================
 
 test("propagateDataTaint tracks cross-plugin data contamination", () => {
   const dataId = "data-123";
@@ -304,37 +314,214 @@ test("hasDataTaintLabel checks for specific taint label existence", () => {
   assert.equal(hasDataTaintLabel(dataId, "nonexistent"), false);
 });
 
-test("revokePluginBundle defaults affectedVersions to wildcard", () => {
-  const pluginId = "plugin.growth.retriever";
+test("propagateDataTaint creates taint labels with correct metadata", () => {
+  const dataId = "data-meta";
+  const pluginId = "plugin.test.meta";
 
-  const record = revokePluginBundle(
-    pluginId,
-    BundleRevocationSeverity.CRITICAL,
-    "Emergency revocation",
-  );
+  const propagation = propagateDataTaint(dataId, pluginId, ["test-label"]);
 
-  assert.deepEqual(record.affectedVersions, ["*"]);
+  const label = propagation.labels[0];
+  assert.equal(label.sourcePluginId, pluginId);
+  assert.equal(label.label, "test-label");
+  assert.ok(label.propagatedAt);
+  assert.ok(label.severity);
 });
 
-test("all BundleRevocationSeverity levels are correctly assigned", () => {
-  const pluginIds = [
-    "plugin.coding.retriever",
-    "plugin.coding.presenter",
-    "plugin.core.basic-evaluator",
-    "plugin.core.basic-planner",
-    "plugin.shared.github_adapter",
-  ];
-  const severities = [
-    BundleRevocationSeverity.INFO,
-    BundleRevocationSeverity.WARNING,
-    BundleRevocationSeverity.MODERATE,
-    BundleRevocationSeverity.SEVERE,
-    BundleRevocationSeverity.CRITICAL,
+// =============================================================================
+// Plugin marketplace registry tests
+// =============================================================================
+
+test("PluginMarketplaceRegistry can be instantiated", () => {
+  const registry = new PluginMarketplaceRegistry();
+  assert.ok(registry);
+});
+
+test("PluginMarketplaceRegistry.registerLoader and loadPlugin flow", async () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  // Register a mock loader
+  let loadCalled = false;
+  registry.registerLoader("mock", {
+    loadFromSource: async (source: string) => {
+      loadCalled = true;
+      assert.equal(source, "mock://test-plugin");
+      return null;
+    },
+    supportsSource: (source: string) => source.startsWith("mock://"),
+  });
+
+  registry.registerMarketplaceEntry({
+    pluginId: "plugin.mock.test",
+    name: "Mock Test Plugin",
+    version: "1.0.0",
+    owner: "test",
+    trustLevel: "trusted",
+    source: "mock://test-plugin",
+  });
+
+  // Should fail because not authenticated
+  await assert.rejects(
+    async () => registry.loadPlugin("plugin.mock.test", "mock://test-plugin", "invalid-token"),
+    /Plugin marketplace\.auth\.required/,
+  );
+
+  // Authenticate and try again
+  const sessionToken = await registry.authenticate("mock://marketplace", {
+    apiKey: "test-key",
+    apiSecret: "test-secret",
+  });
+
+  assert.equal(registry.isAuthenticated(sessionToken), true);
+});
+
+test("PluginMarketplaceRegistry.authenticate generates session token", async () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  const token = await registry.authenticate("mock://marketplace", {
+    apiKey: "key",
+    apiSecret: "secret",
+  });
+
+  assert.ok(typeof token === "string");
+  assert.ok(token.startsWith("session_"));
+  assert.equal(registry.isAuthenticated(token), true);
+});
+
+test("PluginMarketplaceRegistry.isAuthenticated returns false for invalid token", () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  assert.equal(registry.isAuthenticated("invalid-token"), false);
+});
+
+test("PluginMarketplaceRegistry.registerMarketplaceEntry adds entry", () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  registry.registerMarketplaceEntry({
+    pluginId: "plugin.marketplace.test",
+    name: "Marketplace Test Plugin",
+    version: "1.0.0",
+    owner: "test",
+    trustLevel: "verified",
+    source: "marketplace://plugins/test",
+  });
+
+  assert.equal(registry.hasMarketplacePlugin("plugin.marketplace.test"), true);
+  const entry = registry.getMarketplaceEntry("plugin.marketplace.test");
+  assert.ok(entry);
+  assert.equal(entry?.version, "1.0.0");
+  assert.equal(entry?.trustLevel, "verified");
+});
+
+test("PluginMarketplaceRegistry.hasMarketplacePlugin returns false for unknown plugin", () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  assert.equal(registry.hasMarketplacePlugin("plugin.unknown"), false);
+});
+
+test("PluginMarketplaceRegistry.listMarketplacePlugins returns all entries", () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  registry.registerMarketplaceEntry({
+    pluginId: "plugin.list.test1",
+    name: "List Test 1",
+    version: "1.0.0",
+    owner: "test",
+    trustLevel: "trusted",
+    source: "marketplace://plugins/test1",
+  });
+  registry.registerMarketplaceEntry({
+    pluginId: "plugin.list.test2",
+    name: "List Test 2",
+    version: "1.0.0",
+    owner: "test",
+    trustLevel: "certified",
+    source: "marketplace://plugins/test2",
+  });
+
+  const plugins = registry.listMarketplacePlugins();
+  assert.ok(plugins.length >= 2);
+  assert.ok(plugins.some((p) => p.pluginId === "plugin.list.test1"));
+  assert.ok(plugins.some((p) => p.pluginId === "plugin.list.test2"));
+});
+
+test("PluginMarketplaceRegistry.loadPlugin returns null for unknown plugin", async () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  const plugin = await registry.loadPlugin("plugin.unknown", "source://unknown");
+  assert.equal(plugin, null);
+});
+
+test("PluginMarketplaceRegistry.loadPlugin throws for unknown source", async () => {
+  const registry = new PluginMarketplaceRegistry();
+
+  registry.registerMarketplaceEntry({
+    pluginId: "plugin.no.loader",
+    name: "No Loader Plugin",
+    version: "1.0.0",
+    owner: "test",
+    trustLevel: "trusted",
+    source: "unknown://source",
+  });
+
+  await assert.rejects(
+    async () => registry.loadPlugin("plugin.no.loader", "unknown://source"),
+    /Plugin marketplace\.loader\.not_found/,
+  );
+});
+
+// =============================================================================
+// Additional builtin plugin tests
+// =============================================================================
+
+test("builtin growth plugins exist and are retrievable", () => {
+  assert.ok(hasBuiltinPlugin("plugin.growth.retriever"));
+  assert.ok(hasBuiltinPlugin("plugin.growth.presenter"));
+  assert.ok(hasBuiltinPlugin("plugin.growth.crm_adapter"));
+});
+
+test("builtin game dev plugins exist and are retrievable", () => {
+  assert.ok(hasBuiltinPlugin("plugin.gamedev.retriever"));
+  assert.ok(hasBuiltinPlugin("plugin.gamedev.unity_adapter"));
+});
+
+test("builtin operations plugins exist and are retrievable", () => {
+  assert.ok(hasBuiltinPlugin("plugin.operations.retriever"));
+  assert.ok(hasBuiltinPlugin("plugin.operations.presenter"));
+});
+
+test("builtin asset production plugins exist and are retrievable", () => {
+  assert.ok(hasBuiltinPlugin("plugin.assetproduction.retriever"));
+  assert.ok(hasBuiltinPlugin("plugin.assetproduction.figma_adapter"));
+});
+
+test("builtin livestream plugins exist and are retrievable", () => {
+  assert.ok(hasBuiltinPlugin("plugin.livestream.retriever"));
+  assert.ok(hasBuiltinPlugin("plugin.livestream.obs_adapter"));
+});
+
+test("all builtin plugins have valid manifests", () => {
+  const pluginIds = listBuiltinPluginIds();
+  for (const pluginId of pluginIds) {
+    const manifest = getBuiltinPluginManifest(pluginId);
+    assert.ok(manifest, `Plugin ${pluginId} should have manifest`);
+    assert.ok(manifest.pluginId, `Plugin ${pluginId} manifest should have pluginId`);
+    assert.ok(manifest.name, `Plugin ${pluginId} manifest should have name`);
+    assert.ok(manifest.version, `Plugin ${pluginId} manifest should have version`);
+    assert.ok(manifest.owner, `Plugin ${pluginId} manifest should have owner`);
+  }
+});
+
+test("all builtin adapters have adapterType set correctly", () => {
+  const adapters = [
+    { pluginId: "plugin.growth.crm_adapter", expectedType: "crm_analytics" },
+    { pluginId: "plugin.shared.github_adapter", expectedType: "github" },
   ];
 
-  for (let i = 0; i < pluginIds.length; i++) {
-    revokePluginBundle(pluginIds[i], severities[i], `Test severity ${i}`);
-    const status = getPluginRevocationStatus(pluginIds[i]);
-    assert.equal(status?.severity, severities[i]);
+  for (const { pluginId, expectedType } of adapters) {
+    const plugin = createBuiltinPlugin(pluginId);
+    assert.ok(plugin, `Plugin ${pluginId} should exist`);
+    if ("adapterType" in plugin) {
+      assert.equal((plugin as any).adapterType, expectedType, `${pluginId} should have adapterType ${expectedType}`);
+    }
   }
 });

@@ -180,3 +180,110 @@ test("PromptRolloutService rejects invalid status transitions", () => {
     );
   }
 });
+
+test("PromptRolloutService full lifecycle integration", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+  const template = createTemplate(registry, "lifecycle_test");
+
+  // Create rollout
+  const created = rollout.createRollout({
+    template,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  assert.ok(["canary_5", "canary_20", "blocked"].includes(created.status));
+
+  if (created.status !== "blocked") {
+    // Advance to next stage
+    const activated1 = rollout.activateRollout(created.rolloutId);
+    assert.ok(["canary_20", "stable"].includes(activated1.status));
+
+    if (activated1.status === "canary_20") {
+      // Advance to stable
+      const activated2 = rollout.activateRollout(activated1.rolloutId);
+      assert.equal(activated2.status, "stable");
+    }
+  }
+});
+
+test("PromptRolloutService mode types work correctly", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+
+  const modes: Array<"off" | "suggest" | "shadow"> = ["off", "suggest", "shadow"];
+
+  for (const mode of modes) {
+    const template = createTemplate(registry, `mode_${mode}_integration`);
+    const record = rollout.createRollout({
+      template,
+      mode,
+      owner: "test@example.com",
+      regressionSuiteId: "suite_1",
+      regressionPassed: true,
+      domainBlockCompatible: true,
+    });
+
+    assert.equal(record.mode, mode);
+  }
+});
+
+test("PromptRolloutService listRollouts filter works", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+
+  createTemplate(registry, "filter_template_a");
+  createTemplate(registry, "filter_template_b");
+
+  rollout.createRollout({
+    template: registry.getTemplate("filter_template_a")!,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  rollout.createRollout({
+    template: registry.getTemplate("filter_template_b")!,
+    mode: "shadow",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  const all = rollout.listRollouts();
+  assert.equal(all.length, 2);
+
+  const filtered = rollout.listRollouts("filter_template_a");
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0]?.templateKey, "filter_template_a");
+});
+
+test("PromptRolloutService rollback reason is preserved", () => {
+  const registry = new PromptTemplateRegistryService();
+  const rollout = new PromptRolloutService();
+  const template = createTemplate(registry, "rollback_reason_test");
+
+  const record = rollout.createRollout({
+    template,
+    mode: "suggest",
+    owner: "test@example.com",
+    regressionSuiteId: "suite_1",
+    regressionPassed: true,
+    domainBlockCompatible: true,
+  });
+
+  if (record.status !== "blocked") {
+    const rollbackReason = "customerReportedIssue";
+    const rolledBack = rollout.rollbackRollout(record.rolloutId, rollbackReason);
+
+    assert.equal(rolledBack.guardrailSummary, rollbackReason);
+    assert.equal(rolledBack.status, "rolled_back");
+  }
+});

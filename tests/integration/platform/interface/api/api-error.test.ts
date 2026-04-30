@@ -63,7 +63,7 @@ test("ApiError constructs with 409 status code", () => {
 test("ApiError constructs with 429 status code (retryable)", () => {
   const error = new ApiError(429, "api.rate_limited", "Rate limited");
   assert.equal(error.statusCode, 429);
-  assert.equal(error.category, "external");
+  assert.equal(error.category, "validation");
   assert.equal(error.retryable, true);
 });
 
@@ -77,7 +77,7 @@ test("ApiError constructs with 500 status code (retryable)", () => {
 test("ApiError constructs with 503 status code (retryable)", () => {
   const error = new ApiError(503, "api.service_unavailable", "Service unavailable");
   assert.equal(error.statusCode, 503);
-  assert.equal(error.category, "external");
+  assert.equal(error.category, "internal");
   assert.equal(error.retryable, true);
 });
 

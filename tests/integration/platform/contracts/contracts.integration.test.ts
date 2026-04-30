@@ -366,11 +366,11 @@ test("contracts-integration: NodeAttemptReceipt references NodeRun and HarnessRu
 // Re-export Consistency Tests
 // =============================================================================
 
-test("contracts-integration: PlanGraphBundle re-exported from execution-plan", () => {
-  // The execution-plan module re-exports PlanGraphBundle from executable-contracts
-  const { createPlanGraphBundle: epCreatePlanGraphBundle, type PlanGraphBundle } = contracts;
+test("contracts-integration: PlanGraphBundle re-exported from executable-contracts", () => {
+  // The contracts barrel re-exports executableContracts which contains PlanGraphBundle
+  const { createPlanGraphBundle } = contracts.executableContracts;
 
-  const bundle = epCreatePlanGraphBundle({
+  const bundle = createPlanGraphBundle({
     harnessRunId: "hrun_reexport",
     graph: createMinimalGraph(),
     schedulerPolicy: {
@@ -385,15 +385,16 @@ test("contracts-integration: PlanGraphBundle re-exported from execution-plan", (
   });
 
   assert.ok(bundle.planGraphBundleId.startsWith("pgb_"));
-  const _unused: PlanGraphBundle | undefined = bundle; // Type check
+  // Verify structure matches PlanGraphBundle shape
+  assert.ok(typeof bundle.planGraphBundleId === "string");
+  assert.ok(typeof bundle.harnessRunId === "string");
 });
 
-test("contracts-integration: NodeAttemptReceipt re-exported from execution-receipt", () => {
-  // The execution-receipt module re-exports NodeAttemptReceipt from executable-contracts
-  const { createNodeAttemptReceipt: erCreateNodeAttemptReceipt, type NodeAttemptReceipt } =
-    contracts;
+test("contracts-integration: NodeAttemptReceipt re-exported from executable-contracts", () => {
+  // The contracts barrel re-exports executableContracts which contains NodeAttemptReceipt
+  const { createNodeAttemptReceipt } = contracts.executableContracts;
 
-  const receipt = erCreateNodeAttemptReceipt({
+  const receipt = createNodeAttemptReceipt({
     nodeAttemptId: "nattempt_reexport",
     nodeRunId: "nrun_reexport",
     harnessRunId: "hrun_reexport",
@@ -411,7 +412,10 @@ test("contracts-integration: NodeAttemptReceipt re-exported from execution-recei
   });
 
   assert.ok(receipt.nodeAttemptReceiptId.startsWith("nreceipt_"));
-  const _unused: NodeAttemptReceipt | undefined = receipt; // Type check
+  // Verify structure matches NodeAttemptReceipt shape
+  assert.ok(typeof receipt.nodeAttemptReceiptId === "string");
+  assert.ok(typeof receipt.nodeRunId === "string");
+  assert.ok(receipt.error);
 });
 
 // =============================================================================
