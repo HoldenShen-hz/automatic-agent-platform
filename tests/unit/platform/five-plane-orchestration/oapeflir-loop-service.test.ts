@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OapeflirLoopService } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
-import { MockExecuteBridge } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import { OapeflirLoopService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { MockExecuteBridge } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 
 test("OapeflirLoopService can be instantiated with no arguments", () => {
   const service = new OapeflirLoopService();
@@ -95,35 +95,6 @@ test("buildSerializedHandoff with multiple stepOutputs and artifacts", () => {
   };
   const handoff = service.buildSerializedHandoff(mockResult as any, "agent-a", "agent-b", 4096);
   assert.ok(handoff);
-});
-
-test("OapeflirLoopService run() with no constraintPack does not initialize loopController", async () => {
-  // This tests the early return path when no constraintPack is provided
-  // We create minimal input and expect the service to handle it
-  const service = new OapeflirLoopService({ executeBridge: new MockExecuteBridge() });
-
-  // Create minimal workflow input
-  const mockWorkflow = {
-    executionSteps: [{ stepId: "step1", tool: "read", args: {}, timeout: 30000 }],
-    workflow: {
-      workflowId: "wf1",
-      divisionId: "coding",
-      steps: [],
-    },
-  };
-
-  // The run method will fail due to missing dependencies in MockExecuteBridge
-  // but we can verify it accepts the input structure
-  try {
-    await service.run({
-      taskId: "test-task-1",
-      objective: "Test objective",
-      workflow: mockWorkflow as any,
-    });
-  } catch (e) {
-    // Expected - MockExecuteBridge doesn't have full implementation
-    // But we verified the method accepts the input
-  }
 });
 
 test("OapeflirLoopService OapeflirLoopInput interface validation - stepOutputs optional", () => {

@@ -138,6 +138,7 @@ test("executable-contracts: createTaskDraft creates valid task draft", () => {
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "coding",
     normalizedIntent: { goal: "test goal" },
     riskPreview,
   });
@@ -146,6 +147,7 @@ test("executable-contracts: createTaskDraft creates valid task draft", () => {
   assert.equal(draft.tenantId, "tenant-1");
   assert.equal(draft.principal, principal);
   assert.equal(draft.source, "nl");
+  assert.equal(draft.domainId, "coding");
   assert.deepEqual(draft.normalizedIntent, { goal: "test goal" });
   assert.deepEqual(draft.riskPreview, riskPreview);
   assert.equal(draft.ambiguityPolicy, "require_confirmation");
@@ -166,6 +168,7 @@ test("executable-contracts: createTaskDraft accepts all TaskInputSource values",
       tenantId: "tenant-1",
       principal,
       source,
+      domainId: "coding",
       normalizedIntent: {},
       riskPreview,
     });
@@ -188,6 +191,7 @@ test("executable-contracts: createTaskDraft accepts all AmbiguityPolicy values",
       tenantId: "tenant-1",
       principal,
       source: "nl",
+      domainId: "coding",
       normalizedIntent: {},
       riskPreview,
       ambiguityPolicy: policy,
@@ -208,6 +212,7 @@ test("executable-contracts: createTaskDraft accepts optional fields", () => {
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "engineering_ops",
     normalizedIntent: {},
     riskPreview,
     taskDraftId: "custom-draft-id",
@@ -217,6 +222,7 @@ test("executable-contracts: createTaskDraft accepts optional fields", () => {
   });
 
   assert.equal(draft.taskDraftId, "custom-draft-id");
+  assert.equal(draft.domainId, "coding");
   assert.deepEqual(draft.rawInputRef, artifact);
   assert.deepEqual(draft.missingFields, ["field1", "field2"]);
   assert.equal(draft.expiresAt, "2026-12-31T23:59:59.999Z");
@@ -237,6 +243,7 @@ test("executable-contracts: createConfirmedTaskSpec creates valid spec", () => {
     taskDraftId: "draft-1",
     tenantId: "tenant-1",
     principal,
+    domainId: "coding",
     goal: "complete task",
     inputs: { key: "value" },
     constraintPackRef: "constraint-pack-1",
@@ -247,6 +254,7 @@ test("executable-contracts: createConfirmedTaskSpec creates valid spec", () => {
 
   assert.ok(spec.confirmedTaskSpecId.startsWith("ctspec_"));
   assert.equal(spec.taskDraftId, "draft-1");
+  assert.equal(spec.domainId, "coding");
   assert.equal(spec.goal, "complete task");
   assert.deepEqual(spec.inputs, { key: "value" });
   assert.equal(spec.constraintPackRef, "constraint-pack-1");
@@ -269,6 +277,7 @@ test("executable-contracts: createConfirmedTaskSpec accepts low and medium RiskC
       taskDraftId: "draft-1",
       tenantId: "tenant-1",
       principal,
+      domainId: "coding",
       goal: "test goal",
       inputs: {},
       constraintPackRef: "cp-1",
@@ -294,6 +303,7 @@ test("executable-contracts: createConfirmedTaskSpec throws for high-risk without
         taskDraftId: "draft-1",
         tenantId: "tenant-1",
         principal,
+        domainId: "coding",
         goal: "high risk task",
         inputs: {},
         constraintPackRef: "cp-1",
@@ -318,6 +328,7 @@ test("executable-contracts: createConfirmedTaskSpec throws for critical-risk wit
         taskDraftId: "draft-1",
         tenantId: "tenant-1",
         principal,
+        domainId: "coding",
         goal: "critical risk task",
         inputs: {},
         constraintPackRef: "cp-1",
@@ -340,6 +351,7 @@ test("executable-contracts: createConfirmedTaskSpec accepts confirmation receipt
     taskDraftId: "draft-1",
     tenantId: "tenant-1",
     principal,
+    domainId: "coding",
     goal: "high risk task with confirmation",
     inputs: {},
     constraintPackRef: "cp-1",
@@ -358,6 +370,28 @@ test("executable-contracts: createConfirmedTaskSpec accepts confirmation receipt
   assert.ok(spec.confirmationReceipt != null);
 });
 
+test("executable-contracts: createConfirmedTaskSpec normalizes legacy division bindings", () => {
+  const principal = createPrincipalRef({
+    principalId: "user-1",
+    tenantId: "tenant-1",
+    roles: [],
+  });
+
+  const spec = createConfirmedTaskSpec({
+    taskDraftId: "draft-legacy",
+    tenantId: "tenant-1",
+    principal,
+    goal: "normalize legacy division",
+    inputs: { divisionId: "engineering_ops" },
+    constraintPackRef: "constraint_pack:engineering_ops:wf",
+    riskClass: "low",
+    idempotencyKey: "idem-legacy",
+    traceId: "trace-legacy",
+  });
+
+  assert.equal(spec.domainId, "coding");
+});
+
 // =============================================================================
 // createRequestEnvelopeFromConfirmedTask Tests
 // =============================================================================
@@ -373,6 +407,7 @@ test("executable-contracts: createRequestEnvelopeFromConfirmedTask creates valid
     taskDraftId: "draft-1",
     tenantId: "tenant-1",
     principal,
+    domainId: "coding",
     goal: "test goal",
     inputs: {},
     constraintPackRef: "cp-1",
@@ -390,6 +425,7 @@ test("executable-contracts: createRequestEnvelopeFromConfirmedTask creates valid
   assert.equal(envelope.confirmedTaskSpecId, confirmedSpec.confirmedTaskSpecId);
   assert.equal(envelope.tenantId, "tenant-1");
   assert.equal(envelope.principal, principal);
+  assert.equal(envelope.domainId, "coding");
   assert.equal(envelope.traceId, "trace-1");
   assert.equal(envelope.idempotencyKey, "idem-1");
   assert.equal(envelope.priority, 0);
@@ -411,6 +447,7 @@ test("executable-contracts: createRequestEnvelopeFromConfirmedTask accepts optio
     taskDraftId: "draft-1",
     tenantId: "tenant-1",
     principal,
+    domainId: "coding",
     goal: "test goal",
     inputs: {},
     constraintPackRef: "cp-1",

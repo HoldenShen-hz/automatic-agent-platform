@@ -118,9 +118,12 @@ test("NlEntryService.buildTask materializes canonical intake artifacts before ad
 
   assert.equal(task.canonicalTaskDraft.tenantId, "tenant-canonical-intake");
   assert.equal(task.canonicalTaskDraft.source, "nl");
+  assert.equal(task.canonicalTaskDraft.domainId, "coding");
   assert.equal(task.canonicalTaskDraft.normalizedIntent["workflowId"], "read_only_inquiry");
   assert.ok(task.confirmedTaskSpec != null);
   assert.equal(task.confirmedTaskSpec?.taskDraftId, task.canonicalTaskDraft.taskDraftId);
+  assert.equal(task.confirmedTaskSpec?.domainId, "coding");
   assert.ok(task.canonicalRequestEnvelope != null);
   assert.equal(task.canonicalRequestEnvelope?.confirmedTaskSpecId, task.confirmedTaskSpec?.confirmedTaskSpecId);
+  assert.equal(task.canonicalRequestEnvelope?.domainId, "coding");
 });

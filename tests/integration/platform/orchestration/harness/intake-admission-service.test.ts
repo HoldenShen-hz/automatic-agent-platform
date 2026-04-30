@@ -23,6 +23,7 @@ function createMediumRiskInput(overrides = {}) {
     tenantId: "tenant-1",
     principal: createTestPrincipal(),
     source: "nl" as const,
+    domainId: "project-management",
     goal: "Execute test task",
     inputs: {},
     riskPreview: { riskClass: "medium" as const, reasons: [] },

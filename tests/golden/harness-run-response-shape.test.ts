@@ -110,6 +110,7 @@ test("golden: HarnessRun response shape matches canonical interface (R18-27)", (
     const harnessRun = createHarnessRun({
       harnessRunId,
       tenantId: "tenant:test",
+      domainId: "coding",
       confirmedTaskSpecId: `confirmed_task_spec:${harnessRunId}`,
       requestEnvelopeId: `request_envelope:${harnessRunId}`,
       requestHash: `hash:${harnessRunId}`,
@@ -126,6 +127,7 @@ test("golden: HarnessRun response shape matches canonical interface (R18-27)", (
     // Verify all canonical fields are present
     assert.ok(harnessRun.harnessRunId, "HarnessRun must have harnessRunId");
     assert.ok(harnessRun.tenantId, "HarnessRun must have tenantId");
+    assert.ok(harnessRun.domainId, "HarnessRun must have domainId");
     assert.ok(harnessRun.confirmedTaskSpecId, "HarnessRun must have confirmedTaskSpecId");
     assert.ok(harnessRun.requestEnvelopeId, "HarnessRun must have requestEnvelopeId");
     assert.ok(harnessRun.requestHash, "HarnessRun must have requestHash");
@@ -144,6 +146,7 @@ test("golden: HarnessRun response shape matches canonical interface (R18-27)", (
     assertGolden("harness-run-response-shape-v1", {
       harnessRunId: harnessRun.harnessRunId,
       tenantId: harnessRun.tenantId,
+      domainId: harnessRun.domainId,
       confirmedTaskSpecId: harnessRun.confirmedTaskSpecId,
       requestEnvelopeId: harnessRun.requestEnvelopeId,
       requestHash: harnessRun.requestHash,
@@ -173,6 +176,7 @@ test("golden: HarnessRun terminal states are properly represented (R18-27)", () 
     const completedRun = createHarnessRun({
       harnessRunId,
       tenantId: "tenant:test",
+      domainId: "coding",
       confirmedTaskSpecId: `confirmed_task_spec:${harnessRunId}`,
       requestEnvelopeId: `request_envelope:${harnessRunId}`,
       requestHash: `hash:${harnessRunId}`,

@@ -415,6 +415,19 @@ test("canonical contract text directly encodes the first unresolved contract fix
   assert.match(runtimeRepository, /node_attempt_receipts/);
 });
 
+test("task intake and harness run contracts now require canonical domain binding", () => {
+  const intake = readFileSync("docs_zh/contracts/task-intake-request-contract.md", "utf8");
+  assert.match(intake, /\| `domainId` \| `string` \| 已归一化的执行域绑定/);
+  assert.match(intake, /\| `priority` \| `number` \| admission \/ scheduler 优先级/);
+  assert.match(intake, /`ConfirmedTaskSpec` 阶段回退为 legacy division 标识/);
+  assert.match(intake, /后续 `HarnessRun`、risk overlay、knowledge boundary 与 prompt 库选择不得再从 `divisionId` 反推/);
+
+  const harnessRun = readFileSync("docs_zh/contracts/harness-run-contract.md", "utf8");
+  assert.match(harnessRun, /\| `domainId` \| `string` \| canonical 域绑定/);
+  assert.match(harnessRun, /`domainId` 是 run truth 的一部分/);
+  assert.match(harnessRun, /projection 若展示 `divisionId`、`domainHint` 或业务别名，必须保留 `domainId -> legacy alias` 的显式映射/);
+});
+
 test("OAPEFLIR executable spec remediation directly covers F-1 through F-25", () => {
   const text = readFileSync("docs_zh/architecture/oapeflir-v4.4-executable-spec.md", "utf8");
   assert.match(text, /## v4\.3 Canonical Compatibility Override/);
@@ -461,12 +474,10 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   assert.match(adr005, /UI 投影/);
 
   const adr026 = readFileSync("docs_zh/adr/026-risk-control-architecture.md", "utf8");
-  assert.match(adr026, /8 因子加权评分算法/);
-  assert.match(adr026, /operationRisk/);
-  assert.match(adr026, /targetResourceCriticality/);
-  assert.match(adr026, /autonomyModeRisk/);
-  assert.match(adr026, /tenantImpact/);
-  assert.match(adr026, /evidenceConfidence/);
+  assert.match(adr026, /impact × 4 \+ irreversibility × 4/);
+  assert.match(adr026, /\| impact \|/);
+  assert.match(adr026, /\| irreversibility \|/);
+  assert.match(adr026, /二维 canonical 模型/);
   assert.doesNotMatch(adr026, /\| stepTypeRisk \|/);
 
   const adr073 = readFileSync("docs_zh/adr/073-unified-resource-model.md", "utf8");
@@ -559,13 +570,13 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   const adr075 = readFileSync("docs_zh/adr/075-controlled-rollout-release.md", "utf8");
   assert.match(adr075, /L1.*`evaluate_0`/);
   assert.match(adr075, /evaluation_enabled \(L1\)/);
-  assert.match(adr075, /'evaluation_enabled'/);
+  assert.match(adr075, /状态改为 `evaluation_enabled`/);
   assert.doesNotMatch(adr075, /\*\*L1\*\* \| `shadow`/);
 
   const releaseRolloutContract = readFileSync("docs_zh/contracts/release_rollout_and_rollback_contract.md", "utf8");
   assert.match(releaseRolloutContract, /L1 \| `evaluate_0`/);
   assert.match(releaseRolloutContract, /evaluation_enabled \(L1\)/);
-  assert.match(releaseRolloutContract, /RolloutRecord\(evaluate_0 → canary → partial → stable → released\)/);
+  assert.match(releaseRolloutContract, /ReleaseRecord\(evaluate_0 → canary → partial → stable → released\)/);
   assert.doesNotMatch(releaseRolloutContract, /L1 \| `shadow`/);
 
   const adr016 = readFileSync("docs_zh/adr/016-oapeflir-loop-model.md", "utf8");

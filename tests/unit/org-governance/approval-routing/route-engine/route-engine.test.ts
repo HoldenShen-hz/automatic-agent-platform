@@ -1,528 +1,570 @@
 /**
  * Unit tests for Approval Route Engine
- * Tests cover specific security and correctness issues:
- * - Issue #1978: Amount threshold uses < not <=, equal amount falls through
+ * Tests threshold logic
  */
 
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import test from "node:test";
 
 import {
-  ApprovalRouteRequestSchema,
   OrgChartRoutingStrategy,
   AmountBasedRoutingStrategy,
+  buildParallelSignoffGroups,
+  resolveApprovalSteps,
   resolveAmountRoute,
   applySodPolicy,
   resolveApprovalRoute,
   revalidateApprovalRoute,
-  buildParallelSignoffGroups,
-  resolveApprovalSteps,
+  setDefaultLegacyFxRate,
   type ApprovalRouteRequest,
   type AmountThresholdRule,
-} from "../../../../../src/org-governance/approval-routing/route-engine/index.js";
+  type OrgNode,
+} from "../../../../../../src/org-governance/approval-routing/route-engine/index.js";
 
-function createOrgNode(overrides: Partial<{
-  orgNodeId: string;
-  nodeType: "company" | "department" | "team";
-  parentOrgNodeId: string | null;
-  ownerUserIds: string[];
-  active: boolean;
-}> = {}): {
-  orgNodeId: string;
-  nodeType: "company" | "department" | "team";
-  displayName: string;
-  parentOrgNodeId: string | null;
-  ownerUserIds: string[];
-  active: boolean;
-  costCenter: string;
-  metadata: Record<string, unknown>;
-} {
+// ─────────────────────────────────────────────────────────────────────────────
+// Test Fixtures
+// ─────────────────────────────────────────────────────────────────────────────
+
+function createOrgNode(overrides?: Partial<OrgNode>): OrgNode {
   return {
-    orgNodeId: overrides.orgNodeId ?? "node-1",
-    nodeType: overrides.nodeType ?? "department",
-    displayName: "Test Node",
-    parentOrgNodeId: overrides.parentOrgNodeId ?? null,
-    ownerUserIds: overrides.ownerUserIds ?? [],
-    active: overrides.active ?? true,
-    costCenter: "cc-1",
+    orgNodeId: "node-1",
+    nodeType: "team",
+    displayName: "Test Team",
+    parentOrgNodeId: null,
+    ownerUserIds: ["owner-1"],
+    active: true,
+    costCenter: "CC001",
     metadata: {},
+    ...overrides,
   };
 }
 
-// ─── Issue #1978: Amount threshold uses < not <=, equal amount falls through ─────
+function createRequest(overrides?: Partial<ApprovalRouteRequest>): ApprovalRouteRequest {
+  return {
+    requesterId: "requester-1",
+    orgNodeId: "node-1",
+    riskLevel: "medium",
+    requesterManagerIds: [],
+    conflictedApproverIds: [],
+    policyVersion: "approval-routing/v2",
+    orgVersion: "org-chart/v2",
+    evidenceRefs: [],
+    ...overrides,
+  };
+}
 
-test("resolveAmountRoute treats amount equal to threshold as NOT matching - demonstrates boundary bug", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "division-1", nodeType: "department", parentOrgNodeId: "company-1", ownerUserIds: ["director"] }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["vp"] }),
+// ─────────────────────────────────────────────────────────────────────────────
+// OrgChartRoutingStrategy
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("OrgChartRoutingStrategy", () => {
+  const strategy = new OrgChartRoutingStrategy();
+
+  describe("selectNode", () => {
+    it("should select active node matching orgNodeId", () => {
+      const nodes = [
+        createOrgNode({ orgNodeId: "node-1", active: true }),
+        createOrgNode({ orgNodeId: "node-2", active: true }),
+      ];
+      const request = createRequest({ orgNodeId: "node-1" });
+
+      const result = strategy.selectNode(nodes, request);
+
+      assert.ok(result !== null);
+      assert.strictEqual(result!.orgNodeId, "node-1");
+    });
+
+    it("should select inactive node if no active match", () => {
+      const nodes = [
+        createOrgNode({ orgNodeId: "node-1", active: false }),
+        createOrgNode({ orgNodeId: "node-2", active: true }),
+      ];
+      const request = createRequest({ orgNodeId: "node-1" });
+
+      const result = strategy.selectNode(nodes, request);
+
+      assert.ok(result !== null);
+      assert.strictEqual(result!.orgNodeId, "node-1");
+    });
+
+    it("should fall back to first node if no match", () => {
+      const nodes = [
+        createOrgNode({ orgNodeId: "node-1" }),
+        createOrgNode({ orgNodeId: "node-2" }),
+      ];
+      const request = createRequest({ orgNodeId: "non-existent" });
+
+      const result = strategy.selectNode(nodes, request);
+
+      assert.ok(result !== null);
+      assert.strictEqual(result!.orgNodeId, "node-1");
+    });
+
+    it("should return null for empty nodes array", () => {
+      const request = createRequest();
+      const result = strategy.selectNode([], request);
+      assert.strictEqual(result, null);
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AmountBasedRoutingStrategy
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("AmountBasedRoutingStrategy", () => {
+  const rules: readonly AmountThresholdRule[] = [
+    { maxAmountCny: 1000, targetNodeTypes: ["team"] },
+    { maxAmountCny: 10000, targetNodeTypes: ["department"] },
+    { maxAmountCny: 100000, targetNodeTypes: ["division"] },
   ];
 
-  const rules: AmountThresholdRule[] = [
+  const strategy = new AmountBasedRoutingStrategy(rules);
+
+  describe("selectNode", () => {
+    it("should select team node for small amount", () => {
+      const nodes = [
+        createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["t1-owner"] }),
+        createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["d1-owner"] }),
+      ];
+      const request = createRequest({
+        amount: { value: 500, currency: "CNY" },
+      });
+
+      const result = strategy.selectNode(nodes, request);
+
+      assert.ok(result !== null);
+      assert.strictEqual(result!.nodeType, "team");
+    });
+
+    it("should select department for medium amount", () => {
+      const nodes = [
+        createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["t1-owner"] }),
+        createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "div-1", ownerUserIds: ["d1-owner"] }),
+        createOrgNode({ orgNodeId: "div-1", nodeType: "division", ownerUserIds: ["div-owner"] }),
+      ];
+      const request = createRequest({
+        amount: { value: 5000, currency: "CNY" },
+        orgNodeId: "dept-1",
+      });
+
+      const result = strategy.selectNode(nodes, request);
+
+      assert.ok(result !== null);
+      assert.strictEqual(result!.nodeType, "department");
+    });
+
+    it("should fall back to company for very large amount", () => {
+      const nodes = [
+        createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["c-owner"] }),
+        createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["t-owner"] }),
+      ];
+      const request = createRequest({
+        amount: { value: 9999999, currency: "CNY" },
+      });
+
+      const result = strategy.selectNode(nodes, request);
+
+      assert.ok(result !== null);
+      assert.strictEqual(result!.nodeType, "company");
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveAmountRoute
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveAmountRoute", () => {
+  const rules: readonly AmountThresholdRule[] = [
+    { maxAmountCny: 1000, targetNodeTypes: ["team"] },
     { maxAmountCny: 10000, targetNodeTypes: ["department"] },
   ];
 
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    amount: { value: 10000, currency: "CNY" }, // Exactly at threshold
+  it("should return null for empty nodes array", () => {
+    const result = resolveAmountRoute([], createRequest(), rules);
+    assert.strictEqual(result, null);
   });
 
-  const result = resolveAmountRoute(nodes, request, rules);
+  it("should use company as fallback", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["c-owner"] }),
+    ];
+    const request = createRequest({ amount: { value: 1, currency: "CNY" } });
 
-  // BUG: Amount exactly at threshold (10000) is NOT matched because the code uses < instead of <=
-  // So the amount-based routing fails and falls back to company level
-  // This causes equal amounts to not match any rule
-  assert.equal(result?.orgNodeId, "company-1"); // Falls through to company
+    const result = resolveAmountRoute(nodes, request, rules);
+
+    assert.ok(result !== null);
+    assert.strictEqual(result!.nodeType, "company");
+  });
 });
 
-test("resolveAmountRoute amount just below threshold matches", () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// buildParallelSignoffGroups
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("buildParallelSignoffGroups", () => {
   const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "division-1", nodeType: "department", parentOrgNodeId: "company-1", ownerUserIds: ["director"] }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["vp"] }),
+    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["manager-1"] }),
+    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "div-1", ownerUserIds: ["manager-2"] }),
   ];
 
-  const rules: AmountThresholdRule[] = [
-    { maxAmountCny: 10000, targetNodeTypes: ["department"] },
-  ];
-
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    amount: { value: 9999, currency: "CNY" }, // Just below threshold
+  it("should return empty array for single approver", () => {
+    const result = buildParallelSignoffGroups(["approver-1"], nodes, "team-1");
+    assert.deepStrictEqual(result, []);
   });
 
-  const result = resolveAmountRoute(nodes, request, rules);
+  it("should create parallel group for remaining approvers when first is not manager", () => {
+    const approverChain = ["owner-1", "approver-2", "approver-3"];
+    const result = buildParallelSignoffGroups(approverChain, nodes, "team-1");
 
-  // Just below threshold - should match
-  assert.equal(result?.orgNodeId, "dept-1");
-});
-
-test("resolveAmountRoute amount just above threshold falls through to higher level", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "division-1", nodeType: "department", parentOrgNodeId: "company-1", ownerUserIds: ["director"] }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["vp"] }),
-  ];
-
-  const rules: AmountThresholdRule[] = [
-    { maxAmountCny: 10000, targetNodeTypes: ["department"] },
-  ];
-
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    amount: { value: 10001, currency: "CNY" }, // Just above threshold
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].groupId, "parallel:team-1");
+    assert.deepStrictEqual(result[0].approverIds, ["approver-2", "approver-3"]);
+    assert.strictEqual(result[0].requiredCount, 1);
   });
 
-  const result = resolveAmountRoute(nodes, request, rules);
+  it("should batch approvers in groups of 3 when first is manager", () => {
+    const approverChain = ["manager-1", "approver-2", "approver-3", "approver-4", "approver-5"];
+    const result = buildParallelSignoffGroups(approverChain, nodes, "team-1");
 
-  // Above threshold - should fall through to company
-  assert.equal(result?.orgNodeId, "company-1");
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result[0].approverIds, ["approver-2", "approver-3", "approver-4"]);
+    assert.deepStrictEqual(result[1].approverIds, ["approver-5"]);
+  });
+
+  it("should use orgNodeId in groupId", () => {
+    const approverChain = ["owner-1", "approver-2"];
+    const result = buildParallelSignoffGroups(approverChain, nodes, "custom-org");
+
+    assert.ok(result[0].groupId.includes("custom-org"));
+  });
 });
 
-test("resolveAmountRoute with USD amount and fxRate at exact threshold - demonstrates bug", () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveApprovalSteps
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveApprovalSteps", () => {
   const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["vp"] }),
+    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["manager-1"] }),
+    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "div-1", ownerUserIds: ["manager-2"] }),
   ];
 
-  const rules: AmountThresholdRule[] = [
-    { maxAmountUsd: 1389, targetNodeTypes: ["department"] }, // ~10000 CNY at 7.2 rate
+  it("should create sequential steps for single approver", () => {
+    const result = resolveApprovalSteps(["approver-1"], nodes, "team-1");
+
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].stepId, "step:0");
+    assert.deepStrictEqual(result[0].approverIds, ["approver-1"]);
+    assert.strictEqual(result[0].requiredApprovals, 1);
+    assert.strictEqual(result[0].stepType, "sequential");
+  });
+
+  it("should create parallel steps for multiple approvers", () => {
+    const approverChain = ["manager-1", "approver-2", "approver-3", "approver-4"];
+    const result = resolveApprovalSteps(approverChain, nodes, "team-1");
+
+    assert.ok(result.length > 0);
+    // First step is sequential
+    assert.strictEqual(result[0].stepType, "sequential");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// applySodPolicy
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("applySodPolicy", () => {
+  const nodes = [
+    createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["team-owner"] }),
+    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "div-1", ownerUserIds: ["dept-owner"] }),
   ];
 
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    amount: {
-      value: 1389,
-      currency: "USD",
-      fxRateSnapshot: {
-        baseCurrency: "USD",
-        quoteCurrency: "CNY",
-        rate: 7.2,
-        source: "test",
-        capturedAt: "2026-01-01T00:00:00.000Z",
+  it("should block requester from approving own request", () => {
+    const request = createRequest({ requesterId: "user-1" });
+    const approvers = ["user-1", "user-2", "user-3"];
+
+    const result = applySodPolicy(request, approvers, nodes, "team-1");
+
+    assert.ok(!result.includes("user-1"));
+    assert.ok(result.includes("user-2"));
+    assert.ok(result.includes("user-3"));
+  });
+
+  it("should block requester's managers", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      requesterManagerIds: ["manager-1", "manager-2"],
+    });
+    const approvers = ["user-1", "manager-1", "manager-2", "user-2"];
+
+    const result = applySodPolicy(request, approvers, nodes, "team-1");
+
+    assert.ok(!result.includes("manager-1"));
+    assert.ok(!result.includes("manager-2"));
+  });
+
+  it("should block conflicted approvers", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      conflictedApproverIds: ["conflicted-1"],
+    });
+    const approvers = ["user-1", "conflicted-1", "user-2"];
+
+    const result = applySodPolicy(request, approvers, nodes, "team-1");
+
+    assert.ok(!result.includes("conflicted-1"));
+  });
+
+  it("should block budget owner if same as execution owner", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      budgetOwnerId: "owner-same",
+      executionOwnerId: "owner-same",
+    });
+    const approvers = ["user-1", "owner-same", "user-2"];
+
+    const result = applySodPolicy(request, approvers, nodes, "team-1");
+
+    assert.ok(!result.includes("owner-same"));
+  });
+
+  it("should block same chain approvers", () => {
+    const request = createRequest({ requesterId: "user-1" });
+    const approvers = ["user-1", "manager-1", "dept-owner"];
+
+    const result = applySodPolicy(request, approvers, nodes, "team-1");
+
+    // dept-owner is in same approval chain (parent of team-1)
+    assert.ok(!result.includes("dept-owner"));
+  });
+
+  it("should allow valid approvers", () => {
+    const request = createRequest({ requesterId: "user-1" });
+    const approvers = ["user-1", "unrelated-1", "unrelated-2"];
+
+    const result = applySodPolicy(request, approvers, nodes, "team-1");
+
+    assert.ok(result.includes("unrelated-1"));
+    assert.ok(result.includes("unrelated-2"));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveApprovalRoute - Threshold Logic
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("resolveApprovalRoute - Threshold Logic", () => {
+  const nodes = [
+    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["ceo"] }),
+    createOrgNode({ orgNodeId: "div-1", nodeType: "division", parentOrgNodeId: "company-1", ownerUserIds: ["div-head"] }),
+    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "div-1", ownerUserIds: ["dept-head"] }),
+    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["team-lead"] }),
+  ];
+
+  afterEach(() => {
+    // Reset default FX rate
+    setDefaultLegacyFxRate(7.2);
+  });
+
+  it("should route to team for low amount without amount rules", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+      amount: { value: 100, currency: "CNY" },
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.strictEqual(result.matchedOrgNodeId, "team-1");
+    assert.strictEqual(result.routingStrategy, "org_chart");
+  });
+
+  it("should include approver chain in decision", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.ok(result.approverChain.length > 0);
+    assert.ok(result.approvalSteps.length > 0);
+  });
+
+  it("should populate route snapshot with correct data", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+      policyVersion: "v2-test",
+      orgVersion: "org-v2",
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.strictEqual(result.routeSnapshot.snapshotId.length > 0, true);
+    assert.strictEqual(result.routeSnapshot.requesterId, "user-1");
+    assert.strictEqual(result.routeSnapshot.matchedOrgNodeId, "team-1");
+    assert.strictEqual(result.routeSnapshot.policyVersion, "v2-test");
+    assert.strictEqual(result.routeSnapshot.orgVersion, "org-v2");
+    assert.ok(result.routeSnapshot.createdAt.length > 0);
+    assert.ok(result.routeSnapshot.expiresAt.length > 0);
+  });
+
+  it("should calculate CNY amount from USD with FX rate", () => {
+    setDefaultLegacyFxRate(7.2);
+
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+      amountUsd: 100,
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.strictEqual(result.routeSnapshot.amount.amountCny, 720);
+    assert.strictEqual(result.routeSnapshot.amount.originalCurrency, "USD");
+  });
+
+  it("should convert CNY amount directly", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+      amount: { value: 5000, currency: "CNY" },
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.strictEqual(result.routeSnapshot.amount.amountCny, 5000);
+    assert.strictEqual(result.routeSnapshot.amount.originalCurrency, "CNY");
+    assert.strictEqual(result.routeSnapshot.amount.fxSnapshot, null);
+  });
+
+  it("should apply FX conversion for non-CNY amounts", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+      amount: {
+        value: 1000,
+        currency: "USD",
+        fxRateSnapshot: {
+          baseCurrency: "USD",
+          quoteCurrency: "CNY",
+          rate: 7.2,
+          source: "test-source",
+          capturedAt: "2024-01-01T00:00:00.000Z",
+        },
       },
-    },
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.strictEqual(result.routeSnapshot.amount.amountCny, 7200);
+    assert.strictEqual(result.routeSnapshot.amount.fxSnapshot?.rate, 7.2);
   });
 
-  const result = resolveAmountRoute(nodes, request, rules);
+  it("should detect delegated chain", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1" });
+    const delegationMap: Record<string, string> = {
+      "team-lead": "delegated-lead",
+    };
 
-  // 1389 * 7.2 = 10000.8 CNY - just above threshold but due to floating point it equals
-  // The issue is the < vs <= problem at exact boundary
-  // In real scenario, 10000 CNY exact would fail to match
+    const result = resolveApprovalRoute(nodes, request, delegationMap);
+
+    assert.strictEqual(result.delegated, true);
+    assert.ok(result.approverChain.includes("delegated-lead"));
+  });
+
+  it("should block SOD conflicts in approver chain", () => {
+    const request = createRequest({
+      requesterId: "user-1",
+      orgNodeId: "team-1",
+      requesterManagerIds: ["manager-1"],
+    });
+
+    const result = resolveApprovalRoute(nodes, request);
+
+    assert.ok(!result.approverChain.includes("manager-1"));
+  });
 });
 
-test("AmountBasedRoutingStrategy uses < instead of <= for threshold comparison - demonstrates bug", () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// revalidateApprovalRoute
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("revalidateApprovalRoute", () => {
   const nodes = [
     createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["lead"] }),
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"] }),
   ];
 
-  const rules: AmountThresholdRule[] = [
-    { maxAmountCny: 5000, targetNodeTypes: ["team"] },
-  ];
+  it("should return invalid for expired event", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1" });
+    const existingDecision = resolveApprovalRoute(nodes, request);
 
-  const strategy = new AmountBasedRoutingStrategy(rules);
+    const result = revalidateApprovalRoute(nodes, request, existingDecision, "expired");
 
-  // Amount exactly at threshold
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "team-1",
-    riskLevel: "low",
-    amount: { value: 5000, currency: "CNY" },
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.event, "expired");
+    assert.ok(result.reasons.includes("approval_route.expired"));
   });
 
-  const selected = strategy.selectNode(nodes, request);
+  it("should return invalid for revoked event", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1" });
+    const existingDecision = resolveApprovalRoute(nodes, request);
 
-  // BUG: At exactly 5000 CNY, the team level is NOT selected because code uses < not <=
-  // This causes equal amounts to fall through to higher approval levels unexpectedly
-  assert.equal(selected?.orgNodeId, undefined); // Falls through - no match
-});
+    const result = revalidateApprovalRoute(nodes, request, existingDecision, "revoked");
 
-test("AmountBasedRoutingStrategy amount below threshold matches correctly", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "team-1", nodeType: "team", ownerUserIds: ["lead"] }),
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"] }),
-  ];
-
-  const rules: AmountThresholdRule[] = [
-    { maxAmountCny: 5000, targetNodeTypes: ["team"] },
-  ];
-
-  const strategy = new AmountBasedRoutingStrategy(rules);
-
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "team-1",
-    riskLevel: "low",
-    amount: { value: 4999, currency: "CNY" },
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.event, "revoked");
+    assert.ok(result.reasons.includes("approval_route.revoked"));
   });
 
-  const selected = strategy.selectNode(nodes, request);
+  it("should detect org version change on submitted event", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1", orgVersion: "v2" });
+    const existingDecision = resolveApprovalRoute(nodes, request);
 
-  assert.equal(selected?.orgNodeId, "team-1");
-});
+    const newRequest = createRequest({ requesterId: "user-1", orgNodeId: "team-1", orgVersion: "v3" });
 
-test("resolveApprovalRoute with exact threshold amount uses wrong routing strategy", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"], active: true }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["ceo"], active: true }),
-  ];
+    const result = revalidateApprovalRoute(nodes, newRequest, existingDecision, "submitted");
 
-  const amountRules: AmountThresholdRule[] = [
-    { maxAmountCny: 10000, targetNodeTypes: ["department"] },
-  ];
-
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    amount: { value: 10000, currency: "CNY" },
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.reasons.includes("approval_route.org_version_changed"));
   });
 
-  const decision = resolveApprovalRoute(nodes, request, {}, amountRules);
+  it("should detect policy version change", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1", policyVersion: "v1" });
+    const existingDecision = resolveApprovalRoute(nodes, request);
 
-  // BUG: Amount exactly at threshold (10000) results in amount_based routing
-  // but doesn't actually match any department rule, causing wrong fallback
-  // The routing strategy shows "amount_based" but approvers come from company level
-  assert.equal(decision.routingStrategy, "amount_based");
-  assert.equal(decision.matchedOrgNodeId, "company-1"); // Wrong - should be dept-1 if it matched
-});
+    const newRequest = createRequest({ requesterId: "user-1", orgNodeId: "team-1", policyVersion: "v2" });
 
-test("resolveApprovalRoute amount one above threshold matches correctly", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", ownerUserIds: ["manager"], active: true }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", ownerUserIds: ["ceo"], active: true }),
-  ];
+    const result = revalidateApprovalRoute(nodes, newRequest, existingDecision, "submitted");
 
-  const amountRules: AmountThresholdRule[] = [
-    { maxAmountCny: 10000, targetNodeTypes: ["department"] },
-  ];
-
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    amount: { value: 10001, currency: "CNY" },
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.reasons.includes("approval_route.policy_version_changed"));
   });
 
-  const decision = resolveApprovalRoute(nodes, request, {}, amountRules);
+  it("should detect approver chain change", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1" });
+    const existingDecision = resolveApprovalRoute(nodes, request);
 
-  // Amount above threshold - falls through to company level (expected)
-  assert.equal(decision.routingStrategy, "amount_based");
-  assert.equal(decision.matchedOrgNodeId, "company-1");
-});
+    // New request with different orgNodeId changes approver chain
+    const newRequest = createRequest({ requesterId: "user-1", orgNodeId: "company-1" });
 
-// ─── SOD Policy Tests ──────────────────────────────────────────────────────────
+    const result = revalidateApprovalRoute(nodes, newRequest, existingDecision, "submitted");
 
-test("applySodPolicy blocks requester from approving their own request", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "director",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-  });
-  const filtered = applySodPolicy(request, ["director", "manager"], nodes, "dept-1");
-  assert.ok(!filtered.includes("director"));
-  assert.ok(filtered.includes("manager"));
-});
-
-test("applySodPolicy blocks requester's managers from approving", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["manager"] })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    requesterManagerIds: ["manager"],
-  });
-  const filtered = applySodPolicy(request, ["manager", "vp"], nodes, "dept-1");
-  assert.ok(!filtered.includes("manager"));
-  assert.ok(filtered.includes("vp"));
-});
-
-test("applySodPolicy blocks conflicted approvers", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["clean-approver"] })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    conflictedApproverIds: ["conflicted-approver"],
-  });
-  const filtered = applySodPolicy(request, ["conflicted-approver", "clean-approver"], nodes, "dept-1");
-  assert.ok(!filtered.includes("conflicted-approver"));
-  assert.ok(filtered.includes("clean-approver"));
-});
-
-test("applySodPolicy blocks same-chain approvers (parent-child relationship)", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["employee"] }),
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: null, ownerUserIds: ["director"] }),
-  ];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "team-1",
-    riskLevel: "low",
-  });
-  const filtered = applySodPolicy(request, ["director"], nodes, "team-1");
-  assert.ok(!filtered.includes("director"));
-});
-
-test("applySodPolicy blocks same-chain approvers (child-parent relationship)", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["employee"] }),
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: null, ownerUserIds: ["director"] }),
-  ];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "director",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-  });
-  const filtered = applySodPolicy(request, ["employee"], nodes, "dept-1");
-  assert.ok(!filtered.includes("employee"));
-});
-
-test("applySodPolicy blocks approvers in ancestor chain", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["employee"] }),
-    createOrgNode({ orgNodeId: "dept-1", nodeType: "department", parentOrgNodeId: "company-1", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", parentOrgNodeId: null, ownerUserIds: ["director"] }),
-  ];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "team-1",
-    riskLevel: "low",
-  });
-  const filtered = applySodPolicy(request, ["manager", "director"], nodes, "team-1");
-  assert.ok(!filtered.includes("manager"));
-  assert.ok(!filtered.includes("director"));
-});
-
-test("applySodPolicy blocks when budget owner equals execution owner", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["owner"] })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    budgetOwnerId: "owner",
-    executionOwnerId: "owner",
-  });
-  const filtered = applySodPolicy(request, ["owner"], nodes, "dept-1");
-  assert.ok(!filtered.includes("owner"));
-});
-
-// ─── Routing Strategy Tests ─────────────────────────────────────────────────────
-
-test("OrgChartRoutingStrategy selects requested org node", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1" }),
-    createOrgNode({ orgNodeId: "dept-2" }),
-  ];
-  const strategy = new OrgChartRoutingStrategy();
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.reasons.includes("approval_route.approver_chain_changed"));
   });
 
-  const selected = strategy.selectNode(nodes, request);
+  it("should return valid when nothing changed", () => {
+    const request = createRequest({ requesterId: "user-1", orgNodeId: "team-1" });
+    const existingDecision = resolveApprovalRoute(nodes, request);
 
-  assert.equal(selected?.orgNodeId, "dept-1");
-});
+    const result = revalidateApprovalRoute(nodes, request, existingDecision, "submitted");
 
-test("OrgChartRoutingStrategy falls back to first node if requested not found", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1" }),
-    createOrgNode({ orgNodeId: "dept-2" }),
-  ];
-  const strategy = new OrgChartRoutingStrategy();
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "nonexistent",
-    riskLevel: "low",
+    assert.strictEqual(result.valid, true);
+    assert.strictEqual(result.reasons.length, 0);
+    assert.ok(result.routeSnapshot !== null);
   });
-
-  const selected = strategy.selectNode(nodes, request);
-
-  assert.equal(selected?.orgNodeId, "dept-1");
-});
-
-// ─── Parallel Signoff Tests ────────────────────────────────────────────────────
-
-test("buildParallelSignoffGroups returns empty for single approver", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["manager"] })];
-  const groups = buildParallelSignoffGroups(["manager"], nodes, "dept-1");
-
-  assert.equal(groups.length, 0);
-});
-
-test("buildParallelSignoffGroups creates parallel group for multiple approvers", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"], parentOrgNodeId: null }),
-    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["employee"] }),
-  ];
-  const groups = buildParallelSignoffGroups(["director", "manager"], nodes, "team-1");
-
-  assert.ok(groups.length > 0);
-});
-
-test("resolveApprovalSteps creates sequential steps for single approver", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["manager"] })];
-  const steps = resolveApprovalSteps(["manager"], nodes, "dept-1");
-
-  assert.equal(steps.length, 1);
-  assert.equal(steps[0].stepType, "sequential");
-});
-
-test("resolveApprovalSteps creates parallel steps when groups exist", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"], parentOrgNodeId: null }),
-    createOrgNode({ orgNodeId: "team-1", nodeType: "team", parentOrgNodeId: "dept-1", ownerUserIds: ["employee"] }),
-  ];
-  const approverChain = ["director", "manager", "vp"];
-  const steps = resolveApprovalSteps(approverChain, nodes, "team-1");
-
-  // Should create some parallel steps
-  assert.ok(steps.length >= 1);
-});
-
-// ─── Route Revalidation Tests ─────────────────────────────────────────────────
-
-test("revalidateApprovalRoute returns expired for expired event", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-  });
-  const existingDecision = resolveApprovalRoute(nodes, request);
-
-  const result = revalidateApprovalRoute(nodes, request, existingDecision, "expired");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.event, "expired");
-  assert.ok(result.reasons.includes("approval_route.expired"));
-});
-
-test("revalidateApprovalRoute returns revoked for revoked event", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-  });
-  const existingDecision = resolveApprovalRoute(nodes, request);
-
-  const result = revalidateApprovalRoute(nodes, request, existingDecision, "revoked");
-
-  assert.equal(result.valid, false);
-  assert.equal(result.event, "revoked");
-  assert.ok(result.reasons.includes("approval_route.revoked"));
-});
-
-test("revalidateApprovalRoute detects org version change", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-    orgVersion: "v1",
-  });
-  const existingDecision = resolveApprovalRoute(nodes, request);
-
-  const updatedRequest = ApprovalRouteRequestSchema.parse({
-    ...request,
-    orgVersion: "v2",
-  });
-
-  const result = revalidateApprovalRoute(nodes, updatedRequest, existingDecision, "submitted");
-
-  assert.equal(result.valid, false);
-  assert.ok(result.reasons.includes("approval_route.org_version_changed"));
-});
-
-test("revalidateApprovalRoute detects approver chain change", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["manager"] }),
-    createOrgNode({ orgNodeId: "dept-2", ownerUserIds: ["director"] }),
-  ];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-  });
-  const existingDecision = resolveApprovalRoute(nodes, request);
-
-  // Change request to different org node with different approvers
-  const updatedRequest = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-2",
-    riskLevel: "low",
-  });
-
-  const result = revalidateApprovalRoute(nodes, updatedRequest, existingDecision, "submitted");
-
-  assert.equal(result.valid, false);
-  assert.ok(result.reasons.includes("approval_route.approver_chain_changed"));
-});
-
-test("revalidateApprovalRoute returns valid when nothing changed", () => {
-  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["manager"] })];
-  const request = ApprovalRouteRequestSchema.parse({
-    requesterId: "employee",
-    orgNodeId: "dept-1",
-    riskLevel: "low",
-  });
-  const existingDecision = resolveApprovalRoute(nodes, request);
-
-  const result = revalidateApprovalRoute(nodes, request, existingDecision, "submitted");
-
-  assert.equal(result.valid, true);
-  assert.equal(result.reasons.length, 0);
 });

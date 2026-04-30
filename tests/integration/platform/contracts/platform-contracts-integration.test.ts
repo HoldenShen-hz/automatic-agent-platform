@@ -78,6 +78,7 @@ test("integration: full task lifecycle from draft to completion", () => {
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "coding",
     normalizedIntent: { goal: "Read file contents" },
     riskPreview,
   });
@@ -89,6 +90,7 @@ test("integration: full task lifecycle from draft to completion", () => {
     taskDraftId: draft.taskDraftId,
     tenantId: draft.tenantId,
     principal: draft.principal,
+    domainId: draft.domainId,
     goal: "Read file contents",
     inputs: draft.normalizedIntent,
     constraintPackRef: "constraint-pack-1",
@@ -113,10 +115,12 @@ test("integration: full task lifecycle from draft to completion", () => {
 
   assert.equal(envelope.tenantId, "tenant-1");
   assert.equal(envelope.confirmedTaskSpecId, confirmedSpec.confirmedTaskSpecId);
+  assert.equal(envelope.domainId, "coding");
 
   // Step 5: Create harness run
   const run = createHarnessRun({
     tenantId: envelope.tenantId,
+    domainId: envelope.domainId,
     confirmedTaskSpecId: envelope.confirmedTaskSpecId,
     requestEnvelopeId: envelope.requestId,
     requestHash: envelope.requestHash,
@@ -127,6 +131,7 @@ test("integration: full task lifecycle from draft to completion", () => {
 
   assert.ok(run.harnessRunId.startsWith("hrun_"));
   assert.equal(run.status, "created");
+  assert.equal(run.domainId, "coding");
 
   // Step 6: Create plan graph
   const planGraph: PlanGraph = {
@@ -238,6 +243,7 @@ test("integration: high-risk task lifecycle with confirmation", () => {
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "coding",
     normalizedIntent: { goal: "Update production database" },
     riskPreview,
   });
@@ -247,6 +253,7 @@ test("integration: high-risk task lifecycle with confirmation", () => {
     taskDraftId: draft.taskDraftId,
     tenantId: draft.tenantId,
     principal: draft.principal,
+    domainId: draft.domainId,
     goal: "Update production database",
     inputs: draft.normalizedIntent,
     constraintPackRef: "constraint-pack-1",
@@ -287,6 +294,7 @@ test("integration: task lifecycle with budget tracking", () => {
     taskDraftId: "draft-budget-1",
     tenantId: "tenant-1",
     principal,
+    domainId: "coding",
     goal: "Call external API",
     inputs: {},
     constraintPackRef: "cp-budget-1",
@@ -302,6 +310,7 @@ test("integration: task lifecycle with budget tracking", () => {
 
   const run = createHarnessRun({
     tenantId: envelope.tenantId,
+    domainId: envelope.domainId,
     confirmedTaskSpecId: envelope.confirmedTaskSpecId,
     requestEnvelopeId: envelope.requestId,
     requestHash: envelope.requestHash,
@@ -596,45 +605,37 @@ test("integration: legacy request envelope throws for empty requestId", () => {
 // =============================================================================
 
 test("integration: legacy state command creation", () => {
-  const principal = createPrincipalRef({
-    principalId: "user-1",
-    tenantId: "tenant-1",
-    roles: [],
-  });
-
-  const command = createLegacyStateCommand({
-    entityKind: "Task",
-    entityId: "task-state-1",
-    action: "upsert",
-    expectedVersion: null,
-    payload: { status: "running" },
-    emittedBy: "worker-state-1",
-  });
-
-  assert.equal(command.entityKind, "Task");
-  assert.equal(command.entityId, "task-state-1");
-  assert.equal(command.action, "upsert");
-  assert.ok(command.commandId.startsWith("statecmd_"));
+  assert.throws(
+    () =>
+      createLegacyStateCommand({
+        entityKind: "Task",
+        entityId: "task-state-1",
+        action: "upsert",
+        expectedVersion: null,
+        payload: { status: "running" },
+        emittedBy: "worker-state-1",
+      }),
+    (error: unknown) =>
+      error instanceof ValidationError &&
+      error.code === "state_command.legacy_contract_forbidden",
+  );
 });
 
 test("integration: legacy state command with transition action", () => {
-  const principal = createPrincipalRef({
-    principalId: "user-1",
-    tenantId: "tenant-1",
-    roles: [],
-  });
-
-  const command = createLegacyStateCommand({
-    entityKind: "Task",
-    entityId: "task-transition-1",
-    action: "transition",
-    expectedVersion: 5,
-    payload: { nextStatus: "completed" },
-    emittedBy: "orchestrator",
-  });
-
-  assert.equal(command.action, "transition");
-  assert.deepEqual(command.payload, { nextStatus: "completed" });
+  assert.throws(
+    () =>
+      createLegacyStateCommand({
+        entityKind: "Task",
+        entityId: "task-transition-1",
+        action: "transition",
+        expectedVersion: 5,
+        payload: { nextStatus: "completed" },
+        emittedBy: "orchestrator",
+      }),
+    (error: unknown) =>
+      error instanceof ValidationError &&
+      error.code === "state_command.legacy_contract_forbidden",
+  );
 });
 
 test("integration: legacy state command throws for invalid transition", () => {
@@ -863,6 +864,7 @@ test("integration: complete workflow with plan graph and patches", () => {
     taskDraftId: "draft-workflow-1",
     tenantId: "workflow-tenant-1",
     principal,
+    domainId: "coding",
     goal: "Call external API and store result",
     inputs: { apiUrl: "https://api.example.com" },
     constraintPackRef: "cp-workflow-1",
@@ -880,6 +882,7 @@ test("integration: complete workflow with plan graph and patches", () => {
   // Create harness run
   const run = createHarnessRun({
     tenantId: envelope.tenantId,
+    domainId: envelope.domainId,
     confirmedTaskSpecId: envelope.confirmedTaskSpecId,
     requestEnvelopeId: envelope.requestId,
     requestHash: envelope.requestHash,

@@ -359,6 +359,7 @@ test("validateExecutableContract rejects invalid NodeAttemptReceipt", () => {
 test("full runtime chain: HarnessRun -> PlanGraphBundle -> NodeRun -> NodeAttempt -> NodeAttemptReceipt", () => {
   const run = createHarnessRun({
     tenantId: "tenant-1",
+    domainId: "coding",
     confirmedTaskSpecId: "ctspec-1",
     requestEnvelopeId: "request-1",
     requestHash: "request-hash-1",

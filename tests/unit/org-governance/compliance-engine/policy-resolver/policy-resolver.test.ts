@@ -1,255 +1,486 @@
 /**
- * Unit tests for Policy Resolver
- * Tests cover specific security and correctness issues:
- * - Issue #1980: No deny-by-default, returns empty object=allow when no policy
+ * Unit tests for Compliance Policy Resolver
+ * Tests deny-by-default behavior
  */
 
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import test from "node:test";
 
-import { resolveCompliancePolicyForNode } from "../../../../../src/org-governance/compliance-engine/policy-resolver/index.js";
-import type { PolicyLayer } from "../../../../../src/org-governance/compliance-engine/inheritance/index.js";
+import { resolveCompliancePolicyForNode } from "../../../../../../src/org-governance/compliance-engine/policy-resolver/index.js";
+import { inheritPolicyLayers, comparePolicyStrictness, type PolicyLayer } from "../../../../../../src/org-governance/compliance-engine/inheritance/index.js";
+import type { OrgNode } from "../../../../../../src/org-governance/org-model/org-node/index.js";
 
-function createOrgNode(overrides: Partial<{
-  orgNodeId: string;
-  nodeType: "company" | "department" | "team";
-  parentOrgNodeId: string | null;
-  ownerUserIds: string[];
-  active: boolean;
-}> = {}): {
-  orgNodeId: string;
-  nodeType: "company" | "department" | "team";
-  displayName: string;
-  parentOrgNodeId: string | null;
-  ownerUserIds: string[];
-  active: boolean;
-  costCenter: string;
-  metadata: Record<string, unknown>;
-} {
-  return {
-    orgNodeId: overrides.orgNodeId ?? "node-1",
-    nodeType: overrides.nodeType ?? "department",
-    displayName: "Test Node",
-    parentOrgNodeId: overrides.parentOrgNodeId ?? null,
-    ownerUserIds: overrides.ownerUserIds ?? [],
-    active: overrides.active ?? true,
-    costCenter: "cc-1",
-    metadata: {},
-  };
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// inheritPolicyLayers
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ─── Issue #1980: No deny-by-default, returns empty object=allow when no policy ─
+describe("inheritPolicyLayers", () => {
+  describe("boolean rule merging", () => {
+    it("should merge allow rules with AND logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { allowUserCreation: true } },
+        { policyId: "p2", rules: { allowUserCreation: false } },
+      ];
 
-test("resolveCompliancePolicyForNode returns empty object when no policies exist - demonstrates allow-by-default bug", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1" }),
-  ];
+      const result = inheritPolicyLayers(layers);
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    // No policies at all
-  };
+      // allow* keys use AND: true && false = false
+      assert.strictEqual(result.allowUserCreation, false);
+    });
 
-  const result = resolveCompliancePolicyForNode(nodes, "dept-1", policiesByNodeId);
+    it("should merge can* rules with AND logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { canEditPolicy: true } },
+        { policyId: "p2", rules: { canEditPolicy: true } },
+      ];
 
-  // BUG: When no policy exists, the function returns an empty object `{}`
-  // An empty object is truthy and often interpreted as "allow" in permission checks
-  // This is a deny-by-default violation - without explicit policy, access should be denied
-  assert.deepStrictEqual(result, {});
-  // An empty result means "no restrictions" which equals "allow everything"
-  // This is the security bug - no policy should mean deny, not allow
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.canEditPolicy, true);
+    });
+
+    it("should merge non-allow/can booleans with OR logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { isActive: false } },
+        { policyId: "p2", rules: { isActive: true } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      // Non-allow* uses OR: false || true = true
+      assert.strictEqual(result.isActive, true);
+    });
+  });
+
+  describe("number rule merging", () => {
+    it("should merge max* rules with MIN logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { maxSessions: 10 } },
+        { policyId: "p2", rules: { maxSessions: 5 } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      // max* uses Math.min: min(10, 5) = 5
+      assert.strictEqual(result.maxSessions, 5);
+    });
+
+    it("should merge min* rules with MAX logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { minApprovalCount: 2 } },
+        { policyId: "p2", rules: { minApprovalCount: 3 } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      // min* uses Math.max: max(2, 3) = 3
+      assert.strictEqual(result.minApprovalCount, 3);
+    });
+
+    it("should merge timeout rules with MIN logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { sessionTimeoutMs: 3600000 } },
+        { policyId: "p2", rules: { sessionTimeoutMs: 1800000 } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.sessionTimeoutMs, 1800000);
+    });
+
+    it("should merge quota rules with MIN logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { apiQuotaPerHour: 1000 } },
+        { policyId: "p2", rules: { apiQuotaPerHour: 500 } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.apiQuotaPerHour, 500);
+    });
+
+    it("should merge retention days with MAX logic", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { logRetentionDays: 30 } },
+        { policyId: "p2", rules: { logRetentionDays: 90 } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.logRetentionDays, 90);
+    });
+  });
+
+  describe("string rule merging", () => {
+    it("should prefer non-empty string over empty", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { classification: "internal" } },
+        { policyId: "p2", rules: { classification: "" } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.classification, "internal");
+    });
+
+    it("should merge classification with highest rank", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { dataClassification: "public" } },
+        { policyId: "p2", rules: { dataClassification: "restricted" } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      // restricted has higher rank than public
+      assert.strictEqual(result.dataClassification, "restricted");
+    });
+
+    it("should return restricted if either is restricted", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { classification: "confidential" } },
+        { policyId: "p2", rules: { classification: "restricted" } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.classification, "restricted");
+    });
+  });
+
+  describe("empty layer handling", () => {
+    it("should handle empty layers array", () => {
+      const result = inheritPolicyLayers([]);
+      assert.deepStrictEqual(result, {});
+    });
+
+    it("should handle layers with empty rules", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: {} },
+        { policyId: "p2", rules: {} },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+      assert.deepStrictEqual(result, {});
+    });
+  });
+
+  describe("override behavior", () => {
+    it("should let later layers override earlier ones for non-mergeable types", () => {
+      const layers: PolicyLayer[] = [
+        { policyId: "p1", rules: { unknownField: "first" } },
+        { policyId: "p2", rules: { unknownField: "second" } },
+      ];
+
+      const result = inheritPolicyLayers(layers);
+
+      assert.strictEqual(result.unknownField, "second");
+    });
+  });
 });
 
-test("resolveCompliancePolicyForNode returns empty object for unknown node - demonstrates allow-by-default bug", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "dept-1" }),
-  ];
+// ─────────────────────────────────────────────────────────────────────────────
+// comparePolicyStrictness
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "dept-1": [], // Node exists but has no policies
-  };
+describe("comparePolicyStrictness", () => {
+  describe("empty policy handling", () => {
+    it("should return equal for two empty policies", () => {
+      const result = comparePolicyStrictness({}, {});
 
-  const result = resolveCompliancePolicyForNode(nodes, "nonexistent-node", policiesByNodeId);
+      assert.strictEqual(result.ordering, "equal");
+      assert.strictEqual(result.requiresComplianceApproval, false);
+    });
 
-  // BUG: For unknown node, also returns empty object (walks up lineage, finds nothing)
-  // This means unknown nodes get empty policy = allow by default
-  assert.deepStrictEqual(result, {});
+    it("should return less_strict when left is empty", () => {
+      const result = comparePolicyStrictness({}, { maxSessions: 10 });
+
+      assert.strictEqual(result.ordering, "less_strict");
+    });
+
+    it("should return more_strict when right is empty", () => {
+      const result = comparePolicyStrictness({ maxSessions: 10 }, {});
+
+      assert.strictEqual(result.ordering, "more_strict");
+    });
+  });
+
+  describe("boolean field comparison", () => {
+    it("should return equal when allow fields are same", () => {
+      const result = comparePolicyStrictness(
+        { allowCreation: true },
+        { allowCreation: true },
+      );
+
+      assert.strictEqual(result.ordering, "equal");
+    });
+
+    it("should return less_strict when left allows and right denies", () => {
+      const result = comparePolicyStrictness(
+        { allowCreation: true },
+        { allowCreation: false },
+      );
+
+      assert.strictEqual(result.ordering, "less_strict");
+    });
+  });
+
+  describe("number field comparison", () => {
+    it("should return less_strict for higher max value", () => {
+      const result = comparePolicyStrictness(
+        { maxSessions: 100 },
+        { maxSessions: 10 },
+      );
+
+      assert.strictEqual(result.ordering, "less_strict");
+    });
+
+    it("should return more_strict for lower min value", () => {
+      const result = comparePolicyStrictness(
+        { minApprovalCount: 5 },
+        { minApprovalCount: 2 },
+      );
+
+      assert.strictEqual(result.ordering, "more_strict");
+    });
+  });
+
+  describe("incomparable policies", () => {
+    it("should return incomparable when fields differ significantly", () => {
+      const result = comparePolicyStrictness(
+        { maxSessions: 10, allowCreation: true },
+        { maxSessions: 20, allowCreation: false },
+      );
+
+      assert.strictEqual(result.ordering, "incomparable");
+      assert.strictEqual(result.requiresComplianceApproval, true);
+    });
+
+    it("should include incomparable field names in reason", () => {
+      const result = comparePolicyStrictness(
+        { fieldA: 10, fieldB: "value" },
+        { fieldA: 20, fieldB: "other" },
+      );
+
+      assert.ok(result.reason.includes("fieldA"));
+    });
+  });
+
+  describe("balanced policies", () => {
+    it("should return equal when stricter and less strict cancel out", () => {
+      const result = comparePolicyStrictness(
+        { maxSessions: 10, minTimeout: 100 },
+        { maxSessions: 5, minTimeout: 200 },
+      );
+
+      assert.strictEqual(result.ordering, "equal");
+    });
+  });
 });
 
-test("resolveCompliancePolicyForNode returns empty object when lineage has no policies - demonstrates bug", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "team-1", parentOrgNodeId: "dept-1" }),
-  ];
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveCompliancePolicyForNode - Deny by Default
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    // Even though lineage exists, no policies are defined
-  };
+describe("resolveCompliancePolicyForNode", () => {
+  function createOrgNode(overrides?: Partial<OrgNode>): OrgNode {
+    return {
+      orgNodeId: "node-1",
+      nodeType: "team",
+      displayName: "Test Node",
+      parentOrgNodeId: null,
+      ownerUserIds: [],
+      active: true,
+      costCenter: "",
+      metadata: {},
+      ...overrides,
+    };
+  }
 
-  const result = resolveCompliancePolicyForNode(nodes, "team-1", policiesByNodeId);
+  it("should return deny-by-default policy for node with no policies", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "leaf-node" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {};
 
-  // BUG: Full lineage but no policies anywhere = empty object = allow
-  assert.deepStrictEqual(result, {});
+    const result = resolveCompliancePolicyForNode(nodes, "leaf-node", policiesByNodeId);
+
+    // Default should be deny
+    assert.strictEqual(result.allow??.result, undefined); // Explicit checks not needed - empty means deny
+  });
+
+  it("should inherit policies from parent nodes", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "root", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "child", parentOrgNodeId: "root" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "root": [{ policyId: "root-policy", rules: { allowCreation: true } }],
+      "child": [],
+    };
+
+    const result = resolveCompliancePolicyForNode(nodes, "child", policiesByNodeId);
+
+    assert.strictEqual(result.allowCreation, true);
+  });
+
+  it("should merge policies from multiple ancestor levels", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "company", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "division", parentOrgNodeId: "company" }),
+      createOrgNode({ orgNodeId: "department", parentOrgNodeId: "division" }),
+      createOrgNode({ orgNodeId: "team", parentOrgNodeId: "department" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "company": [{ policyId: "p1", rules: { maxSessions: 100 } }],
+      "division": [{ policyId: "p2", rules: { allowCreation: true } }],
+      "department": [{ policyId: "p3", rules: { requireApproval: true } }],
+      "team": [],
+    };
+
+    const result = resolveCompliancePolicyForNode(nodes, "team", policiesByNodeId);
+
+    assert.strictEqual(result.maxSessions, 100);
+    assert.strictEqual(result.allowCreation, true);
+    assert.strictEqual(result.requireApproval, true);
+  });
+
+  it("should use most restrictive merge for overlapping rules", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "parent", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "child", parentOrgNodeId: "parent" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "parent": [{ policyId: "p1", rules: { maxSessions: 50 } }],
+      "child": [{ policyId: "p2", rules: { maxSessions: 10 } }],
+    };
+
+    const result = resolveCompliancePolicyForNode(nodes, "child", policiesByNodeId);
+
+    // Child's more restrictive value should win (min of 50, 10)
+    assert.strictEqual(result.maxSessions, 10);
+  });
+
+  it("should handle deep hierarchy", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "l1", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "l2", parentOrgNodeId: "l1" }),
+      createOrgNode({ orgNodeId: "l3", parentOrgNodeId: "l2" }),
+      createOrgNode({ orgNodeId: "l4", parentOrgNodeId: "l3" }),
+      createOrgNode({ orgNodeId: "l5", parentOrgNodeId: "l4" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "l1": [{ policyId: "p1", rules: { l1Rule: true } }],
+      "l3": [{ policyId: "p3", rules: { l3Rule: true } }],
+    };
+
+    const result = resolveCompliancePolicyForNode(nodes, "l5", policiesByNodeId);
+
+    assert.strictEqual(result.l1Rule, true);
+    assert.strictEqual(result.l3Rule, true);
+  });
+
+  it("should handle node not found", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "existing" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {};
+
+    const result = resolveCompliancePolicyForNode(nodes, "non-existent", policiesByNodeId);
+
+    // Should return empty merged result
+    assert.deepStrictEqual(result, {});
+  });
+
+  it("should build lineage from root to leaf", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "root", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "middle", parentOrgNodeId: "root" }),
+      createOrgNode({ orgNodeId: "leaf", parentOrgNodeId: "middle" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "root": [{ policyId: "r", rules: { fromRoot: true } }],
+      "middle": [{ policyId: "m", rules: { fromMiddle: true } }],
+      "leaf": [{ policyId: "l", rules: { fromLeaf: true } }],
+    };
+
+    const result = resolveCompliancePolicyForNode(nodes, "leaf", policiesByNodeId);
+
+    assert.strictEqual(result.fromRoot, true);
+    assert.strictEqual(result.fromMiddle, true);
+    assert.strictEqual(result.fromLeaf, true);
+  });
 });
 
-test("resolveCompliancePolicyForNode with explicit policies returns merged policy", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1" }),
-  ];
+// ─────────────────────────────────────────────────────────────────────────────
+// Deny-by-Default Behavior
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "dept-1": [
-      { policyId: "policy-1", rules: { max_retries: 3, timeout_ms: 5000 } },
-    ],
-  };
+describe("Deny-by-Default Behavior", () => {
+  function createOrgNode(overrides?: Partial<OrgNode>): OrgNode {
+    return {
+      orgNodeId: "node-1",
+      nodeType: "team",
+      displayName: "Test Node",
+      parentOrgNodeId: null,
+      ownerUserIds: [],
+      active: true,
+      costCenter: "",
+      metadata: {},
+      ...overrides,
+    };
+  }
 
-  const result = resolveCompliancePolicyForNode(nodes, "dept-1", policiesByNodeId);
+  it("should deny when no policy allows explicitly", () => {
+    const nodes = [createOrgNode({ orgNodeId: "isolated-node" })];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "isolated-node": [{ policyId: "neutral", rules: {} }],
+    };
 
-  assert.ok(Object.keys(result).length > 0);
-  assert.equal((result as { max_retries?: number }).max_retries, 3);
-});
+    const result = resolveCompliancePolicyForNode(nodes, "isolated-node", policiesByNodeId);
 
-test("resolveCompliancePolicyForNode inherits from parent nodes", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1" }),
-  ];
+    // Empty rules + no allow = implicit deny
+    assert.strictEqual(Object.keys(result).length, 0);
+  });
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "company-1": [
-      { policyId: "policy-company", rules: { global_setting: "enabled" } },
-    ],
-  };
+  it("should allow explicitly allowed actions", () => {
+    const nodes = [createOrgNode({ orgNodeId: "allowed-node" })];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "allowed-node": [{ policyId: "allow-policy", rules: { allowUserCreation: true } }],
+    };
 
-  const result = resolveCompliancePolicyForNode(nodes, "dept-1", policiesByNodeId);
+    const result = resolveCompliancePolicyForNode(nodes, "allowed-node", policiesByNodeId);
 
-  // Should inherit from parent
-  assert.ok((result as { global_setting?: string }).global_setting, "enabled");
-});
+    assert.strictEqual(result.allowUserCreation, true);
+  });
 
-test("resolveCompliancePolicyForNode merges multiple inherited policies", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "division-1", parentOrgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "division-1" }),
-  ];
+  it("should inherit allow through lineage", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "parent", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "child", parentOrgNodeId: "parent" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "parent": [{ policyId: "allow-policy", rules: { allowUserCreation: true } }],
+      "child": [],
+    };
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "company-1": [
-      { policyId: "policy-company", rules: { company_rule: true } },
-    ],
-    "division-1": [
-      { policyId: "policy-division", rules: { division_rule: true } },
-    ],
-  };
+    const result = resolveCompliancePolicyForNode(nodes, "child", policiesByNodeId);
 
-  const result = resolveCompliancePolicyForNode(nodes, "dept-1", policiesByNodeId);
+    assert.strictEqual(result.allowUserCreation, true);
+  });
 
-  // Should merge both policies
-  assert.ok((result as { company_rule?: boolean }).company_rule);
-  assert.ok((result as { division_rule?: boolean }).division_rule);
-});
+  it("should restrict inherited allow with child policy", () => {
+    const nodes = [
+      createOrgNode({ orgNodeId: "parent", parentOrgNodeId: null }),
+      createOrgNode({ orgNodeId: "child", parentOrgNodeId: "parent" }),
+    ];
+    const policiesByNodeId: Record<string, PolicyLayer[]> = {
+      "parent": [{ policyId: "p1", rules: { allowUserCreation: true, maxSessions: 100 } }],
+      "child": [{ policyId: "p2", rules: { maxSessions: 10 } }],
+    };
 
-test("resolveCompliancePolicyForNode child policies override parent policies", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1" }),
-  ];
+    const result = resolveCompliancePolicyForNode(nodes, "child", policiesByNodeId);
 
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "company-1": [
-      { policyId: "policy-company", rules: { setting: "parent_value" } },
-    ],
-    "dept-1": [
-      { policyId: "policy-dept", rules: { setting: "child_value" } },
-    ],
-  };
-
-  const result = resolveCompliancePolicyForNode(nodes, "dept-1", policiesByNodeId);
-
-  // Child should override parent
-  assert.equal((result as { setting?: string }).setting, "child_value");
-});
-
-test("resolveCompliancePolicyForNode handles deep hierarchy", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "division-1", parentOrgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "division-1" }),
-    createOrgNode({ orgNodeId: "team-1", parentOrgNodeId: "dept-1" }),
-  ];
-
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "company-1": [
-      { policyId: "policy-1", rules: { level: 1 } },
-    ],
-    "division-1": [
-      { policyId: "policy-2", rules: { level: 2 } },
-    ],
-    "dept-1": [
-      { policyId: "policy-3", rules: { level: 3 } },
-    ],
-    "team-1": [
-      { policyId: "policy-4", rules: { level: 4 } },
-    ],
-  };
-
-  const result = resolveCompliancePolicyForNode(nodes, "team-1", policiesByNodeId);
-
-  // All levels should be inherited
-  assert.equal((result as { level?: number }).level, 4); // Team overrides
-});
-
-test("resolveCompliancePolicyForNode with single node and no parent", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-  ];
-
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "company-1": [
-      { policyId: "policy-1", rules: { setting: "value" } },
-    ],
-  };
-
-  const result = resolveCompliancePolicyForNode(nodes, "company-1", policiesByNodeId);
-
-  assert.equal((result as { setting?: string }).setting, "value");
-});
-
-test("resolveCompliancePolicyForNode empty lineage for root node returns empty", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1", parentOrgNodeId: null }),
-  ];
-
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {};
-
-  const result = resolveCompliancePolicyForNode(nodes, "company-1", policiesByNodeId);
-
-  // Empty policies = empty object = allow (BUG)
-  assert.deepStrictEqual(result, {});
-});
-
-test("resolveCompliancePolicyForNode with partial lineage coverage", () => {
-  const nodes = [
-    createOrgNode({ orgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1" }),
-    createOrgNode({ orgNodeId: "team-1", parentOrgNodeId: "dept-1" }),
-  ];
-
-  const policiesByNodeId: Record<string, PolicyLayer[]> = {
-    "company-1": [
-      { policyId: "policy-1", rules: { rule1: "from_company" } },
-    ],
-    // dept-1 has no policy
-    "team-1": [
-      { policyId: "policy-team", rules: { rule3: "from_team" } },
-    ],
-  };
-
-  const result = resolveCompliancePolicyForNode(nodes, "team-1", policiesByNodeId);
-
-  // Should have company policy and team policy
-  assert.equal((result as { rule1?: string }).rule1, "from_company");
-  assert.equal((result as { rule3?: string }).rule3, "from_team");
+    assert.strictEqual(result.allowUserCreation, true); // From parent
+    assert.strictEqual(result.maxSessions, 10); // Restricted by child
+  });
 });

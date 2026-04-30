@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { join } from "node:path";
 
 // We need to test the backoff calculation indirectly through the retry mechanism
 // since calculateBackoff is a private function in durable-event-bus.ts
@@ -33,7 +34,7 @@ test("calculateBackoff: exponential increase with cap", async () => {
     const deliveryTimes: number[] = [];
 
     bus.subscribe("backoff_test_consumer", async (event) => {
-      if (event.payloadJson.includes(""measureBackoff"":true)) {
+      if (event.payloadJson.includes('"measureBackoff":true')) {
         deliveryTimes.push(Date.now());
       }
       // Fail the first time

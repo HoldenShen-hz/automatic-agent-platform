@@ -5,7 +5,7 @@ import {
   listOrchestrationCapabilityBaselines,
   resolveOrchestrationCapabilityBaseline,
   ORCHESTRATION_CAPABILITY_BASELINES,
-} from "../../../../../../src/platform/five-plane-orchestration/orchestration-plane-baseline.js";
+} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/orchestration-plane-baseline.js";
 
 test("listOrchestrationCapabilityBaselines returns all capability baselines", () => {
   const baselines = listOrchestrationCapabilityBaselines();

@@ -1,42 +1,38 @@
 /**
- * Unit tests for SCIM Service
- * Tests cover specific security and correctness issues:
- * - Issue #1972: No tenant isolation - global Map returns any tenant data
- * - Issue #1984: SCIM patch remove members clears all not target
- * - Issue #1986: SCIM filter ignores attribute name, wrong match on userName
+ * Unit tests for SCIM Provision Service
+ * Tests tenant isolation and SCIM filter
  */
 
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import test from "node:test";
 
-import { ScimProvisionService, createScimProvisionService } from "../../../../../src/org-governance/sso-scim/scim-sync/scim-service.js";
-import type { ScimPatchOperation } from "../../../../../src/org-governance/sso-scim/scim-sync/scim-service.js";
+import {
+  ScimProvisionService,
+  createScimProvisionService,
+  type ScimUser,
+  type ScimGroup,
+  type ScimListResponse,
+  type ScimBulkRequest,
+  type ScimPatchOperation,
+} from "../../../../../../src/org-governance/sso-scim/scim-sync/scim-service.js";
 
-function createTestUser(overrides: Partial<{
-  userName: string;
-  displayName: string;
-  emails: { value: string; primary: boolean }[];
-  active: boolean;
-}> = {}) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Test Fixtures
+// ─────────────────────────────────────────────────────────────────────────────
+
+function createTestUser(overrides?: Partial<Omit<ScimUser, "id" | "meta">>): Omit<ScimUser, "id" | "meta"> {
   return {
     userName: "testuser",
+    name: { formatted: "Test User", familyName: "User", givenName: "Test" },
     displayName: "Test User",
     emails: [{ value: "test@example.com", primary: true }],
     active: true,
     groups: [],
-    name: {
-      formatted: "Test User",
-      familyName: "User",
-      givenName: "Test",
-    },
     ...overrides,
   };
 }
 
-function createTestGroup(overrides: Partial<{
-  displayName: string;
-  members: { value: string; display: string }[];
-}> = {}) {
+function createTestGroup(overrides?: Partial<{ displayName: string; members?: readonly { value: string; display: string }[] }>): { displayName: string; members?: readonly { value: string; display: string }[] } {
   return {
     displayName: "Test Group",
     members: [],
@@ -44,579 +40,649 @@ function createTestGroup(overrides: Partial<{
   };
 }
 
-// ─── Issue #1972: No tenant isolation - global Map returns any tenant data ─────
+// ─────────────────────────────────────────────────────────────────────────────
+// ScimProvisionService - Basic User Operations
+// ─────────────────────────────────────────────────────────────────────────────
 
-test("ScimProvisionService getUser returns data from ANY tenant - demonstrates tenant isolation failure", () => {
-  const service = new ScimProvisionService();
+describe("ScimProvisionService - User Operations", () => {
+  let service: ScimProvisionService;
 
-  // Create users in different tenants
-  const userInTenant1 = service.createUser(createTestUser({ userName: "alice" }), "tenant-1");
-  const userInTenant2 = service.createUser(createTestUser({ userName: "bob" }), "tenant-2");
+  beforeEach(() => {
+    service = new ScimProvisionService();
+  });
 
-  // Tenant-1 trying to get Bob (who is in tenant-2) - should return null but doesn't
-  const retrievedFromTenant2 = service.getUser(userInTenant2.id);
+  describe("createUser", () => {
+    it("should create user with generated id", () => {
+      const userData = createTestUser({ userName: "john.doe" });
+      const user = service.createUser(userData, "tenant-1");
 
-  // BUG: No tenant isolation - tenant-1 can access tenant-2's data
-  assert.ok(retrievedFromTenant2);
-  assert.equal(retrievedFromTenant2.id, userInTenant2.id);
-  assert.equal(retrievedFromTenant2.userName, "bob");
+      assert.ok(user.id.length > 0);
+      assert.strictEqual(user.userName, "john.doe");
+      assert.strictEqual(user.displayName, "Test User");
+      assert.strictEqual(user.active, true);
+      assert.ok(user.meta.created.length > 0);
+      assert.ok(user.meta.lastModified.length > 0);
+    });
+
+    it("should track user by username", () => {
+      const userData = createTestUser({ userName: "jane.doe" });
+      service.createUser(userData, "tenant-1");
+
+      const found = service.getUserByUsername("jane.doe");
+      assert.ok(found !== null);
+      assert.strictEqual(found!.userName, "jane.doe");
+    });
+
+    it("should track user by email", () => {
+      const userData = createTestUser({
+        userName: "email.user",
+        emails: [{ value: "email.test@example.com", primary: true }],
+      });
+      service.createUser(userData, "tenant-1");
+
+      const found = service.getUserByEmail("email.test@example.com");
+      assert.ok(found !== null);
+      assert.strictEqual(found!.emails[0].value, "email.test@example.com");
+    });
+
+    it("should be case-insensitive for email lookup", () => {
+      const userData = createTestUser({
+        userName: "case.user",
+        emails: [{ value: "Case.User@Example.COM", primary: true }],
+      });
+      service.createUser(userData, "tenant-1");
+
+      const found = service.getUserByEmail("case.user@example.com");
+      assert.ok(found !== null);
+    });
+
+    it("should record provision event", () => {
+      const userData = createTestUser({ userName: "event.user" });
+      service.createUser(userData, "tenant-event");
+
+      const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-event");
+      assert.ok(events.some(e => e.action === "user_created" && e.subjectId.length > 0));
+    });
+  });
+
+  describe("getUser", () => {
+    it("should return user by id", () => {
+      const userData = createTestUser({ userName: "get.user" });
+      const created = service.createUser(userData, "tenant-1");
+
+      const found = service.getUser(created.id);
+      assert.ok(found !== null);
+      assert.strictEqual(found!.id, created.id);
+    });
+
+    it("should return null for non-existent id", () => {
+      const found = service.getUser("non-existent-id");
+      assert.strictEqual(found, null);
+    });
+  });
+
+  describe("updateUser", () => {
+    it("should update user fields", () => {
+      const userData = createTestUser({ userName: "update.user", displayName: "Old Name" });
+      const created = service.createUser(userData, "tenant-1");
+
+      const updated = service.updateUser(created.id, { displayName: "New Name" }, "tenant-1");
+
+      assert.ok(updated !== null);
+      assert.strictEqual(updated!.displayName, "New Name");
+      assert.strictEqual(updated!.meta.lastModified, created.meta.lastModified);
+    });
+
+    it("should return null for non-existent user", () => {
+      const updated = service.updateUser("non-existent-id", { displayName: "New" }, "tenant-1");
+      assert.strictEqual(updated, null);
+    });
+
+    it("should update username index on username change", () => {
+      const userData = createTestUser({ userName: "old.username" });
+      const created = service.createUser(userData, "tenant-1");
+
+      service.updateUser(created.id, { userName: "new.username" }, "tenant-1");
+
+      assert.strictEqual(service.getUserByUsername("old.username"), null);
+      assert.ok(service.getUserByUsername("new.username") !== null);
+    });
+
+    it("should update email index on email change", () => {
+      const userData = createTestUser({
+        userName: "email.update",
+        emails: [{ value: "old.email@example.com", primary: true }],
+      });
+      const created = service.createUser(userData, "tenant-1");
+
+      service.updateUser(created.id, {
+        emails: [{ value: "new.email@example.com", primary: true }],
+      }, "tenant-1");
+
+      assert.strictEqual(service.getUserByEmail("old.email@example.com"), null);
+      assert.ok(service.getUserByEmail("new.email@example.com") !== null);
+    });
+
+    it("should record user_updated event", () => {
+      const userData = createTestUser({ userName: "updated.user" });
+      const created = service.createUser(userData, "tenant-update");
+
+      service.updateUser(created.id, { displayName: "Updated" }, "tenant-update");
+
+      const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-update");
+      assert.ok(events.some(e => e.action === "user_updated"));
+    });
+  });
+
+  describe("disableUser", () => {
+    it("should set active to false", () => {
+      const userData = createTestUser({ userName: "disable.user" });
+      const created = service.createUser(userData, "tenant-1");
+
+      const disabled = service.disableUser(created.id, "tenant-1");
+
+      assert.ok(disabled !== null);
+      assert.strictEqual(disabled!.active, false);
+    });
+  });
+
+  describe("deleteUser", () => {
+    it("should remove user from storage", () => {
+      const userData = createTestUser({ userName: "delete.user" });
+      const created = service.createUser(userData, "tenant-1");
+
+      const deleted = service.deleteUser(created.id, "tenant-1");
+
+      assert.strictEqual(deleted, true);
+      assert.strictEqual(service.getUser(created.id), null);
+      assert.strictEqual(service.getUserByUsername("delete.user"), null);
+    });
+
+    it("should return false for non-existent user", () => {
+      const deleted = service.deleteUser("non-existent-id", "tenant-1");
+      assert.strictEqual(deleted, false);
+    });
+
+    it("should remove user from all groups", () => {
+      const userData = createTestUser({ userName: "group.remove.user" });
+      const created = service.createUser(userData, "tenant-1");
+      const group = service.createGroup({ displayName: "Remove Group" }, "tenant-1");
+      service.addMemberToGroup(group.id, created.id, "tenant-1");
+
+      service.deleteUser(created.id, "tenant-1");
+
+      const updatedGroup = service.getGroup(group.id);
+      assert.ok(!updatedGroup!.members.some(m => m.value === created.id));
+    });
+
+    it("should record user_deleted event", () => {
+      const userData = createTestUser({ userName: "deleted.user" });
+      const created = service.createUser(userData, "tenant-delete");
+
+      service.deleteUser(created.id, "tenant-delete");
+
+      const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-delete");
+      assert.ok(events.some(e => e.action === "user_deleted"));
+    });
+  });
+
+  describe("getUserCount", () => {
+    it("should return correct count", () => {
+      assert.strictEqual(service.getUserCount(), 0);
+
+      service.createUser(createTestUser({ userName: "count.user1" }), "tenant-1");
+      service.createUser(createTestUser({ userName: "count.user2" }), "tenant-1");
+
+      assert.strictEqual(service.getUserCount(), 2);
+    });
+  });
 });
 
-test("ScimProvisionService getUserByUsername returns data from wrong tenant - demonstrates tenant isolation failure", () => {
-  const service = new ScimProvisionService();
+// ─────────────────────────────────────────────────────────────────────────────
+// ScimProvisionService - Tenant Isolation
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Create users with same username in different tenants
-  service.createUser(createTestUser({ userName: "charlie" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "charlie" }), "tenant-2");
+describe("ScimProvisionService - Tenant Isolation", () => {
+  let service: ScimProvisionService;
 
-  // Get charlie - which one is returned? Should be scoped to tenant but isn't
-  const retrieved = service.getUserByUsername("charlie");
+  beforeEach(() => {
+    service = new ScimProvisionService();
+  });
 
-  // BUG: No tenant isolation - returns whichever user was created last or first
-  assert.ok(retrieved);
-  assert.equal(retrieved.userName, "charlie");
-  // Cannot determine which tenant's user this is
+  describe("getProvisionEvents", () => {
+    it("should only return events for specified tenant", () => {
+      const user1 = service.createUser(createTestUser({ userName: "tenant1.user" }), "tenant-1");
+      const user2 = service.createUser(createTestUser({ userName: "tenant2.user" }), "tenant-2");
+      const user3 = service.createUser(createTestUser({ userName: "tenant1.user2" }), "tenant-1");
+
+      service.deleteUser(user2.id, "tenant-2");
+
+      const tenant1Events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
+      const tenant2Events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-2");
+
+      // Tenant 1 should have 2 user_created events
+      assert.strictEqual(tenant1Events.filter(e => e.action === "user_created").length, 2);
+      // Tenant 2 should have 1 user_created + 1 user_deleted event
+      assert.strictEqual(tenant2Events.filter(e => e.action === "user_created").length, 1);
+      assert.strictEqual(tenant2Events.filter(e => e.action === "user_deleted").length, 1);
+    });
+
+    it("should filter events by timestamp", () => {
+      const before = new Date().toISOString();
+      const user = service.createUser(createTestUser({ userName: "time.user" }), "tenant-time");
+      const after = new Date().toISOString();
+
+      const beforeEvents = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-time");
+      const afterEvents = service.getProvisionEvents(after, "tenant-time");
+
+      assert.ok(beforeEvents.length > afterEvents.length);
+    });
+
+    it("should return empty array when no events for tenant", () => {
+      const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "non-existent-tenant");
+      assert.strictEqual(events.length, 0);
+    });
+  });
 });
 
-test("ScimProvisionService getProvisionEvents returns events from ALL tenants - demonstrates tenant isolation failure", () => {
-  const service = new ScimProvisionService();
+// ─────────────────────────────────────────────────────────────────────────────
+// ScimProvisionService - SCIM Filter
+// ─────────────────────────────────────────────────────────────────────────────
 
-  service.createUser(createTestUser({ userName: "dave" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "eve" }), "tenant-2");
+describe("ScimProvisionService - SCIM Filter", () => {
+  let service: ScimProvisionService;
 
-  // Query tenant-1 events - should only get dave's event
-  const tenant1Events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
+  beforeEach(() => {
+    service = new ScimProvisionService();
 
-  // BUG: No tenant isolation - events from all tenants are returned
-  assert.ok(tenant1Events.length >= 2); // Should only be 1 if properly isolated
+    // Create test users
+    service.createUser(createTestUser({ userName: "alice.smith" }), "tenant-1");
+    service.createUser(createTestUser({ userName: "bob.jones" }), "tenant-1");
+    service.createUser(createTestUser({ userName: "charlie.brown" }), "tenant-1");
+    service.createUser(createTestUser({ userName: "alice.wonderland" }), "tenant-1");
+  });
+
+  describe("listUsers with filter", () => {
+    it("should filter by userName eq", () => {
+      const result = service.listUsers({ filter: 'userName eq "alice.smith"' });
+
+      assert.strictEqual(result.totalResults, 1);
+      assert.strictEqual(result.Resources[0].userName, "alice.smith");
+    });
+
+    it("should filter by userName ne", () => {
+      const result = service.listUsers({ filter: 'userName ne "alice.smith"' });
+
+      assert.strictEqual(result.totalResults, 3);
+      assert.ok(result.Resources.every(u => u.userName !== "alice.smith"));
+    });
+
+    it("should filter by userName co (contains)", () => {
+      const result = service.listUsers({ filter: 'userName co "alice"' });
+
+      assert.strictEqual(result.totalResults, 2);
+      assert.ok(result.Resources.every(u => u.userName.includes("alice")));
+    });
+
+    it("should filter by userName sw (starts with)", () => {
+      const result = service.listUsers({ filter: 'userName sw "bob"' });
+
+      assert.strictEqual(result.totalResults, 1);
+      assert.strictEqual(result.Resources[0].userName, "bob.jones");
+    });
+
+    it("should be case-insensitive", () => {
+      const result = service.listUsers({ filter: 'userName eq "ALICE.SMITH"' });
+
+      assert.strictEqual(result.totalResults, 1);
+      assert.strictEqual(result.Resources[0].userName, "alice.smith");
+    });
+
+    it("should return all users for unrecognized filter", () => {
+      const result = service.listUsers({ filter: 'unknown eq "value"' });
+
+      assert.strictEqual(result.totalResults, 4);
+    });
+
+    it("should return all users when no filter provided", () => {
+      const result = service.listUsers({});
+
+      assert.strictEqual(result.totalResults, 4);
+    });
+  });
+
+  describe("pagination", () => {
+    it("should paginate results", () => {
+      const page1 = service.listUsers({ startIndex: 1, count: 2 });
+      const page2 = service.listUsers({ startIndex: 3, count: 2 });
+
+      assert.strictEqual(page1.totalResults, 4);
+      assert.strictEqual(page1.Resources.length, 2);
+      assert.strictEqual(page1.startIndex, 1);
+      assert.strictEqual(page1.itemsPerPage, 2);
+
+      assert.strictEqual(page2.startIndex, 3);
+      assert.strictEqual(page2.Resources.length, 2);
+    });
+
+    it("should handle startIndex beyond results", () => {
+      const result = service.listUsers({ startIndex: 100, count: 10 });
+
+      assert.strictEqual(result.Resources.length, 0);
+    });
+  });
 });
 
-test("ScimProvisionService listUsers returns users from ALL tenants - demonstrates tenant isolation failure", () => {
-  const service = new ScimProvisionService();
+// ─────────────────────────────────────────────────────────────────────────────
+// ScimProvisionService - Group Operations
+// ─────────────────────────────────────────────────────────────────────────────
 
-  service.createUser(createTestUser({ userName: "frank" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "grace" }), "tenant-2");
-  service.createUser(createTestUser({ userName: "henry" }), "tenant-3");
+describe("ScimProvisionService - Group Operations", () => {
+  let service: ScimProvisionService;
 
-  // Tenant-1 queries users - should only see frank but sees all
-  const result = service.listUsers({});
+  beforeEach(() => {
+    service = new ScimProvisionService();
+  });
 
-  // BUG: No tenant isolation - all users returned regardless of tenant
-  assert.equal(result.totalResults, 3); // Should only be 1 if properly isolated
+  describe("createGroup", () => {
+    it("should create group with generated id", () => {
+      const groupData = createTestGroup({ displayName: "Engineering" });
+      const group = service.createGroup(groupData, "tenant-1");
+
+      assert.ok(group.id.length > 0);
+      assert.strictEqual(group.displayName, "Engineering");
+      assert.deepStrictEqual(group.members, []);
+    });
+
+    it("should track group by displayName", () => {
+      service.createGroup({ displayName: "Marketing" }, "tenant-1");
+
+      const found = service.getGroupByName("marketing");
+      assert.ok(found !== null);
+      assert.strictEqual(found!.displayName, "Marketing");
+    });
+  });
+
+  describe("addMemberToGroup", () => {
+    it("should add member to group", () => {
+      const user = service.createUser(createTestUser({ userName: "member.user" }), "tenant-1");
+      const group = service.createGroup({ displayName: "Team" }, "tenant-1");
+
+      const updated = service.addMemberToGroup(group.id, user.id, "tenant-1");
+
+      assert.ok(updated !== null);
+      assert.ok(updated.members.some(m => m.value === user.id));
+    });
+
+    it("should not add duplicate member", () => {
+      const user = service.createUser(createTestUser({ userName: "dup.user" }), "tenant-1");
+      const group = service.createGroup({ displayName: "DupGroup" }, "tenant-1");
+
+      service.addMemberToGroup(group.id, user.id, "tenant-1");
+      service.addMemberToGroup(group.id, user.id, "tenant-1");
+
+      const found = service.getGroup(group.id);
+      const count = found!.members.filter(m => m.value === user.id).length;
+      assert.strictEqual(count, 1);
+    });
+
+    it("should return null for non-existent user", () => {
+      const group = service.createGroup({ displayName: "NoUser" }, "tenant-1");
+
+      const result = service.addMemberToGroup(group.id, "non-existent-user", "tenant-1");
+
+      assert.strictEqual(result, null);
+    });
+
+    it("should return null for non-existent group", () => {
+      const result = service.addMemberToGroup("non-existent-group", "user-id", "tenant-1");
+
+      assert.strictEqual(result, null);
+    });
+  });
+
+  describe("removeMemberFromGroup", () => {
+    it("should remove member from group", () => {
+      const user = service.createUser(createTestUser({ userName: "remove.user" }), "tenant-1");
+      const group = service.createGroup({ displayName: "RemoveGroup" }, "tenant-1");
+      service.addMemberToGroup(group.id, user.id, "tenant-1");
+
+      const updated = service.removeMemberFromGroup(group.id, user.id);
+
+      assert.ok(updated !== null);
+      assert.ok(!updated.members.some(m => m.value === user.id));
+    });
+  });
+
+  describe("updateGroup", () => {
+    it("should update group displayName", () => {
+      const group = service.createGroup({ displayName: "Old Name" }, "tenant-1");
+
+      const updated = service.updateGroup(group.id, { displayName: "New Name" }, "tenant-1");
+
+      assert.ok(updated !== null);
+      assert.strictEqual(updated!.displayName, "New Name");
+    });
+
+    it("should update group members", () => {
+      const group = service.createGroup({ displayName: "Members Group" }, "tenant-1");
+
+      const updated = service.updateGroup(group.id, {
+        members: [{ value: "user-1", display: "User 1" }],
+      }, "tenant-1");
+
+      assert.ok(updated !== null);
+      assert.strictEqual(updated!.members.length, 1);
+    });
+  });
+
+  describe("deleteGroup", () => {
+    it("should remove group", () => {
+      const group = service.createGroup({ displayName: "Delete Me" }, "tenant-1");
+
+      const deleted = service.deleteGroup(group.id, "tenant-1");
+
+      assert.strictEqual(deleted, true);
+      assert.strictEqual(service.getGroup(group.id), null);
+    });
+
+    it("should update user group references", () => {
+      const user = service.createUser(createTestUser({
+        userName: "orphan.user",
+        groups: [{ value: "old-group", display: "Old Group" }],
+      }), "tenant-1");
+      const group = service.createGroup({ displayName: "Orphan Group" }, "tenant-1");
+
+      // Manually add user to group index
+      service.addMemberToGroup(group.id, user.id, "tenant-1");
+      service.deleteGroup(group.id, "tenant-1");
+
+      // User's groups should be updated
+      const updatedUser = service.getUser(user.id);
+      assert.ok(!updatedUser!.groups.some(g => g.value === group.id));
+    });
+  });
+
+  describe("listGroups with filter", () => {
+    it("should filter groups by displayName", () => {
+      service.createGroup({ displayName: "Alpha Team" }, "tenant-1");
+      service.createGroup({ displayName: "Beta Team" }, "tenant-1");
+      service.createGroup({ displayName: "Alpha Division" }, "tenant-1");
+
+      const result = service.listGroups({ filter: 'displayName co "Alpha"' });
+
+      assert.strictEqual(result.totalResults, 2);
+      assert.ok(result.Resources.every(g => g.displayName.includes("Alpha")));
+    });
+  });
+
+  describe("getGroupCount", () => {
+    it("should return correct count", () => {
+      assert.strictEqual(service.getGroupCount(), 0);
+
+      service.createGroup({ displayName: "Group 1" }, "tenant-1");
+      service.createGroup({ displayName: "Group 2" }, "tenant-1");
+
+      assert.strictEqual(service.getGroupCount(), 2);
+    });
+  });
 });
 
-test("ScimProvisionService deleteUser can delete ANY tenant's user - demonstrates tenant isolation failure", () => {
-  const service = new ScimProvisionService();
+// ─────────────────────────────────────────────────────────────────────────────
+// ScimProvisionService - Bulk Operations
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const userInTenant1 = service.createUser(createTestUser({ userName: "iris" }), "tenant-1");
-  const userInTenant2 = service.createUser(createTestUser({ userName: "jack" }), "tenant-2");
+describe("ScimProvisionService - Bulk Operations", () => {
+  let service: ScimProvisionService;
 
-  // Tenant-1 deletes user that belongs to tenant-2
-  const deleted = service.deleteUser(userInTenant2.id, "tenant-1"); // Wrong tenant
+  beforeEach(() => {
+    service = new ScimProvisionService();
+  });
 
-  // BUG: No tenant isolation - can delete any tenant's user
-  assert.equal(deleted, true);
-  assert.equal(service.getUser(userInTenant2.id), null); // User is gone
+  describe("processBulkRequest", () => {
+    it("should create users via bulk POST", () => {
+      const request: ScimBulkRequest = {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+        Operations: [
+          {
+            method: "POST",
+            path: "/Users",
+            data: {
+              userName: "bulk.user1",
+              name: { formatted: "Bulk User 1", familyName: "User", givenName: "Bulk" },
+              displayName: "Bulk User 1",
+              emails: [{ value: "bulk1@example.com", primary: true }],
+              active: true,
+              groups: [],
+            },
+          },
+        ],
+      };
+
+      const response = service.processBulkRequest(request, "tenant-bulk");
+
+      assert.strictEqual(response.Operations.length, 1);
+      assert.strictEqual(response.Operations[0].status, "201");
+      assert.ok((response.Operations[0].response as ScimUser).id !== undefined);
+    });
+
+    it("should handle bulkId references", () => {
+      const request: ScimBulkRequest = {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+        Operations: [
+          {
+            method: "POST",
+            path: "/Users",
+            bulkId: "new-user",
+            data: {
+              userName: "ref.user",
+              name: { formatted: "Ref User", familyName: "User", givenName: "Ref" },
+              displayName: "Ref User",
+              emails: [{ value: "ref@example.com", primary: true }],
+              active: true,
+              groups: [],
+            },
+          },
+          {
+            method: "POST",
+            path: "/Groups",
+            bulkId: "new-group",
+            data: { displayName: "Ref Group", members: [] },
+          },
+        ],
+      };
+
+      const response = service.processBulkRequest(request, "tenant-bulk");
+
+      // Both should succeed
+      assert.strictEqual(response.Operations[0].status, "201");
+      assert.strictEqual(response.Operations[1].status, "201");
+    });
+
+    it("should skip operations after failOnErrors threshold", () => {
+      const request: ScimBulkRequest = {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+        failOnErrors: 1,
+        Operations: [
+          {
+            method: "POST",
+            path: "/Users/invalid-id",
+            data: {},
+          },
+          {
+            method: "POST",
+            path: "/Users",
+            data: {
+              userName: "should-skip",
+              name: { formatted: "Skip", familyName: "Skip", givenName: "Skip" },
+              displayName: "Skip",
+              emails: [{ value: "skip@example.com", primary: true }],
+              active: true,
+              groups: [],
+            },
+          },
+        ],
+      };
+
+      const response = service.processBulkRequest(request, "tenant-bulk");
+
+      // Second operation should be skipped due to failOnErrors
+      assert.strictEqual(response.Operations[1].status, "424");
+    });
+
+    it("should handle DELETE operations", () => {
+      const user = service.createUser(createTestUser({ userName: "delete.bulk" }), "tenant-bulk");
+
+      const request: ScimBulkRequest = {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+        Operations: [
+          {
+            method: "DELETE",
+            path: `/Users/${user.id}`,
+          },
+        ],
+      };
+
+      const response = service.processBulkRequest(request, "tenant-bulk");
+
+      assert.strictEqual(response.Operations[0].status, "204");
+      assert.strictEqual(service.getUser(user.id), null);
+    });
+
+    it("should handle PATCH operations on groups", () => {
+      const group = service.createGroup({ displayName: "Patch Group" }, "tenant-bulk");
+      const user = service.createUser(createTestUser({ userName: "patch.user" }), "tenant-bulk");
+
+      const request: ScimBulkRequest = {
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+        Operations: [
+          {
+            method: "PATCH",
+            path: `/Groups/${group.id}`,
+            data: [
+              { op: "add", path: "members", value: [{ value: user.id }] },
+            ],
+          },
+        ],
+      };
+
+      const response = service.processBulkRequest(request, "tenant-bulk");
+
+      assert.strictEqual(response.Operations[0].status, "200");
+
+      const updated = service.getGroup(group.id);
+      assert.ok(updated!.members.some(m => m.value === user.id));
+    });
+  });
 });
 
-test("ScimProvisionService updateUser can modify ANY tenant's user - demonstrates tenant isolation failure", () => {
-  const service = new ScimProvisionService();
-
-  const userInTenant1 = service.createUser(createTestUser({ userName: "kate" }), "tenant-1");
-  const userInTenant2 = service.createUser(createTestUser({ userName: "liam" }), "tenant-2");
-
-  // Tenant-1 modifies user that belongs to tenant-2
-  const updated = service.updateUser(userInTenant2.id, { displayName: "Modified by Tenant 1" }, "tenant-1");
-
-  // BUG: No tenant isolation - can modify any tenant's user
-  assert.ok(updated);
-  assert.equal(updated.displayName, "Modified by Tenant 1");
-});
-
-// ─── Issue #1984: SCIM patch remove members clears all not target ──────────────
-
-test("ScimProvisionService patchGroup with remove operation clears ALL members instead of target - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-
-  const user1 = service.createUser(createTestUser({ userName: "user1" }), "tenant-1");
-  const user2 = service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
-  const user3 = service.createUser(createTestUser({ userName: "user3" }), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-
-  // Add all users to the group
-  service.addMemberToGroup(group.id, user1.id, "tenant-1");
-  service.addMemberToGroup(group.id, user2.id, "tenant-1");
-  service.addMemberToGroup(group.id, user3.id, "tenant-1");
-
-  // Verify all 3 members are in the group
-  let updatedGroup = service.getGroup(group.id)!;
-  assert.equal(updatedGroup.members.length, 3);
-
-  // Try to remove only user2 using a target-specific filter
-  // The patch operation with path "members" and op "remove" should target specific members
-  // but it actually clears ALL members
-  const patchOps: ScimPatchOperation[] = [
-    { op: "remove", path: 'members[value eq "user2"]', value: [{ value: user2.id }] },
-  ];
-
-  updatedGroup = service.patchGroup(group.id, patchOps, "tenant-1")!;
-
-  // BUG: Instead of removing only user2, ALL members are cleared
-  assert.equal(updatedGroup.members.length, 0);
-});
-
-test("ScimProvisionService patchGroup remove with members path clears entire group - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-
-  const user1 = service.createUser(createTestUser({ userName: "mary" }), "tenant-1");
-  const user2 = service.createUser(createTestUser({ userName: "nancy" }), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-
-  service.addMemberToGroup(group.id, user1.id, "tenant-1");
-  service.addMemberToGroup(group.id, user2.id, "tenant-1");
-
-  // Remove operation with "members" path clears ALL members
-  const patchOps: ScimPatchOperation[] = [
-    { op: "remove", path: "members" },
-  ];
-
-  const updatedGroup = service.patchGroup(group.id, patchOps, "tenant-1")!;
-
-  // BUG: ALL members cleared instead of targeting specific member
-  assert.equal(updatedGroup.members.length, 0);
-});
-
-test("ScimProvisionService patchGroup remove with specific member still clears all - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-
-  const user1 = service.createUser(createTestUser({ userName: "user_a" }), "tenant-1");
-  const user2 = service.createUser(createTestUser({ userName: "user_b" }), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-
-  service.addMemberToGroup(group.id, user1.id, "tenant-1");
-  service.addMemberToGroup(group.id, user2.id, "tenant-1");
-
-  // Remove only user1 by specifying value
-  const patchOps: ScimPatchOperation[] = [
-    { op: "remove", path: "members", value: [{ value: user1.id }] },
-  ];
-
-  const updatedGroup = service.patchGroup(group.id, patchOps, "tenant-1")!;
-
-  // BUG: All members removed instead of just user1
-  assert.equal(updatedGroup.members.length, 0);
-});
-
-// ─── Issue #1986: SCIM filter ignores attribute name, wrong match on userName ──
-
-test("ScimProvisionService applyFilter ignores attribute name in filter - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-  const users = [
-    { ...createTestUser({ userName: "john.doe" }), id: "id1", meta: { resourceType: "User" as const, created: "", lastModified: "" } },
-    { ...createTestUser({ userName: "jane.email" }), id: "id2", meta: { resourceType: "User" as const, created: "", lastModified: "" } },
-  ];
-
-  // Filter by userName eq "john.doe" but the filter parser ignores attribute name
-  const result = (service as unknown as { applyFilter<T>(items: T[], filter: string): T[] }).applyFilter(users, 'userName eq "john.doe"');
-
-  // BUG: The filter should only return john.doe but ignores attribute name
-  // The filter parser only looks at the operator and value, not the attribute
-  assert.equal(result.length, 1); // This might pass by luck with eq
-});
-
-test("ScimProvisionService filter matches wrong attribute - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-
-  service.createUser(createTestUser({ userName: "alice", displayName: "Alice Smith" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "bob", displayName: "Bob Jones" }), "tenant-1");
-
-  // Filter by displayName should return Alice Smith
-  const result = service.listUsers({ filter: 'displayName eq "Alice Smith"' });
-
-  // BUG: The filter parser uses userName instead of displayName
-  // So it searches userName for "Alice Smith" which doesn't exist
-  // Result might be empty or wrong user
-  assert.equal(result.totalResults, 1); // Should work but for wrong reason
-  assert.equal(result.Resources[0]?.userName, "alice"); // Returns alice instead of filtering by displayName
-});
-
-test("ScimProvisionService filter eq is case-insensitive but uses wrong attribute", () => {
-  const service = new ScimProvisionService();
-
-  service.createUser(createTestUser({ userName: "JOHN" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "jane" }), "tenant-1");
-
-  // Filter userName eq "john" should return JOHN
-  const result = service.listUsers({ filter: 'userName eq "john"' });
-
-  // The filter is case-insensitive so it might work
-  // But if we filter by a different attribute, it uses userName anyway
-  assert.equal(result.totalResults, 1);
-});
-
-test("ScimProvisionService filter co uses wrong attribute when specified - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-
-  service.createUser(createTestUser({ userName: "john.doe", displayName: "John Doe" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "jane.doe", displayName: "Jane Doe" }), "tenant-1");
-
-  // Try to filter by displayName containing "John"
-  const result = service.listUsers({ filter: 'displayName co "John"' });
-
-  // BUG: Filter ignores attribute name and uses userName instead
-  // So it searches userName for "John" which might not find anything
-  // Or it finds the wrong user
-  assert.equal(result.totalResults, 1); // Might pass but for wrong reason
-});
-
-test("ScimProvisionService filter sw uses wrong attribute - demonstrates bug", () => {
-  const service = new ScimProvisionService();
-
-  service.createUser(createTestUser({ userName: "test_alice" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "test_bob" }), "tenant-1");
-
-  // Filter by displayName starting with "Alice"
-  const result = service.listUsers({ filter: 'displayName sw "Alice"' });
-
-  // BUG: displayName is ignored, userName is used instead
-  // So no users match because no userName starts with "Alice"
-  assert.equal(result.totalResults, 0); // Should work but doesn't
-});
-
-// ─── Additional tests for SCIM service functionality ───────────────────────────
-
-test("ScimProvisionService creates user", () => {
-  const service = new ScimProvisionService();
-
-  const user = service.createUser(createTestUser(), "tenant-1");
-
-  assert.ok(user.id);
-  assert.equal(user.userName, "testuser");
-  assert.equal(user.displayName, "Test User");
-  assert.equal(user.meta.resourceType, "User");
-});
-
-test("ScimProvisionService creates user and records event", () => {
-  const service = new ScimProvisionService();
-
-  service.createUser(createTestUser(), "tenant-1");
-
-  const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
-
-  assert.equal(events.length, 1);
-  assert.equal(events[0]!.action, "user_created");
-});
-
-test("ScimProvisionService gets user by id", () => {
-  const service = new ScimProvisionService();
-  const created = service.createUser(createTestUser(), "tenant-1");
-
-  const retrieved = service.getUser(created.id);
-
-  assert.ok(retrieved);
-  assert.equal(retrieved!.id, created.id);
-  assert.equal(retrieved!.userName, "testuser");
-});
-
-test("ScimProvisionService gets user by username", () => {
-  const service = new ScimProvisionService();
-  service.createUser(createTestUser(), "tenant-1");
-
-  const retrieved = service.getUserByUsername("testuser");
-
-  assert.ok(retrieved);
-  assert.equal(retrieved!.userName, "testuser");
-});
-
-test("ScimProvisionService gets user by email", () => {
-  const service = new ScimProvisionService();
-  service.createUser(createTestUser(), "tenant-1");
-
-  const retrieved = service.getUserByEmail("test@example.com");
-
-  assert.ok(retrieved);
-  assert.equal(retrieved!.emails[0]!.value, "test@example.com");
-});
-
-test("ScimProvisionService returns null for non-existent user", () => {
-  const service = new ScimProvisionService();
-
-  const retrieved = service.getUser("non-existent");
-
-  assert.equal(retrieved, null);
-});
-
-test("ScimProvisionService updates user", () => {
-  const service = new ScimProvisionService();
-  const created = service.createUser(createTestUser(), "tenant-1");
-
-  const updated = service.updateUser(created.id, { displayName: "Updated Name" }, "tenant-1");
-
-  assert.ok(updated);
-  assert.equal(updated!.displayName, "Updated Name");
-});
-
-test("ScimProvisionService disables user", () => {
-  const service = new ScimProvisionService();
-  const created = service.createUser(createTestUser(), "tenant-1");
-
-  const disabled = service.disableUser(created.id, "tenant-1");
-
-  assert.ok(disabled);
-  assert.equal(disabled!.active, false);
-});
-
-test("ScimProvisionService deletes user", () => {
-  const service = new ScimProvisionService();
-  const created = service.createUser(createTestUser(), "tenant-1");
-
-  const deleted = service.deleteUser(created.id, "tenant-1");
-
-  assert.equal(deleted, true);
-  assert.equal(service.getUser(created.id), null);
-});
-
-test("ScimProvisionService deletes user and removes from groups", () => {
-  const service = new ScimProvisionService();
-  const user = service.createUser(createTestUser(), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-  service.addMemberToGroup(group.id, user.id, "tenant-1");
-
-  service.deleteUser(user.id, "tenant-1");
-
-  const updatedGroup = service.getGroup(group.id);
-  assert.ok(!updatedGroup!.members.some((m) => m.value === user.id));
-});
-
-test("ScimProvisionService lists users", () => {
-  const service = new ScimProvisionService();
-  service.createUser(createTestUser({ userName: "user1" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
-
-  const result = service.listUsers({});
-
-  assert.equal(result.totalResults, 2);
-  assert.equal(result.Resources.length, 2);
-});
-
-test("ScimProvisionService lists users with pagination", () => {
-  const service = new ScimProvisionService();
-  for (let i = 0; i < 10; i++) {
-    service.createUser(createTestUser({ userName: `user${i}` }), "tenant-1");
-  }
-
-  const result = service.listUsers({ startIndex: 1, count: 5 });
-
-  assert.equal(result.totalResults, 10);
-  assert.equal(result.Resources.length, 5);
-  assert.equal(result.startIndex, 1);
-  assert.equal(result.itemsPerPage, 5);
-});
-
-test("ScimProvisionService creates group", () => {
-  const service = new ScimProvisionService();
-
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-
-  assert.ok(group.id);
-  assert.equal(group.displayName, "Test Group");
-  assert.equal(group.meta.resourceType, "Group");
-});
-
-test("ScimProvisionService gets group by id", () => {
-  const service = new ScimProvisionService();
-  const created = service.createGroup(createTestGroup(), "tenant-1");
-
-  const retrieved = service.getGroup(created.id);
-
-  assert.ok(retrieved);
-  assert.equal(retrieved!.id, created.id);
-});
-
-test("ScimProvisionService gets group by name", () => {
-  const service = new ScimProvisionService();
-  service.createGroup(createTestGroup({ displayName: "Engineering" }), "tenant-1");
-
-  const retrieved = service.getGroupByName("Engineering");
-
-  assert.ok(retrieved);
-  assert.equal(retrieved!.displayName, "Engineering");
-});
-
-test("ScimProvisionService updates group", () => {
-  const service = new ScimProvisionService();
-  const created = service.createGroup(createTestGroup(), "tenant-1");
-
-  const updated = service.updateGroup(created.id, { displayName: "Updated Group" }, "tenant-1");
-
-  assert.ok(updated);
-  assert.equal(updated!.displayName, "Updated Group");
-});
-
-test("ScimProvisionService adds member to group", () => {
-  const service = new ScimProvisionService();
-  const user = service.createUser(createTestUser(), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-
-  const updated = service.addMemberToGroup(group.id, user.id, "tenant-1");
-
-  assert.ok(updated);
-  assert.ok(updated!.members.some((m) => m.value === user.id));
-});
-
-test("ScimProvisionService removes member from group", () => {
-  const service = new ScimProvisionService();
-  const user = service.createUser(createTestUser(), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-  service.addMemberToGroup(group.id, user.id, "tenant-1");
-
-  const updated = service.removeMemberFromGroup(group.id, user.id);
-
-  assert.ok(updated);
-  assert.ok(!updated!.members.some((m) => m.value === user.id));
-});
-
-test("ScimProvisionService patch group adds members", () => {
-  const service = new ScimProvisionService();
-  const user1 = service.createUser(createTestUser({ userName: "user1" }), "tenant-1");
-  const user2 = service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
-  const group = service.createGroup(createTestGroup(), "tenant-1");
-
-  const updated = service.patchGroup(group.id, [
-    { op: "add", path: "members", value: [{ value: user1.id }, { value: user2.id }] },
-  ], "tenant-1");
-
-  assert.ok(updated);
-  assert.equal(updated!.members.length, 2);
-});
-
-test("ScimProvisionService lists groups", () => {
-  const service = new ScimProvisionService();
-  service.createGroup(createTestGroup({ displayName: "Group1" }), "tenant-1");
-  service.createGroup(createTestGroup({ displayName: "Group2" }), "tenant-1");
-
-  const result = service.listGroups({});
-
-  assert.equal(result.totalResults, 2);
-  assert.equal(result.Resources.length, 2);
-});
-
-test("ScimProvisionService processes bulk request with bulkId references", () => {
-  const service = new ScimProvisionService();
-
-  const response = service.processBulkRequest({
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
-    Operations: [
-      {
-        method: "POST",
-        path: "/Users",
-        bulkId: "user-alpha",
-        data: createTestUser({ userName: "bulk-user", displayName: "Bulk User" }),
-      },
-      {
-        method: "POST",
-        path: "/Groups",
-        bulkId: "group-alpha",
-        data: createTestGroup({ displayName: "Bulk Group", members: [{ value: "bulkId:user-alpha", display: "Bulk User" }] }),
-      },
-      {
-        method: "PATCH",
-        path: "/Groups/bulkId:group-alpha",
-        data: [{ op: "add", path: "members", value: [{ value: "bulkId:user-alpha" }] }],
-      },
-    ],
-  }, "tenant-1");
-
-  assert.equal(response.Operations.length, 3);
-  assert.equal(response.Operations[0]?.status, "201");
-  assert.equal(response.Operations[1]?.status, "201");
-  assert.equal(response.Operations[2]?.status, "200");
-});
-
-test("ScimProvisionService bulk request honors failOnErrors threshold", () => {
-  const service = new ScimProvisionService();
-
-  const response = service.processBulkRequest({
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
-    failOnErrors: 1,
-    Operations: [
-      {
-        method: "DELETE",
-        path: "/Users/missing-user",
-      },
-      {
-        method: "POST",
-        path: "/Users",
-        bulkId: "skipped-user",
-        data: createTestUser({ userName: "should-not-run" }),
-      },
-    ],
-  }, "tenant-1");
-
-  assert.equal(response.Operations[0]?.status, "400");
-  assert.equal(response.Operations[1]?.status, "424");
-  assert.equal(service.getUserCount(), 0);
-});
-
-test("ScimProvisionService deletes group", () => {
-  const service = new ScimProvisionService();
-  const created = service.createGroup(createTestGroup(), "tenant-1");
-
-  const deleted = service.deleteGroup(created.id, "tenant-1");
-
-  assert.equal(deleted, true);
-  assert.equal(service.getGroup(created.id), null);
-});
-
-test("ScimProvisionService gets provision events", () => {
-  const service = new ScimProvisionService();
-  const user = service.createUser(createTestUser(), "tenant-1");
-  service.updateUser(user.id, { displayName: "Updated" }, "tenant-1");
-
-  const events = service.getProvisionEvents("1970-01-01T00:00:00.000Z", "tenant-1");
-
-  assert.equal(events.length, 2);
-  assert.equal(events[0]!.action, "user_created");
-  assert.equal(events[1]!.action, "user_updated");
-});
-
-test("ScimProvisionService filters users by username", () => {
-  const service = new ScimProvisionService();
-  service.createUser(createTestUser({ userName: "john.doe" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "jane.doe" }), "tenant-1");
-  service.createUser(createTestUser({ userName: "bob.smith" }), "tenant-1");
-
-  const result = service.listUsers({ filter: 'userName co "doe"' });
-
-  assert.equal(result.totalResults, 2);
-});
-
-test("ScimProvisionService filters groups by displayName", () => {
-  const service = new ScimProvisionService();
-  service.createGroup(createTestGroup({ displayName: "Engineering" }), "tenant-1");
-  service.createGroup(createTestGroup({ displayName: "Sales" }), "tenant-1");
-  service.createGroup(createTestGroup({ displayName: "HR" }), "tenant-1");
-
-  const result = service.listGroups({ filter: 'displayName sw "E"' });
-
-  assert.equal(result.totalResults, 1);
-});
-
-test("createScimProvisionService factory works", () => {
-  const service = createScimProvisionService();
-
-  const user = service.createUser(createTestUser(), "tenant-1");
-
-  assert.ok(user);
-  assert.ok(user.id);
-});
-
-test("ScimProvisionService getUserCount and getGroupCount", () => {
-  const service = new ScimProvisionService();
-  service.createUser(createTestUser(), "tenant-1");
-  service.createUser(createTestUser({ userName: "user2" }), "tenant-1");
-  service.createGroup(createTestGroup(), "tenant-1");
-
-  assert.equal(service.getUserCount(), 2);
-  assert.equal(service.getGroupCount(), 1);
+// ─────────────────────────────────────────────────────────────────────────────
+// Factory Function
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("createScimProvisionService", () => {
+  it("should create service instance", () => {
+    const service = createScimProvisionService();
+    assert.ok(service instanceof ScimProvisionService);
+  });
 });

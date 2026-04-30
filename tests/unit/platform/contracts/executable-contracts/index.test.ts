@@ -137,6 +137,7 @@ test("intake factories enforce confirmation before request envelope", () => {
     tenantId: "tenant-1",
     principal,
     source: "nl",
+    domainId: "coding",
     normalizedIntent: { goal: "ship contract freeze" },
     riskPreview: { riskClass: "high", reasons: ["external side effect"] },
   });
@@ -147,6 +148,7 @@ test("intake factories enforce confirmation before request envelope", () => {
         taskDraftId: draft.taskDraftId,
         tenantId: "tenant-1",
         principal,
+        domainId: "coding",
         goal: "ship",
         inputs: {},
         constraintPackRef: "constraint-pack-1",
@@ -161,6 +163,7 @@ test("intake factories enforce confirmation before request envelope", () => {
     taskDraftId: draft.taskDraftId,
     tenantId: "tenant-1",
     principal,
+    domainId: "coding",
     goal: "ship",
     inputs: {},
     constraintPackRef: "constraint-pack-1",
@@ -187,6 +190,7 @@ test("intake factories enforce confirmation before request envelope", () => {
   assert.throws(() => validateExecutableContract("RequestEnvelope", { requestId: "" }), ValidationError);
 
   assert.equal(envelope.confirmedTaskSpecId, confirmed.confirmedTaskSpecId);
+  assert.equal(envelope.domainId, "coding");
   assert.equal(envelope.constraintPackRef, "constraint-pack-1");
   assert.equal(envelope.idempotencyKey, "idem-1");
 });
@@ -194,6 +198,7 @@ test("intake factories enforce confirmation before request envelope", () => {
 test("runtime factories create harness, graph, node, attempt, and receipt records", () => {
   const run = createHarnessRun({
     tenantId: "tenant-1",
+    domainId: "coding",
     confirmedTaskSpecId: "ctspec-1",
     requestEnvelopeId: "request-1",
     requestHash: "request-hash-1",
@@ -243,6 +248,7 @@ test("runtime factories create harness, graph, node, attempt, and receipt record
   });
 
   assert.equal(run.status, "created");
+  assert.equal(run.domainId, "coding");
   assert.equal(bundle.graph.nodes.length, 1);
   assert.equal(nodeRun.attemptCount, 0);
   assert.equal(attempt.attemptNo, 1);
