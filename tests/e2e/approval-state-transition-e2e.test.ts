@@ -130,7 +130,7 @@ test("E2E Approval: request → approve → execution proceeds to completion", a
     });
 
     // Create approval request
-    const approvalRequest = await approvalService.createApprovalRequest({
+    const approvalRequest = await approvalService.createRequest({
       taskId,
       executionId,
       sourceAgentId: "agent-approval",
@@ -144,8 +144,8 @@ test("E2E Approval: request → approve → execution proceeds to completion", a
     assert.ok(approvalRequest.approvalId, "Should have approval ID");
     assert.equal(approvalRequest.status, "pending", "Approval should be pending");
 
-    // Grant approval
-    const grantResult = await approvalService.grantApproval({
+    // Grant approval via applyDecision
+    const grantResult = approvalService.applyDecision({
       approvalId: approvalRequest.approvalId,
       decisionType: "option_selected",
       selectedOptionId: "approve",
@@ -156,8 +156,7 @@ test("E2E Approval: request → approve → execution proceeds to completion", a
     assert.ok(grantResult, "Grant should return result");
 
     // Verify approval is approved
-    const approvalRepo = new ApprovalRepository(harness.db);
-    const approval = approvalRepo.findById(approvalRequest.approvalId);
+    const approval = approvalService.getApproval(approvalRequest.approvalId);
     assert.ok(approval, "Approval should exist");
     assert.equal(approval?.status, "approved", "Approval should be approved");
 
@@ -249,7 +248,7 @@ test("E2E Approval: request → reject → execution fails", async () => {
     });
 
     // Create approval request
-    const approvalRequest = await approvalService.createApprovalRequest({
+    const approvalRequest = await approvalService.createRequest({
       taskId,
       executionId,
       sourceAgentId: "agent-approval",
@@ -260,8 +259,8 @@ test("E2E Approval: request → reject → execution fails", async () => {
       timeoutPolicy: "reject",
     });
 
-    // Reject approval
-    const rejectResult = await approvalService.rejectApproval({
+    // Reject approval via applyDecision
+    const rejectResult = approvalService.applyDecision({
       approvalId: approvalRequest.approvalId,
       decisionType: "rejected",
       respondedBy: "human-approver",
@@ -271,8 +270,7 @@ test("E2E Approval: request → reject → execution fails", async () => {
     assert.ok(rejectResult, "Reject should return result");
 
     // Verify approval is rejected
-    const approvalRepo = new ApprovalRepository(harness.db);
-    const approval = approvalRepo.findById(approvalRequest.approvalId);
+    const approval = approvalService.getApproval(approvalRequest.approvalId);
     assert.ok(approval, "Approval should exist");
     assert.equal(approval?.status, "rejected", "Approval should be rejected");
 
@@ -363,7 +361,7 @@ test("E2E Approval: timeout policy reject auto-expires approval", async () => {
     });
 
     // Create approval request with timeout policy "reject"
-    const approvalRequest = await approvalService.createApprovalRequest({
+    const approvalRequest = await approvalService.createRequest({
       taskId,
       executionId,
       sourceAgentId: "agent-approval",
@@ -376,18 +374,16 @@ test("E2E Approval: timeout policy reject auto-expires approval", async () => {
 
     assert.equal(approvalRequest.timeoutPolicy, "reject", "Timeout policy should be reject");
 
-    // Simulate timeout expiration by directly updating approval status
-    harness.db.transaction(() => {
-      harness.store.approval.updateApprovalStatus(
-        approvalRequest.approvalId,
-        "expired",
-        nowIso(),
-      );
+    // Simulate timeout expiration via applyDecision with expired type
+    approvalService.applyDecision({
+      approvalId: approvalRequest.approvalId,
+      decisionType: "expired",
+      respondedBy: "system",
+      respondedAt: nowIso(),
     });
 
     // Verify approval is expired
-    const approvalRepo = new ApprovalRepository(harness.db);
-    const approval = approvalRepo.findById(approvalRequest.approvalId);
+    const approval = approvalService.getApproval(approvalRequest.approvalId);
     assert.ok(approval, "Approval should exist");
     assert.equal(approval?.status, "expired", "Approval should be expired");
 
@@ -462,7 +458,7 @@ test("E2E Approval: approval context preserved through state transitions", async
     });
 
     // Create approval with rich context
-    const approvalRequest = await approvalService.createApprovalRequest({
+    const approvalRequest = await approvalService.createRequest({
       taskId,
       executionId,
       sourceAgentId: "agent-approval",
@@ -480,11 +476,11 @@ test("E2E Approval: approval context preserved through state transitions", async
     });
 
     // Verify context is preserved
-    const approvalRepo = new ApprovalRepository(harness.db);
-    const approval = approvalRepo.findById(approvalRequest.approvalId);
+    const approval = approvalService.getApproval(approvalRequest.approvalId);
     assert.ok(approval, "Approval should exist");
 
-    const storedContext = JSON.parse(approval?.contextJson ?? "{}");
+    // Access context from approval record - depending on the structure, might be in contextJson or context field
+    const storedContext = (approval as any)?.contextJson ? JSON.parse((approval as any).contextJson) : (approval as any)?.context ?? {};
     assert.equal(storedContext.resourceType, "customer_database", "Context should preserve resourceType");
     assert.equal(storedContext.operation, "read", "Context should preserve operation");
     assert.deepEqual(storedContext.accessedFields, ["email", "phone", "address"], "Context should preserve accessedFields");

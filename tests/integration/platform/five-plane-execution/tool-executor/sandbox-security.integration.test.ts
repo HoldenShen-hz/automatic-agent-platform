@@ -12,9 +12,9 @@ import {
   assessCommand,
   CommandSafetyClassifier,
   createDefaultCommandPolicies,
-} from "../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
+} from "../../../../../src/platform/five-plane-execution/tool-executor/command-security.js";
 
-import { createWorkspaceWritePolicy, checkSandboxPath } from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy, checkSandboxPath } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Path Traversal Tests

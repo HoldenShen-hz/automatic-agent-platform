@@ -8,9 +8,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createIntegrationContext } from "../../../../../helpers/integration-context.js";
-import { TypedEventBus } from "../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
-import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
+import { TypedEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/typed-event-bus.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 test("integration: TypedEventBus.publish() stores event in SQLite via DurableEventBus", () => {
   const ctx = createIntegrationContext("aa-typed-event-");
