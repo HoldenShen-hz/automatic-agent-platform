@@ -15,8 +15,8 @@ import {
   normalizeError,
   inferApiErrorCategory,
   inferApiErrorSource,
-} from "../../../../../src/platform/interface/api/http-server/api-error.js";
-import { AppError } from "../../../../../src/platform/contracts/errors.js";
+} from "../../../../../src/platform/interface/api/http-server/api-error.ts";
+import { AppError } from "../../../../../src/platform/contracts/errors.ts";
 
 // ══════════════════════════════════════════════════════════════════════════
 // ApiError Tests
@@ -154,7 +154,7 @@ test("inferApiErrorSource returns runtime for other codes", () => {
 // ══════════════════════════════════════════════════════════════════════════
 
 test("normalizeError passes through GatewayRateLimitError", async () => {
-  const { GatewayRateLimitError } = await import("../../../../../src/platform/interface/channel-gateway/channel-gateway-service.js");
+  const { GatewayRateLimitError } = await import("../../../../../src/platform/interface/channel-gateway/channel-gateway-service.ts");
   const original = new GatewayRateLimitError("telegram", 100);
   const normalized = normalizeError(original);
   assert.equal(normalized.statusCode, 429);

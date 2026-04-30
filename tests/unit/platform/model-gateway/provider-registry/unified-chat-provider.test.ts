@@ -451,7 +451,7 @@ test("UnifiedChatProvider.abortSignal check happens before execution", () => {
 // ============================================================================
 
 test("UnifiedChatProvider facade is exported from provider-registry barrel", () => {
-  const { UnifiedChatProvider: BarrelUnifiedChatProvider } = require("../../../../../../src/platform/model-gateway/provider-registry/index.js");
+  const { UnifiedChatProvider: BarrelUnifiedChatProvider } = require("../../../../../src/platform/model-gateway/provider-registry/index.js");
   const provider = new BarrelUnifiedChatProvider({});
 
   assert.equal(typeof provider.complete, "function");

@@ -106,7 +106,7 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
 
 test.describe("Web runtime configuration consistency", () => {
   test("web runtime supports configurable API base URL", async () => {
-    const runtime = await import("../../src/ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../ui/apps/web/src/runtime.js");
 
     // Test with explicit URL
     const config1 = runtime.createWebRuntimeConfig({
@@ -130,7 +130,7 @@ test.describe("Web runtime configuration consistency", () => {
   });
 
   test("web runtime creates clients with provided config", async () => {
-    const runtime = await import("../../src/ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../ui/apps/web/src/runtime.js");
 
     const clients = runtime.createWebRuntimeClients({
       apiBaseUrl: "https://api.example.com",
@@ -145,12 +145,12 @@ test.describe("Web runtime configuration consistency", () => {
 
 test.describe("Mobile platform consistency", () => {
   test("mobile index exports MobileShellManifest", async () => {
-    const mobile = await import("../../src/ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../ui/apps/mobile/src/index.js");
     assert.ok(mobile.mobileShellManifest !== undefined);
   });
 
   test("MobileShellManifest supports both android and ios", async () => {
-    const mobile = await import("../../src/ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../ui/apps/mobile/src/index.js");
     const manifest = mobile.mobileShellManifest;
 
     assert.ok(manifest.platforms.includes("android"));
@@ -158,7 +158,7 @@ test.describe("Mobile platform consistency", () => {
   });
 
   test("createMobileAdapter accepts both android and ios platforms", async () => {
-    const mobile = await import("../../src/ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../ui/apps/mobile/src/index.js");
 
     const mockBase: any = { platform: "unknown" };
 
@@ -198,7 +198,7 @@ test.describe("Security configuration alignment", () => {
 
   test("All platforms implement screen security", async () => {
     const electronWin = await import("../../../ui/apps/electron-win/src/main.js");
-    const mobile = await import("../../src/ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../ui/apps/mobile/src/index.js");
 
     // Electron has privacy:enableScreenSecurity
     assert.ok(electronWin.electronMainBaseline.channels.includes("privacy:enableScreenSecurity"));
@@ -289,7 +289,7 @@ test.describe("Adapter factory consistency", () => {
     const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
     const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
     const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
-    const mobile = await import("../../src/ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../ui/apps/mobile/src/index.js");
 
     // All should have createXxxAdapter function
     assert.equal(typeof electronWin.createElectronWinAdapter, "function");
@@ -308,7 +308,7 @@ test.describe("Adapter factory consistency", () => {
     const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
     const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
     const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
-    const mobile = await import("../../src/ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../ui/apps/mobile/src/index.js");
 
     const mockBase: any = { platform: "unknown" };
 

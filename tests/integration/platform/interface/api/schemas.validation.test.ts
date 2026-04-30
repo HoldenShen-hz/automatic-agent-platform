@@ -30,12 +30,11 @@ import {
   parseAuthTokenPayload,
 } from "../../../../../src/platform/interface/api/http-server/schemas.ts";
 
-describe("API Route Schemas", () => {
-  // ══════════════════════════════════════════════════════════════════════════
-  // Gateway Send Payload Tests
-  // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// Gateway Send Payload Tests
+// ══════════════════════════════════════════════════════════════════════════
 
-  test("parseGatewaySendPayload accepts valid payload with required text field", () => {
+test("parseGatewaySendPayload accepts valid payload with required text field", () => {
     const payload = parseGatewaySendPayload({ text: "Hello, world!" });
     assert.equal(payload.text, "Hello, world!");
     assert.equal(payload.channel, undefined);
@@ -756,4 +755,3 @@ describe("API Route Schemas", () => {
     const payload = parseAuthTokenPayload(undefined, "header-key");
     assert.equal(payload.apiKey, "header-key");
   });
-});

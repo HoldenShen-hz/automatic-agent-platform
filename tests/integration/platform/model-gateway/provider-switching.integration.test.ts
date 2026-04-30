@@ -220,10 +220,10 @@ test("Provider switching: DegradationController D1 uses fallback provider", asyn
   });
 
   const controller = new DegradationController({
-    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackProvider: fallbackProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackService: new MockFallbackService() as unknown as import("../../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-    cacheService: new MockCacheService() as unknown as import("../../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    fallbackProvider: fallbackProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    fallbackService: new MockFallbackService() as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+    cacheService: new MockCacheService() as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
   });
 
   controller.setLevel(DegradationLevel.D1);
@@ -240,10 +240,10 @@ test("Provider switching: DegradationController D1 uses fallback provider", asyn
 
 test("Provider switching: DegradationController D0 primary provider healthy", async () => {
   const controller = new DegradationController({
-    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
     fallbackProvider: null,
-    fallbackService: new MockFallbackService() as unknown as import("../../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-    cacheService: new MockCacheService() as unknown as import("../../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+    fallbackService: new MockFallbackService() as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+    cacheService: new MockCacheService() as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
   });
 
   const response = await controller.route({
@@ -279,10 +279,10 @@ test("Provider switching: DegradationController D0 fails and escalates to D1", a
   });
 
   const controller = new DegradationController({
-    primaryProvider: failingProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackProvider: fallbackProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackService: new MockFallbackService() as unknown as import("../../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-    cacheService: new MockCacheService() as unknown as import("../../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+    primaryProvider: failingProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    fallbackProvider: fallbackProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    fallbackService: new MockFallbackService() as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+    cacheService: new MockCacheService() as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
   });
 
   // Initial state is D0, should try primary and fail
@@ -520,10 +520,10 @@ test("Provider switching: DegradationController uses fallback when primary circu
   ]);
 
   const controller = new DegradationController({
-    primaryProvider: primaryProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackProvider: fallbackProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-    fallbackService: new MockFallbackService() as unknown as import("../../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-    cacheService: new MockCacheService() as unknown as import("../../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+    primaryProvider: primaryProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    fallbackProvider: fallbackProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    fallbackService: new MockFallbackService() as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+    cacheService: new MockCacheService() as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
   });
 
   // D0 should try primary, fail, escalate, then use fallback

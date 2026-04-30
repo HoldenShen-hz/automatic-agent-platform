@@ -19,7 +19,7 @@ import {
   type ProviderMetrics,
   type LLMDegradationRequest,
 } from "../../../../../src/platform/model-gateway/degradation/degradation-controller.js";
-import type { ModelFallbackCandidate } from "../../../../../../src/platform/model-gateway/fallback/index.js";
+import type { ModelFallbackCandidate } from "../../../../../src/platform/model-gateway/fallback/index.js";
 
 // ============================================================================
 // Mock Implementations
@@ -109,10 +109,10 @@ function createController(overrides?: {
 
   return {
     controller: new DegradationController({
-      primaryProvider: mockProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
-      fallbackProvider: overrides?.fallbackProvider ? overrides.fallbackProvider as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider : null,
-      fallbackService: mockFallbackService as unknown as import("../../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-      cacheService: mockCacheService as unknown as import("../../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+      primaryProvider: mockProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+      fallbackProvider: overrides?.fallbackProvider ? overrides.fallbackProvider as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider : null,
+      fallbackService: mockFallbackService as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+      cacheService: mockCacheService as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
       config: overrides?.config ?? {},
     }),
     mockProvider,
@@ -634,10 +634,10 @@ test("DegradationController emits event on escalation", () => {
   };
 
   const controller = new DegradationController({
-    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
+    primaryProvider: new MockUnifiedChatProvider() as unknown as import("../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js").UnifiedChatProvider,
     fallbackProvider: null,
-    fallbackService: new MockFallbackService() as unknown as import("../../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
-    cacheService: new MockCacheService() as unknown as import("../../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
+    fallbackService: new MockFallbackService() as unknown as import("../../../../../src/platform/model-gateway/fallback/index.js").ModelGatewayFallbackService,
+    cacheService: new MockCacheService() as unknown as import("../../../../../src/platform/model-gateway/cache/index.js").ModelGatewayCacheService<string>,
     eventBusEmitter,
   });
 
