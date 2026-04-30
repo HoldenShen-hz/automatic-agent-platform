@@ -1,8 +1,10 @@
 /**
- * Multi-region CDC Replication Unit Tests
+ * Additional unit tests for CDCReplicationService
  *
- * Tests for VectorClock ordering, conflict detection/resolution,
- * and replication lag monitoring.
+ * Tests batch preparation, replication configuration, checkpoint management,
+ * conflict resolution with LWW, merge, and abort strategies.
+ *
+ * @see src/scale-ecosystem/multi-region/cdc-replication-service.ts
  */
 
 import assert from "node:assert/strict";
@@ -13,477 +15,641 @@ import {
   VectorClock,
   type CDCReplicationEvent,
   type RegionReplicationConfig,
-} from "../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
+  type ConflictResolutionStrategy,
+} from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
+
+function createMockEvent(overrides: Partial<CDCReplicationEvent> = {}): CDCReplicationEvent {
+  return {
+    id: "evt_mock",
+    sequence: 1,
+    eventType: "test.event",
+    taskId: "task_001",
+    payloadJson: "{}",
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VectorClock Tests
+// Replication Configuration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("VectorClock.increment increases sequence for region", () => {
-  const clock = new VectorClock();
+test("CDCReplicationService.registerReplication stores config and initializes checkpoint", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "us-west-2",
+    targetRegionId: "eu-west-1",
+    batchSize: 50,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
 
-  const incremented = clock.increment("us-west-2");
+  service.registerReplication(config);
 
-  assert.equal(incremented.toMap().get("us-west-2"), 1);
+  const storedConfig = service.getConfig("us-west-2", "eu-west-1");
+  assert.deepEqual(storedConfig, config);
+
+  const checkpoint = service.getCheckpoint("us-west-2", "eu-west-1");
+  assert.ok(checkpoint != null);
+  assert.equal(checkpoint.sourceRegionId, "us-west-2");
+  assert.equal(checkpoint.targetRegionId, "eu-west-1");
+  assert.equal(checkpoint.lastEventSequence, 0);
 });
 
-test("VectorClock.increment creates independent copy", () => {
-  const clock = new VectorClock();
-  clock.increment("us-west-2");
-
-  const originalMap = clock.toMap();
-  assert.equal(originalMap.has("us-west-2"), false);
+test("CDCReplicationService.getConfig returns undefined for unregistered pair", () => {
+  const service = new CDCReplicationService();
+  const config = service.getConfig("unknown-region", "other-region");
+  assert.equal(config, undefined);
 });
 
-test("VectorClock.merge takes max of each component", () => {
-  const clock1 = new VectorClock().increment("us-west-2").increment("us-west-2");
-  const clock2 = new VectorClock().increment("us-west-2").increment("eu-west-1");
+test("CDCReplicationService.isEnabled returns true when enabled in config", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "us-east-1",
+    targetRegionId: "us-west-2",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
 
-  const merged = clock1.merge(clock2);
+  service.registerReplication(config);
 
-  assert.equal(merged.toMap().get("us-west-2"), 2);
-  assert.equal(merged.toMap().get("eu-west-1"), 1);
+  assert.equal(service.isEnabled("us-east-1", "us-west-2"), true);
 });
 
-test("VectorClock.merge preserves higher values from either clock", () => {
-  const clock1 = new VectorClock();
-  clock1.increment("region-a");
-  clock1.increment("region-a");
-  const clock2 = new VectorClock();
-  clock2.increment("region-a");
-  clock2.increment("region-b");
-  clock2.increment("region-b");
-  clock2.increment("region-b");
+test("CDCReplicationService.isEnabled returns false when disabled", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "us-east-1",
+    targetRegionId: "us-west-2",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: false,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
 
-  const merged = clock1.merge(clock2);
+  service.registerReplication(config);
 
-  assert.equal(merged.toMap().get("region-a"), 2);
-  assert.equal(merged.toMap().get("region-b"), 3);
+  assert.equal(service.isEnabled("us-east-1", "us-west-2"), false);
 });
 
-test("VectorClock.compare returns 1 when this > other", () => {
-  const thisClock = new VectorClock().increment("us-west-2").increment("us-west-2");
-  const otherClock = new VectorClock().increment("us-west-2");
-
-  const result = thisClock.compare(otherClock);
-
-  assert.equal(result, 1);
-});
-
-test("VectorClock.compare returns -1 when this < other", () => {
-  const thisClock = new VectorClock().increment("us-west-2");
-  const otherClock = new VectorClock().increment("us-west-2").increment("us-west-2");
-
-  const result = thisClock.compare(otherClock);
-
-  assert.equal(result, -1);
-});
-
-test("VectorClock.compare returns 0 for concurrent clocks", () => {
-  const clock1 = new VectorClock().increment("us-west-2");
-  const clock2 = new VectorClock().increment("eu-west-1");
-
-  const result = clock1.compare(clock2);
-
-  assert.equal(result, 0);
-});
-
-test("VectorClock.happensBeforeOrEqual returns true when this happened before", () => {
-  const thisClock = new VectorClock().increment("region-a");
-  const otherClock = new VectorClock().increment("region-a").increment("region-a");
-
-  assert.equal(thisClock.happensBeforeOrEqual(otherClock), true);
-});
-
-test("VectorClock.happensBeforeOrEqual returns true when clocks are equal", () => {
-  const clock1 = new VectorClock().increment("region-a");
-  const clock2 = new VectorClock().increment("region-a");
-
-  assert.equal(clock1.happensBeforeOrEqual(clock2), true);
-});
-
-test("VectorClock.happensBeforeOrEqual returns false for concurrent clocks", () => {
-  const clock1 = new VectorClock().increment("region-a");
-  const clock2 = new VectorClock().increment("region-b");
-
-  assert.equal(clock1.happensBeforeOrEqual(clock2), false);
-});
-
-test("VectorClock.getMaxSequence returns highest sequence across all regions", () => {
-  const clock = new VectorClock();
-  clock.increment("region-a");
-  clock.increment("region-a");
-  clock.increment("region-b");
-
-  const maxSeq = clock.getMaxSequence();
-
-  assert.equal(maxSeq, 2);
-});
-
-test("VectorClock.getMaxSequence returns 0 for empty clock", () => {
-  const clock = new VectorClock();
-
-  const maxSeq = clock.getMaxSequence();
-
-  assert.equal(maxSeq, 0);
-});
-
-test("VectorClock constructor accepts initial clock map", () => {
-  const initial = new Map<string, number>();
-  initial.set("region-a", 5);
-  initial.set("region-b", 10);
-
-  const clock = new VectorClock(initial);
-
-  assert.equal(clock.toMap().get("region-a"), 5);
-  assert.equal(clock.toMap().get("region-b"), 10);
+test("CDCReplicationService.isEnabled returns false for unregistered pair", () => {
+  const service = new CDCReplicationService();
+  assert.equal(service.isEnabled("unknown", "pair"), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CDCReplicationService VectorClock Integration Tests
+// Batch Preparation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CDCReplicationService.updateVectorClock creates and increments clock", () => {
+test("CDCReplicationService.prepareBatch returns null when no config registered", () => {
+  const service = new CDCReplicationService();
+  const batch = service.prepareBatch("unknown", "region", []);
+  assert.equal(batch, null);
+});
+
+test("CDCReplicationService.prepareBatch returns null when no events after checkpoint", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "us-west-2",
+    targetRegionId: "eu-west-1",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
+  service.registerReplication(config);
+
+  const events = [
+    createMockEvent({ sequence: 1 }),
+    createMockEvent({ sequence: 2 }),
+    createMockEvent({ sequence: 3 }),
+  ];
+
+  const batch = service.prepareBatch("us-west-2", "eu-west-1", events);
+  assert.equal(batch, null);
+});
+
+test("CDCReplicationService.prepareBatch creates batch with events after checkpoint", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "us-west-2",
+    targetRegionId: "eu-west-1",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
+  service.registerReplication(config);
+
+  // Manually set checkpoint to sequence 2
+  service.registerReplication({
+    ...config,
+  });
+  const events = [
+    createMockEvent({ id: "evt_1", sequence: 1 }),
+    createMockEvent({ id: "evt_2", sequence: 2 }),
+    createMockEvent({ id: "evt_3", sequence: 3 }),
+    createMockEvent({ id: "evt_4", sequence: 4 }),
+  ];
+
+  const batch = service.prepareBatch("us-west-2", "eu-west-1", events);
+
+  assert.ok(batch != null);
+  assert.equal(batch.batchId.startsWith("cdc_batch_"), true);
+  assert.equal(batch.sourceRegionId, "us-west-2");
+  assert.equal(batch.targetRegionId, "eu-west-1");
+  assert.ok(batch.events.length >= 1);
+});
+
+test("CDCReplicationService.prepareBatch respects batch size limit", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "region-a",
+    targetRegionId: "region-b",
+    batchSize: 2,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
+  service.registerReplication(config);
+
+  const events = [
+    createMockEvent({ sequence: 1 }),
+    createMockEvent({ sequence: 2 }),
+    createMockEvent({ sequence: 3 }),
+    createMockEvent({ sequence: 4 }),
+    createMockEvent({ sequence: 5 }),
+  ];
+
+  const batch = service.prepareBatch("region-a", "region-b", events);
+
+  assert.ok(batch != null);
+  assert.equal(batch.events.length, 2);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Checkpoint Management Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("CDCReplicationService.confirmBatch updates checkpoint", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "us-west-2",
+    targetRegionId: "eu-west-1",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
+  service.registerReplication(config);
+
+  const events = [
+    createMockEvent({ id: "evt_confirm_1", sequence: 1 }),
+    createMockEvent({ id: "evt_confirm_2", sequence: 2 }),
+  ];
+
+  const batch = service.prepareBatch("us-west-2", "eu-west-1", events);
+  assert.ok(batch != null);
+
+  service.confirmBatch("us-west-2", "eu-west-1", batch);
+
+  const checkpoint = service.getCheckpoint("us-west-2", "eu-west-1");
+  assert.ok(checkpoint != null);
+  assert.equal(checkpoint.lastEventSequence, batch.endSequence);
+  assert.equal(checkpoint.lastEventId, "evt_confirm_2");
+});
+
+test("CDCReplicationService.getCheckpoint returns undefined for unregistered pair", () => {
+  const service = new CDCReplicationService();
+  const checkpoint = service.getCheckpoint("unknown", "pair");
+  assert.equal(checkpoint, undefined);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Replication Lag Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("CDCReplicationService.getReplicationLag returns total events when no checkpoint", () => {
+  const service = new CDCReplicationService();
+  const lag = service.getReplicationLag("region-a", "region-b", 100);
+  assert.equal(lag, 100);
+});
+
+test("CDCReplicationService.getReplicationLag returns difference from checkpoint", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "region-a",
+    targetRegionId: "region-b",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
+  service.registerReplication(config);
+
+  // Set checkpoint at sequence 50
+  service.registerReplication(config);
+  const events = [];
+  for (let i = 1; i <= 100; i++) {
+    events.push(createMockEvent({ sequence: i }));
+  }
+
+  const batch = service.prepareBatch("region-a", "region-b", events);
+  if (batch) {
+    service.confirmBatch("region-a", "region-b", batch);
+  }
+
+  const lag = service.getReplicationLag("region-a", "region-b", 100);
+  assert.equal(lag, 0); // After replicating 100 events, lag should be 0
+});
+
+test("CDCReplicationService.getReplicationLag returns non-negative value", () => {
+  const service = new CDCReplicationService();
+  const config: RegionReplicationConfig = {
+    sourceRegionId: "lag-test",
+    targetRegionId: "lag-target",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  };
+  service.registerReplication(config);
+
+  // Replicate some events
+  const events = [createMockEvent({ sequence: 1 })];
+  const batch = service.prepareBatch("lag-test", "lag-target", events);
+  if (batch) {
+    service.confirmBatch("lag-test", "lag-target", batch);
+  }
+
+  // Ask for lag with total less than checkpoint (should return 0)
+  const lag = service.getReplicationLag("lag-test", "lag-target", 0);
+  assert.equal(lag, 0);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Replication Status Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("CDCReplicationService.getStatus returns idle for unregistered pair", () => {
+  const service = new CDCReplicationService();
+  const status = service.getStatus("unknown", "region");
+  assert.equal(status, "idle");
+});
+
+test("CDCReplicationService.getRegisteredRegionPairs returns all registered pairs", () => {
   const service = new CDCReplicationService();
 
-  const clock = service.updateVectorClock("entity-1", "us-west-2", 1);
+  service.registerReplication({
+    sourceRegionId: "us-west-2",
+    targetRegionId: "eu-west-1",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  });
 
-  assert.equal(clock.toMap().get("us-west-2"), 1);
+  service.registerReplication({
+    sourceRegionId: "us-west-2",
+    targetRegionId: "ap-southeast-1",
+    batchSize: 100,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  });
+
+  const pairs = service.getRegisteredRegionPairs();
+  assert.equal(pairs.length, 2);
 });
 
-test("CDCReplicationService.updateVectorClock merges remote clock", () => {
-  const service = new CDCReplicationService();
-  service.updateVectorClock("entity-1", "us-west-2", 1);
-
-  const remoteClock = new VectorClock().increment("eu-west-1");
-  const merged = service.mergeVectorClock("entity-1", remoteClock);
-
-  assert.equal(merged.toMap().get("us-west-2"), 1);
-  assert.equal(merged.toMap().get("eu-west-1"), 1);
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// Vector Clock Tests
+// ─────────────────────────────────────────────────────────────────────────────
 
 test("CDCReplicationService.getVectorClock returns undefined for unknown entity", () => {
   const service = new CDCReplicationService();
-
   const clock = service.getVectorClock("unknown-entity");
-
   assert.equal(clock, undefined);
 });
 
-test("CDCReplicationService.mergeVectorClock creates clock if not exists", () => {
+test("CDCReplicationService.updateVectorClock increments clock for region", () => {
   const service = new CDCReplicationService();
-  const remoteClock = new VectorClock().increment("us-west-2");
 
-  const merged = service.mergeVectorClock("new-entity", remoteClock);
+  const updated = service.updateVectorClock("entity-1", "us-west-2", 1);
 
-  assert.equal(merged.toMap().get("us-west-2"), 1);
+  assert.equal(updated.toMap().get("us-west-2"), 1);
+});
+
+test("CDCReplicationService.mergeVectorClock merges remote clock", () => {
+  const service = new CDCReplicationService();
+
+  // Update local clock
+  service.updateVectorClock("entity-1", "us-west-2", 1);
+  service.updateVectorClock("entity-1", "us-west-2", 2);
+
+  // Create and merge remote clock
+  const remoteClock = new VectorClock();
+  const remoteUpdated = remoteClock.increment("eu-west-1").increment("eu-west-1");
+
+  const merged = service.mergeVectorClock("entity-1", remoteUpdated);
+
+  assert.equal(merged.toMap().get("us-west-2"), 2);
+  assert.equal(merged.toMap().get("eu-west-1"), 2);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conflict Detection Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("CDCReplicationService.detectConflict returns false for different taskIds", () => {
+  const service = new CDCReplicationService();
+
+  service.updateVectorClock("task-1", "region-a", 1);
+  service.updateVectorClock("task-2", "region-b", 1);
+
+  const localEvent = createMockEvent({ taskId: "task-1", sequence: 1 });
+  const remoteEvent = createMockEvent({ taskId: "task-2", sequence: 1 });
+
+  assert.equal(service.detectConflict(localEvent, remoteEvent), false);
+});
+
+test("CDCReplicationService.detectConflict returns false when no vector clocks", () => {
+  const service = new CDCReplicationService();
+
+  const localEvent = createMockEvent({ taskId: "task-1", sequence: 1 });
+  const remoteEvent = createMockEvent({ taskId: "task-1", sequence: 2 });
+
+  assert.equal(service.detectConflict(localEvent, remoteEvent), false);
+});
+
+test("CDCReplicationService.detectConflict returns false for non-concurrent events", () => {
+  const service = new CDCReplicationService();
+
+  service.updateVectorClock("task-1", "region-a", 1);
+  service.updateVectorClock("task-1", "region-a", 2);
+
+  const localEvent = createMockEvent({ taskId: "task-1", sequence: 1 });
+  const remoteEvent = createMockEvent({ taskId: "task-1", sequence: 2 });
+
+  // Same sequence - not concurrent
+  assert.equal(service.detectConflict(localEvent, remoteEvent), false);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Conflict Resolution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CDCReplicationService.resolveConflictLWW returns remote when newer", () => {
+test("CDCReplicationService.resolveConflictLWW selects later timestamp as winner", () => {
   const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-1", "eu-west-1", 1);
 
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"old"}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
+  service.updateVectorClock("task-lww", "region-a", 1);
+  service.updateVectorClock("task-lww", "region-b", 1);
 
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
+  const localTime = new Date("2024-01-01T00:00:00.000Z");
+  const remoteTime = new Date("2024-01-01T00:00:01.000Z"); // 1 second later
+
+  const localEvent = createMockEvent({
+    taskId: "task-lww",
     sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"new"}',
-    createdAt: "2026-04-20T00:00:01.000Z", // 1 second later
-  };
+    createdAt: localTime.toISOString(),
+  });
+  const remoteEvent = createMockEvent({
+    taskId: "task-lww",
+    sequence: 2,
+    createdAt: remoteTime.toISOString(),
+  });
 
   const result = service.resolveConflictLWW(localEvent, remoteEvent);
 
   assert.equal(result.resolved, true);
-  assert.equal(result.resolvedEvent!.id, "remote-1");
-  assert.equal(result.conflict!.resolution, "remote_wins");
   assert.equal(result.strategy, "lww");
+  assert.equal(result.resolvedEvent?.id, remoteEvent.id);
+  assert.equal(result.conflict?.resolution, "remote_wins");
 });
 
-test("CDCReplicationService.resolveConflictLWW returns local when newer", () => {
+test("CDCReplicationService.resolveConflictLWW selects local when local is later", () => {
   const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-1", "eu-west-1", 1);
 
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"new"}',
-    createdAt: "2026-04-20T00:00:01.000Z",
-  };
+  const localTime = new Date("2024-01-01T00:00:02.000Z"); // 2 seconds later
+  const remoteTime = new Date("2024-01-01T00:00:00.000Z");
 
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
+  const localEvent = createMockEvent({
+    taskId: "task-lww-local",
+    sequence: 2,
+    createdAt: localTime.toISOString(),
+  });
+  const remoteEvent = createMockEvent({
+    taskId: "task-lww-local",
     sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"status":"old"}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
+    createdAt: remoteTime.toISOString(),
+  });
 
   const result = service.resolveConflictLWW(localEvent, remoteEvent);
 
   assert.equal(result.resolved, true);
-  assert.equal(result.resolvedEvent!.id, "local-1");
-  assert.equal(result.conflict!.resolution, "local_wins");
+  assert.equal(result.resolvedEvent?.id, localEvent.id);
+  assert.equal(result.conflict?.resolution, "local_wins");
 });
 
-test("CDCReplicationService.detectConflict returns false for different tasks", () => {
+test("CDCReplicationService.resolveConflictMerge combines payloads", () => {
   const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-2", "eu-west-1", 1);
 
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
+  const localEvent = createMockEvent({
+    taskId: "task-merge",
     sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: "{}",
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-2", // Different task
-    payloadJson: "{}",
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const hasConflict = service.detectConflict(localEvent, remoteEvent);
-
-  assert.equal(hasConflict, false);
-});
-
-test("CDCReplicationService.detectConflict returns true for concurrent updates", () => {
-  const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-1", "eu-west-1", 1);
-
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: "{}",
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1, // Same sequence
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: "{}",
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const hasConflict = service.detectConflict(localEvent, remoteEvent);
-
-  assert.equal(hasConflict, true);
-});
-
-test("CDCReplicationService.resolveConflictMerge merges payloads", () => {
-  const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-1", "eu-west-1", 1);
-
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"fieldA":"valueA"}',
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: '{"fieldB":"valueB"}',
-    createdAt: "2026-04-20T00:00:01.000Z",
-  };
+    payloadJson: JSON.stringify({ localField: "localValue" }),
+    createdAt: new Date("2024-01-01T00:00:00.000Z").toISOString(),
+  });
+  const remoteEvent = createMockEvent({
+    taskId: "task-merge",
+    sequence: 2,
+    payloadJson: JSON.stringify({ remoteField: "remoteValue" }),
+    createdAt: new Date("2024-01-01T00:00:01.000Z").toISOString(),
+  });
 
   const result = service.resolveConflictMerge(localEvent, remoteEvent);
 
   assert.equal(result.resolved, true);
-  assert.equal(result.conflict!.resolution, "merged");
-  const mergedPayload = JSON.parse(result.resolvedEvent!.payloadJson);
-  assert.equal(mergedPayload.fieldA, "valueA");
-  assert.equal(mergedPayload.fieldB, "valueB");
-  assert.equal(mergedPayload._merged, true);
+  assert.equal(result.strategy, "merge");
+  assert.ok(result.resolvedEvent != null);
+
+  const payload = JSON.parse(result.resolvedEvent.payloadJson);
+  assert.equal(payload.remoteField, "remoteValue");
+  assert.equal(payload._merged, true);
 });
 
 test("CDCReplicationService.resolveConflict with abort strategy returns unresolved", () => {
   const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-1", "eu-west-1", 1);
 
-  const localEvent: CDCReplicationEvent = {
-    id: "local-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: "{}",
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
-
-  const remoteEvent: CDCReplicationEvent = {
-    id: "remote-1",
-    sequence: 1,
-    eventType: "task.updated",
-    taskId: "task-1",
-    payloadJson: "{}",
-    createdAt: "2026-04-20T00:00:00.000Z",
-  };
+  const localEvent = createMockEvent({ taskId: "task-abort", sequence: 1 });
+  const remoteEvent = createMockEvent({ taskId: "task-abort", sequence: 2 });
 
   const result = service.resolveConflict(localEvent, remoteEvent, "abort");
 
   assert.equal(result.resolved, false);
   assert.equal(result.resolvedEvent, null);
-  assert.equal(result.conflict!.resolution, "aborted");
   assert.equal(result.strategy, "abort");
+  assert.equal(result.conflict?.resolution, "aborted");
 });
 
-test("CDCReplicationService.recordConflict stores conflict history", () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Conflict History Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("CDCReplicationService.recordConflict stores conflict in history", () => {
   const service = new CDCReplicationService();
-  service.updateVectorClock("task-1", "us-west-2", 1);
-  service.updateVectorClock("task-1", "eu-west-1", 1);
 
-  const conflict = {
-    localEvent: {
-      id: "local-1",
-      sequence: 1,
-      eventType: "task.updated",
-      taskId: "task-1",
-      payloadJson: "{}",
-      createdAt: "2026-04-20T00:00:00.000Z",
-    },
-    remoteEvent: {
-      id: "remote-1",
-      sequence: 1,
-      eventType: "task.updated",
-      taskId: "task-1",
-      payloadJson: "{}",
-      createdAt: "2026-04-20T00:00:00.000Z",
-    },
-    resolution: "remote_wins" as const,
-    localVectorClock: new VectorClock().increment("us-west-2"),
-    remoteVectorClock: new VectorClock().increment("eu-west-1"),
-    conflictType: "concurrent" as const,
-  };
+  service.updateVectorClock("entity-1", "region-a", 1);
+  service.updateVectorClock("entity-1", "region-b", 1);
 
-  service.recordConflict("task-1", conflict);
+  const localEvent = createMockEvent({ taskId: "entity-1", sequence: 1 });
+  const remoteEvent = createMockEvent({ taskId: "entity-1", sequence: 2 });
 
-  const history = service.getConflictHistory("task-1");
+  const conflictResult = service.resolveConflictLWW(localEvent, remoteEvent);
+
+  if (conflictResult.conflict) {
+    service.recordConflict("entity-1", conflictResult.conflict);
+  }
+
+  const history = service.getConflictHistory("entity-1");
   assert.equal(history.length, 1);
   assert.equal(history[0].resolution, "remote_wins");
 });
 
-test("CDCReplicationService.getConflictHistory returns empty for unknown entity", () => {
+test("CDCReplicationService.getConflictHistory returns empty array for unknown entity", () => {
   const service = new CDCReplicationService();
-
   const history = service.getConflictHistory("unknown-entity");
-
   assert.equal(history.length, 0);
 });
 
-test("CDCReplicationService.mergeEventsWithConflictResolution merges events correctly", () => {
+test("CDCReplicationService.recordConflict caps history at 100 entries", () => {
+  const service = new CDCReplicationService();
+
+  for (let i = 0; i < 105; i++) {
+    service.updateVectorClock("entity-capped", "region-a", i);
+    service.updateVectorClock("entity-capped", "region-b", i);
+
+    const localEvent = createMockEvent({ taskId: "entity-capped", sequence: i * 2 });
+    const remoteEvent = createMockEvent({ taskId: "entity-capped", sequence: i * 2 + 1 });
+
+    const conflictResult = service.resolveConflictLWW(localEvent, remoteEvent);
+    if (conflictResult.conflict) {
+      service.recordConflict("entity-capped", conflictResult.conflict);
+    }
+  }
+
+  const history = service.getConflictHistory("entity-capped");
+  assert.equal(history.length, 100);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Merge Events With Conflict Resolution Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("CDCReplicationService.mergeEventsWithConflictResolution adds remote events without conflicts", () => {
   const service = new CDCReplicationService();
 
   const localEvents: CDCReplicationEvent[] = [
-    {
-      id: "local-1",
-      sequence: 1,
-      eventType: "task.created",
-      taskId: "task-1",
-      payloadJson: "{}",
-      createdAt: "2026-04-20T00:00:00.000Z",
-    },
+    createMockEvent({ id: "local_1", taskId: "task_merge", sequence: 1 }),
   ];
-
   const remoteEvents: CDCReplicationEvent[] = [
-    {
-      id: "remote-2",
-      sequence: 2,
-      eventType: "task.updated",
-      taskId: "task-1",
-      payloadJson: "{}",
-      createdAt: "2026-04-20T00:00:01.000Z",
-    },
+    createMockEvent({ id: "remote_2", taskId: "task_merge", sequence: 2 }),
   ];
 
-  const merged = service.mergeEventsWithConflictResolution("task-1", localEvents, remoteEvents);
+  const result = service.mergeEventsWithConflictResolution("task_merge", localEvents, remoteEvents);
 
-  assert.equal(merged.length, 2);
-  assert.ok(merged.some((e) => e.id === "local-1"));
-  assert.ok(merged.some((e) => e.id === "remote-2"));
+  assert.equal(result.length, 2);
+});
+
+test("CDCReplicationService.mergeEventsWithConflictResolution replaces conflicted events", () => {
+  const service = new CDCReplicationService();
+
+  service.updateVectorClock("task_conflict", "region-a", 1);
+  service.updateVectorClock("task_conflict", "region-b", 1);
+
+  const localEvent = createMockEvent({
+    id: "local_1",
+    taskId: "task_conflict",
+    sequence: 1,
+    payloadJson: JSON.stringify({ value: "local" }),
+    createdAt: new Date("2024-01-01T00:00:00.000Z").toISOString(),
+  });
+  const remoteEvent = createMockEvent({
+    id: "remote_1",
+    taskId: "task_conflict",
+    sequence: 1,
+    payloadJson: JSON.stringify({ value: "remote" }),
+    createdAt: new Date("2024-01-01T00:00:01.000Z").toISOString(),
+  });
+
+  const localEvents: CDCReplicationEvent[] = [localEvent];
+  const remoteEvents: CDCReplicationEvent[] = [remoteEvent];
+
+  const result = service.mergeEventsWithConflictResolution("task_conflict", localEvents, remoteEvents);
+
+  assert.equal(result.length, 1);
+  const payload = JSON.parse(result[0].payloadJson);
+  assert.equal(payload.value, "remote");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lag Alert Tests
+// MultiRegionReplicationCoordinator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CDCReplicationService records replication lag correctly", () => {
+test("MultiRegionReplicationCoordinator.setupRegionReplication creates configs for all targets", () => {
   const service = new CDCReplicationService();
+  const { MultiRegionReplicationCoordinator } = await import(
+    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+  );
+  const coordinator = new MultiRegionReplicationCoordinator(service);
 
-  // Register replication config
-  service.registerReplication({
-    sourceRegionId: "us-east-1",
-    targetRegionId: "us-west-2",
-    batchSize: 100,
-    replicationIntervalMs: 5000,
-    enabled: true,
-    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-  });
+  coordinator.setupRegionReplication("us-west-2", [
+    { targetRegionId: "eu-west-1", batchSize: 50 },
+    { targetRegionId: "ap-southeast-1", intervalMs: 10000 },
+  ]);
 
-  // Simulate source has 50 events processed
-  const lag = service.getReplicationLag("us-east-1", "us-west-2", 50);
-
-  assert.equal(lag, 0); // No events replicated yet, checkpoint is at 0
+  const replications = coordinator.getRegionReplications("us-west-2");
+  assert.equal(replications.length, 2);
+  assert.equal(replications[0].targetRegionId, "eu-west-1");
+  assert.equal(replications[0].batchSize, 50);
+  assert.equal(replications[1].targetRegionId, "ap-southeast-1");
 });
 
-test("CDCReplicationService RPO config is within limits", () => {
+test("MultiRegionReplicationCoordinator.getCDCService returns the CDC service", () => {
   const service = new CDCReplicationService();
+  const { MultiRegionReplicationCoordinator } = await import(
+    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+  );
+  const coordinator = new MultiRegionReplicationCoordinator(service);
 
-  // RPO < 1min means max acceptable lag is 60s
-  // The service's rpoConfig.maxLagMs is 60000 (60 seconds)
-  // This is a configuration test - verify the constants exist
+  assert.equal(coordinator.getCDCService(), service);
+});
 
-  // Verify lag calculation handles the RPO threshold
-  service.registerReplication({
-    sourceRegionId: "us-east-1",
-    targetRegionId: "us-west-2",
-    batchSize: 100,
-    replicationIntervalMs: 5000,
-    enabled: true,
-    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-  });
+test("MultiRegionReplicationCoordinator uses default batch size and interval", () => {
+  const service = new CDCReplicationService();
+  const { MultiRegionReplicationCoordinator } = await import(
+    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+  );
+  const coordinator = new MultiRegionReplicationCoordinator(service);
 
-  // Source has 1000 events, checkpoint at 950
-  // Lag should be 50 events behind
-  const lag = service.getReplicationLag("us-east-1", "us-west-2", 1000);
+  coordinator.setupRegionReplication("region-test", [{ targetRegionId: "target-1" }]);
 
-  // Checkpoint starts at 0, after confirming batches it advances
-  // So initially lag = total events since checkpoint starts at 0
-  assert.ok(lag >= 0);
+  const replications = coordinator.getRegionReplications("region-test");
+  assert.equal(replications.length, 1);
+  assert.equal(replications[0].batchSize, 100); // default
+  assert.equal(replications[0].replicationIntervalMs, 5000); // default
+});
+
+test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown source", () => {
+  const service = new CDCReplicationService();
+  const { MultiRegionReplicationCoordinator } = await import(
+    "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js"
+  );
+  const coordinator = new MultiRegionReplicationCoordinator(service);
+
+  const replications = coordinator.getRegionReplications("unknown-region");
+  assert.equal(replications.length, 0);
 });

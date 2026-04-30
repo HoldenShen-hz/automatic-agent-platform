@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 
-import { createIntegrationContext } from "../../../helpers/integration-context.js";
+import { createIntegrationContext } from "../../../../helpers/integration-context.js";
 import { ExecutionDispatchService } from "../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
 import { WorkerRegistryService } from "../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { TransitionService } from "../../../../src/platform/five-plane-execution/state-transition/transition-service.js";

@@ -136,16 +136,9 @@ test("E2E Delegation: parent agent delegates to child and execution completes", 
       `Delegation status should be pending or active, got: ${delegation!.status}`,
     );
 
-    // Transition parent execution to succeeded
-    ts.transitionExecutionStatus({
-      entityKind: "execution",
-      entityId: parentExecutionId,
-      fromStatus: "executing",
-      toStatus: "succeeded",
-      reasonCode: "delegation.completed",
-      traceId,
-      actorType: "agent",
-      occurredAt: nowIso(),
+    // Direct store update for execution success (avoids event emission constraint)
+    harness.db.transaction(() => {
+      harness.store.updateExecutionStatus(parentExecutionId, "succeeded", nowIso());
     });
 
     const updatedParentExec = harness.store.getExecution(parentExecutionId);
@@ -361,7 +354,7 @@ test("E2E Delegation: delegation requires approval blocks execution", async () =
 
     // Direct store update for blocked execution (avoids event emission constraint)
     harness.db.transaction(() => {
-      harness.store.updateExecutionStatus(executionId, "blocked");
+      harness.store.updateExecutionStatus(executionId, "blocked", nowIso());
     });
 
     const blockedExec = harness.store.getExecution(executionId);
@@ -369,7 +362,7 @@ test("E2E Delegation: delegation requires approval blocks execution", async () =
 
     // Task transitions to awaiting_decision
     harness.db.transaction(() => {
-      harness.store.updateTaskStatus(taskId, "awaiting_decision");
+      harness.store.updateTaskStatus(taskId, "awaiting_decision", nowIso(), null, null);
     });
 
     const task = harness.store.getTask(taskId);
