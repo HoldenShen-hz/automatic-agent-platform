@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { HarnessMemoryManager, type HarnessMemoryNamespace, type MemoryTier } from "../../../../../../src/platform/five-plane-orchestration/harness/memory-manager.js";
+import { HarnessMemoryManager, type HarnessMemoryNamespace, type MemoryTier } from "../../../../../src/platform/five-plane-orchestration/harness/memory-manager.js";
 
 // =============================================================================
 // Factory Helpers
