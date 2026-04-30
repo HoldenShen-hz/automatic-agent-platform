@@ -9,6 +9,7 @@ import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/a
 import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
 import type { DashboardDelta, DashboardChange } from "../../../src/interaction/dashboard/dashboard-projection-service.js";
 import type { AttentionItem } from "../../../src/interaction/dashboard/index.js";
+import type { DashboardProjectionService } from "../../../src/interaction/dashboard/index.js";
 
 // ── TaskBoardItem Factory ─────────────────────────────────────────────────────
 
@@ -106,6 +107,13 @@ export function createMockTaskSource(tasks: TaskBoardItem[] = []) {
       return [...tasks];
     },
   };
+}
+
+export function createMockProjectionService(deltas: DashboardDelta[] = []): DashboardProjectionService {
+  return {
+    processProjectionUpdate: () => null,
+    consumePendingDeltas: () => [...deltas],
+  } as unknown as DashboardProjectionService;
 }
 
 export function createMockSystemSource(system: SystemSituation = createSystemSituation()) {
