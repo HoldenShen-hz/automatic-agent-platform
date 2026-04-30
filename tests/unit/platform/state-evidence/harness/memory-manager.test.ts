@@ -280,11 +280,13 @@ test("write blocks self-enhancement attempt via value action", () => {
 test("write allows normal keys with self-enhancement patterns in value", () => {
   const manager = createManager();
 
-  // Should not throw - the pattern is in the value, not the key
-  // and the value doesn't have type: "self_modification" or action: "self_enhance"
+  // Should not throw - the key doesn't match self-enhancement patterns
+  // and the value's type is "normal_operation" (not "self_modification")
+  // and the value's action is undefined (not "self_enhance")
   manager.write("run", "scope_1", "some_key", { type: "normal_operation", data: "update_own_policy" });
 
-  assert.equal(manager.read("run", "scope_1", "some_key"), undefined); // key was not stored due to type check
+  // The value IS stored since it doesn't match self-enhancement criteria
+  assert.deepEqual(manager.read("run", "scope_1", "some_key"), { type: "normal_operation", data: "update_own_policy" });
 });
 
 test("write allows normal keys without self-enhancement patterns", () => {
