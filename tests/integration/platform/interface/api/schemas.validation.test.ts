@@ -28,7 +28,7 @@ import {
   parseUpdateTaskPayload,
   parseCreateWebhookEndpointPayload,
   parseAuthTokenPayload,
-} from "../../../../../src/platform/interface/api/http-server/schemas.js";
+} from "../../../../../src/platform/interface/api/http-server/schemas.ts";
 
 describe("API Route Schemas", () => {
   // ══════════════════════════════════════════════════════════════════════════

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BudgetGuard, type BudgetPolicy, type ExecutionChainBudgetSpend } from "../../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
+import { BudgetGuard, type BudgetPolicy, type ExecutionChainBudgetSpend } from "../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
 
 function createDefaultPolicy(overrides?: Partial<BudgetPolicy>): BudgetPolicy {
   return {

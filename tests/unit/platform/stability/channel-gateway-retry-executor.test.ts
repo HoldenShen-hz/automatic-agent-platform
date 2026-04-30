@@ -91,7 +91,7 @@ test("ChannelGatewayRetryExecutor handles gateway service error gracefully", asy
   const mockGatewayService = {
     processRetryQueue: async () => {
       throw new Error("Gateway error");
-    }),
+    },
   };
 
   const executor = new ChannelGatewayRetryExecutor(mockGatewayService as any);

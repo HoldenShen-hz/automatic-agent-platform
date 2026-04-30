@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ChargebackService, type ChargebackReportSource } from "../../../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
+import { ChargebackService, type ChargebackReportSource } from "../../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
 
 interface MockReportRecord {
   reportId: string;

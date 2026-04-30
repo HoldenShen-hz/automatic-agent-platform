@@ -12,19 +12,19 @@ import test from "node:test";
 
 test.describe("electron preload module structure", () => {
   test("preload module exports electronPreloadApi", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi !== undefined);
   });
 
   test("preload module exports installElectronBridge function", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.equal(typeof preload.installElectronBridge, "function");
   });
 });
 
 test.describe("electronPreloadApi structure", () => {
   test("has shell namespace with expected methods", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi.shell !== undefined);
     assert.equal(preload.electronPreloadApi.shell.openExternal, "shell:openExternal");
     assert.equal(preload.electronPreloadApi.shell.run, "shell:run");
@@ -32,7 +32,7 @@ test.describe("electronPreloadApi structure", () => {
   });
 
   test("has window namespace with expected methods", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi.window !== undefined);
     assert.equal(preload.electronPreloadApi.window.minimize, "window:minimize");
     assert.equal(preload.electronPreloadApi.window.maximize, "window:maximize");
@@ -40,13 +40,13 @@ test.describe("electronPreloadApi structure", () => {
   });
 
   test("has deepLink namespace", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi.deepLink !== undefined);
     assert.equal(preload.electronPreloadApi.deepLink.open, "deep-link:open");
   });
 
   test("has secureStore namespace with expected methods", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi.secureStore !== undefined);
     assert.equal(preload.electronPreloadApi.secureStore.read, "secure-store:read");
     assert.equal(preload.electronPreloadApi.secureStore.write, "secure-store:write");
@@ -54,14 +54,14 @@ test.describe("electronPreloadApi structure", () => {
   });
 
   test("has files namespace with expected methods", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi.files !== undefined);
     assert.equal(preload.electronPreloadApi.files.read, "files:read");
     assert.equal(preload.electronPreloadApi.files.write, "files:write");
   });
 
   test("has privacy namespace with expected methods", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.ok(preload.electronPreloadApi.privacy !== undefined);
     assert.equal(preload.electronPreloadApi.privacy.getAnalyticsConsent, "privacy:getAnalyticsConsent");
     assert.equal(preload.electronPreloadApi.privacy.setAnalyticsConsent, "privacy:setAnalyticsConsent");
@@ -71,18 +71,18 @@ test.describe("electronPreloadApi structure", () => {
 
 test.describe("installElectronBridge function", () => {
   test("is a function", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     assert.equal(typeof preload.installElectronBridge, "function");
   });
 
   test("requires two parameters: target and bridge", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     // Function signature check - should accept (target: Window, bridge: ElectronBridge)
     assert.ok(preload.installElectronBridge.length >= 2 || preload.installElectronBridge.length === 0);
   });
 
   test("installElectronBridge assigns bridge to target.__AA_ELECTRON__", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
 
     // Create mock target and bridge
     const mockBridge = {
@@ -108,7 +108,7 @@ test.describe("installElectronBridge function", () => {
 
 test.describe("Issue #2163 - Context Isolation Bridge Pattern", () => {
   test("preload API uses channel strings for IPC, not direct access", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
 
     // The preload API exposes channel strings, not direct Node.js functions
     // This is the secure pattern - IPC channels are used instead of direct access
@@ -118,7 +118,7 @@ test.describe("Issue #2163 - Context Isolation Bridge Pattern", () => {
   });
 
   test("installElectronBridge is the bridge installation mechanism", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
 
     // The bridge is installed on the target window by the preload script
     // This is the context isolation boundary - preload runs in isolated context
@@ -126,7 +126,7 @@ test.describe("Issue #2163 - Context Isolation Bridge Pattern", () => {
   });
 
   test("electronPreloadApi structure matches main.ts channels", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     const main = await import("../../../../../../ui/apps/electron-win/src/main.js");
 
     // Verify shell channels match
@@ -145,7 +145,7 @@ test.describe("Issue #2163 - Context Isolation Bridge Pattern", () => {
 
 test.describe("API completeness verification", () => {
   test("All IPC channels from main are represented in preload API", async () => {
-    const preload = await import("../../../../../../ui/apps/electron-win/src/preload.js");
+    const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
     const main = await import("../../../../../../ui/apps/electron-win/src/main.js");
 
     const channels = main.electronMainBaseline.channels;
