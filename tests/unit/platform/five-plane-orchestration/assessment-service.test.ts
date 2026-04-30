@@ -167,7 +167,7 @@ test("assess sets workflow to multi-step for moderate+ complexity", () => {
   const service = new AssessmentService();
   const situation = makeTaskSituation({
     fileRefs: ["a.ts", "b.ts", "c.ts"],
-    codebaseSnapshot: { rootPath: ".", fileCount: 30, relevantFiles: ["a.ts", "b.ts", "c.ts"] },
+    codebaseSnapshot: { rootPath: ".", fileCount: 30, relevantFiles: [{ path: "a.ts" }, { path: "b.ts" }, { path: "c.ts" }] },
     blockers: [{ severity: "high", description: "test", blockedAt: Date.now(), blockingSince: Date.now() }],
   });
   const result = service.assess(situation);
