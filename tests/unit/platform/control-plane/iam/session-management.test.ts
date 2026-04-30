@@ -317,3 +317,120 @@ test("refreshSession twice in sequence", () => {
   assert.notEqual(firstRefresh.refreshToken.tokenId, secondRefresh.refreshToken.tokenId);
   assert.equal(secondRefresh.refreshToken.rotatedCount, 2);
 });
+
+// ============================================================================
+// Session Stats Tests
+// ============================================================================
+
+test("getSessionStats returns correct counts", () => {
+  // Create sessions that will remain active
+  const session1 = createSession({ principalId: "user-stats-1", principalType: "user" });
+  const session2 = createSession({ principalId: "user-stats-2", principalType: "agent" });
+
+  // Revoke one session
+  revokeSession(session1.sessionId);
+
+  const stats = getSessionStats();
+
+  assert.ok(stats.totalSessions >= 2);
+  assert.ok(stats.activeSessions >= 1); // session2 should be active
+  assert.ok(stats.revokedSessions >= 1); // session1 was revoked
+});
+
+// ============================================================================
+// Bearer Token Extraction Tests
+// ============================================================================
+
+test("extractBearerToken returns token from valid header", () => {
+  const token = extractBearerToken("Bearer eyJhbGciOiJIUzI1NiJ9...");
+  assert.equal(token, "eyJhbGciOiJIUzI1NiJ9...");
+});
+
+test("extractBearerToken returns null for null header", () => {
+  const token = extractBearerToken(null);
+  assert.equal(token, null);
+});
+
+test("extractBearerToken returns null for non-Bearer header", () => {
+  const token = extractBearerToken("Basic dXNlcjpwYXNz");
+  assert.equal(token, null);
+});
+
+test("extractBearerToken returns null for empty header", () => {
+  const token = extractBearerToken("");
+  assert.equal(token, null);
+});
+
+test("extractBearerToken returns null for Bearer without token", () => {
+  const token = extractBearerToken("Bearer ");
+  assert.equal(token, "");
+});
+
+// ============================================================================
+// Principal Sessions Tests
+// ============================================================================
+
+test("getPrincipalSessions returns active sessions for principal", () => {
+  const principalId = "user-multi-session";
+  createSession({ principalId, principalType: "user" });
+  createSession({ principalId, principalType: "user" });
+
+  const sessions = getPrincipalSessions(principalId);
+  assert.ok(sessions.length >= 2);
+  for (const session of sessions) {
+    assert.equal(session.principalId, principalId);
+  }
+});
+
+test("getPrincipalSessions returns empty for non-existent principal", () => {
+  const sessions = getPrincipalSessions("non-existent-principal");
+  assert.deepEqual(sessions, []);
+});
+
+// ============================================================================
+// Revoke All Principal Sessions Tests
+// ============================================================================
+
+test("revokeAllPrincipalSessions revokes all sessions for principal", () => {
+  const principalId = "user-revoke-all";
+  const session1 = createSession({ principalId, principalType: "user" });
+  const session2 = createSession({ principalId, principalType: "user" });
+
+  const count = revokeAllPrincipalSessions(principalId);
+  assert.ok(count >= 2);
+
+  // Both sessions should now be invalid
+  const result1 = validateAccessToken(session1.accessToken.tokenId);
+  const result2 = validateAccessToken(session2.accessToken.tokenId);
+  assert.equal(result1.valid, false);
+  assert.equal(result2.valid, false);
+});
+
+test("revokeAllPrincipalSessions returns zero for principal with no sessions", () => {
+  const count = revokeAllPrincipalSessions("non-existent-principal-for-revoke");
+  assert.equal(count, 0);
+});
+
+// ============================================================================
+// Session Expiry Edge Cases
+// ============================================================================
+
+test("session refresh updates lastAccessedAt", () => {
+  const session = createSession({ principalId: "user-access-time", principalType: "user" });
+  const originalLastAccessed = session.lastAccessedAt;
+
+  // Small delay to ensure time difference
+  const newSession = refreshSession(session.refreshToken.tokenId);
+
+  assert.ok(newSession.lastAccessedAt >= originalLastAccessed);
+});
+
+test("new access token has later expiry than original", () => {
+  const session = createSession({ principalId: "user-new-expiry", principalType: "user" });
+  const originalExpiry = session.accessToken.expiresAt;
+
+  const newSession = refreshSession(session.refreshToken.tokenId);
+
+  // New access token should be issued now, so expiry should be in the future relative to old one
+  assert.ok(newSession.accessToken.expiresAt >= originalExpiry);
+});

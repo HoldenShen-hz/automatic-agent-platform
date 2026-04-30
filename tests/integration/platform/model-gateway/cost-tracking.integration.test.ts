@@ -12,8 +12,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BudgetGuard } from "../../../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
-import { ChargebackService } from "../../../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
+import { BudgetGuard } from "../../../../src/platform/model-gateway/cost-tracker/budget-guard.js";
+import { ChargebackService } from "../../../../src/platform/model-gateway/cost-tracker/chargeback-service.js";
 
 // ============================================================================
 // Mock Cost Report Source

@@ -15,12 +15,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mock } from "node:test";
 
-import { CircuitBreaker } from "../../../../../../src/platform/model-gateway/provider-registry/circuit-breaker.js";
+import { CircuitBreaker } from "../../../../src/platform/model-gateway/provider-registry/circuit-breaker.js";
 import {
   DegradationController,
   DegradationLevel,
-} from "../../../../../../src/platform/model-gateway/degradation/degradation-controller.js";
-import { UnifiedChatProvider } from "../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+} from "../../../../src/platform/model-gateway/degradation/degradation-controller.js";
+import { UnifiedChatProvider } from "../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 
 // ============================================================================
 // Mock Implementations
