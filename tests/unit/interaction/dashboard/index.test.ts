@@ -15,41 +15,13 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  DashboardAggregationService,
-  type AttentionItem,
-  type DashboardProjectionService,
-  type DashboardSnapshot,
-} from "../../../../src/interaction/dashboard/index.js";
-import { createMockProjectionService } from "./factories.js";
+import { DashboardAggregationService, type AttentionItem } from "../../../../src/interaction/dashboard/index.js";
+import type { DashboardProjectionService } from "../../../../src/interaction/dashboard/index.js";
+import type { DashboardDelta } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 
-function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], updatedAt: string): TaskBoardItem {
-  return {
-    taskId,
-    title: `Task ${taskId}`,
-    priority: "normal",
-    taskStatus,
-    workflowStatus: taskStatus === "done" ? "completed" : "running",
-    divisionId: "general_ops",
-    currentStepIndex: 0,
-    sessionStatus: "open",
-    latestEventAt: updatedAt,
-    updatedAt,
-  };
-}
-
-function makeSystemSituation(overrides = {}): SystemSituation {
-  return {
-    healthStatus: "ok",
-    providerHealth: { status: "healthy", successRate: 0.98, recentCalls: 50 },
-    resourceUtilization: { memoryRssMb: 512, cpuPercent: 45, activeProcesses: 8 },
-    queueBacklog: { size: 0, degraded: false },
-    eventBusBacklog: { tier1PendingAcks: 0 },
-    findings: [],
-    observedAt: new Date().toISOString(),
-    ...overrides,
-  };
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Local Test Types (matching production types)
+// ─────────────────────────────────────────────────────────────────────────────
 
 type TaskBoardItem = {
   taskId: string;
@@ -73,6 +45,38 @@ type SystemSituation = {
   findings: unknown[];
   observedAt: string;
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test Fixtures
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeTask(taskId: string, taskStatus: TaskBoardItem["taskStatus"], updatedAt: string): TaskBoardItem {
+  return {
+    taskId,
+    title: `Task ${taskId}`,
+    priority: "normal",
+    taskStatus,
+    workflowStatus: taskStatus === "done" ? "completed" : "running",
+    divisionId: "general_ops",
+    currentStepIndex: 0,
+    sessionStatus: "open",
+    latestEventAt: updatedAt,
+    updatedAt,
+  };
+}
+
+function makeSystemSituation(overrides: Partial<SystemSituation> = {}): SystemSituation {
+  return {
+    healthStatus: "ok",
+    providerHealth: { status: "healthy", successRate: 0.98, recentCalls: 50 },
+    resourceUtilization: { memoryRssMb: 512, cpuPercent: 45, activeProcesses: 8 },
+    queueBacklog: { size: 0, degraded: false },
+    eventBusBacklog: { tier1PendingAcks: 0 },
+    findings: [],
+    observedAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2050: Attention Queue Sorting - createdAt only, not priority
@@ -756,20 +760,20 @@ test("buildOperatorDashboard merges projection deltas when projectionService is 
   // Create a mock projection service
   const mockProjectionService: DashboardProjectionService = {
     processProjectionUpdate: () => null,
-    consumePendingDeltas: () => [
+    consumePendingDeltas: (): readonly DashboardDelta[] => [
       {
         deltaId: "delta-1",
         timestamp: "2026-04-20T10:00:00.000Z",
+        tenantId: null,
+        visibilityScope: "tenant",
         changes: [
           {
-            changeType: "task_failed" as const,
+            changeType: "task_failed",
             entityId: "task-from-delta",
             newValue: {},
           },
         ],
         affectedMetrics: ["incidentCount"],
-        tenantId: null,
-        visibilityScope: "tenant" as const,
       },
     ],
   } as unknown as DashboardProjectionService;

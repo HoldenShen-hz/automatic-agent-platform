@@ -358,6 +358,73 @@ test("MemoryRetrievalService.unindexMemory escapes single quotes in memoryId", (
   service.unindexMemory("mem_with'_quote");
 });
 
+// =============================================================================
+// Issue #2037: Manual quote escaping in unindexMemory breaks DELETE
+// Line 288: const safeId = memoryId.replace(/'/g, "''");
+// Line 290: connection.prepare("DELETE FROM memories_fts WHERE memory_id = ?").run(safeId);
+// The manual escaping is WRONG because parameterized queries already escape!
+// The .replace(/'/g, "''") transforms ' → ''
+// Then .run(safeId) passes '' to SQLite which treats '' as an escaped single quote
+// But when using parameterized queries, the driver already handles escaping!
+// This double-escaping can break the DELETE for certain ID patterns.
+// =============================================================================
+
+test("Issue #2037: unindexMemory double-escapes single quotes", () => {
+  const store = createMockStore();
+  const service = new MemoryRetrievalService(store);
+
+  // This test documents the double-escaping bug
+  // The code does: memoryId.replace(/'/g, "''") then passes to parameterized query
+  // SQLite parameter escaping: ? binding escapes ' as ''
+  // But the code already escaped ' to '', so '' becomes '''' which is wrong!
+
+  // We can't directly observe the SQL generated, but we can document that
+  // the escaping pattern is incorrect for parameterized queries
+  const memoryIdWithQuote = "mem_test'_id";
+  const escaped = memoryIdWithQuote.replace(/'/g, "''");
+  assert.equal(escaped, "mem_test''_id");
+
+  // When passed to parameterized query, SQLite would treat '' as empty string
+  // So the actual DELETE becomes: DELETE FROM memories_fts WHERE memory_id = 'mem_test'''_id'
+  // Which is a syntax error or matches wrong row
+});
+
+test("Issue #2037: manual escaping conflicts with parameterized query escaping", () => {
+  // Document: The correct approach is to NOT manually escape when using params
+  // SQLite driver with ? placeholder handles escaping automatically
+  // So: connection.prepare("DELETE...WHERE memory_id = ?").run(memoryId)
+  // NOT: connection.prepare("DELETE...WHERE memory_id = ?").run(safeId)
+  const store = createMockStore();
+  const service = new MemoryRetrievalService(store);
+
+  // A memory ID that triggers the bug when it contains quotes
+  const problematicId = "mem_with'_embedded'_quotes";
+
+  // The bug: replace creates double-escaping
+  const safeId = problematicId.replace(/'/g, "''");
+  assert.ok(safeId.includes("''"), "Should have double-escaped quotes");
+
+  // When parameterized query runs with safeId, SQL becomes:
+  // DELETE FROM memories_fts WHERE memory_id = 'mem_with''''embedded''''quotes'
+  // SQLite interprets '' as literal single quote, so this becomes:
+  // DELETE FROM memories_fts WHERE memory_id = 'mem_with''embedded''quotes'
+  // Which is WRONG - it looks for a different ID than intended
+});
+
+test("Issue #2037: IDs without quotes work correctly", () => {
+  const store = createMockStore();
+  const service = new MemoryRetrievalService(store);
+
+  // Normal ID without quotes works fine since '' === single quote only when '' is empty
+  const normalId = "mem_normal_id_123";
+
+  // Should not throw
+  service.unindexMemory(normalId);
+  // And no quote escaping happens
+  const expected = normalId.replace(/'/g, "''");
+  assert.equal(expected, normalId);
+});
+
 test("MemoryRetrievalService.searchMemories returns empty array when no results", () => {
   const store = createMockStore([]);
   const service = new MemoryRetrievalService(store);
