@@ -12,6 +12,10 @@ import {
   refreshSession,
   revokeSession,
   getSession,
+  getSessionStats,
+  extractBearerToken,
+  getPrincipalSessions,
+  revokeAllPrincipalSessions,
   type Session,
   type SessionValidationResult,
 } from "../../../../../src/platform/control-plane/iam/session-management.js";

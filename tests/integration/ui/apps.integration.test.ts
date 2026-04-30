@@ -12,9 +12,9 @@ import test from "node:test";
 
 test.describe("Cross-platform manifest consistency", () => {
   test("All desktop platforms export DesktopShellManifest", async () => {
-    const electronWin = await import("../../src/ui/apps/electron-win/src/index.js");
-    const tauriMacos = await import("../../src/ui/apps/tauri-macos/src/index.js");
-    const tauriLinux = await import("../../src/ui/apps/tauri-linux/src/index.js");
+    const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
+    const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
+    const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
 
     assert.ok(electronWin.electronWinManifest !== undefined);
     assert.ok(tauriMacos.tauriMacosManifest !== undefined);
@@ -22,9 +22,9 @@ test.describe("Cross-platform manifest consistency", () => {
   });
 
   test("All desktop manifests have platform, runtime, and updateChannel", async () => {
-    const electronWin = await import("../../src/ui/apps/electron-win/src/index.js");
-    const tauriMacos = await import("../../src/ui/apps/tauri-macos/src/index.js");
-    const tauriLinux = await import("../../src/ui/apps/tauri-linux/src/index.js");
+    const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
+    const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
+    const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
 
     const electronManifest = electronWin.electronWinManifest;
     const macosManifest = tauriMacos.tauriMacosManifest;
@@ -47,9 +47,9 @@ test.describe("Cross-platform manifest consistency", () => {
   });
 
   test("Platform IDs are distinct across platforms", async () => {
-    const electronWin = await import("../../src/ui/apps/electron-win/src/index.js");
-    const tauriMacos = await import("../../src/ui/apps/tauri-macos/src/index.js");
-    const tauriLinux = await import("../../src/ui/apps/tauri-linux/src/index.js");
+    const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
+    const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
+    const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
 
     const platforms = [
       electronWin.electronWinManifest.platform,
@@ -65,8 +65,8 @@ test.describe("Cross-platform manifest consistency", () => {
 
 test.describe("IPC channel consistency between electron-win and preload", () => {
   test("main.ts and preload.ts define matching IPC channels", async () => {
-    const main = await import("../../src/ui/apps/electron-win/src/main.js");
-    const preload = await import("../../src/ui/apps/electron-win/src/preload.js");
+    const main = await import("../../../ui/apps/electron-win/src/main.js");
+    const preload = await import("../../../ui/apps/electron-win/src/preload.js");
 
     const mainChannels = main.electronMainBaseline.channels;
     const preloadApi = preload.electronPreloadApi;
@@ -85,8 +85,8 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
   });
 
   test("Security settings in main match preload expectations", async () => {
-    const main = await import("../../src/ui/apps/electron-win/src/main.js");
-    const preload = await import("../../src/ui/apps/electron-win/src/preload.js");
+    const main = await import("../../../ui/apps/electron-win/src/main.js");
+    const preload = await import("../../../ui/apps/electron-win/src/preload.js");
 
     const security = main.electronMainBaseline.security;
 
@@ -172,7 +172,7 @@ test.describe("Mobile platform consistency", () => {
 
 test.describe("Security configuration alignment", () => {
   test("electron-win has secure defaults configured", async () => {
-    const main = await import("../../src/ui/apps/electron-win/src/main.js");
+    const main = await import("../../../ui/apps/electron-win/src/main.js");
 
     const security = main.electronMainBaseline.security;
 
@@ -182,8 +182,8 @@ test.describe("Security configuration alignment", () => {
   });
 
   test("electron-win IPC channels are properly enumerated", async () => {
-    const main = await import("../../src/ui/apps/electron-win/src/main.js");
-    const preload = await import("../../src/ui/apps/electron-win/src/preload.js");
+    const main = await import("../../../ui/apps/electron-win/src/main.js");
+    const preload = await import("../../../ui/apps/electron-win/src/preload.js");
 
     const channels = main.electronMainBaseline.channels;
 
@@ -197,7 +197,7 @@ test.describe("Security configuration alignment", () => {
   });
 
   test("All platforms implement screen security", async () => {
-    const electronWin = await import("../../src/ui/apps/electron-win/src/main.js");
+    const electronWin = await import("../../../ui/apps/electron-win/src/main.js");
     const mobile = await import("../../src/ui/apps/mobile/src/index.js");
 
     // Electron has privacy:enableScreenSecurity
@@ -286,9 +286,9 @@ test.describe("Dependency verification", () => {
 
 test.describe("Adapter factory consistency", () => {
   test("All platform adapters follow same creation pattern", async () => {
-    const electronWin = await import("../../src/ui/apps/electron-win/src/index.js");
-    const tauriMacos = await import("../../src/ui/apps/tauri-macos/src/index.js");
-    const tauriLinux = await import("../../src/ui/apps/tauri-linux/src/index.js");
+    const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
+    const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
+    const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
     const mobile = await import("../../src/ui/apps/mobile/src/index.js");
 
     // All should have createXxxAdapter function
@@ -305,9 +305,9 @@ test.describe("Adapter factory consistency", () => {
   });
 
   test("Adapters correctly set platform-specific platform ID", async () => {
-    const electronWin = await import("../../src/ui/apps/electron-win/src/index.js");
-    const tauriMacos = await import("../../src/ui/apps/tauri-macos/src/index.js");
-    const tauriLinux = await import("../../src/ui/apps/tauri-linux/src/index.js");
+    const electronWin = await import("../../../ui/apps/electron-win/src/index.js");
+    const tauriMacos = await import("../../../ui/apps/tauri-macos/src/index.js");
+    const tauriLinux = await import("../../../ui/apps/tauri-linux/src/index.js");
     const mobile = await import("../../src/ui/apps/mobile/src/index.js");
 
     const mockBase: any = { platform: "unknown" };
