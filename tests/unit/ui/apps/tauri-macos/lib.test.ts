@@ -13,22 +13,22 @@ import test from "node:test";
 
 test.describe("tauri-macos module structure", () => {
   test("module exports tauriMacosManifest", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.ok(lib.tauriMacosManifest !== undefined);
   });
 
   test("module exports createTauriMacosAdapter function", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(typeof lib.createTauriMacosAdapter, "function");
   });
 
   test("module exports createTauriMacosDefaultAdapter function", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(typeof lib.createTauriMacosDefaultAdapter, "function");
   });
 
   test("module exports DesktopShellManifest interface", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     // Interface exists if the manifest has the expected shape
     assert.ok(lib.tauriMacosManifest !== undefined);
   });
@@ -36,22 +36,22 @@ test.describe("tauri-macos module structure", () => {
 
 test.describe("tauriMacosManifest structure", () => {
   test("has correct platform value", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(lib.tauriMacosManifest.platform, "macos");
   });
 
   test("has correct runtime value", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(lib.tauriMacosManifest.runtime, "tauri");
   });
 
   test("has supportsDeepLink enabled", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(lib.tauriMacosManifest.supportsDeepLink, true);
   });
 
   test("has updateChannel configured", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     // Issue #2171: updateChannel should be present for auto-updates
     assert.ok(lib.tauriMacosManifest.updateChannel !== undefined);
     assert.ok(
@@ -61,7 +61,7 @@ test.describe("tauriMacosManifest structure", () => {
   });
 
   test("supportsDeepLink implies deep link handling exists", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     if (lib.tauriMacosManifest.supportsDeepLink) {
       // Issue #2170: open_deep_link should validate URL scheme
       // This is a documentation test for the security concern
@@ -72,20 +72,20 @@ test.describe("tauriMacosManifest structure", () => {
 
 test.describe("createTauriMacosAdapter function", () => {
   test("accepts base PlatformAdapter parameter", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     // Function should accept a PlatformAdapter and return modified one
     assert.equal(typeof lib.createTauriMacosAdapter, "function");
   });
 
   test("returns PlatformAdapter with platform set to macos", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     const mockBase: any = { platform: "unknown" };
     const result = lib.createTauriMacosAdapter(mockBase);
     assert.equal(result.platform, "macos");
   });
 
   test("preserves other PlatformAdapter properties", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     const mockBase: any = { platform: "unknown", otherProp: "value" };
     const result = lib.createTauriMacosAdapter(mockBase);
     assert.equal(result.platform, "macos");
@@ -95,12 +95,12 @@ test.describe("createTauriMacosAdapter function", () => {
 
 test.describe("createTauriMacosDefaultAdapter function", () => {
   test("is a function", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(typeof lib.createTauriMacosDefaultAdapter, "function");
   });
 
   test("returns a PlatformAdapter", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     const result = lib.createTauriMacosDefaultAdapter();
     assert.ok(result !== undefined);
     assert.ok(result.platform !== undefined);
@@ -109,7 +109,7 @@ test.describe("createTauriMacosDefaultAdapter function", () => {
 
 test.describe("Issue #2170 - Deep link scheme validation", () => {
   test("tauriMacosManifest indicates deep link support", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-macos/src/index.js");
     assert.equal(lib.tauriMacosManifest.supportsDeepLink, true);
   });
 

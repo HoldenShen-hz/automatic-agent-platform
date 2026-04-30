@@ -118,7 +118,7 @@ test("ChannelGatewayRetryExecutor start and stop control polling", () => {
         deadLettered: 0,
         skippedRateLimited: 0,
       };
-    }),
+    },
   };
 
   const executor = new ChannelGatewayRetryExecutor(mockGatewayService as any, {

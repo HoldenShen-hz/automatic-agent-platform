@@ -12,39 +12,39 @@ import test from "node:test";
 
 test.describe("tauri-linux module structure", () => {
   test("module exports tauriLinuxManifest", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.ok(lib.tauriLinuxManifest !== undefined);
   });
 
   test("module exports createTauriLinuxAdapter function", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(typeof lib.createTauriLinuxAdapter, "function");
   });
 
   test("module exports createTauriLinuxDefaultAdapter function", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(typeof lib.createTauriLinuxDefaultAdapter, "function");
   });
 });
 
 test.describe("tauriLinuxManifest structure", () => {
   test("has correct platform value", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(lib.tauriLinuxManifest.platform, "linux");
   });
 
   test("has correct runtime value", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(lib.tauriLinuxManifest.runtime, "tauri");
   });
 
   test("has supportsBackgroundAgent enabled", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(lib.tauriLinuxManifest.supportsBackgroundAgent, true);
   });
 
   test("Issue #2172: updateChannel should exist but is MISSING", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     // Issue #2172: DesktopShellManifest for linux is missing updateChannel
     // Compare with tauri-macos which has updateChannel
     const fs = await import("node:fs");
@@ -75,19 +75,19 @@ test.describe("tauriLinuxManifest structure", () => {
 
 test.describe("createTauriLinuxAdapter function", () => {
   test("accepts base PlatformAdapter parameter", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(typeof lib.createTauriLinuxAdapter, "function");
   });
 
   test("returns PlatformAdapter with platform set to linux", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     const mockBase: any = { platform: "unknown" };
     const result = lib.createTauriLinuxAdapter(mockBase);
     assert.equal(result.platform, "linux");
   });
 
   test("preserves other PlatformAdapter properties", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     const mockBase: any = { platform: "unknown", otherProp: "value" };
     const result = lib.createTauriLinuxAdapter(mockBase);
     assert.equal(result.platform, "linux");
@@ -97,12 +97,12 @@ test.describe("createTauriLinuxAdapter function", () => {
 
 test.describe("createTauriLinuxDefaultAdapter function", () => {
   test("is a function", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     assert.equal(typeof lib.createTauriLinuxDefaultAdapter, "function");
   });
 
   test("returns a PlatformAdapter", async () => {
-    const lib = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     const result = lib.createTauriLinuxDefaultAdapter();
     assert.ok(result !== undefined);
     assert.ok(result.platform !== undefined);
@@ -112,7 +112,7 @@ test.describe("createTauriLinuxDefaultAdapter function", () => {
 test.describe("Comparison with tauri-macos", () => {
   test("Both DesktopShellManifests should have similar structure", async () => {
     const linux = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
-    const macos = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const macos = await import("../../../../../ui/apps/tauri-macos/src/index.js");
 
     // Both should have platform, runtime
     assert.equal(linux.tauriLinuxManifest.platform, "linux");
@@ -127,7 +127,7 @@ test.describe("Comparison with tauri-macos", () => {
 
   test("Both should support similar capabilities for parity", async () => {
     const linux = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
-    const macos = await import("../../../../../../ui/apps/tauri-macos/src/index.js");
+    const macos = await import("../../../../../ui/apps/tauri-macos/src/index.js");
 
     // macos has supportsDeepLink, linux has supportsBackgroundAgent
     // These are platform-specific capabilities, so differences are expected

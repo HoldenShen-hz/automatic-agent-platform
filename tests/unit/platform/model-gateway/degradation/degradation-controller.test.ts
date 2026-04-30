@@ -18,7 +18,7 @@ import {
   DEFAULT_TEMPLATE_RESPONSES,
   type ProviderMetrics,
   type LLMDegradationRequest,
-} from "../../../../../../src/platform/model-gateway/degradation/degradation-controller.js";
+} from "../../../../../src/platform/model-gateway/degradation/degradation-controller.js";
 import type { ModelFallbackCandidate } from "../../../../../../src/platform/model-gateway/fallback/index.js";
 
 // ============================================================================

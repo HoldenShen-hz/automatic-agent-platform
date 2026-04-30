@@ -13,7 +13,7 @@ import { mock } from "node:test";
 import {
   CircuitBreaker,
   CircuitBreakerOpenError,
-} from "../../../../../../src/platform/model-gateway/provider-registry/circuit-breaker.js";
+} from "../../../../../src/platform/model-gateway/provider-registry/circuit-breaker.js";
 
 // ============================================================================
 // Issue #2088: failureRate formula bug

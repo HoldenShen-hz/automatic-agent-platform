@@ -78,22 +78,22 @@ const mockSharedAuth = {
 // Use dynamic import to test the actual module structure
 test.describe("web runtime module structure", () => {
   test("runtime module exports createWebRuntimeConfig function", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     assert.equal(typeof runtime.createWebRuntimeConfig, "function");
   });
 
   test("runtime module exports createWebRuntimeClients function", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     assert.equal(typeof runtime.createWebRuntimeClients, "function");
   });
 
   test("runtime module exports registerWebServiceWorker function", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     assert.equal(typeof runtime.registerWebServiceWorker, "function");
   });
 
   test("runtime module exports WebRuntimeConfig interface shape", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     // Verify the function signature accepts config object
     const config = runtime.createWebRuntimeConfig({});
     assert.ok(config !== undefined);
@@ -103,14 +103,14 @@ test.describe("web runtime module structure", () => {
 
 test.describe("createWebRuntimeConfig", () => {
   test("returns empty config when env is empty", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({});
     assert.equal(config.apiBaseUrl, undefined);
     assert.equal(config.wsUrl, undefined);
   });
 
   test("extracts VITE_API_BASE_URL when provided", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({
       VITE_API_BASE_URL: "https://api.example.com",
     });
@@ -118,7 +118,7 @@ test.describe("createWebRuntimeConfig", () => {
   });
 
   test("extracts VITE_WS_URL when provided", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({
       VITE_WS_URL: "wss://ws.example.com",
     });
@@ -126,7 +126,7 @@ test.describe("createWebRuntimeConfig", () => {
   });
 
   test("ignores empty string VITE_API_BASE_URL", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({
       VITE_API_BASE_URL: "",
     });
@@ -134,7 +134,7 @@ test.describe("createWebRuntimeConfig", () => {
   });
 
   test("ignores empty string VITE_WS_URL", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({
       VITE_WS_URL: "",
     });
@@ -142,7 +142,7 @@ test.describe("createWebRuntimeConfig", () => {
   });
 
   test("handles boolean values in env gracefully", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({
       VITE_API_BASE_URL: false as any,
       VITE_WS_URL: true as any,
@@ -154,7 +154,7 @@ test.describe("createWebRuntimeConfig", () => {
 
 test.describe("createWebRuntimeClients", () => {
   test("creates clients with default config", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const result = runtime.createWebRuntimeClients({});
     assert.ok(result.client !== undefined);
     assert.ok(result.wsClient !== undefined);
@@ -162,7 +162,7 @@ test.describe("createWebRuntimeClients", () => {
   });
 
   test("creates clients with custom apiBaseUrl", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const result = runtime.createWebRuntimeClients({
       apiBaseUrl: "https://custom-api.example.com",
     });
@@ -171,7 +171,7 @@ test.describe("createWebRuntimeClients", () => {
   });
 
   test("accepts tokenManager in config", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const result = runtime.createWebRuntimeClients({
       tokenManager: mockTokenManager as any,
     });
@@ -179,7 +179,7 @@ test.describe("createWebRuntimeClients", () => {
   });
 
   test("accepts tenantId in config", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const result = runtime.createWebRuntimeClients({
       tenantId: "test-tenant",
     });
@@ -187,7 +187,7 @@ test.describe("createWebRuntimeClients", () => {
   });
 
   test("wsUrl is NOT ignored - uses BrowserWSClient with remote URL", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     // Issue #2167: wsUrl should be respected, not ignored
     // When wsUrl is provided, the runtime should use it instead of always using InMemoryWSClient
     const result = runtime.createWebRuntimeClients({
@@ -200,7 +200,7 @@ test.describe("createWebRuntimeClients", () => {
 
 test.describe("registerWebServiceWorker", () => {
   test("returns null when window is undefined (Node.js environment)", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     // In Node.js environment, window is undefined so it should return null
     // This tests issue #2176 - proper handling of non-existent service worker
     const result = await runtime.registerWebServiceWorker();
@@ -213,7 +213,7 @@ test.describe("security issue verifications", () => {
   test("Issue #2166: API fallback should NOT be http://localhost:3000 in production", async () => {
     // This is a documentation test - in production, VITE_API_BASE_URL should always be set
     // The fallback exists for development convenience only
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({});
     if (config.apiBaseUrl === undefined) {
       // When not configured, it's using the fallback - this should only happen in dev
@@ -222,7 +222,7 @@ test.describe("security issue verifications", () => {
   });
 
   test("Issue #2167: wsUrl config option is available and not ignored", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     const config = runtime.createWebRuntimeConfig({
       VITE_WS_URL: "wss://ws.example.com",
     });
@@ -233,7 +233,7 @@ test.describe("security issue verifications", () => {
   });
 
   test("Issue #2175: createAuthInterceptor is called with tokenManager, not hardcoded string", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     // This test verifies the code structure - actual interceptor creation uses tokenManager
     const customTokenManager = { getToken: () => Promise.resolve("custom-token") };
     const clients = runtime.createWebRuntimeClients({
@@ -243,7 +243,7 @@ test.describe("security issue verifications", () => {
   });
 
   test("Issue #2176: registerWebServiceWorker checks for service worker existence", async () => {
-    const runtime = await import("../../../../../../ui/apps/web/src/runtime.js");
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
     // The implementation does a HEAD request to check if sw file exists before registering
     // In a proper test environment with service worker support, this would verify the check
     const result = await runtime.registerWebServiceWorker();

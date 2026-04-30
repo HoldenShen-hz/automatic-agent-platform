@@ -12,21 +12,21 @@ import test from "node:test";
 
 test.describe("MobileApp module structure", () => {
   test("app module exports MobileApp function", async () => {
-    const app = await import("../../../../../../ui/apps/mobile/src/App.js");
+    const app = await import("../../../../../ui/apps/mobile/src/App.js");
     assert.equal(typeof app.MobileApp, "function");
   });
 });
 
 test.describe("MobileApp component", () => {
   test("MobileApp returns a React element", async () => {
-    const app = await import("../../../../../../ui/apps/mobile/src/App.js");
+    const app = await import("../../../../../ui/apps/mobile/src/App.js");
     const element = app.MobileApp();
     assert.ok(element !== null);
     assert.ok(typeof element === "object");
   });
 
   test("MobileApp element has expected structure", async () => {
-    const app = await import("../../../../../../ui/apps/mobile/src/App.js");
+    const app = await import("../../../../../ui/apps/mobile/src/App.js");
     const element = app.MobileApp();
     // Element should have type (like 'div') and props
     assert.ok(element.type !== undefined);
@@ -34,7 +34,7 @@ test.describe("MobileApp component", () => {
   });
 
   test("MobileApp element displays platform information", async () => {
-    const app = await import("../../../../../../ui/apps/mobile/src/App.js");
+    const app = await import("../../../../../ui/apps/mobile/src/App.js");
     const element = app.MobileApp();
     // The component should render platform info
     assert.ok(element.props !== undefined);
@@ -80,12 +80,12 @@ test.describe("Platform adapter integration", () => {
 
 test.describe("MobileShellManifest from index", () => {
   test("mobile index exports mobileShellManifest", async () => {
-    const mobile = await import("../../../../../../ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../../../ui/apps/mobile/src/index.js");
     assert.ok(mobile.mobileShellManifest !== undefined);
   });
 
   test("mobileShellManifest has correct structure", async () => {
-    const mobile = await import("../../../../../../ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../../../ui/apps/mobile/src/index.js");
     const manifest = mobile.mobileShellManifest;
 
     assert.equal(manifest.runtime, "react-native");
@@ -98,19 +98,19 @@ test.describe("MobileShellManifest from index", () => {
   });
 
   test("createMobileAdapter function exists and works", async () => {
-    const mobile = await import("../../../../../../ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../../../ui/apps/mobile/src/index.js");
     assert.equal(typeof mobile.createMobileAdapter, "function");
     assert.equal(typeof mobile.createMobileDefaultAdapter, "function");
   });
 
   test("createMobileAdapter accepts platform parameter", async () => {
-    const mobile = await import("../../../../../../ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../../../ui/apps/mobile/src/index.js");
     // The function signature should accept (base, platform) where platform is "android" | "ios"
     assert.ok(mobile.createMobileAdapter !== undefined);
   });
 
   test("createMobileDefaultAdapter accepts platform parameter", async () => {
-    const mobile = await import("../../../../../../ui/apps/mobile/src/index.js");
+    const mobile = await import("../../../../../ui/apps/mobile/src/index.js");
     // The function signature should accept platform: "android" | "ios"
     assert.ok(mobile.createMobileDefaultAdapter !== undefined);
   });

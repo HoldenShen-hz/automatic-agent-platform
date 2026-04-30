@@ -13,18 +13,18 @@ import test from "node:test";
 // Test the module exports and interface structure
 test.describe("WebAppShell module structure", () => {
   test("app-shell module exports WebAppShell function", async () => {
-    const appShell = await import("../../../../../../ui/apps/web/src/app-shell.js");
+    const appShell = await import("../../../../../ui/apps/web/src/app-shell.js");
     assert.equal(typeof appShell.WebAppShell, "function");
   });
 
   test("app-shell module exports AuthContext interface shape", async () => {
-    const appShell = await import("../../../../../../ui/apps/web/src/app-shell.js");
+    const appShell = await import("../../../../../ui/apps/web/src/app-shell.js");
     // AuthContext should be exported - verify through usage
     assert.ok(appShell.WebAppShell !== undefined);
   });
 
   test("app-shell module exports WebAppShellProps interface", async () => {
-    const appShell = await import("../../../../../../ui/apps/web/src/app-shell.js");
+    const appShell = await import("../../../../../ui/apps/web/src/app-shell.js");
     // The function should accept features array
     assert.ok(appShell.WebAppShell !== undefined);
   });
@@ -32,7 +32,7 @@ test.describe("WebAppShell module structure", () => {
 
 test.describe("WebAppShellProps interface", () => {
   test("requires features array", async () => {
-    const appShell = await import("../../../../../../ui/apps/web/src/app-shell.js");
+    const appShell = await import("../../../../../ui/apps/web/src/app-shell.js");
     // Create a minimal feature module mock
     const mockFeature = {
       route: {

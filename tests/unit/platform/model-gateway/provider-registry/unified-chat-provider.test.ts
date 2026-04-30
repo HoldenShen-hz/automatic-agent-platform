@@ -15,7 +15,7 @@ import {
   createUnifiedChatProvider,
   type ChatCompletionRequest,
   type ChatProviderType,
-} from "../../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+} from "../../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 
 // ============================================================================
 // Helper Functions

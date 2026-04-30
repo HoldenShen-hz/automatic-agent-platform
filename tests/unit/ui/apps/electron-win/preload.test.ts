@@ -127,7 +127,7 @@ test.describe("Issue #2163 - Context Isolation Bridge Pattern", () => {
 
   test("electronPreloadApi structure matches main.ts channels", async () => {
     const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
-    const main = await import("../../../../../../ui/apps/electron-win/src/main.js");
+    const main = await import("../../../../../ui/apps/electron-win/src/main.js");
 
     // Verify shell channels match
     assert.equal(preload.electronPreloadApi.shell.openExternal, "shell:openExternal");
@@ -146,7 +146,7 @@ test.describe("Issue #2163 - Context Isolation Bridge Pattern", () => {
 test.describe("API completeness verification", () => {
   test("All IPC channels from main are represented in preload API", async () => {
     const preload = await import("../../../../../ui/apps/electron-win/src/preload.js");
-    const main = await import("../../../../../../ui/apps/electron-win/src/main.js");
+    const main = await import("../../../../../ui/apps/electron-win/src/main.js");
 
     const channels = main.electronMainBaseline.channels;
 
