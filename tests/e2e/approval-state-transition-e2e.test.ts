@@ -479,8 +479,8 @@ test("E2E Approval: approval context preserved through state transitions", async
     const approval = approvalService.getApproval(approvalRequest.approvalId);
     assert.ok(approval, "Approval should exist");
 
-    // Access context from approval record - depending on the structure, might be in contextJson or context field
-    const storedContext = (approval as any)?.contextJson ? JSON.parse((approval as any).contextJson) : (approval as any)?.context ?? {};
+    // Access context from approval request
+    const storedContext = (approval as any)?.request?.context ?? {};
     assert.equal(storedContext.resourceType, "customer_database", "Context should preserve resourceType");
     assert.equal(storedContext.operation, "read", "Context should preserve operation");
     assert.deepEqual(storedContext.accessedFields, ["email", "phone", "address"], "Context should preserve accessedFields");
