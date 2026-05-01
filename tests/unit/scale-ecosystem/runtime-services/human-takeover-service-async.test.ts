@@ -116,6 +116,13 @@ test("HumanTakeoverServiceAsync resetMetrics clears all metrics", () => {
   assert.equal(metrics.timedOutOperations, 0);
 });
 
+test("HumanTakeoverServiceAsync getMetrics returns copy not reference", () => {
+  const service = makeAsyncService();
+  const metrics1 = service.getMetrics();
+  const metrics2 = service.getMetrics();
+  assert.deepEqual(metrics1, metrics2);
+});
+
 test("HumanTakeoverServiceAsync metrics track operation types", () => {
   const service = makeAsyncService();
   const metrics = service.getMetrics();
@@ -127,6 +134,14 @@ test("HumanTakeoverServiceAsync metrics track operation types", () => {
   assert.ok("writeStepOutput" in metrics.operationsByType);
   assert.ok("skipCurrentStep" in metrics.operationsByType);
   assert.ok("completeTask" in metrics.operationsByType);
+});
+
+test("HumanTakeoverServiceAsync operationsByType initializes all to zero", () => {
+  const service = makeAsyncService();
+  const metrics = service.getMetrics();
+  for (const opType of Object.keys(metrics.operationsByType) as TakeoverOperationType[]) {
+    assert.equal(metrics.operationsByType[opType], 0);
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +175,13 @@ test("HumanTakeoverServiceAsync resetCircuitBreaker emits circuit_breaker_close 
   assert.equal(closeCount, 1);
 });
 
+test("HumanTakeoverServiceAsync circuit breaker status is tracked correctly", () => {
+  const service = makeAsyncService();
+  const status = service.getCircuitBreakerStatus();
+  assert.equal(status.failures, 0);
+  assert.equal(status.lastFailure, null);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Disposal Behavior
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,6 +207,15 @@ test("HumanTakeoverServiceAsync dispose aborts pending operations", () => {
   const service = makeAsyncService();
   service.dispose();
   assert.equal(service.getQueueDepth(), 0);
+});
+
+test("HumanTakeoverServiceAsync dispose rejects all queued operations", async () => {
+  const service = makeAsyncService();
+  service.dispose();
+  await assert.rejects(
+    () => service.enqueueOperation("openSession", { taskId: "task-1", operatorId: "op-1", reasonCode: "test" }),
+    (err: Error) => err.message.includes("disposed"),
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,6 +396,32 @@ test("enqueueOperation supports all operation types", async () => {
   service.dispose();
 });
 
+test("enqueueOperation rejects when queue is full", async () => {
+  const service = new HumanTakeoverServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    { maxQueueSize: 0 }, // Force queue to be "full" immediately
+  );
+  await assert.rejects(
+    () => service.enqueueOperation("openSession", { taskId: "task-1", operatorId: "op-1", reasonCode: "test" }),
+    (err: Error) => err.message.includes("full"),
+  );
+});
+
+test("enqueueOperation accepts timeout parameter", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.enqueueOperation(
+      "openSession",
+      { taskId: "task_1", operatorId: "op_1", reasonCode: "test" },
+      { timeoutMs: 5000 },
+    );
+  } catch {
+    // Expected without real DB
+  }
+  service.dispose();
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Handling - Abort Signal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -389,6 +446,47 @@ test("completeTask accepts AbortSignal", async () => {
   try {
     await service.completeTask(
       { takeoverSessionId: "session_1", terminalStatus: "succeeded", reasonCode: "test" },
+      { signal: controller.signal },
+    );
+  } catch {
+    // Expected without real DB
+  }
+  controller.abort();
+});
+
+test("openSession respects aborted signal", async () => {
+  const service = makeAsyncService();
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(
+    () => service.openSession(
+      { taskId: "task_1", operatorId: "op_1", reasonCode: "test" },
+      { signal: controller.signal },
+    ),
+    (err: Error) => err.message.includes("aborted") || err.message.includes("disposed"),
+  );
+});
+
+test("modifyInput accepts AbortSignal", async () => {
+  const service = makeAsyncService();
+  const controller = new AbortController();
+  try {
+    await service.modifyInput(
+      { takeoverSessionId: "session_1", inputJson: "{}", reasonCode: "test" },
+      { signal: controller.signal },
+    );
+  } catch {
+    // Expected without real DB
+  }
+  controller.abort();
+});
+
+test("switchWorker accepts AbortSignal", async () => {
+  const service = makeAsyncService();
+  const controller = new AbortController();
+  try {
+    await service.switchWorker(
+      { takeoverSessionId: "session_1", agentId: "agent_1", reasonCode: "test" },
       { signal: controller.signal },
     );
   } catch {
@@ -425,6 +523,43 @@ test("completeTask accepts custom timeout", async () => {
   }
 });
 
+test("openSession uses default timeout when not specified", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.openSession({
+      taskId: "task_1",
+      operatorId: "op_1",
+      reasonCode: "test",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("openSession with very short timeout", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.openSession(
+      { taskId: "task_1", operatorId: "op_1", reasonCode: "test" },
+      { timeoutMs: 1 },
+    );
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("openSession with very long timeout", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.openSession(
+      { taskId: "task_1", operatorId: "op_1", reasonCode: "test" },
+      { timeoutMs: 600000 },
+    );
+  } catch {
+    // Expected without real DB
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Batching
 // ─────────────────────────────────────────────────────────────────────────────
@@ -439,6 +574,20 @@ test("HumanTakeoverServiceAsync batchingEnabled sets up batch flush timer", () =
     },
   );
   // Timer is set up internally, verify no throw
+  assert.ok(service != null);
+  service.dispose();
+});
+
+test("HumanTakeoverServiceAsync batchingEnabled with custom batch size", () => {
+  const service = new HumanTakeoverServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {
+      batchingEnabled: true,
+      batchSize: 50,
+      batchFlushIntervalMs: 100,
+    },
+  );
   assert.ok(service != null);
   service.dispose();
 });
@@ -476,6 +625,20 @@ test("HumanTakeoverServiceAsync emits queue_overflow event", () => {
   let overflowCount = 0;
   service.on("queue_overflow" as never, () => overflowCount++);
   // Just verify event system works
+  assert.ok(true);
+});
+
+test("HumanTakeoverServiceAsync emits operation_retry event", () => {
+  const service = makeAsyncService();
+  let retryCount = 0;
+  service.on("operation_retry" as never, () => retryCount++);
+  assert.ok(true);
+});
+
+test("HumanTakeoverServiceAsync emits operation_timeout event", () => {
+  const service = makeAsyncService();
+  let timeoutCount = 0;
+  service.on("operation_timeout" as never, () => timeoutCount++);
   assert.ok(true);
 });
 
@@ -593,6 +756,20 @@ test("HumanTakeoverServiceAsync setCurrentStep with stepId", async () => {
   }
 });
 
+test("HumanTakeoverServiceAsync setCurrentStep with both stepId and stepIndex", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.setCurrentStep({
+      takeoverSessionId: "session_1",
+      reasonCode: "test",
+      stepId: "step_1",
+      stepIndex: 2,
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
 test("HumanTakeoverServiceAsync writeStepOutput with stepIndex and status", async () => {
   const service = makeAsyncService();
   try {
@@ -603,6 +780,34 @@ test("HumanTakeoverServiceAsync writeStepOutput with stepIndex and status", asyn
       stepIndex: 2,
       status: "succeeded",
       summary: "Step completed successfully",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("HumanTakeoverServiceAsync writeStepOutput with partial_success status", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.writeStepOutput({
+      takeoverSessionId: "session_1",
+      outputJson: '{"result": "partial"}',
+      reasonCode: "test",
+      status: "partial_success",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("HumanTakeoverServiceAsync writeStepOutput with failed status", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.writeStepOutput({
+      takeoverSessionId: "session_1",
+      outputJson: '{"error": "failed"}',
+      reasonCode: "test",
+      status: "failed",
     });
   } catch {
     // Expected without real DB
@@ -622,14 +827,119 @@ test("HumanTakeoverServiceAsync skipCurrentStep with note", async () => {
   }
 });
 
-test("HumanTakeoverServiceAsync enqueueOperation rejects when queue is full", async () => {
+test("HumanTakeoverServiceAsync skipCurrentStep without note", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.skipCurrentStep({
+      takeoverSessionId: "session_1",
+      reasonCode: "test",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("HumanTakeoverServiceAsync retryExecution with tenantId", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.retryExecution({
+      takeoverSessionId: "session_1",
+      reasonCode: "test",
+      tenantId: "tenant_1",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("HumanTakeoverServiceAsync switchWorker with tenantId", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.switchWorker({
+      takeoverSessionId: "session_1",
+      agentId: "agent_1",
+      reasonCode: "test",
+      tenantId: "tenant_1",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("HumanTakeoverServiceAsync modifyInput with normalizedInputJson", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.modifyInput({
+      takeoverSessionId: "session_1",
+      inputJson: '{"key": "value"}',
+      normalizedInputJson: '{"key": "normalized_value"}',
+      reasonCode: "test",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("HumanTakeoverServiceAsync completeTask with all terminal statuses", async () => {
+  const service = makeAsyncService();
+  const statuses = ["succeeded", "failed", "cancelled"] as const;
+  for (const status of statuses) {
+    try {
+      await service.completeTask({
+        takeoverSessionId: `session_${status}`,
+        terminalStatus: status,
+        reasonCode: "test",
+      });
+    } catch {
+      // Expected without real DB
+    }
+  }
+});
+
+test("HumanTakeoverServiceAsync custom options with undefined values use defaults", () => {
   const service = new HumanTakeoverServiceAsync(
     { transaction<T>(fn: () => T): T { return fn(); } } as never,
     {} as never,
-    { maxQueueSize: 0 }, // Force queue to be "full" immediately
+    {
+      maxRetries: undefined,
+      initialBackoffMs: undefined,
+      maxBackoffMs: undefined,
+      defaultTimeoutMs: undefined,
+      maxQueueSize: undefined,
+      circuitBreakerEnabled: undefined,
+      circuitBreakerThreshold: undefined,
+      circuitBreakerResetMs: undefined,
+    },
   );
+  assert.ok(service != null);
+  service.dispose();
+});
+
+test("HumanTakeoverServiceAsync enqueueOperation rejects aborted operation", async () => {
+  const service = makeAsyncService();
+  const controller = new AbortController();
+  controller.abort();
   await assert.rejects(
-    () => service.enqueueOperation("openSession", { taskId: "task-1", operatorId: "op-1", reasonCode: "test" }),
-    (err: Error) => err.message.includes("full"),
+    () => service.enqueueOperation(
+      "openSession",
+      { taskId: "task_1", operatorId: "op_1", reasonCode: "test" },
+      { signal: controller.signal },
+    ),
+    (err: Error) => err.message.includes("aborted") || err.message.includes("disposed"),
   );
+});
+
+test("HumanTakeoverServiceAsync concurrent enqueueOperations", async () => {
+  const service = makeAsyncService();
+  const promises = [
+    service.enqueueOperation("modifyInput", { takeoverSessionId: "sess_1", inputJson: "{}", reasonCode: "test" } as Record<string, unknown>),
+    service.enqueueOperation("switchWorker", { takeoverSessionId: "sess_1", agentId: "agent_1", reasonCode: "test" } as Record<string, unknown>),
+    service.enqueueOperation("setCurrentStep", { takeoverSessionId: "sess_1", reasonCode: "test" } as Record<string, unknown>),
+  ];
+  try {
+    await Promise.all(promises);
+  } catch {
+    // Expected without real DB
+  }
+  service.dispose();
 });

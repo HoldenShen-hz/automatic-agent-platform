@@ -417,7 +417,7 @@ export function createContextTruncationReport(
   const evicted: EvictedMemoryRecord[] = evictedRecords.map((record) => ({
     recordId: record.id,
     scope: record.scope,
-    key: record.key,
+    key: record.id, // Use id as key since MemoryRecord has no key field
     createdAt: record.createdAt,
     lastAccessedAt: record.lastAccessedAt ?? null,
     ttlMs: getLayerTtlConfig(record.scope as HierarchicalMemoryLayer)?.defaultTtlMs ?? 0,

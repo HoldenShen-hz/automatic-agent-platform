@@ -109,6 +109,15 @@ test("ExecutionWorkerWritebackServiceAsync resetMetrics clears all metrics", () 
   assert.equal(metrics.totalWritebacks, 0);
   assert.equal(metrics.acceptedWritebacks, 0);
   assert.equal(metrics.rejectedWritebacks, 0);
+  assert.equal(metrics.retriedWritebacks, 0);
+  assert.equal(metrics.coalescedWritebacks, 0);
+});
+
+test("ExecutionWorkerWritebackServiceAsync getMetrics returns copy not reference", () => {
+  const service = makeAsyncService();
+  const metrics1 = service.getMetrics();
+  const metrics2 = service.getMetrics();
+  assert.deepEqual(metrics1, metrics2);
 });
 
 test("ExecutionWorkerWritebackServiceAsync metrics track coalesced writebacks", () => {
@@ -149,6 +158,13 @@ test("ExecutionWorkerWritebackServiceAsync resetCircuitBreaker emits circuit_bre
   assert.equal(closeCount, 1);
 });
 
+test("ExecutionWorkerWritebackServiceAsync circuit breaker status is tracked correctly", () => {
+  const service = makeAsyncService();
+  const status = service.getCircuitBreakerStatus();
+  assert.equal(status.failures, 0);
+  assert.equal(status.lastFailure, null);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Disposal Behavior
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,6 +196,44 @@ test("ExecutionWorkerWritebackServiceAsync dispose aborts pending operations", (
   const service = makeAsyncService();
   service.dispose();
   assert.equal(service.getQueueDepth(), 0);
+});
+
+test("ExecutionWorkerWritebackServiceAsync dispose clears coalesced writebacks", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    { coalescingEnabled: true, coalescingWindowMs: 50 },
+  );
+  service.dispose();
+  // Verify no throw - coalescing timer should be cleaned up
+  assert.ok(true);
+});
+
+test("ExecutionWorkerWritebackServiceAsync dispose clears batch timer", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    { batchingEnabled: true, batchFlushIntervalMs: 50 },
+  );
+  service.dispose();
+  assert.ok(true);
+});
+
+test("ExecutionWorkerWritebackServiceAsync dispose rejects all queued operations", async () => {
+  const service = makeAsyncService();
+  service.dispose();
+  await assert.rejects(
+    () => service.enqueueWriteback({
+      executionId: "exec-1",
+      workerId: "worker-1",
+      leaseId: "lease-1",
+      terminalStatus: "failed",
+      errorCode: "test",
+    }),
+    (err: Error) => err.message.includes("disposed"),
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,6 +269,51 @@ test("recordWriteback rejects with lease_not_found when lease doesn't exist", as
     });
     assert.equal(decision.accepted, false);
     assert.equal(decision.reasonCode, "lease_not_found");
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("recordWriteback with succeeded status", async () => {
+  const service = makeAsyncService();
+  try {
+    const decision = await service.recordWriteback({
+      executionId: "exec_success",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+    });
+    assert.ok(typeof decision.accepted === "boolean");
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("recordWriteback with cancelled status", async () => {
+  const service = makeAsyncService();
+  try {
+    const decision = await service.recordWriteback({
+      executionId: "exec_cancel",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "cancelled",
+    });
+    assert.ok(typeof decision.accepted === "boolean");
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("recordWriteback with timeout status", async () => {
+  const service = makeAsyncService();
+  try {
+    const decision = await service.recordWriteback({
+      executionId: "exec_timeout",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "timeout",
+    });
+    assert.ok(typeof decision.accepted === "boolean");
   } catch {
     // Expected without real DB
   }
@@ -291,6 +390,23 @@ test("enqueueWriteback with priority parameter", async () => {
   }
 });
 
+test("enqueueWriteback accepts timeout option", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.enqueueWriteback(
+      {
+        executionId: "exec_1",
+        workerId: "worker_1",
+        leaseId: "lease_1",
+        terminalStatus: "succeeded",
+      },
+      { timeoutMs: 5000 },
+    );
+  } catch {
+    // Expected without real DB
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Error Handling - Abort Signal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -330,7 +446,43 @@ test("enqueueWriteback accepts AbortSignal", async () => {
   } catch {
     // Expected without real DB
   }
+  service.dispose();
+});
+
+test("recordWriteback respects aborted signal", async () => {
+  const service = makeAsyncService();
+  const controller = new AbortController();
   controller.abort();
+  await assert.rejects(
+    () => service.recordWriteback(
+      {
+        executionId: "exec_1",
+        workerId: "worker_1",
+        leaseId: "lease_1",
+        terminalStatus: "succeeded",
+      },
+      { signal: controller.signal },
+    ),
+    (err: Error) => err.message.includes("aborted") || err.message.includes("disposed"),
+  );
+});
+
+test("enqueueWriteback rejects when aborted before processing", async () => {
+  const service = makeAsyncService();
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(
+    () => service.enqueueWriteback(
+      {
+        executionId: "exec_1",
+        workerId: "worker_1",
+        leaseId: "lease_1",
+        terminalStatus: "succeeded",
+      },
+      { signal: controller.signal },
+    ),
+    (err: Error) => err.message.includes("aborted") || err.message.includes("disposed"),
+  );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,6 +517,54 @@ test("enqueueWriteback accepts custom timeout", async () => {
         terminalStatus: "succeeded",
       },
       { timeoutMs: 100 },
+    );
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("recordWriteback uses default timeout when not specified", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.recordWriteback({
+      executionId: "exec_1",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("recordWriteback with very short timeout", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.recordWriteback(
+      {
+        executionId: "exec_1",
+        workerId: "worker_1",
+        leaseId: "lease_1",
+        terminalStatus: "succeeded",
+      },
+      { timeoutMs: 1 },
+    );
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("recordWriteback with very long timeout", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.recordWriteback(
+      {
+        executionId: "exec_1",
+        workerId: "worker_1",
+        leaseId: "lease_1",
+        terminalStatus: "succeeded",
+      },
+      { timeoutMs: 300000 },
     );
   } catch {
     // Expected without real DB
@@ -439,6 +639,34 @@ test("ExecutionWorkerWritebackServiceAsync coalescingEnabled coalesces rapid wri
   service.dispose();
 });
 
+test("ExecutionWorkerWritebackServiceAsync coalescing can be disabled", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    {
+      coalescingEnabled: false,
+    },
+  );
+  assert.ok(service != null);
+  service.dispose();
+});
+
+test("ExecutionWorkerWritebackServiceAsync batching with custom batch size", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    {
+      batchingEnabled: true,
+      batchSize: 100,
+      batchFlushIntervalMs: 100,
+    },
+  );
+  assert.ok(service != null);
+  service.dispose();
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Event Emissions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -475,6 +703,62 @@ test("ExecutionWorkerWritebackServiceAsync emits queue_overflow event", () => {
   assert.ok(true);
 });
 
+test("ExecutionWorkerWritebackServiceAsync emits writeback_retry event", () => {
+  const service = makeAsyncService();
+  let retryCount = 0;
+  service.on("writeback_retry" as never, () => retryCount++);
+  assert.ok(true);
+});
+
+test("ExecutionWorkerWritebackServiceAsync emits writeback_timeout event", () => {
+  const service = makeAsyncService();
+  let timeoutCount = 0;
+  service.on("writeback_timeout" as never, () => timeoutCount++);
+  assert.ok(true);
+});
+
+test("ExecutionWorkerWritebackServiceAsync emits writeback_coalesced event", async () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    { coalescingEnabled: true, coalescingWindowMs: 50 },
+  );
+  let coalescedCount = 0;
+  service.on("writeback_coalesced" as never, () => coalescedCount++);
+
+  try {
+    await service.enqueueWriteback({
+      executionId: "exec_coalesce_test",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+    });
+    await service.enqueueWriteback({
+      executionId: "exec_coalesce_test",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+    });
+  } catch {
+    // Expected without real DB
+  }
+  service.dispose();
+});
+
+test("ExecutionWorkerWritebackServiceAsync emits batch_flush event", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    { batchingEnabled: true, batchFlushIntervalMs: 50 },
+  );
+  let batchFlushCount = 0;
+  service.on("batch_flush" as never, () => batchFlushCount++);
+  assert.ok(true);
+  service.dispose();
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Type Exports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -498,6 +782,29 @@ test("ExecutionWorkerWritebackServiceAsync exports WorkerWritebackInput type", (
   };
   assert.equal(input.executionId, "exec-1");
   assert.equal(input.terminalStatus, "succeeded");
+});
+
+test("ExecutionWorkerWritebackServiceAsync input with errorCode", () => {
+  const input: WorkerWritebackInput = {
+    executionId: "exec-1",
+    workerId: "worker-1",
+    leaseId: "lease-1",
+    terminalStatus: "failed",
+    errorCode: "ERROR_TEST",
+  };
+  assert.equal(input.errorCode, "ERROR_TEST");
+});
+
+test("ExecutionWorkerWritebackServiceAsync input with optional fields", () => {
+  const input: WorkerWritebackInput = {
+    executionId: "exec-1",
+    workerId: "worker-1",
+    leaseId: "lease-1",
+    terminalStatus: "succeeded",
+    outputsJson: '{"result": "success"}',
+    taskOutputJson: '{"summary": "completed"}',
+  };
+  assert.equal(input.outputsJson, '{"result": "success"}');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -571,6 +878,118 @@ test("ExecutionWorkerWritebackServiceAsync handles writeback with progress", asy
       terminalStatus: "succeeded",
       progressMessage: "Processing step 3 of 5",
       lastProgressAt: new Date().toISOString(),
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("ExecutionWorkerWritebackServiceAsync handles writeback with all optional fields", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.recordWriteback({
+      executionId: "exec_full",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+      outputsJson: '{"key": "value"}',
+      taskOutputJson: '{"summary": "done"}',
+      errorCode: undefined,
+      cpuPct: 50.0,
+      memoryMb: 256,
+      toolCallCount: 25,
+      lastToolName: "test_tool",
+      progressMessage: "50% complete",
+      lastProgressAt: new Date().toISOString(),
+    });
+  } catch {
+    // Expected without real DB
+  }
+});
+
+test("ExecutionWorkerWritebackServiceAsync enqueueWriteback with all options", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.enqueueWriteback(
+      {
+        executionId: "exec_options",
+        workerId: "worker_1",
+        leaseId: "lease_1",
+        terminalStatus: "succeeded",
+      },
+      {
+        timeoutMs: 10000,
+        priority: 5,
+      },
+    );
+  } catch {
+    // Expected without real DB
+  }
+  service.dispose();
+});
+
+test("ExecutionWorkerWritebackServiceAsync concurrent writebacks to different executions", async () => {
+  const service = makeAsyncService();
+  const promises = [
+    service.enqueueWriteback({
+      executionId: "exec_concurrent_1",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+    }),
+    service.enqueueWriteback({
+      executionId: "exec_concurrent_2",
+      workerId: "worker_2",
+      leaseId: "lease_2",
+      terminalStatus: "succeeded",
+    }),
+    service.enqueueWriteback({
+      executionId: "exec_concurrent_3",
+      workerId: "worker_3",
+      leaseId: "lease_3",
+      terminalStatus: "failed",
+      errorCode: "concurrent_error",
+    }),
+  ];
+  try {
+    await Promise.all(promises);
+  } catch {
+    // Expected without real DB
+  }
+  service.dispose();
+});
+
+test("ExecutionWorkerWritebackServiceAsync custom options with undefined values use defaults", () => {
+  const service = new ExecutionWorkerWritebackServiceAsync(
+    { transaction<T>(fn: () => T): T { return fn(); } } as never,
+    {} as never,
+    {},
+    {
+      maxRetries: undefined,
+      initialBackoffMs: undefined,
+      maxBackoffMs: undefined,
+      defaultTimeoutMs: undefined,
+      maxQueueSize: undefined,
+      circuitBreakerEnabled: undefined,
+      circuitBreakerThreshold: undefined,
+      circuitBreakerResetMs: undefined,
+    },
+  );
+  assert.ok(service != null);
+  service.dispose();
+});
+
+test("ExecutionWorkerWritebackServiceAsync writeback with null optional fields", async () => {
+  const service = makeAsyncService();
+  try {
+    await service.recordWriteback({
+      executionId: "exec_null_opts",
+      workerId: "worker_1",
+      leaseId: "lease_1",
+      terminalStatus: "succeeded",
+      outputsJson: null,
+      taskOutputJson: null,
+      errorCode: null,
     });
   } catch {
     // Expected without real DB

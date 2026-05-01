@@ -33,6 +33,11 @@ export interface WorkbenchDashboardSnapshot {
   };
   readonly attentionQueue: readonly WorkbenchAttentionItem[];
   readonly recentCompletions: readonly WorkbenchTaskBoardItem[];
+  readonly agentHealthCards: readonly unknown[];
+  readonly costBurn: { consumedUsd: number; forecastUsd: number };
+  readonly activeGoals: readonly unknown[];
+  readonly proactiveSuggestions: readonly unknown[];
+  readonly metricRegistry: readonly unknown[];
 }
 
 export interface WorkbenchAttentionItem {

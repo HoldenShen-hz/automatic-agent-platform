@@ -24,11 +24,17 @@ const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus
   canary_5: ["partial_25", "rolled_back", "paused"], // Removed self-transition
   partial_25: ["partial_50", "rolled_back", "paused"], // Removed self-transition
   partial_50: ["partial_75", "rolled_back", "paused"], // Removed self-transition
-  partial_75: ["stable", "rolled_back", "paused"],    // Removed self-transition
+  partial_75: ["stable", "stable_75", "rolled_back", "paused"], // Removed self-transition
+  stable_75: ["stable_100", "stable", "rolled_back", "paused"],
+  stable_100: ["released", "stable", "rolled_back", "paused"],
   stable: ["rolled_back", "paused"],                  // Removed self-transition
+  released: [],                                        // Terminal state - no transitions
   rejected: [],                                        // Terminal state - no transitions
   rolled_back: [],                                     // Terminal state - no transitions
-  paused: ["pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "rolled_back"], // Removed self-transition
+  paused: ["pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "stable_75", "stable_100", "rolled_back"], // Removed self-transition
+  candidate_created: ["under_review", "draft", "rejected"],
+  under_review: ["draft", "pending_approval", "rejected"],
+  evaluation_enabled: ["canary_5", "partial_25", "stable_75", "stable_100", "rolled_back", "paused"],
 };
 
 export class RolloutStateMachine {
@@ -141,5 +147,13 @@ function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
       return "stable";
     case "paused":
       return "suggest";
+    case "candidate_created":
+    case "under_review":
+    case "evaluation_enabled":
+    case "stable_75":
+    case "stable_100":
+    case "released":
+      // These statuses represent non-progressive states, use "off" as default
+      return "off";
   }
 }

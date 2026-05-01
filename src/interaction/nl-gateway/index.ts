@@ -1174,7 +1174,13 @@ export class NlEntryService implements NlEntryPort {
           confirmedTaskSpec,
           requestId: `request:${confirmedTaskSpec.confirmedTaskSpecId}`,
           requestHash: `request_hash:${confirmedTaskSpec.confirmedTaskSpecId}`,
-          priority: riskPreview.overallRisk === "critical" ? 100 : riskPreview.overallRisk === "high" ? 80 : 40,
+          priority: ((): number => {
+            switch (riskPreview.overallRisk) {
+              case "critical": return 100;
+              case "high": return 80;
+              default: return 40;
+            }
+          })(),
           budgetIntent: {
             amount: Number(costEstimate.estimatedCostUsd.toFixed(4)),
             currency: "USD",
@@ -1229,8 +1235,16 @@ export class NlEntryService implements NlEntryPort {
           confirmedTaskSpecId: canonicalTaskDraft.taskDraftId,
           idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
           traceId: buildIntakeTraceId(request, taskDraft.draftId),
-          priority: riskPreview.overallRisk === "critical" ? 100 : riskPreview.overallRisk === "high" ? 80 : 40,
+          priority: ((): number => {
+            switch (riskPreview.overallRisk as string) {
+              case "critical": return 100;
+              case "high": return 80;
+              default: return 40;
+            }
+          })(),
           mode: "sync",
+          taskId: null,
+          sessionId: null,
           body: {
             userId: request.userId,
             title: deriveTitle(request.message),
@@ -1259,7 +1273,7 @@ export class NlEntryService implements NlEntryPort {
       requestEnvelope: requestEnvelope ?? null,
       riskPreview,
       costEstimate,
-      dryRunPreview: dryRunPreview ?? undefined,
+      ...(dryRunPreview != null ? { dryRunPreview } : {}),
       confirmationRequired,
       humanSummary: surfacedSummary,
       taskDraft,

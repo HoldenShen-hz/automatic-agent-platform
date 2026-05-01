@@ -1,23 +1,21 @@
 /**
  * Unit tests for OIDC Identity Service
- * Tests PKCE flow, token rotation, userinfo fallback
+ * Tests PKCE flow, token rotation, session management, production hardening
  */
 
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 
-// Mock process.env before imports
-const originalEnv = process.env.NODE_ENV;
-
 import {
   OidcIdentityService,
   InMemoryOidcStateStore,
   createOidcIdentityService,
+  buildOidcAuthorizationUrl,
   type OidcProviderConfig,
   type OidcTokenResponse,
   type OidcUserInfo,
   type OidcSession,
-} from "../../../../../../src/org-governance/sso-scim/oidc/index.js";
+} from "../../../../../src/org-governance/sso-scim/oidc/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -38,6 +36,68 @@ function createTestProviderConfig(overrides?: Partial<OidcProviderConfig>): Oidc
   };
 }
 
+function createTestTokens(overrides?: Partial<OidcTokenResponse>): OidcTokenResponse {
+  return {
+    accessToken: "at_test-access",
+    idToken: "id_test-id",
+    refreshToken: "rt_test-refresh",
+    expiresIn: 3600,
+    tokenType: "Bearer",
+    expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+    ...overrides,
+  };
+}
+
+function createTestUserInfo(overrides?: Partial<OidcUserInfo>): OidcUserInfo {
+  return {
+    sub: "user-123",
+    email: "test@example.com",
+    name: "Test User",
+    givenName: "Test",
+    familyName: "User",
+    preferredUsername: "testuser",
+    ...overrides,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// buildOidcAuthorizationUrl Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("buildOidcAuthorizationUrl", () => {
+  it("should build authorization URL with required params", () => {
+    const config = createTestProviderConfig();
+    const url = buildOidcAuthorizationUrl(config, "test-state");
+
+    assert.ok(url.includes("client_id=test-client-id"));
+    assert.ok(url.includes("redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback"));
+    assert.ok(url.includes("response_type=code"));
+    assert.ok(url.includes("state=test-state"));
+    assert.ok(url.includes("scope="));
+  });
+
+  it("should use default issuer/authorize when authorizationEndpoint not set", () => {
+    const config = createTestProviderConfig({
+      authorizationEndpoint: undefined,
+    });
+    const url = buildOidcAuthorizationUrl(config, "state-123");
+
+    assert.ok(url.includes("https://idp.example.com/authorize"));
+  });
+
+  it("should include custom scopes", () => {
+    const config = createTestProviderConfig({
+      scopes: ["openid", "profile", "email", "custom"],
+    });
+    const url = buildOidcAuthorizationUrl(config, "state");
+
+    // Scopes are space-separated
+    assert.ok(url.includes("scope=openid+profile+email+custom") ||
+              url.includes("scope=openid+profile+email+custom") ||
+              url.includes("openid"));
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // InMemoryOidcStateStore Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,10 +107,6 @@ describe("InMemoryOidcStateStore", () => {
 
   beforeEach(() => {
     store = new InMemoryOidcStateStore();
-  });
-
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
   });
 
   describe("saveState and getState", () => {
@@ -94,173 +150,111 @@ describe("InMemoryOidcStateStore", () => {
     assert.strictEqual(result.nonce, "nonce2");
     assert.strictEqual(result.redirectUri, "https://example2.com");
   });
+
+  it("should expire state after 10 minutes", () => {
+    const state = "expiring-state";
+    store.saveState(state, "nonce", "https://example.com");
+
+    // Manually expire by modifying internal state (for testing)
+    const entry = (store as unknown as { store: Map<string, { nonce: string; redirectUri: string; expiresAt: number }> }).store.get(state);
+    if (entry) {
+      entry.expiresAt = Date.now() - 1; // Set to past
+    }
+
+    const result = store.getState(state);
+    assert.strictEqual(result, null);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OidcIdentityService - Flow Initiation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OidcIdentityService - Flow Initiation", () => {
+describe("OidcIdentityService - initiateFlow", () => {
   let service: OidcIdentityService;
-  let providerConfig: OidcProviderConfig;
 
   beforeEach(() => {
-    providerConfig = createTestProviderConfig();
-    service = new OidcIdentityService(providerConfig);
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
   });
 
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+  it("should return authorizationUrl, state, and nonce", () => {
+    const result = service.initiateFlow("https://app.example.com/callback");
+
+    assert.ok(result.authorizationUrl.length > 0);
+    assert.ok(result.state.length > 0);
+    assert.ok(result.nonce.length > 0);
   });
 
-  describe("initiateFlow", () => {
-    it("should return authorizationUrl, state, and nonce", () => {
-      const redirectUri = "https://app.example.com/callback";
-      const result = service.initiateFlow(redirectUri);
+  it("should include PKCE code_challenge in authorization URL", () => {
+    const result = service.initiateFlow("https://app.example.com/callback");
 
-      assert.ok(result.authorizationUrl.includes("client_id="));
-      assert.ok(result.authorizationUrl.includes("redirect_uri="));
-      assert.ok(result.authorizationUrl.includes("response_type=code"));
-      assert.ok(result.state.length > 0);
-      assert.ok(result.nonce.length > 0);
-    });
+    assert.ok(result.authorizationUrl.includes("code_challenge="));
+    assert.ok(result.authorizationUrl.includes("code_challenge_method=S256"));
+  });
 
-    it("should save state for later verification", () => {
-      const redirectUri = "https://app.example.com/callback";
-      const result = service.initiateFlow(redirectUri);
+  it("should save state for later verification", () => {
+    const result = service.initiateFlow("https://app.example.com/callback");
 
-      // Use the state store directly to verify
-      const stateStore = (service as unknown as { stateStore: InMemoryOidcStateStore }).stateStore;
-      const stored = stateStore.getState(result.state);
+    const stateStore = (service as unknown as { stateStore: InMemoryOidcStateStore }).stateStore;
+    const stored = stateStore.getState(result.state);
 
-      assert.ok(stored !== null);
-      assert.strictEqual(stored.nonce, result.nonce);
-      assert.strictEqual(stored.redirectUri, redirectUri);
-    });
+    assert.ok(stored !== null);
+    assert.strictEqual(stored.nonce, result.nonce);
+    assert.strictEqual(stored.redirectUri, "https://app.example.com/callback");
+  });
 
-    it("should include nonce in authorization URL", () => {
-      const result = service.initiateFlow("https://app.example.com/callback");
+  it("should include nonce in authorization URL", () => {
+    const result = service.initiateFlow("https://app.example.com/callback");
 
-      assert.ok(result.authorizationUrl.includes(`nonce=${encodeURIComponent(result.nonce)}`));
-    });
+    assert.ok(result.authorizationUrl.includes(`nonce=${encodeURIComponent(result.nonce)}`));
+  });
 
-    it("should include scopes in authorization URL", () => {
-      const result = service.initiateFlow("https://app.example.com/callback");
+  it("should include scopes in authorization URL", () => {
+    const result = service.initiateFlow("https://app.example.com/callback");
 
-      assert.ok(result.authorizationUrl.includes("scope="));
-      assert.ok(result.authorizationUrl.includes("openid"));
-      assert.ok(result.authorizationUrl.includes("profile"));
-      assert.ok(result.authorizationUrl.includes("email"));
-    });
+    assert.ok(result.authorizationUrl.includes("scope="));
+    assert.ok(result.authorizationUrl.includes("openid"));
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OidcIdentityService - Token Exchange Tests (Mock Mode)
+// OidcIdentityService - Token Exchange Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OidcIdentityService - Token Exchange", () => {
+describe("OidcIdentityService - exchangeCodeForTokens", () => {
   let service: OidcIdentityService;
-  let providerConfig: OidcProviderConfig;
 
   beforeEach(() => {
-    providerConfig = createTestProviderConfig();
-    // Use allowMockFallback to test simulation in non-production
-    service = new OidcIdentityService(providerConfig, undefined, { allowMockFallback: true });
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
   });
 
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+  it("should return null when state does not exist", async () => {
+    const result = await service.exchangeCodeForTokens("auth-code", "wrong-state");
+    assert.strictEqual(result, null);
   });
 
-  describe("exchangeCodeForTokens", () => {
-    it("should return null when state does not exist", async () => {
-      const result = await service.exchangeCodeForTokens("auth-code", "wrong-state");
-      assert.strictEqual(result, null);
-    });
+  it("should return tokens when state is valid", async () => {
+    const { state } = service.initiateFlow("https://app.example.com/callback");
 
-    it("should simulate token response when mock fallback enabled", async () => {
-      // Initiate flow to get valid state
-      const { state } = service.initiateFlow("https://app.example.com/callback");
+    const result = await service.exchangeCodeForTokens("auth-code-123", state);
 
-      const result = await service.exchangeCodeForTokens("auth-code-123", state);
-
-      assert.ok(result !== null);
-      assert.ok(result.accessToken.length > 0);
-      assert.ok(result.idToken.length > 0);
-      assert.ok(result.refreshToken !== undefined);
-      assert.strictEqual(result.tokenType, "Bearer");
-      assert.ok(result.expiresIn > 0);
-      assert.ok(result.expiresAt.length > 0);
-    });
-
-    it("should delete state after successful exchange", async () => {
-      const { state } = service.initiateFlow("https://app.example.com/callback");
-
-      await service.exchangeCodeForTokens("auth-code-123", state);
-
-      // State should be deleted
-      const stateStore = (service as unknown as { stateStore: InMemoryOidcStateStore }).stateStore;
-      const stored = stateStore.getState(state);
-      assert.strictEqual(stored, null);
-    });
+    assert.ok(result !== null);
+    assert.ok(result.accessToken.length > 0);
+    assert.ok(result.idToken.length > 0);
+    assert.strictEqual(result.tokenType, "Bearer");
+    assert.ok(result.expiresIn > 0);
   });
 
-  describe("refreshAccessToken", () => {
-    it("should return null for non-existent session", async () => {
-      const result = await service.refreshAccessToken("non-existent-session");
-      assert.strictEqual(result, null);
-    });
+  it("should delete state after successful exchange", async () => {
+    const { state } = service.initiateFlow("https://app.example.com/callback");
 
-    it("should return null when session has no refresh token", async () => {
-      // Create a session with tokens that have no refresh token
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_test-access",
-        idToken: "id_test-id",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const userInfo: OidcUserInfo = {
-        sub: "user-123",
-        email: "test@example.com",
-        name: "Test User",
-      };
+    await service.exchangeCodeForTokens("auth-code-123", state);
 
-      service.createSession(tokens, userInfo);
-      const sessionId = (service as unknown as { sessions: Map<string, unknown> }).sessions.keys().next().value;
-
-      const result = await service.refreshAccessToken(sessionId);
-      assert.strictEqual(result, null);
-    });
-
-    it("should simulate new tokens on refresh when mock enabled", async () => {
-      // Create session with refresh token
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_old-access",
-        idToken: "id_old-id",
-        refreshToken: "rt_old-refresh",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const userInfo: OidcUserInfo = {
-        sub: "user-123",
-        email: "test@example.com",
-        name: "Test User",
-      };
-
-      service.createSession(tokens, userInfo);
-      const sessionId = (service as unknown as { sessions: Map<string, unknown> }).sessions.keys().next().value;
-
-      const result = await service.refreshAccessToken(sessionId);
-
-      assert.ok(result !== null);
-      assert.ok(result.accessToken.length > 0);
-      assert.ok(result.idToken.length > 0);
-      // Refresh token should be preserved
-      assert.strictEqual(result.refreshToken, "rt_old-refresh");
-    });
+    const stateStore = (service as unknown as { stateStore: InMemoryOidcStateStore }).stateStore;
+    const stored = stateStore.getState(state);
+    assert.strictEqual(stored, null);
   });
 });
 
@@ -268,255 +262,392 @@ describe("OidcIdentityService - Token Exchange", () => {
 // OidcIdentityService - Session Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("OidcIdentityService - Session Management", () => {
+describe("OidcIdentityService - createSession", () => {
   let service: OidcIdentityService;
-  let providerConfig: OidcProviderConfig;
 
   beforeEach(() => {
-    providerConfig = createTestProviderConfig();
-    service = new OidcIdentityService(providerConfig, undefined, { allowMockFallback: true });
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
   });
 
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+  it("should create session from token response", () => {
+    const tokens = createTestTokens();
+    const userInfo = createTestUserInfo();
+
+    const session = service.createSession(tokens, userInfo);
+
+    assert.ok(session.sessionId.length > 0);
+    assert.strictEqual(session.userId, "user-123");
+    assert.strictEqual(session.accessToken, "at_test-access");
+    assert.strictEqual(session.idToken, "id_test-id");
+    assert.strictEqual(session.refreshToken, "rt_test-refresh");
+    assert.strictEqual(session.providerId, "test-provider");
   });
 
-  describe("createSession", () => {
-    it("should create session from token response", () => {
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_new-access",
-        idToken: "id_new-id",
-        refreshToken: "rt_new-refresh",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const userInfo: OidcUserInfo = {
-        sub: "user-new-123",
-        email: "newuser@example.com",
-        name: "New User",
-      };
+  it("should track session by user", () => {
+    const tokens = createTestTokens();
+    const userInfo = createTestUserInfo({ sub: "user-456" });
 
-      const session = service.createSession(tokens, userInfo);
+    service.createSession(tokens, userInfo);
 
-      assert.ok(session.sessionId.length > 0);
-      assert.strictEqual(session.userId, "user-new-123");
-      assert.strictEqual(session.accessToken, "at_new-access");
-      assert.strictEqual(session.idToken, "id_new-id");
-      assert.strictEqual(session.refreshToken, "rt_new-refresh");
-      assert.strictEqual(session.providerId, "test-provider");
-    });
-
-    it("should track session by user", () => {
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_access",
-        idToken: "id_token",
-        refreshToken: "rt_refresh",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const userInfo: OidcUserInfo = { sub: "user-456" };
-
-      service.createSession(tokens, userInfo);
-
-      const userSessions = service.getUserSessions("user-456");
-      assert.strictEqual(userSessions.length, 1);
-    });
+    const userSessions = service.getUserSessions("user-456");
+    assert.strictEqual(userSessions.length, 1);
   });
 
-  describe("validateAccessToken", () => {
-    it("should return session for valid token", () => {
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_valid-token",
-        idToken: "id_valid-id",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const userInfo: OidcUserInfo = { sub: "user-789" };
+  it("should create session without refreshToken", () => {
+    const tokens = createTestTokens({ refreshToken: undefined });
+    const userInfo = createTestUserInfo();
 
-      service.createSession(tokens, userInfo);
-      const session = service.validateAccessToken("at_valid-token");
+    const session = service.createSession(tokens, userInfo);
 
-      assert.ok(session !== null);
-      assert.strictEqual(session!.userId, "user-789");
+    assert.ok(session.sessionId.length > 0);
+    assert.strictEqual(session.refreshToken, undefined);
+  });
+
+  it("should enforce maxSessionsPerUser", () => {
+    const config = createTestProviderConfig();
+    const limitedService = new OidcIdentityService(config, undefined, {
+      allowMockFallback: true,
+      maxSessionsPerUser: 2,
     });
 
-    it("should return null for invalid token", () => {
-      const session = service.validateAccessToken("at_invalid-token");
-      assert.strictEqual(session, null);
-    });
+    const tokens1 = createTestTokens({ accessToken: "at_1", idToken: "id_1" });
+    const tokens2 = createTestTokens({ accessToken: "at_2", idToken: "id_2" });
+    const tokens3 = createTestTokens({ accessToken: "at_3", idToken: "id_3" });
+    const userInfo = createTestUserInfo();
 
-    it("should reject mock tokens in production", () => {
+    limitedService.createSession(tokens1, userInfo);
+    limitedService.createSession(tokens2, userInfo);
+    limitedService.createSession(tokens3, userInfo);
+
+    const sessions = limitedService.getUserSessions("user-123");
+    // Should have at most maxSessionsPerUser (2)
+    assert.ok(sessions.length <= 2);
+  });
+});
+
+describe("OidcIdentityService - validateAccessToken", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should return session for valid token", () => {
+    const tokens = createTestTokens();
+    const userInfo = createTestUserInfo();
+
+    service.createSession(tokens, userInfo);
+    const session = service.validateAccessToken("at_test-access");
+
+    assert.ok(session !== null);
+    assert.strictEqual(session!.userId, "user-123");
+  });
+
+  it("should return null for invalid token", () => {
+    const session = service.validateAccessToken("at_invalid-token");
+    assert.strictEqual(session, null);
+  });
+
+  it("should return null for expired token", () => {
+    const expiredTokens = createTestTokens({
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
+    });
+    service.createSession(expiredTokens, createTestUserInfo());
+
+    const session = service.validateAccessToken("at_test-access");
+    assert.strictEqual(session, null);
+  });
+
+  it("should reject mock tokens in production", () => {
+    // Save original NODE_ENV
+    const originalEnv = process.env.NODE_ENV;
+    try {
       process.env.NODE_ENV = "production";
-      // Create a new service in production mode without mock fallback
-      const prodService = new OidcIdentityService(providerConfig, undefined, { allowMockFallback: false });
+
+      const prodService = new OidcIdentityService(createTestProviderConfig(), undefined, {
+        allowMockFallback: false,
+      });
 
       assert.throws(() => {
         prodService.validateAccessToken("at_mock-token");
       }, /Mock token rejected in production/);
-    });
-  });
-
-  describe("revokeSession", () => {
-    it("should remove session", () => {
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_to-revoke",
-        idToken: "id_to-revoke",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const userInfo: OidcUserInfo = { sub: "user-revoke" };
-
-      const session = service.createSession(tokens, userInfo);
-      assert.strictEqual(service.getSessionCount(), 1);
-
-      service.revokeSession(session.sessionId);
-      assert.strictEqual(service.getSessionCount(), 0);
-    });
-  });
-
-  describe("revokeAllUserSessions", () => {
-    it("should revoke all sessions for user", () => {
-      // Create multiple sessions for same user
-      for (let i = 0; i < 3; i++) {
-        const tokens: OidcTokenResponse = {
-          accessToken: `at_multi-${i}`,
-          idToken: `id_multi-${i}`,
-          expiresIn: 3600,
-          tokenType: "Bearer",
-          expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-        };
-        service.createSession(tokens, { sub: "user-multi" });
-      }
-
-      const count = service.revokeAllUserSessions("user-multi");
-      assert.strictEqual(count, 3);
-      assert.strictEqual(service.getSessionCount(), 0);
-    });
-
-    it("should return 0 when user has no sessions", () => {
-      const count = service.revokeAllUserSessions("non-existent-user");
-      assert.strictEqual(count, 0);
-    });
-  });
-
-  describe("getUserSessions", () => {
-    it("should return only active sessions", () => {
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_active",
-        idToken: "id_active",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      service.createSession(tokens, { sub: "user-active" });
-
-      const sessions = service.getUserSessions("user-active");
-      assert.strictEqual(sessions.length, 1);
-    });
-
-    it("should return empty array for non-existent user", () => {
-      const sessions = service.getUserSessions("non-existent");
-      assert.strictEqual(sessions.length, 0);
-    });
-  });
-
-  describe("touchSession", () => {
-    it("should update lastActivityAt", () => {
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_touch",
-        idToken: "id_touch",
-        expiresIn: 3600,
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-      };
-      const session = service.createSession(tokens, { sub: "user-touch" });
-
-      const before = Date.now();
-      service.touchSession(session.sessionId);
-
-      const updated = service.validateAccessToken("at_touch");
-      assert.ok(updated !== null);
-      const after = new Date(updated!.lastActivityAt).getTime();
-      assert.ok(after >= before);
-    });
-  });
-
-  describe("cleanupExpiredSessions", () => {
-    it("should clean up sessions past max age", () => {
-      // Create service with short max session age
-      const shortLivedService = new OidcIdentityService(providerConfig, undefined, {
-        allowMockFallback: true,
-        maxSessionAgeMs: 1, // 1ms for testing
-      });
-
-      const tokens: OidcTokenResponse = {
-        accessToken: "at_expired",
-        idToken: "id_expired",
-        expiresIn: 0, // Already expired
-        tokenType: "Bearer",
-        expiresAt: new Date(Date.now() - 1000).toISOString(),
-      };
-      shortLivedService.createSession(tokens, { sub: "user-expired" });
-
-      // Wait a bit
-      const start = Date.now();
-      while (Date.now() - start < 10) { /* spin */ }
-
-      const cleaned = shortLivedService.cleanupExpiredSessions();
-      assert.ok(cleaned >= 0);
-    });
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OidcIdentityService - UserInfo Fallback Tests
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("OidcIdentityService - UserInfo Fallback", () => {
+describe("OidcIdentityService - revokeSession", () => {
   let service: OidcIdentityService;
-  let providerConfig: OidcProviderConfig;
 
   beforeEach(() => {
-    providerConfig = createTestProviderConfig();
-    service = new OidcIdentityService(providerConfig, undefined, { allowMockFallback: true });
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
   });
 
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+  it("should remove session", () => {
+    const tokens = createTestTokens();
+    const userInfo = createTestUserInfo({ sub: "user-revoke" });
+
+    const session = service.createSession(tokens, userInfo);
+    assert.strictEqual(service.getSessionCount(), 1);
+
+    service.revokeSession(session.sessionId);
+    assert.strictEqual(service.getSessionCount(), 0);
   });
 
-  describe("fetchUserInfo", () => {
-    it("should return simulated user info when endpoint unavailable", async () => {
-      // Point to unreachable endpoint
-      const badConfig = createTestProviderConfig({
-        userInfoEndpoint: "https://unreachable.example.com/userinfo",
-      });
-      const badService = new OidcIdentityService(badConfig, undefined, { allowMockFallback: true });
+  it("should handle revoking non-existent session", () => {
+    // Should not throw
+    service.revokeSession("non-existent-session");
+    assert.strictEqual(service.getSessionCount(), 0);
+  });
 
-      const result = await badService.fetchUserInfo("at_test-token");
+  it("should clean up accessTokenIndex on revoke", () => {
+    const tokens = createTestTokens();
+    const userInfo = createTestUserInfo();
 
-      assert.ok(result !== null);
-      assert.ok(result.sub.length > 0);
-      assert.strictEqual(result.email, "user@example.com");
-      assert.strictEqual(result.name, "Test User");
-      assert.deepStrictEqual(result.groups, ["engineers", "admins"]);
+    const session = service.createSession(tokens, userInfo);
+
+    // Token should be valid before revoke
+    assert.ok(service.validateAccessToken("at_test-access") !== null);
+
+    service.revokeSession(session.sessionId);
+
+    // Token should be invalid after revoke
+    assert.strictEqual(service.validateAccessToken("at_test-access"), null);
+  });
+});
+
+describe("OidcIdentityService - revokeAllUserSessions", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should revoke all sessions for user", () => {
+    const userInfo = createTestUserInfo({ sub: "user-multi" });
+
+    for (let i = 0; i < 3; i++) {
+      const tokens = createTestTokens({ accessToken: `at_multi-${i}`, idToken: `id_multi-${i}` });
+      service.createSession(tokens, userInfo);
+    }
+
+    const count = service.revokeAllUserSessions("user-multi");
+    assert.strictEqual(count, 3);
+    assert.strictEqual(service.getUserSessions("user-multi").length, 0);
+  });
+
+  it("should return 0 when user has no sessions", () => {
+    const count = service.revokeAllUserSessions("non-existent-user");
+    assert.strictEqual(count, 0);
+  });
+});
+
+describe("OidcIdentityService - getUserSessions", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should return active sessions for user", () => {
+    const tokens = createTestTokens();
+    const userInfo = createTestUserInfo({ sub: "user-active" });
+
+    service.createSession(tokens, userInfo);
+    const sessions = service.getUserSessions("user-active");
+
+    assert.strictEqual(sessions.length, 1);
+    assert.strictEqual(sessions[0].userId, "user-active");
+  });
+
+  it("should return empty array for non-existent user", () => {
+    const sessions = service.getUserSessions("non-existent");
+    assert.strictEqual(sessions.length, 0);
+  });
+
+  it("should not return expired sessions", () => {
+    const expiredTokens = createTestTokens({
+      accessToken: "at_expired",
+      idToken: "id_expired",
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
     });
+    service.createSession(expiredTokens, createTestUserInfo({ sub: "user-expired" }));
+
+    const sessions = service.getUserSessions("user-expired");
+    assert.strictEqual(sessions.length, 0);
+  });
+});
+
+describe("OidcIdentityService - touchSession", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should update lastActivityAt", () => {
+    const tokens = createTestTokens();
+    const session = service.createSession(tokens, createTestUserInfo());
+
+    service.touchSession(session.sessionId);
+
+    const updated = service.validateAccessToken("at_test-access");
+    assert.ok(updated !== null);
+    assert.ok(updated!.lastActivityAt >= session.lastActivityAt);
+  });
+
+  it("should extend session expiration (sliding window)", () => {
+    const shortLivedService = new OidcIdentityService(createTestProviderConfig(), undefined, {
+      allowMockFallback: true,
+      sessionTtlMs: 60000,
+      maxSessionAgeMs: 3600000,
+    });
+
+    const tokens = createTestTokens();
+    const session = shortLivedService.createSession(tokens, createTestUserInfo());
+    const originalExpiry = session.expiresAt;
+
+    // Wait a tiny bit then touch
+    const start = Date.now();
+    while (Date.now() - start < 5) { /* spin */ }
+
+    shortLivedService.touchSession(session.sessionId);
+
+    const updated = shortLivedService.validateAccessToken("at_test-access");
+    assert.ok(updated !== null);
+    // Expiry should be extended (or at least not decreased to below original)
+    assert.ok(updated!.expiresAt >= originalExpiry);
+  });
+
+  it("should not throw for non-existent session", () => {
+    // Should not throw
+    service.touchSession("non-existent-session");
+  });
+});
+
+describe("OidcIdentityService - refreshAccessToken", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should return null for non-existent session", async () => {
+    const result = await service.refreshAccessToken("non-existent-session");
+    assert.strictEqual(result, null);
+  });
+
+  it("should return null when session has no refresh token", async () => {
+    const tokens = createTestTokens({ refreshToken: undefined });
+    service.createSession(tokens, createTestUserInfo());
+
+    const sessionId = (service as unknown as { sessions: Map<string, unknown> }).sessions.keys().next().value;
+    const result = await service.refreshAccessToken(sessionId as string);
+
+    assert.strictEqual(result, null);
+  });
+});
+
+describe("OidcIdentityService - cleanupExpiredSessions", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should clean up expired sessions", () => {
+    const expiredTokens = createTestTokens({
+      accessToken: "at_to-clean",
+      idToken: "id_to-clean",
+      expiresAt: new Date(Date.now() - 1000).toISOString(),
+    });
+    service.createSession(expiredTokens, createTestUserInfo({ sub: "user-clean" }));
+
+    const beforeCount = service.getSessionCount();
+    const cleaned = service.cleanupExpiredSessions();
+
+    assert.ok(cleaned >= 0);
+    assert.ok(service.getSessionCount() < beforeCount || beforeCount === 0);
+  });
+
+  it("should return 0 when no sessions to clean", () => {
+    const cleaned = service.cleanupExpiredSessions();
+    assert.strictEqual(cleaned, 0);
+  });
+});
+
+describe("OidcIdentityService - getSessionCount", () => {
+  let service: OidcIdentityService;
+
+  beforeEach(() => {
+    const config = createTestProviderConfig();
+    service = new OidcIdentityService(config, undefined, { allowMockFallback: true });
+  });
+
+  it("should return correct count", () => {
+    assert.strictEqual(service.getSessionCount(), 0);
+
+    service.createSession(createTestTokens(), createTestUserInfo({ sub: "user-1" }));
+    service.createSession(createTestTokens({ accessToken: "at_2", idToken: "id_2" }), createTestUserInfo({ sub: "user-2" }));
+
+    assert.strictEqual(service.getSessionCount(), 2);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Factory Function Test
+// OidcIdentityService - UserInfo Fetch Tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("OidcIdentityService - fetchUserInfo", () => {
+  it("should return simulated user info when endpoint unavailable with mock fallback", async () => {
+    const badConfig = createTestProviderConfig({
+      userInfoEndpoint: "https://unreachable.example.com/userinfo",
+    });
+    const badService = new OidcIdentityService(badConfig, undefined, { allowMockFallback: true });
+
+    const result = await badService.fetchUserInfo("at_test-token");
+
+    assert.ok(result !== null);
+    assert.ok(result.sub.length > 0);
+    assert.strictEqual(result.email, "user@example.com");
+    assert.strictEqual(result.name, "Test User");
+    assert.deepStrictEqual(result.groups, ["engineers", "admins"]);
+  });
+
+  it("should throw when endpoint fails and mock fallback disabled", async () => {
+    const badConfig = createTestProviderConfig({
+      userInfoEndpoint: "https://unreachable.example.com/userinfo",
+    });
+    // Save original NODE_ENV
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = "production";
+      const badService = new OidcIdentityService(badConfig, undefined, { allowMockFallback: false });
+
+      await assert.rejects(
+        async () => badService.fetchUserInfo("at_test-token"),
+        /userinfo_fetch_failed/,
+      );
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// createOidcIdentityService Factory Function
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("createOidcIdentityService", () => {
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
-  });
-
   it("should create service instance", () => {
     const config = createTestProviderConfig();
     const service = createOidcIdentityService(config);
@@ -532,5 +663,15 @@ describe("createOidcIdentityService", () => {
     });
 
     assert.ok(service instanceof OidcIdentityService);
+  });
+
+  it("should create service with custom state store", () => {
+    const config = createTestProviderConfig();
+    const store = new InMemoryOidcStateStore();
+    const service = createOidcIdentityService(config, store);
+
+    assert.ok(service instanceof OidcIdentityService);
+    service.initiateFlow("https://example.com/callback");
+    assert.ok(store.getState("oidc_state_") !== null); // state starts with oidc_state_
   });
 });

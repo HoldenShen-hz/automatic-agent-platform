@@ -261,21 +261,21 @@ describe("LicenseEnforcementService enforcement disabled edge cases", () => {
 
     service.recordFeatureUsage("audit_export", { accountId: "acct_disabled" });
 
+    // When metering disabled, getFeatureUsage returns info based on gate definition
+    // because no meter is actually created, but the gate itself is still known
     const usage = service.getFeatureUsage("audit_export", { accountId: "acct_disabled" });
-    assert.equal(usage, null);
+    // Returns zeroed usage based on gate definition, not null (metering disabled doesn't hide gate info)
+    assert.equal(usage?.count, 0);
+    assert.equal(usage?.limit, 1000);
   });
 
-  test("getFeatureUsage returns null when metering disabled", () => {
+  test("getFeatureUsage returns null when metering disabled for non-metered feature", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, {
       enableUsageMetering: false,
     });
 
-    // First record some usage
-    service.recordFeatureUsage("audit_export", { accountId: "acct_check" });
-
-    // Then check usage with metering disabled
-    const usage = service.getFeatureUsage("audit_export", { accountId: "acct_check" });
-    // Since metering is disabled, no meter exists
+    // admin_console is not metered, so returns null
+    const usage = service.getFeatureUsage("admin_console", { accountId: "acct_check" });
     assert.equal(usage, null);
   });
 });

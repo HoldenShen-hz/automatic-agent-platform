@@ -190,7 +190,10 @@ export class ConfigAuditService {
     // Subscribe to audit events for replay
     await this.eventBus.subscribe(
       "config.audit.recorded",
-      this.handleAuditRecordedEvent.bind(this),
+      async (event) => {
+        const payload = JSON.parse(event.payloadJson) as ConfigAuditEntryPayload;
+        this.handleAuditRecordedEvent(payload);
+      },
     );
 
     this._initialized = true;

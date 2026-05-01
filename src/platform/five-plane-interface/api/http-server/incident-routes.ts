@@ -123,7 +123,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         const tenantId = resolveTenantScope(principal, undefined);
 
         const incident = deps.incidentService.openIncident({
-          tenantId,
+          tenantId: tenantId ?? null,
           severity: payload.severity as IncidentSeverity,
           title: payload.title,
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),

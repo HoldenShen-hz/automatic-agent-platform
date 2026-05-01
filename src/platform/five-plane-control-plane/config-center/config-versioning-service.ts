@@ -199,16 +199,25 @@ export class ConfigVersioningService {
     // These events contain the full content, enabling complete state rebuild
     await this.eventBus.subscribe(
       "config.version.created",
-      this.handleVersionCreatedEvent.bind(this),
+      async (event) => {
+        const payload = JSON.parse(event.payloadJson) as ConfigVersionCreatedPayload;
+        this.handleVersionCreatedEvent(payload);
+      },
     );
     await this.eventBus.subscribe(
       "config.rollback_point.created",
-      this.handleRollbackPointCreatedEvent.bind(this),
+      async (event) => {
+        const payload = JSON.parse(event.payloadJson) as ConfigRollbackPointCreatedPayload;
+        this.handleRollbackPointCreatedEvent(payload);
+      },
     );
     // Also handle rollback events for replay
     await this.eventBus.subscribe(
       "config.version.rollback",
-      this.handleVersionCreatedEvent.bind(this),
+      async (event) => {
+        const payload = JSON.parse(event.payloadJson) as ConfigVersionCreatedPayload;
+        this.handleVersionCreatedEvent(payload);
+      },
     );
   }
 

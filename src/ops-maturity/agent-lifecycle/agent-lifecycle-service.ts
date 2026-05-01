@@ -22,6 +22,9 @@ export interface ManagedAgentDefinition extends AgentDefinition {}
 
 export interface ManagedAgentVersion extends AgentVersion {}
 
+// Re-export CanaryProgress so external consumers (tests) don't need to import from canary-controller
+export { type CanaryProgress } from "./canary-controller/index.js";
+
 export interface AgentRolloutBinding {
   readonly bindingId: string;
   readonly agentId: string;

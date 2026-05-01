@@ -288,8 +288,6 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
       // R20-09: Always transition to running when workflow starts (not just from "pending")
       if (newState.status === "pending" || newState.status === "paused") {
         newState.status = "running";
-      } else if (newState.status === "pending") {
-        newState.status = "running";
       }
       break;
 

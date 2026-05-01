@@ -38,7 +38,7 @@ const DEPRECATION_HEADERS = Object.freeze({
   "Content-Type": "application/json",
 });
 
-function buildReconcileResponse(ctx: { requestId: string }, deps: BillingRouteDeps, payload: ReturnType<typeof parseBillingReconcilePayload>) {
+function buildReconcileResponse(ctx: { requestId: string; request: { headers: Record<string, string | undefined> } }, deps: BillingRouteDeps, payload: ReturnType<typeof parseBillingReconcilePayload>) {
   const billingService = deps.billingService;
   if (billingService == null) {
     throw new ApiError(503, "api.billing_unavailable", "Billing service is not configured.");

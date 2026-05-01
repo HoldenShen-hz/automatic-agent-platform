@@ -16,7 +16,7 @@
  */
 
 import { newId, nowIso } from "../../../contracts/types/ids.js";
-import type { RouteDefinition } from "./types.js";
+import type { RouteDefinition, ApiRequestLike } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseCreateTaskPayload, parseUpdateTaskPayload } from "./schemas.js";
 import {
@@ -241,19 +241,14 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
 
   // R6-16: Generate idempotency key from request content to prevent duplicate task creation
   // Use title+divisionId+principalId hash so retried requests with same content get same key
-  const idempotencyKey = `${principal.userId ?? principal.actorId ?? "unknown"}:${payload.title}:${payload.divisionId}:${now.split("T")[0]}`;
+  const idempotencyKey = `${principal.actorId ?? "unknown"}:${payload.title}:${payload.divisionId}:${now.split("T")[0]}`;
 
   // R6-16: Check idempotency key BEFORE creating task to prevent duplicate creation
   if (deps.taskStore) {
-    const existing = deps.taskStore.task.listTasks({
-      tenantId: tenantId ?? undefined,
-      divisionId: payload.divisionId,
-      status: undefined,
-      limit: 1,
-    });
-    const titleMatch = existing.items.some((t) => t.title === payload.title && t.divisionId === payload.divisionId);
+    const existing = deps.taskStore.task.listTasks(1, tenantId ?? undefined, undefined);
+    const titleMatch = existing.some((t) => t.title === payload.title && t.divisionId === payload.divisionId);
     if (titleMatch) {
-      const existingTask = existing.items[0];
+      const existingTask = existing[0];
       if (existingTask) {
         const cockpit = deps.missionControlService.getTaskCockpit(existingTask.id, tenantId);
         return buildJsonResponse(ctx.requestId, 200, cockpit);
@@ -263,7 +258,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
 
   // Build principal ref from API principal
   const principalRef: PrincipalRef = createPrincipalRef({
-    principalId: principal.userId ?? principal.actorId ?? "unknown",
+    principalId: principal.actorId ?? "unknown",
     tenantId: tenantId ?? "global",
     roles: principal.roles,
   });
@@ -333,7 +328,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   if (!deps.taskStore) {
     throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
   }
-  deps.taskStore.transaction(() => {
+  deps.taskStore.withConnection((conn) => {
     deps.taskStore.task.insertTask({
       id: taskId,
       parentId: payload.parentId ?? null,
@@ -354,44 +349,6 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       updatedAt: now,
       completedAt: null,
     });
-    // Publish PlatformFactEvent to durable event bus
-    const { DurableEventBus } = await import("../../state-evidence/events/durable-event-bus.js");
-    // R5-41: Use task creation event and RSM transition event for event sourcing
-    const creationEvent = {
-      eventType: "platform.task.created" as const,
-      aggregateType: "Task" as const,
-      aggregateId: taskId,
-      aggregateSeq: 1,
-      tenantId: tenantId ?? "global",
-      traceId: correlationId,
-      payload: {
-        taskId,
-        divisionId: payload.divisionId,
-        title: payload.title,
-        source: payload.source ?? "user",
-        principalId: principalRef.principalId,
-        status: "admitted",
-        createdAt: now,
-      },
-      schemaOwner: "task-routes",
-      consumerContractTests: ["task-routes.test.ts"],
-    };
-    const db = deps.taskStore.getDatabase?.();
-    if (db) {
-      const eventBus = new DurableEventBus(db, deps.taskStore);
-      eventBus.publish({
-        eventType: creationEvent.eventType,
-        taskId,
-        traceId: correlationId,
-        payload: creationEvent.payload as Record<string, unknown>,
-      });
-      eventBus.publish({
-        eventType: taskTransition.event.eventType,
-        taskId,
-        traceId: correlationId,
-        payload: taskTransition.event.payload as Record<string, unknown>,
-      });
-    }
   });
 
   const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
@@ -433,7 +390,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);
         }
         if (payload.outputJson != null) {
-          deps.taskStore.task.updateTaskOutput(taskId, payload.outputJson, now);
+          deps.taskStore.task.updateTaskOutput(taskId, undefined, payload.outputJson, now);
         }
 
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, principal.tenantId ?? undefined);

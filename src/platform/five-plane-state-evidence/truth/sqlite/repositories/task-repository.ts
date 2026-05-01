@@ -196,7 +196,7 @@ export class TaskRepository {
    * Returns the number of rows affected (0 if status didn't match).
    */
   public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
-    const result = execute(
+    return execute(
       this.conn,
       `UPDATE tasks SET output_json = ?, updated_at = ? WHERE id = ? AND status = ?`,
       outputJson,
@@ -204,7 +204,6 @@ export class TaskRepository {
       taskId,
       expectedStatus,
     );
-    return result.changes;
   }
 
   public updateTaskTitle(taskId: string, title: string, updatedAt: string): void {

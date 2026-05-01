@@ -47,7 +47,7 @@ export class PolicyRolloutService {
   private readonly guardrails = new GuardrailEvaluator();
   private readonly autoRollback: AutoRollbackService;
 
-  public constructor(autoRollback: AutoRolloutService = new AutoRollbackService()) {
+  public constructor(autoRollback: AutoRollbackService = new AutoRollbackService()) {
     this.autoRollback = autoRollback;
   }
 
@@ -234,5 +234,14 @@ function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
       return "partial_75";
     case "stable":
       return "stable";
+    case "candidate_created":
+    case "under_review":
+    case "evaluation_enabled":
+    case "stable_75":
+    case "stable_100":
+    case "released":
+      // These are valid RolloutStatus values but don't map to a StrategyReleaseLevel
+      // Use "off" as the default since they represent non-progressive states
+      return "off";
   }
 }

@@ -685,7 +685,7 @@ export class AutoStopLossService {
         playbookName: playbook.name,
         triggerReason,
         actionsExecuted: [],
-        escalationLevel: SEVERITY_TO_ESCALATION[severity] ?? "critical",
+        escalationLevel: "critical",
         executedAt: startTime,
         completedAt: null,
         success: false,
@@ -820,7 +820,12 @@ export class AutoStopLossService {
       const playbook = this.playbooks.get(event.playbookId);
       if (playbook) {
         try {
-          await this.executeApprovedPlaybook(playbook, event);
+          // Note: fire-and-forget since approvePendingExecution returns synchronously
+          // The caller of this method should not await the playbook execution
+          this.executeApprovedPlaybook(playbook, event).catch((err) => {
+            event.success = false;
+            event.errorMessage = err instanceof Error ? err.message : String(err);
+          });
         } catch (err) {
           event.success = false;
           event.errorMessage = err instanceof Error ? err.message : String(err);

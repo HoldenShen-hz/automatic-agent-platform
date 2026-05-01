@@ -932,12 +932,13 @@ export class HarnessRuntimeService {
     }
 
     // INV-3: Total cost must not exceed budget without guard abort
-    if (totalCost > run.constraintPack.budget.maxCost && !abortedByGuard.has("harness.guard.max_cost_exceeded")) {
+    const budget = run.constraintPack.budget;
+    if (budget && totalCost > budget.maxCost && !abortedByGuard.has("harness.guard.max_cost_exceeded")) {
       violations.push("INV-3:harness.invariant.total_cost_exceeds_budget");
     }
 
     // INV-4: Duration must not exceed budget without guard abort
-    if (durationMs > run.constraintPack.budget.maxDurationMs && !abortedByGuard.has("harness.guard.max_duration_exceeded")) {
+    if (budget && durationMs > budget.maxDurationMs && !abortedByGuard.has("harness.guard.max_duration_exceeded")) {
       violations.push("INV-4:harness.invariant.duration_exceeds_budget");
     }
 
@@ -1173,7 +1174,8 @@ export class HarnessRuntimeService {
 
       // §45.5 budget gate: check budget BEFORE each stage per spec
       // Budget gate check BEFORE planner stage (not after)
-      if (run.steps.length >= input.constraintPack.budget.maxSteps) {
+      const inputBudget = input.constraintPack.budget;
+      if (inputBudget && run.steps.length >= inputBudget.maxSteps) {
         const guardAbortDecisionId = newId("harness_decision");
         return this.transitionRunStatus({
           ...run,
@@ -1207,7 +1209,7 @@ export class HarnessRuntimeService {
       });
 
       // Budget gate check before generator stage
-      if (run.steps.length >= input.constraintPack.budget.maxSteps) {
+      if (inputBudget && run.steps.length >= inputBudget.maxSteps) {
         const guardAbortDecisionId = newId("harness_decision");
         return this.transitionRunStatus({
           ...run,
@@ -1237,7 +1239,7 @@ export class HarnessRuntimeService {
       });
 
       // Budget gate check before evaluator stage
-      if (run.steps.length >= input.constraintPack.budget.maxSteps) {
+      if (inputBudget && run.steps.length >= inputBudget.maxSteps) {
         const guardAbortDecisionId = newId("harness_decision");
         return this.transitionRunStatus({
           ...run,
@@ -1280,7 +1282,7 @@ export class HarnessRuntimeService {
         maxRiskScore: riskPolicy.maxRiskScore,
         escalationThreshold: riskPolicy.escalationThreshold,
         currentStepCount: run.steps.length,
-        maxSteps: input.constraintPack.budget.maxSteps,
+        maxSteps: inputBudget?.maxSteps ?? 100,
       });
       this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
       this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
@@ -1288,7 +1290,7 @@ export class HarnessRuntimeService {
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
         requiresHuman: (input.requiresHuman === true || guardrailAssessment.requiresHuman) || undefined,
-        maxIterationsReached: (run.steps.length >= input.constraintPack.budget.maxSteps) || undefined,
+        maxIterationsReached: (inputBudget && run.steps.length >= inputBudget.maxSteps) || undefined,
         riskScore: input.riskScore,
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,
@@ -1401,7 +1403,7 @@ export class HarnessRuntimeService {
       };
       const progress = loop.evaluateProgress(
         decision.action,
-        baseRun.steps.length + 3 <= input.constraintPack.budget.maxSteps,
+        (inputBudget && baseRun.steps.length + 3 <= inputBudget.maxSteps) ?? true,
       );
       const shouldStop = baseRun.status !== "running" || !progress.shouldContinue;
 

@@ -183,7 +183,7 @@ export class BudgetAllocator {
     readonly sweeperConfig?: SweeperConfig;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
-    this.events = options.events;
+    this.events = options.events !== undefined ? options.events : undefined;
     this.sweeperConfig = options.sweeperConfig ?? { enabled: false, scanIntervalMs: 60000, maxReservationsToScan: 100 };
   }
 
@@ -426,8 +426,8 @@ export class BudgetAllocator {
             traceId: context.traceId,
             reasonCode: "budget.reserved",
             emittedBy: context.emittedBy,
-            leaseId: context.leaseId,
-            fencingToken: context.fencingToken,
+            ...(context.leaseId !== undefined ? { leaseId: context.leaseId } : {}),
+            ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
             auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/reserve`,
           }).aggregate;
 
@@ -438,7 +438,7 @@ export class BudgetAllocator {
       resourceKind: input.resourceKind,
       expiresAt: input.expiresAt,
       expectedVersion: ledgerForReservation.version,
-      nodeRunId: input.nodeRunId,
+      ...(input.nodeRunId !== undefined ? { nodeRunId: input.nodeRunId } : {}),
     });
 
     // §18.2-18.3: Watermark alert check after reservation
@@ -537,8 +537,8 @@ export class BudgetAllocator {
       traceId: context.traceId,
       reasonCode: "budget.settled",
       emittedBy: context.emittedBy,
-      leaseId: context.leaseId,
-      fencingToken: context.fencingToken,
+      ...(context.leaseId !== undefined ? { leaseId: context.leaseId } : {}),
+      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
       auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/settle`,
     });
 

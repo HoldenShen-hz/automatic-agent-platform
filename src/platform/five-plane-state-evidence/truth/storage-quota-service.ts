@@ -3,6 +3,9 @@ import { basename, dirname, join, relative } from "node:path";
 
 import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { SandboxError } from "../../contracts/errors.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ service: "storage-quota-service" });
 
 /**
  * Categories of storage that can be quota-managed.

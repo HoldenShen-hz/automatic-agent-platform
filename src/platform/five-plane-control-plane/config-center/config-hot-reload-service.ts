@@ -124,7 +124,10 @@ export class ConfigHotReloadService {
     if (this.eventBus) {
       await this.eventBus.subscribe(
         "config.changed",
-        this.handleConfigChangedEvent.bind(this),
+        async (event) => {
+          const payload = JSON.parse(event.payloadJson) as { layer: string; sourceId: string | null; previousVersion: string; newVersion: string; [key: string]: unknown };
+          await this.handleConfigChangedEvent(payload);
+        },
       );
     }
 

@@ -94,7 +94,7 @@ export interface RuntimeLifecycleRepository {
   }): void;
   insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
+      eventTier: EventRecord["eventTier"];
       sessionId?: string | null;
     },
   ): EventRecord;
@@ -238,7 +238,7 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
 
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
+      eventTier: EventRecord["eventTier"];
       sessionId?: string | null;
     },
   ): EventRecord {
@@ -408,7 +408,7 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
 
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
+      eventTier: EventRecord["eventTier"];
       sessionId?: string | null;
     },
   ): EventRecord {
@@ -567,7 +567,7 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
 
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
+      eventTier: EventRecord["eventTier"];
       sessionId?: string | null;
     },
   ): EventRecord {

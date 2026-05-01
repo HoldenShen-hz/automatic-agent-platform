@@ -180,17 +180,15 @@ export class EventRepository {
     // R12-05/R5-37 FIX: Persist all §28.1 fields to enable replay ordering and audit trail.
     // Previously only id/task_id/session_id/execution_id/event_type/event_tier/payload_json/trace_id/created_at
     // were persisted, losing schemaVersion/aggregateId/runId/sequence/causationId/correlationId.
-    this.conn
-      .prepare(
-        `INSERT INTO events (
+    (this.conn.prepare(
+      `INSERT INTO events (
           id, task_id, session_id, execution_id, event_type, event_tier,
           payload_json, trace_id, created_at,
           schema_version, aggregate_id, run_id, sequence,
           causation_id, correlation_id, payload_hash, idempotency_key,
           replay_behavior, principal, evidence_refs
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    ) as unknown as { run: (...args: unknown[]) => unknown }).run(
         record.id,
         record.taskId,
         record.sessionId,
@@ -210,7 +208,7 @@ export class EventRepository {
         record.idempotencyKey,
         record.replayBehavior,
         record.principal,
-        record.evidenceRefs.length > 0 ? JSON.stringify(record.evidenceRefs) : null,
+        record.evidenceRefs && record.evidenceRefs.length > 0 ? JSON.stringify(record.evidenceRefs) : null,
       );
 
     for (const consumerId of getRequiredConsumers(record.eventType)) {

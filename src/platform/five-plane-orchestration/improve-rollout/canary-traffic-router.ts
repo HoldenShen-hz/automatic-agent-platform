@@ -20,10 +20,16 @@ const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
   partial_25: 25,
   partial_50: 50,
   partial_75: 75,
+  stable_75: 75,
+  stable_100: 100,
   stable: 100,
+  released: 100,
   rejected: 0,
   rolled_back: 0,
   paused: 0,
+  candidate_created: 0,
+  under_review: 0,
+  evaluation_enabled: 0,
 };
 
 function hashToBucket(value: string): number {

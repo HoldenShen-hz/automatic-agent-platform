@@ -97,7 +97,7 @@ export class CompensationManager {
       sideEffectId,
       harnessRunId,
       planRef,
-      status,
+      ...(status !== undefined ? { status } : {}),
     });
   }
 

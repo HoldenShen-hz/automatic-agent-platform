@@ -194,7 +194,7 @@ export class ModelCallProviderService {
       tenantId: "tenant:local",
       traceId: request.traceId ?? newId("trace"),
       emittedBy: "ModelCallProviderService",
-      tier: "task",
+      tier: BudgetTier.STEP,
       tierLimit: policy.maxTaskCostUsd,
       watermarkAlert: {
         warningThreshold: policy.warnAtRatio,
@@ -215,8 +215,8 @@ export class ModelCallProviderService {
       context: reservationContext,
     });
 
-    if (!reservation.success || !reservation.reservation) {
-      throw new ProviderError("model_call.budget_reservation_failed", `Budget reservation failed: ${reservation.errorCode ?? "unknown"}`, {
+    if (!reservation.reservation) {
+      throw new ProviderError("model_call.budget_reservation_failed", `Budget reservation failed`, {
         retryable: true,
       });
     }

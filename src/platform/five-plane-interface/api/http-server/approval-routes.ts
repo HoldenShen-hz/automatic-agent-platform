@@ -71,7 +71,7 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         }
         const actorId = requirePrincipal(ctx.request, deps.authService, "operator").actorId;
         const approvalId = segments[1];
-        if (!approvalId || !this.isValidApprovalIdFormat(approvalId)) {
+        if (!approvalId || !isValidApprovalIdFormat(approvalId)) {
           throw new ApiError(400, "api.approval_invalid_id", "Invalid approvalId format.");
         }
         // Authorization check: actor must have permission for this specific approval
@@ -79,7 +79,7 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         if (!approvalForAuthz) {
           throw new ApiError(404, "api.approval_not_found", "Approval not found.");
         }
-        if (!this.isActorAuthorizedForApproval(actorId, approvalForAuthz)) {
+        if (!isActorAuthorizedForApproval(actorId, approvalForAuthz)) {
           throw new ApiError(403, "api.approval_not_authorized", "Actor not authorized for this approval.");
         }
         const decision = parseApprovalDecisionPayload(
@@ -125,7 +125,7 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         }
         const actorId = requirePrincipal(ctx.request, deps.authService, "operator").actorId;
         const approvalId = segments[2];
-        if (!approvalId || !this.isValidApprovalIdFormat(approvalId)) {
+        if (!approvalId || !isValidApprovalIdFormat(approvalId)) {
           throw new ApiError(400, "api.approval_invalid_id", "Invalid approvalId format.");
         }
         // Authorization check: actor must have permission for this specific approval
@@ -133,7 +133,7 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         if (!approvalForAuthz) {
           throw new ApiError(404, "api.approval_not_found", "Approval not found.");
         }
-        if (!this.isActorAuthorizedForApproval(actorId, approvalForAuthz)) {
+        if (!isActorAuthorizedForApproval(actorId, approvalForAuthz)) {
           throw new ApiError(403, "api.approval_not_authorized", "Actor not authorized for this approval.");
         }
         const decision = parseApprovalDecisionPayload(
