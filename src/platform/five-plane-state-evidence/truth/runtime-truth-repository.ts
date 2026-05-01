@@ -117,6 +117,45 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     });
   }
 
+  /**
+   * R4-35 (INV-EVIDENCE-001): Append an EvidenceRecord as an immutable PlatformFactEvent.
+   * This ensures all decisions and executions produce immutable evidence that can be
+   * audited and replayed.
+   */
+  public appendEvidenceRecord(evidence: EvidenceRecord): void {
+    // R4-35: Convert EvidenceRecord to PlatformFactEvent for immutable storage
+    // Evidence records are stored as platform.evidence.recorded events
+    const eventType = `platform.evidence.${evidence.category}` as `platform.${string}`;
+
+    // Get the next sequence number for this aggregate
+    const existingEvents = this.state.events.filter(
+      (e) => e.aggregateType === "EvidenceRecord" && e.aggregateId === evidence.recordId,
+    );
+    const nextSeq = existingEvents.length + 1;
+
+    const platformEvent = createPlatformFactEvent({
+      eventType,
+      aggregateType: "EvidenceRecord",
+      aggregateId: evidence.recordId,
+      aggregateSeq: nextSeq,
+      tenantId: evidence.principal.tenantId ?? "global",
+      runId: evidence.recordId, // Use recordId as runId since evidence doesn't have runId
+      traceId: evidence.traceId,
+      payload: {
+        recordId: evidence.recordId,
+        principal: evidence.principal,
+        category: evidence.category,
+        targetRef: evidence.targetRef,
+        content: evidence.content,
+        timestamp: evidence.timestamp,
+        metadata: evidence.metadata,
+      } as unknown as PlatformFactEvent["payload"],
+      occurredAt: evidence.timestamp,
+    });
+
+    this.appendEvent(platformEvent);
+  }
+
   public getHarnessRun(harnessRunId: string): HarnessRun | null {
     return this.state.harnessRuns.get(harnessRunId) ?? null;
   }
