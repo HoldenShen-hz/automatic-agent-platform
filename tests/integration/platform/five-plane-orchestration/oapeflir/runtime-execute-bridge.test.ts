@@ -7,6 +7,8 @@ import {
 } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { MultiStepOrchestrationResult } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
+import { createPlanGraphBundle } from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import { newId } from "../../../../../src/platform/contracts/types/ids.js";
 
 function createPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
   return {
@@ -19,6 +21,20 @@ function createPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
     timeout: 30_000,
     retryPolicy: { maxRetries: 0, backoffMs: 0 },
     ...overrides,
+  };
+}
+
+function planStepToPlanNode(step: PlanStep) {
+  return {
+    nodeId: step.stepId,
+    nodeType: step.action as import("../../../../../src/platform/contracts/executable-contracts/index.js").PlanNodeType,
+    inputRefs: step.dependencies ?? [],
+    outputSchemaRef: "schema:step.output",
+    riskClass: "medium" as import("../../../../../src/platform/contracts/executable-contracts/index.js").RiskClass,
+    budgetIntent: { amount: 0.01, currency: "USD" as const, resourceKinds: ["token", "compute"] as const },
+    sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+    retryPolicyRef: step.retryPolicy ? `retry:${step.retryPolicy.maxRetries}` : "retry:default",
+    timeoutMs: step.timeout,
   };
 }
 
@@ -62,22 +78,40 @@ test("integration: five-plane RuntimeExecuteBridge delegates execution through i
     },
   );
 
-  const plan = {
-    planId: "plan_five_plane",
-    taskId: "task_1",
-    version: 1,
-    assessmentRef: "assessment_1",
-    strategy: "linear" as const,
-    steps: [createPlanStep()],
-    createdAt: Date.now(),
-  };
+  const steps = [createPlanStep()];
+  const nodes = steps.map(planStepToPlanNode);
+  const planBundle = createPlanGraphBundle({
+    planGraphBundleId: "plan_five_plane",
+    harnessRunId: "harness_run_1",
+    graph: {
+      graphId: newId("graph"),
+      nodes,
+      edges: [],
+      entryNodeIds: nodes.map((n) => n.nodeId),
+      terminalNodeIds: nodes.map((n) => n.nodeId),
+      joinStrategy: "all",
+      graphHash: newId("hash"),
+    },
+    schedulerPolicy: {
+      policyId: "scheduler:oapeflir.default",
+      strategy: "deterministic_fifo",
+    },
+    budgetPlanRef: "budget:plan_five_plane",
+    riskProfile: {
+      riskClass: "medium",
+      reasons: ["test_plan"],
+    },
+    validationReport: { valid: true, findings: [] },
+    artifactRefs: [],
+    createdAt: new Date().toISOString(),
+  });
 
-  const result = await bridge.executePlan(plan, { taskId: "task_1", tokenBudget: 512 });
+  const result = await bridge.executePlan(planBundle, { taskId: "task_1", tokenBudget: 512 });
 
   assert.deepEqual(capturedInput, {
     dbPath: "/tmp/five-plane-runtime-execute-bridge.db",
     title: "OAPEFLIR plan plan_five_plane",
-    request: serialiseOapeflirPlan(plan.steps),
+    request: serialiseOapeflirPlan(planBundle.graph.nodes),
     contextBudgetTokens: 512,
   });
   assert.equal(result.results.length, 1);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OapeflirLoopService } from "../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
+import { OapeflirLoopService } from "../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js";
 
 /**
  * OAPEFLIR Loop Service Invariants

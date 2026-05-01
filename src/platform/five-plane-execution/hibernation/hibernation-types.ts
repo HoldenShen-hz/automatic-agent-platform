@@ -53,8 +53,8 @@ export interface ResumeCompatibilityResult {
   readonly timedOut: boolean;
   readonly differences: readonly {
     readonly field: string;
-    readonly before: string;
-    readonly after: string;
+    readonly beforeValue: string;
+    readonly afterValue: string;
   }[];
   readonly checkedAt: string;
 }

@@ -84,13 +84,15 @@ test("R9-14-1: executeViaBridge publishes execution.requested event instead of c
   // This test verifies the R9-14 fix: executeViaBridge should publish an
   // execution.requested event rather than calling executeBridge.executePlan directly.
 
-  let publishCall: { eventType: string; payload: unknown } | null = null;
+  type MockPublishCall = { eventType: string; payload: unknown };
+  let publishCall: MockPublishCall | null = null;
 
-  const mockEventPublisher: TypedEventPublisher = {
-    publish(input) {
-      publishCall = { eventType: input.eventType, payload: input.payload };
+  const mockEventPublisher = {
+    publish(input: { eventType: string; taskId?: string | null; payload: unknown }) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      publishCall = { eventType: input.eventType, payload: input.payload as any };
     },
-  };
+  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   // We need to test that when eventPublisher is provided, executeViaBridge uses it
   // to publish execution.requested events instead of calling executeBridge directly.
@@ -114,8 +116,8 @@ test("R9-14-1: executeViaBridge publishes execution.requested event instead of c
   // After R9-14 fix: publish should have been called with execution.requested
   // Before R9-14 fix: publishCall will be null because current code calls executeBridge directly
   if (publishCall) {
-    assert.equal(publishCall.eventType, "execution.requested", "Should publish execution.requested event");
-    const payload = publishCall.payload as ExecutionRequestedPayload;
+    assert.equal((publishCall as MockPublishCall).eventType, "execution.requested", "Should publish execution.requested event");
+    const payload = (publishCall as MockPublishCall).payload as ExecutionRequestedPayload;
     assert.equal(payload.planId, "plan_r9_14_1");
     assert.equal(payload.taskId, "task_r9_14_1");
   }
@@ -142,11 +144,11 @@ test("R9-14-1: verify executeViaBridge does NOT call executeBridge.executePlan w
   };
 
   let publishCallCount = 0;
-  const mockEventPublisher: TypedEventPublisher = {
-    publish(input) {
+  const mockEventPublisher = {
+    publish(_input: { eventType: string; taskId?: string | null; payload: unknown }) {
       publishCallCount++;
     },
-  };
+  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 
@@ -221,11 +223,11 @@ test("R9-14-3: executeViaBridge handles timeout when execution doesn't complete 
 
   let publishedEventType: string | null = null;
 
-  const mockEventPublisher: TypedEventPublisher = {
-    publish(input) {
+  const mockEventPublisher = {
+    publish(input: { eventType: string; taskId?: string | null; payload: unknown }) {
       publishedEventType = input.eventType;
     },
-  };
+  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 
@@ -263,13 +265,15 @@ test("R9-14-4: executeViaBridge maps completion payload to DualChannelStepOutput
 
   let publishedPayload: ExecutionRequestedPayload | null = null;
 
-  const mockEventPublisher: TypedEventPublisher = {
-    publish(input) {
-      if (input.eventType === "execution.requested") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockEventPublisher = {
+    publish(input: any) {
+      const evtType: string = input.eventType;
+      if (evtType === "execution.requested") {
         publishedPayload = input.payload as ExecutionRequestedPayload;
       }
     },
-  };
+  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 
@@ -285,8 +289,9 @@ test("R9-14-4: executeViaBridge maps completion payload to DualChannelStepOutput
 
   // After R9-14 fix: execution.requested payload should contain plan info for mapping
   if (publishedPayload) {
-    assert.equal(publishedPayload.planId, "plan_r9_14_4", "Payload should contain correct planId");
-    assert.equal(publishedPayload.taskId, "task_r9_14_4", "Payload should contain correct taskId");
+    const safePayload = publishedPayload as unknown as ExecutionRequestedPayload;
+    assert.equal(safePayload.planId, "plan_r9_14_4", "Payload should contain correct planId");
+    assert.equal(safePayload.taskId, "task_r9_14_4", "Payload should contain correct taskId");
   }
 
   // Verify result structure matches DualChannelStepOutput
@@ -355,13 +360,14 @@ test("R9-14-5: verify executeViaBridge uses event delegation, not direct bridge 
     return originalExecutePlan(plan, context);
   };
 
-  const mockEventPublisher: TypedEventPublisher = {
-    publish(input) {
-      if (input.eventType === "execution.requested" || input.eventType === "execution.completed") {
+  const mockEventPublisher = {
+    publish(input: { eventType: string; taskId?: string | null; payload: unknown }) {
+      const evtType = input.eventType as string;
+      if (evtType === "execution.requested" || evtType === "execution.completed") {
         eventPublishCount++;
       }
     },
-  };
+  } as import("../../../../../src/platform/state-evidence/events/typed-event-publisher.js").TypedEventPublisher;
 
   const { OapeflirLoopService } = await import("../../../../../src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.js");
 

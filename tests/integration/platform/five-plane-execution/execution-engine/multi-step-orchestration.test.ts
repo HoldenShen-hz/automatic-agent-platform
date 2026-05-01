@@ -179,8 +179,8 @@ test("integration: runMultiStepOrchestration task and workflow records are creat
     assert.equal(result.snapshot.workflow.taskId, result.snapshot.task.id);
     assert.equal(result.snapshot.workflow.status, "done");
 
-    assert.ok(result.snapshot.executions);
-    assert.ok(result.snapshot.executions.length > 0);
+    assert.ok(result.snapshot.execution);
+    assert.ok(result.snapshot.execution.length > 0);
 
     assert.ok(result.snapshot.session);
     assert.equal(result.snapshot.session.taskId, result.snapshot.task.id);
@@ -407,7 +407,6 @@ test("integration: runMultiStepOrchestration handles admission queue decision", 
       title: "Admission Test",
       request: "Test admission policy",
       admissionPolicy: {
-        maxConcurrentExecutions: 0,
         maxQueuedTasks: 1,
         memoryHighWatermarkMb: 0,
         eventLoopLagThresholdMs: 0,

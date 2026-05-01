@@ -204,8 +204,8 @@ export class WakeEngine {
       .filter((field) => before[field] !== after[field])
       .map((field) => ({
         field,
-        before: before[field],
-        after: after[field],
+        beforeValue: before[field],
+        afterValue: after[field],
       }));
 
     return {
@@ -221,7 +221,7 @@ export class WakeEngine {
    */
   public generateResumeDiffReport(
     runId: string,
-    differences: readonly { field: string; before: string; after: string }[],
+    differences: readonly { field: string; beforeValue: string; afterValue: string }[],
   ): ResumeDiffReport {
     // Determine recommendation based on differences
     let recommendation: ResumeDiffReport["recommendation"] = "supervised_resume";

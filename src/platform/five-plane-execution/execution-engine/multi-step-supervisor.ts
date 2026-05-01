@@ -448,8 +448,8 @@ export async function executeStepLoop(
         routingReason: routing.routeReason,
         tools: getMultiStepToolDefinitions(toolExposure.visibleToolNames),
         // R4-25 (INV-BUDGET-001): Pass budget context from validated PlanGraphBundle
-        harnessRunId: input.harnessRunId,
-        budgetLedger: input.budgetLedger,
+        harnessRunId: validatedPlanGraphBundle.harnessRunId ?? input.harnessRunId ?? "",
+        budgetLedger: input.budgetLedger!,
       });
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
 

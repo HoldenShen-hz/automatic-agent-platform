@@ -7,7 +7,7 @@ import test from "node:test";
  * - Issue #2023: recordStageCompletion("release") sets index=8 out of bounds
  */
 
-import { StageTransitionFSM, createStageTransitionFSM, OAPEFLIR_STAGES } from "../../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
+import { StageTransitionFSM, createStageTransitionFSM, OAPEFLIR_STAGES } from "../../../../../src/platform/five-plane-orchestration/oapeflir/stage-transition-fsm.js";
 
 test("StageTransitionFSM initializes with observe stage", () => {
   const fsm = new StageTransitionFSM();
