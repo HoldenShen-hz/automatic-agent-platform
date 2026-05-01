@@ -830,7 +830,7 @@ export class OapeflirLoopService {
 
         return {
           observation: taskObservation,
-          assessment,
+          assessment: validatedAssessment,
           plan,
           planGraphBundle: planGraphBundle!,
           stepOutputs,

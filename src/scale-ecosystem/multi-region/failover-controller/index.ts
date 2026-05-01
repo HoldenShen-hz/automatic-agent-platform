@@ -316,9 +316,9 @@ export class RegionFailoverController {
     }
 
     // Determine target region
-    // Root cause: Just picks candidateRegionIds[0] without considering health or replication lag
-    // Fix: Prefer preferredRegionId if provided, but cannot determine health without external data
-    // In production, use RegionFailoverOrchestrator.selectFailoverTarget which has health check data
+    // R37-2202: Blind pick of candidates[0] without health/lag validation
+    // Prefer preferredRegionId if provided, but fallback is still unvalidated
+    // In production, use RegionFailoverOrchestrator.selectFailoverTarget with health check data
     const targetRegionId = input.preferredRegionId && input.candidateRegionIds.includes(input.preferredRegionId)
       ? input.preferredRegionId
       : input.candidateRegionIds[0] ?? null;

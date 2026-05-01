@@ -189,7 +189,13 @@ export class DelegationGovernanceService {
   }
 
   public addRule(rule: GovernanceRule): void {
-    this.rules.push(rule);
+    // R37-2186: Prevent duplicate ruleId - update existing instead of adding
+    const existingIdx = this.rules.findIndex((r) => r.ruleId === rule.ruleId);
+    if (existingIdx >= 0) {
+      this.rules[existingIdx] = rule;
+    } else {
+      this.rules.push(rule);
+    }
     this.rules.sort((a, b) => a.priority - b.priority);
   }
 

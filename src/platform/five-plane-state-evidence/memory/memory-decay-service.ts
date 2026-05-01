@@ -239,8 +239,10 @@ export class MemoryDecayService {
     const currentFreshness = calculateFreshness(memory, config, evaluatedAt);
     const decayAmount = Math.max(0, previousFreshness - currentFreshness);
 
-    // Calculate access boost
-    const accessBoost = Math.pow(1 + config.accessBoostFactor, memory.hitCount);
+    // R16-16 FIX: Use logarithmic access boost to prevent freshness saturation
+    // logarithmic boost: boost = 1 + accessBoostFactor * log(1 + hitCount)
+    const hitCount = memory.hitCount ?? 0;
+    const accessBoost = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
 
     // Calculate effective decay rate
     const decayRate = config.halfLifeSeconds > 0

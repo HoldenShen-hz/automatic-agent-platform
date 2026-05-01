@@ -29,7 +29,12 @@ export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRollout
     return null;
   }
   // rolled_back and stable are terminal states — no further progression
+  // Also block stable→rolled_back (invalid reverse transition)
   if (stage === "rolled_back" || stage === "stable") {
+    return null;
+  }
+  // Can only advance to next stage in forward direction
+  if (currentIndex >= PROMPT_ROLLOUT_STAGES.length - 1) {
     return null;
   }
   return PROMPT_ROLLOUT_STAGES[currentIndex + 1] ?? null;

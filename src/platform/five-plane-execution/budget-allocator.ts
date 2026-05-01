@@ -509,9 +509,8 @@ export class BudgetAllocator {
       );
     }
 
-    // R16-16 FIX: ledger update must use state machine for CAS versioning
-    // The state machine increment handles version for SQL CAS but we need to
-    // compute budget amounts ourselves since state machine only handles status transitions
+    // R16-16 FIX: ledger update must use state machine for CAS versioning + fact event
+    // Issue #1901 P1: settle() was bypassing RSM and directly mutating ledger without CAS/fact event
     const ledgerAfterSettle = this.stateMachine.transition({
       commandId: newId("cmd"),
       entityType: "BudgetLedger",
@@ -520,7 +519,7 @@ export class BudgetAllocator {
       aggregateType: "BudgetLedger",
       aggregate: input.ledger,
       fromStatus: input.ledger.status,
-      toStatus: input.ledger.status, // Same status - this is just for CAS/versioning
+      toStatus: input.ledger.status, // Same status - this is just for CAS/versioning + fact event
       tenantId: context.tenantId,
       traceId: context.traceId,
       reasonCode: "budget.settled",
@@ -528,15 +527,16 @@ export class BudgetAllocator {
       leaseId: context.leaseId,
       fencingToken: context.fencingToken,
       auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/settle`,
-    }).aggregate as BudgetLedger;
+    });
 
     // Compute final ledger state with settled amounts
-    // This is the authoritative state that should be persisted with SQL CAS
+    // The state machine has already incremented version; we compute amounts on top
     const finalLedger: BudgetLedger = {
-      ...ledgerAfterSettle,
+      ...ledgerAfterSettle.aggregate as BudgetLedger,
       reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
       settledAmount: input.ledger.settledAmount + input.actualAmount,
       releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
+      // Version already incremented by state machine transition
     };
 
     return {

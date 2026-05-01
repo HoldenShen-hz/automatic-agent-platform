@@ -93,10 +93,16 @@ export function buildDecisionTree(
     nodeMap.set(factorNode.nodeId, factorNode);
   }
 
-  // Calculate max depth
+  // Calculate max depth via recursive traversal
   let maxDepth = 0;
   const calculateDepth = (nodeId: string, depth: number): number => {
     maxDepth = Math.max(maxDepth, depth);
+    const node = nodeMap.get(nodeId);
+    if (node?.children) {
+      for (const child of node.children) {
+        calculateDepth(child.nodeId, depth + 1);
+      }
+    }
     return depth;
   };
   calculateDepth("root", 0);

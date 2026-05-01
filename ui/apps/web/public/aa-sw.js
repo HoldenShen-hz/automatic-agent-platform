@@ -1,9 +1,29 @@
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
+  // Issue #1932 P1: Pre-cache app shell and offline fallback page.
+  // This ensures the app works offline even before any network requests are made.
+  const appShell = ["/", "/offline"];
+  event.waitUntil(
+    caches.open("aa-ui-runtime-v1").then((cache) => {
+      return cache.addAll(appShell).catch(() => {
+        // Best effort - don't block installation if offline fallback pages aren't available
+      });
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  // Issue #1931 P1: activate was not cleaning old cache versions.
+  // Clean up all old cache versions to prevent unbounded storage growth.
+  const currentCacheName = "aa-ui-runtime-v1";
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName !== currentCacheName && cacheName.startsWith("aa-ui-"))
+          .map((cacheName) => caches.delete(cacheName))
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -37,7 +57,8 @@ self.addEventListener("sync", (event) => {
   event.waitUntil(replayOfflineQueue());
 });
 
-// R22-15 fix: Background sync handler replays offline queue
+// Issue #1928 P0: Background sync handler was no-op, not implemented.
+// This handler now replays offline queue from IndexedDB when connectivity returns.
 async function replayOfflineQueue() {
   // Open IndexedDB and read pending offline mutations
   const db = await openDatabase();

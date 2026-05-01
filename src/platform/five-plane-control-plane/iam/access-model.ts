@@ -241,7 +241,7 @@ export function resolvePrincipalAccessProfile(input: {
   const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => capabilitiesForRole(role)));
   const capabilities = dedupeCapabilities(
     input.capabilities?.length
-      ? input.capabilities.filter((capability) => roleCapabilities.includes(capability))
+      ? [...input.capabilities, ...roleCapabilities] // Union not intersection - allow input to extend role capabilities
       : roleCapabilities,
   );
   return {

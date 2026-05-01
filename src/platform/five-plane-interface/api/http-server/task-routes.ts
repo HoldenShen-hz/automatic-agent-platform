@@ -243,6 +243,24 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
   // Use title+divisionId+principalId hash so retried requests with same content get same key
   const idempotencyKey = `${principal.userId ?? principal.actorId ?? "unknown"}:${payload.title}:${payload.divisionId}:${now.split("T")[0]}`;
 
+  // R6-16: Check idempotency key BEFORE creating task to prevent duplicate creation
+  if (deps.taskStore) {
+    const existing = deps.taskStore.task.listTasks({
+      tenantId: tenantId ?? undefined,
+      divisionId: payload.divisionId,
+      status: undefined,
+      limit: 1,
+    });
+    const titleMatch = existing.items.some((t) => t.title === payload.title && t.divisionId === payload.divisionId);
+    if (titleMatch) {
+      const existingTask = existing.items[0];
+      if (existingTask) {
+        const cockpit = deps.missionControlService.getTaskCockpit(existingTask.id, tenantId);
+        return buildJsonResponse(ctx.requestId, 200, cockpit);
+      }
+    }
+  }
+
   // Build principal ref from API principal
   const principalRef: PrincipalRef = createPrincipalRef({
     principalId: principal.userId ?? principal.actorId ?? "unknown",

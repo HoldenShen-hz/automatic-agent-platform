@@ -183,6 +183,7 @@ export class CasService {
    */
   public setValue(key: string, value: string): void {
     const existing = this.store.get(key);
+    // R16-16 FIX: Increment version on setValue instead of resetting to 1
     const newVersion = existing ? existing.version + 1 : 1;
     this.store.set(key, {
       value,

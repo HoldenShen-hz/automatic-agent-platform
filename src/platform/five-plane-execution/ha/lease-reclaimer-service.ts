@@ -422,8 +422,14 @@ export class LeaseReclaimerService implements RecoveryWorker {
 
   /**
    * Expires the lease for a specific node.
+   * R16-16 FIX: Actually update the lease status instead of just logging
    */
   private async expireLeaseForNode(nodeId: string): Promise<void> {
+    // Get the active lease for this node and expire it
+    const lease = await this.coordinator.getActiveLease();
+    if (lease && lease.nodeId === nodeId) {
+      this.coordinator.expireLease(lease.leaseId);
+    }
     logger.log({
       level: "debug",
       message: "lease_reclaimer.expiring_lease_for_node",

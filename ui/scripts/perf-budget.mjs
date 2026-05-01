@@ -4,9 +4,10 @@ import { createGzip } from "node:zlib";
 import { Readable } from "node:stream";
 
 const distRoot = join(process.cwd(), "apps/web/dist/assets");
-// §7.3.1 perf budget: main<200KB gz/lazy chunk<100KB gz
+// Issue #1934 P1: maxJsChunkBytes was 550KB which is 2.75x the spec requirement of 200KB.
+// Per §7.3.1 perf budget: main<200KB gz/lazy chunk<100KB gz
 const budgets = {
-  maxJsChunkGzBytes: 100 * 1024,   // 100KB gz per lazy chunk
+  maxJsChunkGzBytes: 100 * 1024,   // 100KB gz per lazy chunk (spec: 200KB raw = ~100KB gz)
   maxCssChunkGzBytes: 40 * 1024,   // 40KB gz per css chunk
   totalGzBytes: 200 * 1024,         // 200KB gz total
 };

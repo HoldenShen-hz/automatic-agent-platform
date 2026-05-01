@@ -342,27 +342,30 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
   // Previously only NodeRun was checked; now we check all aggregate types
   const toStatus = command.toStatus as string;
   // Issue #1899 P0: NodeRun→cancelled/aborted transitions from leased/running states
-  // must also require lease+fencing checks to prevent unauthorized cancellation
-  const executionStatuses: readonly string[] = [
-    "leased",
-    "running",
-    "retry_wait",
-    "awaiting_hitl",
-    "reconciling",
+  // must also require lease+fencing checks to prevent unauthorized cancellation.
+  // Terminal transitions (cancelled/aborted) from active execution states require
+  // lease+fencing to prevent one partition from unilaterally cancelling another.
+  const terminalStatuses: readonly string[] = [
     "succeeded",
     "failed",
+    "skipped",
     "cancelled",
+    "dependency_failed",
+    "policy_blocked",
     "aborted",
   ];
 
-  // NodeRun always requires lease and fencing for execution transitions
-  // and terminal transitions (cancelled/aborted) from active execution states
   if (command.aggregateType === "NodeRun") {
     const nodeRun = command.aggregate as NodeRun;
-    if (executionStatuses.includes(toStatus) && (command.leaseId == null || command.fencingToken == null)) {
+    // Check if this is a terminal transition from an active execution state
+    const isTerminalFromActive = terminalStatuses.includes(toStatus) &&
+      ["leased", "running", "retry_wait", "awaiting_hitl", "reconciling"].includes(nodeRun.status);
+    const isExecutionTransition = executionStatuses.includes(toStatus);
+
+    if ((isExecutionTransition || isTerminalFromActive) && (command.leaseId == null || command.fencingToken == null)) {
       throw new WorkflowStateError(
         "runtime_state_machine.lease_and_fencing_required",
-        "NodeRun execution transitions require an active lease and fencing token.",
+        "NodeRun execution and terminal transitions require an active lease and fencing token.",
         { details: { nodeRunId: nodeRun.nodeRunId, toStatus } },
       );
     }
@@ -506,6 +509,8 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
         ...(command.aggregate as SideEffectRecord),
         status: command.toStatus as SideEffectStatus,
         updatedAt: occurredAt,
+        // Issue #1903 P1: SideEffectRecord applyStatus must increment version for CAS
+        version: (command.aggregate as SideEffectRecord).version + 1,
       } as TAggregate;
     case "BudgetLedger":
       return {
@@ -517,6 +522,8 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
       return {
         ...(command.aggregate as BudgetReservation),
         status: command.toStatus as BudgetReservation["status"],
+        // Issue #1903 P1: BudgetReservation applyStatus must increment version for CAS
+        version: (command.aggregate as BudgetReservation).version + 1,
       } as TAggregate;
     default:
       throw new ValidationError("runtime_state_machine.unknown_aggregate", "Unknown runtime aggregate type.");

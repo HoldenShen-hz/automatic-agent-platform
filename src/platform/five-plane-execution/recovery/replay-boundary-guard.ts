@@ -20,7 +20,7 @@ export class ReplayBoundaryGuard {
   public evaluate(mode: ReplayMode, operations: readonly ReplayOperation[]): ReplayBoundaryDecision {
     // trace_replay: blocks operations with real side effects
     const realSideEffectIds = operations
-      .filter((operation) => mode === "trace_replay" && operation.hasRealSideEffect)
+      .filter((operation) => operation.hasRealSideEffect && (mode === "trace_replay" || mode === "reexecution_replay"))
       .map((operation) => operation.operationId);
     if (realSideEffectIds.length > 0) {
       return {

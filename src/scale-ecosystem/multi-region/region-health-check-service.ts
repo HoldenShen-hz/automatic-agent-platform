@@ -379,9 +379,10 @@ export class RegionHealthCheckService {
     this.healthResults.set(regionId, result);
     this.lastCheckTime.set(regionId, result.checkedAt);
 
-    // Reset failures when region is healthy OR degraded (recovering from unhealthy)
-    // Only unhealthy should keep accumulating failures
-    if (result.status === "healthy" || result.status === "degraded") {
+    // Only reset failures when region is healthy (recovering)
+    // "degraded" status should not reset consecutiveFailures - it should continue to accumulate
+    // to drive eventual failover when recovery fails
+    if (result.status === "healthy") {
       this.consecutiveFailures.set(regionId, 0);
     }
   }

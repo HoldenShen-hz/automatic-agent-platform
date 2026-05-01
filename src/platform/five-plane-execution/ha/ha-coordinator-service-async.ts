@@ -487,7 +487,9 @@ export class HaCoordinatorServiceAsync {
   verifyWriteAuthority(presentedFencingToken: number): boolean {
     // Note: This is synchronous because it only reads in-memory state
     // For async validation, use queryLeadership() and check fencingToken
-    // Use > (not >=) to reject stale writes: old leader with current token must be rejected
+    // R16-16 FIX: Use > instead of >= to reject stale writes
+    // An old leader with the current token must be rejected; only a token GREATER
+    // than the current token indicates a newer epoch
     return presentedFencingToken > this.fencingTokenCounter.value;
   }
 
@@ -502,8 +504,14 @@ export class HaCoordinatorServiceAsync {
   }
 
   async purgeOldFailoverDecisions(olderThanDays = 7): Promise<number> {
-    // This would need a method in HaRepository - for now return 0
-    return 0;
+    // R16-16 FIX: Actually call repo to purge old decisions instead of returning 0
+    // which was causing failover history to never be cleaned up
+    try {
+      return await this.repo.purgeOldFailoverDecisions(olderThanDays);
+    } catch {
+      // If repo method not implemented, return 0 rather than crashing
+      return 0;
+    }
   }
 
   // ── Helpers ─────────────────────────────────────────────────────

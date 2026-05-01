@@ -49,13 +49,20 @@ export class ConnectorFrameworkService {
       environment,
       boundAt,
     };
-    this.bindings.set(connectorId, [...(this.bindings.get(connectorId) ?? []), binding]);
+    // Issue #1920 P1: bindings map had unbounded growth. Limit to last 500 bindings per connector.
+    const MAX_BINDINGS = 500;
+    const existing = this.bindings.get(connectorId) ?? [];
+    this.bindings.set(connectorId, [...existing, binding].slice(-MAX_BINDINGS));
     return binding;
   }
 
   public recordHealth(report: ConnectorHealthReport): ConnectorHealthReport {
     this.requireManifest(report.connectorId);
-    this.health.set(report.connectorId, [...(this.health.get(report.connectorId) ?? []), report]);
+    // Issue #1920 P1: health map had unbounded growth. Limit to last 100 reports per connector.
+    const MAX_HEALTH_REPORTS = 100;
+    const existing = this.health.get(report.connectorId) ?? [];
+    const updated = [...existing, report].slice(-MAX_HEALTH_REPORTS);
+    this.health.set(report.connectorId, updated);
     return report;
   }
 

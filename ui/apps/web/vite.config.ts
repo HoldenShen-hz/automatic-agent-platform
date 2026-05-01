@@ -46,6 +46,9 @@ function cspHeadersPlugin(): Plugin {
 export default defineConfig({
   plugins: [react(), tsconfigPaths(), cspHeadersPlugin()],
   build: {
+    // Issue #1933 P1: Add explicit build target for consistent browser compatibility.
+    // Without this, Vite defaults to esnext which may cause issues with older browsers.
+    target: "es2022",
     sourcemap: false,
     rollupOptions: {
       output: {

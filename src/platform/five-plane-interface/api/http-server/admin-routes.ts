@@ -246,7 +246,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
         const limit = readLimit(ctx.request, 50);
         return buildJsonResponse(ctx.requestId, 200, {
           tenants: deps.tenantRegistryService?.listTenants(limit) ?? [],
-          total: deps.tenantRegistryService?.listTenants(Number.MAX_SAFE_INTEGER).length ?? 0,
+          total: deps.tenantRegistryService?.listTenants(limit).length ?? 0,
         });
       },
     },

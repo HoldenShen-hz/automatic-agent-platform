@@ -12,8 +12,6 @@ export const electronMainBaseline = {
   },
   channels: [
     "shell:openExternal",
-    "shell:run",
-    "shell:spawn",
     "window:minimize",
     "window:maximize",
     "window:open",

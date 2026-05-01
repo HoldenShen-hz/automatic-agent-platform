@@ -247,6 +247,8 @@ export class SlackAlertChannel implements AlertChannel {
       ],
     };
 
+    // Fire-and-forget fetch - request initiated but delivery not confirmed
+    // NOTE: delivered=false because we don't wait for fetch to complete before returning
     this.fetchImpl(webhookUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -256,7 +258,7 @@ export class SlackAlertChannel implements AlertChannel {
       recordAlertDeliveryFailure("slack", event.id, err);
     });
 
-    return { channelKind: "slack", delivered: true, error: null };
+    return { channelKind: "slack", delivered: false, error: null };
   }
 }
 

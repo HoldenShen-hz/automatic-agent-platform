@@ -23,8 +23,10 @@ export type EventHandler = (event: EventRecord) => void | Promise<void>;
 
 /**
  * Maximum number of delivery retry attempts before dead-lettering an event.
+ * R16-16 FIX: Was 3 but loop executes 4 times due to off-by-one, changing to 2
+ * so total attempts = initial (1) + retries (2) = 3 total attempts.
  */
-const MAX_DELIVERY_RETRIES = 3;
+const MAX_DELIVERY_RETRIES = 2;
 
 /**
  * Initial backoff delay in milliseconds before first retry.

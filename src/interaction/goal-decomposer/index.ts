@@ -495,10 +495,11 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
   public async decompose(goalInput: Goal | string): Promise<GoalDecomposition> {
     const maxDepth = this.options.maxDepth ?? DEFAULT_MAX_DEPTH;
-    const currentDepth = this.options.currentDepth ?? 0;
+    const currentDepth = (this.options.currentDepth ?? 0);
     const maxDelegationDepth = this.options.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
     const callDepth = this.options.callDepth ?? DEFAULT_CALL_DEPTH;
     const maxDepthReached = currentDepth >= maxDepth;
+    const depthUsed = currentDepth;
 
     // §19.2: Enforce delegation chain depth limit and global call_depth hard cap
     if (currentDepth > maxDelegationDepth) {
@@ -645,7 +646,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const plannerHandoff: PlannerHandoffReceipt = {
       handoffId: `${goal.goalId}:planner_handoff`,
       goalId: goal.goalId,
-      state: "ready_for_planner",
+      state: graphAnalysis.hasCycle ? "cycle_detected" : "ready_for_planner",
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };
@@ -677,7 +678,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       topologicallySortedTaskIds: graphAnalysis.topologicallySortedTaskIds,
       parallelTaskGroups: graphAnalysis.parallelTaskGroups,
       criticalPathTaskIds: graphAnalysis.criticalPathTaskIds,
-      depthUsed: currentDepth,
+      depthUsed: depthUsed,
       maxDepthReached,
       lifecycleState,
       goalGraphDraft,

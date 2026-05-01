@@ -675,7 +675,10 @@ export class HaCoordinatorService {
    */
   verifyWriteAuthority(presentedFencingToken: number): boolean {
     const latestEpoch = this.getLatestEpoch();
-    return presentedFencingToken >= latestEpoch.fencingToken;
+    // R16-16 FIX: Use > instead of >= to reject stale writes
+    // An old leader with the current token must be rejected; only a token GREATER
+    // than the current token indicates a newer epoch
+    return presentedFencingToken > latestEpoch.fencingToken;
   }
 
   /**

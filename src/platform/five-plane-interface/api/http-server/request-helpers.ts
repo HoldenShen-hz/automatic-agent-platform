@@ -16,7 +16,7 @@ export const MAX_BODY_BYTES = 1_048_576;
 
 export function matchRoute(request: ApiRequestLike): RouteMatch | null {
   const method = request.method ?? "GET";
-  if (method !== "GET" && method !== "POST" && method !== "PATCH" && method !== "DELETE" && method !== "OPTIONS") {
+  if (method !== "GET" && method !== "POST" && method !== "PATCH" && method !== "DELETE" && method !== "OPTIONS" && method !== "PUT") {
     return null;
   }
   const rawUrl = request.url ?? "/";

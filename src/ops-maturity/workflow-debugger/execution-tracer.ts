@@ -176,10 +176,12 @@ export class ExecutionTracer {
       totalDurationMs,
     };
 
-    // Remove from activeTraces to prevent memory leak
+    // Issue #1914 P1: Remove from activeTraces to prevent memory leak.
+    // The trace was already being deleted from activeEvents but not activeTraces.
     this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
+    this.eventStartTimes.delete(traceId);
 
     return updated;
   }
@@ -198,15 +200,17 @@ export class ExecutionTracer {
       totalDurationMs: null,
     };
 
-    // Remove from activeTraces to prevent memory leak
+    // Issue #1914 P1: Remove from activeTraces to prevent memory leak.
     this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
+    this.eventStartTimes.delete(traceId);
 
     return updated;
   }
 
   public getTrace(traceId: string): ExecutionTrace | null {
+    // First check active traces
     const trace = this.activeTraces.get(traceId);
     if (trace) {
       return {
@@ -215,16 +219,13 @@ export class ExecutionTracer {
       };
     }
 
-    // Check events for traces no longer in activeTraces (e.g., completed/aborted traces)
-    // Note: stopTrace/abortTrace now remove from activeTraces, so this handles
-    // the case where a trace was stopped but we still want to retrieve its final state
-    const events = this.activeEvents.get(traceId);
-    if (events) {
-      // Trace is not in activeTraces but has events - this shouldn't happen
-      // with current implementation, but handle it defensively
-      return null;
-    }
-
+    // Issue #1915 P1: Second branch was returning null even when events existed.
+    // If a trace was completed/aborted via stopTrace/abortTrace, those traces
+    // are no longer in activeTraces but their events were already transferred
+    // to the returned trace object. So we should return null here (trace fully
+    // stopped and events collected). The bug was the comment misleadingly
+    // suggested this case "shouldn't happen" when in fact it IS the normal
+    // completion path - the events were already moved out at that point.
     return null;
   }
 

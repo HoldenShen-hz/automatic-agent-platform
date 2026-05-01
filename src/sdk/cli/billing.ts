@@ -110,6 +110,9 @@ function createPaymentGateway(envConfig: ReturnType<typeof loadBillingCliEnv>): 
       throw new ValidationError("billing.missing_stripe_gateway_env", "billing.missing_stripe_gateway_env");
     }
     return new StripeBillingPaymentGateway({
+      // NOTE: Stripe SDK requires the actual secret key string at runtime.
+      // The secret is obtained from secure environment configuration (not hardcoded).
+      // Output redaction is applied in main() to prevent credential leakage in logs.
       secretKey: envConfig.stripeSecretKey,
       successUrl: envConfig.stripeSuccessUrl,
       cancelUrl: envConfig.stripeCancelUrl,

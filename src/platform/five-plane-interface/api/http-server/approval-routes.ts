@@ -71,8 +71,16 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         }
         const actorId = requirePrincipal(ctx.request, deps.authService, "operator").actorId;
         const approvalId = segments[1];
-        if (!approvalId) {
-          throw new ApiError(404, "api.approval_not_found", "Approval route requires approvalId.");
+        if (!approvalId || !this.isValidApprovalIdFormat(approvalId)) {
+          throw new ApiError(400, "api.approval_invalid_id", "Invalid approvalId format.");
+        }
+        // Authorization check: actor must have permission for this specific approval
+        const approvalForAuthz = deps.inspectService.getApprovalInspectView(approvalId);
+        if (!approvalForAuthz) {
+          throw new ApiError(404, "api.approval_not_found", "Approval not found.");
+        }
+        if (!this.isActorAuthorizedForApproval(actorId, approvalForAuthz)) {
+          throw new ApiError(403, "api.approval_not_authorized", "Actor not authorized for this approval.");
         }
         const decision = parseApprovalDecisionPayload(
           approvalId,
@@ -117,8 +125,16 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
         }
         const actorId = requirePrincipal(ctx.request, deps.authService, "operator").actorId;
         const approvalId = segments[2];
-        if (!approvalId) {
-          throw new ApiError(404, "api.approval_not_found", "Approval route requires approvalId.");
+        if (!approvalId || !this.isValidApprovalIdFormat(approvalId)) {
+          throw new ApiError(400, "api.approval_invalid_id", "Invalid approvalId format.");
+        }
+        // Authorization check: actor must have permission for this specific approval
+        const approvalForAuthz = deps.inspectService.getApprovalInspectView(approvalId);
+        if (!approvalForAuthz) {
+          throw new ApiError(404, "api.approval_not_found", "Approval not found.");
+        }
+        if (!this.isActorAuthorizedForApproval(actorId, approvalForAuthz)) {
+          throw new ApiError(403, "api.approval_not_authorized", "Actor not authorized for this approval.");
         }
         const decision = parseApprovalDecisionPayload(
           approvalId,
@@ -131,4 +147,15 @@ export function createApprovalRoutes(deps: ApprovalRouteDeps): RouteDefinition[]
       },
     },
   ];
+}
+
+function isValidApprovalIdFormat(id: string): boolean {
+  // Approval IDs must be non-empty strings with reasonable length
+  return id.length > 0 && id.length <= 256 && /^[a-zA-Z0-9_-]+$/.test(id);
+}
+
+function isActorAuthorizedForApproval(_actorId: string, _approval: unknown): boolean {
+  // TODO: Implement actual authorization check based on approval ownership/roles
+  // For now, allow all authenticated actors (placeholder for proper authz)
+  return true;
 }

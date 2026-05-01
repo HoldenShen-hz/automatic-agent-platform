@@ -5,5 +5,8 @@
   "remoteWorkerRegistration": {
     "challengeTtlMs": 300000,
     "allowedCapabilities": ["edit"]
+  },
+  "pluginCapabilities": {
+    "allowedCapabilities": ["edit", "read", "invoke_tool"]
   }
 }

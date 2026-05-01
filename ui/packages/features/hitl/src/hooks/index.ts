@@ -30,10 +30,14 @@ export interface HitlVm {
 }
 
 // Default mock items for when no client is provided
+// NOTE: These are fallback items for development only. Production should always use client.
 const DEFAULT_HITL_ITEMS: readonly HitlItem[] = [
-  { id: "inspect-default", type: "approval", title: "Inspect", description: "查看当前 PlanBundle、Context 和执行状态。" },
-  { id: "takeover-default", type: "approval", title: "Takeover", description: "接管执行并写入人工操作记录。" },
-  { id: "resume-default", type: "resume", title: "Resume", description: "支持 normal、replan、supervised、abort 四种恢复模式。" },
+  { id: "inspect-default", type: "approval" as const, title: "Inspect", description: "查看当前 PlanBundle、Context 和执行状态。" },
+  { id: "takeover-default", type: "approval" as const, title: "Takeover", description: "接管执行并写入人工操作记录。" },
+  { id: "resume-default", type: "resume" as const, title: "Resume", description: "支持 normal、replan、supervised、abort 四种恢复模式。" },
+  { id: "edit-default", type: "approval" as const, title: "Edit", description: "修改审批参数后再提交。" },
+  { id: "escalate-default", type: "approval" as const, title: "Escalate", description: "升级审批至更高权限人员。" },
+  { id: "defer-default", type: "approval" as const, title: "Defer", description: "延迟审批至指定时间。" },
 ];
 
 /**

@@ -53,7 +53,8 @@ export class ACPInvariantEnforcer {
   }
 
   public checkDepthLimit(depth: number, maxDepth: number): boolean {
-    return depth <= maxDepth;
+    // R37-2185: Use strict inequality - child must be strictly less than max depth to be allowed
+    return depth < maxDepth;
   }
 
   public enforceAll(message: ACPMessage, context: InvariantContext): { passed: boolean; violations: string[] } {
