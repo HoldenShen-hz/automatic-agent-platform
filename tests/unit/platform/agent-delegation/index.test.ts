@@ -285,23 +285,23 @@ test("DelegationCompletedEvent type works correctly", () => {
 
 test("DelegationFailedEvent type works correctly", () => {
   const event: DelegationFailedEvent = {
-    type: "delegation.failed",
+    eventType: "delegation.failed",
     delegationId: "del-001",
-    reason: "timeout",
+    error: "timeout",
     timestamp: "2024-01-15T10:00:00Z",
   };
-  assert.equal(event.type, "delegation.failed");
-  assert.equal(event.reason, "timeout");
+  assert.equal(event.eventType, "delegation.failed");
+  assert.equal(event.error, "timeout");
 });
 
 test("DelegationOptions type works correctly", () => {
   const options: DelegationOptions = {
-    timeoutMs: 30000,
-    retryOnFailure: true,
-    maxRetries: 3,
+    maxDepth: 5,
+    maxDelegationDepth: 5,
+    maxFanout: 10,
+    defaultTimeoutMs: 30000,
   };
-  assert.equal(options.timeoutMs, 30000);
-  assert.equal(options.retryOnFailure, true);
+  assert.equal(options.defaultTimeoutMs, 30000);
 });
 
 test("createDelegationManager is exported as function", () => {
