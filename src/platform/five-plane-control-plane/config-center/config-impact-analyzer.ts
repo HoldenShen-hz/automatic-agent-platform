@@ -588,6 +588,8 @@ export class ConfigImpactAnalyzer {
    */
   private mergeSeverity(a: ImpactSeverity, b: ImpactSeverity): ImpactSeverity {
     const order: ImpactSeverity[] = ["none", "low", "medium", "high", "critical"];
-    return order[Math.max(order.indexOf(a), order.indexOf(b))];
+    const aIdx = order.indexOf(a);
+    const bIdx = order.indexOf(b);
+    return order[Math.max(aIdx >= 0 ? aIdx : 0, bIdx >= 0 ? bIdx : 0)];
   }
 }

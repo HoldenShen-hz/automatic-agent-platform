@@ -178,7 +178,7 @@ export class IdempotencyKeyMiddleware {
         statusCode: 0, // Will be updated when request completes
         responseBody: undefined,
         expiresAt,
-        tenantId,
+        ...(tenantId !== undefined && { tenantId }),
       });
 
       return { allowed: true, isDuplicate: false };

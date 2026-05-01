@@ -5,7 +5,7 @@
  * Uses a sliding window cache with request fingerprinting.
  */
 
-import { nowIso } from "../../../platform/contracts/types/ids.js";
+import { nowIso } from "../../../../platform/contracts/types/ids.js";
 
 /**
  * Request fingerprint for deduplication.

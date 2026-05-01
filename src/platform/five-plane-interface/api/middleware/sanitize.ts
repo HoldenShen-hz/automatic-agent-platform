@@ -18,7 +18,7 @@ export interface RateLimitConfig {
 /**
  * Default rate limits per endpoint class per §9.2
  */
-export const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
+export const DEFAULT_RATE_LIMITS: Record<"critical" | "standard" | "bulk", RateLimitConfig> = {
   critical: { maxRequests: 100, windowMs: 60_000, endpointClass: "critical" },
   standard: { maxRequests: 1000, windowMs: 60_000, endpointClass: "standard" },
   bulk: { maxRequests: 5000, windowMs: 60_000, endpointClass: "bulk" },

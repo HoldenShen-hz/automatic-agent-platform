@@ -33,6 +33,8 @@ function createPassingHandler(name: string, delayMs = 0): ShutdownHandler {
       if (delayMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
+      // Ensure we return a Promise that resolves properly
+      return;
     },
   };
 }
@@ -46,13 +48,13 @@ function createFailingHandler(name: string, errorMsg = "Handler failed"): Shutdo
   };
 }
 
-function createSlowHandler(name: string, delayMs: number): ShutdownHandler {
+function createSlowHandler(name: string, delayMs: number, handlerTimeoutMs?: number): ShutdownHandler {
   return {
     name,
     handler: async () => {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     },
-    timeoutMs: delayMs + 1000,
+    timeoutMs: handlerTimeoutMs,
   };
 }
 
@@ -452,26 +454,36 @@ test("shutdown() logs critical handler failure", async () => {
 // Tests: Exit Handler Integration
 // ---------------------------------------------------------------------------
 
-test("exitHandler is called with 0 on successful shutdown", async () => {
+test("exitHandler is called with 0 on successful shutdown via signal", async () => {
   let exitCode: number | undefined;
+  const signalBus = createMockSignalBus();
   const shutdown = new GracefulShutdown({
     handlers: [createPassingHandler("handler")],
+    signalBus,
     exitHandler: (code: number) => { exitCode = code; },
   });
+  shutdown.registerSignalHandlers();
 
-  await shutdown.shutdown();
+  signalBus.emit("SIGTERM");
+  // Wait for signal handling to complete
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   assert.equal(exitCode, 0);
 });
 
-test("exitHandler is called with 1 on failed shutdown", async () => {
+test("exitHandler is called with 1 on failed shutdown via signal", async () => {
   let exitCode: number | undefined;
+  const signalBus = createMockSignalBus();
   const shutdown = new GracefulShutdown({
     handlers: [createFailingHandler("handler")],
+    signalBus,
     exitHandler: (code: number) => { exitCode = code; },
   });
+  shutdown.registerSignalHandlers();
 
-  await shutdown.shutdown();
+  signalBus.emit("SIGTERM");
+  // Wait for signal handling to complete
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   assert.equal(exitCode, 1);
 });

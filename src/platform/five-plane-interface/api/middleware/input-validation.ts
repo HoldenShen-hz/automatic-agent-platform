@@ -61,7 +61,7 @@ export class ContentTypeValidation {
     }
 
     // Extract the media type without parameters (e.g., charset)
-    const mediaType = contentType.split(";")[0].trim().toLowerCase();
+    const mediaType = contentType!.split(";")[0]!.trim().toLowerCase();
     return this.config.allowedContentTypes.some(
       (allowed) => allowed.toLowerCase() === mediaType,
     );

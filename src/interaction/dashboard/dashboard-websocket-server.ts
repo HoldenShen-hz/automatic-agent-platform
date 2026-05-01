@@ -322,13 +322,12 @@ export class DashboardWebSocketServer {
       recoveryRequired: gapMessage !== undefined,
     });
 
-    const result: DashboardReconnectResult = { clientId, ack };
-    if (missedEvents !== undefined) {
-      result.missedEvents = missedEvents;
-    }
-    if (gapMessage !== undefined) {
-      result.gapMessage = gapMessage;
-    }
+    const result: DashboardReconnectResult = {
+      clientId,
+      ack,
+      ...(missedEvents !== undefined ? { missedEvents } : {}),
+      ...(gapMessage !== undefined ? { gapMessage } : {}),
+    };
     return result;
   }
 
@@ -484,7 +483,7 @@ export class DashboardWebSocketServer {
     return sentCount;
   }
 
-  private mapChangeTypeToDomainEvent(changes: readonly DashboardDelta["changes"]): DashboardPushMessageType {
+  private mapChangeTypeToDomainEvent(changes: DashboardDelta["changes"]): DashboardPushMessageType {
     if (changes.length === 0) return "dashboard_snapshot";
     const firstChange = changes[0];
     if (firstChange === undefined) return "dashboard_snapshot";

@@ -341,7 +341,7 @@ export interface HarnessStep {
   readonly latency?: number;
   readonly cost?: number;
   readonly error?: string | null;
-  readonly nextAction?: string;
+  readonly nextAction?: string | null;
 }
 
 export interface HarnessDecision {
@@ -431,7 +431,7 @@ export interface HarnessRunRuntimeState {
  * This extracts only the canonical fields for external consumption.
  */
 export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalHarnessRun {
-  return {
+  const base: CanonicalHarnessRun = {
     harnessRunId: state.harnessRunId,
     tenantId: state.tenantId,
     domainId: state.domainId,
@@ -446,8 +446,11 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     currentSeq: state.currentSeq,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
-    terminalAt: state.completedAt ?? undefined,
   };
+  if (state.completedAt != null) {
+    return { ...base, terminalAt: state.completedAt };
+  }
+  return base;
 }
 
 export interface PromptExecutionRecord {
@@ -1506,9 +1509,10 @@ export class HarnessRuntimeService {
     if (run.status === toStatus) {
       return run;
     }
-    const aggregate = {
+    const baseAggregate: CanonicalHarnessRun = {
       harnessRunId: run.harnessRunId ?? run.runId,
       tenantId: run.tenantId ?? "tenant:local",
+      domainId: run.domainId,
       confirmedTaskSpecId: run.confirmedTaskSpecId ?? `confirmed_task_spec:${run.taskId}`,
       requestEnvelopeId: run.requestEnvelopeId ?? `request_envelope:${run.taskId}`,
       requestHash: run.requestHash ?? `request_hash:${run.taskId}`,
@@ -1520,8 +1524,11 @@ export class HarnessRuntimeService {
       currentSeq: run.currentSeq ?? 0,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt ?? run.createdAt,
-      ...(run.completedAt != null ? { terminalAt: run.completedAt } : {}),
-    } satisfies CanonicalHarnessRun;
+    };
+    if (run.completedAt != null) {
+      (baseAggregate as { terminalAt?: string }).terminalAt = run.completedAt;
+    }
+    const aggregate: CanonicalHarnessRun = baseAggregate;
     const transitioned = this.stateMachine.transition({
       aggregateType: "HarnessRun",
       aggregate,

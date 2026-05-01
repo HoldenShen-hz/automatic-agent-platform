@@ -267,7 +267,7 @@ export interface EventRecord {
   idempotencyKey: string | null;
   replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
   principal: string | null;
-  evidenceRefs: readonly string[];
+  evidenceRefs?: readonly string[];
 }
 
 /**

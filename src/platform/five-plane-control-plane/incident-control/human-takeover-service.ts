@@ -494,7 +494,7 @@ export class HumanTakeoverService {
       // Handle terminal vs. non-terminal skip differently
       if (reachedTerminal) {
         // Final step skipped - complete the task with done status
-        this.store.task.updateTaskOutput(snapshot.task.id, JSON.stringify(manualOutput), now);
+        this.store.task.updateTaskOutput(snapshot.task.id, "done", JSON.stringify(manualOutput), now);
         this.store.task.setTaskState({
           taskId: snapshot.task.id,
           status: "done",
@@ -578,7 +578,7 @@ export class HumanTakeoverService {
 
       // Optionally update task output
       if (input.outputJson) {
-        this.store.task.updateTaskOutput(snapshot.task.id, input.outputJson, now);
+        this.store.task.updateTaskOutput(snapshot.task.id, input.terminalStatus, input.outputJson, now);
       }
 
       // Set task to the terminal state

@@ -372,7 +372,7 @@ test("getConfig returns HA level configuration", () => {
 // Tests: Leadership Check Methods
 // ---------------------------------------------------------------------------
 
-test("isLeader returns false when not holding leadership", () => {
+test("isLeader returns false when not holding leadership", async () => {
   const { coordinator, options } = createTestOptions(createMockCoordinator());
   const service = new LeaderElectionService(coordinator, options);
 
