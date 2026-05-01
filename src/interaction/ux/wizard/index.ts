@@ -105,7 +105,7 @@ export function restoreWizardSession(storage: Storage, key: string, stepDefiniti
  */
 export function goBackWizard(session: WizardSession): WizardSession | null {
   if (session.history.length === 0) return null;
-  const previousStepId = session.history[session.history.length - 1];
+  const previousStepId = session.history[session.history.length - 1] as string;
   return {
     ...session,
     currentStepId: previousStepId,

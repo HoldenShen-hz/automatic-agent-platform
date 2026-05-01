@@ -73,7 +73,7 @@ export function bootstrapConfiguredRegistries(options: RegistryBootstrapOptions 
   const domainLayer = normalizeObject(config.layers.domains) as DomainLayerShape;
   const domains = Array.isArray(domainLayer.domains) ? domainLayer.domains : [];
   for (const domainInput of domains) {
-    domainRegistry.register(DomainDefinitionSchema.parse(domainInput));
+    domainRegistry.register(DomainDefinitionSchema.parse(domainInput) as DomainDefinition);
   }
 
   const knowledgeLayer = normalizeObject(config.layers.knowledge) as KnowledgeLayerShape;

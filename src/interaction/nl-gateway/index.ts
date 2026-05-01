@@ -47,6 +47,8 @@ import {
   type RiskClass,
   type TaskDraft as CanonicalTaskDraft,
   type UserConfirmationReceipt as CanonicalUserConfirmationReceipt,
+  type BudgetResourceKind,
+  type JsonValue,
 } from "../../platform/contracts/executable-contracts/index.js";
 import type { ClarificationSession } from "../../platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
 
@@ -169,7 +171,7 @@ export interface NlRequestPayload {
   readonly generatedSummary: string;
 }
 
-export type RequestEnvelope = PlatformRequestEnvelope<NlRequestPayload>;
+export type NlRequestEnvelope = PlatformRequestEnvelope<NlRequestPayload>;
 
 export type ConversationState =
   | "Idle"
@@ -231,7 +233,7 @@ export interface UserConfirmationReceipt {
 }
 
 export interface TaskBuildResult {
-  readonly requestEnvelope: RequestEnvelope | null;
+  readonly requestEnvelope: NlRequestEnvelope | null;
   readonly riskPreview: RiskPreview;
   readonly costEstimate: CostEstimate;
   readonly dryRunPreview?: DryRunPreview;
@@ -906,7 +908,7 @@ export class NlEntryService implements NlEntryPort {
     const route = await this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
-      priorConversationContext: priorContext.turns.length > 0 ? priorContext : undefined,
+      ...(priorContext.turns.length > 0 ? { priorConversationContext: priorContext } : {}),
       tenantId: request.tenantId,
       traceId: buildIntakeTraceId(request, draftId),
       idempotencyKey: buildIntakeIdempotencyKey(request, draftId),
@@ -1082,8 +1084,8 @@ export class NlEntryService implements NlEntryPort {
         divisionId: detailed.suggestedDivisionId,
         workflowId: detailed.suggestedWorkflowId,
         locale: detailed.locale,
-        entities: primaryIntent.entities,
-        context: detailed.context,
+        entities: primaryIntent.entities as unknown as JsonValue,
+        context: detailed.context as unknown as JsonValue,
         summary: surfacedSummary,
       },
       missingFields: clarificationState.questions,
@@ -1096,9 +1098,7 @@ export class NlEntryService implements NlEntryPort {
         artifactId: `${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}:raw-input`,
         uri: `artifact://nl-input/${encodeURIComponent(request.tenantId)}/${encodeURIComponent(request.userId)}/${encodeURIComponent(taskDraftIdFromMessage(request.message))}`,
       },
-      expiresAt: confirmationRequired
-        ? new Date(Date.now() + 15 * 60 * 1000).toISOString()
-        : undefined,
+      ...(confirmationRequired ? { expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() } : {}),
     });
     const taskDraft: TaskDraft = {
       draftId: deriveTitle(request.message).replace(/\s+/g, "_").toLowerCase(),
@@ -1143,7 +1143,7 @@ export class NlEntryService implements NlEntryPort {
             confirmedBy: principalRef,
             riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
             confirmedAt: confirmationReceipt.timestamp ?? new Date().toISOString(),
-            expiresAt: canonicalTaskDraft.expiresAt,
+            ...(canonicalTaskDraft.expiresAt !== undefined ? { expiresAt: canonicalTaskDraft.expiresAt } : {}),
           }
         : undefined;
     const confirmedTaskSpec = confirmationRequired
@@ -1162,8 +1162,8 @@ export class NlEntryService implements NlEntryPort {
             workflowId: detailed.suggestedWorkflowId,
             continuation: detailed.continuation,
             channel: request.channel ?? null,
-            entities: primaryIntent.entities,
-            context: detailed.context,
+            entities: primaryIntent.entities as unknown as JsonValue,
+            context: detailed.context as unknown as JsonValue,
           },
           constraintPackRef: buildConstraintPackRef(canonicalDomainId, detailed.suggestedWorkflowId),
           riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
@@ -1181,7 +1181,7 @@ export class NlEntryService implements NlEntryPort {
           budgetIntent: {
             amount: Number(costEstimate.estimatedCostUsd.toFixed(4)),
             currency: "USD",
-            resourceKinds: (["llm"] as const),
+            resourceKinds: (["token"] as readonly BudgetResourceKind[]),
           },
           policyContext: {
             channel: request.channel ?? null,
@@ -1219,7 +1219,7 @@ export class NlEntryService implements NlEntryPort {
         canonicalRequestEnvelope: null,
       };
     }
-    const requestEnvelope: RequestEnvelope | null = confirmationRequired
+    const requestEnvelope: NlRequestEnvelope | null = confirmationRequired
       ? null
       : createRequestEnvelope<NlRequestPayload>({
           principal: createPlatformPrincipal({

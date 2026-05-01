@@ -337,7 +337,7 @@ export class UserPortalService implements UserPortalPort {
    * §44.5: Returns wizard steps filtered by platform mode for progressive disclosure.
    * Higher complexity steps are hidden from lower modes.
    */
-  private getWizardStepsForMode(mode: PlatformMode["mode"]): readonly DomainOnboardingWizard["steps"] {
+  private getWizardStepsForMode(mode: PlatformMode["mode"]): DomainOnboardingWizard["steps"] {
     const allSteps: DomainOnboardingWizard["steps"] = [
       {
         stepId: "business_type",

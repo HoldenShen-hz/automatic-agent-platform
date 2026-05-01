@@ -117,8 +117,8 @@ export function buildDecisionTree(
   }
 
   // Link evidence-parent as child of root
-  const rootNode = nodeMap.get("root")!;
-  nodeMap.set("root", { ...rootNode, children: [...(rootNode.children ?? []), nodeMap.get(evidenceParentId)!] });
+  const rootNodeForUpdate = nodeMap.get("root")!;
+  nodeMap.set("root", { ...rootNodeForUpdate, children: [...(rootNodeForUpdate.children ?? []), nodeMap.get(evidenceParentId)!] });
 
   // Calculate max depth via recursive traversal
   let maxDepth = 0;

@@ -4,12 +4,12 @@ import type {
   BudgetLedger,
   BudgetResourceKind,
 } from "../../platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
+import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../platform/five-plane-execution/budget-allocator.js";
 import type { Goal, PlannedTask, TaskDependency } from "./index.js";
 
 // Default budget allocator context settings for goal decomposition
-const DEFAULT_BUDGET_CONTEXT = {
-  tier: "step" as const,
+const DEFAULT_BUDGET_CONTEXT: Omit<BudgetAllocatorContext, "tenantId" | "traceId" | "emittedBy"> = {
+  tier: BudgetTier.STEP,
   tierLimit: 100,
   watermarkAlert: { warningThreshold: 0.7, criticalThreshold: 0.9, hardCapThreshold: 1.0 },
   autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.1 },
@@ -75,6 +75,12 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
         resourceKind: this.options.budgetControl.resourceKind ?? "token",
         expiresAt: this.options.budgetControl.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         expectedVersion: this.options.budgetControl.ledger.version,
+        context: {
+          ...DEFAULT_BUDGET_CONTEXT,
+          tenantId: this.options.budgetControl.tenantId,
+          traceId: this.options.budgetControl.traceId,
+          emittedBy: this.options.budgetControl.emittedBy,
+        },
       });
 
     try {
@@ -95,6 +101,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           reservation: reservedBudget.reservation,
           actualAmount: Number(this.options.budgetControl!.estimatedCostUsd.toFixed(4)),
           context: {
+            ...DEFAULT_BUDGET_CONTEXT,
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,
@@ -132,13 +139,11 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
               confidence,
               sampleCount: confidence === "medium" ? 3 : 1,
               divisionId: null,
-              basedOn: "llm_plan_proportional",
+              basedOn: "default" as const,
             },
             constraintEnvelope: {
               budgetLimitUsd: taskBudgetAllocation > 0 ? Number(taskBudgetAllocation.toFixed(4)) : null,
-              budgetAllocations: taskBudgetAllocation > 0
-                ? [{ taskId: `${goal.goalId}:llm:${index + 1}`, budgetUsd: Number(taskBudgetAllocation.toFixed(4)), riskMultiplier: 1.0 }]
-                : undefined,
+              ...((taskBudgetAllocation > 0) ? { budgetAllocations: [{ taskId: `${goal.goalId}:llm:${index + 1}`, budgetUsd: Number(taskBudgetAllocation.toFixed(4)), riskMultiplier: 1.0 }] } : {}),
               riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
               requiresApproval: false,
               requiredPermissions: [],
@@ -159,6 +164,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           reservation: reservedBudget.reservation,
           reasonCode: "budget.goal_decomposer_llm_plan_failed",
           context: {
+            ...DEFAULT_BUDGET_CONTEXT,
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,

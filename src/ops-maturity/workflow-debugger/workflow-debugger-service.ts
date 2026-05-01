@@ -210,8 +210,19 @@ export class WorkflowDebuggerService {
     return input.planGraphId ?? input.workflowId ?? "";
   }
 
+  private resolveNodeRunIdFromBreakpoint(input: Pick<DebugBreakpointDefinition, "nodeRunSelector" | "stepSelector">): string {
+    return input.nodeRunSelector ?? input.stepSelector ?? "";
+  }
+
+  private resolveNodeRunIdFromFrame(input: Pick<WorkflowTraceFrame, "nodeRunId" | "stepId">): string {
+    return input.nodeRunId ?? input.stepId ?? "";
+  }
+
   private resolveNodeRunId(input: Pick<DebugBreakpointDefinition, "nodeRunSelector" | "stepSelector"> | Pick<WorkflowTraceFrame, "nodeRunId" | "stepId">): string {
-    return input.nodeRunSelector ?? input.stepSelector ?? input.nodeRunId ?? input.stepId ?? "";
+    if ("nodeRunSelector" in input || "stepSelector" in input) {
+      return this.resolveNodeRunIdFromBreakpoint(input as Pick<DebugBreakpointDefinition, "nodeRunSelector" | "stepSelector">);
+    }
+    return this.resolveNodeRunIdFromFrame(input as Pick<WorkflowTraceFrame, "nodeRunId" | "stepId">);
   }
 
   public registerBreakpoint(

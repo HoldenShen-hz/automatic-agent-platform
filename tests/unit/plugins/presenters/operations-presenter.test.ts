@@ -3,11 +3,6 @@ import test from "node:test";
 
 import { createOperationsPresenterPlugin } from "../../../../src/plugins/presenters/operations-presenter.js";
 
-test("OperationsPresenter type exports are correct", () => {
-  const plugin = createOperationsPresenterPlugin();
-  assert.ok(plugin !== undefined);
-});
-
 test("OperationsPresenter has correct plugin metadata", () => {
   const plugin = createOperationsPresenterPlugin();
 
@@ -197,4 +192,35 @@ test("OperationsPresenter.formatOutput formats multiple outputs correctly", asyn
   assert.equal(result.sections.length, 2);
   assert.ok(result.citations.includes("ref_1"));
   assert.ok(result.citations.includes("ref_2"));
+});
+
+test("OperationsPresenter.formatOutput summary uses singular for single step", async () => {
+  const plugin = createOperationsPresenterPlugin();
+
+  const result = await plugin.formatOutput({
+    machineOutputs: [{
+      stepId: "single_step",
+      outputRef: null,
+      payload: { type: "incident", severity: "low", system: "api", description: "Minor" },
+    }],
+    artifacts: [],
+    audience: "operator",
+  });
+
+  assert.ok(result.summary.includes("1 step processed"));
+});
+
+test("OperationsPresenter.formatOutput summary uses plural for multiple steps", async () => {
+  const plugin = createOperationsPresenterPlugin();
+
+  const result = await plugin.formatOutput({
+    machineOutputs: [
+      { stepId: "step_1", outputRef: null, payload: { type: "incident", severity: "low", system: "web", description: "Issue" } },
+      { stepId: "step_2", outputRef: null, payload: { type: "runbook", title: "Fix", steps: ["A"] } },
+    ],
+    artifacts: [],
+    audience: "operator",
+  });
+
+  assert.ok(result.summary.includes("2 steps processed"));
 });

@@ -67,8 +67,8 @@ export class OpsMaturityScoreService {
 
     const score: OpsMaturityScore = {
       scoreId: newId("maturity_score"),
-      agentId: input.agentId,
-      domainId: input.domainId,
+      ...(input.agentId !== undefined && { agentId: input.agentId }),
+      ...(input.domainId !== undefined && { domainId: input.domainId }),
       dimensions,
       overallScore,
       riskFlags,

@@ -224,6 +224,14 @@ export class FeedbackQualityGrader {
           payload: { reasonCode: sig.learningType },
           stepOutputRefs: sig.evidenceRefs,
           timestamp: sig.generatedAt,
+          trustScore: {
+            overallScore: 0.5,
+            sourceReliability: 0.6,
+            historicalAccuracy: 0.5,
+            adversarialRisk: "low" as const,
+            passedSanityCheck: false,
+          },
+          evidenceRefs: sig.evidenceRefs,
         });
       }
       return result;

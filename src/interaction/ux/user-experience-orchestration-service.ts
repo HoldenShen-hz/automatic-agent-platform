@@ -4,6 +4,7 @@ import {
   type DraggableComponent,
   type UserPortalContext,
   type UserPortalSession,
+  type VisualWorkflowBuilder,
 } from "./onboarding/index.js";
 import { WorkflowBuilderService } from "./workflow-builder-service.js";
 import { applyInteractionTemplate, type InteractionTemplate } from "./template-engine/index.js";
@@ -99,10 +100,10 @@ export class UserExperienceOrchestrationService {
   }
 
   // R7-37 fix: convert builder canvas to canonical DAG planGraph
-  private convertBuilderToPlanGraph(builder: { builder: { canvas: { nodes: unknown[]; edges: unknown[] }; template: { steps: unknown[] } } }): WorkflowBuilderDraft["planGraph"] {
-    const canvasNodes = builder.builder.canvas.nodes as Array<Record<string, unknown>>;
-    const canvasEdges = builder.builder.canvas.edges as Array<Record<string, unknown>>;
-    const templateSteps = builder.builder.template.steps as string[];
+  private convertBuilderToPlanGraph(builder: { builder: VisualWorkflowBuilder; template: InteractionTemplate }): WorkflowBuilderDraft["planGraph"] {
+    const canvasNodes = builder.builder.canvas.nodes as unknown as Array<Record<string, unknown>>;
+    const canvasEdges = builder.builder.canvas.edges as unknown as Array<Record<string, unknown>>;
+    const templateSteps = builder.template.steps as unknown as string[];
 
     // Build nodes from canvas nodes
     const nodes = canvasNodes.map((node, idx) => ({

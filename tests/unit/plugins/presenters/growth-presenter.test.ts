@@ -3,11 +3,6 @@ import test from "node:test";
 
 import { createGrowthPresenterPlugin } from "../../../../src/plugins/presenters/growth-presenter.js";
 
-test("GrowthPresenter type exports are correct", () => {
-  const plugin = createGrowthPresenterPlugin();
-  assert.ok(plugin !== undefined);
-});
-
 test("GrowthPresenter has correct plugin metadata", () => {
   const plugin = createGrowthPresenterPlugin();
 

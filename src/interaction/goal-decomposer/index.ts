@@ -462,8 +462,8 @@ function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[], tas
 
   return {
       budgetLimitUsd,
-      budgetAllocations: budgetAllocations ?? undefined,
-      riskPropagation: riskPropagation ?? undefined,
+      ...(budgetAllocations !== undefined && budgetAllocations.length > 0 ? { budgetAllocations } : {}),
+      ...(riskPropagation !== undefined && riskPropagation.length > 0 ? { riskPropagation } : {}),
       riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high" as const,
       requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
       requiredPermissions: requiredPermissions,
@@ -555,8 +555,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     const constraintEnvelope: GoalConstraintEnvelope = {
       budgetLimitUsd: rawConstraintEnvelope.budgetLimitUsd,
-      budgetAllocations: budgetAllocations.length > 0 ? budgetAllocations : undefined,
-      riskPropagation: riskPropagation.length > 0 ? riskPropagation : undefined,
+      ...(budgetAllocations.length > 0 ? { budgetAllocations } : {}),
+      ...(riskPropagation.length > 0 ? { riskPropagation } : {}),
       riskTolerance: rawConstraintEnvelope.riskTolerance,
       requiresApproval: rawConstraintEnvelope.requiresApproval,
       requiredPermissions: rawConstraintEnvelope.requiredPermissions,

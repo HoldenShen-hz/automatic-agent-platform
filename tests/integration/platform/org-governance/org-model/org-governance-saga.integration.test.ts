@@ -4,7 +4,7 @@ import {
   OrgGovernanceSaga,
   type OrgGovernanceSagaStep,
 } from "../../../../../src/org-governance/org-model/org-governance-saga.js";
-import type { OrgNode } from "../../../../../src/org-governance/org-model/hierarchy/index.js";
+import type { OrgNode } from "../../../../../src/org-governance/org-model/org-node/index.js";
 
 function mockOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {

@@ -56,7 +56,7 @@ export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
 export interface PlatformRootSummary {
-  readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary>;
+  readonly architecture: ReturnType<typeof buildPlatformArchitectureBootstrapSummary> | null;
   readonly domains: {
     readonly startupOrder: readonly string[];
     readonly totalCapabilityCount: number;

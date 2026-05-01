@@ -48,7 +48,7 @@ export * from "./oapeflir-harness-mapping.js";
 export * from "./recovery-controller.js";
 export * from "./toolbelt-assembler.js";
 
-export type HarnessRole = "planner" | "generator" | "evaluator" | "hitl_operator" | "loop_controller";
+export type HarnessRole = "planner" | "generator" | "evaluator" | "hitl_operator" | "loop_controller" | "learner" | "release_manager";
 export type HarnessDecisionAction =
   | "accept"
   | "retry_same_plan"
@@ -739,7 +739,7 @@ export class HarnessRuntimeService {
       latency: input.latency,
       cost: input.cost,
       error: input.error ?? null,
-      nextAction: input.nextAction ?? undefined,
+      nextAction: input.nextAction ?? null,
     };
     return {
       ...run,

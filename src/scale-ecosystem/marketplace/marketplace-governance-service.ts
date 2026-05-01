@@ -543,13 +543,13 @@ export class MarketplaceGovernanceService {
     }
 
     // Package must be approved before publication (only if review was required)
-    if (requiresReview && reviewRecord.status !== "approved") {
+    if (requiresReview && reviewRecord!.status !== "approved") {
       throw new PolicyDeniedError("marketplace.review_not_approved", "marketplace.review_not_approved", {
         retryable: false,
         details: {
           packageId: packageRecord.packageId,
-          reviewId: reviewRecord.reviewId,
-          reviewStatus: reviewRecord.status,
+          reviewId: reviewRecord!.reviewId,
+          reviewStatus: reviewRecord!.status,
         },
       });
     }

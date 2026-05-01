@@ -60,6 +60,9 @@ test("ApprovalRoutingService.route applies delegation when in scope and active",
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: true,
+        delegationType: "manager_cover",
+        conflictOfInterestApproverIds: [],
+        coiReviewStatus: "passed",
       },
     ],
   });
@@ -88,6 +91,9 @@ test("ApprovalRoutingService.route does not apply inactive delegation", () => {
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: false, // Inactive
+        delegationType: "manager_cover",
+        conflictOfInterestApproverIds: [],
+        coiReviewStatus: "passed",
       },
     ],
   });
@@ -115,6 +121,9 @@ test("ApprovalRoutingService.route does not apply expired delegation", () => {
         startsAt: "2026-01-01T00:00:00.000Z",
         expiresAt: "2026-03-01T00:00:00.000Z", // Expired
         active: true,
+        delegationType: "manager_cover",
+        conflictOfInterestApproverIds: [],
+        coiReviewStatus: "passed",
       },
     ],
   });
@@ -142,6 +151,9 @@ test("ApprovalRoutingService.route does not apply delegation outside scope", () 
         startsAt: "2026-04-01T00:00:00.000Z",
         expiresAt: "2026-12-31T00:00:00.000Z",
         active: true,
+        delegationType: "manager_cover",
+        conflictOfInterestApproverIds: [],
+        coiReviewStatus: "passed",
       },
     ],
   });
@@ -160,12 +172,15 @@ test("ApprovalRoutingService.route does not apply delegation outside scope", () 
 test("ApprovalRoutingService.route applies escalation when threshold exceeded", () => {
   const service = new ApprovalRoutingService({
     orgNodes,
+    delegations: [],
     escalationRules: [
       {
         ruleId: "esc_1",
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
+        escalateToParentManager: false,
+        escalationLevel: 1,
       },
     ],
   });
@@ -191,6 +206,8 @@ test("ApprovalRoutingService.route does not escalate when time threshold not met
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
+        escalateToParentManager: false,
+        escalationLevel: 1,
       },
     ],
   });
@@ -215,6 +232,8 @@ test("ApprovalRoutingService.route does not escalate for low risk when rule targ
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
+        escalateToParentManager: false,
+        escalationLevel: 1,
       },
     ],
   });
@@ -473,6 +492,9 @@ test("ApprovalRoutingService applies delegation and escalation", () => {
         startsAt: "2026-04-20T00:00:00.000Z",
         expiresAt: "2026-04-21T00:00:00.000Z",
         active: true,
+        delegationType: "manager_cover",
+        conflictOfInterestApproverIds: [],
+        coiReviewStatus: "passed",
       },
     ],
     escalationRules: [
@@ -481,6 +503,8 @@ test("ApprovalRoutingService applies delegation and escalation", () => {
         triggerAfterMinutes: 30,
         escalateToApproverId: "vp_ops",
         appliesToRiskLevels: ["high", "critical"],
+        escalateToParentManager: false,
+        escalationLevel: 1,
       },
     ],
   });

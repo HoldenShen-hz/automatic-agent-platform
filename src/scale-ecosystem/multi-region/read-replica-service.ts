@@ -7,8 +7,8 @@
  * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §52.3
  */
 
-import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
-import { StructuredLogger } from "../../../platform/shared/observability/structured-logger.js";
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 
 const replicaLogger = new StructuredLogger({ retentionLimit: 200 });
 

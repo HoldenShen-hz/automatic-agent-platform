@@ -388,7 +388,7 @@ export class PackSecurityService {
     if (sourceUri.startsWith("data:")) {
       try {
         const [header, payload] = sourceUri.split(",", 2);
-        if (payload == null) {
+        if (payload == null || header == null) {
           throw new Error("missing payload");
         }
         const sourceCode = header.includes(";base64")

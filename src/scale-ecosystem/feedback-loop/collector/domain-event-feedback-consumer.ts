@@ -192,8 +192,9 @@ export class DomainEventFeedbackConsumer {
     severity: FeedbackSignal["severity"],
     payload: Record<string, unknown>,
   ): FeedbackSignal {
+    const signalId = newId("signal");
     return {
-      signalId: newId("signal"),
+      signalId,
       taskId: buildSyntheticTaskId(this.scopeFor(envelope)),
       source: "system",
       category,
@@ -201,6 +202,14 @@ export class DomainEventFeedbackConsumer {
       payload,
       stepOutputRefs: [stepOutputRef],
       timestamp: Date.parse(envelope.event.createdAt),
+      trustScore: {
+        overallScore: 0.5,
+        sourceReliability: 0.7,
+        historicalAccuracy: 0.5,
+        adversarialRisk: "low",
+        passedSanityCheck: true,
+      },
+      evidenceRefs: [signalId],
     };
   }
 }
