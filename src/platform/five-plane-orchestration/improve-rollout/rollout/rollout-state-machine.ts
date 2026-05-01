@@ -35,6 +35,8 @@ const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus
   candidate_created: ["under_review", "draft", "rejected"],
   under_review: ["draft", "pending_approval", "rejected"],
   evaluation_enabled: ["canary_5", "partial_25", "stable_75", "stable_100", "rolled_back", "paused"],
+  // Additional states from RolloutStatus that may not have explicit transitions defined
+  // they fall back to the default behavior via the switch statement in inferStatusFromLevel
 };
 
 export class RolloutStateMachine {
@@ -150,10 +152,11 @@ function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
     case "candidate_created":
     case "under_review":
     case "evaluation_enabled":
+      return "off";
     case "stable_75":
+      return "partial_75";
     case "stable_100":
     case "released":
-      // These statuses represent non-progressive states, use "off" as default
-      return "off";
+      return "stable";
   }
 }

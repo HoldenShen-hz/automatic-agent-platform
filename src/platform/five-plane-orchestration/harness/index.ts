@@ -1547,7 +1547,7 @@ export class HarnessRuntimeService {
       budgetPrecondition?: { reservationId: string; hardCapSatisfied: true };
     } = {
       aggregateType: "HarnessRun",
-      aggregate,
+      aggregate: baseAggregate,
       fromStatus: run.status,
       toStatus,
       expectedSeq: run.currentSeq ?? 0,
