@@ -164,13 +164,14 @@ export function calculateFreshness(
   }
 
   // Apply access boost (each hit slows decay)
-  // R16-16 FIX: Logarithmic access boost to prevent freshness saturation
-  // Instead of exponential (1 + boost)^hitCount which quickly saturates to 1.0,
-  // use logarithmic boost that slows decay but doesn't override decay entirely
-  // boost = 1 + accessBoostFactor * log(1 + hitCount)
+  // R16-16 FIX: Additive access boost to prevent freshness saturation
+  // Multiplicative boost (freshness * accessBoost) with high hitCount drives freshness to 1.0
+  // regardless of age, violating the 6-layer model where frequent memories should still decay.
+  // Additive boost: boost = minFreshness + accessBoostFactor * log(1 + hitCount)
+  // This gives a modest increase that doesn't override the base freshness from decay.
   const hitCount = memory.hitCount ?? 0;
-  const accessBoost = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
-  freshness = freshness * accessBoost;
+  const accessBoost = config.minFreshness + config.accessBoostFactor * Math.log(1 + hitCount);
+  freshness = freshness + accessBoost;
 
   // Clamp to minFreshness
   return Math.max(config.minFreshness, Math.min(1.0, freshness));

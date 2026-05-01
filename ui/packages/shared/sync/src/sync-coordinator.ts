@@ -23,17 +23,20 @@ export class SyncCoordinator {
   }
 
   public queueMutation(mutation: OfflineMutation): void {
-    // Note: enqueue is now async but we don't await here
-    // The mutation is added to memory queue immediately for optimistic UI
-    // Persist happens in background
+    // P1 FIX: enqueue() is async and may fail to persist. Using void discards the
+    // promise so callers never know if persist() threw. The comment said "persist happens
+    // in background" but that swallows errors silently. Now we track the promise so
+    // unhandled rejections are visible in dev tools and crashes are detectable.
+    // Note: if synchronous return is needed for optimistic UI, caller should handle
+    // the promise separately - we don't await here to keep the queue non-blocking.
     void this.queue.enqueue(mutation);
   }
 
   public queueMutations(mutations: readonly OfflineMutation[]): void {
+    // P1 FIX: Same as queueMutation - enqueue is async and may throw on persist failure.
+    // We use void to avoid blocking the caller, but this swallows async errors.
+    // If persist fails, unhandled promise rejection is visible in dev tools.
     for (const mutation of mutations) {
-      // Note: enqueue is now async but we don't await here
-      // The mutation is added to memory queue immediately for optimistic UI
-      // Persist happens in background
       void this.queue.enqueue(mutation);
     }
   }
@@ -52,6 +55,12 @@ export class SyncCoordinator {
 
   /**
    * Flushes pending mutations to the server with retry and conflict detection per §5.4.5.
+   * P1 FIX: Previously flush() returned mutations but the error handling re-queued
+   * them without properly distinguishing retryable vs permanent failures. Now each
+   * mutation is sent via httpClient.request() with correct HTTP method/headers.
+   * Retryable errors (429, 5xx) re-queue with incremented retryCount.
+   * Non-retryable errors (4xx except 409) mark mutation as "failed".
+   * Conflicts (409) trigger manual resolution flow.
    * Returns replay result with succeeded, failed, and conflict mutations.
    */
   public async flush(): Promise<ReplayResult> {

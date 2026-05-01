@@ -3,8 +3,8 @@ import type { ElectronBridge } from "@aa/shared-platform";
 export const electronPreloadApi = {
   shell: {
     openExternal: "shell:openExternal",
-    run: "shell:run",
-    spawn: "shell:spawn",
+    // §185-2162: shell:run and shell:spawn removed - these expose arbitrary shell execution
+    // risk to renderer process. Only predefined safe commands via shell:openExternal are allowed.
   },
   window: {
     minimize: "window:minimize",
@@ -31,14 +31,8 @@ export const electronPreloadApi = {
 } as const;
 
 export function installElectronBridge(target: Window, bridge: ElectronBridge): void {
-  if (typeof target.hasOwnProperty === "function" && target.hasOwnProperty("__AA_ELECTRON__")) {
-    console.warn("[ElectronBridge] __AA_ELECTRON__ already defined, skipping install");
-    return;
-  }
-  Object.defineProperty(target, "__AA_ELECTRON__", {
-    value: bridge,
-    writable: false,
-    configurable: false,
-    enumerable: true,
-  });
+  // §210-2487: Root cause - direct Object.defineProperty bypasses contextBridge security model
+// when contextIsolation is enabled, exposing the full bridge object to renderer.
+// Fix: Use contextBridge.exposeInMainWorld for proper IPC channel isolation.
+  contextBridge.exposeInMainWorld("__AA_ELECTRON__", bridge);
 }

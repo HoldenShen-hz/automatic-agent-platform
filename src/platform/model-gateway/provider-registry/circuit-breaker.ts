@@ -49,6 +49,8 @@ export interface CircuitBreakerOptions {
   monitorWindowMs?: number;
   /** Optional callback for state change events per §9.4 */
   onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
+  /** Minimum sample size before failure rate is considered reliable (default: 10) */
+  minSampleSize?: number;
 }
 
 /**
@@ -79,6 +81,8 @@ export class CircuitBreaker {
   private readonly resetTimeoutMs: number;
   private readonly halfOpenSuccessThreshold: number;
   private readonly monitorWindowMs: number;
+  // §179-2097: Minimum sample size before failure rate is considered statistically reliable
+  private readonly minSampleSize: number;
 
   private state: CircuitBreakerState = "closed";
   private failures = 0;
@@ -101,6 +105,7 @@ export class CircuitBreaker {
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
+    this.minSampleSize = options.minSampleSize ?? 10;
     this.onStateChange = options.onStateChange ?? undefined;
   }
 
@@ -165,9 +170,12 @@ export class CircuitBreaker {
     // Track failure for rate-based opening
     if (this.state === "closed") {
       // Open circuit if failure threshold reached or failure rate is high
+      // §179-2097: Only consider failure rate if we have minimum sample size to be statistically reliable
+      const recentFailureRate = this.getRecentFailureRate();
+      const recentSampleCount = this.failureTimestamps.length + this.successTimestamps.length;
       if (
         this.consecutiveFailures >= this.failureThreshold ||
-        this.getRecentFailureRate() >= 0.5 // 50% failure rate
+        (recentSampleCount >= this.minSampleSize && recentFailureRate >= 0.5) // 50% failure rate
       ) {
         this.transitionTo("open");
       }

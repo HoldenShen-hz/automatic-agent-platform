@@ -166,13 +166,14 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         // If only owner is being updated (no status change), handle as owner update
         if (payload.status === undefined && payload.owner !== undefined) {
-          // Owner-only update is not a status transition - handle separately or reject
-          throw new ApiError(400, "incident.invalid_update", "Updating only owner without a status transition is not supported.");
+          // §213-2358: Owner-only update without status transition is not a valid incident update
+          // but the error message should be clear about the actual problem (not "transition to undefined")
+          throw new ApiError(400, "incident.owner_only_not_supported", "Updating only the owner without a status transition is not supported. Include a status field to transition the incident.");
         }
 
         // If status is undefined but owner is also undefined, nothing to do
         if (payload.status === undefined) {
-          throw new ApiError(400, "incident.invalid_update", "No valid update fields provided.");
+          throw new ApiError(400, "incident.no_update_fields", "No valid update fields provided. At minimum, a status transition is required.");
         }
 
         let updated: IncidentCase;

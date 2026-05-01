@@ -106,9 +106,26 @@ export class PluginEcosystemRuntimeService {
     connectorIds?: readonly string[];
     autoBindConnectors?: boolean;
   }): Promise<EcosystemRuntimeActivation> {
-    const plan = this.buildPlan(input);
+    // §198-2308: buildPlan called once - store result and use throughout activation
+    const plan = this.buildPlan({
+      domainId: input.domainId,
+      tenantId: input.tenantId,
+      environment: input.environment,
+      connectorIds: input.connectorIds,
+    });
+    // §198-2309: Check plugin lifecycle states - plugins not in "active" or "validated" are not ready
+    // Root cause: registered/loading/inactive/unloaded plugins were being treated as ready
     const activatedPluginIds: string[] = [];
     for (const binding of this.domains.getPluginBindings(input.domainId)) {
+      const record = this.plugins.get(binding.pluginId);
+      if (record != null) {
+        const lc = record.lifecycleState;
+        // Only skip non-ready states; allow validated and active plugins to proceed
+        if (lc !== "active" && lc !== "validated") {
+          // Plugin not fully ready - skip activation for this binding
+          continue;
+        }
+      }
       await this.plugins.ensureActive(binding.pluginId, {
         domainId: input.domainId,
         bindingId: binding.bindingId,
@@ -149,7 +166,10 @@ function toPluginTarget(
     pluginId,
     pluginType,
     lifecycleState: record?.lifecycleState ?? "missing",
-    healthy: record != null && record.lifecycleState !== "disabled" && record.lifecycleState !== "degraded",
+    // §198-2309: Plugin is only healthy if lifecycleState is "active" or "enabled"
+    // Root cause: registered/loaded plugins were considered healthy, causing ready to be true
+    // when plugins aren't actually ready for execution
+    healthy: record != null && record.lifecycleState === "active",
     runtimeIsolation: record?.manifest.sandbox.runtimeIsolation ?? "unknown",
     domainId,
   };

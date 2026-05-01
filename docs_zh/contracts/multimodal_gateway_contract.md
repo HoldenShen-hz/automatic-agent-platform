@@ -14,6 +14,10 @@
 ## 3. `MultimodalRequest` 最小字段
 
 - `request_id`
+- `harness_run_id` — canonical 执行关联（必填）
+- `node_run_id?` — canonical 节点关联
+- `tenant_id` — 租户关联（必填）
+- `trace_id` — trace 关联（必填）
 - `modalities`
 - `input_parts`
 - `requested_outputs`

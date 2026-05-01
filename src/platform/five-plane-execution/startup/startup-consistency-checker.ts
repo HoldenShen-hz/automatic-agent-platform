@@ -82,6 +82,8 @@ export interface RepairAction {
 export interface StartupConsistencyReport {
   checkedAt: string;
   status: StartupReportStatus;
+  /** §187-2201: When true, indicates traffic MUST be blocked when status is fail_closed */
+  trafficBlocked: boolean;
   findings: ConsistencyFinding[];
   repairActions: RepairAction[];
 }
@@ -476,9 +478,15 @@ export class StartupConsistencyChecker {
         ? "repairable"
         : "pass";
 
+    // §187-2201: Explicitly indicate traffic should be blocked for fail_closed status
+    // Root cause: fail_closed status was set but callers had no way to know traffic should be blocked
+    // Fix: Add trafficBlocked field that callers MUST respect to prevent traffic during fail_closed
+    const trafficBlocked = status === "fail_closed";
+
     return {
       checkedAt,
       status,
+      trafficBlocked,
       findings,
       repairActions,
     };

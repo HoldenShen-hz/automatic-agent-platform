@@ -12,6 +12,14 @@ export const darkTheme: CoreDesignTokens = {
     border: "#334155",
     text: "#e5e7eb",
     subtle: "#94a3b8",
+    // P2 FIX: Add missing WCAG AAA color overrides for dark theme.
+    // Root cause: darkTheme was missing accent/danger/success/warning
+    // which caused fallback to light theme values, failing contrast requirements.
+    accent: "#38d9a9",
+    danger: "#ff6b6b",
+    success: "#22c55e",
+    warning: "#fbbf24",
+    info: "#38bdf8",
   },
   shadows: {
     card: "0 10px 30px rgba(0, 0, 0, 0.18)",

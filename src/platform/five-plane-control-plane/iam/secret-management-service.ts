@@ -110,6 +110,8 @@ export class SecretManagementService {
 
   /**
    * Resolves a secret and records the usage.
+   * §167-1943 SECURITY FIX: Requires caller authorization - validates that the requestedBy
+   * subject has permissions to access this secret's scope.
    *
    * @param input - Resolution request
    * @returns The secret value with audit record
@@ -117,6 +119,8 @@ export class SecretManagementService {
   public async resolveSecret(input: ResolveManagedSecretInput): Promise<ManagedSecretResolution> {
     return this.db.transaction(async () => {
       const registry = this.requireRegistryRecord(input.secretRef);
+      // §167-1943: Authorize caller before returning secret value
+      this.authorizeSecretAccess(registry, input.requestedBy, "resolve");
       if (registry.status === "disabled" || registry.status === "revoked") {
         throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
           details: { secretRef: registry.secretRef, status: registry.status },
@@ -164,7 +168,7 @@ export class SecretManagementService {
 
   /**
    * Requires a secret value, throwing if not available.
-   * SECURITY: Always records usage audit to prevent audit bypass via direct secret access.
+   * SECURITY: Requires authorization check to prevent unauthorized secret access (issue §167-1943).
    */
   public async requireSecret(secretRef: string, context?: {
     requestedBy?: string;
@@ -174,6 +178,8 @@ export class SecretManagementService {
     executionId?: string;
   }): Promise<ManagedSecretValue> {
     const registry = this.requireRegistryRecord(secretRef);
+    // §167-1943: Authorize caller before returning secret value
+    this.authorizeSecretAccess(registry, context?.requestedBy ?? "unknown", "require");
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
         details: { secretRef: registry.secretRef, status: registry.status },
@@ -609,6 +615,71 @@ export class SecretManagementService {
       });
     }
     return lease;
+  }
+
+  /**
+   * Authorizes a secret access request based on scope.
+   * §167-1943 SECURITY FIX: Prevents unauthorized access to secrets across tenant/workspace boundaries.
+   * - system-scoped secrets require system principals
+   * - tenant-scoped secrets require matching tenant membership
+   * - workspace/worker scoped secrets require matching scope reference
+   *
+   * Root cause: Previously there was no authorization check - any caller could resolve any secret.
+   * Now we validate the requestedBy principal against the secret's scope type.
+   */
+  private authorizeSecretAccess(registry: SecretRegistryRecord, requestedBy: string, operation: string): void {
+    // System-scoped secrets require system principal identity
+    if (registry.scopeType === "system") {
+      if (!requestedBy.startsWith("system.") && !requestedBy.startsWith("service.")) {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_system_access:${registry.secretRef}`,
+          `secret.unauthorized_system_access:${registry.secretRef}`,
+          { details: { secretRef: registry.secretRef, operation, requestedBy } },
+        );
+      }
+      return;
+    }
+    // Tenant-scoped secrets require matching tenant in scopeRef
+    if (registry.scopeType === "tenant") {
+      const requestedTenant = this.extractTenantFromPrincipal(requestedBy);
+      if (requestedTenant && registry.scopeRef !== requestedTenant) {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_tenant_access:${registry.secretRef}`,
+          `secret.unauthorized_tenant_access:${registry.secretRef}`,
+          { details: { secretRef: registry.secretRef, operation, requestedBy, expectedTenant: registry.scopeRef } },
+        );
+      }
+      return;
+    }
+    // Workspace/worker scoped secrets require exact scopeRef match
+    if (registry.scopeType === "workspace" || registry.scopeType === "worker") {
+      const requestedScope = this.extractScopeFromPrincipal(requestedBy);
+      if (requestedScope && registry.scopeRef !== requestedScope) {
+        throw new PolicyDeniedError(
+          `secret.unauthorized_scope_access:${registry.secretRef}`,
+          `secret.unauthorized_scope_access:${registry.secretRef}`,
+          { details: { secretRef: registry.secretRef, operation, requestedBy, expectedScope: registry.scopeRef } },
+        );
+      }
+    }
+  }
+
+  /**
+   * Extracts tenant ID from principal identifier.
+   */
+  private extractTenantFromPrincipal(principal: string): string | null {
+    // Format: tenant:<tenantId>:<userId> or similar
+    const match = principal.match(/^tenant:([^:]+)/);
+    return match ? match[1] ?? null : null;
+  }
+
+  /**
+   * Extracts scope reference from principal identifier.
+   */
+  private extractScopeFromPrincipal(principal: string): string | null {
+    // Format: workspace:<workspaceId>:<userId> or worker:<workerId>:<userId>
+    const match = principal.match(/^(?:workspace|worker):([^:]+)/);
+    return match ? match[1] ?? null : null;
   }
 
   /**

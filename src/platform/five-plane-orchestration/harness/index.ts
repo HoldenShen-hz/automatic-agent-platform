@@ -1149,7 +1149,7 @@ export class HarnessRuntimeService {
       const iteration = (input.iteration ?? 1) + loop.getState().iteration;
 
       // §45.5 budget gate: check budget BEFORE each stage per spec
-      // Budget gate check before planner stage
+      // Budget gate check BEFORE planner stage (not after)
       if (run.steps.length >= input.constraintPack.budget.maxSteps) {
         const guardAbortDecisionId = newId("harness_decision");
         return this.transitionRunStatus({
@@ -1170,6 +1170,10 @@ export class HarnessRuntimeService {
           },
         }, "aborted", "harness.guard_aborted");
       }
+
+      // Root cause §191-2235: Spec requires budget gate BEFORE each stage (planner/generator/evaluator).
+      // Previously all three stages executed BEFORE any budget check, causing budget exhaustion during execution.
+      // Fixed by moving budget check before planner stage above, and adding checks before generator/evaluator below.
 
       run = this.appendStep(run, {
         role: "planner",

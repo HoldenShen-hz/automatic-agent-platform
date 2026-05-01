@@ -14,9 +14,12 @@ import {
   type PromptPartitionInput,
 } from "../../src/platform/execution/execution-engine/prompt-partition-cache.js";
 
+// §206-2440: Golden test uses hardcoded model identifier - extract to constant for maintainability
+const TEST_MODEL_ID = "claude-sonnet-4-6";
+
 test("golden: partitionPromptForCache produces correct structure", () => {
   const input: PromptPartitionInput = {
-    model: "claude-sonnet-4-6",
+    model: TEST_MODEL_ID,
     profileId: "default",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
@@ -28,7 +31,7 @@ test("golden: partitionPromptForCache produces correct structure", () => {
   const result = partitionPromptForCache(input);
 
   // Verify structure
-  assert.equal(result.model, "claude-sonnet-4-6");
+  assert.equal(result.model, TEST_MODEL_ID);
   assert.equal(result.profileId, "default");
   assert.equal(result.staticMessageCount, 1, "Should have 1 static (system) message");
   assert.equal(result.dynamicMessageCount, 2, "Should have 2 dynamic (user/assistant) messages");
@@ -42,7 +45,7 @@ test("golden: partitionPromptForCache produces correct structure", () => {
 
 test("golden: partitionPromptForCache is deterministic", () => {
   const input: PromptPartitionInput = {
-    model: "claude-sonnet-4-6",
+    model: TEST_MODEL_ID,
     profileId: "test-profile",
     messages: [
       { role: "system", content: "You are a helpful assistant." },

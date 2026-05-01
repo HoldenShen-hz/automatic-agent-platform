@@ -5,6 +5,16 @@ description: CI/CD pipelines, infrastructure automation, deployment, monitoring.
 priority: 45
 default_workflow: devops_single_step
 orchestration_workflow: devops_single_step
+// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
+resource_boundaries:
+  max_concurrent_tasks: 20
+  max_workflow_duration_ms: 3600000
+  memory_limit_mb: 512
+  compute_quota: "devops-standard"
+fault_domains:
+  - deployment
+  - infrastructure
+  - ci_cd
 triggers:
   - deploy
   - deployment
@@ -14,8 +24,14 @@ triggers:
   - infrastructure
   - kubernetes
   - docker
-  - monitoring
   - dockerfile
+// §171-1995: Disambiguation rules for overlap with operations division on "deployment" trigger
+disambiguate:
+  - trigger: deployment
+    conditions:
+      - context: ["ci_pipeline", "gitops", "argocd", "jenkins", "github_action"]
+        priority_boost: 10
+    notes: "DevOps owns CI/CD-driven deployments; operations owns runbook-driven incident deployments"
 roles:
   - id: devops_engineer
     name: DevOps Engineer

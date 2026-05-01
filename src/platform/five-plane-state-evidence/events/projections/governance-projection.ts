@@ -250,14 +250,10 @@ function mapEventToActionType(eventType: string, payload: Record<string, unknown
     case "decision:escalated":
       return "escalation_triggered";
     default:
-      // Try to infer from payload (only for events we explicitly recognize in switch)
-      // Unknown approval/decision events should not infer approval_granted - return null
-      if (eventType.includes("approval") || eventType.includes("decision")) return null;
-      if (eventType.includes("policy")) return "policy_updated";
-      if (eventType.includes("delegation")) return "delegation_created";
-      if (eventType.includes("compliance") || eventType.includes("violation")) return "compliance_violation";
-      if (eventType.includes("permission")) return "permission_granted";
-      if (eventType.includes("role")) return "role_assigned";
+      // §191-2247: Removed incorrect inference logic. The string includes() checks
+      // were semantically wrong (e.g., "policy:deleted" -> "policy_updated",
+      // "compliance:resolved" -> "compliance_violation"). Unknown events should
+      // return null to indicate no matching action type, not guess incorrectly.
       return null;
   }
 }

@@ -1,3 +1,10 @@
+/**
+ * EdgePlanGraphBundle - Edge runtime execution plan with explicit graph structure.
+ *
+ * @deprecated Edge runtime should use PlanGraphBundle for DAG-based execution.
+ * Linear orderedTaskIds is for simple single-task edge scenarios only.
+ * For full DAG support, migrate to PlanGraphBundle per R6-22.
+ */
 export interface EdgePlanGraphBundle {
   readonly orderedTaskIds: readonly string[];
   readonly syncRequired: boolean;

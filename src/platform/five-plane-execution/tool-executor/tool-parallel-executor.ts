@@ -367,6 +367,9 @@ export async function executeToolsInParallel<T>(
         if (settledResult.status === "fulfilled") {
           results[originalIndex] = settledResult.value;
         } else {
+          // §209-2479: Set undefined explicitly to avoid holes in array
+          // Previously error case left results[originalIndex] unset, causing holes
+          results[originalIndex] = undefined;
           errors.push({
             index: originalIndex,
             toolName: toolMetadatas[originalIndex]?.toolName ?? "unknown",
@@ -384,6 +387,8 @@ export async function executeToolsInParallel<T>(
 
     const exclusiveFn = toolFunctions[exclusiveIndex];
     if (exclusiveFn == null) {
+      // P1-2143: Mark hole explicitly so downstream consumers don't get sparse array
+      results[exclusiveIndex] = undefined;
       continue;
     }
 

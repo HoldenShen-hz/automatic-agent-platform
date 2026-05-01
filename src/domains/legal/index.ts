@@ -5,8 +5,9 @@ export const LegalTaskTypeSchema = z.enum(["review", "redline", "advise"]);
 export type LegalTaskType = z.infer<typeof LegalTaskTypeSchema>;
 
 /**
- * Domain-specific compliance guards for legal operations.
- * These guards enforce jurisdiction, privilege, and confidentiality requirements.
+ * R16-04 FIX: Domain-specific compliance guards for legal operations.
+ * These guards enforce jurisdiction, privilege, and confidentiality requirements
+ * per the knowledge boundary门 (§198-2305).
  */
 export const LEGAL_COMPLIANCE_GUARDRAILS = Object.freeze({
   /** Required jurisdiction codes for legally binding operations */

@@ -587,13 +587,11 @@ export class DashboardWebSocketServer {
       }
     }
 
-    // Remove timed-out connections to prevent unbounded memory growth and stale pushes
+    // Remove timed-out connections to prevent unbounded memory growth and stale pushes.
+    // Root cause §175-2040: previously we only marked isConnected=false but did not call
+    // unregisterClient, causing the connection to remain in connections Map and
+    // channelSubscribers Map indefinitely (unbounded memory leak).
     for (const clientId of timedOutClientIds) {
-      // Mark as disconnected first, then fully unregister
-      const connection = this.connections.get(clientId);
-      if (connection) {
-        connection.isConnected = false;
-      }
       this.unregisterClient(clientId);
     }
   }

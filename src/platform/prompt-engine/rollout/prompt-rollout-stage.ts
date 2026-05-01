@@ -1,14 +1,13 @@
 /**
- * Prompt rollout stages per §16.3:
- * canary(5%) → canary(20%) → stable
+ * Execution stages in the order specified by §16.3 canonical pipeline.
+ * canary(5%) → canary(20%) → stable → rolled_back
  *
- * Removed extra stages: draft, review, staging, shadow, partial_25, partial_50, partial_75
- * These were in the legacy implementation but are not part of the canonical pipeline.
- * The canonical pipeline uses automatic quality gates at each canary stage.
+ * Stage progression requires quality gates to pass at each stage.
+ * rolled_back is a terminal state indicating rollback occurred.
  */
 export const PROMPT_ROLLOUT_STAGES = [
-  "canary_5",
-  "canary_20",
+  "canary(5%)",
+  "canary(20%)",
   "stable",
   "rolled_back",
 ] as const;
@@ -28,9 +27,10 @@ export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRollout
   if (currentIndex < 0) {
     return null;
   }
-  // rolled_back and stable are terminal states — no further progression
-  // Also block stable→rolled_back (invalid reverse transition)
-  if (stage === "rolled_back" || stage === "stable") {
+  // §16.3: stable and rolled_back are terminal states — no further progression.
+  // stable→rolled_back is NOT a valid forward transition; stable ends the pipeline.
+  // rolled_back→stable or any backward transition is also invalid.
+  if (stage === "stable" || stage === "rolled_back") {
     return null;
   }
   // Can only advance to next stage in forward direction
@@ -45,11 +45,11 @@ export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRollout
  * If error rate exceeds these thresholds at a canary stage, auto-rollback occurs.
  */
 export const QUALITY_GATE_THRESHOLDS = {
-  canary_5: {
+  "canary(5%)": {
     maxErrorRate: 0.05,  // 5% error rate threshold for 5% canary
     minPassthrough: 0.95,
   },
-  canary_20: {
+  "canary(20%)": {
     maxErrorRate: 0.03,  // 3% error rate threshold for 20% canary (stricter)
     minPassthrough: 0.97,
   },

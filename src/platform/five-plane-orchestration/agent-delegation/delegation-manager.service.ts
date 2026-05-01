@@ -103,6 +103,7 @@ export class DelegationManagerService {
 
   /**
    * C-11: Evict expired delegation entries to prevent memory leaks.
+   * §186-2183: Only evict terminal-state delegations - never evict active delegations.
    */
   private evictExpired(): void {
     const now = Date.now();
@@ -114,10 +115,14 @@ export class DelegationManagerService {
     const expiryThreshold = now - this.ENTRY_TTL_MS;
     const entriesToDelete: string[] = [];
 
-    // Find expired delegation store entries
+    // Find expired delegation store entries - only terminal states are eligible for eviction
     for (const [key, delegation] of this.delegationStore) {
       const createdAt = new Date(delegation.createdAt).getTime();
-      if (createdAt < expiryThreshold && (delegation.status === "completed" || delegation.status === "failed" || delegation.status === "expired" || delegation.status === "cancelled")) {
+      // Root cause: eviction was removing active delegations that happened to exceed TTL
+      // Fix: Only evict delegations in terminal states (completed/failed/cancelled/expired)
+      const isTerminalState = delegation.status === "completed" || delegation.status === "failed" ||
+        delegation.status === "expired" || delegation.status === "cancelled";
+      if (createdAt < expiryThreshold && isTerminalState) {
         entriesToDelete.push(key);
       }
     }
@@ -126,7 +131,7 @@ export class DelegationManagerService {
       this.delegationStore.delete(key);
     }
 
-    // If still over capacity, remove oldest completed/failed entries
+    // If still over capacity, remove oldest terminal-state entries only
     if (this.delegationStore.size > this.MAX_ENTRIES) {
       const sortedEntries = [...this.delegationStore.entries()].sort((a, b) => {
         const aTime = new Date(a[1].createdAt).getTime();
@@ -137,7 +142,15 @@ export class DelegationManagerService {
       const toRemove = this.delegationStore.size - this.MAX_ENTRIES;
       for (let i = 0; i < toRemove; i++) {
         const key = sortedEntries[i]![0];
-        this.delegationStore.delete(key);
+        // Only remove terminal-state delegations when doing capacity eviction
+        const delegation = this.delegationStore.get(key);
+        if (delegation) {
+          const isTerminalState = delegation.status === "completed" || delegation.status === "failed" ||
+            delegation.status === "expired" || delegation.status === "cancelled";
+          if (isTerminalState) {
+            this.delegationStore.delete(key);
+          }
+        }
       }
     }
   }

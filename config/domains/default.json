@@ -92,7 +92,19 @@
           "contractId": "coding.patch",
           "name": "Coding Patch Output",
           "schema": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "patch": {
+                "type": "string",
+                "description": "The patch content to apply"
+              },
+              "filesChanged": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List of files modified by the patch"
+              }
+            },
+            "required": ["patch"]
           },
           "validationLevel": "strict"
         }

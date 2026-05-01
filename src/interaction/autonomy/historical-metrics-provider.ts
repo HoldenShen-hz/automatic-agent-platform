@@ -62,11 +62,10 @@ export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
     const successfulExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "succeeded").length;
     const failedExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
     const humanOverrides = rows.filter((r: { requires_approval: number }) => r.requires_approval === 1).length;
-    // §42: incidents are FAILED executions, not just executions with error codes
+    // §42: incidents are failed executions, not any execution that happened to log an error code.
     const incidents = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
-
-    const lastErrorRow = rows.find((r: { last_error_code: string | null }) => r.last_error_code !== null);
-    const lastIncidentAt = lastErrorRow?.created_at ?? null;
+    const lastIncidentRow = rows.find((r: { status: ExecutionStatus }) => r.status === "failed");
+    const lastIncidentAt = lastIncidentRow?.created_at ?? null;
 
     return {
       totalExecutions,

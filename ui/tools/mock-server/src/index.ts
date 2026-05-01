@@ -13,13 +13,16 @@ export function describePlannedEndpoint(id: string) {
 }
 
 export function resolveMockRequest(path: string) {
-  if (path.includes("dashboard")) {
+  // Issue #1938 P2: path.includes uses substring matching - /api/v1/tasks incorrectly matches /api/v1/tasks-archive.
+  // Use proper prefix matching with trailing slash to avoid false positives.
+  const normalized = path.endsWith("/") ? path : path + "/";
+  if (normalized.includes("/dashboard/")) {
     return defaultMockApiShape.dashboard;
   }
-  if (path.includes("tasks")) {
+  if (normalized.includes("/tasks/")) {
     return defaultMockApiShape.tasks;
   }
-  if (path.includes("workflows")) {
+  if (normalized.includes("/workflows/")) {
     return defaultMockApiShape.workflows;
   }
   return {

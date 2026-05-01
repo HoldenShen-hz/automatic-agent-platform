@@ -93,6 +93,7 @@ class MultiStepToolRegistry {
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_SPAWNED_AGENTS = 500;
   private readonly AGENT_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private readonly MAX_SPAWN_DEPTH = 10; // Issue #1907 P1: Limit spawn depth to prevent unbounded recursion
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
@@ -411,6 +412,15 @@ class MultiStepToolRegistry {
     };
 
     this.spawnDepth += 1;
+    // Issue #1907 P1: Enforce spawn depth limit to prevent stack overflow and unbounded recursion
+    if (this.spawnDepth > this.MAX_SPAWN_DEPTH) {
+      this.spawnDepth -= 1;
+      throw new ToolExecutionError(
+        "tool.spawn_depth_exceeded",
+        `Spawned agent depth ${this.spawnDepth} exceeds maximum ${this.MAX_SPAWN_DEPTH}. Possible unbounded recursion.`,
+        { toolName: "spawn-agent", retryable: false },
+      );
+    }
     try {
       const delegated = await executeAgentRoundLoop({
         stepId: state.stepId,

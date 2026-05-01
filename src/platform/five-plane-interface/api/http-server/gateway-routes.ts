@@ -160,12 +160,14 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
             throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
           }
         } else if (signature) {
-          // #2357: webhookSecret is null but signature was provided - this should not happen
-          // Log a warning since signature verification is being skipped silently
-          logger.warn("Webhook signature provided but webhookSecret is not configured - skipping verification", {
+          // §213-2357: CRITICAL SECURITY - webhookSecret is null but signature was provided.
+          // This indicates a misconfiguration where signature verification is skipped.
+          // REJECT the request instead of silently continuing.
+          logger.error("WEBHOOK SECURITY MISCONFIGURATION: signature provided but webhookSecret is not configured. Rejecting request.", {
             hasSignature: true,
             hasTimestamp: !!timestamp,
           });
+          throw new ApiError(500, "gateway.signature_config_invalid", "Webhook signature verification cannot be performed because webhookSecret is not configured. Contact system administrator.");
         }
 
         if (nonce) {

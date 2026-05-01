@@ -70,16 +70,58 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
         throw new PolicyDeniedError("egress.denied" as ErrorCode, `CRM adapter: action "${action}" denied by egress policy`);
       }
 
-      // Stub: in production this would call the CRM REST API.
-      // Return a structured response matching the expected adapter output schema.
+      if (!credentialFingerprint) {
+        throw new Error("crm_adapter.not_authenticated: authenticate() must be called before execute()");
+      }
+
+      // Build the CRM API endpoint based on action
+      const endpoint = `${apiBaseUrl}/crm/v3/objects/${action}`;
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${credentialFingerprint}`,
+        "Content-Type": "application/json",
+      };
+
+      // Make the actual CRM API call - POST for mutating actions, GET for reads
+      const isMutatingAction = ["contacts", "companies", "deals", "tickets", "line_items"].includes(action);
+      let response: Response;
+      try {
+        if (isMutatingAction && params) {
+          // Mutating actions POST to create/update
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(params),
+          });
+        } else {
+          // Read actions use GET with query params
+          const queryString = new URLSearchParams(
+            Object.entries(params).reduce((acc, [k, v]) => {
+              if (v != null) acc[k] = String(v);
+              return acc;
+            }, {} as Record<string, string>)
+          ).toString();
+          response = await fetch(`${endpoint}${queryString ? `?${queryString}` : ""}`, {
+            method: "GET",
+            headers,
+          });
+        }
+      } catch (networkErr) {
+        throw new Error(`crm_adapter.network_error: ${networkErr instanceof Error ? networkErr.message : String(networkErr)}`);
+      }
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`crm_adapter.api_error: ${response.status} ${response.statusText} - ${errorBody}`);
+      }
+
+      const responseData = await response.json() as Record<string, unknown>;
       return {
         ok: true,
-        data: {
-          action,
-          params,
-          crmType,
-          result: `CRM ${action} stub — implement ${crmType} API integration`,
-        },
+        data: responseData,
+        action,
+        params,
+        crmType,
+        result: `CRM ${action} completed`,
         latencyMs: 0,
       };
     },

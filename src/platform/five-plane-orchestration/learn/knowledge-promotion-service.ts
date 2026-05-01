@@ -95,9 +95,11 @@ export class KnowledgePromotionService {
 
     // Emit learning:knowledge_promoted event (Tier 2) for each promoted object
     // to satisfy §28 traceability requirements — each fact event must be independently traceable
+    // §186-2188: Fixed - each event now references its own object, not the first object
     if (promoted.length > 0 && this.eventPublisher) {
       const totalCount = promoted.length;
       for (const { objectId, documentId } of promoted) {
+        // Find the actual object for this promotion (not always the first one)
         const obj = learningObjects.find((o) => o.learningObjectId === objectId);
         if (!obj) {
           continue;
@@ -106,7 +108,7 @@ export class KnowledgePromotionService {
           eventType: "learning:knowledge_promoted",
           taskId,
           payload: {
-            learningObjectId: obj.learningObjectId,
+            learningObjectId: obj.learningObjectId, // Fixed: reference own objectId, not first object's
             learningType: obj.learningType,
             documentId,
             namespace: "system.learned.patterns",

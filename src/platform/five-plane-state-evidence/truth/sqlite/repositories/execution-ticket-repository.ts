@@ -332,6 +332,28 @@ export class ExecutionTicketRepository {
     );
   }
 
+  // Issue #1910 P1: Paginated version for large-scale reconciliation to prevent OOM
+  public listExecutionTicketsByStatusesPaginated(
+    statuses: ExecutionTicketRecord["status"][],
+    limit: number,
+    offset: number,
+  ): ExecutionTicketRecord[] {
+    if (statuses.length === 0) {
+      return [];
+    }
+    const placeholders = statuses.map(() => "?").join(", ");
+    return queryAll<ExecutionTicketRecord>(
+      this.conn,
+      `${EXECUTION_TICKET_SELECT}
+       WHERE status IN (${placeholders})
+       ORDER BY created_at ASC, id ASC
+       LIMIT ? OFFSET ?`,
+      ...statuses,
+      limit,
+      offset,
+    );
+  }
+
   // R6-4: Deterministic graph scheduler per §14.9
   // Orders by priority/risk_class/critical_path_rank/created_order/scheduler_seed
   // Note: critical_path_rank and scheduler_seed fields require schema migration

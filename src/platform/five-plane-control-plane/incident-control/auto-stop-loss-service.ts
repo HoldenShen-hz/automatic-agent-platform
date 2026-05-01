@@ -773,6 +773,8 @@ export class AutoStopLossService {
       const countKey = `${playbookId}_${hourKey}`;
       const currentCount = this.executionCounts.get(countKey) ?? 0;
       this.executionCounts.set(countKey, currentCount + 1);
+      // §181-2127: Clean up old hourly keys to prevent memory leak
+      this.cleanupOldExecutionCounts(hourKey);
     }
   }
 
@@ -782,6 +784,18 @@ export class AutoStopLossService {
   private getHourKey(): string {
     const now = new Date();
     return `${now.getFullYear()}${now.getMonth()}${now.getDate()}${now.getHours()}`;
+  }
+
+  /**
+   * §181-2127: Cleans up execution count entries from previous hours to prevent memory leak.
+   */
+  private cleanupOldExecutionCounts(currentHourKey: string): void {
+    for (const [key] of this.executionCounts) {
+      const keyHour = key.split("_").at(-1);
+      if (keyHour && keyHour !== currentHourKey) {
+        this.executionCounts.delete(key);
+      }
+    }
   }
 
   // ── Human Approval ──────────────────────────────────────────────────
@@ -799,16 +813,18 @@ export class AutoStopLossService {
 
     if (approved) {
       event.humanApproved = true;
-      // Re-execute the playbook actions now that human approval is granted
-      // Find the playbook to get its actions
+      // R16-36 FIX #2118: Execute approved playbook synchronously and wait for completion.
+      // Previously the code used fire-and-forget (void) which meant callers had no way
+      // to know when execution completed. This made approved playbook actions appear
+      // as no-ops to callers. Now we execute and await the result before returning.
       const playbook = this.playbooks.get(event.playbookId);
       if (playbook) {
-        // Execute the playbook actions asynchronously
-        void this.executeApprovedPlaybook(playbook, event).catch((err) => {
+        try {
+          await this.executeApprovedPlaybook(playbook, event);
+        } catch (err) {
           event.success = false;
           event.errorMessage = err instanceof Error ? err.message : String(err);
-          event.completedAt = nowIso();
-        });
+        }
       }
       return true;
     } else {

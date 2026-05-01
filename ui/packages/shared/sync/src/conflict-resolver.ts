@@ -58,7 +58,10 @@ export class ConflictResolver {
     if (isPlainObject(serverValue) && isPlainObject(localValue)) {
       return this.mergeObjects(serverValue, localValue, serverMetadata, localMetadata) as T;
     }
-    // Scalar values: use Lamport timestamp comparison
+    // §205-2413: Use vector clock comparison to determine winner.
+    // For scalar values, Lamport timestamp comparison decides.
+    // For objects, recursive merge with per-field vector clock comparison.
+    // For arrays, merge by ID with deduplication.
     const serverLamport = serverMetadata?.lamportTimestamp ?? 0;
     const localLamport = localMetadata?.lamportTimestamp ?? 0;
     return serverLamport >= localLamport ? serverValue : localValue;

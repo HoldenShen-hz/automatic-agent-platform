@@ -68,10 +68,13 @@ const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
     enforcement: "blocking",
   },
   qualityScoreWeights: {
-    successSignal: 0.35,
-    completionOutcome: 0.45,
-    failureSignal: 0.3,
-    partialSignal: 0.1,
+    // R34-36 FIX #1961: Weights sum to >1.0 (1.2), causing clamp to lose resolution.
+    // Normalized to sum to 1.0: successSignal=0.29, completionOutcome=0.38,
+    // failureSignal=0.25, partialSignal=0.08. Max possible raw score now ≈1.0.
+    successSignal: 0.29,
+    completionOutcome: 0.38,
+    failureSignal: 0.25,
+    partialSignal: 0.08,
   },
   actionThresholds: {
     // R16-18 FIX: §17.3 requires meaningful quality threshold for completion

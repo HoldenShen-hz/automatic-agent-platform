@@ -23,13 +23,17 @@
 
 ## 背景
 
+> **⚠️ DEPRECATED/REMOVED per ADR-075** — This document is retained for historical
+> reference only. The specifications below are superseded and should NOT be used.
+> ADR-075 defines the authoritative six-level state machine.
+
 §9 定义了五级发布（L0-L5）和 11 态 RolloutStatus 状态机。当前 `rollout-state-machine.ts` 仅实现了 3 态（off → suggest → shadow），无法支持渐进式发布（canary → staged → stable）和自动回滚。
 
 ## 决策
 
-> **⚠️ DEPRECATED/REMOVED per ADR-075** — The specifications below are superseded
-> and should NOT be used. ADR-075 defines the authoritative six-level state machine.
-> This document is retained for historical reference only.
+### 历史背景（已废弃）
+
+本文档定义的状态机和发布流程已由 ADR-075 替代。具体规格不再适用于当前系统。
 
 ### 十一态 RolloutStatus 枚举 (REMOVED - use ADR-075 state machine)
 

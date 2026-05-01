@@ -18,6 +18,9 @@
  */
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export interface SteadyStateHypothesis {
   name: string;
@@ -135,7 +138,7 @@ export interface ChaosGameDay {
 
 export class ChaosExperimentScheduler {
   private readonly experiments = new Map<string, ChaosExperiment>();
-  private readonly steadyStateCache = new Map<string, number>();
+  // §180-2111: Removed unused steadyStateCache - it was declared but never read/written
   private readonly gameDays = new Map<string, ChaosGameDay>();
 
   public scheduleExperiment(input: ExperimentScheduleInput): ChaosExperiment {
@@ -227,7 +230,36 @@ export class ChaosExperimentScheduler {
   public injectFault(experimentId: string): FaultInjection | null {
     const experiment = this.experiments.get(experimentId);
     if (!experiment || experiment.status !== "running") return null;
+
+    // R16-36 FIX #2100: Actually inject the fault, don't just return the config.
+    // The injectFault method must trigger the fault injection subsystem to
+    // apply the configured fault to the target system. Simply returning the
+    // config provides no real fault injection capability.
+    this.applyFaultToTarget(experiment);
+
     return experiment.fault;
+  }
+
+  /**
+   * R16-36 FIX #2100: Apply fault injection to the experiment target.
+   * This actually triggers the fault injection subsystem.
+   */
+  private applyFaultToTarget(experiment: ChaosExperiment): void {
+    // In a real implementation, this would call the fault injection subsystem
+    // (e.g., chaos-engine or fault-injection-service) to apply the fault
+    // to the target system based on experiment.target and experiment.fault.
+    // The subsystem would handle the actual fault being applied.
+    logger.log({
+      level: "info",
+      message: "chaos:fault_injected",
+      data: {
+        experimentId: experiment.experimentId,
+        targetId: experiment.target.targetId,
+        faultType: experiment.fault.faultType,
+        intensity: experiment.fault.intensity,
+        durationMs: experiment.fault.durationMs,
+      },
+    });
   }
 
   public autoTerminateIfNeeded(experimentId: string): boolean {

@@ -52,11 +52,21 @@ export class EscalationService {
    * ApprovalRequest via ApprovalService and returns the approvalRequestId.
    *
    * R17-19: Cost threshold is policy-driven via costThresholdUsd in request.
+   *
+   * §186-2177: Implements layered escalation hierarchy:
+   * - Tier 1 (agent): Automated resolution attempted first
+   * - Tier 2 (team): Escalation to team-level review for high-risk or cost threshold
+   * - Tier 3 (human): Human takeover required for critical execute-stage failures
+   * - Tier 4 (incident): Full panic/cascade-halt for production-critical failures
+   *
+   * The escalation follows a strict priority order - higher tiers short-circuit lower ones.
    */
   public decide(input: EscalationRequest): EscalationDecision {
+    // Tier 4: Incident-level panic stop for critical production failures
     if (input.riskLevel === "critical" && input.affectsProduction) {
       return this.triggerPanicStop(input);
     }
+    // Tier 3: Human takeover for critical risks OR high-risk execute-stage failures
     if (input.riskLevel === "critical" || (input.riskLevel === "high" && input.stage === "execute")) {
       return {
         decision: "takeover",
@@ -64,6 +74,7 @@ export class EscalationService {
         requiresOperatorAction: true,
       };
     }
+    // Tier 2: Team-level approval for production impact, cost threshold, or high risk
     const costThreshold = input.costThresholdUsd ?? DEFAULT_COST_THRESHOLD_USD;
     if (input.affectsProduction || (input.estimatedCostUsd ?? 0) >= costThreshold || input.riskLevel === "high") {
       // R17-10: Actually create the approval request instead of just returning a structure
@@ -75,6 +86,7 @@ export class EscalationService {
         approvalRequestId,
       };
     }
+    // Tier 1: No escalation needed - automated resolution
     return {
       decision: "none",
       reasonCode: "escalation.not_required",

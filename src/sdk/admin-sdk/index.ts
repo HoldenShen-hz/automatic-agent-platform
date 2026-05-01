@@ -242,6 +242,38 @@ export class AdminSdk {
     return this.client.post<T>("/secrets/rotate", body);
   }
 
+  // --- Audit Access ---
+
+  /**
+   * List audit log entries for a tenant.
+   * Root cause: Previously AdminSdk had no audit access, violating compliance requirements.
+   * Provides read access to audit trail for security and compliance per §18.
+   */
+  public listAuditLogs<T>(tenantId: string, options?: {
+    limit?: number;
+    cursor?: string;
+    principalId?: string;
+    action?: string;
+    fromTimestamp?: string;
+    toTimestamp?: string;
+  }) {
+    const query: Record<string, string | number | boolean | null | undefined> = { tenantId };
+    if (options?.limit) query.limit = options.limit;
+    if (options?.cursor) query.cursor = options.cursor;
+    if (options?.principalId) query.principalId = options.principalId;
+    if (options?.action) query.action = options.action;
+    if (options?.fromTimestamp) query.fromTimestamp = options.fromTimestamp;
+    if (options?.toTimestamp) query.toTimestamp = options.toTimestamp;
+    return this.client.getPaginated<T>("/audit/logs", query);
+  }
+
+  /**
+   * Get a specific audit log entry by ID.
+   */
+  public getAuditEntry<T>(entryId: string) {
+    return this.client.get<T>(`/audit/logs/${encodeURIComponent(entryId)}`);
+  }
+
   // --- Tenant Management ---
 
   public listTenants<T>() {

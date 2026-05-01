@@ -27,57 +27,29 @@ test("runStableConcurrencyRehearsal runs all three scenarios", async () => {
   assert.ok(scenarioIds.includes("competing_write_transactions_fail_closed"));
 });
 
-test("runStableConcurrencyRehearsal expired_lock_released scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-expired-lock-"));
-  rmSync(outputDir, { recursive: true, force: true });
-  mkdirSync(outputDir, { recursive: true });
+// §199-2332: Root cause - each test above runs runStableConcurrencyRehearsal independently,
+// which means the full 4x scenario suite runs 4 times (once per test). This is redundant
+// since we only need to verify each scenario passes once. The 4x multiplier is useful for
+// stress testing but not for correctness verification.
+// Fix: Consolidate into a single test that runs the suite once and verifies all scenarios.
 
-  const report = await runStableConcurrencyRehearsal({ outputDir });
-  const scenario = report.scenarios.find((s) => s.scenarioId === "expired_lock_released");
-
-  assert.ok(scenario);
-  assert.equal(scenario.passed, true);
-  assert.ok(scenario.durationMs >= 0);
-  assert.ok(scenario.summary.length > 0);
-  assert.ok(scenario.details);
-});
-
-test("runStableConcurrencyRehearsal active_execution_conflict_fail_closed scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-conflict-"));
-  rmSync(outputDir, { recursive: true, force: true });
-  mkdirSync(outputDir, { recursive: true });
-
-  const report = await runStableConcurrencyRehearsal({ outputDir });
-  const scenario = report.scenarios.find((s) => s.scenarioId === "active_execution_conflict_fail_closed");
-
-  assert.ok(scenario);
-  assert.equal(scenario.passed, true);
-  assert.ok(scenario.durationMs >= 0);
-});
-
-test("runStableConcurrencyRehearsal competing_write_transactions_fail_closed scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-write-contention-"));
-  rmSync(outputDir, { recursive: true, force: true });
-  mkdirSync(outputDir, { recursive: true });
-
-  const report = await runStableConcurrencyRehearsal({ outputDir });
-  const scenario = report.scenarios.find((s) => s.scenarioId === "competing_write_transactions_fail_closed");
-
-  assert.ok(scenario);
-  assert.equal(scenario.passed, true);
-});
-
-test("runStableConcurrencyRehearsal all scenarios pass returns passedScenarios equals totalScenarios", async () => {
+test("runStableConcurrencyRehearsal all scenarios pass", async () => {
   const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-all-pass-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
+  // Single run of the concurrency rehearsal - verify all 3 scenarios pass
   const report = await runStableConcurrencyRehearsal({ outputDir });
 
-  assert.equal(report.passedScenarios + report.failedScenarios, report.totalScenarios);
-  // If there are failed scenarios, the test must fail - not silently pass
+  assert.equal(report.passedScenarios + report.failedScenarios, report.totalScenarios, "Scenario counts must sum to total");
   assert.equal(report.passedScenarios, report.totalScenarios, "All scenarios should pass when this test runs");
   assert.equal(report.passedScenarios, 3);
+
+  // Verify individual scenario results in a single pass
+  for (const scenario of report.scenarios) {
+    assert.equal(scenario.passed, true, `Scenario ${scenario.scenarioId} should pass`);
+    assert.ok(scenario.durationMs >= 0, `Scenario ${scenario.scenarioId} should have valid duration`);
+  }
 });
 
 test("writeStableConcurrencyRehearsalReport writes JSON file", () => {

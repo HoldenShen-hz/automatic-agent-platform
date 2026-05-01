@@ -52,10 +52,13 @@ interface PlanGraphView {
 
 ### 状态查看
 
-- WorkflowState 完整状态
-- 步骤输入输出
-- 中间变量
-- 错误信息
+注：§176-2056 修复——原文档引用 `WorkflowState` 作为状态查看的权威对象，但 spec §5.5 Canonical Runtime Object Map
+已明确 `WorkflowState` 为非权威/legacy 用法，权威运行时对象为 `HarnessRun`（canonical run truth）和 `NodeRun`
+（canonical execution truth）。调试器应查询 HarnessRun/NodeRun 而非 WorkflowState。
+
+- HarnessRun 完整状态（canonical run truth）
+- NodeRun 节点级状态（canonical execution truth）
+- 步骤输入输出（legacy step 投影，仅用于向后兼容）
 
 ### 断点条件
 

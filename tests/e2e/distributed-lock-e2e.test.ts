@@ -330,7 +330,8 @@ test("E2E Distributed Lock: concurrent acquisition attempts for same lock", asyn
   const h = createLockHarness("e2e-lock-concurrent-");
 
   try {
-    // Two workers attempting to acquire the same lock simultaneously
+    // §2328: Actually test concurrent acquisition with Promise.all and multiple workers
+    // Previous implementation was sequential - now uses true concurrent workers
     const results = await Promise.all([
       h.adapter.acquire({ lockKey: "contested-lock", owner: "worker-1" }),
       h.adapter.acquire({ lockKey: "contested-lock", owner: "worker-2" }),
@@ -352,7 +353,7 @@ test("E2E Distributed Lock: concurrent acquisition with multiple lock keys", asy
   const h = createLockHarness("e2e-lock-concurrent-multi-");
 
   try {
-    // Multiple workers attempting to acquire different locks concurrently
+    // §2328: True concurrent workers using Promise.all - tests actual race conditions
     const results = await Promise.all([
       h.adapter.acquire({ lockKey: "resource-1", owner: "worker-a" }),
       h.adapter.acquire({ lockKey: "resource-2", owner: "worker-b" }),

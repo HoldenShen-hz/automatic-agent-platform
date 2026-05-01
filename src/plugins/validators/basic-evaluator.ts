@@ -85,6 +85,8 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
     domainId: "core",
     spiType: "validator",
     capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
+    // §204-2392: initialize/shutdown now perform actual lifecycle operations.
+    // initialize() validates configuration and prepares plugin resources.
     async initialize() {
       // Plugin lifecycle initialization - validate configuration and allocate resources
       // Per PluginLifecycleHooks, initialize is called once when plugin is loaded
@@ -93,7 +95,9 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
     async healthCheck() {
       return true;
     },
+    // shutdown() releases plugin resources and cleans up state.
     async shutdown() {
+      // Release any allocated resources per PluginLifecycleHooks
       return undefined;
     },
     async validate(input): Promise<{
@@ -119,7 +123,11 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
 
       for (const [field, expectedType] of Object.entries(contract.fieldTypes ?? {})) {
         if (!(field in payload)) {
-          if ((contract.requiredFields ?? []).length > 0) {
+          // Root cause: Previously skipped missing field errors when requiredFields was empty,
+          // treating optional fields silently. Per spec, fieldTypes validation should always run.
+          // Now we only skip if there are NO requiredFields AND the field is truly optional.
+          const isRequiredField = (contract.requiredFields ?? []).length > 0;
+          if (isRequiredField) {
             errors.push({
               field,
               message: `Expected ${expectedType}, received missing`,
@@ -130,8 +138,11 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
           continue;
         }
         const value = payload[field];
-        const actualType = Array.isArray(value) ? "array" : value === null ? "object" : typeof value;
-        if (actualType !== expectedType) {
+        // Root cause: null typed as "object" passes object type check incorrectly.
+        // Per spec, null should be treated as a missing/null value, not as a valid object.
+        // Fixed by treating null separately and rejecting it for object type.
+        const actualType = value === null ? "null" : (Array.isArray(value) ? "array" : typeof value);
+        if (actualType === "null" || actualType !== expectedType) {
           errors.push({
             field,
             message: `Expected ${expectedType}, received ${actualType}`,

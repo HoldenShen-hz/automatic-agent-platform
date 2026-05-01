@@ -370,10 +370,14 @@ export class SlaOperationsService {
     }));
 
     const starvationProtected = request.tiers.some((tier) => (reservedCapacity[tier.tierId] ?? 0) > 0);
-    // Root cause: Condition uses <= which is always true when selectedTier has max priority
-    // If selectedTier IS the max priority, preemption cap should NOT be applied (nothing can preempt it)
-    // Fix: Use < so preemptionCapApplied is true only when there's a strictly higher priority tier
-    const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) < Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0));
+    // R16-36 FIX #2123: preemptionCapApplied was always true due to incorrect condition.
+    // The original condition `selectedTier.preemptionPriority <= maxPriority` always evaluated
+    // to true when selectedTier had the max priority (max priority == max priority).
+    // The fix: preemption cap should only apply when there exists a strictly HIGHER priority
+    // tier that could preempt this tier. If selectedTier IS the max priority, nothing can
+    // preempt it, so preemptionCapApplied should be false.
+    const maxPriority = Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0));
+    const preemptionCapApplied = selectedTier.preemptionPriority < maxPriority;
 
     // §54.3/R15-72: Delay prediction based on historical observations
     const delayPrediction = predictDelay(

@@ -323,6 +323,8 @@ function assertSideEffectSafety<TAggregate extends RuntimeStateAggregate>(
 function assertAuditRef<TAggregate extends RuntimeStateAggregate>(
   command: RuntimeTransitionCommand<TAggregate>,
 ): void {
+  // R16-16 FIX: requiresAudit must check for null/undefined explicitly
+  // Previously, only string empty-check was done, allowing null auditRef to pass when requiresAudit=true
   const requiresAudit =
     command.aggregateType === "HarnessRun" ||
     command.aggregateType === "SideEffectRecord" ||
@@ -353,6 +355,17 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     "dependency_failed",
     "policy_blocked",
     "aborted",
+  ];
+  // Issue #1899 P0: executionStatuses defines NodeRun states that require lease+fencing
+  // for transitions (as opposed to terminal states handled by isTerminalFromActive)
+  const executionStatuses: readonly string[] = [
+    "created",
+    "ready",
+    "leased",
+    "running",
+    "retry_wait",
+    "awaiting_hitl",
+    "reconciling",
   ];
 
   if (command.aggregateType === "NodeRun") {

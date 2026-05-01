@@ -67,9 +67,19 @@ export class AgentPerformanceProfiler {
     if (now - this.recordCleanupAt < 60000) return;
     this.recordCleanupAt = now;
     if (this.executionRecords.size <= this.maxRecordsEntries) return;
-    const keys = Array.from(this.executionRecords.keys());
-    const toRemove = keys.slice(0, Math.floor(this.maxRecordsEntries * 0.2));
-    for (const k of toRemove) this.executionRecords.delete(k);
+    // R16-36 FIX #2108: Eviction by insertion order is wrong - should evict least-active.
+    // Build activity map (last access time per key), sort by activity, remove oldest.
+    const activityMap = new Map<string, number>();
+    for (const [key, records] of this.executionRecords) {
+      if (records.length > 0) {
+        // Use most recent record's completedAt as proxy for last activity
+        const lastRecord = records[records.length - 1];
+        activityMap.set(key, new Date(lastRecord.completedAt).getTime());
+      }
+    }
+    const sortedByActivity = [...activityMap.entries()].sort((a, b) => a[1] - b[1]);
+    const toRemove = sortedByActivity.slice(0, Math.floor(this.maxRecordsEntries * 0.2));
+    for (const [k] of toRemove) this.executionRecords.delete(k);
   }
 
   public computeProfile(agentId: string, versionId: string): AgentCapabilityProfile {

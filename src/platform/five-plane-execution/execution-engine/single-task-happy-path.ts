@@ -67,6 +67,8 @@ import {
 import { ValidationError } from "../../contracts/errors.js";
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
+import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -160,6 +162,16 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard
   const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
   const validatedPlanGraphBundle = guardResult.planGraphBundle;
+  // R4-26 (INV-GRAPH-001): Use validatedPlanGraphBundle - harnessRunId is available for budget tracking
+  const harnessRunIdFromBundle = validatedPlanGraphBundle.harnessRunId;
+  // R4-25 (INV-BUDGET-001): Create budgetLedger from validated PlanGraphBundle for reserve-before-execute
+  // The budgetLedger flows to model-call-provider for BudgetAllocator.reserve() before LLM calls
+  const budgetLedger = createBudgetLedger({
+    tenantId: validatedPlanGraphBundle.tenantId ?? "tenant:local",
+    harnessRunId: harnessRunIdFromBundle,
+    currency: "USD",
+    hardCap: 10, // matches default maxTaskCostUsd
+  });
 
   const storage = openAuthoritativeStorageContext({
     dbPath: input.dbPath,
@@ -167,6 +179,55 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   const db = storage.sql;
   const store = storage.store;
   storage.migrate();
+
+    // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
+    // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
+    const harnessRun = createHarnessRun({
+      tenantId: input.tenantId ?? "tenant:local",
+      confirmedTaskSpecId: `pending:${taskId}`,
+      requestEnvelopeId: `pending:${taskId}`,
+      requestHash: `request:${taskId}`,
+      constraintPackRef: validatedPlanGraphBundle.budgetPlanRef ?? `workflow:${SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId}`,
+      versionLockId: `pending:${harnessRunIdFromBundle}`,
+      budgetLedgerId: budgetLedger.budgetLedgerId,
+      harnessRunId: harnessRunIdFromBundle,
+      status: "created",
+    });
+    const runVersionLock = createRunVersionLock({
+      harnessRunId: harnessRunIdFromBundle,
+      runtimeProfileVersion: "runtime-profile:default",
+    });
+    // Insert harness_run record into the database
+    executeQuery(
+      db.connection,
+      `INSERT INTO harness_runs (
+        harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
+        status, version_lock_id, budget_ledger_id, current_seq, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      harnessRun.harnessRunId,
+      harnessRun.tenantId,
+      harnessRun.confirmedTaskSpecId,
+      harnessRun.requestEnvelopeId,
+      harnessRun.status,
+      runVersionLock.runVersionLockId,
+      harnessRun.budgetLedgerId,
+      harnessRun.currentSeq,
+      harnessRun.updatedAt,
+    );
+    // Insert plan_graph_bundle record
+    executeQuery(
+      db.connection,
+      `INSERT INTO plan_graph_bundles (
+        plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      validatedPlanGraphBundle.planGraphBundleId,
+      harnessRunIdFromBundle,
+      validatedPlanGraphBundle.graphVersion,
+      JSON.stringify(validatedPlanGraphBundle.graph),
+      JSON.stringify(validatedPlanGraphBundle.validationReport),
+      validatedPlanGraphBundle.createdAt,
+    );
+
   try {
     const artifactStore = new ArtifactStore({
       rootDir: join(dirname(input.dbPath), "artifacts"),
@@ -217,7 +278,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       };
     } else {
       // Initialize model call provider if not already done
-      const modelProvider = initializeModelCallProvider({});
+      // R4-25 (INV-BUDGET-001): Pass budgetLedger and harnessRunId from validatedPlanGraphBundle
+      // so BudgetAllocator.reserve() is called before createCompletion()
+      const modelProvider = initializeModelCallProvider({
+        budgetLedger,
+        harnessRunId: harnessRunIdFromBundle,
+      });
 
       if (modelProvider.hasAnyProvider()) {
         try {

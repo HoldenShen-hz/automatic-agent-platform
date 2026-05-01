@@ -400,10 +400,15 @@ export class KnowledgePromotionService {
       return false;
     }
 
-    entry.lineage.verificationStatus = status;
-    if (notes) {
-      entry.lineage.metadata.verificationNotes = notes;
-    }
+    // R16-16 FIX: Create new lineage object instead of mutating to preserve immutability
+    const updatedLineage = {
+      ...entry.lineage,
+      verificationStatus: status,
+      metadata: notes
+        ? { ...entry.lineage.metadata, verificationNotes: notes }
+        : entry.lineage.metadata,
+    };
+    this.lineageStore.set(lineageId, { ...entry, lineage: updatedLineage });
 
     return true;
   }

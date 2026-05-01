@@ -34,7 +34,18 @@ export type BlastRadius = z.infer<typeof BlastRadiusSchema>;
  * Confidence level per §10.2
  */
 export const ConfidenceLevelSchema = z.enum(["high", "medium", "low"]);
-export type ConfidenceLevel = z.infer<typeof ConfidenceLevelSchema>;
+
+/**
+ * Reversibility - how easily can the operation be undone per §10.2
+ */
+export const ReversibilitySchema = z.enum(["instant", "hours", "days", "irreversible"]);
+export type Reversibility = z.infer<typeof ReversibilitySchema>;
+
+/**
+ * Temporal context - time sensitivity of the operation per §10.2
+ */
+export const TemporalContextSchema = z.enum(["background", "normal", "urgent", "critical_time"]);
+export type TemporalContext = z.infer<typeof TemporalContextSchema>;
 
 /**
  * Input factors for risk score calculation per §10.2
@@ -46,6 +57,11 @@ export const RiskFactorsSchema = z.object({
   blastRadius: BlastRadiusSchema,
   priorFailureRatePercent: z.number().min(0).max(100),
   confidence: ConfidenceLevelSchema,
+  // R16-36 FIX #2121: Missing reversibility and temporal_context factors.
+  // The spec requires 8 factors but only 6 were implemented. These two factors
+  // capture how easily an operation can be undone and its time sensitivity.
+  reversibility: ReversibilitySchema,
+  temporalContext: TemporalContextSchema,
 });
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 
@@ -112,6 +128,9 @@ export interface RiskConfig {
     readonly blastRadius: number;
     readonly priorFailureRate: number;
     readonly confidence: number;
+    // R16-36 FIX #2121: Add weights for new reversibility and temporal_context factors
+    readonly reversibility?: number;
+    readonly temporalContext?: number;
   };
   readonly stepTypeRiskValues: Record<StepTypeRisk, number>;
   readonly targetSystemRiskValues: Record<TargetSystemRisk, number>;
@@ -124,6 +143,9 @@ export interface RiskConfig {
     readonly critical: { readonly maxPercent: number; readonly value: number };
   };
   readonly confidenceValues: Record<ConfidenceLevel, number>;
+  // R16-36 FIX #2121: Add value maps for new reversibility and temporal_context factors
+  readonly reversibilityValues?: Record<Reversibility, number>;
+  readonly temporalContextValues?: Record<TemporalContext, number>;
   readonly riskLevelThresholds: {
     readonly low: number;
     readonly medium: number;

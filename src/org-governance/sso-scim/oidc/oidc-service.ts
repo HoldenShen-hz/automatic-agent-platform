@@ -176,6 +176,8 @@ export class OidcIdentityService {
   private readonly stateStore: OidcStateStore;
   // §48 P0: PKCE code verifier store for OAuth 2.0 PKCE flow
   private readonly pkceVerifierStore = new Map<string, string>();
+  // §170-1971: Refresh token index for O(1) token lookup and rotation tracking
+  private readonly refreshTokenIndex = new Map<string, string>();
 
   constructor(
     private readonly providerConfig: OidcProviderConfig,
@@ -505,11 +507,19 @@ export class OidcIdentityService {
    *
    * @returns Number of sessions cleaned up
    */
+  /**
+   * Cleans up expired sessions.
+   * §170-1982 FIX: Session expiration check was incorrectly adding maxSessionAgeMs,
+   * causing sessions to persist for up to 24h AFTER their expiration time.
+   * The correct check is simply whether current time exceeds expiresAt.
+   *
+   * @returns Number of sessions cleaned up
+   */
   public cleanupExpiredSessions(): number {
     let cleaned = 0;
 
     for (const [sessionId, session] of this.sessions.entries()) {
-      if (Date.now() > new Date(session.expiresAt).getTime() + this.config.maxSessionAgeMs) {
+      if (Date.now() > new Date(session.expiresAt).getTime()) {
         this.revokeSession(sessionId);
         cleaned++;
       }

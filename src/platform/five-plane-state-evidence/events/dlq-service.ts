@@ -221,6 +221,13 @@ export class DlqService {
     const record = this.getRequired(deadLetterId);
     const now = nowIso();
 
+    // Root cause §191-2233: No maxRetries validation at entry means infinite retry is possible
+    // when maxRetries is undefined/null (Map.set allows overwrite, not append-only).
+    // Poison-pill quarantine: when retryCount reaches maxRetries, mark entry as discarded
+    // instead of allowing retry count to grow indefinitely beyond maxRetries.
+    if (!Number.isFinite(record.maxRetries) || record.maxRetries < 0) {
+      throw new ValidationError("dlq.invalid_max_retries", "DLQ maxRetries must be a non-negative finite number.");
+    }
     if (delayMs !== undefined && (!Number.isFinite(delayMs) || delayMs < 0)) {
       throw new ValidationError("dlq.invalid_retry_delay", "DLQ retry delay must be a non-negative finite number.");
     }
@@ -231,10 +238,8 @@ export class DlqService {
       );
     }
     if (record.retryCount >= record.maxRetries) {
-      throw new ValidationError(
-        "dlq.retry_limit_exceeded",
-        `Dead-letter record ${deadLetterId} has already exhausted its retry budget.`,
-      );
+      // Quarantine: mark as retry-exhausted instead of allowing infinite retry
+      return this.markRetryExhausted(deadLetterId);
     }
 
     const backoffDelay = delayMs ?? DEFAULT_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);

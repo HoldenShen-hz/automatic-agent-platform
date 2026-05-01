@@ -6,6 +6,7 @@ import type { LlmModelCallResult } from "./model-call-provider.js";
 import { initializeModelCallProvider } from "./model-call-provider.js";
 import type { MultiStepToolDefinition } from "./multi-step-tool-definitions.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import type { BudgetLedger } from "../../contracts/executable-contracts/index.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -17,6 +18,9 @@ export interface AgentRoundLoopInput {
   routingReason: string;
   tools?: MultiStepToolDefinition[];
   maxIterations?: number;
+  // R4-25 (INV-BUDGET-001): Budget tracking from validated PlanGraphBundle
+  harnessRunId: string;
+  budgetLedger: BudgetLedger;
 }
 
 export interface ToolCallResult {
@@ -36,7 +40,12 @@ export interface AgentRoundLoopResult {
 }
 
 export async function executeAgentRoundLoop(input: AgentRoundLoopInput): Promise<AgentRoundLoopResult> {
-  const modelProvider = initializeModelCallProvider({});
+  // R4-25 (INV-BUDGET-001): Pass budgetLedger and harnessRunId to model provider
+  // so BudgetAllocator.reserve() uses the shared ledger from validatedPlanGraphBundle
+  const modelProvider = initializeModelCallProvider({
+    budgetLedger: input.budgetLedger,
+    harnessRunId: input.harnessRunId,
+  });
   const maxIterations = input.maxIterations ?? 10;
 
   if (!modelProvider.hasAnyProvider()) {
@@ -220,6 +229,9 @@ export interface BuildStepOutputInput {
   priorSummaries: string[];
   routingReason: string;
   tools?: MultiStepToolDefinition[];
+  // R4-25 (INV-BUDGET-001): Budget tracking from validated PlanGraphBundle
+  harnessRunId: string;
+  budgetLedger: BudgetLedger;
 }
 
 export interface BuildStepOutputResult {
@@ -231,7 +243,16 @@ export interface BuildStepOutputResult {
 }
 
 export async function buildStepOutput(input: BuildStepOutputInput): Promise<BuildStepOutputResult> {
-  const loopResult = await executeAgentRoundLoop(input);
+  const loopResult = await executeAgentRoundLoop({
+    stepId: input.stepId,
+    roleId: input.roleId,
+    request: input.request,
+    priorSummaries: input.priorSummaries,
+    routingReason: input.routingReason,
+    tools: input.tools,
+    harnessRunId: input.harnessRunId,
+    budgetLedger: input.budgetLedger,
+  });
   return {
     summary: loopResult.summary,
     result: loopResult.result,

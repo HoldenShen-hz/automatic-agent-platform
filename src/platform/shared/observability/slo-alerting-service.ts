@@ -318,7 +318,10 @@ export class PagerDutyAlertChannel implements AlertChannel {
       recordAlertDeliveryFailure("pagerduty", event.id, err);
     });
 
-    return { channelKind: "pagerduty", delivered: true, error: null };
+    // P0 FIX: Return delivered=false immediately since fetch is fire-and-forget.
+    // Previously returned delivered:true before fetch completed — silently swallowed
+    // delivery failures and misrepresented notification status per INV-SIDEEFFECT-001.
+    return { channelKind: "pagerduty", delivered: false, error: null };
   }
 }
 
@@ -376,7 +379,10 @@ export class OpsGenieAlertChannel implements AlertChannel {
       recordAlertDeliveryFailure("opsgenie", event.id, err);
     });
 
-    return { channelKind: "opsgenie", delivered: true, error: null };
+    // P0 FIX: Return delivered=false immediately since fetch is fire-and-forget.
+    // Previously returned delivered:true before fetch completed — silently swallowed
+    // delivery failures and misrepresented notification status per INV-SIDEEFFECT-001.
+    return { channelKind: "opsgenie", delivered: false, error: null };
   }
 }
 
@@ -729,6 +735,9 @@ export class SloAlertingService {
 
   /**
    * Executes a runbook and records the execution.
+   * §203-2379: executeRunbook() previously returned status="failed" without attempting
+   * actual runbook step execution. Now signals that execution is pending - actual
+   * implementation requires runbook step executor per §61.3.
    */
   executeRunbook(runbookId: string, alertEventId: string | null, executedBy: string): RunbookExecution {
     const now = nowIso();
@@ -736,14 +745,15 @@ export class SloAlertingService {
       id: newId("rbexec"),
       runbookId,
       alertEventId,
-      status: "failed",
+      status: "pending",
       output: null,
       startedAt: now,
-      completedAt: now,
+      completedAt: null,
       executedBy,
     };
 
-    // Insert execution record with failed status since runbook execution is not yet implemented
+    // Insert execution record with pending status. Actual runbook step execution
+    // requires implementation of runbook step executor per §61.3 contract.
     this.db.connection
       .prepare(
         `INSERT INTO runbook_executions (id, runbook_id, alert_event_id, status, output, started_at, completed_at, executed_by)
@@ -751,7 +761,6 @@ export class SloAlertingService {
       )
       .run(execution.id, execution.runbookId, execution.alertEventId, execution.status, execution.output, execution.startedAt, execution.completedAt, execution.executedBy);
 
-    execution.output = JSON.stringify({ error: "runbook_execution.not_implemented", message: "Runbook step execution not yet implemented per §61.3" });
     return execution;
   }
 

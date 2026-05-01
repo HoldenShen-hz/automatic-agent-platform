@@ -22,6 +22,10 @@ export class LayeredEventInbox {
   private readonly consumers = new Map<string, EventInboxConsumer>();
   private readonly cursors = new Map<string, number>();
 
+  // Root cause §191-2242: records array only grows (append) with no automatic pruning,
+  // causing unbounded memory growth. Add threshold to trigger compaction automatically.
+  private static readonly COMPACT_THRESHOLD = 10_000;
+
   public registerConsumer(consumer: EventInboxConsumer): void {
     if (consumer.consumerId.trim().length === 0) {
       throw new ValidationError("event_inbox.consumer_id_required", "EventInbox consumerId is required.");
@@ -40,6 +44,11 @@ export class LayeredEventInbox {
       );
     }
     this.records.push({ event, appendedAt });
+    // Root cause §191-2242 fix: Auto-compact when records exceed threshold to prevent memory leak.
+    // Records array only grew without pruning, causing unbounded memory growth.
+    if (this.records.length >= LayeredEventInbox.COMPACT_THRESHOLD) {
+      this.compact();
+    }
   }
 
   public peek(consumerId: string): readonly EventEnvelope[] {

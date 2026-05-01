@@ -65,6 +65,10 @@ export class CrossAgentAnalyzerService {
     const divergenceScore = Math.max(0, scoreMetric(best) - scoreMetric(worst));
     const antiGamingDetected = this.detectAntiGaming(metrics);
 
+    // §180-2113: When there's only one agent, best===worst is meaningless.
+    // Set both to null to indicate no meaningful comparison possible.
+    const hasMeaningfulComparison = metrics.length > 1 && divergenceScore > 0;
+
     const crossDomainAlert = this.buildDriftAlert(
       ranked.map((m) => m.agentId),
       divergenceScore,
@@ -77,8 +81,8 @@ export class CrossAgentAnalyzerService {
     }
 
     return {
-      bestAgentId: best.agentId,
-      worstAgentId: worst.agentId,
+      bestAgentId: hasMeaningfulComparison ? best.agentId : null,
+      worstAgentId: hasMeaningfulComparison ? worst.agentId : null,
       divergenceScore,
       recommendation: divergenceScore >= 0.2
         ? "rebalance_or_rollout_review"

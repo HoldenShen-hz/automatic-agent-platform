@@ -5,6 +5,16 @@ description: Runbook execution, incident response, and monitoring review for SRE
 priority: 20
 default_workflow: ops_orchestration
 orchestration_workflow: ops_orchestration
+// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
+resource_boundaries:
+  max_concurrent_tasks: 30
+  max_workflow_duration_ms: 7200000
+  memory_limit_mb: 1024
+  compute_quota: "ops-standard"
+fault_domains:
+  - incident_response
+  - runbook_execution
+  - monitoring
 triggers:
   - incident
   - runbook
@@ -13,6 +23,13 @@ triggers:
   - health_check
   - diagnose
   - sre
+// §171-1995: Disambiguation rules for overlap with devops division on "deployment" trigger
+disambiguate:
+  - trigger: deployment
+    conditions:
+      - context: ["incident", "runbook", "on_call", "pagerduty", "opsgenie"]
+        priority_boost: 15
+    notes: "Operations owns runbook-driven incident deployments; devops owns CI/CD-driven deployments"
 roles:
   - id: ops_executor
     name: Operations Executor

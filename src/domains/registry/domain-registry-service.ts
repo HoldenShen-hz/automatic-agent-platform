@@ -67,30 +67,32 @@ export class DomainRegistryService {
     this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);
     this.contractRegistry.registerAll(normalizedDefinition.outputContracts);
 
-    // §37: Publish domain:validated event when auto-promoting from validated→registered
+    // §2314: Publish domain:validated→registered promotion event when auto-promoting
+    // Root cause: validated→registered promotion was not publishing any event
+    // Fix: Publish domain:registered with status="registered" to indicate the promotion occurred
     if (isAutoPromoted) {
       this.eventPublisher?.publish({
-        eventType: "domain:validated",
+        eventType: "domain:registered",
         payload: {
           domainId: normalizedDefinition.domainId,
-          status: "validated",
+          status: "registered",
+          capabilityCount: normalizedDefinition.pluginBindings.length,
+          pluginCount: normalizedDefinition.pluginBindings.length,
+          occurredAt: nowIso(),
+        },
+      });
+    } else {
+      this.eventPublisher?.publish({
+        eventType: "domain:registered",
+        payload: {
+          domainId: normalizedDefinition.domainId,
+          status: normalizedDefinition.status,
           capabilityCount: normalizedDefinition.pluginBindings.length,
           pluginCount: normalizedDefinition.pluginBindings.length,
           occurredAt: nowIso(),
         },
       });
     }
-
-    this.eventPublisher?.publish({
-      eventType: "domain:registered",
-      payload: {
-        domainId: normalizedDefinition.domainId,
-        status: normalizedDefinition.status,
-        capabilityCount: normalizedDefinition.pluginBindings.length,
-        pluginCount: normalizedDefinition.pluginBindings.length,
-        occurredAt: nowIso(),
-      },
-    });
     return normalizedDefinition;
   }
 
@@ -100,27 +102,45 @@ export class DomainRegistryService {
   }
 
   /**
-   * §37.10: Activate a domain. Domains can be activated from:
-   * - "registered" state: normal activation after initial smoke tests
-   * - "updating" state: canary deployment promotion
+   * §37.10: Activate a domain. Domains must go through canary state.
+   * Valid path: registered → canary → active (or updating → canary → active)
    *
-   * The optional canary flag enables staged rollout validation.
+   * The canary flag enables staged rollout validation before full activation.
    */
   public activate(domainId: string, canary: boolean = false): DomainDefinition {
     const current = this.getOrThrow(domainId);
     if (canary) {
-      // Canary promotion: allow "updating" -> "active" transition
-      if (current.status !== "updating" && current.status !== "registered") {
-        throw new ValidationError("domain_registry.invalid_canary_state", "Canary activation requires domain to be in updating or registered state.", {
+      // §170-1974 FIX: Canary promotion must transition through canary state first.
+      // registered→canary or updating→canary, then subsequent activate() goes to active
+      if (current.status === "registered" || current.status === "updating") {
+        // First step of canary: transition to canary state
+        const updated: DomainDefinition = { ...current, status: "canary" };
+        this.registry.set(domainId, updated);
+        this.eventPublisher?.publish({
+          eventType: "domain:canary",
+          payload: {
+            domainId,
+            status: "canary",
+            occurredAt: nowIso(),
+          },
+        });
+        return updated;
+      }
+      if (current.status === "canary") {
+        // Second step: canary→active (already in canary, proceed to active)
+        // Continue to common activation logic below
+      } else {
+        throw new ValidationError("domain_registry.invalid_canary_state", "Canary promotion requires domain to be in registered, updating, or canary state.", {
           category: "validation",
           source: "internal",
           details: { currentStatus: current.status },
         });
       }
     } else {
-      // Standard activation: only from "registered"
-      if (current.status !== "registered") {
-        throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from registered state.", {
+      // Standard activation: must come from canary state (not directly from registered)
+      // §170-1974 ROOT CAUSE: Missing canary state meant registered→active bypassed canary validation
+      if (current.status !== "canary") {
+        throw new ValidationError("domain_registry.invalid_activation_state", "Domains can only activate from canary state. Use canary=true first.", {
           category: "validation",
           source: "internal",
           details: { currentStatus: current.status },
@@ -152,9 +172,12 @@ export class DomainRegistryService {
 
   public deprecate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    // §37.10: Only Active domains can be deprecated
-    if (current.status !== "active") {
-      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only be deprecated from active state.", {
+    // §198-2317: Root cause - deprecate() only checked "active" state but "updating" domains
+    // should also not be deprecated mid-update (in-progress updates should complete or cancel first).
+    // Domains in "updating" state are actively being modified, deprecating them is premature.
+    // Fix: Add "updating" to the invalid states for deprecation.
+    if (current.status !== "active" && current.status !== "updating") {
+      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only be deprecated from active or updating state.", {
         category: "validation",
         source: "internal",
         details: { currentStatus: current.status },

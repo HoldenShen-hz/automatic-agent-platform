@@ -357,7 +357,7 @@ const createTaskPayloadSchema = z.object({
   divisionId: nonEmptyStringSchema.optional(),
   parentId: nonEmptyStringSchema.optional(),
   inputJson: z.string().optional(),
-  priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+  priority: z.enum(["low", "normal", "high", "critical"]).optional(),
   source: z.enum(["user", "perception", "system"]).optional(),
 }).strict();
 
@@ -384,7 +384,7 @@ const updateTaskPayloadSchema = z.object({
     "failed",
     "aborted",
   ]).optional(),
-  priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+  priority: z.enum(["low", "normal", "high", "critical"]).optional(),
   outputJson: z.string().optional(),
 }).strict();
 
@@ -393,14 +393,14 @@ export interface CreateTaskPayload {
   divisionId?: string;
   parentId?: string;
   inputJson?: string;
-  priority?: "low" | "normal" | "high" | "urgent";
+  priority?: "low" | "normal" | "high" | "critical";
   source?: "user" | "perception" | "system";
 }
 
 export interface UpdateTaskPayload {
   title?: string;
   status?: "created" | "admitted" | "planning" | "ready" | "running" | "pausing" | "paused" | "resuming" | "replanning" | "compensating" | "completed" | "failed" | "aborted";
-  priority?: "low" | "normal" | "high" | "urgent";
+  priority?: "low" | "normal" | "high" | "critical";
   outputJson?: string;
 }
 

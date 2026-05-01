@@ -217,27 +217,48 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   private storeAggregate(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
-    const existing = this.getAggregate(aggregateType, getAggregateId(aggregateType, aggregate));
+    // Root cause §191-2234: Map.set silently overwrites existing entries, violating
+    // truth's append-only / immutable requirement. Before storing, verify no existing
+    // aggregate with same ID (append-only violation). Use setOnce pattern to ensure
+    // non-destructive inserts only.
+    const aggregateId = getAggregateId(aggregateType, aggregate);
+    const existing = this.getAggregate(aggregateType, aggregateId);
     if (existing != null) {
       throw new ValidationError(
         "runtime_truth_repository.append_only_violation",
-        `Aggregate ${aggregateType} already exists and cannot be overwritten. Use transition() for updates.`,
+        `Aggregate ${aggregateType}/${aggregateId} already exists and cannot be overwritten. Use transition() for updates.`,
       );
     }
+    // Use setOnce: check-and-set to guarantee append-only semantics
     switch (aggregateType) {
       case "HarnessRun":
+        if (this.state.harnessRuns.has((aggregate as HarnessRun).harnessRunId)) {
+          throw new ValidationError("runtime_truth_repository.append_only_violation", `HarnessRun ${(aggregate as HarnessRun).harnessRunId} already exists.`);
+        }
         this.state.harnessRuns.set((aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);
         return;
       case "NodeRun":
+        if (this.state.nodeRuns.has((aggregate as NodeRun).nodeRunId)) {
+          throw new ValidationError("runtime_truth_repository.append_only_violation", `NodeRun ${(aggregate as NodeRun).nodeRunId} already exists.`);
+        }
         this.state.nodeRuns.set((aggregate as NodeRun).nodeRunId, aggregate as NodeRun);
         return;
       case "SideEffectRecord":
+        if (this.state.sideEffects.has((aggregate as SideEffectRecord).sideEffectId)) {
+          throw new ValidationError("runtime_truth_repository.append_only_violation", `SideEffectRecord ${(aggregate as SideEffectRecord).sideEffectId} already exists.`);
+        }
         this.state.sideEffects.set((aggregate as SideEffectRecord).sideEffectId, aggregate as SideEffectRecord);
         return;
       case "BudgetLedger":
+        if (this.state.budgetLedgers.has((aggregate as BudgetLedger).budgetLedgerId)) {
+          throw new ValidationError("runtime_truth_repository.append_only_violation", `BudgetLedger ${(aggregate as BudgetLedger).budgetLedgerId} already exists.`);
+        }
         this.state.budgetLedgers.set((aggregate as BudgetLedger).budgetLedgerId, aggregate as BudgetLedger);
         return;
       case "BudgetReservation":
+        if (this.state.budgetReservations.has((aggregate as BudgetReservation).budgetReservationId)) {
+          throw new ValidationError("runtime_truth_repository.append_only_violation", `BudgetReservation ${(aggregate as BudgetReservation).budgetReservationId} already exists.`);
+        }
         this.state.budgetReservations.set(
           (aggregate as BudgetReservation).budgetReservationId,
           aggregate as BudgetReservation,

@@ -45,26 +45,27 @@ export function createContractVersionInterceptor(supportedVersions: string[] = [
  * Creates an auth interceptor with dynamic token resolution per §5.4.4.
  * @param tokenOrResolver - Either a static token string (deprecated), a TokenManager-like object,
  *                         or a function that returns the current access token asynchronously.
+ *
+ * P1 FIX: Use dynamic token resolution via getAccessToken() in onRequest.
+ * Previously, string tokens were captured in closure at creation time and never updated.
+ * With TokenManager-like objects, we call getAccessToken() fresh per request so refresh is respected.
  */
 export function createAuthInterceptor(
   tokenOrResolver: string | TokenResolver | null,
 ): RestClientInterceptor {
   return {
     onRequest(request) {
+      // P1 FIX: Resolve token fresh on each request - not captured in closure.
+      // This ensures token refresh is respected even when interceptor is reused.
       const token = resolveToken(tokenOrResolver);
       if (token !== null) {
         request.headers.set("authorization", `Bearer ${token}`);
       }
       return request;
     },
-    // P1 FIX: Add onResponse handler to refresh token on 401
     onResponse<T>(response: RestClientResponse<T>): RestClientResponse<T> | Promise<RestClientResponse<T>> {
-      // If we received a 401, the token may have expired
       if (response.status === 401 && tokenOrResolver !== null && typeof tokenOrResolver !== "string") {
-        // Attempt to refresh the token and return a signal to retry
         if (typeof tokenOrResolver.getAccessTokenWithRefresh === "function") {
-          // Kick off background refresh - don't block the response
-          // The next request will use the refreshed token
           void tokenOrResolver.getAccessTokenWithRefresh().then(() => {
             // Token refreshed in background, next request will use new token
           }).catch(() => {
@@ -113,6 +114,13 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
   };
 }
 
+/**
+ * Creates a CSRF interceptor per §5.4.4.
+ * P1 FIX: Read CSRF token fresh on each request via readCsrfToken().
+ * Previously the token was captured once in a closure when the interceptor was created.
+ * After token rotation (e.g., server-side CSRF refresh), the interceptor would send
+ * the stale token, causing 403 errors. Now we query the meta tag on every non-GET request.
+ */
 export function createCsrfInterceptor(_token: string | null = null): RestClientInterceptor {
   // P1 FIX: Read CSRF token fresh on each request instead of capturing once.
   // This ensures token rotation is respected without requiring interceptor recreation.

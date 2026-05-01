@@ -391,6 +391,11 @@ function handleSubtaskCompleted(
 
 /**
  * Handle subtask:failed event
+ * Root cause §191-2239: subtask:failed should not immediately set workflow=failed.
+ * The spec requires retry/fallback paths to be explored before declaring workflow failure.
+ * When a subtask fails, only mark the step as failed but keep workflow status unchanged.
+ * The workflow-level failure is determined by task:status_changed events which aggregate
+ * all division/subtask outcomes and apply proper fault-tolerance logic.
  */
 function handleSubtaskFailed(
   state: WorkflowRunStateInternal,
@@ -401,14 +406,17 @@ function handleSubtaskFailed(
   if (stepId && !state.failedSteps.includes(stepId)) {
     state.failedSteps = [...state.failedSteps, stepId];
   }
-  // Do not immediately mark workflow as failed - subtask failure may be retried
-  // or handled by fault tolerance strategies. Mark the step as failed only.
+  // Do not immediately mark workflow as failed - allow retry/fallback paths per spec.
+  // The workflow will be marked failed only when task:status_changed aggregates failure
+  // after all retry attempts are exhausted, not on first subtask failure.
   state.error = {
     code: (payload.reasonCode as string | null) ?? null,
     message: null, // subtask:failed doesn't include error message in payload
     failedStepId: stepId ?? null,
     failedAt: timestamp,
   };
+  // Do NOT set state.status = "failed" here - that happens only via task:status_changed
+  // with toStatus=failed after fault tolerance and retry paths are exhausted.
 }
 
 /**

@@ -339,8 +339,10 @@ export const artifactCatalogProjectionHandler: ProjectionHandler = (
       break;
 
     case "artifact:updated":
+      // §191-2244: Removed automatic version increment. Version should only change
+      // when content实质性 changes (handled by artifact:sealed or explicit version bump),
+      // not on every update event which may include metadata-only changes.
       newState.status = "updated";
-      newState.version++;
       break;
 
     case "artifact:sealed":

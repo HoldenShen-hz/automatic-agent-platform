@@ -6,7 +6,6 @@
  * This file provides platform-level aggregation and deprecated legacy type stubs.
  */
 
-import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "./ids.js";
 
 // =============================================================================
@@ -34,9 +33,7 @@ export {
   createNodeAttemptReceipt,
 } from "../executable-contracts/index.js";
 
-// SideEffectRecord - canonical with 16 states per §5.3 (re-exported for convenience)
-// NOTE: Only ONE definition exists - in executable-contracts/schemas.ts.
-// The 4-state "SideEffectExpectation" below is deprecated legacy stub.
+// SideEffectRecord - canonical with 16 states per §14.5/§14.11 (re-exported for convenience)
 export {
   type SideEffectRecord,
   type SideEffectKind,
@@ -49,6 +46,11 @@ export {
 export {
   type PlatformFactEvent,
   type OapeflirViewEvent,
+} from "../executable-contracts/index.js";
+
+// RequestEnvelope - canonical inter-plane envelope per §5.3
+export {
+  type RequestEnvelope,
 } from "../executable-contracts/index.js";
 
 // =============================================================================
@@ -67,64 +69,30 @@ export {
   createDecisionDirective,
 } from "../control-directive/index.js";
 
-// Legacy - deprecated per §4.3. Use OperationalDirective/DecisionDirective instead.
-export {
-  /**
-   * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
-   */
-  type ControlDirectiveKind,
-  /**
-   * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
-   */
-  type ControlDirective,
-  /**
-   * @deprecated ControlDirective factory is deprecated per §4.3. Use createOperationalDirective or createDecisionDirective instead.
-   */
-  createControlDirective,
-} from "../control-directive/index.js";
-
 // =============================================================================
-// Legacy Type Re-exports (deprecated per §5)
-// These are re-exported from executable-contracts for backward compatibility.
-// DO NOT use in new code - use canonical types from executable-contracts.
+// ContractEnvelope - canonical envelope per §5.5
+// Root cause: §5.5 mandates a standard envelope with version, schema, payload,
+// signature, ttl. This type was completely missing from the codebase.
 // =============================================================================
 
-// Legacy ExecutionPlan - deprecated per §4.4, use PlanGraphBundle instead
-export {
-  /**
-   * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
-   */
-  type ExecutionPlan,
-  /**
-   * @deprecated ExecutionPlanStep is deprecated per §4.4. Use PlanNode from executable-contracts instead.
-   */
-  type ExecutionPlanStep,
-  /**
-   * @deprecated createExecutionPlan is deprecated per §4.4. Use createPlanGraphBundle instead.
-   */
-  createExecutionPlan,
-} from "../execution-plan/index.js";
-
-// Legacy ExecutionReceipt - deprecated per §4.5, use NodeAttemptReceipt instead
-export {
-  /**
-   * @deprecated ExecutionReceipt is deprecated per §4.5. Use NodeAttemptReceipt from executable-contracts instead.
-   */
-  type ExecutionReceipt,
-  /**
-   * @deprecated ExecutionReceiptStatus is deprecated per §4.5.
-   */
-  type ExecutionReceiptStatus,
-  /**
-   * @deprecated createExecutionReceipt is deprecated per §4.5. Use createNodeAttemptReceipt instead.
-   */
-  createExecutionReceipt,
-} from "../execution-receipt/index.js";
+/**
+ * ContractEnvelope - canonical wire format for inter-plane contract delivery.
+ * Required fields per §5.5: version, schema, payload, signature, ttl.
+ */
+export interface ContractEnvelope<TPayload = unknown> {
+  readonly version: string;
+  readonly schema: string;
+  readonly payload: TPayload;
+  readonly signature: string;
+  readonly ttl: number;
+}
 
 // =============================================================================
 // Platform-Level Contract Types
 // =============================================================================
 
+// PlatformPrincipal is used in EvidenceRecord and legacy factory functions
+// that are still referenced by existing code.
 export interface PlatformPrincipal {
   readonly actorId: string;
   readonly tenantId: string | null;
@@ -133,7 +101,13 @@ export interface PlatformPrincipal {
   readonly displayName?: string;
 }
 
-export interface RequestEnvelope<TPayload = unknown> {
+/**
+ * @deprecated RequestEnvelopeLegacy is deprecated per §5.3.
+ * Use RequestEnvelope from executable-contracts (canonical with confirmedTaskSpecId,
+ * domainId, requestHash, constraintPackRef, budgetIntent, etc.).
+ * This interface is retained for legacy adapter compatibility only.
+ */
+export interface RequestEnvelopeLegacy<TPayload = unknown> {
   readonly requestId: string;
   readonly idempotencyKey: string;
   readonly traceId: string;
@@ -146,7 +120,7 @@ export interface RequestEnvelope<TPayload = unknown> {
 
 /**
  * @deprecated SideEffectExpectation is deprecated per §5.3.
- * Use SideEffectRecord from executable-contracts (canonical with 16 states).
+ * Use SideEffectRecord from executable-contracts (canonical with 16 states per §14.5/§14.11).
  * This interface is retained for legacy adapter compatibility only.
  */
 export interface SideEffectExpectation {
@@ -209,6 +183,10 @@ export function createPlatformPrincipal(input: {
   };
 }
 
+/**
+ * @deprecated createRequestEnvelope is deprecated per §5.3.
+ * Use createRequestEnvelopeFromConfirmedTask from executable-contracts instead.
+ */
 export function createRequestEnvelope<TPayload>(input: {
   principal: PlatformPrincipal;
   tenantId?: string;
@@ -218,7 +196,7 @@ export function createRequestEnvelope<TPayload>(input: {
   idempotencyKey?: string;
   traceId?: string;
   timestamp?: string;
-}): RequestEnvelope<TPayload> {
+}): RequestEnvelopeLegacy<TPayload> {
   return {
     requestId: input.requestId ?? newId("request"),
     idempotencyKey: input.idempotencyKey ?? newId("idem"),

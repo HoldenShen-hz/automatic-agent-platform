@@ -322,6 +322,9 @@ export class ServiceRegistry {
     // Check for cycles - if not all services are in result, there's a cycle
     if (result.length !== serviceNames.length) {
       const unsortedServices = serviceNames.filter(n => !result.includes(n));
+      // P1-2135: Throw instead of warn so cycled services are NOT silently skipped.
+      // Skipping teardown of cycled services would leak resources (DB connections,
+      // file handles, pending async operations). Throw to force the cycle to be fixed.
       throw new InternalAppError(
         "service_registry.circular_dependency",
         `service_registry.circular_dependency: Circular dependency detected in topological sort`,

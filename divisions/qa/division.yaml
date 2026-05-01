@@ -5,6 +5,16 @@ description: Test planning, test automation, quality assurance, bug reporting.
 priority: 40
 default_workflow: qa_single_step
 orchestration_workflow: qa_single_step
+// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
+resource_boundaries:
+  max_concurrent_tasks: 15
+  max_workflow_duration_ms: 3600000
+  memory_limit_mb: 1024
+  compute_quota: "qa-standard"
+fault_domains:
+  - test_execution
+  - quality_assurance
+  - bug_reporting
 triggers:
   - test
   - testing
@@ -13,6 +23,13 @@ triggers:
   - bug
   - verification
   - validation
+// §171-1996: Disambiguation rules for overlap with engineering_ops division on "bug" trigger
+disambiguate:
+  - trigger: bug
+    conditions:
+      - context: ["triage", "regression", "test_failure"]
+        priority_boost: 15
+    notes: "QA owns bug_triage context; engineering_ops owns code_fix context"
 roles:
   - id: qa_engineer
     name: QA Engineer

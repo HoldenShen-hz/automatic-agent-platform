@@ -30,30 +30,36 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
     return;
   }
-  // R22-28 fix: Don't cache API requests - only cache static assets
   const url = new URL(event.request.url);
+  // Issue #1929 P0: API requests must not be cached (no TTL, stale data risk).
+  // R22-28 fix: Don't cache API requests - only cache static assets.
   if (url.pathname.startsWith("/api/")) {
     return; // Let API requests pass through without caching
   }
+  // Issue #1936 P2: Cache key includes query string causing duplicate caching.
+  // Strip query string from URL to normalize cache key (same resource = one cached entry).
+  const cacheKey = new Request(url.origin + url.pathname);
   event.respondWith((async () => {
     const cache = await caches.open("aa-ui-runtime-v1");
-    const cached = await cache.match(event.request);
+    const cached = await cache.match(cacheKey);
     if (cached != null) {
       return cached;
     }
     const response = await fetch(event.request);
     if (response.ok) {
-      await cache.put(event.request, response.clone());
+      await cache.put(cacheKey, response.clone());
     }
     return response;
   })());
 });
 
 self.addEventListener("sync", (event) => {
+  // Issue #1928 P0: Original sync handler was no-op Promise.resolve() - background sync completely unimplemented.
+  // This handler now replays offline queue from IndexedDB when connectivity returns.
+  // Only handle our specific sync tag; other tags should be ignored (not throw).
   if (event.tag !== "aa-sync-offline") {
     return;
   }
-  // R22-15 fix: Replay offline queue from IndexedDB
   event.waitUntil(replayOfflineQueue());
 });
 

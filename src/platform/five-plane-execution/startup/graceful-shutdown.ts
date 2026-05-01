@@ -229,16 +229,22 @@ export class GracefulShutdown {
       const handlerTimeout = timeoutMs ?? this.timeoutMs;
       try {
         let timer: NodeJS.Timeout | null = null;
+        // R16-36 FIX #2138: Timer created inside Promise executor runs after Promise settles,
+        // but WITHOUT unref it keeps the event loop alive even after shutdown completes.
+        // This creates a "zombie async" - shutdown reports success but the process stays alive
+        // because the timer continues running. Fix: call timer.unref() AFTER the race settles,
+        // not inside the Promise executor. The timer will keep the handler alive during the
+        // timeout window, then stop keeping the process alive once the Promise resolves.
         const timeoutPromise = new Promise<void>((_, reject) => {
           timer = setTimeout(() => {
             reject(new Error(`Handler ${name} timed out after ${handlerTimeout}ms`));
           }, handlerTimeout);
-          timer.unref?.();
         });
 
         await Promise.race([handler(), timeoutPromise]);
         if (timer != null) {
           clearTimeout(timer);
+          timer.unref?.();
         }
         handlersRun++;
         this.logger.log({

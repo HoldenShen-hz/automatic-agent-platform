@@ -539,7 +539,8 @@ export function propagateDataTaint(
   targetPluginId: string,
   labels: readonly string[],
 ): DataTaintPropagation {
-  const now = new Date().toISOString();
+  // §203-2380-2381: Use platform nowIso() for timestamp consistency
+  const now = nowIso();
   const propagatedLabels: DataTaintLabel[] = [];
 
   for (const label of labels) {
@@ -598,11 +599,12 @@ export function revokePluginBundle(
   reason: string,
   affectedVersions?: readonly string[],
 ): BundleRevocationRecord {
+  // §203-2380-2381: Use platform nowIso() instead of new Date() for consistency
   const record: BundleRevocationRecord = {
     pluginId,
     severity,
     reason,
-    revokedAt: new Date().toISOString(),
+    revokedAt: nowIso(),
     affectedVersions: affectedVersions ?? ["*"],
   };
   REVOKED_BUNDLES.set(pluginId, record);

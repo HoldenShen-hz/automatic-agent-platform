@@ -4,9 +4,31 @@ import { buildApiUrl } from "../client-sdk/index.js";
 import type { BusinessPackManifest } from "../pack-sdk/index.js";
 import { validateBusinessPackManifest } from "../pack-sdk/index.js";
 import type { PluginManifest } from "../../domains/registry/plugin-spi.js";
+import { PluginManifestSchema } from "../../domains/registry/plugin-spi.js";
 
+/**
+ * Validate a plugin manifest against the PluginManifestSchema.
+ * Root cause: Previously was a no-op pass-through that never validated manifests,
+ * allowing invalid/untrusted plugins to be installed. Per spec, all manifests
+ * must be validated before use to ensure security requirements are met.
+ */
 function validatePluginManifest(manifest: PluginManifest): PluginManifest {
-  return manifest;
+  const result = PluginManifestSchema.safeParse(manifest);
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    throw new ValidationError("workbench.invalid_plugin_manifest", `Plugin manifest validation failed: ${issues}`, {
+      details: { pluginId: manifest?.pluginId, issues: result.error.issues },
+    });
+  }
+  // Enforce trustLevel restrictions in workbench context
+  if (manifest.trustLevel === "community" || manifest.trustLevel === "unverified") {
+    throw new ValidationError(
+      "workbench.untrusted_plugin",
+      `Plugin ${manifest.pluginId} has trustLevel '${manifest.trustLevel}' which is not allowed in workbench context. Only internal/trusted plugins may be installed.`,
+      { details: { pluginId: manifest.pluginId, trustLevel: manifest.trustLevel } },
+    );
+  }
+  return result.data;
 }
 
 export interface WorkbenchInstallPlan {

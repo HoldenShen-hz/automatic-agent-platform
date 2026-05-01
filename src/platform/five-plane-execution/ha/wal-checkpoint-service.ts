@@ -70,6 +70,12 @@ CREATE TABLE IF NOT EXISTS event_replay_positions (
   last_checkpoint_id TEXT,
   updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS wal_sequence_counter (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  current_value INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
 `;
 
 // ── Default Configuration ─────────────────────────────────────────
@@ -115,7 +121,7 @@ export class WalCheckpointService {
   private disposed: boolean = false;
   private running: boolean = false;
 
-  // Sequence counter for WAL ordering
+  // Sequence counter for WAL ordering (P1-2134: persisted to DB to survive crashes)
   private sequenceCounter: { value: number } = { value: 0 };
 
   private readonly config: {
@@ -181,10 +187,59 @@ export class WalCheckpointService {
    */
   public initializeSchema(): void {
     this.db.connection.exec(WAL_CHECKPOINT_DDL);
+    // P1-2134: Load persisted sequence counter to survive crashes and avoid duplicate WAL seqs
+    this.loadPersistedSequenceCounter();
     logger.log({
       level: "info",
       message: "wal_checkpoint_service.schema_initialized",
     });
+  }
+
+  /**
+   * Loads the persisted sequence counter from the DB, or initializes to 0 if no entry exists.
+   */
+  private loadPersistedSequenceCounter(): void {
+    try {
+      const row = this.db.connection
+        .prepare(`SELECT current_value FROM wal_sequence_counter WHERE id = 1`)
+        .get() as { current_value: number } | undefined;
+      if (row) {
+        this.sequenceCounter.value = row.current_value;
+        logger.log({
+          level: "info",
+          message: "wal_checkpoint_service.sequence_counter_loaded",
+          data: { sequenceNumber: this.sequenceCounter.value },
+        });
+      } else {
+        // Initialize the single-row counter table
+        this.db.connection
+          .prepare(`INSERT OR IGNORE INTO wal_sequence_counter (id, current_value, updated_at) VALUES (1, 0, ?)`)
+          .run(nowIso());
+      }
+    } catch (err) {
+      logger.log({
+        level: "warn",
+        message: "wal_checkpoint_service.sequence_counter_load_failed",
+        data: { error: String(err) },
+      });
+    }
+  }
+
+  /**
+   * Persists the current sequence counter value to the DB.
+   */
+  private persistSequenceCounter(): void {
+    try {
+      this.db.connection
+        .prepare(`UPDATE wal_sequence_counter SET current_value = ?, updated_at = ? WHERE id = 1`)
+        .run(this.sequenceCounter.value, nowIso());
+    } catch (err) {
+      logger.log({
+        level: "warn",
+        message: "wal_checkpoint_service.sequence_counter_persist_failed",
+        data: { error: String(err) },
+      });
+    }
   }
 
   /**
@@ -597,6 +652,7 @@ export class WalCheckpointService {
     this.checkpointIntervalHandle = setInterval(() => {
       this.performScheduledCheckpoint();
     }, this.config.checkpointIntervalMs);
+    this.checkpointIntervalHandle.unref?.(); // P1-2142: Allow process to exit even if checkpoint loop is running
   }
 
   /**
@@ -621,7 +677,9 @@ export class WalCheckpointService {
    * Gets the next sequence number.
    */
   private nextSequence(): number {
+    // P1-2134: Increment and persist atomically so crash recovery won't re-use seqs
     this.sequenceCounter.value += 1;
+    this.persistSequenceCounter();
     return this.sequenceCounter.value;
   }
 

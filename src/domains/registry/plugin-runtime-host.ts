@@ -648,8 +648,14 @@ function renderContainerizedToken(
   token: string,
   options: BuildContainerizedPluginRuntimeLaunchSpecOptions,
 ): string {
+  // §167-1946 SECURITY FIX: Sanitize pluginId before substitution to prevent injection.
+  // Even though pluginId originates from plugin registry, a malicious registry entry
+  // or corrupted state could provide a pluginId with shell metacharacters.
+  // Template substitution must not allow pluginId to inject new command arguments
+  // or break out of the expected argument structure.
+  const sanitizedPluginId = options.pluginId.replace(/[^a-zA-Z0-9._-]/g, "_");
   const substitutions: Record<string, string> = {
-    "{pluginId}": options.pluginId,
+    "{pluginId}": sanitizedPluginId,
     "{workspaceRoot}": options.workspaceRoot,
     "{sandboxRoot}": options.sandboxRoot ?? options.workspaceRoot,
     "{runtimeImage}": options.runtimeImage ?? "",

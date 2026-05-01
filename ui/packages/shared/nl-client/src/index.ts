@@ -17,11 +17,10 @@ export interface ConversationMessage {
 /**
  * In-memory conversation client for testing/development only.
  *
- * P1 FIX: This client does NOT interact with any backend. When WebSocket is unavailable,
- * UI state will diverge from backend truth. Use ConversationClient only in test environments
- * or when WS is explicitly not available.
- *
- * Production code should always use WebSocket-based communication via WSClient.
+ * §205-2418: WARNING - This client does NOT interact with any backend.
+ * Root cause: Previously claimed to be a client but had no backend interaction.
+ * UI state will diverge from backend truth when using this client.
+ * Use WebSocket-based WSClient for production communication.
  */
 export class ConversationClient {
   private readonly messages: ConversationMessage[] = [];

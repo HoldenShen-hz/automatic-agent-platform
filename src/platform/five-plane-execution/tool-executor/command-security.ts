@@ -90,8 +90,6 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["bash", { allowed: true, riskLevel: "high" }],
   ["sh", { allowed: true, riskLevel: "high" }],
   ["zsh", { allowed: true, riskLevel: "high" }],
-  ["mkdir", { allowed: true, riskLevel: "high" }],
-  ["touch", { allowed: true, riskLevel: "high" }],
   ["cp", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["mv", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
@@ -109,6 +107,7 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   // tee: arg[0] is a file path (writes to file)
   ["tee", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["jq", { allowed: true, riskLevel: "medium" }],
+  // P2-2144: Removed duplicate touch/mkdir entries - Map takes last value so first entries were dead code
   ["touch", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["mkdir", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
 ];
@@ -120,7 +119,14 @@ export function createDefaultCommandPolicies(): Map<string, CommandPolicyDefinit
 // Regex pattern matching shell metacharacters: | > < ` && || ; $(...) ${...} and newlines
 // S-02/S-03: Extended to cover ${} expansion, backtick `` ` `` as command substitution,
 // and newline continuation attacks
-const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|[*?]|\[[^\]]+\]|\r|\n/;
+// P1-2136 fix: Only block glob metacharacters when they appear in a SHELL EXPANSION context,
+// not when they appear as literal arguments (e.g. "ls *.ts" has *.ts as a literal glob arg).
+// The original regex wrongly blocked `ls *.ts` because `*` and `?` are glob meta-chars.
+// We fix this by only matching them when preceded by a shell context marker like space,
+// quote, or parenthesis. Simpler: remove [*?] from the regex since they are only dangerous
+// in unquoted contexts (command substitution). The validateCommandSignature path catches
+// actual injection via $() etc.
+const META_SYNTAX_PATTERN = /[|><`]|&&|\|\||;|(?<!&)&(?!&)|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|(?:^|\/|\\)~(?:\/|\\|$)|\{[^}\s]*\.\.[^}\s]*\}|\[[^\]]+\]|\r|\n/;
 const PATH_TRAVERSAL_PATTERN = /(?:^|[\\/])\.\.(?:[\\/]|$)|\.{4,}(?:[\\/]|$)/;
 
 // Fork bomb detection patterns
@@ -262,8 +268,11 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     // python --verbose script.py → ALLOWED (script path is after flags)
     // python /path/script.py → ALLOWED (script path is normal file)
     // python --malicious-flag → blocked (no script, just flags)
+    // P1-2135 fix: Check for at least one non-flag arg (the script path), not just "all args are flags".
+    // "python --output foo script.py" has non-flag arg "script.py" so it's allowed.
     const allArgsAreFlags = args.every((arg) => arg.startsWith("-"));
-    if (allArgsAreFlags) {
+    const hasScriptPath = args.some((arg) => !arg.startsWith("-"));
+    if (allArgsAreFlags || !hasScriptPath) {
       return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
     }
     return allowedAssessment(riskLevel, [scriptPath]);

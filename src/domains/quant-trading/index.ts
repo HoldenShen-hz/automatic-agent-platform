@@ -5,8 +5,9 @@ export const QuantTradingTaskTypeSchema = z.enum(["research", "simulate", "trade
 export type QuantTradingTaskType = z.infer<typeof QuantTradingTaskTypeSchema>;
 
 /**
- * Domain-specific risk guards for quant-trading operations.
- * These safety gates must be checked before executing trade operations.
+ * R16-04 FIX: Domain-specific risk guards for quant-trading operations.
+ * These safety gates implement the loss-limit, position-size, and market-hours
+ * constraints required by the financial operations safety门 (§198-2304).
  */
 export const QUANT_TRADING_RISK_GUARDRAILS = Object.freeze({
   /** Maximum loss limit per trade session before requiring review */

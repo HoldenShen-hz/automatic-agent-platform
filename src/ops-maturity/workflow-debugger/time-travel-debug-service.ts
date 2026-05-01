@@ -220,8 +220,9 @@ export class TimeTravelDebugService {
   public setBreakpoints(sessionId: string, nodeRunIds: readonly string[]): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
-    // Mutate the underlying array in-place to respect readonly breakpoints property
-    (session.breakpoints as string[]).splice(0, session.breakpoints.length, ...nodeRunIds);
+    // §203-2383: Use spread to create new array instead of mutating readonly field.
+    // Previously mutated the underlying array in-place via splice on readonly property.
+    session.breakpoints = [...nodeRunIds];
   }
 
   public loadEventStore(harnessRunId: string, events: readonly TimeTravelDebugEvent[]): void {
@@ -397,5 +398,9 @@ export class TimeTravelDebugService {
     }
     this.sessions.delete(oldest.sessionId);
     this.snapshots.delete(oldest.sessionId);
+    // Issue #1923 P1 FIX: Clean up eventStore entries to prevent memory leak.
+    // Previously eventStore entries were never removed when sessions were evicted,
+    // causing unbounded memory growth over time.
+    this.eventStore.delete(oldest.harnessRunId);
   }
 }

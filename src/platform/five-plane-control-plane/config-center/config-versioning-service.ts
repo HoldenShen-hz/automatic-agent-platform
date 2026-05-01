@@ -436,11 +436,14 @@ export class ConfigVersioningService {
     }
 
     // Create a new version with the old content
+    // R16-36 FIX #2120: Shallow copy `{...content}` doesn't deep-clone nested objects.
+    // Nested objects would share references, causing mutations in one version to affect
+    // another. Use structured clone for proper deep copy.
     const rollbackVersion = await this.createVersion(
       targetVersion.configPath,
       targetVersion.layer,
       targetVersion.sourceId,
-      { ...targetVersion.content }, // Deep clone
+      structuredClone(targetVersion.content),
       createdBy,
       reason ?? `Rolled back to version ${versionId}`,
     );

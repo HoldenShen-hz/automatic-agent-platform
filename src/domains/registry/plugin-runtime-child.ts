@@ -88,8 +88,22 @@ async function handleRequest(request: PluginRuntimeRequest): Promise<unknown> {
 function installRuntimeGuards(): void {
   const sandboxRoot = process.env.AA_PLUGIN_SANDBOX_ROOT?.trim();
   if (sandboxRoot) {
-    // Validate sandboxRoot for path traversal attacks
-    if (sandboxRoot.includes("..") || sandboxRoot.includes("//") || sandboxRoot.includes("~")) {
+    // §198-2315: Root cause - path traversal check only caught "..", "//", "~"
+    // but missed encoded dots (%2e), backslash, null bytes, and other traversal vectors.
+    // Fix: Validate with more comprehensive checks including null bytes, encoded traversal, backslash.
+    const normalizedRoot = sandboxRoot.replace(/%00|%2e|%2f|\\|\0/g, "");
+    if (
+      sandboxRoot.includes("..") ||
+      sandboxRoot.includes("//") ||
+      sandboxRoot.includes("~") ||
+      sandboxRoot.includes("\0") ||
+      sandboxRoot.includes("%00") ||
+      sandboxRoot.includes("%2e") ||
+      sandboxRoot.includes("%2f") ||
+      sandboxRoot.includes("\\") ||
+      normalizedRoot.includes("..") ||
+      normalizedRoot.includes("//")
+    ) {
       throw new Error(`Plugin sandbox root contains invalid path sequence: ${sandboxRoot}`);
     }
     try {

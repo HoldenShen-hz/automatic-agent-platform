@@ -671,9 +671,12 @@ export class OapeflirLoopService {
               const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
 
               // R5-8: Release stage with EvaluationGate/approval/canary/rollback per §13.14
+              // R5-8: Release stage with EvaluationGate/approval/canary/rollback per §13.14
+              // §174-2032 FIX: Use validatedAssessment instead of raw assessment to ensure
+              // boundary validation has passed before making security-sensitive decisions.
               const releaseResult = await this.runStage("release", () => this.rollout.startWithGating(candidate, strategyVersion, "system", {
                 evaluationGate: evaluationReport,
-                requireApproval: assessment.risk === "high" || assessment.risk === "critical",
+                requireApproval: validatedAssessment.risk === "high" || validatedAssessment.risk === "critical",
                 canaryPercent: 10,
                 rollbackOnFailure: true,
               }), {

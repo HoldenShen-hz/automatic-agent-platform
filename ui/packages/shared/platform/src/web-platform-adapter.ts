@@ -16,11 +16,16 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
   }
 
   public override async readFile(path: string): Promise<string> {
-    return globalThis.localStorage?.getItem(`aa.file.${path}`) ?? super.readFile(path);
+    // P0 FIX: Do not use localStorage for file reads per UP-6.
+    // localStorage is XSS-accessible and not safe for any data.
+    // Delegate to in-memory store only, which is the secure default.
+    return super.readFile(path);
   }
 
   public override async writeFile(path: string, contents: string): Promise<void> {
-    globalThis.localStorage?.setItem(`aa.file.${path}`, contents);
+    // P0 FIX: Do not use localStorage for file writes per UP-6.
+    // localStorage is XSS-accessible and not safe for any data.
+    // Delegate to in-memory store only, which is the secure default.
     await super.writeFile(path, contents);
   }
 

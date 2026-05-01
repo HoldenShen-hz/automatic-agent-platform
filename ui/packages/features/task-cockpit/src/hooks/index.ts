@@ -92,11 +92,19 @@ export function useTaskCockpitVm(): TaskCockpitVm {
 
   useEffect(() => {
     setTasks(queryTasks);
-    setSelectedId((current) => current ?? queryTasks[0]?.id ?? null);
+    // §2268/2271: Sync selectedId only if current selection is not in the updated task list
+    // Don't auto-select first task on every poll - preserves user's explicit selection
+    setSelectedId((current) => {
+      if (current === null || !queryTasks.some((t) => t.id === current)) {
+        return null;
+      }
+      return current;
+    });
   }, [queryTasks]);
 
   const baseVm = useMemo(() => mapTasksToVm(tasks), [tasks]);
-  const selectedTask = tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null;
+  // §2271: selectedTask must match selectedId - no fallback to tasks[0] which causes ghost selection
+  const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
 
   // Load L3 steps when selectedTask changes - use currentStep as reference to fetch steps
   useEffect(() => {

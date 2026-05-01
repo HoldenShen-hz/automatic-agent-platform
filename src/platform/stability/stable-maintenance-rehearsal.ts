@@ -130,7 +130,7 @@ function seedTaskAndExecution(
     executionId: string;
     traceId: string;
     title: string;
-    priority?: "low" | "normal" | "high" | "urgent";
+    priority?: "low" | "normal" | "high" | "critical";
   },
 ): void {
   const now = nowIso();

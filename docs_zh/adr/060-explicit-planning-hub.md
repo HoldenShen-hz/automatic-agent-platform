@@ -110,6 +110,7 @@ interface RuntimeExecuteBridge {
 ## v4.3 ADR Remediation
 
 - A-61: 本 ADR 原先把 `Plan DTO` 与 `RuntimeExecuteBridge.executePlan(plan)` 写成 P3 -> P4 唯一 handoff，根因是显式规划 ADR 成型时 executable contract 还未收口到图执行模型。修复：正文现把权威输入切到 `PlanGraphBundle`，权威输出切到 `NodeAttemptReceipt`。
+- §176-2054 修复说明——原 ADR 定义了 `Plan{steps:PlanStep[]}` 作为 P3→P4 规范，但平台 spec §5.5/§13 已明确要求 `PlanGraphBundle`（DAG 结构）作为唯一 canonical 执行契约。`Plan{steps:[]}` 是旧版线性计划的遗留定义，已废弃（deprecated alias），不得作为新实现的数据结构。PlanGraphBundle 是当前唯一权威输入。
 - 阶段边界处增加 Zod schema 验证（PlanSchema）。
 - 所有重规划决策通过 `ReplanningDecision` DTO 记录审计。
 

@@ -135,8 +135,16 @@ export class LearningObjectValidator {
   }
 
   public validateMany(inputs: readonly LearningObject[]): LearningObject[] {
-    return inputs
-      .map((input) => this.validate(input))
+    // R16-16 FIX: Log discarded invalid objects instead of silently filtering.
+    // Silent discarding makes debugging difficult when objects are rejected.
+    const results = inputs.map((input) => this.validate(input));
+    const invalidCount = results.filter((r) => !r.valid).length;
+    if (invalidCount > 0) {
+      console.warn(`[LearningObjectValidator] ${invalidCount}/${inputs.length} objects rejected:`, {
+        rejected: results.filter((r) => !r.valid).map((r) => ({ id: r.learningObject.learningObjectId, reason: r.reasonCode })),
+      });
+    }
+    return results
       .filter((result) => result.valid)
       .map((result) => result.learningObject);
   }

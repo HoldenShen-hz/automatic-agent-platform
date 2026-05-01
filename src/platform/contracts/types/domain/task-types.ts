@@ -26,7 +26,12 @@ export type { TaskPriority, TaskSource, BudgetScope, MemoryLayer, MemorySourceTr
 // Artifact types
 // ---------------------------------------------------------------------------
 
-export interface ArtifactRef {
+/**
+ * @deprecated ArtifactRef in domain/task-types.ts is deprecated per §5.3.
+ * Use ArtifactRef from executable-contracts (canonical with artifactId, uri, hash?, version?).
+ * This interface is retained for legacy adapter compatibility only.
+ */
+export type LegacyArtifactRef = {
   artifactId: string;
   kind: string;
   uri: string;
@@ -34,7 +39,10 @@ export interface ArtifactRef {
   sizeBytes?: number;
   checksum?: string;
   createdAt: Timestamp;
-}
+};
+
+// Re-export canonical ArtifactRef from executable-contracts for type compatibility
+export type { ArtifactRef } from "../../executable-contracts/index.js";
 
 export interface ArtifactRecord {
   artifactId: string;

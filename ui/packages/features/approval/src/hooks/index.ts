@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ApprovalDTO } from "@aa/shared-types";
 import { useApprovalsQuery, useRestClient } from "@aa/shared-state";
-import { approveApproval, rejectApproval, delegateApproval, requestMoreContextApproval } from "@aa/shared-api-client";
+import { approveApproval, rejectApproval, delegateApproval, requestMoreContextApproval } from "@aa/shared-api-client"; // §210-2493: add requestMoreContextApproval
 
 export interface ApprovalCenterVm {
   readonly approvals: readonly ApprovalDTO[];
@@ -120,9 +120,9 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     if (selectedApproval == null) return;
     setPendingAction(true);
     try {
-      // In production this would call requestMoreContextApproval(client, selectedApproval.approvalId)
-      // The backend would then enrich the approval with additional context (logs, evidence, etc.)
-      console.info(`[Approval] request_more_context for ${selectedApproval.approvalId}`);
+      // §210-2493: Root cause - requestMoreContextApproval was listed in imports but never defined in shared-api-client
+      // Fix: call the newly added requestMoreContextApproval API
+      await requestMoreContextApproval(client, selectedApproval.approvalId);
       setActionHistory((history) => [
         {
           title: `Requested Context · ${selectedApproval.taskId}`,

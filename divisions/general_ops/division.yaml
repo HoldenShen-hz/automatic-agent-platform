@@ -5,12 +5,40 @@ description: General purpose fallback division for research, summaries, and oper
 priority: 10
 default_workflow: single_agent_minimal
 orchestration_workflow: phase1b_single_division_orchestration
+// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
+resource_boundaries:
+  max_concurrent_tasks: 10
+  max_workflow_duration_ms: 1800000
+  memory_limit_mb: 512
+  compute_quota: "general-standard"
+fault_domains:
+  - general_research
+  - summarization
+  - intake_routing
 triggers:
   - summarize
   - summary
   - research
   - analyze
   - review
+// §171-1997: Disambiguation rules for overlap with research division on "research", "analyze", "review" triggers
+// Uses explicit priority: research division (priority 40) beats general_ops (priority 10) for these triggers
+disambiguate:
+  - trigger: research
+    conditions:
+      - context: ["technical", "literature", "competitive_analysis", "deep_dive"]
+        priority_boost: 20
+    notes: "research division owns technical research; general_ops is fallback for general queries"
+  - trigger: analyze
+    conditions:
+      - context: ["technical", "code", "data_analysis"]
+        priority_boost: 20
+    notes: "research division owns technical analysis; general_ops handles operational analysis"
+  - trigger: review
+    conditions:
+      - context: ["code_review", "PR_review", "design_review"]
+        priority_boost: 20
+    notes: "research division owns technical review; general_ops handles general document review"
 roles:
   - id: general_executor
     name: General Executor

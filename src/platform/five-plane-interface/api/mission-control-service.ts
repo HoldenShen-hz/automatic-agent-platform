@@ -87,13 +87,27 @@ export interface MissionControlSnapshot {
 export interface WorkflowCockpitView {
   generatedAt: string;
   summary: WorkflowInspectSummary;
-  // UI spec presentation shape fields (user-friendly, not inspect-oriented)
+  // UI spec §5.2 Cockpit - canonical PlanGraph/DAG model (R7-32 fix: was legacy linear steps/current_step_index)
   presentation: {
-    taskId: string;
+    harnessRunId: string;
     taskTitle: string;
     statusLabel: string;
     progressPercent: number;
-    activeStep: string;
+    // planGraph replaces legacy current_step_index/linear steps model
+    planGraph: {
+      nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>;
+      edges: ReadonlyArray<{ fromNodeId: string; toNodeId: string }>;
+    };
+    // NodeRun list replaces legacy step list (R7-32 fix)
+    nodeRuns: ReadonlyArray<{
+      nodeRunId: string;
+      nodeId: string;
+      status: string;
+      attempts: number;
+      startedAt: string | null;
+      completedAt: string | null;
+    }>;
+    activeNodeRunId: string | null;
     elapsedTimeMs: number;
     estimatedRemainingMs: number;
     riskLevel: "low" | "medium" | "high" | "critical";

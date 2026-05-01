@@ -235,8 +235,12 @@ export class RunbookExecutor {
     }
 
     // Default: assume success for diagnostic/read-only commands
+    // §181-2130: Removed curl/kubectl/docker/git from read-only patterns - these can
+    // perform destructive operations (curl can download malicious scripts, kubectl/docker
+    // can modify cluster/container state, git can commit/push changes). Only truly
+    // diagnostic commands that cannot modify state should be marked as read-only.
     const readOnlyPatterns = [
-      /^(curl|kubectl|docker|git|ls|cat|grep|echo|pwd|ps|top|free|df)/i,
+      /^(ls|cat|grep|echo|pwd|ps|top|free|df)/i,
     ];
     const isReadOnly = readOnlyPatterns.some((pattern) => pattern.test(command));
 

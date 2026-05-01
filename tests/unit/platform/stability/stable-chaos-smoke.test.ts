@@ -7,7 +7,9 @@ import { tmpdir } from "node:os";
 import { runStableChaosSmoke, writeStableChaosSmokeReport, type StableChaosSmokeReport } from "../../../../src/platform/stability/stable-chaos-smoke.js";
 
 test("runStableChaosSmoke runs all five scenarios", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-test-"));
+  // §2325: Use unique temp directory per test to prevent parallel test pollution
+  const testId = `stable-chaos-smoke-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -28,7 +30,8 @@ test("runStableChaosSmoke runs all five scenarios", async () => {
 });
 
 test("runStableChaosSmoke stale_execution_repair scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-test-stale-"));
+  const testId = `stable-chaos-smoke-test-stale-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -40,7 +43,8 @@ test("runStableChaosSmoke stale_execution_repair scenario passes", async () => {
 });
 
 test("runStableChaosSmoke orphan_session_cleanup scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-test-session-"));
+  const testId = `stable-chaos-smoke-test-session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -52,7 +56,8 @@ test("runStableChaosSmoke orphan_session_cleanup scenario passes", async () => {
 });
 
 test("runStableChaosSmoke orphan_queue_claim_reconciled_via_runtime_repair scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-test-orphan-queue-"));
+  const testId = `stable-chaos-smoke-test-orphan-queue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -64,7 +69,8 @@ test("runStableChaosSmoke orphan_queue_claim_reconciled_via_runtime_repair scena
 });
 
 test("runStableChaosSmoke duplicate_approval_response_idempotent scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-test-approval-"));
+  const testId = `stable-chaos-smoke-test-approval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -76,7 +82,8 @@ test("runStableChaosSmoke duplicate_approval_response_idempotent scenario passes
 });
 
 test("runStableChaosSmoke missing_ack_rebuild_and_replay scenario passes", async () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-test-ack-"));
+  const testId = `stable-chaos-smoke-test-ack-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -88,7 +95,8 @@ test("runStableChaosSmoke missing_ack_rebuild_and_replay scenario passes", async
 });
 
 test("writeStableChaosSmokeReport writes report to file", () => {
-  const outputDir = mkdtempSync(join(tmpdir(), "stable-chaos-smoke-report-test-"));
+  const testId = `stable-chaos-smoke-report-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outputDir = mkdtempSync(join(tmpdir(), testId));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -103,8 +111,13 @@ test("writeStableChaosSmokeReport writes report to file", () => {
   };
 
   const outputFile = join(outputDir, "report.json");
+  // §2323: Actually call the function under test - not just assert it's a function
   writeStableChaosSmokeReport(outputFile, report);
 
   // Verify file was written
   assert.ok(existsSync(outputFile), "Report file should be written");
+  // Verify content was actually written to disk by reading it back
+  const { readFileSync } = require("node:fs");
+  const content = readFileSync(outputFile, "utf8");
+  assert.ok(content.includes("startedAt"), "Report file should contain startedAt");
 });

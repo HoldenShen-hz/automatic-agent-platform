@@ -65,6 +65,8 @@ export class SimpleReflectionEngine implements ReflectionEngine {
     records: EvidenceRecord[],
     context?: { successes: EvidenceRecord[]; failures: EvidenceRecord[] }
   ): Promise<ReflectionRecord> {
+    // Use newId() instead of counter-based ID generation to avoid collision after restart.
+    // Counter-based IDs (prop_${++counter}) would conflict if the process restarts.
     const id = newId("refl");
     const firstRecord = records[0];
     if (!firstRecord) {

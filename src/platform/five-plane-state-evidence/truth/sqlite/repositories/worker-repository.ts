@@ -181,6 +181,15 @@ export class WorkerRepository {
     return this.ticketRepo.listExecutionTicketsByStatuses(statuses);
   }
 
+  // Issue #1910 P1: Paginated version for large-scale reconciliation
+  public listExecutionTicketsByStatusesPaginated(
+    statuses: ExecutionTicketRecord["status"][],
+    limit: number,
+    offset: number,
+  ): ExecutionTicketRecord[] {
+    return this.ticketRepo.listExecutionTicketsByStatusesPaginated(statuses, limit, offset);
+  }
+
   public listDispatchableExecutionTickets(now: string, queueName: string | null = null): ExecutionTicketRecord[] {
     return this.ticketRepo.listDispatchableExecutionTickets(now, queueName);
   }

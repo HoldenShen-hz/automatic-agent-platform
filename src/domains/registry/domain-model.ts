@@ -77,6 +77,15 @@ export const DomainManifestSchema = z.object({
   lifecycleState: z.enum(["draft", "canary", "active", "deprecated", "archived"]).default("draft"),
   // Trust level for the domain
   trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
+  // R34-36 FIX #1976: DomainManifest missing resource quotas.
+  // Resource quotas enforce CPU/memory/storage limits per domain.
+  resourceQuotas: z.object({
+    maxCpuCores: z.number().positive().default(8),
+    maxMemoryMb: z.number().positive().default(16384),
+    maxStorageMb: z.number().positive().default(102400),
+    maxConcurrentTasks: z.number().positive().default(100),
+    maxTasksPerHour: z.number().positive().default(10000),
+  }).default({}),
 });
 
 export type DomainManifest = z.infer<typeof DomainManifestSchema>;
@@ -159,12 +168,20 @@ export const PluginBindingSchema = z.object({
   ),
   bindingRole: z.preprocess(
     (value) => {
+      // §198-2312: Reject invalid bindingRole values - return null to fail enum validation
+      // Root cause: Invalid string values not in aliases were being returned as-is, causing
+      // undefined/null to be stored instead of failing validation
       if (typeof value !== "string") {
-        return null; // Reject non-string values by returning null (will fail enum check)
+        return null;
       }
-      return DOMAIN_PLUGIN_ROLE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES] ?? value;
+      const normalized = DOMAIN_PLUGIN_ROLE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES];
+      // If value is not in aliases and not a valid enum value, return null to fail validation
+      if (normalized === undefined && !["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"].includes(value)) {
+        return null;
+      }
+      return normalized ?? value;
     },
-    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]).nullable(),
+    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]),
   ),
   pluginId: z.string().min(1),
   priority: z.number().int().default(0),

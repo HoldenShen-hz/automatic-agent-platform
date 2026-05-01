@@ -2,6 +2,13 @@ import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 import type { PrincipalRef } from "../executable-contracts/index.js";
 
+// Runtime warning for imports from legacy contract path
+console.warn(
+  "[DEPRECATED] request-envelope/ is deprecated. " +
+  "Use RequestEnvelope from src/platform/contracts/executable-contracts instead. " +
+  "See: https://docs.example.com/platform/contracts#request-envelope-migration",
+);
+
 /**
  * @deprecated RequestEnvelope from request-envelope/ is a legacy contract.
  * Use RequestEnvelope from executable-contracts (canonical per §5.3).

@@ -160,11 +160,12 @@ export class GovernanceDelegationRevocationSaga {
       revokedWorkerLeases,
       revokedScheduledTriggers,
       revokedDerivedDelegationIds,
+      // R34-36 FIX #1981: revokeWithinSlo was always true with `>= 0` (elapsed is always >= 0).
+      // Correct condition: only true if completed within SLO window.
       revokeWithinSlo: elapsed <= REVOKE_SLO_MS,
-      const revokeWithinSlo = elapsed <= REVOKE_SLO_MS;
-    // SECURITY FIX: Condition was >= 0 which is always true (elapsed is always >= 0).
-    // Should be: failedStage == null && elapsed <= CASCADE_SLO_MS
-    const cascadeWithinSlo = failedStage == null && elapsed <= CASCADE_SLO_MS;
+      // R34-36 FIX #1981: cascadeWithinSlo was always true because condition was `>= 0`.
+      // Correct condition: only true if no failures AND within SLO window.
+      cascadeWithinSlo: failedStage == null && elapsed <= CASCADE_SLO_MS,
       completedAtMs,
       sagaStages: compensationResourceIds.length > 0
         ? ["prepare", "commit", "compensate", "audit"]

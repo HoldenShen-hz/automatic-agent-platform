@@ -3,6 +3,7 @@
  * Loads risk matrix from config/risk/default.json
  */
 
+import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PolicyDeniedError } from "../../contracts/errors.js";
@@ -10,6 +11,78 @@ import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "..
 import type { RiskConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");
+
+/**
+ * JSON Schema for risk configuration validation.
+ * R16-36 FIX #2122: JSON.parse without schema validation allows malformed data
+ * to be accepted, causing downstream failures. This schema ensures the config
+ * conforms to the expected structure before parsing.
+ */
+const RiskConfigSchema = z.object({
+  factorWeights: z.object({
+    stepTypeRisk: z.number(),
+    targetSystemRisk: z.number(),
+    dataClassRisk: z.number(),
+    blastRadius: z.number(),
+    priorFailureRate: z.number(),
+    confidence: z.number(),
+    reversibility: z.number().optional(),
+    temporalContext: z.number().optional(),
+  }),
+  stepTypeRiskValues: z.record(z.string(), z.number()),
+  targetSystemRiskValues: z.record(z.string(), z.number()),
+  dataClassRiskValues: z.record(z.string(), z.number()),
+  blastRadiusValues: z.record(z.string(), z.number()),
+  priorFailureRateThresholds: z.object({
+    low: z.object({ maxPercent: z.number(), value: z.number() }),
+    medium: z.object({ maxPercent: z.number(), value: z.number() }),
+    high: z.object({ maxPercent: z.number(), value: z.number() }),
+    critical: z.object({ maxPercent: z.number(), value: z.number() }),
+  }),
+  confidenceValues: z.record(z.string(), z.number()),
+  reversibilityValues: z.record(z.string(), z.number()).optional(),
+  temporalContextValues: z.record(z.string(), z.number()).optional(),
+  riskLevelThresholds: z.object({
+    low: z.number(),
+    medium: z.number(),
+    high: z.number(),
+    critical: z.number(),
+  }),
+  riskLevelActions: z.object({
+    low: z.object({
+      autoExecute: z.boolean(),
+      logLevel: z.enum(["info", "warn", "error", "critical"]),
+      requiresApproval: z.boolean(),
+      approvalType: z.enum(["standard", "break_glass"]).optional(),
+      sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
+      evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
+    }),
+    medium: z.object({
+      autoExecute: z.boolean(),
+      logLevel: z.enum(["info", "warn", "error", "critical"]),
+      requiresApproval: z.boolean(),
+      approvalType: z.enum(["standard", "break_glass"]).optional(),
+      sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
+      evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
+    }),
+    high: z.object({
+      autoExecute: z.boolean(),
+      logLevel: z.enum(["info", "warn", "error", "critical"]),
+      requiresApproval: z.boolean(),
+      approvalType: z.enum(["standard", "break_glass"]).optional(),
+      sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
+      evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
+    }),
+    critical: z.object({
+      autoExecute: z.boolean(),
+      logLevel: z.enum(["info", "warn", "error", "critical"]),
+      requiresApproval: z.boolean(),
+      approvalType: z.enum(["standard", "break_glass"]).optional(),
+      sideEffect: z.enum(["normal", "normal_with_validation", "restricted", "prohibited"]),
+      evidenceLevel: z.enum(["basic", "enhanced", "full", "legal"]),
+    }),
+  }),
+});
 
 /**
  * Loads the risk configuration from the JSON config file.
@@ -36,39 +109,52 @@ export function loadRiskConfig(
   }
 
   const raw = readFileSync(effectivePath, "utf-8");
-  const parsed = JSON.parse(raw);
+  // R16-36 FIX #2122: Validate JSON against schema before returning.
+  // JSON.parse without schema validation allows malformed data to be accepted,
+  // causing downstream failures when expected fields are missing or have wrong types.
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("risk_config.parse_failed: Invalid JSON in risk configuration");
+  }
+  const validated = RiskConfigSchema.parse(parsed);
 
   return {
     factorWeights: {
-      stepTypeRisk: parsed.factorWeights.stepTypeRisk,
-      targetSystemRisk: parsed.factorWeights.targetSystemRisk,
-      dataClassRisk: parsed.factorWeights.dataClassRisk,
-      blastRadius: parsed.factorWeights.blastRadius,
-      priorFailureRate: parsed.factorWeights.priorFailureRate,
-      confidence: parsed.factorWeights.confidence,
+      stepTypeRisk: validated.factorWeights.stepTypeRisk,
+      targetSystemRisk: validated.factorWeights.targetSystemRisk,
+      dataClassRisk: validated.factorWeights.dataClassRisk,
+      blastRadius: validated.factorWeights.blastRadius,
+      priorFailureRate: validated.factorWeights.priorFailureRate,
+      confidence: validated.factorWeights.confidence,
+      reversibility: validated.factorWeights.reversibility,
+      temporalContext: validated.factorWeights.temporalContext,
     },
-    stepTypeRiskValues: parsed.stepTypeRiskValues,
-    targetSystemRiskValues: parsed.targetSystemRiskValues,
-    dataClassRiskValues: parsed.dataClassRiskValues,
-    blastRadiusValues: parsed.blastRadiusValues,
+    stepTypeRiskValues: validated.stepTypeRiskValues as RiskConfig["stepTypeRiskValues"],
+    targetSystemRiskValues: validated.targetSystemRiskValues as RiskConfig["targetSystemRiskValues"],
+    dataClassRiskValues: validated.dataClassRiskValues as RiskConfig["dataClassRiskValues"],
+    blastRadiusValues: validated.blastRadiusValues as RiskConfig["blastRadiusValues"],
     priorFailureRateThresholds: {
-      low: { maxPercent: parsed.priorFailureRateThresholds.low.maxPercent, value: parsed.priorFailureRateThresholds.low.value },
-      medium: { maxPercent: parsed.priorFailureRateThresholds.medium.maxPercent, value: parsed.priorFailureRateThresholds.medium.value },
-      high: { maxPercent: parsed.priorFailureRateThresholds.high.maxPercent, value: parsed.priorFailureRateThresholds.high.value },
-      critical: { maxPercent: parsed.priorFailureRateThresholds.critical.maxPercent, value: parsed.priorFailureRateThresholds.critical.value },
+      low: { maxPercent: validated.priorFailureRateThresholds.low.maxPercent, value: validated.priorFailureRateThresholds.low.value },
+      medium: { maxPercent: validated.priorFailureRateThresholds.medium.maxPercent, value: validated.priorFailureRateThresholds.medium.value },
+      high: { maxPercent: validated.priorFailureRateThresholds.high.maxPercent, value: validated.priorFailureRateThresholds.high.value },
+      critical: { maxPercent: validated.priorFailureRateThresholds.critical.maxPercent, value: validated.priorFailureRateThresholds.critical.value },
     },
-    confidenceValues: parsed.confidenceValues,
+    confidenceValues: validated.confidenceValues as RiskConfig["confidenceValues"],
+    reversibilityValues: validated.reversibilityValues as RiskConfig["reversibilityValues"],
+    temporalContextValues: validated.temporalContextValues as RiskConfig["temporalContextValues"],
     riskLevelThresholds: {
-      low: parsed.riskLevelThresholds.low,
-      medium: parsed.riskLevelThresholds.medium,
-      high: parsed.riskLevelThresholds.high,
-      critical: parsed.riskLevelThresholds.critical,
+      low: validated.riskLevelThresholds.low,
+      medium: validated.riskLevelThresholds.medium,
+      high: validated.riskLevelThresholds.high,
+      critical: validated.riskLevelThresholds.critical,
     },
     riskLevelActions: {
-      low: parsed.riskLevelActions.low,
-      medium: parsed.riskLevelActions.medium,
-      high: parsed.riskLevelActions.high,
-      critical: parsed.riskLevelActions.critical,
+      low: validated.riskLevelActions.low,
+      medium: validated.riskLevelActions.medium,
+      high: validated.riskLevelActions.high,
+      critical: validated.riskLevelActions.critical,
     },
   };
 }

@@ -98,6 +98,8 @@ export class SimpleProposalEngine implements ProposalEngine {
     // Determine proposal kinds based on root cause
     const rootCause = reflection.rootCause.toLowerCase();
 
+    // Use newId() instead of counter-based ID generation to avoid collision after restart.
+    // Counter-based IDs (prop_${++counter}) would conflict if the process restarts.
     if (rootCause.includes('type') || rootCause.includes('schema')) {
       proposals.push({
         id: newId("prop"),
@@ -116,6 +118,7 @@ export class SimpleProposalEngine implements ProposalEngine {
       });
     }
 
+    // §203-2371: Add comment explaining newId usage for ID generation
     if (rootCause.includes('test')) {
       proposals.push({
         id: newId("prop"),
@@ -134,6 +137,7 @@ export class SimpleProposalEngine implements ProposalEngine {
       });
     }
 
+    // §203-2371: Add comment explaining newId usage for ID generation
     if (rootCause.includes('complex') || rootCause.includes('planning')) {
       proposals.push({
         id: newId("prop"),
@@ -152,6 +156,7 @@ export class SimpleProposalEngine implements ProposalEngine {
       });
     }
 
+    // §203-2371: Add comment explaining newId usage for ID generation
     if (rootCause.includes('security')) {
       proposals.push({
         id: newId("prop"),
@@ -181,6 +186,8 @@ export class SimpleProposalEngine implements ProposalEngine {
     return this.MANUAL_ONLY_KINDS.includes(kind);
   }
 
+  // Use newId() instead of counter-based ID generation to avoid collision after restart.
+  // Counter-based IDs (prop_${++counter}) would conflict if the process restarts.
   async create(input: {
     title: string;
     description: string;

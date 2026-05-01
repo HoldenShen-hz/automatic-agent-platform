@@ -24,6 +24,13 @@
     "required": true,
     "supportedSchemes": ["bearer", "session_cookie"]
   },
+  "tls": {
+    "enabled": true,
+    "minVersion": "TLS 1.2",
+    "cipherSuites": ["TLS_AES_256_GCM_SHA384", "TLS_AES_128_GCM_SHA256", "TLS_CHACHA20_POLY1305_SHA256"],
+    "rejectUnauthorized": true,
+    "requestClientCert": true
+  },
   "requestLimits": {
     "maxRequestBodyBytes": 1048576,
     "maxBatchItems": 100

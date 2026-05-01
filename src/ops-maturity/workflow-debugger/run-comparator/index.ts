@@ -76,10 +76,13 @@ function resolveNodeRunId(snapshot: RunSnapshot): string {
 export function compareWorkflowRuns(left: readonly RunSnapshot[], right: readonly RunSnapshot[]): string[] {
   const rightByStep = new Map(right.map((item) => [resolveNodeRunId(item), item]));
   const diffs: string[] = [];
+  // Issue #1922 P1 FIX: Track which right steps were matched to detect extra steps in right
+  const matchedRightKeys = new Set<string>();
   for (const item of left) {
     const nodeRunId = resolveNodeRunId(item);
     const other = rightByStep.get(nodeRunId);
     if (other) {
+      matchedRightKeys.add(nodeRunId);
       if (item.status !== other.status) {
         diffs.push(`step:${nodeRunId}:status:${item.status}->${other.status}`);
       }
@@ -97,6 +100,13 @@ export function compareWorkflowRuns(left: readonly RunSnapshot[], right: readonl
       }
     } else {
       diffs.push(`step:${nodeRunId}:missing_in_right`);
+    }
+  }
+  // Issue #1922 P1 FIX: Also detect steps that exist in right but not in left
+  for (const item of right) {
+    const nodeRunId = resolveNodeRunId(item);
+    if (!matchedRightKeys.has(nodeRunId)) {
+      diffs.push(`step:${nodeRunId}:missing_in_left`);
     }
   }
   return diffs;

@@ -460,9 +460,13 @@ export function resolveStableEvidenceProfile(
   overrides: StableEvidenceBundleOptions["profileOverrides"] = {},
 ): StableEvidenceProfile {
   const base = STABLE_EVIDENCE_PROFILES[profileName];
+  // Issue #1968 P1 FIX: Preserve base profile name to prevent overrides from
+  // changing the resolved profile's identity at runtime. The name should reflect
+  // the actual profile being used, not be replaceable by caller.
   return {
     ...base,
     ...overrides,
+    name: base.name,
   };
 }
 

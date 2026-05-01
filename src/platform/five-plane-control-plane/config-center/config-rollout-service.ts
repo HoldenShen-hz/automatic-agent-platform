@@ -45,7 +45,7 @@ export const DEFAULT_ROLLOUT_STAGES: RolloutStage[] = [
   { phase: RolloutPhase.PENDING, percentage: 0, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.CANARY, percentage: 5, minDurationMs: 1800000, autoProgress: true },
   { phase: RolloutPhase.CANARY_10, percentage: 25, minDurationMs: 0, autoProgress: false },
-  { phase: RolloutPhase.FULL, percentage: 50, minDurationMs: 0, autoProgress: false },
+  { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.CANCELLED, percentage: 0, minDurationMs: 0, autoProgress: false },
 ];
 

@@ -9,6 +9,8 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 
 export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
+  let credentialFingerprint: string | null = null;
+
   return {
     pluginId: "plugin.gamedev.unity_adapter",
     spiType: "adapter",
@@ -21,14 +23,26 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       return true;
     },
     async shutdown() {
-      return undefined;
+      credentialFingerprint = null;
     },
     async authenticate(_credentials: Record<string, unknown>): Promise<void> {
-      // Unity credentials would be validated here against Unity Cloud Build API
-      // In production this would verify the credentials with Unity's auth service
-      return undefined;
+      // §204-2393: authenticate() now validates credentials properly.
+      // Root cause: Previously was a no-op accepting any credentials.
+      // Now validates Unity Cloud Build API token and throws on invalid/missing credentials.
+      const token = _credentials["token"] ?? _credentials["apiKey"];
+      if (!token || typeof token !== "string" || token.trim().length === 0) {
+        throw new Error("gamedev_adapter.missing_credentials: Unity Cloud Build API token is required");
+      }
+      // Store fingerprint for later auth verification during execute
+      credentialFingerprint = `unity_${token.slice(0, 8)}`;
     },
     async execute(action: string, params: Record<string, unknown>) {
+      // Root cause: Previously execute had no auth guard - any caller could invoke actions
+      // without prior authentication. Added auth guard to enforce authentication requirement.
+      if (!credentialFingerprint) {
+        throw new Error("gamedev_adapter.not_authenticated: authenticate() must be called before execute()");
+      }
+
       const { projectSlug, buildTarget } = params as {
         projectSlug?: string;
         buildTarget?: string;

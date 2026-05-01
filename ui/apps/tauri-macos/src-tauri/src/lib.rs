@@ -5,7 +5,16 @@ fn healthcheck() -> &'static str {
 
 #[tauri::command]
 fn open_deep_link(url: String) -> String {
-    format!("opened:{url}")
+    // §185-2170 FIX: Validate URL scheme before processing.
+    // Root cause: No validation meant javascript:, file:, or other dangerous schemes
+    // could be passed through, enabling XSS or local file access attacks.
+    // Fix: Only allow http and https schemes.
+    if let Some(scheme) = url.split(':').next() {
+        if scheme.eq_ignore_ascii_case("http") || scheme.eq_ignore_ascii_case("https") {
+            return format!("opened:{url}");
+        }
+    }
+    format!("rejected:invalid_scheme")
 }
 
 // Command allowlist for shell execution - only predefined safe commands permitted

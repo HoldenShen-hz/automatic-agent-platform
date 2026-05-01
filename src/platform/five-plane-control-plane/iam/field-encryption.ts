@@ -6,7 +6,9 @@ const AES_256_GCM = "aes-256-gcm";
 const IV_BYTES = 12;
 const AUTH_TAG_BYTES = 16;
 const KEY_LENGTH = 32;
-const MIN_PASSPHRASE_BYTES = 16;
+// §167-1945: Raise minimum passphrase to 32 bytes to match key derivation output.
+// Previously allowed 16-byte passphrases which can be brute-forced with modern GPUs.
+const MIN_PASSPHRASE_BYTES = 32;
 const SCRYPT_PARAMS = { N: 2 ** 16, r: 8, p: 1 };
 const SCRYPT_MAX_MEMORY_BYTES = 128 * 1024 * 1024;
 const ENVELOPE_VERSION = "fe1";
@@ -14,11 +16,19 @@ const ENVELOPE_VERSION = "fe1";
 function normalizeKey(key: Buffer | string): Buffer {
   const buffer = Buffer.isBuffer(key) ? key : Buffer.from(key, "utf8");
   if (buffer.length === KEY_LENGTH) {
+    // §167-1945 SECURITY FIX: Even 32-byte keys must be validated for weak patterns.
+    // A all-zeros or repeating-byte key is cryptographically weak.
+    if (buffer.every((byte) => byte === buffer[0])) {
+      throw new ValidationError("security.encryption_key_weak", "security.encryption_key_weak");
+    }
     return buffer;
   }
   if (buffer.length === 0) {
     throw new ValidationError("security.encryption_key_required", "security.encryption_key_required");
   }
+  // §167-1944 SECURITY FIX: Previously accepted 1-character keys which are trivially brute-forced.
+  // Enforce minimum key length (MIN_PASSPHRASE_BYTES = 32) for passphrase-derived keys.
+  // Raw 32-byte keys bypass this check via the KEY_LENGTH branch above.
   if (buffer.length < MIN_PASSPHRASE_BYTES) {
     throw new ValidationError("security.encryption_key_too_short", "security.encryption_key_too_short");
   }

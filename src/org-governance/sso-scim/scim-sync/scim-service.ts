@@ -268,6 +268,7 @@ export class ScimProvisionService {
 
   /**
    * Updates an existing user.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param userId - User ID
    * @param updates - Partial user data
@@ -275,7 +276,12 @@ export class ScimProvisionService {
    * @returns Updated user or null
    */
   public updateUser(userId: string, updates: Partial<Omit<ScimUser, "id" | "meta">>, tenantId: string): ScimUser | null {
-    const existing = this.users.get(userId);
+    // §48 P1: Tenant isolation - scope all lookups by tenantId (issue #1972)
+    const tenantUsers = this.getTenantUsers(tenantId);
+    const tenantUserByUsername = this.getTenantUserByUsername(tenantId);
+    const tenantUserByEmail = this.getTenantUserByEmail(tenantId);
+
+    const existing = tenantUsers.get(userId);
     if (!existing) return null;
 
     const updatedUser: ScimUser = {
@@ -288,20 +294,20 @@ export class ScimProvisionService {
       },
     };
 
-    this.users.set(userId, updatedUser);
+    tenantUsers.set(userId, updatedUser);
 
     if (updates.userName) {
-      this.userByUsername.delete(existing.userName.toLowerCase());
-      this.userByUsername.set(updates.userName.toLowerCase(), userId);
+      tenantUserByUsername.delete(existing.userName.toLowerCase());
+      tenantUserByUsername.set(updates.userName.toLowerCase(), userId);
     }
 
     if (updates.emails) {
       for (const email of existing.emails) {
-        this.userByEmail.delete(email.value.toLowerCase());
+        tenantUserByEmail.delete(email.value.toLowerCase());
       }
       const primaryEmail = updates.emails.find((e) => e.primary)?.value;
       if (primaryEmail) {
-        this.userByEmail.set(primaryEmail.toLowerCase(), userId);
+        tenantUserByEmail.set(primaryEmail.toLowerCase(), userId);
       }
     }
 
@@ -323,26 +329,33 @@ export class ScimProvisionService {
 
   /**
    * Permanently deletes a user.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param userId - User ID
    * @param tenantId - Tenant ID
    * @returns true if deleted
    */
   public deleteUser(userId: string, tenantId: string): boolean {
-    const existing = this.users.get(userId);
+    // §48 P1: Tenant isolation - scope all lookups by tenantId (issue #1972)
+    const tenantUsers = this.getTenantUsers(tenantId);
+    const tenantUserByUsername = this.getTenantUserByUsername(tenantId);
+    const tenantUserByEmail = this.getTenantUserByEmail(tenantId);
+    const tenantGroups = this.getTenantGroups(tenantId);
+
+    const existing = tenantUsers.get(userId);
     if (!existing) return false;
 
-    this.users.delete(userId);
-    this.userByUsername.delete(existing.userName.toLowerCase());
+    tenantUsers.delete(userId);
+    tenantUserByUsername.delete(existing.userName.toLowerCase());
 
     for (const email of existing.emails) {
-      this.userByEmail.delete(email.value.toLowerCase());
+      tenantUserByEmail.delete(email.value.toLowerCase());
     }
 
-    // Remove from all groups
-    for (const group of this.groups.values()) {
+    // Remove from all tenant groups
+    for (const group of tenantGroups.values()) {
       if (group.members.some((m) => m.value === userId)) {
-        this.removeMemberFromGroup(group.id, userId);
+        this.removeMemberFromGroup(group.id, userId, tenantId);
       }
     }
 
@@ -353,18 +366,21 @@ export class ScimProvisionService {
 
   /**
    * Lists users with optional filtering.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
-   * @param options - Query options
+   * @param options - Query options including tenantId
    * @returns Paginated user list
    */
   public listUsers(options: {
     filter?: string;
     startIndex?: number;
     count?: number;
+    tenantId: string;
   }): ScimListResponse<ScimUser> {
-    const { startIndex = 1, count = 100 } = options;
+    const { startIndex = 1, count = 100, tenantId } = options;
 
-    let users = Array.from(this.users.values());
+    const tenantUsers = this.getTenantUsers(tenantId);
+    let users = Array.from(tenantUsers.values());
 
     // Apply filter if provided (simple filter parsing)
     if (options.filter) {
@@ -386,12 +402,16 @@ export class ScimProvisionService {
 
   /**
    * Creates a new SCIM group.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param group - Group data
    * @param tenantId - Tenant ID
    * @returns Created group
    */
   public createGroup(group: { displayName: string; members?: readonly { value: string; display: string }[] }, tenantId: string): ScimGroup {
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const tenantGroupByName = this.getTenantGroupByName(tenantId);
+
     const id = newId("scim_group");
     const now = nowIso();
 
@@ -406,8 +426,8 @@ export class ScimProvisionService {
       },
     };
 
-    this.groups.set(id, scimGroup);
-    this.groupByName.set(group.displayName.toLowerCase(), id);
+    tenantGroups.set(id, scimGroup);
+    tenantGroupByName.set(group.displayName.toLowerCase(), id);
 
     this.recordEvent("group_updated", id, tenantId);
 
@@ -416,27 +436,35 @@ export class ScimProvisionService {
 
   /**
    * Gets a group by ID.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param groupId - Group ID
+   * @param tenantId - Tenant ID
    * @returns Group or null
    */
-  public getGroup(groupId: string): ScimGroup | null {
-    return this.groups.get(groupId) ?? null;
+  public getGroup(groupId: string, tenantId: string): ScimGroup | null {
+    const tenantGroups = this.getTenantGroups(tenantId);
+    return tenantGroups.get(groupId) ?? null;
   }
 
   /**
    * Gets a group by name.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param displayName - Group display name
+   * @param tenantId - Tenant ID
    * @returns Group or null
    */
-  public getGroupByName(displayName: string): ScimGroup | null {
-    const groupId = this.groupByName.get(displayName.toLowerCase());
-    return groupId ? this.groups.get(groupId) ?? null : null;
+  public getGroupByName(displayName: string, tenantId: string): ScimGroup | null {
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const tenantGroupByName = this.getTenantGroupByName(tenantId);
+    const groupId = tenantGroupByName.get(displayName.toLowerCase());
+    return groupId ? tenantGroups.get(groupId) ?? null : null;
   }
 
   /**
    * Updates an existing group.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param groupId - Group ID
    * @param updates - Partial group data
@@ -444,7 +472,10 @@ export class ScimProvisionService {
    * @returns Updated group or null
    */
   public updateGroup(groupId: string, updates: Partial<Pick<ScimGroup, "displayName" | "members">>, tenantId: string): ScimGroup | null {
-    const existing = this.groups.get(groupId);
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const tenantGroupByName = this.getTenantGroupByName(tenantId);
+
+    const existing = tenantGroups.get(groupId);
     if (!existing) return null;
 
     const updatedGroup: ScimGroup = {
@@ -457,11 +488,11 @@ export class ScimProvisionService {
       },
     };
 
-    this.groups.set(groupId, updatedGroup);
+    tenantGroups.set(groupId, updatedGroup);
 
     if (updates.displayName) {
-      this.groupByName.delete(existing.displayName.toLowerCase());
-      this.groupByName.set(updates.displayName.toLowerCase(), groupId);
+      tenantGroupByName.delete(existing.displayName.toLowerCase());
+      tenantGroupByName.set(updates.displayName.toLowerCase(), groupId);
     }
 
     this.recordEvent("group_updated", groupId, tenantId);
@@ -471,20 +502,25 @@ export class ScimProvisionService {
 
   /**
    * Deletes a group.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param groupId - Group ID
    * @param tenantId - Tenant ID
    * @returns true if deleted
    */
   public deleteGroup(groupId: string, tenantId: string): boolean {
-    const existing = this.groups.get(groupId);
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const tenantGroupByName = this.getTenantGroupByName(tenantId);
+    const tenantUsers = this.getTenantUsers(tenantId);
+
+    const existing = tenantGroups.get(groupId);
     if (!existing) return false;
 
-    this.groups.delete(groupId);
-    this.groupByName.delete(existing.displayName.toLowerCase());
+    tenantGroups.delete(groupId);
+    tenantGroupByName.delete(existing.displayName.toLowerCase());
 
-    // Remove group reference from all users
-    for (const user of this.users.values()) {
+    // Remove group reference from all tenant users
+    for (const user of tenantUsers.values()) {
       if (user.groups.some((g) => g.value === groupId)) {
         const updatedGroups = user.groups.filter((g) => g.value !== groupId);
         this.updateUser(user.id, { groups: updatedGroups }, tenantId);
@@ -496,18 +532,21 @@ export class ScimProvisionService {
 
   /**
    * Lists groups with optional filtering.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
-   * @param options - Query options
+   * @param options - Query options including tenantId
    * @returns Paginated group list
    */
   public listGroups(options: {
     filter?: string;
     startIndex?: number;
     count?: number;
+    tenantId: string;
   }): ScimListResponse<ScimGroup> {
-    const { startIndex = 1, count = 100 } = options;
+    const { startIndex = 1, count = 100, tenantId } = options;
 
-    let groups = Array.from(this.groups.values());
+    const tenantGroups = this.getTenantGroups(tenantId);
+    let groups = Array.from(tenantGroups.values());
 
     if (options.filter) {
       groups = this.applyFilter(groups, options.filter);
@@ -528,14 +567,19 @@ export class ScimProvisionService {
 
   /**
    * Adds a member to a group.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param groupId - Group ID
    * @param userId - User ID to add
+   * @param tenantId - Tenant ID
    * @returns Updated group or null
    */
   public addMemberToGroup(groupId: string, userId: string, tenantId: string): ScimGroup | null {
-    const group = this.groups.get(groupId);
-    const user = this.users.get(userId);
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const tenantUsers = this.getTenantUsers(tenantId);
+
+    const group = tenantGroups.get(groupId);
+    const user = tenantUsers.get(userId);
 
     if (!group || !user) return null;
 
@@ -549,21 +593,25 @@ export class ScimProvisionService {
 
   /**
    * Removes a member from a group.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param groupId - Group ID
    * @param userId - User ID to remove
+   * @param tenantId - Tenant ID
    * @returns Updated group or null
    */
-  public removeMemberFromGroup(groupId: string, userId: string): ScimGroup | null {
-    const group = this.groups.get(groupId);
+  public removeMemberFromGroup(groupId: string, userId: string, tenantId: string): ScimGroup | null {
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const group = tenantGroups.get(groupId);
     if (!group) return null;
 
     const newMembers = group.members.filter((m) => m.value !== userId);
-    return this.updateGroup(groupId, { members: newMembers }, "");
+    return this.updateGroup(groupId, { members: newMembers }, tenantId);
   }
 
   /**
    * Applies a SCIM patch operation.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param groupId - Target group ID
    * @param operations - Patch operations
@@ -571,7 +619,10 @@ export class ScimProvisionService {
    * @returns Updated group or null
    */
   public patchGroup(groupId: string, operations: readonly ScimPatchOperation[], tenantId: string): ScimGroup | null {
-    const group = this.groups.get(groupId);
+    const tenantGroups = this.getTenantGroups(tenantId);
+    const tenantUsers = this.getTenantUsers(tenantId);
+
+    const group = tenantGroups.get(groupId);
     if (!group) return null;
 
     let updatedMembers = [...group.members];
@@ -583,7 +634,7 @@ export class ScimProvisionService {
           if (op.path === "members" && Array.isArray(op.value)) {
             for (const member of op.value as { value: string }[]) {
               if (!updatedMembers.some((m) => m.value === member.value)) {
-                const user = this.users.get(member.value);
+                const user = tenantUsers.get(member.value);
                 updatedMembers.push({ value: member.value, display: user?.displayName ?? member.value });
               }
             }
@@ -622,17 +673,25 @@ export class ScimProvisionService {
   }
 
   /**
-   * Gets total user count.
+   * Gets total user count across all tenants.
    */
   public getUserCount(): number {
-    return this.users.size;
+    let total = 0;
+    for (const tenantUsers of this.usersByTenant.values()) {
+      total += tenantUsers.size;
+    }
+    return total;
   }
 
   /**
-   * Gets total group count.
+   * Gets total group count across all tenants.
    */
   public getGroupCount(): number {
-    return this.groups.size;
+    let total = 0;
+    for (const tenantGroups of this.groupsByTenant.values()) {
+      total += tenantGroups.size;
+    }
+    return total;
   }
 
   /**
@@ -780,7 +839,8 @@ export class ScimProvisionService {
   }
 
   private patchUser(userId: string, operations: readonly ScimPatchOperation[], tenantId: string): ScimUser | null {
-    const user = this.users.get(userId);
+    const tenantUsers = this.getTenantUsers(tenantId);
+    const user = tenantUsers.get(userId);
     if (!user) return null;
 
     let next: Partial<Omit<ScimUser, "id" | "meta">> = {};

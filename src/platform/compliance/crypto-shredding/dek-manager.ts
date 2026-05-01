@@ -384,7 +384,9 @@ export class DekManager {
     return {
       ciphertext,
       dekId: dek.dekId,
-      iv: dek.iv,
+      // §179-2094: Return the actual IV used for encryption, not the stale DEK metadata IV.
+      // The DEK metadata IV (dek.iv) may be outdated after key rotation; use the fresh IV.
+      iv: iv.toString("hex"),
     };
   }
 

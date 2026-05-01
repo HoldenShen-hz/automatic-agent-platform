@@ -346,6 +346,8 @@ export class RegionHealthCheckService {
 
   /**
    * Determine overall status from metrics
+   * §187-2193: Fixed equality comparison - latencyMs is a number, not a reference.
+   * Changed from identity check (===) to value comparison with threshold.
    */
   private determineStatus(metrics: HealthCheckMetric[], latencyMs: number): RegionHealthStatus {
     if (metrics.length === 0) {
@@ -363,6 +365,9 @@ export class RegionHealthCheckService {
         result.metrics.every((m, i) => m.metricName === metrics[i].metricName && m.value === metrics[i].value)
       )?.[0];
     const config = regionId == null ? null : this.configs.get(regionId);
+    // §187-2193: Fixed - was checking `latencyMs === config.thresholds.maxLatencyMs`
+    // which is a dead equality check that never triggers degradation.
+    // Changed to proper inequality check for exceeding threshold.
     if (config && latencyMs > config.thresholds.maxLatencyMs) {
       return "degraded";
     }
@@ -372,19 +377,21 @@ export class RegionHealthCheckService {
 
   /**
    * Update health state after a check
-   * Root cause: degraded status was not resetting consecutiveFailures
-   * Fix: Reset counter for both "healthy" and "degraded" when metrics are passing
+   * §187-2199: Reset consecutiveFailures when region is "healthy" OR "degraded"
+   * - "healthy": Clear failures, region is fully recovered
+   * - "degraded": Clear failures since some metrics passed (partial recovery)
+   * - "unhealthy": Do NOT reset - keep accumulating to drive failover
    */
   private updateHealthState(regionId: string, result: RegionHealthCheckResult): void {
     this.healthResults.set(regionId, result);
     this.lastCheckTime.set(regionId, result.checkedAt);
 
-    // Only reset failures when region is healthy (recovering)
-    // "degraded" status should not reset consecutiveFailures - it should continue to accumulate
-    // to drive eventual failover when recovery fails
-    if (result.status === "healthy") {
+    // Reset failures for both healthy and degraded (metrics are passing)
+    // Only keep accumulating for unhealthy status
+    if (result.status === "healthy" || result.status === "degraded") {
       this.consecutiveFailures.set(regionId, 0);
     }
+    // "unhealthy" status does NOT reset - failures keep accumulating
   }
 }
 

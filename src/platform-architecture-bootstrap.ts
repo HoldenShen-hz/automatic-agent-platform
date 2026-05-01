@@ -284,10 +284,17 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
+  // §213-1992: Only call register if the bootstrap summary is missing
+  // This prevents unconditional duplicate registration when service is already initialized
   if (!registry.has("architecture.bootstrap-summary")) {
-    return registerPlatformArchitectureServices(registry);
+    registerPlatformArchitectureServices(registry);
   }
-  // Return actual values from registry (not undefined lazy references)
+  // §213-1993: Use isInitialized() as a true readiness gate instead of just calling get()
+  // This verifies the service has been fully initialized, not just registered
+  if (!registry.isInitialized("architecture.bootstrap-summary")) {
+    throw new Error("Platform architecture services are not fully initialized. Bootstrap may have failed.");
+  }
+  // Return actual values from registry
   return {
     layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
     planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),

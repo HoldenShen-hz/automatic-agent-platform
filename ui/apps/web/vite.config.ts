@@ -50,6 +50,13 @@ export default defineConfig({
     // Without this, Vite defaults to esnext which may cause issues with older browsers.
     target: "es2022",
     sourcemap: false,
+    // Issue #1939 P2: No terser/esbuild minify config - default behavior is ambiguous.
+    // Explicitly set minify to esbuild (Vite default) to ensure consistent production builds.
+    minify: "esbuild",
+    // Issue #1934 P1: maxJsChunkBytes 550KB was 2.75x spec 200KB - enforce chunk size limits.
+    // Per §7.3.1 perf budget: main<200KB per chunk gzipped.
+    maxChunkSize: 200 * 1024,
+    maxEdgeWorkerResponseSize: 200 * 1024,
     rollupOptions: {
       output: {
         manualChunks(id) {

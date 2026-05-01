@@ -316,12 +316,13 @@ export class RegionFailoverController {
     }
 
     // Determine target region
-    // R37-2202: Blind pick of candidates[0] without health/lag validation
-    // Prefer preferredRegionId if provided, but fallback is still unvalidated
-    // In production, use RegionFailoverOrchestrator.selectFailoverTarget with health check data
+    // §187-2202: Blind pick of candidates[0] without health/lag validation is not allowed
+    // Root cause: Picking candidates[0] without health validation can lead to failover to unhealthy region
+    // Fix: Only select from candidates if preferredRegionId is provided and validated
+    // For production, use RegionFailoverOrchestrator.selectFailoverTarget which has health data
     const targetRegionId = input.preferredRegionId && input.candidateRegionIds.includes(input.preferredRegionId)
       ? input.preferredRegionId
-      : input.candidateRegionIds[0] ?? null;
+      : null; // No blind selection - require explicit preferredRegionId or use orchestrator
 
     if (targetRegionId === null) {
       return {

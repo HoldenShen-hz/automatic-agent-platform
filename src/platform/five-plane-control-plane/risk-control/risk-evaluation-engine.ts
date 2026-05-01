@@ -118,6 +118,9 @@ export class RiskEvaluationEngine {
     const blastRadiusValue = this.config.blastRadiusValues[factors.blastRadius];
     const priorFailureValue = this.computePriorFailureValue(factors.priorFailureRatePercent);
     const confidenceValue = this.config.confidenceValues[factors.confidence];
+    // R16-36 FIX #2121: Add reversibility and temporal_context factor values
+    const reversibilityValue = this.config.reversibilityValues?.[factors.reversibility] ?? 1;
+    const temporalContextValue = this.config.temporalContextValues?.[factors.temporalContext] ?? 1;
 
     return [
       {
@@ -155,6 +158,20 @@ export class RiskEvaluationEngine {
         value: confidenceValue,
         weight: factorWeights.confidence,
         weightedValue: confidenceValue * factorWeights.confidence,
+      },
+      // R16-36 FIX #2121: Add reversibility factor (higher risk for irreversible ops)
+      {
+        factor: "reversibility",
+        value: reversibilityValue,
+        weight: factorWeights.reversibility ?? 2,
+        weightedValue: reversibilityValue * (factorWeights.reversibility ?? 2),
+      },
+      // R16-36 FIX #2121: Add temporal_context factor (higher risk for critical-time ops)
+      {
+        factor: "temporalContext",
+        value: temporalContextValue,
+        weight: factorWeights.temporalContext ?? 2,
+        weightedValue: temporalContextValue * (factorWeights.temporalContext ?? 2),
       },
     ];
   }

@@ -2,11 +2,13 @@ import type { ReactElement } from "react";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
 
 function detectMobilePlatform(): "android" | "ios" {
-  // Detect platform from User-Agent when native bridge is not available
+  // §210-2499: Root cause - previous implementation hardcoded "android" as fallback,
+  // causing iOS devices to receive wrong platform identifier when native bridge unavailable.
+  // Fix: Properly detect iOS from User-Agent before falling back to android.
   if (typeof navigator !== "undefined" && navigator.userAgent) {
     const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("android")) return "android";
     if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) return "ios";
+    if (ua.includes("android")) return "android";
   }
   // Fallback to android if detection fails
   return "android";

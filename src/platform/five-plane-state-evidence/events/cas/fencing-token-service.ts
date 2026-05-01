@@ -60,8 +60,16 @@ export class FencingTokenService {
   // Active fences are process-wide so multiple service instances can enforce exclusivity.
   private static readonly activeFences = new Map<string, FenceInfo>();
 
-  // Fencing token counter for monotonically increasing tokens
-  private tokenCounter = 0;
+  // R16-16 FIX: static Map but instance counter causes token collisions across instances
+  // Each FencingTokenService instance has its own tokenCounter starting at 0.
+  // When multiple instances generate tokens, they can produce identical tokens.
+  // Fix: Use a process-wide atomic counter shared across all instances.
+  private static readonly globalTokenCounter = {
+    value: 0,
+    getAndIncrement(): number {
+      return ++this.value;
+    },
+  };
 
   // Node ID for this instance
   private readonly nodeId: string;
@@ -80,12 +88,13 @@ export class FencingTokenService {
    * @returns A unique fencing token string
    */
   public generateFencingToken(executionId: string, nodeId: string): string {
-    this.tokenCounter++;
+    // R16-16 FIX: Use global counter for cross-instance monotonicity
+    const counter = FencingTokenService.globalTokenCounter.getAndIncrement();
     const timestamp = Date.now();
     return [
       encodeURIComponent(executionId),
       encodeURIComponent(nodeId),
-      String(this.tokenCounter),
+      String(counter),
       String(timestamp),
     ].join(FENCING_TOKEN_SEPARATOR);
   }
@@ -105,6 +114,10 @@ export class FencingTokenService {
       };
     }
 
+    // R16-16 FIX: Use FENCING_TOKEN_SEPARATOR constant instead of hardcoded "-"
+    // Issue: split("-") fails when executionId/nodeId contain "-" characters
+    // Example: "exec-123-node-456" split by "-" gives wrong parts
+    // Use the actual separator "::" which is unlikely to appear in IDs
     const parts = token.split(FENCING_TOKEN_SEPARATOR);
     if (parts.length !== 4) {
       return {

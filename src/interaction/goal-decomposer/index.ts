@@ -29,9 +29,15 @@ import type { RiskPreview } from "../nl-gateway/index.js";
 import type { LlmPlanGenerator } from "./llm-plan-generator.js";
 export * from "./llm-plan-generator.js";
 
+/**
+ * §40.2: SuccessCriterion requires operator and threshold for quantitative evaluation.
+ * Previously missing - metric/target alone don't specify pass/fail boundaries.
+ */
 export interface SuccessCriterion {
   readonly metric: string;
   readonly target: string;
+  readonly operator: "<" | "<=" | "==" | ">=" | ">" | "!=";
+  readonly threshold: number;
   readonly evaluationMethod: "metric_api" | "human_review" | "automated_test";
 }
 

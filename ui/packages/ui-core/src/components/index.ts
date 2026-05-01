@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useState, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import { createElement, useEffect, useMemo, useState, type ChangeEvent, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import type { ImplementationStatus } from "@aa/shared-types";
 import { createPanelStyle, designTokens } from "../design-tokens";
 import { LayoutFrame, ThreePaneLayout } from "../layouts";
@@ -153,8 +153,11 @@ export function FeatureWorkbench(
       { style: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" } },
       createElement("input", {
         "aria-label": "Filter workbench items",
-        onChange: (event: Event) => {
-          setFilter((event.target as HTMLInputElement).value);
+        // P2 FIX: Use React.ChangeEvent instead of DOM Event for type safety.
+        // Previously onChange captured Event which requires type assertion.
+        // Using ChangeEvent<HTMLInputElement> ensures correct typing without cast.
+        onChange: (event: ChangeEvent<HTMLInputElement>) => {
+          setFilter(event.target.value);
         },
         placeholder: "筛选当前工作台项",
         style: {

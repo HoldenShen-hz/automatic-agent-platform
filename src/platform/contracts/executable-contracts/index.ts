@@ -38,6 +38,18 @@ export const CANONICAL_CONTRACT_NAMES = [
 
 export type CanonicalContractName = (typeof CANONICAL_CONTRACT_NAMES)[number];
 
+// NOTE: LEGACY_CONTRACT_NAMES documents deprecated contract names for migration tracking.
+// Enforcement mechanisms (R4-11):
+//   1. ESLint rule: no-restricted-imports in eslint.config.js blocks imports from legacy paths at build time
+//   2. Runtime console.warn: each legacy module logs a deprecation warning on import
+//   3. Factory throw: legacy factory functions throw ValidationError when called
+//
+// Legacy contract paths and their canonical replacements:
+//   - control-directive/ ControlDirective -> use OperationalDirective or DecisionDirective (same module)
+//   - execution-plan/ ExecutionPlan -> use PlanGraphBundle from executable-contracts
+//   - execution-receipt/ ExecutionReceipt -> use NodeAttemptReceipt from executable-contracts
+//   - request-envelope/ RequestEnvelope -> use RequestEnvelope from executable-contracts
+//   - state-command/ StateCommand -> use inter-plane commands (EventAppendCommand, etc.) from executable-contracts
 export const LEGACY_CONTRACT_NAMES = [
   "ExecutionPlan",
   "ExecutionReceipt",

@@ -680,7 +680,12 @@ export class PluginSpiRegistry {
     if (record.manifest.sandbox.cooldownMs > 0) {
       record.cooldownUntil = new Date(Date.now() + record.manifest.sandbox.cooldownMs).toISOString();
     }
-    if (record.failureCount >= this.maxConsecutiveFailures) {
+    // §198-2318: Root cause - off-by-one error: >= maxConsecutiveFailures means
+    // plugin is disabled after 3rd failure when max=3, but spec requires disabling AFTER 4th.
+    // With maxConsecutiveFailures=3: failureCount goes 1,2,3 - at 3>=3 plugin is disabled.
+    // But spec says "disable after 4 consecutive failures" means count should be 4.
+    // Fix: Use > instead of >= so plugin is disabled on the failure AFTER the threshold.
+    if (record.failureCount > this.maxConsecutiveFailures) {
       record.disabledReason = phase;
       this.setLifecycleState(record, "disabled");
     } else {

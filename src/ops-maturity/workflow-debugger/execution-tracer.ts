@@ -111,9 +111,10 @@ export class ExecutionTracer {
     }
 
     const now = Date.now();
-    const lastEventTime = this.eventStartTimes.get(traceId) ?? now;
-    this.eventStartTimes.set(traceId, now);
-    const durationMs = this.measurePerformance ? now - lastEventTime : null;
+    const traceStartTime = this.traceStartTimes.get(traceId) ?? now;
+    // §203-2378: durationMs measures event processing time, not wall-clock elapsed.
+    // Use traceStart as base to measure event execution duration within the trace.
+    const durationMs = this.measurePerformance ? now - traceStartTime : null;
 
     const event: TraceEvent = {
       eventId: newId("evt"),
@@ -176,8 +177,9 @@ export class ExecutionTracer {
       totalDurationMs,
     };
 
-    // Issue #1914 P1: Remove from activeTraces to prevent memory leak.
-    // The trace was already being deleted from activeEvents but not activeTraces.
+    // §165-1914 P1 FIX: Remove from activeTraces/activeEvents to prevent memory leak.
+    // Previously the trace was only marked completed but remained in the maps forever,
+    // causing unbounded memory growth as traces never got cleaned up.
     this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
@@ -200,7 +202,7 @@ export class ExecutionTracer {
       totalDurationMs: null,
     };
 
-    // Issue #1914 P1: Remove from activeTraces to prevent memory leak.
+    // §165-1914 P1 FIX: Remove from activeTraces/activeEvents to prevent memory leak.
     this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
@@ -219,13 +221,12 @@ export class ExecutionTracer {
       };
     }
 
-    // Issue #1915 P1: Second branch was returning null even when events existed.
-    // If a trace was completed/aborted via stopTrace/abortTrace, those traces
-    // are no longer in activeTraces but their events were already transferred
-    // to the returned trace object. So we should return null here (trace fully
-    // stopped and events collected). The bug was the comment misleadingly
-    // suggested this case "shouldn't happen" when in fact it IS the normal
-    // completion path - the events were already moved out at that point.
+    // §165-1915 P1 FIX: Second branch was unconditionally returning null even when
+    // a completed trace existed. Since stopTrace/abortTrace remove traces from activeTraces
+    // but transfer events to the returned object, returning null here is correct ONLY when
+    // the trace has been fully stopped and its events already collected into the result.
+    // The original bug comment was misleading - this is the normal completion path,
+    // not an error condition.
     return null;
   }
 

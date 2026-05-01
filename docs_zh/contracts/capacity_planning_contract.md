@@ -14,6 +14,8 @@
 
 ## 3. `CapacitySignal` 最小字段
 
+- `tenant_id` — 租户关联（必填）
+- `harness_run_id?` — canonical 执行关联
 - `resource_type`
 - `region_id?`
 - `timestamp`

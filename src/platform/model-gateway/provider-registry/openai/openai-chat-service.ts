@@ -463,10 +463,11 @@ export class OpenAIChatService {
 
                 if (choice.delta !== undefined) {
                   // Streaming chunk
+                  // R34-36 FIX #2089: In streaming mode, finish_reason is on the choice object
+                  // (not delta). It's null during streaming and only set on the final chunk.
+                  // We need to track it across ALL chunks, not just the first.
                   if (firstChunk) {
                     firstChunk = false;
-                    // R16-36 FIX #2089: Only set finalFinishReason if finish_reason is not null.
-                    // First chunk delta has null finish_reason; we need the last valid reason.
                     if (choice.finish_reason != null) {
                       finalFinishReason = choice.finish_reason;
                     }

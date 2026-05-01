@@ -249,9 +249,10 @@ export class CryptoShreddingService {
       encryptions.push({
         fieldPath: fieldSpec.fieldPath,
         dekId: result.dekId,
-        // R16-36 FIX #2085: Do not expose originalValue (plaintext PII) in return struct.
-        // Caller logging/persistence would leak plaintext PII. Field path and DEK are safe.
-        originalValue: "<redacted>",
+        // R16-36 FIX #2085: Do not include originalValue in return struct.
+        // The original plaintext PII must never be exposed in return values,
+        // as caller logging/persistence would leak PII. Field path and DEK ID are safe.
+        originalValue: "", // Empty string instead of plaintext - caller should use field path to locate, not retrieve value
       });
     }
 

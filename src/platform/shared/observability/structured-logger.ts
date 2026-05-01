@@ -468,10 +468,17 @@ export class StructuredLogger {
     }
   }
 
-  private rotationScheduled = false;
+  private static rotationScheduled = false;
+  // R16-36 FIX #2139: Static mutex to serialize rotation scheduling across all instances.
+  // Without this, concurrent logging from multiple instances could trigger simultaneous
+  // rotations, causing file corruption. The mutex ensures only one rotation runs at a time.
+  private static rotationMutex: boolean = false;
 
   private scheduleRotationIfNeeded(sink: StructuredLoggerFileSink, incomingBytes: number): void {
-    if (this.rotationScheduled || sink.maxBytes == null) {
+    // R16-36 FIX #2139: Use mutex to prevent concurrent rotations.
+    // Without this, multiple logger instances could trigger rotation simultaneously,
+    // leading to file corruption (e.g., renaming the same file twice).
+    if (StructuredLogger.rotationScheduled || StructuredLogger.rotationMutex || sink.maxBytes == null) {
       return;
     }
 
@@ -490,7 +497,9 @@ export class StructuredLogger {
     }
 
     // Schedule async rotation
-    this.rotationScheduled = true;
+    // R16-36 FIX #2139: Acquire mutex before scheduling rotation to prevent concurrent rotations
+    StructuredLogger.rotationMutex = true;
+    StructuredLogger.rotationScheduled = true;
     setImmediate(() => this.performRotation(sink));
   }
 
@@ -503,7 +512,8 @@ export class StructuredLogger {
         } catch {
           // File may not exist
         }
-        this.rotationScheduled = false;
+        StructuredLogger.rotationScheduled = false;
+        StructuredLogger.rotationMutex = false;
         return;
       }
 
@@ -532,7 +542,8 @@ export class StructuredLogger {
     } catch {
       // Rotation errors should not affect logging
     } finally {
-      this.rotationScheduled = false;
+      StructuredLogger.rotationScheduled = false;
+      StructuredLogger.rotationMutex = false;
     }
   }
 

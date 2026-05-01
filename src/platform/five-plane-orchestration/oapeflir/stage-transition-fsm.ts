@@ -52,7 +52,7 @@ const STAGE_ORDER: readonly OapeflirStage[] = OAPEFLIR_STAGES;
 
 const VALID_PREDECESSORS: ReadonlyMap<OapeflirStage, readonly OapeflirStage[]> = new Map([
   ["observe", []],
-  ["assess", ["observe"]],
+  ["assess", ["observe", "feedback"]], // §174-2022: R5-42 fix - feedback allowed to support OAPEFLIR closed loop
   ["plan", ["assess", "feedback"]],
   ["execute", ["plan"]],
   ["feedback", ["execute"]],
@@ -208,11 +208,11 @@ export class StageTransitionFSM {
     this.stageTimestamps.set(stage, Date.now());
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
-    // R5-43 FIX: Cap currentStageIndex at STAGE_ORDER.length to prevent out-of-bounds
-    // Access when "release" is completed (stageIndex=7, setting currentStageIndex=8 which
-    // is valid for completion but must not exceed array bounds on subsequent queries).
+    // §174-2023: R5-43 fix - cap currentStageIndex at STAGE_ORDER.length to prevent out-of-bounds
+    // When "release" is completed (stageIndex=7), setting currentStageIndex=8 would cause
+    // getNextStage() and isComplete() to return incorrect values since STAGE_ORDER[8] is undefined.
     if (stageIndex >= this.currentStageIndex) {
-      this.currentStageIndex = Math.min(stageIndex + 1, STAGE_ORDER.length);
+      this.currentStageIndex = Math.min(stageIndex + 1, STAGE_ORDER.length - 1);
     }
   }
 
@@ -222,8 +222,9 @@ export class StageTransitionFSM {
     this.stageSkipReasons.set(stage, reasonCode);
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
+    // §174-2023: Same fix as recordStageCompletion - cap at length-1 to prevent out-of-bounds
     if (stageIndex >= this.currentStageIndex) {
-      this.currentStageIndex = stageIndex + 1;
+      this.currentStageIndex = Math.min(stageIndex + 1, STAGE_ORDER.length - 1);
     }
   }
 

@@ -170,8 +170,9 @@ test("security: path with shell metacharacters is not rejected by itself", () =>
   // Additionally verify command injection protection via restricted exec policy
   const execPolicy = createRestrictedExecPolicy("/workspace");
   const execResult = checkSandboxPath(execPolicy, "/workspace/$(whoami).txt");
-  // restricted_exec mode should still allow this path since it's within allowed roots
-  assert.equal(execResult.allowed, true);
+  // R16-04 FIX: restricted_exec should ALLOW this path since it's within allowed roots
+  // (shell chars in filename are not command injection - they're just characters in the path)
+  assert.equal(execResult.allowed, true, "Path with shell chars within workspace should be allowed");
 });
 
 test("security: path with pipe character is not rejected by itself", () => {

@@ -1,5 +1,37 @@
 /**
- * @fileoverview Transition Service - Enforces valid state transitions for all entities.
+ * @fileoverview Transition Service - Enforces valid state transitions for LEGACY entities.
+ *
+ * ════════════════════════════════════════════════════════════════════════════════════
+ * IMPORTANT: Architectural Coexistence Notice (INV-STATE-001)
+ * ════════════════════════════════════════════════════════════════════════════════════
+ *
+ * This service handles LEGACY entity types ONLY:
+ *   - Task, Workflow, Session, Execution, Approval
+ *
+ * These legacy types are being migrated to the new five-plane model with canonical types:
+ *   - HarnessRun (replaces Task)
+ *   - NodeRun (replaces Execution)
+ *   - SideEffectRecord
+ *   - BudgetLedger
+ *   - BudgetReservation
+ *
+ * The canonical path for new entities is:
+ *   RuntimeStateMachine → RuntimeTruthRepository → PlatformFactEvent
+ *
+ * INV-STATE-001 BYPASS RISK:
+ *   TransitionService uses RuntimeLifecycleRepository (not RuntimeTruthRepository)
+ *   and creates EventRecord objects (not PlatformFactEvent).
+ *   This bypasses the inv-state-001 enforcement required for canonical entities.
+ *
+ * USE RuntimeStateMachine FOR:
+ *   - HarnessRun, NodeRun, SideEffectRecord, BudgetLedger, BudgetReservation
+ *   - Any entity with harnessRunId or nodeRunId
+ *
+ * USE TransitionService ONLY FOR:
+ *   - Legacy Task/Workflow/Session/Execution/Approval entities
+ *   - Entities that have NOT yet been migrated to the five-plane model
+ *
+ * ════════════════════════════════════════════════════════════════════════════════════
  *
  * Provides a centralized service for validating and applying state transitions across
  * tasks, workflows, sessions, executions, and approvals. Every transition is audited
@@ -15,8 +47,10 @@
  * - Handle terminal transitions that cascade across multiple entities
  * - Block execution for approval requests
  *
- * @see State Transition Machine: state-transition-machine.ts
+ * @see RuntimeStateMachine: runtime-state-machine.ts (canonical path for new entities)
+ * @see RuntimeTruthRepository: five-plane-state-evidence/truth/runtime-truth-repository.ts
  * @see Transition Service Contract: docs_zh/contracts/transition_service_contract.md
+ * @see INV-STATE-001: docs_zh/adr/xxx-inv-state-001.md (invariant enforcement)
  */
 
 import type {
@@ -53,6 +87,65 @@ import type {
   RuntimeTransitionCommand,
   RuntimeStateAggregateType,
 } from "../../five-plane-execution/runtime-state-machine.js";
+
+/**
+ * Canonical entity type prefixes used by RuntimeStateMachine.
+ * These entity IDs should NEVER be passed to TransitionService - they require
+ * PlatformFactEvent and RuntimeTruthRepository (INV-STATE-001).
+ */
+const CANONICAL_ENTITY_PREFIXES = ["hrn_", "ndr_", "ser_", "bdl_", "bdr_"] as const;
+
+/**
+ * Error thrown when attempting to transition a canonical five-plane entity
+ * through the legacy TransitionService (INV-STATE-001 bypass).
+ */
+export class InvState001BypassError extends Error {
+  public constructor(entityId: string, entityType: string) {
+    super(
+      `INV-STATE-001 BYPASS DETECTED: Entity "${entityId}" appears to be a canonical ` +
+        `five-plane entity (type: ${entityType}) that must use RuntimeStateMachine ` +
+        `and RuntimeTruthRepository. TransitionService is for legacy entities only. ` +
+        `Do not use TransitionService for HarnessRun, NodeRun, SideEffectRecord, ` +
+        `BudgetLedger, or BudgetReservation.`,
+    );
+    this.name = "InvState001BypassError";
+  }
+}
+
+/**
+ * Validates that an entity ID does not represent a canonical five-plane entity.
+ * Throws InvState001BypassError if the entity appears to be a HarnessRun, NodeRun,
+ * SideEffectRecord, BudgetLedger, or BudgetReservation.
+ *
+ * This enforces INV-STATE-001: canonical entities must use RuntimeStateMachine
+ * and emit PlatformFactEvent, not EventRecord via TransitionService.
+ *
+ * @param entityId - The entity ID to validate
+ * @param entityType - The entity type being transitioned (for error messages)
+ * @throws InvState001BypassError if the entity appears to be a canonical five-plane entity
+ */
+function assertNotCanonicalEntity(entityId: string, entityType: string): void {
+  // Check for known canonical entity ID prefixes
+  for (const prefix of CANONICAL_ENTITY_PREFIXES) {
+    if (entityId.startsWith(prefix)) {
+      throw new InvState001BypassError(entityId, entityType);
+    }
+  }
+
+  // Additional check: if the entityId looks like a GUID/UUID pattern typical of
+  // canonical entities, warn. This catches cases where prefix conventions may vary.
+  // UUID v4 pattern: 8-4-4-4-12 hex characters
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (entityType !== "approval" && uuidPattern.test(entityId)) {
+    // For non-approval entities with UUIDs, be more cautious
+    // This is a heuristic - approval IDs may legitimately be UUIDs
+    console.warn(
+      `[INV-STATE-001] WARNING: Entity "${entityId}" (${entityType}) has UUID format ` +
+        `and may be a canonical five-plane entity. Prefer RuntimeStateMachine for UUID-formatted ` +
+        `entity IDs in five-plane workloads. TransitionService is designed for legacy entities.`,
+    );
+  }
+}
 
 /**
  * Allowed task status transitions.
@@ -223,14 +316,20 @@ type TaskTerminalTransitionInput = {
 /**
  * Service for transitioning task status.
  *
+ * LEGACY ENTITY TYPE: Task
+ *
+ * This service handles legacy Task entities. The canonical path for new entities
+ * is RuntimeStateMachine → RuntimeTruthRepository → PlatformFactEvent.
+ *
+ * INV-STATE-001 ENFORCEMENT: TaskTransitionService.apply() will throw
+ * InvState001BypassError if invoked with a canonical five-plane entity ID
+ * (e.g., harnessRunId, nodeRunId patterns).
+ *
  * Applies task status changes within a database transaction, validates the
  * transition against the task state machine, and emits a tier-1 status change event.
  *
- * P1 FIX: The transition() and apply() methods currently accept domain-specific
- * TaskStatusTransitionCommand. Per issue #2420, these should be unified under
- * RuntimeTransitionCommand. This requires adding Task/Workflow/Session/Execution/Approval
- * as RuntimeStateAggregate types in the five-plane module, or creating a parallel
- * unified command structure for execution plane entities.
+ * §205-2420: transition() accepts TaskStatusTransitionCommand per domain-specific model.
+ * For unified RuntimeTransitionCommand path, use transitionRuntime() instead.
  */
 export class TaskTransitionService {
   public constructor(
@@ -247,6 +346,8 @@ export class TaskTransitionService {
    * RuntimeTransitionCommand approach.
    */
   public transition(command: TaskStatusTransitionCommand): void {
+    // INV-STATE-001: Validate this is not a canonical five-plane entity
+    assertNotCanonicalEntity(command.entityId, "task");
     this.db.transaction(() => {
       this.apply(command);
     });
@@ -257,8 +358,12 @@ export class TaskTransitionService {
    *
    * Validates the transition against the task state machine, updates the task
    * record in the repository, and emits a tier-1 event for reliable delivery.
+   *
+   * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: TaskStatusTransitionCommand): void {
+    // INV-STATE-001: Enforce that this service is not used for canonical entities
+    assertNotCanonicalEntity(command.entityId, "task");
     taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
     // RT-01: CAS on status. If another transaction already moved the task
@@ -294,6 +399,14 @@ export class TaskTransitionService {
 /**
  * Service for transitioning workflow state.
  *
+ * LEGACY ENTITY TYPE: Workflow
+ *
+ * This service handles legacy Workflow entities. The canonical path for new entities
+ * is RuntimeStateMachine → RuntimeTruthRepository → PlatformFactEvent.
+ *
+ * INV-STATE-001 ENFORCEMENT: WorkflowTransitionService.transition() will throw
+ * InvState001BypassError if invoked with a canonical five-plane entity ID.
+ *
  * Workflows track multi-step execution progress. Updates include the current
  * step index and any accumulated outputs from previous steps.
  */
@@ -306,10 +419,50 @@ export class WorkflowTransitionService {
   /**
    * Transitions workflow status atomically within a database transaction.
    * Ensures workflow state updates are serialized with other concurrent operations.
+   *
+   * §184-2148: read+write operations must be atomic to prevent lost updates
+   * during concurrent transitions. Without a transaction, concurrent calls
+   * could both read the same state, then both write their own version,
+   * causing one update to be lost.
    */
   public transition(command: WorkflowStatusTransitionCommand): void {
+    // INV-STATE-001: Validate this is not a canonical five-plane entity
+    assertNotCanonicalEntity(command.entityId, "workflow");
     this.db.transaction(() => {
-      this.apply(command);
+      // Read current state under transaction lock
+      workflowStateMachine.assertTransition(command.fromStatus, command.toStatus);
+      const current = this.repository.getWorkflowState(command.entityId);
+      if (current == null) {
+        throw new Error(`workflow.not_found:${command.entityId}`);
+      }
+      if (current.status !== command.fromStatus) {
+        throw new Error(
+          `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
+        );
+      }
+      // Write with CAS under transaction lock
+      const affected = this.repository.updateWorkflowStateCas(
+        command.entityId,
+        current.currentStepIndex,
+        current.status,
+        command.toStatus,
+        command.currentStepIndex,
+        command.outputsJson,
+        command.occurredAt,
+      );
+      if (affected === 0) {
+        throw new Error(
+          `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
+        );
+      }
+      // §28: Emit tier-1 status change event for workflow transitions
+      this.repository.createTier1StatusEvent({
+        taskId: command.entityId,
+        executionId: null,
+        eventType: "workflow:status_changed",
+        traceId: command.traceId,
+        payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+      });
     });
   }
 
@@ -318,8 +471,12 @@ export class WorkflowTransitionService {
    *
    * Updates the workflow state with the new status, step index, and outputs.
    * The outputs capture the accumulated results from completed workflow steps.
+   *
+   * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: WorkflowStatusTransitionCommand): void {
+    // INV-STATE-001: Enforce that this service is not used for canonical entities
+    assertNotCanonicalEntity(command.entityId, "workflow");
     workflowStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const current = this.repository.getWorkflowState(command.entityId);
     if (current == null) {
@@ -358,6 +515,14 @@ export class WorkflowTransitionService {
 /**
  * Service for transitioning session status.
  *
+ * LEGACY ENTITY TYPE: Session
+ *
+ * This service handles legacy Session entities. The canonical path for new entities
+ * is RuntimeStateMachine → RuntimeTruthRepository → PlatformFactEvent.
+ *
+ * INV-STATE-001 ENFORCEMENT: SessionTransitionService.apply() will throw
+ * InvState001BypassError if invoked with a canonical five-plane entity ID.
+ *
  * Sessions track the interaction context. Status changes reflect user interaction
  * state, such as awaiting user input or completing a conversation turn.
  */
@@ -366,6 +531,8 @@ export class SessionTransitionService {
 
   /** Transitions session status. */
   public transition(command: SessionStatusTransitionCommand): void {
+    // INV-STATE-001: Validate this is not a canonical five-plane entity
+    assertNotCanonicalEntity(command.entityId, "session");
     this.apply(command);
   }
 
@@ -374,8 +541,12 @@ export class SessionTransitionService {
    *
    * Updates the session status to reflect the current interaction state,
    * such as "streaming", "awaiting_user", or "completed".
+   *
+   * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: SessionStatusTransitionCommand): void {
+    // INV-STATE-001: Enforce that this service is not used for canonical entities
+    assertNotCanonicalEntity(command.entityId, "session");
     sessionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     // RT-01: CAS on status. If another transaction already moved the session
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
@@ -405,6 +576,17 @@ export class SessionTransitionService {
 /**
  * Service for transitioning execution status.
  *
+ * LEGACY ENTITY TYPE: Execution
+ *
+ * This service handles legacy Execution entities. The canonical path for new entities
+ * is RuntimeStateMachine → RuntimeTruthRepository → PlatformFactEvent.
+ *
+ * NOTE: The new NodeRun entity replaces Execution in the five-plane model.
+ * For NodeRun transitions, use RuntimeStateMachine with RuntimeTransitionCommand.
+ *
+ * INV-STATE-001 ENFORCEMENT: ExecutionTransitionService.apply() will throw
+ * InvState001BypassError if invoked with a canonical five-plane entity ID.
+ *
  * Executions represent individual work attempts. Status changes track the
  * lifecycle from creation through execution to completion or failure.
  */
@@ -413,6 +595,8 @@ export class ExecutionTransitionService {
 
   /** Transitions execution status. */
   public transition(command: ExecutionStatusTransitionCommand): void {
+    // INV-STATE-001: Validate this is not a canonical five-plane entity
+    assertNotCanonicalEntity(command.entityId, "execution");
     this.apply(command);
   }
 
@@ -421,8 +605,12 @@ export class ExecutionTransitionService {
    *
    * Updates execution status and records timing metadata: startedAt is set when
    * execution begins (prechecking or executing), finishedAt when execution ends.
+   *
+   * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: ExecutionStatusTransitionCommand): void {
+    // INV-STATE-001: Enforce that this service is not used for canonical entities
+    assertNotCanonicalEntity(command.entityId, "execution");
     executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const startedAt =
       command.toStatus === "prechecking" || command.toStatus === "executing"
@@ -465,6 +653,11 @@ export class ExecutionTransitionService {
 /**
  * Service for transitioning approval status.
  *
+ * LEGACY ENTITY TYPE: Approval
+ *
+ * This service handles legacy Approval entities. The canonical path for new entities
+ * is RuntimeStateMachine → RuntimeTruthRepository → PlatformFactEvent.
+ *
  * Approvals track human authorization decisions. Status changes reflect whether
  * an approval request was approved, rejected, expired, or cancelled.
  */
@@ -505,9 +698,14 @@ export class ApprovalTransitionService {
 /**
  * Handles terminal transitions that affect multiple entities simultaneously.
  *
+ * LEGACY ENTITY TYPES: Task, Workflow, Session, Execution (all legacy)
+ *
  * When a task reaches a terminal state (done, failed, cancelled), all related
  * entities must also reach their terminal states. This service coordinates
  * the transitions atomically to maintain consistency.
+ *
+ * INV-STATE-001: This service operates on legacy entity types only.
+ * For canonical entities (HarnessRun, NodeRun), use RuntimeStateMachine directly.
  */
 class TaskTerminalTransitionService {
   public constructor(
@@ -523,6 +721,10 @@ class TaskTerminalTransitionService {
    * across all related entities.
    */
   public transition(input: TaskTerminalTransitionInput): void {
+    // INV-STATE-001: Validate these are not canonical five-plane entities
+    assertNotCanonicalEntity(input.taskId, "task");
+    assertNotCanonicalEntity(input.sessionId, "session");
+    assertNotCanonicalEntity(input.executionId, "execution");
     this.db.transaction(() => {
       this.apply(input);
     });
@@ -537,6 +739,10 @@ class TaskTerminalTransitionService {
    * before any updates are applied.
    */
   public apply(input: TaskTerminalTransitionInput): void {
+    // INV-STATE-001: Enforce that this service is not used for canonical entities
+    assertNotCanonicalEntity(input.taskId, "task");
+    assertNotCanonicalEntity(input.sessionId, "session");
+    assertNotCanonicalEntity(input.executionId, "execution");
     const traceContext = buildEventTraceContext(input.context, input.taskId);
     const workflowTerminal: WorkflowStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const sessionTerminal: SessionStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
@@ -623,9 +829,14 @@ class TaskTerminalTransitionService {
 /**
  * Coordinates state transitions when an execution is blocked pending approval.
  *
+ * LEGACY ENTITY TYPES: Task, Workflow, Session, Execution, Approval (all legacy)
+ *
  * When human approval is required, this service transitions the task to
  * "awaiting_decision", workflow to "paused", session to "awaiting_user", and
  * execution to "blocked", then creates the approval record.
+ *
+ * INV-STATE-001: This service operates on legacy entity types only.
+ * For canonical entities (HarnessRun, NodeRun), use RuntimeStateMachine directly.
  */
 class ApprovalBlockingTransitionService {
   public constructor(
@@ -646,6 +857,10 @@ class ApprovalBlockingTransitionService {
    * is resolved.
    */
   public transition(input: BlockedForApprovalTransitionCommand): BlockedForApprovalTransitionResult {
+    // INV-STATE-001: Validate these are not canonical five-plane entities
+    assertNotCanonicalEntity(input.taskId, "task");
+    assertNotCanonicalEntity(input.sessionId, "session");
+    assertNotCanonicalEntity(input.executionId, "execution");
     return this.db.transaction(() => this.apply(input));
   }
 
@@ -657,6 +872,10 @@ class ApprovalBlockingTransitionService {
    * emits a tier-1 "decision:requested" event for reliable delivery.
    */
   public apply(input: BlockedForApprovalTransitionCommand): BlockedForApprovalTransitionResult {
+    // INV-STATE-001: Enforce that this service is not used for canonical entities
+    assertNotCanonicalEntity(input.taskId, "task");
+    assertNotCanonicalEntity(input.sessionId, "session");
+    assertNotCanonicalEntity(input.executionId, "execution");
     const approvalId = input.approval.approvalId ?? newId("approval");
     const createdAt = input.approval.createdAt ?? input.context.occurredAt;
     const approvalRecord: ApprovalRecord = {
@@ -735,10 +954,23 @@ class ApprovalBlockingTransitionService {
 /**
  * Facade service that coordinates all entity transitions.
  *
+ * LEGACY ENTITY TYPES ONLY: Task, Workflow, Session, Execution, Approval
+ *
  * TransitionService provides a unified interface for transitioning tasks, workflows,
  * sessions, executions, and approvals. It composes the individual transition
  * services and provides convenience methods for common transition scenarios,
  * including terminal transitions and approval blocking.
+ *
+ * INV-STATE-001 ENFORCEMENT:
+ *   All public methods validate that entity IDs do not represent canonical
+ *   five-plane entities (HarnessRun, NodeRun, SideEffectRecord, BudgetLedger,
+ *   BudgetReservation). These entities require RuntimeStateMachine and
+ *   RuntimeTruthRepository with PlatformFactEvent emission.
+ *
+ * For canonical entities, use RuntimeStateMachine.transition() directly.
+ *
+ * @see RuntimeStateMachine: runtime-state-machine.ts
+ * @see RuntimeTruthRepository: five-plane-state-evidence/truth/runtime-truth-repository.ts
  */
 export class TransitionService {
   private readonly tasks: TaskTransitionService;
@@ -770,27 +1002,52 @@ export class TransitionService {
     );
   }
 
-  /** Transitions a task's status. Validates against task state machine and emits events. */
+  /**
+   * Transitions a task's status. Validates against task state machine and emits events.
+   *
+   * @deprecated For canonical five-plane entities (HarnessRun), use RuntimeStateMachine.
+   * This method is for legacy Task entities only.
+   * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   */
   public transitionTaskStatus(command: TaskStatusTransitionCommand): void {
     this.tasks.transition(command);
   }
 
-  /** Transitions a workflow's status, including step index and outputs. */
+  /** Transitions a workflow's status, including step index and outputs.
+   *
+   * @deprecated For canonical five-plane entities, use RuntimeStateMachine.
+   * This method is for legacy Workflow entities only.
+   * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   */
   public transitionWorkflowStatus(command: WorkflowStatusTransitionCommand): void {
     this.workflows.transition(command);
   }
 
-  /** Transitions a session's status. */
+  /** Transitions a session's status.
+   *
+   * @deprecated For canonical five-plane entities, use RuntimeStateMachine.
+   * This method is for legacy Session entities only.
+   * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   */
   public transitionSessionStatus(command: SessionStatusTransitionCommand): void {
     this.sessions.transition(command);
   }
 
-  /** Transitions an execution's status, recording startedAt/finishedAt timestamps. */
+  /** Transitions an execution's status, recording startedAt/finishedAt timestamps.
+   *
+   * @deprecated For canonical five-plane entities (NodeRun), use RuntimeStateMachine.
+   * This method is for legacy Execution entities only.
+   * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   */
   public transitionExecutionStatus(command: ExecutionStatusTransitionCommand): void {
     this.executions.transition(command);
   }
 
-  /** Transitions an approval's status (approved, rejected, expired, cancelled). */
+  /** Transitions an approval's status (approved, rejected, expired, cancelled).
+   *
+   * @deprecated For canonical five-plane entities, use RuntimeStateMachine.
+   * This method is for legacy Approval entities only.
+   */
   public transitionApprovalStatus(command: ApprovalStatusTransitionCommand): void {
     this.approvals.transition(command);
   }

@@ -19,8 +19,8 @@ export const electronMainBaseline = {
     "secure-store:read",
     "secure-store:write",
     "secure-store:delete",
-    "files:read",
-    "files:write",
+    // §185-2165: files:read/files:write removed - no path whitelist, allows arbitrary file access
+    // These should be replaced with scoped file APIs that validate paths against allowed directories
     "privacy:getAnalyticsConsent",
     "privacy:setAnalyticsConsent",
     "privacy:enableScreenSecurity",

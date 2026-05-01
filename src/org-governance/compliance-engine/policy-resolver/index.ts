@@ -15,5 +15,12 @@ export function resolveCompliancePolicyForNode(
       : nodes.find((item) => item.orgNodeId === current?.parentOrgNodeId) ?? null;
   }
   const orderedLayers = lineage.flatMap((item) => policiesByNodeId[item.orgNodeId] ?? []);
+
+  // R34-36 FIX #1980: Without deny-by-default, empty policy returns {} = allow.
+  // When no policy layers exist, return {_denyByDefault: true} to enforce denial.
+  if (orderedLayers.length === 0) {
+    return { _denyByDefault: true };
+  }
+
   return inheritPolicyLayers(orderedLayers);
 }

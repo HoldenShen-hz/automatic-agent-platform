@@ -34,6 +34,7 @@
 - `default_workflow_ids`
 - `default_knowledge_namespaces`
 - `version`
+- `latency_tier`: `low | medium | high | latency_insensitive`
 
 规则：
 

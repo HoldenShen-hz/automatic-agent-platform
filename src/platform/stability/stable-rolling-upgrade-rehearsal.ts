@@ -129,7 +129,7 @@ function seedTaskAndExecution(
     taskId: string;
     executionId: string;
     traceId: string;
-    priority?: "low" | "normal" | "high" | "urgent";
+    priority?: "low" | "normal" | "high" | "critical";
   },
 ): void {
   const now = nowIso();
@@ -325,7 +325,7 @@ async function runRepoVersionCanaryScenario(outputDir: string): Promise<StableRo
       taskId: "task-upgrade-canary",
       executionId: "exec-upgrade-canary",
       traceId: "trace-upgrade-canary",
-      priority: "urgent",
+      priority: "critical",
     });
 
     registry.recordHeartbeat({
@@ -351,7 +351,7 @@ async function runRepoVersionCanaryScenario(outputDir: string): Promise<StableRo
 
     const ticket = dispatch.createTicket({
       executionId: "exec-upgrade-canary",
-      priority: "urgent",
+      priority: "critical",
       queueName: "default",
       requiredCapabilities: ["bash"],
       requiredRepoVersion,

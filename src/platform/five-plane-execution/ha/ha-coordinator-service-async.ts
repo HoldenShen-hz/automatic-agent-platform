@@ -136,7 +136,8 @@ export class HaCoordinatorServiceAsync {
     }
 
     const newEpoch = currentEpoch.epoch + 1;
-    const newFencingToken = this.nextFencingToken();
+    // §209-2468: await async nextFencingToken to get DB-consistent unique token
+    const newFencingToken = await this.nextFencingToken();
 
     const leaseId = newId("llease");
     const lease: LeaderLease = {
@@ -215,6 +216,10 @@ export class HaCoordinatorServiceAsync {
 
     await this.repo.updateLeaseExpiration(currentLease.leaseId, expiresAt);
     await this.repo.updateNodeHeartbeat(nodeId);
+
+    // §209-2465: Get latestEpoch and use its fencingToken for stale-write verification
+    // Previous code referenced undefined `latestEpoch` variable
+    const latestEpoch = await this.getLatestEpoch();
 
     const updatedLease: LeaderLease = {
       ...currentLease,
@@ -516,9 +521,11 @@ export class HaCoordinatorServiceAsync {
 
   // ── Helpers ─────────────────────────────────────────────────────
 
-  private nextFencingToken(): number {
-    this.fencingTokenCounter.value += 1;
-    return this.fencingTokenCounter.value;
+  // §209-2467: Use MAX(fencing_token)+1 from DB via repo instead of in-memory counter
+  // In-memory counter is local to each node; distributed increments cause token collisions
+  private async nextFencingToken(): Promise<number> {
+    const latestEpoch = await this.getLatestEpoch();
+    return latestEpoch.fencingToken + 1;
   }
 
   private async recordActionAudit(

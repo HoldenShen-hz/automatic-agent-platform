@@ -6,7 +6,10 @@
  */
 
 import { nowIso } from "../../platform/contracts/types/ids.js";
+import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type { ImprovementProposal } from './proposal-engine.js';
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 export type RolloutStage = 'shadow' | 'canary' | 'partial' | 'stable';
 
@@ -165,6 +168,15 @@ export class SimpleRolloutManager implements RolloutManager {
       record.status = 'rolled_back';
       record.failureReason = reason;
       record.completedAt = nowIso();
+      // R16-36 FIX #2106: rollback() only changed status - no actual revert.
+      // A rollback should revert the proposal to its previous stable version.
+      // Since SimpleRolloutManager is in-memory only, we mark for manual revert.
+      // Actual revert would call the ProposalEngine.revertToPrevious() method.
+      logger.log({
+        level: "warn",
+        message: "rollout_manager.rollback_requires_manual_revert",
+        data: { proposalId, reason },
+      });
       this.evictCompletedRollouts();
     }
   }

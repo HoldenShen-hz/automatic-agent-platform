@@ -44,6 +44,8 @@ const EXECUTABLE_SECTIONS = new Set([
  */
 const SEVERITY_PATTERNS: Array<{ pattern: RegExp; severity: "P0" | "P1" | "P2" | "P3" }> = [
   { pattern: /\bP0\b|\bcritical\b|\b outage\b|\bdown\b/i, severity: "P0" },
+  // R16-36 FIX #2119: "\bhight\b" is a typo - should be "\bhigh\b" for P1 matching.
+  // Without this fix, "P1: High latency incident" would never match P1 severity.
   { pattern: /\bP1\b|\bhigh\b|\bspike\b/i, severity: "P1" },
   { pattern: /\bP2\b|\bdegraded\b|\bwarning\b/i, severity: "P2" },
   { pattern: /\bP3\b|\bminor\b|\binfo\b/i, severity: "P3" },

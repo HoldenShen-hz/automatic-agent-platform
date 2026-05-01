@@ -20,7 +20,12 @@ export class RuntimeEntryGuard {
     };
   }
 
-  public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonly eventType?: string }): void {
+  /**
+ * @deprecated Use RuntimeTruthRepository.assertNoLegacyTruthWrite() for compile-time enforcement.
+ * This method only provides runtime checks. For build-time @deprecated enforcement on legacy imports,
+ * use the ESLint no-restricted-imports rule configured in eslint.config.js.
+ */
+public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonly eventType?: string }): void {
     const legacyContractNames = new Set(["ExecutionPlan", "ExecutionReceipt", "ControlDirective", "WorkflowStep", "StepOutput"]);
     if (input.contractName != null && legacyContractNames.has(input.contractName)) {
       throw new ValidationError(

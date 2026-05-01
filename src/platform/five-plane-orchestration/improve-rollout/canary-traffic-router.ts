@@ -27,11 +27,18 @@ const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
 };
 
 function hashToBucket(value: string): number {
-  let hash = 0;
+  // R16-16 FIX: Short IDs had bias with simple djb2 hash (31-based).
+  // Use FNV-1a hash for better distribution especially for short IDs.
+  // FNV-1a has better avalanche behavior and fewer collisions for short strings.
+  const FNV_OFFSET_BASIS = 2166136261;
+  const FNV_PRIME = 16777619;
+  let hash = FNV_OFFSET_BASIS;
   for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash * 31) + value.charCodeAt(index)) >>> 0;
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, FNV_PRIME);
   }
-  return hash % 100;
+  // Ensure positive and reduce to bucket range
+  return (hash >>> 0) % 100;
 }
 
 export class CanaryTrafficRouter {

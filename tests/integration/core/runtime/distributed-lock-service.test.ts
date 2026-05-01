@@ -18,7 +18,8 @@ test("distributed-lock-service barrel exports module", () => {
 test("distributed-lock-service barrel re-exports types", async () => {
   const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
   const keys = Object.keys(mod);
-  // Module should export at least LockManager, lock factory, and adapter types
+  // R16-04 FIX: keys.length >= 0 is always true (array length is never negative).
+  // Valid assertion: check that module exports actual lock-related symbols.
   assert.ok(keys.length > 0, "Module should export at least some keys");
   assert.ok(keys.includes("LockManager") || keys.includes("DistributedLockService") || keys.some(k => k.toLowerCase().includes("lock")), "Module should export lock-related symbols");
 });

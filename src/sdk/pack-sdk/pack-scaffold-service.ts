@@ -11,6 +11,24 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 
 export type PackTemplate = "minimal" | "standard" | "full";
 
+/**
+ * Sanitizes a template variable value to prevent injection attacks.
+ * Issue #2021 P1: Template variables were used directly without sanitization,
+ * allowing path traversal and content injection attacks via malicious packId/name/domain.
+ */
+function sanitizeTemplateValue(value: string, fieldName: string): string {
+  // Allow only alphanumeric, hyphens, underscores, and dots
+  const safe = value.replace(/[^a-zA-Z0-9._-]/g, "_");
+  if (safe !== value) {
+    throw new ValidationError(
+      "pack_scaffold.invalid_template_value",
+      `Template value for ${fieldName} contains invalid characters. Use alphanumeric, hyphens, underscores, and dots only.`,
+      { fieldName, value, sanitized: safe },
+    );
+  }
+  return safe;
+}
+
 export interface ScaffoldConfig {
   packId: string;
   name: string;
@@ -262,14 +280,18 @@ export class PackScaffoldService {
 
     // Write files
     const files: string[] = [manifestPath];
+    // Issue #2021 P1: Sanitize template values to prevent injection attacks
+    const safePackId = sanitizeTemplateValue(config.packId, "packId");
+    const safeName = sanitizeTemplateValue(config.name, "name");
+    const safeDomain = sanitizeTemplateValue(config.domain, "domain");
     for (const file of structure.files) {
       const filePath = join(rootDir, file.path);
       writeFileSync(
         filePath,
         file.content
-          .replace(/{{PACK_ID}}/g, config.packId)
-          .replace(/{{PACK_NAME}}/g, config.name)
-          .replace(/{{DOMAIN_ID}}/g, config.domain),
+          .replace(/{{PACK_ID}}/g, safePackId)
+          .replace(/{{PACK_NAME}}/g, safeName)
+          .replace(/{{DOMAIN_ID}}/g, safeDomain),
         "utf-8",
       );
       files.push(filePath);
@@ -305,8 +327,24 @@ function validateScaffoldConfig(config: ScaffoldConfig): void {
   if (!config.name?.trim()) {
     throw new ValidationError("pack_scaffold.invalid_name", "Pack name is required.");
   }
+  // Root cause: name and domain were not validated for injection characters.
+  // Special characters like quotes, backslashes, newlines, or template sequences (${...})
+  // could break string literals or inject content when substituted into generated files.
+  if (/[\\"$`]/.test(config.name)) {
+    throw new ValidationError("pack_scaffold.invalid_name", "Pack name contains invalid characters (quotes, backslashes, backticks, or $ not allowed).");
+  }
+  if (config.name.includes('\n') || config.name.includes('\r')) {
+    throw new ValidationError("pack_scaffold.invalid_name", "Pack name cannot contain newlines.");
+  }
   if (!config.owner?.trim()) {
     throw new ValidationError("pack_scaffold.invalid_owner", "Pack owner is required.");
+  }
+  // Validate domain similarly - it's used in template substitutions too
+  if (/[\\"$`]/.test(config.domain)) {
+    throw new ValidationError("pack_scaffold.invalid_domain", "Domain contains invalid characters (quotes, backslashes, backticks, or $ not allowed).");
+  }
+  if (config.domain.includes('\n') || config.domain.includes('\r')) {
+    throw new ValidationError("pack_scaffold.invalid_domain", "Domain cannot contain newlines.");
   }
 }
 

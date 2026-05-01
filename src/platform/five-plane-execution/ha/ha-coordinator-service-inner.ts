@@ -341,6 +341,10 @@ export class HaCoordinatorService {
       // Update node heartbeat
       this.updateNodeHeartbeat(nodeId);
 
+      // §209-2464: Get latestEpoch before using - stale-write verification
+      // requires the current epoch token to detect writes from previous leadership cycles
+      const latestEpoch = this.getLatestEpoch();
+
       const updatedLease: LeaderLease = {
         ...currentLease,
         expiresAt,
@@ -350,7 +354,7 @@ export class HaCoordinatorService {
       return {
         renewed: true,
         lease: updatedLease,
-        fencingToken: this.getLatestEpoch().fencingToken,
+        fencingToken: latestEpoch.fencingToken,
       };
     });
   }
@@ -675,9 +679,9 @@ export class HaCoordinatorService {
    */
   verifyWriteAuthority(presentedFencingToken: number): boolean {
     const latestEpoch = this.getLatestEpoch();
-    // R16-16 FIX: Use > instead of >= to reject stale writes
-    // An old leader with the current token must be rejected; only a token GREATER
-    // than the current token indicates a newer epoch
+    // P0-2133: Use > instead of >= to reject stale writes. An old leader possessing
+    // the current token must be rejected; only a token GREATER than current indicates
+    // a newer epoch. Using >= would allow a stale leader with the same token to write.
     return presentedFencingToken > latestEpoch.fencingToken;
   }
 
@@ -723,9 +727,14 @@ export class HaCoordinatorService {
 
   // ── Helpers ───────────────────────────────────────────────────────
 
+  // §209-2466: Use MAX(fencing_token)+1 from DB instead of in-memory counter
+  // In-memory counter resets on restart, allowing token reuse and stale-write attacks
   private nextFencingToken(): number {
-    this.fencingTokenCounter.value += 1;
-    return this.fencingTokenCounter.value;
+    const row = this.db.connection
+      .prepare(`SELECT MAX(fencing_token) as max_token FROM leadership_epochs`)
+      .get() as { max_token: number } | undefined;
+    const maxToken = row?.max_token ?? EPOCH_FENCING_TOKEN_START - 1;
+    return maxToken + 1;
   }
 
   private recordActionAudit(

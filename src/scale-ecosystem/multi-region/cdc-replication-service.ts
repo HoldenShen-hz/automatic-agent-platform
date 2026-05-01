@@ -225,6 +225,17 @@ export interface RegionReplicationConfig {
 }
 
 /**
+ * Lag alert payload for monitoring
+ */
+export interface LagAlert {
+  readonly sourceRegionId: string;
+  readonly targetRegionId: string;
+  readonly lagMs: number;
+  readonly severity: "warning" | "critical";
+  readonly timestamp: string;
+}
+
+/**
  * CDC replication service for multi-region data sync
  */
 export class CDCReplicationService {
@@ -265,17 +276,6 @@ export class CDCReplicationService {
 
   private failoverStartTime: Map<string, number> = new Map();
   private readonly lagAlertListeners = new Set<(alert: LagAlert) => void>();
-
-  /**
-   * Lag alert payload for monitoring
-   */
-  public interface LagAlert {
-    readonly sourceRegionId: string;
-    readonly targetRegionId: string;
-    readonly lagMs: number;
-    readonly severity: "warning" | "critical";
-    readonly timestamp: string;
-  }
 
   /**
    * Register a listener for lag alerts (RPO breaches)
@@ -723,6 +723,9 @@ export class CDCReplicationService {
 
   /**
    * Mark batch as replicated and update checkpoint
+   * §187-2196: Fixed memory leak - confirmed batches must be dequeued
+   * Previously only updated checkpoint without removing batch from queue,
+   * causing unbounded memory growth (OOM). Now properly drains confirmed batch.
    */
   public confirmBatch(
     sourceRegionId: string,
@@ -742,6 +745,22 @@ export class CDCReplicationService {
     };
 
     this.checkpoints.set(key, checkpoint);
+
+    // §187-2196: Dequeue confirmed batch to prevent memory leak
+    // Without this, queue grows unbounded causing OOM
+    this.dequeueBatch(key, batch.batchId);
+  }
+
+  /**
+   * Remove batch from queue after successful confirmation
+   */
+  private dequeueBatch(key: string, batchId: string): void {
+    const queue = this.replicationQueues.get(key);
+    if (!queue) return;
+    const index = queue.findIndex((b) => b.batchId === batchId);
+    if (index !== -1) {
+      queue.splice(index, 1);
+    }
   }
 
   /**

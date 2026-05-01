@@ -140,6 +140,8 @@ export class DomainSmokeTestRunner {
   }
 
   private validateDependencyGraph(definition: DomainDefinition): SmokTestRuntimeCheck {
+    // §2310: Use workflow-qualified step IDs to prevent cross-workflow name collisions
+    // A step named "process" in workflow A is distinct from "process" in workflow B
     const workflowStepIds = new Map<string, Set<string>>();
     const dependsOnMap = new Map<string, { workflowId: string; deps: string[] }>();
 
@@ -170,13 +172,20 @@ export class DomainSmokeTestRunner {
       const stepInfo = dependsOnMap.get(fullStepId);
       if (stepInfo) {
         for (const dep of stepInfo.deps) {
+          // §2310: Use workflow-qualified dependency to find correct owner
           const fullDepId = `${stepInfo.workflowId}/${dep}`;
-          // Find which workflow owns this dependency
+          // Find which workflow owns this dependency by checking the same workflow first
           let foundOwner = false;
-          for (const [, stepIds] of workflowStepIds) {
-            if (stepIds.has(fullDepId)) {
-              foundOwner = true;
-              break;
+          const ownerStepIds = workflowStepIds.get(stepInfo.workflowId);
+          if (ownerStepIds && ownerStepIds.has(fullDepId)) {
+            foundOwner = true;
+          } else {
+            // Cross-workflow dependency - scan all workflows
+            for (const [wfId, stepIds] of workflowStepIds) {
+              if (stepIds.has(fullDepId)) {
+                foundOwner = true;
+                break;
+              }
             }
           }
           if (!foundOwner) {
@@ -370,10 +379,26 @@ export class DomainSmokeTestRunner {
 
   private computeRollbackPoints(definition: DomainDefinition): readonly string[] {
     const points: string[] = [];
+    // §2311: Only add rollback points for steps whose dependencies actually exist.
+    // Dangling dependencies indicate a broken workflow that should not pass validation.
+    const workflowStepIds = new Map<string, Set<string>>();
+    for (const workflow of definition.workflows) {
+      const stepIds = new Set<string>();
+      for (const step of workflow.steps) {
+        stepIds.add(step.stepName);
+      }
+      workflowStepIds.set(workflow.workflowId, stepIds);
+    }
     for (const workflow of definition.workflows) {
       for (const step of workflow.steps) {
         if (step.dependsOn.length > 0) {
-          points.push(`workflow:${workflow.workflowId}/step:${step.stepName}`);
+          // Verify all dependencies exist before adding rollback point
+          const allDepsExist = step.dependsOn.every((dep) =>
+            workflowStepIds.get(workflow.workflowId)?.has(dep) ?? false,
+          );
+          if (allDepsExist) {
+            points.push(`workflow:${workflow.workflowId}/step:${step.stepName}`);
+          }
         }
       }
     }

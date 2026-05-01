@@ -222,6 +222,7 @@ export interface DomainEvaluatorPlugin extends PluginLifecycleHooks {
   evaluate(input: {
     taskId: string;
     nodeId?: string;
+    /** @deprecated legacy projection identifier; use nodeId */
     stepId?: string;
     machineOutput: MachineOutput;
     criteria: Record<string, unknown>;

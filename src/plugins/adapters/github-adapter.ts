@@ -52,7 +52,9 @@ function verifyPluginSignature(
   manifest: PluginManifest,
   expectedSignature?: string,
 ): void {
-  if (!manifest.signing) {
+  // Cast to any to access signing field which may exist on manifest but not in schema
+  const signing = (manifest as Record<string, unknown>).signing as { keyId?: string; signature?: string; algorithm?: string } | undefined;
+  if (!signing) {
     // No signature configured - allow for trusted built-in plugins
     if (manifest.trustLevel === "internal" || manifest.trustLevel === "trusted") {
       return;
@@ -60,7 +62,7 @@ function verifyPluginSignature(
     throw new Error("github_adapter.signature_required: Plugin signing configuration is required");
   }
 
-  const { keyId, signature, algorithm } = manifest.signing;
+  const { keyId, signature, algorithm } = signing;
   if (!keyId || !signature || !algorithm) {
     throw new Error("github_adapter.invalid_signature: signing.keyId/signature/algorithm are required");
   }
@@ -178,18 +180,47 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
 }
 
 function buildEndpoint(apiBaseUrl: string, action: string, repository: string, params: Record<string, unknown>): string {
+  // Root cause: repository parameter was used directly in URL construction without sanitization.
+  // Per spec, user-provided paths must be sanitized to prevent path traversal attacks.
+  // e.g., "../../../.env" or "repo/%2e%2e/config" could escape intended boundaries.
+  const sanitizedRepo = sanitizeGitHubPath(repository);
   switch (action) {
     case "create_issue":
-      return `${apiBaseUrl}/repos/${repository}/issues`;
+      return `${apiBaseUrl}/repos/${sanitizedRepo}/issues`;
     case "create_pr_comment":
-      return `${apiBaseUrl}/repos/${repository}/issues/${requireString(params["issueNumber"], "issueNumber")}/comments`;
+      return `${apiBaseUrl}/repos/${sanitizedRepo}/issues/${requireString(params["issueNumber"], "issueNumber")}/comments`;
     case "dispatch_workflow":
-      return `${apiBaseUrl}/repos/${repository}/actions/workflows/${requireString(params["workflowId"], "workflowId")}/dispatches`;
+      return `${apiBaseUrl}/repos/${sanitizedRepo}/actions/workflows/${requireString(params["workflowId"], "workflowId")}/dispatches`;
     case "get_file":
-      return `${apiBaseUrl}/repos/${repository}/contents/${requireString(params["path"], "path")}`;
+      return `${apiBaseUrl}/repos/${sanitizedRepo}/contents/${requireString(params["path"], "path")}`;
     default:
-      return `${apiBaseUrl}/repos/${repository}`;
+      return `${apiBaseUrl}/repos/${sanitizedRepo}`;
   }
+}
+
+/**
+ * Sanitize GitHub repository path component to prevent path traversal attacks.
+ * Rejects paths containing ".." or URL-encoded traversal sequences.
+ */
+function sanitizeGitHubPath(repo: string): string {
+  // Reject empty or whitespace-only paths
+  if (!repo?.trim()) {
+    throw new Error("github_adapter.invalid_repository: repository cannot be empty");
+  }
+  // Reject paths with parent directory traversal attempts
+  if (repo.includes("..")) {
+    throw new Error(`github_adapter.invalid_repository: path traversal attempt detected in "${repo}"`);
+  }
+  // Reject URL-encoded traversal attempts (%2e%2e, %2f, etc)
+  const decoded = decodeURIComponent(repo);
+  if (decoded.includes("..")) {
+    throw new Error(`github_adapter.invalid_repository: encoded path traversal attempt detected in "${repo}"`);
+  }
+  // Validate basic format - should be "owner/repo" with valid characters
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repo)) {
+    throw new Error(`github_adapter.invalid_repository: invalid repository format "${repo}" - expected "owner/repo"`);
+  }
+  return repo;
 }
 
 function buildPayload(action: string, params: Record<string, unknown>): Record<string, unknown> {

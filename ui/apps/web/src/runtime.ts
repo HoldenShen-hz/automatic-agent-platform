@@ -49,7 +49,13 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
   const tokenManager = config.tokenManager ?? new TokenManager();
 
   const client = new DefaultRESTClient((request) => new HttpTransport({
-    baseUrl: config.apiBaseUrl ?? "http://localhost:3000",
+    // §185-2166 FIX: Remove hardcoded localhost fallback for API base URL.
+    // Root cause: Hardcoded "http://localhost:3000" is a security risk - production
+    // builds could accidentally connect to local dev server. Fallback should be
+    // explicit or use environment-specific configuration.
+    // Fix: Use undefined as baseUrl when config.apiBaseUrl is not set, allowing
+    // HttpTransport to handle missing URL appropriately (fail or use mock).
+    baseUrl: config.apiBaseUrl,
     fallbackToMock: true,
   }).send(request), [
     createTraceInterceptor(),
@@ -62,9 +68,13 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
     createOfflineQueueInterceptor(offlineQueue),
   ]);
 
-  const wsClient = config.wsUrl == null
+  // §185-2169 FIX: wsUrl was being ignored - both branches used InMemoryWSClient.
+    // Root cause: ternary condition evaluated correctly but both branches used
+    // the same fallback InMemoryWSClient, ignoring the provided wsUrl.
+    // Fix: When wsUrl is provided, use it to establish real WebSocket connection.
+    const wsClient = config.wsUrl == null
     ? new BrowserWSClient(WebSocket, new InMemoryWSClient())
-    : new BrowserWSClient(WebSocket, new InMemoryWSClient());
+    : new BrowserWSClient(new WebSocket(config.wsUrl));
 
   return { client, wsClient, offlineQueue };
 }

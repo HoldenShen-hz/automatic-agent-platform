@@ -235,6 +235,13 @@ export interface CompactionRecord {
  * Events record what happened in the system for auditing, replay, and debugging.
  * Events are tiered by reliability: tier_1 requires consumer ack, tier_2 is
  * at-least-once, tier_3 is best-effort. The payloadJson contains event-specific data.
+ *
+ * §28.1: EventRecord now includes all required fields per the event contract:
+ * - sequence: monotonic run-level ordering for replay
+ * - causationId: tracks direct cause event for chain reconstruction
+ * - correlationId: links related events across the same workflow/execution
+ * - payloadHash: integrity verification for replay safety
+ * - idempotencyKey: duplicate detection to prevent reprocessing
  */
 export interface EventRecord {
   id: string;

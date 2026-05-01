@@ -162,6 +162,36 @@ export class IncidentDetector {
           autoAction: "create_ticket",
           requiresPostMortem: true,
         }));
+      } else if (check.status === "warning") {
+        // R16-36 FIX #2125: P3 (warning) checks were not creating incidents.
+        // Only P1/P2 checks (fail_closed/degraded) were handled. Warning status
+        // should create a SEV3 (P2) incident per severity mapping.
+        incidents.push(this.createIncident({
+          category: this.mapCheckIdToCategory(check.checkId),
+          severity: "SEV3",
+          title: `Warning in ${check.checkId}`,
+          description: check.summary,
+          sourceCheckId: check.checkId,
+          symptoms: check.findings,
+          metrics: check.metrics,
+          autoAction: "log_alert",
+          requiresPostMortem: false,
+        }));
+      } else if (check.status === "info" || check.status === "anomaly") {
+        // R16-36 FIX #2125: P4 (info/anomaly) checks were not creating incidents.
+        // These low-severity issues should still be tracked as SEV4 incidents
+        // for observability, even if no immediate action is required.
+        incidents.push(this.createIncident({
+          category: this.mapCheckIdToCategory(check.checkId),
+          severity: "SEV4",
+          title: `Info anomaly in ${check.checkId}`,
+          description: check.summary,
+          sourceCheckId: check.checkId,
+          symptoms: check.findings,
+          metrics: check.metrics,
+          autoAction: "log_only",
+          requiresPostMortem: false,
+        }));
       }
     }
 

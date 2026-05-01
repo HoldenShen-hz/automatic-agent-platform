@@ -38,10 +38,10 @@
 | `max_model_tokens` | `number` | 模型 token 总上限 |
 | `max_context_tokens` | `number` | 输入上下文 token 上限 |
 | `max_output_tokens` | `number` | 输出 token 上限 |
-| `max_steps` | `number` | 允许完成的 node 数上限 |
+| `max_node_runs` | `number` | 允许完成的 node 数上限 |
 | `max_duration_ms` | `number` | 总运行时长上限 |
 | `warn_at_ratio` | `number` | 预警阈值 |
-| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | 预算生效时的运行模式 |
+| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no_write \| no_external_call \| no_rollout \| manual_only \| incident_mode` | 预算生效时的运行模式（4 states 对齐 sandbox_and_auth_contract §3） |
 
 兼容说明：
 

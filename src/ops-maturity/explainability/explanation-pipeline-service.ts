@@ -181,10 +181,15 @@ export class ExplanationPipelineService {
     const rendered = this.renderBundle(rationale, depth, causalSummary, redactedEvidenceRefs);
     const explanationId = newId("explanation");
 
+    // L3 (audit) explanations are not cached - stored permanently in audit trail.
+    // Writing with ttlHours=0 skips cache write in putExplanationCacheEntry.
+    // TTL eviction is not needed for L3 since it never enters the cache.
+    // For L1/L2, entries are evicted when cache exceeds maxCacheEntries.
+    const cacheTtlHours: 24 | 0 = depth === "L3" ? 0 : 24;
     this.cache = putExplanationCacheEntry(this.cache, {
       cacheKey,
       summary: rationale.inferredSummary,
-      ttlHours: depth === "L3" ? 0 : 24,
+      ttlHours: cacheTtlHours,
     });
     this.evictStaleCache();
 

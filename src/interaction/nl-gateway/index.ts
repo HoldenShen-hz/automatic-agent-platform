@@ -1380,29 +1380,72 @@ function buildIntakeTraceId(request: NlEntryRequest, draftId: string): string {
  * §39.1: Implements persistence to Memory for cross-session recovery.
  * When a MemoryService is provided, conversation context is durably stored
  * and recovered across sessions. Without Memory, operates in pure in-memory mode.
+ *
+ * §175-2051 FIX: Added LRU eviction for contexts Map to prevent unbounded memory growth.
+ * Previously the Map grew without bound as new conversations were created.
+ * Now uses a simple LRU strategy with a maximum size limit.
  */
 export class ConversationContextManager {
   private readonly contexts = new Map<string, ConversationContext>();
   private readonly nlConfig: NlGatewayConfig;
   private readonly memoryService: ConversationMemoryService | null;
   private readonly memoryEnabled: boolean;
+  /** §175-2051: Maximum number of contexts to keep in memory before LRU eviction */
+  private readonly maxContexts: number;
+  /** §175-2051: Track access order for LRU eviction */
+  private readonly contextAccessOrder: string[] = [];
 
   public constructor(nlConfig?: NlGatewayConfig, memoryService?: ConversationMemoryService) {
     this.nlConfig = nlConfig ?? loadNlGatewayConfig();
     this.memoryService = memoryService ?? null;
     this.memoryEnabled = memoryService != null;
+    // Default to 1000 contexts max; can be overridden via config in future
+    this.maxContexts = 1000;
+  }
+
+  /**
+   * §175-2051: Evict least recently used context when at capacity.
+   * Removes the oldest entry from both contexts Map and access order.
+   */
+  private evictLRU(): void {
+    if (this.contextAccessOrder.length === 0) return;
+    const lruKey = this.contextAccessOrder.shift();
+    if (lruKey) {
+      this.contexts.delete(lruKey);
+    }
+  }
+
+  /**
+   * §175-2051: Record context access for LRU tracking.
+   */
+  private recordAccess(key: string): void {
+    const idx = this.contextAccessOrder.indexOf(key);
+    if (idx !== -1) {
+      this.contextAccessOrder.splice(idx, 1);
+    }
+    this.contextAccessOrder.push(key);
   }
 
   /**
    * §39.1: Get or create a conversation context for a user.
    * When memory is enabled, attempts to load persisted context from Memory first.
+   *
+   * §175-2051 FIX: Added LRU eviction when at capacity. If contexts Map is full,
+   * evicts least recently used entry before adding new one.
    */
   public getContext(tenantId: string, userId: string, taskType?: string): ConversationContext {
     const key = `${tenantId}:${userId}`;
     const existing = this.contexts.get(key);
 
     if (existing) {
+      // §175-2051: Update LRU access order
+      this.recordAccess(key);
       return existing;
+    }
+
+    // §175-2051: Evict LRU if at capacity before creating new context
+    if (this.contexts.size >= this.maxContexts) {
+      this.evictLRU();
     }
 
     // §39.1: Try to recover context from Memory if enabled
@@ -1410,18 +1453,22 @@ export class ConversationContextManager {
       const recovered = this.loadFromMemory(tenantId, userId);
       if (recovered) {
         this.contexts.set(key, recovered);
+        this.recordAccess(key);
         return recovered;
       }
     }
 
     const maxTurns = getConversationWindowSize(this.nlConfig, taskType);
-    return {
+    const newContext = {
       tenantId,
       userId,
       turnCount: 0,
       maxTurns,
       turns: [],
     };
+    this.contexts.set(key, newContext);
+    this.recordAccess(key);
+    return newContext;
   }
 
   /**
@@ -1463,6 +1510,8 @@ export class ConversationContextManager {
     };
 
     this.contexts.set(key, updatedContext);
+    // §175-2051: Update LRU access order after modification
+    this.recordAccess(key);
 
     // §39.1: Persist to Memory for cross-session recovery
     if (this.memoryEnabled) {
@@ -1474,10 +1523,16 @@ export class ConversationContextManager {
 
   /**
    * §39.1: Clear a conversation context from both memory and in-memory storage.
+   * §175-2051 FIX: Also remove from LRU access order.
    */
   public clearContext(tenantId: string, userId: string): void {
     const key = `${tenantId}:${userId}`;
     this.contexts.delete(key);
+    // §175-2051: Remove from LRU tracking
+    const idx = this.contextAccessOrder.indexOf(key);
+    if (idx !== -1) {
+      this.contextAccessOrder.splice(idx, 1);
+    }
 
     // §39.1: Also clear from Memory
     if (this.memoryEnabled) {

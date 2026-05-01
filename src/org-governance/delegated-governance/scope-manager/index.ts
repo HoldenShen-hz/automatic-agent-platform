@@ -20,6 +20,10 @@ export interface GovernanceOperationContext {
 }
 
 /**
+ * R34-36 FIX #1977: Delegation must not grant permissions beyond grantor's scope.
+ * Grantee's level cannot exceed grantor's level, and specific permissions are
+ * already restricted by the delegation's grantor-permission intersection.
+ *
  * Validates if a governance scope matches a delegation.
  */
 export function matchesGovernanceScope(
@@ -29,6 +33,23 @@ export function matchesGovernanceScope(
   const orgNodeIds = delegation.orgNodeIds ?? [];
   const domainIds = delegation.domainIds ?? [];
   const permissions = delegation.permissions ?? [];
+  const level = delegation.level ?? "view";
+
+  // R34-36 FIX #1977: Level hierarchy - super_admin > admin > operate > view
+  // Higher levels include all lower level permissions
+  const levelHierarchy = ["view", "operate", "admin", "super_admin"] as const;
+  const levelIndex = levelHierarchy.indexOf(level as typeof levelHierarchy[number]);
+
+  // Level check: if level is view/operate, cannot perform admin-level actions
+  // Admin and super_admin can perform any action
+  if (scope.requiredLevel !== undefined) {
+    const requiredIndex = levelHierarchy.indexOf(scope.requiredLevel as typeof levelHierarchy[number]);
+    // If delegation level is lower than required, deny
+    if (levelIndex < requiredIndex) {
+      return false;
+    }
+  }
+
   const orgAllowed = orgNodeIds.length === 0 || orgNodeIds.includes(scope.orgNodeId);
   const domainAllowed = domainIds.length === 0 || scope.domainId == null || domainIds.includes(scope.domainId);
   const capabilityAllowed = permissions.length === 0 ||

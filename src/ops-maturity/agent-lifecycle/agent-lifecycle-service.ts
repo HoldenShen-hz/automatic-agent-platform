@@ -1,10 +1,5 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import {
-  listActiveAgents,
-  isValidLifecycleTransition,
-  type AgentDefinition,
-  type AgentLifecycleState,
-} from "./agent-registry/index.js";
+import { AgentDefinitionSchema, type AgentDefinition, type AgentLifecycleState, listActiveAgents, isValidLifecycleTransition } from "./agent-registry/index.js";
 import {
   shouldPromoteCanary,
   getNextCanaryStage,
@@ -64,8 +59,12 @@ export class AgentLifecycleService {
   private readonly canaryProgress = new Map<string, CanaryProgress>();
 
   public registerAgent(definition: ManagedAgentDefinition): ManagedAgentDefinition {
-    this.agents.set(definition.agentId, definition);
-    return definition;
+    // R16-36 FIX #2109: Schema validation was missing. Without validation, invalid
+    // agent shapes (missing required fields, wrong types) would be accepted and cause
+    // downstream failures. Now validates against AgentDefinitionSchema before storing.
+    const validated = AgentDefinitionSchema.parse(definition) as ManagedAgentDefinition;
+    this.agents.set(validated.agentId, validated);
+    return validated;
   }
 
   public addVersion(version: ManagedAgentVersion): ManagedAgentVersion {

@@ -1073,12 +1073,28 @@ export function hasEventSchema(type: string): boolean {
  * @param type - The event type to get consumers for
  * @returns Array of consumer IDs
  */
+/**
+ * Gets the registered consumers for an event type.
+ * §174-2034 FIX: Wrapped getEventSchema call in try-catch to prevent crashes
+ * when schema validation fails for unknown runtime event types. Previously
+ * threw ValidationError which propagated up and crashed the caller; now returns
+ * empty array gracefully.
+ *
+ * @param type - The event type to get consumers for
+ * @returns Array of consumer IDs
+ */
 export function getRegisteredConsumers(type: string): readonly string[] {
   if (type in EVENT_SCHEMA_REGISTRY) {
     return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
   }
   if (type in RUNTIME_EVENT_REPLAY_METADATA) {
-    return getEventSchema(type).consumers;
+    try {
+      return getEventSchema(type).consumers;
+    } catch {
+      // Schema validation failed for this runtime event type - return empty
+      // rather than crashing the caller.
+      return [];
+    }
   }
   return [];
 }

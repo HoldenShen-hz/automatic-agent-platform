@@ -53,6 +53,15 @@ export class HarnessMemoryManager {
     const recordKey = `${namespace}:${scopeId}:${key}`;
     const existing = this.memoryRecords.get(recordKey);
 
+    // §174-2035 FIX: Check tier capacity before writing new record.
+    // Previously, records were written first then eviction was attempted during
+    // promotion. This could cause unbounded growth if records weren't promoted.
+    // Now we check capacity and evict oldest if needed BEFORE writing.
+    const initialTier = existing?.tier ?? this.inferInitialTier(namespace);
+    if (!existing && this.countTierRecords(initialTier) >= TIER_MAX_SIZE[initialTier]) {
+      this.evictOldestFromTier(initialTier);
+    }
+
     const record: InternalMemoryRecord = {
       namespace,
       scopeId,

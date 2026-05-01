@@ -29,10 +29,14 @@ export function evaluateKnowledgeShare(
   if (boundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
     return { mode: "summary", allowedFieldKeys: undefined };
   }
+  // §170-1973 SECURITY FIX: Parse dates explicitly for expiry comparison.
+  // While ISO 8601 strings compare correctly lexicographically, explicit Date parsing
+  // makes the intent clear and handles edge cases (timezone offsets, millisecond precision).
+  const nowMs = Date.parse(nowIso);
   const matchingGrant = grants.find((item) =>
     item.boundaryId === boundary.boundaryId
     && item.requesterOrgNodeId === requesterOrgNodeId
-    && (item.expiresAt == null || item.expiresAt >= nowIso));
+    && (item.expiresAt == null || Date.parse(item.expiresAt) > nowMs));
   if (matchingGrant != null) {
     return {
       mode: matchingGrant.transformMode ?? "summary",

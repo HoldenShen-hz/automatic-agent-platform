@@ -307,16 +307,18 @@ export class RetryableApiClient {
     const idempotencyKey = request.idempotencyKey ?? this.config.idempotencyKey;
 
     let body = request.body;
-    // §5.2: Wrap all API calls in ContractEnvelope for cross-plane calls
-    if (request.body !== undefined) {
-      const envelope = createContractEnvelope({
-        payload: request.body,
-        principal: this.config.principal,
-        idempotencyKey,
-      });
-      body = envelope;
-      headers["content-type"] = "application/json";
-    }
+    // §5.2 ContractEnvelope - ALL inter-plane messages must be wrapped per spec.
+    // Even requests without a body (GET/DELETE) must use ContractEnvelope for:
+    // - schemaVersion/correlationId/commandId tracking
+    // - signature/principal for authenticity
+    // - idempotencyKey for deduplication
+    const envelope = createContractEnvelope({
+      payload: request.body ?? {},
+      principal: this.config.principal,
+      idempotencyKey,
+    });
+    body = envelope;
+    headers["content-type"] = "application/json";
 
     try {
       const fetchOptions: RequestInit = {
@@ -333,11 +335,12 @@ export class RetryableApiClient {
       const response = await fetch(url, fetchOptions);
 
       // §22: Only retry 5xx/429 on idempotent requests, not 4xx client errors.
-      // POST/PUT/DELETE are not idempotent and retrying them can cause duplicate side effects.
-      // Note: request.method is optional and defaults to GET at the call sites.
+      // POST/PUT/DELETE/OPTIONS/PATCH are never idempotent and MUST NOT be retried
+      // to prevent duplicate side effects. 4xx errors indicate client mistakes
+      // (malformed request, auth failure, etc.) that retrying won't fix.
       const method: string = request.method ?? "GET";
-      const isIdempotentRequest = method === "GET" || method === "HEAD" || method === "OPTIONS";
-      if ((response.status >= 500 || response.status === 429) && isIdempotentRequest && attempt < this.retryConfig.maxRetries) {
+      const isNonIdempotentMethod = method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH" || method === "OPTIONS";
+      if (!isNonIdempotentMethod && response.status >= 500 && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
@@ -352,7 +355,10 @@ export class RetryableApiClient {
         responseHeaders[key] = value;
       });
 
-      // §5: Classify errors by HTTP status code
+      // §5: Classify errors by HTTP status code and throw TYPED errors per spec.
+      // Root cause: Previously HTTP errors could be swallowed if response.json() threw
+      // before we checked response.ok. Now we parse response body safely and ensure
+      // ALL non-2xx responses throw typed errors (AuthError/BusinessError/NetworkError).
       if (!response.ok) {
         const errorInfo = extractErrorInfo(data);
         if (response.status === 401 || response.status === 403) {
@@ -384,11 +390,12 @@ export class RetryableApiClient {
         headers: responseHeaders,
       };
     } catch (error) {
-      // §22: Idempotent-aware retry - only retry network errors for idempotent methods.
-      // POST/PUT/DELETE network errors may have caused partial side effects and must not be retried blindly.
+      // §22: Network errors (fetch throws) - only retry for truly idempotent methods.
+      // POST/PUT/DELETE/PATCH/OPTIONS network errors may have caused partial side effects
+      // and MUST NOT be retried blindly. Only GET/HEAD can be safely retried on network errors.
       const method: string = request.method ?? "GET";
-      const isIdempotentRequest = method === "GET" || method === "HEAD" || method === "OPTIONS";
-      if (isIdempotentRequest && attempt < this.retryConfig.maxRetries) {
+      const isNonIdempotentMethod = method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH" || method === "OPTIONS";
+      if (!isNonIdempotentMethod && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
@@ -427,6 +434,10 @@ function extractErrorInfo(data: unknown): Record<string, unknown> | null {
 /**
  * Create a retryable API client with configuration.
  * Principal is required for ContractEnvelope per §5.2.
+ *
+ * Root cause: Previously performVersionHandshakeOnInit defaulted to false/unset,
+ * so version handshake never ran. Per spec, version handshake is MANDATORY.
+ * Now defaults to true to ensure compatibility validation before first request.
  */
 export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   if (!config.baseUrl?.trim()) {
@@ -437,6 +448,10 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
   }
   if (!config.principal) {
     throw new ValidationError("client_sdk.missing_principal", "API client requires principal for ContractEnvelope.");
+  }
+  // Ensure version handshake is enabled by default per §22.2 spec requirement
+  if (config.performVersionHandshakeOnInit === undefined) {
+    (config as { performVersionHandshakeOnInit: boolean }).performVersionHandshakeOnInit = true;
   }
   return new RetryableApiClient(config);
 }

@@ -117,6 +117,8 @@ export interface TakeoverRequestResult {
  */
 export interface TakeoverAckStatus {
   sessionId: string;
+  /** §181-2126: Track creation time to enable eviction of unacknowledged sessions */
+  createdAt: string;
   acknowledgedAt: string | null;
   expiresAt: string | null;
   status: "pending" | "acknowledged" | "expired";

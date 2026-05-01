@@ -380,7 +380,9 @@ export class ExecutionDispatchService {
       );
       let eligibleWorkers = selection.workers;
       let preemptionTrace: DispatchDecisionTrace["preemption"] = null;
-      if (eligibleWorkers.length === 0 && ticket.priority === "critical") {
+      // Issue #1908 P1: Preemption should trigger for high and critical priorities,
+      // not just critical. Previously only checked ticket.priority === "critical".
+      if (eligibleWorkers.length === 0 && isElevatedPriority(ticket.priority)) {
         const preemption = this.preemption.preemptForUrgentTicket({
           ticket,
           dispatchTarget,
@@ -662,10 +664,13 @@ export class ExecutionDispatchService {
         if (workerSnapshot) {
           const runningExecutionIds = new Set(parseJsonArray(workerSnapshot.runningExecutionsJson));
           runningExecutionIds.add(ticket.executionId);
+          // Issue #1905 P1: activeLeaseCount should be the actual count, not Math.max.
+          // Using Math.max never decreases the count when executions complete.
+          // Fixed to use runningExecutionIds.size which accurately reflects current load.
           this.store.worker.upsertWorkerSnapshot({
             ...workerSnapshot,
             status: "busy",
-            activeLeaseCount: Math.max(workerSnapshot.activeLeaseCount ?? 0, runningExecutionIds.size),
+            activeLeaseCount: runningExecutionIds.size,
             runningExecutionsJson: JSON.stringify([...runningExecutionIds].sort()),
             updatedAt: occurredAt,
           });
@@ -726,7 +731,7 @@ export class ExecutionDispatchService {
         reasonCode: selection.reasonCode,
         ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
         worker: selectedWorker,
-        leaseId: lease.lease.id,
+        leaseId: dispatchResult.lease.lease.id,
         trace,
       };
     }

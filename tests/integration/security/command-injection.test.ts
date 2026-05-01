@@ -469,8 +469,12 @@ test("command-executor allows safe commands with legitimate arguments", async ()
 
     const result = await executor.execute(request);
 
-    // Safe command with safe args should succeed (not be blocked)
+    // §199-2330: Root cause - test only asserted "succeeded" but the code path
+    // if(blocked){fail} means unknown status silently passes.
+    // Fix: Explicitly assert the status is "succeeded", not just "not blocked".
+    // If result.status is "blocked", "failed", or any unknown status, test should fail.
     assert.equal(result.status, "succeeded", "Safe echo command should succeed with valid args");
+    assert.ok(result.error === undefined || result.error === null, "Succeeded command should have no error");
   } finally {
     cleanupPath(workspace);
   }

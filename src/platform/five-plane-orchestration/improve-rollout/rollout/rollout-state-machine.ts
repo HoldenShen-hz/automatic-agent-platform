@@ -15,18 +15,20 @@ export interface RolloutTransitionOptions {
   targetStatus?: RolloutStatus | undefined;
 }
 
+// §186-2187: Self-transitions are NOT allowed - they cause duplicate records and reset transitionedAt
+// Each status can only transition to DIFFERENT statuses (no same-status transitions)
 const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus[]>> = {
   draft: ["pending_approval", "shadow", "rejected", "rolled_back", "paused"],
-  pending_approval: ["pending_approval", "shadow", "rejected", "paused"],
-  shadow: ["shadow", "canary_5", "rolled_back", "paused"],
-  canary_5: ["canary_5", "partial_25", "rolled_back", "paused"],
-  partial_25: ["partial_25", "partial_50", "rolled_back", "paused"],
-  partial_50: ["partial_50", "partial_75", "rolled_back", "paused"],
-  partial_75: ["partial_75", "stable", "rolled_back", "paused"],
-  stable: ["stable", "rolled_back", "paused"],
-  rejected: ["rejected"],
-  rolled_back: ["rolled_back"],
-  paused: ["pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "rolled_back", "paused"],
+  pending_approval: ["shadow", "rejected", "paused"], // Removed self-transition
+  shadow: ["canary_5", "rolled_back", "paused"],      // Removed self-transition
+  canary_5: ["partial_25", "rolled_back", "paused"], // Removed self-transition
+  partial_25: ["partial_50", "rolled_back", "paused"], // Removed self-transition
+  partial_50: ["partial_75", "rolled_back", "paused"], // Removed self-transition
+  partial_75: ["stable", "rolled_back", "paused"],    // Removed self-transition
+  stable: ["rolled_back", "paused"],                  // Removed self-transition
+  rejected: [],                                        // Terminal state - no transitions
+  rolled_back: [],                                     // Terminal state - no transitions
+  paused: ["pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "rolled_back"], // Removed self-transition
 };
 
 export class RolloutStateMachine {

@@ -5,6 +5,16 @@ description: Handles software implementation, fixes, and code review workflows.
 priority: 50
 default_workflow: engineering_single_agent_minimal
 orchestration_workflow: engineering_multi_step_delivery
+// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
+resource_boundaries:
+  max_concurrent_tasks: 25
+  max_workflow_duration_ms: 5400000
+  memory_limit_mb: 2048
+  compute_quota: "engineering-standard"
+fault_domains:
+  - code_implementation
+  - bug_fixes
+  - code_review
 triggers:
   - code
   - coding
@@ -12,6 +22,18 @@ triggers:
   - fix
   - bug
   - refactor
+// §171-1996: Disambiguation rules for overlap with qa division on "bug" and "fix" triggers
+disambiguate:
+  - trigger: bug
+    conditions:
+      - context: ["triage", "regression", "test_failure", "QA"]
+        priority_boost: 10
+    notes: "QA owns bug_triage and test_failure context; engineering_ops owns code_fix context"
+  - trigger: fix
+    conditions:
+      - context: ["implementation", "refactor", "code_change"]
+        priority_boost: 10
+    notes: "engineering_ops owns implementation fixes; qa owns verification/validation fixes"
 roles:
   - id: engineer
     name: Engineer

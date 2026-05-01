@@ -140,6 +140,9 @@ local data = cjson.decode(current)
 if data.owner ~= ARGV[1] then return 0 end
 local newTtl = math.min(tonumber(ARGV[2]), 600000)
 redis.call('pexpire', KEYS[1], newTtl)
+-- R16-16 FIX: Update ttlMs in JSON so inspect() returns correct value
+data.ttlMs = newTtl
+redis.call('set', KEYS[1], cjson.encode(data))
 return 1`;
     const newTtlMs = Math.min(additionalMs, 600_000);
     const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
@@ -176,14 +179,16 @@ return 1`;
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
     };
-    // Use SET with XX to atomically steal only if lock exists
-    // Use NX variant if we want to only set if NOT exists (opposite of XX)
-    // Here we use SET with PX (ms TTL) and XX (only if exists)
-    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)), "XX");
-    if (result !== "OK") {
+    // R16-16 FIX: Use SET with PX (ms TTL) without XX to steal regardless of lock existence
+    // Previous: SET with "XX" only succeeds if lock exists, fails if original lock expired
+    // Fix: Use SET with NX (only if not exists) doesn't help either - we want to create
+    // the lock if expired. Use plain SET without NX/XX to unconditionally set the lock.
+    const result = await this.redis.set(key, JSON.stringify(lockData), "PX", String(Math.ceil(ttlMs)));
+    // Note: result is always OK when SET succeeds without NX/XX constraint
+    if (result === null) {
       throw new LockingError(
-        "lock.forceSteal_lock_not_found",
-        `lock.forceSteal_lock_not_found: Cannot force-steal non-existent lock ${lockKey}`,
+        "lock.forceSteal_failed",
+        `lock.forceSteal_failed: Cannot force-steal lock ${lockKey}`,
       );
     }
     return {

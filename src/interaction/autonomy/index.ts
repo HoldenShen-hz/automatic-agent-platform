@@ -115,7 +115,7 @@ export class TrustDecayWorker {
     // §42.3: 180d no-execution -> suggestion demotion
     // If a capability has had no executions for 180+ days, demote to suggestion
     const updatedScores = profile.capabilityScores.map((item) => {
-      let newTrustScore = applyTrustDecay(item.truckScore, options.inactiveDays, options.decayRate);
+      let newTrustScore = applyTrustDecay(item.trustScore, options.inactiveDays, options.decayRate);
 
       // §42.3: 180 days no-execution triggers suggestion demotion
       if (options.inactiveDays >= 180 && item.totalExecutions > 0) {
@@ -126,9 +126,16 @@ export class TrustDecayWorker {
           trustScore: Math.min(newTrustScore, 200), // Cap at suggestion-level trust
         };
       }
+
+      // §42.3: Execution→suggestion demotion for 30d freeze after demotion
+      // If the capability was demoted (currentAutonomy is suggestion but trustScore is high),
+      // apply 30d promotion freeze by capping trustScore
+      const wasRecentlyDemoted = item.currentAutonomy === "suggestion" && newTrustScore > 300;
+      // Apply 30d promotion freeze after demotion (cap trust at probation level)
+      const promotionFreezeCap = wasRecentlyDemoted ? 300 : newTrustScore;
       return {
         ...item,
-        trustScore: newTrustScore,
+        trustScore: Math.min(newTrustScore, promotionFreezeCap),
       };
     });
 

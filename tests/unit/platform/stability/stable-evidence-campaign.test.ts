@@ -84,7 +84,8 @@ test("StableEvidenceCampaignReport structure", () => {
 test("runStableEvidenceCampaign produces campaign state with real execution", async () => {
   const outputDir = mkdtempSync(join(tmpdir(), "stable-evidence-campaign-"));
   try {
-    // Run actual campaign logic - not just type literals
+    // §2324: Actually invoke production code - runStableEvidenceCampaign with real parameters
+    // Not just type literal assertions; exercise actual campaign execution logic
     const report = await runStableEvidenceCampaign({
       outputDir,
       profileName: "smoke",

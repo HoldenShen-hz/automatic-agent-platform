@@ -195,7 +195,9 @@ export function resolveAmountRoute(
   rules: readonly AmountThresholdRule[],
 ): OrgNode | null {
   const normalizedAmount = normalizeApprovalAmount(request);
-  const matchedRule = rules.find((item) => normalizedAmount.amountCny < normalizeThresholdCny(item, normalizedAmount.fxSnapshot ?? undefined)) ?? null;
+  // R34-36 FIX #1978: Use <= instead of < to match threshold boundary value.
+  // With <, exact threshold amounts fall through to the next rule/default.
+  const matchedRule = rules.find((item) => normalizedAmount.amountCny <= normalizeThresholdCny(item, normalizedAmount.fxSnapshot ?? undefined)) ?? null;
   if (!matchedRule) {
     return nodes.find((item) => item.nodeType === "company") ?? null;
   }

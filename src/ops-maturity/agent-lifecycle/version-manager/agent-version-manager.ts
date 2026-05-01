@@ -81,9 +81,13 @@ export class AgentVersionManager {
     const version = versions.find((v) => v.versionId === versionId);
     if (!version) return;
 
-    version.deploymentSlot = slot;
+    // §180-2115: First record the new slot assignment before revoking the opposite slot.
+    // This prevents the version being assigned from accidentally getting revoked
+    // when moving between slots (e.g., assigning version already in blue to green
+    // would incorrectly clear its slot since the assignment happens before revoke check).
+    this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
 
-    // If assigning to blue, revoke green (and vice versa)
+    // If assigning to blue, revoke green (and vice versa) - blue-green is mutually exclusive
     if (slot === "blue") {
       versions.forEach((v) => {
         if (v.deploymentSlot === "green") v.deploymentSlot = null;
@@ -96,7 +100,8 @@ export class AgentVersionManager {
       this.slotAssignments.delete(`${agentId}:blue` as const);
     }
 
-    this.slotAssignments.set(`${agentId}:${slot}` as const, versionId);
+    // Now update the version's slot field (after slotAssignments is updated)
+    version.deploymentSlot = slot;
   }
 
   public getActiveSlot(agentId: string, slot: DeploymentSlot): AgentVersionDetail | null {

@@ -12,6 +12,13 @@ export function transitionRemoteSessionState(
 ): RemoteSessionState {
   switch (signal) {
     case "connected":
+      // R16-16 FIX: Prevent direct failed→connected transition - requires proper re-initialization.
+      // Failed state indicates unrecoverable error; jumping directly to connected bypasses
+      // the re-connection sequence that should reset session state. Force going through
+      // connecting state to ensure proper session recovery handshake.
+      if (current === "failed") {
+        return "connecting";
+      }
       return "connected";
     case "connection_lost":
       return current === "failed" ? "failed" : "reconnecting";

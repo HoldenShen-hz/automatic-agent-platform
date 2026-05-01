@@ -440,10 +440,19 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
     // R16-21 FIX: Use resolveTriggerActionMode for all trigger action types to ensure
     // consistent action-mode determination across all risk levels (no duplication).
-    const actionMode = resolveTriggerActionMode(
+    let actionMode = resolveTriggerActionMode(
       state.trigger.action.requireConfirmation,
       state.trigger.riskLevel,
     );
+
+    // §42.5: Autonomy level must be semi_auto+ for auto_execute
+    // If autonomy is suggestion/supervised/frozen, downgrade auto_execute to suggest
+    const autoExecutePermitted = this.currentAutonomyLevel === "semi_auto"
+      || this.currentAutonomyLevel === "full_auto";
+    if (!autoExecutePermitted && actionMode === "auto_execute") {
+      actionMode = "suggest";
+    }
+
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger, effectiveInput) : null;
 
     return {
@@ -595,18 +604,26 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       }
       visited.add(currentId);
       stack.add(currentId);
-      const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
-      for (const nextId of targets) {
-        if (hasCycle(nextId)) {
-          // If this node is in the cycle (not just an ancestor), mark it
-          if (stack.has(nextId)) {
-            cycleMembers.add(currentId);
+      try {
+        const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
+        for (const nextId of targets) {
+          if (hasCycle(nextId)) {
+            // If this node is in the cycle (not just an ancestor), mark it
+            if (stack.has(nextId)) {
+              cycleMembers.add(currentId);
+            }
+            return true;
           }
-          return true;
         }
+        return false;
+      } finally {
+        // Root cause §175-2046: stack.delete was outside try/catch, so if the recursive
+        // call threw or returned true, stack.delete still ran after the try block.
+        // But worse: when hasCycle returned true (cycle detected), we returned true immediately
+        // without cleaning up the stack frame. The finally ensures cleanup happens regardless
+        // of which return path was taken.
+        stack.delete(currentId);
       }
-      stack.delete(currentId);
-      return false;
     };
     if (!hasCycle(triggerId)) {
       return;

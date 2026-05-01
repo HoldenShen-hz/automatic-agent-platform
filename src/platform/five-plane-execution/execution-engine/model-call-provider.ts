@@ -38,6 +38,9 @@ export interface ModelCallProviderConfig {
     windowMs: number;
   } | null;
   distributedRateLimiter?: DistributedRateLimiterLike | null;
+  // R4-25 (INV-BUDGET-001): Accept external budgetLedger and harnessRunId instead of creating isolated ones
+  budgetLedger?: BudgetLedger;
+  harnessRunId?: string;
 }
 
 let modelCallProviderInstance: ModelCallProviderService | null = null;
@@ -116,10 +119,11 @@ export class ModelCallProviderService {
     this.callGovernance = createModelCallGovernance(config, process.env);
     this.budgetGuard = new BudgetGuard();
     this.budgetAllocator = new BudgetAllocator();
-    // R4-25 (INV-BUDGET-001): Initialize budget ledger for reserve-before-execute
-    this.budgetLedger = createBudgetLedger({
+    // R4-25 (INV-BUDGET-001): Use external budgetLedger if provided, otherwise create isolated one
+    // The external budgetLedger flows from validatedPlanGraphBundle through the execution chain
+    this.budgetLedger = config.budgetLedger ?? createBudgetLedger({
       tenantId: "tenant:local",
-      harnessRunId: "harness_run:model_provider",
+      harnessRunId: config.harnessRunId ?? "harness_run:model_provider",
       currency: "USD",
       hardCap: 10, // matches default maxTaskCostUsd
     });

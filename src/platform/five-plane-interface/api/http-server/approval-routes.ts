@@ -154,8 +154,15 @@ function isValidApprovalIdFormat(id: string): boolean {
   return id.length > 0 && id.length <= 256 && /^[a-zA-Z0-9_-]+$/.test(id);
 }
 
-function isActorAuthorizedForApproval(_actorId: string, _approval: unknown): boolean {
-  // TODO: Implement actual authorization check based on approval ownership/roles
-  // For now, allow all authenticated actors (placeholder for proper authz)
-  return true;
+function isActorAuthorizedForApproval(actorId: string, approval: unknown): boolean {
+  // Root cause: placeholder always returned true - any authenticated actor could approve any approval.
+  // Proper authorization requires checking that actorId owns or is authorized for this approval.
+  // For now, reject until proper authz is implemented (return false until trust boundaries are defined).
+  // TODO: Implement actual authorization check based on approval ownership/roles/tenant scope.
+  if (!actorId || typeof actorId !== "string") {
+    return false;
+  }
+  // approval is ApprovalInspectView - check tenant/owner matches actor's tenant scope.
+  // For P0 security fix: reject all until authz is properly implemented.
+  return false;
 }

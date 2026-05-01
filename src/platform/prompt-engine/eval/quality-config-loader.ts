@@ -92,8 +92,17 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
       riskLevelThresholds: (validated.riskLevelThresholds == null ? DEFAULT_RISK_THRESHOLDS : validated.riskLevelThresholds) as QualityGateConfig["riskLevelThresholds"],
       domainThresholdOverrides: (validated.domainThresholdOverrides == null ? [] : validated.domainThresholdOverrides) as QualityGateConfig["domainThresholdOverrides"],
     };
-  } catch {
-    // Return default config if file doesn't exist or validation fails
+  } catch (err) {
+    // §168-1954 FIX: Bare catch was silently swallowing all errors including config file not found,
+    // JSON parse errors, and Zod validation failures. Now we log the error to aid debugging.
+    // Return default config only for truly non-critical cases.
+    const errorCode = err instanceof Error ? err.message : String(err);
+    // Only use default for file-not-found; re-throw configuration/parse errors
+    if (err instanceof SyntaxError || (err instanceof Error && err.name === "ZodError")) {
+      throw new Error(`quality_config.invalid:${configPath}:${errorCode}`);
+    }
+    // For truly unrecoverable errors, return defaults but log
+    console.error(`[quality-config-loader] Failed to load ${configPath}: ${errorCode}`);
     return {
       qualityGate: {
         defaultPassThreshold: 0.8,

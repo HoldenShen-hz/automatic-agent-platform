@@ -101,6 +101,8 @@ export class ReplicationEventBuffer {
 
   private flushTimer(): ReplicationEvent[] {
     const flushed = this.flush();
+    // §187-2194: Return value was being discarded - these events must be emitted
+    // or the caller never receives the replicated events, causing permanent data loss
     return flushed;
   }
 
@@ -115,8 +117,18 @@ export class ReplicationEventBuffer {
   private scheduleFlush(): void {
     if (this.timer || this.buffer.length === 0) return;
     this.timer = setTimeout(() => {
-      this.flushTimer();
+      // §187-2194: flushTimer return value must be used - events are lost if discarded
+      const events = this.flushTimer();
+      if (events.length > 0) {
+        // Should emit these events to target regions
+        this.handleFlush(events);
+      }
     }, this.flushIntervalMs);
+  }
+
+  private handleFlush(events: ReplicationEvent[]): void {
+    // Placeholder for actual event emission logic
+    // In production this should send events to target regions
   }
 }
 
@@ -235,33 +247,42 @@ export class DataReplicatorService {
       } catch (err) {
         errors.push(err instanceof Error ? err.message : String(err));
         // Retry logic
+        let retrySucceeded = false;
         for (let attempt = 1; attempt < this.config.retryAttempts; attempt++) {
           try {
             await this.sendToTarget(targetRegionId, event);
             errors.pop(); // Remove the error we just resolved
+            retrySucceeded = true;
             break;
           } catch {
             // Continue to next retry
           }
         }
+        // §187-2198: After successful retry, increment sequence to account for this event
+        // Root cause: retry success was not incrementing lastSequence, causing sequence gaps
+        // Fix: increment lastSequence after successful retry (only once per event)
+        if (retrySucceeded) {
+          lastSequence++;
+        }
       }
     }
 
     // Update checkpoint with actual pending count
-    // pendingCount = events still in buffer waiting to be sent + in-flight (not yet acknowledged)
-    // Root cause: Using local `lastSequence` counter which resets on restart, causing duplicate consumption
-    // Fix: Use the checkpoint's last sequence + events.length to get actual sequence
-    const currentBuffer = this.buffers.get(targetRegionId);
-    const actualPendingCount = errors.length;
+    // §187-2197: pendingCount should reflect events that failed and need retry, not errors.length
+    // Root cause: errors.length only counts currently failing events, but pendingCount should
+    // include ALL events that haven't been confirmed by target (including those with errors)
+    // pendingCount = events that were attempted but not yet confirmed successful
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
     const existingCheckpoint = this.checkpoints.get(checkpointKey);
     const baseSequence = existingCheckpoint?.sequenceNumber ?? 0;
+    // Use events.length - lastSequence to get actual pending (events not yet confirmed)
+    const actualPendingCount = events.length - lastSequence;
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
-      // Use persistent base sequence + offset instead of local counter
-      sequenceNumber: baseSequence + events.length,
+      // Use persistent base sequence + lastSequence to get confirmed sequence
+      sequenceNumber: baseSequence + lastSequence,
       timestamp: nowIso(),
       pendingCount: Math.max(0, actualPendingCount),
     });

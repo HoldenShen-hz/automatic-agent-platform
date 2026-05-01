@@ -1,6 +1,13 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 
+// Runtime warning for imports from legacy contract path
+console.warn(
+  "[DEPRECATED] ControlDirective from control-directive/ is deprecated. " +
+  "Use OperationalDirective or DecisionDirective from this module (control-directive/) instead. " +
+  "See: https://docs.example.com/platform/contracts#control-directive-migration",
+);
+
 /**
  * @deprecated ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead.
  * This type is retained for legacy adapter compatibility only.

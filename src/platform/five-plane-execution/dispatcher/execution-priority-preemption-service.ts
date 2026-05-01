@@ -293,7 +293,12 @@ export class ExecutionPriorityPreemptionService {
         if (priorityCompare !== 0) {
           return priorityCompare;
         }
-        const progressCompare = (left.worker.lastProgressAt ?? "").localeCompare(right.worker.lastProgressAt ?? "");
+        // Issue #1906 P1: Use execution-level timestamp (createdAt) instead of
+        // worker-level lastProgressAt for fairer preemption ordering based on
+        // how long the execution has been running, not just worker activity.
+        const leftTime = left.execution.createdAt ?? "";
+        const rightTime = right.execution.createdAt ?? "";
+        const progressCompare = leftTime.localeCompare(rightTime);
         if (progressCompare !== 0) {
           return progressCompare;
         }

@@ -541,7 +541,9 @@ export class DurableEventBus {
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     const handler = this.subscriberRegistry.getHandler(consumerId);
     if (!handler) {
-      // No handler registered - nothing was actually delivered
+      // Root cause §191-2236: Without handler, nothing can be delivered.
+      // Previously this returned 0 which is correct - no delivery means 0 delivered.
+      // Ensure we don't return pending.length as "delivered" when no delivery occurred.
       return 0;
     }
 
@@ -1017,18 +1019,13 @@ export class DurableEventBus {
     if (event.eventTier !== "tier_1") {
       return;
     }
-    // §28.2: Only create ack records for consumers registered for this eventType
+    // Root cause §191-2237: Creating acks for activeConsumerRefCounts without eventType filter
+    // causes false pending counts for consumers not registered for this eventType.
+    // The second loop (activeConsumerRefCounts) was duplicating calls and creating
+    // spurious pending acks. Only create acks for consumers actually registered for this eventType.
     const registeredConsumerIds = getRegisteredConsumers(event.eventType);
     for (const consumerId of registeredConsumerIds) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
-    }
-    // Active consumer ref counts are for in-process consumers, not eventType filtering
-    // Only create acks for active consumers that are ALSO registered for this eventType
-    for (const consumerId of Array.from(this.activeConsumerRefCounts.keys())) {
-      // Only create ack if this consumer is registered for this event type
-      if (registeredConsumerIds.includes(consumerId)) {
-        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
-      }
     }
   }
 

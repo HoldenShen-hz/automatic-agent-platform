@@ -117,7 +117,8 @@ interface ClientConnection {
  *
  * This bridge:
  * - Accepts WebSocket connections at `/ws/v1/stream`
- * - Authenticates clients via JWT token in query parameter
+ * - Authenticates clients via JWT token in Sec-WebSocket-Protocol header (rfc6455)
+ * - §11/R11-09: JWT via query param is NOT used - it would leak to logs/Referer/proxies
  * - Allows clients to subscribe to specific task updates
  * - Broadcasts task events to subscribed clients
  * - Maintains connection health via ping/pong

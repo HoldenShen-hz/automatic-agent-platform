@@ -228,8 +228,11 @@ export function inferCapabilitiesForAction(action: AuthorizationAction): readonl
 }
 
 /**
- * Resolve principal access profile with hierarchical capability resolution.
+ * Resolves principal access profile with hierarchical capability resolution.
  * §11.2: RBAC Layer 1 (role inheritance) → Capability aggregation.
+ * §167-1947 SECURITY FIX: Exported for external callers (policy-engine) to validate
+ * role grants. Previously roleGrantsCapabilities/inferCapabilitiesForAction were
+ * defined but not called by external modules for policy decisions.
  */
 export function resolvePrincipalAccessProfile(input: {
   principalType: PlatformPrincipalType;
@@ -239,11 +242,10 @@ export function resolvePrincipalAccessProfile(input: {
   const roles = dedupeRoles(input.roles?.length ? input.roles : defaultRolesForPrincipalType(input.principalType));
   // Walk inheritance chain for each role to collect all inherited capabilities
   const roleCapabilities = dedupeCapabilities(roles.flatMap((role) => capabilitiesForRole(role)));
-  const capabilities = dedupeCapabilities(
-    input.capabilities?.length
-      ? [...input.capabilities, ...roleCapabilities] // Union not intersection - allow input to extend role capabilities
-      : roleCapabilities,
-  );
+  // SECURITY FIX (§167-1941): Use ONLY role-derived capabilities (intersection), not union.
+  // A viewer with BASE_CAPABILITIES=[] could otherwise claim arbitrary capabilities like exec:command.
+  // Input capabilities are discarded - role capabilities are the single source of truth.
+  const capabilities = dedupeCapabilities(roleCapabilities);
   return {
     principalType: input.principalType,
     roles,

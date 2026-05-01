@@ -74,6 +74,7 @@ export class TakeoverEscalationManager {
   public startSessionTracking(sessionId: string, taskId: string): void {
     this.ackStatuses.set(sessionId, {
       sessionId,
+      createdAt: nowIso(), // §181-2126: Track creation time for unacknowledged session eviction
       acknowledgedAt: null,
       expiresAt: null,
       status: "pending",
@@ -401,12 +402,29 @@ export class TakeoverEscalationManager {
     this.lastEvictionTime = now;
 
     const expiryThreshold = now - this.SESSION_TTL_MS;
+
+    // §181-2126: Track session creation times for unacknowledged session eviction
+    const sessionCreationTimes = new Map<string, number>();
+    for (const [sessionId, status] of this.ackStatuses) {
+      sessionCreationTimes.set(sessionId, status.createdAt ? new Date(status.createdAt).getTime() : now);
+    }
     const entriesToDelete: string[] = [];
 
     for (const [sessionId, status] of this.ackStatuses) {
+      // §181-2126: Evict sessions that are either acknowledged AND expired,
+      // OR never acknowledged and past the expiry threshold.
+      // Previously, only acknowledged sessions were checked, causing unacknowledged
+      // sessions to never be evicted (memory leak).
       if (status.acknowledgedAt) {
         const ackTime = new Date(status.acknowledgedAt).getTime();
         if (ackTime < expiryThreshold) {
+          entriesToDelete.push(sessionId);
+        }
+      } else {
+        // Unacknowledged sessions: evict if the session start time is past expiry
+        const createdAt = sessionCreationTimes.get(sessionId) ?? now;
+        const sessionAge = now - createdAt;
+        if (sessionAge > this.SESSION_TTL_MS) {
           entriesToDelete.push(sessionId);
         }
       }

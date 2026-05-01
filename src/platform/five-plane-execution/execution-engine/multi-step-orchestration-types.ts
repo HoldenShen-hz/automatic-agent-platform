@@ -4,6 +4,7 @@ import type { IntakeRouter } from "../../orchestration/routing/intake-router.js"
 import type { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
 import type { AdmissionBackpressureSnapshot, AdmissionPolicy } from "../dispatcher/admission-controller.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
+import type { BudgetLedger } from "../../contracts/executable-contracts/index.js";
 
 export interface StepFailurePlan {
   errorCode: string;
@@ -15,6 +16,9 @@ export interface MultiStepToolExecutionInput {
   dbPath: string;
   title: string;
   request: string;
+  // R4-25 (INV-BUDGET-001): Budget tracking - harnessRunId from validated PlanGraphBundle
+  harnessRunId: string;
+  budgetLedger: BudgetLedger;
   contextBudgetTokens?: number;
   admissionPolicy?: AdmissionPolicy;
   admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;

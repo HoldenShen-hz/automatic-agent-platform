@@ -83,13 +83,17 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
   const executor = new CommandExecutor();
 
   try {
-    // Pass the encoded traversal string directly - the executor should block it
-    // BEFORE any internal decoding happens. If the executor decodes first then checks,
-    // this would become ../../../etc/passwd and still be blocked - but we need to
-    // ensure the blocking happens at the right stage.
+    // §199-2329: Root cause - test passed encoded traversal but BEFORE passing to executor,
+    // the test decoded it: decodeURIComponent(doubleEncoded) → %2e%2e%2f → ../
+    // This means the executor never saw the encoded form, so the test never validated
+    // that the validation layer rejects encoded traversal BEFORE any decoding.
+    // Fix: Pass the encoded string directly WITHOUT pre-decoding.
     const encodedTraversal = "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd";
+    // Double-encoded: %252e%252e = ".." after two decodes
+    const doubleEncodedTraversal = "%252e%252e%252f%252e%252e%252f%252e%252e%252fetc%252fpasswd";
 
-    const request = {
+    // Test single-encoded - should be blocked at validation layer before any decoding
+    const request1 = {
       callId: newId("call"),
       taskId: newId("task"),
       traceId: newId("trace"),
@@ -104,13 +108,30 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
       allowedPathRoots: [workspace],
     };
 
-    const result = await executor.execute(request);
+    const result1 = await executor.execute(request1);
+    assert.equal(result1.status, "blocked", "Single-encoded path traversal should be blocked at validation layer");
 
-    // The executor MUST block this before any decoding occurs
-    // If it decodes first then blocks, that is still vulnerable to double-encoding
-    // bypass via techniques like %252e%252e. The executor should reject at the
-    // validation layer, not after internal decoding.
-    assert.equal(result.status, "blocked", "Encoded path traversal should be blocked at validation layer");
+    // Test double-encoded - even after one decode this becomes %2e%2e (not ../)
+    // so if validation happens after decode, double-encoded would pass.
+    // But validation MUST happen before decode to catch this bypass.
+    const request2 = {
+      callId: newId("call"),
+      taskId: newId("task"),
+      traceId: newId("trace"),
+      executionId: null,
+      toolName: "bash",
+      command: "cat",
+      args: [doubleEncodedTraversal],
+      cwd: workspace,
+      timeoutMs: 5000,
+      sandboxPolicy: createWorkspaceWriteSandboxPolicy(workspace),
+      allowedTools: ["cat"],
+      allowedPathRoots: [workspace],
+    };
+
+    const result2 = await executor.execute(request2);
+    // Double-encoded traversal should also be blocked at the validation layer
+    assert.equal(result2.status, "blocked", "Double-encoded path traversal should be blocked at validation layer");
   } finally {
     cleanupPath(workspace);
   }

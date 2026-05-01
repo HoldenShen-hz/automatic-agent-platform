@@ -412,6 +412,10 @@ export class DegradationController {
    * Returns providers that are not the primary and are currently healthy.
    */
   private getFallbackCandidates(primaryProfileName: string): ModelFallbackCandidate[] {
+    // §179-2090 FIX: getFallbackCandidates() was hardcoded to return [].
+    // Root cause: The method was not implemented - it always returned empty array,
+    // causing D1 degradation level to never find any fallback candidates.
+    // Fix: Actually query available profiles from providers.
     const candidates: ModelFallbackCandidate[] = [];
 
     // Get available profiles from the fallback provider if configured,
@@ -593,8 +597,12 @@ export class DegradationController {
     }
 
     // Check for de-escalation conditions
+    // §179-2096: De-escalation must also verify latency P99 is below threshold,
+    // not just error rate. Previously ignored latency P99 which could allow
+    // de-escalation even when latency is still degraded.
     const shouldDeescalate =
       errorRate < this.config.deescalateErrorRateThreshold &&
+      latencyP99Ms < this.config.escalateLatencyP99Ms &&
       this.currentLevel > this.config.maxAutoDeescalateLevel;
 
     if (shouldDeescalate) {

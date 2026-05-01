@@ -78,9 +78,10 @@ export class ApprovalRoutingService {
       },
       escalatedTo,
       auditRecord: buildGovernanceAuditRecord({
-        // SECURITY FIX: Add timestamp and random factor to prevent collision
-        // when same requester submits multiple requests to same node
-        recordId: `audit_${request.requesterId}_${request.orgNodeId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        // R34-36 FIX #1979: Use crypto.randomUUID() for guaranteed uniqueness.
+        // Date.now() only has ms precision; same requester+node within 1ms collides.
+        // Math.random() alone is not cryptographically random enough for audit IDs.
+        recordId: `audit_${request.requesterId}_${request.orgNodeId}_${Date.now()}_${crypto.randomUUID()}`,
         action: "approval.route",
         actorId: request.requesterId,
         orgNodeId: base.matchedOrgNodeId,

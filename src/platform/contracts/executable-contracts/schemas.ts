@@ -664,14 +664,26 @@ export function getExecutableContract(name: CanonicalContractName): ExecutableCo
   return EXECUTABLE_CONTRACT_PACKAGE[name];
 }
 
-export function validateExecutableContract(name: CanonicalContractName, value: unknown): unknown {
+/**
+ * Validates an executable contract payload against its Zod schema.
+ * Returns the typed result on success, enabling type narrowing after validation.
+ *
+ * @param name - The canonical contract name
+ * @param value - The raw unknown value to validate
+ * @returns The typed validated result (not unknown)
+ * @throws ValidationError if validation fails
+ */
+export function validateExecutableContract<T extends CanonicalContractName>(
+  name: T,
+  value: unknown,
+): z.infer<typeof CONTRACT_ZOD_SCHEMAS[T]> {
   const result = CONTRACT_ZOD_SCHEMAS[name].safeParse(value);
   if (!result.success) {
     throw new ValidationError("executable_contract.schema_invalid", `Invalid v4.3 contract payload: ${name}`, {
       details: { issues: result.error.issues },
     });
   }
-  return result.data;
+  return result.data as z.infer<typeof CONTRACT_ZOD_SCHEMAS[T]>;
 }
 
 function replayBehaviorFor(name: CanonicalContractName): ContractReplayBehavior {

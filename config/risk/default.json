@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Canonical risk configuration aligned with §28 Event Registry and DLQ model",
   "riskCategories": [
     "operational",
@@ -16,7 +16,10 @@
     "dataClassRisk": 3,
     "blastRadius": 2,
     "priorFailureRate": 2,
-    "confidence": 1
+    "confidence": 1,
+    "aiModelRisk": 4,
+    "thirdPartyRisk": 2,
+    "supplyChainRisk": 2
   },
   "systemRiskValues": {
     "internal": 1,

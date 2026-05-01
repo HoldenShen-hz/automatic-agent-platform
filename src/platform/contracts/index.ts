@@ -51,17 +51,26 @@ export {
 // -----------------------------------------------------------------------------
 export * from "./evidence-record/index.js";
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Deprecated Contracts - DO NOT USE IN NEW CODE
-// -----------------------------------------------------------------------------
+// =============================================================================
 // These are retained for backward compatibility only.
-// Deprecated types are accessible via executable-contracts or their source directories.
+// Canonical types are exported from executable-contracts/ or their source directories.
+//
+// DEPRECATED SECTION - these exports come AFTER canonical types to discourage use
+// -----------------------------------------------------------------------------
+
+/**
+ * @deprecated Use RequestEnvelope from executable-contracts (canonical per §5.3).
+ * This namespace is retained for backward compatibility only.
+ */
+export * as requestEnvelopeContract from "./request-envelope/index.js";
 
 // -----------------------------------------------------------------------------
 // LEGACY_CONTRACT_NAMES - for linting/deprecation enforcement
 // -----------------------------------------------------------------------------
 // These contracts are deprecated. New code should NOT import from these paths:
-// - request-envelope/ (use executable-contracts RequestEnvelope)
+// - request-envelope/ (use RequestEnvelope from executable-contracts)
 // - control-directive/ (use OperationalDirective/DecisionDirective)
 // - execution-plan/ (use PlanGraphBundle)
 // - execution-receipt/ (use NodeAttemptReceipt)

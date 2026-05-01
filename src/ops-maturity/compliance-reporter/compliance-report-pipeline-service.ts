@@ -295,7 +295,8 @@ export class ComplianceReportPipelineService {
   }
 
   public generate(request: ComplianceReportRequest): ComplianceReportArtifact {
-    const template = this.registry.find(request.templateId) ?? findComplianceTemplate(this.templates, request.templateId);
+    // §180-2114: Removed redundant second lookup - registry.find() already searches this.templates
+    const template = this.registry.find(request.templateId);
     if (template == null) {
       throw new Error(`compliance_report.template_not_found:${request.templateId}`);
     }
@@ -382,7 +383,14 @@ export class ComplianceReportPipelineService {
     // §66.2: timeoutAction must be defined - default to "escalate" when overdue
     const timeoutAction = input.timeoutAction ?? (input.now > input.signoffDueAt ? "escalate" : "escalate");
 
-    if (signedAt != null && signedAt <= input.signoffDueAt) {
+    // R16-36 FIX #2107: ISO string comparison fails for non-UTC formats (e.g., +08:00).
+    // Lexicographic comparison of "2026-05-01T12:00:00+08:00" vs "2026-05-01T04:00:00Z"
+    // would incorrectly indicate the first is earlier. Parse as Date for correct comparison.
+    const signoffDueAtMs = new Date(input.signoffDueAt).getTime();
+    const signedAtMs = signedAt != null ? new Date(signedAt).getTime() : null;
+    const nowMs = new Date(input.now).getTime();
+
+    if (signedAtMs != null && signedAtMs <= signoffDueAtMs) {
       return {
         artifactId: input.artifact.artifactId,
         signerId: input.signerId ?? null,
@@ -394,7 +402,7 @@ export class ComplianceReportPipelineService {
       };
     }
 
-    if (signedAt != null && signedAt > input.signoffDueAt) {
+    if (signedAtMs != null && signedAtMs > signoffDueAtMs) {
       return {
         artifactId: input.artifact.artifactId,
         signerId: input.signerId ?? null,
@@ -411,7 +419,7 @@ export class ComplianceReportPipelineService {
       signerId: input.signerId ?? null,
       signoffDueAt: input.signoffDueAt,
       signedAt,
-      status: input.now > input.signoffDueAt ? "not_attested_expired" : "signoff_overdue",
+      status: nowMs > signoffDueAtMs ? "not_attested_expired" : "signoff_overdue",
       escalationOwner,
       timeoutAction,
     };

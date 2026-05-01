@@ -31,6 +31,7 @@ import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
+import type { PlanGraphBundle } from "../../../contracts/executable-contracts/index.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -81,6 +82,7 @@ export interface StepSupervisorContext {
   input: MultiStepToolExecutionInput;
   routing: ReturnType<typeof import("../../orchestration/routing/intake-router.js").IntakeRouter.prototype.route>;
   plannedWorkflow: ReturnType<typeof import("../../orchestration/routing/workflow-planner.js").WorkflowPlanner.prototype.plan>;
+  validatedPlanGraphBundle: PlanGraphBundle;
   outputs: Record<string, unknown>;
   stepOutputs: StepOutputRecord[];
   toolExposureService: import("../tool-executor/role-tool-exposure-service.js").RoleToolExposureService;
@@ -129,6 +131,7 @@ export async function executeStepLoop(
     input,
     routing,
     plannedWorkflow,
+    validatedPlanGraphBundle,
     toolExposureService,
   } = ctx;
 
@@ -441,6 +444,9 @@ export async function executeStepLoop(
         priorSummaries,
         routingReason: routing.routeReason,
         tools: getMultiStepToolDefinitions(toolExposure.visibleToolNames),
+        // R4-25 (INV-BUDGET-001): Pass budget context from validated PlanGraphBundle
+        harnessRunId: input.harnessRunId,
+        budgetLedger: input.budgetLedger,
       });
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
 

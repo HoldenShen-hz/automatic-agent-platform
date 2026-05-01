@@ -43,9 +43,12 @@ interface CasRecord {
  * - Read operations: getValue(key), getVersion(key)
  */
 export class CasService {
-  // In-memory store for CAS records (key -> { value, version, updatedAt })
-  // R5-44 NOTE: Uses synchronous Map operations which are atomic in single-threaded JS.
-  // For distributed concurrency, this should be replaced with Redis/etcd-based CAS.
+  // §174-2024: In-memory Map provides non-atomic read-check-write within compareAndSwap/compareAndSet.
+  // In single-threaded JS this is safe, but in multi-process/distributed scenarios the Map operations
+  // are NOT atomic across processes. Root cause: the store.get() check and store.set() update are two
+  // separate operations, creating a race window. For true distributed CAS, replace this in-memory Map
+  // with Redis/etcd using WATCH/MULTI/EXEC or Lua scripts, or use the database's transaction + CAS
+  // mechanism (e.g., SQLite's EXCLUSIVE transaction or PostgreSQL's FOR UPDATE).
   private readonly store = new Map<string, CasRecord>();
 
   /**

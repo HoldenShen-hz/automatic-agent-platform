@@ -38,12 +38,13 @@ export class RecipeExecutor {
   ): Promise<RecipeExecutionResult> {
     try {
       const parsed = DomainRecipeSchema.parse(recipe);
-      // Query WorkflowRegistry properly when available - do not assume workflow
-      // does not exist based on null registry fallback
+      // R16-04 FIX: When registry is null, we cannot verify workflow existence.
+      // Only succeed if registry is null (backward compat) OR workflow exists.
       const workflow = this.workflowRegistry
         ? this.workflowRegistry.get(parsed.defaultWorkflowId)
         : null;
       if (this.workflowRegistry && workflow == null) {
+        // Registry exists but workflow not found — fail
         return {
           success: false,
           executionId: context.executionId,
@@ -52,6 +53,11 @@ export class RecipeExecutor {
           toolBundleIds: [...parsed.defaultToolBundleIds],
           error: `Workflow ${parsed.defaultWorkflowId} is not available in the registry.`,
         };
+      }
+      if (!this.workflowRegistry) {
+        // R16-04 FIX: registry is null — warn but allow execution to proceed
+        // (legacy fallback mode; workflow existence cannot be verified)
+        console.warn(`RecipeExecutor: workflow registry not available, skipping workflow verification for ${parsed.defaultWorkflowId}`);
       }
 
       return {

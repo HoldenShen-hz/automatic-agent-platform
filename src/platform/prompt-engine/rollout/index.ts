@@ -4,6 +4,9 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PromptTemplateRecord } from "../registry/index.js";
 
 // §16.3: canary mode maps to the canary_5/canary_20 staged rollout pipeline.
+// R16-04 FIX: Added "canary" to valid modes — mode must match stage pipeline.
+// R34-36 FIX #1957: PromptRolloutMode must support all rollout stages per spec.
+// Valid modes: off, suggest, shadow, canary (maps to staged canary pipeline)
 // Valid transitions: blocked → canary_5 → canary_20 → stable → deprecated
 // rolled_back is a terminal state from rollbackRollout().
 export type PromptRolloutMode = "off" | "suggest" | "shadow" | "canary";
@@ -75,11 +78,11 @@ export class PromptRolloutService {
   public activateRollout(rolloutId: string): PromptRolloutRecord {
     const record = this.getRequired(rolloutId);
     // R16-13 FIX: Allow canary traffic split transitions per §16.3
-    // Valid transitions: canary_5 → canary_20 → stable
+    // R16-04 FIX: Valid transitions only go forward: canary_5 → canary_20 → stable
+    // stable does NOT transition to rolled_back via activateRollout (that is a separate rollback operation)
     const validTransitions: Record<string, string> = {
       "canary_5": "canary_20",
       "canary_20": "stable",
-      "stable": "stable", // stable can re-enter stable (idempotent)
     };
     const nextStatus = validTransitions[record.status];
     if (nextStatus === undefined) {
@@ -88,7 +91,8 @@ export class PromptRolloutService {
         `Prompt rollout in status ${record.status} cannot transition to canary or stable. Valid transitions: canary_5→canary_20→stable`,
       );
     }
-    // §16.3 dwell-time: require minimum time at each stage before advancing
+    // R16-04 FIX: §16.3 dwell-time enforcement — require minimum time at each stage before advancing.
+    // This prevents skipping the progressive canary phases (5% → 20% → stable).
     const DWELL_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours
     const stageEnteredAt = new Date(record.statusEnteredAt).getTime();
     const nowMs = Date.now();
@@ -143,6 +147,54 @@ export class PromptRolloutService {
     }
     // R16-04 FIX: Start at canary_5 per §16.3 canonical pipeline
     return { allowed: true, nextStatus: "canary_5", reason: "rollout_guardrail_passed" };
+  }
+
+  /**
+   * R34-36 FIX #1958: Evaluates rollout metrics and automatically rolls back if regression detected.
+   * §16.3 requires metric regression auto-rollback at each canary stage.
+   * When quality score drops by more than 5% or latency increases by >20%,
+   * the rollout is automatically rolled back to the previous stable state.
+   */
+  public evaluateRolloutMetrics(rolloutId: string, metrics: {
+    qualityScore: number;
+    latencyP99Ms: number;
+    errorRate: number;
+    previousQualityScore?: number;
+    previousLatencyP99Ms?: number;
+  }): PromptRolloutRecord {
+    const record = this.getRequired(rolloutId);
+
+    // Only rollback from active canary or stable stages
+    const rollbackableStates = ["canary_5", "canary_20", "stable"];
+    if (!rollbackableStates.includes(record.status)) {
+      return record;
+    }
+
+    // Check for quality regression: current score < previous score - 0.05 threshold
+    const hasQualityRegression = metrics.previousQualityScore != null
+      && metrics.qualityScore < metrics.previousQualityScore - 0.05;
+
+    // Check for latency regression: current latency > previous * 1.20 (120%)
+    const hasLatencyRegression = metrics.previousLatencyP99Ms != null
+      && metrics.latencyP99Ms > metrics.previousLatencyP99Ms * 1.20;
+
+    // Check error rate threshold for current stage
+    const stageThreshold: { maxErrorRate: number } | undefined = record.status === "canary_5"
+      ? { maxErrorRate: 0.05 }
+      : record.status === "canary_20" ? { maxErrorRate: 0.03 } : { maxErrorRate: 0.01 };
+    const exceedsErrorThreshold = stageThreshold != null && metrics.errorRate > stageThreshold.maxErrorRate;
+
+    if (hasQualityRegression || hasLatencyRegression || exceedsErrorThreshold) {
+      const reason = hasQualityRegression
+        ? `quality_regression:${metrics.previousQualityScore?.toFixed(2)}→${metrics.qualityScore.toFixed(2)}`
+        : hasLatencyRegression
+          ? `latency_regression:${metrics.previousLatencyP99Ms}ms→${metrics.latencyP99Ms}ms`
+          : `error_rate_exceeded:${metrics.errorRate.toFixed(3)} > ${stageThreshold.maxErrorRate}`;
+
+      return this.rollbackRollout(rolloutId, reason);
+    }
+
+    return record;
   }
 
   public listRollouts(templateKey?: string): PromptRolloutRecord[] {

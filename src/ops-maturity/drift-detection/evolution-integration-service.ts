@@ -75,7 +75,7 @@ export class EvolutionIntegrationService {
     const reasonCode = input.reasonCode;
     const taskType = this.inferTaskType(reasonCode);
     const evidence: EvidenceRecord = {
-      id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `ev_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       taskType,
       sessionId: input.sessionId,
       traceId: input.executionId,
@@ -113,7 +113,7 @@ export class EvolutionIntegrationService {
     toolCalls: number;
   }): Promise<void> {
     const evidence: EvidenceRecord = {
-      id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `ev_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`,
       taskType: 'general',
       sessionId: input.sessionId,
       traceId: input.executionId,

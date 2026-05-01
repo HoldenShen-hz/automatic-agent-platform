@@ -517,24 +517,31 @@ export async function definePlugin(options: DefinePluginOptions): Promise<Plugin
   // §4/R21-30: Verify plugin signature cryptographically if signing info is present.
   // The signature must be validated before the plugin is considered valid.
   // If signing is present but verification fails, the plugin must be rejected.
-  if (result.signing != null) {
-    const canonicalJson = JSON.stringify({
-      pluginId: result.pluginId,
-      name: result.name,
-      version: result.version,
-      type: result.type,
-      capabilities: result.capabilities,
-      spiTypes: result.spiTypes,
-      domainIds: result.domainIds,
-    });
-    const verification = verifyPluginSignature(result, canonicalJson);
-    if (!verification.valid) {
-      throw new ValidationError(
-        "plugin_sdk.signature_verification_failed",
-        `Plugin signature verification failed: ${verification.error}`,
-        { details: { pluginId: result.pluginId, keyId: result.signing.keyId } },
-      );
-    }
+  // Root cause: Previously, plugins without signing info passed through without
+  // verification. Per spec, SIGNING IS MANDATORY - no signing = rejection.
+  if (result.signing == null) {
+    throw new ValidationError(
+      "plugin_sdk.signature_required",
+      "Plugin signature is required per security policy - unsigned plugins are not allowed",
+      { details: { pluginId: result.pluginId } },
+    );
+  }
+  const canonicalJson = JSON.stringify({
+    pluginId: result.pluginId,
+    name: result.name,
+    version: result.version,
+    type: result.type,
+    capabilities: result.capabilities,
+    spiTypes: result.spiTypes,
+    domainIds: result.domainIds,
+  });
+  const verification = verifyPluginSignature(result, canonicalJson);
+  if (!verification.valid) {
+    throw new ValidationError(
+      "plugin_sdk.signature_verification_failed",
+      `Plugin signature verification failed: ${verification.error}`,
+      { details: { pluginId: result.pluginId, keyId: result.signing.keyId } },
+    );
   }
 
   // §22.4/R21-46: Verify SBOM reference if present.

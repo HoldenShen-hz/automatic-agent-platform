@@ -31,11 +31,17 @@ function makeInput(overrides: Partial<HistoricalMetricsInput> = {}): HistoricalM
   };
 }
 
-function createMockDb(rows: Array<{ status: string; requires_approval: number; last_error_code: string | null; created_at: string }>): AuthoritativeSqlDatabase {
+function createMockDb(
+  rows: Array<{ status: string; requires_approval: number; last_error_code: string | null; created_at: string }>,
+  onQuery?: (args: readonly unknown[]) => void,
+): AuthoritativeSqlDatabase {
   return {
     connection: {
       prepare: () => ({
-        all: () => rows,
+        all: (...args: unknown[]) => {
+          onQuery?.(args);
+          return rows;
+        },
       }),
     },
   } as unknown as AuthoritativeSqlDatabase;
@@ -82,9 +88,9 @@ test("SqlExecutionMetricsProvider counts human overrides via requires_approval",
   assert.equal(result.humanOverrides, 2);
 });
 
-test("SqlExecutionMetricsProvider counts incidents via last_error_code", async () => {
+test("SqlExecutionMetricsProvider counts incidents via failed executions, not merely error codes", async () => {
   const db = createMockDb([
-    { status: "succeeded", requires_approval: 0, last_error_code: null, created_at: "2026-04-01T00:00:00Z" },
+    { status: "succeeded", requires_approval: 0, last_error_code: "ERR_RETRYABLE", created_at: "2026-04-01T00:00:00Z" },
     { status: "failed", requires_approval: 0, last_error_code: "ERR_NETWORK", created_at: "2026-04-02T00:00:00Z" },
     { status: "failed", requires_approval: 0, last_error_code: "ERR_NETWORK", created_at: "2026-04-03T00:00:00Z" },
   ]);
@@ -95,27 +101,30 @@ test("SqlExecutionMetricsProvider counts incidents via last_error_code", async (
 });
 
 test("SqlExecutionMetricsProvider captures last incident timestamp", async () => {
-  // Rows are returned in the order they appear in the mock - first error found is returned
   const db = createMockDb([
+    { status: "succeeded", requires_approval: 0, last_error_code: "ERR_WARN", created_at: "2026-04-20T00:00:00Z" },
     { status: "failed", requires_approval: 0, last_error_code: "ERR_001", created_at: "2026-04-15T00:00:00Z" },
     { status: "failed", requires_approval: 0, last_error_code: "ERR_002", created_at: "2026-04-01T00:00:00Z" },
   ]);
   const provider = new SqlExecutionMetricsProvider(db);
   const result = await provider.fetchMetrics(makeInput());
 
-  // Returns first row with error code (April 15 in this case, since it appears first in the array)
   assert.equal(result.lastIncidentAt, "2026-04-15T00:00:00Z");
 });
 
 test("SqlExecutionMetricsProvider uses windowDays to filter by date", async () => {
+  let queryArgs: readonly unknown[] = [];
   const db = createMockDb([
     { status: "succeeded", requires_approval: 0, last_error_code: null, created_at: "2026-04-01T00:00:00Z" },
-  ]);
+  ], (args) => {
+    queryArgs = args;
+  });
   const provider = new SqlExecutionMetricsProvider(db);
-  await provider.fetchMetrics(makeInput({ windowDays: 30 }));
+  await provider.fetchMetrics(makeInput({ agentId: "agent_x", capabilityId: "deploy_prod", windowDays: 30 }));
 
-  // The SQL query uses parameterized window start date
-  // We verify the method doesn't throw and returns expected structure
+  assert.equal(queryArgs[0], "agent_x");
+  assert.equal(queryArgs[1], "deploy_prod");
+  assert.equal(typeof queryArgs[2], "string");
 });
 
 test("toCapabilityTrustScore maps metrics to trust score structure", () => {
@@ -167,5 +176,6 @@ test("SqlExecutionMetricsProvider calculates correct totals from mixed statuses"
   assert.equal(result.successfulExecutions, 3);
   assert.equal(result.failedExecutions, 2);
   assert.equal(result.humanOverrides, 1);
-  assert.equal(result.incidents, 1);
+  assert.equal(result.incidents, 2);
+  assert.equal(result.lastIncidentAt, "2026-04-05T00:00:00Z");
 });

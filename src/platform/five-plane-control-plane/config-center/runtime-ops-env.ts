@@ -22,7 +22,7 @@ export interface RemoteLogPayload {
 export interface DispatchExecutionCliEnvConfig {
   dbPath: string | undefined;
   executionId: string;
-  priority: "low" | "normal" | "high" | "urgent" | undefined;
+  priority: "low" | "normal" | "high" | "critical" | undefined;
   queueName: string | null;
   dispatchTarget: "any" | "local_only" | "prefer_remote" | "require_remote" | undefined;
   requiredIsolationLevel: "standard" | "hardened" | "strict" | undefined;
@@ -302,7 +302,7 @@ export function loadDispatchExecutionCliEnv(
   return {
     dbPath: optionalEnv(env, "AA_DB_PATH"),
     executionId: requiredEnv(env, "AA_EXECUTION_ID"),
-    priority: optionalEnumValue(env, "AA_PRIORITY", ["low", "normal", "high", "urgent"]),
+    priority: optionalEnumValue(env, "AA_PRIORITY", ["low", "normal", "high", "critical"]),
     queueName: optionalNullableEnv(env, "AA_QUEUE_NAME"),
     dispatchTarget: optionalEnumValue(env, "AA_DISPATCH_TARGET", ["any", "local_only", "prefer_remote", "require_remote"]),
     requiredIsolationLevel: optionalEnumValue(env, "AA_REQUIRED_ISOLATION_LEVEL", ["standard", "hardened", "strict"]),

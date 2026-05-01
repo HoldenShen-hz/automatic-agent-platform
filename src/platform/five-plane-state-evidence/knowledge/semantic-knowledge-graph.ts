@@ -349,9 +349,6 @@ export class SemanticKnowledgeGraph {
         // R16-34 FIX: Entity nodes default to private_unverified (unverified info)
         trustLevel: "private_unverified",
       });
-        namespace: null,
-        knowledgeRef: null,
-      });
     }
 
     this.addEdge(fromNodeId, toNodeId, relation, weight);

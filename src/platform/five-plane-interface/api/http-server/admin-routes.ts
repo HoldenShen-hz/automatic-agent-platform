@@ -243,10 +243,15 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin tenants list");
+        // Root cause §175-2045: readLimit returns user-provided limit which could be
+        // MAX_SAFE_INTEGER, causing listTenants to load all records into memory for the
+        // total count calculation, leading to OOM DoS.
+        // Fix: cap limit to a safe maximum (1000) for total count calculation.
         const limit = readLimit(ctx.request, 50);
+        const safeLimit = Math.min(limit, 1000);
         return buildJsonResponse(ctx.requestId, 200, {
-          tenants: deps.tenantRegistryService?.listTenants(limit) ?? [],
-          total: deps.tenantRegistryService?.listTenants(limit).length ?? 0,
+          tenants: deps.tenantRegistryService?.listTenants(safeLimit) ?? [],
+          total: deps.tenantRegistryService?.listTenants(safeLimit).length ?? 0,
         });
       },
     },

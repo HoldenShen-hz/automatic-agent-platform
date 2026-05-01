@@ -82,10 +82,10 @@ export class OfflineQueue {
     try {
       await this.store.writeAll([...this.queue]);
     } catch (error) {
-      // P1 FIX: Persist failure should not be silently ignored.
-      // Log error so operators can see it; mutation remains in memory but will be
-      // lost on crash. A more robust fix would be to track persist status per mutation.
-      console.error("[OfflineQueue] Persist failed, mutations may be lost on crash:", error);
+      // §205-2414: Persist failure now throws instead of silent ignore.
+      // Root cause: Previously errors were logged but not propagated, causing mutations
+      // to remain in memory and be lost on crash. Now we throw so callers can handle.
+      console.error("[OfflineQueue] Persist failed:", error);
       throw error;
     }
   }
@@ -111,16 +111,22 @@ export function createIndexedDbOfflineMutationStore(
   databaseName = "aa-ui-offline",
   storeName = "mutations",
 ): OfflineMutationStore {
+  // P2 FIX: Cache the database connection promise instead of opening fresh each time.
+  // Previously, every readAll/writeAll called openDatabase(), creating a new
+  // IDBOpenDBRequest promise. While IndexedDB may internally pool connections,
+  // this pattern creates unnecessary overhead. Caching the promise ensures
+  // the connection is opened once and reused across all operations.
+  const dbPromise = openDatabase(databaseName, storeName);
   return {
     async readAll() {
-      const db = await openDatabase(databaseName, storeName);
+      const db = await dbPromise;
       if (db == null) {
         return [];
       }
       return readSnapshot(db, storeName);
     },
     async writeAll(mutations) {
-      const db = await openDatabase(databaseName, storeName);
+      const db = await dbPromise;
       if (db == null) {
         return;
       }

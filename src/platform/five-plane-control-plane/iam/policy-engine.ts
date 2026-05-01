@@ -100,6 +100,9 @@ export interface PolicyDecisionRequest {
   /** ID of the subject making the request */
   subjectId: string;
 
+  /** Roles of the subject making the request - used to validate capability grants */
+  roles?: readonly PlatformRole[];
+
   /** Action being requested */
   action:
     | "invoke_model"
@@ -171,6 +174,13 @@ export interface PolicyEngineOptions {
 
   /** Enable kill switch functionality */
   killSwitchEnabled?: boolean;
+
+  /** §167-1948: Policy version for cache invalidation - bump this when policies change.
+   * Root cause: The policy cache had no TTL or version-based invalidation mechanism.
+   * A cached policy decision would persist indefinitely even after policy changes.
+   * Fix: Use policyVersion to bust the cache when policies are updated.
+   */
+  policyVersion?: string;
 }
 
 /**
@@ -295,12 +305,25 @@ const POLICY_EVALUATION_RATE_LIMITER = new PolicyEvaluationRateLimiter(1000);
 export class PolicyEngine {
   private readonly budgetGuard = new BudgetGuard();
   private readonly auditService: PolicyAuditService;
+  // §167-1948: Add policy cache with version-based invalidation.
+  // Root cause: Previously policy decisions were cached with no eviction mechanism,
+  // so policy changes wouldn't take effect until process restart.
+  private readonly policyCache = new Map<string, { result: PolicyDecisionResult; cachedAt: number }>();
+  private readonly policyCacheMaxAgeMs = 60_000; // 1 minute TTL
 
   public constructor(
     private readonly options: PolicyEngineOptions,
     auditService?: PolicyAuditService,
   ) {
     this.auditService = auditService ?? new NoOpPolicyAuditService();
+  }
+
+  /**
+   * Clears the policy cache, e.g., when policyVersion changes.
+   * §167-1948: Call this when policies are updated to bust stale cache entries.
+   */
+  public clearPolicyCache(): void {
+    this.policyCache.clear();
   }
 
   /**
@@ -330,11 +353,18 @@ export class PolicyEngine {
         enforcedConstraints: {},
         killSwitchApplied: false,
         auditPayload: { action: input.action, subjectId: input.subjectId, rateLimited: true },
-        evaluatedPolicyVersion: "authoritative.v1",
+        evaluatedPolicyVersion: this.options.policyVersion ?? "authoritative.v1",
         explainSummary: "Policy evaluation rate limited. Too many requests.",
       };
       this.auditService.recordDecision(rateLimitResult, input);
       return rateLimitResult;
+    }
+
+    // §167-1948: Check cache with version-based invalidation
+    const cacheKey = `${input.subjectId}:${input.action}:${input.riskCategory}:${input.mode}:${this.options.policyVersion ?? ""}`;
+    const cached = this.policyCache.get(cacheKey);
+    if (cached && Date.now() - cached.cachedAt < this.policyCacheMaxAgeMs) {
+      return cached.result;
     }
 
     let result: PolicyDecisionResult;
@@ -352,6 +382,26 @@ export class PolicyEngine {
         explainSummary: "Action denied because kill switch is active.",
       };
     } else {
+      // §167-1942 SECURITY FIX: Validate subject's roles/capabilities before any allow decision.
+      // If roles are provided, verify the subject actually holds the required capabilities.
+      // This prevents any subjectType from performing any action regardless of actual privileges.
+      if (input.roles && input.roles.length > 0) {
+        const requiredCapabilities = inferCapabilitiesForAction(input.action);
+        if (!roleGrantsCapabilities(input.roles, requiredCapabilities)) {
+          result = {
+            decision: "deny",
+            reasonCode: "policy.capability_not_granted",
+            requiresApproval: false,
+            enforcedConstraints: {},
+            killSwitchApplied: false,
+            auditPayload: { action: input.action, subjectId: input.subjectId, roles: input.roles },
+            evaluatedPolicyVersion: "authoritative.v1",
+            explainSummary: "Action denied: subject's roles do not grant required capabilities for this action.",
+          };
+          this.auditService.recordDecision(result, input);
+          return result;
+        }
+      }
       // Step 2: Budget check
       const budget = this.evaluateBudget(input);
       if (!budget.allowed) {
@@ -405,6 +455,14 @@ export class PolicyEngine {
           };
         }
       }
+    }
+
+    // §167-1948: Cache the result with version key for invalidation
+    this.policyCache.set(cacheKey, { result, cachedAt: Date.now() });
+    // Evict oldest entries if cache grows too large
+    if (this.policyCache.size > 1000) {
+      const oldestKey = [...this.policyCache.entries()].sort((a, b) => a[1].cachedAt - b[1].cachedAt)[0]?.[0];
+      if (oldestKey) this.policyCache.delete(oldestKey);
     }
 
     // §11.5: All authorization decisions must produce audit records
