@@ -72,11 +72,12 @@ export class ApprovalRoutingService {
       approverChain,
       delegated: base.delegated,
       routingStrategy: base.routingStrategy,
+      approvalSteps: base.approvalSteps,
       routeSnapshot: {
         ...base.routeSnapshot,
         approverIds: approverChain,
       },
-      escalatedTo,
+      escalatedTo: escalation,
       auditRecord: buildGovernanceAuditRecord({
         // R34-36 FIX #1979: Use crypto.randomUUID() for guaranteed uniqueness.
         // Date.now() only has ms precision; same requester+node within 1ms collides.
@@ -89,7 +90,7 @@ export class ApprovalRoutingService {
         reasonCodes: [
           ...(base.delegated ? ["approval.delegated"] : ["approval.direct_route"]),
           `approval.routing.${base.routingStrategy}`,
-          ...(escalatedTo != null ? ["approval.escalated"] : []),
+          ...(escalation != null ? ["approval.escalated"] : []),
         ],
         occurredAt: nowIso,
       }),

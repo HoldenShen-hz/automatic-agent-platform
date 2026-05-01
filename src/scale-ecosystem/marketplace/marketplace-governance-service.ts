@@ -523,9 +523,17 @@ export class MarketplaceGovernanceService {
     const reviewRecord = input.reviewId == null
       ? this.store.marketplace.getLatestMarketplaceReviewForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined)
       : this.store.marketplace.getMarketplaceReview(assertSimpleIdentifier(input.reviewId, "marketplace.invalid_review_id"), packageRecord.tenantId ?? undefined);
+    if (input.reviewId != null && reviewRecord == null) {
+      throw new StorageError("marketplace.review_not_found", "marketplace.review_not_found", {
+        statusCode: 404,
+        retryable: false,
+        details: { reviewId: input.reviewId, packageId: packageRecord.packageId },
+      });
+    }
 
-    // Root cause: Internal packages with reviewRequired=0 should not require review per documentation
-    // Fix: Skip review requirement for internal packages where reviewRequired is 0
+    // Root cause: The original flow required a review for every package; the first partial
+    // fix relaxed the gate but still assumed reviewRecord/reviewId were always present,
+    // which made exempt internal publications crash at runtime.
     const requiresReview = packageRecord.trustLevel !== "internal" || packageRecord.reviewRequired === 1;
     if (requiresReview && reviewRecord == null) {
       throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
@@ -546,14 +554,21 @@ export class MarketplaceGovernanceService {
       });
     }
 
+    const publishedAt = input.publishedAt == null ? nowIso() : assertTimestamp(input.publishedAt, "marketplace.invalid_published_at");
+    const effectiveReview = requiresReview
+      ? reviewRecord!
+      : reviewRecord?.status === "approved"
+      ? reviewRecord
+      : this.createPublicationExemptionReview(packageRecord, publishedAt);
+
     // Review must match the package being published
-    if (reviewRecord.packageId !== packageRecord.packageId) {
+    if (effectiveReview.packageId !== packageRecord.packageId) {
       throw new ValidationError("marketplace.review_package_mismatch", "marketplace.review_package_mismatch", {
         retryable: false,
         details: {
           packageId: packageRecord.packageId,
-          reviewPackageId: reviewRecord.packageId,
-          reviewId: reviewRecord.reviewId,
+          reviewPackageId: effectiveReview.packageId,
+          reviewId: effectiveReview.reviewId,
         },
       });
     }
@@ -610,14 +625,13 @@ export class MarketplaceGovernanceService {
       });
     }
 
-    const publishedAt = input.publishedAt == null ? nowIso() : assertTimestamp(input.publishedAt, "marketplace.invalid_published_at");
     const publication: MarketplacePublicationRecord = {
       publicationId: input.publicationId == null
         ? newId("pub")
         : assertSimpleIdentifier(input.publicationId, "marketplace.invalid_publication_id"),
       tenantId: packageRecord.tenantId,
       packageId: packageRecord.packageId,
-      reviewId: reviewRecord.reviewId,
+      reviewId: effectiveReview.reviewId,
       channel: assertSimpleIdentifier(input.channel ?? "marketplace_public", "marketplace.invalid_channel"),
       status: "published",
       compatibilityMatrixJson: packageRecord.compatibilityJson,
@@ -669,6 +683,28 @@ export class MarketplaceGovernanceService {
     };
     this.store.marketplace.upsertMarketplacePublication(updated);
     return updated;
+  }
+
+  private createPublicationExemptionReview(
+    packageRecord: ExtensionPackageRecord,
+    decidedAt: string,
+  ): MarketplaceReviewRecord {
+    const permissions = JSON.parse(packageRecord.permissionsJson) as string[];
+    const exemptionReview: MarketplaceReviewRecord = {
+      reviewId: newId("review"),
+      tenantId: packageRecord.tenantId,
+      packageId: packageRecord.packageId,
+      status: "approved",
+      submitter: "system",
+      reviewer: "system",
+      decisionReasonCode: "review_exempt_internal_package",
+      findingsJson: JSON.stringify(["internal package published under explicit review exemption"]),
+      permissionSurfaceHash: hashPermissionSurface(permissions),
+      submittedAt: decidedAt,
+      decidedAt,
+    };
+    this.store.marketplace.upsertMarketplaceReview(exemptionReview);
+    return exemptionReview;
   }
 
   public deprecatePackage(input: DeprecateExtensionInput): ExtensionPackageRecord {

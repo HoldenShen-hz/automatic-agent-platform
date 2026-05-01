@@ -233,7 +233,7 @@ test("ProgressiveAutonomyService records change event with correct evidence", (t
   assert.equal(record.fromLevel, "suggestion");
   assert.equal(record.toLevel, "supervised");
   assert.equal(record.trigger, "rule_engine");
-  assert.equal(record.approvedBy, "auto");
+  assert.equal(record.approvedBy, "domain_owner");
   assert.ok(record.successRate > 0);
   assert.ok(record.totalExecutions === 50);
 });

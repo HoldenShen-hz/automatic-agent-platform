@@ -428,7 +428,7 @@ export class PackMigrationService {
     this.appendTrace(planId, {
       planId,
       nodeId,
-      stepId: step.stepId,
+      stepId: step.stepId ?? "",
       phase: "execute",
       status: "completed",
       detail,
@@ -444,7 +444,7 @@ export class PackMigrationService {
     this.appendTrace(planId, {
       planId,
       nodeId,
-      stepId: step?.stepId,
+      stepId: step?.stepId ?? "",
       phase: "rollback",
       status: "completed",
       detail,

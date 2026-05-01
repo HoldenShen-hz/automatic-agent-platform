@@ -408,6 +408,10 @@ export class CertificationGate {
       reasons.push("Certification is not yet approved");
       blockedBy.push("certification_pending");
     }
+    if (certification.status === "approved" && certification.approvedAt == null) {
+      reasons.push("Certification approved but missing approval timestamp");
+      blockedBy.push("certification_invalid");
+    }
 
     // Security scan gate
     if (!certification.securityScan) {

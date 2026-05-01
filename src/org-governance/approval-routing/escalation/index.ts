@@ -125,7 +125,7 @@ export function evaluateEscalationChain(
     currentLevel,
     nextApproverId: currentApproverId,
     escalatedThroughLevels,
-    timedOutStepId,
+    ...(timedOutStepId !== undefined ? { timedOutStepId } : {}),
   };
 }
 
@@ -163,13 +163,13 @@ export function resolveEscalationApprover(
       nodes,
     );
     if (escalationPath.length > 0) {
-      return escalationPath[0];
+      return escalationPath[0]!;
     }
     const currentNode = nodes.find((n) => n.orgNodeId === context.orgNodeId);
     if (currentNode?.parentOrgNodeId != null) {
       const parentNode = nodes.find((n) => n.orgNodeId === currentNode.parentOrgNodeId);
       if (parentNode?.ownerUserIds.length) {
-        return parentNode.ownerUserIds[0] ?? context.currentApproverId;
+        return parentNode.ownerUserIds[0]!;
       }
     }
     const managerChain = [...context.requesterManagerIds];

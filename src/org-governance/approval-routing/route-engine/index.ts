@@ -113,7 +113,7 @@ export function buildParallelSignoffGroups(
   if (approverChain.length <= 1) {
     return [];
   }
-  const firstApprover = approverChain[0];
+  const firstApprover = approverChain[0]!;
   const remainingApprovers = approverChain.slice(1);
   const firstApproverNode = nodes.find((n) => n.ownerUserIds.includes(firstApprover));
   const isFirstManager = firstApproverNode?.orgNodeId === orgNodeId
@@ -152,17 +152,17 @@ export function resolveApprovalSteps(
       requiredApprovals: 1,
       stepType: "sequential" as const,
       dependsOnSteps: idx > 0 ? [`step:${idx - 1}`] as readonly string[] : undefined,
-    }));
+    })) as ApprovalStepRequirement[];
   }
   const steps: ApprovalStepRequirement[] = [];
   for (let i = 0; i < groups.length; i++) {
-    const group = groups[i];
+    const group = groups[i]!;
     steps.push({
       stepId: `parallel_step:${i}`,
       approverIds: group.approverIds,
       requiredApprovals: group.requiredCount,
-      stepType: "parallel",
-      dependsOnSteps: i > 0 ? [`step:${i - 1}`, `parallel_step:${i - 1}`] as readonly string[] : undefined,
+      stepType: "parallel" as const,
+      ...(i > 0 ? { dependsOnSteps: [`step:${i - 1}`, `parallel_step:${i - 1}`] as readonly string[] } : {}),
     });
   }
   return steps;

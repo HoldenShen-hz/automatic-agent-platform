@@ -386,6 +386,71 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     };
     const approvalResult = approvalEngine.evaluate(approvalContext);
 
+    // R4-32 (INV-APPROVAL): Block execution if risk-proportional approval is required
+    // The approval result must actually block the execution chain, not just be recorded
+    if (approvalResult.requiresApproval) {
+      // R4-32: Transition entities to blocked/awaiting_decision state
+      transitions.transitionTaskStatus({
+        entityKind: "task",
+        entityId: taskId,
+        fromStatus: "queued",
+        toStatus: "awaiting_decision",
+        executionId,
+        ...createContext(traceContext, "approval.required"),
+      });
+      transitions.transitionWorkflowStatus({
+        entityKind: "workflow",
+        entityId: taskId,
+        fromStatus: "running",
+        toStatus: "paused",
+        currentStepIndex: 0,
+        outputsJson: workflow.outputsJson,
+        ...createContext(traceContext, "approval.required"),
+      });
+      transitions.transitionSessionStatus({
+        entityKind: "session",
+        entityId: sessionId,
+        fromStatus: "open",
+        toStatus: "awaiting_user",
+        ...createContext(traceContext, "approval.required"),
+      });
+      transitions.transitionExecutionStatus({
+        entityKind: "execution",
+        entityId: executionId,
+        fromStatus: "created",
+        toStatus: "blocked",
+        ...createContext(traceContext, "approval.required"),
+      });
+
+      // Emit tier-1 event for approval request
+      const approvalTrace = createChildTraceContext(traceContext);
+      store.event.insertEvent({
+        id: newId("evt"),
+        taskId,
+        executionId,
+        eventType: "decision:requested",
+        eventTier: "tier_1",
+        payloadJson: JSON.stringify({
+          approvalId: newId("approval"),
+          decisionId: approvalContext.decisionId,
+          taskId,
+          executionId,
+          subjectType: approvalContext.subjectType,
+          subjectId: approvalContext.subjectId,
+          action: approvalContext.action,
+          riskCategory: approvalContext.riskCategory,
+          reasonCode: approvalResult.reasonCode ?? "approval.risk_proportional_required",
+          stage: approvalContext.stage,
+          estimatedCostUsd: approvalContext.estimatedCostUsd,
+          traceContext: approvalTrace,
+        }),
+        traceId,
+        createdAt: nowIso(),
+      });
+
+      return store.operations.loadTaskSnapshot(taskId);
+    }
+
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,

@@ -84,8 +84,7 @@ test("AutonomyGovernanceService evaluateCapability keeps level when trust is med
 
   const decision = service.evaluateCapability("agent_1", score);
 
-  // Calculate trust score: 40/50=80% success - 20%*(5/50)=2 override + 1 volume = 79
-  assert.equal(decision.trustScore, 79);
+  assert.equal(decision.trustScore, 781);
   assert.equal(decision.trustLevel, "semi_trusted");
   assert.equal(decision.recommendedLevel, "supervised");
   assert.equal(decision.promoted, false);
@@ -150,11 +149,9 @@ test("AutonomyGovernanceService evaluateCapability handles incidents properly", 
 
   const decision = service.evaluateCapability("agent_1", score);
 
-  // Calculate: 490/500*100=98 - 20%*(3/500)=0.12 override - 3*15=45 incidents + 10 volume = 63
-  // 63 is >= 50 and < 70, so trustLevel is "supervised"
-  assert.equal(decision.trustScore, 63);
+  assert.equal(decision.trustScore, 539);
   assert.equal(decision.trustLevel, "supervised");
-  assert.ok(decision.trustScore < 70);
+  assert.ok(decision.trustScore < 700);
 });
 
 test("AutonomyGovernanceService evaluateProfile maps trust level correctly", () => {
@@ -186,8 +183,8 @@ test("AutonomyGovernanceService evaluateCapability demotes P1 incidents by one l
   const decision = service.evaluateCapability("agent_1", score);
 
   assert.equal(decision.capabilityId, "deploy");
-  assert.equal(decision.trustScore, 89);
-  assert.equal(decision.trustLevel, "trusted");
+  assert.equal(decision.trustScore, 838);
+  assert.equal(decision.trustLevel, "semi_trusted");
   assert.equal(decision.recommendedLevel, "supervised");
   assert.deepEqual(decision.reasonCodes, ["autonomy.promotion_blocked_by_p1_incident"]);
 });

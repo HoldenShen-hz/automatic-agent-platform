@@ -11,6 +11,8 @@
  */
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface SecurityScanInput {
@@ -339,25 +341,22 @@ export class PackSecurityService {
 
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {
     const issues: SecurityIssue[] = [];
-    // Root cause: Only scanning sourceUri string, not actual source code
-    // For inline source, extract and scan the actual source content
-    let sourceToScan = input.sourceUri;
-    if (input.sourceUri.startsWith(INLINE_SOURCE_PREFIX)) {
-      sourceToScan = input.sourceUri.slice(INLINE_SOURCE_PREFIX.length);
+    const sourceResolution = this.resolveSourceForStaticAnalysis(input.sourceUri);
+    if (sourceResolution.issue != null) {
+      issues.push(sourceResolution.issue);
     }
-    // For external URIs (https://, file://, etc.), we would need to fetch the actual content
-    // In production, this should fetch and scan the real source code
-    // For now, scan what we have available
 
-    for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
-      if (pattern.test(sourceToScan)) {
-        issues.push({
-          severity: "high",
-          category: "static_analysis",
-          code,
-          message,
-          location: "source",
-        });
+    if (sourceResolution.sourceCode != null) {
+      for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
+        if (pattern.test(sourceResolution.sourceCode)) {
+          issues.push({
+            severity: "high",
+            category: "static_analysis",
+            code,
+            message,
+            location: sourceResolution.location,
+          });
+        }
       }
     }
 
@@ -372,6 +371,79 @@ export class PackSecurityService {
     }
 
     return { issues };
+  }
+
+  private resolveSourceForStaticAnalysis(sourceUri: string): {
+    sourceCode: string | null;
+    location: string;
+    issue?: SecurityIssue;
+  } {
+    if (sourceUri.startsWith(INLINE_SOURCE_PREFIX)) {
+      return {
+        sourceCode: sourceUri.slice(INLINE_SOURCE_PREFIX.length),
+        location: "source.inline",
+      };
+    }
+
+    if (sourceUri.startsWith("data:")) {
+      try {
+        const [header, payload] = sourceUri.split(",", 2);
+        if (payload == null) {
+          throw new Error("missing payload");
+        }
+        const sourceCode = header.includes(";base64")
+          ? Buffer.from(payload, "base64").toString("utf8")
+          : decodeURIComponent(payload);
+        return {
+          sourceCode,
+          location: "source.data_uri",
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          sourceCode: null,
+          location: "source.data_uri",
+          issue: {
+            severity: "critical",
+            category: "static_analysis",
+            code: "PKG003",
+            message: `Unable to decode source payload for static analysis: ${message}`,
+            location: "sourceUri",
+          },
+        };
+      }
+    }
+
+    try {
+      const url = new URL(sourceUri);
+      if (url.protocol === "file:") {
+        return {
+          sourceCode: readFileSync(fileURLToPath(url), "utf8"),
+          location: "source.file",
+        };
+      }
+    } catch {
+      // Fall back to treating the value as a local filesystem path.
+    }
+
+    try {
+      return {
+        sourceCode: readFileSync(sourceUri, "utf8"),
+        location: "source.file",
+      };
+    } catch {
+      return {
+        sourceCode: null,
+        location: "sourceUri",
+        issue: {
+          severity: "critical",
+          category: "static_analysis",
+          code: "PKG003",
+          message: "Source content is unavailable for static analysis; publication must provide accessible source code.",
+          location: "sourceUri",
+        },
+      };
+    }
   }
 
   private checkCapabilitySafety(capabilities: readonly string[]): { issues: SecurityIssue[] } {

@@ -30,6 +30,7 @@ import { getMultiStepToolDefinitions } from "../execution-engine/multi-step-tool
 import { parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../execution-engine/multi-step-utils.js";
 import { createSideEffectRecord, type SideEffectKind, type SideEffectStatus } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
+import type { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -95,6 +96,8 @@ class MultiStepToolRegistry {
   private readonly sideEffectRecords: Map<string, ReturnType<typeof createSideEffectRecord>>;
   // R4-35 (INV-EVIDENCE-001): Track EvidenceRecords for decisions and executions
   private readonly evidenceRecords: Map<string, ReturnType<typeof createEvidenceRecord>>;
+  // R4-33/R4-35: RuntimeTruthRepository for persisting side effect and evidence records
+  private runtimeTruthRepository: RuntimeTruthRepository | null = null;
   private spawnDepth: number = 0;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_SPAWNED_AGENTS = 500;
@@ -118,6 +121,21 @@ class MultiStepToolRegistry {
     this.policyEngine = new PolicyEngine({
       budgetPolicy: this.getDefaultBudgetPolicy(),
     });
+  }
+
+  /**
+   * R4-33/R4-35: Set the RuntimeTruthRepository for persisting side effect and evidence records.
+   * This must be called before tool execution to enable proper record persistence.
+   */
+  public setRuntimeTruthRepository(repository: RuntimeTruthRepository): void {
+    this.runtimeTruthRepository = repository;
+  }
+
+  /**
+   * R4-33/R4-35: Get the currently set RuntimeTruthRepository.
+   */
+  public getRuntimeTruthRepository(): RuntimeTruthRepository | null {
+    return this.runtimeTruthRepository;
   }
 
   private getDefaultBudgetPolicy(): BudgetPolicy {
@@ -345,8 +363,28 @@ class MultiStepToolRegistry {
       deadline: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     });
 
-    // R4-33: Store SideEffectRecord for tracking and reconciliation
+    // R4-33: Store SideEffectRecord in memory Map for quick lookup during execution
     this.sideEffectRecords.set(sideEffectRecord.sideEffectId, sideEffectRecord);
+
+    // R4-33 (INV-SIDEEFFECT-001): Persist SideEffectRecord to RuntimeTruthRepository
+    // This ensures side effects are tracked and can be reconciled
+    if (this.runtimeTruthRepository != null) {
+      try {
+        this.runtimeTruthRepository.seed("SideEffectRecord", sideEffectRecord);
+        logger.log({
+          level: "debug",
+          message: "R4-33 (INV-SIDEEFFECT-001): Persisted SideEffectRecord to RuntimeTruthRepository",
+          data: { sideEffectId: sideEffectRecord.sideEffectId, harnessRunId },
+        });
+      } catch (error) {
+        // If seed fails (e.g., duplicate), log but don't fail the tool execution
+        logger.log({
+          level: "warn",
+          message: "R4-33 (INV-SIDEEFFECT-001): Failed to persist SideEffectRecord, will use in-memory only",
+          data: { sideEffectId: sideEffectRecord.sideEffectId, error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
 
     logger.log({
       level: "debug",

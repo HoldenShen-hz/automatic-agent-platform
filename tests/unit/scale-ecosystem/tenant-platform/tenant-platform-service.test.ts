@@ -144,7 +144,7 @@ test("TenantPlatformService.addWorkspaceMembership rejects callers without owner
       userId: "user_001",
       role: "member",
     });
-  }, /tenant.add_membership_not_authorized/);
+  }, /Caller must be workspace owner or admin to add members/);
 });
 
 test("TenantPlatformService.createOrganization creates organization", () => {
@@ -242,7 +242,7 @@ test("TenantPlatformService.addOrganizationMembership rejects callers without ow
       userId: "user_002",
       role: "admin",
     });
-  }, /tenant.add_membership_not_authorized/);
+  }, /Caller must be organization owner or admin to add members/);
 });
 
 test("TenantPlatformService.createTenant creates tenant within organization", () => {
