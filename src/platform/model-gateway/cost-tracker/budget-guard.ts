@@ -12,7 +12,7 @@ import {
   type BudgetReservationResult,
   type BudgetResourceKind,
 } from "../../contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../execution/budget-allocator.js";
+import { BudgetAllocator, BudgetTier } from "../../five-plane-execution/budget-allocator.js";
 
 /**
  * Budget policy defining cost limits and warning thresholds.
@@ -261,12 +261,12 @@ export class BudgetGuard {
         tenantId: input.tenantId,
         traceId: input.traceId,
         emittedBy: input.emittedBy,
-        tier: "task",
+        tier: BudgetTier.PACK,
         tierLimit: input.policy.maxTaskCostUsd,
-        watermarkAlert: { warnAtRatio: input.policy.warnAtRatio, criticalAtRatio: 1 },
-        autoThrottle: { enabled: false, throttleRatio: 1, releaseRatio: 0 },
-        crossRunPriority: { enabled: false, sameTenantBoost: 0, sharedTenantPenalty: 0, globalPenalty: 0 },
-        streamingSettle: { enabled: false, chunkBudgetRatio: 0, maxOpenReservations: 0 },
+        watermarkAlert: { warningThreshold: input.policy.warnAtRatio, criticalThreshold: 1, hardCapThreshold: 1 },
+        autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 0 },
+        crossRunPriority: { priority: 0, weightFactor: 1 },
+        streamingSettle: { enabled: false, tokenInterval: 1000, timeIntervalMs: 60000 },
       },
     });
 

@@ -320,9 +320,9 @@ export class RunTerminationCleanup {
       failedResourceIds,
       completedAt,
       complete: allSucceeded,
-      evidenceFlushResult,
-      ...(compensationTriggerResult != null ? { compensationTriggerResult } : {}),
-      ...(notificationResultsVal != null ? { notificationResults: notificationResultsVal } : {}),
+      ...(evidenceFlushResult !== undefined ? { evidenceFlushResult } : {}),
+      ...(compensationTriggerResult !== undefined ? { compensationTriggerResult } : {}),
+      ...(notificationResultsVal !== undefined ? { notificationResults: notificationResultsVal } : {}),
     };
 
     if (allSucceeded) {

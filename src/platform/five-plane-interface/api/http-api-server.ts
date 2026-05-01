@@ -559,7 +559,7 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
-        intakeAdmissionService: this.options.intakeAdmissionService ?? undefined,
+        ...(this.options.intakeAdmissionService != null ? { intakeAdmissionService: this.options.intakeAdmissionService } : {}),
       }),
       ...(this.options.webhookIngressService != null
         ? createWebhookRoutes({

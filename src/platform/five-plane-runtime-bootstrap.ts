@@ -180,7 +180,12 @@ export function registerX1FabricBootstrap(
     return {
       capabilityGroupId: "x1-fabric",
       capabilityCount: 0,
-      registeredServiceIds: [],
+      registeredServiceIds: [] as unknown as readonly [
+        typeof MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID,
+        typeof PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID,
+        typeof COMPLIANCE_BOOTSTRAP_SERVICE_ID,
+        typeof X1_FABRIC_BOOTSTRAP_SERVICE_ID,
+      ],
     };
   }
 }

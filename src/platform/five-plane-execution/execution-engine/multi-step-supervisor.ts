@@ -440,6 +440,10 @@ export async function executeStepLoop(
         break;
       }
 
+      const budgetLedger = input.budgetLedger;
+      if (budgetLedger == null) {
+        throw new Error("workflow.budget_context_missing");
+      }
       const stepData = await buildStepOutput({
         stepId: step.stepId,
         roleId: step.roleId,
@@ -448,8 +452,8 @@ export async function executeStepLoop(
         routingReason: routing.routeReason,
         tools: getMultiStepToolDefinitions(toolExposure.visibleToolNames),
         // R4-25 (INV-BUDGET-001): Pass budget context from validated PlanGraphBundle
-        harnessRunId: validatedPlanGraphBundle.harnessRunId ?? input.harnessRunId ?? "",
-        budgetLedger: input.budgetLedger!,
+        harnessRunId: validatedPlanGraphBundle.harnessRunId,
+        budgetLedger,
       });
       Object.assign(stepData, input.stepOutputOverrides?.[step.stepId] ?? {});
 

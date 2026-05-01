@@ -69,5 +69,5 @@ export function passesQualityGate(stage: PromptRolloutStage, errorRate: number):
   if (threshold === null) {
     return true; // rolled_back has no threshold
   }
-  return errorRate < threshold.maxErrorRate;
+  return errorRate < (threshold?.maxErrorRate ?? 1);
 }
