@@ -99,6 +99,7 @@ test("MultiStepOrchestrationResult has expected structure", () => {
         continuation: "new_task",
         matchedRules: [],
       },
+      confirmedTaskSpecId: "task_spec_123",
     },
     plannedWorkflow: {
       workflow: {} as any,
