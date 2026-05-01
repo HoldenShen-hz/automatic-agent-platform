@@ -10,6 +10,7 @@ import test from "node:test";
 import {
   MarketplaceCatalogEntrySchema,
   sortMarketplaceCatalog,
+  validateListingDependencies,
   type MarketplaceCatalogEntry,
 } from "../../../../../src/scale-ecosystem/marketplace/catalog/index.js";
 
@@ -264,4 +265,28 @@ test("sortMarketplaceCatalog sorts internal above verified even with low quality
   assert.equal(sorted.length, 2);
   assert.equal(sorted[0]!.entryId, "internal_low");
   assert.equal(sorted[1]!.entryId, "verified_high");
+});
+
+test("validateListingDependencies rejects cyclic dependencies", () => {
+  const entry = MarketplaceCatalogEntrySchema.parse({
+    entryId: "entry-a",
+    title: "Entry A",
+    trustLevel: "verified",
+    version: "1.0.0",
+    lifecycleState: "active",
+    dependencies: [{ entryId: "entry-b", versionRange: "^1.0.0", optional: false }],
+  });
+  const dependency = MarketplaceCatalogEntrySchema.parse({
+    entryId: "entry-b",
+    title: "Entry B",
+    trustLevel: "verified",
+    version: "1.0.0",
+    lifecycleState: "active",
+    dependencies: [{ entryId: "entry-a", versionRange: "^1.0.0", optional: false }],
+  });
+
+  const result = validateListingDependencies(entry, [entry, dependency]);
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.cyclicDependencies.sort(), ["entry-a", "entry-b"]);
 });

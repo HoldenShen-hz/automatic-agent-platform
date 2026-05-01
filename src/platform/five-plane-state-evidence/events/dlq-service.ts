@@ -164,16 +164,37 @@ export class InMemoryDlqRepository implements DlqRepository {
 /**
  * DLQ Service - Handles dead letter queue operations with audit trail.
  * Supports both in-memory and persistent repository implementations.
+ *
+ * R12-06 FIX: In-memory repository is only suitable for testing/development.
+ * Production deployments MUST provide a persistent DlqRepository implementation
+ * to ensure DLQ entries survive process restarts per §28.8 requirements.
  */
 export class DlqService {
   private readonly repo: DlqRepository;
+  private readonly inMemoryWarningPrinted = false;
 
   /**
    * Create a DLQ service with an optional repository.
    * @param repo - Optional repository for persistence. Defaults to in-memory storage.
+   *             WARNING: In-memory storage loses all entries on process restart.
+   *             Production deployments must provide a persistent repository.
    */
   public constructor(repo?: DlqRepository) {
-    this.repo = repo ?? new InMemoryDlqRepository();
+    if (repo == null) {
+      this.repo = new InMemoryDlqRepository();
+      // R12-06 FIX: Emit warning once when using in-memory storage
+      if (!this.inMemoryWarningPrinted && process.env["NODE_ENV"] === "production") {
+        console.warn(
+          "[DlqService] WARNING: Using in-memory DLQ repository. " +
+          "DLQ entries will be lost on process restart. " +
+          "For production, provide a persistent DlqRepository implementation. " +
+          "See §28.8 for persistent DLQ requirements.",
+        );
+        this.inMemoryWarningPrinted = true;
+      }
+    } else {
+      this.repo = repo;
+    }
   }
 
   /**
