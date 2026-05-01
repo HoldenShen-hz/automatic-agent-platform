@@ -23,7 +23,8 @@ test("simulateCostOptimization handles 100 percent reduction", () => {
 
 test("simulateCostOptimization rounds to 2 decimal places", () => {
   const result = simulateCostOptimization(99.999, 15);
-  assert.strictEqual(result, 84.99);
+  // 99.999 * 0.85 = 84.99915, which rounds to 85.00
+  assert.strictEqual(result, 85);
 });
 
 test("simulateScenarioSavings calculates savings for multiple scenarios", () => {

@@ -19,7 +19,7 @@ function createMockProposal(overrides: Partial<ImprovementProposal> = {}): Impro
     rationale: "Testing",
     risk: "low",
     evidenceIds: ["evidence_1"],
-    status: "proposed",
+    status: "draft",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -56,8 +56,8 @@ test("SimpleBenchmarkRunner.runBenchmarks returns results for each relevant case
   const results = await runner.runBenchmarks(proposal);
 
   assert.strictEqual(results.length, 2);
-  assert.strictEqual(results[0].testCaseId, "case_1");
-  assert.strictEqual(results[1].testCaseId, "case_2");
+  assert.strictEqual(results[0]?.testCaseId, "case_1");
+  assert.strictEqual(results[1]?.testCaseId, "case_2");
 });
 
 test("SimpleBenchmarkRunner.runBenchmarks returns results with required fields", async () => {
@@ -71,6 +71,7 @@ test("SimpleBenchmarkRunner.runBenchmarks returns results with required fields",
 
   assert.strictEqual(results.length, 1);
   const result = results[0];
+  assert.ok(result, "result should exist");
   assert.strictEqual(result.testCaseId, "case_required_fields");
   assert.strictEqual(typeof result.success, "boolean");
   assert.strictEqual(typeof result.costUsd, "number");

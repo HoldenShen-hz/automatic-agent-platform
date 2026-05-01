@@ -8,6 +8,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+// Define task states for the state machine
+type TaskState = "queued" | "in_progress" | "done" | "failed" | "cancelled";
+
 test("StateTransitionMachine integration with real workflow transitions", async () => {
   const tmpDir = await mkdtemp(join(tmpdir(), "kernel-test-"));
 
@@ -23,7 +26,7 @@ test("StateTransitionMachine integration with real workflow transitions", async 
     const storage = openAuthoritativeStorageContext({ dbPath });
     storage.migrate();
 
-    const machine = new StateTransitionMachine("task", {
+    const machine = new StateTransitionMachine<TaskState>("task", {
       queued: ["in_progress", "cancelled"],
       in_progress: ["done", "failed", "cancelled"],
       done: [],
@@ -43,7 +46,7 @@ test("StateTransitionMachine integration with real workflow transitions", async 
       divisionId: "test",
       title: "Test",
       status: "queued",
-      source: "test",
+      source: "user",
       priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
@@ -93,7 +96,10 @@ test("StateTransitionMachine workflow state transitions", async () => {
     const storage = openAuthoritativeStorageContext({ dbPath });
     storage.migrate();
 
-    const workflowMachine = new StateTransitionMachine("workflow", {
+// Define workflow states for the state machine
+type WorkflowState = "running" | "paused" | "cancelling" | "cancelled" | "completed" | "failed";
+
+    const workflowMachine = new StateTransitionMachine<WorkflowState>("workflow", {
       running: ["paused", "cancelling", "failed"],
       paused: ["running", "failed"],
       cancelling: ["cancelled"],
@@ -113,7 +119,7 @@ test("StateTransitionMachine workflow state transitions", async () => {
       divisionId: "test",
       title: "Test",
       status: "in_progress",
-      source: "test",
+      source: "user",
       priority: "normal",
       inputJson: "{}",
       normalizedInputJson: "{}",
@@ -171,7 +177,10 @@ test("StateTransitionMachine session state transitions", async () => {
     const storage = openAuthoritativeStorageContext({ dbPath });
     storage.migrate();
 
-    const sessionMachine = new StateTransitionMachine("session", {
+// Define session states for the state machine
+type SessionState = "open" | "streaming" | "awaiting_user" | "completed" | "failed" | "cancelled";
+
+    const sessionMachine = new StateTransitionMachine<SessionState>("session", {
       open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
       streaming: ["awaiting_user", "completed", "failed", "cancelled", "open"],
       awaiting_user: ["streaming", "completed", "failed", "cancelled"],
@@ -205,7 +214,10 @@ test("StateTransitionMachine execution state transitions", async () => {
     const storage = openAuthoritativeStorageContext({ dbPath });
     storage.migrate();
 
-    const execMachine = new StateTransitionMachine("execution", {
+// Define execution states for the state machine
+type ExecutionState = "created" | "prechecking" | "executing" | "succeeded" | "failed" | "cancelled";
+
+    const execMachine = new StateTransitionMachine<ExecutionState>("execution", {
       created: ["prechecking", "cancelled"],
       prechecking: ["executing", "cancelled"],
       executing: ["succeeded", "failed", "cancelled"],
@@ -243,7 +255,7 @@ test("StateTransitionMachine invalid transitions throw", async () => {
     const storage = openAuthoritativeStorageContext({ dbPath });
     storage.migrate();
 
-    const taskMachine = new StateTransitionMachine("task", {
+    const taskMachine = new StateTransitionMachine<TaskState>("task", {
       queued: ["in_progress", "cancelled"],
       in_progress: ["done", "failed", "cancelled"],
       done: [],
@@ -280,7 +292,10 @@ test("StateTransitionMachine approval transitions", async () => {
     const storage = openAuthoritativeStorageContext({ dbPath });
     storage.migrate();
 
-    const approvalMachine = new StateTransitionMachine("approval", {
+// Define approval states for the state machine
+type ApprovalState = "pending" | "approved" | "rejected";
+
+    const approvalMachine = new StateTransitionMachine<ApprovalState>("approval", {
       pending: ["approved", "rejected"],
       approved: [],
       rejected: [],

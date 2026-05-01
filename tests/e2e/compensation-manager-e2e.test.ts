@@ -48,10 +48,10 @@ test("E2E CompensationManager: isCompensatable returns false for non-compensatab
   const manager = new CompensationManager();
 
   const nonCompensatableStatuses: SideEffectStatus[] = [
-    "succeeded",
+    "confirmed",
     "compensated",
     "compensating",
-    "irreversible",
+    "expired",
   ];
 
   for (const status of nonCompensatableStatuses) {
@@ -200,7 +200,7 @@ test("E2E CompensationManager: low impact does not require human approval", () =
 
 test("E2E CompensationManager: validates non-compensatable side effects", () => {
   const manager = new CompensationManager();
-  const sideEffect = createMockSideEffect({ status: "succeeded" });
+  const sideEffect = createMockSideEffect({ status: "confirmed" });
 
   const result = manager.validateCompensationPreconditions(sideEffect);
 
@@ -261,7 +261,7 @@ test("E2E CompensationManager: planCompensation sets high impact for critical ri
   const sideEffect = createMockSideEffect({
     sideEffectId: "effect-critical",
     status: "failed",
-    effectKind: "delete_resource",
+    effectKind: "file_write",
     riskClass: "critical",
   });
   const context: CompensationContext = {
@@ -281,7 +281,7 @@ test("E2E CompensationManager: planCompensation sets medium impact for high risk
   const sideEffect = createMockSideEffect({
     sideEffectId: "effect-high",
     status: "failed",
-    effectKind: "api_call",
+    effectKind: "external_api",
     riskClass: "high",
   });
   const context: CompensationContext = {
@@ -301,7 +301,7 @@ test("E2E CompensationManager: planCompensation sets low impact for low risk", (
   const sideEffect = createMockSideEffect({
     sideEffectId: "effect-low",
     status: "failed",
-    effectKind: "read_operation",
+    effectKind: "message_send",
     riskClass: "low",
   });
   const context: CompensationContext = {
@@ -344,7 +344,7 @@ test("E2E CompensationManager: derives reverse step for side effect", () => {
   const manager = new CompensationManager();
   const sideEffect = createMockSideEffect({
     sideEffectId: "effect-reverse",
-    effectKind: "database_insert",
+    effectKind: "transaction",
     externalRef: "db://table/row/123",
     riskClass: "high",
   });
@@ -367,8 +367,7 @@ test("E2E CompensationManager: uses idempotency key when no external ref", () =>
   const manager = new CompensationManager();
   const sideEffect = createMockSideEffect({
     sideEffectId: "effect-idem",
-    effectKind: "api_call",
-    externalRef: undefined,
+    effectKind: "external_api",
     idempotencyKey: "idem-key-123",
     riskClass: "medium",
   });

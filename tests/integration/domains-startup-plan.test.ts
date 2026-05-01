@@ -89,6 +89,7 @@ test("each step has correct structure and bootstrapServiceId", () => {
 
   for (let i = 0; i < plan.steps.length; i++) {
     const step = plan.steps[i];
+    if (!step) continue;
     assert.equal(typeof step.stepId, "string");
     assert.equal(typeof step.entryModule, "string");
     assert.equal(typeof step.bootstrapServiceId, "string");

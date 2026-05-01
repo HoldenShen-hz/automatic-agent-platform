@@ -15,7 +15,7 @@ test("StateTransitionMachine constructor requires entity kind and transitions ma
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   assert.ok(machine instanceof StateTransitionMachine);
 });
@@ -27,7 +27,7 @@ test("StateTransitionMachine assertTransition valid transition", () => {
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // Should not throw
   machine.assertTransition("queued", "in_progress");
@@ -40,7 +40,7 @@ test("StateTransitionMachine assertTransition invalid transition throws", () => 
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // queued -> done is not allowed
   assert.throws(() => {
@@ -55,7 +55,7 @@ test("StateTransitionMachine noop transition throws", () => {
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // Same state transition is not allowed
   assert.throws(() => {
@@ -71,7 +71,7 @@ test("StateTransitionMachine works with workflow entity", () => {
     cancelled: [],
     completed: [],
     failed: [],
-  });
+  } as const);
 
   // Valid transition
   machine.assertTransition("running", "paused");
@@ -88,7 +88,7 @@ test("StateTransitionMachine works with session entity", () => {
     streaming: ["open", "completed", "failed"],
     completed: [],
     failed: [],
-  });
+  } as const);
 
   // Valid transition
   machine.assertTransition("open", "streaming");
@@ -105,7 +105,7 @@ test("StateTransitionMachine works with execution entity", () => {
     succeeded: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // Valid lifecycle transitions
   machine.assertTransition("created", "prechecking");
@@ -120,7 +120,7 @@ test("StateTransitionMachine terminal states have no outgoing transitions", () =
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // done is terminal - any transition should throw
   assert.throws(() => {
@@ -153,7 +153,7 @@ test("StateTransitionMachine reports entity kind in error", () => {
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   try {
     machine.assertTransition("queued", "done");
@@ -175,7 +175,7 @@ test("StateTransitionMachine.errorCode in WorkflowStateError", () => {
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   try {
     machine.assertTransition("created", "done");
@@ -195,7 +195,7 @@ test("StateTransitionMachine with approval entity", () => {
     pending: ["approved", "rejected"],
     approved: [],
     rejected: [],
-  });
+  } as const);
 
   // Valid transitions
   machine.assertTransition("pending", "approved");
@@ -217,7 +217,7 @@ test("StateTransitionMachine with complex workflow transitions", () => {
     cancelled: [],
     completed: [],
     failed: [],
-  });
+  } as const);
 
   // Valid transitions
   machine.assertTransition("created", "running");
@@ -234,7 +234,7 @@ test("StateTransitionMachine validates transition existence", () => {
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // Transition from non-existent state should throw
   assert.throws(() => {
@@ -250,7 +250,7 @@ test("StateTransitionMachine handles multi-state transitions", () => {
     done: [],
     failed: [],
     cancelled: [],
-  });
+  } as const);
 
   // From queued, can go to pending or in_progress
   machine.assertTransition("queued", "pending");

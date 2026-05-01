@@ -29,7 +29,7 @@ test("contract documents reference real architectural sections", () => {
   assert.ok(contractFiles.length > 0, "no contract documents found");
 
   const archFile = readFileSync(join(ARCH_ROOT, "00-platform-architecture.md"), "utf8");
-  const archSections = Array.from(archFile.matchAll(/^##?\s+(.+)$/gm)).map((m) => m[1]);
+  const archSections = Array.from(archFile.matchAll(/^##?\s+(.+)$/gm)).map((m) => m[1]).filter((s): s is string => s !== undefined);
 
   let contractsReferencingArch = 0;
 
@@ -54,9 +54,9 @@ test("review documents reference existing contract files", () => {
 
   for (const reviewFile of reviewFiles) {
     const content = readFileSync(join(REVIEWS_ROOT, reviewFile), "utf8");
-    const contractRefs = Array.from(content.matchAll(/contracts\/([^)\s]+\.md)/g)).map(
-      (m) => m[1],
-    );
+    const contractRefs = Array.from(content.matchAll(/contracts\/([^)\s]+\.md)/g))
+      .map((m) => m[1])
+      .filter((r): r is string => r !== undefined);
 
     for (const contractRef of contractRefs) {
       const resolved = join(CONTRACTS_ROOT, contractRef);

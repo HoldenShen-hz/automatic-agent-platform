@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeTruthRepository } from "../../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
-import { RuntimeStateMachine } from "../../../src/platform/five-plane-execution/runtime-state-machine.js";
-import { createBudgetLedger, createHarnessRun, createNodeRun, createSideEffectRecord } from "../../../src/platform/contracts/executable-contracts/index.js";
+import { RuntimeTruthRepository } from "../../src/platform/five-plane-state-evidence/truth/runtime-truth-repository.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { createBudgetLedger, createHarnessRun, createNodeRun, createSideEffectRecord } from "../../src/platform/contracts/executable-contracts/index.js";
 
 /**
  * RuntimeTruthRepository Invariants

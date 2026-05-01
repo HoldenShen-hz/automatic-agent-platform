@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { computeDomainRiskLevel, type DomainRiskProfile } from "../../../src/domains/risk-profile/index.js";
+import { computeDomainRiskLevel, type DomainRiskProfile } from "../../src/domains/risk-profile/index.js";
 
 /**
  * INV-RISK-001: TrustScore must not reduce inherent domain risk.

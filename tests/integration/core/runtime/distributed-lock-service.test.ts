@@ -2,7 +2,7 @@
  * Integration tests for Core Runtime distributed-lock-service barrel module
  *
  * Tests the full re-export chain from core/runtime/distributed-lock-service.ts
- * which delegates to platform/execution/distributed-lock/distributed-lock-service.js
+ * which delegates to platform/five-plane-execution/distributed-lock/distributed-lock-service.js
  */
 
 import assert from "node:assert/strict";
@@ -18,25 +18,19 @@ test("distributed-lock-service barrel exports module", () => {
 test("distributed-lock-service barrel re-exports types", async () => {
   const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
   const keys = Object.keys(mod);
-  // R16-04 FIX: keys.length >= 0 is always true (array length is never negative).
-  // Valid assertion: check that module exports actual lock-related symbols.
+  // Check that module exports actual lock-related symbols
   assert.ok(keys.length > 0, "Module should export at least some keys");
-  assert.ok(keys.includes("LockManager") || keys.includes("DistributedLockService") || keys.some(k => k.toLowerCase().includes("lock")), "Module should export lock-related symbols");
+  assert.ok(
+    keys.some(k => k.toLowerCase().includes("adapter") || k.toLowerCase().includes("lock")),
+    "Module should export lock-related symbols"
+  );
 });
 
-test("distributed-lock-service barrel exports LockManager class", async () => {
+test("distributed-lock-service barrel exports lock adapter factory", async () => {
   const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
   assert.ok(mod !== undefined);
-  // Verify LockManager exists and is a function (class)
-  assert.equal(typeof mod.LockManager, "function", "LockManager should be exported as a constructor");
-});
-
-test("distributed-lock-service barrel exports lock factory", async () => {
-  const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
-  assert.ok(mod !== undefined);
-  // Verify lock factory exists - should be a function that creates locks
-  assert.ok(typeof mod.createLock === "function" || typeof mod.newLock === "function" || typeof mod.lock === "function",
-    "Should export a lock factory function");
+  // Verify createLockAdapter exists and is a function
+  assert.equal(typeof mod.createLockAdapter, "function", "createLockAdapter should be exported as a function");
 });
 
 test("distributed-lock-service barrel exports adapter types", async () => {

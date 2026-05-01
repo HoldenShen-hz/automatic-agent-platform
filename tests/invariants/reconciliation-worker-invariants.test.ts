@@ -7,8 +7,8 @@ import {
   type ReconciliationProbeResult,
   type ReconciliationResult,
   type ReconciliationNextAction,
-} from "../../../src/platform/five-plane-execution/reconciliation-worker.js";
-import { createSideEffectRecord, createReconciliationRecord, createCompensationRecord } from "../../../src/platform/contracts/executable-contracts/index.js";
+} from "../../src/platform/five-plane-execution/reconciliation-worker.js";
+import { createSideEffectRecord, createReconciliationRecord, createCompensationRecord } from "../../src/platform/contracts/executable-contracts/index.js";
 
 /**
  * Reconciliation Worker Invariants

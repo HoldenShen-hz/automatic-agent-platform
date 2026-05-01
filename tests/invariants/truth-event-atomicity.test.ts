@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeStateMachine } from "../../../src/platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine } from "../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 /**
  * INV-STATE-001: Every HarnessRun or NodeRun truth mutation must append

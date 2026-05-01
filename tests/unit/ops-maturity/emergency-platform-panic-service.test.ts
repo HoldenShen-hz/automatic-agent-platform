@@ -4,37 +4,56 @@ import {
   PlatformPanicService,
   type PanicActivationRequest,
 } from "../../../src/ops-maturity/emergency/platform-panic-service.js";
-import { buildForensicSnapshot } from "../../../src/ops-maturity/emergency/forensic-snapshot/index.js";
 
-test("PlatformPanicService activate creates panic activation", () => {
+test("PlatformPanicService activate creates panic activation with security reason", () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: "tenant_acme",
+    scope: "platform",
     reasonCode: "security.incident_detected",
     issuedBy: "admin_1",
     severity: "full",
+    activeIncidents: 0,
+    requiredApprovers: ["admin_1", "admin_2"],
   };
 
   const activation = service.activate(request);
 
-  assert.strictEqual(activation.directive.scope, "tenant_acme");
-  assert.strictEqual(activation.directive.scopeLevel, "tenant");
+  assert.strictEqual(activation.directive.scope, "platform");
+  assert.strictEqual(activation.directive.scopeLevel, "platform");
   assert.strictEqual(activation.directive.reasonCode, "security.incident_detected");
   assert.ok(activation.acknowledgments.length === 5); // All 5 planes
+});
+
+test("PlatformPanicService activate creates panic activation with incidents", () => {
+  const service = new PlatformPanicService();
+  const request: PanicActivationRequest = {
+    scope: "domain",
+    reasonCode: "platform.drift_detected",
+    issuedBy: "operator_1",
+    activeIncidents: 3,
+    requiredApprovers: ["op_1", "op_2"],
+  };
+
+  const activation = service.activate(request);
+
+  assert.strictEqual(activation.directive.scope, "domain");
+  assert.strictEqual(activation.directive.scopeLevel, "domain");
 });
 
 test("PlatformPanicService getActive returns activation by scope", () => {
   const service = new PlatformPanicService();
   const request: PanicActivationRequest = {
-    scope: "domain_analytics",
-    reasonCode: "platform.drift_detected",
+    scope: "region",
+    reasonCode: "security.breach",
     issuedBy: "operator_1",
+    activeIncidents: 0,
+    requiredApprovers: ["op_1", "op_2"],
   };
 
   service.activate(request);
-  const activation = service.getActive("domain_analytics");
+  const activation = service.getActive("region");
 
-  assert.strictEqual(activation?.directive.scope, "domain_analytics");
+  assert.strictEqual(activation?.directive.scope, "region");
 });
 
 test("PlatformPanicService getActive returns null for unknown scope", () => {
@@ -45,8 +64,8 @@ test("PlatformPanicService getActive returns null for unknown scope", () => {
 
 test("PlatformPanicService listActive returns all active activations", () => {
   const service = new PlatformPanicService();
-  service.activate({ scope: "scope_a", reasonCode: "test", issuedBy: "admin" });
-  service.activate({ scope: "scope_b", reasonCode: "test", issuedBy: "admin" });
+  service.activate({ scope: "node", reasonCode: "security.incident", issuedBy: "admin", activeIncidents: 0, requiredApprovers: ["a1", "a2"] });
+  service.activate({ scope: "run", reasonCode: "security.issue", issuedBy: "admin", activeIncidents: 0, requiredApprovers: ["a1", "a2"] });
 
   const active = service.listActive();
   assert.strictEqual(active.length, 2);
@@ -55,13 +74,15 @@ test("PlatformPanicService listActive returns all active activations", () => {
 test("PlatformPanicService evaluateExecution blocks frozen mode", () => {
   const service = new PlatformPanicService();
   service.activate({
-    scope: "region_us",
+    scope: "platform",
     reasonCode: "security.incident",
     issuedBy: "admin",
+    activeIncidents: 0,
     freezeModes: ["deploy", "automation"],
+    requiredApprovers: ["admin", "admin2"],
   });
 
-  const decision = service.evaluateExecution({ scope: "region_us", mode: "deploy" });
+  const decision = service.evaluateExecution({ scope: "platform", mode: "deploy" });
 
   assert.strictEqual(decision.blocked, true);
   assert.ok(decision.reasonCodes.includes("panic.execution_blocked"));
@@ -70,13 +91,15 @@ test("PlatformPanicService evaluateExecution blocks frozen mode", () => {
 test("PlatformPanicService evaluateExecution allows non-frozen mode", () => {
   const service = new PlatformPanicService();
   service.activate({
-    scope: "region_us",
+    scope: "platform",
     reasonCode: "security.incident",
     issuedBy: "admin",
+    activeIncidents: 0,
     freezeModes: ["deploy"],
+    requiredApprovers: ["admin", "admin2"],
   });
 
-  const decision = service.evaluateExecution({ scope: "region_us", mode: "write" });
+  const decision = service.evaluateExecution({ scope: "platform", mode: "write" });
 
   assert.strictEqual(decision.blocked, false);
   assert.ok(decision.reasonCodes.includes("panic.mode_not_frozen"));
@@ -93,19 +116,37 @@ test("PlatformPanicService evaluateExecution allows unknown scope", () => {
 test("PlatformPanicService evaluateExecution allows listed actors", () => {
   const service = new PlatformPanicService();
   service.activate({
-    scope: "tenant_x",
+    scope: "tenant",
     reasonCode: "security.incident",
     issuedBy: "admin",
+    activeIncidents: 0,
     freezeModes: ["deploy"],
     allowList: ["trusted_actor"],
+    requiredApprovers: ["admin", "admin2"],
   });
 
   const decision = service.evaluateExecution({
-    scope: "tenant_x",
+    scope: "tenant",
     mode: "deploy",
     actorId: "trusted_actor",
   });
 
   assert.strictEqual(decision.blocked, false);
   assert.ok(decision.reasonCodes.includes("panic.allow_list_bypass"));
+});
+
+test("PlatformPanicService evaluateExecution allows when mode not frozen", () => {
+  const service = new PlatformPanicService();
+  service.activate({
+    scope: "node",
+    reasonCode: "security.alert",
+    issuedBy: "admin",
+    activeIncidents: 0,
+    freezeModes: ["deploy", "approval"],
+    requiredApprovers: ["admin", "admin2"],
+  });
+
+  const decision = service.evaluateExecution({ scope: "node", mode: "automation" });
+
+  assert.strictEqual(decision.blocked, false);
 });

@@ -234,13 +234,15 @@ test("Each app has unique capabilities set", () => {
   const capabilitiesSets = apps.map((a) => new Set(a.capabilities));
 
   for (let i = 0; i < capabilitiesSets.length; i++) {
+    const setA = capabilitiesSets[i];
+    if (!setA) continue;
     for (let j = i + 1; j < capabilitiesSets.length; j++) {
-      const intersection = [...capabilitiesSets[i]].filter((cap) =>
-        capabilitiesSets[j].has(cap),
-      );
+      const setB = capabilitiesSets[j];
+      if (!setB) continue;
+      const intersection = [...setA].filter((cap) => setB.has(cap));
       // Some overlap is allowed (e.g., "platform" layer), but not complete equality
       assert.ok(
-        intersection.length < capabilitiesSets[i].size,
+        intersection.length < setA.size,
         `Apps ${i} and ${j} have identical capabilities`,
       );
     }

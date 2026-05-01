@@ -193,7 +193,7 @@ test("ContextIsolator.isolate creates child context with incremented depth", () 
       actions: ["action-1", "action-2"],
       constraints: { maxDurationMs: 60000, maxTokens: 1000 },
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -230,7 +230,7 @@ test("ContextIsolator.isolate with sandboxed parent returns SANDBOXED isolation"
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "container",
+    sandboxTier: "workspace_write",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -375,9 +375,22 @@ test("DelegationTracker.recordDelegation creates chain entry", () => {
       actions: ["action-1"],
       constraints: {},
     },
+    grantedPermissions: {
+      resources: ["resource-1"],
+      actions: ["action-1"],
+      constraints: {},
+    },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
+    correlationId: "corr-1",
+    summary: "test delegation",
+    artifact_refs: [],
+    trust_level: 1,
+    taint_labels: [],
+    evidence_refs: [],
+    policy_outcome: "allow",
+    data_class: "public",
   };
 
   tracker.recordDelegation(delegation, "parent-1");
@@ -398,9 +411,18 @@ test("DelegationTracker.recordDelegation increments totalDelegations", () => {
     childAgentId: "child-1",
     depth: 1,
     permissions: { resources: [], actions: [], constraints: {} },
+    grantedPermissions: { resources: [], actions: [], constraints: {} },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
+    correlationId: "corr-1",
+    summary: "test delegation 1",
+    artifact_refs: [],
+    trust_level: 1,
+    taint_labels: [],
+    evidence_refs: [],
+    policy_outcome: "allow",
+    data_class: "public",
   };
 
   const delegation2: DelegationResult = {
@@ -409,9 +431,18 @@ test("DelegationTracker.recordDelegation increments totalDelegations", () => {
     childAgentId: "child-2",
     depth: 1,
     permissions: { resources: [], actions: [], constraints: {} },
+    grantedPermissions: { resources: [], actions: [], constraints: {} },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
+    correlationId: "corr-2",
+    summary: "test delegation 2",
+    artifact_refs: [],
+    trust_level: 1,
+    taint_labels: [],
+    evidence_refs: [],
+    policy_outcome: "allow",
+    data_class: "public",
   };
 
   tracker.recordDelegation(delegation1, "parent-1");
@@ -463,9 +494,18 @@ test("DelegationTracker.getMetrics returns correct values after recording", () =
     childAgentId: "child-1",
     depth: 2,
     permissions: { resources: [], actions: [], constraints: {} },
+    grantedPermissions: { resources: [], actions: [], constraints: {} },
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 60000).toISOString(),
     status: "pending",
+    correlationId: "corr-1",
+    summary: "test delegation",
+    artifact_refs: [],
+    trust_level: 1,
+    taint_labels: [],
+    evidence_refs: [],
+    policy_outcome: "allow",
+    data_class: "public",
   };
 
   tracker.recordDelegation(delegation, "parent-1");
@@ -498,7 +538,7 @@ test("DelegationManagerService.delegate creates delegation handle", async () => 
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -538,7 +578,7 @@ test("DelegationManagerService.getDelegation retrieves delegation", async () => 
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -581,7 +621,7 @@ test("DelegationManagerService.complete marks delegation as completed", async ()
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -630,7 +670,7 @@ test("DelegationManagerService.fail marks delegation as failed", async () => {
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -668,7 +708,7 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };
@@ -706,7 +746,7 @@ test("DelegationManagerService.getDelegationChain returns chain", async () => {
       actions: ["action-1"],
       constraints: {},
     },
-    sandboxTier: "none",
+    sandboxTier: "read_only",
     correlationId: "corr-1",
     tenantId: "tenant-1",
   };

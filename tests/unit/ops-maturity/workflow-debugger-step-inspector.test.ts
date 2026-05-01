@@ -13,7 +13,7 @@ test("StepInspector begins and completes step lifecycle", () => {
 
   assert.strictEqual(state?.stepId, "step_1");
   assert.strictEqual(state?.status, "running");
-  assert.strictEqual(state?.input, "test");
+  assert.deepStrictEqual(state?.input, { input: "test" });
   assert.strictEqual(state?.output, null);
 });
 

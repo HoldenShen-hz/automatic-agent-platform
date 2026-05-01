@@ -31,7 +31,7 @@ test("BenchmarkInventoryService integration: verify all quality_gate benchmarks"
 
   const qualityGates = benchmarks.filter((b) => b.category === "quality_gate");
   assert.strictEqual(qualityGates.length, 1);
-  assert.strictEqual(qualityGates[0].benchmarkId, "bench.runtime.validator");
+  assert.strictEqual(qualityGates[0]!.benchmarkId, "bench.runtime.validator");
 });
 
 test("BenchmarkInventoryService integration: verify all stable_rehearsal benchmarks", () => {
@@ -54,7 +54,7 @@ test("BenchmarkInventoryService integration: verify all performance benchmarks",
 
   const performance = benchmarks.filter((b) => b.category === "performance");
   assert.strictEqual(performance.length, 1);
-  assert.strictEqual(performance[0].benchmarkId, "bench.evidence.campaign");
+  assert.strictEqual(performance[0]!.benchmarkId, "bench.evidence.campaign");
 });
 
 test("BenchmarkInventoryService integration: verify S1 scale benchmarks", () => {
@@ -63,7 +63,7 @@ test("BenchmarkInventoryService integration: verify S1 scale benchmarks", () => 
 
   const s1Benchmarks = benchmarks.filter((b) => b.targetScale === "S1");
   assert.strictEqual(s1Benchmarks.length, 1);
-  assert.strictEqual(s1Benchmarks[0].benchmarkId, "bench.runtime.validator");
+  assert.strictEqual(s1Benchmarks[0]!.benchmarkId, "bench.runtime.validator");
 });
 
 test("BenchmarkInventoryService integration: verify S2 scale benchmarks", () => {
@@ -85,7 +85,7 @@ test("BenchmarkInventoryService integration: verify S3 scale benchmarks", () => 
 
   const s3Benchmarks = benchmarks.filter((b) => b.targetScale === "S3");
   assert.strictEqual(s3Benchmarks.length, 1);
-  assert.strictEqual(s3Benchmarks[0].benchmarkId, "bench.failover.drill");
+  assert.strictEqual(s3Benchmarks[0]!.benchmarkId, "bench.failover.drill");
 });
 
 test("BenchmarkInventoryService integration: verify S4_contract_only scale benchmarks", () => {
@@ -94,7 +94,7 @@ test("BenchmarkInventoryService integration: verify S4_contract_only scale bench
 
   const s4Benchmarks = benchmarks.filter((b) => b.targetScale === "S4_contract_only");
   assert.strictEqual(s4Benchmarks.length, 1);
-  assert.strictEqual(s4Benchmarks[0].benchmarkId, "bench.evidence.campaign");
+  assert.strictEqual(s4Benchmarks[0]!.benchmarkId, "bench.evidence.campaign");
 });
 
 test("BenchmarkInventoryService integration: verify architecture section distribution", () => {

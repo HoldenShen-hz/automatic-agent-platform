@@ -19,7 +19,7 @@ function createMockProposal(overrides: Partial<ImprovementProposal> = {}): Impro
     rationale: "Integration testing",
     risk: "low",
     evidenceIds: ["evidence_1", "evidence_2"],
-    status: "proposed",
+    status: "draft",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -113,7 +113,8 @@ test("SimpleBenchmarkRunner end-to-end: multiple proposals in sequence", async (
   const cases: BenchmarkCase[] = [
     { id: "seq_case_1", taskType: "tool_use", input: {} },
   ];
-  runner.addBenchmarkCase(cases[0]);
+  const firstCase = cases[0];
+  if (firstCase) runner.addBenchmarkCase(firstCase);
 
   const proposal1 = createMockProposal({ id: "prop_seq_1" });
   const proposal2 = createMockProposal({ id: "prop_seq_2", kind: "workflow_template" });
@@ -139,8 +140,9 @@ test("SimpleBenchmarkRunner end-to-end: runBenchmarks returns consistent results
     { id: "struct_1", taskType: "tool_use", input: { test: true } },
     { id: "struct_2", taskType: "tool_validation", input: { strict: false } },
   ];
-  runner.addBenchmarkCase(cases[0]);
-  runner.addBenchmarkCase(cases[1]);
+  for (const c of cases) {
+    runner.addBenchmarkCase(c);
+  }
 
   const proposal = createMockProposal();
   const results = await runner.runBenchmarks(proposal);
@@ -177,7 +179,8 @@ test("SimpleBenchmarkRunner end-to-end: evaluate with expected benefit in propos
   const cases: BenchmarkCase[] = [
     { id: "benefit_case", taskType: "tool_use", input: {} },
   ];
-  runner.addBenchmarkCase(cases[0]);
+  const firstCase = cases[0];
+  if (firstCase) runner.addBenchmarkCase(firstCase);
 
   const proposal = createMockProposal({
     id: "prop_benefit_1",
@@ -219,7 +222,8 @@ test("SimpleBenchmarkRunner end-to-end: proposal with high risk is evaluated", a
   const cases: BenchmarkCase[] = [
     { id: "high_risk_case", taskType: "tool_use", input: {} },
   ];
-  runner.addBenchmarkCase(cases[0]);
+  const firstCase = cases[0];
+  if (firstCase) runner.addBenchmarkCase(firstCase);
 
   const proposal = createMockProposal({
     id: "prop_high_risk",
@@ -241,8 +245,9 @@ test("SimpleBenchmarkRunner end-to-end: verify latency and cost calculations", a
     { id: "calc_case_1", taskType: "tool_use", input: {} },
     { id: "calc_case_2", taskType: "tool_validation", input: {} },
   ];
-  runner.addBenchmarkCase(cases[0]);
-  runner.addBenchmarkCase(cases[1]);
+  for (const c of cases) {
+    runner.addBenchmarkCase(c);
+  }
 
   const proposal = createMockProposal();
   const results = await runner.runBenchmarks(proposal);

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AdmissionController, DEFAULT_ADMISSION_POLICY } from "../../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
-import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import { AdmissionController, DEFAULT_ADMISSION_POLICY } from "../../src/platform/five-plane-execution/dispatcher/admission-controller.js";
+import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 
 /**
  * Dispatcher Admission Control Invariants

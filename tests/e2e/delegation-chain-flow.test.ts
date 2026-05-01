@@ -580,11 +580,11 @@ test("E2E: constraint narrowing - child gets more restrictive constraints", asyn
 
     // R9-07: Constraints should be narrowed to more restrictive values
     assert.ok(
-      delegation.permissions.constraints.maxDurationMs <= 30000,
+      delegation.permissions.constraints.maxDurationMs != null && delegation.permissions.constraints.maxDurationMs <= 30000,
       "maxDuration should be at most child's requested value",
     );
     assert.ok(
-      delegation.permissions.constraints.maxTokens <= 5000,
+      delegation.permissions.constraints.maxTokens != null && delegation.permissions.constraints.maxTokens <= 5000,
       "maxTokens should be at most child's requested value",
     );
   } finally {

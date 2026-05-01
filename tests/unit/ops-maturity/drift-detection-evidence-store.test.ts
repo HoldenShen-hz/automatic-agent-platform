@@ -95,7 +95,8 @@ test("InMemoryEvidenceStore getRecent returns latest records", async () => {
 
   const recent = await store.getRecent(5);
   assert.strictEqual(recent.length, 5);
-  assert.strictEqual(recent[0]?.id, "ev_0"); // Oldest first in slice
+  // Last 5 of 10 = ev_5, ev_6, ev_7, ev_8, ev_9 (oldest of the recent 5 is ev_5)
+  assert.strictEqual(recent[0]?.id, "ev_5");
 });
 
 test("InMemoryEvidenceStore evicts oldest records when max reached", async () => {

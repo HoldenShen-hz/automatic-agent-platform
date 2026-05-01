@@ -28,15 +28,15 @@ import type { BudgetPolicy } from "../../src/platform/model-gateway/cost-tracker
 // Helper: Create mock ApprovalService for testing
 // ---------------------------------------------------------------------------
 
-function createMockApprovalService(harness: ReturnType<typeof createE2EHarness>): ApprovalService {
+function createMockApprovalService(harness: ReturnType<typeof createE2EHarness>) {
   return {
-    createRequest: (input) => {
+    createRequest: (input: { taskId: string; executionId?: string | null; reason: string; riskLevel: string; options: Record<string, unknown>; context: Record<string, unknown>; timeoutPolicy?: string }) => {
       const approvalId = newId("approval");
       harness.db.transaction(() => {
         harness.store.insertApproval({
           id: approvalId,
           taskId: input.taskId,
-          executionId: input.executionId,
+          executionId: input.executionId ?? null,
           requesterId: "system",
           reason: input.reason,
           riskLevel: input.riskLevel,
@@ -53,37 +53,7 @@ function createMockApprovalService(harness: ReturnType<typeof createE2EHarness>)
       });
       return { approvalId, status: "pending" as const };
     },
-    getApproval: (approvalId) => harness.store.approval.getApproval(approvalId),
-    approve: (approvalId, actorId) => {
-      const approval = harness.store.approval.getApproval(approvalId);
-      if (approval) {
-        harness.db.transaction(() => {
-          harness.store.approval.updateApproval({
-            ...approval,
-            status: "approved",
-            respondedAt: nowIso(),
-            respondedBy: actorId,
-            responseOption: "approve",
-          });
-        });
-      }
-      return { approvalId, status: "approved" as const };
-    },
-    reject: (approvalId, actorId) => {
-      const approval = harness.store.approval.getApproval(approvalId);
-      if (approval) {
-        harness.db.transaction(() => {
-          harness.store.approval.updateApproval({
-            ...approval,
-            status: "rejected",
-            respondedAt: nowIso(),
-            respondedBy: actorId,
-            responseOption: "reject",
-          });
-        });
-      }
-      return { approvalId, status: "rejected" as const };
-    },
+    getApproval: (approvalId: string) => harness.store.approval.getApproval(approvalId),
   };
 }
 
@@ -128,16 +98,23 @@ test("E2E Drift Detection: creates budget adjustment proposal based on observed 
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     const result = service.proposeBudgetAdjustment({
       taskId,
       executionId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.18,
       sampleSize: 10,
@@ -230,7 +207,7 @@ test("E2E Drift Detection: creates experience promotion proposal for successful 
       taskId,
       executionId,
       sourceAgentId: "agent-general",
-      scopeType: "domain",
+      scopeType: "role",
       scopeRef: "domain:coding",
       taskContext: "Successfully completed complex refactoring task",
       taskIntent: "refactoring",
@@ -291,16 +268,23 @@ test("E2E Drift Detection: proposal approval workflow transitions correctly", as
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     // Create proposal
     const proposalResult = service.proposeBudgetAdjustment({
       taskId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.15,
       sampleSize: 5,
@@ -311,7 +295,13 @@ test("E2E Drift Detection: proposal approval workflow transitions correctly", as
     assert.equal(proposalResult.proposal.status, "pending_approval", "Should start pending");
 
     // Approve the proposal
-    approvalService.approve(proposalResult.proposal.approvalId!, "manager-001");
+    harness.store.approval.updateApprovalRequest({
+      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
+      status: "approved",
+      respondedAt: nowIso(),
+      respondedBy: "manager-001",
+      responseOption: "approve",
+    });
 
     // Sync proposal status
     const synced = service.syncProposalApprovalStatus(proposalResult.proposal.id);
@@ -364,16 +354,23 @@ test("E2E Drift Detection: approved proposal is applied correctly", async () => 
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     // Create and approve proposal
     const proposalResult = service.proposeBudgetAdjustment({
       taskId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.15,
       sampleSize: 8,
@@ -381,7 +378,13 @@ test("E2E Drift Detection: approved proposal is applied correctly", async () => 
       proposalReason: "Need higher task budget",
     });
 
-    approvalService.approve(proposalResult.proposal.approvalId!, "manager-001");
+    harness.store.approval.updateApprovalRequest({
+      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
+      status: "approved",
+      respondedAt: nowIso(),
+      respondedBy: "manager-001",
+      responseOption: "approve",
+    });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
 
     // Apply proposal
@@ -444,16 +447,23 @@ test("E2E Drift Detection: applied proposal can be rolled back", async () => {
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     // Create, approve, and apply proposal
     const proposalResult = service.proposeBudgetAdjustment({
       taskId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.15,
       sampleSize: 8,
@@ -461,7 +471,13 @@ test("E2E Drift Detection: applied proposal can be rolled back", async () => {
       proposalReason: "Test rollback",
     });
 
-    approvalService.approve(proposalResult.proposal.approvalId!, "manager-001");
+    harness.store.approval.updateApprovalRequest({
+      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
+      status: "approved",
+      respondedAt: nowIso(),
+      respondedBy: "manager-001",
+      responseOption: "approve",
+    });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
     service.applyProposal({ proposalId: proposalResult.proposal.id, appliedBy: "manager-001" });
 
@@ -526,16 +542,23 @@ test("E2E Drift Detection: resolves budget policy with active evolution policy",
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     // Create, approve, and apply a policy change
     const proposalResult = service.proposeBudgetAdjustment({
       taskId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.18,
       sampleSize: 12,
@@ -543,12 +566,18 @@ test("E2E Drift Detection: resolves budget policy with active evolution policy",
       proposalReason: "Increase task budget",
     });
 
-    approvalService.approve(proposalResult.proposal.approvalId!, "manager-001");
+    harness.store.approval.updateApprovalRequest({
+      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
+      status: "approved",
+      respondedAt: nowIso(),
+      respondedBy: "manager-001",
+      responseOption: "approve",
+    });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
     service.applyProposal({ proposalId: proposalResult.proposal.id, appliedBy: "manager-001" });
 
     // Resolve budget policy
-    const resolved = service.resolveBudgetPolicy(basePolicy, "agent", "agent-general");
+    const resolved = service.resolveBudgetPolicy(basePolicy, "division", "general_ops");
 
     // Verify resolved with new policy
     assert.ok(resolved.policy, "Should have resolved policy");
@@ -600,16 +629,23 @@ test("E2E Drift Detection: rejected proposal does not apply", async () => {
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     // Create and reject proposal
     const proposalResult = service.proposeBudgetAdjustment({
       taskId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.15,
       sampleSize: 5,
@@ -617,7 +653,13 @@ test("E2E Drift Detection: rejected proposal does not apply", async () => {
       proposalReason: "Test rejection",
     });
 
-    approvalService.reject(proposalResult.proposal.approvalId!, "manager-001");
+    harness.store.approval.updateApprovalRequest({
+      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
+      status: "rejected",
+      respondedAt: nowIso(),
+      respondedBy: "manager-001",
+      responseOption: "reject",
+    });
     const synced = service.syncProposalApprovalStatus(proposalResult.proposal.id);
 
     // Verify rejected
@@ -675,16 +717,23 @@ test("E2E Drift Detection: evolution logs track proposal lifecycle", async () =>
 
     const basePolicy: BudgetPolicy = {
       maxTaskCostUsd: 0.10,
+      maxPackCostUsd: 1.0,
+      maxPlatformCostUsd: 100.0,
       maxDailyCostUsd: 10,
       maxMonthlyCostUsd: 100,
+      maxModelTokens: 10000,
+      maxSteps: 100,
+      maxDurationMs: 60000,
+      warnAtRatio: 0.8,
+      mode: "supervised",
     };
 
     // Create proposal
     const proposalResult = service.proposeBudgetAdjustment({
       taskId,
       sourceAgentId: "agent-general",
-      scopeType: "agent",
-      scopeRef: "agent-general",
+      scopeType: "division",
+      scopeRef: "general_ops",
       currentPolicy: basePolicy,
       observedAverageCostUsd: 0.15,
       sampleSize: 5,
@@ -693,8 +742,8 @@ test("E2E Drift Detection: evolution logs track proposal lifecycle", async () =>
     });
 
     // Verify logs exist
-    assert.ok(result.logs.length > 0, "Should have logs");
-    const creationLog = result.logs.find((l) => l.eventType === "proposal_created");
+    assert.ok(proposalResult.logs.length > 0, "Should have logs");
+    const creationLog = proposalResult.logs.find((l: { eventType: string }) => l.eventType === "proposal_created");
     assert.ok(creationLog, "Should have proposal_created log");
     assert.equal(creationLog!.reasonCode, "evolution.proposal_created", "Should have correct reason code");
 

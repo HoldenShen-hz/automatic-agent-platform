@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainRiskSpecSchema } from "../../../src/domains/domain-specs.js";
+import { DomainRiskSpecSchema } from "../../src/domains/domain-specs.js";
 
 /**
  * INV-DOMAIN-001: High and critical domains must declare explicit human
