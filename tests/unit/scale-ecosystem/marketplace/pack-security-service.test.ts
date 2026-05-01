@@ -51,8 +51,8 @@ test("PackSecurityService warns on high-risk permissions and overlapping depende
   const scan = await service.runSecurityScan({
     packId: "pack.catalog",
     version: "3.1.0",
-    sourceUri: `inline:${inlineSource}`,
-    manifestChecksum: sha256(inlineSource),
+    sourceUri: `data:text/javascript,${encodeURIComponent(inlineSource)}`,
+    manifestChecksum: "c".repeat(64),
     capabilities: ["catalog", "reporting"],
     permissions: ["file:write"],
   });

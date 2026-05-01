@@ -394,7 +394,7 @@ test("MarketplaceGovernanceService.publishPackage throws for already published p
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "i".repeat(64),
+      manifestChecksum: "1".repeat(64),
       reviewRequired: false,
     });
 
@@ -444,7 +444,7 @@ test("MarketplaceGovernanceService.revokePublication marks publication as revoke
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "j".repeat(64),
+      manifestChecksum: "2".repeat(64),
       reviewRequired: false,
     });
 
@@ -492,7 +492,7 @@ test("MarketplaceGovernanceService.revokePublication rejects already inactive pu
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "z".repeat(64),
+      manifestChecksum: "3".repeat(64),
       reviewRequired: false,
     });
 
@@ -511,7 +511,10 @@ test("MarketplaceGovernanceService.revokePublication rejects already inactive pu
           publicationId: publication.publicationId,
           reasonCode: "security-incident",
         }),
-      /marketplace\.publication_already_inactive/,
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        return "code" in error && error.code === "marketplace.publication_already_inactive";
+      },
     );
 
     db.close();
@@ -546,7 +549,7 @@ test("MarketplaceGovernanceService.deprecatePackage updates lifecycle state", ()
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "k".repeat(64),
+      manifestChecksum: "4".repeat(64),
       reviewRequired: false,
     });
 
@@ -590,7 +593,7 @@ test("MarketplaceGovernanceService.retirePackage updates lifecycle state to reti
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "l".repeat(64),
+      manifestChecksum: "5".repeat(64),
       reviewRequired: false,
     });
 
@@ -633,7 +636,7 @@ test("MarketplaceGovernanceService.sunsetPackage sets lifecycle to sunset", () =
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "m".repeat(64),
+      manifestChecksum: "6".repeat(64),
       reviewRequired: false,
     });
 
@@ -678,7 +681,7 @@ test("MarketplaceGovernanceService.sunsetPackage rejects migration threshold bel
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "n".repeat(64),
+      manifestChecksum: "7".repeat(64),
       reviewRequired: false,
     });
 
@@ -725,7 +728,7 @@ test("MarketplaceGovernanceService.buildCatalog returns catalog with summary", (
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "o".repeat(64),
+      manifestChecksum: "8".repeat(64),
       reviewRequired: false,
     });
 
@@ -745,7 +748,7 @@ test("MarketplaceGovernanceService.buildCatalog returns catalog with summary", (
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "p".repeat(64),
+      manifestChecksum: "9".repeat(64),
       reviewRequired: false,
       lifecycleState: "deprecated",
     });
@@ -788,7 +791,7 @@ test("MarketplaceGovernanceService.listPackages returns all packages", () => {
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "q".repeat(64),
+      manifestChecksum: "a".repeat(64),
       reviewRequired: false,
     });
 
@@ -829,7 +832,7 @@ test("MarketplaceGovernanceService.listReviews returns all reviews", () => {
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "r".repeat(64),
+      manifestChecksum: "b".repeat(64),
       reviewRequired: true,
     });
 
@@ -875,7 +878,7 @@ test("MarketplaceGovernanceService.listPublications returns all publications", (
         runtimeCapability: "1.0.0",
       },
       signatureVerified: false,
-      manifestChecksum: "s".repeat(64),
+      manifestChecksum: "c".repeat(64),
       reviewRequired: false,
     });
 

@@ -111,7 +111,7 @@ export class PluginEcosystemRuntimeService {
       domainId: input.domainId,
       tenantId: input.tenantId,
       environment: input.environment,
-      connectorIds: input.connectorIds,
+      ...(input.connectorIds !== undefined ? { connectorIds: input.connectorIds } : {}),
     });
     // §198-2309: Check plugin lifecycle states - plugins not in "active" or "validated" are not ready
     // Root cause: registered/loading/inactive/unloaded plugins were being treated as ready

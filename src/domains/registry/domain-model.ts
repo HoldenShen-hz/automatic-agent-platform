@@ -124,7 +124,7 @@ export const WorkflowConfigSchema = z.object({
       toStep: z.string(),
       condition: z.record(z.string(), z.unknown()).nullable().default(null),
     })).default([]),
-  }).optional().default(undefined),
+  }).optional(),
 });
 
 export const ToolBundleEntrySchema = z.object({
@@ -211,7 +211,7 @@ export const DomainDefinitionSchema = z.object({
     (value) => typeof value === "string"
       ? DOMAIN_STATUS_ALIASES[value as keyof typeof DOMAIN_STATUS_ALIASES] ?? value
       : value,
-    z.enum(["draft", "canary", "active", "deprecated", "archived"]),
+    z.enum(["draft", "registered", "canary", "active", "updating", "deprecated", "archived", "validated"]),
   ).default("draft"),
   executionProfile: DomainExecutionProfileSchema.default({}),
   externalAdapters: z.array(z.string()).default([]),

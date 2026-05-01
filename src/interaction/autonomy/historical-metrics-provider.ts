@@ -82,6 +82,10 @@ export function toCapabilityTrustScore(
   metrics: ExecutionMetrics,
   input: HistoricalMetricsInput,
 ): CapabilityTrustScore {
+  // §42: lastExecutionAgeDays - calculate days since last execution
+  const lastExecutionAgeDays = metrics.lastIncidentAt
+    ? Math.floor((Date.now() - new Date(metrics.lastIncidentAt).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
   return {
     capabilityId: input.capabilityId,
     currentAutonomy: input.currentAutonomy,
@@ -94,5 +98,9 @@ export function toCapabilityTrustScore(
     lastIncidentAgeDays: metrics.lastIncidentAt
       ? Math.floor((Date.now() - new Date(metrics.lastIncidentAt).getTime()) / (1000 * 60 * 60 * 24))
       : null,
+    // §42.2: costOverruns - no cost data in metrics provider, default to 0
+    costOverruns: 0,
+    // §42.3: lastExecutionAgeDays - track inactivity for trust decay
+    lastExecutionAgeDays,
   };
 }

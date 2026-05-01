@@ -6,7 +6,7 @@ export interface ScimDlqRecord {
   readonly lastError: string;
 }
 
-export interface IdentityReconciliationReport {
+export interface ScimDlqReconciliationReport {
   readonly reportId: string;
   readonly retryRecordIds: readonly string[];
   readonly exhaustedRecordIds: readonly string[];
@@ -14,7 +14,7 @@ export interface IdentityReconciliationReport {
 }
 
 export class ScimDlqReconciliationService {
-  public reconcile(reportId: string, records: readonly ScimDlqRecord[]): IdentityReconciliationReport {
+  public reconcile(reportId: string, records: readonly ScimDlqRecord[]): ScimDlqReconciliationReport {
     return {
       reportId,
       retryRecordIds: records

@@ -217,19 +217,18 @@ export class ComplianceEvidenceCollector {
         tampered.push(record.evidenceId);
       } else {
         // Recompute hash and verify
-        const baseRecord = {
+        const baseRecord: Omit<ComplianceEvidenceRecord, "hash" | "previousHash"> = {
           evidenceId: record.evidenceId,
           frameworkId: record.frameworkId,
           controlId: record.controlId,
           source: record.source,
           artifactRef: record.artifactRef,
-          evidenceType: record.evidenceType,
-          collectedBy: record.collectedBy,
-          content: record.content,
-          sourceSystem: record.sourceSystem,
-          timestamp: record.timestamp,
           collectedAt: record.collectedAt,
-          previousHash: record.previousHash,
+          ...(record.evidenceType !== undefined ? { evidenceType: record.evidenceType } : {}),
+          ...(record.collectedBy !== undefined ? { collectedBy: record.collectedBy } : {}),
+          ...(record.content !== undefined ? { content: record.content } : {}),
+          ...(record.sourceSystem !== undefined ? { sourceSystem: record.sourceSystem } : {}),
+          ...(record.timestamp !== undefined ? { timestamp: record.timestamp } : {}),
         };
         const computedHash = computeRecordHash(baseRecord);
         if (computedHash !== record.hash) {

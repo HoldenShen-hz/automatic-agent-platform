@@ -928,7 +928,8 @@ export class ScimProvisionService {
     return items.filter((item) => {
       // SECURITY FIX: Use the actual field name from the filter to get the value.
       // Previously defaulted to userName/displayName only, ignoring the field name.
-      const itemValue = (item as Record<string, unknown>)[fieldName];
+      const itemRecord = item as unknown as Record<string, unknown>;
+      const itemValue = itemRecord[fieldName as string];
       if (typeof itemValue !== "string") {
         return false;
       }

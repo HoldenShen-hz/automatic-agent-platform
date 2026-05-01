@@ -98,6 +98,8 @@ class MultiStepToolRegistry {
   private readonly evidenceRecords: Map<string, ReturnType<typeof createEvidenceRecord>>;
   // R4-33/R4-35: RuntimeTruthRepository for persisting side effect and evidence records
   private runtimeTruthRepository: RuntimeTruthRepository | null = null;
+  // R4-33: Current harnessRunId for correlating side effect records with the execution context
+  private currentHarnessRunId: string | null = null;
   private spawnDepth: number = 0;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_SPAWNED_AGENTS = 500;
@@ -136,6 +138,21 @@ class MultiStepToolRegistry {
    */
   public getRuntimeTruthRepository(): RuntimeTruthRepository | null {
     return this.runtimeTruthRepository;
+  }
+
+  /**
+   * R4-33: Set the current harnessRunId for correlating side effect records.
+   * This should be called before tool execution with the harnessRunId from the execution context.
+   */
+  public setCurrentHarnessRunId(harnessRunId: string): void {
+    this.currentHarnessRunId = harnessRunId;
+  }
+
+  /**
+   * R4-33: Get the current harnessRunId.
+   */
+  public getCurrentHarnessRunId(): string | null {
+    return this.currentHarnessRunId;
   }
 
   private getDefaultBudgetPolicy(): BudgetPolicy {
@@ -336,7 +353,7 @@ class MultiStepToolRegistry {
   private createSideEffectRecordForExternalCall(
     toolName: string,
     args: Record<string, unknown>,
-    harnessRunId: string = "harness_run:dispatcher",
+    _harnessRunId: string = "harness_run:dispatcher",
   ): { sideEffectRecord: ReturnType<typeof createSideEffectRecord> | null; effectKind: SideEffectKind } {
     // R4-33 (INV-SIDEEFFECT-001): Create SideEffectRecord for external calls
     // web_fetch and web_search produce real side effects but don't record/track/reconcile
@@ -351,8 +368,11 @@ class MultiStepToolRegistry {
       return { sideEffectRecord: null, effectKind };
     }
 
+    // R4-33: Use the currentHarnessRunId from the execution context if available
+    const effectiveHarnessRunId = this.currentHarnessRunId ?? _harnessRunId;
+
     const sideEffectRecord = createSideEffectRecord({
-      harnessRunId,
+      harnessRunId: effectiveHarnessRunId,
       nodeRunId: "pending:node_run",
       nodeAttemptId: "pending:attempt",
       effectKind,
@@ -813,6 +833,25 @@ export function getToolRegistry(): MultiStepToolRegistry {
  */
 export function resetToolRegistry(): void {
   _toolRegistry = null;
+}
+
+/**
+ * Sets the RuntimeTruthRepository on the tool registry singleton.
+ * R4-33/R4-35: This enables persisting SideEffectRecords and EvidenceRecords
+ * to the authoritative runtime truth store during tool execution.
+ */
+export function initializeToolRegistryWithRepository(repository: RuntimeTruthRepository): void {
+  const registry = getToolRegistry();
+  registry.setRuntimeTruthRepository(repository);
+}
+
+/**
+ * Sets the current harnessRunId on the tool registry singleton.
+ * R4-33: This enables correlating SideEffectRecords with the actual execution context.
+ */
+export function setToolRegistryHarnessRunId(harnessRunId: string): void {
+  const registry = getToolRegistry();
+  registry.setCurrentHarnessRunId(harnessRunId);
 }
 
 /**

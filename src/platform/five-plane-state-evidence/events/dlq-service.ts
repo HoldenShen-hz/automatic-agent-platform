@@ -171,7 +171,9 @@ export class InMemoryDlqRepository implements DlqRepository {
  */
 export class DlqService {
   private readonly repo: DlqRepository;
-  private readonly inMemoryWarningPrinted = false;
+
+  // R12-06 FIX: Static flag to ensure warning is printed only once per process
+  private static IN_MEMORY_WARNING_EMITTED = false;
 
   /**
    * Create a DLQ service with an optional repository.
@@ -182,15 +184,15 @@ export class DlqService {
   public constructor(repo?: DlqRepository) {
     if (repo == null) {
       this.repo = new InMemoryDlqRepository();
-      // R12-06 FIX: Emit warning once when using in-memory storage
-      if (!this.inMemoryWarningPrinted && process.env["NODE_ENV"] === "production") {
+      // R12-06 FIX: Emit warning once when using in-memory storage in non-test environments
+      if (!DlqService.IN_MEMORY_WARNING_EMITTED && process.env["NODE_ENV"] !== "test") {
         console.warn(
           "[DlqService] WARNING: Using in-memory DLQ repository. " +
           "DLQ entries will be lost on process restart. " +
           "For production, provide a persistent DlqRepository implementation. " +
           "See §28.8 for persistent DLQ requirements.",
         );
-        this.inMemoryWarningPrinted = true;
+        DlqService.IN_MEMORY_WARNING_EMITTED = true;
       }
     } else {
       this.repo = repo;

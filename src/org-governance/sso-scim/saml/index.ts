@@ -253,8 +253,8 @@ export class SamlService {
         if (typeof _keyInfo === "string") {
           // Parse the KeyInfo XML to find X509Certificate
           const certMatch = _keyInfo.match(/<X509Certificate>([^<]+)<\/X509Certificate>/);
-          if (certMatch) {
-            x509Cert = certMatch[1];
+          if (certMatch?.[1] !== undefined) {
+            x509Cert = certMatch[1]!;
           }
         }
         if (x509Cert) {

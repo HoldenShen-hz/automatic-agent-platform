@@ -20,7 +20,7 @@ import {
   type AdmissionBackpressureSnapshot,
   type AdmissionPolicy,
 } from "../dispatcher/admission-controller.js";
-import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests } from "../dispatcher/index.js";
+import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests, initializeToolRegistryWithRepository, setToolRegistryHarnessRunId } from "../dispatcher/index.js";
 import { provideContext } from "./runtime-context.js";
 import { TransitionService } from "../state-transition/transition-service.js";
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
@@ -41,6 +41,7 @@ import type {
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
+import { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
@@ -161,8 +162,13 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   const entryGuard = new RuntimeEntryGuard();
   entryGuard.assertNoLegacyTruthWrite({ eventType: "routing:decided" });
 
-  const { resetToolRegistry } = await import("../dispatcher/index.js");
-  resetToolRegistry();
+  // Reset the tool registry to ensure clean state for this orchestration run
+  resetMultiStepToolRegistryForTests();
+
+  // R4-33/R4-35: Initialize RuntimeTruthRepository for persisting SideEffectRecords and EvidenceRecords
+  // This ensures that tool executions produce immutable evidence that can be audited
+  const runtimeTruthRepository = new RuntimeTruthRepository();
+  initializeToolRegistryWithRepository(runtimeTruthRepository);
 
   let plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
   let routing: ReturnType<IntakeRouter["route"]>;
@@ -193,6 +199,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   const validatedPlanGraphBundle = guardResult.planGraphBundle;
   // R4-26 (INV-GRAPH-001): Use validatedPlanGraphBundle - the harnessRunId is now available for budget tracking
   const harnessRunIdFromBundle = validatedPlanGraphBundle.harnessRunId;
+  // R4-33: Set harnessRunId on tool registry for correlating SideEffectRecords
+  setToolRegistryHarnessRunId(harnessRunIdFromBundle);
+
   // R4-25 (INV-BUDGET-001): Create budgetLedger from validated PlanGraphBundle for reserve-before-execute
   // The budgetLedger flows through executeStepLoop to multi-step-agent-round-loop to model-call-provider
   const budgetLedger = createBudgetLedger({

@@ -345,8 +345,9 @@ export class SlaOperationsService {
       maxQueueWaitMs,
       // Root cause: Missing SLA timeout and dependency fields from commitment
       // Fix: Include maxExecutionTimeoutRate and minDependencyAvailability from selectedTier
-      maxExecutionTimeoutRate: selectedTier.maxExecutionTimeoutRate,
-      minDependencyAvailability: selectedTier.minDependencyAvailability,
+      // exactOptionalPropertyTypes requires explicit undefined handling
+      maxExecutionTimeoutRate: selectedTier.maxExecutionTimeoutRate ?? 0.05,
+      minDependencyAvailability: selectedTier.minDependencyAvailability ?? 0.99,
     };
     const breachCodes = detectSlaBreach(request.observation, commitment);
 

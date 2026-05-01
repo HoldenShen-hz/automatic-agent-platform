@@ -240,6 +240,7 @@ function buildWorkflow(seed: DomainSeed) {
       timeoutMs: seed.latencyProfile.maxResponseMinutes * 60_000,
       dependsOn: index === 0 ? [] : [seed.workflowStages[index - 1]!],
     })),
+    stepGraph: undefined,
   };
 }
 
@@ -371,6 +372,12 @@ function buildRecipes(seed: DomainSeed, workflowId: string, bundleId: string): r
       triggerPhrases: seed.tags.map((tag) => tag.replace(/-/g, " ")),
       defaultWorkflowId: workflowId,
       defaultToolBundleIds: [bundleId],
+      riskLevel: seed.riskLevel,
+      risk_profile_ref: `${seed.domainId}.risk`,
+      guardrail_overlay: `${seed.domainId}.guardrails`,
+      recommended_workflow_ids: [workflowId],
+      default_prompt_bundle_ref: `${seed.domainId}.prompts`,
+      acceptance_checklist_ref: `${seed.domainId}.acceptance`,
     },
   ];
 }
@@ -446,7 +453,7 @@ function buildDefinition(seed: DomainSeed, workflowId: string, bundleId: string,
       },
       securityLevel: securityLevelForRisk(seed.riskLevel),
     },
-    status: "validated",
+    status: "canary",
     externalAdapters: [...seed.externalAdapters],
     pluginBindings: [],
   };

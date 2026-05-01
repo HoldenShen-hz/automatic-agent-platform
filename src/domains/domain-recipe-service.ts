@@ -225,6 +225,12 @@ export class DomainRecipeService {
       triggerPhrases: [...request.triggerPhrases],
       defaultWorkflowId: request.defaultWorkflowId,
       defaultToolBundleIds: [...(request.defaultToolBundleIds ?? [])],
+      riskLevel: "medium",
+      risk_profile_ref: `${request.domainId}.risk`,
+      guardrail_overlay: `${request.domainId}.guardrails`,
+      recommended_workflow_ids: [request.defaultWorkflowId],
+      default_prompt_bundle_ref: `${request.domainId}.prompts`,
+      acceptance_checklist_ref: `${request.domainId}.acceptance`,
     };
 
     this.recipes.set(recipe.recipeId, recipe);

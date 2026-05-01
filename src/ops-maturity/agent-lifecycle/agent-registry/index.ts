@@ -147,7 +147,10 @@ export const VALID_LIFECYCLE_TRANSITIONS: ReadonlyMap<AgentLifecycleState, reado
   // all stage gates (testing→staging→canary) and allows returning directly to
   // production without proper validation. Deprecated agents must go through
   // archived first, then can be re-promoted through the full pipeline if needed.
-  ["archived", ["removed", "active"]],
+  // R27-26 FIX: archived→active also bypasses stage gates. Archived agents must
+  // either be removed or go through the full re-promotion pipeline (draft→testing→...)
+  // to ensure proper re-validation before returning to production.
+  ["archived", ["removed"]],
   ["removed", []],
 ]);
 

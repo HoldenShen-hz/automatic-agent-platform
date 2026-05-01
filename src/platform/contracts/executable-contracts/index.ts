@@ -838,7 +838,7 @@ export function createTaskDraft(input: {
   requireNonEmpty(input.tenantId, "task_draft.tenant_id_required");
   const domainId = resolveDomainBindingId({
     explicit: input.domainId,
-    sources: [input.normalizedIntent],
+    sources: [input.normalizedIntent] as readonly unknown[],
     errorCode: "task_draft.domain_id_required",
     errorMessage: "TaskDraft requires a domainId or a legacy domain/division binding in normalizedIntent.",
   });
@@ -883,7 +883,7 @@ export function createConfirmedTaskSpec(input: {
   }
   const domainId = resolveDomainBindingId({
     explicit: input.domainId,
-    sources: [input.inputs],
+    sources: [input.inputs] as readonly unknown[],
     refCandidate: input.constraintPackRef,
     errorCode: "confirmed_task_spec.domain_id_required",
     errorMessage: "ConfirmedTaskSpec requires a domainId or a legacy domain/division binding in inputs.",

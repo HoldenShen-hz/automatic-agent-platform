@@ -229,7 +229,7 @@ export class OidcIdentityService {
       code,
       redirectUri: stateData.redirectUri,
       nonce: stateData.nonce,
-      codeVerifier,
+      ...(codeVerifier !== undefined ? { codeVerifier } : {}),
     });
   }
 
