@@ -85,6 +85,52 @@ export class LayeredEventInbox {
     return this.records.length;
   }
 
+  /**
+   * Compacts the records array by removing records that have been consumed by all registered consumers.
+   * This prevents unbounded memory growth when the inbox only appends and never prunes.
+   * Should be called periodically or when records.length exceeds a threshold.
+   * @returns The number of records removed
+   */
+  public compact(): number {
+    if (this.records.length === 0) {
+      return 0;
+    }
+
+    // Find the minimum cursor across all consumers
+    let minCursor = this.records.length;
+    for (const cursor of this.cursors.values()) {
+      if (cursor < minCursor) {
+        minCursor = cursor;
+      }
+    }
+
+    // If all consumers have consumed all records, clear all
+    if (minCursor >= this.records.length) {
+      const removed = this.records.length;
+      this.records.length = 0;
+      // Reset all cursors to 0 since records are empty
+      for (const consumerId of this.cursors.keys()) {
+        this.cursors.set(consumerId, 0);
+      }
+      return removed;
+    }
+
+    // If minCursor > 0, remove records before minCursor
+    if (minCursor > 0) {
+      const removed = minCursor;
+      // Remove records from the beginning using splice
+      this.records.splice(0, minCursor);
+      // Adjust all cursors down by minCursor
+      for (const consumerId of this.cursors.keys()) {
+        const currentCursor = this.cursors.get(consumerId)!;
+        this.cursors.set(consumerId, currentCursor - minCursor);
+      }
+      return removed;
+    }
+
+    return 0;
+  }
+
   private requireConsumer(consumerId: string): EventInboxConsumer {
     const consumer = this.consumers.get(consumerId);
     if (consumer == null) {

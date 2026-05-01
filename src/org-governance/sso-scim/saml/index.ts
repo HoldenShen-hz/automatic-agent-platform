@@ -47,6 +47,12 @@ export function validateXmlSignature(
 
     sig.loadSignature(signature);
 
+    // SECURITY FIX: Clear keyInfo so xml-crypto will call our keyProviderFn
+    // instead of using the key it extracted from KeyInfo in the signature XML.
+    // Without this, xml-crypto auto-extracts keys from KeyInfo, allowing
+    // attackers to embed self-signed keys that bypass our fingerprint validation.
+    (sig as any).keyInfo = null;
+
     // Set up key resolution if provider function is provided
     if (options.keyProviderFn) {
       (sig as any).keyProviderFn = options.keyProviderFn;

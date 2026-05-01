@@ -571,23 +571,23 @@
 
 | #     | 严重度 | 文件/领域                                                   | 问题                                                                                                                                                                           |
 | ----- | ------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| R8-61 | P0     | docs_zh/adr/066-\*.md (×2)                                  | ADR-066 编号重复：compliance-report-auto-generation 与 plugin-spi-framework 共用同一编号                                                                                       |
-| R8-62 | P0     | docs_zh/adr/060-explicit-planning-hub.md                    | 定义 Plan DTO(planId/taskId/steps:PlanStep[]/DAGStructure) 作为 P3→P4 canonical contract；v4.3 用 PlanGraphBundle/PlanGraph/PlanNode/PlanEdge——完全不同对象名；未标 superseded |
-| R8-63 | P0     | docs_zh/adr/033-phased-roadmap.md                           | 定义 7-Phase 路线图；v4.3 §33 已替换为 Ring 1/2/3 模型；ADR 仍 Accepted 无 Ring 引用                                                                                           |
-| R8-64 | P1     | docs_zh/contracts/event-envelope-contract.md                | 同一 schema 内混合 snake_case(schema_version/idempotency_key) 和 camelCase(eventId/eventType)                                                                                  |
-| R8-65 | P1     | docs_zh/contracts/event_bus_contract.md                     | Legacy EventEnvelope 用 task_id 作关联字段；v4.3 要求 harnessRunId + aggregate 关联；parallel schema 未重定向                                                                  |
-| R8-66 | P1     | docs_zh/adr/019-agent-handoff-four-layer-protocol.md        | HandoffSerializer.buildFromStepResult(result: StepResult) 引用废弃类型；v4.3 用 NodeAttemptReceipt                                                                             |
-| R8-67 | P1     | 缺失 contract: Agent Delegation / Multi-Agent Collaboration | §19 定义完整委托协议(DelegationRequest/DelegationReceipt/depth C1-C7)；无对应 contract 文件                                                                                    |
+| R8-61 | P0     | docs_zh/adr/066-\*.md (×2)                                  | 已解决：Plugin SPI ADR 已重编号为 `ADR-071`，README/迁移文档/交叉引用已同步，文档唯一编号守护测试已通过                                                                        |
+| R8-62 | P0     | docs_zh/adr/060-explicit-planning-hub.md                    | 已解决：ADR-060 已把 `PlanGraphBundle` 写为唯一 P3→P4 handoff，`RuntimeExecuteBridge` 明确降为 compatibility seam                                                               |
+| R8-63 | P0     | docs_zh/adr/033-phased-roadmap.md                           | 已解决：ADR-033 已标记为 `Superseded by ADR-112`，仅保留历史 phase→ring 映射，不再作为现行 canonical roadmap                                                                     |
+| R8-64 | P1     | docs_zh/contracts/event-envelope-contract.md                | 已解决：canonical EventEnvelope 已统一为 camelCase，并把 snake_case 下沉为 legacy wire alias 映射                                                                                |
+| R8-65 | P1     | docs_zh/contracts/event_bus_contract.md                     | 已解决：event bus contract 已收敛到 `runId + aggregate` 与 `platform.harness_run.* / platform.node_run.* / platform.release.*` 权威命名                                      |
+| R8-66 | P1     | docs_zh/adr/019-agent-handoff-four-layer-protocol.md        | 已解决：ADR-019 已把 handoff 回执锚点收敛到 `NodeAttemptReceipt / HarnessRun / NodeRun`，不再引用废弃 `StepResult`                                                             |
+| R8-67 | P1     | 缺失 contract: Agent Delegation / Multi-Agent Collaboration | 已解决：已新增 `docs_zh/contracts/agent_handoff_contract.md`，冻结 `DelegationRequest / DelegationReceipt / ACPMessage / AgentHandoff / C1-C7`                                |
 | R8-68 | P1     | docs_zh/contracts/task-intake-request-contract.md           | 已修复：canonical `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` 已补 `domainId`，并在 intake / nl-gateway 入口归一化 legacy division/domain alias                 |
 | R8-69 | P1     | docs_zh/contracts/harness-run-contract.md                   | 已修复：canonical `HarnessRun`、adapter 与 goal-decomposer 路由已携带 `domainId`，run truth 不再依赖 tenant/division 投影反推域绑定                                       |
-| R8-70 | P1     | 缺失 contract: ReleaseDecisionView / ReleaseChannel         | §13 列 ReleaseDecisionView 为 canonical OAPEFLIR 投影对象；ADR-091 要求 ReleaseChannel；均无 contract                                                                          |
-| R8-71 | P1     | docs_zh/adr/012-sqlite-phase-1-2-primary-store.md           | 仍 Accepted 范围为 "Phase 1a/1b"；v4.3 用 Ring 1 MVP；退出条件未映射到 Ring 边界                                                                                               |
-| R8-72 | P1     | docs_zh/adr/013-eventemitter-phase-2-boundary.md            | 同上——范围 "Phase 1a/1b/Phase 2" 无 Ring 映射；退出触发器("Phase 2 是否替换")已无定义                                                                                          |
-| R8-73 | P2     | docs_zh/contracts/typed_event_bus_contract.md §3A           | 所有 OAPEFLIR 事件载荷用 task_id/workflow_id 作主关联字段；v4.3 用 harnessRunId+aggregate 关联                                                                                 |
-| R8-74 | P2     | docs_zh/adr/072-oapeflir-testing-strategy.md                | 测试 OAPEFLIR 为独立执行管线("O→A→P→E→F happy path" E2E)；v4.3 降级 OAPEFLIR 为仅投影/视图                                                                                     |
-| R8-75 | P2     | docs_zh/contracts/runtime_state_machine_contract.md §1A     | 定义 OapeflirStage 为工作流级状态机(observe→assess→plan→...)；v4.3 说 OAPEFLIR 阶段仅为投影非状态机转换                                                                        |
-| R8-76 | P2     | docs_zh/adr/002-division-system.md                          | 用"事业部"建模(division_id)；v4.3 §37/§46 用 DomainDescriptor+OrgUnit；ADR 仍 Accepted 未标废弃                                                                                |
-| R8-77 | P2     | docs_zh/contracts/task_and_workflow_contract.md             | WorkflowState 含 division_id 必填字段；v4.3 canonical 对象(HarnessRun/TaskDraft/RequestEnvelope)无此字段                                                                       |
+| R8-70 | P1     | 缺失 contract: ReleaseDecisionView / ReleaseChannel         | 已解决：release contract 已补 `ReleaseDecisionView` 与 `ReleaseChannel`，release 阶段 truth/projection 边界已冻结                                                             |
+| R8-71 | P1     | docs_zh/adr/012-sqlite-phase-1-2-primary-store.md           | 已解决：ADR-012 已改写为 `Ring 1 MVP / Ring 2 readiness` 语义，不再以 Phase 1a/1b 作为现行边界                                                                                |
+| R8-72 | P1     | docs_zh/adr/013-eventemitter-phase-2-boundary.md            | 已解决：ADR-013 已把边界切到 Ring 语义，并移除已失效的 “Phase 2 是否替换” 触发器                                                                                                |
+| R8-73 | P2     | docs_zh/contracts/typed_event_bus_contract.md §3A           | 已解决：typed event bus contract 已把 OAPEFLIR 事件命名收敛到 `oapeflir.view.* / oapeflir.rationale.*`，truth 关联切到 `harnessRunId + aggregate`                         |
+| R8-74 | P2     | docs_zh/adr/072-oapeflir-testing-strategy.md                | 已解决：ADR-072 已改为验证 `HarnessRun / NodeRun / NodeAttemptReceipt` truth 与 `oapeflir.view.*` 投影连续性，并移除不存在测试目录的既成事实引用                           |
+| R8-75 | P2     | docs_zh/contracts/runtime_state_machine_contract.md §1A     | 已解决：runtime state machine contract 已把 `OapeflirStageView` 明确为 projection-only，不再把 OAPEFLIR 当工作流状态机                                                        |
+| R8-76 | P2     | docs_zh/adr/002-division-system.md                          | 已解决：ADR-002 已标记 superseded，`division` 仅保留历史 alias，现行主体切到 `DomainDescriptor + OrgUnit`                                                                     |
+| R8-77 | P2     | docs_zh/contracts/task_and_workflow_contract.md             | 已解决：task/workflow contract 已改为 `domain_id` + `legacy_division_alias`，不再把 `division_id` 当 canonical workflow 锚点                                                  |
 
 
 ### 45. 执行平面深层缺陷（Lease / Dispatch / State-Transition / Delegation）
@@ -1209,26 +1209,26 @@
 
 | #      | 严重度 | 文件/位置                                                         | 问题                                                                                                                    |
 | ------ | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| R16-75 | P0     | adr/060-explicit-planning-hub.md                                  | 定义独立 Plan DTO(steps+dag) 与 ADR-109 冻结的 PlanGraphBundle 矛盾——两个活跃执行计划类型并存                           |
+| R16-75 | P0     | adr/060-explicit-planning-hub.md                                  | 已解决：ADR-060 已把 `PlanGraphBundle` 定为唯一 P3→P4 handoff，旧 `Plan DTO` 不再作为 active canonical contract              |
 | R16-76 | P0     | adr/060:59 + runtime-execute-bridge.ts:199                        | RuntimeExecuteBridge.executePlan() 仍接受旧 Plan 类型非 PlanGraphBundle——代码实际走废弃路径                             |
 | R16-77 | P0     | src/platform/contracts/execution-plan/index.ts                    | ExecutionPlan 仍导出+有 createExecutionPlan() 工厂——ADR-109 已明确禁止                                                  |
 | R16-78 | P0     | src/platform/contracts/control-directive/index.ts                 | ControlDirective 仍导出+有工厂——ADR-109 已禁止                                                                          |
 | R16-79 | P0     | src/platform/contracts/state-command/index.ts                     | StateCommand 仍导出+有工厂——ADR-109 已禁止                                                                              |
 | R16-80 | P1     | contracts/artifact_unified_model_contract.md:22                   | OAPEFLIR stages 列 "Rollout" 非 "Release"(ADR-091 已改名)                                                               |
 | R16-81 | P1     | contracts/context_compaction_and_overflow_contract.md:139         | OAPEFLIR stage 表用 "Rollout"+RolloutRecord(应为 Release)                                                               |
-| R16-82 | P1     | contracts/release_rollout_and_rollback_contract.md:8              | Contract 标题混淆 Rollout(机制) 与 Release(阶段)                                                                        |
+| R16-82 | P1     | contracts/release_rollout_and_rollback_contract.md:8              | 已解决：release contract 标题与正文都已回写为 `Release` 阶段语义，`Rollout` 仅保留为受控发布机制                           |
 | R16-83 | P1     | 40+ contracts                                                     | 锅炉板 OAPEFLIR 块用 "改进候选评估与 rollout"——大规模术语过时                                                           |
 | R16-84 | P1     | adr/093 vs harness/index.ts:57-77                                 | ConstraintPack 缺 sandbox_requirement/approval_requirement/budget_envelope(ADR-093 要求)                                |
-| R16-85 | P1     | contracts/task-intake-request-contract.md:56                      | ConfirmedTaskSpec 引用 ConstraintPackRef 但类型无 ref/ID 字段——inline struct 非可引用实体                               |
+| R16-85 | P1     | contracts/task-intake-request-contract.md:56                      | 已解决：`ConstraintPackRef` 已冻结为 `constraint_pack:${id}` 字符串引用类型                                               |
 | R16-86 | P1     | architecture/05-cross-platform-ui-architecture.md:7               | UI 架构基线为 00-platform-architecture v3.2——当前已 v4.3，UI arch 未 re-baseline                                        |
 | R16-87 | P1     | adr/063 + contracts/behavior_drift_detection_contract.md          | ADR 定义4种 drift type+统计检测——代码仅有 golden-test regression；DriftDetector/DriftAlert/DriftMitigationAction 不存在 |
-| R16-88 | P1     | contracts/event_bus_contract.md:84 + event-envelope-contract.md:7 | release._ 事件既非 platform._(truth) 也非 oapeflir.view.\*(projection)——命名空间未定义                                  |
+| R16-88 | P1     | contracts/event_bus_contract.md:84 + event-envelope-contract.md:7 | 已解决：truth release 事件已统一为 `platform.release.*`，裸 `release.*` 仅保留为历史/adapter 输入                         |
 | R16-89 | P1     | event-registry.ts:73-109                                          | Event producers 注册为 workflow_runtime 非 platform.\* namespace——不遵循 canonical 命名                                 |
-| R16-90 | P1     | adr/060:108                                                       | 引用 src/core/planning/ 但路径不存在(实际为 src/platform/orchestration/)                                                |
-| R16-91 | P1     | architecture §19                                                  | Agent handoff/delegation 无专属 contract(ADR-019 定义4层协议但无 agent_handoff_contract.md)                             |
+| R16-90 | P1     | adr/060:108                                                       | 已解决：ADR-060 已移除 `src/core/planning/` 旧路径引用，并明确落点为 `src/platform/orchestration/`                        |
+| R16-91 | P1     | architecture §19                                                  | 已解决：已新增 `docs_zh/contracts/agent_handoff_contract.md` 作为 handoff/delegation 专属 contract                         |
 | R16-92 | P1     | architecture §68                                                  | Multimodal video pipeline 无 contract(multimodal_gateway_contract.md 缺 video scene/keyframe/transcript)                |
 | R16-93 | P1     | src/platform/contracts/types/platform-contracts.ts:70             | ExecutionPlan 完整接口(budget/steps/fallback) 与 PlanGraphBundle 并行——同包两套竞争类型                                 |
-| R16-94 | P2     | adr/072-oapeflir-testing-strategy.md:18                           | 引用 tests/security/、tests/chaos/、tests/performance/ 但目录不存在                                                     |
+| R16-94 | P2     | adr/072-oapeflir-testing-strategy.md:18                           | 已解决：ADR-072 已把现存测试根收敛为 `tests/unit|integration|golden|e2e|invariants`，不存在目录不再被当成既有事实       |
 | R16-95 | P2     | adr/003-memory-seven-layers.md                                    | 文件名 "seven-layers" 但内容/标题为 "六层"——ADR-007 交叉引用为 "六层" 链接到此文件                                      |
 | R16-96 | P2     | architecture §62                                                  | Edge runtime contract 不引用 RunVersionLock——离线节点无版本锁冻结语义                                                   |
 ### §79 Model Gateway 深层缺陷
@@ -1324,26 +1324,26 @@
 
 | #      | 严重度 | 文件/位置                                                         | 问题                                                                                                                    |
 | ------ | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| R16-75 | P0     | adr/060-explicit-planning-hub.md                                  | 定义独立 Plan DTO(steps+dag) 与 ADR-109 冻结的 PlanGraphBundle 矛盾——两个活跃执行计划类型并存                           |
+| R16-75 | P0     | adr/060-explicit-planning-hub.md                                  | 已解决：ADR-060 已把 `PlanGraphBundle` 定为唯一 P3→P4 handoff，旧 `Plan DTO` 不再作为 active canonical contract              |
 | R16-76 | P0     | adr/060:59 + runtime-execute-bridge.ts:199                        | RuntimeExecuteBridge.executePlan() 仍接受旧 Plan 类型非 PlanGraphBundle——代码实际走废弃路径                             |
 | R16-77 | P0     | src/platform/contracts/execution-plan/index.ts                    | ExecutionPlan 仍导出+有 createExecutionPlan() 工厂——ADR-109 已明确禁止                                                  |
 | R16-78 | P0     | src/platform/contracts/control-directive/index.ts                 | ControlDirective 仍导出+有工厂——ADR-109 已禁止                                                                          |
 | R16-79 | P0     | src/platform/contracts/state-command/index.ts                     | StateCommand 仍导出+有工厂——ADR-109 已禁止                                                                              |
 | R16-80 | P1     | contracts/artifact_unified_model_contract.md:22                   | OAPEFLIR stages 列 "Rollout" 非 "Release"(ADR-091 已改名)                                                               |
 | R16-81 | P1     | contracts/context_compaction_and_overflow_contract.md:139         | OAPEFLIR stage 表用 "Rollout"+RolloutRecord(应为 Release)                                                               |
-| R16-82 | P1     | contracts/release_rollout_and_rollback_contract.md:8              | Contract 标题混淆 Rollout(机制) 与 Release(阶段)                                                                        |
+| R16-82 | P1     | contracts/release_rollout_and_rollback_contract.md:8              | 已解决：release contract 标题与正文都已回写为 `Release` 阶段语义，`Rollout` 仅保留为受控发布机制                           |
 | R16-83 | P1     | 40+ contracts                                                     | 锅炉板 OAPEFLIR 块用 "改进候选评估与 rollout"——大规模术语过时                                                           |
 | R16-84 | P1     | adr/093 vs harness/index.ts:57-77                                 | ConstraintPack 缺 sandbox_requirement/approval_requirement/budget_envelope(ADR-093 要求)                                |
-| R16-85 | P1     | contracts/task-intake-request-contract.md:56                      | ConfirmedTaskSpec 引用 ConstraintPackRef 但类型无 ref/ID 字段——inline struct 非可引用实体                               |
+| R16-85 | P1     | contracts/task-intake-request-contract.md:56                      | 已解决：`ConstraintPackRef` 已冻结为 `constraint_pack:${id}` 字符串引用类型                                               |
 | R16-86 | P1     | architecture/05-cross-platform-ui-architecture.md:7               | UI 架构基线为 00-platform-architecture v3.2——当前已 v4.3，UI arch 未 re-baseline                                        |
 | R16-87 | P1     | adr/063 + contracts/behavior_drift_detection_contract.md          | ADR 定义4种 drift type+统计检测——代码仅有 golden-test regression；DriftDetector/DriftAlert/DriftMitigationAction 不存在 |
-| R16-88 | P1     | contracts/event_bus_contract.md:84 + event-envelope-contract.md:7 | release._ 事件既非 platform._(truth) 也非 oapeflir.view.\*(projection)——命名空间未定义                                  |
+| R16-88 | P1     | contracts/event_bus_contract.md:84 + event-envelope-contract.md:7 | 已解决：truth release 事件已统一为 `platform.release.*`，裸 `release.*` 仅保留为历史/adapter 输入                         |
 | R16-89 | P1     | event-registry.ts:73-109                                          | Event producers 注册为 workflow_runtime 非 platform.\* namespace——不遵循 canonical 命名                                 |
-| R16-90 | P1     | adr/060:108                                                       | 引用 src/core/planning/ 但路径不存在(实际为 src/platform/orchestration/)                                                |
-| R16-91 | P1     | architecture §19                                                  | Agent handoff/delegation 无专属 contract(ADR-019 定义4层协议但无 agent_handoff_contract.md)                             |
+| R16-90 | P1     | adr/060:108                                                       | 已解决：ADR-060 已移除 `src/core/planning/` 旧路径引用，并明确落点为 `src/platform/orchestration/`                        |
+| R16-91 | P1     | architecture §19                                                  | 已解决：已新增 `docs_zh/contracts/agent_handoff_contract.md` 作为 handoff/delegation 专属 contract                         |
 | R16-92 | P1     | architecture §68                                                  | Multimodal video pipeline 无 contract(multimodal_gateway_contract.md 缺 video scene/keyframe/transcript)                |
 | R16-93 | P1     | src/platform/contracts/types/platform-contracts.ts:70             | ExecutionPlan 完整接口(budget/steps/fallback) 与 PlanGraphBundle 并行——同包两套竞争类型                                 |
-| R16-94 | P2     | adr/072-oapeflir-testing-strategy.md:18                           | 引用 tests/security/、tests/chaos/、tests/performance/ 但目录不存在                                                     |
+| R16-94 | P2     | adr/072-oapeflir-testing-strategy.md:18                           | 已解决：ADR-072 已把现存测试根收敛为 `tests/unit|integration|golden|e2e|invariants`，不存在目录不再被当成既有事实       |
 | R16-95 | P2     | adr/003-memory-seven-layers.md                                    | 文件名 "seven-layers" 但内容/标题为 "六层"——ADR-007 交叉引用为 "六层" 链接到此文件                                      |
 | R16-96 | P2     | architecture §62                                                  | Edge runtime contract 不引用 RunVersionLock——离线节点无版本锁冻结语义                                                   |
 
@@ -3490,7 +3490,7 @@
 | 2061 | P1     | docs_zh/adr/073-unified-resource-model.md                      | 将 TaskRecord/WorkflowState 列为"canonical objects"——spec §5.5 定义为 non-authoritative 投影 |
 | 2062 | P1     | docs_zh/adr/054-sla-tiered-guarantees.md                       | platinum 99.99% 无 failover/quorum/演练前提——spec §2.5 禁止                                  |
 | 2063 | P1     | docs_zh/adr/026-risk-control-architecture.md                   | 风险因子名/权重与 spec §10.2 八因子不匹配——因子已重命名重加权                                |
-| 2064 | P1     | docs_zh/adr/066-\*.md                                          | ADR-066 编号重复(compliance-report + plugin-spi)——违反唯一性                                 |
+| 2064 | P1     | docs_zh/adr/066-\*.md                                          | 已解决：Plugin SPI ADR 已迁移为 `ADR-071`，重复编号已消除并由文档测试守护                         |
 | 2065 | P2     | docs_zh/adr/060-explicit-planning-hub.md                       | 引用 RuntimeExecuteBridge——不存在于任何 contract/spec                                        |
 | 2066 | P2     | docs_zh/contracts/domain_descriptor_and_onboarding_contract.md | DomainDescriptor 缺 latency_tier——ADR-105 要求                                               |
 | 2067 | P2     | docs_zh/contracts/cost_and_budget_contract.md                  | BudgetPolicy 含 max_steps——应为 max_node_runs                                                |

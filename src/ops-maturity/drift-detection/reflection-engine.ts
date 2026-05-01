@@ -39,8 +39,11 @@ export class SimpleReflectionEngine implements ReflectionEngine {
 
     // Generate reflection for each taskType with sufficient evidence
     for (const [taskType, records] of byTaskType) {
-      // §20: require minimum sample size for meaningful correlation
-      if (records.length >= 2) {
+      // R16-36 FIX #2110: Single serious security events must not be ignored.
+      // Security violations are critical and require immediate reflection even if n=1.
+      const hasSecurityFailure = records.some((r) => r.failureMode?.includes("security") || r.failureMode?.includes("forbidden"));
+
+      if (hasSecurityFailure || records.length >= 2) {
         // Separate successes and failures for correlation analysis
         const successes = records.filter((r) => r.success);
         const failures = records.filter((r) => !r.success);

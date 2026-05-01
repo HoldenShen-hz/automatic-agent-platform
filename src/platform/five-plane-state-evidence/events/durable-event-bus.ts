@@ -46,7 +46,7 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
  * Active subscriptions poll for newly persisted tier-1 events so cross-instance
  * publishers do not rely on subscription-time races.
  *
- * R16-36 FIX: Reduced from 10ms to 100ms to reduce unnecessary CPU usage.
+ * R20-36 FIX: Reduced from 10ms to 100ms to reduce unnecessary CPU usage.
  * 100ms provides sufficient responsiveness while avoiding 100 ops/sec/consumer
  * overhead when idle. This is still well within the §25.3 requirement.
  */

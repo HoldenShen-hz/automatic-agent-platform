@@ -94,10 +94,11 @@ const WORKFLOW_TRANSITIONS: Record<WorkflowStatus, readonly WorkflowStatus[]> = 
  * Sessions track the interaction context between agent and user. They can pause
  * (e.g., when waiting for user input) and resume. The "open" state is the initial
  * state; sessions can return to open for recovery scenarios.
+ * R37-2149: Added "paused" as inbound transition target from "streaming" state.
  */
 const SESSION_TRANSITIONS: Record<SessionStatus, readonly SessionStatus[]> = {
   open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
-  streaming: ["awaiting_user", "completed", "failed", "cancelled", "open"],
+  streaming: ["awaiting_user", "completed", "failed", "cancelled", "open", "paused"],
   awaiting_user: ["streaming", "completed", "failed", "cancelled"],
   paused: ["streaming", "completed", "failed", "cancelled"],
   completed: [],

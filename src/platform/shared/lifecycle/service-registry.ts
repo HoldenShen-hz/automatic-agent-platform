@@ -117,16 +117,12 @@ export class ServiceRegistry {
    * then resets the singleton so the next getInstance() returns a fresh registry.
    */
   public async reset(): Promise<void> {
+    // Teardown services first (they may need access to other services during teardown)
     const teardownEntries = [...this.instances].map(([name, instance]) => ({
       name,
       instance,
       registration: this.services.get(name),
     }));
-    this.instances.clear();
-    this.services.clear();
-    this.initializing.clear();
-    ServiceRegistry.liveRegistries.delete(this);
-    ServiceRegistry._instance = null;
 
     const pending: Promise<void>[] = [];
     for (const { name, instance, registration } of teardownEntries) {
@@ -144,6 +140,13 @@ export class ServiceRegistry {
       }
     }
     await Promise.all(pending);
+
+    // Only clear after teardown completes
+    this.instances.clear();
+    this.services.clear();
+    this.initializing.clear();
+    ServiceRegistry.liveRegistries.delete(this);
+    ServiceRegistry._instance = null;
   }
 
   /**
@@ -240,7 +243,6 @@ export class ServiceRegistry {
     // Get services in reverse topological order (dependents first)
     const sorted = this.topologicalSort();
     const reversed = [...sorted].reverse();
-    const pending: Promise<void>[] = [];
 
     for (const name of reversed) {
       const instance = this.instances.get(name);
@@ -250,9 +252,9 @@ export class ServiceRegistry {
           try {
             const result = registration.teardown(instance);
             if (result instanceof Promise) {
-              pending.push(result.catch((err: unknown) => {
+              await result.catch((err: unknown) => {
                 logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
-              }));
+              });
             }
           } catch (err) {
             logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
@@ -261,7 +263,6 @@ export class ServiceRegistry {
       }
     }
     this.instances.clear();
-    await Promise.all(pending);
   }
 
   /**

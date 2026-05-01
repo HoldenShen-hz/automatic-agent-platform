@@ -22,6 +22,7 @@ import type { MemoryRecord } from "../../contracts/types/domain.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import {
   getLayerMetadata,
+  mapScopeToSixLayer,
   type SixLayerMemoryType,
 } from "./layer-transition-service.js";
 
@@ -202,7 +203,12 @@ export class MemoryDecayService {
    * Gets the decay configuration for a memory's layer
    */
   public getDecayConfig(memory: MemoryRecord): DecayConfig {
-    const layerMeta = getLayerMetadata(memory.scope as SixLayerMemoryType);
+    // R5-48 FIX: mapScopeToSixLayer() must be called to convert scope string
+    // (e.g., "project", "workspace") to SixLayerMemoryType before passing to
+    // getLayerMetadata(). Previously passed memory.scope directly which bypassed
+    // the scope→layer mapping, causing "project" and other real scopes to fall
+    // back to session decay rate instead of their proper layer rates.
+    const layerMeta = getLayerMetadata(mapScopeToSixLayer(memory.scope));
     if (layerMeta) {
       const config = this.decayConfigs[layerMeta.layer];
       if (config) {

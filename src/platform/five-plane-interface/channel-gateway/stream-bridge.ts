@@ -322,6 +322,18 @@ export class StreamBridge {
   }
 
   /**
+   * R20-35: Disposes the stream bridge and cleans up all streams.
+   * Call this during shutdown to prevent per-stream maps from growing unbounded.
+   */
+  public dispose(): void {
+    this.nextSequenceByStream.clear();
+    this.replayBuffer.clear();
+    this.droppedBeforeSequenceByStream.clear();
+    this.connectedClientsByStream.clear();
+    this.transportStateByStream.clear();
+  }
+
+  /**
    * Updates a client's last acknowledged sequence number.
    * Called by clients to report their cursor position.
    * @param clientId - Unique identifier for the client

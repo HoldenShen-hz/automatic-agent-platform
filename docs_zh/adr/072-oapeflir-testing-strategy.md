@@ -23,8 +23,8 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 │                    Unit Tests                                │
 │   (tests/unit/{module}/*.test.ts)                           │
 ├─────────────────────────────────────────────────────────────┤
-│               Security / Chaos / Performance                │
-│   (tests/security/, tests/chaos/, tests/performance/)       │
+│          Invariants / Docs / Targeted Risk Checks           │
+│   (tests/invariants/*.test.ts, tests/unit/docs/*.test.ts)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -81,22 +81,28 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 验证: FactLayer 无敏感信息泄露
 ```
 
-### 4. 性能基准目标
+### 4. 性能目标与专用基准落地点
 
 ## v4.3 ADR Remediation
 
 - A-66: 本 ADR 原先把 OAPEFLIR 测试描述成“无阶段被跳过”的可执行主链，并使用“失败步骤后继续”表述 replan，根因是测试策略 ADR 把认知阶段视图和 runtime 执行图混在了一起。修复：正文现把 OAPEFLIR 限定为 view 连续性验证，把恢复/重规划锚点切到 `GraphPatch / NodeRun`。
 - R8-74: 测试目标已改写为 `HarnessRun / NodeRun / NodeAttemptReceipt` truth + `oapeflir.view.*` 投影连续性，不再把 OAPEFLIR 本身表述为独立执行管线。
+- R16-94: 本 ADR 之前把 `tests/security/`、`tests/chaos/`、`tests/performance/` 写成既有目录，根因是把规划中的专项测试资产误写成已落地事实。修复：正文现在只把 `tests/unit/`、`tests/integration/`、`tests/golden/`、`tests/e2e/`、`tests/invariants/` 作为现存权威测试根；专项性能/安全/混沌套件只能在目录和 CI 真正落地后再宣称存在。
 
-| 模块 | 操作 | P99 目标 | 测试文件 |
-|------|------|---------|---------|
-| Feedback | signal-preprocessor.preprocess() | <10ms | tests/performance/feedback-perf.test.ts |
-| Knowledge | knowledge-query-service.query() (Quick) | <100ms | tests/performance/knowledge-perf.test.ts |
-| Knowledge | knowledge-retrieval.retrieve() (Standard) | <500ms | tests/performance/knowledge-perf.test.ts |
-| Planning | plan-builder.build() | <50ms | tests/performance/planning-perf.test.ts |
-| OAPEFLIR | 完整循环 O→A→P→E→F | <30s | tests/performance/oapeflir-perf.test.ts |
-| Handoff | handoff-serializer.serialize() | <5ms | tests/performance/handoff-perf.test.ts |
-| Plugin | plugin-spi-registry.invoke() | <200ms | tests/performance/plugin-perf.test.ts |
+| 模块 | 操作 | P99 目标 | 当前验证入口 |
+|------|------|---------|-------------|
+| Feedback | signal-preprocessor.preprocess() | <10ms | 由对应模块定向单测或后续专用基准承载 |
+| Knowledge | knowledge-query-service.query() (Quick) | <100ms | 由对应模块定向单测或后续专用基准承载 |
+| Knowledge | knowledge-retrieval.retrieve() (Standard) | <500ms | 由对应模块定向单测或后续专用基准承载 |
+| Planning | plan-builder.build() | <50ms | 由对应模块定向单测或后续专用基准承载 |
+| Runtime + OAPEFLIR View | `HarnessRun` truth 与 `oapeflir.view.*` 投影连续性 | <30s | 当前以集成测试与 `tests/invariants/` 不变量守护为主 |
+| Handoff | handoff-serializer.serialize() | <5ms | 由 handoff 相关单测与不变量测试承载 |
+| Plugin | plugin-spi-registry.invoke() | <200ms | 由 plugin SPI 相关单测与不变量测试承载 |
+
+注：
+
+- 当前仓内已存在的权威测试根只有 `tests/unit/`、`tests/integration/`、`tests/golden/`、`tests/e2e/`、`tests/invariants/`。
+- 若后续新增 dedicated `performance` / `security` / `chaos` 套件，必须连同目录、测试文件与 CI 接线一起落地，不能只在 ADR 中预声明路径。
 
 ### 5. 安全测试覆盖
 
@@ -134,8 +140,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 - 新增 `tests/unit/{module}/` 目录结构。
 - 新增 `tests/integration/` 集成测试文件。
 - 新增 `tests/golden/` Golden path 测试。
-- 新增 `tests/performance/` 性能基准测试。
-- 新增 `tests/security/` 安全回归测试。
+- 可在后续单独落地 dedicated 性能/安全/混沌套件，但必须先创建真实目录、测试文件和 CI 接线后再更新 ADR。
 - `npm test` 必须全量通过作为生产就绪门禁。
 
 ## 交叉引用

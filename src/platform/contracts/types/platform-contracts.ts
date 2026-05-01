@@ -45,6 +45,12 @@ export {
   createSideEffectRecord,
 } from "../executable-contracts/index.js";
 
+// PlatformFactEvent and OapeflirViewEvent - canonical event types per §28.1
+export {
+  type PlatformFactEvent,
+  type OapeflirViewEvent,
+} from "../executable-contracts/index.js";
+
 // =============================================================================
 // Re-exports from control-directive (canonical directives per §4.3)
 // =============================================================================
@@ -151,41 +157,6 @@ export interface SideEffectExpectation {
   readonly reversible: boolean;
 }
 
-export interface ExecutionPlanBudget {
-  readonly maxSteps: number;
-  readonly maxDurationMs: number;
-  readonly maxCost: number;
-}
-
-export interface ExecutionReceiptErrorDetail {
-  readonly code: string;
-  readonly message: string;
-  readonly retryable: boolean;
-}
-
-export type StateCommandType =
-  | "update_truth"
-  | "append_event"
-  | "write_checkpoint"
-  | "store_artifact";
-
-/**
- * @deprecated StateCommand is deprecated per §5.3. Use inter-plane commands from executable-contracts instead.
- * This interface is retained for legacy adapter compatibility only.
- */
-export interface StateCommand<TPayload = unknown> {
-  readonly commandId: string;
-  readonly traceId: string;
-  readonly principal: PlatformPrincipal;
-  readonly leaseId: string;
-  readonly fencingToken: string;
-  readonly event: string;
-  readonly type: StateCommandType;
-  readonly aggregateId: string;
-  readonly expectedVersion: number;
-  readonly payload: TPayload;
-}
-
 export interface EvidenceRecord {
   readonly recordId: string;
   readonly traceId: string;
@@ -257,36 +228,6 @@ export function createRequestEnvelope<TPayload>(input: {
     timestamp: input.timestamp ?? nowIso(),
     payload: input.payload,
     metadata: stringifyRecord(input.metadata),
-  };
-}
-
-/**
- * @deprecated StateCommand factory is deprecated per §5.3.
- * Use inter-plane commands from executable-contracts instead.
- */
-export function createStateCommand<TPayload>(input: {
-  traceId: string;
-  principal: PlatformPrincipal;
-  leaseId: string;
-  fencingToken: string;
-  event: string;
-  type: StateCommandType;
-  aggregateId: string;
-  expectedVersion: number;
-  payload: TPayload;
-  commandId?: string;
-}): StateCommand<TPayload> {
-  return {
-    commandId: input.commandId ?? newId("statecmd"),
-    traceId: input.traceId,
-    principal: input.principal,
-    leaseId: input.leaseId,
-    fencingToken: input.fencingToken,
-    event: input.event,
-    type: input.type,
-    aggregateId: input.aggregateId,
-    expectedVersion: input.expectedVersion,
-    payload: input.payload,
   };
 }
 

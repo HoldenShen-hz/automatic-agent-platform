@@ -227,11 +227,20 @@ export class DelegationGovernanceService {
     if (condition.targetAgentType && request.delegationSpec.targetAgentType !== condition.targetAgentType) {
       return false;
     }
+    // #2185 P1: delegationDepth check uses parent depth, not child depth
+    // depth condition should match when child depth (parentDepth+1) >= condition.delegationDepth
+    // But actually for delegation chain, we check parent depth so parent can delegate at certain depth
+    // This was inverted - should check (parentDepth + 1) >= condition for child to be created
+    // For now, fix the logic so it doesn't short-circuit other conditions
     if (condition.delegationDepth !== undefined) {
+      // Only match if parent depth is AT or ABOVE the threshold (not below)
+      // Delegation allowed if depth < threshold
       if (request.parentContext.delegationDepth >= condition.delegationDepth) {
-        return true;
+        // Don't short-circuit - continue to check other conditions with AND semantics
+        // But since we can't check other conditions here, we return false when depth exceeded
+        // because exceeding depth is a hard deny
+        return false;
       }
-      return false;
     }
     if (condition.permissionActions && condition.permissionActions.length > 0) {
       const hasPermission = condition.permissionActions.some(

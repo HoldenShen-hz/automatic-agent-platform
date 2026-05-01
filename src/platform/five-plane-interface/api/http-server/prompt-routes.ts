@@ -9,7 +9,7 @@ const promptBundleRequestSchema = z.object({
   level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
   domain: z.string().optional(),
   packId: z.string().optional(),
-}).passthrough();
+}).strict();
 
 export interface PromptRouteDeps {
   authService: ApiAuthService | null;
@@ -68,7 +68,10 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         const domain = readQueryParam(ctx.request, "domain", { maxLength: 128 });
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });
         const bundle = deps.promptRegistryService.getBundle(name, taskType, packId, domain);
-        return buildJsonResponse(ctx.requestId, bundle ? 200 : 404, { bundle });
+        if (!bundle) {
+          return buildJsonResponse(ctx.requestId, 404, { error: { code: "prompt.bundle_not_found", message: `Bundle ${name} not found.` } });
+        }
+        return buildJsonResponse(ctx.requestId, 200, { bundle });
       },
     },
     {
@@ -83,12 +86,19 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         const name = decodeURIComponent(ctx.route.segments[2] ?? "");
         const payload = readJsonBody(ctx.request.body) as Record<string, unknown>;
         const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
+        const domain = payload.domain as string | undefined;
+        const packId = payload.packId as string | undefined;
+        // R20-23: Check if bundle exists before deprecating
+        const existing = deps.promptRegistryService.getBundle(name, String(payload.version ?? ""), packId, domain);
+        if (!existing) {
+          return buildJsonResponse(ctx.requestId, 404, { error: { code: "prompt.bundle_not_found", message: `Bundle ${name} not found.` } });
+        }
         deps.promptRegistryService.deprecateBundle(
           name,
           String(payload.version ?? ""),
           level,
-          payload.domain as string | undefined,
-          payload.packId as string | undefined,
+          domain,
+          packId,
         );
         return buildJsonResponse(ctx.requestId, 200, { deprecated: true, name });
       },

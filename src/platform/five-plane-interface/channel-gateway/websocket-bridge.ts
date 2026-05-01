@@ -394,6 +394,8 @@ export class WebSocketBridge {
 
     // §7.1: Remove from slow consumer tracking
     this.slowConsumers.delete(ws);
+    // R20-33: Remove all listeners to prevent listener leak
+    ws.removeAllListeners();
     this.clients.delete(ws);
 
     logger.info("WebSocket client disconnected", {
@@ -619,15 +621,23 @@ export class WebSocketBridge {
 
   /**
    * Close all connections and shut down the WebSocket server.
+   * R20-34: Added timeout to prevent misbehaving clients from stalling shutdown.
    */
   async close(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        // Force close even if clients don't respond
+        logger.warn("WebSocket bridge close timeout, forcing shutdown");
+        resolve();
+      }, 5000);
+
       // Close all client connections
       for (const [ws] of Array.from(this.clients.entries())) {
         ws.close(1001, "Server shutting down");
       }
 
       this.wss.close(() => {
+        clearTimeout(timeout);
         logger.info("WebSocket bridge closed");
         resolve();
       });

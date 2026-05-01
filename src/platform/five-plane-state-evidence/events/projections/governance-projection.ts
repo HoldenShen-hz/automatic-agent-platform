@@ -461,7 +461,12 @@ export const governanceProjectionHandler: ProjectionHandler = (
       break;
 
     default:
-      // No specific handling
+      // R20-10: Unknown approval/decision events should NOT default to approval_granted
+      // Set status to "denied" if the event type suggests it, otherwise leave actionType null
+      if (eventType.includes("rejected") || eventType.includes("denied") || eventType.includes("expired") || eventType.includes("cancelled")) {
+        newState.status = "denied";
+        newState.approved = false;
+      }
       break;
   }
 

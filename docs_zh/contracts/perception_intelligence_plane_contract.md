@@ -70,7 +70,7 @@
 
 - `execution_id`
 - `correctness_score`：feedback.signals 中 failure category 比例（0-1）
-- `completeness_score`：steps completed / total steps（0-1）
+- `completeness_score`：node_runs completed / total node_runs（0-1）
 - `efficiency_score`：实际 tokens / 预期 budget 比值（0-1）
 - `safety_score`：tool permission denial / sandbox violation signals（0-1）
 - `overall_score`：加权平均 (correctness:0.3, completeness:0.3, efficiency:0.2, safety:0.2)

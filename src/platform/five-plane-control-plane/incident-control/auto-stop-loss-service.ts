@@ -799,14 +799,66 @@ export class AutoStopLossService {
 
     if (approved) {
       event.humanApproved = true;
-      event.completedAt = nowIso();
-      delete event.errorMessage;
+      // Re-execute the playbook actions now that human approval is granted
+      // Find the playbook to get its actions
+      const playbook = this.playbooks.get(event.playbookId);
+      if (playbook) {
+        // Execute the playbook actions asynchronously
+        void this.executeApprovedPlaybook(playbook, event).catch((err) => {
+          event.success = false;
+          event.errorMessage = err instanceof Error ? err.message : String(err);
+          event.completedAt = nowIso();
+        });
+      }
       return true;
     } else {
       event.completedAt = nowIso();
       event.success = false;
       event.errorMessage = "Rejected by human";
       return true;
+    }
+  }
+
+  /**
+   * Executes a playbook's actions after human approval is granted.
+   */
+  private async executeApprovedPlaybook(
+    playbook: StopLossPlaybook,
+    event: StopLossEvent,
+  ): Promise<void> {
+    const actionsExecuted: StopLossAction[] = [];
+    let allSuccess = true;
+    let errorMessage: string | undefined;
+
+    // Execute each action
+    for (const action of playbook.actions) {
+      const handler = this.actionHandlers.get(action);
+      if (!handler) {
+        errorMessage = `No handler for action: ${action}`;
+        allSuccess = false;
+        break;
+      }
+
+      try {
+        const result = await handler({ playbookId: playbook.id, reason: event.triggerReason });
+        if (!result.success) {
+          errorMessage = result.message;
+          allSuccess = false;
+          break;
+        }
+        actionsExecuted.push(action);
+      } catch (err) {
+        errorMessage = err instanceof Error ? err.message : String(err);
+        allSuccess = false;
+        break;
+      }
+    }
+
+    event.actionsExecuted = actionsExecuted;
+    event.completedAt = nowIso();
+    event.success = allSuccess;
+    if (errorMessage !== undefined) {
+      event.errorMessage = errorMessage;
     }
   }
 

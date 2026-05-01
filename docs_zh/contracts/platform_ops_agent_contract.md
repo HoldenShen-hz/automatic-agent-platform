@@ -22,12 +22,16 @@
 
 ## 4. 成熟度等级
 
-`OpsMaturityLevel` 固定为：
+`OpsMaturityLevel` 必须与 canonical runtime modes 对齐，采用 8 级模型（对应 §42.1 自治等级）：
 
-- `observe_only`
-- `suggest_only`
-- `supervised_execution`
-- `trusted_automation`
+- `manual_only` (0) - 仅人工操作
+- `suggestion` (1) - 仅提供建议
+- `supervised` (2) - 人工监督执行
+- `semi_auto` (3) - 半自动执行
+- `trusted_auto` (4) - 受信任自动执行
+- `full_auto` (5) - 完全自动执行
+- `high_auto` (6) - 高等风险自动执行
+- `unrestricted_auto` (7) - 无限制自动执行
 
 ## 5. 规则
 

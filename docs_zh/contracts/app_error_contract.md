@@ -82,7 +82,8 @@
 - `ToolExecutionError`
 - `SandboxError`
 - `StorageError`
-- `WorkflowStateError`
+- `HarnessRunError`
+- `NodeRunError`
 - `RuntimeTimeoutError`
 - `TenantBoundaryError`
 - `MonetizationError`

@@ -135,12 +135,16 @@ export class MemoryService {
    */
   public remember(input: RememberMemoryInput): MemoryRecord {
     // V-02: Validate content size before processing
-    const contentSize = typeof input.content === "string"
-      ? input.content.length
-      : JSON.stringify(input.content).length;
-    if (contentSize > MemoryService.MAX_CONTENT_SIZE_BYTES) {
-      throw new MemoryError("memory.content_too_large", `Memory content size ${contentSize} exceeds maximum of ${MemoryService.MAX_CONTENT_SIZE_BYTES} bytes`, {
-        details: { contentSize, maxSize: MemoryService.MAX_CONTENT_SIZE_BYTES },
+    // R5-47 FIX: Calculate actual byte size using Buffer.byteLength() instead of
+    // .length which counts UTF-16 code units. CJK characters can be 3-4 bytes each,
+    // so ".length" underestimates actual memory usage and content > 1MB can pass.
+    const contentText = typeof input.content === "string"
+      ? input.content
+      : JSON.stringify(input.content);
+    const contentSizeBytes = Buffer.byteLength(contentText, "utf8");
+    if (contentSizeBytes > MemoryService.MAX_CONTENT_SIZE_BYTES) {
+      throw new MemoryError("memory.content_too_large", `Memory content size ${contentSizeBytes} bytes exceeds maximum of ${MemoryService.MAX_CONTENT_SIZE_BYTES} bytes`, {
+        details: { contentSizeBytes, maxSize: MemoryService.MAX_CONTENT_SIZE_BYTES },
       });
     }
 

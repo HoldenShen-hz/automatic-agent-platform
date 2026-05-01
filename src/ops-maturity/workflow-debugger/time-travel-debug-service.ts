@@ -239,20 +239,22 @@ export class TimeTravelDebugService {
     this.assertReplayAllowed();
 
     const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const currentIndex = session.currentEventIndex;
+    const fromIndex = session.currentEventIndex;
 
-    for (let i = currentIndex; i < Math.min(toEventIndex, events.length); i++) {
+    for (let i = fromIndex; i < Math.min(toEventIndex, events.length); i++) {
       const event = events[i]!;
       const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
       if (session.breakpoints.includes(nodeRunId)) {
         this.captureSnapshot(session, event, i);
-        session.currentEventIndex = i + 1;
-        return this.buildReplayState(session, session.currentEventIndex, true);
+        const newEventIndex = i + 1;
+        session.currentEventIndex = newEventIndex;
+        return this.buildReplayState(session, fromIndex, newEventIndex, true);
       }
     }
 
-    session.currentEventIndex = Math.min(toEventIndex, events.length);
-    return this.buildReplayState(session, session.currentEventIndex, false);
+    const finalEventIndex = Math.min(toEventIndex, events.length);
+    session.currentEventIndex = finalEventIndex;
+    return this.buildReplayState(session, fromIndex, finalEventIndex, false);
   }
 
   public replayStep(sessionId: string): ReplayState | null {
@@ -263,20 +265,22 @@ export class TimeTravelDebugService {
     this.assertReplayAllowed();
 
     const events = this.eventStore.get(session.harnessRunId) ?? [];
-    if (session.currentEventIndex >= events.length) {
-      return this.buildReplayState(session, session.currentEventIndex, false);
+    const fromIndex = session.currentEventIndex;
+    if (fromIndex >= events.length) {
+      return this.buildReplayState(session, fromIndex, fromIndex, false);
     }
 
-    const event = events[session.currentEventIndex]!;
+    const event = events[fromIndex]!;
     const nodeRunId = String(event.nodeRunId ?? event.stepId ?? "");
-    session.currentEventIndex++;
+    const newEventIndex = fromIndex + 1;
+    session.currentEventIndex = newEventIndex;
 
     const reachedBreakpoint = session.breakpoints.includes(nodeRunId);
     if (reachedBreakpoint) {
-      this.captureSnapshot(session, event, session.currentEventIndex - 1);
+      this.captureSnapshot(session, event, fromIndex);
     }
 
-    return this.buildReplayState(session, session.currentEventIndex, reachedBreakpoint);
+    return this.buildReplayState(session, fromIndex, newEventIndex, reachedBreakpoint);
   }
 
   public jumpToStep(sessionId: string, nodeRunId: string): ReplayState | null {
@@ -290,8 +294,10 @@ export class TimeTravelDebugService {
     const targetIndex = events.findIndex((e) => String(e.nodeRunId ?? e.stepId) === nodeRunId);
     if (targetIndex === -1) return null;
 
-    session.currentEventIndex = targetIndex + 1;
-    return this.buildReplayState(session, session.currentEventIndex, false);
+    const fromIndex = session.currentEventIndex;
+    const newEventIndex = targetIndex + 1;
+    session.currentEventIndex = newEventIndex;
+    return this.buildReplayState(session, fromIndex, newEventIndex, false);
   }
 
   public getSnapshot(sessionId: string, nodeRunId: string): DebugSnapshot | null {
@@ -359,21 +365,22 @@ export class TimeTravelDebugService {
 
   private buildReplayState(
     session: TimeTravelDebugSession,
-    currentEventIndex: number,
+    fromEventIndex: number,
+    toEventIndex: number,
     reachedBreakpoint: boolean,
   ): ReplayState {
     const events = this.eventStore.get(session.harnessRunId) ?? [];
-    const variables = this.getVariableState(session.sessionId, currentEventIndex);
+    const variables = this.getVariableState(session.sessionId, toEventIndex);
 
     return {
       cursor: {
         taskId: session.taskId,
         harnessRunId: session.harnessRunId,
         executionId: session.harnessRunId, // deprecated alias
-        fromEventIndex: session.currentEventIndex,
-        toEventIndex: currentEventIndex,
+        fromEventIndex,
+        toEventIndex,
       },
-      currentEventIndex,
+      currentEventIndex: toEventIndex,
       variables,
       reachedBreakpoint,
     };

@@ -341,6 +341,8 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
   // R4-30 (INV-FENCING): Extended fencing checks to all truth entities
   // Previously only NodeRun was checked; now we check all aggregate types
   const toStatus = command.toStatus as string;
+  // Issue #1899 P0: NodeRun→cancelled/aborted transitions from leased/running states
+  // must also require lease+fencing checks to prevent unauthorized cancellation
   const executionStatuses: readonly string[] = [
     "leased",
     "running",
@@ -349,16 +351,19 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     "reconciling",
     "succeeded",
     "failed",
+    "cancelled",
+    "aborted",
   ];
 
   // NodeRun always requires lease and fencing for execution transitions
+  // and terminal transitions (cancelled/aborted) from active execution states
   if (command.aggregateType === "NodeRun") {
     const nodeRun = command.aggregate as NodeRun;
     if (executionStatuses.includes(toStatus) && (command.leaseId == null || command.fencingToken == null)) {
       throw new WorkflowStateError(
         "runtime_state_machine.lease_and_fencing_required",
         "NodeRun execution transitions require an active lease and fencing token.",
-        { details: { nodeRunId: nodeRun.nodeRunId } },
+        { details: { nodeRunId: nodeRun.nodeRunId, toStatus } },
       );
     }
     if (nodeRun.leaseId != null && command.leaseId !== nodeRun.leaseId) {

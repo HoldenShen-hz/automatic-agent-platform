@@ -61,7 +61,24 @@ export function normalizeSandboxMode(mode: string | null | undefined): SandboxMo
   if (mode == null) {
     return "read_only";
   }
-  return SANDBOX_MODE_ALIASES[mode as keyof typeof SANDBOX_MODE_ALIASES] ?? "read_only";
+  // §171/R21-15: "none" sandbox tier must be explicitly rejected - no sandbox means no enforcement
+  if (mode === "none") {
+    throw new ValidationError(
+      "sandbox_policy.invalid_sandbox_tier",
+      "sandboxTier 'none' is not allowed - plugins without sandbox enforcement violate INV-POLICY-001 deny-by-default. Use 'read_only' for minimal access or 'restricted_exec' for controlled execution.",
+      { providedValue: mode },
+    );
+  }
+  const normalized = SANDBOX_MODE_ALIASES[mode as keyof typeof SANDBOX_MODE_ALIASES];
+  if (normalized !== undefined) {
+    return normalized;
+  }
+  // §171/R21-15: Unknown sandbox tier should not silently default - warn and reject
+  throw new ValidationError(
+    "sandbox_policy.invalid_sandbox_tier",
+    `Unknown sandboxTier '${mode}' is not a recognized mode. Valid modes: read_only, workspace_write, restricted_exec`,
+    { providedValue: mode },
+  );
 }
 
 /**

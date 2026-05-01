@@ -67,7 +67,87 @@ export interface RegionLeaderState {
 }
 
 /**
- * §52.3: Stateful failover controller with promote epoch tracking.
+ * Per-region circuit breaker state machine for multi-region failover.
+ * Tracks closed/open/half_open states per region.
+ */
+export class RegionCircuitBreaker {
+  private readonly states = new Map<string, RegionCircuitBreakerState>();
+
+  public getState(regionId: string): RegionCircuitBreakerState {
+    return this.states.get(regionId) ?? {
+      regionId,
+      state: "closed",
+      failureCount: 0,
+      lastFailureAt: null,
+      lastStateChangeAt: new Date(0).toISOString(),
+      halfOpenSuccessCount: 0,
+    };
+  }
+
+  public recordFailure(regionId: string, maxFailures: number = 3): CircuitState {
+    const current = this.getState(regionId);
+    const newFailureCount = current.failureCount + 1;
+    const newState: CircuitState = newFailureCount >= maxFailures ? "open" : "closed";
+    const newRecord: RegionCircuitBreakerState = {
+      regionId,
+      state: newState,
+      failureCount: newFailureCount,
+      lastFailureAt: new Date().toISOString(),
+      lastStateChangeAt: newState !== current.state ? new Date().toISOString() : current.lastStateChangeAt,
+      halfOpenSuccessCount: 0,
+    };
+    this.states.set(regionId, newRecord);
+    return newState;
+  }
+
+  public recordSuccess(regionId: string): CircuitState {
+    const current = this.getState(regionId);
+    if (current.state === "half_open") {
+      const newSuccessCount = current.halfOpenSuccessCount + 1;
+      if (newSuccessCount >= 2) {
+        // Two consecutive successes in half-open state -> closed
+        const newRecord: RegionCircuitBreakerState = {
+          regionId,
+          state: "closed",
+          failureCount: 0,
+          lastFailureAt: null,
+          lastStateChangeAt: new Date().toISOString(),
+          halfOpenSuccessCount: 0,
+        };
+        this.states.set(regionId, newRecord);
+        return "closed";
+      }
+      // Stay in half-open until we have 2 successes
+      this.states.set(regionId, { ...current, halfOpenSuccessCount: newSuccessCount });
+      return "half_open";
+    }
+    // In closed state, success resets failure count
+    if (current.failureCount > 0) {
+      this.states.set(regionId, { ...current, failureCount: 0 });
+    }
+    return "closed";
+  }
+
+  public transitionToHalfOpen(regionId: string): CircuitState {
+    const newRecord: RegionCircuitBreakerState = {
+      regionId,
+      state: "half_open",
+      failureCount: 0,
+      lastFailureAt: null,
+      lastStateChangeAt: new Date().toISOString(),
+      halfOpenSuccessCount: 0,
+    };
+    this.states.set(regionId, newRecord);
+    return "half_open";
+  }
+
+  public reset(regionId: string): void {
+    this.states.delete(regionId);
+  }
+}
+
+/**
+ * Stateful failover controller with promote epoch tracking.
  *
  * Tracks the current leader region and enforce proper failover sequence:
  * 1. New leader receives promote epoch
@@ -88,6 +168,35 @@ export class RegionFailoverController {
     lastUpdatedAt: new Date(0).toISOString(),
     fencingToken: null,
   };
+  private readonly circuitBreaker = new RegionCircuitBreaker();
+
+  /**
+   * Check circuit breaker state for a region
+   */
+  public getCircuitState(regionId: string): CircuitState {
+    return this.circuitBreaker.getState(regionId).state;
+  }
+
+  /**
+   * Record a failure for circuit breaker
+   */
+  public recordFailure(regionId: string): CircuitState {
+    return this.circuitBreaker.recordFailure(regionId);
+  }
+
+  /**
+   * Record a success for circuit breaker
+   */
+  public recordSuccess(regionId: string): CircuitState {
+    return this.circuitBreaker.recordSuccess(regionId);
+  }
+
+  /**
+   * Transition to half-open state for probing
+   */
+  public probeRecovery(regionId: string): CircuitState {
+    return this.circuitBreaker.transitionToHalfOpen(regionId);
+  }
 
   /**
    * §52.3: Returns the current leader state for this region cluster.

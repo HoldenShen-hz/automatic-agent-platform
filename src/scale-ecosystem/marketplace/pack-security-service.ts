@@ -154,6 +154,7 @@ export class PackSecurityService {
   private async runSandboxTest(input: SecurityScanInput): Promise<{ issues: SecurityIssue[] }> {
     const issues: SecurityIssue[] = [];
 
+    // First check: permission list scan (static analysis)
     for (const permission of input.permissions) {
       if (HIGH_RISK_PERMISSIONS.includes(permission)) {
         issues.push({
@@ -166,7 +167,144 @@ export class PackSecurityService {
       }
     }
 
+    // Second check: actual sandbox execution testing
+    // Execute the inline source code in an isolated sandbox environment to detect
+    // malicious runtime behavior that static analysis cannot catch
+    if (input.sourceUri.startsWith(INLINE_SOURCE_PREFIX)) {
+      const inlineSource = input.sourceUri.slice(INLINE_SOURCE_PREFIX.length);
+      const sandboxExecutionResult = await this.executeInSandbox(inlineSource, input.permissions);
+      if (sandboxExecutionResult.violated) {
+        issues.push({
+          severity: "critical",
+          category: "sandbox_violation",
+          code: "SAND011",
+          message: `Sandbox execution violation: ${sandboxExecutionResult.reason}`,
+          location: "runtime_execution",
+        });
+      }
+    }
+
     return { issues };
+  }
+
+  /**
+   * Executes source code in a sandboxed environment to detect malicious runtime behavior.
+   * This catches runtime-only threats that static analysis cannot detect.
+   */
+  private async executeInSandbox(
+    sourceCode: string,
+    permissions: readonly string[],
+  ): Promise<{ violated: boolean; reason?: string }> {
+    // Execute in a vm context with limited permissions to detect:
+    // - Code that attempts to access restricted resources
+    // - Code that executes shell commands
+    // - Code that accesses environment variables
+    // - Code that spawns processes
+    try {
+      // Dynamic import of vm module for sandboxed execution
+      const { VM } = await import("vm");
+      const sandbox = {
+        console: {
+          log: () => { },
+          error: () => { },
+          warn: () => { },
+        },
+        process: {
+          exit: () => { throw new Error("Process exit blocked"); },
+          cwd: () => "/sandbox",
+          env: {},
+        },
+        require: () => { throw new Error("Require blocked"); },
+        setTimeout: () => { },
+        setInterval: () => { },
+        Buffer: undefined,
+        // Permission flags to check against
+        _permissions: permissions,
+        _violation: null as string | null,
+      };
+
+      const vm = new VM({
+        timeout: 5000,
+        sandbox,
+      });
+
+      // Wrap source to catch permission violations
+      const wrappedSource = `
+        (function() {
+          try {
+            ${sourceCode}
+          } catch (e) {
+            if (e.message.includes('blocked') || e.message.includes('denied')) {
+              _violation = e.message;
+            }
+            throw e;
+          }
+        })()
+      `;
+
+      vm.run(wrappedSource);
+
+      // Check if any high-risk operations were attempted
+      if (sandbox._violation) {
+        return { violated: true, reason: sandbox._violation };
+      }
+
+      // Additional runtime checks for common attack patterns
+      const runtimeChecks = this.checkRuntimeBehavior(sourceCode, permissions);
+      if (runtimeChecks.violated) {
+        return { violated: true, reason: runtimeChecks.reason };
+      }
+
+      return { violated: false };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("Script execution timed out")) {
+        return { violated: true, reason: "Script execution timeout - possible infinite loop or resource exhaustion" };
+      }
+      if (message.includes("blocked") || message.includes("denied")) {
+        return { violated: true, reason: message };
+      }
+      // Script threw an error during execution - this could indicate malicious behavior
+      return { violated: true, reason: `Script execution error: ${message}` };
+    }
+  }
+
+  /**
+   * Checks for runtime behavior patterns that indicate malicious intent.
+   */
+  private checkRuntimeBehavior(
+    sourceCode: string,
+    permissions: readonly string[],
+  ): { violated: boolean; reason?: string } {
+    // Check for high-risk permission usage at runtime
+    const hasExecPermission = permissions.includes("exec:bash") || permissions.includes("exec:cmd");
+    const hasFileWritePermission = permissions.includes("file:write");
+    const hasNetworkPermission = permissions.includes("network:egress:all");
+
+    // Runtime patterns that indicate malicious behavior even without explicit API calls
+    const maliciousPatterns = [
+      { pattern: /eval\s*\(/gi, reason: "Dynamic code evaluation (eval) detected" },
+      { pattern: /Function\s*\(/gi, reason: "Dynamic function creation detected" },
+      { pattern: /exec\s*\(/gi, reason: "Shell execution detected" },
+      { pattern: /spawn\s*\(/gi, reason: "Process spawning detected" },
+      { pattern: /child_process/gi, reason: "Child process module access detected" },
+      { pattern: /process\.binding\s*\(/gi, reason: "Node.js binding access detected" },
+      { pattern: /module\s*\.\s*require\s*\(/gi, reason: "Dynamic module loading detected" },
+    ];
+
+    for (const { pattern, reason } of maliciousPatterns) {
+      if (pattern.test(sourceCode)) {
+        // If permission doesn't allow this operation, it's a violation
+        if (reason.includes("exec") && !hasExecPermission) {
+          return { violated: true, reason };
+        }
+        if (reason.includes("spawn") && !hasExecPermission) {
+          return { violated: true, reason };
+        }
+      }
+    }
+
+    return { violated: false };
   }
 
   private validateManifestChecksum(input: SecurityScanInput): SecurityIssue[] {

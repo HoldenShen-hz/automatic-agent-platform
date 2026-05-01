@@ -98,5 +98,7 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
       return "ambiguous";
     case "mark_failed":
       return "failed";
+    default:
+      return "unknown";
   }
 }

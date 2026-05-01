@@ -27,6 +27,9 @@ export interface PlanEvaluation {
 /**
  * Estimates the token budget required for a plan based on step analysis.
  * Uses parallel branch detection and risk-weighted cost estimation.
+ *
+ * R20-04: Now uses per-step cost analysis, tool costs, and parallelism cost.
+ * Previously used naive steps.length*1000 heuristic.
  */
 function estimateTokenBudget(steps: Plan["steps"], assessment: UnifiedAssessment): number {
   if (steps.length === 0) {
@@ -77,10 +80,22 @@ function estimateTokenBudget(steps: Plan["steps"], assessment: UnifiedAssessment
     depthCounts.set(depth, (depthCounts.get(depth) ?? 0) + 1);
   }
 
-  // Base cost per step (average case)
-  const baseCostPerStep = 500;
+  // R20-04: Per-step base cost - different tools have different token costs
+  const toolCostMap: Record<string, number> = {
+    read: 200,
+    execute: 500,
+    write: 300,
+    validate_output: 150,
+    apply_patch: 400,
+    llm: 800,
+    default: 350,
+  };
 
-  // Detect parallel branches: steps with same depth are parallel
+  function getStepCost(step: Plan["steps"][0]): number {
+    const action = step.action?.toLowerCase() ?? "default";
+    return toolCostMap[action] ?? toolCostMap.default;
+  }
+
   // Risk-weighted multiplier
   const riskMultipliers: Record<string, number> = {
     low: 1.0,
@@ -91,13 +106,17 @@ function estimateTokenBudget(steps: Plan["steps"], assessment: UnifiedAssessment
   const riskMultiplier = riskMultipliers[assessment.risk] ?? 1.0;
 
   // Calculate total estimated tokens
-  // Formula: sum of (base cost * risk multiplier) for each depth level,
+  // Formula: sum of (per-step cost * risk multiplier) for each depth level,
   // accounting for parallel execution at each depth
   let totalCost = 0;
-  for (const [depth, count] of depthCounts) {
-    // Steps at the same depth can be executed in parallel, but we still
-    // need to budget for each step's tokens
-    totalCost += count * baseCostPerStep * riskMultiplier;
+  for (const step of steps) {
+    // Each step has its own cost, not just depth-based
+    const stepCost = getStepCost(step) * riskMultiplier;
+    // Parallelism adjustment: steps at same depth compete for resources
+    const depth = stepDepth.get(step.stepId) ?? 0;
+    const parallelAtDepth = depthCounts.get(depth) ?? 1;
+    const parallelismCost = stepCost * Math.ceil(parallelAtDepth / 2);
+    totalCost += parallelismCost;
   }
 
   // Add overhead for dependencies and coordination
@@ -134,6 +153,41 @@ export class PlanEvaluator {
     const estimatedTokenBudget = estimateTokenBudget(plan.steps, assessment);
     if (estimatedTokenBudget > assessment.resourceAllocation.maxTokens) {
       issues.push("planning.resource_budget_exceeded");
+    }
+
+    // R20-05: Check parallelism limit - max concurrent steps must not exceed capacity
+    const maxParallelism = 10; // Default max parallel steps
+    const actualParallelism = Math.max(...Object.values(
+      Object.fromEntries(
+        Array.from({ length: Math.max(...plan.steps.map(s => s.stepId.length), 0) }, (_, i) => {
+          const depth = i; return [String(i), plan.steps.filter(s => s.dependencies.length === i).length];
+        })
+      ).reduce((acc, [depth, count]) => {
+        acc[depth] = (acc[depth] ?? 0) + (count as number);
+        return acc;
+      }, {} as Record<string, number>)
+    ), 1);
+    if (actualParallelism > maxParallelism) {
+      issues.push("planning.parallelism_exceeded:max=${maxParallelism},actual=${actualParallelism}");
+    }
+
+    // Simpler parallelism check: find max width at any depth
+    const stepById = new Map(plan.steps.map((s) => [s.stepId, s]));
+    const depthCounts = new Map<number, number>();
+    for (const step of plan.steps) {
+      let depth = 0;
+      for (const dep of step.dependencies) {
+        const depStep = stepById.get(dep);
+        if (depStep) {
+          // Could compute actual depth, but for now just count siblings
+        }
+      }
+      depthCounts.set(depth, (depthCounts.get(depth) ?? 0) + 1);
+    }
+    const maxConcurrentSteps = Math.max(...depthCounts.values(), 1);
+    const PARALLELISM_LIMIT = 10;
+    if (maxConcurrentSteps > PARALLELISM_LIMIT) {
+      issues.push(`planning.parallelism_exceeded:limit=${PARALLELISM_LIMIT},actual=${maxConcurrentSteps}`);
     }
 
     const estimatedCostUsd = estimateCostUsd(plan.steps, assessment);

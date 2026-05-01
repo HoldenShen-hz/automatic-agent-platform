@@ -164,12 +164,13 @@ export function validateTaskId(taskId: string | undefined, location: string): st
   return taskId;
 }
 
-export function buildJsonResponse(requestId: string, statusCode: number, payload: unknown): ApiResponsePayload {
+export function buildJsonResponse(requestId: string, statusCode: number, payload: unknown, traceId?: string): ApiResponsePayload {
   return {
     statusCode,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "x-request-id": requestId,
+      ...(traceId ? { "x-trace-id": traceId } : {}),
     },
       body: JSON.stringify({ requestId, data: payload }, null, 2),
   };

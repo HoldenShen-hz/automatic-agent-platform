@@ -559,6 +559,17 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   assert.match(adr066, /IPC/);
   assert.doesNotMatch(adr066, /独立 Worker 线程，通过 `plugin-runtime-host\.ts` 管理/);
 
+  const adr072 = readFileSync("docs_zh/adr/072-oapeflir-testing-strategy.md", "utf8");
+  const adr072Canonical = stripRemediationSection(adr072, "## v4.3 ADR Remediation");
+  assert.match(adr072Canonical, /tests\/invariants\/\*\.test\.ts/);
+  assert.match(adr072Canonical, /tests\/unit\/docs\/\*\.test\.ts/);
+  assert.match(adr072Canonical, /HarnessRun/);
+  assert.match(adr072Canonical, /oapeflir\.view\.\*/);
+  assert.doesNotMatch(adr072Canonical, /tests\/security\//);
+  assert.doesNotMatch(adr072Canonical, /tests\/chaos\//);
+  assert.doesNotMatch(adr072Canonical, /tests\/performance\//);
+  assert.doesNotMatch(adr072Canonical, /完整循环 O→A→P→E→F/);
+
   const adr040 = readFileSync("docs_zh/adr/040-goal-decomposition-engine.md", "utf8");
   assert.match(adr040, /GoalProjection 与 HarnessRun 生命周期关系/);
   assert.match(adr040, /HarnessRun.status/);

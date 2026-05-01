@@ -19,6 +19,18 @@ export function WorkflowCockpitWebView(): ReactElement {
     }
   };
 
+  const handleResume = () => {
+    if (selectedWorkflow != null && window.confirm(`Resume workflow "${selectedWorkflow.title}"? This will continue execution from the current checkpoint.`)) {
+      vm.resumeWorkflow();
+    }
+  };
+
+  const handleRecover = () => {
+    if (selectedWorkflow != null && window.confirm(`Recover workflow "${selectedWorkflow.title}"? This will rebuild state and replay the workflow.`)) {
+      vm.recoverWorkflow();
+    }
+  };
+
   return (
     <FeatureScaffold title="Workflow Cockpit" summary="工作流 DAG、步骤和恢复基线视图" status="Implemented/Internal">
       <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 16 }}>
@@ -57,8 +69,8 @@ export function WorkflowCockpitWebView(): ReactElement {
               <DAGViewer steps={selectedWorkflow.steps} currentStage={selectedWorkflow.currentStage} />
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={handlePause} type="button">Pause</button>
-                <button onClick={vm.resumeWorkflow} type="button">Resume</button>
-                <button onClick={vm.recoverWorkflow} type="button">Recover</button>
+                <button onClick={handleResume} type="button">Resume</button>
+                <button onClick={handleRecover} type="button">Recover</button>
                 <button onClick={handleRelease} type="button">Release</button>
               </div>
             </>

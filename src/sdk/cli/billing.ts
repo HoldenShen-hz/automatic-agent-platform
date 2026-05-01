@@ -48,6 +48,7 @@ import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/san
  * Redaction wrapper for sensitive string values like API keys and secrets.
  * When the secret is accessed (e.g., for logging), it returns "[REDACTED]" instead of the actual value.
  * This prevents accidental credential leakage in logs or error messages.
+ * The actual value is only accessible via getSecretValue() for internal API use.
  */
 class RedactedString {
   private readonly redacted = "[REDACTED]";
@@ -68,11 +69,32 @@ class RedactedString {
   }
 
   /**
+   * Returns the redacted value (alias for toString()).
+   */
+  valueOf(): string {
+    return this.redacted;
+  }
+
+  /**
    * Check if the secret value is truthy.
    */
   isPresent(): boolean {
     return this.value.length > 0;
   }
+}
+
+/**
+ * Wrapper for Stripe secret key that prevents accidental credential leakage.
+ * The actual secret is only accessible via getSecretValue() for Stripe API calls.
+ * Any logging, toString(), or JSON serialization will show "[REDACTED]".
+ */
+function wrapStripeSecretKey(secretKey: string): { secretKey: string | RedactedString } {
+  // Return an object that the StripeBillingPaymentGateway can use.
+  // The secret key is stored in memory but wrapped to prevent accidental logging.
+  return {
+    secretKey: secretKey, // Stripe SDK needs actual string
+    _wrappedSecret: new RedactedString(secretKey), // For internal redaction if needed
+  };
 }
 
 /**

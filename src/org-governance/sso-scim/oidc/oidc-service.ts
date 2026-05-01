@@ -217,11 +217,17 @@ export class OidcIdentityService {
     }
     this.stateStore.deleteState(expectedState);
 
+    // §48 P0: Retrieve PKCE code verifier for token exchange
+    // PKCE verifier is stored when authorization URL is built
+    const codeVerifier = this.pkceVerifierStore.get(expectedState);
+    this.pkceVerifierStore.delete(expectedState);
+
     return this.exchangeTokens({
       grantType: "authorization_code",
       code,
       redirectUri: stateData.redirectUri,
       nonce: stateData.nonce,
+      codeVerifier,
     });
   }
 
@@ -377,16 +383,30 @@ export class OidcIdentityService {
       return null;
     }
 
+    // §48 P0: Token rotation - remember old refresh token to detect token replay (issue #1971)
+    const oldRefreshToken = session.refreshToken;
+
     const newTokens = await this.exchangeTokens({
       grantType: "refresh_token",
       refreshToken: session.refreshToken,
     }) ?? this.simulateRefreshResponse(session.refreshToken);
 
-    // Update session with new tokens
+    // §48 P0: Token rotation - invalidate old refresh token after successful refresh
+    // Per RFC 6749 §5.2, old refresh token should be invalidated after use to prevent replay
+    // Invalidate old refresh token from index
+    this.refreshTokenIndex.delete(oldRefreshToken);
+
+    // Update session with new tokens - including new refresh token for rotation
     session.accessToken = newTokens.accessToken;
     session.idToken = newTokens.idToken;
+    session.refreshToken = newTokens.refreshToken ?? oldRefreshToken;
     session.expiresAt = newTokens.expiresAt;
     session.lastActivityAt = nowIso();
+
+    // Update refresh token index with new refresh token
+    if (session.refreshToken) {
+      this.refreshTokenIndex.set(session.refreshToken, sessionId);
+    }
 
     return newTokens;
   }
@@ -546,6 +566,7 @@ export class OidcIdentityService {
     redirectUri?: string;
     refreshToken?: string;
     nonce?: string;
+    codeVerifier?: string;
   }): Promise<OidcTokenResponse | null> {
     const tokenEndpoint = this.providerConfig.tokenEndpoint ?? `${this.providerConfig.issuer}/token`;
     const body = new URLSearchParams({
@@ -556,6 +577,8 @@ export class OidcIdentityService {
       ...(input.redirectUri ? { redirect_uri: input.redirectUri } : {}),
       ...(input.refreshToken ? { refresh_token: input.refreshToken } : {}),
       ...(input.nonce ? { nonce: input.nonce } : {}),
+      // §48 P0: Include PKCE code_verifier for token exchange (required for authorization_code grant with PKCE)
+      ...(input.codeVerifier ? { code_verifier: input.codeVerifier } : {}),
     });
     try {
       const response = await fetch(tokenEndpoint, {

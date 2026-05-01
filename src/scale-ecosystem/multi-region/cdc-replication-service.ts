@@ -267,6 +267,135 @@ export class CDCReplicationService {
   private readonly lagAlertListeners = new Set<(alert: LagAlert) => void>();
 
   /**
+   * Lag alert payload for monitoring
+   */
+  public interface LagAlert {
+    readonly sourceRegionId: string;
+    readonly targetRegionId: string;
+    readonly lagMs: number;
+    readonly severity: "warning" | "critical";
+    readonly timestamp: string;
+  }
+
+  /**
+   * Register a listener for lag alerts (RPO breaches)
+   */
+  public addLagAlertListener(listener: (alert: LagAlert) => void): void {
+    this.lagAlertListeners.add(listener);
+  }
+
+  /**
+   * Remove a lag alert listener
+   */
+  public removeLagAlertListener(listener: (alert: LagAlert) => void): void {
+    this.lagAlertListeners.delete(listener);
+  }
+
+  /**
+   * Monitor replication lag and emit alerts if RPO threshold exceeded.
+   * Returns lag status and emits alerts via registered listeners if thresholds crossed.
+   */
+  public monitorReplicationLag(
+    sourceRegionId: string,
+    targetRegionId: string,
+    totalSourceEvents: number,
+  ): { lagMs: number; rpoBreached: boolean; severity: "ok" | "warning" | "critical" } {
+    const checkpoint = this.getCheckpoint(sourceRegionId, targetRegionId);
+    if (!checkpoint) {
+      return { lagMs: totalSourceEvents * 100, rpoBreached: totalSourceEvents > 0, severity: "critical" };
+    }
+
+    const lagMs = Math.max(0, (totalSourceEvents - checkpoint.lastEventSequence) * 100);
+    let severity: "ok" | "warning" | "critical" = "ok";
+
+    if (lagMs >= this.rpoConfig.lagCriticalThreshold) {
+      severity = "critical";
+    } else if (lagMs >= this.rpoConfig.lagAlertThreshold) {
+      severity = "warning";
+    }
+
+    const rpoBreached = lagMs > this.rpoConfig.maxLagMs;
+
+    // Record lag in history for trend analysis
+    this.recordLagHistory(sourceRegionId, targetRegionId, lagMs);
+
+    // Emit alert if lag exceeds warning threshold
+    if (severity !== "ok") {
+      const alert: LagAlert = {
+        sourceRegionId,
+        targetRegionId,
+        lagMs,
+        severity: severity === "critical" ? "critical" : "warning",
+        timestamp: nowIso(),
+      };
+
+      for (const listener of this.lagAlertListeners) {
+        try {
+          listener(alert);
+        } catch {
+          // Swallow listener errors to prevent cascading failures
+        }
+      }
+    }
+
+    return { lagMs, rpoBreached, severity };
+  }
+
+  private recordLagHistory(sourceRegionId: string, targetRegionId: string, lagMs: number): void {
+    const key = `${sourceRegionId}->${targetRegionId}`;
+    const history = this.lagHistory.get(key) ?? [];
+    history.push(lagMs);
+    if (history.length > this.maxLagHistorySize) {
+      history.shift();
+    }
+    this.lagHistory.set(key, history);
+  }
+
+  /**
+   * Get lag history for a region pair (for trend analysis)
+   */
+  public getLagHistory(sourceRegionId: string, targetRegionId: string): readonly number[] {
+    return this.lagHistory.get(`${sourceRegionId}->${targetRegionId}`) ?? [];
+  }
+
+  /**
+   * Start failover timer tracking for RTO enforcement
+   */
+  public startFailoverTimer(sourceRegionId: string): void {
+    this.failoverStartTime.set(sourceRegionId, Date.now());
+  }
+
+  /**
+   * Check if failover has exceeded RTO timeout
+   */
+  public checkFailoverTimeout(sourceRegionId: string): boolean {
+    const startTime = this.failoverStartTime.get(sourceRegionId);
+    if (startTime == null) return false;
+    return Date.now() - startTime > this.rtoConfig.failoverTimeoutMs;
+  }
+
+  /**
+   * Clear failover timer after failover completes
+   */
+  public clearFailoverTimer(sourceRegionId: string): void {
+    this.failoverStartTime.delete(sourceRegionId);
+  }
+
+  /**
+   * Get current RPO/RTO configuration
+   */
+  public getRpoConfig(): Readonly<{ maxLagMs: number; lagAlertThreshold: number; lagCriticalThreshold: number }> {
+    return { ...this.rpoConfig };
+  }
+
+  /**
+   * Get current RTO configuration
+   */
+  public getRtoConfig(): Readonly<{ failoverTimeoutMs: number; maxFailoverDurationMs: number }> {
+    return { failoverTimeoutMs: this.rtoConfig.failoverTimeoutMs, maxFailoverDurationMs: this.rtoConfig.maxFailoverDurationMs };
+  }
+
+  /**
    * Get vector clock key for entity across regions
    */
   private getVectorClockKey(entityId: string, regionId: string): string {
@@ -460,6 +589,7 @@ export class CDCReplicationService {
 
   /**
    * Merge incoming remote events with local state using conflict resolution
+   * and update vector clock state to reflect resolved causal ordering.
    */
   public mergeEventsWithConflictResolution(
     entityId: string,
@@ -467,9 +597,17 @@ export class CDCReplicationService {
     remoteEvents: readonly CDCReplicationEvent[],
     strategy?: ConflictResolutionStrategy,
   ): CDCReplicationEvent[] {
+    // Update local vector clock from local events first
+    for (const event of localEvents) {
+      this.updateVectorClock(entityId, event.taskId, event.sequence);
+    }
+
     const result: CDCReplicationEvent[] = [...localEvents];
 
     for (const remoteEvent of remoteEvents) {
+      // Update remote vector clock for this event
+      this.updateVectorClock(entityId, remoteEvent.taskId, remoteEvent.sequence);
+
       const existingLocal = localEvents.find(
         (e) => e.sequence === remoteEvent.sequence && e.taskId === remoteEvent.taskId,
       );
@@ -478,18 +616,21 @@ export class CDCReplicationService {
         // No conflict - just add
         result.push(remoteEvent);
       } else {
-        // Conflict detected - resolve
+        // Conflict detected - resolve using configured strategy
         const conflictResult = this.resolveConflict(existingLocal, remoteEvent, strategy);
         if (conflictResult.resolved && conflictResult.resolvedEvent) {
-          // Replace with resolved event
+          // Replace with resolved event in result
           const idx = result.findIndex(
-            (e) => e.sequence === conflictResult.conflict!.localEvent.sequence,
+            (e) => e.sequence === conflictResult.conflict!.localEvent.sequence &&
+                   e.taskId === conflictResult.conflict!.localEvent.taskId,
           );
           if (idx >= 0) {
             result[idx] = conflictResult.resolvedEvent;
           }
+          // Update vector clock with the resolved sequence to reflect causal ordering
+          this.updateVectorClock(entityId, conflictResult.resolvedEvent.taskId, conflictResult.resolvedEvent.sequence);
         }
-        // Record the conflict
+        // Record the conflict for auditing
         if (conflictResult.conflict) {
           this.recordConflict(entityId, conflictResult.conflict);
         }

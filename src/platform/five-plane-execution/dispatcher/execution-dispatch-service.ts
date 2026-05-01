@@ -58,6 +58,21 @@ import type { HealthReportProvider } from "../../contracts/types/health.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+/**
+ * Error thrown when lease acquisition fails during dispatch.
+ * Used internally to break out of the dispatch transaction and continue to next ticket.
+ */
+class DispatchLeaseBlockedError extends Error {
+  public readonly reasonCode: string | null;
+  public readonly leaseId: string | null;
+  constructor(reasonCode: string | null, leaseId: string | null) {
+    super(`Lease blocked: ${reasonCode}`);
+    this.name = "DispatchLeaseBlockedError";
+    this.reasonCode = reasonCode;
+    this.leaseId = leaseId;
+  }
+}
+
 export type {
   CreateExecutionTicketInput,
   DispatchExecutionDecision,
@@ -620,63 +635,27 @@ export class ExecutionDispatchService {
       }
 
       const selectedWorker = eligibleWorkers[0]!;
-      const lease = this.leases.acquireLease({
-        executionId: ticket.executionId,
-        workerId: selectedWorker.workerId,
-        ttlMs: options.leaseTtlMs,
-        queueName: ticket.queueName,
-        occurredAt,
-      });
 
-      if (lease.outcome !== "granted" || !lease.lease) {
-        blockedReason = lease.reasonCode;
-        lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
-          dispatchTarget,
-          remoteAvailability,
-          requiredIsolationLevel,
-          requiredRepoVersion,
-          preferredWorkerId: options.preferredWorkerId ?? null,
-          requiredCapabilities,
-          outcome: "blocked",
-          reasonCode: lease.reasonCode,
-          selectedWorkerId: selectedWorker.workerId,
-          leaseId: lease.lease?.id ?? null,
-          fallbackApplied: selection.fallbackApplied,
-          preemption: preemptionTrace,
-          evaluations,
+      // Issue #1900 P1: Move lease acquisition inside transaction to ensure atomic
+      // lease+claim. Previously lease was acquired outside (TOCTOU race), now we
+      // acquire and claim within the same transaction using savepoints for safety.
+      const dispatchResult = this.db.transaction(() => {
+        const lease = this.leases.acquireLease({
+          executionId: ticket.executionId,
+          workerId: selectedWorker.workerId,
+          ttlMs: options.leaseTtlMs,
+          queueName: ticket.queueName,
+          occurredAt,
         });
-        continue;
-      }
 
-      // R6-7: Build scheduler event fields for dispatch decision trace
-      const workerPoolSnapshotRef = `worker_pool://${selectedWorker.workerId}/snapshot/${occurredAt}`;
-      const selectedNodeIds = [ticket.executionId];
+        if (lease.outcome !== "granted" || !lease.lease) {
+          throw new DispatchLeaseBlockedError(lease.reasonCode, null);
+        }
 
-      const trace = this.recordDecisionEvent(ticket, occurredAt, {
-        dispatchTarget,
-        remoteAvailability,
-        requiredIsolationLevel,
-        requiredRepoVersion,
-        preferredWorkerId: options.preferredWorkerId ?? null,
-        requiredCapabilities,
-        outcome: "dispatched",
-        reasonCode: selection.reasonCode,
-        selectedWorkerId: selectedWorker.workerId,
-        leaseId: lease.lease.id,
-        fallbackApplied: selection.fallbackApplied,
-        preemption: preemptionTrace,
-        evaluations,
-        // R6-7: §14.9 scheduler event fields
-        readySet,
-        selectedNodeIds,
-        orderingPolicyVersion: "1.0",
-        workerPoolSnapshotRef,
-      });
-      this.db.transaction(() => {
         this.store.worker.claimExecutionTicket({
           ticketId: ticket.id,
           assignedWorkerId: selectedWorker.workerId,
-          leaseId: lease.lease?.id ?? "",
+          leaseId: lease.lease.id,
           claimedAt: occurredAt,
         });
         const workerSnapshot = this.store.worker.getWorkerSnapshot(selectedWorker.workerId);
@@ -701,7 +680,7 @@ export class ExecutionDispatchService {
           payloadJson: JSON.stringify({
             ticketId: ticket.id,
             workerId: selectedWorker.workerId,
-            leaseId: lease.lease?.id ?? null,
+            leaseId: lease.lease.id,
             queueName: ticket.queueName,
             dispatchTarget,
             remoteAvailability,
@@ -713,6 +692,33 @@ export class ExecutionDispatchService {
           traceId: execution?.traceId ?? null,
           createdAt: occurredAt,
         });
+
+        return { lease, execution };
+      });
+
+      // R6-7: Build scheduler event fields for dispatch decision trace
+      const workerPoolSnapshotRef = `worker_pool://${selectedWorker.workerId}/snapshot/${occurredAt}`;
+      const selectedNodeIds = [ticket.executionId];
+
+      const trace = this.recordDecisionEvent(ticket, occurredAt, {
+        dispatchTarget,
+        remoteAvailability,
+        requiredIsolationLevel,
+        requiredRepoVersion,
+        preferredWorkerId: options.preferredWorkerId ?? null,
+        requiredCapabilities,
+        outcome: "dispatched",
+        reasonCode: selection.reasonCode,
+        selectedWorkerId: selectedWorker.workerId,
+        leaseId: dispatchResult.lease.lease.id,
+        fallbackApplied: selection.fallbackApplied,
+        preemption: preemptionTrace,
+        evaluations,
+        // R6-7: §14.9 scheduler event fields
+        readySet,
+        selectedNodeIds,
+        orderingPolicyVersion: "1.0",
+        workerPoolSnapshotRef,
       });
 
       return {

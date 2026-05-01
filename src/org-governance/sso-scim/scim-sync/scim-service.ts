@@ -133,12 +133,50 @@ export interface ScimProvisionEvent {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class ScimProvisionService {
-  private readonly users = new Map<string, ScimUser>();
-  private readonly groups = new Map<string, ScimGroup>();
-  private readonly userByUsername = new Map<string, string>();
-  private readonly userByEmail = new Map<string, string>();
-  private readonly groupByName = new Map<string, string>();
+  // §48 P1: Tenant isolation - all Maps must be scoped by tenantId (issue #1972)
+  // Global Maps without tenant scoping allow cross-tenant data access
+  private readonly usersByTenant = new Map<string, Map<string, ScimUser>>();
+  private readonly groupsByTenant = new Map<string, Map<string, ScimGroup>>();
+  private readonly userByUsernameByTenant = new Map<string, Map<string, string>>();
+  private readonly userByEmailByTenant = new Map<string, Map<string, string>>();
+  private readonly groupByNameByTenant = new Map<string, Map<string, string>>();
   private readonly events: ScimProvisionEvent[] = [];
+
+  // Helper to get or create tenant-scoped map
+  private getTenantUsers(tenantId: string): Map<string, ScimUser> {
+    if (!this.usersByTenant.has(tenantId)) {
+      this.usersByTenant.set(tenantId, new Map());
+    }
+    return this.usersByTenant.get(tenantId)!;
+  }
+
+  private getTenantGroups(tenantId: string): Map<string, ScimGroup> {
+    if (!this.groupsByTenant.has(tenantId)) {
+      this.groupsByTenant.set(tenantId, new Map());
+    }
+    return this.groupsByTenant.get(tenantId)!;
+  }
+
+  private getTenantUserByUsername(tenantId: string): Map<string, string> {
+    if (!this.userByUsernameByTenant.has(tenantId)) {
+      this.userByUsernameByTenant.set(tenantId, new Map());
+    }
+    return this.userByUsernameByTenant.get(tenantId)!;
+  }
+
+  private getTenantUserByEmail(tenantId: string): Map<string, string> {
+    if (!this.userByEmailByTenant.has(tenantId)) {
+      this.userByEmailByTenant.set(tenantId, new Map());
+    }
+    return this.userByEmailByTenant.get(tenantId)!;
+  }
+
+  private getTenantGroupByName(tenantId: string): Map<string, string> {
+    if (!this.groupByNameByTenant.has(tenantId)) {
+      this.groupByNameByTenant.set(tenantId, new Map());
+    }
+    return this.groupByNameByTenant.get(tenantId)!;
+  }
 
   /**
    * Creates a new SCIM user.
@@ -148,8 +186,13 @@ export class ScimProvisionService {
    * @returns Created user
    */
   public createUser(user: Omit<ScimUser, "id" | "meta">, tenantId: string): ScimUser {
+    // §48 P1: Tenant isolation - scope all lookups by tenantId (issue #1972)
+    const tenantUsers = this.getTenantUsers(tenantId);
+    const tenantUserByUsername = this.getTenantUserByUsername(tenantId);
+    const tenantUserByEmail = this.getTenantUserByEmail(tenantId);
+
     // SECURITY FIX: Validate userName uniqueness before creation to prevent duplicate index entries
-    const existingUserId = this.userByUsername.get(user.userName.toLowerCase());
+    const existingUserId = tenantUserByUsername.get(user.userName.toLowerCase());
     if (existingUserId != null) {
       throw new Error(`scim.userName_already_exists:${user.userName}`);
     }
@@ -167,12 +210,12 @@ export class ScimProvisionService {
       },
     };
 
-    this.users.set(id, scimUser);
-    this.userByUsername.set(user.userName.toLowerCase(), id);
+    tenantUsers.set(id, scimUser);
+    tenantUserByUsername.set(user.userName.toLowerCase(), id);
 
     const primaryEmail = user.emails.find((e) => e.primary)?.value;
     if (primaryEmail) {
-      this.userByEmail.set(primaryEmail.toLowerCase(), id);
+      tenantUserByEmail.set(primaryEmail.toLowerCase(), id);
     }
 
     this.recordEvent("user_created", id, tenantId);
@@ -182,34 +225,45 @@ export class ScimProvisionService {
 
   /**
    * Gets a user by ID.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param userId - User ID
+   * @param tenantId - Tenant ID (required for tenant isolation)
    * @returns User or null
    */
-  public getUser(userId: string): ScimUser | null {
-    return this.users.get(userId) ?? null;
+  public getUser(userId: string, tenantId: string): ScimUser | null {
+    const tenantUsers = this.getTenantUsers(tenantId);
+    return tenantUsers.get(userId) ?? null;
   }
 
   /**
    * Gets a user by username.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param userName - Username
+   * @param tenantId - Tenant ID (required for tenant isolation)
    * @returns User or null
    */
-  public getUserByUsername(userName: string): ScimUser | null {
-    const userId = this.userByUsername.get(userName.toLowerCase());
-    return userId ? this.users.get(userId) ?? null : null;
+  public getUserByUsername(userName: string, tenantId: string): ScimUser | null {
+    const tenantUsers = this.getTenantUsers(tenantId);
+    const tenantUserByUsername = this.getTenantUserByUsername(tenantId);
+    const userId = tenantUserByUsername.get(userName.toLowerCase());
+    return userId ? tenantUsers.get(userId) ?? null : null;
   }
 
   /**
    * Gets a user by email.
+   * §48 P1: Tenant isolation - requires tenantId to prevent cross-tenant data access (issue #1972)
    *
    * @param email - Email address
+   * @param tenantId - Tenant ID (required for tenant isolation)
    * @returns User or null
    */
-  public getUserByEmail(email: string): ScimUser | null {
-    const userId = this.userByEmail.get(email.toLowerCase());
-    return userId ? this.users.get(userId) ?? null : null;
+  public getUserByEmail(email: string, tenantId: string): ScimUser | null {
+    const tenantUsers = this.getTenantUsers(tenantId);
+    const tenantUserByEmail = this.getTenantUserByEmail(tenantId);
+    const userId = tenantUserByEmail.get(email.toLowerCase());
+    return userId ? tenantUsers.get(userId) ?? null : null;
   }
 
   /**

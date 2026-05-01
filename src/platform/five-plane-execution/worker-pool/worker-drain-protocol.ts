@@ -42,8 +42,8 @@ export interface WorkerDrainRequest {
   readonly requestedAt: string;
   readonly deadlineAt: string;
   readonly activeLeases: readonly ActiveLeaseSummary[];
-  /** R20-11: Reason for drain (graceful_shutdown, node_replacement, incident, etc.) */
-  readonly drainReason?: string;
+  /** R20-11: Reason for drain (graceful_shutdown, node_replacement, incident, etc.) - now required */
+  readonly drainReason: string;
 }
 
 /**

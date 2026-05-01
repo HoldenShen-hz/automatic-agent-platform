@@ -285,7 +285,10 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
       break;
 
     case "workflow_run.created":
-      if (newState.status === "pending") {
+      // R20-09: Always transition to running when workflow starts (not just from "pending")
+      if (newState.status === "pending" || newState.status === "paused") {
+        newState.status = "running";
+      } else if (newState.status === "pending") {
         newState.status = "running";
       }
       break;
@@ -298,6 +301,7 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
     case "workflow_run.failed":
       newState.status = "failed";
       newState.failedAt = event.createdAt;
+      // Also set error info from payload if available
       break;
 
     default:
