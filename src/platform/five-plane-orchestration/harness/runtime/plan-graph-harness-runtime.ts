@@ -1,4 +1,5 @@
 import { ValidationError } from "../../../contracts/errors.js";
+import { newId } from "../../../contracts/types/ids.js";
 import {
   createNodeAttempt,
   createNodeAttemptReceipt,
@@ -220,6 +221,10 @@ export class PlanGraphHarnessRuntime {
     const transitions: readonly NodeRun["status"][] = ["ready", "leased", "running"];
     for (const toStatus of transitions) {
       const result = this.stateMachine.transition({
+        commandId: newId("cmd"),
+        entityType: "NodeRun",
+        entityId: nodeRun.nodeRunId,
+        principal: input.context.executorRef,
         aggregateType: "NodeRun",
         aggregate: nodeRun,
         fromStatus: nodeRun.status,
@@ -229,7 +234,7 @@ export class PlanGraphHarnessRuntime {
         traceId: input.context.traceId,
         reasonCode: `runtime.${toStatus}`,
         emittedBy: input.context.emittedBy,
-        ...(toStatus === "leased" || toStatus === "running" ? { leaseId, fencingToken } : { leaseId: undefined, fencingToken: undefined }),
+        ...(toStatus === "leased" || toStatus === "running" ? { leaseId, fencingToken } : {}),
       });
       nodeRun = result.aggregate;
       events.push(result.event);
@@ -251,13 +256,31 @@ export class PlanGraphHarnessRuntime {
       harnessRunId: nodeRun.harnessRunId,
       planGraphId: input.planGraphBundle.planGraphBundleId,
       graphVersion: input.planGraphBundle.graphVersion,
-      receiptKind: node.nodeType === "llm" ? "llm" : node.nodeType === "hitl_wait" ? "hitl" : "tool",
+      receiptKind:
+        node.nodeType === "llm"
+          ? "llm"
+          : node.nodeType === "hitl_wait"
+            ? "hitl"
+            : node.nodeType === "subgraph"
+              ? "subgraph"
+              : node.nodeType === "evaluator"
+                ? "evaluator"
+                : node.nodeType === "router"
+                  ? "router"
+                  : "tool",
       status: input.receiptStatus ?? "succeeded",
       duration: 0,
-      });
+      errorDetail: input.receiptStatus === "failed" || input.receiptStatus === "blocked"
+        ? `runtime.${input.receiptStatus}`
+        : "",
+    });
 
     const terminalStatus: NodeRun["status"] = receipt.status === "succeeded" ? "succeeded" : "failed";
     const terminal = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "NodeRun",
+      entityId: nodeRun.nodeRunId,
+      principal: input.context.executorRef,
       aggregateType: "NodeRun",
       aggregate: nodeRun,
       fromStatus: nodeRun.status,

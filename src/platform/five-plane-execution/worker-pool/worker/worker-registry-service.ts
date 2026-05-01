@@ -40,7 +40,7 @@ import type {
   WorkerSnapshotRecord,
 } from "../../../contracts/types/domain.js";
 
-import { nowIso } from "../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../../contracts/types/ids.js";
 import { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { toWorkerSchedulingStatus } from "./worker-scheduling-status.js";
 
@@ -509,6 +509,7 @@ export class WorkerRegistryService {
       lastProgressAt: input.lastProgressAt ?? (input.progressMessage ? occurredAt : existing?.lastProgressAt ?? null),
       lastHeartbeatAt: occurredAt,
       updatedAt: occurredAt,
+      version: (existing?.version ?? 0) + 1,
     };
 
     this.store.worker.upsertWorkerSnapshot(record);

@@ -75,7 +75,7 @@ class CircuitBreaker {
    * @returns true if request should proceed, false if circuit is open
    */
   public isRequestAllowed(): boolean {
-    if (!this.config.enabled ?? true) {
+    if (this.config.enabled === false) {
       return true;
     }
     if (this.state === "closed") {
@@ -802,7 +802,7 @@ export class ChannelGatewayService {
       targetId: input.targetId,
       externalTargetId: input.externalTargetId,
       text: input.text,
-      metadata: input.metadata,
+      ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
       fetchImpl: this.createTimedFetch(),
       options: this.options,
     });

@@ -19,8 +19,14 @@ function parseArgs(): PackTestOptions {
   const args = process.argv.slice(2);
   const opts: PackTestOptions = { manifest: "" };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--manifest" && i + 1 < args.length) opts.manifest = args[++i];
-    else if (args[i] === "--verbose") opts.verbose = true;
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--manifest" && next !== undefined) {
+      opts.manifest = next;
+      i++;
+    } else if (arg === "--verbose") {
+      opts.verbose = true;
+    }
   }
   return opts;
 }

@@ -35,9 +35,10 @@ import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { TaskStatus } from "../../../contracts/types/status.js";
-import type { IntakeAdmissionService } from "../../orchestration/harness/runtime/intake-admission-service.js";
-import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource } from "../../contracts/executable-contracts/index.js";
-import { createPrincipalRef } from "../../contracts/executable-contracts/index.js";
+import type { IntakeAdmissionService } from "../../../orchestration/harness/runtime/intake-admission-service.js";
+import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource } from "../../../contracts/executable-contracts/index.js";
+import { createPrincipalRef } from "../../../contracts/executable-contracts/index.js";
+import { RuntimeStateMachine } from "../../../execution/runtime-state-machine.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -206,7 +207,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
     {
       method: "POST",
       pathname: "/api/v1/tasks",
-      handler: (ctx) => {
+      handler: async (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const payload = parseCreateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
 
@@ -239,120 +240,121 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
+        const missionControlTenantId = tenantId ?? undefined;
+        const divisionId = payload.divisionId.trim();
+        const source: TaskInputSource = payload.source === "perception"
+          ? "external_event"
+          : payload.source === "system"
+            ? "scheduler"
+            : "ui";
 
-  // R6-16: Generate idempotency key from request content to prevent duplicate task creation
-  // Use title+divisionId+principalId hash so retried requests with same content get same key
-  const idempotencyKey = `${principal.actorId ?? "unknown"}:${payload.title}:${payload.divisionId}:${now.split("T")[0]}`;
+        // Root cause: this route mixed API task-source enums with canonical intake-source enums
+        // and kept using an optional divisionId after validation, which no longer matches the
+        // intake admission contract after the request-envelope refactor.
+        const idempotencyKey = `${principal.actorId ?? "unknown"}:${payload.title}:${divisionId}:${now.split("T")[0]}`;
 
-  // R6-16: Check idempotency key BEFORE creating task to prevent duplicate creation
-  if (deps.taskStore) {
-    const existing = deps.taskStore.task.listTasks(1, tenantId ?? undefined, undefined);
-    const titleMatch = existing.some((t) => t.title === payload.title && t.divisionId === payload.divisionId);
-    if (titleMatch) {
-      const existingTask = existing[0];
-      if (existingTask) {
-        const cockpit = deps.missionControlService.getTaskCockpit(existingTask.id, tenantId);
-        return buildJsonResponse(ctx.requestId, 200, cockpit);
-      }
-    }
-  }
+        if (deps.taskStore) {
+          const existing = deps.taskStore.task.listTasks(1, missionControlTenantId, undefined);
+          const titleMatch = existing.some((t) => t.title === payload.title && t.divisionId === divisionId);
+          if (titleMatch) {
+            const existingTask = existing[0];
+            if (existingTask) {
+              const cockpit = deps.missionControlService.getTaskCockpit(existingTask.id, missionControlTenantId);
+              return buildJsonResponse(ctx.requestId, 200, cockpit);
+            }
+          }
+        }
 
-  // Build principal ref from API principal
-  const principalRef: PrincipalRef = createPrincipalRef({
-    principalId: principal.actorId ?? "unknown",
-    tenantId: tenantId ?? "global",
-    roles: principal.roles,
-  });
+        const principalRef: PrincipalRef = createPrincipalRef({
+          principalId: principal.actorId ?? "unknown",
+          tenantId: tenantId ?? "global",
+          roles: principal.roles,
+        });
 
-  // R6-16: Route through intake pipeline - this is REQUIRED
-  // This provides proper task spec validation, risk classification, and admission control
-  if (!deps.intakeAdmissionService) {
-    throw new ApiError(503, "api.intake_pipeline_unavailable", "Intake pipeline is not configured. Task creation requires the intake admission service.");
-  }
-  const defaultRiskPreview: RiskPreview = {
-    riskClass: "low",
-    reasons: [],
-  };
-  const defaultBudgetIntent: BudgetIntent = {
-    amount: 100,
-    currency: "USD",
-    resourceKinds: ["compute", "storage"],
-  };
-  const source: TaskInputSource = (payload.source as TaskInputSource) ?? "user";
+        if (!deps.intakeAdmissionService) {
+          throw new ApiError(503, "api.intake_pipeline_unavailable", "Intake pipeline is not configured. Task creation requires the intake admission service.");
+        }
+        const defaultRiskPreview: RiskPreview = {
+          riskClass: "low",
+          reasons: [],
+        };
+        const defaultBudgetIntent: BudgetIntent = {
+          amount: 100,
+          currency: "USD",
+          resourceKinds: ["compute", "tool"],
+        };
 
-  const admissionResult = deps.intakeAdmissionService.admit({
-    tenantId: tenantId ?? "global",
-    principal: principalRef,
-    source,
-    goal: payload.title,
-    inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
-    riskPreview: defaultRiskPreview,
-    constraintPackRef: `constraints:${payload.divisionId}`,
-    budgetIntent: defaultBudgetIntent,
-    idempotencyKey,
-    traceId: correlationId,
-  });
+        const admissionResult = deps.intakeAdmissionService.admit({
+          tenantId: tenantId ?? "global",
+          principal: principalRef,
+          source,
+          domainId: divisionId,
+          goal: payload.title,
+          inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
+          riskPreview: defaultRiskPreview,
+          constraintPackRef: `constraints:${divisionId}`,
+          budgetIntent: defaultBudgetIntent,
+          idempotencyKey,
+          traceId: correlationId,
+        });
 
-  // R5-41: Task creation must produce PlatformFactEvent per INV-STATE-001
-  // Use RuntimeStateMachine to create task status event from the admission result
-  const { RuntimeStateMachine } = await import("../../execution/runtime-state-machine.js");
-  const rsm = new RuntimeStateMachine();
-  const taskTransition = rsm.transition({
-    commandId: newId("cmd"),
-    entityType: "HarnessRun",
-    entityId: admissionResult.harnessRun.harnessRunId,
-    principal: principalRef.principalId,
-    aggregateType: "HarnessRun",
-    aggregate: admissionResult.harnessRun,
-    fromStatus: "created",
-    toStatus: "admitted",
-    expectedSeq: 0,
-    traceId: correlationId,
-    tenantId: tenantId ?? "global",
-    reasonCode: "task.created",
-    emittedBy: "api.task-routes",
-    runVersionLockId: admissionResult.runVersionLock.runVersionLockId,
-    leaseId: `lease:task:${taskId}:create`,
-    fencingToken: `fencing:task:${taskId}:create:0`,
-    policyGuard: {
-      allowed: true,
-      policyProofRef: `constraints:${payload.divisionId}`,
-    },
-    budgetPrecondition: {
-      reservationId: admissionResult.harnessRun.budgetLedgerId ?? "pending",
-      hardCapSatisfied: true,
-    },
-    auditRef: `audit://tasks/${taskId}/creation`,
-  });
+        const rsm = new RuntimeStateMachine();
+        rsm.transition({
+          commandId: newId("cmd"),
+          entityType: "HarnessRun",
+          entityId: admissionResult.harnessRun.harnessRunId,
+          principal: principalRef.principalId,
+          aggregateType: "HarnessRun",
+          aggregate: admissionResult.harnessRun,
+          fromStatus: "created",
+          toStatus: "admitted",
+          expectedSeq: 0,
+          traceId: correlationId,
+          tenantId: tenantId ?? "global",
+          reasonCode: "task.created",
+          emittedBy: "api.task-routes",
+          runVersionLockId: admissionResult.runVersionLock.runVersionLockId,
+          leaseId: `lease:task:${taskId}:create`,
+          fencingToken: `fencing:task:${taskId}:create:0`,
+          policyGuard: {
+            allowed: true,
+            policyProofRef: `constraints:${divisionId}`,
+          },
+          budgetPrecondition: {
+            reservationId: admissionResult.harnessRun.budgetLedgerId,
+            hardCapSatisfied: true,
+          },
+          auditRef: `audit://tasks/${taskId}/creation`,
+        });
 
-  // Store the task and publish events in same transaction to avoid orphaned task
-  if (!deps.taskStore) {
-    throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
-  }
-  deps.taskStore.withConnection((conn) => {
-    deps.taskStore.task.insertTask({
-      id: taskId,
-      parentId: payload.parentId ?? null,
-      rootId: taskId,
-      divisionId: payload.divisionId,
-      tenantId,
-      title: payload.title,
-      status: "pending" as TaskStatus,
-      source: payload.source ?? "user",
-      priority: payload.priority ?? "normal",
-      inputJson: payload.inputJson ?? "{}",
-      normalizedInputJson: null,
-      outputJson: null,
-      estimatedCostUsd: null,
-      actualCostUsd: 0,
-      errorCode: null,
-      createdAt: now,
-      updatedAt: now,
-      completedAt: null,
-    });
-  });
+        if (!deps.taskStore) {
+          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+        }
+        const taskStore = deps.taskStore;
+        taskStore.withConnection((_conn) => {
+          taskStore.task.insertTask({
+            id: taskId,
+            parentId: payload.parentId ?? null,
+            rootId: taskId,
+            divisionId,
+            tenantId,
+            title: payload.title,
+            status: "pending" as TaskStatus,
+            source: payload.source ?? "user",
+            priority: payload.priority ?? "normal",
+            inputJson: payload.inputJson ?? "{}",
+            normalizedInputJson: null,
+            outputJson: null,
+            estimatedCostUsd: null,
+            actualCostUsd: 0,
+            errorCode: null,
+            createdAt: now,
+            updatedAt: now,
+            completedAt: null,
+          });
+        });
 
-  const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
+        const cockpit = deps.missionControlService.getTaskCockpit(taskId, missionControlTenantId);
         return buildJsonResponse(ctx.requestId, 201, cockpit);
       },
     },

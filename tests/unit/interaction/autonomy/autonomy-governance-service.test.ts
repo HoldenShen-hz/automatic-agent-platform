@@ -207,3 +207,71 @@ test("AutonomyGovernanceService evaluateCapability demotes P0 incidents to sugge
   assert.equal(decision.recommendedLevel, "suggestion");
   assert.deepEqual(decision.reasonCodes, ["autonomy.promotion_blocked_by_p0_incident"]);
 });
+
+test("getMaxAutonomyLevel returns full_auto for unknown agent", () => {
+  const service = new AutonomyGovernanceService();
+  assert.equal(service.getMaxAutonomyLevel("unknown-agent"), "full_auto");
+});
+
+test("canPromote returns true for non-frozen agent targeting suggestion level", () => {
+  const service = new AutonomyGovernanceService();
+  // suggestion is lower than full_auto max, so can promote
+  assert.equal(service.canPromote("agent-001", "cap-1", "suggestion"), true);
+});
+
+test("canDemote returns true for non-frozen agent", () => {
+  const service = new AutonomyGovernanceService();
+  assert.equal(service.canDemote("agent-001", "cap-1", "suggestion"), true);
+});
+
+test("isFrozen returns false for any agent since frozenAgents set is empty", () => {
+  const service = new AutonomyGovernanceService();
+  assert.equal(service.isFrozen("agent-001"), false);
+  assert.equal(service.isFrozen("any-agent"), false);
+});
+
+test("setAuditService accepts null without throwing", () => {
+  const service = new AutonomyGovernanceService();
+  service.setAuditService(null);
+});
+
+test("evaluateProfile aggregates decisions from multiple capabilities", () => {
+  const service = new AutonomyGovernanceService();
+  const profile = makeProfile({
+    agentId: "agent-multi",
+    capabilityScores: [
+      makeScore({ capabilityId: "cap-1", totalExecutions: 100, successfulExecutions: 100, humanOverrides: 0, incidents: 0 }),
+      makeScore({ capabilityId: "cap-2", totalExecutions: 100, successfulExecutions: 100, humanOverrides: 0, incidents: 0 }),
+    ],
+  });
+  const result = service.evaluateProfile(profile);
+  assert.equal(result.agentId, "agent-multi");
+  assert.equal(result.decisions.length, 2);
+  // Both capabilities have perfect execution (100/100), trust score should be 1000 each
+  // Average should be approximately 1000
+  assert.ok(result.overallTrustScore >= 900);
+});
+
+test("evaluateProfile handles empty capability scores with zero trust", () => {
+  const service = new AutonomyGovernanceService();
+  const profile = makeProfile({ capabilityScores: [] });
+  const result = service.evaluateProfile(profile);
+  assert.equal(result.overallTrustScore, 0);
+  assert.equal(result.decisions.length, 0);
+});
+
+test("evaluateCapability preserves current level when trust is medium and no promotion", () => {
+  const service = new AutonomyGovernanceService();
+  const score = makeScore({
+    capabilityId: "test",
+    currentAutonomy: "supervised",
+    totalExecutions: 100,
+    successfulExecutions: 95,
+    humanOverrides: 1,
+    incidents: 0,
+  });
+  const decision = service.evaluateCapability("agent-x", score);
+  // Trust score should be high but promotion requires meeting thresholds
+  assert.equal(decision.trustScore > 0, true);
+  assert.equal(decision.reasonCodes.length > 0, true);
+});

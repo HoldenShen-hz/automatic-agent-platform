@@ -733,13 +733,13 @@ export class HarnessRuntimeService {
       startedAt,
       completedAt,
       ...(input.nodeRunId != null ? { nodeRunRefs: [input.nodeRunId] as const } : {}),
-      rationale: input.rationale,
-      evidenceRefs: input.evidenceRefs,
-      toolCalls: input.toolCalls,
-      latency: input.latency,
-      cost: input.cost,
-      error: input.error ?? null,
-      ...(input.nextAction !== null ? { nextAction: input.nextAction as string } : {}),
+      ...(input.rationale != null ? { rationale: input.rationale } : {}),
+      ...(input.evidenceRefs != null ? { evidenceRefs: input.evidenceRefs } : {}),
+      ...(input.toolCalls != null ? { toolCalls: input.toolCalls } : {}),
+      ...(input.latency != null ? { latency: input.latency } : {}),
+      ...(input.cost != null ? { cost: input.cost } : {}),
+      ...(input.error != null ? { error: input.error } : {}),
+      ...(input.nextAction != null ? { nextAction: input.nextAction } : {}),
     };
     return {
       ...run,
@@ -1290,8 +1290,8 @@ export class HarnessRuntimeService {
       const lastNodeRunId = run.nodeRunIds.at(-1);
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
-        requiresHuman: (input.requiresHuman === true || guardrailAssessment.requiresHuman) || undefined,
-        maxIterationsReached: (inputBudget && run.steps.length >= inputBudget.maxSteps) || undefined,
+        requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman ? true : undefined,
+        maxIterationsReached: inputBudget && run.steps.length >= inputBudget.maxSteps ? true : undefined,
         riskScore: input.riskScore,
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,

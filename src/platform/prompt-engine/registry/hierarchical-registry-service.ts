@@ -56,7 +56,7 @@ export class HierarchicalPromptRegistryService {
   private readonly packBundles = new Map<string, Map<string, PromptBundle>>();
   private readonly taskTypeBundles = new Map<string, Map<string, Map<string, PromptBundle>>>();
   private readonly versionsByName = new Map<string, Map<string, PromptBundle>>();
-  private readonly versionsByScope = new Map<string, Map<string, PromptBundle>>();
+  private readonly versionsByScope = new Map<string, Map<number, PromptBundle>>();
 
   private readonly config: HierarchicalPromptRegistryConfig;
 
@@ -80,6 +80,7 @@ export class HierarchicalPromptRegistryService {
       bundleId,
       name: input.name,
       version: input.version,
+      displayVersion: input.displayVersion,
       domain: domain ?? input.domain,
       taskType: input.taskType,
       packId: packId ?? input.packId,
@@ -87,6 +88,7 @@ export class HierarchicalPromptRegistryService {
       userPrompt: input.userPrompt,
       fewShotExamples: input.fewShotExamples ?? [],
       constraints: this.normalizeConstraints(input.constraints),
+      compatibilityMatrix: input.compatibilityMatrix,
       metadata: this.buildMetadata(input),
       createdAt: nowIso(),
       updatedAt: nowIso(),
@@ -148,13 +150,14 @@ export class HierarchicalPromptRegistryService {
     return bundles
       .map((bundle) => ({
         version: bundle.version,
+        displayVersion: bundle.displayVersion,
         isCurrent: bundle.metadata.deprecated !== true,
         isDefault: bundle.metadata.trafficAllocation.weight === 100,
         trafficWeight: bundle.metadata.trafficAllocation.weight,
         createdAt: bundle.createdAt,
         deprecated: bundle.metadata.deprecated,
       }))
-      .sort((a, b) => a.version.localeCompare(b.version));
+      .sort((a, b) => b.version - a.version);
   }
 
   /**
@@ -194,7 +197,7 @@ export class HierarchicalPromptRegistryService {
    */
   public deprecateBundle(
     name: string,
-    version: string,
+    version: number,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
@@ -224,7 +227,7 @@ export class HierarchicalPromptRegistryService {
 
   public removeBundle(
     name: string,
-    version: string,
+    version: number,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
@@ -295,7 +298,7 @@ export class HierarchicalPromptRegistryService {
     if (domain) parts.push(domain);
     if (packId) parts.push(packId);
     parts.push(input.name);
-    parts.push(input.version);
+    parts.push(String(input.version));
     return parts.join(":");
   }
 
@@ -303,8 +306,8 @@ export class HierarchicalPromptRegistryService {
     if (!input.name?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_name", "Bundle name must be non-empty");
     }
-    if (!input.version?.trim()) {
-      throw new ValidationError("prompt_bundle.invalid_version", "Bundle version must be non-empty");
+    if (!Number.isInteger(input.version) || input.version <= 0) {
+      throw new ValidationError("prompt_bundle.invalid_version", "Bundle version must be a positive integer");
     }
     if (!input.domain?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_domain", "Bundle domain must be non-empty");
@@ -343,6 +346,8 @@ export class HierarchicalPromptRegistryService {
     return {
       owner: input.metadata?.owner ?? "system",
       deprecated: input.metadata?.deprecated ?? false,
+      lifecycleStatus: input.metadata?.lifecycleStatus
+        ?? (input.metadata?.deprecated ? "deprecated" : "active"),
       tags: input.metadata?.tags ?? [],
       compatibilityTags: input.metadata?.compatibilityTags ?? [],
       trafficAllocation: input.metadata?.trafficAllocation ?? {
@@ -403,7 +408,7 @@ export class HierarchicalPromptRegistryService {
 
   private findBundle(
     name: string,
-    version: string,
+    version: number,
     level: RegistryLevel,
     domain?: string,
     packId?: string,
@@ -422,7 +427,7 @@ export class HierarchicalPromptRegistryService {
     return {
       bundle,
       availableVersions: this.listBundleVersions(bundle.name),
-      currentVersion: bundle.version,
+      currentVersion: bundle.displayVersion,
     };
   }
 

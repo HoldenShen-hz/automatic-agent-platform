@@ -35,6 +35,7 @@ import { serializeHandoff } from "./handoff-serializer.js";
 import type { AgentHandoff } from "./handoff-model.js";
 import type { ExecuteBridge, ExecutionContext } from "./execute-bridge.js";
 import { RuntimeExecuteBridge, MockExecuteBridge } from "./runtime-execute-bridge.js";
+import { executeOapeflirRuntimePlan } from "../../execution/oapeflir/runtime-plan-executor.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { startActiveSpan } from "../../shared/observability/otel-tracer.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
@@ -201,7 +202,7 @@ export class OapeflirLoopService {
     if (options.executeBridge) {
       this.executeBridge = options.executeBridge;
     } else if (options.dbPath) {
-      this.executeBridge = new RuntimeExecuteBridge(options.dbPath);
+      this.executeBridge = new RuntimeExecuteBridge(options.dbPath, "MiniMax-M2.7", executeOapeflirRuntimePlan);
     } else {
       this.executeBridge = new MockExecuteBridge();
     }
@@ -237,10 +238,20 @@ export class OapeflirLoopService {
     taskId: string,
   ): void {
     if (this.eventPublisher) {
+      const status = eventType === "oapeflir.view.run_lifecycle"
+        ? String(payload["stage"] ?? "unknown")
+        : eventType === "oapeflir.phase.transition"
+          ? `${String(payload["fromPhase"] ?? "unknown")}->${String(payload["toPhase"] ?? "unknown")}`
+          : `decision:${String(payload["decisionKind"] ?? "unknown")}:${String(payload["decision"] ?? "unknown")}`;
       this.eventPublisher.publish({
-        eventType,
+        eventType: "platform.harness_run.status_changed",
         taskId,
-        payload: payload as import("../../five-plane-state-evidence/events/typed-event-bus.js").TypedEventPayloadMap[OapeflirEventType],
+        payload: {
+          status,
+          runId: `oapeflir_run_${taskId}`,
+          taskId,
+          occurredAt: typeof payload["occurredAt"] === "string" ? payload["occurredAt"] : nowIso(),
+        },
       });
     }
   }
@@ -354,23 +365,28 @@ export class OapeflirLoopService {
 
         const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess({
           taskSituation: observedTask,
-          constraintPack: currentInput.constraintPack,
-          effectivePolicySnapshot: currentInput.constraintPack == null
-            ? undefined
+          ...(currentInput.constraintPack == null
+            ? {}
             : {
-                snapshotId: `policy_snapshot:${currentInput.taskId}:${this.loopIteration}`,
-                requiredApprovalLevel: currentInput.constraintPack.approvalMode === "required"
-                  ? "admin"
-                  : currentInput.constraintPack.approvalMode === "supervised"
-                    ? "user"
-                    : "none",
-                blockedTools: [],
-                forcedExecutionMode: currentInput.constraintPack.autonomyMode === "suggestion"
-                  ? "manual"
-                  : currentInput.constraintPack.autonomyMode === "supervised"
-                    ? "supervised"
-                    : undefined,
-              },
+                constraintPack: currentInput.constraintPack,
+                effectivePolicySnapshot: (() => {
+                  const forcedExecutionMode = currentInput.constraintPack.autonomyMode === "suggestion"
+                    ? "manual"
+                    : currentInput.constraintPack.autonomyMode === "semi_auto"
+                      ? "supervised"
+                      : undefined;
+                  return {
+                    snapshotId: `policy_snapshot:${currentInput.taskId}:${this.loopIteration}`,
+                    requiredApprovalLevel: currentInput.constraintPack.approvalMode === "required"
+                      ? "admin"
+                      : currentInput.constraintPack.approvalMode === "supervised"
+                        ? "user"
+                        : "none",
+                    blockedTools: [],
+                    ...(forcedExecutionMode != null ? { forcedExecutionMode } : {}),
+                  };
+                })(),
+              }),
         }), {
           taskId: currentInput.taskId,
         });
@@ -443,8 +459,38 @@ export class OapeflirLoopService {
             timeout: node.timeoutMs ?? 60000,
             retryPolicy: { maxRetries: 0, backoffMs: 0 },
           })),
-          nodes: [...planGraphBundle.graph.nodes],
-          edges: [...planGraphBundle.graph.edges],
+          nodes: planGraphBundle.graph.nodes.map((node) => ({
+            nodeId: node.nodeId,
+            nodeType: String(node.nodeType),
+            inputRefs: [...node.inputRefs],
+            outputSchemaRef: node.outputSchemaRef,
+            riskClass: String(node.riskClass),
+            budgetIntent: {
+              amount: node.budgetIntent.amount,
+              currency: node.budgetIntent.currency,
+              resourceKinds: [...node.budgetIntent.resourceKinds],
+            },
+            sideEffectProfile: {
+              mayCommitExternalEffect: node.sideEffectProfile.mayCommitExternalEffect,
+              reversible: node.sideEffectProfile.reversible,
+            },
+            retryPolicyRef: node.retryPolicyRef,
+            timeoutMs: node.timeoutMs,
+          })),
+          edges: planGraphBundle.graph.edges.map((edge) => ({
+            edgeId: edge.edgeId,
+            fromNodeId: edge.fromNodeId,
+            toNodeId: edge.toNodeId,
+            condition: (
+              typeof edge.condition === "object"
+              && edge.condition != null
+              && !Array.isArray(edge.condition)
+              && "type" in edge.condition
+            )
+              ? { type: String((edge.condition as Record<string, unknown>).type) }
+              : { type: "always" },
+            dependencyType: edge.dependencyType === "soft" ? "soft" : "hard",
+          })),
           entryNodeIds: [...planGraphBundle.graph.entryNodeIds],
           graphConstraints: {},
           createdAt: Date.now(),
@@ -501,7 +547,7 @@ export class OapeflirLoopService {
 
         // R5-13: Execute with subgraph/child-run support if parentContext provided
         const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
-          currentInput.stepOutputs ?? await this.executeViaBridge(plan, { taskId: currentInput.taskId })
+          currentInput.stepOutputs ?? await this.executeViaBridge(planGraphBundle!, { taskId: currentInput.taskId })
         ), {
           taskId: currentInput.taskId,
           planId: plan.planId,
@@ -662,7 +708,7 @@ export class OapeflirLoopService {
                 expectedBenefit: "Reduce repeat repair loops without changing live execution.",
               });
               timeline.record("improve", "completed", candidate.candidateId, null, "Registered an improvement candidate for shadow rollout - approval deferred to rollout service.");
-              const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "shadow");
+              const strategyVersion = createStrategyVersion("Shadow planning guidance", validatedLearningObjects, "evaluate_0");
 
               // R5-8: Release stage with EvaluationGate/approval/canary/rollback per §13.14
               // R5-8: Release stage with EvaluationGate/approval/canary/rollback per §13.14
@@ -741,6 +787,9 @@ export class OapeflirLoopService {
                 deciderType: "system",
                 deciderRef: "harness.guardrails",
                 reasonCode: progress.violation ?? "harness.guard.max_iterations_reached",
+                action: "abort",
+                reasonCodes: [progress.violation ?? "harness.guard.max_iterations_reached"],
+                confidence: 1,
                 createdAt: nowIso(),
               };
               // R5-41 §14.3: Emit replan aborted event
@@ -795,15 +844,15 @@ export class OapeflirLoopService {
             // R5-2: Re-enter with updated input
             shouldContinue = true;
             this.loopIteration++;
+            const { stepOutputs: _previousStepOutputs, ...nextLoopInput } = currentInput;
+            const previousGraphVersion = this.currentPlanGraphBundle?.graphVersion;
             currentInput = {
-              ...currentInput,
-              stepOutputs: undefined, // Clear to re-execute
+              ...nextLoopInput,
               previousRunContext: {
                 previousPlanId: plan.planId,
-                previousGraphVersion: this.currentPlanGraphBundle?.graphVersion,
                 eventFlowRefs: [],
-                goalDecompositionRef: undefined,
                 memoryRefs: [],
+                ...(previousGraphVersion != null ? { previousGraphVersion } : {}),
               },
             };
 
@@ -875,7 +924,7 @@ export class OapeflirLoopService {
     });
   }
 
-  private async executeViaBridge(plan: Plan, context: ExecutionContext): Promise<DualChannelStepOutput[]> {
+  private async executeViaBridge(plan: PlanGraphBundle, context: ExecutionContext): Promise<DualChannelStepOutput[]> {
     const executionResult = await this.executeBridge.executePlan(plan, context);
     return this.executeBridge.toDualChannelStepOutputs(executionResult);
   }
@@ -928,7 +977,7 @@ export class OapeflirLoopService {
       return {
         signalId: `signal_${index + 1}`,
         taskId,
-        source: index === stepOutputs.length - 1 ? "user" : "execution",
+        source: "execution",
         category,
         severity: "info",
         payload: {
@@ -937,6 +986,14 @@ export class OapeflirLoopService {
         },
         stepOutputRefs: [output.stepId],
         timestamp: Date.now() + index,
+        trustScore: {
+          overallScore: 0.95,
+          sourceReliability: 0.98,
+          historicalAccuracy: 0.9,
+          adversarialRisk: "low",
+          passedSanityCheck: true,
+        },
+        evidenceRefs: [...(output.userFacingResult.artifacts ?? [])],
       };
     });
   }

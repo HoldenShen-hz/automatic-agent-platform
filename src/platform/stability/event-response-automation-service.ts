@@ -5,8 +5,8 @@
  * and incident DLQ (Dead Letter Queue) handling.
  */
 
-import { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import { DurableEventBus } from "../state-evidence/events/durable-event-bus.js";
+import { newId, nowIso } from "../contracts/types/ids.js";
 
 /**
  * Incident severity levels.
@@ -177,31 +177,31 @@ export class EventResponseAutomationService {
       // Subscribe to relevant events
       await this.eventBus.subscribe(
         "incident.sev1",
-        this.handleSeverityEvent.bind(this),
+        (event) => this.handleSeverityEvent(this.parseEventPayload(event)),
       );
       await this.eventBus.subscribe(
         "incident.sev2",
-        this.handleSeverityEvent.bind(this),
+        (event) => this.handleSeverityEvent(this.parseEventPayload(event)),
       );
       await this.eventBus.subscribe(
         "incident.sev3",
-        this.handleSeverityEvent.bind(this),
+        (event) => this.handleSeverityEvent(this.parseEventPayload(event)),
       );
       await this.eventBus.subscribe(
         "incident.sev4",
-        this.handleSeverityEvent.bind(this),
+        (event) => this.handleSeverityEvent(this.parseEventPayload(event)),
       );
       await this.eventBus.subscribe(
         "emergency.brake.engage",
-        this.handleBrakeEngageEvent.bind(this),
+        (event) => this.handleBrakeEngageEvent(this.parseEventPayload(event)),
       );
       await this.eventBus.subscribe(
         "emergency.brake.release",
-        this.handleBrakeReleaseEvent.bind(this),
+        (event) => this.handleBrakeReleaseEvent(this.parseEventPayload(event)),
       );
       await this.eventBus.subscribe(
         "dlq.retry",
-        this.handleDlqRetryEvent.bind(this),
+        (event) => this.handleDlqRetryEvent(this.parseEventPayload(event)),
       );
     }
 
@@ -655,6 +655,17 @@ export class EventResponseAutomationService {
     this.retryDlqEntry(dlqId);
   }
 
+  private parseEventPayload(event: { payloadJson: string }): Record<string, unknown> {
+    try {
+      const parsed = JSON.parse(event.payloadJson) as unknown;
+      return parsed != null && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
   // ============ Event Emitters ============
 
   private emitIncidentEvent(
@@ -667,7 +678,7 @@ export class EventResponseAutomationService {
 
     this.eventBus.publish({
       eventType,
-      payload: incident,
+      payload: { ...incident },
     });
   }
 
@@ -681,7 +692,7 @@ export class EventResponseAutomationService {
 
     this.eventBus.publish({
       eventType,
-      payload: state,
+      payload: { ...state },
     });
   }
 
@@ -692,7 +703,7 @@ export class EventResponseAutomationService {
 
     this.eventBus.publish({
       eventType,
-      payload: entry,
+      payload: { ...entry },
     });
   }
 }

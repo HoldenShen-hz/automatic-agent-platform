@@ -17,7 +17,7 @@ export class StrategyLearningService {
   private readonly distillation = new ExperienceDistillationService();
   private readonly llmImprovement: LLMImprovementGenerationService;
   private readonly validator = new LearningObjectValidator();
-  private readonly evidenceStore?: EvidenceStore;
+  private readonly evidenceStore: EvidenceStore | undefined;
 
   public constructor(options: StrategyLearningServiceOptions = {}) {
     this.llmImprovement = options.llmImprovementService ?? new LLMImprovementGenerationService();
@@ -64,20 +64,37 @@ export class StrategyLearningService {
 
   /** §56: Convert LearningSignal to EvidenceRecord for unified pipeline */
   private signalToEvidence(signal: LearningSignal) {
+    const evidence = signal.evidence as Record<string, unknown>;
+    const taskType = readString(evidence.taskType) ?? "general";
+    const costUsd = readNumber(evidence.costUsd) ?? 0;
+    const latencyMs = readNumber(evidence.latencyMs) ?? 0;
+    const toolCalls = readNumber(evidence.toolCalls) ?? 0;
+    const repairRounds = readNumber(evidence.repairRounds) ?? 0;
+    const failureMode = signal.learningType === "failure_pattern"
+      ? readString(evidence.failureMode) ?? signal.valueSummary
+      : undefined;
+
     return {
       id: `ev_from_signal_${signal.learningSignalId}`,
-      taskType: signal.taskType ?? 'general',
+      taskType,
       sessionId: signal.sourceFeedbackId,
       traceId: signal.learningSignalId,
-      success: signal.learningType !== "failure_pattern" && !signal.errorCode,
-      failureMode: signal.learningType === "failure_pattern" ? signal.patternCategory : undefined,
-      failureCategory: signal.learningType === "failure_pattern" ? 'complex_repair_failure' : undefined,
-      costUsd: signal.costUsd ?? 0,
-      latencyMs: signal.latencyMs ?? 0,
-      toolCalls: signal.tokenUsage?.inputTokens ?? 0,
-      repairRounds: signal.repairRounds ?? 0,
+      success: signal.learningType !== "failure_pattern",
+      ...(failureMode !== undefined ? { failureMode } : {}),
+      ...(signal.learningType === "failure_pattern" ? { failureCategory: "complex_repair_failure" as const } : {}),
+      costUsd,
+      latencyMs,
+      toolCalls,
+      repairRounds,
       rollback: false,
       createdAt: new Date().toISOString(),
+      metadata: {
+        learningType: signal.learningType,
+        confidence: signal.confidence,
+        valueSummary: signal.valueSummary,
+        sourceSignalIds: signal.sourceSignalIds,
+        relatedSignalIds: signal.relatedSignalIds,
+      },
     };
   }
 
@@ -95,4 +112,12 @@ export class StrategyLearningService {
       sourceSignalIds: [...new Set(sourceSignalIds)],
     };
   }
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }

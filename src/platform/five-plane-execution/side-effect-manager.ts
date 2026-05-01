@@ -4,6 +4,7 @@ import {
   type SideEffectRecord,
   type SideEffectStatus,
 } from "../contracts/executable-contracts/index.js";
+import { newId } from "../contracts/types/ids.js";
 import {
   RuntimeStateMachine,
   type RuntimeTransitionResult,
@@ -67,6 +68,10 @@ export class SideEffectManager {
     context: SideEffectManagerContext & { readonly reasonCode: string },
   ): RuntimeTransitionResult<SideEffectRecord> {
     return this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "SideEffectRecord",
+      entityId: sideEffect.sideEffectId,
+      principal: context.emittedBy,
       aggregateType: "SideEffectRecord",
       aggregate: sideEffect,
       fromStatus: sideEffect.status,
@@ -99,6 +104,6 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
     case "mark_failed":
       return "failed";
     default:
-      return "unknown";
+      return "failed";
   }
 }

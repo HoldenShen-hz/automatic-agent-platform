@@ -10,6 +10,7 @@
 import { readFileSync } from "node:fs";
 import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack-sdk/pack-manifest.js";
 import { createApiClient, type ApiClientConfig } from "../client-sdk/api-client.js";
+import { createPrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
 
 interface PackPublishOptions {
   manifest: string;
@@ -23,11 +24,23 @@ function parseArgs(): PackPublishOptions {
   const args = process.argv.slice(2);
   const opts: PackPublishOptions = { manifest: "", dryRun: false };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--manifest" && i + 1 < args.length) opts.manifest = args[++i];
-    else if (args[i] === "--registry-url" && i + 1 < args.length) opts.registryUrl = args[++i];
-    else if (args[i] === "--api-version" && i + 1 < args.length) opts.apiVersion = args[++i];
-    else if (args[i] === "--bearer-token" && i + 1 < args.length) opts.bearerToken = args[++i];
-    else if (args[i] === "--dry-run") opts.dryRun = true;
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--manifest" && next !== undefined) {
+      opts.manifest = next;
+      i++;
+    } else if (arg === "--registry-url" && next !== undefined) {
+      opts.registryUrl = next;
+      i++;
+    } else if (arg === "--api-version" && next !== undefined) {
+      opts.apiVersion = next;
+      i++;
+    } else if (arg === "--bearer-token" && next !== undefined) {
+      opts.bearerToken = next;
+      i++;
+    } else if (arg === "--dry-run") {
+      opts.dryRun = true;
+    }
   }
   return opts;
 }
@@ -79,6 +92,11 @@ async function main(): Promise<void> {
       baseUrl: registryUrl,
       apiVersion,
       bearerToken,
+      principal: createPrincipalRef({
+        principalId: "sdk.pack-publish",
+        tenantId: "platform",
+        roles: ["operator"],
+      }),
     };
 
     const client = createApiClient(config);

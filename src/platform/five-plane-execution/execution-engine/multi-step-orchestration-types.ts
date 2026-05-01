@@ -17,8 +17,8 @@ export interface MultiStepToolExecutionInput {
   title: string;
   request: string;
   // R4-25 (INV-BUDGET-001): Budget tracking - harnessRunId from validated PlanGraphBundle
-  harnessRunId: string;
-  budgetLedger: BudgetLedger;
+  harnessRunId?: string;
+  budgetLedger?: BudgetLedger;
   contextBudgetTokens?: number;
   admissionPolicy?: AdmissionPolicy;
   admissionBackpressureSnapshot?: () => AdmissionBackpressureSnapshot | null;
@@ -31,7 +31,7 @@ export interface MultiStepToolExecutionInput {
 export interface MultiStepOrchestrationResult {
   snapshot: ReturnType<AuthoritativeTaskStore["loadTaskSnapshot"]>;
   streamFrames: StreamEventFrame[];
-  routing: ReturnType<IntakeRouter["route"]>;
+  routing: Awaited<ReturnType<IntakeRouter["route"]>>;
   plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
   compaction: ContextCompactionResult | null;
 }

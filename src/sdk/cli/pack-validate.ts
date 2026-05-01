@@ -20,9 +20,17 @@ function parseArgs(): PackValidateOptions {
   const args = process.argv.slice(2);
   const opts: PackValidateOptions = { manifest: "", strict: false };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--manifest" && i + 1 < args.length) opts.manifest = args[++i];
-    else if (args[i] === "--contract-version" && i + 1 < args.length) opts.contractVersion = args[++i];
-    else if (args[i] === "--strict") opts.strict = true;
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--manifest" && next !== undefined) {
+      opts.manifest = next;
+      i++;
+    } else if (arg === "--contract-version" && next !== undefined) {
+      opts.contractVersion = next;
+      i++;
+    } else if (arg === "--strict") {
+      opts.strict = true;
+    }
   }
   return opts;
 }

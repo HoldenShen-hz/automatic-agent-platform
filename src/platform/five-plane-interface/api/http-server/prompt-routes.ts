@@ -88,18 +88,15 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
         const domain = payload.domain as string | undefined;
         const packId = payload.packId as string | undefined;
-        // R20-23: Check if bundle exists before deprecating
-        const existing = deps.promptRegistryService.getBundle(name, String(payload.version ?? ""), packId, domain);
-        if (!existing) {
+        const version = Number(payload.version);
+        if (!Number.isInteger(version) || version <= 0) {
+          return buildJsonResponse(ctx.requestId, 400, { error: { code: "prompt.invalid_version", message: "version must be a positive integer." } });
+        }
+        try {
+          deps.promptRegistryService.deprecateBundle(name, version, level, domain, packId);
+        } catch {
           return buildJsonResponse(ctx.requestId, 404, { error: { code: "prompt.bundle_not_found", message: `Bundle ${name} not found.` } });
         }
-        deps.promptRegistryService.deprecateBundle(
-          name,
-          String(payload.version ?? ""),
-          level,
-          domain,
-          packId,
-        );
         return buildJsonResponse(ctx.requestId, 200, { deprecated: true, name });
       },
     },
@@ -114,7 +111,11 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         requirePrincipal(ctx.request, deps.authService, "admin");
         const name = decodeURIComponent(ctx.route.segments[2] ?? "");
         const level = (readQueryParam(ctx.request, "level", { maxLength: 32 }) as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
-        const version = readQueryParam(ctx.request, "version", { required: true, maxLength: 64 })!;
+        const versionParam = readQueryParam(ctx.request, "version", { required: true, maxLength: 64 })!;
+        const version = Number(versionParam);
+        if (!Number.isInteger(version) || version <= 0) {
+          return buildJsonResponse(ctx.requestId, 400, { error: { code: "prompt.invalid_version", message: "version must be a positive integer." } });
+        }
         const domain = readQueryParam(ctx.request, "domain", { maxLength: 128 });
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });
         const removed = deps.promptRegistryService.removeBundle(name, version, level, domain, packId);

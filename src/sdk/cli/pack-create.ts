@@ -28,13 +28,30 @@ function parseArgs(): PackCreateOptions {
     owner: "",
   };
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--pack-id" && i + 1 < args.length) opts.packId = args[++i];
-    else if (args[i] === "--domain" && i + 1 < args.length) opts.domain = args[++i];
-    else if (args[i] === "--owner" && i + 1 < args.length) opts.owner = args[++i];
-    else if (args[i] === "--version" && i + 1 < args.length) opts.version = args[++i];
-    else if (args[i] === "--capabilities" && i + 1 < args.length) opts.capabilities = args[++i].split(",");
-    else if (args[i] === "--tools" && i + 1 < args.length) opts.tools = args[++i].split(",");
-    else if (args[i] === "--output" && i + 1 < args.length) opts.output = args[++i];
+    const arg = args[i];
+    const next = args[i + 1];
+    if (arg === "--pack-id" && next !== undefined) {
+      opts.packId = next;
+      i++;
+    } else if (arg === "--domain" && next !== undefined) {
+      opts.domain = next;
+      i++;
+    } else if (arg === "--owner" && next !== undefined) {
+      opts.owner = next;
+      i++;
+    } else if (arg === "--version" && next !== undefined) {
+      opts.version = next;
+      i++;
+    } else if (arg === "--capabilities" && next !== undefined) {
+      opts.capabilities = next.split(",");
+      i++;
+    } else if (arg === "--tools" && next !== undefined) {
+      opts.tools = next.split(",");
+      i++;
+    } else if (arg === "--output" && next !== undefined) {
+      opts.output = next;
+      i++;
+    }
   }
   return opts;
 }

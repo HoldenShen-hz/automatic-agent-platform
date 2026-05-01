@@ -196,7 +196,7 @@ export function extractStepOutputRecords(result: MultiStepOrchestrationResult): 
  * because `runMultiStepOrchestration` uses the `workflow` parameter directly
  * when provided.
  */
-export function serialiseOapeflirPlan(nodes: import("../../contracts/executable-contracts/index.js").PlanNode[]): string {
+export function serialiseOapeflirPlan(nodes: readonly import("../../contracts/executable-contracts/index.js").PlanNode[]): string {
   // Serialize PlanNode[] to a JSON string that the orchestrator can decode.
   // This preserves all node metadata (nodeId, nodeType, timeoutMs, etc.).
   const serialised = JSON.stringify(nodes);
@@ -292,7 +292,9 @@ export function minimalWorkflowToPlanGraphBundle(
   const allStepIds = new Set(workflow.steps.map((s) => s.stepId));
   const dependentSteps = new Set(workflow.steps.flatMap((s) => s.dependsOnStepIds ?? []));
   const entryNodeIds = workflow.steps.filter((s) => !dependentSteps.has(s.stepId)).map((s) => s.stepId);
-  const terminalNodeIds = workflow.steps.filter((s) => !allStepIds.has(s.stepId as string) || !(s as { dependsOnStepIds?: string[] }).dependsOnStepIds?.length).map((s) => s.stepId);
+  const terminalNodeIds = workflow.steps
+    .filter((s) => !allStepIds.has(s.stepId) || (s.dependsOnStepIds?.length ?? 0) === 0)
+    .map((s) => s.stepId);
 
   return {
     planGraphBundleId: bundleId,
@@ -392,10 +394,8 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       dbPath: this.dbPath,
       title: `OAPEFLIR plan ${plan.planGraphBundleId}`,
       request,
+      ...(context.tokenBudget != null ? { contextBudgetTokens: context.tokenBudget } : {}),
     };
-    if (context.tokenBudget != null) {
-      orchInput.contextBudgetTokens = context.tokenBudget;
-    }
     const orchResult = await this.runtimePlanExecutor(orchInput);
 
     const stepRecords = extractStepOutputRecords(orchResult);
@@ -423,6 +423,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
     return result.results.map((r) => ({
       stepId: r.stepId,
       planRef: result.planId,
+      status: r.status === "failed" ? "failed" : r.status === "skipped" ? "skipped" : "succeeded",
       userFacingResult: {
         summary: r.summary,
         artifacts: r.artifacts.map((a) => `artifact:${a}`),
@@ -484,9 +485,10 @@ export class MockExecuteBridge implements ExecuteBridge {
   }
 
   toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
-    return result.results.map((r, index) => ({
+    return result.results.map((r) => ({
       stepId: r.stepId,
       planRef: result.planId,
+      status: r.status === "failed" ? "failed" : r.status === "skipped" ? "skipped" : "succeeded",
       userFacingResult: {
         summary: r.summary,
         artifacts: r.artifacts,

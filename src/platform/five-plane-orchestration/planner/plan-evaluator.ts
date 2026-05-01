@@ -156,35 +156,22 @@ export class PlanEvaluator {
     }
 
     // R20-05: Check parallelism limit - max concurrent steps must not exceed capacity
-    const maxParallelism = 10; // Default max parallel steps
-    const actualParallelism = Math.max(...Object.values(
-      Object.fromEntries(
-        Array.from({ length: Math.max(...plan.steps.map(s => s.stepId.length), 0) }, (_, i) => {
-          const depth = i; return [String(i), plan.steps.filter(s => s.dependencies.length === i).length];
-        })
-      ).reduce((acc, [depth, count]) => {
-        acc[depth] = (acc[depth] ?? 0) + (count as number);
-        return acc;
-      }, {} as Record<string, number>)
-    ), 1);
-    if (actualParallelism > maxParallelism) {
-      issues.push("planning.parallelism_exceeded:max=${maxParallelism},actual=${actualParallelism}");
-    }
-
-    // Simpler parallelism check: find max width at any depth
+    // Build dependency graph to find max parallelism (steps at same depth level)
     const stepById = new Map(plan.steps.map((s) => [s.stepId, s]));
     const depthCounts = new Map<number, number>();
     for (const step of plan.steps) {
       let depth = 0;
       for (const dep of step.dependencies) {
-        const depStep = stepById.get(dep);
-        if (depStep) {
-          // Could compute actual depth, but for now just count siblings
+        if (stepById.get(dep)) {
+          depth += 1;
         }
       }
       depthCounts.set(depth, (depthCounts.get(depth) ?? 0) + 1);
     }
     const maxConcurrentSteps = Math.max(...depthCounts.values(), 1);
+    if (maxConcurrentSteps > 10) {
+      issues.push(`planning.parallelism_exceeded:max=${10},actual=${maxConcurrentSteps}`);
+    }
     const PARALLELISM_LIMIT = 10;
     if (maxConcurrentSteps > PARALLELISM_LIMIT) {
       issues.push(`planning.parallelism_exceeded:limit=${PARALLELISM_LIMIT},actual=${maxConcurrentSteps}`);

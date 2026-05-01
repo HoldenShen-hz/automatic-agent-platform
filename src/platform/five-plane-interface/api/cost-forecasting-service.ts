@@ -99,9 +99,8 @@ export class CostForecastingService {
 
     // Generate predictions
     const predictions: CostPrediction[] = [];
-    let lastPeriodEnd = historicalData.length > 0
-      ? historicalData[historicalData.length - 1].periodEnd
-      : nowIso();
+    const lastHistoricalPeriod = historicalData.at(-1);
+    let lastPeriodEnd = lastHistoricalPeriod?.periodEnd ?? nowIso();
 
     for (let i = 1; i <= horizonPeriods; i++) {
       const { periodStart, periodEnd } = this.projectPeriod(lastPeriodEnd, config.seasonalityPattern);
@@ -153,9 +152,10 @@ export class CostForecastingService {
    */
   private analyzeTrend(data: readonly CostDataPoint[]): TrendAnalysis {
     if (data.length < 2) {
+      const firstPoint = data[0];
       return {
         slope: 0,
-        intercept: data.length === 1 ? data[0].costUsd : 0,
+        intercept: data.length === 1 ? (firstPoint?.costUsd ?? 0) : 0,
         rSquared: 0,
         predictionInterval: 0,
       };
@@ -168,7 +168,7 @@ export class CostForecastingService {
     // Linear regression: y = mx + b
     const sumX = xValues.reduce((a, b) => a + b, 0);
     const sumY = yValues.reduce((a, b) => a + b, 0);
-    const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
+    const sumXY = xValues.reduce((sum, x, i) => sum + x * (yValues[i] ?? 0), 0);
     const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
     const sumYY = yValues.reduce((sum, y) => sum + y * y, 0);
 
@@ -179,7 +179,7 @@ export class CostForecastingService {
     const yMean = sumY / n;
     const ssTotal = yValues.reduce((sum, y) => sum + Math.pow(y - yMean, 2), 0);
     const ssResidual = yValues.reduce((sum, y, i) => {
-      const predicted = intercept + slope * xValues[i];
+      const predicted = intercept + slope * (xValues[i] ?? 0);
       return sum + Math.pow(y - predicted, 2);
     }, 0);
     const rSquared = ssTotal > 0 ? 1 - ssResidual / ssTotal : 0;
@@ -260,7 +260,7 @@ export class CostForecastingService {
       yearly: { days: 365 },
       custom: { days: 30 },
     };
-    const days = periods[pattern].days;
+    const days = periods[pattern]?.days ?? periods.monthly.days;
     const nextStart = new Date(lastDate.getTime() + 24 * 60 * 60 * 1000);
     const nextEnd = new Date(nextStart.getTime() + days * 24 * 60 * 60 * 1000);
     return {
@@ -278,6 +278,9 @@ export class CostForecastingService {
     }
     // Detect based on period duration
     const firstPeriod = data[0];
+    if (!firstPeriod) {
+      return "monthly";
+    }
     const periodStart = new Date(firstPeriod.periodStart);
     const periodEnd = new Date(firstPeriod.periodEnd);
     const daysDiff = Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24));

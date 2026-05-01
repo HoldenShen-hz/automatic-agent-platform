@@ -42,12 +42,17 @@ export interface SliCollectionSummary {
   errors: string[];
 }
 
+const DEFAULT_SLO_TENANT_ID = "tenant:default";
+const DEFAULT_SLO_DOMAIN_ID = "platform";
+
 /**
  * Default SLO definitions for the minimum SLO set.
  * These map to the SLI kinds collected by this service.
  */
 export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" | "createdAt" | "updatedAt">> = [
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "task_success_rate",
     description: "Task completion success rate (tasks done / total terminal tasks)",
     sliKind: "availability",
@@ -56,6 +61,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 60,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "approval_delivery_availability",
     description: "Approval request delivery availability",
     sliKind: "availability",
@@ -64,6 +71,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 60,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "recovery_success_rate",
     description: "Task recovery success rate",
     sliKind: "availability",
@@ -72,6 +81,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 60,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "tier1_event_delivery_latency",
     description: "Tier-1 event delivery latency (pending ack backlog as proxy)",
     sliKind: "latency_p95",
@@ -80,6 +91,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 5,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "db_writability",
     description: "Database writability (1 = writable, 0 = read-only/failed)",
     sliKind: "availability",
@@ -88,6 +101,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 5,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "queue_backlog_pressure",
     description: "Queue backlog size (dispatchable tasks pending)",
     sliKind: "saturation",
@@ -96,6 +111,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 5,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "provider_health_rate",
     description: "AI provider success rate",
     sliKind: "availability",
@@ -104,6 +121,8 @@ export const DEFAULT_SLO_DEFINITIONS: Array<Omit<SloDefinition, "id" | "status" 
     windowMinutes: 5,
   },
   {
+    tenantId: DEFAULT_SLO_TENANT_ID,
+    domainId: DEFAULT_SLO_DOMAIN_ID,
     name: "memory_pressure",
     description: "Memory RSS in MB",
     sliKind: "saturation",

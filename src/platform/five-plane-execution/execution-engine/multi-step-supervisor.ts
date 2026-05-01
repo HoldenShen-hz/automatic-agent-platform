@@ -213,6 +213,7 @@ export async function executeStepLoop(
     stepCompleted = false;
     // R4-32 (INV-APPROVAL): Risk-proportional approval - use ApprovalPolicyEngine
     const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
+    const stepBudgetUsd = validatedPlanGraphBundle.graph.nodes.find((node) => node.nodeId === step.stepId)?.budgetIntent.amount ?? 1;
     for (let attempt = 1; attempt <= step.maxAttempts; attempt += 1) {
       executionAttemptCounter += 1;
       const executionId = newId("exec");
@@ -230,7 +231,7 @@ export async function executeStepLoop(
         riskCategory: "cost_sensitive", // Default risk category
         mode: "auto", // Default mode for multi-step
         stage: "execute",
-        estimatedCostUsd: execution.budgetUsdLimit,
+        estimatedCostUsd: stepBudgetUsd,
         metadata: { roleId: step.roleId, stepId: step.stepId },
       };
       const approvalResult = approvalEngine.evaluate(approvalContext);
@@ -248,7 +249,7 @@ export async function executeStepLoop(
         traceId,
         attempt: executionAttemptCounter,
         timeoutMs: step.timeoutMs,
-        budgetUsdLimit: 1,
+        budgetUsdLimit: stepBudgetUsd,
         // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
         // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
         requiresApproval: approvalResult.requiresApproval ? 1 : 0,
@@ -273,6 +274,7 @@ export async function executeStepLoop(
           taskId,
           executionId,
           eventType: "subtask:started",
+          eventTier: "tier_1",
           payloadJson: JSON.stringify(injectTraceContext({
             stepId: step.stepId,
             roleId: step.roleId,
@@ -581,6 +583,9 @@ export async function executeStepLoop(
         kind: "workflow_step_snapshot",
         fileName: `${step.stepId}.json`,
         content: createWorkflowStepCheckpoint({
+          harnessRunId: validatedPlanGraphBundle.harnessRunId,
+          nodeRunId: null,
+          planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
           taskId,
           executionId,
           workflowId: plannedWorkflow.workflow.workflowId,

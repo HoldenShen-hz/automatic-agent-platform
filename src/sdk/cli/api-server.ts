@@ -162,9 +162,13 @@ async function main(): Promise<void> {
     const hasNonEmptyJwtSecret = envConfig.jwtSecret != null && envConfig.jwtSecret.length > 0;
     const authService = (() => {
       if (envConfig.apiKeys.length > 0 && hasNonEmptyJwtSecret) {
+        const jwtSecret = envConfig.jwtSecret;
+        if (jwtSecret == null) {
+          throw new Error("AA_JWT_SECRET must be present when JWT auth is enabled");
+        }
         return new ApiAuthService({
           apiKeys: envConfig.apiKeys,
-          jwtSecret: envConfig.jwtSecret,
+          jwtSecret,
         });
       }
       if (envConfig.apiKeys.length > 0) {
@@ -174,9 +178,13 @@ async function main(): Promise<void> {
         });
       }
       if (hasNonEmptyJwtSecret) {
+        const jwtSecret = envConfig.jwtSecret;
+        if (jwtSecret == null) {
+          throw new Error("AA_JWT_SECRET must be present when JWT auth is enabled");
+        }
         return new ApiAuthService({
           apiKeys: [],
-          jwtSecret: envConfig.jwtSecret,
+          jwtSecret,
         });
       }
       throw new Error("AA_API_KEYS or AA_JWT_SECRET must be provided - server cannot start with all endpoints unprotected");

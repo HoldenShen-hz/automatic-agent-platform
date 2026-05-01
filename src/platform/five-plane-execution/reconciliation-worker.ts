@@ -108,7 +108,7 @@ export class ReconciliationWorker {
       externalObservedState: observedState,
       result,
       nextAction,
-      evidenceRefs,
+      ...(evidenceRefs != null ? { evidenceRefs } : {}),
     });
   }
 

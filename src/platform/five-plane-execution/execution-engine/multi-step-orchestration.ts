@@ -201,13 +201,14 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   const validatedPlanGraphBundle = guardResult.planGraphBundle;
   // R4-26 (INV-GRAPH-001): Use validatedPlanGraphBundle - the harnessRunId is now available for budget tracking
   const harnessRunIdFromBundle = validatedPlanGraphBundle.harnessRunId;
+  const tenantId = "tenant:local";
   // R4-33: Set harnessRunId on tool registry for correlating SideEffectRecords
   setToolRegistryHarnessRunId(harnessRunIdFromBundle);
 
   // R4-25 (INV-BUDGET-001): Create budgetLedger from validated PlanGraphBundle for reserve-before-execute
   // The budgetLedger flows through executeStepLoop to multi-step-agent-round-loop to model-call-provider
   const budgetLedger = createBudgetLedger({
-    tenantId: validatedPlanGraphBundle.tenantId ?? "tenant:local",
+    tenantId,
     harnessRunId: harnessRunIdFromBundle,
     currency: "USD",
     hardCap: 10, // matches default maxTaskCostUsd
@@ -226,7 +227,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
   // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
   const harnessRun = createHarnessRun({
-    tenantId: validatedPlanGraphBundle.tenantId ?? "tenant:local",
+    tenantId,
+    domainId: plannedWorkflow.workflow.divisionId,
     confirmedTaskSpecId: `pending:${taskId}`,
     requestEnvelopeId: `pending:${taskId}`,
     requestHash: `request:${taskId}`,
@@ -376,6 +378,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           taskId,
           executionId: null,
           eventType: "routing:decided",
+          eventTier: "tier_2",
           payloadJson: JSON.stringify(routing),
           traceId,
           createdAt: nowIso(),
@@ -385,6 +388,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           taskId,
           executionId: null,
           eventType: "workflow:planned",
+          eventTier: "tier_2",
           payloadJson: JSON.stringify(injectTraceContext({
             workflowId: plannedWorkflow.workflow.workflowId,
             planReason: plannedWorkflow.planReason,
@@ -533,7 +537,12 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "in_progress", toStatus: "failed", executionId: lastExecutionId, ...ctx });
         transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "failed", currentStepIndex: plannedWorkflow.executionSteps.length, outputsJson: JSON.stringify(outputs), ...ctx });
         transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "streaming", toStatus: "failed", ...ctx });
-        store.task.updateTaskOutput(taskId, JSON.stringify({ error: workflowLastErrorCode ?? "workflow.step_failed", failedStepIds: [...failedStepIds], skippedStepIds: [...skippedStepIds] }), ctx.occurredAt);
+        store.task.updateTaskOutput(
+          taskId,
+          "failed",
+          JSON.stringify({ error: workflowLastErrorCode ?? "workflow.step_failed", failedStepIds: [...failedStepIds], skippedStepIds: [...skippedStepIds] }),
+          ctx.occurredAt,
+        );
       } else {
         transitions.transitionTaskTerminalState({
           taskId,

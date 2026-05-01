@@ -218,7 +218,7 @@ export class BulkheadIsolator {
 export class BulkheadRejectionError extends Error {
   constructor(
     public readonly code: string,
-    public readonly message: string,
+    public override readonly message: string,
     public readonly planeName: string,
   ) {
     super(message);
@@ -232,7 +232,7 @@ export class BulkheadRejectionError extends Error {
 export class BulkheadTimeoutError extends Error {
   constructor(
     public readonly code: string,
-    public readonly message: string,
+    public override readonly message: string,
     public readonly planeName: string,
     public readonly timeoutMs: number,
   ) {

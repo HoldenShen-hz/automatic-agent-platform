@@ -7,10 +7,19 @@
  * §G8: Growth domain — formats for "end_user" and "reviewer" audiences.
  */
 
-import type { DomainPresenterPlugin, HumanOutput } from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput, MachineOutput } from "../../domains/registry/plugin-spi.js";
 
-function formatCampaign(output: { stepId: string; payload: Record<string, unknown> }): string {
-  const name = output.payload["campaignName"] as string ?? output.stepId;
+function resolveMachineOutputStepId(output: MachineOutput): string {
+  return output.nodeId ?? output.stepId ?? "unknown_step";
+}
+
+function resolveCitation(output: MachineOutput): string {
+  return output.outputRef ?? resolveMachineOutputStepId(output);
+}
+
+function formatCampaign(output: MachineOutput): string {
+  const stepId = resolveMachineOutputStepId(output);
+  const name = output.payload["campaignName"] as string ?? stepId;
   const reach = output.payload["reach"] as string ?? "unknown";
   const conversion = output.payload["conversionRate"] as string ?? "unknown";
   const roas = output.payload["roas"] as string ?? "unknown";
@@ -23,8 +32,9 @@ function formatCampaign(output: { stepId: string; payload: Record<string, unknow
   ].join("\n");
 }
 
-function formatABTest(output: { stepId: string; payload: Record<string, unknown> }): string {
-  const testName = output.payload["testName"] as string ?? output.stepId;
+function formatABTest(output: MachineOutput): string {
+  const stepId = resolveMachineOutputStepId(output);
+  const testName = output.payload["testName"] as string ?? stepId;
   const variant = output.payload["variant"] as string ?? "control";
   const lift = output.payload["lift"] as string ?? "unknown";
   const confidence = output.payload["confidence"] as string ?? "unknown";
@@ -60,15 +70,16 @@ export function createGrowthPresenterPlugin(): DomainPresenterPlugin {
         const type = output.payload["type"] as string ?? "generic";
         if (type === "campaign") {
           sections.push(formatCampaign(output));
-          citations.push(output.outputRef ?? output.stepId);
+          citations.push(resolveCitation(output));
         } else if (type === "abtest") {
           sections.push(formatABTest(output));
-          citations.push(output.outputRef ?? output.stepId);
+          citations.push(resolveCitation(output));
         } else {
+          const stepId = resolveMachineOutputStepId(output);
           sections.push(
-            `### ${output.stepId}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
+            `### ${stepId}\n\n\`\`\`json\n${JSON.stringify(output.payload, null, 2)}\n\`\`\``
           );
-          citations.push(output.outputRef ?? output.stepId);
+          citations.push(resolveCitation(output));
         }
       }
 

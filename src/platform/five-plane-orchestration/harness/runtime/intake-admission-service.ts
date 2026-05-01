@@ -254,12 +254,11 @@ export class IntakeAdmissionService {
           taskDraftId: taskDraft.taskDraftId,
           tenantId: input.tenantId,
           principal: input.principal,
-          domainId: input.domainId,
           goal: input.goal,
           inputs: (input.inputs ?? {}) as JsonValue,
           constraintPackRef: input.constraintPackRef,
           riskClass: input.riskPreview.riskClass,
-          confirmationReceipt: input.confirmationReceipt ?? undefined,
+          ...(input.confirmationReceipt != null ? { confirmationReceipt: input.confirmationReceipt } : {}),
           idempotencyKey: input.idempotencyKey,
           traceId: input.traceId,
         }), { _placeholder: true } as unknown as ConfirmedTaskSpec),
@@ -268,12 +267,11 @@ export class IntakeAdmissionService {
             taskDraftId: taskDraft.taskDraftId,
             tenantId: input.tenantId,
             principal: input.principal,
-            domainId: input.domainId,
             goal: input.goal,
             inputs: (input.inputs ?? {}) as JsonValue,
             constraintPackRef: input.constraintPackRef,
             riskClass: input.riskPreview.riskClass,
-            confirmationReceipt: input.confirmationReceipt ?? undefined,
+            ...(input.confirmationReceipt != null ? { confirmationReceipt: input.confirmationReceipt } : {}),
             idempotencyKey: input.idempotencyKey,
             traceId: input.traceId,
           }),
@@ -304,12 +302,11 @@ export class IntakeAdmissionService {
       taskDraftId: taskDraft.taskDraftId,
       tenantId: input.tenantId,
       principal: input.principal,
-      domainId: input.domainId,
       goal: input.goal,
       inputs: (input.inputs ?? {}) as JsonValue,
       constraintPackRef: input.constraintPackRef,
       riskClass: input.riskPreview.riskClass,
-      confirmationReceipt: input.confirmationReceipt ?? undefined,
+      ...(input.confirmationReceipt != null ? { confirmationReceipt: input.confirmationReceipt } : {}),
       idempotencyKey: input.idempotencyKey,
       traceId: input.traceId,
     });
@@ -340,15 +337,17 @@ export class IntakeAdmissionService {
     });
     const admissionLeaseId = `lease:${createdRun.harnessRunId}:admission`;
     const admissionFencingToken = `fencing:${createdRun.harnessRunId}:admission:0`;
-    const runnable = {
+    const runnable: HarnessRun = {
       ...createdRun,
       versionLockId: runVersionLock.runVersionLockId,
-      leaseId: admissionLeaseId,
-      fencingToken: admissionFencingToken,
     };
     const admitted = this.stateMachine.transition({
+      commandId: `cmd:${createdRun.harnessRunId}:admission`,
+      entityType: "HarnessRun",
+      entityId: runnable.harnessRunId,
+      principal: input.principal.principalId,
       aggregateType: "HarnessRun",
-      aggregate: runnable as HarnessRun,
+      aggregate: runnable,
       fromStatus: "created",
       toStatus: "admitted",
       expectedSeq: 0,

@@ -1228,27 +1228,17 @@ export class NlEntryService implements NlEntryPort {
     const requestEnvelope: NlRequestEnvelope | null = confirmationRequired
       ? null
       : createRequestEnvelope<NlRequestPayload>({
-          principal: createPrincipalRef({
-            principalId: request.userId,
+          principal: createPlatformPrincipal({
+            actorId: request.userId,
             tenantId: request.tenantId,
             roles: ["requester"],
+            authMethod: "nl_entry",
           }),
           tenantId: request.tenantId,
           requestId: `request:${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}`,
-          confirmedTaskSpecId: canonicalTaskDraft.taskDraftId,
           idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
           traceId: buildIntakeTraceId(request, taskDraft.draftId),
-          priority: ((): number => {
-            switch (riskPreview.overallRisk as string) {
-              case "critical": return 100;
-              case "high": return 80;
-              default: return 40;
-            }
-          })(),
-          mode: "sync",
-          taskId: null,
-          sessionId: null,
-          body: {
+          payload: {
             userId: request.userId,
             title: deriveTitle(request.message),
             request: request.message,
@@ -1261,6 +1251,14 @@ export class NlEntryService implements NlEntryPort {
             entities: primaryIntent.entities,
             confirmationRequired,
             generatedSummary: surfacedSummary,
+          },
+          metadata: {
+            source: "nl_entry",
+            confirmationRequired,
+            divisionId: detailed.suggestedDivisionId,
+            workflowId: detailed.suggestedWorkflowId,
+            locale: detailed.locale,
+            canonicalRequestEnvelopeId: canonicalRequestEnvelope?.requestId ?? null,
           },
         });
 

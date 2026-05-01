@@ -169,11 +169,11 @@ export function createWakeCondition(
   return {
     conditionId: options.conditionId,
     conditionKind: kind,
-    targetTime: options.targetTime,
-    callbackEndpoint: options.callbackEndpoint,
-    eventFilter: options.eventFilter,
-    approvalRequestId: options.approvalRequestId,
-    metadata: options.metadata,
+    ...(options.targetTime !== undefined ? { targetTime: options.targetTime } : {}),
+    ...(options.callbackEndpoint !== undefined ? { callbackEndpoint: options.callbackEndpoint } : {}),
+    ...(options.eventFilter !== undefined ? { eventFilter: options.eventFilter } : {}),
+    ...(options.approvalRequestId !== undefined ? { approvalRequestId: options.approvalRequestId } : {}),
+    ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
   };
 }
 
@@ -216,6 +216,6 @@ export function createHibernationRecord(input: {
     currentRenewals: 0,
     resumeAttemptCount: 0,
     pausedReason: input.pausedReason,
-    metadata: input.metadata,
+    ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
   };
 }

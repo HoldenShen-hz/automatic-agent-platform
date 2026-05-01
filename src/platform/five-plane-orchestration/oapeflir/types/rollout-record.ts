@@ -3,13 +3,11 @@ import { ImprovementGuardrailSchema } from "./improvement-candidate.js";
 
 export const RolloutLevelSchema = z.enum([
   "off",
-  "suggest",
-  "shadow",
+  "evaluate_0",
   "canary_5",
   "partial_25",
-  "partial_50",
-  "partial_75",
-  "stable",
+  "stable_75",
+  "stable_100",
 ]);
 export const RolloutStatusSchema = z.enum([
   "candidate_created",
@@ -20,15 +18,11 @@ export const RolloutStatusSchema = z.enum([
   "evaluation_enabled",
   "canary_5",
   "partial_25",
-  "partial_50",
-  "partial_75",
   "stable_75",
   "stable_100",
   "released",
   "rolled_back",
   "paused",
-  "shadow",
-  "stable",
 ]);
 
 export const RolloutMetricsSchema = z.object({

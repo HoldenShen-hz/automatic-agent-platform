@@ -232,6 +232,8 @@ async function runQueueDisconnectDegradeScenario(outputDir: string): Promise<Sta
       () =>
         ({
           state: "unavailable",
+          queueDepth: 0,
+          maxQueueDepth: 0,
           reasonCode: "queue_unavailable",
         }) satisfies DispatchQueueAvailabilitySnapshot,
     );
