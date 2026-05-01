@@ -1287,8 +1287,8 @@ export class HarnessRuntimeService {
 
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
-        requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman,
-        maxIterationsReached: run.steps.length >= input.constraintPack.budget.maxSteps,
+        requiresHuman: (input.requiresHuman === true || guardrailAssessment.requiresHuman) || undefined,
+        maxIterationsReached: (run.steps.length >= input.constraintPack.budget.maxSteps) || undefined,
         riskScore: input.riskScore,
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,
