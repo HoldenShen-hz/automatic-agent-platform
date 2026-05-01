@@ -42,7 +42,7 @@ import type {
   ResumeDiffReport,
 } from "./hibernation-types.js";
 import { createWakeCondition } from "./hibernation-types.js";
-import type { ArtifactRef } from "../../../contracts/executable-contracts/index.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 
 /**
  * Resume compatibility check result format.

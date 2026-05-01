@@ -31,11 +31,8 @@ import { SlotResolver } from "./slot-resolver/index.js";
 import { LlmIntentParser, type IntentParser, type IntentParserModelGateway } from "./intent-parser/index.js";
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../platform/contracts/types/cost.js";
-import {
-  createPlatformPrincipal,
-  createRequestEnvelope,
-  type RequestEnvelope as PlatformRequestEnvelope,
-} from "../../platform/contracts/types/index.js";
+import { createPlatformPrincipal } from "../../platform/contracts/types/platform-contracts.js";
+import { createRequestEnvelope, type RequestEnvelope } from "../../platform/contracts/request-envelope/index.js";
 import {
   createConfirmedTaskSpec,
   createPrincipalRef,
@@ -171,7 +168,7 @@ export interface NlRequestPayload {
   readonly generatedSummary: string;
 }
 
-export type NlRequestEnvelope = PlatformRequestEnvelope<NlRequestPayload>;
+export type NlRequestEnvelope = RequestEnvelope<NlRequestPayload>;
 
 export type ConversationState =
   | "Idle"
@@ -1167,7 +1164,7 @@ export class NlEntryService implements NlEntryPort {
           },
           constraintPackRef: buildConstraintPackRef(canonicalDomainId, detailed.suggestedWorkflowId),
           riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-          confirmationReceipt: canonicalConfirmationReceipt,
+          ...(canonicalConfirmationReceipt !== undefined ? { confirmationReceipt: canonicalConfirmationReceipt } : {}),
           idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
           traceId: buildIntakeTraceId(request, taskDraft.draftId),
         });
@@ -1222,14 +1219,19 @@ export class NlEntryService implements NlEntryPort {
     const requestEnvelope: NlRequestEnvelope | null = confirmationRequired
       ? null
       : createRequestEnvelope<NlRequestPayload>({
-          principal: createPlatformPrincipal({
-            actorId: request.userId,
+          principal: createPrincipalRef({
+            principalId: request.userId,
             tenantId: request.tenantId,
             roles: ["requester"],
-            authMethod: "nl_entry",
           }),
           tenantId: request.tenantId,
-          payload: {
+          requestId: `request:${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}`,
+          confirmedTaskSpecId: canonicalTaskDraft.taskDraftId,
+          idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
+          traceId: buildIntakeTraceId(request, taskDraft.draftId),
+          priority: riskPreview.overallRisk === "critical" ? 100 : riskPreview.overallRisk === "high" ? 80 : 40,
+          mode: "sync",
+          body: {
             userId: request.userId,
             title: deriveTitle(request.message),
             request: request.message,
@@ -1242,13 +1244,6 @@ export class NlEntryService implements NlEntryPort {
             entities: primaryIntent.entities,
             confirmationRequired,
             generatedSummary: surfacedSummary,
-          },
-          metadata: {
-            source: "nl_entry",
-            confirmationRequired,
-            divisionId: detailed.suggestedDivisionId,
-            workflowId: detailed.suggestedWorkflowId,
-            locale: detailed.locale,
           },
         });
 

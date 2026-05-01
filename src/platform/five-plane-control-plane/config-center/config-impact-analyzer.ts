@@ -590,6 +590,7 @@ export class ConfigImpactAnalyzer {
     const order: ImpactSeverity[] = ["none", "low", "medium", "high", "critical"];
     const aIdx = order.indexOf(a);
     const bIdx = order.indexOf(b);
-    return order[Math.max(aIdx >= 0 ? aIdx : 0, bIdx >= 0 ? bIdx : 0)];
+    const maxIdx = Math.max(aIdx >= 0 ? aIdx : 0, bIdx >= 0 ? bIdx : 0);
+    return order[maxIdx] ?? "medium";
   }
 }

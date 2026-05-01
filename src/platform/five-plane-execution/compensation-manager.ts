@@ -27,8 +27,8 @@ import type {
   SideEffectStatus,
   CompensationRecord,
   ArtifactRef,
-} from "../../contracts/executable-contracts/index.js";
-import { createCompensationRecord } from "../../contracts/executable-contracts/index.js";
+} from "../../platform/contracts/executable-contracts/index.js";
+import { createCompensationRecord } from "../../platform/contracts/executable-contracts/index.js";
 
 export type CompensationStatus =
   | "planned"

@@ -50,7 +50,7 @@ import {
 import type { SandboxPolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 import { AuthoritativeTaskStore } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/state-evidence/truth/authoritative-sql-database.js";
-import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
+import { BudgetAllocator, BudgetTier } from "../../platform/execution/budget-allocator.js";
 import type {
   BillingAccountRecord,
   BillingInvoiceRecord,
@@ -289,7 +289,7 @@ export class BillingService {
           tenantId: input.budgetControl.tenantId,
           traceId: input.budgetControl.traceId ?? newId("trace"),
           emittedBy: input.budgetControl.emittedBy ?? "BillingService",
-          tier: "step" as const,
+          tier: BudgetTier.STEP,
           tierLimit: 0,
           watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
           autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
@@ -387,11 +387,12 @@ export class BillingService {
             tenantId: input.budgetControl!.tenantId,
             traceId: input.budgetControl!.traceId ?? newId("trace"),
             emittedBy: input.budgetControl!.emittedBy ?? "BillingService",
-            tier: "default" as const,
+            tier: BudgetTier.PACK,
             tierLimit: 0,
             watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
             autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
-            burstAllowance: 0,
+            crossRunPriority: { priority: 0, weightFactor: 1.0 },
+            streamingSettle: { enabled: false, tokenInterval: 100, timeIntervalMs: 1000 },
           },
         });
     } catch (error) {
@@ -404,11 +405,12 @@ export class BillingService {
             tenantId: input.budgetControl!.tenantId,
             traceId: input.budgetControl!.traceId ?? newId("trace"),
             emittedBy: input.budgetControl!.emittedBy ?? "BillingService",
-            tier: "default" as const,
+            tier: BudgetTier.PACK,
             tierLimit: 0,
             watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
             autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
-            burstAllowance: 0,
+            crossRunPriority: { priority: 0, weightFactor: 1.0 },
+            streamingSettle: { enabled: false, tokenInterval: 100, timeIntervalMs: 1000 },
           },
         });
       }

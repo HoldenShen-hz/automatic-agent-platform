@@ -83,7 +83,7 @@ export class EscalationService {
         decision: "approval",
         reasonCode: "escalation.approval_required",
         requiresOperatorAction: true,
-        approvalRequestId,
+        ...(approvalRequestId != null ? { approvalRequestId } : {}),
       };
     }
     // Tier 1: No escalation needed - automated resolution

@@ -188,6 +188,14 @@ export class SqliteHaRepository implements HaRepository {
       .all(limit) as unknown as unknown[]).map((r) => this.mapRowToFailoverDecision(r as FailoverDecisionRow));
   }
 
+  async purgeOldFailoverDecisions(olderThanDays: number): Promise<number> {
+    const cutoffDate = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
+    const result = this.db.connection
+      .prepare(`DELETE FROM failover_decisions WHERE decided_at < ?`)
+      .run(cutoffDate);
+    return Number(result.changes ?? 0);
+  }
+
   // Leader Action Audit
 
   async recordActionAudit(entry: LeaderActionAuditEntry): Promise<void> {

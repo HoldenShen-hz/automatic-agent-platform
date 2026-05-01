@@ -48,6 +48,7 @@ export class DomainRegistryService {
     const normalizedDefinition: DomainDefinition = {
       ...normalized,
       pluginBindings: normalizedBindings,
+      ...(normalized.executionProfile !== undefined ? { executionProfile: normalized.executionProfile } : {}),
     } as DomainDefinition;
     this.validateDefinition(normalizedDefinition);
 

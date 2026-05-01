@@ -12,7 +12,7 @@
  * - WakeEngine: Evaluates wake conditions and triggers resume
  */
 
-import type { ArtifactRef } from "../../../contracts/executable-contracts/index.js";
+import type { ArtifactRef } from "../../contracts/executable-contracts/index.js";
 
 // ---------------------------------------------------------------------------
 // Wake Condition Types

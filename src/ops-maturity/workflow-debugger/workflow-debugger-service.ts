@@ -282,11 +282,27 @@ export class WorkflowDebuggerService {
   ): RunComparisonReport {
     const leftSnapshots: RunSnapshot[] = leftFrames.map((frame) => {
       const nodeRunId = this.resolveNodeRunId(frame);
-      return { nodeRunId, stepId: nodeRunId, status: frame.status, decision: frame.decision, cost: frame.cost, durationMs: frame.durationMs, outcome: frame.outcome };
+      return {
+        nodeRunId,
+        stepId: nodeRunId,
+        status: frame.status,
+        ...(frame.decision !== undefined ? { decision: frame.decision } : {}),
+        ...(frame.cost !== undefined ? { cost: frame.cost } : {}),
+        ...(frame.durationMs !== undefined ? { durationMs: frame.durationMs } : {}),
+        ...(frame.outcome !== undefined ? { outcome: frame.outcome } : {}),
+      };
     });
     const rightSnapshots: RunSnapshot[] = rightFrames.map((frame) => {
       const nodeRunId = this.resolveNodeRunId(frame);
-      return { nodeRunId, stepId: nodeRunId, status: frame.status, decision: frame.decision, cost: frame.cost, durationMs: frame.durationMs, outcome: frame.outcome };
+      return {
+        nodeRunId,
+        stepId: nodeRunId,
+        status: frame.status,
+        ...(frame.decision !== undefined ? { decision: frame.decision } : {}),
+        ...(frame.cost !== undefined ? { cost: frame.cost } : {}),
+        ...(frame.durationMs !== undefined ? { durationMs: frame.durationMs } : {}),
+        ...(frame.outcome !== undefined ? { outcome: frame.outcome } : {}),
+      };
     });
 
     const differences = compareWorkflowRuns(leftSnapshots, rightSnapshots);

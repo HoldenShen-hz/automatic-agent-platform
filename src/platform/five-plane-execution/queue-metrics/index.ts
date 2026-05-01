@@ -5,7 +5,7 @@
  * Tracks queue depth, throughput, wait times, and failure rates.
  */
 
-import type { QueueStats } from "../execution/queue/queue-adapter-types.js";
+import type { QueueStats } from "../../five-plane-execution/queue/queue-adapter-types.js";
 
 /**
  * Individual queue metrics snapshot with throughput and latency statistics.

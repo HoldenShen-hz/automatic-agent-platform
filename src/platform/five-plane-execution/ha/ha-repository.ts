@@ -42,6 +42,7 @@ export interface HaRepository {
   // Failover Decisions
   insertFailoverDecision(decision: FailoverDecision): Promise<void>;
   listFailoverDecisions(limit?: number): Promise<FailoverDecision[]>;
+  purgeOldFailoverDecisions(olderThanDays: number): Promise<number>;
 
   // Leader Action Audit
   recordActionAudit(entry: LeaderActionAuditEntry): Promise<void>;

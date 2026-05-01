@@ -204,7 +204,7 @@ export class PackSecurityService {
     // - Code that spawns processes
     try {
       // Dynamic import of vm module for sandboxed execution
-      const { VM } = await import("vm");
+      const { Script, createContext } = await import("vm");
       const sandbox = {
         console: {
           log: () => { },
@@ -225,11 +225,6 @@ export class PackSecurityService {
         _violation: null as string | null,
       };
 
-      const vm = new VM({
-        timeout: 5000,
-        sandbox,
-      });
-
       // Wrap source to catch permission violations
       const wrappedSource = `
         (function() {
@@ -244,7 +239,10 @@ export class PackSecurityService {
         })()
       `;
 
-      vm.run(wrappedSource);
+      const context = createContext(sandbox);
+      const script = new Script(wrappedSource);
+
+      script.runInContext(context, { timeout: 5000 });
 
       // Check if any high-risk operations were attempted
       if (sandbox._violation) {
@@ -254,7 +252,9 @@ export class PackSecurityService {
       // Additional runtime checks for common attack patterns
       const runtimeChecks = this.checkRuntimeBehavior(sourceCode, permissions);
       if (runtimeChecks.violated) {
-        return { violated: true, reason: runtimeChecks.reason };
+        return runtimeChecks.reason
+          ? { violated: true, reason: runtimeChecks.reason }
+          : { violated: true };
       }
 
       return { violated: false };

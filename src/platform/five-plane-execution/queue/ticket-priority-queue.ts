@@ -57,14 +57,15 @@ export class TicketPriorityQueue {
       return null;
     }
 
-    return this.tickets.splice(readyIndex, 1)[0];
+    const ticket = this.tickets.splice(readyIndex, 1)[0];
+    return ticket ?? null;
   }
 
   peek(): Ticket | null {
     if (this.tickets.length === 0) {
       return null;
     }
-    return this.tickets[0];
+    return this.tickets[0] ?? null;
   }
 
   clear(): void {

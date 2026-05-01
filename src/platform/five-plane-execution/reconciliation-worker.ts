@@ -20,9 +20,9 @@ import type {
   ReconciliationRecord,
   ArtifactRef,
   JsonValue,
-} from "../../contracts/executable-contracts/index.js";
-import { createReconciliationRecord } from "../../contracts/executable-contracts/index.js";
-import { newId, nowIso } from "../../contracts/types/ids.js";
+} from "../contracts/executable-contracts/index.js";
+import { createReconciliationRecord } from "../contracts/executable-contracts/index.js";
+import { newId, nowIso } from "../contracts/types/ids.js";
 
 export type ReconciliationResult =
   | "confirmed"

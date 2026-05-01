@@ -225,6 +225,14 @@ export class PostgresHaRepository implements HaRepository {
     return result.rows.map((r) => this.mapRowToFailoverDecision(r));
   }
 
+  async purgeOldFailoverDecisions(olderThanDays: number): Promise<number> {
+    const result = await this.db.asyncConnection.execute(
+      `DELETE FROM failover_decisions WHERE decided_at < NOW() - INTERVAL '1 day' * $1`,
+      olderThanDays,
+    );
+    return typeof result === "number" ? result : 0;
+  }
+
   // Leader Action Audit
 
   async recordActionAudit(entry: LeaderActionAuditEntry): Promise<void> {

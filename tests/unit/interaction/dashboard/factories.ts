@@ -5,11 +5,11 @@
  * Uses the pattern from tests/helpers/typed-factories.ts
  */
 
-import type { TaskBoardItem } from "../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import type { SystemSituation } from "../../../src/platform/shared/observability/system-situation-model.js";
-import type { DashboardDelta, DashboardChange } from "../../../src/interaction/dashboard/dashboard-projection-service.js";
-import type { AttentionItem } from "../../../src/interaction/dashboard/index.js";
-import type { DashboardProjectionService } from "../../../src/interaction/dashboard/index.js";
+import type { TaskBoardItem } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import type { SystemSituation } from "../../../../src/platform/shared/observability/system-situation-model.js";
+import type { DashboardDelta, DashboardChange } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
+import type { AttentionItem } from "../../../../src/interaction/dashboard/index.js";
+import type { DashboardProjectionService } from "../../../../src/interaction/dashboard/index.js";
 
 // ── TaskBoardItem Factory ─────────────────────────────────────────────────────
 
@@ -52,7 +52,7 @@ export function createSystemSituation(overrides: Partial<SystemSituation> = {}):
       tier1PendingAcks: 0,
     },
     findings: [],
-    observedAt: new Date().toISOString(),
+    observedAt: Date.now(),
     ...overrides,
   };
 }
@@ -124,7 +124,7 @@ export function createMockSystemSource(system: SystemSituation = createSystemSit
 
 // ── Channel Subscription Factory ────────────────────────────────────────────
 
-import type { ChannelSubscription } from "../../../src/interaction/dashboard/dashboard-websocket-server.js";
+import type { ChannelSubscription } from "../../../../src/interaction/dashboard/dashboard-websocket-server.js";
 
 export function createChannelSubscription(
   channel: "global" | "task" | "approvals" | "admin" = "global",
@@ -132,6 +132,6 @@ export function createChannelSubscription(
 ): ChannelSubscription {
   return {
     channel,
-    filterId,
+    ...(filterId !== undefined ? { filterId } : {}),
   };
 }

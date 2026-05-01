@@ -21,8 +21,8 @@ import { CallGovernance, type DistributedRateLimiterLike } from "./call-governan
 import { DistributedRateLimiter } from "../../interface/ingress/distributed-rate-limiter.js";
 import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
 import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { BudgetAllocator, type BudgetAllocatorContext, type BudgetLedger } from "../../five-plane-execution/budget-allocator.js";
-import { createBudgetLedger, type BudgetReservation, reserveBudgetHardCap } from "../../contracts/executable-contracts/index.js";
+import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
+import { createBudgetLedger, type BudgetLedger, type BudgetReservation, reserveBudgetHardCap } from "../../contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });

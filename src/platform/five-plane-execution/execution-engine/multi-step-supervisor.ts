@@ -31,7 +31,7 @@ import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
-import type { PlanGraphBundle } from "../../../contracts/executable-contracts/index.js";
+import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 

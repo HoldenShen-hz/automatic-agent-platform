@@ -4,7 +4,14 @@
 
 import test from "node:test";
 import { strict as assert } from "node:assert/strict";
-import { assertIdentifier, assertPositiveNumber, roundCurrency, monthWindow } from "../../../../src/scale-ecosystem/billing/utils.js";
+import {
+  assertIdentifier,
+  assertPositiveNumber,
+  roundCurrency,
+  monthWindow,
+  buildBillingMarkdown,
+} from "../../../../src/scale-ecosystem/billing/utils.js";
+import type { BillingAccountSummary } from "../../../../src/scale-ecosystem/billing/types.js";
 
 test("assertIdentifier accepts valid identifiers", () => {
   const result = assertIdentifier("valid-id_123.456", "test.code");
@@ -126,4 +133,135 @@ test("monthWindow rejects empty string", () => {
   assert.throws(() => {
     monthWindow("");
   }, /Invalid timestamp/);
+});
+
+test("buildBillingMarkdown renders account summary correctly", () => {
+  const summary: BillingAccountSummary = {
+    account: {
+      accountId: "acc-123",
+      ownerId: "owner-456",
+      planId: "plan-pro",
+      status: "active",
+      createdAt: "2025-01-01T00:00:00Z",
+    },
+    plan: {
+      planId: "plan-pro",
+      displayName: "Pro Plan",
+      description: "Professional plan",
+      features: [],
+      quotas: [],
+    },
+    generatedAt: "2025-06-01T12:00:00Z",
+    totals: {
+      usageEventCount: 100,
+      ledgerEntryCount: 50,
+      totalBilledUsd: 1234.56,
+    },
+    quotas: [
+      {
+        metricType: "api_calls",
+        usedQuantity: 500,
+        limitQuantity: 1000,
+        remainingQuantity: 500,
+        limitType: "monthly",
+        windowStart: "2025-06-01T00:00:00Z",
+        windowEnd: "2025-07-01T00:00:00Z",
+      },
+      {
+        metricType: "storage_gb",
+        usedQuantity: 50,
+        limitQuantity: null,
+        remainingQuantity: null,
+        limitType: null,
+        windowStart: "2025-06-01T00:00:00Z",
+        windowEnd: "2025-07-01T00:00:00Z",
+      },
+    ],
+    recentUsage: [],
+    recentLedgerEntries: [],
+    recentDecisions: [],
+  };
+
+  const markdown = buildBillingMarkdown(summary);
+  assert.ok(markdown.includes("# Billing Account Summary"));
+  assert.ok(markdown.includes("`acc-123`"));
+  assert.ok(markdown.includes("`plan-pro`"));
+  assert.ok(markdown.includes("`active`"));
+  assert.ok(markdown.includes("2025-06-01T12:00:00Z"));
+  assert.ok(markdown.includes("Usage Events: 100"));
+  assert.ok(markdown.includes("Ledger Entries: 50"));
+  assert.ok(markdown.includes("Total Billed USD: 1234.56"));
+  assert.ok(markdown.includes("## Quotas"));
+  assert.ok(markdown.includes("api_calls: used=500, limit=1000"));
+  assert.ok(markdown.includes("storage_gb: used=50, limit=unlimited"));
+});
+
+test("buildBillingMarkdown handles empty quotas", () => {
+  const summary: BillingAccountSummary = {
+    account: {
+      accountId: "acc-empty",
+      ownerId: "owner-456",
+      planId: "plan-basic",
+      status: "suspended",
+      createdAt: "2025-01-01T00:00:00Z",
+    },
+    plan: {
+      planId: "plan-basic",
+      displayName: "Basic Plan",
+      description: "Basic plan",
+      features: [],
+      quotas: [],
+    },
+    generatedAt: "2025-06-01T12:00:00Z",
+    totals: {
+      usageEventCount: 0,
+      ledgerEntryCount: 0,
+      totalBilledUsd: 0,
+    },
+    quotas: [],
+    recentUsage: [],
+    recentLedgerEntries: [],
+    recentDecisions: [],
+  };
+
+  const markdown = buildBillingMarkdown(summary);
+  assert.ok(markdown.includes("# Billing Account Summary"));
+  assert.ok(markdown.includes("`acc-empty`"));
+  assert.ok(markdown.includes("`suspended`"));
+  assert.ok(markdown.includes("Usage Events: 0"));
+  assert.ok(markdown.includes("Ledger Entries: 0"));
+  assert.ok(markdown.includes("Total Billed USD: 0"));
+});
+
+test("buildBillingMarkdown escapes backticks in account ID", () => {
+  const summary: BillingAccountSummary = {
+    account: {
+      accountId: "acc with `backticks`",
+      ownerId: "owner-456",
+      planId: "plan-pro",
+      status: "active",
+      createdAt: "2025-01-01T00:00:00Z",
+    },
+    plan: {
+      planId: "plan-pro",
+      displayName: "Pro Plan",
+      description: "Pro plan",
+      features: [],
+      quotas: [],
+    },
+    generatedAt: "2025-06-01T12:00:00Z",
+    totals: {
+      usageEventCount: 10,
+      ledgerEntryCount: 5,
+      totalBilledUsd: 99.99,
+    },
+    quotas: [],
+    recentUsage: [],
+    recentLedgerEntries: [],
+    recentDecisions: [],
+  };
+
+  const markdown = buildBillingMarkdown(summary);
+  // The account ID with backticks should be properly formatted with inline code
+  assert.ok(markdown.includes("`acc with `backticks`"));
 });

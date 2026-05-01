@@ -739,7 +739,7 @@ export class HarnessRuntimeService {
       latency: input.latency,
       cost: input.cost,
       error: input.error ?? null,
-      nextAction: input.nextAction ?? null,
+      ...(input.nextAction != null ? { nextAction: input.nextAction } : {}),
     };
     return {
       ...run,

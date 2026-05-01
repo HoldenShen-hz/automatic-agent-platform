@@ -1,6 +1,6 @@
 import type { DurableHarnessService } from "./durable/durable-harness-service.js";
 import type { HarnessRun, HarnessRuntimeService, HarnessRunRuntimeState } from "./index.js";
-import type { HarnessLoopController } from "./loop/index.js";
+import { HarnessLoopController } from "./loop/index.js";
 
 export type HarnessFailureType =
   | "worker_crash"

@@ -172,8 +172,7 @@ export class IntakeAdmissionService {
       input.riskPreview.riskClass === "high" || input.riskPreview.riskClass === "critical";
     if (requiresMandatoryConfirmation && input.confirmationReceipt == null) {
       throw new Error(
-        "admission.confirmation_required",
-        `High/critical risk task requires confirmationReceipt per §39.6: riskClass=${input.riskPreview.riskClass}`,
+        `admission.confirmation_required: High/critical risk task requires confirmationReceipt per §39.6: riskClass=${input.riskPreview.riskClass}`,
       );
     }
 
@@ -203,8 +202,7 @@ export class IntakeAdmissionService {
 
     if (!policyGuardResult.allowed) {
       throw new Error(
-        "admission.policy_denied",
-        `Policy evaluation failed: ${policyGuardResult.reasonCode}`,
+        `admission.policy_denied: Policy evaluation failed: ${policyGuardResult.reasonCode}`,
       );
     }
 
@@ -232,6 +230,7 @@ export class IntakeAdmissionService {
         aggregateId: taskDraft.taskDraftId,
         aggregateSeq: 1,
         tenantId: input.tenantId,
+        runId: input.traceId,
         traceId: input.traceId,
         payload: {
           sessionId: clarificationSession.sessionId,
@@ -255,9 +254,9 @@ export class IntakeAdmissionService {
           taskDraftId: taskDraft.taskDraftId,
           tenantId: input.tenantId,
           principal: input.principal,
-          domainId: input.domainId,
+          domainId: input.domainId || undefined,
           goal: input.goal,
-          inputs: input.inputs ?? {},
+          inputs: (input.inputs ?? {}) as JsonValue,
           constraintPackRef: input.constraintPackRef,
           riskClass: input.riskPreview.riskClass,
           confirmationReceipt: input.confirmationReceipt ?? undefined,
@@ -269,9 +268,9 @@ export class IntakeAdmissionService {
             taskDraftId: taskDraft.taskDraftId,
             tenantId: input.tenantId,
             principal: input.principal,
-            domainId: input.domainId,
+            domainId: input.domainId || undefined,
             goal: input.goal,
-            inputs: input.inputs ?? {},
+            inputs: (input.inputs ?? {}) as JsonValue,
             constraintPackRef: input.constraintPackRef,
             riskClass: input.riskPreview.riskClass,
             confirmationReceipt: input.confirmationReceipt ?? undefined,
@@ -305,9 +304,9 @@ export class IntakeAdmissionService {
       taskDraftId: taskDraft.taskDraftId,
       tenantId: input.tenantId,
       principal: input.principal,
-      domainId: input.domainId,
+      domainId: input.domainId || undefined,
       goal: input.goal,
-      inputs: input.inputs ?? {},
+      inputs: (input.inputs ?? {}) as JsonValue,
       constraintPackRef: input.constraintPackRef,
       riskClass: input.riskPreview.riskClass,
       confirmationReceipt: input.confirmationReceipt ?? undefined,
@@ -377,6 +376,7 @@ export class IntakeAdmissionService {
       aggregateId: requestEnvelope.requestId,
       aggregateSeq: 1,
       tenantId: input.tenantId,
+      runId: input.traceId,
       traceId: input.traceId,
       payload: {
         domainId: input.domainId,
@@ -385,7 +385,7 @@ export class IntakeAdmissionService {
         runVersionLockId: runVersionLock.runVersionLockId,
         // R6-1: Include clarification session in event if present
         ...(clarificationSession != null ? { clarificationSession } : {}),
-      },
+      } as JsonValue,
       schemaOwner: "intake-admission-service",
       consumerContractTests: ["intake-admission-service.test.ts"],
     });
