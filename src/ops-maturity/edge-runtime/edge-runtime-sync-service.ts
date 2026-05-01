@@ -227,8 +227,8 @@ export class EdgeRuntimeSyncService {
     return {
       record,
       selectedModelId: model?.modelId ?? null,
-      planGraphNodeIds: buildEdgeExecutionPlan([request.taskId]).planGraphBundle.graph.nodes.map((n) => n.nodeId),
-      executionPlan: buildEdgeExecutionPlan([request.taskId]).planGraphBundle.graph.nodes.map((n) => n.nodeId),
+      planGraphNodeIds: buildEdgeExecutionPlan([request.taskId]).planGraphBundle.graph.nodes.map((node) => node.nodeId),
+      executionPlan: buildEdgeExecutionPlan([request.taskId]).planGraphBundle.graph.nodes.map((node) => node.nodeId),
     };
   }
 

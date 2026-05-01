@@ -391,9 +391,12 @@ export class RegionFailoverController {
 
     // Mark fencing token as acknowledged
     if (this.leaderState.fencingToken) {
-      this.leaderState.fencingToken = {
-        ...this.leaderState.fencingToken,
-        isAcknowledged: true,
+      this.leaderState = {
+        ...this.leaderState,
+        fencingToken: {
+          ...this.leaderState.fencingToken,
+          isAcknowledged: true,
+        },
       };
     }
 

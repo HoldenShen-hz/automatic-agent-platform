@@ -240,7 +240,6 @@ function buildWorkflow(seed: DomainSeed) {
       timeoutMs: seed.latencyProfile.maxResponseMinutes * 60_000,
       dependsOn: index === 0 ? [] : [seed.workflowStages[index - 1]!],
     })),
-    stepGraph: undefined,
   };
 }
 

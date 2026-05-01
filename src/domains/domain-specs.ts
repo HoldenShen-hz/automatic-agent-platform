@@ -19,12 +19,14 @@ export const DomainLifecycleStateSchema = z.enum([
   "draft",
   "validating",
   "certified",
+  "registered",
   "canary",
   "active",
   "deprecated",
   "retired",
   "archived",
   "updating",
+  "validated",
 ]);
 
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
