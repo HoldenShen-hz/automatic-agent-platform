@@ -69,36 +69,20 @@ function createMockDb(getOverride?: Record<string, Record<string, unknown> | nul
         let getResponse: Record<string, unknown> | null = null;
         let allResponse: Array<Record<string, unknown>> = [];
 
-        if (getOverride) {
-          for (const key of Object.keys(getOverride)) {
-            if (sql.includes(key)) {
-              getResponse = getOverride[key];
-              break;
-            }
-          }
+        // Match based on full SQL context
+        if (sql.includes("COUNT(*) AS rootCount") && sql.includes("FROM (")) {
+          // Repeat usage query - has special structure with nested subquery
+          getResponse = getOverride?.["FROM ("] ?? { rootCount: 0, repeatedRootCount: 0 };
+        } else if (sql.includes("FROM sessions s")) {
+          getResponse = getOverride?.["FROM sessions"] ?? { sessionCount: 0, activationSessionCount: 0 };
+        } else if (sql.includes("FROM approvals a")) {
+          getResponse = getOverride?.["FROM approvals"] ?? { approvalCount: 0, resolvedApprovalCount: 0 };
+        } else if (sql.includes("FROM tasks")) {
+          getResponse = getOverride?.["FROM tasks"] ?? { taskCount: 0, terminalTaskCount: 0, successfulTaskCount: 0, divisionCount: 0, crossDivisionTaskCount: 0, averageSuccessfulTaskCostUsd: null };
         }
 
-        if (allOverride) {
-          for (const key of Object.keys(allOverride)) {
-            if (sql.includes(key)) {
-              allResponse = allOverride[key];
-              break;
-            }
-          }
-        }
-
-        // Default responses if not overridden
-        if (getResponse === undefined && sql.includes("FROM sessions")) {
-          getResponse = { sessionCount: 0, activationSessionCount: 0 };
-        }
-        if (getResponse === undefined && sql.includes("FROM approvals")) {
-          getResponse = { approvalCount: 0, resolvedApprovalCount: 0 };
-        }
-        if (getResponse === undefined && sql.includes("FROM (")) {
-          getResponse = { rootCount: 0, repeatedRootCount: 0 };
-        }
-        if (getResponse === undefined && sql.includes("FROM tasks")) {
-          getResponse = { taskCount: 0, terminalTaskCount: 0, successfulTaskCount: 0, divisionCount: 0, crossDivisionTaskCount: 0, averageSuccessfulTaskCostUsd: null };
+        if (allOverride?.["workflow_step_outputs"]) {
+          allResponse = allOverride["workflow_step_outputs"];
         }
 
         return {
