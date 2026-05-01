@@ -80,6 +80,7 @@ test("all required v2.7 contract documents exist", () => {
     "capacity_planning_contract.md",
     "multimodal_gateway_contract.md",
     "platform_ops_agent_contract.md",
+    "agent_handoff_contract.md",
   ];
 
   for (const contract of requiredContracts) {

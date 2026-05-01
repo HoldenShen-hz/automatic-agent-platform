@@ -326,6 +326,52 @@ test("E2E Distributed Lock: multiple locks can be held by same owner", () => {
   }
 });
 
+test("E2E Distributed Lock: concurrent acquisition attempts for same lock", async () => {
+  const h = createLockHarness("e2e-lock-concurrent-");
+
+  try {
+    // Two workers attempting to acquire the same lock simultaneously
+    const results = await Promise.all([
+      h.adapter.acquire({ lockKey: "contested-lock", owner: "worker-1" }),
+      h.adapter.acquire({ lockKey: "contested-lock", owner: "worker-2" }),
+    ]);
+
+    // One should succeed, one should fail
+    const successes = results.filter(r => r.acquired);
+    const failures = results.filter(r => !r.acquired);
+
+    assert.equal(successes.length, 1, "Exactly one worker should acquire the lock");
+    assert.equal(failures.length, 1, "Exactly one worker should be blocked");
+    assert.equal(successes[0]!.lock!.owner, "worker-1", "Winner should own the lock");
+  } finally {
+    h.cleanup();
+  }
+});
+
+test("E2E Distributed Lock: concurrent acquisition with multiple lock keys", async () => {
+  const h = createLockHarness("e2e-lock-concurrent-multi-");
+
+  try {
+    // Multiple workers attempting to acquire different locks concurrently
+    const results = await Promise.all([
+      h.adapter.acquire({ lockKey: "resource-1", owner: "worker-a" }),
+      h.adapter.acquire({ lockKey: "resource-2", owner: "worker-b" }),
+      h.adapter.acquire({ lockKey: "resource-1", owner: "worker-c" }), // competes for resource-1
+      h.adapter.acquire({ lockKey: "resource-2", owner: "worker-d" }), // competes for resource-2
+    ]);
+
+    // resource-1: one of worker-a or worker-c succeeds
+    const r1Results = results.filter(r => r.lock?.lockKey === "resource-1");
+    // resource-2: one of worker-b or worker-d succeeds
+    const r2Results = results.filter(r => r.lock?.lockKey === "resource-2");
+
+    assert.ok(r1Results.length >= 1, "At least one acquire for resource-1 should succeed");
+    assert.ok(r2Results.length >= 1, "At least one acquire for resource-2 should succeed");
+  } finally {
+    h.cleanup();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Test 6: Lock Extension
 // ---------------------------------------------------------------------------

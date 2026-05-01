@@ -130,6 +130,7 @@ test("v2.7 coverage matrix and new authoritative contracts exist", () => {
     "capacity_planning_contract.md",
     "multimodal_gateway_contract.md",
     "platform_ops_agent_contract.md",
+    "agent_handoff_contract.md",
   ];
 
   for (const fileName of requiredContracts) {

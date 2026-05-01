@@ -25,18 +25,25 @@ test("distributed-lock-service barrel re-exports types", async () => {
 
 test("distributed-lock-service barrel exports LockManager class", async () => {
   const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
-  // The module should export LockManager or equivalent
   assert.ok(mod !== undefined);
+  // Verify LockManager exists and is a function (class)
+  assert.equal(typeof mod.LockManager, "function", "LockManager should be exported as a constructor");
 });
 
 test("distributed-lock-service barrel exports lock factory", async () => {
   const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
   assert.ok(mod !== undefined);
+  // Verify lock factory exists - should be a function that creates locks
+  assert.ok(typeof mod.createLock === "function" || typeof mod.newLock === "function" || typeof mod.lock === "function",
+    "Should export a lock factory function");
 });
 
 test("distributed-lock-service barrel exports adapter types", async () => {
   const mod = await import("../../../../src/core/runtime/distributed-lock-service.js");
   assert.ok(mod !== undefined);
+  // Verify adapter types exist - look for Sqlite, Redis, or generic adapter exports
+  const adapterKeys = Object.keys(mod).filter(k => k.toLowerCase().includes("adapter") || k.toLowerCase().includes("sqlite") || k.toLowerCase().includes("redis"));
+  assert.ok(adapterKeys.length > 0, "Should export at least one lock adapter type");
 });
 
 test("distributed-lock-service multiple imports return same module", async () => {

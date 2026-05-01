@@ -1,7 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { rmSync, mkdirSync } from "node:fs";
+import { rmSync, mkdirSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
   runStableConcurrencyRehearsal,
@@ -14,7 +15,7 @@ import {
 describe("stable-concurrency-rehearsal comprehensive", () => {
   describe("runStableConcurrencyRehearsal", () => {
     test("runs all three scenarios", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-1";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-1-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -33,7 +34,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("includes all expected scenario IDs", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-2";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-2-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -50,7 +51,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("each scenario has required fields", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-3";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-3-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -73,7 +74,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("expired_lock_released scenario passes with correct assertions", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-4";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-4-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -92,7 +93,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("active_execution_conflict_fail_closed scenario passes", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-5";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-5-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -109,7 +110,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("competing_write_transactions_fail_closed scenario passes", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-6";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-6-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -125,7 +126,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("passedScenarios equals totalScenarios when all pass", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-7";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-7-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -142,7 +143,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("failedScenarios equals totalScenarios minus passedScenarios", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-8";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-8-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -156,7 +157,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
     });
 
     test("startedAt is before finishedAt", async () => {
-      const outputDir = "/tmp/stable-concurrency-comp-test-9";
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-test-9-"));
       rmSync(outputDir, { recursive: true, force: true });
       mkdirSync(outputDir, { recursive: true });
 
@@ -178,11 +179,40 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
 
   describe("StableConcurrencyRehearsalOptions", () => {
     test("accepts valid options structure", () => {
+      const tempDir = mkdtempSync(join(tmpdir(), "stable-concurrency-opts-"));
       const options: StableConcurrencyRehearsalOptions = {
-        outputDir: "/tmp/test",
+        outputDir: tempDir,
       };
 
-      assert.equal(options.outputDir, "/tmp/test");
+      assert.ok(options.outputDir.length > 0, "outputDir should be set");
+    });
+
+    test("runStableConcurrencyRehearsal produces real report with valid structure", async () => {
+      const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-comp-real-"));
+      rmSync(outputDir, { recursive: true, force: true });
+      mkdirSync(outputDir, { recursive: true });
+
+      try {
+        const report = await runStableConcurrencyRehearsal({ outputDir });
+
+        assert.ok(report.startedAt, "Report should have startedAt");
+        assert.ok(report.finishedAt, "Report should have finishedAt");
+        assert.equal(report.totalScenarios, 3, "Should have 3 scenarios");
+        assert.equal(report.scenarios.length, 3, "Scenarios array length should match");
+        assert.equal(report.passedScenarios + report.failedScenarios, 3, "Scenario counts should sum to total");
+        assert.ok(Array.isArray(report.scenarios), "Scenarios should be an array");
+
+        // Verify each scenario has valid structure from production code
+        for (const scenario of report.scenarios) {
+          assert.ok(["expired_lock_released", "active_execution_conflict_fail_closed", "competing_write_transactions_fail_closed"].includes(scenario.scenarioId));
+          assert.equal(typeof scenario.passed, "boolean");
+          assert.ok(typeof scenario.durationMs === "number" && scenario.durationMs >= 0);
+          assert.ok(typeof scenario.summary === "string" && scenario.summary.length > 0);
+          assert.ok(typeof scenario.details === "object" && scenario.details !== null);
+        }
+      } finally {
+        rmSync(outputDir, { recursive: true, force: true });
+      }
     });
   });
 
@@ -236,7 +266,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
       const report: StableConcurrencyRehearsalReport = {
         startedAt: "2026-04-01T00:00:00.000Z",
         finishedAt: "2026-04-01T00:01:00.000Z",
-        outputDir: "/tmp/test",
+        outputDir: mkdtempSync(join(tmpdir(), "stable-concurrency-report-")),
         totalScenarios: 3,
         passedScenarios: 3,
         failedScenarios: 0,
@@ -264,7 +294,7 @@ describe("stable-concurrency-rehearsal comprehensive", () => {
       const report: StableConcurrencyRehearsalReport = {
         startedAt: "2026-04-01T00:00:00.000Z",
         finishedAt: "2026-04-01T00:01:00.000Z",
-        outputDir: "/tmp/test",
+        outputDir: mkdtempSync(join(tmpdir(), "stable-concurrency-report-scenarios-")),
         totalScenarios: 1,
         passedScenarios: 1,
         failedScenarios: 0,

@@ -428,6 +428,38 @@ test("task intake and harness run contracts now require canonical domain binding
   assert.match(harnessRun, /projection 若展示 `divisionId`、`domainHint` 或业务别名，必须保留 `domainId -> legacy alias` 的显式映射/);
 });
 
+test("event, workflow, release, and handoff contracts stay aligned to canonical runtime names", () => {
+  const eventEnvelope = readFileSync("docs_zh/contracts/event-envelope-contract.md", "utf8");
+  assert.match(eventEnvelope, /\| `schemaVersion` \| `number` \|/);
+  assert.match(eventEnvelope, /\| `schema_version` \| `schemaVersion` \|/);
+  assert.match(eventEnvelope, /snake_case 只允许出现在 wire adapter/);
+
+  const eventBus = readFileSync("docs_zh/contracts/event_bus_contract.md", "utf8");
+  assert.match(eventBus, /platform\.harness_run\.created/);
+  assert.match(eventBus, /platform\.node_run\.status_changed/);
+  assert.match(eventBus, /platform\.release\.rollout_started/);
+  assert.match(eventBus, /release\.\*.*必须在边界层显式映射到 `platform\.release\.\*`/s);
+  assert.match(eventBus, /platform\.harness\.run\.\*` -> `platform\.harness_run\.\*/);
+
+  const workflow = readFileSync("docs_zh/contracts/task_and_workflow_contract.md", "utf8");
+  assert.match(workflow, /\| `domain_id` \| `string` \| 归属执行域 \|/);
+  assert.match(workflow, /legacy_division_alias/);
+  assert.match(workflow, /不得替代 `domain_id` 参与 runtime truth 关联/);
+
+  const release = readFileSync("docs_zh/contracts/release_rollout_and_rollback_contract.md", "utf8");
+  assert.match(release, /ReleaseDecisionView/);
+  assert.match(release, /ReleaseChannel/);
+  assert.match(release, /channelKind/);
+
+  const handoff = readFileSync("docs_zh/contracts/agent_handoff_contract.md", "utf8");
+  assert.match(handoff, /DelegationRequest/);
+  assert.match(handoff, /DelegationReceipt/);
+  assert.match(handoff, /ACPMessage/);
+  assert.match(handoff, /AgentHandoff/);
+  assert.match(handoff, /C1 child_subset_of_parent/);
+  assert.match(handoff, /NodeAttemptReceipt/);
+});
+
 test("OAPEFLIR executable spec remediation directly covers F-1 through F-25", () => {
   const text = readFileSync("docs_zh/architecture/oapeflir-v4.4-executable-spec.md", "utf8");
   assert.match(text, /## v4\.3 Canonical Compatibility Override/);

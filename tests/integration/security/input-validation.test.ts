@@ -458,12 +458,9 @@ test("command-executor blocks empty args array", async () => {
 
     const result = await executor.execute(request);
 
-    // echo with empty args may succeed or be blocked depending on policy
-    // Key is it should not crash or bypass security
-    // If status is blocked, verify it has proper error code
-    if (result.status === "blocked") {
-      assert.ok(result.error?.code, "Blocked result should have an error code");
-    }
+    // Empty args is an invalid request - should be blocked with a proper error code
+    assert.equal(result.status, "blocked", "Empty args array should be blocked as invalid input");
+    assert.ok(result.error?.code, "Blocked result should have an error code");
   } finally {
     cleanupPath(workspace);
   }
@@ -520,8 +517,9 @@ test("command-executor blocks script path with flag injection", async () => {
 
     const result = await executor.execute(request);
 
-    // Should NOT succeed - flag injection should be blocked or fail
-    assert.notEqual(result.status, "succeeded", "Flag injection should not succeed");
+    // Flag injection MUST be blocked - not just "not succeeded"
+    // If it fails with "failed" but is not blocked, the injection vulnerability exists
+    assert.equal(result.status, "blocked", "Flag injection should be blocked, not allowed to pass or fail unsafely");
   } finally {
     cleanupPath(workspace);
   }

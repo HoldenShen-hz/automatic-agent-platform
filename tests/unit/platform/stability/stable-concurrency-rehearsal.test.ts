@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import { runStableConcurrencyRehearsal, writeStableConcurrencyRehearsalReport } from "../../../../src/platform/stability/stable-concurrency-rehearsal.js";
 
 test("runStableConcurrencyRehearsal runs all three scenarios", async () => {
-  const outputDir = "/tmp/stable-concurrency-test";
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -26,7 +28,7 @@ test("runStableConcurrencyRehearsal runs all three scenarios", async () => {
 });
 
 test("runStableConcurrencyRehearsal expired_lock_released scenario passes", async () => {
-  const outputDir = "/tmp/stable-concurrency-test-expired-lock";
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-expired-lock-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -41,7 +43,7 @@ test("runStableConcurrencyRehearsal expired_lock_released scenario passes", asyn
 });
 
 test("runStableConcurrencyRehearsal active_execution_conflict_fail_closed scenario passes", async () => {
-  const outputDir = "/tmp/stable-concurrency-test-conflict";
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-conflict-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -54,7 +56,7 @@ test("runStableConcurrencyRehearsal active_execution_conflict_fail_closed scenar
 });
 
 test("runStableConcurrencyRehearsal competing_write_transactions_fail_closed scenario passes", async () => {
-  const outputDir = "/tmp/stable-concurrency-test-write-contention";
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-write-contention-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -66,7 +68,7 @@ test("runStableConcurrencyRehearsal competing_write_transactions_fail_closed sce
 });
 
 test("runStableConcurrencyRehearsal all scenarios pass returns passedScenarios equals totalScenarios", async () => {
-  const outputDir = "/tmp/stable-concurrency-test-all-pass";
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-test-all-pass-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
@@ -79,7 +81,7 @@ test("runStableConcurrencyRehearsal all scenarios pass returns passedScenarios e
 });
 
 test("writeStableConcurrencyRehearsalReport writes JSON file", () => {
-  const outputDir = "/tmp/stable-concurrency-write-test";
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-concurrency-write-test-"));
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
 
