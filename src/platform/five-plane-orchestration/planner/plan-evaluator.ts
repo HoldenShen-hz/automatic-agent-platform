@@ -93,7 +93,7 @@ function estimateTokenBudget(steps: Plan["steps"], assessment: UnifiedAssessment
 
   function getStepCost(step: Plan["steps"][0]): number {
     const action = step.action?.toLowerCase() ?? "default";
-    return toolCostMap[action] ?? toolCostMap.default;
+    return toolCostMap[action] ?? 350;
   }
 
   // Risk-weighted multiplier

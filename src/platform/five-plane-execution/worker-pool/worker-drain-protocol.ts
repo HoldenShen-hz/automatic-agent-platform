@@ -315,6 +315,13 @@ export class WorkerDrainProtocol {
       });
     }
 
+    const completedLeaseCount = Math.min(
+      request.activeLeases.length,
+      Math.floor(
+        (request.activeLeases.length * elapsed) / (this.config.drainTimeoutMs + this.config.quiesceTimeoutMs),
+      ),
+    );
+
     return {
       workerId: request.workerId,
       status: statusText,
@@ -323,12 +330,7 @@ export class WorkerDrainProtocol {
       requestedAt: request.requestedAt,
       deadlineAt: request.deadlineAt,
       activeLeaseCount: request.activeLeases.length,
-      completedLeaseCount: Math.min(
-        request.activeLeases.length,
-        Math.floor(
-          (request.activeLeases.length * elapsed) / (this.config.drainTimeoutMs + this.config.quiesceTimeoutMs),
-        ),
-      ),
+      completedLeaseCount,
       handoverLeaseIds,
       runTerminationCleanupRequired: deadlineExceeded || handoverLeaseIds.length > 0,
       forcedHandoffCount: deadlineExceeded ? request.activeLeases.length - completedLeaseCount : 0,

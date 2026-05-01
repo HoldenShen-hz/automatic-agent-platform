@@ -321,7 +321,7 @@ export class RunTerminationCleanup {
       completedAt,
       complete: allSucceeded,
       evidenceFlushResult,
-      compensationTriggerResult,
+      ...(compensationTriggerResult != null ? { compensationTriggerResult } : {}),
       ...(notificationResultsVal != null ? { notificationResults: notificationResultsVal } : {}),
     };
 

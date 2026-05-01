@@ -142,14 +142,16 @@ export class PlanBuilder {
       findings: validationReport.issues,
       normalizedNodeIds: nodes.map((n) => n.nodeId),
       riskPropagation,
-      worstPath: worstPath
+      ...(worstPath
         ? {
-            pathNodeIds: worstPath.pathNodeIds,
-            riskClass: "medium" as const,
-            estimatedBudgetAmount: worstPath.estimatedCost / 1000,
-            timeoutMs: worstPath.estimatedTimeoutMs,
+            worstPath: {
+              pathNodeIds: worstPath.pathNodeIds,
+              riskClass: "medium" as const,
+              estimatedBudgetAmount: worstPath.estimatedCost / 1000,
+              timeoutMs: worstPath.estimatedTimeoutMs,
+            },
           }
-        : undefined,
+        : {}),
     };
 
     return createPlanGraphBundle({

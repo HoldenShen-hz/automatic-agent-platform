@@ -209,7 +209,13 @@ export class WebSocketBridge {
     ws.on("message", (data) => {
       try {
         // #2355: Check message size before parsing to prevent OOM DoS
-        const dataLength = data.length;
+        const dataLength = typeof data === "string"
+          ? Buffer.byteLength(data)
+          : Array.isArray(data)
+            ? data.reduce((sum, chunk) => sum + chunk.length, 0)
+            : data instanceof ArrayBuffer
+              ? data.byteLength
+              : data.byteLength;
         if (dataLength > WebSocketBridge.MAX_MESSAGE_SIZE_BYTES) {
           logger.warn("WebSocket message too large, rejecting", { dataLength, maxSize: WebSocketBridge.MAX_MESSAGE_SIZE_BYTES });
           ws.send(JSON.stringify({ type: "error", code: "message_too_large", message: `Message exceeds maximum size of ${WebSocketBridge.MAX_MESSAGE_SIZE_BYTES} bytes` }));

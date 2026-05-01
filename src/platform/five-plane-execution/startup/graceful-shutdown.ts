@@ -244,7 +244,6 @@ export class GracefulShutdown {
         await Promise.race([handler(), timeoutPromise]);
         if (timer != null) {
           clearTimeout(timer);
-          timer.unref?.();
         }
         handlersRun++;
         this.logger.log({

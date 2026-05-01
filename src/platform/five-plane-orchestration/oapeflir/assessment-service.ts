@@ -102,9 +102,8 @@ export class AssessmentService {
         factors: riskFactors,
       },
       routingDecision: {
-        // Division must come from actual domainId - no hardcoded fallback to "coding"
-        // which causes non-coding tasks to be misrouted
-        division: situation.domainId,
+        // Division must come from actual domainId when available
+        division: situation.domainId ?? "general",
         workflow,
         rationale: [
           `complexity=${complexity}`,

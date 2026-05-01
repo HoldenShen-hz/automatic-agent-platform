@@ -164,7 +164,7 @@ const artifactBundlePreviewPayloadSchema = z.object({
     "release_bundle",
     "asset_bundle",
     "campaign_bundle",
-    "incident_bundle",
+    "incident",
     "task_result",
     "promotion_evidence",
     "release_evidence",
@@ -302,7 +302,7 @@ export function parseBillingReconcilePayload(body: unknown): BillingReconcilePay
 export interface ArtifactBundlePreviewPayload {
   taskId: string;
   domainId: string;
-  bundleType: "release_bundle" | "asset_bundle" | "campaign_bundle" | "incident_bundle" | "task_result" | "promotion_evidence" | "release_evidence" | "learning_pattern_bundle" | "canary_metrics" | "workflow_snapshot";
+  bundleType: "release_bundle" | "asset_bundle" | "campaign_bundle" | "incident" | "task_result" | "promotion_evidence" | "release_evidence" | "learning_pattern_bundle" | "canary_metrics" | "workflow_snapshot";
   artifacts: ArtifactRecord[];
 }
 
@@ -317,7 +317,7 @@ export function parseArtifactBundlePreviewPayload(body: unknown): ArtifactBundle
     taskId: payload.taskId,
     domainId: payload.domainId,
     bundleType: payload.bundleType,
-    artifacts: payload.artifacts,
+    artifacts: payload.artifacts as ArtifactRecord[],
   };
 }
 

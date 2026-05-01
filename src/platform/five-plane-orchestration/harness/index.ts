@@ -1290,13 +1290,13 @@ export class HarnessRuntimeService {
       const lastNodeRunId = run.nodeRunIds.at(-1);
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
-        requiresHuman: input.requiresHuman === true || guardrailAssessment.requiresHuman ? true : undefined,
-        maxIterationsReached: inputBudget && run.steps.length >= inputBudget.maxSteps ? true : undefined,
-        riskScore: input.riskScore,
+        requiresHuman: !!(input.requiresHuman || guardrailAssessment.requiresHuman),
+        maxIterationsReached: !!(inputBudget && run.steps.length >= inputBudget.maxSteps),
+        ...(input.riskScore !== undefined ? { riskScore: input.riskScore } : {}),
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,
         ...(lastNodeRunId !== undefined ? { nodeRunId: lastNodeRunId } : {}),
-        evidenceRefs: input.producedEvidenceRefs,
+        ...(input.producedEvidenceRefs !== undefined ? { evidenceRefs: input.producedEvidenceRefs } : {}),
         deciderRef: "harness.run_loop",
       });
 
