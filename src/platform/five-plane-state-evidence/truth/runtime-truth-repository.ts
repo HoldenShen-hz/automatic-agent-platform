@@ -39,6 +39,7 @@ export interface RuntimeRepository {
   ): RuntimeTransitionResult<TAggregate>;
   appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void;
   appendRunVersionLock(lock: RunVersionLock): void;
+  appendEvidenceRecord(evidence: EvidenceRecord): void;
   snapshot(): RuntimeTruthRepositorySnapshot;
 }
 

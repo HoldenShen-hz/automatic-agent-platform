@@ -354,6 +354,13 @@ test("MarketplaceGovernanceService.publishPackage publishes internal package wit
     assert.equal(publication.packageId, pkg.packageId);
     assert.equal(publication.channel, "internal");
     assert.equal(publication.status, "published");
+    assert.ok(publication.reviewId.startsWith("review_"));
+
+    const reviews = service.listReviews();
+    const exemptionReview = reviews.find((review) => review.reviewId === publication.reviewId);
+    assert.ok(exemptionReview != null);
+    assert.equal(exemptionReview?.status, "approved");
+    assert.equal(exemptionReview?.decisionReasonCode, "review_exempt_internal_package");
 
     db.close();
   } finally {
@@ -452,6 +459,60 @@ test("MarketplaceGovernanceService.revokePublication marks publication as revoke
 
     assert.equal(revoked.status, "revoked");
     assert.equal(revoked.revocationReasonCode, "security-incident");
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("MarketplaceGovernanceService.revokePublication rejects already inactive publication", () => {
+  const workspace = createTempWorkspace("aa-marketplace-unit-");
+  const dbPath = `${workspace}/marketplace.db`;
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const service = new MarketplaceGovernanceService(db, store);
+
+    const pkg = service.registerExtensionPackage({
+      extensionId: "revoke-twice-test",
+      packageType: "tool",
+      displayName: "Revoke Twice Test",
+      version: "1.0.0",
+      owner: "owner-1",
+      trustLevel: "internal",
+      sourceUri: "https://example.com/revoke-twice",
+      capabilities: ["cap-1"],
+      permissions: ["perm-1"],
+      compatibility: {
+        apiContract: "1.0.0",
+        permissionSurface: "1.0.0",
+        runtimeCapability: "1.0.0",
+      },
+      signatureVerified: false,
+      manifestChecksum: "z".repeat(64),
+      reviewRequired: false,
+    });
+
+    const publication = service.publishPackage({
+      packageId: pkg.packageId,
+    });
+
+    service.revokePublication({
+      publicationId: publication.publicationId,
+      reasonCode: "security-incident",
+    });
+
+    assert.throws(
+      () =>
+        service.revokePublication({
+          publicationId: publication.publicationId,
+          reasonCode: "security-incident",
+        }),
+      /marketplace\.publication_already_inactive/,
+    );
 
     db.close();
   } finally {
