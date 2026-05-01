@@ -580,7 +580,28 @@ class MultiStepToolRegistry {
       },
       metadata: { source: "dispatcher", version: "1.0" },
     });
+    // R4-35: Store EvidenceRecord in memory Map for quick lookup during execution
     this.evidenceRecords.set(evidenceRecord.recordId, evidenceRecord);
+
+    // R4-35 (INV-EVIDENCE-001): Persist EvidenceRecord to RuntimeTruthRepository
+    // This ensures all decisions produce immutable evidence that can be audited
+    if (this.runtimeTruthRepository != null) {
+      try {
+        this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
+        logger.log({
+          level: "debug",
+          message: "R4-35 (INV-EVIDENCE-001): Persisted EvidenceRecord to RuntimeTruthRepository",
+          data: { recordId: evidenceRecord.recordId, category: evidenceRecord.category, targetRef: evidenceRecord.targetRef },
+        });
+      } catch (error) {
+        // If append fails, log but don't fail the tool execution
+        logger.log({
+          level: "warn",
+          message: "R4-35 (INV-EVIDENCE-001): Failed to persist EvidenceRecord",
+          data: { recordId: evidenceRecord.recordId, error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
 
     switch (toolName) {
       case "todo_write": {
