@@ -298,6 +298,7 @@ test("E2E: worker claims ticket and acquires lease", () => {
         lastProgressAt: null,
         lastHeartbeatAt: now,
         updatedAt: now,
+        version: 1,
       });
     });
 
@@ -804,6 +805,7 @@ test("E2E: worker lease management - worker busy with active lease", () => {
       lastProgressAt: null,
       lastHeartbeatAt: now,
       updatedAt: now,
+      version: 1,
     };
 
     h.db.transaction(() => {

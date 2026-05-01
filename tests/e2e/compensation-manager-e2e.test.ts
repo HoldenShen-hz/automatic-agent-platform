@@ -16,10 +16,9 @@ import test from "node:test";
 import {
   CompensationManager,
   type CompensationContext,
-  type SideEffectRecord,
 } from "../../src/platform/execution/compensation-manager.js";
-import type { SideEffectStatus, SideEffectRiskClass } from "../../src/contracts/types/index.js";
-import { createCompensationRecord } from "../../src/contracts/executable-contracts/index.js";
+import type { SideEffectRecord, SideEffectStatus } from "../../src/platform/contracts/executable-contracts/index.js";
+import { createCompensationRecord } from "../../src/platform/contracts/executable-contracts/index.js";
 
 // ============================================================================
 // Test Suite 1: Compensation Manager - Basic Operations
@@ -327,7 +326,7 @@ test("E2E CompensationManager: createCompensationRecord creates valid record", (
   const record = manager.createCompensationRecord(
     "effect-456",
     "harness-789",
-    { artifactId: "artifact-1", type: "checkpoint", uri: "file://test" },
+    { artifactId: "artifact-1", kind: "checkpoint", uri: "file://test" },
     "planned",
   );
 

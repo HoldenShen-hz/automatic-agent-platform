@@ -46,6 +46,12 @@ export {
   type RequestEnvelope as PlatformRequestEnvelope,
 } from "./executable-contracts/index.js";
 
+// Re-export CANONICAL_CONTRACT_NAMES for direct access (tests expect this)
+export {
+  CANONICAL_CONTRACT_NAMES,
+  type CanonicalContractName,
+} from "./executable-contracts/index.js";
+
 // -----------------------------------------------------------------------------
 // Evidence Record contracts
 // -----------------------------------------------------------------------------

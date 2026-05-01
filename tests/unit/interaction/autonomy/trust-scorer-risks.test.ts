@@ -1,59 +1,113 @@
+/**
+ * Unit tests for trust-scorer risk functions
+ *
+ * Tests checkInherentRisk and mapTrustLevelToAutonomyLevel which handle
+ * the R1-10 inherent risk check before mapping trust level to autonomy level.
+ */
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calculateTrustScore,
   checkInherentRisk,
+  mapTrustLevel,
   mapTrustLevelToAutonomyLevel,
-  applyTrustDecay,
 } from "../../../../src/interaction/autonomy/trust-scorer/index.js";
-import type { TrustLevel } from "../../../../src/interaction/autonomy/index.js";
+import type { CapabilityTrustScore } from "../../../../src/interaction/autonomy/index.js";
 
-test("checkInherentRisk returns true when no risk factors present", () => {
-  assert.equal(checkInherentRisk({}), true);
-});
+function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTrustScore {
+  return {
+    capabilityId: "test-capability",
+    currentAutonomy: "suggestion",
+    trustScore: 0,
+    totalExecutions: 0,
+    successfulExecutions: 0,
+    failedExecutions: 0,
+    humanOverrides: 0,
+    incidents: 0,
+    lastIncidentAgeDays: null,
+    ...overrides,
+  };
+}
+
+// --- checkInherentRisk tests ---
 
 test("checkInherentRisk returns false for critical risk class", () => {
-  assert.equal(checkInherentRisk({ riskClass: "critical" }), false);
+  const result = checkInherentRisk({ riskClass: "critical" });
+  assert.equal(result, false);
 });
 
 test("checkInherentRisk returns false for high risk class", () => {
-  assert.equal(checkInherentRisk({ riskClass: "high" }), false);
+  const result = checkInherentRisk({ riskClass: "high" });
+  assert.equal(result, false);
 });
 
-test("checkInherentRisk returns false for high-risk domain", () => {
-  assert.equal(checkInherentRisk({ isHighRiskDomain: true }), false);
+test("checkInherentRisk returns false when isHighRiskDomain is true", () => {
+  const result = checkInherentRisk({ isHighRiskDomain: true });
+  assert.equal(result, false);
 });
 
-test("checkInherentRisk returns false when human accountable required", () => {
-  assert.equal(checkInherentRisk({ requiresHumanAccountable: true }), false);
+test("checkInherentRisk returns false when requiresHumanAccountable is true", () => {
+  const result = checkInherentRisk({ requiresHumanAccountable: true });
+  assert.equal(result, false);
 });
 
-test("checkInherentRisk returns true for low risk class with no other factors", () => {
-  assert.equal(checkInherentRisk({ riskClass: "low" }), true);
+test("checkInherentRisk returns true for low risk with no additional flags", () => {
+  const result = checkInherentRisk({ riskClass: "low" });
+  assert.equal(result, true);
 });
 
-test("checkInherentRisk returns true for medium risk class with no other factors", () => {
-  assert.equal(checkInherentRisk({ riskClass: "medium" }), true);
+test("checkInherentRisk returns true for medium risk without other flags", () => {
+  const result = checkInherentRisk({ riskClass: "medium" });
+  assert.equal(result, true);
 });
 
-test("checkInherentRisk combines multiple risk factors", () => {
-  // low + not high risk domain + not human accountable = true
-  assert.equal(checkInherentRisk({ riskClass: "low", isHighRiskDomain: false, requiresHumanAccountable: false }), true);
-  // low + high risk domain = false
-  assert.equal(checkInherentRisk({ riskClass: "low", isHighRiskDomain: true }), false);
-  // medium + human accountable = false
-  assert.equal(checkInherentRisk({ riskClass: "medium", requiresHumanAccountable: true }), false);
+test("checkInherentRisk returns true when only domainId is provided", () => {
+  const result = checkInherentRisk({ domainId: "some-domain" });
+  assert.equal(result, true);
 });
 
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to full_auto without risk", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted"), "full_auto");
+test("checkInherentRisk returns false for high risk class even with domainId", () => {
+  const result = checkInherentRisk({ riskClass: "high", domainId: "some-domain" });
+  assert.equal(result, false);
 });
 
-test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when inherent risk present", () => {
-  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "high" }), "semi_auto");
-  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted", { isHighRiskDomain: true }), "semi_auto");
-  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted", { requiresHumanAccountable: true }), "semi_auto");
-  assert.equal(mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "critical" }), "semi_auto");
+test("checkInherentRisk returns false when multiple safe conditions exist but one is critical", () => {
+  // Critical overrides other safe conditions
+  const result = checkInherentRisk({
+    riskClass: "critical",
+    isHighRiskDomain: false,
+    requiresHumanAccountable: false,
+  });
+  assert.equal(result, false);
+});
+
+// --- mapTrustLevelToAutonomyLevel tests ---
+
+test("mapTrustLevelToAutonomyLevel maps fully_trusted to full_auto when no inherent risk", () => {
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted");
+  assert.equal(result, "full_auto");
+});
+
+test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when critical risk class", () => {
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "critical" });
+  assert.equal(result, "semi_auto");
+});
+
+test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when high risk class", () => {
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { riskClass: "high" });
+  assert.equal(result, "semi_auto");
+});
+
+test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when isHighRiskDomain", () => {
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { isHighRiskDomain: true });
+  assert.equal(result, "semi_auto");
+});
+
+test("mapTrustLevelToAutonomyLevel maps fully_trusted to semi_auto when requiresHumanAccountable", () => {
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted", { requiresHumanAccountable: true });
+  assert.equal(result, "semi_auto");
 });
 
 test("mapTrustLevelToAutonomyLevel maps trusted to semi_auto", () => {
@@ -76,51 +130,109 @@ test("mapTrustLevelToAutonomyLevel maps untrusted to suggestion", () => {
   assert.equal(mapTrustLevelToAutonomyLevel("untrusted"), "suggestion");
 });
 
-test("mapTrustLevelToAutonomyLevel handles unknown trust levels as suggestion", () => {
-  // Default case in switch
-  assert.equal(mapTrustLevelToAutonomyLevel("untrusted"), "suggestion");
+test("mapTrustLevelToAutonomyLevel handles fully_trusted with empty options object", () => {
+  // Empty object means no risk flags set
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted", {});
+  assert.equal(result, "full_auto");
 });
 
-test("applyTrustDecay returns original score when inactiveDays is 0", () => {
-  assert.equal(applyTrustDecay(500, 0), 500);
+test("mapTrustLevelToAutonomyLevel handles fully_trusted with null options", () => {
+  const result = mapTrustLevelToAutonomyLevel("fully_trusted", null as never);
+  assert.equal(result, "full_auto");
 });
 
-test("applyTrustDecay returns original score when inactiveDays is negative", () => {
-  assert.equal(applyTrustDecay(500, -10), 500);
+// --- calculateTrustScore at 0-1000 range tests ---
+
+test("calculateTrustScore returns 0 for no executions", () => {
+  const score = makeScore({ totalExecutions: 0, successfulExecutions: 0 });
+  assert.equal(calculateTrustScore(score), 0);
 });
 
-test("applyTrustDecay applies decay correctly for positive inactiveDays", () => {
-  // Score 1000 with 1 day at 5% rate: 1000 * (1-0.05)^1 = 950
-  const result = applyTrustDecay(1000, 1, 0.05);
-  assert.equal(result, 950);
+test("calculateTrustScore returns 0 when totalExecutions is 0 even with other fields", () => {
+  const score = makeScore({
+    totalExecutions: 0,
+    successfulExecutions: 100,
+    humanOverrides: 5,
+    incidents: 2,
+  });
+  assert.equal(calculateTrustScore(score), 0);
 });
 
-test("applyTrustDecay applies decay compounding over multiple days", () => {
-  // Score 1000 with 10 days at 5% rate: 1000 * (0.95)^10 ≈ 598.7
-  const result = applyTrustDecay(1000, 10, 0.05);
-  assert.equal(result, 599);
+test("calculateTrustScore applies success points at 0-1000 scale", () => {
+  // 50% success = 500 points out of 1000
+  const score = makeScore({
+    totalExecutions: 100,
+    successfulExecutions: 50,
+    humanOverrides: 0,
+    incidents: 0,
+  });
+  const result = calculateTrustScore(score);
+  // 500 success points + 2 volume bonus = 502
+  assert.equal(result, 502);
 });
 
-test("applyTrustDecay floors at 0", () => {
-  // Large inactive days should floor at 0
-  const result = applyTrustDecay(100, 1000, 0.5);
-  assert.equal(result, 0);
+test("calculateTrustScore applies override penalty at 0-1000 scale", () => {
+  // 100% success = 1000 points, override penalty = (5/100) * 200 = 10
+  const score = makeScore({
+    totalExecutions: 100,
+    successfulExecutions: 100,
+    humanOverrides: 5,
+    incidents: 0,
+  });
+  const result = calculateTrustScore(score);
+  // 1000 - 10 + 2 (volume bonus) = 992
+  assert.equal(result, 992);
 });
 
-test("applyTrustDecay uses custom decay rate", () => {
-  // Score 1000 with 1 day at 10% rate: 1000 * 0.9 = 900
-  const result = applyTrustDecay(1000, 1, 0.1);
-  assert.equal(result, 900);
+test("calculateTrustScore applies incident penalty at 0-1000 scale", () => {
+  // 100% success = 1000 points, 2 incidents * 150 = 300 penalty
+  const score = makeScore({
+    totalExecutions: 100,
+    successfulExecutions: 100,
+    humanOverrides: 0,
+    incidents: 2,
+  });
+  const result = calculateTrustScore(score);
+  // 1000 - 0 - 300 + 2 = 702
+  assert.equal(result, 702);
 });
 
-test("applyTrustDecay handles small scores", () => {
-  const result = applyTrustDecay(10, 5, 0.05);
+test("calculateTrustScore applies volume bonus up to 100 points", () => {
+  // 500 executions = min(100, 500/50) = 10 volume bonus
+  const score = makeScore({
+    totalExecutions: 500,
+    successfulExecutions: 500,
+    humanOverrides: 0,
+    incidents: 0,
+  });
+  const result = calculateTrustScore(score);
+  // 1000 + 10 = 1010, capped at 1000
+  assert.equal(result, 1000);
+});
+
+test("calculateTrustScore never returns negative", () => {
+  const score = makeScore({
+    totalExecutions: 50,
+    successfulExecutions: 5,
+    humanOverrides: 30,
+    incidents: 10,
+  });
+  const result = calculateTrustScore(score);
   assert.ok(result >= 0);
-  assert.ok(result <= 10);
 });
 
-test("applyTrustDecay with default rate of 0.05", () => {
-  // Score 1000 with 1 day at default 5% rate
-  const result = applyTrustDecay(1000, 1);
-  assert.equal(result, 950);
+test("calculateTrustScore handles large volumes correctly", () => {
+  const score = makeScore({
+    totalExecutions: 1000,
+    successfulExecutions: 950,
+    humanOverrides: 10,
+    incidents: 3,
+  });
+  const result = calculateTrustScore(score);
+  // (950/1000) * 1000 = 950 success points
+  // (10/1000) * 200 = 2 override penalty
+  // 3 * 150 = 450 incident penalty
+  // volume bonus = min(100, 20) = 20
+  // 950 - 2 - 450 + 20 = 518
+  assert.equal(result, 518);
 });

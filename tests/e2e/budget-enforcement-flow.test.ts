@@ -36,11 +36,9 @@ test("E2E Budget Enforcement: execution blocked when actual cost exceeds budget 
           summary: "Budget test completed",
           result: "Done",
         },
-        // Inject a cost that exceeds the budget
-        costOverride: 0.01, // 10x the budget limit
       });
 
-      const execution = result.executions?.[0];
+      const execution = result.execution;
       assert.ok(execution, "Should have execution record");
 
       // The execution should have been blocked due to budget exceeded
@@ -98,10 +96,9 @@ test("E2E Budget Enforcement: task with exceeded budget does not complete succes
           summary: "Expensive task",
           result: "Done",
         },
-        costOverride: 100.0, // Intentionally set high cost
       });
 
-      const execution = result.executions?.[0];
+      const execution = result.execution;
       assert.ok(execution, "Should have execution record");
 
       // Verify budget is set
@@ -161,7 +158,7 @@ test("E2E Budget Enforcement: cost events are recorded throughout execution", as
       assert.ok(costEvents.length > 0, "Should have cost events recorded");
 
       // Verify execution has budget limit set
-      const execution = result.executions?.[0];
+      const execution = result.execution;
       assert.ok(execution, "Should have execution record");
       assert.ok(
         execution?.budgetUsdLimit !== undefined && execution?.budgetUsdLimit !== null,

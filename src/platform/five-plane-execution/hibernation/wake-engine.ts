@@ -204,8 +204,8 @@ export class WakeEngine {
       .filter((field) => before[field] !== after[field])
       .map((field) => ({
         field,
-        beforeValue: before[field],
-        afterValue: after[field],
+        beforeValue: String(before[field]),
+        afterValue: String(after[field]),
       }));
 
     return {

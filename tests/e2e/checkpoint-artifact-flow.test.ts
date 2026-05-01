@@ -337,7 +337,7 @@ test("E2E: artifacts stored and retrieved by task ID", () => {
     assert.equal(outputArtifact!.sizeBytes, 2048, "Should have correct size");
 
     // Verify lineage tracking
-    const lineage = JSON.parse(outputArtifact!.lineageJson);
+    const lineage = JSON.parse(outputArtifact!.lineageJson ?? "{}");
     assert.equal(lineage.parent, artifactId1, "Should track lineage to parent artifact");
 
   } finally {

@@ -341,6 +341,7 @@ test("E2E Context Compaction: compaction records are persisted to store", async 
 
     // Verify record structure
     const record = storedRecords[0];
+    assert.ok(record, "Record should exist");
     assert.ok(record.id, "Record should have ID");
     assert.equal(record.sessionId, sessionId, "Record should reference session");
     assert.equal(record.taskId, taskId, "Record should reference task");
@@ -605,7 +606,7 @@ test("E2E Context Compaction: KV cache keys generated correctly", async () => {
       stage2TriggerRatio: 0.9,
       recentToolResultWindow: 3,
       kvCacheConfig: {
-        strategy: { kvCacheEnabled: true, prefixExtractionMode: "fixed" },
+        strategy: { kvCacheEnabled: true, cacheKeyStrategy: "hash_prefix" },
         domainBlockTemplates: { [taskId]: "domain-specific-template" },
       },
       occurredAt: now,

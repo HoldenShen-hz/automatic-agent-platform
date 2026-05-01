@@ -14,10 +14,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createE2EHarness } from "../helpers/e2e-harness.js";
+import { createE2EHarness } from "../../helpers/e2e-harness.js";
 import { DomainRegistryService } from "../../src/domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../src/domains/registry/plugin-spi-registry.js";
-import type { DomainDefinition, PluginSandboxPolicy } from "../../src/domains/registry/types.js";
+import type { DomainDefinition } from "../../src/domains/registry/domain-model.js";
+import type { PluginSandboxPolicy } from "../../src/domains/registry/plugin-spi.js";
 
 // ---------------------------------------------------------------------------
 // Helper Functions

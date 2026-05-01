@@ -66,7 +66,7 @@ export const QUALITY_GATE_THRESHOLDS: Partial<Record<PromptRolloutStage, { reado
  */
 export function passesQualityGate(stage: PromptRolloutStage, errorRate: number): boolean {
   const threshold = QUALITY_GATE_THRESHOLDS[stage];
-  if (threshold === null) {
+  if (threshold == null) {
     return true; // rolled_back has no threshold
   }
   return errorRate < (threshold?.maxErrorRate ?? 1);

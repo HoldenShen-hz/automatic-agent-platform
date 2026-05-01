@@ -1665,3 +1665,31 @@ function assertOapeflirViewEventType(eventType: string): void {
     );
   }
 }
+
+// =============================================================================
+// Contract Envelope (canonical per §5.5)
+// =============================================================================
+
+export interface ContractEnvelope<TPayload = unknown> {
+  readonly version: string;
+  readonly schema: string;
+  readonly payload: TPayload;
+  readonly signature: string | null;
+  readonly ttl: number | null;
+}
+
+export function createContractEnvelope<TPayload>(input: {
+  payload: TPayload;
+  version?: string;
+  schema?: string;
+  signature?: string | null;
+  ttl?: number | null;
+}): ContractEnvelope<TPayload> {
+  return {
+    version: input.version ?? CONTRACT_SCHEMA_VERSION,
+    schema: input.schema ?? "canonical",
+    payload: input.payload,
+    signature: input.signature ?? null,
+    ttl: input.ttl ?? null,
+  };
+}
