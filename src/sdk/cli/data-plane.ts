@@ -31,6 +31,8 @@ import { withCliStorage } from "./authoritative-storage.js";
 import { loadDataPlaneCliEnv } from "../../platform/control-plane/config-center/operations-cli-env.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { DataPlaneFlowService } from "../../scale-ecosystem/tenant-platform/data-plane-flow-service.js";
+import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { dirname } from "node:path";
 
 const envConfig = loadDataPlaneCliEnv();
 const action = envConfig.action;
@@ -40,6 +42,8 @@ const result = withCliStorage((storage) => {
       ? {
           artifactStoreOptions: {
             rootDir: envConfig.artifactRoot,
+            // Apply sandbox policy to constrain file writes to the artifact root directory
+            sandboxPolicy: createWorkspaceWritePolicy(dirname(envConfig.artifactRoot)),
           },
         }
       : {}),

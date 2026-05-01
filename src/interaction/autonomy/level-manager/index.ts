@@ -5,7 +5,6 @@ export const AUTONOMY_LEVEL_ORDER: readonly AutonomyLevel[] = [
   "supervised",
   "semi_auto",
   "full_auto",
-  "frozen",
 ];
 
 export function compareAutonomyLevels(left: AutonomyLevel, right: AutonomyLevel): number {

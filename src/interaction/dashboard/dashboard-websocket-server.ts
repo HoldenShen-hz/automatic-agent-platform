@@ -132,6 +132,7 @@ export class DashboardWebSocketServer {
   private readonly config: WebSocketServerConfig;
   private readonly connections = new Map<string, ConnectionState>();
   private readonly channelSubscribers = new Map<string, Set<string>>();
+  private readonly metricSubscribers = new Map<string, Set<string>>(); // §43: metric-based routing
   private readonly replayBuffer: ReplayRecord[] = [];
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private deltaHandler: ((delta: DashboardDelta, clientIds: readonly string[]) => void) | null = null;
@@ -588,6 +589,11 @@ export class DashboardWebSocketServer {
 
     // Remove timed-out connections to prevent unbounded memory growth and stale pushes
     for (const clientId of timedOutClientIds) {
+      // Mark as disconnected first, then fully unregister
+      const connection = this.connections.get(clientId);
+      if (connection) {
+        connection.isConnected = false;
+      }
       this.unregisterClient(clientId);
     }
   }
@@ -630,6 +636,19 @@ export class DashboardWebSocketServer {
           const connection = this.connections.get(clientId);
           if (connection && this.canClientReceiveDelta(connection, delta, channel, filterId)) {
             clientIds.add(clientId);
+          }
+        }
+      }
+
+      // §43: Also route based on affectedMetrics - push to clients subscribed to specific metrics
+      for (const metric of delta.affectedMetrics) {
+        const metricClients = this.metricSubscribers.get(metric);
+        if (metricClients) {
+          for (const clientId of metricClients) {
+            const connection = this.connections.get(clientId);
+            if (connection && this.canClientReceiveDelta(connection, delta)) {
+              clientIds.add(clientId);
+            }
           }
         }
       }

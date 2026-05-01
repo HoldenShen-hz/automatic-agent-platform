@@ -27,7 +27,11 @@
 
 ## 决策
 
-### 十一态 RolloutStatus 枚举
+> **⚠️ DEPRECATED/REMOVED per ADR-075** — The specifications below are superseded
+> and should NOT be used. ADR-075 defines the authoritative six-level state machine.
+> This document is retained for historical reference only.
+
+### 十一态 RolloutStatus 枚举 (REMOVED - use ADR-075 state machine)
 
 ```
 draft
@@ -51,7 +55,7 @@ rolled_back   ← 自动或手动回滚
 paused        ← 暂停，可恢复
 ```
 
-### 五级发布
+### 五级发布 (REMOVED - use ADR-075 six-level release)
 
 | 级别 | 名称 | 流量 | 适用场景 |
 |------|------|------|---------|
@@ -62,7 +66,7 @@ paused        ← 暂停，可恢复
 | L4 | staged | 25-75% | 灰度发布 |
 | L5 | stable | 100% | 全量发布 |
 
-### 自动回滚规则
+### 自动回滚规则 (REMOVED - use ADR-075 rollback rules)
 
 当以下任一条件满足时，自动触发 `rolled_back`：
 

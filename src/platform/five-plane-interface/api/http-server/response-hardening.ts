@@ -108,6 +108,9 @@ export function decorateResponseHeaders(
     ...DEFAULT_SECURITY_HEADERS,
     "x-api-version": "v1",
     "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
+    "deprecation": "true",
+    "sunset": "Thu, 31 Dec 2025 23:59:59 GMT",
+    "api-version-support": "v1;v2",
     ...(traceId != null ? { "x-trace-id": traceId } : {}),
   };
   const allowOrigin = resolveAllowOrigin(origin, corsConfig);

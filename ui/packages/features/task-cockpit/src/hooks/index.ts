@@ -63,9 +63,11 @@ export function mapTasksToVm(tasks: readonly TaskDTO[]): Pick<TaskCockpitVm, "ta
 
 export function useTaskCockpitVm(): TaskCockpitVm {
   const client = useRestClient();
-  const queryTasks = useTasksQuery().data ?? [];
+  // §2268: Enable polling with refetchInterval for real-time monitoring (5 second interval)
+  const queryTasks = useTasksQuery(undefined, { refetchInterval: 5000 }).data ?? [];
   const [tasks, setTasks] = useState<readonly TaskDTO[]>(queryTasks);
-  const [selectedId, setSelectedId] = useState<string | null>(queryTasks[0]?.id ?? null);
+  // §2268/2271: Start with null selection - do not auto-select until user picks a task
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [timelineItems, setTimelineItems] = useState<readonly { title: string; description: string }[]>([]);
   const [pendingAction, setPendingAction] = useState(false);
 
@@ -137,7 +139,8 @@ export function useTaskCockpitVm(): TaskCockpitVm {
       return;
     }
     setTasks((current) => current.map((task) => task.id === selectedTask.id ? transform(task) : task));
-    setTimelineItems((current) => [{ title, description }, ...current]);
+    // §2275: Limit timelineItems to 100 entries to prevent unbounded growth
+    setTimelineItems((current) => [{ title, description }, ...current].slice(0, 100));
   }
 
   // L5 Timeline update helper

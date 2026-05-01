@@ -379,10 +379,10 @@ export class PolicyEngine {
         } else if (input.mode === "auto" && isHighRisk) {
           // In auto mode, high-risk actions require approval
           result = this.escalate(input, budget, "policy.high_risk_requires_approval");
-        } else if (input.mode === "full-auto" && isHighRisk) {
-          // §10.1: full-auto mode requires deny-by-default + high-risk forced escalation
-          // Even in full-auto, destructive/irreversible/prod_affecting actions must escalate
-          result = this.escalate(input, budget, "policy.full_auto_high_risk_escalation");
+        } else if (input.mode === "full-auto" && (isHighRisk || budget.requiresApproval)) {
+          // SECURITY FIX: full-auto must still escalate for high-risk OR budget-warning actions.
+          // Previously, full-auto only escalated for isHighRisk but allowed budget-warning actions.
+          result = this.escalate(input, budget, "policy.full_auto_escalation");
         } else {
           // Default: allow with constraints
           result = {

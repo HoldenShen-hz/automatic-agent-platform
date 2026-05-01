@@ -524,16 +524,18 @@ export class MarketplaceGovernanceService {
       ? this.store.marketplace.getLatestMarketplaceReviewForPackage(packageRecord.packageId, packageRecord.tenantId ?? undefined)
       : this.store.marketplace.getMarketplaceReview(assertSimpleIdentifier(input.reviewId, "marketplace.invalid_review_id"), packageRecord.tenantId ?? undefined);
 
-    // Review is required if the package has reviewRequired flag
-    if (reviewRecord == null) {
+    // Root cause: Internal packages with reviewRequired=0 should not require review per documentation
+    // Fix: Skip review requirement for internal packages where reviewRequired is 0
+    const requiresReview = packageRecord.trustLevel !== "internal" || packageRecord.reviewRequired === 1;
+    if (requiresReview && reviewRecord == null) {
       throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
         retryable: false,
         details: { packageId: packageRecord.packageId },
       });
     }
 
-    // Package must be approved before publication
-    if (reviewRecord.status !== "approved") {
+    // Package must be approved before publication (only if review was required)
+    if (requiresReview && reviewRecord.status !== "approved") {
       throw new PolicyDeniedError("marketplace.review_not_approved", "marketplace.review_not_approved", {
         retryable: false,
         details: {
@@ -551,17 +553,6 @@ export class MarketplaceGovernanceService {
         details: {
           packageId: packageRecord.packageId,
           reviewPackageId: reviewRecord.packageId,
-          reviewId: reviewRecord.reviewId,
-        },
-      });
-    }
-
-    // Check review requirement if package has reviewRequired flag
-    if (packageRecord.reviewRequired === 1 && reviewRecord.status !== "approved") {
-      throw new PolicyDeniedError("marketplace.review_required", "marketplace.review_required", {
-        retryable: false,
-        details: {
-          packageId: packageRecord.packageId,
           reviewId: reviewRecord.reviewId,
         },
       });
@@ -657,6 +648,15 @@ export class MarketplaceGovernanceService {
         statusCode: 404,
         retryable: false,
         details: { publicationId: input.publicationId },
+      });
+    }
+
+    // Root cause: No check for current status - can revoke already-revoked publications
+    // Fix: Check if publication is already revoked/deprecated/retired
+    if (existing.status === "revoked" || existing.status === "deprecated" || existing.status === "retired") {
+      throw new PolicyDeniedError("marketplace.publication_already_inactive", "Publication is already revoked/deprecated/retired", {
+        retryable: false,
+        details: { publicationId: input.publicationId, currentStatus: existing.status },
       });
     }
 

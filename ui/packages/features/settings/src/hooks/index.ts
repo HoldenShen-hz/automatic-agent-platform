@@ -47,12 +47,13 @@ export function useSettingsVm(): SettingsVm {
   const preferenceTheme = preferences?.theme;
   const preferenceLocale = preferences?.locale;
 
+  // §2277: Use preferences directly in deps - preferenceTheme/Locale are derived and may miss updates
   useEffect(() => {
     if (preferences != null) {
       setDraftTheme(preferences.theme);
       setDraftLocale(preferences.locale);
     }
-  }, [preferenceLocale, preferenceTheme]);
+  }, [preferences]);
 
   const centerRows = useMemo(() => preferences == null ? [] : [
     { key: "Locale", value: draftLocale },
@@ -75,14 +76,18 @@ export function useSettingsVm(): SettingsVm {
       // §4.7.8: Use If-Match header with ETag for optimistic locking
       const etag = (preferences as { etag?: string }).etag;
       await updatePreferences(client, { theme: draftTheme, locale: draftLocale }, etag);
-      setSaveState("saved");
-      setActivityItems((current) => [
-        {
-          title: "Configuration saved",
-          description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
-        },
-        ...current,
-      ]);
+      // §2269: Use setTimeout to ensure saving->saved transition is visible in React batch
+      // Without this, React 18 batches the state change and saving is never visible
+      setTimeout(() => {
+        setSaveState("saved");
+        setActivityItems((current) => [
+          {
+            title: "Configuration saved",
+            description: `Preferences updated to ${draftLocale} / ${draftTheme}; flags, models, domains and tenants remain in sync.`,
+          },
+          ...current,
+        ].slice(0, 100)); // §2275: Limit activityItems to 100 entries to prevent unbounded growth
+      }, 50);
     } catch (error) {
       setSaveState("idle");
       // Could handle 409 Conflict here to show user a message

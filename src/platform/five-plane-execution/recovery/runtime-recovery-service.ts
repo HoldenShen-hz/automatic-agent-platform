@@ -295,7 +295,7 @@ export class RuntimeRecoveryService {
 
   public findStaleExecuting(query: LegacyStaleExecutionQuery = {}): LegacyRecoveryCandidate[] {
     const thresholdMs = Math.max(0, query.stalenessThresholdMs ?? this.config.staleExecutionThresholdMs);
-    const staleBefore = new Date(Date.now() + thresholdMs).toISOString();
+    const staleBefore = new Date(Date.now() - thresholdMs).toISOString();
     return this.listStaleRuns(staleBefore, query.tenantId).map((candidate) => ({
       ...candidate,
       errorClassification: classifyLegacyError(candidate.latestErrorCode),

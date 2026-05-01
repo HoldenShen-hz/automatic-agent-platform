@@ -680,7 +680,7 @@ export class PluginSpiRegistry {
     if (record.manifest.sandbox.cooldownMs > 0) {
       record.cooldownUntil = new Date(Date.now() + record.manifest.sandbox.cooldownMs).toISOString();
     }
-    if (record.failureCount > this.maxConsecutiveFailures) {
+    if (record.failureCount >= this.maxConsecutiveFailures) {
       record.disabledReason = phase;
       this.setLifecycleState(record, "disabled");
     } else {

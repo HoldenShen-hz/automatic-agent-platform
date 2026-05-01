@@ -35,7 +35,36 @@ export const PlanSchema = z.object({
   version: z.number().int().positive(),
   assessmentRef: z.string().min(1),
   strategy: PlanStrategySchema,
+  // §13.7: PlanSchema now includes graph structure (nodes/edges/entryNodeIds)
+  // for PlanGraphBundle compatibility - linear steps are converted to graph nodes
   steps: z.array(PlanStepSchema).min(1),
+  nodes: z.array(z.object({
+    nodeId: z.string().min(1),
+    nodeType: z.string().min(1),
+    inputRefs: z.array(z.string()).default([]),
+    outputSchemaRef: z.string().optional(),
+    riskClass: z.string().default("medium"),
+    budgetIntent: z.object({
+      amount: z.number().default(1),
+      currency: z.string().default("USD"),
+      resourceKinds: z.array(z.string()).default(["compute"]),
+    }).optional(),
+    sideEffectProfile: z.object({
+      mayCommitExternalEffect: z.boolean().default(false),
+      reversible: z.boolean().default(true),
+    }).optional(),
+    retryPolicyRef: z.string().optional(),
+    timeoutMs: z.number().int().positive().optional(),
+  })).default([]),
+  edges: z.array(z.object({
+    edgeId: z.string().min(1),
+    fromNodeId: z.string().min(1),
+    toNodeId: z.string().min(1),
+    condition: z.object({ type: z.string().default("always") }).default({ type: "always" }),
+    dependencyType: z.enum(["hard", "soft"]).default("hard"),
+  })).default([]),
+  entryNodeIds: z.array(z.string()).default([]),
+  graphConstraints: z.record(z.string(), z.unknown()).default({}),
   createdAt: z.number().int().nonnegative(),
   parentVersion: z.number().int().nonnegative().optional(),
 });

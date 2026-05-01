@@ -614,9 +614,13 @@ async runAbTest(
       }
     }
 
+    // R16-16 FIX: §17.3 requires latency regression check (≤120%)
+    const hasLatencyRegression = baselineRegression?.latencyRegression ?? false;
+
     const passed = passingVerdicts.includes(verdict)
       && !(baselineRegression?.hasRegression ?? false)
-      && !independenceViolation;
+      && !independenceViolation
+      && !hasLatencyRegression;
 
     return {
       passed,
@@ -642,6 +646,9 @@ async runAbTest(
     previousScore: number;
     delta: number;
     regressedCases: string[];
+    currentLatencyMs: number;
+    previousLatencyMs: number;
+    latencyRegression: boolean;
   } {
     const currentRuns = this.db.connection
       .prepare(`SELECT * FROM eval_runs WHERE suite_id = ? AND model_id = ? AND prompt_version = ? AND status IN ('passed', 'degraded', 'failed') ORDER BY completed_at DESC LIMIT 1`)
@@ -663,12 +670,39 @@ async runAbTest(
       for (const c of failedCases) regressedCases.push(String(c.case_id));
     }
 
+    // R16-16 FIX: §17.3 requires latency_regression ≤ 120% and cost_regression ≤ 150%
+    // Fetch average latency for current and previous runs
+    let currentLatencyMs = 0;
+    let previousLatencyMs = 0;
+    let latencyRegression = false;
+
+    if (currentRuns.length > 0) {
+      const latencyResult = this.db.connection
+        .prepare(`SELECT AVG(latency_ms) as avg_latency FROM eval_case_results WHERE run_id = ?`)
+        .get(String(currentRuns[0]!.id)) as { avg_latency: number } | undefined;
+      currentLatencyMs = latencyResult ? Number(latencyResult.avg_latency) : 0;
+    }
+    if (previousRuns.length > 0) {
+      const latencyResult = this.db.connection
+        .prepare(`SELECT AVG(latency_ms) as avg_latency FROM eval_case_results WHERE run_id = ?`)
+        .get(String(previousRuns[0]!.id)) as { avg_latency: number } | undefined;
+      previousLatencyMs = latencyResult ? Number(latencyResult.avg_latency) : 0;
+    }
+
+    // Latency regression: current latency > 120% of previous
+    if (previousLatencyMs > 0 && currentLatencyMs > previousLatencyMs * 1.20) {
+      latencyRegression = true;
+    }
+
     return {
-      hasRegression: delta < -0.05,
+      hasRegression: delta < -0.05 || latencyRegression,
       currentScore,
       previousScore,
       delta,
       regressedCases,
+      currentLatencyMs,
+      previousLatencyMs,
+      latencyRegression,
     };
   }
 

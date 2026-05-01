@@ -29,6 +29,13 @@ export const electronMainBaseline = {
   ] as const,
 };
 
+// Shell command allowlist - only predefined safe commands permitted via shell:run
+const ALLOWED_SHELL_COMMANDS = new Set(["status", "health", "version"]);
+
+export function isShellCommandAllowed(command: string): boolean {
+  return ALLOWED_SHELL_COMMANDS.has(command);
+}
+
 export const electronBridgeCapabilities = {
   secureStore: true,
   filesystem: true,

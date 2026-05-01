@@ -15,10 +15,10 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Golden / E2E Tests                        │
-│   (tests/golden/oapeflir-happy-path.test.ts 等)             │
+│   (tests/golden/harness-run-*.test.ts 等)                   │
 ├─────────────────────────────────────────────────────────────┤
 │                   Integration Tests                          │
-│   (tests/integration/oapeflir-loop-integration.test.ts 等)  │
+│   (tests/integration/platform/orchestration/*.test.ts 等)   │
 ├─────────────────────────────────────────────────────────────┤
 │                    Unit Tests                                │
 │   (tests/unit/{module}/*.test.ts)                           │
@@ -32,7 +32,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 
 | 模块 | 单元测试 | 集成测试 | Golden | 安全 | 预估用例 |
 |------|---------|---------|--------|------|---------|
-| `platform/interface/` | API gateway, ingress, scheduler | 8 阶段联调 | O→A→P→E→F happy path | handoff 信息泄露 | ~120 |
+| `platform/interface/` | API gateway, ingress, scheduler | intake→admission→projection 联调 | harness-run happy path | handoff 信息泄露 | ~120 |
 | `platform/control-plane/` | IAM, config-center, approval-center | control-plane→orchestration | linear plan happy path | — | ~80 |
 | `platform/orchestration/` | OAPEFLIR, routing, planner, HITL | plan→execute 集成 | — | autonomy boundary | ~60 |
 | `platform/execution/` | dispatcher, execution-engine, recovery, worker-pool | execution→state-evidence | failure pattern golden | — | ~80 |
@@ -43,19 +43,19 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 
 ### 3. E2E 测试设计（5 个核心测试）
 
-#### Test 1: Happy Path
+#### Test 1: Runtime Happy Path
 ```
 输入: "modify foo.ts bar function"
-验证: O→A→P→E→F→L→I(shadow) 全链路
-验证: 每阶段 DTO 通过 Zod 校验
+验证: intake → admission → `HarnessRun` / `NodeRun` / `NodeAttemptReceipt` 全链路
+验证: canonical contract 通过 schema 校验
 验证: `oapeflir.view.*` 阶段视图连续，且不替代 runtime truth
 验证: <60s E2E 延迟
 ```
 
-#### Test 2: Execution 失败触发 Learn
+#### Test 2: Runtime Failure Drives Learn
 ```
 输入: 无效文件路径（必定失败）
-验证: Execute 失败 → Feedback → Learn 产出 FailurePattern
+验证: `NodeRun` 失败后，feedback / learn 视图能回链到同一 `harnessRunId`
 验证: FailurePattern 有 evidence 链接
 ```
 
@@ -66,7 +66,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 验证: 新 `GraphPatch` 从失败 `NodeRun` 后继续
 ```
 
-#### Test 4: Canary 升级流程
+#### Test 4: Release Gate Progression
 ```
 输入: 已有 LearningObject → ImprovementCandidate
 验证: shadow → canary_5 → partial_25 → stable 完整流程
@@ -86,6 +86,7 @@ OAPEFLIR 八阶段架构新增 7 个核心模块（agent-loop/planning/feedback/
 ## v4.3 ADR Remediation
 
 - A-66: 本 ADR 原先把 OAPEFLIR 测试描述成“无阶段被跳过”的可执行主链，并使用“失败步骤后继续”表述 replan，根因是测试策略 ADR 把认知阶段视图和 runtime 执行图混在了一起。修复：正文现把 OAPEFLIR 限定为 view 连续性验证，把恢复/重规划锚点切到 `GraphPatch / NodeRun`。
+- R8-74: 测试目标已改写为 `HarnessRun / NodeRun / NodeAttemptReceipt` truth + `oapeflir.view.*` 投影连续性，不再把 OAPEFLIR 本身表述为独立执行管线。
 
 | 模块 | 操作 | P99 目标 | 测试文件 |
 |------|------|---------|---------|

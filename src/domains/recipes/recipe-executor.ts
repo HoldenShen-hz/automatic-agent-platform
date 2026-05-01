@@ -1,4 +1,5 @@
 import { DomainRecipeSchema, type DomainRecipe } from "./index.js";
+import type { WorkflowRegistry } from "../registry/workflow-registry.js";
 
 export interface RecipeExecutionContext {
   executionId: string;
@@ -25,20 +26,31 @@ export interface RecipeExecutionResult {
 }
 
 export class RecipeExecutor {
+  private readonly workflowRegistry: WorkflowRegistry | null;
+
+  public constructor(workflowRegistry?: WorkflowRegistry) {
+    this.workflowRegistry = workflowRegistry ?? null;
+  }
+
   public async execute(
     recipe: DomainRecipe,
     context: RecipeExecutionContext,
   ): Promise<RecipeExecutionResult> {
     try {
       const parsed = DomainRecipeSchema.parse(recipe);
-      if (/^nonexistent/i.test(parsed.defaultWorkflowId)) {
+      // Query WorkflowRegistry properly when available - do not assume workflow
+      // does not exist based on null registry fallback
+      const workflow = this.workflowRegistry
+        ? this.workflowRegistry.get(parsed.defaultWorkflowId)
+        : null;
+      if (this.workflowRegistry && workflow == null) {
         return {
           success: false,
           executionId: context.executionId,
           recipeId: parsed.recipeId,
           workflowId: parsed.defaultWorkflowId,
           toolBundleIds: [...parsed.defaultToolBundleIds],
-          error: `Workflow ${parsed.defaultWorkflowId} is not available.`,
+          error: `Workflow ${parsed.defaultWorkflowId} is not available in the registry.`,
         };
       }
 

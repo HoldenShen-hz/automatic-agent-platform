@@ -5,6 +5,7 @@ import { nowIso } from "../../platform/contracts/types/ids.js";
 import {
   createHarnessRun,
   createPlanGraphBundle,
+  normalizeDomainBindingId,
   type BudgetLedger,
   type BudgetResourceKind,
   type HarnessRun,
@@ -333,7 +334,8 @@ function normalizeGoal(goal: Goal | string): Goal {
 }
 
 function resolveTaskDomainPolicy(domainId: string): TaskDomainPolicy | null {
-  return TASK_DOMAIN_POLICIES[domainId] ?? null;
+  const normalized = normalizeDomainBindingId(domainId);
+  return TASK_DOMAIN_POLICIES[normalized] ?? null;
 }
 
 /**
@@ -877,9 +879,11 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     riskSummary: RiskPreview,
   ): GoalHarnessRoutingReceipt {
     const harnessContext = this.buildHarnessRuntimeContext(goal);
+    const harnessDomainId = this.resolveHarnessDomainId(tasks);
     const bootstrapRun = createHarnessRun({
       harnessRunId: `${goal.goalId}:harness_run`,
       tenantId: harnessContext.tenantId,
+      domainId: harnessDomainId,
       confirmedTaskSpecId: `${goal.goalId}:confirmed_task_spec`,
       requestEnvelopeId: `${goal.goalId}:request_envelope`,
       requestHash: `${goal.goalId}:request_hash`,
@@ -919,6 +923,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const harnessRun = createHarnessRun({
       harnessRunId: bootstrapRun.harnessRunId,
       tenantId: bootstrapRun.tenantId,
+      domainId: bootstrapRun.domainId,
       confirmedTaskSpecId: bootstrapRun.confirmedTaskSpecId,
       requestEnvelopeId: bootstrapRun.requestEnvelopeId,
       requestHash: bootstrapRun.requestHash,
@@ -941,6 +946,16 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       initialStep,
       routedAt: nowIso(),
     };
+  }
+
+  private resolveHarnessDomainId(tasks: readonly PlannedTask[]): string {
+    const domainIds = [...new Set(tasks.map((task) => this.resolveBaselineDomainId(task.domainId)))];
+    return domainIds.length === 1 ? domainIds[0]! : "project-management";
+  }
+
+  private resolveBaselineDomainId(domainId: string): string {
+    const normalized = normalizeDomainBindingId(domainId);
+    return resolveTaskDomainPolicy(normalized)?.baselineDomainId ?? normalized;
   }
 
   private buildHarnessRuntimeContext(goal: Goal): PlanGraphHarnessRuntimeContext {

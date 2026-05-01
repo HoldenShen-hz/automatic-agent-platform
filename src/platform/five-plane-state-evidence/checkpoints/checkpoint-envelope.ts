@@ -147,7 +147,7 @@ export async function createCheckpointEnvelope<T = unknown>(
 
   // Verify compressed size doesn't exceed limit (compression could still be too large)
   if (compressedSizeBytes > maxSizeBytes) {
-    throw new CheckpointSizeExceededError(originalSizeBytes, maxSizeBytes);
+    throw new CheckpointSizeExceededError(compressedSizeBytes, maxSizeBytes);
   }
 
   const checksum = createChecksum(uncompressedBuffer);

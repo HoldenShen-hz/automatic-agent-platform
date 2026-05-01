@@ -23,13 +23,14 @@ export class RecoveryOrchestratorService {
     const startedAt = nowIso();
     const startedAtMs = Date.parse(startedAt);
     const orderedWorkers = [...this.workers].sort(compareRecoveryWorkers);
-    const workerReports: RecoveryReport[] = [];
-    for (const worker of orderedWorkers) {
+
+    // Run all workers in parallel for maximum throughput
+    const workerPromises = orderedWorkers.map(async (worker): Promise<RecoveryReport> => {
       try {
-        workerReports.push(await worker.runRecoveryCycle());
+        return await worker.runRecoveryCycle();
       } catch (error) {
         const completedAt = nowIso();
-        workerReports.push({
+        return {
           workerId: worker.getWorkerId(),
           workerType: "recovery_worker",
           startedAt,
@@ -43,9 +44,11 @@ export class RecoveryOrchestratorService {
               message: error instanceof Error ? error.message : String(error),
             },
           ],
-        });
+        };
       }
-    }
+    });
+
+    const workerReports = await Promise.all(workerPromises);
     const completedAt = nowIso();
     return {
       orchestratorId: this.orchestratorId,

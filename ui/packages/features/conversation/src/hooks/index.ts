@@ -22,7 +22,27 @@ export interface ConversationVmOptions {
   readonly userId?: string;
 }
 
+const STORAGE_KEY = "aa-conversation-messages";
+
 type WsMessagePayload = { role: "user" | "assistant" | "system"; content: string };
+
+// §2276: Persist messages to sessionStorage so remount restores history
+function loadPersistedMessages(): ConversationMessage[] {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistMessages(messages: readonly ConversationMessage[]): void {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  } catch {
+    // Storage unavailable
+  }
+}
 
 /**
  * §4.6.1: Subscribe to nl.session.updated / nl.plan.created events for real-time updates.
@@ -31,7 +51,8 @@ type WsMessagePayload = { role: "user" | "assistant" | "system"; content: string
 export function useConversationVm(options: ConversationVmOptions = {}): ConversationVm {
   const { wsClient, userId } = options;
   const clientRef = useRef(new ConversationClient());
-  const [messages, setMessages] = useState<readonly ConversationMessage[]>([]);
+  // §2276: Initialize from persisted storage to survive remount
+  const [messages, setMessages] = useState<readonly ConversationMessage[]>(loadPersistedMessages);
   const [status, setStatus] = useState<ConversationStatus>("idle");
   const [draft, setDraftState] = useState("帮我发起营销活动");
   const [planReady, setPlanReady] = useState(false);
@@ -66,6 +87,7 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
             content: m.content,
           }));
           setMessages(wsMessages);
+          persistMessages(wsMessages);
         }
       }
     });
@@ -88,12 +110,15 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
   }, [wsClient, userId]);
 
   // §4.6.1: Sync state from in-memory client only when WS is not active
+  // §2276: Persist messages to sessionStorage so remount restores history
   const syncInMemoryState = useCallback((
     nextPlanReady: boolean,
     nextExecutionReady: boolean,
   ) => {
     if (wsClient == null || userId == null) {
-      setMessages([...clientRef.current.listMessages()]);
+      const msgs = [...clientRef.current.listMessages()];
+      setMessages(msgs);
+      persistMessages(msgs);
       setStatus(clientRef.current.getStatus());
     }
     setPlanReady(nextPlanReady);
@@ -121,7 +146,8 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
         setStatus("parsing");
       } else {
         clientRef.current.send(draft);
-        clientRef.current.requestClarification("已解析请求，请确认预算上限、时区和投放窗口。");
+        // §2272: Do not auto-request clarification - allow direct execution
+        // User can still call requestClarification() manually if needed
         syncInMemoryState(false, false);
       }
     },
@@ -162,9 +188,12 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
         });
         setStatus("executing");
       } else {
-        clientRef.current.execute("任务已进入执行态，开始创建 campaign 并分配预算。");
-        clientRef.current.pushAssistant("执行完成：活动草案已创建，指标回传已接通。");
-        syncInMemoryState(true, true);
+        // P0 FIX: Execution requires a valid WS connection to the control plane.
+        // Local in-memory simulation bypasses the intake pipeline (P1→P2 invariant).
+        // User must establish a backend connection before executing.
+        setStatus("clarifying");
+        clientRef.current.requestClarification("执行需要与后端建立连接。当前离线状态下无法执行任务，请检查网络连接后重试。");
+        syncInMemoryState(planReady, false);
       }
     },
     requestClarification() {

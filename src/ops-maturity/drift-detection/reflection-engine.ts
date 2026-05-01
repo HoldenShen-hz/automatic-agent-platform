@@ -5,6 +5,7 @@
  * and successes. Produces ReflectionRecords that feed into ProposalEngine.
  */
 
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { EvidenceRecord } from './evidence-store.js';
 
 export interface ReflectionRecord {
@@ -24,8 +25,6 @@ export interface ReflectionEngine {
 }
 
 export class SimpleReflectionEngine implements ReflectionEngine {
-  private reflectionIdCounter = 0;
-
   async reflect(evidence: EvidenceRecord[]): Promise<ReflectionRecord[]> {
     const reflections: ReflectionRecord[] = [];
 
@@ -63,7 +62,7 @@ export class SimpleReflectionEngine implements ReflectionEngine {
     records: EvidenceRecord[],
     context?: { successes: EvidenceRecord[]; failures: EvidenceRecord[] }
   ): Promise<ReflectionRecord> {
-    const id = `refl_${++this.reflectionIdCounter}`;
+    const id = newId("refl");
     const firstRecord = records[0];
     if (!firstRecord) {
       return {
@@ -73,7 +72,7 @@ export class SimpleReflectionEngine implements ReflectionEngine {
         rootCause: 'No records provided',
         recommendation: 'Provide evidence records',
         confidence: 0,
-        createdAt: new Date().toISOString(),
+        createdAt: nowIso(),
       };
     }
     const evidenceIds = records.map((r) => r.id);
@@ -97,7 +96,7 @@ export class SimpleReflectionEngine implements ReflectionEngine {
       rootCause,
       recommendation,
       confidence,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso(),
       metadata: {
         taskType,
         failureMode,

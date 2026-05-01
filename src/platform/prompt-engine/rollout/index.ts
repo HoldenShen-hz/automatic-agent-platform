@@ -3,7 +3,10 @@ import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type { PromptTemplateRecord } from "../registry/index.js";
 
-export type PromptRolloutMode = "off" | "suggest" | "shadow";
+// §16.3: canary mode maps to the canary_5/canary_20 staged rollout pipeline.
+// Valid transitions: blocked → canary_5 → canary_20 → stable → deprecated
+// rolled_back is a terminal state from rollbackRollout().
+export type PromptRolloutMode = "off" | "suggest" | "shadow" | "canary";
 // R16-04 FIX: Align with §16.1 lifecycle - canary stages per §16.3
 // Valid transitions: blocked → canary_5 → canary_20 → stable → deprecated
 // rolled_back is a terminal state
@@ -22,6 +25,8 @@ export interface PromptRolloutRecord {
   guardrailSummary: string;
   createdAt: string;
   updatedAt: string;
+  /** §16.3: ISO timestamp when the rollout entered its current status. Used to enforce dwell-time. */
+  statusEnteredAt: string;
 }
 
 export interface PromptRolloutDecision {
@@ -61,6 +66,7 @@ export class PromptRolloutService {
       guardrailSummary: decision.reason,
       createdAt: now,
       updatedAt: now,
+      statusEnteredAt: now,
     };
     this.rollouts.set(record.rolloutId, record);
     return record;
@@ -82,7 +88,19 @@ export class PromptRolloutService {
         `Prompt rollout in status ${record.status} cannot transition to canary or stable. Valid transitions: canary_5→canary_20→stable`,
       );
     }
-    const updated = { ...record, status: nextStatus as PromptRolloutStatus, updatedAt: nowIso() };
+    // §16.3 dwell-time: require minimum time at each stage before advancing
+    const DWELL_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const stageEnteredAt = new Date(record.statusEnteredAt).getTime();
+    const nowMs = Date.now();
+    const timeInStage = nowMs - stageEnteredAt;
+    if (timeInStage < DWELL_TIME_MS) {
+      const remainingSec = Math.ceil((DWELL_TIME_MS - timeInStage) / 1000);
+      throw new ValidationError(
+        `prompt_rollout.dwell_time_not_met:${record.status}`,
+        `Prompt rollout in status ${record.status} must wait ${remainingSec}s more before advancing.`,
+      );
+    }
+    const updated = { ...record, status: nextStatus as PromptRolloutStatus, updatedAt: nowIso(), statusEnteredAt: nowIso() };
     this.rollouts.set(rolloutId, updated);
     return updated;
   }
@@ -103,6 +121,7 @@ export class PromptRolloutService {
       status: "rolled_back" as const,
       guardrailSummary: reason.trim(),
       updatedAt: nowIso(),
+      statusEnteredAt: nowIso(),
     };
     this.rollouts.set(rolloutId, updated);
     return updated;

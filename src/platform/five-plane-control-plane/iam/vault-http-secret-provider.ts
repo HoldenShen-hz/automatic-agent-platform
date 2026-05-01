@@ -218,7 +218,15 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
         const loginData = (await loginResp.json()) as VaultLoginResponse;
         if (loginData.auth?.client_token) {
           this._cachedToken = loginData.auth.client_token;
-          this._tokenExpiry = Date.now() + (loginData.auth.lease_duration ?? 3600) * 1000;
+          // SECURITY FIX: Use conservative TTL when lease_duration is not provided.
+          // Previously defaulted to 3600 (1 hour) which could cause silent failures
+          // if the actual token TTL is shorter. Now use a 60-second minimum
+          // to balance between performance and token revocation safety.
+          const leaseDuration = loginData.auth.lease_duration;
+          const safeTtlSeconds = (typeof leaseDuration === "number" && leaseDuration > 0)
+            ? Math.min(leaseDuration, 3600) // Cap at 1 hour max
+            : 60; // Conservative 60-second minimum when not specified
+          this._tokenExpiry = Date.now() + safeTtlSeconds * 1000;
           return this._cachedToken;
         }
       }

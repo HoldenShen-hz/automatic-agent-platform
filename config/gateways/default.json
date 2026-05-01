@@ -1,6 +1,14 @@
 {
   "defaultGateway": "cli",
   "sseEnabled": true,
+  "timeout": 30000,
+  "circuitBreaker": {
+    "enabled": true,
+    "failureThreshold": 5,
+    "resetTimeoutMs": 30000,
+    "halfOpenMaxAttempts": 3,
+    "fallbackMode": "fail_closed"
+  },
   "rateLimit": {
     "enabled": true,
     "maxRequestsPerMinute": 1200,

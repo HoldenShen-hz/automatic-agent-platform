@@ -72,8 +72,14 @@ export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
 
 export function listAncestorNodeIds(nodes: readonly OrgNode[], nodeId: string): string[] {
   const ancestors: string[] = [];
+  const visited = new Set<string>(); // SECURITY FIX: Track visited nodes to detect cycles
   let current = nodes.find((item) => item.orgNodeId === nodeId) ?? null;
   while (current?.parentOrgNodeId != null) {
+    // SECURITY FIX: Detect circular references to prevent infinite loops
+    if (visited.has(current.parentOrgNodeId)) {
+      throw new Error(`org_hierarchy.circular_reference_detected:${nodeId}`);
+    }
+    visited.add(current.parentOrgNodeId);
     ancestors.push(current.parentOrgNodeId);
     current = nodes.find((item) => item.orgNodeId === current?.parentOrgNodeId) ?? null;
   }
@@ -223,7 +229,10 @@ export function detectOrgChangeEvents(
         type: "employee_transfer",
         userId: assignment.userId,
         fromTeamId: beforeNode.orgNodeId,
-        toTeamId: afterNode.parentOrgNodeId ?? "",
+        // SECURITY FIX: toTeamId should be the target team node, not the parent ID.
+        // When an employee transfers, they go TO the new team node (afterNode),
+        // not to the parent's node (which is the parent's org node, not the target team).
+        toTeamId: afterNode.orgNodeId,
         newManagerId: assignment.managerUserId,
       });
     }

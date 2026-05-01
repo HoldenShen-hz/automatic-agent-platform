@@ -343,6 +343,10 @@ export class SlaOperationsService {
       maxLatencyMs: adjustedMaxLatency,
       minSuccessRate,
       maxQueueWaitMs,
+      // Root cause: Missing SLA timeout and dependency fields from commitment
+      // Fix: Include maxExecutionTimeoutRate and minDependencyAvailability from selectedTier
+      maxExecutionTimeoutRate: selectedTier.maxExecutionTimeoutRate,
+      minDependencyAvailability: selectedTier.minDependencyAvailability,
     };
     const breachCodes = detectSlaBreach(request.observation, commitment);
 
@@ -366,7 +370,10 @@ export class SlaOperationsService {
     }));
 
     const starvationProtected = request.tiers.some((tier) => (reservedCapacity[tier.tierId] ?? 0) > 0);
-    const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) <= Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0));
+    // Root cause: Condition uses <= which is always true when selectedTier has max priority
+    // If selectedTier IS the max priority, preemption cap should NOT be applied (nothing can preempt it)
+    // Fix: Use < so preemptionCapApplied is true only when there's a strictly higher priority tier
+    const preemptionCapApplied = (selectedTier.preemptionPriority ?? 0) < Math.max(...request.tiers.map((tier) => tier.preemptionPriority ?? 0));
 
     // §54.3/R15-72: Delay prediction based on historical observations
     const delayPrediction = predictDelay(

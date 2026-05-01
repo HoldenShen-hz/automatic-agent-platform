@@ -7,7 +7,7 @@
 
 ## 1. 范围
 
-本 contract 定义任务、子任务、工作流状态、步骤输出、artifact 引用，以及 Phase 1a 需要稳定的运行时约束。
+本 contract 定义任务、子任务、工作流状态、步骤输出、artifact 引用，以及 legacy task/workflow 读模型与 v4.3 canonical runtime 之间的映射约束。
 
 对 OAPEFLIR Phase 1-4 范围，本 contract 只定义 task/workflow 读模型如何投影闭环阶段、loop iteration 和反馈对象；真实执行边界由 `HarnessRun`、`PlanGraphBundle`、`NodeRun` 与 `NodeAttemptReceipt` 持有。
 
@@ -30,9 +30,10 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `string` | 任务唯一标识 |
-| `parent_id` | `string?` | 父任务 ID，跨事业部拆分时使用 |
+| `parent_id` | `string?` | 父任务 ID，跨域拆分时使用 |
 | `root_id` | `string` | 根任务 ID |
-| `division_id` | `string?` | 目标事业部 |
+| `domain_id` | `string?` | 目标执行域；v4.3 canonical 绑定 |
+| `legacy_division_alias` | `string?` | 历史业务别名；仅用于兼容展示或导入归一化 |
 | `title` | `string` | 任务标题 |
 | `status` | `TaskStatus` | 任务状态 |
 | `source` | `user \| observe \| system` | 任务来源 |
@@ -54,7 +55,8 @@
 
 - `root_id` 在整棵任务树内保持稳定。
 - `parent_id` 为空表示根任务；非空时必须指向已存在任务。
-- `division_id` 在 HQ 分诊前可为空，但进入 division 执行前必须确定。
+- `domain_id` 在 intake 归一化前可为空，但进入执行主链前必须确定。
+- `legacy_division_alias` 不得替代 `domain_id` 参与 runtime truth 关联。
 - `actual_cost_usd` 初始为 `0`，仅允许累加更新。
 - 进入终态时必须同步写入 `completed_at` 或失败终结时间。
 
@@ -63,7 +65,8 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `task_id` | `string` | 关联任务 |
-| `division_id` | `string` | 归属事业部 |
+| `domain_id` | `string` | 归属执行域 |
+| `legacy_division_alias` | `string?` | 历史 division / business alias 投影 |
 | `workflow_id` | `string` | workflow 定义标识 |
 | `harness_run_id` | `string` | 对应 HarnessRun |
 | `plan_graph_bundle_id` | `string?` | 当前执行图 bundle |
@@ -86,6 +89,7 @@
 规则：
 
 - `WorkflowState` 是从 `HarnessRun`、`PlanGraphBundle`、`NodeRun` 与 `NodeAttemptReceipt` 派生的读模型，不是 runtime truth。
+- `domain_id` 是 workflow 投影与 canonical runtime 的唯一域锚点；若 UI 或旧 API 仍展示 `division`，必须通过 `legacy_division_alias` 显式映射。
 - `status`、`current_stage_view`、`loop_iteration_view` 若与 truth 冲突，必须重建投影，不得反向改写执行主链。
 
 ## 6. WorkflowStep authoritative 字段

@@ -188,7 +188,9 @@ export class UxEventTrackingService {
   }
 
   public assignABTest(userId: string, config: ABTestConfig = DEFAULT_AB_TEST_CONFIG): ABTestAssignment {
-    const existing = this.abTestAssignments.get(userId);
+    // §44: Use composite key userId:testId to support multiple parallel A/B tests
+    const key = `${userId}:${config.testId}`;
+    const existing = this.abTestAssignments.get(key);
     if (existing && existing.testId === config.testId) {
       return existing;
     }
@@ -202,12 +204,14 @@ export class UxEventTrackingService {
       assignedAt: nowIso(),
     };
 
-    this.abTestAssignments.set(userId, assignment);
+    this.abTestAssignments.set(key, assignment);
     return assignment;
   }
 
   public getABTestAssignment(userId: string, testId: string): ABTestAssignment | null {
-    const assignment = this.abTestAssignments.get(userId);
+    // §44: Use composite key to support multiple parallel A/B tests
+    const key = `${userId}:${testId}`;
+    const assignment = this.abTestAssignments.get(key);
     if (assignment && assignment.testId === testId) {
       return assignment;
     }
@@ -255,7 +259,9 @@ export class UxEventTrackingService {
   }
 
   private abTestAssignmentForTest(userId: string, testId: string): ABTestAssignment | null {
-    const assignment = this.abTestAssignments.get(userId);
+    // §44: Use composite key to support multiple parallel A/B tests
+    const key = `${userId}:${testId}`;
+    const assignment = this.abTestAssignments.get(key);
     if (assignment && assignment.testId === testId) {
       return assignment;
     }

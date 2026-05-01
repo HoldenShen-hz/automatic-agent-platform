@@ -1,4 +1,4 @@
-# ADR-066 Plugin SPI 接口体系与生命周期
+# ADR-071 Plugin SPI 接口体系与生命周期
 
 - 状态：Accepted
 - 决策日期：2026-04-17

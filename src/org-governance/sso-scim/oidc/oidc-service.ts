@@ -8,6 +8,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §48
  */
 
+import { timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import type { OidcProviderConfig } from "./index.js";
 
@@ -76,6 +77,8 @@ export interface OidcServiceConfig {
   readonly maxSessionAgeMs: number;
   /** §48: Disable mock fallback in production */
   readonly allowMockFallback: boolean;
+  /** Maximum concurrent sessions per user to prevent unbounded session growth */
+  readonly maxSessionsPerUser: number;
 }
 
 const DEFAULT_CONFIG: OidcServiceConfig = {
@@ -83,6 +86,7 @@ const DEFAULT_CONFIG: OidcServiceConfig = {
   refreshThresholdMs: 300000, // 5 minutes
   maxSessionAgeMs: 86400000, // 24 hours
   allowMockFallback: false, // §48: Disabled in production
+  maxSessionsPerUser: 5, // §48: Prevent unbounded session growth per user
 };
 
 /**
@@ -166,6 +170,8 @@ interface SessionRecord {
 export class OidcIdentityService {
   private readonly config: OidcServiceConfig;
   private readonly sessions = new Map<string, SessionRecord>();
+  // SECURITY FIX: Add secondary index from accessToken to sessionId for O(1) lookup
+  private readonly accessTokenIndex = new Map<string, string>();
   private readonly userSessions = new Map<string, Set<string>>();
   private readonly stateStore: OidcStateStore;
 
@@ -234,6 +240,12 @@ export class OidcIdentityService {
         },
       });
       if (!response.ok) {
+        // SECURITY FIX: Do not fall back to mock user info when allowMockFallback is disabled.
+        // In production, this prevents an attacker from using a valid access token to get
+        // a mock admin user instead of failing.
+        if (!this.config.allowMockFallback) {
+          throw new Error(`oidc.userinfo_fetch_failed:${response.status}`);
+        }
         return this.simulateUserInfo(accessToken);
       }
       const payload = await response.json() as Record<string, unknown>;
@@ -247,7 +259,11 @@ export class OidcIdentityService {
         ...(Array.isArray(payload.groups) ? { groups: payload.groups.filter((item): item is string => typeof item === "string") } : {}),
         updatedAt: nowIso(),
       };
-    } catch {
+    } catch (err) {
+      // SECURITY FIX: Do not fall back to mock user info when allowMockFallback is disabled.
+      if (!this.config.allowMockFallback) {
+        throw err;
+      }
       return this.simulateUserInfo(accessToken);
     }
   }
@@ -264,20 +280,29 @@ export class OidcIdentityService {
       validateProductionToken(accessToken);
     }
 
-    for (const session of this.sessions.values()) {
-      if (session.accessToken === accessToken) {
-        if (Date.now() > new Date(session.expiresAt).getTime()) {
-          this.revokeSession(session.sessionId);
-          return null;
-        }
-        return toOidcSession(session);
-      }
+    // SECURITY FIX: Use O(1) index lookup instead of O(n) linear scan
+    const sessionId = this.accessTokenIndex.get(accessToken);
+    if (!sessionId) return null;
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    // Verify token matches using timing-safe comparison
+    const accessTokenBuffer = Buffer.from(accessToken, "utf8");
+    const sessionTokenBuffer = Buffer.from(session.accessToken, "utf8");
+    if (sessionTokenBuffer.length !== accessTokenBuffer.length ||
+        !timingSafeEqual(sessionTokenBuffer, accessTokenBuffer)) {
+      return null;
     }
-    return null;
+    if (Date.now() > new Date(session.expiresAt).getTime()) {
+      this.revokeSession(session.sessionId);
+      return null;
+    }
+    return toOidcSession(session);
   }
 
   /**
    * Creates a new session from token response.
+   * SECURITY: Enforces maximum concurrent sessions per user to prevent unbounded growth.
    *
    * @param tokens - Token response from IdP
    * @param userInfo - User info from IdP
@@ -299,7 +324,36 @@ export class OidcIdentityService {
       providerId: this.providerConfig.providerId,
     };
 
+    // SECURITY FIX: Enforce maximum concurrent sessions per user.
+    // If user has too many sessions, revoke the oldest ones to make room.
+    const userSessionIds = this.userSessions.get(userInfo.sub);
+    if (userSessionIds) {
+      while (userSessionIds.size >= this.config.maxSessionsPerUser) {
+        // Find and revoke the oldest session
+        let oldestSessionId: string | null = null;
+        let oldestCreatedAt = Infinity;
+        for (const sid of userSessionIds) {
+          const session = this.sessions.get(sid);
+          if (session) {
+            const createdAt = new Date(session.createdAt).getTime();
+            if (createdAt < oldestCreatedAt) {
+              oldestCreatedAt = createdAt;
+              oldestSessionId = sid;
+            }
+          }
+        }
+        if (oldestSessionId) {
+          this.revokeSession(oldestSessionId);
+          userSessionIds.delete(oldestSessionId);
+        } else {
+          break; // Should not happen but safety break
+        }
+      }
+    }
+
     this.sessions.set(sessionId, record);
+    // SECURITY FIX: Maintain accessToken -> sessionId index for O(1) token validation
+    this.accessTokenIndex.set(tokens.accessToken, sessionId);
 
     if (!this.userSessions.has(userInfo.sub)) {
       this.userSessions.set(userInfo.sub, new Set());
@@ -345,6 +399,8 @@ export class OidcIdentityService {
     if (!session) return;
 
     this.sessions.delete(sessionId);
+    // SECURITY FIX: Clean up accessTokenIndex to prevent stale entries
+    this.accessTokenIndex.delete(session.accessToken);
 
     const userSessionSet = this.userSessions.get(session.userId);
     if (userSessionSet) {
@@ -398,6 +454,7 @@ export class OidcIdentityService {
 
   /**
    * Updates last activity timestamp for a session.
+   * SECURITY: Implements sliding window expiration by extending expiresAt on activity.
    *
    * @param sessionId - Session ID
    */
@@ -405,6 +462,12 @@ export class OidcIdentityService {
     const session = this.sessions.get(sessionId);
     if (session) {
       session.lastActivityAt = nowIso();
+      // SECURITY FIX: Extend session expiration for sliding window expiry.
+      // This prevents active sessions from expiring while in use.
+      const currentExpiresAt = new Date(session.expiresAt).getTime();
+      const maxExpiresAt = new Date(session.createdAt).getTime() + this.config.maxSessionAgeMs;
+      const newExpiresAt = Math.min(currentExpiresAt + this.config.sessionTtlMs, maxExpiresAt);
+      session.expiresAt = new Date(newExpiresAt).toISOString();
     }
   }
 

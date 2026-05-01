@@ -339,7 +339,11 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map(
 export function createBuiltinPlugin(pluginId: string): RegisteredPlugin | null {
   const entry = BUILTIN_PLUGIN_ENTRIES.get(pluginId);
   if (!entry) return null;
-  return entry.factory();
+  // Track plugin lifecycle state - mark as loading then active
+  setPluginLifecycleState(pluginId, "loading");
+  const plugin = entry.factory();
+  setPluginLifecycleState(pluginId, "active");
+  return plugin;
 }
 
 /**
@@ -357,6 +361,29 @@ export function hasBuiltinPlugin(pluginId: string): boolean {
 
 export function listBuiltinPluginIds(): string[] {
   return [...BUILTIN_PLUGIN_ENTRIES.keys()];
+}
+
+// §23.6: Plugin lifecycle state tracking per contract §4
+// States: registered→validated→loading→active→inactive→unloaded
+const PLUGIN_LIFECYCLE_STATES = new Map<string, "registered" | "validated" | "loading" | "active" | "inactive" | "unloaded">();
+
+/**
+ * §23.6: Get the current lifecycle state of a plugin.
+ * Returns null if the plugin has not been tracked.
+ */
+export function getPluginLifecycleState(pluginId: string): "registered" | "validated" | "loading" | "active" | "inactive" | "unloaded" | null {
+  return PLUGIN_LIFECYCLE_STATES.get(pluginId) ?? null;
+}
+
+/**
+ * §23.6: Set the lifecycle state of a plugin.
+ * Used to track plugin lifecycle transitions per contract §4.
+ */
+export function setPluginLifecycleState(
+  pluginId: string,
+  state: "registered" | "validated" | "loading" | "active" | "inactive" | "unloaded",
+): void {
+  PLUGIN_LIFECYCLE_STATES.set(pluginId, state);
 }
 
 // §23.4: DataTaintPropagation - Track cross-plugin data contamination labels

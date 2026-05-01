@@ -49,7 +49,19 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     },
     async authenticate(credentials): Promise<void> {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
-      credentialFingerprint = `crm_${crmType}_${token.slice(0, 8)}`;
+      // Use a SHA-256 hash prefix (first 8 hex chars) for fingerprinting instead of storing
+      // plaintext token fragments, which could leak credential data
+      let tokenHash: string;
+      if (typeof globalThis.crypto?.subtle?.digest === "function") {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(token);
+        const hashBuffer = await globalThis.crypto.subtle.digest("SHA-256", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        tokenHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 8);
+      } else {
+        tokenHash = `fallback_${Date.now()}`;
+      }
+      credentialFingerprint = `crm_${crmType}_${tokenHash}`;
       // Return void — fingerprint is stored in credentialFingerprint for later retrieval
     },
     async execute(action: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {

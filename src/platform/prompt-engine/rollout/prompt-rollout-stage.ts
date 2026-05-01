@@ -25,7 +25,11 @@ export function comparePromptRolloutStage(left: PromptRolloutStage, right: Promp
 
 export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRolloutStage | null {
   const currentIndex = PROMPT_ROLLOUT_STAGES.indexOf(stage);
-  if (currentIndex < 0 || currentIndex >= PROMPT_ROLLOUT_STAGES.length - 1) {
+  if (currentIndex < 0) {
+    return null;
+  }
+  // rolled_back and stable are terminal states — no further progression
+  if (stage === "rolled_back" || stage === "stable") {
     return null;
   }
   return PROMPT_ROLLOUT_STAGES[currentIndex + 1] ?? null;

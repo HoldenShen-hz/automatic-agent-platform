@@ -157,6 +157,17 @@ export const operationsDomainDefinition: DomainDefinition = {
       },
       validationLevel: "lenient",
     },
+    {
+      contractId: "ops.monitoring_review",
+      name: "Monitoring Review Output",
+      schema: {
+        alertId: "string",
+        reviewedAt: "string",
+        findings: "string[]",
+        severityOverride: "string | null",
+      },
+      validationLevel: "lenient",
+    },
   ],
   promptOverrides: {
     system: "You are an Operations AI assisting SRE and DevOps engineers with incident response, runbook execution, and monitoring review. Be precise, concise, and prioritize operator safety.",

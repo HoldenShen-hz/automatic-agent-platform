@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { SignedXml } from "xml-crypto";
 import { z } from "zod";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
@@ -147,7 +148,9 @@ function isAssertionTimeValid(assertion: SamlAssertionInput, now: Date): boolean
 
 export class SamlService {
   private readonly providers = new Map<string, NormalizedSamlProviderConfig>();
-  private readonly consumedAssertionIds = new Map<string, string>();
+  // SECURITY FIX: Add TTL-based cleanup for consumed assertion IDs to prevent memory leak
+  private readonly consumedAssertionIds = new Map<string, number>(); // stores expiration timestamp
+  private static readonly ASSERTION_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
 
   public registerProvider(config: SamlProviderConfig): void {
     this.providers.set(config.providerId, SamlProviderConfigSchema.parse(config));
@@ -155,6 +158,15 @@ export class SamlService {
 
   public getProvider(providerId: string): SamlProviderConfig | null {
     return this.providers.get(providerId) ?? null;
+  }
+
+  private cleanupExpiredAssertions(): void {
+    const now = Date.now();
+    for (const [assertionId, expiresAt] of this.consumedAssertionIds.entries()) {
+      if (now > expiresAt) {
+        this.consumedAssertionIds.delete(assertionId);
+      }
+    }
   }
 
   public buildLoginRequest(
@@ -223,17 +235,49 @@ export class SamlService {
     }
     if (assertion.xmlSignature && assertion.rawXml) {
       // Production SAML: Always validate XML signatures when present.
-      const result = validateXmlSignature(assertion.xmlSignature, assertion.rawXml);
+      // SECURITY FIX: Provide a keyProviderFn that validates the signing key against
+      // the trusted IdP certificate fingerprint, preventing attacker-supplied keys.
+      // The xml-crypto library by default auto-extracts keys from KeyInfo in the XML,
+      // which allows attackers to embed self-signed keys. We must validate against
+      // the known-good certificate fingerprint configured for this IdP.
+      const trustedFingerprint = provider.certificateFingerprint;
+      const keyProviderFn = (_keyInfo: string | object): string | null => {
+        // Extract X509 certificate from KeyInfo for fingerprint validation
+        let x509Cert: string | null = null;
+        if (typeof _keyInfo === "string") {
+          // Parse the KeyInfo XML to find X509Certificate
+          const certMatch = _keyInfo.match(/<X509Certificate>([^<]+)<\/X509Certificate>/);
+          if (certMatch) {
+            x509Cert = certMatch[1];
+          }
+        }
+        if (x509Cert) {
+          // Compute SHA-256 fingerprint of the DER-encoded certificate
+          const der = Buffer.from(x509Cert, "base64");
+          const fingerprint = createHash("sha256").update(der).digest("hex");
+          // Validate against trusted IdP certificate fingerprint
+          if (fingerprint !== trustedFingerprint) {
+            return null; // Reject untrusted key
+          }
+          // Return the certificate in PEM format for xml-crypto verification
+          const pem = `-----BEGIN CERTIFICATE-----\n${x509Cert.match(/.{1,64}/g)?.join("\n") ?? ""}\n-----END CERTIFICATE-----`;
+          return pem;
+        }
+        return null;
+      };
+      const result = validateXmlSignature(assertion.xmlSignature, assertion.rawXml, { keyProviderFn });
       if (!result.valid) {
         throw new Error(`saml.invalid_signature:${providerId}:${result.error ?? "validation failed"}`);
       }
     }
     if (assertion.assertionId) {
       const replayKey = `${providerId}:${assertion.assertionId}`;
+      // SECURITY FIX: Cleanup expired assertions before checking to prevent memory leak
+      this.cleanupExpiredAssertions();
       if (this.consumedAssertionIds.has(replayKey)) {
         throw new Error(`saml.assertion_replayed:${providerId}`);
       }
-      this.consumedAssertionIds.set(replayKey, now.toISOString());
+      this.consumedAssertionIds.set(replayKey, now.getTime() + SamlService.ASSERTION_TTL_MS);
     }
 
     return {

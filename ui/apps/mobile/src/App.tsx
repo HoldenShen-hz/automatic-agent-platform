@@ -1,8 +1,20 @@
 import type { ReactElement } from "react";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
 
+function detectMobilePlatform(): "android" | "ios" {
+  // Detect platform from User-Agent when native bridge is not available
+  if (typeof navigator !== "undefined" && navigator.userAgent) {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("android")) return "android";
+    if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ios")) return "ios";
+  }
+  // Fallback to android if detection fails
+  return "android";
+}
+
 export function MobileApp(): ReactElement {
-  const adapter = createMobilePlatformAdapter("android");
+  const platform = detectMobilePlatform();
+  const adapter = createMobilePlatformAdapter(platform);
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <strong>Automatic Agent Platform Mobile Baseline</strong>

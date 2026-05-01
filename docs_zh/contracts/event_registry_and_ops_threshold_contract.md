@@ -37,37 +37,34 @@
 
 | event_type | tier | producer | primary_consumers | ack_required | replay_required |
 | --- | --- | --- | --- | --- | --- |
-| `platform.task.created` | `tier1` | gateway / scheduler | runtime, observability | 是 | 是 |
-| `platform.task.status_changed` | `tier1` | transition service | gateway, observability, recovery scan | 是 | 是 |
-| `platform.harness.run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.harness.run.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.harness.run.status_changed` | `tier1` | harness runtime | gateway, observability, recovery scan | 是 | 是 |
-| `platform.harness.run.completed` | `tier1` | harness runtime | supervisor, transition service, observability | 是 | 是 |
-| `platform.harness.run.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
-| `platform.harness.run.aborted` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
-| `platform.node.run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.node.run.started` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
-| `platform.node.run.status_changed` | `tier1` | harness runtime | orchestrator, observability, recovery scan | 是 | 是 |
-| `platform.node.run.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
-| `platform.node.run.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
-| `platform.node.run.output_recorded` | `tier1` | harness runtime | orchestrator, observability | 是 | 是 |
+| `platform.harness_run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.harness_run.admitted` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.harness_run.status_changed` | `tier1` | harness runtime | gateway, observability, recovery scan | 是 | 是 |
+| `platform.harness_run.completed` | `tier1` | harness runtime | supervisor, transition service, observability | 是 | 是 |
+| `platform.harness_run.aborted` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.node_run.created` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.node_run.admitted` | `tier1` | harness runtime | observability, recovery scan | 是 | 是 |
+| `platform.node_run.status_changed` | `tier1` | harness runtime | orchestrator, observability, recovery scan | 是 | 是 |
+| `platform.node_run.completed` | `tier1` | harness runtime | orchestrator, recovery scan | 是 | 是 |
+| `platform.node_run.failed` | `tier1` | harness runtime | supervisor, recovery scan | 是 | 是 |
+| `platform.node_run.output_recorded` | `tier1` | harness runtime | orchestrator, observability | 是 | 是 |
 | `platform.budget.reservation_created` | `tier1` | budget allocator | runtime, observability | 是 | 是 |
 | `platform.budget.reservation_released` | `tier1` | budget allocator | runtime, observability | 是 | 是 |
 | `platform.budget.exhausted` | `tier1` | budget guard / policy engine | runtime, gateway, observability | 是 | 是 |
-| `approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
-| `approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
-| `improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
-| `release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
+| `platform.approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
+| `platform.approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
+| `platform.improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
+| `platform.release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `platform.release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `platform.release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
 | `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.plan.proposal_created` | `tier2` | plan hub | observability, inspect projection | 否 | 建议 |
-| `feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
-| `learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
-| `learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |
-| `improve.candidate_proposed` | `tier2` | improve hub | observability, inspect projection | 否 | 建议 |
-| `loop.iteration_completed` | `tier2` | oapeflir loop service | observability, inspect projection | 否 | 建议 |
+| `platform.feedback.signal_received` | `tier2` | feedback hub / gateway / explainability pipeline | learn hub, observability, inspect projection | 否 | 建议 |
+| `platform.learn.object_created` | `tier2` | learn hub | observability, inspect projection | 否 | 建议 |
+| `platform.learn.object_promoted` | `tier2` | learn hub | improvement pipeline, observability, inspect projection | 否 | 建议 |
+| `platform.improve.candidate_proposed` | `tier2` | improve hub | observability, inspect projection | 否 | 建议 |
+| `platform.loop.iteration_completed` | `tier2` | oapeflir loop service | observability, inspect projection | 否 | 建议 |
 | `gateway.message_received` | `tier2` | gateway adapter | runtime, observability | 否 | 建议 |
 | `gateway.message_sent` | `tier2` | gateway adapter | observability | 否 | 否 |
 | `tool.call_started` | `tier2` | tool executor | observability | 否 | 否 |
@@ -125,7 +122,7 @@ Tier 1 的标准消费者至少包括：
 
 按领域分组：
 
-- **OAPEFLIR 事件**（`oapeflir.*`、`feedback.*`、`learn.*`、`improve.*`、`release.*`、`loop.*`）：由各 hub 生产，投射到闭环时间线、反馈链和 rollout 诊断视图。
+- **OAPEFLIR / release 事件**（`oapeflir.view.*`、`platform.feedback.*`、`platform.learn.*`、`platform.improve.*`、`platform.release.*`、`platform.loop.*`）：由各 hub 或 truth path 生产，投射到闭环时间线、反馈链和 rollout 诊断视图。
 - **dispatch 事件**（`dispatch:*`）：由 `execution_dispatch_service` 或 `execution_dispatch_reconciliation_service` 生产，投射到 dispatch decision trace 与 ticket 状态。
 - **worker 事件**（`worker:*`）：由 `execution_worker_handshake_service` 和 `execution_worker_writeback_service` 生产，投射到 worker lease 状态与 fencing audit。
 - **takeover 事件**（`takeover:*`）：由 `human_takeover_service` 生产，投射到人工接管审计链。

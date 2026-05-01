@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import { useAnalyticsQuery } from "@aa/shared-state";
 import type { AnalyticsMetricDTO } from "@aa/shared-types";
 
@@ -15,11 +16,24 @@ export interface AnalyticsChartConfig {
   readonly breakdown?: KpiBreakdown;
 }
 
+export interface TimeSeriesDataPoint {
+  readonly timestamp: string;
+  readonly value: number;
+  readonly label?: string;
+}
+
 export interface AnalyticsVm {
   readonly metrics: readonly { label: string; value: string | number }[];
   readonly trendSummary: readonly number[];
   readonly chartConfig: AnalyticsChartConfig;
   readonly breakdowns: readonly KpiBreakdown[];
+  // §2267: Time-series data for trend chart
+  readonly timeSeriesData: readonly TimeSeriesDataPoint[];
+  // §2267: Date range for custom filtering
+  readonly dateRange: { startDate: string; endDate: string };
+  // §2267: Export functionality
+  readonly exportData: (format: "csv" | "json") => void;
+  setDateRange(startDate: string, endDate: string): void;
 }
 
 // Default 7 chart types per §4.2.8
@@ -47,18 +61,29 @@ export function mapAnalyticsToVm(
     chartConfig: { ...chartConfig, chartType: validatedChartType },
     // breakdowns will be populated by useAnalyticsVm with multi-layer KPI breakdown
     breakdowns: [],
+    timeSeriesData: [],
+    dateRange: { startDate: "", endDate: "" },
+    exportData: () => {},
+    setDateRange: () => {},
   };
 }
 
 /**
  * §4.2.8: Analytics with multi-layer KPI breakdown and 7 chart types.
  * Supports role-adaptive metric sets and configurable chart visualization.
+ * §2267: Adds time-series data, custom date range filtering, and CSV/JSON export.
  */
 export function useAnalyticsVm(
   chartConfig: AnalyticsChartConfig = { chartType: "kpi" },
   role: string = "admin",
 ): AnalyticsVm {
   const query = useAnalyticsQuery();
+
+  // §2267: Custom date range state - default to last 7 days
+  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    endDate: new Date().toISOString().split("T")[0],
+  });
 
   // Filter metrics by role-adaptive metric set
   const roleMetrics = query.data?.filter((m: AnalyticsMetricDTO) => {
@@ -78,6 +103,25 @@ export function useAnalyticsVm(
     ? chartConfig.chartType
     : "kpi";
 
+  // §2267: Generate time-series data from metrics - aggregate by timestamp
+  // In production this would come from a time-series API endpoint
+  const timeSeriesData: readonly TimeSeriesDataPoint[] = buildTimeSeries(roleMetrics, dateRange);
+
+  // §2267: Export data as CSV or JSON
+  const exportData = useCallback((format: "csv" | "json") => {
+    if (format === "csv") {
+      const headers = ["timestamp", "metric", "value"];
+      const rows = timeSeriesData.flatMap((point) =>
+        roleMetrics.map((m) => [point.timestamp, m.label, String(m.value)]),
+      );
+      const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      downloadFile(csv, "analytics-export.csv", "text/csv");
+    } else {
+      const json = JSON.stringify({ dateRange, metrics: roleMetrics, timeSeries: timeSeriesData }, null, 2);
+      downloadFile(json, "analytics-export.json", "application/json");
+    }
+  }, [timeSeriesData, roleMetrics, dateRange]);
+
   return {
     metrics: roleMetrics.map((metric) => ({ label: metric.label, value: metric.value })),
     trendSummary: roleMetrics.map((metric) =>
@@ -85,7 +129,51 @@ export function useAnalyticsVm(
     ),
     chartConfig: { ...chartConfig, chartType: validatedChartType },
     breakdowns,
+    timeSeriesData,
+    dateRange,
+    exportData,
+    setDateRange,
   };
+}
+
+/**
+ * §2267: Build time-series data from metrics for the given date range.
+ * In production this data would come from a dedicated time-series API.
+ */
+function buildTimeSeries(
+  metrics: readonly AnalyticsMetricDTO[],
+  dateRange: { startDate: string; endDate: string },
+): readonly TimeSeriesDataPoint[] {
+  const start = new Date(dateRange.startDate).getTime();
+  const end = new Date(dateRange.endDate).getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const points: TimeSeriesDataPoint[] = [];
+
+  // Generate one data point per day in the range
+  for (let ts = start; ts <= end; ts += dayMs) {
+    const timestamp = new Date(ts).toISOString();
+    // Use metric value as-is for time series - in production would be actual historical values
+    const avgValue = metrics.reduce((sum, m) => sum + (typeof m.value === "number" ? m.value : 0), 0) / Math.max(metrics.length, 1);
+    points.push({
+      timestamp,
+      value: avgValue,
+      label: new Date(ts).toLocaleDateString(),
+    });
+  }
+
+  return points;
+}
+
+function downloadFile(content: string, filename: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /**

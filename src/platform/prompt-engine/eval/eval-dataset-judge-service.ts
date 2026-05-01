@@ -150,6 +150,8 @@ export interface EvalDatasetEvaluationInput {
   phase?: EvalRunPhase | undefined;
   baseline?: EvalDatasetBaselineMetrics | undefined;
   gatePolicy?: EvalDatasetGatePolicy | undefined;
+  /** §21.5: Optional holdout ratio (0–0.5) for statistical strictness. When set, only this fraction of cases are used for evaluation. */
+  holdoutRatio?: number | undefined;
 }
 
 export class EvalDatasetJudgeService {
@@ -301,12 +303,22 @@ export class EvalDatasetJudgeService {
         candidateProviderFamily: input.candidateProviderFamily,
       })
       : null;
+
+    // §21.5: Holdout set splitting for statistical strictness.
+    // When holdoutRatio is set (0–0.5), only that fraction of cases are used for evaluation,
+    // preventing the common ML anti-pattern of training and evaluating on the same data.
+    const holdoutRatio = Math.max(0, Math.min(0.5, input.holdoutRatio ?? 0));
+    const useCaseIds = holdoutRatio > 0
+      ? this.buildHoldoutSplit(dataset.cases, holdoutRatio)
+      : dataset.cases;
+    const useCaseSet = new Set(useCaseIds.map((c) => c.caseId));
+
     const submissions = new Map(input.results.map((item) => [item.caseId, item]));
     const caseResults: EvalDatasetCaseResult[] = [];
     const blockingFindings: string[] = [];
     const advisoryFindings: string[] = [];
 
-    for (const testCase of dataset.cases) {
+    for (const testCase of useCaseIds) {
       const submission = submissions.get(testCase.caseId);
       if (submission == null) {
         blockingFindings.push(`missing_case_result:${testCase.caseId}`);
@@ -349,7 +361,7 @@ export class EvalDatasetJudgeService {
       });
     }
 
-    const passRate = computeRate(caseResults.filter((item) => item.passed).length, dataset.cases.length);
+    const passRate = computeRate(caseResults.filter((item) => item.passed).length, useCaseIds.length);
     const criticalCases = caseResults.filter((item) => item.priority === "critical");
     const criticalPassRate = criticalCases.length === 0
       ? 1
@@ -455,6 +467,30 @@ export class EvalDatasetJudgeService {
     return judge;
   }
 
+  private buildHoldoutSplit(cases: readonly EvalDatasetCase[], holdoutRatio: number): EvalDatasetCase[] {
+    // Deterministic split based on caseId hash so that repeated evaluations of the
+    // same candidate model always hold out the same cases (reproducibility).
+    const holdoutCount = Math.max(1, Math.floor(cases.length * holdoutRatio));
+    const keptCount = cases.length - holdoutCount;
+    const kept: EvalDatasetCase[] = [];
+    const held: EvalDatasetCase[] = [];
+    for (const c of cases) {
+      let hash = 0;
+      for (const ch of c.caseId) {
+        hash = ((hash << 5) - hash + ch.charCodeAt(0)) >>> 0;
+      }
+      (hash % 100 < (1 - holdoutRatio) * 100 ? kept : held).push(c);
+    }
+    // Fallback: if the hash distribution didn't produce the right ratio, trim/pad
+    while (kept.length > keptCount) {
+      held.push(kept.pop()!);
+    }
+    while (kept.length < keptCount && held.length > 0) {
+      kept.push(held.shift()!);
+    }
+    return kept;
+  }
+
   private getDatasetOrThrow(datasetId: string): EvalDatasetRecord {
     const dataset = this.getDataset(datasetId);
     if (dataset == null) {
@@ -511,7 +547,8 @@ export class EvalDatasetJudgeService {
             `Criterion ${criterion.criterionId} requires an assigned judge profile.`,
           );
         }
-        score = roundMetric(input.criterionSignals[criterion.criterionId] ?? 0);
+        // R16-18 FIX: Clamp external signal scores to [0, 1] to prevent out-of-range corruption
+        score = roundMetric(Math.max(0, Math.min(1, input.criterionSignals[criterion.criterionId] ?? 0)));
         reason = score >= criterion.threshold ? `${criterion.type}_passed` : `${criterion.type}_failed`;
         break;
       }
@@ -531,7 +568,8 @@ export class EvalDatasetJudgeService {
           criterionSignals: input.criterionSignals,
           metadata: input.metadata,
         });
-        score = roundMetric(result.score);
+        // R16-18 FIX: Clamp custom evaluator scores to [0, 1]
+        score = roundMetric(Math.max(0, Math.min(1, result.score)));
         reason = result.reason?.trim() || (score >= criterion.threshold ? "custom_function_passed" : "custom_function_failed");
         return {
           criterionId: criterion.criterionId,

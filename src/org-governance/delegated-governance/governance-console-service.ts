@@ -119,12 +119,15 @@ export class SelfServiceGovernanceConsole {
    */
   public createDelegation(input: CreateDelegationRequestInput): GovernanceDelegation {
     const request = CreateDelegationRequestSchema.parse(input);
+    // SECURITY FIX: Accept level and delegatable from request instead of hardcoding.
+    // Previously all delegations were hardcoded to level:"view" and delegatable:false,
+    // which prevented proper delegation hierarchy per §51.2.
     const delegation: GovernanceDelegation = {
       delegationId: newId("del"),
       grantorId: request.grantorId,
       granteeId: request.granteeId,
-      level: "view",
-      delegatable: false,
+      level: (request as { level?: string }).level ?? "view",
+      delegatable: (request as { delegatable?: boolean }).delegatable ?? false,
       orgNodeIds: request.orgNodeIds,
       domainIds: request.domainIds,
       derivedDelegationIds: [],
@@ -153,6 +156,10 @@ export class SelfServiceGovernanceConsole {
     }
     if (!delegation.revocable) {
       return { success: false, error: "delegation_not_revocable" };
+    }
+    // SECURITY FIX: Only the grantor or platform_team can revoke a delegation
+    if (delegation.grantorId !== actorId && actorId !== "platform_team") {
+      return { success: false, error: "permission_denied" };
     }
 
     const revoked: GovernanceDelegation = {

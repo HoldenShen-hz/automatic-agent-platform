@@ -9,5 +9,9 @@
         "height": 960
       }
     ]
+  },
+  "security": {
+    "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.automaticagent.com; frame-ancestors 'none'",
+    "dangerousDisableAssetCspModification": false
   }
 }

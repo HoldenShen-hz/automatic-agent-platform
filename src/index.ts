@@ -8,6 +8,8 @@ import { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governan
 import { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 import { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
 import { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
+import { getGlobalGracefulShutdown } from "./platform/execution/startup/graceful-shutdown.js";
+import { registerProcessErrorHandlers } from "./platform/execution/startup/process-error-handlers.js";
 import { requireValidStartupEnv } from "./platform/control-plane/config-center/startup-env-schema.js";
 import { runSingleTaskExecution } from "./platform/execution/execution-engine/single-task-execution.js";
 import { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
@@ -35,6 +37,9 @@ export * as sdk from "./sdk/index.js";
 
 export { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
 export { buildDomainsStartupPlan } from "./domains-startup-plan.js";
+export { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
+export { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
+export { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
 export { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
 export { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 export { getPlatformApplicationKernel } from "./platform-application-kernel.js";
@@ -45,7 +50,7 @@ export type {
   NodeRun,
   PlanGraphBundle,
 } from "./platform-architecture-types.js";
-export type { PlatformAppKind, PlatformStartupTargetKind as PlatformRootEntryMode } from "./platform-architecture-types.js";
+export type { PlatformAppKind, PlatformStartupTargetKind, PlatformRootEntryMode } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 
@@ -132,6 +137,16 @@ function resolveRootEntryMode(): PlatformRootEntryMode {
 export async function runPlatformRootDemo(): Promise<void> {
   requireValidStartupEnv();
 
+  // Ensure graceful shutdown is registered (may be called directly, not via main())
+  const shutdown = getGlobalGracefulShutdown();
+  shutdown.addHandler({
+    name: "runPlatformRootDemo",
+    handler: async () => {
+      // Cleanup handler for demo execution
+    },
+    critical: false,
+  });
+
   const snapshot = await runSingleTaskExecution({
     dbPath: resolveDbPath(),
     title: "Single-task execution baseline",
@@ -194,7 +209,8 @@ function safeBuild<T>(thunk: () => T, fallback: T): { success: true; value: T } 
 
 export function buildPlatformRootSummary(): PlatformRootSummary {
   // §9: Each build step has error boundary - single failure doesn't crash overall
-  const architectureResult = safeBuild(buildPlatformArchitectureBootstrapSummary, null);
+  // Use ServiceRegistry to get architecture data (single source of truth)
+  const architectureResult = safeBuild(() => getPlatformArchitectureServices().summary, null);
   const domainsStartupPlanResult = safeBuild(buildDomainsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
   const domainsRuntimeCatalogResult = safeBuild(buildDomainsRuntimeCatalog, { ring1: [], ring2: [], ring3: [] });
   const startupPlanResult = safeBuild(buildFivePlaneStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
@@ -283,6 +299,9 @@ export async function runPlatformStartupPlan(targetKind: Extract<PlatformStartup
 }
 
 export async function main(): Promise<void> {
+  // §6 L6 fault tolerance: register process error handlers before any async work
+  registerProcessErrorHandlers(getGlobalGracefulShutdown());
+
   const mode = resolveRootEntryMode();
 
   // R4-59: Enforce startup order per §7 (P5→X1→P2→P3→P4→P1)

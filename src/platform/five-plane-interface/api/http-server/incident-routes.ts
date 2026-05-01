@@ -13,6 +13,7 @@
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } from "./utils.js";
+import { globalIdempotencyMiddleware } from "../middleware/sanitize.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { IncidentFacadeService, IncidentCase, IncidentSeverity } from "../facade-interfaces.js";
 import { z } from "zod";
@@ -62,6 +63,9 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const tenantId = resolveTenantScope(principal, undefined);
+        if (tenantId === undefined) {
+          throw new ApiError(403, "api.tenant_scope_required", "Cannot list incidents without a tenant scope.");
+        }
         const limit = readLimit(ctx.request, 50);
         const incidents: IncidentCase[] = deps.incidentService.listIncidents(tenantId, limit);
 
@@ -83,7 +87,14 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const incidentId = segments[2]!;
+        // #2353: Validate incidentId format to prevent arbitrary string injection
+        if (!/^[a-zA-Z0-9_-]{1,128}$/.test(incidentId)) {
+          throw new ApiError(400, "incident.invalid_id", "Incident ID contains invalid characters or is too long.");
+        }
         const tenantId = resolveTenantScope(principal, undefined);
+        if (tenantId === undefined) {
+          throw new ApiError(403, "api.tenant_scope_required", "Cannot get incident without a tenant scope.");
+        }
 
         const incident = deps.incidentService.getIncident(tenantId, incidentId);
         if (!incident) {
@@ -98,6 +109,16 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       pathname: "/v1/incidents",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+
+        // #2362: Check idempotency key to prevent duplicate incident creation
+        const idempotencyKey = ctx.request.headers["x-idempotency-key"] as string | undefined;
+        if (idempotencyKey) {
+          const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
+          if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
+            return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
+          }
+        }
+
         const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
         const tenantId = resolveTenantScope(principal, undefined);
 
@@ -107,6 +128,11 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
           title: payload.title,
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
         });
+
+        // Record idempotency key result if key was provided
+        if (idempotencyKey) {
+          globalIdempotencyMiddleware.complete(idempotencyKey, incident);
+        }
 
         return buildJsonResponse(ctx.requestId, 201, incident);
       },
@@ -123,12 +149,30 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
         const incidentId = segments[2]!;
+        // #2353: Validate incidentId format to prevent arbitrary string injection
+        if (!/^[a-zA-Z0-9_-]{1,128}$/.test(incidentId)) {
+          throw new ApiError(400, "incident.invalid_id", "Incident ID contains invalid characters or is too long.");
+        }
         const payload = readValidatedJsonBody(ctx.request.body, updateIncidentSchema.parse);
         const tenantId = resolveTenantScope(principal, undefined);
+        if (tenantId === undefined) {
+          throw new ApiError(403, "api.tenant_scope_required", "Cannot update incident without a tenant scope.");
+        }
 
         const incident = deps.incidentService.getIncident(tenantId, incidentId);
         if (!incident) {
           throw new ApiError(404, "incident.not_found", `Incident ${incidentId} not found.`);
+        }
+
+        // If only owner is being updated (no status change), handle as owner update
+        if (payload.status === undefined && payload.owner !== undefined) {
+          // Owner-only update is not a status transition - handle separately or reject
+          throw new ApiError(400, "incident.invalid_update", "Updating only owner without a status transition is not supported.");
+        }
+
+        // If status is undefined but owner is also undefined, nothing to do
+        if (payload.status === undefined) {
+          throw new ApiError(400, "incident.invalid_update", "No valid update fields provided.");
         }
 
         let updated: IncidentCase;

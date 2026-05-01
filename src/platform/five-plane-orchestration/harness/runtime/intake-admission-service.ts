@@ -45,6 +45,7 @@ export interface RawTaskInput {
   readonly tenantId: string;
   readonly principal: PrincipalRef;
   readonly source: TaskInputSource;
+  readonly domainId: string;
   readonly goal: string;
   readonly inputs?: JsonValue;
   readonly riskPreview: RiskPreview;
@@ -211,8 +212,10 @@ export class IntakeAdmissionService {
       tenantId: input.tenantId,
       principal: input.principal,
       source: input.source,
+      domainId: input.domainId,
       normalizedIntent: {
         goal: input.goal,
+        domainId: input.domainId,
         inputs: input.inputs ?? {},
       },
       riskPreview: input.riskPreview,
@@ -252,6 +255,7 @@ export class IntakeAdmissionService {
           taskDraftId: taskDraft.taskDraftId,
           tenantId: input.tenantId,
           principal: input.principal,
+          domainId: input.domainId,
           goal: input.goal,
           inputs: input.inputs ?? {},
           constraintPackRef: input.constraintPackRef,
@@ -265,6 +269,7 @@ export class IntakeAdmissionService {
             taskDraftId: taskDraft.taskDraftId,
             tenantId: input.tenantId,
             principal: input.principal,
+            domainId: input.domainId,
             goal: input.goal,
             inputs: input.inputs ?? {},
             constraintPackRef: input.constraintPackRef,
@@ -282,6 +287,7 @@ export class IntakeAdmissionService {
         }), { _placeholder: true } as unknown as RunVersionLock),
         harnessRun: Object.assign({}, createHarnessRun({
           tenantId: input.tenantId,
+          domainId: input.domainId,
           confirmedTaskSpecId: `pending:${input.idempotencyKey}`,
           requestEnvelopeId: `pending:${input.idempotencyKey}`,
           requestHash: `request:${input.idempotencyKey}`,
@@ -299,6 +305,7 @@ export class IntakeAdmissionService {
       taskDraftId: taskDraft.taskDraftId,
       tenantId: input.tenantId,
       principal: input.principal,
+      domainId: input.domainId,
       goal: input.goal,
       inputs: input.inputs ?? {},
       constraintPackRef: input.constraintPackRef,
@@ -320,6 +327,7 @@ export class IntakeAdmissionService {
     });
     const createdRun = createHarnessRun({
       tenantId: input.tenantId,
+      domainId: input.domainId,
       confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
       requestEnvelopeId: requestEnvelope.requestId,
       requestHash: requestEnvelope.requestHash,
@@ -371,6 +379,7 @@ export class IntakeAdmissionService {
       tenantId: input.tenantId,
       traceId: input.traceId,
       payload: {
+        domainId: input.domainId,
         confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
         harnessRunId: admitted.aggregate.harnessRunId,
         runVersionLockId: runVersionLock.runVersionLockId,

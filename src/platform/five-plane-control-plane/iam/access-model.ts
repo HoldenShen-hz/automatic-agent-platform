@@ -339,6 +339,9 @@ export function evaluateAuthorizationContext(input: {
   }
 
   if (context?.manualTakeoverActive === true) {
+    // SECURITY FIX: manualTakeoverActive should not bypass capability/budget/risk checks.
+    // It only allows operator-grade principals to proceed to the normal authorization flow
+    // without requiring approval from another human. The normal checks still apply.
     if (!input.roles.some((role) => role === "platform_admin" || role === "human_operator" || role === "service_operator")) {
       return {
         allowed: false,
@@ -349,14 +352,8 @@ export function evaluateAuthorizationContext(input: {
         explainSummary: "Manual takeover is restricted to operator-grade principals.",
       };
     }
-    return {
-      allowed: true,
-      requiresApproval: false,
-      reasonCode: null,
-      matchedRuleRefs: ["context.manual_takeover_active"],
-      constraints: { manualTakeoverActive: true },
-      explainSummary: "Manual takeover context recorded for audit and downstream controls.",
-    };
+    // Fall through to normal authorization checks - do NOT bypass hasRequiredCapabilities, budget, or risk checks.
+    // The manualTakeoverActive flag is recorded in constraints for audit purposes only.
   }
 
   if (!hasRequiredCapabilities) {

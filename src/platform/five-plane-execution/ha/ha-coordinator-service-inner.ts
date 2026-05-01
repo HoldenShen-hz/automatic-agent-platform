@@ -350,7 +350,7 @@ export class HaCoordinatorService {
       return {
         renewed: true,
         lease: updatedLease,
-        fencingToken: currentLease.ttlMs, // Return old fencing token - renewal doesn't change it
+        fencingToken: this.getLatestEpoch().fencingToken,
       };
     });
   }
@@ -678,6 +678,18 @@ export class HaCoordinatorService {
     return presentedFencingToken >= latestEpoch.fencingToken;
   }
 
+  /**
+   * Gets all expired leases (status = "active" but expires_at <= now).
+   * Used by LeaseReclaimerService to find leases that need reclamation.
+   */
+  getExpiredLeaseRows(): LeaderLease[] {
+    const now = nowIso();
+    const rows = this.db.connection
+      .prepare(`SELECT * FROM leadership_leases WHERE status = 'active' AND expires_at <= ? ORDER BY acquired_at DESC`)
+      .all(now) as RawRow[];
+    return rows.map((r) => mapLease(r));
+  }
+
   // ── Cleanup ────────────────────────────────────────────────────────
 
   purgeExpiredLeases(): number {
@@ -686,6 +698,16 @@ export class HaCoordinatorService {
       .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE status = 'active' AND expires_at <= ?`)
       .run(now);
     return Number(result.changes) as number;
+  }
+
+  /**
+   * Expires a specific lease by updating its status to "expired".
+   * Used by LeaseReclaimerService when reclaiming expired leases.
+   */
+  expireLease(leaseId: string): void {
+    this.db.connection
+      .prepare(`UPDATE leadership_leases SET status = 'expired' WHERE lease_id = ?`)
+      .run(leaseId);
   }
 
   purgeOldFailoverDecisions(olderThanDays = 7): number {

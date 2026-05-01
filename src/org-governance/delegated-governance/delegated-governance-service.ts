@@ -72,11 +72,11 @@ export class DelegatedGovernanceService {
       };
     }
 
-    // Platform team guardrails apply to all roles - collect all applicable guardrails
+    // Platform team guardrails apply to all roles - but division/dept admin guardrails
+    // apply only to their respective scopes. Collect all applicable guardrails.
     const allGuardrails: Guardrail[] = [];
     for (const delegation of this.delegations) {
       if (delegation.status !== "active") continue;
-      if (delegation.grantorId !== "platform_team") continue;
 
       const orgNodeIds = delegation.orgNodeIds ?? [];
       const domainIds = delegation.domainIds ?? [];
@@ -93,8 +93,6 @@ export class DelegatedGovernanceService {
     const reasons: string[] = [];
 
     for (const guardrail of allGuardrails) {
-      if (attemptedValue === undefined) continue;
-
       const result = evaluateGuardrail(guardrail, attemptedValue);
       if (!result.allowed) {
         violatedGuardrails.push(guardrail.guardrailId);
@@ -187,8 +185,13 @@ export class DelegatedGovernanceService {
         return { allowed: true, reason: "Appending constraints allowed" };
 
       case "delete":
-        // Only the role that set it can delete (must check grantorId)
-        return { allowed: true, reason: "Delete subject to ownership check" };
+        // Only parent can delete its own constraints (not just any role)
+        // Check: child can only delete if parent is higher in hierarchy AND child has same or lower level
+        // Actually child CANNOT delete parent constraints - only own constraints
+        // For simplicity: only allow delete if child is the same role level (same grantor)
+        // The actual ownership check happens elsewhere; this just validates hierarchy rules
+        // Lower roles cannot delete higher roles' constraints
+        return { allowed: childIndex >= parentIndex, reason: childIndex >= parentIndex ? "Delete allowed at same/lower role level" : "Cannot delete parent role constraints" };
 
       default:
         return { allowed: false, reason: "Unknown action" };

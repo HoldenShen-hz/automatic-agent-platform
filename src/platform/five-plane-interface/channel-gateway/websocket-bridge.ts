@@ -132,6 +132,8 @@ export class WebSocketBridge {
   private readonly tenantScopeFilter: TenantScopeFilter | null;
   /** §9 isolation: Per-client subscription cap to prevent memory exhaustion */
   private static readonly MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
+  /** #2355: Max WebSocket message size to prevent GB-level frame OOM DoS (1MB) */
+  private static readonly MAX_MESSAGE_SIZE_BYTES = 1_000_000;
 
   constructor(
     server: Server,
@@ -205,6 +207,13 @@ export class WebSocketBridge {
     // Handle incoming messages
     ws.on("message", (data) => {
       try {
+        // #2355: Check message size before parsing to prevent OOM DoS
+        const dataLength = data.length;
+        if (dataLength > WebSocketBridge.MAX_MESSAGE_SIZE_BYTES) {
+          logger.warn("WebSocket message too large, rejecting", { dataLength, maxSize: WebSocketBridge.MAX_MESSAGE_SIZE_BYTES });
+          ws.send(JSON.stringify({ type: "error", code: "message_too_large", message: `Message exceeds maximum size of ${WebSocketBridge.MAX_MESSAGE_SIZE_BYTES} bytes` }));
+          return;
+        }
         const parsed = JSON.parse(data.toString());
         // §5.2 / §7.1: Schema-validated parsing at entry boundary for external client input
         const result = webSocketMessageSchema.safeParse(parsed);

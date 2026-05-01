@@ -201,10 +201,18 @@ export class PackSecurityService {
 
   private runStaticAnalysis(input: SecurityScanInput): { issues: SecurityIssue[] } {
     const issues: SecurityIssue[] = [];
-    const manifestContent = input.sourceUri;
+    // Root cause: Only scanning sourceUri string, not actual source code
+    // For inline source, extract and scan the actual source content
+    let sourceToScan = input.sourceUri;
+    if (input.sourceUri.startsWith(INLINE_SOURCE_PREFIX)) {
+      sourceToScan = input.sourceUri.slice(INLINE_SOURCE_PREFIX.length);
+    }
+    // For external URIs (https://, file://, etc.), we would need to fetch the actual content
+    // In production, this should fetch and scan the real source code
+    // For now, scan what we have available
 
     for (const { pattern, code, message } of CRITICAL_VULNERABILITY_PATTERNS) {
-      if (pattern.test(manifestContent)) {
+      if (pattern.test(sourceToScan)) {
         issues.push({
           severity: "high",
           category: "static_analysis",
@@ -235,9 +243,11 @@ export class PackSecurityService {
       ["exec", "file_write", "sql_execute", "network_egress"].includes(c)
     );
 
-    if (dangerousCapabilities.length > 3) {
+    // Root cause: Threshold > 3 is too high - dangerous capabilities should be flagged at lower counts
+    // Fix: Lower threshold to > 0 so even 1 dangerous capability triggers a warning
+    if (dangerousCapabilities.length > 0) {
       issues.push({
-        severity: "low",
+        severity: dangerousCapabilities.length > 3 ? "medium" : "low",
         category: "capability_mismatch",
         code: "CAP001",
         message: `Pack requests ${dangerousCapabilities.length} high-risk capabilities (${dangerousCapabilities.join(", ")}) - may indicate over-provisioning`,

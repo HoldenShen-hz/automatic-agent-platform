@@ -178,7 +178,9 @@ export class DataReplicatorService {
     }
 
     const event: ReplicationEvent = {
-      eventId: `repl_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      // Root cause: Date.now() + Math.random() causes ID collisions under high concurrency
+      // Fix: Use crypto.randomUUID() for globally unique, collision-free IDs
+      eventId: `repl_${globalThis.crypto.randomUUID()}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
       aggregateType,
@@ -247,14 +249,19 @@ export class DataReplicatorService {
 
     // Update checkpoint with actual pending count
     // pendingCount = events still in buffer waiting to be sent + in-flight (not yet acknowledged)
+    // Root cause: Using local `lastSequence` counter which resets on restart, causing duplicate consumption
+    // Fix: Use the checkpoint's last sequence + events.length to get actual sequence
     const currentBuffer = this.buffers.get(targetRegionId);
     const actualPendingCount = errors.length;
     const checkpointKey = `${this.config.sourceRegionId}:${targetRegionId}`;
+    const existingCheckpoint = this.checkpoints.get(checkpointKey);
+    const baseSequence = existingCheckpoint?.sequenceNumber ?? 0;
     this.checkpoints.set(checkpointKey, {
       checkpointId: `cp_${Date.now()}`,
       sourceRegionId: this.config.sourceRegionId,
       targetRegionId,
-      sequenceNumber: lastSequence,
+      // Use persistent base sequence + offset instead of local counter
+      sequenceNumber: baseSequence + events.length,
       timestamp: nowIso(),
       pendingCount: Math.max(0, actualPendingCount),
     });

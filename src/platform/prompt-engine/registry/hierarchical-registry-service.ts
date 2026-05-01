@@ -255,18 +255,20 @@ export class HierarchicalPromptRegistryService {
 
     const activeCandidates = candidates.filter((bundle) => this.isBundleTrafficActive(bundle));
     const eligible = activeCandidates.length > 0 ? activeCandidates : candidates;
-    const totalWeight = eligible.reduce((sum, bundle) => sum + Math.max(0, bundle.metadata.trafficAllocation.weight), 0);
+    // §16.2: Normalize weights so they sum to 100, preventing slots above total from永不匹配
+    const rawWeights = eligible.map((bundle) => Math.max(0, bundle.metadata.trafficAllocation.weight));
+    const totalWeight = rawWeights.reduce((sum, w) => sum + w, 0);
     if (totalWeight <= 0) {
       return this.selectDefaultBundle(eligible);
     }
 
-    // R16-15 FIX: Include runVersionLock in traffic slot computation for consistency
+    const normalizedWeights = rawWeights.map((w) => (w / totalWeight) * 100);
     const slot = this.computeTrafficSlot(trafficKey ?? `${name}:${taskType}:${packId ?? ""}:${domain ?? ""}`, runVersionLock);
     let cursor = 0;
-    for (const bundle of eligible) {
-      cursor += Math.max(0, bundle.metadata.trafficAllocation.weight);
+    for (let i = 0; i < eligible.length; i++) {
+      cursor += normalizedWeights[i]!;
       if (slot < cursor) {
-        return bundle;
+        return eligible[i]!;
       }
     }
     return this.selectDefaultBundle(eligible);
@@ -395,20 +397,14 @@ export class HierarchicalPromptRegistryService {
     domain?: string,
     packId?: string,
   ): PromptBundle | null {
-    switch (level) {
-      case "global":
-        return this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId));
-      case "domain":
-        return domain ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
-      case "pack":
-        return packId ? this.findCurrentScopeBundle(this.buildScopeKey(name, level, undefined, domain, packId)) : null;
-      case "task-type":
-        if (packId && domain) {
-          const scopeKey = this.buildScopeKey(name, level, domain, domain, packId);
-          return this.findCurrentScopeBundle(scopeKey);
-        }
-        return null;
+    const scopeKey = this.buildScopeKey(name, level, undefined, domain, packId);
+    const scopeBundles = this.versionsByScope.get(scopeKey);
+    if (!scopeBundles) {
+      return null;
     }
+    // R16-16 FIX: Respect version parameter when deprecating — only mark the exact version
+    const bundle = scopeBundles.get(version);
+    return bundle && !bundle.metadata.deprecated ? bundle : null;
   }
 
   private buildListResult(bundle: PromptBundle): PromptBundleListResult {

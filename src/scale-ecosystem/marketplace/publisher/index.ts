@@ -13,5 +13,7 @@ export const PublisherProfileSchema = z.object({
 export type PublisherProfile = z.infer<typeof PublisherProfileSchema>;
 
 export function canPublisherReleaseArtifact(profile: PublisherProfile, artifactType: string): boolean {
-  return profile.allowedArtifactTypes.includes(artifactType) && profile.reputationScore >= 0.4;
+  // Root cause: reputationScore >= 0.4 allows sandboxed publishers to publish
+  // Fix: Only verified and enterprise publishers can publish
+  return profile.allowedArtifactTypes.includes(artifactType) && profile.trustLevel !== "sandboxed";
 }

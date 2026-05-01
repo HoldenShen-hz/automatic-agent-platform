@@ -440,13 +440,13 @@ export class ExecutionDispatchService {
             });
             if (lease.outcome === "granted" && lease.lease) {
               // Dispatch via emergency lane
-              this.db.transaction(() => {
-                this.store.worker.claimExecutionTicket({
-                  ticketId: ticket.id,
-                  assignedWorkerId: emergencyWorker.workerId,
-                  leaseId: lease.lease.id,
-                  claimedAt: occurredAt,
-                });
+              // Note: Do NOT wrap in a transaction - acquireLease already opened one
+              // and SQLite does not support nested transactions/SAVEPOINT
+              this.store.worker.claimExecutionTicket({
+                ticketId: ticket.id,
+                assignedWorkerId: emergencyWorker.workerId,
+                leaseId: lease.lease.id,
+                claimedAt: occurredAt,
               });
               this.store.event.insertEvent({
                 id: newId("evt"),
@@ -520,13 +520,13 @@ export class ExecutionDispatchService {
             });
             if (lease.outcome === "granted" && lease.lease) {
               // Dispatch via emergency lane
-              this.db.transaction(() => {
-                this.store.worker.claimExecutionTicket({
-                  ticketId: ticket.id,
-                  assignedWorkerId: emergencyWorker.workerId,
-                  leaseId: lease.lease.id,
-                  claimedAt: occurredAt,
-                });
+              // Note: Do NOT wrap in a transaction - acquireLease already opened one
+              // and SQLite does not support nested transactions/SAVEPOINT
+              this.store.worker.claimExecutionTicket({
+                ticketId: ticket.id,
+                assignedWorkerId: emergencyWorker.workerId,
+                leaseId: lease.lease.id,
+                claimedAt: occurredAt,
               });
               this.store.event.insertEvent({
                 id: newId("evt"),

@@ -28,7 +28,14 @@ export class BudgetReservationSweeper {
     const releaseReservationIds = input.reservations
       .filter((reservation) => reservation.status === "reserved")
       .filter((reservation) => !input.activeRunIds.has(reservation.runId))
-      .filter((reservation) => Date.parse(reservation.expiresAt) + input.clockSkewSafetyMarginMs <= dbNow)
+      .filter((reservation) => {
+        const expiresAtMs = Date.parse(reservation.expiresAt);
+        // R16-16 FIX: Handle NaN from invalid date format - expire immediately
+        if (Number.isNaN(expiresAtMs)) {
+          return true; // Invalid dates should be cleaned up
+        }
+        return expiresAtMs + input.clockSkewSafetyMarginMs <= dbNow;
+      })
       .map((reservation) => reservation.reservationId);
 
     return {

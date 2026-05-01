@@ -60,9 +60,11 @@ export class ApprovalRoutingService {
   public route(request: ApprovalRouteRequest, createdAtIso: string, nowIso: string): ApprovalRoutingResult {
     const delegationMap = this.buildDelegationMap(request.orgNodeId, nowIso);
     const base = resolveApprovalRoute(this.orgNodes, request, delegationMap, this.amountThresholdRules);
-    const escalatedTo = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel);
-    const approverChain = escalatedTo != null && !base.approverChain.includes(escalatedTo)
-      ? [...base.approverChain, escalatedTo]
+    const escalation = this.resolveEscalation(createdAtIso, nowIso, request.riskLevel);
+    // SECURITY FIX: In sequential mode, prepend escalated approver so they approve BEFORE chain
+    // Previously appended to end, causing escalated approver to approve last in sequential chain
+    const approverChain = escalation != null && !base.approverChain.includes(escalation)
+      ? [escalation, ...base.approverChain]
       : [...base.approverChain];
 
     return {
@@ -76,7 +78,9 @@ export class ApprovalRoutingService {
       },
       escalatedTo,
       auditRecord: buildGovernanceAuditRecord({
-        recordId: `audit_${request.requesterId}_${request.orgNodeId}`,
+        // SECURITY FIX: Add timestamp and random factor to prevent collision
+        // when same requester submits multiple requests to same node
+        recordId: `audit_${request.requesterId}_${request.orgNodeId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         action: "approval.route",
         actorId: request.requesterId,
         orgNodeId: base.matchedOrgNodeId,

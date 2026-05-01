@@ -164,7 +164,8 @@ export class ConversationHistoryService {
     };
 
     // Persist to memory store if available
-    if (this.memoryService && this.shouldPersistToLongTermMemory(options) && options.memoryLayer !== "layer_3") {
+    // §45: Persist when memoryLayer is "layer_3" (long-term persistent) or when explicitly set
+    if (this.memoryService && this.shouldPersistToLongTermMemory(options) && (options.memoryLayer === "layer_3" || !options.memoryLayer)) {
       await this.persistSession(updatedSession, options);
     }
 
@@ -254,9 +255,11 @@ export class ConversationHistoryService {
       return null;
     }
 
+    // §9.1: Query-level tenant isolation - pass tenantId to memory service for filtering
     const memories = await this.memoryService.recall({
       sessionId,
       scopes: [this.defaultScope],
+      tenantId, // Query-level tenant isolation per §9.1
     });
 
     const sessionMemory = memories.find(

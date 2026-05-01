@@ -31,5 +31,14 @@ export const electronPreloadApi = {
 } as const;
 
 export function installElectronBridge(target: Window, bridge: ElectronBridge): void {
-  target.__AA_ELECTRON__ = bridge;
+  if (typeof target.hasOwnProperty === "function" && target.hasOwnProperty("__AA_ELECTRON__")) {
+    console.warn("[ElectronBridge] __AA_ELECTRON__ already defined, skipping install");
+    return;
+  }
+  Object.defineProperty(target, "__AA_ELECTRON__", {
+    value: bridge,
+    writable: false,
+    configurable: false,
+    enumerable: true,
+  });
 }

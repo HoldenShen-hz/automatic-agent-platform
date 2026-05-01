@@ -217,9 +217,18 @@ export class KnowledgeIngestionPipeline {
   }
 
   private createChunks(body: string, chunking?: ChunkingConfig): Array<{ content: string; section?: string }> {
-    if (!chunking || chunking.mode === "fixed" || chunking.mode === "semantic") {
+    if (!chunking) {
       return chunkFixed(body).map((content) => ({ content }));
     }
+    if (chunking.mode === "fixed") {
+      return chunkFixed(body).map((content) => ({ content }));
+    }
+    if (chunking.mode === "semantic") {
+      // Semantic chunking requires a dedicated implementation; fall back to section-aware
+      // which provides reasonable semantic boundaries via heading detection
+      return chunkSectionAware(body);
+    }
+    // section-aware is the default for unknown modes
     return chunkSectionAware(body);
   }
 }

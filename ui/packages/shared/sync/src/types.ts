@@ -18,6 +18,16 @@ export interface OfflineMutation {
   readonly version?: number;
   /** Last error message if failed */
   readonly lastError?: string;
+  /** Tenant ID for multi-tenant isolation per ContractEnvelope */
+  readonly tenantId: string;
+  /** Trace ID for observability */
+  readonly traceId: string;
+  /** Principal making the mutation for authorization */
+  readonly principal: {
+    readonly principalId: string;
+    readonly tenantId: string;
+    readonly roles: readonly string[];
+  };
 }
 
 export type ConflictResolutionStrategy = "server_wins" | "local_wins" | "merge";

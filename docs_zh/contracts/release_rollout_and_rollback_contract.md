@@ -33,6 +33,47 @@ Related documents:
 - `schema_migration`
 - `LearningObject`（对应 OAPEFLIR 副链）
 
+### 3.1 `ReleaseDecisionView`
+
+`ReleaseDecisionView` 是 OAPEFLIR release 阶段的 canonical projection object，不是 truth fact。
+
+最小字段：
+
+- `releaseDecisionViewId`
+- `harnessRunId`
+- `candidateId`
+- `channelId`
+- `recommendedLevel`
+- `guardrailFindings`
+- `approvalRequired`
+- `derivedFromEventIds`
+- `generatedAt`
+
+规则：
+
+- `ReleaseDecisionView` 只能由 `platform.release.*` fact 或 `oapeflir.view.*` / `oapeflir.rationale.*` 投影派生，不得反向充当发布状态机。
+- 该对象必须能回链到 `harnessRunId` 和候选对象，不能仅靠 rollout 文本摘要存在。
+
+### 3.2 `ReleaseChannel`
+
+`ReleaseChannel` 是发布目标面的权威通道定义。
+
+最小字段：
+
+- `channelId`
+- `channelKind` (`shadow | canary | partial | stable`)
+- `targetScope` (`tenant | domain | region | platform`)
+- `rolloutStrategy`
+- `approvalPolicyRef`
+- `healthGateRef`
+- `rollbackPolicyRef`
+- `activeVersion`
+
+规则：
+
+- `ReleaseChannel` 表达发布目标与治理门，不等同于 `ReleaseDecisionView`。
+- decision view 可以推荐 channel；只有 release truth path 才能真正推进 channel 状态。
+
 ## 4. Release Levels and RolloutStatus
 
 ### 4.1 六级受控发布（L0-L5）
@@ -107,6 +148,8 @@ LearningObject(validated/promoted)
     → ImprovementCandidate(candidate_created)
     → under_review
     → approved / rejected
+    → ReleaseDecisionView
+    → ReleaseChannel gate check
     → ReleaseRecord(evaluate_0 → canary → partial → stable → released)
 ```
 

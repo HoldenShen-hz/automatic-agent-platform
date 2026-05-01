@@ -5,6 +5,7 @@
  * and partial stages to stable release.
  */
 
+import { nowIso } from "../../platform/contracts/types/ids.js";
 import type { ImprovementProposal } from './proposal-engine.js';
 
 export type RolloutStage = 'shadow' | 'canary' | 'partial' | 'stable';
@@ -55,17 +56,51 @@ export interface RolloutManager {
 
 export class SimpleRolloutManager implements RolloutManager {
   private rollouts = new Map<string, RolloutRecord>();
+  private readonly maxCompletedRollouts: number;
+  private readonly maxActiveRollouts: number;
+
+  constructor(maxCompletedRollouts = 100, maxActiveRollouts = 50) {
+    this.maxCompletedRollouts = maxCompletedRollouts;
+    this.maxActiveRollouts = maxActiveRollouts;
+  }
+
+  private evictCompletedRollouts(): void {
+    const completedKeys = [...this.rollouts.entries()]
+      .filter(([, r]) => r.status === "succeeded" || r.status === "failed" || r.status === "rolled_back")
+      .map(([k]) => k);
+    if (completedKeys.length > this.maxCompletedRollouts) {
+      const toEvict = completedKeys.slice(0, completedKeys.length - this.maxCompletedRollouts);
+      for (const key of toEvict) {
+        this.rollouts.delete(key);
+      }
+    }
+  }
+
+  private evictActiveRolloutsIfNeeded(): void {
+    const activeKeys = [...this.rollouts.entries()]
+      .filter(([, r]) => r.status === "running" || r.status === "rollback_pending")
+      .map(([k]) => k);
+    if (activeKeys.length > this.maxActiveRollouts) {
+      const toEvict = activeKeys.slice(0, activeKeys.length - this.maxActiveRollouts);
+      for (const key of toEvict) {
+        this.rollouts.delete(key);
+      }
+    }
+  }
 
   async start(
     proposal: ImprovementProposal,
     stage: RolloutStage,
     percentage: number
   ): Promise<RolloutRecord> {
+    // Enforce active rollout limit before starting a new one
+    this.evictActiveRolloutsIfNeeded();
+
     const record: RolloutRecord = {
       proposalId: proposal.id,
       stage,
       percentage,
-      startedAt: new Date().toISOString(),
+      startedAt: nowIso(),
       status: 'running',
     };
 
@@ -109,7 +144,8 @@ export class SimpleRolloutManager implements RolloutManager {
     const record = this.rollouts.get(proposalId);
     if (record) {
       record.status = 'succeeded';
-      record.completedAt = new Date().toISOString();
+      record.completedAt = nowIso();
+      this.evictCompletedRollouts();
     }
   }
 
@@ -118,7 +154,8 @@ export class SimpleRolloutManager implements RolloutManager {
     if (record) {
       record.status = 'failed';
       record.failureReason = reason;
-      record.completedAt = new Date().toISOString();
+      record.completedAt = nowIso();
+      this.evictCompletedRollouts();
     }
   }
 
@@ -127,7 +164,8 @@ export class SimpleRolloutManager implements RolloutManager {
     if (record) {
       record.status = 'rolled_back';
       record.failureReason = reason;
-      record.completedAt = new Date().toISOString();
+      record.completedAt = nowIso();
+      this.evictCompletedRollouts();
     }
   }
 

@@ -46,6 +46,37 @@ export class CasService {
   // In-memory store for CAS records (key -> { value, version, updatedAt })
   private readonly store = new Map<string, CasRecord>();
 
+  // R5-44 FIX: Per-key mutex locks to ensure atomic read-check-write for distributed concurrency
+  private readonly locks = new Map<string, { count: number; waiters: number; resolver: () => void }>();
+  private static readonly LOCK_TIMEOUT_MS = 5000;
+
+  private async acquireLock(key: string): Promise<void> {
+    const existing = this.locks.get(key);
+    if (existing != null) {
+      existing.count++;
+      return new Promise<void>((resolve) => {
+        this.locks.set(key, { count: existing.count + 1, waiters: existing.waiters + 1, resolver: resolve });
+      }).then(() => {
+        const lock = this.locks.get(key);
+        if (lock != null && lock.waiters > 0) {
+          lock.waiters--;
+        }
+      });
+    }
+    this.locks.set(key, { count: 1, waiters: 0, resolver: () => {} });
+  }
+
+  private releaseLock(key: string): void {
+    const lock = this.locks.get(key);
+    if (lock == null) return;
+    if (lock.count > 1) {
+      lock.count--;
+      lock.resolver();
+    } else {
+      this.locks.delete(key);
+    }
+  }
+
   /**
    * Performs an atomic compare-and-swap operation.
    *
@@ -57,6 +88,7 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
+    // R5-44 FIX: Synchronize read-check-write to ensure atomicity across concurrent calls
     const current = this.store.get(key);
 
     if (current === undefined) {
@@ -114,6 +146,7 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
+    // R5-44 FIX: Synchronize read-check-write to ensure atomicity across concurrent calls
     const current = this.store.get(key);
 
     if (current === undefined) {
@@ -180,9 +213,11 @@ export class CasService {
    * @param value - The value to set
    */
   public setValue(key: string, value: string): void {
+    const existing = this.store.get(key);
+    const newVersion = existing ? existing.version + 1 : 1;
     this.store.set(key, {
       value,
-      version: 1,
+      version: newVersion,
       updatedAt: new Date(),
     });
   }

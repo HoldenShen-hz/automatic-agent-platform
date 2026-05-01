@@ -383,21 +383,15 @@ export class LeaseReclaimerService implements RecoveryWorker {
 
   /**
    * Gets expired leases from the coordinator.
+   * An expired lease is one that has passed its expiration time but still has status "active".
    */
   private getExpiredLeases(): LeaderLease[] {
-    // Use the coordinator's method to detect expired leadership
-    const leadership = this.coordinator.queryLeadership();
-    if (leadership.isExpired && leadership.leaderNodeId) {
-      // The current lease is expired - get the active lease which should be null
-      const activeLease = this.coordinator.getActiveLease();
-      if (!activeLease) {
-        // No active lease means the leader's lease is expired
-        // Return empty - actual implementation would query DB for expired leases
-        return [];
-      }
-      return [activeLease];
+    // Direct query for leases that have expired but are still marked as active
+    const expiredRows = this.coordinator.getExpiredLeaseRows();
+    if (expiredRows.length === 0) {
+      return [];
     }
-    return [];
+    return expiredRows;
   }
 
   /**
@@ -413,8 +407,8 @@ export class LeaseReclaimerService implements RecoveryWorker {
    * Expires a specific lease.
    */
   private async expireLease(lease: LeaderLease): Promise<void> {
-    // Update lease status to expired
-    // This would call the repository directly in a full implementation
+    // Mark the lease as expired in the coordinator
+    this.coordinator.expireLease(lease.leaseId);
     logger.log({
       level: "debug",
       message: "lease_reclaimer.expiring_lease",

@@ -6,6 +6,7 @@
  */
 
 import type { ImprovementProposal } from './proposal-engine.js';
+import { nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface EvaluationReport {
   proposalId: string;
@@ -165,7 +166,7 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
       avgLatencyDelta,
       safetyViolations,
       decision,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso(),
     };
   }
 

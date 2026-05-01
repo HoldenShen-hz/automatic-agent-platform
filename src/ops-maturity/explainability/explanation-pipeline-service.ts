@@ -99,7 +99,22 @@ export interface ExplanationAuditEntry {
 const EXPLANATION_AUDIT_TRAIL = new Map<string, ExplanationAuditEntry[]>();
 
 export class ExplanationPipelineService {
+  private readonly maxCacheEntries: number;
   private cache: Record<string, ExplanationCacheEntry> = {};
+
+  public constructor(maxCacheEntries = 1000) {
+    this.maxCacheEntries = maxCacheEntries;
+  }
+
+  private evictStaleCache(): void {
+    const keys = Object.keys(this.cache);
+    if (keys.length >= this.maxCacheEntries) {
+      const toRemove = keys.slice(0, keys.length - this.maxCacheEntries + 1);
+      for (const key of toRemove) {
+        delete this.cache[key];
+      }
+    }
+  }
 
   public generate(
     request: ExplanationRequest,
@@ -171,6 +186,7 @@ export class ExplanationPipelineService {
       summary: rationale.inferredSummary,
       ttlHours: depth === "L3" ? 0 : 24,
     });
+    this.evictStaleCache();
 
     // §59.6: Log audit trail entry for explanation generation
     this.appendAuditEntry({

@@ -74,7 +74,10 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
     };
   }
 
-  if (score.incidents > 0 || (score.failedExecutions > 2 && rate < 0.96)) {
+  // §42.2: P2/P3 low-severity incidents don't block promotion (only P0/P1 do)
+  if (score.lastIncidentSeverity === "P2" || score.lastIncidentSeverity === "P3") {
+    // P2/P3 incidents are informational - don't block promotion
+  } else if (score.incidents > 0 || (score.failedExecutions > 2 && rate < 0.96)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

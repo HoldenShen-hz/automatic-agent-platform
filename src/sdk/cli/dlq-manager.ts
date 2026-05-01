@@ -25,6 +25,8 @@ interface DlqAction {
   queue: "gateway" | "jobs" | "events";
   limit: number;
   channel: string | undefined;
+  retryLimit: number | undefined;
+  confirmed: boolean;
 }
 
 function parseArguments(): DlqAction {
@@ -34,6 +36,8 @@ function parseArguments(): DlqAction {
       queue: { type: "string", short: "q" },
       limit: { type: "string", short: "l", default: "50" },
       channel: { type: "string", short: "c" },
+      "retry-limit": { type: "string" },
+      yes: { type: "boolean", short: "y", default: false },
     },
   });
 
@@ -52,6 +56,8 @@ function parseArguments(): DlqAction {
     queue,
     limit: Math.max(1, Math.min(500, parseInt(values.limit ?? "50", 10))),
     channel: values.channel ?? undefined,
+    retryLimit: values["retry-limit"] != null ? Math.max(1, parseInt(values["retry-limit"], 10)) : undefined,
+    confirmed: values.yes === true,
   };
 }
 
@@ -128,16 +134,19 @@ function countDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   });
 }
 
-function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events"): void {
+function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events", limit?: number): void {
   const sql = db.sql.connection;
 
   if (queue === "jobs") {
+    // Limit the retry to prevent unbounded state changes
+    const limitClause = limit != null ? `LIMIT ${limit}` : "";
     const result = sql.prepare(`
       UPDATE queue_jobs
       SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
       WHERE status = 'dead_letter'
+      ${limitClause}
     `).run();
-    console.log(`Retried ${result.changes} dead-lettered jobs.`);
+    console.log(`Retried ${result.changes} dead-lettered jobs (limit: ${limit ?? "unlimited"}).`);
   } else if (queue === "gateway") {
     // Gateway DLQ doesn't have a simple retry - messages need to be re-enqueued
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;
@@ -152,15 +161,33 @@ function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
 function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events"): void {
   const sql = db.sql.connection;
 
+  // Archive dead letters before deletion for audit/recovery purposes
+  const archivedAt = new Date().toISOString();
+
   if (queue === "gateway") {
+    // Archive gateway dead letters to audit table
+    sql.prepare(`
+      CREATE TABLE IF NOT EXISTS gateway_dead_letters_archive AS
+      SELECT *, '${archivedAt}' as archived_at FROM gateway_dead_letters
+    `).run();
     const result = sql.prepare(`DELETE FROM gateway_dead_letters`).run();
-    console.log(`Purged ${result.changes} gateway dead letter entries.`);
+    console.log(`Archived and purged ${result.changes} gateway dead letter entries.`);
   } else if (queue === "jobs") {
+    // Archive job dead letters to audit table
+    sql.prepare(`
+      CREATE TABLE IF NOT EXISTS queue_jobs_dead_letters_archive AS
+      SELECT *, '${archivedAt}' as archived_at FROM queue_jobs WHERE status = 'dead_letter'
+    `).run();
     const result = sql.prepare(`DELETE FROM queue_jobs WHERE status = 'dead_letter'`).run();
-    console.log(`Purged ${result.changes} dead-lettered job entries.`);
+    console.log(`Archived and purged ${result.changes} dead-lettered job entries.`);
   } else if (queue === "events") {
+    // Archive event dead letters to audit table
+    sql.prepare(`
+      CREATE TABLE IF NOT EXISTS event_dead_letters_archive AS
+      SELECT *, '${archivedAt}' as archived_at FROM event_dead_letters
+    `).run();
     const result = sql.prepare(`DELETE FROM event_dead_letters`).run();
-    console.log(`Purged ${result.changes} event dead letter entries.`);
+    console.log(`Archived and purged ${result.changes} event dead letter entries.`);
   }
 }
 
@@ -185,9 +212,23 @@ function main(): void {
         countDeadLetters(storage);
         break;
       case "retry":
-        retryDeadLetters(storage, args.queue);
+        // Require confirmation for retry operations that would affect all dead letters
+        if (!args.confirmed && args.retryLimit == null) {
+          console.error("WARNING: retry without --retry-limit will affect ALL dead letters.");
+          console.error("Use --retry-limit N to limit, or --yes to confirm and retry all.");
+          console.error("Aborting for safety. Run with --yes or --retry-limit N to proceed.");
+          process.exit(1);
+        }
+        retryDeadLetters(storage, args.queue, args.retryLimit);
         break;
       case "purge":
+        // Require explicit confirmation for purge operations
+        if (!args.confirmed) {
+          console.error("WARNING: purge will PERMANENTLY DELETE all dead letters from the queue.");
+          console.error("This action cannot be undone. Use --yes to confirm.");
+          console.error("Aborting for safety. Run with --yes to proceed.");
+          process.exit(1);
+        }
         purgeDeadLetters(storage, args.queue);
         break;
     }

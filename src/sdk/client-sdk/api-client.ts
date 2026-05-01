@@ -442,12 +442,29 @@ export function createApiClient(config: ApiClientConfig): RetryableApiClient {
 }
 
 /**
- * Parse cursor pagination parameters.
+ * Parse cursor pagination parameters with schema validation.
+ * Validates that the cursor contains only expected fields to prevent injection.
  */
 export function parseCursor(cursor: string | null | undefined): PaginationSpec | undefined {
   if (!cursor) return undefined;
   try {
     const decoded = JSON.parse(Buffer.from(cursor, "base64").toString("utf-8"));
+    // Validate cursor structure to prevent injection of arbitrary properties
+    if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) {
+      return undefined;
+    }
+    const { cursor: _cursor, limit: _limit, ...extra } = decoded as Record<string, unknown>;
+    // Reject cursors with unexpected properties to prevent injection
+    if (Object.keys(extra).length > 0) {
+      return undefined;
+    }
+    // Validate types of known fields
+    if (_cursor !== undefined && typeof _cursor !== "string") {
+      return undefined;
+    }
+    if (_limit !== undefined && (typeof _limit !== "number" || !Number.isInteger(_limit) || _limit < 1)) {
+      return undefined;
+    }
     return decoded as PaginationSpec;
   } catch {
     return undefined;

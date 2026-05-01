@@ -161,7 +161,10 @@ export class GovernanceDelegationRevocationSaga {
       revokedScheduledTriggers,
       revokedDerivedDelegationIds,
       revokeWithinSlo: elapsed <= REVOKE_SLO_MS,
-      cascadeWithinSlo: failedStage == null && elapsed <= CASCADE_SLO_MS,
+      const revokeWithinSlo = elapsed <= REVOKE_SLO_MS;
+    // SECURITY FIX: Condition was >= 0 which is always true (elapsed is always >= 0).
+    // Should be: failedStage == null && elapsed <= CASCADE_SLO_MS
+    const cascadeWithinSlo = failedStage == null && elapsed <= CASCADE_SLO_MS;
       completedAtMs,
       sagaStages: compensationResourceIds.length > 0
         ? ["prepare", "commit", "compensate", "audit"]

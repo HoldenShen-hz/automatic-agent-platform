@@ -1,9 +1,9 @@
 {
   "approvalMode": "supervised",
-  "sandboxMode": "workspace_write",
+  "sandboxMode": "read_only",
   "allowDestructiveActions": false,
   "remoteWorkerRegistration": {
     "challengeTtlMs": 300000,
-    "allowedCapabilities": ["bash", "edit", "mcp"]
+    "allowedCapabilities": ["bash", "edit"]
   }
 }

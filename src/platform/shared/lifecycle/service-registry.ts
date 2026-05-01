@@ -89,6 +89,15 @@ export class ServiceRegistry {
   }
 
   /**
+   * Creates a new scoped registry instance for multi-tenant/multi-worker isolation.
+   * Unlike getInstance(), this always returns a fresh registry that is NOT the global singleton.
+   * Use this for isolated contexts (tests, per-tenant workers, etc.).
+   */
+  public static createScoped(): ServiceRegistry {
+    return new ServiceRegistry();
+  }
+
+  /**
    * Registers bootstrap wiring that should be replayed for every fresh registry instance.
    */
   public static registerBootstrap(name: string, registrar: (registry: ServiceRegistry) => void): void {
@@ -143,9 +152,6 @@ export class ServiceRegistry {
    * @param registration - Object with init and optional teardown functions
    */
   public register<T>(name: string, registration: ServiceRegistration<T>): void {
-    if (!this.instances.has(name)) {
-      this.instances.delete(name);
-    }
     this.services.set(name, registration as ServiceRegistration<unknown>);
   }
 

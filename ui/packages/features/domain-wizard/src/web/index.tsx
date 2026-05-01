@@ -295,7 +295,7 @@ export function DomainWizardWebView(): ReactElement {
         )}
         {vm.currentStep === "review" && (
           <button
-            onClick={() => alert("配置已提交！")}
+            onClick={vm.submitConfig}
             style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "var(--accent)", color: "#04130a", fontWeight: 600, cursor: "pointer" }}
           >
             提交配置

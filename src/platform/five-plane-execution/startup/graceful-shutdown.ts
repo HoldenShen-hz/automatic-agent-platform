@@ -11,6 +11,7 @@
  */
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { ServiceRegistry } from "../../shared/lifecycle/service-registry.js";
 
 interface SignalCapable {
   on(event: "SIGTERM" | "SIGINT", listener: () => void): unknown;
@@ -273,12 +274,20 @@ export class GracefulShutdown {
 // Singleton instance for process-level shutdown
 let globalShutdownInstance: GracefulShutdown | null = null;
 
-export function getGlobalGracefulShutdown(): GracefulShutdown {
+export function getGlobalGracefulShutdown(registry: ServiceRegistry = ServiceRegistry.getInstance()): GracefulShutdown {
+  if (registry.isInitialized("platform.global-shutdown")) {
+    globalShutdownInstance = registry.get<GracefulShutdown>("platform.global-shutdown");
+    return globalShutdownInstance;
+  }
   if (!globalShutdownInstance) {
     globalShutdownInstance = new GracefulShutdown({
       registerSignalHandlers: true,
     });
   }
+  // Register in ServiceRegistry to avoid dual-singleton leak
+  registry.register<GracefulShutdown>("platform.global-shutdown", {
+    init: () => globalShutdownInstance!,
+  });
   return globalShutdownInstance;
 }
 

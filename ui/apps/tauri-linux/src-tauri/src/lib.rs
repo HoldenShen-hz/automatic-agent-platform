@@ -8,9 +8,19 @@ fn open_deep_link(url: String) -> String {
     format!("opened:{url}")
 }
 
+// Command allowlist for shell execution - only predefined safe commands permitted
+const ALLOWED_COMMANDS: &[&str] = &["status", "health", "version"];
+
+fn is_command_allowed(command: &str) -> bool {
+    ALLOWED_COMMANDS.contains(&command.as_str())
+}
+
 #[tauri::command]
-fn run_shell(command: String) -> String {
-    format!("linux:{command}")
+fn run_shell(command: String) -> Result<String, String> {
+    if !is_command_allowed(&command) {
+        return Err(format!("Command not allowed: {}", command));
+    }
+    Ok(format!("linux:{command}"))
 }
 
 pub fn run() {

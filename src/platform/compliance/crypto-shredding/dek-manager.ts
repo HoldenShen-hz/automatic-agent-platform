@@ -204,8 +204,9 @@ export class DekStore {
       replacedMetadata.replacesDekId = dekId;
     }
 
-    // Remove key from memory when rotated (but keep metadata for decryption of old data)
-    this.keys.delete(dekId);
+    // R16-36 FIX #2086: Do NOT delete key from memory when marking as rotated.
+    // Rotated DEKs must remain usable for decrypting existing data.
+    // Only destroy() should delete the key.
 
     logger.log({
       level: "info",

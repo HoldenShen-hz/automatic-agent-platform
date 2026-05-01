@@ -53,6 +53,17 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
 const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
 
 /**
+ * Backoff multiplier when many consumers are active to reduce polling overhead.
+ * Increases interval as consumer count grows to avoid CPU thrashing.
+ */
+const CONSUMER_BACKOFF_MULTIPLIER = 1.5;
+
+/**
+ * Maximum number of consumers before applying backoff multiplier.
+ */
+const CONSUMER_BACKOFF_THRESHOLD = 20;
+
+/**
  * Calculates exponential backoff delay with jitter for retry intervals.
  * Uses exponential increase with a cap and adds random jitter to prevent thundering herd.
  * @param attemptIndex - The current retry attempt number (0-based)
@@ -272,6 +283,8 @@ export class DurableEventBus {
   private readonly pollingTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly activeConsumerRefCounts: Map<string, number>;
   private disposed = false;
+  /** §14.3: Tracks monotonic sequence per runId for ordered event replay */
+  private readonly runSequences = new Map<string, number>();
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -360,6 +373,9 @@ export class DurableEventBus {
     this.validatePayloadSize(validatedPayload);
 
     const schema = getEventSchema(input.eventType);
+    // §14.3: Maintain monotonic sequence for events within the same run
+    // If runId is provided but sequence is not, auto-assign a monotonically increasing sequence
+    const effectiveSequence = input.sequence ?? (input.runId ? this.getNextRunSequence(input.runId) : null);
     const eventRecord = this.db.transaction(() =>
       {
         this.ensureReferencedTask(input.taskId ?? null);
@@ -377,10 +393,15 @@ export class DurableEventBus {
           schemaVersion: "1.0",
           aggregateId: input.aggregateId ?? null,
           runId: input.runId ?? null,
-          sequence: input.sequence ?? null,
+          sequence: effectiveSequence,
+          // §28.1 causation/correlation/payload integrity fields
+          causationId: null,
+          correlationId: input.traceContext?.correlationId ?? null,
+          payloadHash: null,
+          idempotencyKey: null,
           replayBehavior: null,
           principal: input.principal ?? null,
-          evidenceRefs: null,
+          evidenceRefs: [],
         });
         this.ensurePendingAcksForActiveConsumers(record);
         return record;
@@ -435,6 +456,8 @@ export class DurableEventBus {
     const eventRecords = this.db.transaction(() =>
       inputs.map((input, index) => {
         const schema = getEventSchema(input.eventType);
+        // §14.3: Maintain monotonic sequence for events within the same run
+        const effectiveSequence = input.sequence ?? (input.runId ? this.getNextRunSequence(input.runId) : null);
         this.ensureReferencedTask(input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
@@ -450,10 +473,15 @@ export class DurableEventBus {
           schemaVersion: "1.0",
           aggregateId: input.aggregateId ?? null,
           runId: input.runId ?? null,
-          sequence: input.sequence ?? null,
+          sequence: effectiveSequence,
+          // §28.1 causation/correlation/payload integrity fields
+          causationId: null,
+          correlationId: input.traceContext?.correlationId ?? null,
+          payloadHash: null,
+          idempotencyKey: null,
           replayBehavior: null,
           principal: input.principal ?? null,
-          evidenceRefs: null,
+          evidenceRefs: [],
         });
         this.ensurePendingAcksForActiveConsumers(record);
         return record;
@@ -617,6 +645,19 @@ export class DurableEventBus {
   }
 
   /**
+   * §14.3: Returns the next monotonic sequence number for a given runId.
+   * Maintains run-local monotonic sequence for ordered event replay within a run.
+   * @param runId - The run identifier
+   * @returns The next sequence number (starting from 1)
+   */
+  private getNextRunSequence(runId: string): number {
+    const current = this.runSequences.get(runId) ?? 0;
+    const next = current + 1;
+    this.runSequences.set(runId, next);
+    return next;
+  }
+
+  /**
    * Updates circuit breaker state for a consumer group.
    */
   private updateCircuitBreaker(groupId: string, state: "closed" | "open" | "half_open"): void {
@@ -658,7 +699,7 @@ export class DurableEventBus {
   private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler, consumerId: string): Promise<{ delivered: boolean; deadLettered: boolean }> {
     let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= MAX_DELIVERY_RETRIES; attempt++) {
+    for (let attempt = 0; attempt < MAX_DELIVERY_RETRIES; attempt++) {
       try {
         await handler(item.event);
         this.store.event.markEventAck({
@@ -689,6 +730,22 @@ export class DurableEventBus {
       consumerId: item.ack.consumerId,
       occurredAt: nowIso(),
       errorCode: errorMessage,
+    });
+
+    // §28.1: Persist to event_dead_letters table for independent DLQ tracking
+    // This satisfies the "Event不允许物理删除" requirement - dead-lettered events
+    // are preserved in the event_dead_letters table rather than being deleted.
+    this.store.event.insertEventDeadLetter({
+      id: newId("evt_dlq"),
+      originalEventId: item.event.id,
+      eventType: item.event.eventType,
+      payloadJson: item.event.payloadJson,
+      consumerId: item.ack.consumerId,
+      failureCount: MAX_DELIVERY_RETRIES,
+      lastError: errorMessage,
+      deadLetteredAt: nowIso(),
+      reprocessedAt: null,
+      reprocessResult: null,
     });
 
     // REL-01: structured alert log on dead-letter. Persistence is handled
@@ -829,7 +886,15 @@ export class DurableEventBus {
       depthMultiplier = 2.0;
     }
 
-    const interval = baseInterval * priorityMultiplier * depthMultiplier;
+    // Consumer count backoff: when many consumers are active, increase polling interval
+    // to avoid CPU thrashing from excessive polling operations
+    const consumerCount = this.subscriberRegistry.getConsumerCount();
+    let consumerMultiplier = 1.0;
+    if (consumerCount > CONSUMER_BACKOFF_THRESHOLD) {
+      consumerMultiplier = Math.pow(CONSUMER_BACKOFF_MULTIPLIER, Math.log2(consumerCount / CONSUMER_BACKOFF_THRESHOLD + 1));
+    }
+
+    const interval = baseInterval * priorityMultiplier * depthMultiplier * consumerMultiplier;
 
     // Cap at 10 seconds
     return Math.min(interval, 10_000);

@@ -267,5 +267,15 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
 }
 
 export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
-  return registerPlatformArchitectureServices(registry);
+  if (!registry.has("architecture.bootstrap-summary")) {
+    return registerPlatformArchitectureServices(registry);
+  }
+  // Return actual values from registry (not undefined lazy references)
+  return {
+    layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
+    planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
+    apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
+    startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
+    summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
+  };
 }

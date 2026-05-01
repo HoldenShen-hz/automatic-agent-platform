@@ -509,16 +509,40 @@ export class BudgetAllocator {
       );
     }
 
+    // R16-16 FIX: ledger update must use state machine for CAS versioning
+    // The state machine increment handles version for SQL CAS but we need to
+    // compute budget amounts ourselves since state machine only handles status transitions
+    const ledgerAfterSettle = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetLedger",
+      entityId: input.ledger.budgetLedgerId,
+      principal: context.emittedBy,
+      aggregateType: "BudgetLedger",
+      aggregate: input.ledger,
+      fromStatus: input.ledger.status,
+      toStatus: input.ledger.status, // Same status - this is just for CAS/versioning
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode: "budget.settled",
+      emittedBy: context.emittedBy,
+      leaseId: context.leaseId,
+      fencingToken: context.fencingToken,
+      auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/settle`,
+    }).aggregate as BudgetLedger;
+
+    // Compute final ledger state with settled amounts
+    // This is the authoritative state that should be persisted with SQL CAS
+    const finalLedger: BudgetLedger = {
+      ...ledgerAfterSettle,
+      reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
+      settledAmount: input.ledger.settledAmount + input.actualAmount,
+      releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
+    };
+
     return {
       reservation,
       settlement,
-      ledger: {
-        ...input.ledger,
-        reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
-        settledAmount: input.ledger.settledAmount + input.actualAmount,
-        releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
-        version: input.ledger.version + 1,
-      },
+      ledger: finalLedger,
     };
   }
 

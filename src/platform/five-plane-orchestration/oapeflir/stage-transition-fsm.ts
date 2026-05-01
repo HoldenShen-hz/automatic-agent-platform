@@ -127,23 +127,18 @@ export class StageTransitionFSM {
     if (targetIndex < currentIndex) {
       // §45.7/§13.4: Allow backward transitions when current stage is a valid predecessor
       // This supports feedback-driven replanning (feedback→plan) and other re-entry scenarios
-      if (validPredecessors.includes(currentStage)) {
-        return {
-          allowed: true,
-          targetStage,
-          reasonCode: "fsm.valid_predecessor_backward",
-          reasonCodes: [`fsm.valid_predecessor_backward: ${currentStage} → ${targetStage}`],
-        };
-      }
-      // Additional allowlist for feedback-driven replan scenarios where target is plan/assess/execute
+      // R5-42 FIX: Also allow feedback→observe backward transition to support the full
+      // OAPEFLIR closed loop where feedback can lead back to observe for re-assessment.
+      const isFeedbackToObserve = currentStage === "feedback" && targetStage === "observe";
+      const isValidPredecessor = validPredecessors.includes(currentStage);
       const isFeedbackDrivenReplan = (currentStage === "feedback" || currentStage === "learn" || currentStage === "improve" || currentStage === "release")
         && (targetStage === "plan" || targetStage === "assess" || targetStage === "execute");
-      if (isFeedbackDrivenReplan) {
+      if (isValidPredecessor || isFeedbackDrivenReplan || isFeedbackToObserve) {
         return {
           allowed: true,
           targetStage,
-          reasonCode: "fsm.feedback_driven_replan",
-          reasonCodes: [`fsm.feedback_driven_replan: ${currentStage} → ${targetStage} for replanning`],
+          reasonCode: isFeedbackToObserve ? "fsm.feedback_to_observe" : isFeedbackDrivenReplan ? "fsm.feedback_driven_replan" : "fsm.valid_predecessor_backward",
+          reasonCodes: [isFeedbackToObserve ? `fsm.feedback_to_observe: ${currentStage} → ${targetStage} for closed-loop reassessment` : isFeedbackDrivenReplan ? `fsm.feedback_driven_replan: ${currentStage} → ${targetStage} for replanning` : `fsm.valid_predecessor_backward: ${currentStage} → ${targetStage}`],
         };
       }
       return {
@@ -213,8 +208,11 @@ export class StageTransitionFSM {
     this.stageTimestamps.set(stage, Date.now());
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
+    // R5-43 FIX: Cap currentStageIndex at STAGE_ORDER.length to prevent out-of-bounds
+    // Access when "release" is completed (stageIndex=7, setting currentStageIndex=8 which
+    // is valid for completion but must not exceed array bounds on subsequent queries).
     if (stageIndex >= this.currentStageIndex) {
-      this.currentStageIndex = stageIndex + 1;
+      this.currentStageIndex = Math.min(stageIndex + 1, STAGE_ORDER.length);
     }
   }
 

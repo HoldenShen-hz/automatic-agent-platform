@@ -140,49 +140,70 @@ export class DomainSmokeTestRunner {
   }
 
   private validateDependencyGraph(definition: DomainDefinition): SmokTestRuntimeCheck {
-    const stepIds = new Set<string>();
-    const dependsOnMap = new Map<string, string[]>();
+    const workflowStepIds = new Map<string, Set<string>>();
+    const dependsOnMap = new Map<string, { workflowId: string; deps: string[] }>();
 
     for (const workflow of definition.workflows) {
+      const stepIds = new Set<string>();
       for (const step of workflow.steps) {
-        stepIds.add(step.stepName);
-        dependsOnMap.set(step.stepName, step.dependsOn);
+        const fullStepId = `${workflow.workflowId}/${step.stepName}`;
+        stepIds.add(fullStepId);
+        dependsOnMap.set(fullStepId, { workflowId: workflow.workflowId, deps: step.dependsOn });
       }
+      workflowStepIds.set(workflow.workflowId, stepIds);
     }
 
     const visited = new Set<string>();
     const visiting = new Set<string>();
+    const danglingDeps: string[] = [];
     let hasCycle = false;
 
-    const dfs = (stepName: string): void => {
-      if (visiting.has(stepName)) {
+    const dfs = (fullStepId: string): void => {
+      if (visiting.has(fullStepId)) {
         hasCycle = true;
         return;
       }
-      if (visited.has(stepName)) {
+      if (visited.has(fullStepId)) {
         return;
       }
-      visiting.add(stepName);
-      for (const dep of dependsOnMap.get(stepName) ?? []) {
-        if (!stepIds.has(dep)) {
-          continue;
+      visiting.add(fullStepId);
+      const stepInfo = dependsOnMap.get(fullStepId);
+      if (stepInfo) {
+        for (const dep of stepInfo.deps) {
+          const fullDepId = `${stepInfo.workflowId}/${dep}`;
+          // Find which workflow owns this dependency
+          let foundOwner = false;
+          for (const [, stepIds] of workflowStepIds) {
+            if (stepIds.has(fullDepId)) {
+              foundOwner = true;
+              break;
+            }
+          }
+          if (!foundOwner) {
+            danglingDeps.push(`${fullStepId} -> ${fullDepId}`);
+            continue;
+          }
+          dfs(fullDepId);
         }
-        dfs(dep);
       }
-      visiting.delete(stepName);
-      visited.add(stepName);
+      visiting.delete(fullStepId);
+      visited.add(fullStepId);
     };
 
-    for (const stepId of stepIds) {
-      dfs(stepId);
+    for (const stepIds of workflowStepIds.values()) {
+      for (const stepId of stepIds) {
+        dfs(stepId);
+      }
     }
 
     return {
       checkId: "dependency_graph",
-      passed: !hasCycle,
+      passed: !hasCycle && danglingDeps.length === 0,
       details: hasCycle
         ? "Circular dependency detected in workflow steps"
-        : `Validated ${stepIds.size} steps across ${definition.workflows.length} workflows`,
+        : danglingDeps.length > 0
+          ? `Dangling dependencies detected: ${danglingDeps.join("; ")}`
+          : `Validated ${[...workflowStepIds.values()].reduce((sum, s) => sum + s.size, 0)} steps across ${definition.workflows.length} workflows`,
     };
   }
 

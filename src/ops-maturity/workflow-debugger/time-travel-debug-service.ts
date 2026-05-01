@@ -178,6 +178,12 @@ export class TimeTravelDebugService {
     return this.replaySandboxPolicy.isolationMode === "full" || this.replaySandboxPolicy.isolationMode === "mocked_io";
   }
 
+  private assertReplayAllowed(): void {
+    if (this.replaySandboxPolicy.allowSideEffects) {
+      throw new Error("debug_session.replay_blocked: allowSideEffects must be false for replay per INV-REPLAY-001");
+    }
+  }
+
   public createSession(taskId: string, harnessRunId: string): TimeTravelDebugSession {
     // §65.3: Dual factor + least privilege + short-lived session + audit
     const ctx = this.permissionContext;
@@ -214,7 +220,8 @@ export class TimeTravelDebugService {
   public setBreakpoints(sessionId: string, nodeRunIds: readonly string[]): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
-    session.breakpoints = [...nodeRunIds];
+    // Mutate the underlying array in-place to respect readonly breakpoints property
+    (session.breakpoints as string[]).splice(0, session.breakpoints.length, ...nodeRunIds);
   }
 
   public loadEventStore(harnessRunId: string, events: readonly TimeTravelDebugEvent[]): void {
@@ -227,6 +234,9 @@ export class TimeTravelDebugService {
   public replayToCursor(sessionId: string, toEventIndex: number): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
+
+    // §65.3/INV-REPLAY-001: Enforce ReplaySandboxPolicy before allowing replay
+    this.assertReplayAllowed();
 
     const events = this.eventStore.get(session.harnessRunId) ?? [];
     const currentIndex = session.currentEventIndex;
@@ -249,6 +259,9 @@ export class TimeTravelDebugService {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
 
+    // §65.3/INV-REPLAY-001: Enforce ReplaySandboxPolicy before allowing replay
+    this.assertReplayAllowed();
+
     const events = this.eventStore.get(session.harnessRunId) ?? [];
     if (session.currentEventIndex >= events.length) {
       return this.buildReplayState(session, session.currentEventIndex, false);
@@ -269,6 +282,9 @@ export class TimeTravelDebugService {
   public jumpToStep(sessionId: string, nodeRunId: string): ReplayState | null {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
+
+    // §65.3/INV-REPLAY-001: Enforce ReplaySandboxPolicy before allowing replay
+    this.assertReplayAllowed();
 
     const events = this.eventStore.get(session.harnessRunId) ?? [];
     const targetIndex = events.findIndex((e) => String(e.nodeRunId ?? e.stepId) === nodeRunId);

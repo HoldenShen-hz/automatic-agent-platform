@@ -130,6 +130,7 @@ export class PlatformApplicationKernel {
 export function registerPlatformApplicationKernel(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformApplicationKernel {
   registry.register<PlatformApplicationKernel>("architecture.application-kernel", {
     init: () => new PlatformApplicationKernel(),
+    dependsOn: [],
   });
   return registry.get<PlatformApplicationKernel>("architecture.application-kernel");
 }

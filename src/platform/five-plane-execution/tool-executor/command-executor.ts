@@ -96,7 +96,9 @@ function killProcessTree(child: ChildProcess, forceKillAfterDelayMs: number = 50
     return;
   }
 
-  const killSignal = process.platform !== "win32" ? "SIGTERM" : "SIGTERM";
+  // Windows does not support SIGTERM for process groups; use it only for direct child.kill()
+  // Unix uses negative PID for process group SIGTERM (graceful shutdown)
+  const killSignal = "SIGTERM";
   const killPgid = process.platform !== "win32";
 
   try {

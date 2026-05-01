@@ -220,13 +220,26 @@ export class InMemoryTelemetryExporter implements TelemetryExporter {
 /**
  * OTLP HTTP exporter per §7.3 G-1.
  * Uses correct resourceLogs[].scopeLogs[] format (not scopeMetrics[].logs).
+ *
+ * P1 FIX: Auth headers are required for multi-tenant isolation. The exporter
+ * requires either explicit headers or VITE_OTLP_AUTH_TOKEN env var.
  */
 export class OtlpHttpTelemetryExporter implements TelemetryExporter {
+  private readonly authToken: string;
+
   public constructor(
     private readonly endpoint: string,
     private readonly fetchImplementation: typeof fetch = globalThis.fetch.bind(globalThis),
-    private readonly headers: Readonly<Record<string, string>> = {},
-  ) {}
+    headers: Readonly<Record<string, string>> = {},
+  ) {
+    // P1 FIX: Require auth headers for multi-tenant isolation
+    const authHeader = headers["authorization"] ?? headers["Authorization"];
+    const envToken = typeof process !== 'undefined' && process.env?.VITE_OTLP_AUTH_TOKEN;
+    this.authToken = authHeader ?? envToken ?? "";
+    if (this.authToken.length === 0) {
+      throw new Error("OtlpHttpTelemetryExporter requires authorization header or VITE_OTLP_AUTH_TOKEN env var for multi-tenant isolation.");
+    }
+  }
 
   public async export(events: readonly TelemetryEvent[]): Promise<void> {
     if (events.length === 0) {
@@ -267,7 +280,7 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...this.headers,
+        "authorization": this.authToken,
       },
       body: JSON.stringify(payload),
     });

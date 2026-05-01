@@ -1,4 +1,4 @@
-# ADR-002 事业部系统
+# ADR-002 事业部系统（历史兼容，已由域模型取代）
 
 ---
 
@@ -17,16 +17,18 @@
 
 ---
 
-- 状态：Accepted
+- 状态：Superseded by ADR-081 and ADR-085
 - 决策日期：2026-04-02
 
 ## 背景
+
+> 说明：本 ADR 保留为历史迁移文档，用于解释旧 `division` 叙事如何收敛到 v4.3 的 `DomainDescriptor + OrgUnit` 模型。新实现不得再把 `division_id` 作为执行 truth 主键。
 
 Automatic Agent 的目标不是只支持编程，而是承载任意可被拆解为工作流的业务。因此业务能力必须以声明式、可插拔、低耦合的方式扩展，而不是写死在平台核心里。
 
 ## 决策
 
-将业务能力建模为 v4.3 规定的 DomainDescriptor + BusinessPack + DomainRiskSpec 三元组：
+将业务能力建模为 v4.3 规定的 `DomainDescriptor + BusinessPack + DomainRiskSpec` 三元组；旧 `division` 只允许作为兼容别名或产品叙事投影存在。
 
 ### DomainDescriptor
 
@@ -111,10 +113,16 @@ HR Agent 负责在现有 domain 内动态补角色：
 - workflow 修改必须经过契约和 schema 兼容性检查。
 - domain / pack 越多，对文档、模板、规则和测试的要求越高。
 
+## v4.3 ADR Remediation
+
+- R8-76: 本 ADR 原先以 “事业部/division” 作为业务与执行边界的 canonical 主语，根因是早期组织建模先于域模型冻结。修复：正文现明确 `division` 只保留为历史叙事或 alias，运行时 canonical 绑定统一收敛到 `domain_id / DomainDescriptor`，组织责任边界则由 `OrgUnit` 承担。
+
 ## 交叉引用
 
 - [ADR-001 三层分权架构](./001-three-layer-architecture.md)
 - [ADR-004 工作流与路由](./004-workflow-routing.md)
+- [ADR-081 Domain Descriptor 与 Onboarding](./081-domain-descriptor-and-onboarding.md)
+- [ADR-085 组织治理与知识边界](./085-organization-governance-and-knowledge-boundary.md)
 - [Division Authoring](../guides/division-authoring.md)
 
 ## 来源章节

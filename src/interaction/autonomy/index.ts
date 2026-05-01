@@ -213,6 +213,8 @@ function scoreCapability(score: CapabilityTrustScore): number {
 
 /**
  * Autonomy level order (index 0 = lowest, higher = more autonomous)
+ * Note: frozen is excluded because it represents a manual-intervention state
+ * that is not part of the normal promotion/demotion progression.
  */
 const AUTONOMY_LEVEL_ORDER: readonly AutonomyLevel[] = [
   "suggestion",
@@ -235,8 +237,9 @@ function severityToIndex(severity: IncidentSeverity): number {
  * Does not demote below "suggestion".
  */
 function demoteOneLevel(current: AutonomyLevel): AutonomyLevel {
+  // §42: frozen requires manual approval for recovery - should never be demoted automatically
   if (current === "frozen") {
-    return "full_auto"; // Recovery from frozen goes to highest non-frozen
+    return "frozen";
   }
   const index = AUTONOMY_LEVEL_ORDER.indexOf(current);
   if (index <= 0) {
@@ -262,11 +265,11 @@ function decideLevel(
   }
 
   // §42 P0/P1 Demotion Logic:
-  // - P0 incidents: freeze immediately (as before)
+  // - P0 incidents: demote to suggestion (not frozen) per §42.2
   // - P1 incidents: demote one level instead of freezing (when severityBasedDemotion enabled)
   const severity = score.lastIncidentSeverity;
-  if (options.freezeOnIncident && score.incidents > 0 && severity === "P0") {
-    return "frozen";
+  if (score.incidents > 0 && severity === "P0") {
+    return "suggestion";
   }
 
   if (score.incidents > 0) {
@@ -465,6 +468,7 @@ export function toUnifiedRuntimeMode(level: AutonomyLevel): UnifiedRuntimeMode {
 }
 
 function compareLevels(left: AutonomyLevel, right: AutonomyLevel): number {
-  const order: readonly AutonomyLevel[] = ["frozen", "suggestion", "supervised", "semi_auto", "full_auto"];
+  // frozen is not part of normal autonomy progression - exclude from comparison
+  const order: readonly AutonomyLevel[] = ["suggestion", "supervised", "semi_auto", "full_auto"];
   return order.indexOf(left) - order.indexOf(right);
 }

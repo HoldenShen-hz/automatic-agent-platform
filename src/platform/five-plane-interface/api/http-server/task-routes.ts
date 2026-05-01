@@ -219,75 +219,168 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           throw new ApiError(400, "api.missing_required_field", "divisionId is required for routing.");
         }
 
+        // Extract correlationId from request headers for event/RSM/span correlation
+        function extractCorrelationId(req: ApiRequestLike): string {
+          const getHeader = (name: string): string | undefined => {
+            const value = req.headers[name];
+            if (Array.isArray(value)) return value[0];
+            return value;
+          };
+          return (
+            getHeader("x-correlation-id") ??
+            getHeader("x-request-id") ??
+            getHeader("request-id") ??
+            newId("corr")
+          );
+        }
+
+        const correlationId = extractCorrelationId(ctx.request);
         const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
 
-        // Build principal ref from API principal
-        const principalRef: PrincipalRef = createPrincipalRef({
-          principalId: principal.userId ?? principal.actorId ?? "unknown",
-          tenantId: tenantId ?? "global",
-          roles: principal.roles,
-        });
+  // R6-16: Generate idempotency key from request content to prevent duplicate task creation
+  // Use title+divisionId+principalId hash so retried requests with same content get same key
+  const idempotencyKey = `${principal.userId ?? principal.actorId ?? "unknown"}:${payload.title}:${payload.divisionId}:${now.split("T")[0]}`;
 
-        // R6-16: Route through intake pipeline - this is REQUIRED
-        // This provides proper task spec validation, risk classification, and admission control
-        if (!deps.intakeAdmissionService) {
-          throw new ApiError(503, "api.intake_pipeline_unavailable", "Intake pipeline is not configured. Task creation requires the intake admission service.");
-        }
-        const defaultRiskPreview: RiskPreview = {
-          riskClass: "low",
-          reasons: [],
-        };
-        const defaultBudgetIntent: BudgetIntent = {
-          amount: 100,
-          currency: "USD",
-          resourceKinds: ["compute", "storage"],
-        };
-        const source: TaskInputSource = (payload.source as TaskInputSource) ?? "user";
+  // Build principal ref from API principal
+  const principalRef: PrincipalRef = createPrincipalRef({
+    principalId: principal.userId ?? principal.actorId ?? "unknown",
+    tenantId: tenantId ?? "global",
+    roles: principal.roles,
+  });
 
-        deps.intakeAdmissionService.admit({
-          tenantId: tenantId ?? "global",
-          principal: principalRef,
-          source,
-          goal: payload.title,
-          inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
-          riskPreview: defaultRiskPreview,
-          constraintPackRef: `constraints:${payload.divisionId}`,
-          budgetIntent: defaultBudgetIntent,
-          idempotencyKey: taskId,
-          traceId: ctx.requestId,
-        });
+  // R6-16: Route through intake pipeline - this is REQUIRED
+  // This provides proper task spec validation, risk classification, and admission control
+  if (!deps.intakeAdmissionService) {
+    throw new ApiError(503, "api.intake_pipeline_unavailable", "Intake pipeline is not configured. Task creation requires the intake admission service.");
+  }
+  const defaultRiskPreview: RiskPreview = {
+    riskClass: "low",
+    reasons: [],
+  };
+  const defaultBudgetIntent: BudgetIntent = {
+    amount: 100,
+    currency: "USD",
+    resourceKinds: ["compute", "storage"],
+  };
+  const source: TaskInputSource = (payload.source as TaskInputSource) ?? "user";
 
-        // Store the task using the authoritative task store
-        if (!deps.taskStore) {
-          throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
-        }
-        deps.taskStore.task.insertTask({
-          id: taskId,
-          parentId: payload.parentId ?? null,
-          rootId: taskId,
-          divisionId: payload.divisionId,
-          tenantId,
-          title: payload.title,
-          status: "queued",
-          source: payload.source ?? "user",
-          priority: payload.priority ?? "normal",
-          inputJson: payload.inputJson ?? "{}",
-          normalizedInputJson: null,
-          outputJson: null,
-          estimatedCostUsd: null,
-          actualCostUsd: 0,
-          errorCode: null,
-          createdAt: now,
-          updatedAt: now,
-          completedAt: null,
-        });
+  const admissionResult = deps.intakeAdmissionService.admit({
+    tenantId: tenantId ?? "global",
+    principal: principalRef,
+    source,
+    goal: payload.title,
+    inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
+    riskPreview: defaultRiskPreview,
+    constraintPackRef: `constraints:${payload.divisionId}`,
+    budgetIntent: defaultBudgetIntent,
+    idempotencyKey,
+    traceId: correlationId,
+  });
 
-        const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
+  // R5-41: Task creation must produce PlatformFactEvent per INV-STATE-001
+  // Use RuntimeStateMachine to create task status event from the admission result
+  const { RuntimeStateMachine } = await import("../../execution/runtime-state-machine.js");
+  const rsm = new RuntimeStateMachine();
+  const taskTransition = rsm.transition({
+    commandId: newId("cmd"),
+    entityType: "HarnessRun",
+    entityId: admissionResult.harnessRun.harnessRunId,
+    principal: principalRef.principalId,
+    aggregateType: "HarnessRun",
+    aggregate: admissionResult.harnessRun,
+    fromStatus: "created",
+    toStatus: "admitted",
+    expectedSeq: 0,
+    traceId: correlationId,
+    tenantId: tenantId ?? "global",
+    reasonCode: "task.created",
+    emittedBy: "api.task-routes",
+    runVersionLockId: admissionResult.runVersionLock.runVersionLockId,
+    leaseId: `lease:task:${taskId}:create`,
+    fencingToken: `fencing:task:${taskId}:create:0`,
+    policyGuard: {
+      allowed: true,
+      policyProofRef: `constraints:${payload.divisionId}`,
+    },
+    budgetPrecondition: {
+      reservationId: admissionResult.harnessRun.budgetLedgerId ?? "pending",
+      hardCapSatisfied: true,
+    },
+    auditRef: `audit://tasks/${taskId}/creation`,
+  });
+
+  // Store the task and publish events in same transaction to avoid orphaned task
+  if (!deps.taskStore) {
+    throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
+  }
+  deps.taskStore.transaction(() => {
+    deps.taskStore.task.insertTask({
+      id: taskId,
+      parentId: payload.parentId ?? null,
+      rootId: taskId,
+      divisionId: payload.divisionId,
+      tenantId,
+      title: payload.title,
+      status: "admitted",
+      source: payload.source ?? "user",
+      priority: payload.priority ?? "normal",
+      inputJson: payload.inputJson ?? "{}",
+      normalizedInputJson: null,
+      outputJson: null,
+      estimatedCostUsd: null,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+    });
+    // Publish PlatformFactEvent to durable event bus
+    const { DurableEventBus } = await import("../../state-evidence/events/durable-event-bus.js");
+    // R5-41: Use task creation event and RSM transition event for event sourcing
+    const creationEvent = {
+      eventType: "platform.task.created" as const,
+      aggregateType: "Task" as const,
+      aggregateId: taskId,
+      aggregateSeq: 1,
+      tenantId: tenantId ?? "global",
+      traceId: correlationId,
+      payload: {
+        taskId,
+        divisionId: payload.divisionId,
+        title: payload.title,
+        source: payload.source ?? "user",
+        principalId: principalRef.principalId,
+        status: "admitted",
+        createdAt: now,
+      },
+      schemaOwner: "task-routes",
+      consumerContractTests: ["task-routes.test.ts"],
+    };
+    const db = deps.taskStore.getDatabase?.();
+    if (db) {
+      const eventBus = new DurableEventBus(db, deps.taskStore);
+      eventBus.publish({
+        eventType: creationEvent.eventType,
+        taskId,
+        traceId: correlationId,
+        payload: creationEvent.payload as Record<string, unknown>,
+      });
+      eventBus.publish({
+        eventType: taskTransition.event.eventType,
+        taskId,
+        traceId: correlationId,
+        payload: taskTransition.event.payload as Record<string, unknown>,
+      });
+    }
+  });
+
+  const cockpit = deps.missionControlService.getTaskCockpit(taskId, tenantId);
         return buildJsonResponse(ctx.requestId, 201, cockpit);
       },
     },
+
     // ── Task Write Operations (R5-39: fixed to use /api/v1 prefix) ────────────
     {
       method: "PATCH",

@@ -397,8 +397,8 @@ function handleSubtaskFailed(
   if (stepId && !state.failedSteps.includes(stepId)) {
     state.failedSteps = [...state.failedSteps, stepId];
   }
-  state.status = "failed";
-  state.failedAt = timestamp;
+  // Do not immediately mark workflow as failed - subtask failure may be retried
+  // or handled by fault tolerance strategies. Mark the step as failed only.
   state.error = {
     code: (payload.reasonCode as string | null) ?? null,
     message: null, // subtask:failed doesn't include error message in payload

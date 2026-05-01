@@ -257,11 +257,13 @@ function validateCommandSignature(command: string, args: readonly string[], risk
     if (scriptPath === null) {
       return deniedAssessment("tool.command_script_missing", "high");
     }
-    // S-04 (reverted): Only block flags BEFORE the script path.
-    // python -c "code" → blocked (dangerous inline code)
-    // python script.py --verbose → ALLOWED (--verbose is for the script)
-    // python /path/script.py --malicious-flag → still blocked because scriptPath would be the flag
-    if (scriptPath.startsWith("-")) {
+    // S-04 (fixed): Block only when ALL args look like interpreter flags.
+    // python -c "code" → blocked (all args are flags, no script)
+    // python --verbose script.py → ALLOWED (script path is after flags)
+    // python /path/script.py → ALLOWED (script path is normal file)
+    // python --malicious-flag → blocked (no script, just flags)
+    const allArgsAreFlags = args.every((arg) => arg.startsWith("-"));
+    if (allArgsAreFlags) {
       return deniedAssessment("tool.command_interpreter_flag_denied", "critical");
     }
     return allowedAssessment(riskLevel, [scriptPath]);

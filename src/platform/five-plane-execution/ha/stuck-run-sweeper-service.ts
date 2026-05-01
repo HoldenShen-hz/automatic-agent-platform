@@ -556,10 +556,6 @@ export class StuckRunSweeperService implements RecoveryWorker {
    * Kills a stuck run.
    */
   private async killRun(run: StuckRun): Promise<boolean> {
-    run.status = "killed";
-    run.killedAt = nowIso();
-    this.metrics.totalKilled++;
-
     try {
       // Call the kill callback if provided
       if (this.onKillExecution) {
@@ -575,6 +571,11 @@ export class StuckRunSweeperService implements RecoveryWorker {
           });
         }
       }
+
+      // Only mark as killed after successful callback completion
+      run.status = "killed";
+      run.killedAt = nowIso();
+      this.metrics.totalKilled++;
 
       this.onRunKilled?.(run);
 

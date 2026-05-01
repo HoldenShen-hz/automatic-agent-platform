@@ -38,7 +38,8 @@ export class DomainRegistryService {
 
   public register(input: DomainDefinition): DomainDefinition {
     const parsed = DomainDefinitionSchema.parse(input);
-    const normalized = parsed.status === "validated"
+    const isAutoPromoted = parsed.status === "validated";
+    const normalized = isAutoPromoted
       ? { ...parsed, status: "registered" as const }
       : parsed;
     const normalizedBindings = normalized.pluginBindings.map((binding, index) =>
@@ -65,6 +66,21 @@ export class DomainRegistryService {
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);
     this.toolBundleRegistry.registerAll(normalizedDefinition.toolBundles);
     this.contractRegistry.registerAll(normalizedDefinition.outputContracts);
+
+    // §37: Publish domain:validated event when auto-promoting from validated→registered
+    if (isAutoPromoted) {
+      this.eventPublisher?.publish({
+        eventType: "domain:validated",
+        payload: {
+          domainId: normalizedDefinition.domainId,
+          status: "validated",
+          capabilityCount: normalizedDefinition.pluginBindings.length,
+          pluginCount: normalizedDefinition.pluginBindings.length,
+          occurredAt: nowIso(),
+        },
+      });
+    }
+
     this.eventPublisher?.publish({
       eventType: "domain:registered",
       payload: {

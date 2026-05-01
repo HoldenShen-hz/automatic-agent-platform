@@ -186,7 +186,9 @@ function buildAgentCards(items: readonly TaskBoardItem[]): AgentHealthCard[] {
     const failures = groupedItems.filter((item) => item.taskStatus === "failed").length;
     const completed = groupedItems.filter((item) => item.taskStatus === "done").length;
     const total = groupedItems.length;
-    const successRate = total === 0 ? 1 : completed / total;
+    // §43: successRate excludes pending/in_progress - only completed vs failed counts
+    const settled = completed + failures;
+    const successRate = settled === 0 ? 1 : completed / settled;
     return {
       agentId: `agent:${domainId}:${index + 1}`,
       domainId,
@@ -414,7 +416,20 @@ export class DashboardAggregationService implements DashboardPort {
       });
     }
 
-    return [...queue, ...this.suggestions].sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    const PRIORITY_ORDER: Record<AttentionItem["priority"], number> = {
+      critical: 0,
+      high: 1,
+      normal: 2,
+      low: 3,
+    };
+
+    return [...queue, ...this.suggestions].sort((left, right) => {
+      // §43: Sort by priority first (critical=0 highest, low=3 lowest), then by recency
+      const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+      // Within same priority, newer items first
+      return right.createdAt.localeCompare(left.createdAt);
+    });
   }
 
   private buildActionControls(
@@ -529,6 +544,19 @@ export class DashboardAggregationService implements DashboardPort {
       }
     }
 
-    return updatedQueue.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    const PRIORITY_ORDER: Record<AttentionItem["priority"], number> = {
+      critical: 0,
+      high: 1,
+      normal: 2,
+      low: 3,
+    };
+
+    return updatedQueue.sort((left, right) => {
+      // §43: Sort by priority first (critical=0 highest, low=3 lowest), then by recency
+      const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+      // Within same priority, newer items first
+      return right.createdAt.localeCompare(left.createdAt);
+    });
   }
 }

@@ -164,8 +164,15 @@ export class SecretManagementService {
 
   /**
    * Requires a secret value, throwing if not available.
+   * SECURITY: Always records usage audit to prevent audit bypass via direct secret access.
    */
-  public async requireSecret(secretRef: string): Promise<ManagedSecretValue> {
+  public async requireSecret(secretRef: string, context?: {
+    requestedBy?: string;
+    grantedTo?: string;
+    usagePurpose?: string;
+    taskId?: string;
+    executionId?: string;
+  }): Promise<ManagedSecretValue> {
     const registry = this.requireRegistryRecord(secretRef);
     if (registry.status === "disabled" || registry.status === "revoked") {
       throw new PolicyDeniedError(`secret.registry_unavailable:${registry.secretRef}:${registry.status}`, `secret.registry_unavailable:${registry.secretRef}:${registry.status}`, {
@@ -180,6 +187,25 @@ export class SecretManagementService {
       });
     }
     const value = await provider.requireSecret(registry.secretRef);
+
+    // SECURITY FIX: Record usage audit to prevent audit bypass.
+    // Even when context parameters are not provided, we record a minimal audit entry.
+    const usageAudit: SecretUsageAuditRecord = {
+      auditId: newId("secret_audit"),
+      secretRef: registry.secretRef,
+      providerKind: registry.providerKind,
+      taskId: context?.taskId ?? null,
+      executionId: context?.executionId ?? null,
+      requestedBy: context?.requestedBy ?? "unknown",
+      grantedTo: context?.grantedTo ?? "unknown",
+      usagePurpose: context?.usagePurpose ?? "direct_secret_access",
+      resolvedAt: nowIso(),
+      expiresAt: null,
+      maskedValue: value.maskedValue,
+      metadataJson: null,
+    };
+    this.store.secret.insertSecretUsageAudit(usageAudit);
+
     const { value: secretValue, ...providerMetadata } = value;
     return {
       metadata: {
@@ -188,7 +214,7 @@ export class SecretManagementService {
         registryStatus: registry.status,
         lastRotatedAt: registry.lastRotatedAt,
         nextRotationDueAt: registry.nextRotationDueAt,
-        auditId: null,
+        auditId: usageAudit.auditId,
       },
       value: secretValue,
       registry,

@@ -251,6 +251,13 @@ export interface EventRecord {
   aggregateId: string | null;
   runId: string | null;
   sequence: number | null;
+  // §28.1 causation tracking for event chain reconstruction
+  causationId: string | null;
+  correlationId: string | null;
+  // §28.1 payload integrity for replay verification
+  payloadHash: string | null;
+  // §28.1 idempotency key for duplicate detection
+  idempotencyKey: string | null;
   replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
   principal: string | null;
   evidenceRefs: readonly string[];

@@ -124,6 +124,7 @@ export class ApiKeyService {
       return null;
     }
     if (existing.expiresAt && new Date(existing.expiresAt) < new Date()) {
+      // SECURITY FIX: Update status to "expired" when key is expired during rotation
       existing.status = "expired";
       return null;
     }

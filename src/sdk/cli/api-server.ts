@@ -156,16 +156,35 @@ async function main(): Promise<void> {
     // Initialize billing service
     const billingService = new BillingService(db, store);
 
-    // Initialize optional authentication service if keys and secret are provided
+    // Initialize authentication service - require at least one auth mechanism
+    // Per security requirements, the server must not run with all endpoints unprotected
     const authService = (() => {
-      if (envConfig.apiKeys.length === 0 || envConfig.jwtSecret == null) {
-        return null;
+      if (envConfig.apiKeys.length > 0 && envConfig.jwtSecret != null) {
+        return new ApiAuthService({
+          apiKeys: envConfig.apiKeys,
+          jwtSecret: envConfig.jwtSecret,
+        });
       }
-      return new ApiAuthService({
-        apiKeys: envConfig.apiKeys,
-        jwtSecret: envConfig.jwtSecret,
-      });
+      if (envConfig.apiKeys.length > 0) {
+        return new ApiAuthService({
+          apiKeys: envConfig.apiKeys,
+          jwtSecret: "", // API key only mode
+        });
+      }
+      if (envConfig.jwtSecret != null) {
+        return new ApiAuthService({
+          apiKeys: [],
+          jwtSecret: envConfig.jwtSecret,
+        });
+      }
+      throw new Error("AA_API_KEYS or AA_JWT_SECRET must be provided - server cannot start with all endpoints unprotected");
     })();
+
+    // Validate webhook secret minimum entropy to prevent weak secrets allowing webhook forgery
+    const MIN_WEBHOOK_SECRET_ENTROPY = 32;
+    if (envConfig.webhookSecret != null && envConfig.webhookSecret.length < MIN_WEBHOOK_SECRET_ENTROPY) {
+      throw new Error(`AA_WEBHOOK_SECRET must be at least ${MIN_WEBHOOK_SECRET_ENTROPY} characters to prevent webhook forgery attacks`);
+    }
 
     // Initialize the main channel gateway service with all dependencies
     const channelGateway = new ChannelGatewayService(gatewayStorage, gatewayTargets, {

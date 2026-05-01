@@ -293,7 +293,8 @@ export class KnowledgeRetrievalService {
     keyword: string,
     options: KnowledgeQueryOptions,
   ): Array<[string, number]> {
-    if (this.semanticVectorStore) {
+    // Sync path does not support pgvector backend - use async path for semantic search
+    if (!this.semanticVectorStore) {
       return [];
     }
     const queryEmbedding = buildSemanticEmbedding(keyword);

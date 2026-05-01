@@ -1,6 +1,6 @@
 {
   "appName": "automatic-agent-system",
-  "phase": "phase_1a",
+  "phase": "ring_1",
   "stableCoreEnabled": true,
   "dependencyOrder": ["P5", "X1", "P2", "P3", "P4", "P1"],
   "healthCheckTimeoutMs": 15000,

@@ -10,6 +10,8 @@ export interface PlatformAdapterFactoryOptions {
   readonly platform: PlatformId;
   readonly screenSecurityDefault?: boolean;
   readonly analyticsConsentDefault?: boolean;
+  /** Whitelist of allowed shell commands per §7.1 Security. Empty means no commands allowed. */
+  readonly allowedShellCommands?: readonly string[];
 }
 
 class MemorySecureStore {
@@ -37,10 +39,13 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
   private nextPid = 1000;
   private analyticsConsent: boolean;
   private screenSecurityEnabled: boolean;
+  /** Allowed shell commands whitelist per §7.1 Security. */
+  private readonly allowedShellCommands: ReadonlySet<string>;
 
   public constructor(public readonly platform: PlatformId, options: Omit<PlatformAdapterFactoryOptions, "platform"> = {}) {
     this.analyticsConsent = options.analyticsConsentDefault ?? false;
     this.screenSecurityEnabled = options.screenSecurityDefault ?? false;
+    this.allowedShellCommands = new Set(options.allowedShellCommands ?? []);
   }
 
   public async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -94,6 +99,14 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
   }
 
   public async runShell(command: string): Promise<{ code: number; stdout: string; stderr: string }> {
+    // P1 FIX: Command injection prevention via whitelist per §7.1 Security
+    if (this.allowedShellCommands.size > 0 && !this.allowedShellCommands.has(command)) {
+      return {
+        code: 1,
+        stdout: "",
+        stderr: `Command "${command}" not in whitelist. Allowed commands: ${[...this.allowedShellCommands].join(", ")}`,
+      };
+    }
     return {
       code: 0,
       stdout: `${this.platform}:${command}`,

@@ -73,7 +73,15 @@ export class OfflineQueue {
 
   private async persist(): Promise<void> {
     await this.readyPromise;
-    await this.store.writeAll([...this.queue]);
+    try {
+      await this.store.writeAll([...this.queue]);
+    } catch (error) {
+      // P1 FIX: Persist failure should not be silently ignored.
+      // Log error so operators can see it; mutation remains in memory but will be
+      // lost on crash. A more robust fix would be to track persist status per mutation.
+      console.error("[OfflineQueue] Persist failed, mutations may be lost on crash:", error);
+      throw error;
+    }
   }
 }
 

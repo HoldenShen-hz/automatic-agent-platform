@@ -34,7 +34,8 @@ const envConfig = loadShadowSnapshotCliEnv();
 const service = new ShadowSnapshotService({
   workspaceRoot: envConfig.workspaceRoot,
   shadowRoot: envConfig.shadowRoot,
-  sandboxPolicy: createWorkspaceWritePolicy(envConfig.workspaceRoot),
+  // Sandbox policy must cover the actual write target (shadowRoot), not just workspaceRoot
+  sandboxPolicy: createWorkspaceWritePolicy(envConfig.shadowRoot),
   ...(envConfig.maxEntryBytes != null
     ? { maxEntryBytes: envConfig.maxEntryBytes }
     : {}),

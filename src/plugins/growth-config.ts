@@ -198,7 +198,7 @@ export const growthDomainDefinition: DomainDefinition = {
     },
     securityLevel: "standard",
   },
-  externalAdapters: ["github", "jira"],
+  externalAdapters: ["github"],
   pluginBindings: [
     { bindingId: "growth.retriever", domainId: "growth", pluginType: "retriever", pluginId: "plugin.growth.retriever", priority: 10, enabled: true, config: {} },
     { bindingId: "growth.presenter", domainId: "growth", pluginType: "tool", bindingRole: "presenter", pluginId: "plugin.growth.presenter", priority: 10, enabled: true, config: {} },

@@ -86,6 +86,8 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
     spiType: "validator",
     capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
     async initialize() {
+      // Plugin lifecycle initialization - validate configuration and allocate resources
+      // Per PluginLifecycleHooks, initialize is called once when plugin is loaded
       return undefined;
     },
     async healthCheck() {

@@ -196,6 +196,8 @@ export function validateListingDependencies(
   }
 
   return {
+    // Root cause: Cycle detection exists but was not being enforced in the valid flag
+    // Fix: Ensure cyclic dependencies make the listing invalid
     valid: missingDependencies.length === 0 && incompatibilities.length === 0 && cyclicDependencies.length === 0,
     missingDependencies,
     incompatibilities,

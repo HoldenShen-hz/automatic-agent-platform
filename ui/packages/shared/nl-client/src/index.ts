@@ -13,9 +13,26 @@ export interface ConversationMessage {
   readonly content: string;
 }
 
+/接受
+/**
+ * In-memory conversation client for testing/development only.
+ *
+ * P1 FIX: This client does NOT interact with any backend. When WebSocket is unavailable,
+ * UI state will diverge from backend truth. Use ConversationClient only in test environments
+ * or when WS is explicitly not available.
+ *
+ * Production code should always use WebSocket-based communication via WSClient.
+ */
 export class ConversationClient {
   private readonly messages: ConversationMessage[] = [];
   private status: ConversationStatus = "idle";
+
+  constructor() {
+    // Warn in development about using in-memory client
+    if (typeof console !== 'undefined') {
+      console.warn("[ConversationClient] In-memory client active. UI state not synced with backend. Use WSClient in production.");
+    }
+  }
 
   public listMessages(): readonly ConversationMessage[] {
     return this.messages;

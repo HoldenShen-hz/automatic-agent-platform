@@ -158,10 +158,13 @@ export const PluginBindingSchema = z.object({
     z.enum(["tool", "adapter", "retriever", "evaluator"]),
   ),
   bindingRole: z.preprocess(
-    (value) => typeof value === "string"
-      ? DOMAIN_PLUGIN_ROLE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES] ?? value
-      : undefined,
-    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]).optional(),
+    (value) => {
+      if (typeof value !== "string") {
+        return null; // Reject non-string values by returning null (will fail enum check)
+      }
+      return DOMAIN_PLUGIN_ROLE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES] ?? value;
+    },
+    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]).nullable(),
   ),
   pluginId: z.string().min(1),
   priority: z.number().int().default(0),

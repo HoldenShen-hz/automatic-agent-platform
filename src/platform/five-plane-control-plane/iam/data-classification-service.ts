@@ -715,9 +715,24 @@ export class DataClassificationService {
   private matchesRule(content: string, rule: DataClassificationRule): boolean {
     const lower = content.toLowerCase();
 
-    // Check patterns
+    // Check patterns with ReDoS protection
     for (const pattern of rule.patterns) {
-      if (new RegExp(pattern, "i").test(content)) return true;
+      // SECURITY FIX: Validate regex patterns for ReDoS vulnerabilities before use.
+      // Malicious patterns like "(a+)+$" can cause exponential backtracking.
+      if (!this.isRegexSafe(pattern)) {
+        // Log warning but don't throw - treat unsafe patterns as non-matching
+        StructuredLogger.warn?.("data_classification.unsafe_regex_rejected", {
+          pattern,
+          ruleId: rule.id,
+        });
+        continue;
+      }
+      try {
+        if (new RegExp(pattern, "i").test(content)) return true;
+      } catch {
+        // Invalid regex - skip
+        continue;
+      }
     }
 
     // Check keywords
@@ -726,5 +741,42 @@ export class DataClassificationService {
     }
 
     return false;
+  }
+
+  /**
+   * Validates that a regex pattern is safe from catastrophic backtracking (ReDoS).
+   * Uses heuristic checks for dangerous constructs like nested quantifiers.
+   */
+  private isRegexSafe(pattern: string): boolean {
+    // ReDoS-prone patterns typically have:
+    // - Nested quantifiers: (a+)+, (a*)*, (a{1,})+ etc.
+    // - Overlapping alternatives: (a|a)+ etc.
+    // - Greedy quantifiers with common prefixes followed by optional content
+
+    // Check for obviously dangerous patterns with nested quantifiers
+    const dangerousPatterns = [
+      /\([^)]*[+*][^)]*\)[+*]/,  // (...)+(...)* etc.
+      /\(\.[+*]\)[+*]/,          // (.*)+ etc.
+      /\([^)]+\)\{[0-9]*,0\}\{/,  // (...)* {...} combinations
+    ];
+
+    for (const danger of dangerousPatterns) {
+      if (danger.test(pattern)) {
+        return false;
+      }
+    }
+
+    // Check for excessive repetition in character classes
+    const excessiveRepeat = /\[([^\]]{1,3})\]\+\+/;
+    if (excessiveRepeat.test(pattern)) {
+      return false;
+    }
+
+    // Patterns should have some structure - reject pure quantifiers
+    if (/^[+*]+$/.test(pattern) || /^\{[0-9,]+\}[+*]+$/.test(pattern)) {
+      return false;
+    }
+
+    return true;
   }
 }

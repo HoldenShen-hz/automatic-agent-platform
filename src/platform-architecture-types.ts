@@ -27,6 +27,12 @@ export interface PlatformAppManifest {
 
 export type PlatformStartupTargetKind = "summary" | "demo" | PlatformAppKind;
 
+/**
+ * Entry mode for platform root operation.
+ * Alias for PlatformStartupTargetKind to provide clearer semantics at entry point level.
+ */
+export type PlatformRootEntryMode = PlatformStartupTargetKind;
+
 export interface PlatformStartupTarget {
   targetKind: PlatformStartupTargetKind;
   rootEntryModule: string;

@@ -327,6 +327,9 @@ export class CertificationGate {
     const blockedBy: string[] = [];
 
     // Check status
+    // Root cause: Only checking status string, not approvedAt existence
+    // status="approved" but approvedAt=null means not actually certified
+    // Fix: Check both status AND approvedAt
     if (certification.status === "revoked") {
       reasons.push("Certification is revoked");
       blockedBy.push("certification_revoked");
@@ -338,6 +341,11 @@ export class CertificationGate {
     if (certification.status === "pending" || certification.status === "in_review") {
       reasons.push("Certification is not yet approved");
       blockedBy.push("certification_pending");
+    }
+    // approvedAt must exist for approved status
+    if (certification.status === "approved" && certification.approvedAt == null) {
+      reasons.push("Certification approved but missing approval timestamp");
+      blockedBy.push("certification_invalid");
     }
 
     // Security scan gate

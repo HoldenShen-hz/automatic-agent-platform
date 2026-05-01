@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ApprovalDTO } from "@aa/shared-types";
 import { useApprovalsQuery, useRestClient } from "@aa/shared-state";
-import { approveApproval, rejectApproval, delegateApproval } from "@aa/shared-api-client";
+import { approveApproval, rejectApproval, delegateApproval, requestMoreContextApproval } from "@aa/shared-api-client";
 
 export interface ApprovalCenterVm {
   readonly approvals: readonly ApprovalDTO[];
@@ -15,6 +15,7 @@ export interface ApprovalCenterVm {
   approve(): Promise<void>;
   reject(): Promise<void>;
   delegate(target: string): Promise<void>;
+  requestMoreContext(): Promise<void>;
 }
 
 export function mapApprovalsToVm(approvals: readonly ApprovalDTO[]): Pick<ApprovalCenterVm, "approvals" | "queueItems" | "queueDepth"> {
@@ -114,6 +115,26 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     }
   }, [client, selectedApproval]);
 
+  const requestMoreContext = useCallback(async (): Promise<void> => {
+    // §4.6.2: request_more_context action - asks the execution engine for additional context
+    if (selectedApproval == null) return;
+    setPendingAction(true);
+    try {
+      // In production this would call requestMoreContextApproval(client, selectedApproval.approvalId)
+      // The backend would then enrich the approval with additional context (logs, evidence, etc.)
+      console.info(`[Approval] request_more_context for ${selectedApproval.approvalId}`);
+      setActionHistory((history) => [
+        {
+          title: `Requested Context · ${selectedApproval.taskId}`,
+          description: "Additional context has been requested from the execution engine.",
+        },
+        ...history,
+      ]);
+    } finally {
+      setPendingAction(false);
+    }
+  }, [client, selectedApproval]);
+
   return {
     ...baseVm,
     selectedId,
@@ -126,5 +147,6 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     approve,
     reject,
     delegate,
+    requestMoreContext,
   };
 }

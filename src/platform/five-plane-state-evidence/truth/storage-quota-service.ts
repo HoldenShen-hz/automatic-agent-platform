@@ -156,7 +156,15 @@ export class StorageQuotaService {
           break;
         }
 
-        rmSync(record.path, { force: true });
+        try {
+          rmSync(record.path, { force: true });
+        } catch (err) {
+          logger.warn("session_dual_storage.cleanup.rm_failed", {
+            path: record.path,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          continue;
+        }
         totalBytes -= record.sizeBytes;
         removedFiles.push({
           path: record.path,

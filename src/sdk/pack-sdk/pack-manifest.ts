@@ -65,6 +65,13 @@ export interface BusinessPackManifest {
   };
   /** SDK release descriptor with version compatibility and deprecation policy per §22 */
   sdk_release?: SdkReleaseDescriptor;
+  /** Rollback strategy for pack deployment per "先可恢复再自动化"宪法 */
+  rollbackStrategy?: {
+    readonly enabled: boolean;
+    readonly strategy: "automatic" | "manual" | "semi_auto";
+    readonly maxRollbackDurationMs?: number;
+    readonly requireApproval?: boolean;
+  };
 }
 
 export function validateBusinessPackManifest(

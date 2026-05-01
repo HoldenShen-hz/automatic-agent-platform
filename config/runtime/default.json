@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "configVersion": "runtime-default-v1",
   "maxConcurrentTasks": 1,
-  "defaultTaskTimeoutMs": 300000,
+  "defaultNodeRunTimeoutMs": 300000,
   "apiDefaultTimeoutMs": 5000,
   "apiMaxTimeoutMs": 30000,
   "maxAgentRounds": 6,

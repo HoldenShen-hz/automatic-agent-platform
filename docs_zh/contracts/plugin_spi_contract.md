@@ -1,6 +1,6 @@
 # Plugin SPI Contract
 
-> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Domain Registry 的 Plugin SPI 接口体系，对应 ADR-066。
+> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Domain Registry 的 Plugin SPI 接口体系，对应 ADR-071。
 > **更新日期**：2026-04-17
 
 ## 1. 范围
@@ -10,7 +10,7 @@
 相关文档：
 - `tool_skill_plugin_contract.md`：Tool/Skill/Plugin 的关系。
 - `sandbox_and_auth_contract.md`：Plugin 沙箱安全边界。
-- [ADR-066 Plugin SPI Framework](../adr/066-plugin-spi-framework.md)
+- [ADR-071 Plugin SPI Framework](../adr/071-plugin-spi-framework.md)
 
 ## 2. 四种 OAPEFLIR Domain Plugin SPI 接口
 

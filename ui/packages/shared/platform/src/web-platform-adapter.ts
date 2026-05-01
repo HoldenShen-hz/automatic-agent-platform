@@ -5,19 +5,10 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
     super("web");
   }
 
-  public override async readSecureValue(key: string): Promise<string | null> {
-    return globalThis.localStorage?.getItem(`aa.secure.${key}`) ?? super.readSecureValue(key);
-  }
-
-  public override async writeSecureValue(key: string, value: string): Promise<void> {
-    globalThis.localStorage?.setItem(`aa.secure.${key}`, value);
-    await super.writeSecureValue(key, value);
-  }
-
-  public override async deleteSecureValue(key: string): Promise<void> {
-    globalThis.localStorage?.removeItem(`aa.secure.${key}`);
-    await super.deleteSecureValue(key);
-  }
+  // NOTE: Secure storage delegates to DefaultPlatformAdapter's in-memory store.
+  // localStorage is NOT used for sensitive data as it is XSS-vulnerable (UP-6).
+  // In production, sensitive data should be stored in platform-native secure storage
+  // (e.g., Keychain on iOS, Keystore on Android) via the bridge.
 
   public override async copyToClipboard(text: string): Promise<void> {
     await globalThis.navigator?.clipboard?.writeText?.(text);

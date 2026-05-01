@@ -27,6 +27,7 @@ export function resolveDelegatedApprover(
     && item.startsAt <= nowIso
     && item.expiresAt >= nowIso
     && (item.scopeNodeIds.length === 0 || item.scopeNodeIds.includes(orgNodeId))
+    && item.coiReviewStatus !== "failed" // SECURITY FIX: Reject delegations with failed COI review
     && (
       item.delegationType !== "peer_cover"
       || (item.coiReviewStatus === "passed"

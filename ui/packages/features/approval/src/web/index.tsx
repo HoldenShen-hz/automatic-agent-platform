@@ -7,6 +7,19 @@ export function ApprovalWebView(): ReactElement {
   const [delegateTarget, setDelegateTarget] = useState("domain-admin");
   const selectedApproval = vm.selectedApproval;
 
+  // Compute deadline countdown if deadline is set
+  const deadlineCountdown = selectedApproval?.deadline != null
+    ? (() => {
+        const now = Date.now();
+        const deadlineMs = new Date(selectedApproval.deadline).getTime();
+        const diff = deadlineMs - now;
+        if (diff <= 0) return "Expired";
+        const hours = Math.floor(diff / 3_600_000);
+        const minutes = Math.floor((diff % 3_600_000) / 60_000);
+        return hours > 0 ? `${hours}h ${minutes}m remaining` : `${minutes}m remaining`;
+      })()
+    : null;
+
   return (
     <FeatureScaffold title="Approval Center" summary="审批队列、委派与恢复动作闭环" status="Implemented/Contracted">
       <ThreePaneLayout
@@ -37,12 +50,16 @@ export function ApprovalWebView(): ReactElement {
                 { key: "Task", value: selectedApproval.taskId },
                 { key: "Risk", value: selectedApproval.riskLevel },
                 { key: "Reason", value: selectedApproval.reasonSummary },
-                { key: "Action", value: "Approve / Reject / Delegate" },
+                { key: "Deadline", value: deadlineCountdown ?? selectedApproval.deadline ?? "No deadline" },
+                { key: "Policy Source", value: selectedApproval.policySource ?? "platform-default" },
+                { key: "Recommended Option", value: selectedApproval.recommendedOption ?? "none" },
+                { key: "Action", value: "Approve / Reject / Delegate / Request Context" },
               ]}
             />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={vm.approve} type="button">Approve</button>
               <button onClick={vm.reject} type="button">Reject</button>
+              <button onClick={vm.requestMoreContext} type="button">Request Context</button>
               <input onChange={(event) => setDelegateTarget(event.target.value)} value={delegateTarget} />
               <button
                 onClick={() => {

@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Canonical risk configuration aligned with §28 Event Registry and DLQ model",
   "riskCategories": [
     "operational",

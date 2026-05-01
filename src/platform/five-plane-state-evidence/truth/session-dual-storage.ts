@@ -129,7 +129,8 @@ export class SessionDualStorageService {
         sessionPath,
         taskIndexPath,
       });
-      return;
+      // Throw to indicate partial failure - session persisted but index failed
+      throw new Error(`Failed to open task index for session ${event.sessionId}, task ${event.taskId}: ${err instanceof Error ? err.message : String(err)}`);
     }
     try {
       appendFileSync(taskIndexFd, line, "utf8");
@@ -143,6 +144,8 @@ export class SessionDualStorageService {
         sessionPath,
         taskIndexPath,
       });
+      // Throw to indicate write failure - session persisted but index write failed
+      throw new Error(`Failed to write task index for session ${event.sessionId}, task ${event.taskId}: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       closeSync(taskIndexFd);
     }

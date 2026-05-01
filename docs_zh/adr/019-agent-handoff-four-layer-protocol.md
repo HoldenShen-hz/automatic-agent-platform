@@ -33,6 +33,12 @@ interface HandoffSerializer {
 }
 ```
 
+当前 canonical 交接 / 委托 contract 见 [agent_handoff_contract.md](../contracts/agent_handoff_contract.md)。其中：
+
+- 回执锚点使用 `NodeAttemptReceipt` / `HarnessRun` / `NodeRun`。
+- 委托请求使用 `DelegationRequest` / `DelegationReceipt` / `ACPMessage`。
+- handoff 载荷使用 `AgentHandoff` 分层对象，并受 depth / budget / data boundary 约束。
+
 ### Token Budget 分配策略
 
 ```
@@ -65,6 +71,7 @@ interface HandoffSerializer {
 
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-060 显式规划中心](./060-explicit-planning-hub.md)
+- [Agent Handoff Contract](../contracts/agent_handoff_contract.md)
 
 ## 来源章节
 

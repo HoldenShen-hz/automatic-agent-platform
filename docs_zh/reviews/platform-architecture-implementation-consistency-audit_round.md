@@ -578,8 +578,8 @@
 | R8-65 | P1     | docs_zh/contracts/event_bus_contract.md                     | Legacy EventEnvelope 用 task_id 作关联字段；v4.3 要求 harnessRunId + aggregate 关联；parallel schema 未重定向                                                                  |
 | R8-66 | P1     | docs_zh/adr/019-agent-handoff-four-layer-protocol.md        | HandoffSerializer.buildFromStepResult(result: StepResult) 引用废弃类型；v4.3 用 NodeAttemptReceipt                                                                             |
 | R8-67 | P1     | 缺失 contract: Agent Delegation / Multi-Agent Collaboration | §19 定义完整委托协议(DelegationRequest/DelegationReceipt/depth C1-C7)；无对应 contract 文件                                                                                    |
-| R8-68 | P1     | docs_zh/contracts/task-intake-request-contract.md           | TaskDraft/ConfirmedTaskSpec 无 domainId 字段；§30/§37 要求每个进入执行的任务携带已验证 domain_id                                                                               |
-| R8-69 | P1     | docs_zh/contracts/harness-run-contract.md                   | HarnessRun 有 tenantId 无 domainId；§37 要求域绑定用于风险覆盖/知识边界/prompt 库选择                                                                                          |
+| R8-68 | P1     | docs_zh/contracts/task-intake-request-contract.md           | 已修复：canonical `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` 已补 `domainId`，并在 intake / nl-gateway 入口归一化 legacy division/domain alias                 |
+| R8-69 | P1     | docs_zh/contracts/harness-run-contract.md                   | 已修复：canonical `HarnessRun`、adapter 与 goal-decomposer 路由已携带 `domainId`，run truth 不再依赖 tenant/division 投影反推域绑定                                       |
 | R8-70 | P1     | 缺失 contract: ReleaseDecisionView / ReleaseChannel         | §13 列 ReleaseDecisionView 为 canonical OAPEFLIR 投影对象；ADR-091 要求 ReleaseChannel；均无 contract                                                                          |
 | R8-71 | P1     | docs_zh/adr/012-sqlite-phase-1-2-primary-store.md           | 仍 Accepted 范围为 "Phase 1a/1b"；v4.3 用 Ring 1 MVP；退出条件未映射到 Ring 边界                                                                                               |
 | R8-72 | P1     | docs_zh/adr/013-eventemitter-phase-2-boundary.md            | 同上——范围 "Phase 1a/1b/Phase 2" 无 Ring 映射；退出触发器("Phase 2 是否替换")已无定义                                                                                          |
@@ -4642,4 +4642,3 @@
 | 2602 | P2     | src/scale-ecosystem/marketplace/catalog/index.ts:63                   | validateListingDependencies 无循环检测——循环依赖致安装无限递归               |
 | 2603 | P2     | src/scale-ecosystem/multi-region/region-health-check-service.ts:240   | checkAllRegions 串行 await——大量 region 延迟线性增长                         |
 | 2604 | P2     | src/scale-ecosystem/multi-region/failover-controller/index.ts:36      | failover 取 candidateRegionIds[0]——未考虑健康状态和复制 lag                  |
-

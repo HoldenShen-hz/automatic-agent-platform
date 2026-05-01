@@ -27,7 +27,7 @@ observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
 - `release` 完成后，可进入下一轮 `observe`，并把 `loop_iteration + 1`。
 - 若任务已经满足退出条件，可直接进入 terminal，不要求开启下一轮。
 
-`OapeflirStage` 枚举：
+`OapeflirStageView` 枚举（projection-only；旧文档若写 `OapeflirStage`，必须按 view alias 理解）：
 
 - `observe`
 - `assess`
@@ -49,6 +49,7 @@ observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
 
 约束：
 
+- `stage` / `OapeflirStageView` 只允许作为视图字段，不得驱动 truth 状态迁移。
 - `stage` 的 canonical 写法必须是上述枚举，不得使用 `perceive`、`analyze`、`deploy` 等同义词替代。
 - `skipped` 只能用于明确受控跳过，不得用作失败降级别名。
 - `release` 是当前闭环阶段，不等同于一定发生真实外部发布；真正发布动作仍由 HarnessRuntime / Release Gate 受控推进。

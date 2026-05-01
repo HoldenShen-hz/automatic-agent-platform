@@ -44,9 +44,21 @@ export interface EvidenceStatistics {
 
 export class InMemoryEvidenceStore implements EvidenceStore {
   private records: EvidenceRecord[] = [];
+  private readonly maxRecords: number;
+
+  constructor(maxRecords = 10_000) {
+    this.maxRecords = maxRecords;
+  }
+
+  private evictIfNeeded(): void {
+    if (this.records.length >= this.maxRecords) {
+      this.records = this.records.slice(-this.maxRecords);
+    }
+  }
 
   async append(record: EvidenceRecord): Promise<void> {
     this.records.push(record);
+    this.evictIfNeeded();
   }
 
   async getById(id: string): Promise<EvidenceRecord | null> {

@@ -172,7 +172,7 @@ export class LeaderElectionService {
         this.nodeMetadata,
       );
 
-      // For HA-1, skip leader election (single-node mode)
+      // For HA_1, skip leader election (single-node mode)
       if (this.config.haLevel === "HA_1") {
         const acquiredAt = nowIso();
         this.currentEpoch = Math.max(this.currentEpoch, 1);
@@ -191,6 +191,10 @@ export class LeaderElectionService {
           nodeId: this.effectiveNodeId,
           isSingleNode: true,
         });
+
+        // Start heartbeat and renewal loop for single-node mode to prevent lease expiration
+        this.startHeartbeat();
+        this.startRenewalLoop();
         return;
       }
 

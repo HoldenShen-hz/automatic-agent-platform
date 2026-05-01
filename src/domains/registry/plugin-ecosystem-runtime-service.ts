@@ -86,6 +86,7 @@ export class PluginEcosystemRuntimeService {
         findings.push(`connector not prod-ready: ${target.connectorId}`);
       }
     }
+    const allPluginsHealthy = pluginTargets.every((target) => target.healthy);
     return {
       planId: newId("ecosystem_plan"),
       domainId: input.domainId,
@@ -93,7 +94,7 @@ export class PluginEcosystemRuntimeService {
       environment: input.environment,
       pluginTargets,
       connectorTargets,
-      ready: findings.length === 0 && domain.status === "active",
+      ready: findings.length === 0 && allPluginsHealthy && domain.status === "active",
       findings,
     };
   }
@@ -131,7 +132,7 @@ export class PluginEcosystemRuntimeService {
     }
     return {
       activationId: newId("ecosystem_activation"),
-      plan: this.buildPlan(input),
+      plan,
       activatedPluginIds,
       connectorBindings,
     };

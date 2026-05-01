@@ -256,8 +256,11 @@ export class KnowledgeQueryService {
       case QueryLevel.Standard:
         return this.executeStandardQuery(keyword, options);
       case QueryLevel.Deep:
-        // Deep requires async, fall back to sync-safe subset
-        return this.executeStandardQuery(keyword, { ...options, limit: 30 });
+        throw new ValidationError(
+          "knowledge_query.deep_requires_async",
+          "Deep query level requires async execution via queryAsync().",
+          { details: { level: QueryLevel.Deep } },
+        );
     }
   }
 
@@ -420,17 +423,25 @@ export class KnowledgeQueryService {
 
   /**
    * Truncate hits to max tokens by trimming snippets.
+   * Calculates total character budget and distributes across hits proportionally.
    * Note: This is a simplified token approximation (4 chars ≈ 1 token).
    */
   private truncateHits(hits: RetrievalHit[], maxTokens: number): RetrievalHit[] {
+    if (hits.length === 0) {
+      return hits;
+    }
     const maxChars = maxTokens * 4;
-    return hits.map((hit) => {
-      if (hit.snippet.length <= maxChars) {
+    const basePerHit = Math.floor(maxChars / hits.length);
+    const remainder = maxChars % hits.length;
+
+    return hits.map((hit, index) => {
+      const perHitBudget = index < remainder ? basePerHit + 1 : basePerHit;
+      if (hit.snippet.length <= perHitBudget) {
         return hit;
       }
       return {
         ...hit,
-        snippet: hit.snippet.slice(0, maxChars) + "…",
+        snippet: hit.snippet.slice(0, Math.max(0, perHitBudget - 1)) + "…",
       };
     });
   }

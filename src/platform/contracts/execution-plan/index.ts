@@ -33,16 +33,13 @@ export interface ExecutionPlanStep {
 
 /**
  * @deprecated ExecutionPlan is deprecated per §4.4. Use PlanGraphBundle from executable-contracts instead.
- * This interface is retained for legacy adapter compatibility only.
+ * This type alias is retained for backward compatibility only. The createExecutionPlan factory
+ * throws an error to prevent usage - migrate to PlanGraphBundle.
+ *
+ * Legacy fields (planId, taskId, tenantId, version, steps, createdAt) are NOT carried forward
+ * because the graph-based execution model uses PlanGraphBundle's structure instead.
  */
-export interface ExecutionPlan {
-  planId: string;
-  taskId: string;
-  tenantId: string | null;
-  version: number;
-  steps: ExecutionPlanStep[];
-  createdAt: string;
-}
+export type ExecutionPlan = PlanGraphBundle;
 
 /**
  * @deprecated ExecutionPlan factory is deprecated per §4.4.

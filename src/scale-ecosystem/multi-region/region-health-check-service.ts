@@ -236,15 +236,13 @@ export class RegionHealthCheckService {
 
   /**
    * Check all registered regions
+   * Root cause: Serial await causes linear delay with many regions
+   * Fix: Use Promise.all for parallel execution
    */
   public async checkAllRegions(): Promise<readonly RegionHealthCheckResult[]> {
-    const results: RegionHealthCheckResult[] = [];
-
-    for (const regionId of this.configs.keys()) {
-      const result = await this.checkRegion(regionId);
-      results.push(result);
-    }
-
+    const results = await Promise.all(
+      [...this.configs.keys()].map((regionId) => this.checkRegion(regionId))
+    );
     return results;
   }
 
@@ -374,12 +372,16 @@ export class RegionHealthCheckService {
 
   /**
    * Update health state after a check
+   * Root cause: degraded status was not resetting consecutiveFailures
+   * Fix: Reset counter for both "healthy" and "degraded" when metrics are passing
    */
   private updateHealthState(regionId: string, result: RegionHealthCheckResult): void {
     this.healthResults.set(regionId, result);
     this.lastCheckTime.set(regionId, result.checkedAt);
 
-    if (result.status === "healthy") {
+    // Reset failures when region is healthy OR degraded (recovering from unhealthy)
+    // Only unhealthy should keep accumulating failures
+    if (result.status === "healthy" || result.status === "degraded") {
       this.consecutiveFailures.set(regionId, 0);
     }
   }

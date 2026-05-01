@@ -86,7 +86,47 @@ export class AdminSdk {
   private readonly client: RetryableApiClient;
 
   public constructor(config: AdminSdkConfig) {
-    this.client = createApiClient(config);
+    // Ensure version headers are set per SDK compatibility contract §22
+    this.client = createApiClient({
+      ...config,
+      platformVersion: config.platformVersion ?? "v4.3",
+      sdkVersion: config.sdkVersion ?? "1.0.0",
+    });
+  }
+
+  // --- Harness Run Management ---
+
+  /**
+   * Resume a paused harness run.
+   * Per §4.3, uses the directive envelope model for state transitions.
+   */
+  public resumeHarnessRun(harnessRunId: string, issuedBy: {
+    readonly principalId: string;
+    readonly tenantId: string;
+    readonly roles: readonly string[];
+  }): ReturnType<typeof createOperationalDirective> {
+    return createOperationalDirective({
+      type: "resume",
+      scope: { harnessRunId },
+      issuedBy,
+      reason: "admin_sdk.resume_requested",
+    });
+  }
+
+  /**
+   * List active workers in the execution plane.
+   * Used for operational scripting and capacity planning.
+   */
+  public listWorkers(tenantId?: string) {
+    return this.client.getPaginated("/workers", tenantId ? { tenantId } : undefined);
+  }
+
+  /**
+   * Get platform or runtime configuration.
+   * Used for operational scripting and configuration inspection.
+   */
+  public getConfig(configPath?: string) {
+    return this.client.get<Record<string, unknown>>(configPath ? `/config/${configPath}` : "/config");
   }
 
   public listDomains<T>() {
@@ -328,5 +368,54 @@ export class AdminSdk {
 
   public advanceRolloutPercentage<T>(rolloutId: string, targetPercentage: number) {
     return this.client.post<T>(`/rollouts/${encodeURIComponent(rolloutId)}/advance`, { targetPercentage });
+  }
+
+  // --- Bulk Operations ---
+
+  /**
+   * Bulk create tenants with transactional semantics.
+   * All tenants are created in a single transaction - if any fails, all are rolled back.
+   * Per spec, provides bulk operation / transaction semantics.
+   */
+  public bulkCreateTenants<T>(tenants: readonly TenantInput[]): Promise<{ successes: T[]; failures: { input: TenantInput; error: string }[] }> {
+    return this.client.post<T>("/tenants/bulk", { tenants }) as Promise<{ successes: T[]; failures: { input: TenantInput; error: string }[] }>;
+  }
+
+  /**
+   * Bulk update tenants with transactional semantics.
+   * All updates are applied in a single transaction.
+   */
+  public bulkUpdateTenants<T>(updates: readonly { tenantId: string; patch: Partial<TenantInput> }[]): Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }> {
+    return this.client.patch<T>("/tenants/bulk", { updates }) as Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }>;
+  }
+
+  /**
+   * Bulk delete tenants with transactional semantics.
+   * All deletions are applied in a single transaction.
+   */
+  public bulkDeleteTenants<T>(tenantIds: readonly string[]): Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }> {
+    return this.client.delete<T>(`/tenants/bulk?tenantIds=${tenantIds.map(encodeURIComponent).join(",")}`) as Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }>;
+  }
+
+  /**
+   * Bulk create policies with transactional semantics.
+   * All policies are created in a single transaction.
+   */
+  public bulkCreatePolicies<T>(policies: readonly PolicyInput[]): Promise<{ successes: T[]; failures: { input: PolicyInput; error: string }[] }> {
+    return this.client.post<T>("/policies/bulk", { policies }) as Promise<{ successes: T[]; failures: { input: PolicyInput; error: string }[] }>;
+  }
+
+  /**
+   * Bulk attach policies to resources with transactional semantics.
+   */
+  public bulkAttachPolicies<T>(attachments: readonly { targetType: string; targetId: string; policyId: string }[]): Promise<{ successes: T[]; failures: { attachment: { targetType: string; targetId: string; policyId: string }; error: string }[] }> {
+    return this.client.post<T>("/policies/attachments/bulk", { attachments }) as Promise<{ successes: T[]; failures: { attachment: { targetType: string; targetId: string; policyId: string }; error: string }[] }>;
+  }
+
+  /**
+   * Bulk domain lifecycle operations with transactional semantics.
+   */
+  public bulkDomainLifecycle<T>(operations: readonly DomainLifecycleInput[]): Promise<{ successes: T[]; failures: { operation: DomainLifecycleInput; error: string }[] }> {
+    return this.client.post<T>("/domains/lifecycle/bulk", { operations }) as Promise<{ successes: T[]; failures: { operation: DomainLifecycleInput; error: string }[] }>;
   }
 }

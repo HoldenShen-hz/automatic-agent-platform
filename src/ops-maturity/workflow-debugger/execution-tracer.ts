@@ -62,6 +62,7 @@ export class ExecutionTracer {
   private activeTraces = new Map<string, ExecutionTrace>();
   private activeEvents = new Map<string, TraceEvent[]>();
   private traceStartTimes = new Map<string, number>();
+  private eventStartTimes = new Map<string, number>();
 
   public constructor(options: ExecutionTracerOptions = {}) {
     this.maxEventsPerTrace = options.maxEventsPerTrace ?? 10_000;
@@ -109,8 +110,10 @@ export class ExecutionTracer {
       return null;
     }
 
-    const startTime = this.traceStartTimes.get(traceId) ?? Date.now();
-    const durationMs = this.measurePerformance ? Date.now() - startTime : null;
+    const now = Date.now();
+    const lastEventTime = this.eventStartTimes.get(traceId) ?? now;
+    this.eventStartTimes.set(traceId, now);
+    const durationMs = this.measurePerformance ? now - lastEventTime : null;
 
     const event: TraceEvent = {
       eventId: newId("evt"),
@@ -274,5 +277,6 @@ export class ExecutionTracer {
     this.activeTraces.clear();
     this.activeEvents.clear();
     this.traceStartTimes.clear();
+    this.eventStartTimes.clear();
   }
 }

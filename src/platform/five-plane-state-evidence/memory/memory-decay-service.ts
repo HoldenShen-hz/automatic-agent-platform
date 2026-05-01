@@ -163,7 +163,12 @@ export function calculateFreshness(
   }
 
   // Apply access boost (each hit slows decay)
-  const accessBoost = Math.pow(1 + config.accessBoostFactor, memory.hitCount);
+  // R16-16 FIX: Logarithmic access boost to prevent freshness saturation
+  // Instead of exponential (1 + boost)^hitCount which quickly saturates to 1.0,
+  // use logarithmic boost that slows decay but doesn't override decay entirely
+  // boost = 1 + accessBoostFactor * log(1 + hitCount)
+  const hitCount = memory.hitCount ?? 0;
+  const accessBoost = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
   freshness = freshness * accessBoost;
 
   // Clamp to minFreshness

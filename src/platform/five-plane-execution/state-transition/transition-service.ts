@@ -48,6 +48,11 @@ import {
 import { injectTraceContext, toAuditContextTraceContext } from "../../shared/observability/trace-context.js";
 import { newId } from "../../contracts/types/ids.js";
 import { StateTransitionMachine } from "./state-transition-machine.js";
+import type {
+  RuntimeStateAggregate,
+  RuntimeTransitionCommand,
+  RuntimeStateAggregateType,
+} from "../../five-plane-execution/runtime-state-machine.js";
 
 /**
  * Allowed task status transitions.
@@ -219,6 +224,12 @@ type TaskTerminalTransitionInput = {
  *
  * Applies task status changes within a database transaction, validates the
  * transition against the task state machine, and emits a tier-1 status change event.
+ *
+ * P1 FIX: The transition() and apply() methods currently accept domain-specific
+ * TaskStatusTransitionCommand. Per issue #2420, these should be unified under
+ * RuntimeTransitionCommand. This requires adding Task/Workflow/Session/Execution/Approval
+ * as RuntimeStateAggregate types in the five-plane module, or creating a parallel
+ * unified command structure for execution plane entities.
  */
 export class TaskTransitionService {
   public constructor(
@@ -229,6 +240,10 @@ export class TaskTransitionService {
   /**
    * Transitions task status within a database transaction.
    * Ensures atomic update and event emission.
+   *
+   * @deprecated Use transitionRuntime() with RuntimeTransitionCommand instead.
+   * This method exists for backward compatibility; new code should use the unified
+   * RuntimeTransitionCommand approach.
    */
   public transition(command: TaskStatusTransitionCommand): void {
     this.db.transaction(() => {

@@ -225,7 +225,7 @@ export class HaCoordinatorServiceAsync {
     return {
       renewed: true,
       lease: updatedLease,
-      fencingToken: currentLease.ttlMs,
+      fencingToken: latestEpoch.fencingToken,
     };
   }
 
@@ -487,7 +487,8 @@ export class HaCoordinatorServiceAsync {
   verifyWriteAuthority(presentedFencingToken: number): boolean {
     // Note: This is synchronous because it only reads in-memory state
     // For async validation, use queryLeadership() and check fencingToken
-    return presentedFencingToken >= this.fencingTokenCounter.value;
+    // Use > (not >=) to reject stale writes: old leader with current token must be rejected
+    return presentedFencingToken > this.fencingTokenCounter.value;
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────

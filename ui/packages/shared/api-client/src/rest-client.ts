@@ -277,9 +277,24 @@ export class HttpTransport {
   }
 }
 
+/**
+ * Creates the default transport for DefaultRESTClient.
+ * Uses HttpTransport with base URL from VITE_API_BASE_URL env var if available,
+ * otherwise falls back to MockTransport for development/testing.
+ */
+function createDefaultTransport(): RestTransport {
+  // Check for API base URL in environment variables
+  const baseUrl = typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL;
+  if (baseUrl != null && baseUrl.length > 0) {
+    return (request) => new HttpTransport({ baseUrl }).send(request);
+  }
+  // Fall back to mock transport for development/testing
+  return (request) => new MockTransport().send(request);
+}
+
 export class DefaultRESTClient implements RESTClient {
   public constructor(
-    private readonly transport: RestTransport = (request) => new MockTransport().send(request),
+    private readonly transport: RestTransport = createDefaultTransport(),
     private readonly interceptors: readonly RestClientInterceptor[] = [],
   ) {}
 

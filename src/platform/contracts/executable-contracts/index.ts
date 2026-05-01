@@ -139,6 +139,7 @@ export interface TaskDraft {
   readonly principal: PrincipalRef;
   readonly source: TaskInputSource;
   readonly rawInputRef?: ArtifactRef;
+  readonly domainId: string;
   readonly normalizedIntent: JsonValue;
   readonly missingFields: readonly string[];
   readonly riskPreview: RiskPreview;
@@ -152,6 +153,7 @@ export interface ConfirmedTaskSpec {
   readonly taskDraftId: string;
   readonly tenantId: string;
   readonly principal: PrincipalRef;
+  readonly domainId: string;
   readonly goal: string;
   readonly inputs: JsonValue;
   readonly constraintPackRef: string;
@@ -173,6 +175,7 @@ export interface RequestEnvelope {
   readonly confirmedTaskSpecId: string;
   readonly tenantId: string;
   readonly principal: PrincipalRef;
+  readonly domainId: string;
   readonly traceId: string;
   readonly idempotencyKey: string;
   readonly priority: number;
@@ -204,6 +207,7 @@ export const HARNESS_RUN_TERMINAL_STATUSES = ["completed", "failed", "aborted"] 
 export interface HarnessRun {
   readonly harnessRunId: string;
   readonly tenantId: string;
+  readonly domainId: string;
   readonly confirmedTaskSpecId: string;
   readonly requestEnvelopeId: string;
   readonly requestHash: string;
@@ -674,10 +678,128 @@ export function createPrincipalRef(input: {
   };
 }
 
+const LEGACY_DOMAIN_BINDING_ALIASES = {
+  general_ops: "project-management",
+  platform_engineering: "coding",
+  engineering: "coding",
+  content_production: "creative-production",
+  content: "creative-production",
+  design: "creative-production",
+  engineering_ops: "coding",
+  operations: "it-operations",
+  data_analysis: "data-engineering",
+  data: "data-engineering",
+  analytics: "data-engineering",
+  quality_assurance: "quality-assurance",
+  qa: "quality-assurance",
+  security: "content-moderation",
+  support: "customer-service",
+  communications: "marketing",
+  hr: "human-resources",
+  finance: "finance-accounting",
+  devops: "it-operations",
+  "data-processing": "data-engineering",
+  "data-analytics": "data-engineering",
+  "enterprise-knowledge-base": "knowledge-base",
+  "quantitative-trading": "quant-trading",
+  "advertising-promotion": "advertising",
+  sales: "ecommerce",
+  "online-livestream": "live-streaming",
+  "medical-health": "healthcare",
+  "supply-chain-logistics": "supply-chain",
+  "education-training": "education",
+  "advertising-creative": "creative-production",
+  "marketing-brand": "marketing",
+} as const;
+
+const DOMAIN_BINDING_FIELD_NAMES = [
+  "domainId",
+  "domain_id",
+  "divisionId",
+  "division_id",
+  "domainHint",
+  "domain_hint",
+  "baselineDomainId",
+  "baseline_domain_id",
+] as const;
+
+export function normalizeDomainBindingId(domainId: string): string {
+  requireNonEmpty(domainId, "domain_binding.domain_id_required");
+  const normalized = domainId.trim().toLowerCase().replace(/\s+/g, "-");
+  return LEGACY_DOMAIN_BINDING_ALIASES[normalized as keyof typeof LEGACY_DOMAIN_BINDING_ALIASES] ?? normalized;
+}
+
+function extractDomainBindingId(source: unknown): string | null {
+  if (source == null || typeof source !== "object") {
+    return null;
+  }
+  if (Array.isArray(source)) {
+    for (const item of source) {
+      const candidate = extractDomainBindingId(item);
+      if (candidate != null) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+  const record = source as Record<string, unknown>;
+  for (const field of DOMAIN_BINDING_FIELD_NAMES) {
+    const candidate = record[field];
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return normalizeDomainBindingId(candidate);
+    }
+  }
+  for (const value of Object.values(record)) {
+    const candidate = extractDomainBindingId(value);
+    if (candidate != null) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function extractDomainBindingIdFromRef(ref: string | undefined): string | null {
+  if (ref == null || ref.trim().length === 0) {
+    return null;
+  }
+  const trimmed = ref.trim();
+  if (trimmed.startsWith("constraint_pack:")) {
+    const segments = trimmed.split(":");
+    if (segments[1] != null && segments[1].trim().length > 0) {
+      return normalizeDomainBindingId(segments[1]);
+    }
+  }
+  return normalizeDomainBindingId(trimmed);
+}
+
+function resolveDomainBindingId(input: {
+  explicit?: string;
+  sources?: readonly unknown[];
+  refCandidate?: string;
+  errorCode: string;
+  errorMessage: string;
+}): string {
+  if (input.explicit != null && input.explicit.trim().length > 0) {
+    return normalizeDomainBindingId(input.explicit);
+  }
+  for (const source of input.sources ?? []) {
+    const candidate = extractDomainBindingId(source);
+    if (candidate != null) {
+      return candidate;
+    }
+  }
+  const refCandidate = extractDomainBindingIdFromRef(input.refCandidate);
+  if (refCandidate != null) {
+    return refCandidate;
+  }
+  throw new ValidationError(input.errorCode, input.errorMessage);
+}
+
 export function createTaskDraft(input: {
   tenantId: string;
   principal: PrincipalRef;
   source: TaskInputSource;
+  domainId?: string;
   normalizedIntent: JsonValue;
   riskPreview: RiskPreview;
   taskDraftId?: string;
@@ -688,12 +810,19 @@ export function createTaskDraft(input: {
   expiresAt?: string;
 }): TaskDraft {
   requireNonEmpty(input.tenantId, "task_draft.tenant_id_required");
+  const domainId = resolveDomainBindingId({
+    explicit: input.domainId,
+    sources: [input.normalizedIntent],
+    errorCode: "task_draft.domain_id_required",
+    errorMessage: "TaskDraft requires a domainId or a legacy domain/division binding in normalizedIntent.",
+  });
   return {
     taskDraftId: input.taskDraftId ?? newId("taskdraft"),
     tenantId: input.tenantId,
     principal: input.principal,
     source: input.source,
     ...(input.rawInputRef != null ? { rawInputRef: input.rawInputRef } : {}),
+    domainId,
     normalizedIntent: input.normalizedIntent,
     missingFields: input.missingFields ?? [],
     riskPreview: input.riskPreview,
@@ -707,6 +836,7 @@ export function createConfirmedTaskSpec(input: {
   taskDraftId: string;
   tenantId: string;
   principal: PrincipalRef;
+  domainId?: string;
   goal: string;
   inputs: JsonValue;
   constraintPackRef: string;
@@ -725,11 +855,19 @@ export function createConfirmedTaskSpec(input: {
       "High and critical task specs require a confirmation receipt.",
     );
   }
+  const domainId = resolveDomainBindingId({
+    explicit: input.domainId,
+    sources: [input.inputs],
+    refCandidate: input.constraintPackRef,
+    errorCode: "confirmed_task_spec.domain_id_required",
+    errorMessage: "ConfirmedTaskSpec requires a domainId or a legacy domain/division binding in inputs.",
+  });
   return {
     confirmedTaskSpecId: input.confirmedTaskSpecId ?? newId("ctspec"),
     taskDraftId: input.taskDraftId,
     tenantId: input.tenantId,
     principal: input.principal,
+    domainId,
     goal: input.goal,
     inputs: input.inputs,
     constraintPackRef: input.constraintPackRef,
@@ -756,6 +894,7 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
     confirmedTaskSpecId: input.confirmedTaskSpec.confirmedTaskSpecId,
     tenantId: input.confirmedTaskSpec.tenantId,
     principal: input.confirmedTaskSpec.principal,
+    domainId: input.confirmedTaskSpec.domainId,
     traceId: input.confirmedTaskSpec.traceId,
     idempotencyKey: input.confirmedTaskSpec.idempotencyKey,
     priority: input.priority ?? 0,
@@ -770,6 +909,7 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
 
 export function createHarnessRun(input: {
   tenantId: string;
+  domainId?: string;
   confirmedTaskSpecId: string;
   requestEnvelopeId: string;
   requestHash: string;
@@ -784,11 +924,20 @@ export function createHarnessRun(input: {
   currentSeq?: number;
   createdAt?: string;
   updatedAt?: string;
+  terminalAt?: string;
+  terminalReason?: string;
 }): HarnessRun {
   const timestamp = input.createdAt ?? nowIso();
+  const domainId = resolveDomainBindingId({
+    explicit: input.domainId,
+    refCandidate: input.constraintPackRef,
+    errorCode: "harness_run.domain_id_required",
+    errorMessage: "HarnessRun requires a domainId or a constraintPackRef that preserves the domain binding.",
+  });
   return {
     harnessRunId: input.harnessRunId ?? newId("hrun"),
     tenantId: input.tenantId,
+    domainId,
     confirmedTaskSpecId: input.confirmedTaskSpecId,
     requestEnvelopeId: input.requestEnvelopeId,
     requestHash: input.requestHash,
@@ -802,6 +951,8 @@ export function createHarnessRun(input: {
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
+    ...(input.terminalAt != null ? { terminalAt: input.terminalAt } : {}),
+    ...(input.terminalReason != null ? { terminalReason: input.terminalReason } : {}),
   };
 }
 

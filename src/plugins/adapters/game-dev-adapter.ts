@@ -24,7 +24,9 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       return undefined;
     },
     async authenticate(_credentials: Record<string, unknown>): Promise<void> {
-      // Unity credentials validated here
+      // Unity credentials would be validated here against Unity Cloud Build API
+      // In production this would verify the credentials with Unity's auth service
+      return undefined;
     },
     async execute(action: string, params: Record<string, unknown>) {
       const { projectSlug, buildTarget } = params as {

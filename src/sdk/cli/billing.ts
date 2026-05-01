@@ -204,7 +204,38 @@ async function main(): Promise<void> {
     }
   }, { dbPath });
 
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  // Redact sensitive values from output to prevent credential leakage
+  process.stdout.write(`${JSON.stringify(redactSensitiveValues(result), null, 2)}\n`);
 }
 
 await main();
+
+/**
+ * Redact sensitive values from billing result to prevent credential leakage.
+ * Redacts Stripe secret keys, Paddle API keys, and similar credentials.
+ */
+function redactSensitiveValues(obj: unknown): unknown {
+  if (obj == null || typeof obj !== "object") {
+    return obj;
+  }
+
+  const REDACTED = "[REDACTED]";
+  const sensitiveKeys = ["secretKey", "apiKey", "secret", "password", "token", "credential"];
+
+  if (Array.isArray(obj)) {
+    return obj.map(redactSensitiveValues);
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    const lowerKey = key.toLowerCase();
+    if (sensitiveKeys.some((sk) => lowerKey.includes(sk)) && typeof value === "string" && value.length > 0) {
+      result[key] = REDACTED;
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = redactSensitiveValues(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}

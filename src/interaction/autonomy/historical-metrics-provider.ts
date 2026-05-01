@@ -47,10 +47,11 @@ export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
           e.created_at
          FROM executions e
          WHERE e.agent_id = ?
+           AND e.capability_id = ?
            AND e.created_at >= ?
          ORDER BY e.created_at DESC`,
       )
-      .all(input.agentId, windowStartIso) as Array<{
+      .all(input.agentId, input.capabilityId, windowStartIso) as Array<{
         status: ExecutionStatus;
         requires_approval: number;
         last_error_code: string | null;
@@ -61,7 +62,8 @@ export class SqlExecutionMetricsProvider implements HistoricalMetricsProvider {
     const successfulExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "succeeded").length;
     const failedExecutions = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
     const humanOverrides = rows.filter((r: { requires_approval: number }) => r.requires_approval === 1).length;
-    const incidents = rows.filter((r: { last_error_code: string | null }) => r.last_error_code !== null).length;
+    // §42: incidents are FAILED executions, not just executions with error codes
+    const incidents = rows.filter((r: { status: ExecutionStatus }) => r.status === "failed").length;
 
     const lastErrorRow = rows.find((r: { last_error_code: string | null }) => r.last_error_code !== null);
     const lastIncidentAt = lastErrorRow?.created_at ?? null;

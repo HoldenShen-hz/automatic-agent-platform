@@ -88,7 +88,15 @@ async function handleRequest(request: PluginRuntimeRequest): Promise<unknown> {
 function installRuntimeGuards(): void {
   const sandboxRoot = process.env.AA_PLUGIN_SANDBOX_ROOT?.trim();
   if (sandboxRoot) {
-    process.chdir(sandboxRoot);
+    // Validate sandboxRoot for path traversal attacks
+    if (sandboxRoot.includes("..") || sandboxRoot.includes("//") || sandboxRoot.includes("~")) {
+      throw new Error(`Plugin sandbox root contains invalid path sequence: ${sandboxRoot}`);
+    }
+    try {
+      process.chdir(sandboxRoot);
+    } catch {
+      throw new Error(`Plugin sandbox root is not a valid directory: ${sandboxRoot}`);
+    }
   }
   if (process.env.AA_PLUGIN_ALLOW_NETWORK_EGRESS === "true") {
     return;

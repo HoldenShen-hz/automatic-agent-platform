@@ -6,6 +6,7 @@
  */
 
 import type { AutonomyLevel, AutonomyChangeEvent } from "./index.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 export interface AutonomyAuditRecord {
   id: string;
@@ -35,8 +36,9 @@ export class AutonomyAuditService {
   private readonly records: AutonomyAuditRecord[] = [];
 
   public recordChange(event: AutonomyChangeEvent): AutonomyAuditRecord {
+    // §42: Use ULID for globally unique, time-sortable IDs across distributed instances
     const record: AutonomyAuditRecord = {
-      id: `autonomy_audit_${this.records.length + 1}`,
+      id: newId("audit"),
       agentId: event.agentId,
       capabilityId: event.capabilityId,
       eventType: event.eventType,

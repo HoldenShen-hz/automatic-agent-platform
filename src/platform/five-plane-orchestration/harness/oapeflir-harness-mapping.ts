@@ -32,5 +32,17 @@ export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string):
   if (stage === "release" || role === "release_manager") {
     return "release";
   }
+  // §13.7: Map observe as default for unclassified stages
+  return "observe";
+}
+
+/**
+ * §13.7: Maps learn/release harness roles to OAPEFLIR phases.
+ * Previously these mappings were missing, causing learn/release stages
+ * to never be triggered during harness execution.
+ */
+export function mapHarnessLearnerToOapeflir(role: HarnessRole): OapeflirSemanticPhase {
+  if (role === "learner") return "learn";
+  if (role === "release_manager") return "release";
   return "observe";
 }

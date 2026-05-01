@@ -41,6 +41,7 @@ import {
   createPrincipalRef,
   createRequestEnvelopeFromConfirmedTask,
   createTaskDraft as createCanonicalTaskDraft,
+  normalizeDomainBindingId,
   type ConfirmedTaskSpec as CanonicalConfirmedTaskSpec,
   type RequestEnvelope as CanonicalRequestEnvelope,
   type RiskClass,
@@ -1030,6 +1031,7 @@ export class NlEntryService implements NlEntryPort {
       riskPreview,
       clarificationState,
     });
+    const canonicalDomainId = normalizeDomainBindingId(detailed.context.domainHint || detailed.suggestedDivisionId);
     const confirmationScope = this.deriveConfirmationScope(request.message, detailed);
     const dryRunPreview = riskPreview.overallRisk === "high" || riskPreview.overallRisk === "critical"
       ? buildDryRunPreview({
@@ -1071,10 +1073,12 @@ export class NlEntryService implements NlEntryPort {
       tenantId: request.tenantId,
       principal: principalRef,
       source: "nl",
+      domainId: canonicalDomainId,
       taskDraftId: `taskdraft:${request.tenantId}:${request.userId}:${deriveTitle(request.message).replace(/\s+/g, "_").toLowerCase()}`,
       normalizedIntent: {
         intent: primaryIntent.intentType,
         continuation: detailed.continuation,
+        domainId: canonicalDomainId,
         divisionId: detailed.suggestedDivisionId,
         workflowId: detailed.suggestedWorkflowId,
         locale: detailed.locale,
@@ -1149,9 +1153,11 @@ export class NlEntryService implements NlEntryPort {
           taskDraftId: canonicalTaskDraft.taskDraftId,
           tenantId: request.tenantId,
           principal: principalRef,
+          domainId: canonicalDomainId,
           goal: surfacedSummary,
           inputs: {
             request: request.message,
+            domainId: canonicalDomainId,
             divisionId: detailed.suggestedDivisionId,
             workflowId: detailed.suggestedWorkflowId,
             continuation: detailed.continuation,
@@ -1159,7 +1165,7 @@ export class NlEntryService implements NlEntryPort {
             entities: primaryIntent.entities,
             context: detailed.context,
           },
-          constraintPackRef: buildConstraintPackRef(detailed.suggestedDivisionId, detailed.suggestedWorkflowId),
+          constraintPackRef: buildConstraintPackRef(canonicalDomainId, detailed.suggestedWorkflowId),
           riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
           confirmationReceipt: canonicalConfirmationReceipt,
           idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
@@ -1353,8 +1359,8 @@ function taskDraftIdFromMessage(message: string): string {
   return deriveTitle(message).replace(/\s+/g, "_").toLowerCase();
 }
 
-function buildConstraintPackRef(divisionId: string, workflowId: string): string {
-  return `constraint_pack:${divisionId}:${workflowId}`;
+function buildConstraintPackRef(domainId: string, workflowId: string): string {
+  return `constraint_pack:${domainId}:${workflowId}`;
 }
 
 function buildIntakeIdempotencyKey(request: NlEntryRequest, draftId: string): string {

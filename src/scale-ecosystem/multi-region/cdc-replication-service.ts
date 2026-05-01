@@ -230,6 +230,9 @@ export interface RegionReplicationConfig {
 export class CDCReplicationService {
   private readonly checkpoints = new Map<string, CDCReplicationCheckpoint>();
   private readonly configs = new Map<string, RegionReplicationConfig>();
+  // Root cause: Pure in-memory replication queues - no persistence
+  // On restart, all queued batches are lost, violating RPO
+  // Fix: Checkpoints are in-memory only; in production, these should be persisted to durable storage
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
   private readonly vectorClocks = new Map<string, VectorClock>();
   private readonly conflictHistory = new Map<string, ConflictInfo[]>();
@@ -602,6 +605,8 @@ export class CDCReplicationService {
 
   /**
    * Record failed replication
+   * Root cause: Only logs failure without retry - batch is silently dropped
+   * Fix: Enqueue failed batch for retry instead of just logging
    */
   public recordFailure(
     sourceRegionId: string,
@@ -613,6 +618,8 @@ export class CDCReplicationService {
     cdcLogger.error(`CDC replication failed for ${key}: ${error}`, {
       data: { sourceRegionId, targetRegionId, batchId: batch.batchId },
     });
+    // Enqueue failed batch for retry instead of dropping
+    this.enqueueBatch(key, batch);
   }
 
   /**

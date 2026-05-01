@@ -111,6 +111,8 @@ export interface StartupConsistencyCheckerOptions {
   toolMetadataValidator?: (metadataItems: ReturnType<typeof listBuiltinToolExecutionMetadata>) => ToolContractViolation[];
   configValidator?: () => StartupConfigValidationResult;
   providerReadinessProbe?: (configValidation: StartupConfigValidationResult | null) => ProviderReadinessResult[];
+  /** Optional injected dispatch reconciliation service for testability and flexibility */
+  dispatchReconciliation?: ExecutionDispatchReconciliationService;
 }
 
 function minusMs(isoTimestamp: string, deltaMs: number): string {
@@ -179,7 +181,8 @@ export class StartupConsistencyChecker {
     private readonly store: AuthoritativeTaskStore,
     private readonly options: StartupConsistencyCheckerOptions = {},
   ) {
-    this.dispatchReconciliation = new ExecutionDispatchReconciliationService(db, store);
+    this.dispatchReconciliation = options.dispatchReconciliation
+      ?? new ExecutionDispatchReconciliationService(db, store);
   }
 
   public run(options: StartupConsistencyOptions = {}): StartupConsistencyReport {

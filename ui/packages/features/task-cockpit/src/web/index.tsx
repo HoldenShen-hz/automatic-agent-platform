@@ -44,13 +44,52 @@ export function TaskCockpitWebView(): ReactElement {
                 { key: "Evidence", value: String(selectedTask.evidenceCount ?? 0) },
               ]}
             />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input onChange={(event) => setOperator(event.target.value)} value={operator} />
-              <button onClick={() => vm.claimTask(operator)} type="button">Take Over</button>
+            {/* §2274: Operator and escalation target inputs with validation */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>Operator</span>
+                <input
+                  onChange={(event) => setOperator(event.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+                  value={operator}
+                  placeholder="e.g. platform-sre"
+                  style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)" }}
+                />
+              </label>
+              <button
+                onClick={() => {
+                  if (!operator.trim()) {
+                    alert("Operator cannot be empty");
+                    return;
+                  }
+                  vm.claimTask(operator);
+                }}
+                type="button"
+              >
+                Take Over
+              </button>
               <button onClick={() => vm.resumeTask("normal")} type="button">Resume</button>
               <button onClick={() => vm.resumeTask("supervised")} type="button">Supervised Resume</button>
-              <input onChange={(event) => setTarget(event.target.value)} value={target} />
-              <button onClick={() => vm.escalateTask(target)} type="button">Escalate</button>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--text-subtle)" }}>Escalation Target</span>
+                <input
+                  onChange={(event) => setTarget(event.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
+                  value={target}
+                  placeholder="e.g. domain-admin"
+                  style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--border)" }}
+                />
+              </label>
+              <button
+                onClick={() => {
+                  if (!target.trim()) {
+                    alert("Escalation target cannot be empty");
+                    return;
+                  }
+                  vm.escalateTask(target);
+                }}
+                type="button"
+              >
+                Escalate
+              </button>
             </div>
           </div>
         )}

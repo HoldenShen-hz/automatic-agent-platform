@@ -217,6 +217,13 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   private storeAggregate(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
+    const existing = this.getAggregate(aggregateType, getAggregateId(aggregateType, aggregate));
+    if (existing != null) {
+      throw new ValidationError(
+        "runtime_truth_repository.append_only_violation",
+        `Aggregate ${aggregateType} already exists and cannot be overwritten. Use transition() for updates.`,
+      );
+    }
     switch (aggregateType) {
       case "HarnessRun":
         this.state.harnessRuns.set((aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);

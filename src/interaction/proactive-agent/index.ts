@@ -380,9 +380,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     }
     const budgetPool = this.budgetPoolsByDomain[state.trigger.domainId];
     if (budgetPool != null) {
-      const proactiveBudgetCap = Math.floor(
-        budgetPool.totalDailyBudget * (1 - Math.max(0.6, budgetPool.userInitiatedReserveRatio)),
-      );
+      // §41.1: Use the configured userInitiatedReserveRatio; proactive budget is whatever remains
+      // after user-initiated reserve is deducted from totalDailyBudget.
+      const reserveRatio = Math.max(0, Math.min(1, budgetPool.userInitiatedReserveRatio));
+      const proactiveBudgetCap = Math.floor(budgetPool.totalDailyBudget * (1 - reserveRatio));
       if ((this.dailyTriggerUsage.get(usageKey) ?? 0) >= proactiveBudgetCap) {
         reasons.push("proactive_agent.user_initiated_reserve_protected");
       }
@@ -437,24 +438,12 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       this.dailyTriggerUsage.set(usageKey, (this.dailyTriggerUsage.get(usageKey) ?? 0) + 1);
     }
 
-    // §41.1: Medium/high proactive actions stay in suggestion mode even when the
-    // current autonomy level is full_auto. Triggered work can be high-volume and
-    // externally sourced, so risk gating must remain stricter than interactive
-    // autonomy upgrades.
-    let actionMode: TriggerFireDecision["actionMode"];
-    if (state.trigger.action.actionType === "update_dashboard") {
-      actionMode = "silent_record";
-    } else if (state.trigger.riskLevel === "critical") {
-      actionMode = "silent_record";
-    } else if (state.trigger.riskLevel === "high" || state.trigger.riskLevel === "medium") {
-      actionMode = "suggest";
-    } else {
-      // Low risk: use standard logic
-      actionMode = resolveTriggerActionMode(
-        state.trigger.action.requireConfirmation,
-        state.trigger.riskLevel,
-      );
-    }
+    // R16-21 FIX: Use resolveTriggerActionMode for all trigger action types to ensure
+    // consistent action-mode determination across all risk levels (no duplication).
+    const actionMode = resolveTriggerActionMode(
+      state.trigger.action.requireConfirmation,
+      state.trigger.riskLevel,
+    );
     const queuedSuggestionId = actionMode === "suggest" ? this.enqueueSuggestion(state.trigger, effectiveInput) : null;
 
     return {
@@ -494,7 +483,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (normalizeTriggerType(trigger.type) === "event" || normalizeTriggerType(trigger.type) === "webhook") {
       const config = trigger.config as EventTriggerConfig;
       return input.event?.source === config.eventSource
-        && input.event.name.includes(config.eventPattern)
+        && input.event?.name?.includes(config.eventPattern)
         && Object.entries(config.filter).every(([key, value]) => String(input.event?.payload?.[key] ?? "") === value);
     }
 
@@ -593,8 +582,12 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   private detectFeedbackLoop(triggerId: string): void {
     const visited = new Set<string>();
     const stack = new Set<string>();
+    // R16-20 FIX: Track only the cycle members, not the entire ancestry path
+    const cycleMembers = new Set<string>();
     const hasCycle = (currentId: string): boolean => {
       if (stack.has(currentId)) {
+        // Found a cycle — currentId is the cycle entry point; stack contains the rest
+        cycleMembers.add(currentId);
         return true;
       }
       if (visited.has(currentId)) {
@@ -605,6 +598,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       const targets = this.states.get(currentId)?.trigger.feedbackTargetTriggerIds ?? [];
       for (const nextId of targets) {
         if (hasCycle(nextId)) {
+          // If this node is in the cycle (not just an ancestor), mark it
+          if (stack.has(nextId)) {
+            cycleMembers.add(currentId);
+          }
           return true;
         }
       }
@@ -614,13 +611,14 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     if (!hasCycle(triggerId)) {
       return;
     }
+    // Only disable the triggers that are actually part of the cycle, not the whole ancestry path
     this.incidents.push({
       incidentId: newId("proactive_incident"),
-      triggerIds: [...stack],
+      triggerIds: [...cycleMembers],
       reasonCode: "proactive_agent.feedback_loop_detected",
       createdAt: nowIso(),
     });
-    for (const loopTriggerId of stack) {
+    for (const loopTriggerId of cycleMembers) {
       const state = this.states.get(loopTriggerId);
       if (state != null) {
         state.trigger = {

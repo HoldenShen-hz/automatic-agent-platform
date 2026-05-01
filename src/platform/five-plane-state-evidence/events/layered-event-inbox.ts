@@ -55,6 +55,7 @@ export class LayeredEventInbox {
     const consumer = this.requireConsumer(consumerId);
     const cursor = this.cursors.get(consumerId) ?? 0;
     const delivered: EventEnvelope[] = [];
+    const seenEventIds = new Set<string>();
     let nextCursor = cursor;
 
     for (let index = cursor; index < this.records.length; index += 1) {
@@ -62,9 +63,14 @@ export class LayeredEventInbox {
       if (record == null) {
         continue;
       }
-      nextCursor = index + 1;
+      // Deduplicate: skip if this consumer already received this event
+      if (seenEventIds.has(record.event.eventId)) {
+        continue;
+      }
       if (canConsumerReceive(consumer, record.event)) {
+        seenEventIds.add(record.event.eventId);
         delivered.push(record.event);
+        nextCursor = index + 1;
       }
       if (delivered.length >= limit) {
         break;

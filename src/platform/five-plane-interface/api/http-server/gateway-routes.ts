@@ -14,6 +14,7 @@ import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseGatewaySendPayload, parseGatewayWebhookPayload } from "./schemas.js";
 import { buildJsonResponse, requirePrincipal, readLimit, readQueryParam } from "./utils.js";
+import { globalIdempotencyMiddleware } from "../middleware/sanitize.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { GatewayTargetDirectoryService } from "../../channel-gateway/gateway-target-directory-service.js";
 import type { ChannelGatewayService } from "../../channel-gateway/channel-gateway-service.js";
@@ -92,20 +93,39 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
       pathname: "/v1/gateway/messages/send",
       handler: async (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
+
+        // #2360: Check idempotency key to prevent duplicate sends
+        const idempotencyKey = ctx.request.headers["x-idempotency-key"] as string | undefined;
+        if (idempotencyKey) {
+          const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
+          if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
+            return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
+          }
+        }
+
         const channelGatewayService = deps.channelGatewayService;
         if (channelGatewayService == null) {
           throw new ApiError(503, "api.gateway_delivery_unavailable", "Channel gateway service is not configured.");
         }
         const payload = parseGatewaySendPayload(readValidatedJsonBody(ctx.request.body, (body) => body));
         const receipt = await channelGatewayService.sendMessage(payload);
-        return buildJsonResponse(ctx.requestId, 200, {
+
+        // #2359: POST that creates a resource should return 201 Created
+        const responseData = {
           deliveredAt: receipt.deliveredAt,
           channel: receipt.channel,
           targetId: receipt.targetId,
           externalTargetId: receipt.externalTargetId,
           requestUrl: receipt.requestUrl,
           providerMessageId: receipt.providerMessageId,
-        });
+        };
+
+        // Record idempotency key result if key was provided
+        if (idempotencyKey) {
+          globalIdempotencyMiddleware.complete(idempotencyKey, responseData);
+        }
+
+        return buildJsonResponse(ctx.requestId, 201, responseData);
       },
     },
     {
@@ -139,6 +159,13 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
           if (!signatureResult.valid) {
             throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
           }
+        } else if (signature) {
+          // #2357: webhookSecret is null but signature was provided - this should not happen
+          // Log a warning since signature verification is being skipped silently
+          logger.warn("Webhook signature provided but webhookSecret is not configured - skipping verification", {
+            hasSignature: true,
+            hasTimestamp: !!timestamp,
+          });
         }
 
         if (nonce) {

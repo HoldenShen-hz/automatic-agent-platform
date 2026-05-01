@@ -33,7 +33,9 @@ export const FeedbackSignalSchema = z.object({
   stepOutputRefs: z.array(z.string()).default([]),
   timestamp: z.number().int().nonnegative(),
   /** §56.2: Trust score required to filter low-trust/adversarial feedback from learning pipeline */
-  trustScore: FeedbackTrustScoreSchema.optional(),
+  trustScore: FeedbackTrustScoreSchema,
+  /** §56.2: Evidence refs required for learning pipeline attribution */
+  evidenceRefs: z.array(z.string()).default([]),
 });
 
 export type FeedbackSource = z.infer<typeof FeedbackSourceSchema>;

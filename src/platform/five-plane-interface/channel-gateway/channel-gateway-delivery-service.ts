@@ -288,11 +288,14 @@ export class ChannelGatewayDeliveryService {
   /**
    * Generates a new random nonce for replay protection.
    *
-   * @param length - Length of nonce in bytes (default: 32, produces 64 hex chars)
+   * @param length - Length of nonce in bytes (default: 32, produces 64 hex chars = 256 bits entropy)
    * @returns Random nonce as hex string
    */
   generateNonce(length = 32): string {
-    return randomBytes(length).toString("hex").slice(0, length);
+    // #2363: Removed .slice(0, length) which was incorrectly truncating entropy.
+    // randomBytes(32).toString("hex") produces 64 hex characters (32 bytes = 256 bits).
+    // The previous slice(0, 32) took only 32 hex chars = 16 bytes = 128 bits, halving entropy.
+    return randomBytes(length).toString("hex");
   }
 
   /**

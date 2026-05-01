@@ -5,6 +5,7 @@
  * Each proposal is categorized by type and risk level.
  */
 
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { ReflectionRecord } from './reflection-engine.js';
 
 export type ProposalKind =
@@ -64,7 +65,6 @@ export interface ProposalEngine {
 }
 
 export class SimpleProposalEngine implements ProposalEngine {
-  private proposalIdCounter = 0;
   private proposals = new Map<string, ImprovementProposal>();
 
   // Low-risk proposal kinds that can auto-promote
@@ -93,14 +93,14 @@ export class SimpleProposalEngine implements ProposalEngine {
 
   async proposeFromReflection(reflection: ReflectionRecord): Promise<ImprovementProposal[]> {
     const proposals: ImprovementProposal[] = [];
-    const now = new Date().toISOString();
+    const now = nowIso();
 
     // Determine proposal kinds based on root cause
     const rootCause = reflection.rootCause.toLowerCase();
 
     if (rootCause.includes('type') || rootCause.includes('schema')) {
       proposals.push({
-        id: `prop_${++this.proposalIdCounter}`,
+        id: newId("prop"),
         title: 'Tool Routing Optimization',
         description: 'Optimize tool selection for type-safe operations',
         kind: 'tool_routing_rule',
@@ -118,7 +118,7 @@ export class SimpleProposalEngine implements ProposalEngine {
 
     if (rootCause.includes('test')) {
       proposals.push({
-        id: `prop_${++this.proposalIdCounter}`,
+        id: newId("prop"),
         title: 'Improve Testing Guidelines',
         description: 'Improve testing practices guideline',
         kind: 'skill_doc',
@@ -136,7 +136,7 @@ export class SimpleProposalEngine implements ProposalEngine {
 
     if (rootCause.includes('complex') || rootCause.includes('planning')) {
       proposals.push({
-        id: `prop_${++this.proposalIdCounter}`,
+        id: newId("prop"),
         title: 'Workflow Template Improvement',
         description: 'Improved complex task workflow',
         kind: 'workflow_template',
@@ -154,7 +154,7 @@ export class SimpleProposalEngine implements ProposalEngine {
 
     if (rootCause.includes('security')) {
       proposals.push({
-        id: `prop_${++this.proposalIdCounter}`,
+        id: newId("prop"),
         title: 'Security Guidelines Enhancement',
         description: 'Strengthen security prompt sections',
         kind: 'prompt_patch',
@@ -190,8 +190,8 @@ export class SimpleProposalEngine implements ProposalEngine {
     agentId: string;
     evidenceIds: string[];
   }): Promise<ImprovementProposal> {
-    const id = `prop_${++this.proposalIdCounter}`;
-    const now = new Date().toISOString();
+    const id = newId("prop");
+    const now = nowIso();
 
     const proposal: ImprovementProposal = {
       id,
@@ -216,7 +216,7 @@ export class SimpleProposalEngine implements ProposalEngine {
     const proposal = this.proposals.get(proposalId);
     if (proposal) {
       proposal.status = 'staging';
-      proposal.updatedAt = new Date().toISOString();
+      proposal.updatedAt = nowIso();
     }
   }
 

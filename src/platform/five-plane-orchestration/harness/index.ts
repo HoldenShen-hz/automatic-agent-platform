@@ -410,6 +410,7 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
   return {
     harnessRunId: state.harnessRunId,
     tenantId: state.tenantId,
+    domainId: state.domainId,
     confirmedTaskSpecId: state.confirmedTaskSpecId,
     requestEnvelopeId: state.requestEnvelopeId,
     requestHash: state.requestHash,
@@ -1146,6 +1147,30 @@ export class HarnessRuntimeService {
 
     while (true) {
       const iteration = (input.iteration ?? 1) + loop.getState().iteration;
+
+      // §45.5 budget gate: check budget BEFORE each stage per spec
+      // Budget gate check before planner stage
+      if (run.steps.length >= input.constraintPack.budget.maxSteps) {
+        const guardAbortDecisionId = newId("harness_decision");
+        return this.transitionRunStatus({
+          ...run,
+          decision: {
+            decisionId: guardAbortDecisionId,
+            harnessDecisionId: guardAbortDecisionId,
+            decisionInputBundleId: newId("dib"),
+            decisionKind: "abort",
+            decision: "abort",
+            deciderType: "system",
+            deciderRef: "harness.loop_controller",
+            reasonCode: "harness.guard.max_steps_exceeded",
+            action: "abort",
+            reasonCodes: ["harness.guard.max_steps_exceeded"],
+            confidence: 0,
+            createdAt: nowIso(),
+          },
+        }, "aborted", "harness.guard_aborted");
+      }
+
       run = this.appendStep(run, {
         role: "planner",
         stage: "plan",
@@ -1153,6 +1178,29 @@ export class HarnessRuntimeService {
         outputs: input.plannerOutput,
         iteration,
       });
+
+      // Budget gate check before generator stage
+      if (run.steps.length >= input.constraintPack.budget.maxSteps) {
+        const guardAbortDecisionId = newId("harness_decision");
+        return this.transitionRunStatus({
+          ...run,
+          decision: {
+            decisionId: guardAbortDecisionId,
+            harnessDecisionId: guardAbortDecisionId,
+            decisionInputBundleId: newId("dib"),
+            decisionKind: "abort",
+            decision: "abort",
+            deciderType: "system",
+            deciderRef: "harness.loop_controller",
+            reasonCode: "harness.guard.max_steps_exceeded",
+            action: "abort",
+            reasonCodes: ["harness.guard.max_steps_exceeded"],
+            confidence: 0,
+            createdAt: nowIso(),
+          },
+        }, "aborted", "harness.guard_aborted");
+      }
+
       run = this.appendStep(run, {
         role: "generator",
         stage: "execute",
@@ -1160,6 +1208,29 @@ export class HarnessRuntimeService {
         outputs: input.generatorOutput,
         iteration,
       });
+
+      // Budget gate check before evaluator stage
+      if (run.steps.length >= input.constraintPack.budget.maxSteps) {
+        const guardAbortDecisionId = newId("harness_decision");
+        return this.transitionRunStatus({
+          ...run,
+          decision: {
+            decisionId: guardAbortDecisionId,
+            harnessDecisionId: guardAbortDecisionId,
+            decisionInputBundleId: newId("dib"),
+            decisionKind: "abort",
+            decision: "abort",
+            deciderType: "system",
+            deciderRef: "harness.loop_controller",
+            reasonCode: "harness.guard.max_steps_exceeded",
+            action: "abort",
+            reasonCodes: ["harness.guard.max_steps_exceeded"],
+            confidence: 0,
+            createdAt: nowIso(),
+          },
+        }, "aborted", "harness.guard_aborted");
+      }
+
       run = this.appendStep(run, {
         role: "evaluator",
         stage: "evaluate",

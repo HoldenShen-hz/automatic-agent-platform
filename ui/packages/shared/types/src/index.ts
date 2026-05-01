@@ -165,6 +165,23 @@ export interface WorkflowDTO {
   readonly currentStage: string;
   readonly owner: string;
   readonly steps: readonly WorkflowStepDTO[];
+  readonly approvalNodes?: readonly ApprovalNodeDTO[];
+  readonly evidenceRefs?: readonly EvidenceRefDTO[];
+}
+
+export interface ApprovalNodeDTO {
+  readonly nodeId: string;
+  readonly title: string;
+  readonly status: "pending" | "approved" | "rejected" | "skipped";
+  readonly assignee?: string;
+  readonly decidedAt?: string;
+}
+
+export interface EvidenceRefDTO {
+  readonly refId: string;
+  readonly type: "checkpoint" | "artifact" | "log" | "trace";
+  readonly uri: string;
+  readonly description?: string;
 }
 
 export interface WorkflowRunStepDTO {
@@ -339,6 +356,9 @@ export interface ApprovalDTO {
   readonly taskId: string;
   readonly riskLevel: "low" | "medium" | "high" | "critical";
   readonly reasonSummary: string;
+  readonly deadline?: string;
+  readonly policySource?: string;
+  readonly recommendedOption?: string;
 }
 
 export interface UserPreferenceDTO {

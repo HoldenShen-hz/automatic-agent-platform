@@ -15,6 +15,7 @@
     "./platform/orchestration/improve-rollout": "./dist/src/platform/orchestration/improve-rollout/index.js",
     "./platform/orchestration/learn": "./dist/src/platform/orchestration/learn/index.js",
     "./platform/stability": "./dist/src/platform/stability/index.js",
+    "./platform/execution/startup": "./dist/src/platform/execution/startup/index.js",
     "./plugins": "./dist/src/plugins/index.js",
     "./scale-ecosystem": "./dist/src/scale-ecosystem/index.js",
     "./scale-ecosystem/billing": "./dist/src/scale-ecosystem/billing/index.js",

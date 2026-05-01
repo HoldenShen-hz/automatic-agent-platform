@@ -465,7 +465,11 @@ export class OpenAIChatService {
                   // Streaming chunk
                   if (firstChunk) {
                     firstChunk = false;
-                    finalFinishReason = choice.finish_reason ?? "stop";
+                    // R16-36 FIX #2089: Only set finalFinishReason if finish_reason is not null.
+                    // First chunk delta has null finish_reason; we need the last valid reason.
+                    if (choice.finish_reason != null) {
+                      finalFinishReason = choice.finish_reason;
+                    }
                   }
 
                   if (choice.delta.content) {

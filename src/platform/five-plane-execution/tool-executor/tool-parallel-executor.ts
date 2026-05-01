@@ -395,6 +395,8 @@ export async function executeToolsInParallel<T>(
     try {
       results[exclusiveIndex] = await exclusiveFn();
     } catch (error) {
+      // Explicitly mark this index as undefined so the results array has no holes
+      results[exclusiveIndex] = undefined;
       errors.push({
         index: exclusiveIndex,
         toolName: toolMetadatas[exclusiveIndex]?.toolName ?? "unknown",

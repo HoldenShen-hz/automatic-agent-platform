@@ -32,24 +32,33 @@ export function useWorkflowCockpitVm(): WorkflowCockpitVm {
   const client = useRestClient();
   const queryWorkflows = useWorkflowsQuery().data ?? [];
   const [workflows, setWorkflows] = useState<readonly WorkflowDTO[]>(queryWorkflows);
-  const [selectedId, setSelectedId] = useState<string | null>(queryWorkflows[0]?.id ?? null);
+  // §2270: Start with null - do not fallback to queryWorkflows[0] to avoid ghost selection
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activityItems, setActivityItems] = useState<readonly { title: string; description: string }[]>([]);
   const [pendingAction, setPendingAction] = useState(false);
 
   useEffect(() => {
     setWorkflows(queryWorkflows);
-    setSelectedId((current) => current ?? queryWorkflows[0]?.id ?? null);
+    // §2270: Sync selectedId only if current selection is not in the updated workflow list
+    setSelectedId((current) => {
+      if (current === null || !queryWorkflows.some((w) => w.id === current)) {
+        return null;
+      }
+      return current;
+    });
   }, [queryWorkflows]);
 
   const baseVm = useMemo(() => mapWorkflowsToVm(workflows), [workflows]);
-  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? workflows[0] ?? null;
+  // §2270: No fallback to workflows[0] - only use selectedId to avoid ghost selection
+  const selectedWorkflow = workflows.find((workflow) => workflow.id === selectedId) ?? null;
 
   function updateSelected(transform: (workflow: WorkflowDTO) => WorkflowDTO, title: string, description: string): void {
     if (selectedWorkflow == null) {
       return;
     }
     setWorkflows((current) => current.map((workflow) => workflow.id === selectedWorkflow.id ? transform(workflow) : workflow));
-    setActivityItems((current) => [{ title, description }, ...current]);
+    // §2275: Limit activityItems to 100 entries to prevent unbounded growth
+    setActivityItems((current) => [{ title, description }, ...current].slice(0, 100));
   }
 
   const doPauseWorkflow = useCallback(async (): Promise<void> => {

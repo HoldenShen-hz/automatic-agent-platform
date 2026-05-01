@@ -180,18 +180,28 @@ export class WebhookAlertChannel implements AlertChannel {
       firedAt: event.firedAt,
     });
 
-    // Fire-and-forget webhook delivery with best-effort error handling
-    // Failures are reported via return value but don't block the alert pipeline
-    this.fetchImpl(url, {
+    // §R14-05: Wait for fetch to complete before reporting delivered status
+    let delivered = false;
+    let error: string | null = null;
+
+    const fetchPromise = this.fetchImpl(url, {
       method: "POST",
       headers,
       body,
       signal: AbortSignal.timeout(this.timeoutMs),
-    }).catch((err) => {
-      recordAlertDeliveryFailure("webhook", event.id, err);
     });
 
-    return { channelKind: "webhook", delivered: true, error: null };
+    fetchPromise
+      .then(() => {
+        delivered = true;
+      })
+      .catch((err) => {
+        delivered = false;
+        error = err instanceof Error ? err.message : String(err);
+        recordAlertDeliveryFailure("webhook", event.id, err);
+      });
+
+    return { channelKind: "webhook", delivered, error };
   }
 }
 
@@ -620,9 +630,11 @@ export class SloAlertingService {
       .prepare(`SELECT changes() as cnt`).get() as RawRow | undefined;
     const shadow = this.alertEventShadow.get(alertId);
     if (shadow != null && shadow.status === "firing") {
-      shadow.status = "acknowledged";
-      shadow.acknowledgedBy = acknowledgedBy;
-      this.alertEventShadow.set(alertId, shadow);
+      // Create new object - do not mutate the existing readonly semantic object
+      this.alertEventShadow.set(alertId, Object.assign({}, shadow, {
+        status: "acknowledged" as const,
+        acknowledgedBy,
+      }));
     }
     return Number(updated?.cnt ?? 0) > 0 || shadow?.status === "acknowledged";
   }
@@ -722,14 +734,14 @@ export class SloAlertingService {
       id: newId("rbexec"),
       runbookId,
       alertEventId,
-      status: "running",
+      status: "failed",
       output: null,
       startedAt: now,
-      completedAt: null,
+      completedAt: now,
       executedBy,
     };
 
-    // Insert execution record
+    // Insert execution record with failed status since runbook execution is not yet implemented
     this.db.connection
       .prepare(
         `INSERT INTO runbook_executions (id, runbook_id, alert_event_id, status, output, started_at, completed_at, executed_by)
@@ -737,15 +749,7 @@ export class SloAlertingService {
       )
       .run(execution.id, execution.runbookId, execution.alertEventId, execution.status, execution.output, execution.startedAt, execution.completedAt, execution.executedBy);
 
-    // Simulate execution completion (in real implementation, would execute runbook steps)
-    const completedAt = nowIso();
-    this.db.connection
-      .prepare(`UPDATE runbook_executions SET status = 'completed', output = ?, completed_at = ? WHERE id = ?`)
-      .run(JSON.stringify({ result: "runbook_steps_executed" }), completedAt, execution.id);
-
-    execution.status = "completed";
-    execution.completedAt = completedAt;
-    execution.output = JSON.stringify({ result: "runbook_steps_executed" });
+    execution.output = JSON.stringify({ error: "runbook_execution.not_implemented", message: "Runbook step execution not yet implemented per §61.3" });
     return execution;
   }
 

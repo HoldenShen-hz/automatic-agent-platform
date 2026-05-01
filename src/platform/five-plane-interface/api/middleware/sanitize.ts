@@ -194,9 +194,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null;
 }
 
-export function sanitizeJsonValue(value: unknown): unknown {
+const MAX_SANITIZE_DEPTH = 64;
+
+export function sanitizeJsonValue(value: unknown, depth = 0): unknown {
+  if (depth > MAX_SANITIZE_DEPTH) {
+    throw buildValidationError(
+      "api.json_too_deep",
+      `JSON payload exceeds maximum nesting depth of ${MAX_SANITIZE_DEPTH}.`,
+    );
+  }
   if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeJsonValue(entry));
+    return value.map((entry) => sanitizeJsonValue(entry, depth + 1));
   }
   if (!isPlainObject(value)) {
     return value;
@@ -209,7 +217,7 @@ export function sanitizeJsonValue(value: unknown): unknown {
         `JSON payload contains reserved key: ${key}.`,
       );
     }
-    sanitized[key] = sanitizeJsonValue(entry);
+    sanitized[key] = sanitizeJsonValue(entry, depth + 1);
   }
   return sanitized;
 }

@@ -291,13 +291,34 @@ export class StreamBridge {
     const streamId = this.clientStreamSubscription.get(clientId);
     if (streamId) {
       this.connectedClientsByStream.get(streamId)?.delete(clientId);
-      // Clean up empty sets
+      // Clean up empty sets and associated stream data
       if (this.connectedClientsByStream.get(streamId)?.size === 0) {
         this.connectedClientsByStream.delete(streamId);
+        // #2361: Clean up stream maps to prevent unbounded growth
+        this.nextSequenceByStream.delete(streamId);
+        this.replayBuffer.delete(streamId);
+        this.droppedBeforeSequenceByStream.delete(streamId);
+        this.transportStateByStream.delete(streamId);
       }
     }
     this.clientLastSequence.delete(clientId);
     this.clientStreamSubscription.delete(clientId);
+  }
+
+  /**
+   * #2361: Closes a stream and cleans up all associated data.
+   * Call this method when a stream is no longer needed to prevent memory leaks
+   * from unbounded map growth.
+   * @param streamId - The stream to close
+   */
+  public closeStream(streamId: string): void {
+    this.nextSequenceByStream.delete(streamId);
+    this.replayBuffer.delete(streamId);
+    this.droppedBeforeSequenceByStream.delete(streamId);
+    this.connectedClientsByStream.delete(streamId);
+    this.transportStateByStream.delete(streamId);
+    // Note: clientLastSequence and clientStreamSubscription are cleaned up
+    // when individual clients are unregistered via unregisterClient
   }
 
   /**

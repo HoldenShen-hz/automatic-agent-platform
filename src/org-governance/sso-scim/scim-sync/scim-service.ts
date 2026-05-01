@@ -148,6 +148,12 @@ export class ScimProvisionService {
    * @returns Created user
    */
   public createUser(user: Omit<ScimUser, "id" | "meta">, tenantId: string): ScimUser {
+    // SECURITY FIX: Validate userName uniqueness before creation to prevent duplicate index entries
+    const existingUserId = this.userByUsername.get(user.userName.toLowerCase());
+    if (existingUserId != null) {
+      throw new Error(`scim.userName_already_exists:${user.userName}`);
+    }
+
     const id = newId("scim_user");
     const now = nowIso();
 
@@ -531,7 +537,16 @@ export class ScimProvisionService {
           break;
         case "remove":
           if (op.path?.includes("members")) {
-            updatedMembers = [];
+            // SECURITY FIX: Parse path to extract member value filter.
+            // Previously cleared ALL members instead of removing specific members
+            // when path was "members[value eq \"xxx\"]".
+            const memberFilterMatch = op.path.match(/members\[value\s+eq\s+"([^"]+)"\]/);
+            if (memberFilterMatch) {
+              const targetValue = memberFilterMatch[1];
+              updatedMembers = updatedMembers.filter((m) => m.value !== targetValue);
+            } else {
+              updatedMembers = [];
+            }
           }
           break;
       }
@@ -789,18 +804,19 @@ export class ScimProvisionService {
     const match = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
     if (!match) return items;
 
-    const [, , op, value] = match;
+    // SECURITY FIX: Properly extract and use the field name from the filter.
+    // Previously, match[1] (fieldName) was discarded and only userName/displayName
+    // were checked, causing all filters to be applied to userName regardless of
+    // the actual field specified in the filter.
+    const [, fieldName, op, value] = match;
     const filterValue = value ?? "";
 
     return items.filter((item) => {
-      let itemValue: string;
-
-      if ("userName" in item) {
-        itemValue = item.userName;
-      } else if ("displayName" in item) {
-        itemValue = item.displayName;
-      } else {
-        return true;
+      // SECURITY FIX: Use the actual field name from the filter to get the value.
+      // Previously defaulted to userName/displayName only, ignoring the field name.
+      const itemValue = (item as Record<string, unknown>)[fieldName];
+      if (typeof itemValue !== "string") {
+        return false;
       }
 
       switch (op) {
@@ -813,7 +829,7 @@ export class ScimProvisionService {
         case "sw":
           return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
         default:
-          return true;
+          return false;
       }
     });
   }

@@ -16,7 +16,15 @@
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { GracefulShutdown } from "./graceful-shutdown.js";
 
-const processLogger = new StructuredLogger({ retentionLimit: 200 });
+// Lazy-initialized logger to avoid module-load-time construction and test state leakage
+let _processLogger: StructuredLogger | null = null;
+
+function getProcessLogger(): StructuredLogger {
+  if (!_processLogger) {
+    _processLogger = new StructuredLogger({ retentionLimit: 200 });
+  }
+  return _processLogger;
+}
 
 /**
  * Creates the uncaughtException handler.
@@ -39,7 +47,7 @@ export function createUncaughtExceptionHandler(
       hardExitTimer = null;
     }
 
-    processLogger.error("UNCAUGHT EXCEPTION — process will exit", {
+    getProcessLogger().error("UNCAUGHT EXCEPTION — process will exit", {
       data: {
         errorName: err.name,
         errorMessage: err.message,
@@ -51,14 +59,14 @@ export function createUncaughtExceptionHandler(
     try {
       shutdown.initiateShutdown("uncaught_exception");
     } catch (shutdownErr) {
-      processLogger.error("Failed to initiate graceful shutdown", {
+      getProcessLogger().error("Failed to initiate graceful shutdown", {
         data: { error: String(shutdownErr) },
       });
     }
 
     // Ultimate fallback: process.exit(1) after 60s no matter what
     hardExitTimer = setTimeout(() => {
-      processLogger.error("uncaughtException handler timed out — forcing process.exit(1)");
+      getProcessLogger().error("uncaughtException handler timed out — forcing process.exit(1)");
       process.exit(1);
     }, 60_000).unref();
   };
@@ -99,7 +107,7 @@ export function createUnhandledRejectionHandler(
     );
 
     if (isRecoverable) {
-      processLogger.warn("UNHANDLED REJECTION (recoverable) — degraded mode", {
+      getProcessLogger().warn("UNHANDLED REJECTION (recoverable) — degraded mode", {
         data: {
           reason: reasonStr,
           stack: reasonStack,
@@ -110,7 +118,7 @@ export function createUnhandledRejectionHandler(
       return;
     }
 
-    processLogger.error("UNHANDLED REJECTION (non-recoverable) — process will exit", {
+    getProcessLogger().error("UNHANDLED REJECTION (non-recoverable) — process will exit", {
       data: {
         reason: reasonStr,
         stack: reasonStack,
@@ -120,14 +128,14 @@ export function createUnhandledRejectionHandler(
     try {
       shutdown.initiateShutdown("unhandled_rejection");
     } catch (shutdownErr) {
-      processLogger.error("Failed to initiate graceful shutdown", {
+      getProcessLogger().error("Failed to initiate graceful shutdown", {
         data: { error: String(shutdownErr) },
       });
     }
 
     // Ultimate fallback: process.exit(1) after 60s no matter what
     hardExitTimer = setTimeout(() => {
-      processLogger.error("unhandledRejection handler timed out — forcing process.exit(1)");
+      getProcessLogger().error("unhandledRejection handler timed out — forcing process.exit(1)");
       process.exit(1);
     }, 60_000).unref();
   };
@@ -148,7 +156,7 @@ export function registerProcessErrorHandlers(shutdown: GracefulShutdown): void {
   process.on("uncaughtException", uncaughtExceptionHandler);
   process.on("unhandledRejection", unhandledRejectionHandler);
 
-  processLogger.info("Process error handlers registered", {
+  getProcessLogger().info("Process error handlers registered", {
     data: { pid: process.pid },
   });
 }

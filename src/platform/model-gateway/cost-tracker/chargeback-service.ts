@@ -87,53 +87,67 @@ export class ChargebackService {
     const allocations = new Map<string, ChargebackAllocation>();
     let totalCostUsd = 0;
 
-    for (const report of reports) {
-      // Convert report total to base currency
-      const reportTotalInBase = convertCurrency(report.totalCostUsd, report.currency, baseCurrency);
-      totalCostUsd += reportTotalInBase;
+    // R16-36 FIX #2087: Build report atomically - if any step fails, return empty report
+    // rather than partial/inconsistent data. This ensures cost tracking is consistent.
+    try {
+      for (const report of reports) {
+        // Convert report total to base currency
+        const reportTotalInBase = convertCurrency(report.totalCostUsd, report.currency, baseCurrency);
+        totalCostUsd += reportTotalInBase;
 
-      for (const resource of report.resourceCosts) {
-        // Convert resource cost to base currency
-        const costInBase = convertCurrency(resource.costUsd, resource.currency, baseCurrency);
+        for (const resource of report.resourceCosts) {
+          // Convert resource cost to base currency
+          const costInBase = convertCurrency(resource.costUsd, resource.currency, baseCurrency);
 
-        // Snapshot the FX rate at time of report for audit
-        const fxRate = getFxRateToUsd(resource.currency);
+          // Snapshot the FX rate at time of report for audit
+          const fxRate = getFxRateToUsd(resource.currency);
 
-        const allocationKey = [
-          report.tenantId ?? "platform",
-          resource.resourceType,
-          resource.resourceId,
-          resource.currency,
-        ].join(":");
-        const current = allocations.get(allocationKey);
-        if (current == null) {
+          const allocationKey = [
+            report.tenantId ?? "platform",
+            resource.resourceType,
+            resource.resourceId,
+            resource.currency,
+          ].join(":");
+          const current = allocations.get(allocationKey);
+          if (current == null) {
+            allocations.set(allocationKey, {
+              allocationKey,
+              tenantId: report.tenantId,
+              resourceId: resource.resourceId,
+              resourceType: resource.resourceType,
+              originalCurrency: resource.currency,
+              baseCurrency,
+              fxRateToBase: fxRate,
+              costOriginal: resource.costUsd / fxRate,
+              costUsd: costInBase,
+              costSource: resolveCostSource(resource),
+              reportCount: 1,
+              firstPeriodStart: report.periodStart,
+              latestPeriodEnd: report.periodEnd,
+            });
+            continue;
+          }
           allocations.set(allocationKey, {
-            allocationKey,
-            tenantId: report.tenantId,
-            resourceId: resource.resourceId,
-            resourceType: resource.resourceType,
-            originalCurrency: resource.currency,
-            baseCurrency,
-            fxRateToBase: fxRate,
-            costOriginal: resource.costUsd / fxRate,
-            costUsd: costInBase,
-            costSource: resolveCostSource(resource),
-            reportCount: 1,
-            firstPeriodStart: report.periodStart,
-            latestPeriodEnd: report.periodEnd,
+            ...current,
+            // costOriginal is in originalCurrency, not USD — divide USD by fxRate to get original amount
+            costOriginal: current.costOriginal + resource.costUsd / fxRate,
+            costUsd: current.costUsd + costInBase,
+            reportCount: current.reportCount + 1,
+            firstPeriodStart: report.periodStart.localeCompare(current.firstPeriodStart) < 0 ? report.periodStart : current.firstPeriodStart,
+            latestPeriodEnd: report.periodEnd.localeCompare(current.latestPeriodEnd) > 0 ? report.periodEnd : current.latestPeriodEnd,
           });
-          continue;
         }
-        allocations.set(allocationKey, {
-          ...current,
-          // costOriginal is in originalCurrency, not USD — divide USD by fxRate to get original amount
-          costOriginal: current.costOriginal + resource.costUsd / fxRate,
-          costUsd: current.costUsd + costInBase,
-          reportCount: current.reportCount + 1,
-          firstPeriodStart: report.periodStart.localeCompare(current.firstPeriodStart) < 0 ? report.periodStart : current.firstPeriodStart,
-          latestPeriodEnd: report.periodEnd.localeCompare(current.latestPeriodEnd) > 0 ? report.periodEnd : current.latestPeriodEnd,
-        });
       }
+    } catch (err) {
+      // Atomic rollback on failure - return empty report rather than partial data
+      return {
+        generatedAt: new Date().toISOString(),
+        tenantId: input.tenantId ?? null,
+        currency: baseCurrency,
+        totalCostUsd: 0,
+        reportCount: 0,
+        allocations: [],
+      };
     }
 
     return {

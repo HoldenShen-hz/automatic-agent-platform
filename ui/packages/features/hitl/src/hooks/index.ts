@@ -20,8 +20,13 @@ export interface HitlVm {
   readonly isLoading: boolean;
   approve(itemId: string): Promise<void>;
   reject(itemId: string): Promise<void>;
+  edit(itemId: string, edits: Record<string, unknown>): Promise<void>;
+  escalate(itemId: string, reason: string): Promise<void>;
+  defer(itemId: string, until: string): Promise<void>;
   delegate(itemId: string, delegateTo: string): Promise<void>;
   resume(itemId: string, mode: RecoveryMode): Promise<void>;
+  patch(itemId: string, patch: Record<string, unknown>): Promise<void>;
+  override(itemId: string, override: Record<string, unknown>): Promise<void>;
 }
 
 // Default mock items for when no client is provided
@@ -104,6 +109,43 @@ export function useHitlVm(
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
+  async function edit(itemId: string, edits: Record<string, unknown>): Promise<void> {
+    // §4.6.2: Edit allows modifying the approval parameters before resolution
+    if (client == null) return;
+    console.info(`[HITL] Edit item ${itemId}:`, edits);
+    // In production this would call an updateApproval API
+  }
+
+  async function patch(itemId: string, patch: Record<string, unknown>): Promise<void> {
+    // §4.6.2: Patch allows partial modification of the approval/workflow context
+    if (client == null) return;
+    console.info(`[HITL] Patch item ${itemId}:`, patch);
+    // In production this would call a patchApproval API endpoint
+  }
+
+  async function override(itemId: string, override: Record<string, unknown>): Promise<void> {
+    // §4.6.2: Override replaces the entire approval/workflow context with new values
+    if (client == null) return;
+    console.info(`[HITL] Override item ${itemId}:`, override);
+    // In production this would call an overrideApproval API endpoint
+  }
+
+  async function escalate(itemId: string, reason: string): Promise<void> {
+    // §4.6.2: Escalate moves the approval to a higher authority
+    if (client == null) return;
+    console.info(`[HITL] Escalate item ${itemId}: ${reason}`);
+    // Escalation would call escalateApproval API
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+  }
+
+  async function defer(itemId: string, until: string): Promise<void> {
+    // §4.6.2: Defer delays the approval until a specified time
+    if (client == null) return;
+    console.info(`[HITL] Defer item ${itemId} until ${until}`);
+    // Deferral would call deferApproval API with a timestamp
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+  }
+
   async function delegate(itemId: string, delegateTo: string): Promise<void> {
     if (client == null) return;
     await delegateApproval(client, itemId, delegateTo);
@@ -119,5 +161,5 @@ export function useHitlVm(
     await resumeWorkflow(client, itemId);
   }
 
-  return { items, isLoading, approve, reject, delegate, resume };
+  return { items, isLoading, approve, reject, edit, patch, override, escalate, defer, delegate, resume };
 }

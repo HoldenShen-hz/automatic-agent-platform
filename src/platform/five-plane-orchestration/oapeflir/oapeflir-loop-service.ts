@@ -112,6 +112,31 @@ export interface OapeflirLoopResult {
   graphPatch: GraphPatch | null;
   /** HarnessDecision from loop controller (R5-14) */
   harnessDecision: HarnessDecision | null;
+  /** §13.7: Normalization report from plan normalization */
+  normalizationReport?: {
+    normalizedNodes: number;
+    normalizedEdges: number;
+    conflictsResolved: number;
+    warnings: readonly string[];
+  };
+  /** §13.7: Validation report from plan graph validation */
+  validationReport?: {
+    valid: boolean;
+    findings: readonly { severity: string; code: string; message: string }[];
+  };
+  /** §13.7: Risk propagation analysis results */
+  riskPropagation?: {
+    riskScore: number;
+    criticalPathNodes: readonly string[];
+    riskEscalationFactors: readonly string[];
+  };
+  /** §13.7: Worst-case execution path analysis */
+  worstPath?: {
+    pathLength: number;
+    estimatedDurationMs: number;
+    budgetEstimate: number;
+    bottleneckNodes: readonly string[];
+  };
 }
 
 export interface OapeflirLoopServiceOptions {
@@ -121,6 +146,20 @@ export interface OapeflirLoopServiceOptions {
   dbPath?: string;
   /** Event publisher for emitting OAPEFLIR lifecycle events. */
   eventPublisher?: import("../../state-evidence/events/typed-event-publisher.js").TypedEventPublisher | null;
+  // R5-41: Allow injected service dependencies for testability/replaceability/circuit-breaking
+  situationBuilder?: InstanceType<typeof TaskSituationBuilder>;
+  observationAggregator?: InstanceType<typeof ObservationAggregator>;
+  assessmentService?: AssessmentService;
+  planBuilder?: PlanBuilder;
+  feedbackCollector?: FeedbackCollector;
+  outcomeEvaluator?: ExecutionOutcomeEvaluator;
+  qualityGate?: PostExecutionQualityGate;
+  replanningService?: ReplanningService;
+  learningService?: StrategyLearningService;
+  knowledgePromotionService?: KnowledgePromotionService;
+  autonomyBoundary?: AutonomyBoundaryPolicy;
+  candidateRegistry?: ImprovementCandidateRegistry;
+  rolloutService?: PolicyRolloutService;
 }
 
 /** R5-41 §14.3 OAPEFLIR event emission helper */
@@ -168,10 +207,24 @@ export class OapeflirLoopService {
     }
     // R5-41 §14.3: Store event publisher for run() lifecycle emissions
     this.eventPublisher = options.eventPublisher ?? null;
-    // G7: Wire eventPublisher to KnowledgePromotionService for learning:knowledge_promoted events
-    this.knowledgePromotion = new KnowledgePromotionService({
+    // R5-41: Use injected dependencies if provided, otherwise instantiate directly
+    // This enables testability, replaceability, and circuit-breaking
+    this.situationBuilder = options.situationBuilder ?? new TaskSituationBuilder();
+    this.systemSituationBuilder = new SystemSituationBuilder();
+    this.observationAggregator = options.observationAggregator ?? new ObservationAggregator();
+    this.assessment = options.assessmentService ?? new AssessmentService();
+    this.planBuilder = options.planBuilder ?? new PlanBuilder();
+    this.feedbackCollector = options.feedbackCollector ?? new FeedbackCollector();
+    this.outcomeEvaluator = options.outcomeEvaluator ?? new ExecutionOutcomeEvaluator();
+    this.qualityGate = options.qualityGate ?? new PostExecutionQualityGate();
+    this.replanning = options.replanningService ?? new ReplanningService();
+    this.learning = options.learningService ?? new StrategyLearningService();
+    this.knowledgePromotion = options.knowledgePromotionService ?? new KnowledgePromotionService({
       eventPublisher: options.eventPublisher ?? null,
     });
+    this.autonomyBoundary = options.autonomyBoundary ?? new AutonomyBoundaryPolicy();
+    this.candidateRegistry = options.candidateRegistry ?? new ImprovementCandidateRegistry();
+    this.rollout = options.rolloutService ?? new PolicyRolloutService();
   }
 
   /**
@@ -279,28 +332,25 @@ export class OapeflirLoopService {
           occurredAt: nowIso(),
         }, currentInput.taskId);
 
-        // O→A boundary: validate TaskSituation — degrade to default on failure (per §L.14)
+        // O→A boundary: validate TaskSituation — fail with incident on boundary validation failure
+        // R5-41: Boundary validation failure now produces incident/metric instead of silent degradation
         const observedTask: TaskSituation = (() => {
           const result = validateTaskSituation(taskObservation.task);
           if (result.ok) return result.value;
-          this.boundaryLogger.warn("[boundary:O→A] TaskSituation validation failed — degrading to default", {
-            data: { taskId: currentInput.taskId, boundary: "O→A" },
+          this.boundaryLogger.error("[boundary:O→A] TaskSituation validation failed — systemic drift detected", {
+            data: { taskId: currentInput.taskId, boundary: "O→A", error: result.error },
           });
-          return {
+          // Emit incident signal for monitoring/alerting
+          this.emitOapeflirEvent("oapeflir.decision.recorded", {
+            decisionKind: "boundary_violation",
+            decision: "abort",
+            reasonCode: "boundary:O→A:validation_failed",
+            deciderType: "system",
+            deciderRef: "oapeflir.boundary_policy",
             taskId: currentInput.taskId,
-            domainId: currentInput.workflow.workflow.divisionId,
-            timestamp: Date.now(),
-            objective: currentInput.objective,
-            currentPhase: "planning",
-            userIntent: { raw: currentInput.objective, normalized: currentInput.objective, confidence: 0.75 },
-            blockers: [],
-            codebaseSnapshot: { rootPath: ".", fileCount: 0, relevantFiles: [] },
-            environmentContext: { nodeVersion: process.version, platform: process.platform, workingDirectory: process.cwd(), availableTools: [] },
-            historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
-            relevantMemory: [],
-            fileRefs: currentInput.fileRefs ?? [],
-            metrics: {},
-          };
+            occurredAt: nowIso(),
+          }, currentInput.taskId);
+          throw new Error(`boundary.validation_failed: TaskSituation validation failed at O→A boundary for task ${currentInput.taskId}`);
         })();
 
         const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess({
@@ -344,27 +394,25 @@ export class OapeflirLoopService {
           occurredAt: nowIso(),
         }, currentInput.taskId);
 
-        // A→P boundary: validate UnifiedAssessment — default to fallback on failure (per §L.14)
+        // A→P boundary: validate UnifiedAssessment — fail with incident on boundary validation failure
+        // R5-41: Boundary validation failure now produces incident/metric instead of silent degradation
         const validatedAssessment: UnifiedAssessment = (() => {
           const result = validateUnifiedAssessment(assessment);
           if (result.ok) return result.value;
-          this.boundaryLogger.warn("[boundary:A→P] UnifiedAssessment validation failed — using default", {
-            data: { taskId: currentInput.taskId, boundary: "A→P" },
+          this.boundaryLogger.error("[boundary:A→P] UnifiedAssessment validation failed — systemic drift detected", {
+            data: { taskId: currentInput.taskId, boundary: "A→P", error: result.error },
           });
-          return {
+          // Emit incident signal for monitoring/alerting
+          this.emitOapeflirEvent("oapeflir.decision.recorded", {
+            decisionKind: "boundary_violation",
+            decision: "abort",
+            reasonCode: "boundary:A→P:validation_failed",
+            deciderType: "system",
+            deciderRef: "oapeflir.boundary_policy",
             taskId: currentInput.taskId,
-            timestamp: Date.now(),
-            situationRef: `assessment:${currentInput.taskId}:fallback`,
-            phase: "pre-execution",
-            complexity: "moderate",
-            risk: "medium",
-            riskAssessment: { level: "medium", factors: ["assessment_validation_failed"] },
-            routingDecision: { division: "coding", workflow: "multi-step", rationale: "fallback_due_to_validation_error" },
-            resourceAllocation: { modelClass: "medium", maxTokens: 5000, timeoutMs: 60000 },
-            approvalPolicy: { required: false, level: "none" },
-            executionMode: "auto",
-            suggestedActions: [],
-          };
+            occurredAt: nowIso(),
+          }, currentInput.taskId);
+          throw new Error(`boundary.validation_failed: UnifiedAssessment validation failed at A→P boundary for task ${currentInput.taskId}`);
         })();
 
         // R5-1: Plan stage now produces PlanGraphBundle with graph nodes/edges structure
@@ -841,12 +889,14 @@ export class OapeflirLoopService {
     attributes: Record<string, unknown>,
   ): Promise<T> {
     const startedAt = Date.now();
+    const taskId = attributes["taskId"] as string ?? "unknown";
     runtimeMetricsRegistry.recordOapeflirStageEntry(stage);
     try {
       const result = await startActiveSpan(`oapeflir.${stage}`, {
         tracerName: "automatic-agent-platform.oapeflir",
         attributes: {
           "aa.oapeflir.stage": stage,
+          "aa.task.id": taskId,
           ...attributes,
         },
       }, async () => await operation());
@@ -856,7 +906,14 @@ export class OapeflirLoopService {
     } catch (error) {
       const durationSeconds = (Date.now() - startedAt) / 1000;
       runtimeMetricsRegistry.recordOapeflirStageExit(stage, "error", durationSeconds);
-      throw error;
+      // R5-41: Preserve stage/task/span context in error for debugging
+      const stageError = error instanceof Error
+        ? new Error(`[stage:${stage}][task:${taskId}] ${error.message}`)
+        : error;
+      if (stageError instanceof Error) {
+        stageError.name = `OapeflirStageError:${stage}`;
+      }
+      throw stageError;
     }
   }
 
