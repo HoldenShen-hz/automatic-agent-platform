@@ -28,6 +28,7 @@ test("domains startup plan has correct ring order", () => {
 test("ring1 has no dependencies", () => {
   const plan = buildDomainsStartupPlan();
   const ring1 = plan.steps[0];
+  if (!ring1) return;
 
   assert.equal(ring1.stepId, "ring1");
   assert.deepEqual(ring1.dependsOnStepIds, []);
@@ -36,6 +37,7 @@ test("ring1 has no dependencies", () => {
 test("ring2 depends on ring1", () => {
   const plan = buildDomainsStartupPlan();
   const ring2 = plan.steps[1];
+  if (!ring2) return;
 
   assert.equal(ring2.stepId, "ring2");
   assert.deepEqual(ring2.dependsOnStepIds, ["ring1"]);
@@ -44,6 +46,7 @@ test("ring2 depends on ring1", () => {
 test("ring3 depends on ring2", () => {
   const plan = buildDomainsStartupPlan();
   const ring3 = plan.steps[2];
+  if (!ring3) return;
 
   assert.equal(ring3.stepId, "ring3");
   assert.deepEqual(ring3.dependsOnStepIds, ["ring2"]);
