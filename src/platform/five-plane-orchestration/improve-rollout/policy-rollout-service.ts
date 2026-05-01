@@ -22,9 +22,8 @@ export interface MetricsGateDecision {
 const PROGRESSIVE_STATUSES: ReadonlySet<RolloutStatus> = new Set([
   "canary_5",
   "partial_25",
-  "partial_50",
-  "partial_75",
-  "stable",
+  "stable_75",
+  "stable_100",
 ]);
 
 export interface EvaluationGateInput {
@@ -51,14 +50,12 @@ export class PolicyRolloutService {
     this.autoRollback = autoRollback;
   }
 
-  // R5-8: startWithGating supports EvaluationGate/approval/canary/rollback per §13.14
   public startWithGating(
     candidate: ImprovementCandidate,
     strategyVersion: StrategyVersion,
     approvedBy: string,
     options: RolloutGatingOptions,
   ): { record: RolloutRecord | null; approved: boolean } {
-    // R5-8: Evaluate gate before release
     if (options.evaluationGate && !options.evaluationGate.passed) {
       this.stateMachine.transition(candidate, "off", {
         approvedBy,
@@ -68,7 +65,6 @@ export class PolicyRolloutService {
       return { record: null, approved: false };
     }
 
-    // R5-8: Require approval for high/critical risk
     if (options.requireApproval && candidate.status !== "approved") {
       const decision = this.decide(candidate, strategyVersion);
       if (!decision.allowed) {
@@ -87,20 +83,18 @@ export class PolicyRolloutService {
       guardrailReasonCodes: decision.reasonCodes,
     });
 
-    // R5-8: Setup canary if specified
     if (options.canaryPercent && record) {
-      // Canary setup would be handled by the state machine transition
+      // Canary routing configuration is derived from the rollout record/state.
     }
 
     return { record, approved: true };
   }
 
   public decide(candidate: ImprovementCandidate, strategyVersion: StrategyVersion): RolloutDecision {
-    // Check if rollouts are frozen due to error budget exhaustion
     if (rolloutFreezeManager.isFrozen()) {
       return {
         allowed: false,
-        releaseLevel: "suggest",
+        releaseLevel: "off",
         reasonCode: "rollout.frozen_error_budget",
         reasonCodes: ["rollout.frozen_error_budget: rollouts are frozen due to error budget exhaustion"],
       };
@@ -110,19 +104,21 @@ export class PolicyRolloutService {
     if (!guardrailDecision.allowed) {
       return {
         allowed: false,
-        releaseLevel: "suggest",
+        releaseLevel: "off",
         reasonCode: guardrailDecision.reasonCodes[0] ?? "improvement.guardrail_blocked",
         reasonCodes: guardrailDecision.reasonCodes,
       };
     }
-    if (candidate.status !== "approved" && strategyVersion.releaseLevel === "shadow") {
+
+    if (candidate.status !== "approved" && strategyVersion.releaseLevel === "evaluate_0") {
       return {
         allowed: false,
-        releaseLevel: "suggest",
+        releaseLevel: "off",
         reasonCode: "improvement.candidate_not_approved",
         reasonCodes: ["improvement.candidate_not_approved"],
       };
     }
+
     return {
       allowed: true,
       releaseLevel: strategyVersion.releaseLevel,
@@ -146,7 +142,10 @@ export class PolicyRolloutService {
   public promote(
     candidate: ImprovementCandidate,
     current: RolloutRecord,
-    targetStatus: Exclude<RolloutStatus, "draft" | "rejected" | "rolled_back" | "paused">,
+    targetStatus: Exclude<
+      RolloutStatus,
+      "candidate_created" | "under_review" | "draft" | "pending_approval" | "rejected" | "rolled_back" | "paused"
+    >,
     metrics?: RolloutMetrics,
     approvedBy?: string,
   ): RolloutRecord {
@@ -215,33 +214,24 @@ export class PolicyRolloutService {
 
 function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
   switch (status) {
+    case "candidate_created":
+    case "under_review":
     case "draft":
+    case "pending_approval":
     case "rejected":
     case "rolled_back":
     case "paused":
       return "off";
-    case "pending_approval":
-      return "suggest";
-    case "shadow":
-      return "shadow";
+    case "evaluation_enabled":
+      return "evaluate_0";
     case "canary_5":
       return "canary_5";
     case "partial_25":
       return "partial_25";
-    case "partial_50":
-      return "partial_50";
-    case "partial_75":
-      return "partial_75";
-    case "stable":
-      return "stable";
-    case "candidate_created":
-    case "under_review":
-    case "evaluation_enabled":
     case "stable_75":
+      return "stable_75";
     case "stable_100":
     case "released":
-      // These are valid RolloutStatus values but don't map to a StrategyReleaseLevel
-      // Use "off" as the default since they represent non-progressive states
-      return "off";
+      return "stable_100";
   }
 }

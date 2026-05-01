@@ -5,7 +5,7 @@ import {
   type CostDataPoint,
   type ForecastingConfig,
   type SeasonalityPattern,
-} from "../../../src/platform/five-plane-interface/api/cost-forecasting-service.js";
+} from "../../../../../src/platform/five-plane-interface/api/cost-forecasting-service.js";
 
 describe("CostForecastingService", () => {
   let service: CostForecastingService;

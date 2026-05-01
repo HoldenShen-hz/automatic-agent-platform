@@ -13,23 +13,19 @@ export interface CanaryAllocation {
 }
 
 const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
+  candidate_created: 0,
+  under_review: 0,
   draft: 0,
   pending_approval: 0,
-  shadow: 0,
+  evaluation_enabled: 0,
   canary_5: 5,
   partial_25: 25,
-  partial_50: 50,
-  partial_75: 75,
   stable_75: 75,
   stable_100: 100,
-  stable: 100,
   released: 100,
   rejected: 0,
   rolled_back: 0,
   paused: 0,
-  candidate_created: 0,
-  under_review: 0,
-  evaluation_enabled: 0,
 };
 
 function hashToBucket(value: string): number {
@@ -67,7 +63,9 @@ export class CanaryTrafficRouter {
   }
 
   public computeCanaryAllocation(status: RolloutStatus): CanaryAllocation {
-    const canaryPercentage = status === "stable" ? 0 : this.getTrafficPercentage(status);
+    const canaryPercentage = status === "stable_100" || status === "released"
+      ? 0
+      : this.getTrafficPercentage(status);
     return {
       targetLevel: status,
       canaryPercentage,

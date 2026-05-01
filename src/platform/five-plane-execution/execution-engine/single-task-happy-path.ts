@@ -167,7 +167,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   // R4-25 (INV-BUDGET-001): Create budgetLedger from validated PlanGraphBundle for reserve-before-execute
   // The budgetLedger flows to model-call-provider for BudgetAllocator.reserve() before LLM calls
   const budgetLedger = createBudgetLedger({
-    tenantId: validatedPlanGraphBundle.tenantId ?? "tenant:local",
+    tenantId: input.tenantId ?? "tenant:local",
     harnessRunId: harnessRunIdFromBundle,
     currency: "USD",
     hardCap: 10, // matches default maxTaskCostUsd
@@ -179,6 +179,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   const db = storage.sql;
   const store = storage.store;
   storage.migrate();
+
+  // Generate taskId early for use in HarnessRun creation (before task is actually created)
+  const taskId = newId("task");
 
     // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
     // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
@@ -255,7 +258,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       });
     }
 
-    const taskId = newId("task");
     const sessionId = newId("sess");
     const executionId = newId("exec");
     const traceId = newId("trace");
@@ -492,12 +494,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     };
 
     // R4-28 (INV-STATE-001): Every truth mutation must append a PlatformFactEvent in the same transaction
-    const taskCreatedEvent: PlatformFactEvent = {
+    const taskCreatedEvent = {
       id: newId("evt"),
       taskId,
-      executionId: null,
+      executionId: null as string | null,
       eventType: "platform.task.status_changed",
-      eventTier: "tier_1",
+      eventTier: "tier_1" as const,
       payloadJson: JSON.stringify({
         aggregateType: "Task",
         fromStatus: null,
@@ -509,12 +511,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       createdAt: now,
     };
 
-    const workflowCreatedEvent: PlatformFactEvent = {
+    const workflowCreatedEvent = {
       id: newId("evt"),
       taskId,
-      executionId: null,
+      executionId: null as string | null,
       eventType: "platform.workflow.status_changed",
-      eventTier: "tier_1",
+      eventTier: "tier_1" as const,
       payloadJson: JSON.stringify({
         aggregateType: "Workflow",
         fromStatus: null,
@@ -526,12 +528,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       createdAt: now,
     };
 
-    const executionCreatedEvent: PlatformFactEvent = {
+    const executionCreatedEvent = {
       id: newId("evt"),
       taskId,
       executionId,
       eventType: "platform.execution.status_changed",
-      eventTier: "tier_1",
+      eventTier: "tier_1" as const,
       payloadJson: JSON.stringify({
         aggregateType: "Execution",
         fromStatus: null,
@@ -543,12 +545,12 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       createdAt: now,
     };
 
-    const sessionCreatedEvent: PlatformFactEvent = {
+    const sessionCreatedEvent = {
       id: newId("evt"),
       taskId,
-      executionId: null,
+      executionId: null as string | null,
       eventType: "platform.session.status_changed",
-      eventTier: "tier_1",
+      eventTier: "tier_1" as const,
       payloadJson: JSON.stringify({
         aggregateType: "Session",
         fromStatus: null,
@@ -708,6 +710,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       kind: "workflow_step_snapshot",
       fileName: `${step.stepId}.json`,
       content: createWorkflowStepCheckpoint({
+        harnessRunId: harnessRunIdFromBundle,
+        nodeRunId: null,
+        planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
         taskId,
         executionId,
         workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,

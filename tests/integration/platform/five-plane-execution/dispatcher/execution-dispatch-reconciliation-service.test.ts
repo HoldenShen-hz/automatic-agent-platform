@@ -240,7 +240,7 @@ test("reconciliation detects terminal execution ticket issue", () => {
         divisionId: "general_ops",
         tenantId: null,
         title: "Terminal execution test",
-        status: "completed",
+        status: "done",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -439,7 +439,7 @@ test("applyIssue with terminal_execution_ticket invalidates ticket without creat
         divisionId: "general_ops",
         tenantId: null,
         title: "Apply terminal test",
-        status: "completed",
+        status: "done",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -542,7 +542,7 @@ test("reconciliation scan finds all issues across all pending and claimed ticket
         divisionId: "general_ops",
         tenantId: null,
         title: "Terminal task",
-        status: "completed",
+        status: "done",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -709,7 +709,7 @@ test("repair applies all issues and records events", () => {
         divisionId: "general_ops",
         tenantId: null,
         title: "Repair event test",
-        status: "completed",
+        status: "done",
         source: "user",
         priority: "normal",
         inputJson: "{}",
@@ -779,13 +779,13 @@ test("repair applies all issues and records events", () => {
 
     assert.equal(issues.length, 1);
     assert.equal(applied.length, 1);
-    assert.equal(applied[0].applied, true);
+    assert.equal(applied[0]!.applied, true);
 
     // Verify event was recorded
     const events = ctx.store.event.listEventsByType("dispatch:ticket_reconciled", 10);
     assert.ok(events.length > 0, "should have recorded reconciliation event");
 
-    const reconciliationEvent = events[0];
+    const reconciliationEvent = events[0]!;
     const payload = JSON.parse(reconciliationEvent.payloadJson);
     assert.equal(payload.ticketId, ticketId);
     assert.equal(payload.issueType, "terminal_execution_ticket");
@@ -886,7 +886,7 @@ test("orphan queue claim repair records ticket_requeued event with replacement i
     const events = ctx.store.event.listEventsByType("dispatch:ticket_requeued", 10);
     assert.ok(events.length > 0, "should have recorded ticket_requeued event");
 
-    const requeueEvent = events[0];
+    const requeueEvent = events[0]!;
     const payload = JSON.parse(requeueEvent.payloadJson);
     assert.equal(payload.previousTicketId, ticketId);
     assert.equal(payload.replacementTicketId, result?.replacementTicketId);

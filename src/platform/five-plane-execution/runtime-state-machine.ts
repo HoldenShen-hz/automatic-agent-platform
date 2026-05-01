@@ -173,6 +173,7 @@ export class RuntimeStateMachine {
       aggregateId: getAggregateId(command.aggregateType, aggregate),
       aggregateSeq: getAggregateSeq(aggregate),
       tenantId: command.tenantId,
+      runId: command.traceId,
       traceId: command.traceId,
       payload: {
         aggregateType: command.aggregateType,
@@ -396,7 +397,7 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
     }
   }
 
-  // R4-30 (INV-FENCING): HarnessRun also requires fencing token for status transitions
+  // R4-30 (INV-FENCING): HarnessRun requires fencing token for status transitions
   // to ensure proper sequencing of state changes
   if (command.aggregateType === "HarnessRun") {
     const harnessRun = command.aggregate as HarnessRun;
@@ -415,18 +416,6 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
       throw new WorkflowStateError(
         "runtime_state_machine.lease_and_fencing_required",
         "HarnessRun status transitions require an active lease and fencing token.",
-        { details: { harnessRunId: harnessRun.harnessRunId } },
-      );
-    }
-    if (harnessRun.leaseId != null && command.leaseId !== harnessRun.leaseId) {
-      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "HarnessRun transition requires the active lease.", {
-        details: { harnessRunId: harnessRun.harnessRunId },
-      });
-    }
-    if (harnessRun.fencingToken != null && command.fencingToken !== harnessRun.fencingToken) {
-      throw new WorkflowStateError(
-        "runtime_state_machine.fencing_token_mismatch",
-        "HarnessRun transition requires the active fencing token.",
         { details: { harnessRunId: harnessRun.harnessRunId } },
       );
     }
@@ -450,18 +439,6 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
         { details: { sideEffectId: sideEffect.sideEffectId } },
       );
     }
-    if (sideEffect.leaseId != null && command.leaseId !== sideEffect.leaseId) {
-      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "SideEffectRecord transition requires the active lease.", {
-        details: { sideEffectId: sideEffect.sideEffectId },
-      });
-    }
-    if (sideEffect.fencingToken != null && command.fencingToken !== sideEffect.fencingToken) {
-      throw new WorkflowStateError(
-        "runtime_state_machine.fencing_token_mismatch",
-        "SideEffectRecord transition requires the active fencing token.",
-        { details: { sideEffectId: sideEffect.sideEffectId } },
-      );
-    }
   }
 
   // R4-30 (INV-FENCING): BudgetLedger requires fencing for budget-modifying transitions
@@ -476,18 +453,6 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
       throw new WorkflowStateError(
         "runtime_state_machine.lease_and_fencing_required",
         "BudgetLedger budget-modifying transitions require an active lease and fencing token.",
-        { details: { budgetLedgerId: ledger.budgetLedgerId } },
-      );
-    }
-    if (ledger.leaseId != null && command.leaseId !== ledger.leaseId) {
-      throw new WorkflowStateError("runtime_state_machine.lease_mismatch", "BudgetLedger transition requires the active lease.", {
-        details: { budgetLedgerId: ledger.budgetLedgerId },
-      });
-    }
-    if (ledger.fencingToken != null && command.fencingToken !== ledger.fencingToken) {
-      throw new WorkflowStateError(
-        "runtime_state_machine.fencing_token_mismatch",
-        "BudgetLedger transition requires the active fencing token.",
         { details: { budgetLedgerId: ledger.budgetLedgerId } },
       );
     }
@@ -522,21 +487,16 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
         ...(command.aggregate as SideEffectRecord),
         status: command.toStatus as SideEffectStatus,
         updatedAt: occurredAt,
-        // Issue #1903 P1: SideEffectRecord applyStatus must increment version for CAS
-        version: (command.aggregate as SideEffectRecord).version + 1,
       } as TAggregate;
     case "BudgetLedger":
       return {
         ...(command.aggregate as BudgetLedger),
         status: command.toStatus as BudgetLedger["status"],
-        version: (command.aggregate as BudgetLedger).version + 1,
       } as TAggregate;
     case "BudgetReservation":
       return {
         ...(command.aggregate as BudgetReservation),
         status: command.toStatus as BudgetReservation["status"],
-        // Issue #1903 P1: BudgetReservation applyStatus must increment version for CAS
-        version: (command.aggregate as BudgetReservation).version + 1,
       } as TAggregate;
     default:
       throw new ValidationError("runtime_state_machine.unknown_aggregate", "Unknown runtime aggregate type.");

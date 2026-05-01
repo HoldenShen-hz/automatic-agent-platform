@@ -254,7 +254,7 @@ export class IntakeAdmissionService {
           taskDraftId: taskDraft.taskDraftId,
           tenantId: input.tenantId,
           principal: input.principal,
-          domainId: input.domainId || undefined,
+          domainId: input.domainId,
           goal: input.goal,
           inputs: (input.inputs ?? {}) as JsonValue,
           constraintPackRef: input.constraintPackRef,
@@ -268,7 +268,7 @@ export class IntakeAdmissionService {
             taskDraftId: taskDraft.taskDraftId,
             tenantId: input.tenantId,
             principal: input.principal,
-            domainId: input.domainId || undefined,
+            domainId: input.domainId,
             goal: input.goal,
             inputs: (input.inputs ?? {}) as JsonValue,
             constraintPackRef: input.constraintPackRef,
@@ -304,7 +304,7 @@ export class IntakeAdmissionService {
       taskDraftId: taskDraft.taskDraftId,
       tenantId: input.tenantId,
       principal: input.principal,
-      domainId: input.domainId || undefined,
+      domainId: input.domainId,
       goal: input.goal,
       inputs: (input.inputs ?? {}) as JsonValue,
       constraintPackRef: input.constraintPackRef,
@@ -348,7 +348,7 @@ export class IntakeAdmissionService {
     };
     const admitted = this.stateMachine.transition({
       aggregateType: "HarnessRun",
-      aggregate: runnable,
+      aggregate: runnable as HarnessRun,
       fromStatus: "created",
       toStatus: "admitted",
       expectedSeq: 0,
@@ -385,7 +385,7 @@ export class IntakeAdmissionService {
         runVersionLockId: runVersionLock.runVersionLockId,
         // R6-1: Include clarification session in event if present
         ...(clarificationSession != null ? { clarificationSession } : {}),
-      } as JsonValue,
+      } as unknown as JsonValue,
       schemaOwner: "intake-admission-service",
       consumerContractTests: ["intake-admission-service.test.ts"],
     });

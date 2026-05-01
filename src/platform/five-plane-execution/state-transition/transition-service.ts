@@ -213,6 +213,8 @@ const EXECUTION_TRANSITIONS: Record<ExecutionStatus, readonly ExecutionStatus[]>
   prechecking: ["executing", "blocked", "paused", "recovering", "cancelled", "failed"],
   executing: ["blocked", "succeeded", "failed", "cancelled", "paused", "recovering"],
   paused: ["resuming", "recovering", "timed_out", "failed", "cancelled"],
+  resuming: ["executing", "failed", "cancelled"],
+  ready: ["executing", "failed", "cancelled"],
   recovering: ["ready", "executing", "failed", "cancelled", "timed_out"],
   timed_out: ["resuming", "failed", "cancelled"],
   blocked: ["prechecking", "executing", "cancelled", "failed", "superseded"],
@@ -641,7 +643,7 @@ export class ExecutionTransitionService {
     }
     // §28: Emit tier-1 status change event for execution transitions
     this.repository.createTier1StatusEvent({
-      taskId: null,
+      taskId: "",
       executionId: command.entityId,
       eventType: "execution:status_changed",
       traceId: command.traceId,

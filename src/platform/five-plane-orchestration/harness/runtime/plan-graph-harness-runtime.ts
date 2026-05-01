@@ -142,6 +142,7 @@ export class PlanGraphScheduler {
       aggregateId: input.planGraphBundle.planGraphBundleId,
       aggregateSeq: input.planGraphBundle.graphVersion,
       tenantId: input.tenantId,
+      runId: input.traceId,
       traceId: input.traceId,
       payload: {
         schedulerPolicy: input.planGraphBundle.schedulerPolicy.strategy,
@@ -228,7 +229,7 @@ export class PlanGraphHarnessRuntime {
         traceId: input.context.traceId,
         reasonCode: `runtime.${toStatus}`,
         emittedBy: input.context.emittedBy,
-        ...(toStatus === "leased" || toStatus === "running" ? { leaseId, fencingToken } : {}),
+        ...(toStatus === "leased" || toStatus === "running" ? { leaseId, fencingToken } : { leaseId: undefined, fencingToken: undefined }),
       });
       nodeRun = result.aggregate;
       events.push(result.event);
@@ -247,15 +248,13 @@ export class PlanGraphHarnessRuntime {
     const receipt = createNodeAttemptReceipt({
       nodeAttemptId: nodeAttempt.nodeAttemptId,
       nodeRunId: nodeRun.nodeRunId,
+      harnessRunId: nodeRun.harnessRunId,
+      planGraphId: input.planGraphBundle.planGraphBundleId,
+      graphVersion: input.planGraphBundle.graphVersion,
       receiptKind: node.nodeType === "llm" ? "llm" : node.nodeType === "hitl_wait" ? "hitl" : "tool",
       status: input.receiptStatus ?? "succeeded",
-      evidenceRefs: [
-        {
-          artifactId: `${node.nodeId}-evidence`,
-          uri: `memory://plan-nodes/${node.nodeId}/evidence`,
-        },
-      ],
-    });
+      duration: 0,
+      });
 
     const terminalStatus: NodeRun["status"] = receipt.status === "succeeded" ? "succeeded" : "failed";
     const terminal = this.stateMachine.transition({

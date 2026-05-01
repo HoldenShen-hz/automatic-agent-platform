@@ -12,7 +12,7 @@ import {
   type PolicyFinding,
   type RiskClass,
 } from "../../../platform/contracts/executable-contracts/index.js";
-import { RuntimeStateMachine } from "../../../platform/execution/runtime-state-machine.js";
+import { RuntimeStateMachine, RuntimeTransitionCommand } from "../../../platform/execution/runtime-state-machine.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
 import { DurableHarnessService } from "./durable/durable-harness-service.js";
@@ -732,14 +732,14 @@ export class HarnessRuntimeService {
       outputs: input.outputs,
       startedAt,
       completedAt,
-      nodeRunRefs: input.nodeRunId != null ? [input.nodeRunId] : undefined,
+      ...(input.nodeRunId != null ? { nodeRunRefs: [input.nodeRunId] as const } : {}),
       rationale: input.rationale,
       evidenceRefs: input.evidenceRefs,
       toolCalls: input.toolCalls,
       latency: input.latency,
       cost: input.cost,
       error: input.error ?? null,
-      ...(input.nextAction !== null ? { nextAction: input.nextAction } : {}),
+      ...(input.nextAction !== null ? { nextAction: input.nextAction as string } : {}),
     };
     return {
       ...run,
@@ -1568,7 +1568,7 @@ export class HarnessRuntimeService {
         hardCapSatisfied: true,
       };
     }
-    const transitioned = this.stateMachine.transition(transitionParams);
+    const transitioned = this.stateMachine.transition(transitionParams as unknown as RuntimeTransitionCommand<HarnessRun>);
 
     return {
       ...run,

@@ -16,10 +16,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { newId, nowIso } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.ts";
-import { createIntegrationContext } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/helpers/integration-context.ts";
-import { ExecutionDispatchService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/execution-dispatch-service.ts";
-import type { AdmissionBackpressureSnapshot } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/admission-controller.ts";
+import { newId, nowIso } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.js";
+import { createIntegrationContext } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/tests/helpers/integration-context.js";
+import { ExecutionDispatchService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
+import type { AdmissionBackpressureSnapshot } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-execution/dispatcher/admission-controller.js";
 
 /**
  * Creates a spy backpressure snapshot that tracks call count.
@@ -33,7 +33,6 @@ function createSpyBackpressureSnapshot() {
       return {
         status: "ok",
         degradationMode: "none",
-        tier1AckBacklog: 0,
         queueGovernance: {
           backlogSize: 0,
           dispatchableBacklogSize: 0,
@@ -43,6 +42,7 @@ function createSpyBackpressureSnapshot() {
           queueNames: [],
           starvationDetected: false,
         },
+        findings: [],
       };
     },
   };
@@ -145,6 +145,7 @@ test("health report is computed once per dispatchNext call, not per ticket", () 
     service.dispatchNext({
       occurredAt: now,
       queueName: "default",
+      leaseTtlMs: 30000,
     });
 
     assert.equal(
@@ -245,9 +246,9 @@ test("cachedHealthService is reused across multiple dispatchNext calls", () => {
 
     // Call dispatchNext multiple times - backpressure should be called once per dispatchNext
     // but the HealthService (when used without external snapshot) should be cached
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
 
     // Each dispatchNext call computes backpressure once (O(1) per call)
     // So 3 dispatchNext calls = 3 backpressure calls
@@ -355,7 +356,7 @@ test("getReport is called once per dispatchNext regardless of ticket count", () 
 
     // With 5 tickets, if getReport() were called per ticket (O(n) behavior),
     // it would be called 5 times. But with R9-10 fix, it should be called only once.
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
 
     assert.equal(
       spy.callCount(),
@@ -454,14 +455,14 @@ test("health service caching - no new instantiation on subsequent dispatchNext w
     const service = new ExecutionDispatchService(ctx.db, ctx.store);
 
     // First dispatchNext - creates health service and calls getReport once
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
 
     // Second dispatchNext - should reuse the cached health service
     // If caching works, no new HealthService instantiation occurs
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
 
     // Third dispatchNext
-    service.dispatchNext({ occurredAt: now, queueName: "default" });
+    service.dispatchNext({ occurredAt: now, queueName: "default", leaseTtlMs: 30000 });
 
     // All three calls should work without error, proving caching works
     // This test verifies the service doesn't crash when health service is cached

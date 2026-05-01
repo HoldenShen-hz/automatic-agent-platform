@@ -15,28 +15,20 @@ export interface RolloutTransitionOptions {
   targetStatus?: RolloutStatus | undefined;
 }
 
-// §186-2187: Self-transitions are NOT allowed - they cause duplicate records and reset transitionedAt
-// Each status can only transition to DIFFERENT statuses (no same-status transitions)
 const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus[]>> = {
-  draft: ["pending_approval", "shadow", "rejected", "rolled_back", "paused"],
-  pending_approval: ["shadow", "rejected", "paused"], // Removed self-transition
-  shadow: ["canary_5", "rolled_back", "paused"],      // Removed self-transition
-  canary_5: ["partial_25", "rolled_back", "paused"], // Removed self-transition
-  partial_25: ["partial_50", "rolled_back", "paused"], // Removed self-transition
-  partial_50: ["partial_75", "rolled_back", "paused"], // Removed self-transition
-  partial_75: ["stable", "stable_75", "rolled_back", "paused"], // Removed self-transition
-  stable_75: ["stable_100", "stable", "rolled_back", "paused"],
-  stable_100: ["released", "stable", "rolled_back", "paused"],
-  stable: ["rolled_back", "paused"],                  // Removed self-transition
-  released: [],                                        // Terminal state - no transitions
-  rejected: [],                                        // Terminal state - no transitions
-  rolled_back: [],                                     // Terminal state - no transitions
-  paused: ["pending_approval", "shadow", "canary_5", "partial_25", "partial_50", "partial_75", "stable", "stable_75", "stable_100", "rolled_back"], // Removed self-transition
   candidate_created: ["under_review", "draft", "rejected"],
-  under_review: ["draft", "pending_approval", "rejected"],
-  evaluation_enabled: ["canary_5", "partial_25", "stable_75", "stable_100", "rolled_back", "paused"],
-  // Additional states from RolloutStatus that may not have explicit transitions defined
-  // they fall back to the default behavior via the switch statement in inferStatusFromLevel
+  under_review: ["draft", "rejected", "paused"],
+  draft: ["pending_approval", "rejected", "paused"],
+  pending_approval: ["evaluation_enabled", "rejected", "paused"],
+  rejected: [],
+  evaluation_enabled: ["canary_5", "rolled_back", "paused"],
+  canary_5: ["partial_25", "rolled_back", "paused"],
+  partial_25: ["stable_75", "rolled_back", "paused"],
+  stable_75: ["stable_100", "rolled_back", "paused"],
+  stable_100: ["released", "rolled_back", "paused"],
+  released: ["rolled_back", "paused"],
+  rolled_back: [],
+  paused: ["pending_approval", "evaluation_enabled", "canary_5", "partial_25", "stable_75", "stable_100", "released", "rolled_back"],
 };
 
 export class RolloutStateMachine {
@@ -51,12 +43,14 @@ export class RolloutStateMachine {
     if (!allowedTransitions.includes(targetStatus)) {
       throw new Error(`Invalid rollout transition: ${currentStatus} -> ${targetStatus}`);
     }
-    const previousLevel = inferLevelFromStatus(currentStatus);
+
+    const fromLevel = inferLevelFromStatus(currentStatus);
     return parseRolloutRecord({
       recordId: newId("rollout"),
       candidateId: candidate.candidateId,
-      level: nextLevel,
-      previousLevel,
+      fromLevel,
+      toLevel: nextLevel,
+      previousLevel: fromLevel,
       strategyVersionId: options.strategyVersionId ?? null,
       status: targetStatus,
       transitionedAt: Date.now(),
@@ -69,40 +63,44 @@ export class RolloutStateMachine {
 
 function inferCurrentStatus(candidate: ImprovementCandidate, nextLevel: RolloutLevel): RolloutStatus {
   switch (candidate.status) {
+    case "candidate_created":
+      return "candidate_created";
+    case "under_review":
+      return "under_review";
+    case "proposed":
+      return "draft";
     case "approved":
-      if (nextLevel === "off") {
-        return "stable";
-      }
       return inferPreviousStatusFromLevel(nextLevel, "pending_approval");
+    case "evaluating":
+      return inferPreviousStatusFromLevel(nextLevel, "evaluation_enabled");
     case "shadow_running":
-      return inferPreviousStatusFromLevel(nextLevel, "shadow");
+      return inferPreviousStatusFromLevel(nextLevel, "evaluation_enabled");
     case "rejected":
       return "rejected";
     case "rolled_back":
       return "rolled_back";
-    default:
-      return "draft";
   }
 }
 
 function inferStatusFromLevel(level: RolloutLevel, currentStatus: RolloutStatus): RolloutStatus {
   switch (level) {
     case "off":
-      return currentStatus === "draft" ? "rejected" : "rolled_back";
-    case "suggest":
-      return "pending_approval";
-    case "shadow":
-      return "shadow";
+      return currentStatus === "candidate_created"
+        || currentStatus === "under_review"
+        || currentStatus === "draft"
+        || currentStatus === "pending_approval"
+        ? "rejected"
+        : "rolled_back";
+    case "evaluate_0":
+      return "evaluation_enabled";
     case "canary_5":
       return "canary_5";
     case "partial_25":
       return "partial_25";
-    case "partial_50":
-      return "partial_50";
-    case "partial_75":
-      return "partial_75";
-    case "stable":
-      return "stable";
+    case "stable_75":
+      return "stable_75";
+    case "stable_100":
+      return "stable_100";
   }
 }
 
@@ -110,53 +108,39 @@ function inferPreviousStatusFromLevel(level: RolloutLevel, fallback: RolloutStat
   switch (level) {
     case "off":
       return fallback;
-    case "suggest":
-      return "draft";
-    case "shadow":
-      return fallback === "pending_approval" ? "pending_approval" : "draft";
+    case "evaluate_0":
+      return fallback;
     case "canary_5":
-      return "shadow";
+      return "evaluation_enabled";
     case "partial_25":
       return "canary_5";
-    case "partial_50":
+    case "stable_75":
       return "partial_25";
-    case "partial_75":
-      return "partial_50";
-    case "stable":
-      return "partial_75";
+    case "stable_100":
+      return "stable_75";
   }
 }
 
 function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
   switch (status) {
+    case "candidate_created":
+    case "under_review":
     case "draft":
+    case "pending_approval":
     case "rejected":
     case "rolled_back":
+    case "paused":
       return "off";
-    case "pending_approval":
-      return "suggest";
-    case "shadow":
-      return "shadow";
+    case "evaluation_enabled":
+      return "evaluate_0";
     case "canary_5":
       return "canary_5";
     case "partial_25":
       return "partial_25";
-    case "partial_50":
-      return "partial_50";
-    case "partial_75":
-      return "partial_75";
-    case "stable":
-      return "stable";
-    case "paused":
-      return "suggest";
-    case "candidate_created":
-    case "under_review":
-    case "evaluation_enabled":
-      return "off";
     case "stable_75":
-      return "partial_75";
+      return "stable_75";
     case "stable_100":
     case "released":
-      return "stable";
+      return "stable_100";
   }
 }

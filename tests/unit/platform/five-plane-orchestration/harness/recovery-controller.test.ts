@@ -27,7 +27,6 @@ function makeRuntimeState(overrides: Partial<HarnessRunRuntimeState> = {}): Harn
     requestHash: "hash_test",
     constraintPackRef: "cp_test",
     versionLockId: "vl_test",
-    planGraphBundleId: "pgb_test",
     budgetLedgerId: "bl_test",
     currentSeq: 0,
     taskId: "task_test",
@@ -35,7 +34,7 @@ function makeRuntimeState(overrides: Partial<HarnessRunRuntimeState> = {}): Harn
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
-      autonomyMode: "full_auto",
+      autonomyMode: "suggestion",
       toolPolicy: { allowedTools: ["read_file", "write_file"] },
       risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },

@@ -8,7 +8,8 @@ import {
   meetsIsolationRequirement,
   selectWorkersForDispatch,
 } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
-import type { DispatchTarget, WorkerIsolationLevel, RegisteredWorkerView, RemoteAvailability } from "../../../../../src/platform/contracts/types/domain/index.js";
+import type { DispatchTarget, WorkerIsolationLevel, RemoteAvailability } from "../../../../../src/platform/contracts/types/domain/index.js";
+import type { RegisteredWorkerView } from "../../../../../src/platform/five-plane-execution/worker-pool/worker/worker-registry-service.js";
 
 function makeWorker(overrides: Partial<RegisteredWorkerView> = {}): RegisteredWorkerView {
   return {
@@ -28,14 +29,25 @@ function makeWorker(overrides: Partial<RegisteredWorkerView> = {}): RegisteredWo
     workspaceSyncCheckedAt: null,
     saturation: null,
     activeLeaseCount: 0,
-    runningExecutionCount: 0,
-    toolBacklogCount: 0,
+    meanStartupLatencyMs: null,
+    sandboxSuccessRate: null,
+    repoCacheHitRate: null,
+    trusted: false,
+    registrationVerifiedAt: null,
+    registrationChallengeId: null,
+    capabilities: [],
+    runningExecutionIds: [],
     maxConcurrency: 4,
     queueAffinity: null,
     availableSlots: 2,
     runtimeInstanceId: null,
     restartedFromRuntimeInstanceId: null,
     restartGeneration: 0,
+    cpuPct: null,
+    memoryMb: null,
+    toolBacklogCount: 0,
+    currentStepId: null,
+    lastProgressAt: null,
     lastHeartbeatAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -194,7 +206,7 @@ test("selectWorkersForDispatch filters to remote workers when prefer_remote and 
   const result = selectWorkersForDispatch("prefer_remote", workers, null, null, null, null);
 
   assert.equal(result.workers.length, 1);
-  assert.equal(result.workers[0].workerId, "remote-1");
+  assert.equal(result.workers[0]!.workerId, "remote-1");
   assert.equal(result.fallbackApplied, false);
 });
 
@@ -209,7 +221,7 @@ test("selectWorkersForDispatch falls back to local workers when no remote worker
   const result = selectWorkersForDispatch("prefer_remote", workers, null, null, null, null);
 
   assert.equal(result.workers.length, 1);
-  assert.equal(result.workers[0].workerId, "local-1");
+  assert.equal(result.workers[0]!.workerId, "local-1");
   assert.equal(result.fallbackApplied, true);
 });
 
@@ -220,7 +232,7 @@ test("selectWorkersForDispatch sets reasonCode from remoteTrustReason when falli
   const result = selectWorkersForDispatch("prefer_remote", workers, null, "remote.untrusted", null, null);
 
   assert.equal(result.workers.length, 1);
-  assert.equal(result.workers[0].workerId, "local-1");
+  assert.equal(result.workers[0]!.workerId, "local-1");
   assert.equal(result.fallbackApplied, true);
   assert.equal(result.reasonCode, "remote.untrusted");
 });
@@ -232,7 +244,7 @@ test("selectWorkersForDispatch sets reasonCode from remoteSessionReason when fal
   const result = selectWorkersForDispatch("prefer_remote", workers, null, null, "remote.session_unready", null);
 
   assert.equal(result.workers.length, 1);
-  assert.equal(result.workers[0].workerId, "local-1");
+  assert.equal(result.workers[0]!.workerId, "local-1");
   assert.equal(result.fallbackApplied, true);
   assert.equal(result.reasonCode, "remote.session_unready");
 });
@@ -244,7 +256,7 @@ test("selectWorkersForDispatch sets reasonCode from remoteRepoVersionReason when
   const result = selectWorkersForDispatch("prefer_remote", workers, null, null, null, "remote.repo_version_mismatch");
 
   assert.equal(result.workers.length, 1);
-  assert.equal(result.workers[0].workerId, "local-1");
+  assert.equal(result.workers[0]!.workerId, "local-1");
   assert.equal(result.fallbackApplied, true);
   assert.equal(result.reasonCode, "remote.repo_version_mismatch");
 });

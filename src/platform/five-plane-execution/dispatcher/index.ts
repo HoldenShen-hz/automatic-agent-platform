@@ -28,7 +28,7 @@ import type { LlmModelCallResult } from "../execution-engine/model-call-provider
 import { executeAgentRoundLoop } from "../execution-engine/multi-step-agent-round-loop.js";
 import { getMultiStepToolDefinitions } from "../execution-engine/multi-step-tool-definitions.js";
 import { parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../execution-engine/multi-step-utils.js";
-import { createSideEffectRecord, type SideEffectKind, type SideEffectStatus } from "../../contracts/executable-contracts/index.js";
+import { createSideEffectRecord, createBudgetLedger, type BudgetLedger, type SideEffectKind, type SideEffectStatus } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 import type { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 
@@ -69,6 +69,8 @@ interface SpawnedAgentState {
   maxIterations?: number;
   requestHistory: string[];
   execution: SpawnedAgentExecutionState | null;
+  budgetLedger: BudgetLedger;
+  harnessRunId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -518,6 +520,8 @@ class MultiStepToolRegistry {
         request: this.buildSpawnedAgentRequest(state),
         priorSummaries: previousExecution?.summary != null ? [previousExecution.summary] : [],
         routingReason: state.routingReason,
+        harnessRunId: state.harnessRunId,
+        budgetLedger: state.budgetLedger,
         ...(delegatedTools != null ? { tools: delegatedTools } : {}),
         ...(state.maxIterations != null ? { maxIterations: state.maxIterations } : {}),
       });
@@ -757,6 +761,8 @@ class MultiStepToolRegistry {
           delegatedToolNames: parseOptionalStringArray(args.tools),
           requestHistory: [(args.request as string | undefined) ?? ""],
           execution: null,
+          harnessRunId: this.currentHarnessRunId ?? "harness_run:spawned_agent",
+          budgetLedger: createBudgetLedger({ tenantId: "default", harnessRunId: this.currentHarnessRunId ?? "harness_run:spawned_agent", currency: "USD", hardCap: 100 }),
           ...((typeof args.maxIterations === "number" && args.maxIterations > 0) ? { maxIterations: Math.trunc(args.maxIterations) } : {}),
         };
         this.spawnedAgents.set(agentId, state);
