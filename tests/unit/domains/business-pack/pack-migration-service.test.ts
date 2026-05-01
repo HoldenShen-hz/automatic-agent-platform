@@ -481,8 +481,8 @@ test("PackMigrationService.execution trace order is preserved", async () => {
 
   // Trace should be in chronological order
   for (let i = 1; i < trace.length; i++) {
-    const prev = new Date(trace[i - 1].occurredAt).getTime();
-    const curr = new Date(trace[i].occurredAt).getTime();
+    const prev = new Date(trace[i - 1]!.occurredAt).getTime();
+    const curr = new Date(trace[i]!.occurredAt).getTime();
     assert.ok(prev <= curr, "Trace records should be in chronological order");
   }
 });
