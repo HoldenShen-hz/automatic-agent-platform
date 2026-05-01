@@ -314,7 +314,7 @@ test("PackMigrationService.validateMigration returns errors for unknown plan", (
   assert.ok(result.errors.some((e) => e.includes("not found")));
 });
 
-test("PackMigrationService.validateMigration returns errors for invalid plan state", () => {
+test("PackMigrationService.validateMigration returns errors for invalid plan state", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
 

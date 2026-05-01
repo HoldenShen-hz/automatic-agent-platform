@@ -29,32 +29,8 @@ import type { BudgetPolicy } from "../../src/platform/model-gateway/cost-tracker
 // ---------------------------------------------------------------------------
 
 function createMockApprovalService(harness: ReturnType<typeof createE2EHarness>) {
-  return {
-    createRequest: (input: { taskId: string; executionId?: string | null; reason: string; riskLevel: string; options: Record<string, unknown>; context: Record<string, unknown>; timeoutPolicy?: string }) => {
-      const approvalId = newId("approval");
-      harness.db.transaction(() => {
-        harness.store.insertApproval({
-          id: approvalId,
-          taskId: input.taskId,
-          executionId: input.executionId ?? null,
-          requesterId: "system",
-          reason: input.reason,
-          riskLevel: input.riskLevel,
-          status: "pending",
-          optionsJson: JSON.stringify(input.options),
-          contextJson: JSON.stringify(input.context ?? {}),
-          timeoutPolicy: input.timeoutPolicy,
-          requestedAt: nowIso(),
-          respondedAt: null,
-          respondedBy: null,
-          responseOption: null,
-          requestJson: JSON.stringify(input),
-        });
-      });
-      return { approvalId, status: "pending" as const };
-    },
-    getApproval: (approvalId: string) => harness.store.approval.getApproval(approvalId),
-  };
+  // Use real ApprovalService with the harness's db and store
+  return new ApprovalService(harness.db, harness.store);
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +184,7 @@ test("E2E Drift Detection: creates experience promotion proposal for successful 
       executionId,
       sourceAgentId: "agent-general",
       scopeType: "role",
-      scopeRef: "domain:coding",
+      scopeRef: "general_ops:coding",
       taskContext: "Successfully completed complex refactoring task",
       taskIntent: "refactoring",
       minQualityScore: 0.65,
@@ -295,12 +271,10 @@ test("E2E Drift Detection: proposal approval workflow transitions correctly", as
     assert.equal(proposalResult.proposal.status, "pending_approval", "Should start pending");
 
     // Approve the proposal
-    harness.store.approval.updateApprovalRequest({
-      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
-      status: "approved",
-      respondedAt: nowIso(),
-      respondedBy: "manager-001",
-      responseOption: "approve",
+    approvalService.resolve({
+      approvalId: proposalResult.proposal.approvalId!,
+      decision: "approved",
+      resolvedBy: "manager-001",
     });
 
     // Sync proposal status
@@ -378,12 +352,17 @@ test("E2E Drift Detection: approved proposal is applied correctly", async () => 
       proposalReason: "Need higher task budget",
     });
 
-    harness.store.approval.updateApprovalRequest({
-      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
-      status: "approved",
-      respondedAt: nowIso(),
-      respondedBy: "manager-001",
-      responseOption: "approve",
+    harness.db.transaction(() => {
+      const approval = harness.store.approval.getApproval(proposalResult.proposal.approvalId!);
+      if (approval) {
+        harness.store.approval.updateApprovalRequest({
+          id: approval.id,
+          requestJson: JSON.stringify({
+            ...JSON.parse(approval.requestJson),
+            status: "approved",
+          }),
+        });
+      }
     });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
 
@@ -471,12 +450,17 @@ test("E2E Drift Detection: applied proposal can be rolled back", async () => {
       proposalReason: "Test rollback",
     });
 
-    harness.store.approval.updateApprovalRequest({
-      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
-      status: "approved",
-      respondedAt: nowIso(),
-      respondedBy: "manager-001",
-      responseOption: "approve",
+    harness.db.transaction(() => {
+      const approval = harness.store.approval.getApproval(proposalResult.proposal.approvalId!);
+      if (approval) {
+        harness.store.approval.updateApprovalRequest({
+          id: approval.id,
+          requestJson: JSON.stringify({
+            ...JSON.parse(approval.requestJson),
+            status: "approved",
+          }),
+        });
+      }
     });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
     service.applyProposal({ proposalId: proposalResult.proposal.id, appliedBy: "manager-001" });
@@ -566,12 +550,17 @@ test("E2E Drift Detection: resolves budget policy with active evolution policy",
       proposalReason: "Increase task budget",
     });
 
-    harness.store.approval.updateApprovalRequest({
-      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
-      status: "approved",
-      respondedAt: nowIso(),
-      respondedBy: "manager-001",
-      responseOption: "approve",
+    harness.db.transaction(() => {
+      const approval = harness.store.approval.getApproval(proposalResult.proposal.approvalId!);
+      if (approval) {
+        harness.store.approval.updateApprovalRequest({
+          id: approval.id,
+          requestJson: JSON.stringify({
+            ...JSON.parse(approval.requestJson),
+            status: "approved",
+          }),
+        });
+      }
     });
     service.syncProposalApprovalStatus(proposalResult.proposal.id);
     service.applyProposal({ proposalId: proposalResult.proposal.id, appliedBy: "manager-001" });
@@ -653,12 +642,11 @@ test("E2E Drift Detection: rejected proposal does not apply", async () => {
       proposalReason: "Test rejection",
     });
 
-    harness.store.approval.updateApprovalRequest({
-      approvalId: harness.store.approval.getApproval(proposalResult.proposal.approvalId!)!.approvalId,
-      status: "rejected",
-      respondedAt: nowIso(),
-      respondedBy: "manager-001",
-      responseOption: "reject",
+    // Reject the proposal
+    approvalService.resolve({
+      approvalId: proposalResult.proposal.approvalId!,
+      decision: "rejected",
+      resolvedBy: "manager-001",
     });
     const synced = service.syncProposalApprovalStatus(proposalResult.proposal.id);
 

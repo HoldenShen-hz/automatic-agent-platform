@@ -9,7 +9,7 @@ import {
   bootstrapVerticalDomainBaselines,
   listVerticalDomainBaselinesByPhase,
 } from "../../../src/domains/domain-baseline-catalog.js";
-import type { DomainRiskLevel, DomainLatencyProfile, VerticalDomainPhase, VerticalDomainId } from "../../../src/domains/domain-baseline-catalog.js";
+import type { DomainLatencyProfile, VerticalDomainPhase, VerticalDomainId } from "../../../src/domains/domain-baseline-catalog.js";
 
 const VALID_PHASES: readonly VerticalDomainPhase[] = ["9a", "9b", "9c", "9d", "9e", "9f"];
 

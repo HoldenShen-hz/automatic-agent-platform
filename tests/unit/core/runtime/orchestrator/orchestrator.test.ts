@@ -288,7 +288,13 @@ test("runMultiStepOrchestration with custom admission policy", async () => {
       maxQueuedTasks: 100,
       maxActiveExecutions: 1000,
       maxTier1AckBacklog: 100,
-      urgentQueueHeadroom: 10,
+      criticalQueueHeadroom: 10,
+      riskClassIsolationEnabled: false,
+      tenantQuotaEnabled: false,
+      sandboxMatchingEnabled: false,
+      capabilityClassGateEnabled: false,
+      maxRiskClassTasks: {},
+      tenantTaskQuota: 1000,
     },
   };
 
@@ -436,6 +442,7 @@ test("MultiStepOrchestrationResult type structure verification", () => {
         continuation: "new_task",
         matchedRules: [],
       },
+      confirmedTaskSpecId: "task_spec_test",
     },
     plannedWorkflow: {
       workflow: {} as any,
@@ -479,6 +486,7 @@ test("MultiStepOrchestrationResult with compaction object", () => {
         continuation: "new_task",
         matchedRules: [],
       },
+      confirmedTaskSpecId: "task_spec_test",
     },
     plannedWorkflow: {
       workflow: {} as any,

@@ -13,7 +13,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DomainSmokeTestRunner } from "../../../../src/domains/registry/domain-smoke-test.js";
-import { DomainDefinitionSchema, type DomainDefinition, type DomainCapabilityProfile, type DomainExecutionProfile } from "../../../../src/domains/registry/domain-model.js";
+import { DomainDefinitionSchema, type DomainDefinition, type DomainCapabilityProfile } from "../../../../src/domains/registry/domain-model.js";
+import { type DomainExecutionProfile } from "../../../../src/domains/domain-specs.js";
 
 function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefinition {
   return {
@@ -61,10 +62,10 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
     pluginBindings: [],
     executionProfile: {
       executionMode: {
-        planningMode: "opportunistic",
-        hotPathMode: "deferred",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "standard",
+      latencyTier: "interactive",
     },
     ...overrides,
   };
@@ -225,10 +226,10 @@ test("smoke test: executionProfile without planningMode fails", async () => {
     domainId: "no-planning-mode",
     executionProfile: {
       executionMode: {
-        planningMode: undefined as unknown as string,
-        hotPathMode: "deferred",
+        planningMode: undefined as unknown as "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "standard",
+      latencyTier: "interactive",
     },
   });
   const runner = new DomainSmokeTestRunner();
@@ -246,10 +247,10 @@ test("smoke test: executionProfile without hotPathMode fails", async () => {
     domainId: "no-hotpath-mode",
     executionProfile: {
       executionMode: {
-        planningMode: "opportunistic",
-        hotPathMode: undefined as unknown as string,
+        planningMode: "llm_assisted",
+        hotPathMode: undefined as unknown as "llm_allowed",
       },
-      latencyTier: "standard",
+      latencyTier: "interactive",
     },
   });
   const runner = new DomainSmokeTestRunner();
@@ -267,10 +268,10 @@ test("smoke test: executionProfile without latencyTier fails", async () => {
     domainId: "no-latency-tier",
     executionProfile: {
       executionMode: {
-        planningMode: "opportunistic",
-        hotPathMode: "deferred",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: undefined as unknown as string,
+      latencyTier: undefined as unknown as "interactive",
     },
   });
   const runner = new DomainSmokeTestRunner();

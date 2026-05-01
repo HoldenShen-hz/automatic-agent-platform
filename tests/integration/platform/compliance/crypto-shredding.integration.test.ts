@@ -11,8 +11,8 @@ import test from "node:test";
  * and that the audit fixes are properly integrated.
  */
 
-import { CryptoShreddingService, InMemoryShredAuditTrail } from "../../../../../src/platform/compliance/crypto-shredding/crypto-shredding-service.js";
-import { DekManager, DekStore } from "../../../../../src/platform/compliance/crypto-shredding/dek-manager.js";
+import { CryptoShreddingService, InMemoryShredAuditTrail } from "../../../../src/platform/compliance/crypto-shredding/index.js";
+import { DekManager, DekStore } from "../../../../src/platform/compliance/crypto-shredding/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Integration: Complete crypto-shredding workflow
@@ -197,7 +197,7 @@ test("Integration: Shred audit trail records all DEKs before destruction", async
 
   // Get all DEK IDs before shred
   const allDekRecords = await dekStore.getAllForSubject("audit-user");
-  const dekIdsBeforeShred = allDekRecords.map((d) => d.dekId);
+  const dekIdsBeforeShred = allDekRecords.map((d: { dekId: string }) => d.dekId);
 
   // Perform shred
   const shredResult = await service.shred("audit-user", "auditor");
@@ -260,8 +260,8 @@ test("Integration: encryptRecordForSubject and decryptField roundtrip", async ()
   assert.equal(encrypted.encryptedRecord.name, originalRecord.name);
 
   // Decrypt each field
-  const enc1 = encrypted.encryptions.find((e) => e.fieldPath === "email");
-  const enc2 = encrypted.encryptions.find((e) => e.fieldPath === "phone");
+  const enc1 = encrypted.encryptions.find((e: { fieldPath: string }) => e.fieldPath === "email");
+  const enc2 = encrypted.encryptions.find((e: { fieldPath: string }) => e.fieldPath === "phone");
 
   assert.ok(enc1, "should have encryption record for email");
   assert.ok(enc2, "should have encryption record for phone");
@@ -313,7 +313,7 @@ test("Integration: PII fields with mixed classifications all use same DEK", asyn
   const result = await service.encryptRecordForSubject("mixed-classification-user", record);
 
   // All encryptions should use the same DEK (subject's active DEK)
-  const dekIds = new Set(result.encryptions.map((e) => e.dekId));
+  const dekIds = new Set(result.encryptions.map((e: { dekId: string }) => e.dekId));
   assert.equal(dekIds.size, 1, "all classifications should use same DEK");
 
   // Non-PII field should not be encrypted

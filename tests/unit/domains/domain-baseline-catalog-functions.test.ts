@@ -67,7 +67,7 @@ test("listVerticalDomainIds includes all canonical domain IDs", () => {
   ];
 
   for (const expectedId of expectedIds) {
-    assert.ok(ids.includes(expectedId), `Missing domain ID: ${expectedId}`);
+    assert.ok(ids.includes(expectedId as VerticalDomainId), `Missing domain ID: ${expectedId}`);
   }
 });
 

@@ -93,28 +93,39 @@ test("DelegationCycleDetectedError is exported as error class", () => {
 
 test("DelegationExpirationConfig type works correctly", () => {
   const config: DelegationExpirationConfig = {
-    maxAgeMs: 3600000,
-    scanIntervalMs: 60000,
+    checkIntervalMs: 60000,
+    batchSize: 100,
   };
-  assert.equal(config.maxAgeMs, 3600000);
+  assert.equal(config.checkIntervalMs, 60000);
 });
 
 test("ExpirationScanResult type works correctly", () => {
   const result: ExpirationScanResult = {
-    scannedCount: 100,
-    expiredCount: 5,
-    cleanedUpCount: 5,
+    scanned: 100,
+    expired: 5,
+    errors: [],
   };
-  assert.equal(result.scannedCount, 100);
-  assert.equal(result.expiredCount, 5);
+  assert.equal(result.scanned, 100);
+  assert.equal(result.expired, 5);
 });
 
 test("DelegationTreeNode type works correctly", () => {
   const node: DelegationTreeNode = {
     delegationId: "del-001",
+    agentId: "agent-001",
+    agentType: "worker",
     depth: 1,
+    status: "active",
     children: [],
     createdAt: "2024-01-15T10:00:00Z",
+    metrics: {
+      totalDelegations: 10,
+      maxDepth: 3,
+      activeCount: 5,
+      completedCount: 4,
+      failedCount: 1,
+      averageDurationMs: 1000,
+    },
   };
   assert.equal(node.delegationId, "del-001");
   assert.equal(node.depth, 1);
@@ -122,72 +133,89 @@ test("DelegationTreeNode type works correctly", () => {
 
 test("DelegationMetrics type works correctly", () => {
   const metrics: DelegationMetrics = {
-    activeDelegations: 10,
     totalDelegations: 100,
-    averageDepth: 2.5,
+    maxDepth: 5,
+    activeCount: 10,
+    completedCount: 80,
+    failedCount: 10,
+    averageDurationMs: 2000,
   };
-  assert.equal(metrics.activeDelegations, 10);
+  assert.equal(metrics.totalDelegations, 100);
 });
 
 test("IsolationLevel type works correctly", () => {
-  const level: IsolationLevel = "full";
+  const level: IsolationLevel = IsolationLevel.FULL;
   assert.equal(level, "full");
 });
 
 test("IsolatedContext type works correctly", () => {
   const context: IsolatedContext = {
-    delegationId: "del-001",
-    agentId: "agent-001",
-    permissions: {},
-    createdAt: "2024-01-15T10:00:00Z",
+    context: {
+      agentId: "agent-001",
+      agentType: "worker",
+      packId: "pack-001",
+      delegationDepth: 0,
+      activeDelegations: [],
+      permissions: { resources: [], actions: [], constraints: {} },
+      sandboxTier: "no_sandbox",
+      correlationId: "corr-001",
+      tenantId: null,
+    },
+    inheritedPermissions: { resources: [], actions: [], constraints: {} },
+    narrowedPermissions: { resources: [], actions: [], constraints: {} },
+    isolationLevel: IsolationLevel.FULL,
   };
-  assert.equal(context.delegationId, "del-001");
+  assert.equal(context.context.agentId, "agent-001");
 });
 
 test("TopologyValidatorConfig type works correctly", () => {
   const config: TopologyValidatorConfig = {
     maxDepth: 5,
     maxFanout: 10,
-    allowCycles: false,
   };
   assert.equal(config.maxDepth, 5);
-  assert.equal(config.allowCycles, false);
 });
 
 test("AgentContext type works correctly", () => {
   const context: AgentContext = {
     agentId: "agent-001",
-    workspaceId: "ws-001",
-    permissions: {},
+    agentType: "worker",
+    packId: "pack-001",
+    delegationDepth: 0,
+    activeDelegations: [],
+    permissions: { resources: [], actions: [], constraints: {} },
+    sandboxTier: "no_sandbox",
+    correlationId: "corr-001",
+    tenantId: null,
   };
   assert.equal(context.agentId, "agent-001");
 });
 
 test("PermissionSet type works correctly", () => {
   const perms: PermissionSet = {
-    canDelegate: true,
-    canExecute: true,
-    canRead: true,
+    resources: ["resource-1"],
+    actions: ["action-1"],
+    constraints: {},
   };
-  assert.equal(perms.canDelegate, true);
+  assert.equal(perms.resources[0], "resource-1");
 });
 
 test("PermissionConstraints type works correctly", () => {
   const constraints: PermissionConstraints = {
-    maxDepth: 3,
-    allowedTargets: ["worker", "agent"],
+    maxDurationMs: 5000,
+    maxTokens: 1000,
   };
-  assert.equal(constraints.maxDepth, 3);
+  assert.equal(constraints.maxDurationMs, 5000);
 });
 
 test("DelegationSpec type works correctly", () => {
   const spec: DelegationSpec = {
-    sourceAgentId: "agent-001",
     targetAgentId: "agent-002",
-    permissions: { canDelegate: true, canExecute: true, canRead: true },
-    constraints: { maxDepth: 3, allowedTargets: ["worker"] },
+    targetAgentType: "worker",
+    targetPackId: "pack-001",
+    requiredPermissions: { resources: [], actions: [], constraints: {} },
+    timeout: 30000,
   };
-  assert.equal(spec.sourceAgentId, "agent-001");
   assert.equal(spec.targetAgentId, "agent-002");
 });
 
@@ -199,46 +227,60 @@ test("DelegationStatus type works correctly", () => {
 test("DelegationHandle type works correctly", () => {
   const handle: DelegationHandle = {
     delegationId: "del-001",
-    correlationId: "corr-001",
+    parentAgentId: "agent-001",
+    childAgentId: "agent-002",
+    depth: 1,
     status: "active",
+    createdAt: "2024-01-15T10:00:00Z",
+    timeout: 30000,
+    correlationId: "corr-001",
   };
   assert.equal(handle.delegationId, "del-001");
 });
 
 test("DelegationChainNode type works correctly", () => {
   const node: DelegationChainNode = {
+    delegationId: "del-001",
     agentId: "agent-001",
-    delegatedAt: "2024-01-15T10:00:00Z",
-    permissions: { canDelegate: true, canExecute: true, canRead: true },
+    agentType: "worker",
+    depth: 0,
+    createdAt: "2024-01-15T10:00:00Z",
+    parentDelegationId: null,
   };
   assert.equal(node.agentId, "agent-001");
 });
 
 test("DelegationChain type works correctly", () => {
   const chain: DelegationChain = {
-    chainId: "chain-001",
+    rootAgentId: "agent-001",
     nodes: [],
-    createdAt: "2024-01-15T10:00:00Z",
+    maxDepthReached: 0,
+    totalDelegations: 0,
   };
-  assert.equal(chain.chainId, "chain-001");
+  assert.equal(chain.rootAgentId, "agent-001");
 });
 
 test("DelegationCreatedEvent type works correctly", () => {
   const event: DelegationCreatedEvent = {
-    type: "delegation.created",
+    eventType: "delegation.created",
     delegationId: "del-001",
+    parentAgentId: "agent-001",
+    childAgentId: "agent-002",
+    depth: 1,
     timestamp: "2024-01-15T10:00:00Z",
+    correlationId: "corr-001",
   };
-  assert.equal(event.type, "delegation.created");
+  assert.equal(event.eventType, "delegation.created");
 });
 
 test("DelegationCompletedEvent type works correctly", () => {
   const event: DelegationCompletedEvent = {
-    type: "delegation.completed",
+    eventType: "delegation.completed",
     delegationId: "del-001",
+    durationMs: 1000,
     timestamp: "2024-01-15T10:00:00Z",
   };
-  assert.equal(event.type, "delegation.completed");
+  assert.equal(event.eventType, "delegation.completed");
 });
 
 test("DelegationFailedEvent type works correctly", () => {
