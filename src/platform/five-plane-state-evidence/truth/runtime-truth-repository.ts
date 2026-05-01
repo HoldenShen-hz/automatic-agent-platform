@@ -8,7 +8,9 @@ import {
   type PlatformFactEvent,
   type RunVersionLock,
   type SideEffectRecord,
+  createPlatformFactEvent,
 } from "../../contracts/executable-contracts/index.js";
+import { type EvidenceRecord } from "../../contracts/types/platform-contracts.js";
 import {
   RuntimeStateMachine,
   type RuntimeStateAggregate,
