@@ -23,12 +23,18 @@ export class SyncCoordinator {
   }
 
   public queueMutation(mutation: OfflineMutation): void {
-    this.queue.enqueue(mutation);
+    // Note: enqueue is now async but we don't await here
+    // The mutation is added to memory queue immediately for optimistic UI
+    // Persist happens in background
+    void this.queue.enqueue(mutation);
   }
 
   public queueMutations(mutations: readonly OfflineMutation[]): void {
     for (const mutation of mutations) {
-      this.queue.enqueue(mutation);
+      // Note: enqueue is now async but we don't await here
+      // The mutation is added to memory queue immediately for optimistic UI
+      // Persist happens in background
+      void this.queue.enqueue(mutation);
     }
   }
 

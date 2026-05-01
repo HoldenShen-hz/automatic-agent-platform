@@ -30,8 +30,14 @@ export class OfflineQueue {
   /**
    * Enqueues a mutation with capacity check per §5.5.
    * If queue is at capacity, oldest pending mutations are evicted.
+   * P1 FIX: Wait for IndexedDB to load before adding mutation to prevent data loss.
+   * Previously, enqueue could be called before the initial readAll completed,
+   * causing persist() to overwrite unloaded data with an incomplete queue.
    */
-  public enqueue(mutation: OfflineMutation): void {
+  public async enqueue(mutation: OfflineMutation): Promise<void> {
+    // P1 FIX: Wait for initial IndexedDB load before accepting mutations
+    await this.readyPromise;
+
     // Evict oldest pending mutations if at capacity
     while (this.queue.length >= this.maxCapacity) {
       const evicted = this.queue.shift();
@@ -41,7 +47,7 @@ export class OfflineQueue {
       }
     }
     this.queue.push(mutation);
-    void this.persist();
+    await this.persist();
   }
 
   public drain(): OfflineMutation[] {

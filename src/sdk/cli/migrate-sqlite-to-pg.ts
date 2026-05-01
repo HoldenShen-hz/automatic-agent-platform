@@ -155,7 +155,9 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
           migrated.push({ table: validatedTable, migrated: 0 });
           continue;
         }
-        const columns = Object.keys(rows[0] ?? {});
+        // Validate column names from attacker-controlled SQLite DB to prevent SQL injection
+        // Even though table name is validated, attacker-controlled column names could inject
+        const columns = validateColumnNames(Object.keys(rows[0] ?? {}));
         const placeholders = columns.map((_, index) => `$${index + 1}`).join(", ");
         const sql = `INSERT INTO ${validatedTable} (${columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
         let count = 0;

@@ -166,7 +166,9 @@ export class KnowledgeIngestionPipeline {
       version: 1,
       tags: [...(input.tags ?? [])],
       domainScope: [input.namespace.split("/")[0] ?? "shared"],
-      status: "indexed",
+      // R5-45 FIX: Per spec quarantine+promotion lifecycle, start in quarantine state.
+      // A separate promotion step (verification/approval) is required to move to "indexed".
+      status: "quarantine",
       namespace: input.namespace,
       mimeType: "text/plain",
       rawText: input.body,

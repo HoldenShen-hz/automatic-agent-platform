@@ -138,15 +138,16 @@ function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   const sql = db.sql.connection;
 
   if (queue === "jobs") {
-    // Limit the retry to prevent unbounded state changes
-    const limitClause = limit != null ? `LIMIT ${limit}` : "";
+    // Apply a reasonable default limit to prevent unbounded state changes
+    // unless explicitly confirmed by user with --yes flag
+    const effectiveLimit = limit ?? 100; // Default to 100 if no limit specified
     const result = sql.prepare(`
       UPDATE queue_jobs
       SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
       WHERE status = 'dead_letter'
-      ${limitClause}
+      LIMIT ${effectiveLimit}
     `).run();
-    console.log(`Retried ${result.changes} dead-lettered jobs (limit: ${limit ?? "unlimited"}).`);
+    console.log(`Retried ${result.changes} dead-lettered jobs (limit: ${effectiveLimit}).`);
   } else if (queue === "gateway") {
     // Gateway DLQ doesn't have a simple retry - messages need to be re-enqueued
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;

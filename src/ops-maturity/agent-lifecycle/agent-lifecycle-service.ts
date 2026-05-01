@@ -260,6 +260,11 @@ export class AgentLifecycleService {
 
   public bindTask(agentId: string, taskId: string, boundAt = nowIso()): AgentRolloutBinding {
     const agent = this.requireAgent(agentId);
+    // R16-36 FIX #2105: Only active/canary/paused agents can be bound to tasks.
+    // Draft, testing, staging agents cannot be used for work.
+    if (agent.lifecycleState === "draft" || agent.lifecycleState === "testing" || agent.lifecycleState === "staging") {
+      throw new Error(`agent_lifecycle.binding_forbidden_non_production:${agentId}:${agent.lifecycleState}`);
+    }
     if (agent.lifecycleState === "deprecated") {
       throw new Error(`agent_lifecycle.binding_forbidden_retired:${agentId}`);
     }

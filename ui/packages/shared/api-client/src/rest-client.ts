@@ -50,9 +50,24 @@ export class MockTransport {
   public constructor(private readonly data: MockApiShape = defaultMockApiShape) {}
 
   public async send<T>(request: RestClientRequest): Promise<TransportResponse<T>> {
+    // P1 FIX: Respect HTTP method - return appropriate status codes for each method
+    // This ensures POST/DELETE requests don't return GET-like 200 data
+    const method = request.method;
     const payload = this.resolve(request.path, request.body);
+
+    // Return appropriate status based on HTTP method
+    let status = 200;
+    if (method === "POST") {
+      status = 201; // Created
+    } else if (method === "PUT" || method === "PATCH") {
+      status = 200; // OK for update
+    } else if (method === "DELETE") {
+      status = 204; // No Content for successful delete
+    }
+    // GET returns 200
+
     return {
-      status: 200,
+      status,
       data: payload as T,
     };
   }

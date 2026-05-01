@@ -45,6 +45,37 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 /**
+ * Redaction wrapper for sensitive string values like API keys and secrets.
+ * When the secret is accessed (e.g., for logging), it returns "[REDACTED]" instead of the actual value.
+ * This prevents accidental credential leakage in logs or error messages.
+ */
+class RedactedString {
+  private readonly redacted = "[REDACTED]";
+  public constructor(private readonly value: string) {}
+
+  /**
+   * Returns the actual secret value - use with caution and only when needed for API calls.
+   */
+  getSecretValue(): string {
+    return this.value;
+  }
+
+  /**
+   * Returns the redacted value for safe logging/output.
+   */
+  toString(): string {
+    return this.redacted;
+  }
+
+  /**
+   * Check if the secret value is truthy.
+   */
+  isPresent(): boolean {
+    return this.value.length > 0;
+  }
+}
+
+/**
  * Creates a payment gateway instance based on CLI environment configuration.
  *
  * @param envConfig - The billing CLI environment configuration

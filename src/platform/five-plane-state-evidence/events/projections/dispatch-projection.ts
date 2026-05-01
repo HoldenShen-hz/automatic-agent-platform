@@ -51,7 +51,10 @@ export interface DispatchTicketState {
   timeline: DispatchTicketTimelineEntry[];
   /** Count of all events processed */
   eventCount: number;
-  /** Set of processed event IDs for idempotency */
+  /**
+   * Set of processed event IDs for idempotency (O(1) lookup).
+   * Stored as array for JSON serialization but converted to Set internally.
+   */
   processedEventIds: string[];
   /** First event timestamp */
   firstEventAt: string | null;
@@ -59,6 +62,13 @@ export interface DispatchTicketState {
   lastEventAt: string | null;
   /** Timestamp when projection was last updated */
   lastProjectedAt: string | null;
+}
+
+/**
+ * Internal state with Set for O(1) idempotency checks.
+ */
+interface DispatchTicketStateInternal extends Omit<DispatchTicketState, "processedEventIds"> {
+  _processedEventIdSet: Set<string>;
 }
 
 /**
@@ -153,6 +163,34 @@ export function createInitialDispatchTicketState(): DispatchTicketState {
 }
 
 /**
+ * Converts serialized state (with array) to internal state (with Set for O(1) lookup).
+ */
+function toInternalState(state: DispatchTicketState): DispatchTicketStateInternal {
+  return {
+    ...state,
+    _processedEventIdSet: new Set(state.processedEventIds),
+  };
+}
+
+/**
+ * Converts internal state (with Set) back to serialized state (with array for JSON).
+ */
+function toSerializedState(state: DispatchTicketStateInternal): DispatchTicketState {
+  return {
+    ...state,
+    processedEventIds: Array.from(state._processedEventIdSet),
+  };
+}
+
+/**
+ * Checks if an event has already been processed (idempotency check).
+ * Uses O(1) Set lookup for efficiency.
+ */
+function isEventProcessed(state: DispatchTicketStateInternal, eventId: string): boolean {
+  return state._processedEventIdSet.has(eventId);
+}
+
+/**
  * Dispatch Projection Handler
  *
  * Handles dispatch events and maintains dispatch ticket state.
@@ -163,9 +201,14 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
   initialState: createInitialDispatchTicketState,
 
   apply(state: DispatchTicketState, event: ProjectionInputEvent): DispatchTicketState {
-    // Idempotency check
-    if (state.processedEventIds.includes(event.event.id)) {
-      return state;
+    // Convert to internal state with Set for O(1) idempotency lookup
+    const currentState = state;
+    const baseState = currentState ? { ...currentState } : createInitialDispatchTicketState();
+    const internalState = toInternalState(baseState);
+
+    // Idempotency check - skip already processed events using O(1) Set lookup
+    if (isEventProcessed(internalState, event.event.id)) {
+      return currentState;
     }
 
     const occurredAt = event.event.createdAt;
@@ -174,14 +217,17 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
       occurredAt,
     };
 
+    // Mark event as processed using O(1) Set add
+    internalState._processedEventIdSet.add(event.event.id);
+    internalState.eventCount = internalState.eventCount + 1;
+
     switch (event.event.eventType) {
       case "dispatch:ticket_created": {
         const payload = JSON.parse(event.event.payloadJson as string) as DispatchTicketCreatedPayload;
-        const newTimeline = [...state.timeline];
+        const newTimeline = [...internalState.timeline];
         newTimeline.push({ ...timelineEntry, details: `ticket_created:${payload.ticketId}` });
-        const newProcessedEventIds = [...state.processedEventIds, event.event.id];
         return {
-          ...state,
+          ...internalState,
           ticketId: payload.ticketId,
           executionId: event.event.executionId,
           taskId: event.event.taskId,
@@ -190,9 +236,7 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
           priority: payload.priority,
           status: "pending",
           timeline: newTimeline,
-          eventCount: state.eventCount + 1,
-          processedEventIds: newProcessedEventIds,
-          firstEventAt: state.firstEventAt ?? occurredAt,
+          firstEventAt: internalState.firstEventAt ?? occurredAt,
           lastEventAt: occurredAt,
           lastProjectedAt: occurredAt,
         };
@@ -200,17 +244,14 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
 
       case "dispatch:ticket_claimed": {
         const payload = JSON.parse(event.event.payloadJson as string) as DispatchTicketClaimedPayload;
-        const newTimeline = [...state.timeline];
+        const newTimeline = [...internalState.timeline];
         newTimeline.push({ ...timelineEntry, details: `ticket_claimed:${payload.ticketId} by ${payload.workerId}` });
-        const newProcessedEventIds = [...state.processedEventIds, event.event.id];
         return {
-          ...state,
+          ...internalState,
           workerId: payload.workerId,
           status: "claimed",
           claimedAt: occurredAt,
           timeline: newTimeline,
-          eventCount: state.eventCount + 1,
-          processedEventIds: newProcessedEventIds,
           lastEventAt: occurredAt,
           lastProjectedAt: occurredAt,
         };
@@ -218,25 +259,22 @@ export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> =
 
       case "dispatch:decision_recorded": {
         const payload = JSON.parse(event.event.payloadJson as string) as DispatchDecisionRecordedPayload;
-        const newTimeline = [...state.timeline];
+        const newTimeline = [...internalState.timeline];
         newTimeline.push({ ...timelineEntry, details: `decision_recorded:${payload.outcome}` });
-        const newProcessedEventIds = [...state.processedEventIds, event.event.id];
         return {
-          ...state,
+          ...internalState,
           decisionOutcome: payload.outcome,
           decisionReasonCode: payload.reasonCode,
           decisionSelectedWorkerId: payload.selectedWorkerId,
           decisionTraceJson: JSON.stringify(payload),
           timeline: newTimeline,
-          eventCount: state.eventCount + 1,
-          processedEventIds: newProcessedEventIds,
           lastEventAt: occurredAt,
           lastProjectedAt: occurredAt,
         };
       }
 
       default:
-        return state;
+        return toSerializedState(internalState);
     }
   },
 };

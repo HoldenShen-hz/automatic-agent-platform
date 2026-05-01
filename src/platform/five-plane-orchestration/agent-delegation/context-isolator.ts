@@ -174,8 +174,13 @@ export class ContextIsolator {
     }
 
     // Check if child requires significantly fewer permissions
-    const permissionRatio =
-      spec.requiredPermissions.actions.length / parent.permissions.actions.length;
+    // #2178: Guard against division by zero when parent has no actions
+    const parentActionCount = parent.permissions.actions.length;
+    const childRequiredCount = spec.requiredPermissions.actions.length;
+    let permissionRatio = 1.0; // Default to FULL if parent has no actions
+    if (parentActionCount > 0) {
+      permissionRatio = childRequiredCount / parentActionCount;
+    }
 
     if (permissionRatio >= 0.9) {
       return IsolationLevel.FULL;

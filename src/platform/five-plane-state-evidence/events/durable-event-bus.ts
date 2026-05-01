@@ -539,7 +539,8 @@ export class DurableEventBus {
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     const handler = this.subscriberRegistry.getHandler(consumerId);
     if (!handler) {
-      return pending.length;
+      // No handler registered - nothing was actually delivered
+      return 0;
     }
 
     // Get consumer group ID and state for circuit breaker and priority
@@ -1014,11 +1015,18 @@ export class DurableEventBus {
     if (event.eventTier !== "tier_1") {
       return;
     }
-    for (const consumerId of getRegisteredConsumers(event.eventType)) {
+    // §28.2: Only create ack records for consumers registered for this eventType
+    const registeredConsumerIds = getRegisteredConsumers(event.eventType);
+    for (const consumerId of registeredConsumerIds) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
+    // Active consumer ref counts are for in-process consumers, not eventType filtering
+    // Only create acks for active consumers that are ALSO registered for this eventType
     for (const consumerId of Array.from(this.activeConsumerRefCounts.keys())) {
-      this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      // Only create ack if this consumer is registered for this event type
+      if (registeredConsumerIds.includes(consumerId)) {
+        this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
+      }
     }
   }
 

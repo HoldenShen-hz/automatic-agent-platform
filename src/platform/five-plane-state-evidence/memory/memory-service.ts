@@ -155,7 +155,10 @@ export class MemoryService {
     }
 
     // V-04: Deduplication - compute content hash and check for existing
-    const contentHash = createHash("sha256").update(contentText).digest("hex").slice(0, 16);
+    // R5-46 FIX: Use full 64-char SHA-256 hash (256 bits) to avoid collision at scale.
+    // Previously truncated to 16 hex chars (64-bit) which has significant collision
+    // probability with ~10K records.
+    const contentHash = createHash("sha256").update(contentText).digest("hex");
     const existing = this.store.memory.findMemoryByContentHash(contentHash, input.scope);
     if (existing && existing.status === "active") {
       // Update access tracking and return existing memory

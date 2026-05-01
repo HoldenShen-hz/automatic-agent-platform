@@ -130,11 +130,21 @@ export class TelemetrySink {
   /**
    * Records a telemetry event with batching and analytics consent check per §7.3.
    * Events are buffered and flushed periodically or when buffer is full.
+   * P1 FIX: Enforce upper bound on events array to prevent unbounded memory growth.
+   * Events beyond maxBufferSize are dropped (oldest events already in queue for export).
    */
   public record(name: string, attributes: Readonly<Record<string, unknown>> = {}): void {
     // §6.5.5+GDPR: Check analytics consent before recording
     if (this.consentChecker !== null && !this.consentChecker()) {
       return;
+    }
+
+    // P1 FIX: Check buffer limit before adding - if full, drop oldest event
+    // This prevents unbounded memory growth in long sessions
+    if (this.events.length >= this.maxBufferSize) {
+      // Remove oldest event (shift) to make room for new one
+      this.events.shift();
+      console.warn("[TelemetrySink] Buffer full, dropping oldest event to prevent memory leak");
     }
 
     const event = {

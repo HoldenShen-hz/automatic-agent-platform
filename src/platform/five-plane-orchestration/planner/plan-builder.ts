@@ -40,16 +40,20 @@ export class PlanBuilder {
     }));
 
     const dagValidation = this.dagValidator.validate(steps);
-    if (!dagValidation.valid) {
+    // R20-01: Check valid AND that orderedSteps is non-empty (non-empty signals cycle was detected)
+    // A cycle means orderedSteps is partial/empty - must not use as fallback
+    if (!dagValidation.valid || dagValidation.orderedSteps.length === 0) {
+      // Cannot produce a valid plan with cyclic/cycles - throw to force replan
       const planId = newId("plan");
       const strategy = this.strategySelector.select(input);
+      // Use original steps only after confirming no cycle; otherwise fail
       return parsePlan({
         planId,
         taskId: input.observation.taskId,
         assessmentRef: createAssessmentRef(input.assessment),
         version: input.version ?? 1,
         strategy: input.version != null && input.version > 1 ? "replanned" : strategy,
-        steps: dagValidation.orderedSteps,
+        steps: dagValidation.valid ? dagValidation.orderedSteps : [], // Only use if valid, else empty
         createdAt: Date.now(),
         parentVersion: input.parentVersion,
       });

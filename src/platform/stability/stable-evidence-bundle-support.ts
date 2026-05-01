@@ -428,10 +428,27 @@ export const STABLE_EVIDENCE_PROFILES: Record<StableEvidenceProfileName, StableE
   },
 };
 
-/** Writes a value as formatted JSON to a file, creating parent directories as needed */
+/** Writes a value as formatted JSON to a file with cryptographic signature, creating parent directories as needed */
 export function writeJson(path: string, value: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(value, null, 2));
+  // §58: Cryptographically sign evidence bundles to prevent tampering.
+  // Without HMAC/signature/hash chain, attacker can modify config without alert (issue #1953).
+  const content = JSON.stringify(value, null, 2);
+  const signature = computeHmacSignature(content);
+  const signedPayload = { content, signature, signedAt: new Date().toISOString() };
+  writeFileSync(path, JSON.stringify(signedPayload, null, 2));
+}
+
+/**
+ * Computes HMAC-SHA256 signature for evidence bundle integrity.
+ * §58: Requires HMAC/signature/hash chain for tamper detection.
+ */
+function computeHmacSignature(content: string): string {
+  // §58: Use HMAC-SHA256 for evidence bundle signature.
+  // In production, key should be fetched from secure key management service.
+  const { createHmac } = require("node:crypto");
+  const hmacKey = process.env.STABLE_EVIDENCE_HMAC_KEY ?? "stable-evidence-default-dev-key";
+  return createHmac("sha256", hmacKey).update(content).digest("hex");
 }
 
 /**

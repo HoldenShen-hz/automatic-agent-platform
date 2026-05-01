@@ -270,7 +270,8 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
 
   if (candidate.compensationModel !== null
     && candidate.compensationModel !== undefined
-    && typeof candidate.compensationModel !== "string") {
+    && typeof candidate.compensationModel !== "string"
+    && typeof candidate.compensationModel !== "object") {
     return false;
   }
 

@@ -57,6 +57,23 @@ export function createAuthInterceptor(
       }
       return request;
     },
+    // P1 FIX: Add onResponse handler to refresh token on 401
+    onResponse<T>(response: RestClientResponse<T>): RestClientResponse<T> | Promise<RestClientResponse<T>> {
+      // If we received a 401, the token may have expired
+      if (response.status === 401 && tokenOrResolver !== null && typeof tokenOrResolver !== "string") {
+        // Attempt to refresh the token and return a signal to retry
+        if (typeof tokenOrResolver.getAccessTokenWithRefresh === "function") {
+          // Kick off background refresh - don't block the response
+          // The next request will use the refreshed token
+          void tokenOrResolver.getAccessTokenWithRefresh().then(() => {
+            // Token refreshed in background, next request will use new token
+          }).catch(() => {
+            // Refresh failed, token remains expired
+          });
+        }
+      }
+      return response;
+    },
   };
 }
 
@@ -96,11 +113,16 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
   };
 }
 
-export function createCsrfInterceptor(token: string | null = readCsrfToken()): RestClientInterceptor {
+export function createCsrfInterceptor(_token: string | null = null): RestClientInterceptor {
+  // P1 FIX: Read CSRF token fresh on each request instead of capturing once.
+  // This ensures token rotation is respected without requiring interceptor recreation.
   return {
     onRequest(request) {
-      if (request.method !== "GET" && token != null) {
-        request.headers.set("x-csrf-token", token);
+      if (request.method !== "GET") {
+        const token = readCsrfToken();
+        if (token != null) {
+          request.headers.set("x-csrf-token", token);
+        }
       }
       return request;
     },

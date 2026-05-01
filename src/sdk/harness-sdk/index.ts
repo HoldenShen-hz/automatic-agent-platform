@@ -67,11 +67,80 @@ interface BudgetValidationResult {
   error?: string;
 }
 
+/**
+ * Lifecycle hook types for harness run phases.
+ */
+export type LifecycleHookType = "beforeRun" | "afterRun" | "onError" | "onTimeout";
+
+export interface LifecycleHook {
+  readonly type: LifecycleHookType;
+  readonly handler: (context: LifecycleContext) => void | Promise<void>;
+  readonly timeoutMs?: number;
+}
+
+export interface LifecycleContext {
+  readonly run: HarnessRun;
+  readonly timestamp: string;
+  readonly reason?: string;
+}
+
+/**
+ * Registry for lifecycle hooks.
+ */
+class LifecycleHookRegistry {
+  private readonly hooks = new Map<string, LifecycleHook[]>();
+
+  register(runId: string, hook: LifecycleHook): void {
+    const existing = this.hooks.get(runId) ?? [];
+    this.hooks.set(runId, [...existing, hook]);
+  }
+
+  getHooks(runId: string, type: LifecycleHookType): LifecycleHook[] {
+    return (this.hooks.get(runId) ?? []).filter((h) => h.type === type);
+  }
+
+  clear(runId: string): void {
+    this.hooks.delete(runId);
+  }
+}
+
+const globalLifecycleHooks = new LifecycleHookRegistry();
+
+export function getLifecycleHookRegistry(): LifecycleHookRegistry {
+  return globalLifecycleHooks;
+}
+
 export class HarnessSdk {
   public constructor(
     private readonly runtime: HarnessRuntimeService = new HarnessRuntimeService(),
     private readonly budgetChecker?: (budgetRef: string) => BudgetValidationResult,
   ) {}
+
+  /**
+   * Register a lifecycle hook for a run.
+   * §22: beforeRun/afterRun/onError/onTimeout hooks for run lifecycle management.
+   */
+  public registerHook(runId: string, hook: LifecycleHook): void {
+    getLifecycleHookRegistry().register(runId, hook);
+  }
+
+  /**
+   * Execute all hooks of a given type for a run.
+   */
+  private async executeHooks(runId: string, type: LifecycleHookType, context: LifecycleContext): Promise<void> {
+    const hooks = getLifecycleHookRegistry().getHooks(runId, type);
+    for (const hook of hooks) {
+      try {
+        const timeout = hook.timeoutMs ?? 30000;
+        await Promise.race([
+          Promise.resolve(hook.handler(context)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error(`Hook ${type} timed out`)), timeout)),
+        ]);
+      } catch (err) {
+        console.error(`Lifecycle hook ${type} failed for run ${runId}:`, err);
+      }
+    }
+  }
 
   /**
    * §18: Create a harness run with proper auth/tenant/budget validation.

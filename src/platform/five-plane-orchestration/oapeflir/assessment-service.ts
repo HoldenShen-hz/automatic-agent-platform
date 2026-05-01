@@ -9,7 +9,6 @@ import type { ConstraintPack } from "../harness/index.js";
 
 export interface AssessmentServiceOptions {
   highRiskTools?: readonly string[];
-  defaultDivision?: string;
 }
 
 export interface EffectivePolicySnapshot {
@@ -33,11 +32,9 @@ export interface AssessmentInput {
 
 export class AssessmentService {
   private readonly highRiskTools: ReadonlySet<string>;
-  private readonly defaultDivision: string;
 
   public constructor(options: AssessmentServiceOptions = {}) {
     this.highRiskTools = new Set(options.highRiskTools ?? ["apply_patch", "shell", "deploy"]);
-    this.defaultDivision = options.defaultDivision ?? "coding";
   }
 
   public assess(input: TaskSituation | AssessmentInput): UnifiedAssessment {
@@ -105,7 +102,9 @@ export class AssessmentService {
         factors: riskFactors,
       },
       routingDecision: {
-        division: situation.domainId ?? this.defaultDivision,
+        // Division must come from actual domainId - no hardcoded fallback to "coding"
+        // which causes non-coding tasks to be misrouted
+        division: situation.domainId,
         workflow,
         rationale: [
           `complexity=${complexity}`,

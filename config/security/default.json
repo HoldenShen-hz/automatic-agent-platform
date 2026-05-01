@@ -4,6 +4,6 @@
   "allowDestructiveActions": false,
   "remoteWorkerRegistration": {
     "challengeTtlMs": 300000,
-    "allowedCapabilities": ["bash", "edit"]
+    "allowedCapabilities": ["edit"]
   }
 }

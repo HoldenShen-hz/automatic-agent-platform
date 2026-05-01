@@ -207,8 +207,19 @@ export class HierarchicalPromptRegistryService {
       );
     }
 
-    bundle.metadata.deprecated = true;
-    bundle.updatedAt = nowIso();
+    // §58: Do not directly mutate "immutable" snapshot objects (issue #1955).
+    // Create a new object instead of mutating the existing bundle's metadata.
+    const updatedBundle: PromptBundle = {
+      ...bundle,
+      metadata: {
+        ...bundle.metadata,
+        deprecated: true,
+      },
+      updatedAt: nowIso(),
+    };
+    // Update the stored reference with the new object in both level-specific and version storage
+    this.storeBundle(updatedBundle, level, domain, packId);
+    this.storeVersion(updatedBundle, level, domain, packId);
   }
 
   public removeBundle(

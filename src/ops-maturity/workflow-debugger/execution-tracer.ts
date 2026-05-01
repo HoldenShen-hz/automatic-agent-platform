@@ -176,7 +176,8 @@ export class ExecutionTracer {
       totalDurationMs,
     };
 
-    this.activeTraces.set(traceId, updated);
+    // Remove from activeTraces to prevent memory leak
+    this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
 
@@ -197,7 +198,8 @@ export class ExecutionTracer {
       totalDurationMs: null,
     };
 
-    this.activeTraces.set(traceId, updated);
+    // Remove from activeTraces to prevent memory leak
+    this.activeTraces.delete(traceId);
     this.activeEvents.delete(traceId);
     this.traceStartTimes.delete(traceId);
 
@@ -213,13 +215,14 @@ export class ExecutionTracer {
       };
     }
 
-    // Check completed/aborted traces - return with current events
+    // Check events for traces no longer in activeTraces (e.g., completed/aborted traces)
+    // Note: stopTrace/abortTrace now remove from activeTraces, so this handles
+    // the case where a trace was stopped but we still want to retrieve its final state
     const events = this.activeEvents.get(traceId);
     if (events) {
-      return {
-        ...trace!,
-        events: [...events],
-      };
+      // Trace is not in activeTraces but has events - this shouldn't happen
+      // with current implementation, but handle it defensively
+      return null;
     }
 
     return null;

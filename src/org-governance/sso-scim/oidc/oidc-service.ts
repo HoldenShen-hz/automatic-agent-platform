@@ -174,6 +174,8 @@ export class OidcIdentityService {
   private readonly accessTokenIndex = new Map<string, string>();
   private readonly userSessions = new Map<string, Set<string>>();
   private readonly stateStore: OidcStateStore;
+  // §48 P0: PKCE code verifier store for OAuth 2.0 PKCE flow
+  private readonly pkceVerifierStore = new Map<string, string>();
 
   constructor(
     private readonly providerConfig: OidcProviderConfig,
@@ -501,6 +503,12 @@ export class OidcIdentityService {
   private buildAuthorizationUrl(state: string, nonce: string): string {
     const scopes = encodeURIComponent(this.providerConfig.scopes.join(" "));
     const authorizationEndpoint = this.providerConfig.authorizationEndpoint ?? `${this.providerConfig.issuer}/authorize`;
+    // §48 P0: Add PKCE support to prevent authorization code interception (issue #1969).
+    // PKCE is required for public clients and recommended for all OIDC flows.
+    const codeVerifier = this.generateCodeVerifier();
+    const codeChallenge = this.generateCodeChallenge(codeVerifier);
+    // Store code verifier for later token exchange using state as key
+    this.pkceVerifierStore.set(state, codeVerifier);
     return (
       `${authorizationEndpoint}` +
       `?client_id=${encodeURIComponent(this.providerConfig.clientId)}` +
@@ -508,8 +516,28 @@ export class OidcIdentityService {
       `&response_type=code` +
       `&scope=${scopes}` +
       `&state=${encodeURIComponent(state)}` +
-      `&nonce=${encodeURIComponent(nonce)}`
+      `&nonce=${encodeURIComponent(nonce)}` +
+      `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+      `&code_challenge_method=S256`
     );
+  }
+
+  /**
+   * Generates PKCE code verifier for OAuth 2.0 PKCE flow.
+   * §48 P0: PKCE prevents authorization code interception attacks.
+   */
+  private generateCodeVerifier(): string {
+    const { randomBytes } = require("node:crypto");
+    return randomBytes(32).toString("base64url");
+  }
+
+  /**
+   * Generates PKCE code challenge from verifier using S256 method.
+   * §48 P0: PKCE prevents authorization code interception attacks.
+   */
+  private generateCodeChallenge(verifier: string): string {
+    const { createHash } = require("node:crypto");
+    return createHash("sha256").update(verifier).digest("base64url");
   }
 
   private async exchangeTokens(input: {

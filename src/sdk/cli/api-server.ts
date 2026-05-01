@@ -158,8 +158,10 @@ async function main(): Promise<void> {
 
     // Initialize authentication service - require at least one auth mechanism
     // Per security requirements, the server must not run with all endpoints unprotected
+    // Note: jwtSecret must be a non-empty string when provided, empty string "" is NOT a valid secret
+    const hasNonEmptyJwtSecret = envConfig.jwtSecret != null && envConfig.jwtSecret.length > 0;
     const authService = (() => {
-      if (envConfig.apiKeys.length > 0 && envConfig.jwtSecret != null) {
+      if (envConfig.apiKeys.length > 0 && hasNonEmptyJwtSecret) {
         return new ApiAuthService({
           apiKeys: envConfig.apiKeys,
           jwtSecret: envConfig.jwtSecret,
@@ -171,7 +173,7 @@ async function main(): Promise<void> {
           jwtSecret: "", // API key only mode
         });
       }
-      if (envConfig.jwtSecret != null) {
+      if (hasNonEmptyJwtSecret) {
         return new ApiAuthService({
           apiKeys: [],
           jwtSecret: envConfig.jwtSecret,
@@ -181,9 +183,13 @@ async function main(): Promise<void> {
     })();
 
     // Validate webhook secret minimum entropy to prevent weak secrets allowing webhook forgery
+    // An empty string is not a valid webhook secret - must be at least 32 characters
     const MIN_WEBHOOK_SECRET_ENTROPY = 32;
-    if (envConfig.webhookSecret != null && envConfig.webhookSecret.length < MIN_WEBHOOK_SECRET_ENTROPY) {
+    if (envConfig.webhookSecret != null && envConfig.webhookSecret.length > 0 && envConfig.webhookSecret.length < MIN_WEBHOOK_SECRET_ENTROPY) {
       throw new Error(`AA_WEBHOOK_SECRET must be at least ${MIN_WEBHOOK_SECRET_ENTROPY} characters to prevent webhook forgery attacks`);
+    }
+    if (envConfig.webhookSecret != null && envConfig.webhookSecret.length === 0) {
+      throw new Error("AA_WEBHOOK_SECRET cannot be empty - must be at least 32 characters or not provided at all");
     }
 
     // Initialize the main channel gateway service with all dependencies

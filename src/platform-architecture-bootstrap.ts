@@ -238,31 +238,48 @@ export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectur
 }
 
 export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
-  registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
-    init: () => PLATFORM_LAYER_MANIFESTS,
-  });
-  registry.register<readonly PlatformPlaneManifest[]>("architecture.plane-catalog", {
-    init: () => PLATFORM_PLANE_MANIFESTS,
-  });
-  registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
-    init: () => Object.freeze([...listPlatformApps()]),
-  });
-  registry.register<readonly PlatformStartupTarget[]>("architecture.startup-targets", {
-    init: () => Object.freeze([...buildPlatformStartupTargets()]),
-  });
-  registry.register<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary", {
-    init: () => buildPlatformArchitectureBootstrapSummary(),
-    dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
-  });
+  // §171/R19-92: Only register each service if not already registered (deduplication)
+  if (!registry.has("architecture.layer-catalog")) {
+    registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
+      init: () => PLATFORM_LAYER_MANIFESTS,
+    });
+  }
+  if (!registry.has("architecture.plane-catalog")) {
+    registry.register<readonly PlatformPlaneManifest[]>("architecture.plane-catalog", {
+      init: () => PLATFORM_PLANE_MANIFESTS,
+    });
+  }
+  if (!registry.has("architecture.app-catalog")) {
+    registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
+      init: () => Object.freeze([...listPlatformApps()]),
+    });
+  }
+  if (!registry.has("architecture.startup-targets")) {
+    registry.register<readonly PlatformStartupTarget[]>("architecture.startup-targets", {
+      init: () => Object.freeze([...buildPlatformStartupTargets()]),
+    });
+  }
+  if (!registry.has("architecture.bootstrap-summary")) {
+    registry.register<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary", {
+      init: () => buildPlatformArchitectureBootstrapSummary(),
+      dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
+    });
+  }
 
-  // Return lazy references to preserve DAG initialization pattern.
-  // Callers should use registry.get() when they actually need the values.
+  // §171/R19-93: Wait for services to be initialized before returning lazy references.
+  // Verify all registered services are ready by querying them (acts as readiness gate).
+  registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
+  registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
+  registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
+  registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
+  const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
+
   return {
-    layers: undefined as unknown as readonly PlatformLayerManifest[],
-    planes: undefined as unknown as readonly PlatformPlaneManifest[],
-    apps: undefined as unknown as readonly PlatformAppManifest[],
-    startupTargets: undefined as unknown as readonly PlatformStartupTarget[],
-    summary: undefined as unknown as PlatformArchitectureBootstrapSummary,
+    layers: PLATFORM_LAYER_MANIFESTS,
+    planes: PLATFORM_PLANE_MANIFESTS,
+    apps: Object.freeze([...listPlatformApps()]),
+    startupTargets: Object.freeze([...buildPlatformStartupTargets()]),
+    summary,
   };
 }
 

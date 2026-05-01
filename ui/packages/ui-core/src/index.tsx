@@ -58,7 +58,9 @@ export function createFeatureModule(config: {
       title: config.title,
       permission: config.permission,
       platforms,
-      codeSplit: false,
+      // P1 FIX: Enable lazy loading for all feature modules per spec §4.4.1
+      // Spec requires React.lazy for all features except / and /login
+      codeSplit: true,
     },
     Component,
   };

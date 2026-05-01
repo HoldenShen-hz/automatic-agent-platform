@@ -69,6 +69,10 @@ export class PlanDagValidator {
 
     if (orderedSteps.length !== steps.length) {
       issues.push("planning.cycle_detected");
+      // R20-02: When cycle detected, topological sort produces partial result.
+      // Return empty array so callers know this is a failure, not a valid ordering.
+      // The plan-builder should detect !valid and handle appropriately.
+      orderedSteps.length = 0; // Clear to signal failure
     }
 
     // §13.10 Extended validation: entry node existence
