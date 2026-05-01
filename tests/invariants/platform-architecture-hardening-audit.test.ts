@@ -193,7 +193,12 @@ test("compatibility, drift, resume, sequencing, timers, and guardrail breakers a
   };
   const message = protocol.createMessage("task_request", {
     correlation_id: "corr-1",
+    delegationId: "delegation-1",
+    childRunId: "child-run-1",
     parent_run_id: "run-1",
+    capabilityIntersection: ["task"],
+    budgetCap: 100,
+    dataBoundary: "default",
     depth: 1,
     sender_agent_id: "a",
     receiver_agent_id: "b",
@@ -202,6 +207,7 @@ test("compatibility, drift, resume, sequencing, timers, and guardrail breakers a
     budget_remaining: 10,
     trace_id: "trace",
     payload: {},
+    deadline: new Date(Date.now() + 60000).toISOString(),
   });
   assert.equal(protocol.validateAndSend(message, context).accepted, true);
   assert.equal(protocol.validateAndSend(message, context).violations.includes("delegation.message_duplicate"), true);
