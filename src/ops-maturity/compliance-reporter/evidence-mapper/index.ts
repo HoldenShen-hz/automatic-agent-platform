@@ -167,13 +167,15 @@ export function computeEvidenceQualityScore(
   // Trustworthiness component (20% weight)
   const trustworthinessScores: Record<string, number> = { high: 0.2, medium: 0.1, low: 0 };
   const trustworthinessScore = items.reduce<number>((sum, item) => {
-    return sum + (item.trustworthiness ? trustworthinessScores[item.trustworthiness] : 0);
+    const score = item.trustworthiness ? trustworthinessScores[item.trustworthiness] ?? 0 : 0;
+    return sum + score;
   }, 0) / items.length;
 
   // Tamper-proof component (20% weight)
   const tamperProofScores: Record<string, number> = { cryptographic: 0.2, signed: 0.1, none: 0 };
   const tamperProofScore = items.reduce<number>((sum, item) => {
-    return sum + (item.tamperProof ? tamperProofScores[item.tamperProof] : 0);
+    const score = item.tamperProof ? tamperProofScores[item.tamperProof] ?? 0 : 0;
+    return sum + score;
   }, 0) / items.length;
 
   return Number(((coverageScore + freshnessScore + trustworthinessScore + tamperProofScore) * 100).toFixed(2));

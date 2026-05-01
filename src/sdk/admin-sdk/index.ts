@@ -118,7 +118,7 @@ export class AdminSdk {
    * Used for operational scripting and capacity planning.
    */
   public listWorkers(tenantId?: string) {
-    return this.client.getPaginated("/workers", tenantId ? { tenantId } : undefined);
+    return this.client.getPaginated("/workers", tenantId != null ? { tenantId } : undefined);
   }
 
   /**
@@ -191,7 +191,7 @@ export class AdminSdk {
       targetRef: directive.targetRef,
       payload: directive.payload,
       reason: directive.reason,
-      riskAcknowledged: directive.riskAcknowledged,
+      ...(directive.riskAcknowledged != null ? { riskAcknowledged: directive.riskAcknowledged } : {}),
     });
   }
 
@@ -218,11 +218,11 @@ export class AdminSdk {
   }): ReturnType<typeof createOperationalDirective<TParams>> {
     return createOperationalDirective<TParams>({
       type: directive.type,
-      scope: directive.scope,
+      scope: directive.scope ?? {},
       issuedBy: directive.issuedBy,
       reason: directive.reason,
-      params: directive.params,
-      expiresAt: directive.expiresAt,
+      ...(directive.params != null ? { params: directive.params } : {}),
+      ...(directive.expiresAt != null ? { expiresAt: directive.expiresAt } : {}),
     });
   }
 

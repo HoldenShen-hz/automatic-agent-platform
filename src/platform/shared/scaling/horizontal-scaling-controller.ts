@@ -56,7 +56,7 @@ export interface HPAEvent {
   cooldownRemainingMs?: number;
 }
 
-const DEFAULT_SCALING_POLICY: ScalingPolicy = {
+export const DEFAULT_SCALING_POLICY: ScalingPolicy = {
   scaleOutThreshold: 10,
   scaleInThreshold: 3,
   targetUtilization: 70,

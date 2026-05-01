@@ -377,6 +377,7 @@ function buildRecipes(seed: DomainSeed, workflowId: string, bundleId: string): r
       recommended_workflow_ids: [workflowId],
       default_prompt_bundle_ref: `${seed.domainId}.prompts`,
       acceptance_checklist_ref: `${seed.domainId}.acceptance`,
+      requiredApproval: seed.riskLevel === "critical" || seed.riskLevel === "high",
     },
   ];
 }

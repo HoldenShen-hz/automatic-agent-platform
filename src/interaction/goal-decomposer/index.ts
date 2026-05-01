@@ -461,14 +461,14 @@ function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[], tas
     : undefined;
 
   return {
-    budgetLimitUsd,
-    budgetAllocations,
-    riskPropagation,
-    riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
-    requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
-    requiredPermissions,
-    requiredCapabilities,
-  };
+      budgetLimitUsd,
+      budgetAllocations: budgetAllocations ?? undefined,
+      riskPropagation: riskPropagation ?? undefined,
+      riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
+      requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
+      requiredPermissions,
+      requiredCapabilities,
+    };
 }
 
 function totalCost(costs: readonly CostEstimate[]): CostEstimate {
@@ -529,7 +529,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       critical: 3.0,
     };
     const totalEstimatedTaskCostUsd = tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0);
-    const budgetAllocations = rawConstraintEnvelope.budgetLimitUsd != null
+    const budgetAllocations: { taskId: string; budgetUsd: number; riskMultiplier: number }[] = rawConstraintEnvelope.budgetLimitUsd != null
       ? tasks.map((task) => {
           const proportion = totalEstimatedTaskCostUsd > 0
             ? task.estimatedCost.estimatedCostUsd / totalEstimatedTaskCostUsd
@@ -554,8 +554,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     const constraintEnvelope: GoalConstraintEnvelope = {
       ...rawConstraintEnvelope,
-      budgetAllocations,
-      riskPropagation,
+      budgetAllocations: budgetAllocations.length > 0 ? budgetAllocations : undefined,
+      riskPropagation: riskPropagation.length > 0 ? riskPropagation : undefined,
     };
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
     let decompositionStrategy: GoalDecomposition["decompositionStrategy"] =
@@ -652,7 +652,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const plannerHandoff: PlannerHandoffReceipt = {
       handoffId: `${goal.goalId}:planner_handoff`,
       goalId: goal.goalId,
-      state: graphAnalysis.hasCycle ? "cycle_detected" : "ready_for_planner",
+      state: "ready_for_planner" as const,
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };

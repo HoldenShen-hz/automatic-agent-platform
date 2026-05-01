@@ -101,7 +101,10 @@ export class CrossAgentAnalyzerService {
       if (!groups[metric.domain]) {
         groups[metric.domain] = [];
       }
-      groups[metric.domain].push(metric.agentId);
+      const domainAgents = groups[metric.domain];
+      if (domainAgents) {
+        domainAgents.push(metric.agentId);
+      }
     }
     // Freeze the arrays to enforce readonly
     const readonlyGroups: Record<string, readonly string[]> = {};

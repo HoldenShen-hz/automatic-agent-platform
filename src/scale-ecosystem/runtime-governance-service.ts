@@ -53,7 +53,7 @@ export class RuntimeGovernanceService {
         .map((item) => item.regionId),
     });
     const queueOrder = orderFairQueue(input.queueItems).map((item) => item.itemId);
-    const preemptionVictimId = choosePreemptionVictim(input.preemptionCandidates)?.executionId ?? null;
+    const preemptionVictimId = choosePreemptionVictim(input.preemptionCandidates)?.victim?.executionId ?? null;
     const highestTierId = resolveHighestPriorityTier(input.tiers)?.tierId ?? null;
 
     return {

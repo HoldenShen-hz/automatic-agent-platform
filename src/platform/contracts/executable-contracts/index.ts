@@ -836,9 +836,10 @@ export function createTaskDraft(input: {
   expiresAt?: string;
 }): TaskDraft {
   requireNonEmpty(input.tenantId, "task_draft.tenant_id_required");
+  const sources: readonly unknown[] = [input.normalizedIntent];
   const domainId = resolveDomainBindingId({
-    explicit: input.domainId,
-    sources: [input.normalizedIntent] as readonly unknown[],
+    ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
+    sources,
     errorCode: "task_draft.domain_id_required",
     errorMessage: "TaskDraft requires a domainId or a legacy domain/division binding in normalizedIntent.",
   });
@@ -881,9 +882,10 @@ export function createConfirmedTaskSpec(input: {
       "High and critical task specs require a confirmation receipt.",
     );
   }
+  const sources: readonly unknown[] = [input.inputs];
   const domainId = resolveDomainBindingId({
-    explicit: input.domainId,
-    sources: [input.inputs] as readonly unknown[],
+    ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
+    sources,
     refCandidate: input.constraintPackRef,
     errorCode: "confirmed_task_spec.domain_id_required",
     errorMessage: "ConfirmedTaskSpec requires a domainId or a legacy domain/division binding in inputs.",
@@ -955,7 +957,7 @@ export function createHarnessRun(input: {
 }): HarnessRun {
   const timestamp = input.createdAt ?? nowIso();
   const domainId = resolveDomainBindingId({
-    explicit: input.domainId,
+    ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
     refCandidate: input.constraintPackRef,
     errorCode: "harness_run.domain_id_required",
     errorMessage: "HarnessRun requires a domainId or a constraintPackRef that preserves the domain binding.",

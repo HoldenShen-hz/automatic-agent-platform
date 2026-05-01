@@ -475,9 +475,15 @@ export class ChangepointDetectorService {
     const q = norm(histB);
 
     // Compute KL divergence P||M and Q||M where M = (P+Q)/2
-    const m = p.map((vi, i) => (vi + q[i]) / 2);
-    const klPM = p.reduce((sum, pi, i) => sum + (pi > 0 && m[i] > 0 ? pi * Math.log(pi / m[i]) : 0), 0);
-    const klQM = q.reduce((sum, qi, i) => sum + (qi > 0 && m[i] > 0 ? qi * Math.log(qi / m[i]) : 0), 0);
+    const m = p.map((vi, i) => (vi + (q[i] ?? 0)) / 2);
+    const klPM = p.reduce((sum, pi, i) => {
+      const mi = m[i];
+      return sum + (pi > 0 && mi !== undefined && mi > 0 ? pi * Math.log(pi / mi) : 0);
+    }, 0);
+    const klQM = q.reduce((sum, qi, i) => {
+      const mi = m[i];
+      return sum + (qi > 0 && mi !== undefined && mi > 0 ? qi * Math.log(qi / mi) : 0);
+    }, 0);
 
     return (klPM + klQM) / 2;
   }

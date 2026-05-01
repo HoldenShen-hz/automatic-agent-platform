@@ -1,0 +1,180 @@
+import { strict as assert } from "node:assert";
+import { test } from "node:test";
+
+import {
+  IdempotencyKeyMiddleware,
+  WRITE_METHODS,
+  extractIdempotencyKey,
+  createIdempotencyKeyMiddleware,
+  getGlobalIdempotencyKeyMiddleware,
+  resetGlobalIdempotencyKeyMiddleware,
+  buildIdempotencyErrorResponse,
+  DEFAULT_IDEMPOTENCY_KEY_CONFIG,
+  type IdempotencyKeyConfig,
+} from "../../../../../../src/platform/five-plane-interface/api/middleware/idempotency-key.js";
+
+test("WRITE_METHODS contains correct methods", () => {
+  assert.ok(WRITE_METHODS.has("POST"));
+  assert.ok(WRITE_METHODS.has("PUT"));
+  assert.ok(WRITE_METHODS.has("PATCH"));
+  assert.ok(WRITE_METHODS.has("DELETE"));
+  assert.ok(!WRITE_METHODS.has("GET"));
+  assert.ok(!WRITE_METHODS.has("OPTIONS"));
+});
+
+test("IdempotencyKeyMiddleware.isWriteOperation returns true for write methods", () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  assert.equal(middleware.isWriteOperation("POST"), true);
+  assert.equal(middleware.isWriteOperation("PUT"), true);
+  assert.equal(middleware.isWriteOperation("PATCH"), true);
+  assert.equal(middleware.isWriteOperation("DELETE"), true);
+});
+
+test("IdempotencyKeyMiddleware.isWriteOperation returns false for read methods", () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  assert.equal(middleware.isWriteOperation("GET"), false);
+  assert.equal(middleware.isWriteOperation("HEAD"), false);
+  assert.equal(middleware.isWriteOperation("OPTIONS"), false);
+});
+
+test("IdempotencyKeyMiddleware returns error when key required but missing for write", () => {
+  const middleware = new IdempotencyKeyMiddleware({ required: true });
+  const result = middleware.check({ method: "POST" });
+  assert.equal(result.allowed, false);
+  assert.equal(result.error?.statusCode, 400);
+  assert.ok(result.error?.code.includes("idempotency_key_required"));
+});
+
+test("IdempotencyKeyMiddleware allows read operations without key", () => {
+  const middleware = new IdempotencyKeyMiddleware({ required: true });
+  const result = middleware.check({ method: "GET" });
+  assert.equal(result.allowed, true);
+  assert.equal(result.isDuplicate, false);
+});
+
+test("IdempotencyKeyMiddleware allows write when key not required", () => {
+  const middleware = new IdempotencyKeyMiddleware({ required: false });
+  const result = middleware.check({ method: "POST" });
+  assert.equal(result.allowed, true);
+  assert.equal(result.isDuplicate, false);
+});
+
+test("IdempotencyKeyMiddleware returns cached response for duplicate", () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  middleware.record({ idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: { id: 1 } });
+
+  const result = middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  assert.equal(result.allowed, true);
+  assert.equal(result.isDuplicate, true);
+  assert.deepEqual(result.cachedResponse?.body, { id: 1 });
+});
+
+test("IdempotencyKeyMiddleware detects method conflict with same key", () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  middleware.record({ idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: {} });
+
+  const result = middleware.check({ method: "PUT", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  assert.equal(result.allowed, false);
+  assert.equal(result.error?.statusCode, 409);
+});
+
+test("IdempotencyKeyMiddleware generates per-tenant storage key", () => {
+  const middleware = new IdempotencyKeyMiddleware({ perTenant: true });
+  middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  middleware.record({ idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: {} });
+
+  // Same key with different tenant should be allowed
+  const result = middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-2" });
+  assert.equal(result.isDuplicate, false);
+});
+
+test("IdempotencyKeyMiddleware.cleanup removes expired entries", () => {
+  const middleware = new IdempotencyKeyMiddleware({ ttlMs: 1 }); // 1ms TTL
+  middleware.check({ method: "POST", idempotencyKey: "key-123" });
+
+  // Wait for entry to expire
+  setTimeout(() => {
+    middleware.cleanup();
+    assert.equal(middleware.size(), 0);
+  }, 10);
+});
+
+test("IdempotencyKeyMiddleware.clearAll removes all entries", () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  middleware.check({ method: "POST", idempotencyKey: "key-1" });
+  middleware.check({ method: "POST", idempotencyKey: "key-2" });
+  assert.equal(middleware.size(), 2);
+
+  middleware.clearAll();
+  assert.equal(middleware.size(), 0);
+});
+
+test("IdempotencyKeyMiddleware.size returns entry count", () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  assert.equal(middleware.size(), 0);
+
+  middleware.check({ method: "POST", idempotencyKey: "key-1" });
+  assert.equal(middleware.size(), 1);
+
+  middleware.check({ method: "POST", idempotencyKey: "key-2" });
+  assert.equal(middleware.size(), 2);
+});
+
+test("extractIdempotencyKey returns header value", () => {
+  const headers = { "idempotency-key": "key-123" };
+  const result = extractIdempotencyKey(headers);
+  assert.equal(result, "key-123");
+});
+
+test("extractIdempotencyKey returns first value from array", () => {
+  const headers = { "idempotency-key": ["key-123", "key-456"] };
+  const result = extractIdempotencyKey(headers);
+  assert.equal(result, "key-123");
+});
+
+test("extractIdempotencyKey returns undefined when missing", () => {
+  const headers = {};
+  const result = extractIdempotencyKey(headers);
+  assert.equal(result, undefined);
+});
+
+test("extractIdempotencyKey uses custom header name", () => {
+  const headers = { "x-idempotency": "key-123" };
+  const result = extractIdempotencyKey(headers, "X-Idempotency");
+  assert.equal(result, "key-123");
+});
+
+test("buildIdempotencyErrorResponse creates AppError", () => {
+  const error = buildIdempotencyErrorResponse("api.idempotency_key_required", "Missing key", 400);
+  assert.equal(error.code, "api.idempotency_key_required");
+  assert.equal(error.message, "Missing key");
+});
+
+test("createIdempotencyKeyMiddleware creates instance with config", () => {
+  const middleware = createIdempotencyKeyMiddleware({ ttlMs: 3600000 });
+  assert.ok(middleware instanceof IdempotencyKeyMiddleware);
+});
+
+test("getGlobalIdempotencyKeyMiddleware returns singleton", () => {
+  resetGlobalIdempotencyKeyMiddleware();
+  const instance1 = getGlobalIdempotencyKeyMiddleware();
+  const instance2 = getGlobalIdempotencyKeyMiddleware();
+  assert.equal(instance1, instance2);
+});
+
+test("resetGlobalIdempotencyKeyMiddleware clears singleton", () => {
+  resetGlobalIdempotencyKeyMiddleware();
+  const instance1 = getGlobalIdempotencyKeyMiddleware();
+  resetGlobalIdempotencyKeyMiddleware();
+  const instance2 = getGlobalIdempotencyKeyMiddleware();
+  assert.notEqual(instance1, instance2);
+});
+
+test("DEFAULT_IDEMPOTENCY_KEY_CONFIG has correct values", () => {
+  assert.equal(DEFAULT_IDEMPOTENCY_KEY_CONFIG.ttlMs, 24 * 60 * 60 * 1000);
+  assert.equal(DEFAULT_IDEMPOTENCY_KEY_CONFIG.required, true);
+  assert.equal(DEFAULT_IDEMPOTENCY_KEY_CONFIG.perTenant, true);
+  assert.equal(DEFAULT_IDEMPOTENCY_KEY_CONFIG.headerName, "Idempotency-Key");
+});

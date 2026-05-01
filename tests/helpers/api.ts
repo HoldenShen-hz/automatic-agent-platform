@@ -134,6 +134,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     lastProgressAt: nowIso,
     lastHeartbeatAt: nowIso,
     updatedAt: nowIso,
+    version: 0,
   });
 
   let takeoverSessionId: string | null = null;

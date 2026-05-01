@@ -132,7 +132,7 @@ export class SlaExpiryChecker {
       // Convert simple day intervals to threshold objects
       return domainThresholds.warningIntervals.map((days, index) => ({
         daysBeforeExpiry: days,
-        severity: (["info", "warning", "critical"] as const)[Math.min(index, 2)],
+        severity: (["info", "warning", "critical"] as const)[Math.min(index, 2)]!,
       }));
     }
     return SlaExpiryChecker.DEFAULT_WARNING_THRESHOLDS;

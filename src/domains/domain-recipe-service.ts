@@ -231,6 +231,7 @@ export class DomainRecipeService {
       recommended_workflow_ids: [request.defaultWorkflowId],
       default_prompt_bundle_ref: `${request.domainId}.prompts`,
       acceptance_checklist_ref: `${request.domainId}.acceptance`,
+      requiredApproval: false,
     };
 
     this.recipes.set(recipe.recipeId, recipe);

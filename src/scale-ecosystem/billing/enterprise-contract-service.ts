@@ -242,7 +242,7 @@ export class EnterpriseContractService {
       return null;
     }
     // Return the most recent entry for this version
-    return versions[versions.length - 1];
+    return versions[versions.length - 1] ?? null;
   }
 
   /**

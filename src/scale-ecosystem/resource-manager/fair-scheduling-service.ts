@@ -57,7 +57,7 @@ export class FairSchedulingService {
       },
       preemption: {
         shouldPreempt: quotaExceeded && victim != null,
-        victimExecutionId: victim?.executionId ?? null,
+        victimExecutionId: victim?.victim?.executionId ?? null,
         reason: quotaExceeded
           ? victim == null
             ? "resource_manager.quota_exceeded_without_victim"

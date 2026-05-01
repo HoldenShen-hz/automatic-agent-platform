@@ -199,8 +199,8 @@ export class ConnectorFrameworkService {
     // Note: SideEffectManager.applyReconciliation() transitions side effect state.
     // The side effect record itself is created via createSideEffectRecord in executable-contracts.
     const context: SideEffectManagerContext = {
-      tenantId: request.tenantId,
-      traceId: request.correlationId ?? executionKey,
+      tenantId: "system",
+      traceId: executionKey,
       emittedBy: "ConnectorFrameworkService",
       occurredAt: nowIso(),
     };

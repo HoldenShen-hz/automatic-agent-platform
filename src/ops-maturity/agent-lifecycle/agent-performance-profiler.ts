@@ -73,8 +73,10 @@ export class AgentPerformanceProfiler {
     for (const [key, records] of this.executionRecords) {
       if (records.length > 0) {
         // Use most recent record's completedAt as proxy for last activity
-        const lastRecord = records[records.length - 1];
-        activityMap.set(key, new Date(lastRecord.completedAt).getTime());
+        const lastRecord = records.at(-1);
+        if (lastRecord) {
+          activityMap.set(key, new Date(lastRecord.completedAt).getTime());
+        }
       }
     }
     const sortedByActivity = [...activityMap.entries()].sort((a, b) => a[1] - b[1]);

@@ -285,6 +285,16 @@ export class BillingService {
           Date.parse(capturedAt) + (input.budgetControl.reservationTtlMs ?? 5 * 60 * 1000),
         ).toISOString(),
         expectedVersion: ledger.version,
+        context: {
+          tenantId: input.budgetControl.tenantId,
+          traceId: input.budgetControl.traceId ?? newId("trace"),
+          emittedBy: input.budgetControl.emittedBy ?? "BillingService",
+          tier: "default",
+          tierLimit: 0,
+          watermarkAlert: false,
+          autoThrottle: false,
+          burstAllowance: 0,
+        },
       });
     }
 

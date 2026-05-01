@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  DataReplicatorService,
   ReplicationEventBuffer,
   computeChecksum,
   ReplicationPolicySchema,
@@ -105,4 +106,56 @@ test("ReplicationPolicySchema applies defaults", () => {
   if (result.success) {
     assert.equal(result.data.residencyMode, "same_jurisdiction");
   }
+});
+
+test("DataReplicatorService generates unique event IDs under rapid writes", () => {
+  const replicator = new DataReplicatorService({
+    sourceRegionId: "us-east-1",
+    targetRegionIds: ["eu-west-1"],
+    policy: {
+      sourceRegionId: "us-east-1",
+      targetRegionIds: ["eu-west-1"],
+      residencyMode: "allowed_cross_border",
+    },
+    batchSize: 100,
+    flushIntervalMs: 5000,
+    retryAttempts: 2,
+    checksumAlgorithm: "sha256",
+  });
+
+  const eventIds = new Set<string>();
+  for (let i = 0; i < 200; i++) {
+    const event = replicator.recordEvent("eu-west-1", "Task", `task-${i}`, { i });
+    assert.ok(event != null);
+    eventIds.add(event!.eventId);
+  }
+
+  assert.equal(eventIds.size, 200);
+});
+
+test("DataReplicatorService keeps checkpoint sequence cumulative across flushes", async () => {
+  const replicator = new DataReplicatorService({
+    sourceRegionId: "us-east-1",
+    targetRegionIds: ["eu-west-1"],
+    policy: {
+      sourceRegionId: "us-east-1",
+      targetRegionIds: ["eu-west-1"],
+      residencyMode: "allowed_cross_border",
+    },
+    batchSize: 100,
+    flushIntervalMs: 5000,
+    retryAttempts: 2,
+    checksumAlgorithm: "sha256",
+  });
+
+  replicator.recordEvent("eu-west-1", "Task", "task-1", { step: 1 });
+  replicator.recordEvent("eu-west-1", "Task", "task-2", { step: 2 });
+  await replicator.flush("eu-west-1");
+
+  replicator.recordEvent("eu-west-1", "Task", "task-3", { step: 3 });
+  await replicator.flush("eu-west-1");
+
+  const checkpoint = replicator.getCheckpoint("eu-west-1");
+  assert.equal(checkpoint?.sequenceNumber, 3);
+  assert.equal(checkpoint?.pendingCount, 0);
 });

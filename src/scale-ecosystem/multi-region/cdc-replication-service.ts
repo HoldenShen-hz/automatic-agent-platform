@@ -7,6 +7,9 @@
  * @see docs_zh/reviews/architecture-design-vs-implementation-review.md §52
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 
@@ -235,16 +238,26 @@ export interface LagAlert {
   readonly timestamp: string;
 }
 
+export interface CDCReplicationServiceOptions {
+  readonly stateFilePath?: string | null;
+}
+
+interface CDCReplicationPersistedState {
+  readonly checkpoints: readonly CDCReplicationCheckpoint[];
+  readonly replicationQueues: readonly {
+    readonly key: string;
+    readonly batches: readonly CDCReplicationBatch[];
+  }[];
+}
+
 /**
  * CDC replication service for multi-region data sync
  */
 export class CDCReplicationService {
   private readonly checkpoints = new Map<string, CDCReplicationCheckpoint>();
   private readonly configs = new Map<string, RegionReplicationConfig>();
-  // Root cause: Pure in-memory replication queues - no persistence
-  // On restart, all queued batches are lost, violating RPO
-  // Fix: Checkpoints are in-memory only; in production, these should be persisted to durable storage
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
+  private readonly stateFilePath: string | null;
   private readonly vectorClocks = new Map<string, VectorClock>();
   private readonly conflictHistory = new Map<string, ConflictInfo[]>();
   private readonly conflictConfig: ConflictResolutionConfig = {
@@ -276,6 +289,11 @@ export class CDCReplicationService {
 
   private failoverStartTime: Map<string, number> = new Map();
   private readonly lagAlertListeners = new Set<(alert: LagAlert) => void>();
+
+  public constructor(options: CDCReplicationServiceOptions = {}) {
+    this.stateFilePath = options.stateFilePath == null ? null : resolve(options.stateFilePath);
+    this.loadPersistedState();
+  }
 
   /**
    * Register a listener for lag alerts (RPO breaches)
@@ -658,6 +676,10 @@ export class CDCReplicationService {
         processedAt: nowIso(),
       });
     }
+    if (!this.replicationQueues.has(key)) {
+      this.replicationQueues.set(key, []);
+    }
+    this.persistState();
   }
 
   /**
@@ -684,6 +706,7 @@ export class CDCReplicationService {
   ): CDCReplicationBatch | null {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
     const checkpoint = this.checkpoints.get(key);
+    const queue = this.replicationQueues.get(key) ?? [];
 
     if (!checkpoint) {
       return null;
@@ -692,9 +715,14 @@ export class CDCReplicationService {
     const config = this.configs.get(key);
     const batchSize = config?.batchSize ?? 100;
 
-    // Filter events after checkpoint
+    const highestQueuedSequence = queue.reduce(
+      (maxSequence, batch) => Math.max(maxSequence, batch.endSequence),
+      checkpoint.lastEventSequence,
+    );
+
+    // Filter events after the latest durable checkpoint or already-queued batch.
     const eventsToReplicate = sourceEvents.filter(
-      (event) => event.sequence > checkpoint.lastEventSequence,
+      (event) => event.sequence > highestQueuedSequence,
     );
 
     if (eventsToReplicate.length === 0) {
@@ -749,6 +777,7 @@ export class CDCReplicationService {
     // §187-2196: Dequeue confirmed batch to prevent memory leak
     // Without this, queue grows unbounded causing OOM
     this.dequeueBatch(key, batch.batchId);
+    this.persistState();
   }
 
   /**
@@ -760,6 +789,7 @@ export class CDCReplicationService {
     const index = queue.findIndex((b) => b.batchId === batchId);
     if (index !== -1) {
       queue.splice(index, 1);
+      this.persistState();
     }
   }
 
@@ -778,8 +808,7 @@ export class CDCReplicationService {
     cdcLogger.error(`CDC replication failed for ${key}: ${error}`, {
       data: { sourceRegionId, targetRegionId, batchId: batch.batchId },
     });
-    // Enqueue failed batch for retry instead of dropping
-    this.enqueueBatch(key, batch);
+    this.requeueBatch(key, batch);
   }
 
   /**
@@ -840,8 +869,24 @@ export class CDCReplicationService {
    */
   private enqueueBatch(key: string, batch: CDCReplicationBatch): void {
     const queue = this.replicationQueues.get(key) ?? [];
-    queue.push(batch);
+    if (!queue.some((existing) => existing.batchId === batch.batchId)) {
+      queue.push(batch);
+    }
     this.replicationQueues.set(key, queue);
+    this.persistState();
+  }
+
+  private requeueBatch(key: string, batch: CDCReplicationBatch): void {
+    const queue = this.replicationQueues.get(key) ?? [];
+    const existingIndex = queue.findIndex((item) => item.batchId === batch.batchId);
+    if (existingIndex >= 0) {
+      const [existing] = queue.splice(existingIndex, 1);
+      queue.push(existing ?? batch);
+    } else {
+      queue.push(batch);
+    }
+    this.replicationQueues.set(key, queue);
+    this.persistState();
   }
 
   /**
@@ -849,6 +894,48 @@ export class CDCReplicationService {
    */
   private getConfigKey(sourceRegionId: string, targetRegionId: string): string {
     return `${sourceRegionId}->${targetRegionId}`;
+  }
+
+  private loadPersistedState(): void {
+    if (this.stateFilePath == null || !existsSync(this.stateFilePath)) {
+      return;
+    }
+
+    try {
+      const raw = readFileSync(this.stateFilePath, "utf8");
+      const parsed = JSON.parse(raw) as Partial<CDCReplicationPersistedState>;
+      for (const checkpoint of parsed.checkpoints ?? []) {
+        const key = this.getConfigKey(checkpoint.sourceRegionId, checkpoint.targetRegionId);
+        this.checkpoints.set(key, checkpoint);
+      }
+      for (const queueEntry of parsed.replicationQueues ?? []) {
+        this.replicationQueues.set(queueEntry.key, [...queueEntry.batches]);
+      }
+    } catch (error) {
+      cdcLogger.error("Failed to load CDC replication state", {
+        data: {
+          stateFilePath: this.stateFilePath,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private persistState(): void {
+    if (this.stateFilePath == null) {
+      return;
+    }
+
+    const state: CDCReplicationPersistedState = {
+      checkpoints: [...this.checkpoints.values()],
+      replicationQueues: [...this.replicationQueues.entries()].map(([key, batches]) => ({
+        key,
+        batches,
+      })),
+    };
+
+    mkdirSync(dirname(this.stateFilePath), { recursive: true });
+    writeFileSync(this.stateFilePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   }
 }
 
@@ -862,7 +949,9 @@ export class MultiRegionReplicationCoordinator {
   private readonly regionConfigs = new Map<string, RegionReplicationConfig[]>();
 
   public constructor(cdcService?: CDCReplicationService) {
-    this.cdcService = cdcService ?? new CDCReplicationService();
+    this.cdcService = cdcService ?? new CDCReplicationService({
+      stateFilePath: "data/runtime/multi-region/cdc-replication-state.json",
+    });
   }
 
   /**

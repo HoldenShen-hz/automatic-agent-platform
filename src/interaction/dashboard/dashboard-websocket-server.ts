@@ -292,7 +292,8 @@ export class DashboardWebSocketServer {
         ? undefined
         : this.createMessage("stream_gap", clientId, replay.gap);
       if (missedEvents.length > 0) {
-        connection.lastEventId = missedEvents[missedEvents.length - 1].deltaId;
+        const lastMissedEvent = missedEvents[missedEvents.length - 1];
+        connection.lastEventId = lastMissedEvent?.deltaId ?? null;
       }
     }
 
@@ -321,7 +322,7 @@ export class DashboardWebSocketServer {
       recoveryRequired: gapMessage !== undefined,
     });
 
-    return { clientId, ack, missedEvents, gapMessage };
+    return { clientId, ack, missedEvents: missedEvents ?? undefined, gapMessage: gapMessage ?? undefined };
   }
 
   /**
@@ -479,6 +480,7 @@ export class DashboardWebSocketServer {
   private mapChangeTypeToDomainEvent(changes: readonly DashboardDelta["changes"]): DashboardPushMessageType {
     if (changes.length === 0) return "dashboard_snapshot";
     const firstChange = changes[0];
+    if (firstChange === undefined) return "dashboard_snapshot";
     switch (firstChange.changeType) {
       case "task_created":
         return "task.created";
