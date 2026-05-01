@@ -40,16 +40,6 @@ export function matchesGovernanceScope(
   const levelHierarchy = ["view", "operate", "admin", "super_admin"] as const;
   const levelIndex = levelHierarchy.indexOf(level as typeof levelHierarchy[number]);
 
-  // Level check: if level is view/operate, cannot perform admin-level actions
-  // Admin and super_admin can perform any action
-  if (scope.requiredLevel !== undefined) {
-    const requiredIndex = levelHierarchy.indexOf(scope.requiredLevel as typeof levelHierarchy[number]);
-    // If delegation level is lower than required, deny
-    if (levelIndex < requiredIndex) {
-      return false;
-    }
-  }
-
   const orgAllowed = orgNodeIds.length === 0 || orgNodeIds.includes(scope.orgNodeId);
   const domainAllowed = domainIds.length === 0 || scope.domainId == null || domainIds.includes(scope.domainId);
   const capabilityAllowed = permissions.length === 0 ||
