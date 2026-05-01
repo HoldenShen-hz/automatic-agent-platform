@@ -100,6 +100,10 @@ Reduce lateral proliferation of result objects through unified result envelope:
 - Deduplication strategy: prioritize deduplication by `id`; if id is missing, deduplicate by `uri + createdAt` composite key.
 - During merge, ref attributes (like stepId, lineage) and record attributes (like sizeBytes, checksum) do shallow merge.
 
-## 5. Closure Conclusion
+## v4.3 Contract Remediation
+
+- T-37: 早期版本引用 `buildTaskResultEnvelope` 作为主构建入口。v4.3 canonical 构建器为 `buildHarnessRunResultEnvelope` / `buildNodeRunResultEnvelope`，投影到 `HarnessRun -> NodeRun` 链而非 `Task -> Execution` 旧模型。
+
+## 5. 收口结论
 
 Unified result envelope allows display, audit, API, and recovery logic to face the same result shell, rather than being dragged by the number of concrete result types.

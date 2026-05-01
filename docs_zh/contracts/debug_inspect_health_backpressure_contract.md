@@ -81,6 +81,7 @@
 - 主键关联：`task` -> `harness_run` -> `node_runs[]` 为 canonical 主链。
 - `legacy_workflow_projection` 仅用于向后兼容 legacy 工具和仪表盘，不得作为新增功能的主数据源。
 - `executions[]` 已废弃（legacy），仅保留兼容别名。
+- `GET /executions/:executionId/inspect` 仅保留 legacy 兼容 alias，映射到对应 `harness_run_id` 查询。
 
 ### 3.3 `DebugDump`
 

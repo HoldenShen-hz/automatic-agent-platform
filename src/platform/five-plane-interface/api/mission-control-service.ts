@@ -577,10 +577,15 @@ export class MissionControlService {
         ? workers.length === 1 ? workers[0] ?? null : null
         : workers.find((worker) => worker.workerId === activeWorkerId) ?? null;
 
+    // R7-33/R7-34 fix: use harness_run_id/node_run_id instead of legacy taskId
+    const harnessRunId = String(inspect.task.id ?? taskId);
+    const activeNodeRunId = this.deriveActiveNodeRunIdFromInspect(inspect);
+
     return {
       generatedAt: new Date().toISOString(),
       scope: {
-        taskId,
+        harnessRunId,
+        nodeRunId: activeNodeRunId,
         divisionId: inspect.task.divisionId ?? null,
         workspaceId: null,
         tenantId: inspect.task.tenantId ?? null,
@@ -609,7 +614,29 @@ export class MissionControlService {
       })),
       inspect,
       timeline: this.timelineService.buildTaskTimeline(taskId),
+      // R7-33 fix: canonical override actions (replaces legacy retry_step/skip_step/override_step_output)
+      overrideActions: {
+        retryNodeRun: async (nodeRunId: string) => {
+          // Placeholder: actual implementation would call RuntimeStateMachine.transition
+          console.log(`retryNodeRun: ${nodeRunId}`);
+        },
+        skipNodeRun: async (nodeRunId: string) => {
+          console.log(`skipNodeRun: ${nodeRunId}`);
+        },
+        overrideNodeOutput: async (nodeRunId: string, output: unknown) => {
+          console.log(`overrideNodeOutput: ${nodeRunId}`, output);
+        },
+      },
     };
+  }
+
+  private deriveActiveNodeRunIdFromInspect(inspect: ReturnType<InspectService["getTaskInspectView"]>): string | null {
+    const ws = inspect.workflowState as Record<string, unknown> | null;
+    if (!ws) return null;
+    const nodes = ws.nodes as ReadonlyArray<Record<string, unknown>> | undefined;
+    if (!Array.isArray(nodes)) return null;
+    const active = nodes.find((n) => n.status === "in_progress" || n.status === "pending");
+    return active ? String(active.nodeId ?? active.id ?? null) : null;
   }
 
   private listDivisionCatalog(): DivisionCatalogEntry[] {

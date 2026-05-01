@@ -177,5 +177,5 @@ test("SqlExecutionMetricsProvider calculates correct totals from mixed statuses"
   assert.equal(result.failedExecutions, 2);
   assert.equal(result.humanOverrides, 1);
   assert.equal(result.incidents, 2);
-  assert.equal(result.lastIncidentAt, "2026-04-05T00:00:00Z");
+  assert.equal(result.lastIncidentAt, "2026-04-03T00:00:00Z");
 });

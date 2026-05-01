@@ -12,8 +12,10 @@ export interface CorsConfig {
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
   allowedOrigins: [],
   allowedMethods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
-  exposedHeaders: ["x-request-id", "x-api-version", "x-app-version"],
+  // R7-47 FIX: Add accept-version header for API version negotiation per §6.4
+  allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key", "accept-version"],
+  // R7-43 FIX: Add x-trace-id to exposed headers so CORS callers can access correlation IDs per §6.2
+  exposedHeaders: ["x-request-id", "x-api-version", "x-app-version", "x-trace-id"],
   maxAgeSeconds: 86_400,
   credentials: false,
 };

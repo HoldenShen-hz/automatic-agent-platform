@@ -128,7 +128,11 @@ flowchart TD
 
 - transaction 层只能保存 `ArtifactRef`，不能回灌 artifact 本体。
 - artifact ref 必须稳定、可校验、可追溯。
-- `source_harness_run_id` / `source_node_run_id` 为 canonical 关联键，`source_execution_id` 为 legacy 查询键，仅做兼容投影。`
+- `source_harness_run_id` / `source_node_run_id` 为 canonical 关联键，`source_execution_id` 为 legacy 查询键，仅做兼容投影。
+
+## v4.3 Contract Remediation
+
+- T-39: `ArtifactRef.source_execution_id` 为 legacy 字段。v4.3 canonical 关联键为 `source_harness_run_id` / `source_node_run_id`。现有使用 `source_execution_id` 的实现必须迁移到 canonical 字段，新实现不得再新增 `source_execution_id` 引用。
 
 ## 10. `AnalyticsFact` 最小字段
 

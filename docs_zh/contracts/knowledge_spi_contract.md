@@ -249,3 +249,7 @@ FailurePatternMiner.mine()
 - **命名空间隔离**：跨 namespace 查询必须通过 KnowledgeAccessControl 授权。
 - **R4-EVIDENCE**：Learn→Knowledge 注入的内容必须包含 EvidenceRef 链接。
 - **信任级别传播**：trustLevel 必须在 intake 时确定，不得降级。
+
+## v4.3 Contract Remediation
+
+- T-44: Knowledge SPI 早期版本缺少 `harness_run_id` 集成字段，`KnowledgeSource.harnessRunId` / `nodeRunId` 现已添加。TrustLevel 4 级模型已在 §29 知识边界规则中正式定义，本文档第 6 节对齐 §29 对应关系，新实现必须遵循 TrustLevel 传播约束，不得降级。

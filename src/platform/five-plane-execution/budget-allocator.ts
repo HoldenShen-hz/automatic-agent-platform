@@ -137,6 +137,16 @@ export interface StreamingSettleState {
   readonly tokenAccumulator: number;
 }
 
+/**
+ * Sweeper configuration for expired reservation cleanup.
+ * §18.3: expired reservation must be released, not continue to participate in commit
+ */
+export interface SweeperConfig {
+  readonly enabled: boolean;
+  readonly scanIntervalMs: number; // How often to scan for expired reservations
+  readonly maxReservationsToScan: number; // Batch size for scanning
+}
+
 const DEFAULT_WATERMARK_ALERT: WatermarkAlertConfig = {
   warningThreshold: 0.8,
   criticalThreshold: 0.95,
@@ -165,13 +175,16 @@ export class BudgetAllocator {
   private readonly streamingStates = new Map<string, StreamingSettleState>();
   private readonly throttleState = new Map<string, boolean>(); // runId -> isThrottled
   private readonly events?: BudgetAllocatorEvents;
+  private readonly sweeperConfig: SweeperConfig;
 
   public constructor(options: {
     readonly stateMachine?: RuntimeStateMachine;
     readonly events?: BudgetAllocatorEvents;
+    readonly sweeperConfig?: SweeperConfig;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
     this.events = options.events;
+    this.sweeperConfig = options.sweeperConfig ?? { enabled: false, scanIntervalMs: 60000, maxReservationsToScan: 100 };
   }
 
   private normalizeContext(
@@ -593,5 +606,46 @@ export class BudgetAllocator {
         version: input.ledger.version + 1,
       },
     };
+  }
+
+  /**
+   * R11-07 FIX: Sweep expired reservations.
+   * §18.3: expired reservation must be released, not continue to participate in commit.
+   *
+   * This method should be called periodically to clean up expired reservations
+   * that were not explicitly released (e.g., due to execution failures).
+   */
+  public sweepExpiredReservations(input: {
+    readonly ledger: BudgetLedger;
+    readonly reservations: readonly BudgetReservation[];
+    readonly context: BudgetAllocatorContext;
+  }): ReadonlyArray<BudgetReleaseResult> {
+    if (!this.sweeperConfig.enabled) {
+      return [];
+    }
+
+    const now = Date.now();
+    const expiredReservations = input.reservations.filter((res) => {
+      if (res.status !== "reserved") return false;
+      const expiresAtMs = Date.parse(res.expiresAt);
+      return expiresAtMs <= now;
+    });
+
+    const results: BudgetReleaseResult[] = [];
+    for (const expired of expiredReservations.slice(0, this.sweeperConfig.maxReservationsToScan)) {
+      try {
+        const result = this.release({
+          ledger: input.ledger,
+          reservation: expired,
+          reasonCode: "budget.sweeper_expired",
+          context: input.context,
+        });
+        results.push(result);
+      } catch {
+        // Skip failed releases - sweeper should not throw, just log
+      }
+    }
+
+    return results;
   }
 }

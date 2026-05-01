@@ -77,4 +77,8 @@ Phase 1a / 1b 的最小预检目标是：
 
 ## 8. 收口结论
 
-workflow IO 预检的目标不是做到“完全聪明”，而是把最常见、最便宜可判定的兼容问题拦在运行前。
+workflow IO 预检的目标不是做到”完全聪明”，而是把最常见、最便宜可判定的兼容问题拦在运行前。
+
+## v4.3 Contract Remediation
+
+- T-43: 早期预检结果以 `workflow_id` / `step_id` 为主键。v4.3 canonical 预检应关联到 `plan_graph_bundle_id` / `node_run_id`；`workflow_id` / `step_id` 仅保留用于兼容 legacy 接口。新实现不得再以 `workflow_id` / `step_id` 为主关联键。

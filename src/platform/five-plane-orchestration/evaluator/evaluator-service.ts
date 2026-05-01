@@ -63,8 +63,10 @@ export interface EvaluatorConfig {
 
 const DEFAULT_EVALUATOR_CONFIG: EvaluatorConfig = {
   qualityGate: {
-    defaultPassThreshold: 0.5,
-    criticalPassThreshold: 0.8,
+    // R11-05 FIX: configurable threshold per §17.3; not hardcoded 0.5
+    // Default 0.7 aligns with quality_score_delta >= -0.05 delta-based evaluation
+    defaultPassThreshold: 0.7,
+    criticalPassThreshold: 0.9,
     enforcement: "blocking",
   },
   riskThresholds: {

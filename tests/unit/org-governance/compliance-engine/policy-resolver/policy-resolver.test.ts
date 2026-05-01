@@ -305,7 +305,7 @@ describe("resolveCompliancePolicyForNode", () => {
     const result = resolveCompliancePolicyForNode(nodes, "leaf-node", policiesByNodeId);
 
     // Default should be deny
-    assert.strictEqual(result.allow??.result, undefined); // Explicit checks not needed - empty means deny
+    assert.strictEqual(result.allow?.result ?? undefined, undefined); // Explicit checks not needed - empty means deny
   });
 
   it("should inherit policies from parent nodes", () => {

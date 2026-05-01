@@ -227,4 +227,8 @@ Phase 1b 做：
 
 ## 14. 收口结论
 
-上下文溢出的正确应对方式不是“更早更频繁地总结”，而是先用最低成本的裁剪回收空间，再把真正需要保留的长期语义交给 compaction。
+上下文溢出的正确应对方式不是”更早更频繁地总结”，而是先用最低成本的裁剪回收空间，再把真正需要保留的长期语义交给 compaction。
+
+## v4.3 Contract Remediation
+
+- T-42: `CompactionRecord` 早期以 `session_id` / `task_id` 为关联键。v4.3 canonical 关联链为 `harness_run_id` / `node_run_id`；现有记录应逐步迁移到 canonical 字段，新增记录必须使用 canonical 字段。新实现不得再以 `session_id` / `task_id` 为主关联键。

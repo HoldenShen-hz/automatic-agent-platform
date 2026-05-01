@@ -7,7 +7,7 @@
  * §G8: Livestream domain adapter — M2 Phase 5.
  */
 
-import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
+import type { ExternalAdapterPlugin, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
   return {
@@ -15,6 +15,28 @@ export function createLivestreamAdapterPlugin(): ExternalAdapterPlugin {
     spiType: "adapter",
     adapterType: "obs_streaming",
     capabilityIds: ["obs.config", "obs.scenes", "stream.analytics", "stream.engagement"],
+
+    // §22.4 Complete lifecycle hooks
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded - perform any initialization
+      return;
+    },
+
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+      return;
+    },
+
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated - clean up resources
+      return;
+    },
+
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded - release all resources
+      return;
+    },
+
     async initialize() {
       // OBS WebSocket credentials would be validated here
     },

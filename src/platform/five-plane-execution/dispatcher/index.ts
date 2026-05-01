@@ -110,6 +110,8 @@ class MultiStepToolRegistry {
     this.commandExecutor = new CommandExecutor();
     this.repoRoot = process.cwd();
     this.spawnedAgents = new Map();
+    this.sideEffectRecords = new Map();
+    this.evidenceRecords = new Map();
     this.budgetGuard = new BudgetGuard();
     this.sandboxPolicy = createWorkspaceWritePolicy(this.repoRoot);
     // R4-34 (INV-POLICY-001): Initialize PolicyEngine with default budget policy
@@ -316,29 +318,48 @@ class MultiStepToolRegistry {
   private createSideEffectRecordForExternalCall(
     toolName: string,
     args: Record<string, unknown>,
-  ): { sideEffectId: string; effectKind: "external_api" | "file_write" | "other" } {
+    harnessRunId: string = "harness_run:dispatcher",
+  ): { sideEffectRecord: ReturnType<typeof createSideEffectRecord> | null; effectKind: SideEffectKind } {
     // R4-33 (INV-SIDEEFFECT-001): Create SideEffectRecord for external calls
     // web_fetch and web_search produce real side effects but don't record/track/reconcile
-    const effectKind = ["web_fetch", "web_search"].includes(toolName)
+    const effectKind: SideEffectKind = ["web_fetch", "web_search"].includes(toolName)
       ? "external_api"
       : toolName === "git" || toolName === "repo-map"
         ? "file_write"
         : "other";
 
-    const sideEffectId = `se_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    // R4-33: SideEffectRecord creation - in production this would be persisted
-    // to the truth store. For now we return the ID for tracking.
+    // Only create SideEffectRecord for production-relevant side effects
+    if (!["web_fetch", "web_search", "git", "repo-map"].includes(toolName)) {
+      return { sideEffectRecord: null, effectKind };
+    }
+
+    const sideEffectRecord = createSideEffectRecord({
+      harnessRunId,
+      nodeRunId: "pending:node_run",
+      nodeAttemptId: "pending:attempt",
+      effectKind,
+      idempotencyKey: `tool_call:${toolName}:${Date.now()}`,
+      riskClass: toolName === "git" || toolName === "spawn_agent" ? "high" : "medium",
+      preCommitPolicyProofRef: { artifactId: "pending:policy_proof", uri: "pending://", hash: "pending" },
+      externalRef: toolName === "web_fetch" ? (args.url as string) : toolName === "web_search" ? (args.query as string) : null,
+      deadline: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+
+    // R4-33: Store SideEffectRecord for tracking and reconciliation
+    this.sideEffectRecords.set(sideEffectRecord.sideEffectId, sideEffectRecord);
+
     logger.log({
       level: "debug",
       message: "R4-33 (INV-SIDEEFFECT-001): Created SideEffectRecord for external call",
       data: {
-        sideEffectId,
+        sideEffectId: sideEffectRecord.sideEffectId,
         toolName,
         effectKind,
-        externalRef: toolName === "web_fetch" ? (args.url as string) : toolName === "web_search" ? (args.query as string) : null,
+        status: sideEffectRecord.status,
+        externalRef: sideEffectRecord.externalRef,
       },
     });
-    return { sideEffectId, effectKind };
+    return { sideEffectRecord, effectKind };
   }
 
   /**
@@ -503,6 +524,25 @@ class MultiStepToolRegistry {
     // R4-33 (INV-SIDEEFFECT-001): Create SideEffectRecord for external calls
     // web_fetch/web_search produce real side effects but don't record/track/reconcile
     const sideEffect = this.createSideEffectRecordForExternalCall(toolName, args);
+
+    // R4-35 (INV-EVIDENCE-001): Create EvidenceRecord for all tool executions
+    // This provides immutable evidence of every decision and execution
+    const principal = createPlatformPrincipal({ actorId: "multi-step-dispatcher", tenantId: "tenant:local" });
+    const evidenceRecord = createEvidenceRecord({
+      traceId: newId("trace"),
+      principal,
+      category: "execution",
+      targetRef: `tool:${toolName}`,
+      content: {
+        toolName,
+        args: Object.keys(args).length > 0 ? Object.fromEntries(Object.keys(args).map((k) => [k, typeof args[k] === "string" ? args[k] : "[object]"])) : {},
+        effectKind: sideEffect.effectKind,
+        sideEffectId: sideEffect.sideEffectRecord?.sideEffectId ?? null,
+        timestamp: nowIso(),
+      },
+      metadata: { source: "dispatcher", version: "1.0" },
+    });
+    this.evidenceRecords.set(evidenceRecord.recordId, evidenceRecord);
 
     switch (toolName) {
       case "todo_write": {

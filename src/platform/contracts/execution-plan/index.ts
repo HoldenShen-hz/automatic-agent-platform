@@ -45,6 +45,10 @@ export interface ExecutionPlanStep {
  *
  * Legacy fields (planId, taskId, tenantId, version, steps, createdAt) are NOT carried forward
  * because the graph-based execution model uses PlanGraphBundle's structure instead.
+ *
+ * Root cause: Two parallel execution plan contracts existed without proper deprecation.
+ * Canonical replacement is PlanGraphBundle which uses graph-based structure (nodes/edges)
+ * vs legacy linear steps[] structure.
  */
 export type ExecutionPlan = PlanGraphBundle;
 

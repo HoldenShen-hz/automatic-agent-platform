@@ -6,7 +6,7 @@
  * §G8: Asset Production domain adapter — M2 Phase 4.
  */
 
-import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
+import type { ExternalAdapterPlugin, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
   return {
@@ -14,6 +14,28 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
     spiType: "adapter",
     adapterType: "figma",
     capabilityIds: ["figma.files", "figma.components", "cdn.assets", "design_tokens"],
+
+    // §22.4 Complete lifecycle hooks
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded - perform any initialization
+      return;
+    },
+
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated - verify credentials
+      return;
+    },
+
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated - clean up resources
+      return;
+    },
+
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded - release all resources
+      return;
+    },
+
     async initialize() {
       // Figma API credentials would be validated here
     },

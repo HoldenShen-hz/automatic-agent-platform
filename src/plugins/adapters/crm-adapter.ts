@@ -7,7 +7,7 @@
  * §G8: Growth domain M2 Phase 2 — Ad Platforms + CRM required.
  */
 
-import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
+import type { ExternalAdapterPlugin, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
 
@@ -38,6 +38,33 @@ export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): E
     spiType: "adapter",
     adapterType: "crm_analytics",
     capabilityIds: [`external.${crmType}`, `external.${crmType}.contacts`, `external.${crmType}.campaigns`],
+
+    // §22.4 Complete lifecycle hooks
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded - perform any initialization
+      return;
+    },
+
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated - verify credentials
+      if (!credentialFingerprint) {
+        throw new Error("crm_adapter.not_authenticated: authenticate() must be called before activation");
+      }
+      return;
+    },
+
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated - clean up resources
+      credentialFingerprint = null;
+      return;
+    },
+
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded - release all resources
+      credentialFingerprint = null;
+      return;
+    },
+
     async initialize() {
       return undefined;
     },

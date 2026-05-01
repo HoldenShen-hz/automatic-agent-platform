@@ -19,7 +19,7 @@ function makeScore(overrides: Partial<CapabilityTrustScore> = {}): CapabilityTru
   };
 }
 
-test("assessPromotion blocks promotion when incidents > 0", () => {
+test("assessPromotion blocks promotion for unresolved incidents without low-severity classification", () => {
   const score = makeScore({
     currentAutonomy: "suggestion",
     totalExecutions: 100,
@@ -29,6 +29,40 @@ test("assessPromotion blocks promotion when incidents > 0", () => {
   const result = assessPromotion(score);
   assert.equal(result.shouldPromote, false);
   assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_incident"));
+});
+
+test("assessPromotion does not block promotion for P3 incident history alone", () => {
+  const score = makeScore({
+    currentAutonomy: "suggestion",
+    totalExecutions: 80,
+    successfulExecutions: 78,
+    failedExecutions: 1,
+    incidents: 1,
+    lastIncidentSeverity: "P3",
+    lastIncidentAgeDays: 45,
+  });
+
+  const result = assessPromotion(score);
+
+  assert.equal(result.shouldPromote, true);
+  assert.equal(result.targetLevel, "supervised");
+});
+
+test("assessPromotion converts P1 incident into one-level demotion guidance", () => {
+  const score = makeScore({
+    currentAutonomy: "semi_auto",
+    totalExecutions: 220,
+    successfulExecutions: 215,
+    failedExecutions: 1,
+    incidents: 1,
+    lastIncidentSeverity: "P1",
+  });
+
+  const result = assessPromotion(score);
+
+  assert.equal(result.shouldPromote, false);
+  assert.equal(result.targetLevel, "supervised");
+  assert.ok(result.reasonCodes.includes("autonomy.promotion_blocked_by_p1_incident"));
 });
 
 test("assessPromotion blocks promotion when failedExecutions > 2", () => {

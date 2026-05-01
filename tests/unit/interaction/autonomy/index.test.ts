@@ -93,6 +93,64 @@ test("ProgressiveAutonomyService freezes on incident when freezeOnIncident is tr
   assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.frozen");
 });
 
+test("ProgressiveAutonomyService preserves frozen state under P1 severity-based demotion", () => {
+  const service = new ProgressiveAutonomyService();
+  const evaluation = service.evaluateProfile(makeProfile({
+    capabilityScores: [
+      {
+        capabilityId: "deploy",
+        currentAutonomy: "frozen",
+        trustScore: 90,
+        totalExecutions: 600,
+        successfulExecutions: 594,
+        failedExecutions: 1,
+        humanOverrides: 0,
+        incidents: 1,
+        lastIncidentAgeDays: 1,
+        lastIncidentSeverity: "P1",
+      },
+    ],
+  }), { freezeOnIncident: true, severityBasedDemotion: true, windowDays: 30 });
+
+  assert.equal(evaluation.decision.level, "frozen");
+  assert.equal(evaluation.changeEvents.length, 0);
+});
+
+test("ProgressiveAutonomyService treats frozen as the lowest overall autonomy level when any capability remains frozen", () => {
+  const service = new ProgressiveAutonomyService();
+  const evaluation = service.evaluateProfile(makeProfile({
+    capabilityScores: [
+      {
+        capabilityId: "deploy",
+        currentAutonomy: "full_auto",
+        trustScore: 90,
+        totalExecutions: 600,
+        successfulExecutions: 600,
+        failedExecutions: 0,
+        humanOverrides: 0,
+        incidents: 0,
+        lastIncidentAgeDays: 120,
+      },
+      {
+        capabilityId: "rollback",
+        currentAutonomy: "frozen",
+        trustScore: 90,
+        totalExecutions: 600,
+        successfulExecutions: 594,
+        failedExecutions: 1,
+        humanOverrides: 0,
+        incidents: 1,
+        lastIncidentAgeDays: 1,
+        lastIncidentSeverity: "P1",
+      },
+    ],
+  }), { freezeOnIncident: true, severityBasedDemotion: true });
+
+  assert.equal(evaluation.capabilityLevels.deploy, "full_auto");
+  assert.equal(evaluation.capabilityLevels.rollback, "frozen");
+  assert.equal(evaluation.decision.level, "frozen");
+});
+
 test("ProgressiveAutonomyService does not freeze when freezeOnIncident is false", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile({

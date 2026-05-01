@@ -6,7 +6,7 @@
  * §G8: Game Dev domain adapter — M2 Phase 3.
  */
 
-import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
+import type { ExternalAdapterPlugin, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
   let credentialFingerprint: string | null = null;
@@ -16,6 +16,33 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
     spiType: "adapter",
     adapterType: "unity_cloud_build",
     capabilityIds: ["build.status", "build.logs", "build.artifacts"],
+
+    // §22.4 Complete lifecycle hooks
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded - perform any initialization
+      return;
+    },
+
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated - verify credentials
+      if (!credentialFingerprint) {
+        throw new Error("gamedev_adapter.not_authenticated: authenticate() must be called before activation");
+      }
+      return;
+    },
+
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated - clean up resources
+      credentialFingerprint = null;
+      return;
+    },
+
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded - release all resources
+      credentialFingerprint = null;
+      return;
+    },
+
     async initialize() {
       // Unity Cloud Build credentials would be validated here
     },

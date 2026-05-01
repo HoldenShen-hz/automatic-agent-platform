@@ -20,7 +20,22 @@ export interface GuidedOnboardingSession {
 export interface WorkflowBuilderDraft {
   readonly draftId: string;
   readonly workflowId?: string;
-  readonly steps: readonly string[];
+  // R7-37 fix: DAG nodes/edges replaces legacy linear steps model
+  readonly planGraph: {
+    readonly nodes: ReadonlyArray<{
+      nodeId: string;
+      label: string;
+      inputBindings: ReadonlyArray<string>;
+      outputKey: string;
+      toolset?: string;
+      parallel?: boolean;
+    }>;
+    readonly edges: ReadonlyArray<{
+      fromNodeId: string;
+      toNodeId: string;
+      dependencyType: "hard" | "soft";
+    }>;
+  };
   readonly validationFindings: readonly string[];
   readonly ownerUserId: string;
 }
@@ -73,12 +88,53 @@ export class UserExperienceOrchestrationService {
         ...(builder.builder.canvas.nodes[0]?.componentId == null
           ? {}
           : { workflowId: builder.builder.canvas.nodes[0].componentId }),
-        steps: builder.template.steps,
+        // R7-37 fix: DAG planGraph replaces legacy linear steps
+        planGraph: this.convertBuilderToPlanGraph(builder),
         validationFindings: builder.builder.validation.messages,
         ownerUserId: request.session.userId,
       },
       recommendedDomains: plan.recommendedDomains,
       welcomePrompt: plan.welcomePrompt,
     };
+  }
+
+  // R7-37 fix: convert builder canvas to canonical DAG planGraph
+  private convertBuilderToPlanGraph(builder: { builder: { canvas: { nodes: unknown[]; edges: unknown[] }; template: { steps: unknown[] } } }): WorkflowBuilderDraft["planGraph"] {
+    const canvasNodes = builder.builder.canvas.nodes as Array<Record<string, unknown>>;
+    const canvasEdges = builder.builder.canvas.edges as Array<Record<string, unknown>>;
+    const templateSteps = builder.builder.template.steps as string[];
+
+    // Build nodes from canvas nodes
+    const nodes = canvasNodes.map((node, idx) => ({
+      nodeId: String(node.componentId ?? `node_${idx}`),
+      label: String(node.label ?? node.componentId ?? `Node ${idx}`),
+      inputBindings: (node.inputBindings as string[] | undefined) ?? [],
+      outputKey: String(node.outputKey ?? `output_${idx}`),
+      toolset: node.toolset as string | undefined,
+      parallel: node.parallel as boolean | undefined,
+    }));
+
+    // Build edges from canvas edges or infer from template steps order
+    const edges: WorkflowBuilderDraft["planGraph"]["edges"] = [];
+    if (canvasEdges.length > 0) {
+      for (const edge of canvasEdges) {
+        edges.push({
+          fromNodeId: String(edge.from ?? edge.source ?? ""),
+          toNodeId: String(edge.to ?? edge.target ?? ""),
+          dependencyType: (edge.dependencyType as "hard" | "soft") ?? "hard",
+        });
+      }
+    } else {
+      // Infer sequential edges from template steps
+      for (let i = 0; i < templateSteps.length - 1; i++) {
+        edges.push({
+          fromNodeId: templateSteps[i] ?? "",
+          toNodeId: templateSteps[i + 1] ?? "",
+          dependencyType: "hard",
+        });
+      }
+    }
+
+    return { nodes, edges };
   }
 }

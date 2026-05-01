@@ -128,6 +128,28 @@ export class EventRepository {
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
       eventTier?: EventRecord["eventTier"];
       sessionId?: string | null;
+      /** §28.1: schema version for replay compatibility */
+      schemaVersion?: string | null;
+      /** §28.1: aggregate ID for partition-by-aggregate ordering */
+      aggregateId?: string | null;
+      /** §28.1: run ID for sequence tracking */
+      runId?: string | null;
+      /** §28.1: monotonic sequence for replay ordering */
+      sequence?: number | null;
+      /** §28.1: causation chain tracking */
+      causationId?: string | null;
+      /** §28.1: correlation ID for workflow linking */
+      correlationId?: string | null;
+      /** §28.1: payload integrity hash */
+      payloadHash?: string | null;
+      /** §28.1: idempotency key for duplicate detection */
+      idempotencyKey?: string | null;
+      /** §28.1: replay behavior directive */
+      replayBehavior?: EventRecord["replayBehavior"];
+      /** §28.1: principal that emitted the event */
+      principal?: string | null;
+      /** §28.1: evidence references for audit trail */
+      evidenceRefs?: readonly string[];
     },
   ): EventRecord {
     const record: EventRecord = {
@@ -140,14 +162,33 @@ export class EventRepository {
       payloadJson: event.payloadJson,
       traceId: event.traceId ?? null,
       createdAt: event.createdAt,
+      // §28.1 replay ordering fields
+      schemaVersion: event.schemaVersion ?? null,
+      aggregateId: event.aggregateId ?? null,
+      runId: event.runId ?? null,
+      sequence: event.sequence ?? null,
+      // §28.1 causation/correlation/payload integrity fields
+      causationId: event.causationId ?? null,
+      correlationId: event.correlationId ?? null,
+      payloadHash: event.payloadHash ?? null,
+      idempotencyKey: event.idempotencyKey ?? null,
+      replayBehavior: event.replayBehavior ?? null,
+      principal: event.principal ?? null,
+      evidenceRefs: event.evidenceRefs ?? [],
     };
 
+    // R12-05/R5-37 FIX: Persist all §28.1 fields to enable replay ordering and audit trail.
+    // Previously only id/task_id/session_id/execution_id/event_type/event_tier/payload_json/trace_id/created_at
+    // were persisted, losing schemaVersion/aggregateId/runId/sequence/causationId/correlationId.
     this.conn
       .prepare(
         `INSERT INTO events (
           id, task_id, session_id, execution_id, event_type, event_tier,
-          payload_json, trace_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          payload_json, trace_id, created_at,
+          schema_version, aggregate_id, run_id, sequence,
+          causation_id, correlation_id, payload_hash, idempotency_key,
+          replay_behavior, principal, evidence_refs
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         record.id,
@@ -159,6 +200,17 @@ export class EventRepository {
         record.payloadJson,
         record.traceId,
         record.createdAt,
+        record.schemaVersion,
+        record.aggregateId,
+        record.runId,
+        record.sequence,
+        record.causationId,
+        record.correlationId,
+        record.payloadHash,
+        record.idempotencyKey,
+        record.replayBehavior,
+        record.principal,
+        record.evidenceRefs.length > 0 ? JSON.stringify(record.evidenceRefs) : null,
       );
 
     for (const consumerId of getRequiredConsumers(record.eventType)) {

@@ -210,6 +210,10 @@ Phase 1b 做：
 - 跨区域事件复制
 - 企业级事件保留策略
 
+## v4.3 Contract Remediation
+
+- T-36: 本文早期版本使用 `execution._` 前缀事件（如 `execution.started`）。v4.3 以 `platform.harness_run.*` / `platform.node_run.*` 为 canonical truth。旧 `execution.*` 事件仅保留兼容 alias，新实现不得再生产 `execution.*` truth fact。
+
 ## 10. 收口结论
 
-事件系统是否可靠，不只取决于“事件会不会发出去”，而取决于有没有一张稳定注册表说明谁该收到、多久该收到、没收到时系统会怎么反应。
+事件系统是否可靠，不只取决于”事件会不会发出去”，而取决于有没有一张稳定注册表说明谁该收到、多久该收到、没收到时系统会怎么反应。

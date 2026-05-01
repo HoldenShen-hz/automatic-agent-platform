@@ -155,9 +155,13 @@ flowchart LR
 
 ## 10. 收口结论
 
-工业级系统不只要“能记日志”，还要能证明：
+工业级系统不只要”能记日志”，还要能证明：
 
 - 谁做的
 - 用了什么版本
 - 为什么被允许
 - 数据从哪里来，流向哪里去
+
+## v4.3 Contract Remediation
+
+- T-41: 早期审计记录以 `execution_id` 为主关联字段。v4.3 canonical 关联链为 `harness_run_id` / `node_run_id`；新增审计记录必须使用 canonical 字段，不得以 `execution_id` 为主关联键。`execution_id` 仅用于向后兼容查询。

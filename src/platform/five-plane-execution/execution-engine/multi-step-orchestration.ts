@@ -207,6 +207,11 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   const store = storage.store;
   storage.migrate();
 
+  // R4-27 (INV-RUN-001): Define IDs before use in HarnessRun creation
+  const taskId = newId("task");
+  const sessionId = newId("sess");
+  const traceId = newId("trace");
+
   // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
   // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
   const harnessRun = createHarnessRun({
@@ -273,9 +278,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     const contextCompaction = new ContextCompactionService(db, store);
     const streamBridge = new StreamBridge();
 
-    const taskId = newId("task");
-    const sessionId = newId("sess");
-    const traceId = newId("trace");
     const traceContext = createRootTraceContext({ traceId, correlationId: taskId });
     const now = nowIso();
 

@@ -20,20 +20,33 @@ export interface WebSocketClient {
   readonly principal: string;
   readonly tenantId: string;
   readonly subscribedChannels: readonly ChannelSubscription[];
+  readonly subscribedMetrics: readonly string[];
   readonly createdAt: string;
   isConnected: boolean;
 }
 
 export type DashboardPushMessageType =
+  // Task lifecycle events (R7-16 fix: now matches UI spec domain events)
   | "task.status_changed"
   | "task.created"
   | "task.completed"
   | "task.failed"
+  // Approval lifecycle events
   | "approval.requested"
   | "approval.resolved"
+  // Incident lifecycle events
   | "incident.opened"
   | "incident.resolved"
+  // System health events
   | "system.health_changed"
+  // Canonical model events (R7-16 fix: added harness_run/node_run events)
+  | "harness_run.started"
+  | "harness_run.completed"
+  | "harness_run.failed"
+  | "node_run.started"
+  | "node_run.completed"
+  | "node_run.failed"
+  // Dashboard events
   | "dashboard_snapshot"
   | "connection_ack"
   | "stream_gap"
@@ -112,6 +125,7 @@ interface ConnectionState {
   tenantId: string;
   authorization: DashboardSubscriptionAuthorization;
   subscribedChannels: ChannelSubscription[];
+  subscribedMetrics: string[];
   isConnected: boolean;
   lastActivityAt: string;
   heartbeatTimer: ReturnType<typeof setInterval> | null;
@@ -239,6 +253,7 @@ export class DashboardWebSocketServer {
     lastEventId?: string | null,
     schemaVersion?: string,
     authorization?: DashboardSubscriptionAuthorization,
+    metricSubscriptions: readonly string[] = [],
   ): DashboardReconnectResult {
     // Authenticate per §11.1
     this.validateCredentials(principal, tenantId);
@@ -259,6 +274,7 @@ export class DashboardWebSocketServer {
       tenantId,
       authorization: validatedAuthorization,
       subscribedChannels: [...channels],
+      subscribedMetrics: [...new Set(metricSubscriptions.filter((metric) => metric.trim().length > 0))],
       isConnected: true,
       lastActivityAt: nowIso(),
       heartbeatTimer: null,
@@ -290,12 +306,14 @@ export class DashboardWebSocketServer {
       }
       this.channelSubscribers.get(key)!.add(clientId);
     }
+    this.registerMetricSubscriptions(clientId, connection.subscribedMetrics);
 
     const ack = this.createMessage("connection_ack", clientId, {
       clientId,
       principal,
       tenantId,
       subscribedChannels: channels,
+      subscribedMetrics: connection.subscribedMetrics,
       serverTime: nowIso(),
       schemaVersion: connection.schemaVersion, // §1.8: echo negotiated schema version
       missedEvents: missedEvents?.length ?? 0,  // §7.1: signal gap recovery to client
@@ -361,6 +379,7 @@ export class DashboardWebSocketServer {
         }
       }
     }
+    this.unregisterMetricSubscriptions(clientId, connection.subscribedMetrics);
 
     // Clear heartbeat timer
     if (connection.heartbeatTimer) {
@@ -401,6 +420,17 @@ export class DashboardWebSocketServer {
       this.channelSubscribers.get(key)!.add(clientId);
     }
 
+    connection.lastActivityAt = nowIso();
+    return true;
+  }
+
+  public updateMetricSubscriptions(clientId: string, metricSubscriptions: readonly string[]): boolean {
+    const connection = this.connections.get(clientId);
+    if (!connection) return false;
+
+    this.unregisterMetricSubscriptions(clientId, connection.subscribedMetrics);
+    connection.subscribedMetrics = [...new Set(metricSubscriptions.filter((metric) => metric.trim().length > 0))];
+    this.registerMetricSubscriptions(clientId, connection.subscribedMetrics);
     connection.lastActivityAt = nowIso();
     return true;
   }
@@ -510,6 +540,7 @@ export class DashboardWebSocketServer {
       principal: conn.principal,
       tenantId: conn.tenantId,
       subscribedChannels: conn.subscribedChannels,
+      subscribedMetrics: conn.subscribedMetrics,
       createdAt: conn.lastActivityAt,
       isConnected: conn.isConnected,
     }));
@@ -539,6 +570,7 @@ export class DashboardWebSocketServer {
 
   /**
    * Integrates with a DashboardProjectionService to auto-push deltas.
+   * R7-18 fix: was not integrated - now auto-polls and pushes deltas to subscribed clients.
    *
    * @param projectionService - The projection service to integrate with
    * @returns Cleanup function to remove integration
@@ -546,7 +578,7 @@ export class DashboardWebSocketServer {
   public integrateWithProjectionService(
     projectionService: { processProjectionUpdate: (record: unknown) => DashboardDelta | null; consumePendingDeltas: () => readonly DashboardDelta[] },
   ): () => void {
-    // Start polling for deltas
+    // Start polling for deltas (100ms interval for near real-time)
     const pollInterval = setInterval(() => {
       const deltas = projectionService.consumePendingDeltas();
       for (const delta of deltas) {
@@ -644,7 +676,7 @@ export class DashboardWebSocketServer {
         if (metricClients) {
           for (const clientId of metricClients) {
             const connection = this.connections.get(clientId);
-            if (connection && this.canClientReceiveDelta(connection, delta)) {
+            if (connection && this.canClientReceiveDelta(connection, delta, undefined, undefined, true)) {
               clientIds.add(clientId);
             }
           }
@@ -671,11 +703,16 @@ export class DashboardWebSocketServer {
     delta: DashboardDelta,
     routedChannel?: DashboardChannel,
     routedFilterId?: string,
+    skipChannelSubscriptionCheck = false,
   ): boolean {
     if (delta.visibilityScope === "tenant") {
       if (delta.tenantId === null || delta.tenantId !== connection.tenantId) {
         return false;
       }
+    }
+
+    if (skipChannelSubscriptionCheck) {
+      return true;
     }
 
     if (routedChannel === "task") {
@@ -722,6 +759,28 @@ export class DashboardWebSocketServer {
       timestamp: nowIso(),
       payload,
     };
+  }
+
+  private registerMetricSubscriptions(clientId: string, metricSubscriptions: readonly string[]): void {
+    for (const metric of metricSubscriptions) {
+      if (!this.metricSubscribers.has(metric)) {
+        this.metricSubscribers.set(metric, new Set());
+      }
+      this.metricSubscribers.get(metric)!.add(clientId);
+    }
+  }
+
+  private unregisterMetricSubscriptions(clientId: string, metricSubscriptions: readonly string[]): void {
+    for (const metric of metricSubscriptions) {
+      const subscribers = this.metricSubscribers.get(metric);
+      if (!subscribers) {
+        continue;
+      }
+      subscribers.delete(clientId);
+      if (subscribers.size === 0) {
+        this.metricSubscribers.delete(metric);
+      }
+    }
   }
 }
 

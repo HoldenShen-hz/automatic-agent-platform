@@ -155,3 +155,63 @@ test("DashboardWebSocketServer returns stream_gap when lastEventId is no longer 
     recoveryAction: "resync_from_snapshot",
   });
 });
+
+test("DashboardWebSocketServer routes deltas to metric subscribers without requiring a channel match", () => {
+  const server = new DashboardWebSocketServer();
+
+  server.registerClient(
+    [{ channel: "approvals" }],
+    "principal-1",
+    "tenant-1",
+    null,
+    "1.0",
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    ["totalTasks"],
+  );
+
+  const sentCount = server.pushDelta(createDashboardDelta({
+    changes: [{
+      changeType: "system_health_changed",
+      entityId: "platform",
+      newValue: { status: "degraded" },
+    }],
+    affectedMetrics: ["totalTasks"],
+  }));
+
+  assert.equal(sentCount, 1);
+});
+
+test("DashboardWebSocketServer updateMetricSubscriptions removes old metric routing", () => {
+  const server = new DashboardWebSocketServer();
+  const { clientId } = server.registerClient(
+    [{ channel: "approvals" }],
+    "principal-1",
+    "tenant-1",
+    null,
+    "1.0",
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    ["totalTasks"],
+  );
+
+  assert.equal(server.updateMetricSubscriptions(clientId, ["incidentCount"]), true);
+
+  const oldMetricCount = server.pushDelta(createDashboardDelta({
+    changes: [{
+      changeType: "system_health_changed",
+      entityId: "platform",
+      newValue: { status: "degraded" },
+    }],
+    affectedMetrics: ["totalTasks"],
+  }));
+  const newMetricCount = server.pushDelta(createDashboardDelta({
+    changes: [{
+      changeType: "system_health_changed",
+      entityId: "platform",
+      newValue: { status: "degraded" },
+    }],
+    affectedMetrics: ["incidentCount"],
+  }));
+
+  assert.equal(oldMetricCount, 0);
+  assert.equal(newMetricCount, 1);
+});

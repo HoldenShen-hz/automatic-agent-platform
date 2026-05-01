@@ -1,5 +1,5 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { createPlanGraphBundle, createGraphPatch, type PlanGraphBundle, type GraphPatch, type GraphValidationReport, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
+import { createGraphPatch, type PlanGraphBundle, type GraphPatch, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
 import type {
@@ -415,49 +415,41 @@ export class OapeflirLoopService {
           throw new Error(`boundary.validation_failed: UnifiedAssessment validation failed at A→P boundary for task ${currentInput.taskId}`);
         })();
 
-        // R5-1: Plan stage now produces PlanGraphBundle with graph nodes/edges structure
-        const plan = await this.runStage<Plan>("plan", () => this.planBuilder.build({
+        // R5-1: Use PlanBuilder.buildGraphBundle to produce PlanGraphBundle directly
+        // instead of building Plan then manually converting
+        planGraphBundle = await this.runStage<PlanGraphBundle>("plan", () => this.planBuilder.buildGraphBundle({
           observation: observedTask,
           assessment: validatedAssessment,
           workflow: currentInput.workflow,
+          harnessRunId: `oapeflir_run_${currentInput.taskId}`,
+          riskProfile: { riskClass: validatedAssessment.risk, reasons: [`complexity:${validatedAssessment.complexity}`] },
         }), {
           taskId: currentInput.taskId,
         });
-        timeline.record("plan", "completed", plan.planId, null, "Built an execution plan from validated observation, assessment, and workflow inputs.");
-
-        // R5-1: Convert Plan to PlanGraphBundle
-        planGraphBundle = createPlanGraphBundle({
-          harnessRunId: `oapeflir_run_${currentInput.taskId}`,
-          graph: {
-            graphId: plan.planId,
-            nodes: plan.steps.map((step, idx) => ({
-              nodeId: step.stepId,
-              nodeType: "tool" as const,
-              inputRefs: idx === 0 ? [] : [plan.steps[idx - 1]!.stepId],
-              outputSchemaRef: `schema:step:${step.stepId}`,
-              riskClass: "medium" as const,
-              budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["compute"] },
-              sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
-              retryPolicyRef: "retry:default",
-              timeoutMs: step.timeout,
-            })),
-            edges: plan.steps.slice(1).map((step, idx) => ({
-              edgeId: `edge_${idx}`,
-              fromNodeId: plan.steps[idx]!.stepId,
-              toNodeId: step.stepId,
-              condition: { type: "always" },
-              dependencyType: "hard" as const,
-            })),
-            entryNodeIds: plan.steps[0] ? [plan.steps[0].stepId] : [],
-            terminalNodeIds: plan.steps[plan.steps.length - 1] ? [plan.steps[plan.steps.length - 1].stepId] : [],
-            joinStrategy: "all",
-            graphHash: `plan_${plan.planId}_v${plan.version}`,
-          },
-          schedulerPolicy: { policyId: "scheduler:oapeflir.fifo", strategy: "deterministic_fifo" },
-          budgetPlanRef: "budget:oapeflir.default",
-          riskProfile: { riskClass: validatedAssessment.risk as "low" | "medium" | "high" | "critical", reasons: [`complexity:${validatedAssessment.complexity}`] },
-          validationReport: { valid: true, findings: [] },
-        });
+        // Derive linear Plan from PlanGraphBundle for downstream consumers (Feedback, Learn, etc.)
+        const plan: Plan = {
+          planId: planGraphBundle.planGraphBundleId,
+          taskId: observedTask.taskId,
+          version: planGraphBundle.graphVersion,
+          assessmentRef: `assessment:${observedTask.taskId}:${validatedAssessment.timestamp}`,
+          strategy: "linear",
+          steps: planGraphBundle.graph.nodes.map((node) => ({
+            stepId: node.nodeId,
+            action: String(node.nodeType),
+            title: String(node.nodeType),
+            inputs: {},
+            outputs: [],
+            dependencies: [...node.inputRefs],
+            status: "pending",
+            timeout: node.timeoutMs ?? 60000,
+            retryPolicy: { maxRetries: 0, backoffMs: 0 },
+          })),
+          nodes: [...planGraphBundle.graph.nodes],
+          edges: [...planGraphBundle.graph.edges],
+          entryNodeIds: [...planGraphBundle.graph.entryNodeIds],
+          graphConstraints: {},
+          createdAt: Date.now(),
+        };
         this.currentPlanGraphBundle = planGraphBundle;
         timeline.record("plan", "completed", planGraphBundle.planGraphBundleId, null, "Built PlanGraphBundle with graph nodes/edges structure per §13.7.");
         this.stageFsm.recordStageCompletion("plan");
