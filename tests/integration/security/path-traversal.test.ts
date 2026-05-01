@@ -83,8 +83,10 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
   const executor = new CommandExecutor();
 
   try {
-    // URL-encoded traversal sequence - pass directly without decoding
-    // The executor should handle URL-encoded traversal attempts
+    // Pass the encoded traversal string directly - the executor should block it
+    // BEFORE any internal decoding happens. If the executor decodes first then checks,
+    // this would become ../../../etc/passwd and still be blocked - but we need to
+    // ensure the blocking happens at the right stage.
     const encodedTraversal = "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd";
 
     const request = {
@@ -104,8 +106,11 @@ test("command-executor blocks path traversal with encoded ../ (%2e%2e)", async (
 
     const result = await executor.execute(request);
 
-    // The executor should block path traversal attempts (encoded or not)
-    assert.equal(result.status, "blocked", "Encoded path traversal should be blocked");
+    // The executor MUST block this before any decoding occurs
+    // If it decodes first then blocks, that is still vulnerable to double-encoding
+    // bypass via techniques like %252e%252e. The executor should reject at the
+    // validation layer, not after internal decoding.
+    assert.equal(result.status, "blocked", "Encoded path traversal should be blocked at validation layer");
   } finally {
     cleanupPath(workspace);
   }

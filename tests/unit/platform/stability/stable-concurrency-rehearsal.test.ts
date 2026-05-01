@@ -72,8 +72,8 @@ test("runStableConcurrencyRehearsal all scenarios pass returns passedScenarios e
 
   const report = await runStableConcurrencyRehearsal({ outputDir });
 
-  // Always assert the relationship - regardless of pass/fail status
   assert.equal(report.passedScenarios + report.failedScenarios, report.totalScenarios);
+  // If there are failed scenarios, the test must fail - not silently pass
   assert.equal(report.passedScenarios, report.totalScenarios, "All scenarios should pass when this test runs");
   assert.equal(report.passedScenarios, 3);
 });

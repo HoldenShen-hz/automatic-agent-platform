@@ -521,7 +521,7 @@ test("ADR remediation directly encodes the first architecture-aligned ADR fixes"
   assert.match(adr098, /awaiting_hitl/);
   assert.doesNotMatch(adr098, /run 进入 `waiting_hitl`/);
 
-  const adr066 = readFileSync("docs_zh/adr/066-plugin-spi-framework.md", "utf8");
+  const adr066 = readFileSync("docs_zh/adr/071-plugin-spi-framework.md", "utf8");
   assert.match(adr066, /Promise<PlanGraphBundle>/);
   assert.match(adr066, /独立进程/);
   assert.match(adr066, /IPC/);

@@ -12,57 +12,6 @@ import {
   type StableEvidenceCampaignReport,
 } from "../../../../src/platform/stability/stable-evidence-campaign.js";
 
-test("StableEvidenceCampaignOptions has required outputDir", () => {
-  const options: StableEvidenceCampaignOptions = {
-    outputDir: "/tmp/test",
-  };
-
-  assert.strictEqual(options.outputDir, "/tmp/test");
-});
-
-test("StableEvidenceCampaignOptions accepts optional profile settings", () => {
-  const options: StableEvidenceCampaignOptions = {
-    outputDir: "/tmp/test",
-    profileName: "24h",
-    targetDurationMs: 86400000,
-    segmentDurationMs: 3600000,
-    intervalMs: 300000,
-    iterationsPerCycle: 5,
-    validationIterations: 3,
-    enforceWallClockDuration: true,
-  };
-
-  assert.strictEqual(options.profileName, "24h");
-  assert.strictEqual(options.targetDurationMs, 86400000);
-  assert.strictEqual(options.segmentDurationMs, 3600000);
-  assert.strictEqual(options.intervalMs, 300000);
-  assert.strictEqual(options.iterationsPerCycle, 5);
-  assert.strictEqual(options.validationIterations, 3);
-  assert.strictEqual(options.enforceWallClockDuration, true);
-});
-
-test("StableEvidenceCampaignSegment has required fields", () => {
-  const segment: StableEvidenceCampaignSegment = {
-    segment: 1,
-    startedAt: "2026-04-01T00:00:00.000Z",
-    finishedAt: "2026-04-01T00:10:00.000Z",
-    durationMs: 600000,
-    wallClockDurationMs: 600500,
-    validationReportPath: "/tmp/segments/segment-1/validation-report.json",
-    soakReportPath: "/tmp/segments/segment-1/soak-report.json",
-    passed: true,
-  };
-
-  assert.strictEqual(segment.segment, 1);
-  assert.ok(segment.startedAt.length > 0);
-  assert.ok(segment.finishedAt.length > 0);
-  assert.ok(segment.durationMs > 0);
-  assert.ok(segment.wallClockDurationMs > 0);
-  assert.ok(segment.validationReportPath.length > 0);
-  assert.ok(segment.soakReportPath.length > 0);
-  assert.strictEqual(typeof segment.passed, "boolean");
-});
-
 test("StableEvidenceCampaignState has correct structure", () => {
   const state: StableEvidenceCampaignState = {
     campaignId: "stable_evidence_campaign_2026-04-01",
@@ -132,8 +81,43 @@ test("StableEvidenceCampaignReport structure", () => {
   assert.strictEqual(report.state.finalEvidencePassed, true);
 });
 
-test("runStableEvidenceCampaign completes a minimal smoke campaign", async () => {
+test("runStableEvidenceCampaign produces campaign state with real execution", async () => {
   const outputDir = mkdtempSync(join(tmpdir(), "stable-evidence-campaign-"));
+  try {
+    // Run actual campaign logic - not just type literals
+    const report = await runStableEvidenceCampaign({
+      outputDir,
+      profileName: "smoke",
+      targetDurationMs: 0,
+      segmentDurationMs: 0,
+      intervalMs: 0,
+      iterationsPerCycle: 1,
+      validationIterations: 1,
+    });
+
+    // Verify actual state fields from production code
+    assert.ok(report.state.campaignId.startsWith("stable_evidence_campaign_"), "Campaign ID should be generated");
+    assert.ok(report.state.profile.name, "Profile should have a name");
+    assert.ok(["virtual", "wall_clock"].includes(report.state.durationMode), "Duration mode should be valid");
+    assert.equal(typeof report.state.targetDurationMs, "number", "Target duration should be a number");
+    assert.equal(typeof report.state.accumulatedDurationMs, "number", "Accumulated duration should be a number");
+    assert.equal(typeof report.state.completed, "boolean", "Completed should be boolean");
+    assert.ok(Array.isArray(report.state.segments), "Segments should be an array");
+    assert.equal(report.state.segments.length, 1, "Should have one segment");
+
+    // Verify segment fields come from actual execution
+    const segment = report.state.segments[0];
+    assert.ok(segment.startedAt, "Segment should have startedAt");
+    assert.ok(segment.finishedAt, "Segment should have finishedAt");
+    assert.ok(segment.durationMs >= 0, "Segment duration should be non-negative");
+    assert.ok(typeof segment.passed === "boolean", "Segment passed should be boolean");
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("runStableEvidenceCampaign completes a minimal smoke campaign", async () => {
+  const outputDir = mkdtempSync(join(tmpdir(), "stable-evidence-campaign-smoke-"));
   try {
     const report = await runStableEvidenceCampaign({
       outputDir,

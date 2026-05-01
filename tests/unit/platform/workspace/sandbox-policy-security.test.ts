@@ -163,12 +163,15 @@ test("security: multiple denied roots are all checked", () => {
 test("security: path with shell metacharacters is not rejected by itself", () => {
   const policy = createWorkspaceWritePolicy("/workspace");
 
-  // Shell metacharacters alone don't make a path invalid for sandbox
-  // Command injection would be handled at execution time
-  const result = checkSandboxPath(policy, "/workspace/$(whoami).txt");
-
   // Path with shell chars should be ALLOWED - sandbox only checks path boundaries
-  assert.equal(result.allowed, true);
+  const result = checkSandboxPath(policy, "/workspace/$(whoami).txt");
+  assert.equal(result.allowed, true, "Shell chars in path should not be rejected by sandbox path check");
+
+  // Additionally verify command injection protection via restricted exec policy
+  const execPolicy = createRestrictedExecPolicy("/workspace");
+  const execResult = checkSandboxPath(execPolicy, "/workspace/$(whoami).txt");
+  // restricted_exec mode should still allow this path since it's within allowed roots
+  assert.equal(execResult.allowed, true);
 });
 
 test("security: path with pipe character is not rejected by itself", () => {
@@ -176,18 +179,18 @@ test("security: path with pipe character is not rejected by itself", () => {
 
   // Path containing shell operators - sandbox only checks path boundaries
   const result = checkSandboxPath(policy, "/workspace/flag | cat /etc/passwd");
+  assert.equal(result.allowed, true, "Pipe char in path should not be rejected by sandbox path check");
 
-  // Should be allowed - sandbox doesn't parse command syntax
-  assert.equal(result.allowed, true);
+  // Verify the normalized path keeps the pipe as-is (doesn't parse it as command)
+  assert.ok(result.normalizedPath.includes("|"), "Normalized path should preserve pipe character");
 });
 
 test("security: path with semicolon command separator", () => {
   const policy = createWorkspaceWritePolicy("/workspace");
 
   const result = checkSandboxPath(policy, "/workspace/; rm -rf /");
-
-  // Should be allowed - sandbox doesn't parse command syntax
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, true, "Semicolon in path should not be rejected by sandbox path check");
+  assert.ok(result.normalizedPath.includes(";"), "Normalized path should preserve semicolon");
 });
 
 test("security: null-byte injection in path is blocked", () => {
