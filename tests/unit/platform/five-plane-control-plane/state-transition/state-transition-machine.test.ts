@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { StateTransitionMachine } from "../../../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js";
-import { WorkflowStateError } from "../../../../../../src/platform/contracts/errors.js";
+import { StateTransitionMachine } from "../../../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js";
+import { WorkflowStateError } from "../../../../../src/platform/contracts/errors.js";
 
 // ---------------------------------------------------------------------------
 // Test Fixtures & Helpers
@@ -230,8 +230,9 @@ test("StateTransitionMachine uses custom entity kind in error messages", () => {
     sessionTransitions,
   );
 
+  // "closed" -> "active" is invalid since closed is terminal
   assert.throws(
-    () => sessionMachine.assertTransition("active", "closed"),
+    () => sessionMachine.assertTransition("closed", "active"),
     (err: unknown) =>
       err instanceof WorkflowStateError &&
       err.message.includes("session") &&

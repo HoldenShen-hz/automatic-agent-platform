@@ -123,7 +123,7 @@ export class ExecutionDispatchService {
         status: report.status,
         degradationMode: report.degradationMode,
         queueGovernance: { starvationDetected: report.queueGovernance.starvationDetected },
-        findings: report.findings,
+        findings: [...report.findings],
       };
     }
     return null;
@@ -240,8 +240,8 @@ export class ExecutionDispatchService {
       };
     }
 
-    const queueAvailability = this.queueAvailabilitySnapshot?.();
-    if (queueAvailability?.state === "unavailable") {
+    if (this.queueAvailabilitySnapshot?.()?.state === "unavailable") {
+      const queueAvailability = this.queueAvailabilitySnapshot?.()!;
       const ticket = tickets[0] ?? null;
       const reasonCode = queueAvailability.reasonCode?.trim() || "queue_unavailable";
       const trace =
@@ -264,7 +264,6 @@ export class ExecutionDispatchService {
               readySet,
               selectedNodeIds: [],
               orderingPolicyVersion: "1.0",
-              workerPoolSnapshotRef: null,
             });
 
       return {
@@ -348,7 +347,6 @@ export class ExecutionDispatchService {
           readySet,
           selectedNodeIds: [],
           orderingPolicyVersion: "1.0",
-          workerPoolSnapshotRef: null,
         });
         continue;
       }
@@ -715,7 +713,7 @@ export class ExecutionDispatchService {
         outcome: "dispatched",
         reasonCode: selection.reasonCode,
         selectedWorkerId: selectedWorker.workerId,
-        leaseId: dispatchResult.lease.lease.id,
+        leaseId: dispatchResult.lease.lease!.id,
         fallbackApplied: selection.fallbackApplied,
         preemption: preemptionTrace,
         evaluations,
@@ -731,7 +729,7 @@ export class ExecutionDispatchService {
         reasonCode: selection.reasonCode,
         ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
         worker: selectedWorker,
-        leaseId: dispatchResult.lease.lease.id,
+        leaseId: dispatchResult.lease.lease!.id,
         trace,
       };
     }

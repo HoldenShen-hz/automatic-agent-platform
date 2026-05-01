@@ -13,6 +13,8 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
+const logger = new StructuredLogger({ retentionLimit: 100 });
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 /**
@@ -722,7 +724,7 @@ export class DataClassificationService {
       // Malicious patterns like "(a+)+$" can cause exponential backtracking.
       if (!this.isRegexSafe(pattern)) {
         // Log warning but don't throw - treat unsafe patterns as non-matching
-        StructuredLogger.warn?.("data_classification.unsafe_regex_rejected", {
+        logger.warn("data_classification.unsafe_regex_rejected", {
           pattern,
           ruleId: rule.id,
         });

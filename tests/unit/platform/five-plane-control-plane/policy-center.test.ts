@@ -448,7 +448,6 @@ test("evaluate() handles network_access with no resourceRef", () => {
 
 test("evaluate() escalates for approval when risk category requires it", () => {
   const service = new PolicyCenterService({
-    mode: "auto",
     approvalRequiredRiskCategories: ["destructive", "irreversible"],
   });
   const request = createTestRequest({

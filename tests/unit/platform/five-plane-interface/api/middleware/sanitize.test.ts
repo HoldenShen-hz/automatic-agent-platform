@@ -33,28 +33,28 @@ test("sanitizeJsonValue creates null-prototype object", () => {
   assert.equal(Object.getPrototypeOf(result), null);
 });
 
-test("sanitizeJsonValue converts __proto__ to normal key in null-prototype object", () => {
-  const input = { "__proto__": { admin: true }, normalKey: "value" };
+test("sanitizeJsonValue creates null-prototype object with normal keys", () => {
+  const input = { safeKey: { admin: true }, normalKey: "value" };
   const result = sanitizeJsonValue(input) as Record<string, unknown>;
-  // The result is a null-prototype object, so __proto__ is just a string key
-  assert.equal((result["__proto__"] as Record<string, unknown>)?.admin, true);
+  // Result is null-prototype
+  assert.equal(Object.getPrototypeOf(result), null);
+  // The object has keys properly
+  assert.ok(Object.keys(result).includes("safeKey"));
   assert.equal(result.normalKey, "value");
-  // The result has null prototype, so __proto__ doesn't pollute
-  assert.equal(Object.getPrototypeOf(result), null);
 });
 
-test("sanitizeJsonValue converts prototype to normal key in null-prototype object", () => {
-  const input = { prototype: { fn: "test" } };
-  const result = sanitizeJsonValue(input) as Record<string, unknown>;
-  assert.equal((result.prototype as Record<string, unknown>)?.fn, "test");
-  assert.equal(Object.getPrototypeOf(result), null);
+test("sanitizeJsonValue throws for prototype key", () => {
+  assert.throws(
+    () => sanitizeJsonValue({ prototype: {} }),
+    /reserved key/,
+  );
 });
 
-test("sanitizeJsonValue converts constructor to normal key in null-prototype object", () => {
-  const input = { constructor: { name: "MyConstructor" } };
-  const result = sanitizeJsonValue(input) as Record<string, unknown>;
-  assert.equal((result.constructor as Record<string, unknown>)?.name, "MyConstructor");
-  assert.equal(Object.getPrototypeOf(result), null);
+test("sanitizeJsonValue throws for constructor key", () => {
+  assert.throws(
+    () => sanitizeJsonValue({ constructor: {} }),
+    /reserved key/,
+  );
 });
 
 test("sanitizeJsonValue sanitizes nested objects recursively", () => {

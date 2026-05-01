@@ -201,8 +201,8 @@ export function capabilitiesForRole(role: PlatformRole): readonly PlatformCapabi
   let currentRole: PlatformRole | null = role;
   while (currentRole !== null) {
     const caps = ROLE_CAPABILITY_MAP[currentRole];
-    for (let i = 0; i < caps.length; i++) {
-      capabilities.add(caps[i]);
+    for (const cap of caps) {
+      capabilities.add(cap);
     }
     currentRole = ROLE_HIERARCHY[currentRole];
   }
@@ -262,8 +262,8 @@ export function roleGrantsCapabilities(
   requiredCapabilities: readonly PlatformCapability[],
 ): boolean {
   const granted = new Set(roles.flatMap((role) => capabilitiesForRole(role)));
-  for (let i = 0; i < requiredCapabilities.length; i++) {
-    if (!granted.has(requiredCapabilities[i])) return false;
+  for (const required of requiredCapabilities) {
+    if (!granted.has(required)) return false;
   }
   return true;
 }
@@ -384,10 +384,10 @@ export function evaluateAuthorizationContext(input: {
 function dedupeRoles(roles: readonly PlatformRole[]): readonly PlatformRole[] {
   const seen = new Set<PlatformRole>();
   const result: PlatformRole[] = [];
-  for (let i = 0; i < roles.length; i++) {
-    if (!seen.has(roles[i])) {
-      seen.add(roles[i]);
-      result.push(roles[i]);
+  for (const role of roles) {
+    if (!seen.has(role)) {
+      seen.add(role);
+      result.push(role);
     }
   }
   return result;
@@ -396,10 +396,10 @@ function dedupeRoles(roles: readonly PlatformRole[]): readonly PlatformRole[] {
 function dedupeCapabilities(capabilities: readonly PlatformCapability[]): readonly PlatformCapability[] {
   const seen = new Set<PlatformCapability>();
   const result: PlatformCapability[] = [];
-  for (let i = 0; i < capabilities.length; i++) {
-    if (!seen.has(capabilities[i])) {
-      seen.add(capabilities[i]);
-      result.push(capabilities[i]);
+  for (const cap of capabilities) {
+    if (!seen.has(cap)) {
+      seen.add(cap);
+      result.push(cap);
     }
   }
   return result;

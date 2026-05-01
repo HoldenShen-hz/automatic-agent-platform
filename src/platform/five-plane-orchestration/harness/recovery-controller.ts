@@ -83,7 +83,7 @@ export class RecoveryController {
     }
   }
 
-  public handleFailure(run: HarnessRun, failure: HarnessFailureType): HarnessRun {
+  public handleFailure(run: HarnessRunRuntimeState, failure: HarnessFailureType): HarnessRunRuntimeState {
     // R18-04 fix: operator_abort now routes through RecoveryController for consistent handling.
     // Previously it short-circuited without going through the recovery path, violating §45.11.
     const checkpointRef = this.durableService.getCheckpointRef(run.runId);

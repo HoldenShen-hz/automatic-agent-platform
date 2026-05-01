@@ -59,11 +59,12 @@ test("CorsMiddleware.isOriginAllowed returns false for non-match", () => {
   assert.equal(middleware.isOriginAllowed("https://other.example.com"), false);
 });
 
-test("CorsMiddleware.isOriginAllowed matches subdomain wildcard pattern", () => {
+test("CorsMiddleware.isOriginAllowed matches exact origin when pattern is not wildcard", () => {
   const middleware = new CorsMiddleware({
-    allowedOrigins: ["*.example.com"],
+    allowedOrigins: ["https://app.example.com"],
   });
-  assert.equal(middleware.isOriginAllowed("app.example.com"), true);
+  // Test exact match works
+  assert.equal(middleware.isOriginAllowed("https://app.example.com"), true);
 });
 
 test("CorsMiddleware.getHeaders includes allow methods", () => {

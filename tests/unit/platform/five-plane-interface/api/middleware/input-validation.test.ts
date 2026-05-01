@@ -96,9 +96,14 @@ test("readValidatedJsonBody parses and sanitizes JSON", () => {
 test("readValidatedJsonBody handles empty/null body as empty object", () => {
   const parser = (value: unknown) => value;
 
-  // readJsonBody returns {} for null/undefined
-  assert.deepEqual(readValidatedJsonBody(null, parser), {});
-  assert.deepEqual(readValidatedJsonBody(undefined, parser), {});
+  // readJsonBody returns {} (null-prototype) for null/undefined
+  const result = readValidatedJsonBody(null, parser) as Record<string, unknown>;
+  assert.equal(Object.getPrototypeOf(result), null);
+  assert.deepEqual(Object.keys(result), []);
+
+  const result2 = readValidatedJsonBody(undefined, parser) as Record<string, unknown>;
+  assert.equal(Object.getPrototypeOf(result2), null);
+  assert.deepEqual(Object.keys(result2), []);
 });
 
 test("DEFAULT_CONTENT_TYPE_CONFIG has secure defaults", () => {

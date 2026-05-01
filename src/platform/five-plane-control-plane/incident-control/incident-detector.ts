@@ -226,7 +226,7 @@ export class IncidentDetector {
       affectedEntities: input.affectedEntities ?? [],
       symptoms: input.symptoms ?? [],
       metrics: input.metrics ?? {},
-      autoAction: input.autoAction,
+      ...(input.autoAction !== undefined && { autoAction: input.autoAction }),
       requiresPostMortem: input.requiresPostMortem ?? false,
     };
   }

@@ -176,8 +176,8 @@ export interface RecoveryPayload {
 export interface DomainLifecyclePayload {
   domainId: string;
   status: string;
-  capabilityCount: number;
-  pluginCount: number;
+  capabilityCount?: number;
+  pluginCount?: number;
   occurredAt: string;
 }
 
@@ -188,6 +188,7 @@ export interface PluginLifecycleEventPayload {
   lifecycleState: string;
   bindingId?: string | null;
   occurredAt: string;
+  reason?: string | null;
   reasonCode?: string | null;
   errorMessage?: string | null;
 }

@@ -23,7 +23,7 @@ function sanitizeTemplateValue(value: string, fieldName: string): string {
     throw new ValidationError(
       "pack_scaffold.invalid_template_value",
       `Template value for ${fieldName} contains invalid characters. Use alphanumeric, hyphens, underscores, and dots only.`,
-      { fieldName, value, sanitized: safe },
+      { details: { fieldName, value, sanitized: safe } },
     );
   }
   return safe;

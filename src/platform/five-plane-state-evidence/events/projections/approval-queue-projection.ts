@@ -301,12 +301,12 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
 
     case "decision:expired":
       newState.status = "expired";
-      newState.completedAt = event.createdAt;
+      newState.respondedAt = event.createdAt;
       break;
 
     case "decision:cancelled":
       newState.status = "cancelled";
-      newState.completedAt = event.createdAt;
+      newState.respondedAt = event.createdAt;
       break;
 
     default:

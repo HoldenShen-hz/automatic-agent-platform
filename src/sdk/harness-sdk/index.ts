@@ -186,7 +186,7 @@ export class HarnessSdk {
       ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
       nodeRunId: input.nodeRunId,
     };
-    return this.runtime.appendStep(run, runtimeInput);
+    return this.runtime.appendStep(run as HarnessRunRuntimeState, runtimeInput);
   }
 
   /**

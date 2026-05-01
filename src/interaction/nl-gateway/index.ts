@@ -1214,7 +1214,7 @@ export class NlEntryService implements NlEntryPort {
         },
         conversationState: "Clarifying",
         canonicalTaskDraft,
-        clarificationSession: clarificationSession ?? undefined,
+        clarificationSession: clarificationSession ?? null,
         confirmedTaskSpec: null,
         canonicalRequestEnvelope: null,
       };
@@ -1272,9 +1272,9 @@ export class NlEntryService implements NlEntryPort {
       confirmationReceipt,
       conversationState,
       canonicalTaskDraft,
-      clarificationSession: clarificationSession ?? undefined,
-      confirmedTaskSpec: confirmedTaskSpec ?? undefined,
-      canonicalRequestEnvelope: canonicalRequestEnvelope ?? undefined,
+      clarificationSession: clarificationSession ?? null,
+      confirmedTaskSpec: confirmedTaskSpec ?? null,
+      canonicalRequestEnvelope: canonicalRequestEnvelope ?? null,
     };
   }
 

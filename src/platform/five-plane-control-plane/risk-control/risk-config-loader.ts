@@ -120,17 +120,34 @@ export function loadRiskConfig(
   }
   const validated = RiskConfigSchema.parse(parsed);
 
+  function normalizeRiskLevelAction(
+    action: z.infer<typeof RiskConfigSchema.shape.riskLevelActions.shape.low>,
+  ): RiskConfig["riskLevelActions"]["low"] {
+    return {
+      autoExecute: action.autoExecute,
+      logLevel: action.logLevel,
+      requiresApproval: action.requiresApproval,
+      ...(action.approvalType !== undefined && { approvalType: action.approvalType }),
+      sideEffect: action.sideEffect,
+      evidenceLevel: action.evidenceLevel,
+    };
+  }
+
+  function normalizeFactorWeights(fw: z.infer<typeof RiskConfigSchema.shape.factorWeights>): RiskConfig["factorWeights"] {
+    return {
+      stepTypeRisk: fw.stepTypeRisk,
+      targetSystemRisk: fw.targetSystemRisk,
+      dataClassRisk: fw.dataClassRisk,
+      blastRadius: fw.blastRadius,
+      priorFailureRate: fw.priorFailureRate,
+      confidence: fw.confidence,
+      ...(fw.reversibility !== undefined && { reversibility: fw.reversibility }),
+      ...(fw.temporalContext !== undefined && { temporalContext: fw.temporalContext }),
+    };
+  }
+
   return {
-    factorWeights: {
-      stepTypeRisk: validated.factorWeights.stepTypeRisk,
-      targetSystemRisk: validated.factorWeights.targetSystemRisk,
-      dataClassRisk: validated.factorWeights.dataClassRisk,
-      blastRadius: validated.factorWeights.blastRadius,
-      priorFailureRate: validated.factorWeights.priorFailureRate,
-      confidence: validated.factorWeights.confidence,
-      reversibility: validated.factorWeights.reversibility,
-      temporalContext: validated.factorWeights.temporalContext,
-    },
+    factorWeights: normalizeFactorWeights(validated.factorWeights),
     stepTypeRiskValues: validated.stepTypeRiskValues as RiskConfig["stepTypeRiskValues"],
     targetSystemRiskValues: validated.targetSystemRiskValues as RiskConfig["targetSystemRiskValues"],
     dataClassRiskValues: validated.dataClassRiskValues as RiskConfig["dataClassRiskValues"],
@@ -142,8 +159,8 @@ export function loadRiskConfig(
       critical: { maxPercent: validated.priorFailureRateThresholds.critical.maxPercent, value: validated.priorFailureRateThresholds.critical.value },
     },
     confidenceValues: validated.confidenceValues as RiskConfig["confidenceValues"],
-    reversibilityValues: validated.reversibilityValues as RiskConfig["reversibilityValues"],
-    temporalContextValues: validated.temporalContextValues as RiskConfig["temporalContextValues"],
+    ...(validated.reversibilityValues !== undefined && { reversibilityValues: validated.reversibilityValues }),
+    ...(validated.temporalContextValues !== undefined && { temporalContextValues: validated.temporalContextValues }),
     riskLevelThresholds: {
       low: validated.riskLevelThresholds.low,
       medium: validated.riskLevelThresholds.medium,
@@ -151,10 +168,10 @@ export function loadRiskConfig(
       critical: validated.riskLevelThresholds.critical,
     },
     riskLevelActions: {
-      low: validated.riskLevelActions.low,
-      medium: validated.riskLevelActions.medium,
-      high: validated.riskLevelActions.high,
-      critical: validated.riskLevelActions.critical,
+      low: normalizeRiskLevelAction(validated.riskLevelActions.low),
+      medium: normalizeRiskLevelAction(validated.riskLevelActions.medium),
+      high: normalizeRiskLevelAction(validated.riskLevelActions.high),
+      critical: normalizeRiskLevelAction(validated.riskLevelActions.critical),
     },
   };
 }

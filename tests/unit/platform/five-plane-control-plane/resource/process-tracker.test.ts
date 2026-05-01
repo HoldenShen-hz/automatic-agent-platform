@@ -17,7 +17,7 @@ import {
   type ProcessOwner,
   type TrackedProcess,
   type TrackedProcessState,
-} from "../../../../../../src/platform/five-plane-execution/resource/process-tracker.js";
+} from "../../../../../src/platform/five-plane-execution/resource/process-tracker.js";
 
 // ---------------------------------------------------------------------------
 // Test Fixtures & Helpers

@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createGithubAdapterPlugin, type GithubAdapterPluginOptions } from "../../../src/plugins/adapters/github-adapter.js";
-import type { NetworkEgressPolicyService } from "../../../src/platform/control-plane/iam/network-egress-policy.js";
+import { createGithubAdapterPlugin, type GithubAdapterPluginOptions } from "../../../../src/plugins/adapters/github-adapter.js";
+import type { NetworkEgressPolicyService } from "../../../../src/platform/control-plane/iam/network-egress-policy.js";
 
 function createMockPolicy(allowed: boolean = true): NetworkEgressPolicyService {
   return {

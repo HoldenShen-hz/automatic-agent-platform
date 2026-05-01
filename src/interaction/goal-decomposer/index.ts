@@ -464,10 +464,10 @@ function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[], tas
       budgetLimitUsd,
       budgetAllocations: budgetAllocations ?? undefined,
       riskPropagation: riskPropagation ?? undefined,
-      riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high",
+      riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high" as const,
       requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
-      requiredPermissions,
-      requiredCapabilities,
+      requiredPermissions: requiredPermissions,
+      requiredCapabilities: requiredCapabilities,
     };
 }
 
@@ -554,9 +554,13 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     });
 
     const constraintEnvelope: GoalConstraintEnvelope = {
-      ...rawConstraintEnvelope,
+      budgetLimitUsd: rawConstraintEnvelope.budgetLimitUsd,
       budgetAllocations: budgetAllocations.length > 0 ? budgetAllocations : undefined,
       riskPropagation: riskPropagation.length > 0 ? riskPropagation : undefined,
+      riskTolerance: rawConstraintEnvelope.riskTolerance,
+      requiresApproval: rawConstraintEnvelope.requiresApproval,
+      requiredPermissions: rawConstraintEnvelope.requiredPermissions,
+      requiredCapabilities: rawConstraintEnvelope.requiredCapabilities,
     };
     let dependencyGraph = this.buildDependencies(tasks, matchedTemplate);
     let decompositionStrategy: GoalDecomposition["decompositionStrategy"] =
@@ -988,7 +992,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
           amount: Number(task.estimatedCost.estimatedCostUsd.toFixed(4)),
           currency: "USD",
           resourceKinds: nodeType === "llm"
-            ? (["llm"] as const)
+            ? (["token"] as const)
             : ([this.options.budgetControl?.resourceKind ?? "tool"] as const),
         },
         sideEffectProfile: {

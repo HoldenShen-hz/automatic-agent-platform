@@ -127,7 +127,7 @@ export class EventRepository {
   public insertEvent(
     event: Omit<EventRecord, "eventTier" | "sessionId"> & {
       eventTier: EventRecord["eventTier"];
-      sessionId: string | null;
+      sessionId?: string | null;
       /** §28.1: schema version for replay compatibility */
       schemaVersion?: string | null;
       /** §28.1: aggregate ID for partition-by-aggregate ordering */

@@ -139,19 +139,41 @@ export function getConstraintOutputPolicy(constraintPack: ConstraintPack): Const
   return outputPolicy;
 }
 
-export function normalizeConstraintPack(constraintPack: ConstraintPack): ConstraintPack {
-  const riskPolicy = getConstraintRiskPolicy(constraintPack);
-  const outputPolicy = getConstraintOutputPolicy(constraintPack);
-  const budgetEnvelope = constraintPack.budgetEnvelope ?? constraintPack.budget_envelope ?? constraintPack.budget;
-  const sandboxRequirement = constraintPack.sandboxRequirement ?? constraintPack.sandbox_requirement;
-  const approvalRequirement = constraintPack.approvalRequirement ?? constraintPack.approval_requirement;
+export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
+  const riskPolicy = input.riskPolicy ?? input.risk_policy;
+  if (riskPolicy == null) {
+    throw new Error("harness.constraint_pack.missing_risk_policy");
+  }
+  const outputPolicy = input.outputPolicy ?? input.output_policy;
+  if (outputPolicy == null) {
+    throw new Error("harness.constraint_pack.missing_output_policy");
+  }
+  const budgetEnvelope = input.budgetEnvelope ?? input.budget_envelope ?? input.budget;
 
-  const result: ConstraintPack = {
-    policyIds: [...constraintPack.policyIds],
-    approvalMode: constraintPack.approvalMode,
-    autonomyMode: constraintPack.autonomyMode,
+  const partial: {
+    policyIds: readonly string[];
+    approvalMode: "none" | "required" | "supervised";
+    autonomyMode: "suggestion" | "semi_auto";
+    toolPolicy: { allowedTools: readonly string[] };
+    riskPolicy: { maxRiskScore: number; escalationThreshold: number };
+    outputPolicy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
+    sandboxRequirement?: ConstraintSandboxRequirement;
+    approvalRequirement?: ConstraintApprovalRequirement;
+    budgetEnvelope?: ConstraintBudgetEnvelope;
+    budget?: {
+      maxSteps: number;
+      maxCost: number;
+      maxDurationMs: number;
+      maxModelTokens?: number;
+      maxContextTokens?: number;
+      maxOutputTokens?: number;
+    };
+  } = {
+    policyIds: [...input.policyIds],
+    approvalMode: input.approvalMode,
+    autonomyMode: input.autonomyMode,
     toolPolicy: {
-      allowedTools: [...constraintPack.toolPolicy.allowedTools],
+      allowedTools: [...input.toolPolicy.allowedTools],
     },
     riskPolicy: {
       maxRiskScore: riskPolicy.maxRiskScore,
@@ -163,14 +185,26 @@ export function normalizeConstraintPack(constraintPack: ConstraintPack): Constra
     },
   };
 
+  const sandboxRequirement = input.sandboxRequirement ?? input.sandbox_requirement;
   if (sandboxRequirement != null) {
-    result.sandboxRequirement = sandboxRequirement;
+    partial.sandboxRequirement = sandboxRequirement;
   }
+  const approvalRequirement = input.approvalRequirement ?? input.approval_requirement;
   if (approvalRequirement != null) {
-    result.approvalRequirement = approvalRequirement;
+    partial.approvalRequirement = approvalRequirement;
   }
   if (budgetEnvelope != null) {
-    result.budgetEnvelope = {
+    partial.budget = {
+      maxSteps: budgetEnvelope.maxSteps,
+      maxCost: budgetEnvelope.maxCost,
+      maxDurationMs: budgetEnvelope.maxDurationMs,
+    };
+    if ("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null) {
+      partial.budget.maxModelTokens = budgetEnvelope.maxTokens;
+      partial.budget.maxContextTokens = budgetEnvelope.maxTokens;
+      partial.budget.maxOutputTokens = budgetEnvelope.maxTokens;
+    }
+    partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,
       maxCost: budgetEnvelope.maxCost,
       maxDurationMs: budgetEnvelope.maxDurationMs,
@@ -178,21 +212,9 @@ export function normalizeConstraintPack(constraintPack: ConstraintPack): Constra
         ? { maxTokens: budgetEnvelope.maxTokens }
         : {}),
     };
-    result.budget = {
-      maxSteps: budgetEnvelope.maxSteps,
-      maxCost: budgetEnvelope.maxCost,
-      maxDurationMs: budgetEnvelope.maxDurationMs,
-      ...("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null
-        ? {
-            maxModelTokens: budgetEnvelope.maxTokens,
-            maxContextTokens: budgetEnvelope.maxTokens,
-            maxOutputTokens: budgetEnvelope.maxTokens,
-          }
-        : {}),
-    };
   }
 
-  return result;
+  return partial as ConstraintPack;
 }
 
 export interface PlanBundle {
@@ -247,6 +269,8 @@ export interface FeedbackEnvelope {
     readonly signals: readonly string[];
     readonly timestamp: string;
   }[];
+  /** Legacy flat signals array for backward compatibility */
+  readonly signals: readonly string[];
   readonly learnedActions: readonly string[];
   readonly createdAt: string;
 }
@@ -423,10 +447,6 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
     terminalAt: state.completedAt ?? undefined,
-    traceId: state.traceId,
-    riskLevel: state.riskLevel,
-    ownership: state.ownership,
-    auditRefs: state.auditRefs,
   };
 }
 
@@ -1130,7 +1150,7 @@ export class HarnessRuntimeService {
     };
   }
 
-  public runLoop(input: HarnessLoopInput): HarnessRun {
+  public runLoop(input: HarnessLoopInput): HarnessRunRuntimeState {
     const loop = new HarnessLoopController(input.constraintPack, {}, {
       iteration: Math.max(0, (input.iteration ?? 1) - 1),
     });
@@ -1305,7 +1325,7 @@ export class HarnessRuntimeService {
         decision,
       });
 
-      let baseRun: HarnessRun = {
+      let baseRun: HarnessRunRuntimeState = {
         ...run,
         toolbelt,
         guardrailAssessment,
@@ -1316,6 +1336,10 @@ export class HarnessRuntimeService {
         contextSnapshots: [...run.contextSnapshots, contextSnapshot],
         feedbackEnvelope: {
           feedbackId: newId("feedback"),
+          stepSignals: [],
+          taskSignals: [],
+          workflowSignals: [],
+          systemSignals: [],
           signals: [
             ...(input.producedEvidenceRefs ?? []),
             ...decision.reasonCodes,
@@ -1380,7 +1404,7 @@ export class HarnessRuntimeService {
 
       if (shouldStop) {
         const guardAbortDecisionId = newId("harness_decision");
-        let finalRun: HarnessRun = progress.violation !== null && baseRun.status === "running"
+        let finalRun: HarnessRunRuntimeState = progress.violation !== null && baseRun.status === "running"
           ? {
               ...baseRun,
               loopMetrics: currentMetrics,

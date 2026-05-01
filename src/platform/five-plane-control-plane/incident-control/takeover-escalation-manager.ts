@@ -305,6 +305,7 @@ export class TakeoverEscalationManager {
 
     const ackStatus: TakeoverAckStatus = {
       sessionId,
+      createdAt: now,
       acknowledgedAt: now,
       expiresAt,
       status: "acknowledged",

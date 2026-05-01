@@ -149,9 +149,6 @@ export class MemoryService {
     }
 
     // V-03: Write gate - minimum content quality check
-    const contentText = typeof input.content === "string"
-      ? input.content
-      : JSON.stringify(input.content);
     if (contentText.trim().length < 10) {
       throw new MemoryError("memory.content_too_short", `Memory content too short: minimum 10 characters required, got ${contentText.trim().length}`, {
         details: { contentLength: contentText.trim().length, minLength: 10 },

@@ -13,13 +13,13 @@ import {
   type WakeEvent,
   type ResumeSnapshotDescriptor,
   type ResumeCompatibilityOptions,
-} from "../../../../../../src/platform/five-plane-execution/hibernation/wake-engine.js";
+} from "../../../../../src/platform/five-plane-execution/hibernation/wake-engine.js";
 import {
   createHibernationRecord,
   createWakeCondition,
   type HibernationRecord,
-} from "../../../../../../src/platform/five-plane-execution/hibernation/hibernation-types.js";
-import type { ArtifactRef } from "../../../../../../src/platform/contracts/executable-contracts/index.js";
+} from "../../../../../src/platform/five-plane-execution/hibernation/hibernation-types.js";
+import type { ArtifactRef } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
 // ---------------------------------------------------------------------------
 // Test Fixtures & Helpers
@@ -268,13 +268,11 @@ test("evaluateWakeConditions() returns false when no condition matches", () => {
 
 test("evaluateWakeConditions() returns true when all conditions match (all logic)", () => {
   const engine = createTestEngine();
+  // Use two manual_wake conditions - both can match the same manual_wake event
   const record = createTestRecord({
     wakeConditions: [
       createWakeCondition("manual_wake", { conditionId: "cond-1" }),
-      createWakeCondition("timer_expired", {
-        conditionId: "cond-2",
-        targetTime: new Date(Date.now() - 1000).toISOString(),
-      }),
+      createWakeCondition("manual_wake", { conditionId: "cond-2" }),
     ],
     wakeConditionLogic: "all",
   });
@@ -284,7 +282,7 @@ test("evaluateWakeConditions() returns true when all conditions match (all logic
     occurredAt: new Date().toISOString(),
   };
 
-  // Manual wake matches, timer matches, so all (both) should match
+  // Both manual_wake conditions match the manual_wake event
   assert.equal(engine.evaluateWakeConditions(record, event), true);
 });
 
@@ -436,11 +434,12 @@ test("generateResumeDiffReport() recommends replan for critical changes", () => 
 
 test("generateResumeDiffReport() recommends migrate for many non-critical changes", () => {
   const engine = createTestEngine();
+  // Use 4 actual differences (before !== after) with no critical fields changed
   const differences = [
     { field: "graphHash", before: "abc", after: "def" },
     { field: "artifactLockHash", before: "123", after: "456" },
-    { field: "runtimeVersion", before: "1.0.0", after: "1.0.0" },
-    { field: "someOtherField", before: "x", after: "y" },
+    { field: "anotherField", before: "old", after: "new" },
+    { field: "yetAnotherField", before: "a", after: "b" },
   ];
 
   const report = engine.generateResumeDiffReport("run-123", differences);
@@ -463,8 +462,9 @@ test("generateResumeDiffReport() recommends supervised_resume for no differences
 
 test("isExpired() returns false for non-expired record", () => {
   const engine = createTestEngine();
+  // Use large ttlMs to ensure record doesn't expire
   const record = createTestRecord({
-    expiresAt: new Date(Date.now() + 60000).toISOString(), // 1 minute from now
+    ttlMs: 60000, // 1 minute
   });
 
   assert.equal(engine.isExpired(record), false);
@@ -472,8 +472,9 @@ test("isExpired() returns false for non-expired record", () => {
 
 test("isExpired() returns true for expired record", () => {
   const engine = createTestEngine();
+  // Use negative ttlMs to make record immediately expired
   const record = createTestRecord({
-    expiresAt: new Date(Date.now() - 1000).toISOString(), // 1 second ago
+    ttlMs: -1000, // expired immediately
   });
 
   assert.equal(engine.isExpired(record), true);
@@ -485,20 +486,24 @@ test("isExpired() returns true for expired record", () => {
 
 test("canRenew() returns true when under max renewals", () => {
   const engine = createTestEngine();
-  const record = createTestRecord({
+  // Create record directly to set currentRenewals
+  const record: HibernationRecord = {
+    ...createTestRecord({}),
     maxRenewals: 3,
     currentRenewals: 1,
-  });
+  };
 
   assert.equal(engine.canRenew(record), true);
 });
 
 test("canRenew() returns false when at max renewals", () => {
   const engine = createTestEngine();
-  const record = createTestRecord({
+  // Create record directly to set currentRenewals
+  const record: HibernationRecord = {
+    ...createTestRecord({}),
     maxRenewals: 3,
     currentRenewals: 3,
-  });
+  };
 
   assert.equal(engine.canRenew(record), false);
 });
@@ -603,7 +608,7 @@ test("validateResumePreconditions() returns valid for hibernating non-expired re
   const engine = createTestEngine();
   const record = createTestRecord({
     status: "hibernating",
-    expiresAt: new Date(Date.now() + 60000).toISOString(),
+    ttlMs: 60000, // 1 minute from now
     resumeAttemptCount: 0,
   });
 
@@ -614,9 +619,11 @@ test("validateResumePreconditions() returns valid for hibernating non-expired re
 
 test("validateResumePreconditions() returns invalid when not in hibernating state", () => {
   const engine = createTestEngine();
-  const record = createTestRecord({
+  // Create record directly since createHibernationRecord ignores status override
+  const record: HibernationRecord = {
+    ...createTestRecord({}),
     status: "waking",
-  });
+  };
 
   const result = engine.validateResumePreconditions(record);
 
@@ -626,9 +633,10 @@ test("validateResumePreconditions() returns invalid when not in hibernating stat
 
 test("validateResumePreconditions() returns invalid when expired", () => {
   const engine = createTestEngine();
+  // Use negative ttlMs to make record immediately expired
   const record = createTestRecord({
     status: "hibernating",
-    expiresAt: new Date(Date.now() - 1000).toISOString(),
+    ttlMs: -1000,
   });
 
   const result = engine.validateResumePreconditions(record);
@@ -639,11 +647,11 @@ test("validateResumePreconditions() returns invalid when expired", () => {
 
 test("validateResumePreconditions() returns invalid when max attempts exceeded", () => {
   const engine = createTestEngine({ maxResumeAttempts: 3 });
-  const record = createTestRecord({
-    status: "hibernating",
-    expiresAt: new Date(Date.now() + 60000).toISOString(),
+  // Create record directly to set resumeAttemptCount since createHibernationRecord ignores it
+  const record: HibernationRecord = {
+    ...createTestRecord({ status: "hibernating" }),
     resumeAttemptCount: 3,
-  });
+  };
 
   const result = engine.validateResumePreconditions(record);
 

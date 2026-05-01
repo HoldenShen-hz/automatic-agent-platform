@@ -284,12 +284,12 @@ class MultiStepToolRegistry {
 
     // For todo_write, enforce proper sandbox policy
     if (toolName === "todo_write") {
-      const request = args as TodoWriteToolRequest;
-      const allowOperations = Array.isArray((this.sandboxPolicy as { allow?: unknown }).allow)
-        ? ((this.sandboxPolicy as { allow: unknown[] }).allow.filter((value): value is string => typeof value === "string"))
+      const request = args as unknown as TodoWriteToolRequest;
+      const allowOperations = Array.isArray((this.sandboxPolicy as unknown as { allow?: unknown }).allow)
+        ? ((this.sandboxPolicy as unknown as { allow: unknown[] }).allow.filter((value): value is string => typeof value === "string"))
         : [];
-      const denyOperations = Array.isArray((this.sandboxPolicy as { deny?: unknown }).deny)
-        ? ((this.sandboxPolicy as { deny: unknown[] }).deny.filter((value): value is string => typeof value === "string"))
+      const denyOperations = Array.isArray((this.sandboxPolicy as unknown as { deny?: unknown }).deny)
+        ? ((this.sandboxPolicy as unknown as { deny: unknown[] }).deny.filter((value): value is string => typeof value === "string"))
         : [];
       // R4-31: Write operations on todo_write need explicit sandbox allow
       // Read-only operations (list, get) are allowed by default
@@ -384,7 +384,7 @@ class MultiStepToolRegistry {
       idempotencyKey: `tool_call:${toolName}:${Date.now()}`,
       riskClass: toolName === "git" || toolName === "spawn_agent" ? "high" : "medium",
       preCommitPolicyProofRef: { artifactId: "pending:policy_proof", uri: "pending://", hash: "pending" },
-      externalRef: toolName === "web_fetch" ? (args.url as string) : toolName === "web_search" ? (args.query as string) : null,
+      ...(toolName === "web_fetch" ? { externalRef: args.url as string } : toolName === "web_search" ? { externalRef: args.query as string } : {}),
       deadline: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     });
 
@@ -399,7 +399,7 @@ class MultiStepToolRegistry {
         logger.log({
           level: "debug",
           message: "R4-33 (INV-SIDEEFFECT-001): Persisted SideEffectRecord to RuntimeTruthRepository",
-          data: { sideEffectId: sideEffectRecord.sideEffectId, harnessRunId },
+          data: { sideEffectId: sideEffectRecord.sideEffectId, harnessRunId: effectiveHarnessRunId },
         });
       } catch (error) {
         // If seed fails (e.g., duplicate), log but don't fail the tool execution
@@ -508,7 +508,7 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.spawn_depth_exceeded",
         `Spawned agent depth ${this.spawnDepth} exceeds maximum ${this.MAX_SPAWN_DEPTH}. Possible unbounded recursion.`,
-        { toolName: "spawn-agent", retryable: false },
+        { details: { toolName: "spawn-agent" }, retryable: false },
       );
     }
     try {

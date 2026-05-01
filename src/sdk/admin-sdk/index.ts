@@ -118,7 +118,7 @@ export class AdminSdk {
    * Used for operational scripting and capacity planning.
    */
   public listWorkers(tenantId?: string) {
-    return this.client.getPaginated("/workers", tenantId != null ? { tenantId } : undefined);
+    return this.client.get<unknown[]>("/workers", tenantId != null ? { tenantId } : undefined);
   }
 
   /**
@@ -410,7 +410,7 @@ export class AdminSdk {
    * Per spec, provides bulk operation / transaction semantics.
    */
   public bulkCreateTenants<T>(tenants: readonly TenantInput[]): Promise<{ successes: T[]; failures: { input: TenantInput; error: string }[] }> {
-    return this.client.post<T>("/tenants/bulk", { tenants }) as Promise<{ successes: T[]; failures: { input: TenantInput; error: string }[] }>;
+    return this.client.post<T>("/tenants/bulk", { tenants }) as unknown as Promise<{ successes: T[]; failures: { input: TenantInput; error: string }[] }>;
   }
 
   /**
@@ -418,7 +418,7 @@ export class AdminSdk {
    * All updates are applied in a single transaction.
    */
   public bulkUpdateTenants<T>(updates: readonly { tenantId: string; patch: Partial<TenantInput> }[]): Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }> {
-    return this.client.patch<T>("/tenants/bulk", { updates }) as Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }>;
+    return this.client.patch<T>("/tenants/bulk", { updates }) as unknown as Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }>;
   }
 
   /**
@@ -426,7 +426,7 @@ export class AdminSdk {
    * All deletions are applied in a single transaction.
    */
   public bulkDeleteTenants<T>(tenantIds: readonly string[]): Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }> {
-    return this.client.delete<T>(`/tenants/bulk?tenantIds=${tenantIds.map(encodeURIComponent).join(",")}`) as Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }>;
+    return this.client.delete<T>(`/tenants/bulk?tenantIds=${tenantIds.map(encodeURIComponent).join(",")}`) as unknown as Promise<{ successes: T[]; failures: { tenantId: string; error: string }[] }>;
   }
 
   /**
@@ -434,20 +434,20 @@ export class AdminSdk {
    * All policies are created in a single transaction.
    */
   public bulkCreatePolicies<T>(policies: readonly PolicyInput[]): Promise<{ successes: T[]; failures: { input: PolicyInput; error: string }[] }> {
-    return this.client.post<T>("/policies/bulk", { policies }) as Promise<{ successes: T[]; failures: { input: PolicyInput; error: string }[] }>;
+    return this.client.post<T>("/policies/bulk", { policies }) as unknown as Promise<{ successes: T[]; failures: { input: PolicyInput; error: string }[] }>;
   }
 
   /**
    * Bulk attach policies to resources with transactional semantics.
    */
   public bulkAttachPolicies<T>(attachments: readonly { targetType: string; targetId: string; policyId: string }[]): Promise<{ successes: T[]; failures: { attachment: { targetType: string; targetId: string; policyId: string }; error: string }[] }> {
-    return this.client.post<T>("/policies/attachments/bulk", { attachments }) as Promise<{ successes: T[]; failures: { attachment: { targetType: string; targetId: string; policyId: string }; error: string }[] }>;
+    return this.client.post<T>("/policies/attachments/bulk", { attachments }) as unknown as Promise<{ successes: T[]; failures: { attachment: { targetType: string; targetId: string; policyId: string }; error: string }[] }>;
   }
 
   /**
    * Bulk domain lifecycle operations with transactional semantics.
    */
   public bulkDomainLifecycle<T>(operations: readonly DomainLifecycleInput[]): Promise<{ successes: T[]; failures: { operation: DomainLifecycleInput; error: string }[] }> {
-    return this.client.post<T>("/domains/lifecycle/bulk", { operations }) as Promise<{ successes: T[]; failures: { operation: DomainLifecycleInput; error: string }[] }>;
+    return this.client.post<T>("/domains/lifecycle/bulk", { operations }) as unknown as Promise<{ successes: T[]; failures: { operation: DomainLifecycleInput; error: string }[] }>;
   }
 }
