@@ -285,6 +285,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         bindingId: "binding.retriever",
         domainId: "coding",
         pluginType: "retriever",
+        bindingRole: "retriever",
         pluginId: "plugin.coding.retriever",
         priority: 10,
         enabled: true,
@@ -314,7 +315,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
       refreshStrategy: "manual",
       refreshIntervalHours: null,
     },
-    trustLevel: "verified",
+    trustLevel: "authoritative",
     maxDocuments: 100,
     maxTotalSizeBytes: 1000000,
   });
@@ -323,14 +324,14 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     body: "Retry the build after clearing stale caches.",
     namespace: "coding.repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
   const pluginRecord = knowledgePlaneService.ingest({
     title: "Plugin knowledge",
     body: "Plugin supplied snippet",
     namespace: "coding.repo",
     sourceType: "text",
-    trustLevel: "verified",
+    trustLevel: "authoritative",
   });
   pluginKnowledgeRef = { knowledgeRef: `knowledge:${pluginRecord.chunks[0]?.chunkId ?? "missing"}`, snippet: "Plugin supplied snippet", score: 0.9, namespace: "coding.repo", chunkId: pluginRecord.chunks[0]?.chunkId ?? "chunk:missing", documentId: "doc:plugin", matchType: "semantic" as const };
 

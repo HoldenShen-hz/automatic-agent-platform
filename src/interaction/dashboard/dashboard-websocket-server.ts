@@ -322,7 +322,14 @@ export class DashboardWebSocketServer {
       recoveryRequired: gapMessage !== undefined,
     });
 
-    return { clientId, ack, missedEvents: missedEvents ?? undefined, gapMessage: gapMessage ?? undefined };
+    const result: DashboardReconnectResult = { clientId, ack };
+    if (missedEvents !== undefined) {
+      result.missedEvents = missedEvents;
+    }
+    if (gapMessage !== undefined) {
+      result.gapMessage = gapMessage;
+    }
+    return result;
   }
 
   /**
@@ -481,21 +488,21 @@ export class DashboardWebSocketServer {
     if (changes.length === 0) return "dashboard_snapshot";
     const firstChange = changes[0];
     if (firstChange === undefined) return "dashboard_snapshot";
-    switch (firstChange.changeType) {
-      case "task_created":
-        return "task.created";
-      case "task_completed":
-        return "task.completed";
-      case "task_failed":
-        return "task.failed";
-      case "incident_opened":
-        return "incident.opened";
-      case "incident_resolved":
-        return "incident.resolved";
-      case "system_health_changed":
-        return "system.health_changed";
-      default:
-        return "task.status_changed";
+    const changeType = firstChange.changeType;
+    if (changeType === "task_created") {
+      return "task.created";
+    } else if (changeType === "task_completed") {
+      return "task.completed";
+    } else if (changeType === "task_failed") {
+      return "task.failed";
+    } else if (changeType === "incident_opened") {
+      return "incident.opened";
+    } else if (changeType === "incident_resolved") {
+      return "incident.resolved";
+    } else if (changeType === "system_health_changed") {
+      return "system.health_changed";
+    } else {
+      return "task.status_changed";
     }
   }
 

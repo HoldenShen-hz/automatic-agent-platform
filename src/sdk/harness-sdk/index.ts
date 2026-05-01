@@ -5,12 +5,11 @@ import {
   type HarnessRun,
   type HarnessRole,
   type HarnessTimelineEvent,
+  type HarnessRunRuntimeState,
 } from "../../platform/orchestration/harness/index.js";
 import {
   createNodeAttemptReceipt,
   type NodeAttemptReceipt,
-  newId,
-  nowIso,
   type PlanGraphBundle,
   type PlanGraph,
   type PlanNode,
@@ -20,6 +19,7 @@ import {
   type BudgetIntent,
   type RiskPreview,
 } from "../../platform/contracts/executable-contracts/index.js";
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface HarnessSdkCreateRunInput {
   readonly taskId: string;
@@ -203,7 +203,6 @@ export class HarnessSdk {
       error?: { code: string; message: string; retryable: boolean };
     },
   ): { run: HarnessRun; receipt: NodeAttemptReceipt } {
-    const producedAt = nowIso();
     const graphVersion = input.graphVersion ?? run.currentSeq ?? 1;
     const receipt: NodeAttemptReceipt = createNodeAttemptReceipt({
       nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
@@ -214,9 +213,9 @@ export class HarnessSdk {
       receiptKind: input.receiptKind ?? "tool",
       status: options?.status ?? "succeeded",
       duration: options?.duration ?? 0,
+      errorDetail: options?.error?.message ?? "",
       ...(options?.outputRef ? { outputRef: options.outputRef } : {}),
       ...(options?.error ? { error: options.error } : {}),
-      producedAt,
     });
 
     const updatedRun = this.appendStep(run, input);
@@ -228,16 +227,16 @@ export class HarnessSdk {
   }
 
   public evaluate(run: HarnessRun) {
-    return this.runtime.evaluateRun(run);
+    return this.runtime.evaluateRun(run as HarnessRunRuntimeState);
   }
 
   public persist(run: HarnessRun): HarnessRun {
-    this.runtime.persistRun(run);
+    this.runtime.persistRun(run as HarnessRunRuntimeState);
     return run;
   }
 
   public checkpoint(run: HarnessRun): string {
-    return this.runtime.checkpointRun(run);
+    return this.runtime.checkpointRun(run as HarnessRunRuntimeState);
   }
 
   public restore(runId: string): HarnessRun | null {
@@ -249,17 +248,17 @@ export class HarnessSdk {
   }
 
   public assertInvariants(run: HarnessRun) {
-    return this.runtime.assertInvariants(run);
+    return this.runtime.assertInvariants(run as HarnessRunRuntimeState);
   }
 
   public sleep(runOrId: HarnessRun | string, reason: string, resumeAt: string): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.sleep(run, reason, resumeAt);
+    return this.runtime.sleep(run as HarnessRunRuntimeState, reason, resumeAt);
   }
 
   public resume(runOrId: HarnessRun | string): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.resume(run);
+    return this.runtime.resume(run as HarnessRunRuntimeState);
   }
 
   public requestHumanReview(
@@ -268,7 +267,7 @@ export class HarnessSdk {
     evidenceRefs: readonly string[] = [],
   ): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.openHitlReview(run, reason, evidenceRefs);
+    return this.runtime.openHitlReview(run as HarnessRunRuntimeState, reason, evidenceRefs);
   }
 
   public resolveReview(
@@ -277,17 +276,17 @@ export class HarnessSdk {
     actorId: string,
   ): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.resolveHitlReview(run, resolution, actorId);
+    return this.runtime.resolveHitlReview(run as HarnessRunRuntimeState, resolution, actorId);
   }
 
   public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {
     const run = this.requireRun(runOrId);
-    return this.runtime.listTimeline(run);
+    return this.runtime.listTimeline(run as HarnessRunRuntimeState);
   }
 
   public getEvaluation(runOrId: HarnessRun | string) {
     const run = this.requireRun(runOrId);
-    return this.runtime.evaluateRun(run);
+    return this.runtime.evaluateRun(run as HarnessRunRuntimeState);
   }
 
   public traceReplay(runOrId: string, traceEvents: readonly HarnessTimelineEvent[]): HarnessRun | null {
@@ -307,14 +306,10 @@ export class HarnessSdk {
     for (const event of sortedEvents) {
       if (event.type === "step_completed" || event.type === "run_created") {
         // Re-emit events to reconstruct run state
-        this.runtime.persistRun(
-          this.runtime.restoreRun(runOrId) ?? {
-            runId: runOrId,
-            status: "running",
-            createdAt: nowIso(),
-            updatedAt: nowIso(),
-          } as unknown as HarnessRun
-        );
+        const restored = this.runtime.restoreRun(runOrId);
+        if (restored) {
+          this.runtime.persistRun(restored);
+        }
       }
     }
 
@@ -325,7 +320,7 @@ export class HarnessSdk {
   public sideEffectReconciliation(runOrId: HarnessRun | string): HarnessRun {
     // sideEffectReconciliation placeholder - HarnessRuntimeService.reconcileSideEffects not yet implemented
     const run = this.requireRun(runOrId);
-    this.runtime.persistRun(run);
+    this.runtime.persistRun(run as HarnessRunRuntimeState);
     return run;
   }
 
@@ -335,7 +330,7 @@ export class HarnessSdk {
    */
   public reserveBudget(budgetRef: string, amount: number): BudgetValidationResult {
     if (!this.budgetChecker) {
-      return { allowed: true, remainingBudget: undefined };
+      return { allowed: true };
     }
     return this.budgetChecker(budgetRef);
   }
@@ -347,7 +342,7 @@ export class HarnessSdk {
   public settleBudget(runOrId: HarnessRun | string): HarnessRun {
     const run = this.requireRun(runOrId);
     // Budget settlement is tracked via BudgetLedger - persist run to trigger settlement
-    this.runtime.persistRun(run);
+    this.runtime.persistRun(run as HarnessRunRuntimeState);
     return run;
   }
 
@@ -492,6 +487,6 @@ export function validatePlanGraphBundle(bundle: PlanGraphBundle): PlanGraphValid
   return {
     valid: graphValidation.valid,
     findings: graphValidation.findings,
-    normalizedNodeIds: graphValidation.normalizedNodeIds,
+    ...(graphValidation.normalizedNodeIds != null ? { normalizedNodeIds: graphValidation.normalizedNodeIds } : {}),
   };
 }

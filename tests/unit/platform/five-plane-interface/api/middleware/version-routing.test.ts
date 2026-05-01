@@ -73,9 +73,10 @@ test("VersionRoutingMiddleware.selectVersion adds warning for unsupported versio
   assert.ok(decision.warnings.some((w) => w.includes("version_not_supported")));
 });
 
-test("VersionRoutingMiddleware.selectVersion returns fallback version when no match", () => {
+test("VersionRoutingMiddleware.selectVersion returns fallback for unsupported but valid versions", () => {
   const middleware = new VersionRoutingMiddleware();
-  const decision = middleware.selectVersion(["2024-01-01"]);
+  // 2030-01-01 is not supported but is above minimum, so it gets fallback
+  const decision = middleware.selectVersion(["2030-01-01"]);
   assert.equal(decision.acceptable, true);
   assert.equal(decision.reasonCode, "version.fallback");
 });
@@ -134,10 +135,10 @@ test("VersionRoutingMiddleware handles whitespace in version string", () => {
   assert.deepEqual(versions, ["2026-04-01", "2026-01-01"]);
 });
 
-test("VersionRoutingMiddleware.selectVersion with multiple warnings", () => {
+test("VersionRoutingMiddleware.selectVersion with unsupported but valid versions", () => {
   const middleware = new VersionRoutingMiddleware();
-  const decision = middleware.selectVersion(["2024-01-01", "2025-01-01"]);
-  // Both unsupported but not below minimum
+  // Both are above minimum but not in supported list
+  const decision = middleware.selectVersion(["2030-01-01", "2031-01-01"]);
   assert.equal(decision.acceptable, true);
   assert.ok(decision.warnings.length > 0);
 });

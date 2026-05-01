@@ -51,9 +51,6 @@ function buildManifest(opts: PackCreateOptions): BusinessPackManifest {
       requiredContracts: [],
     })),
     tools: opts.tools ?? [],
-    sdk_semver: "1.0.0",
-    platform_min_version: "1.0.0",
-    platform_max_version: "2.0.0",
   };
   return manifest;
 }

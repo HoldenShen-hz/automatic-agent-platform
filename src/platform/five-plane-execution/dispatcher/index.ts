@@ -158,8 +158,13 @@ class MultiStepToolRegistry {
   private getDefaultBudgetPolicy(): BudgetPolicy {
     return {
       maxTaskCostUsd: 10,
+      maxPackCostUsd: 100,
+      maxPlatformCostUsd: 10000,
       maxDailyCostUsd: 100,
       maxMonthlyCostUsd: 1000,
+      maxModelTokens: 100000,
+      maxSteps: 100,
+      maxDurationMs: 600000,
       warnAtRatio: 0.8,
       mode: "auto",
     };
@@ -192,7 +197,7 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.budget_exceeded",
         `Budget limit exceeded for tool execution: ${toolName} - ${evaluation.reasonCode}`,
-        { toolName, retryable: false },
+        { details: { toolName }, retryable: false },
       );
     }
     // R4-25: Actually reserve the budget using reserveExecutionChainBudget
@@ -215,7 +220,7 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.budget_reservation_failed",
         `Budget reservation failed for tool: ${toolName} - ${reservationResult.reservationReasonCode ?? evaluation.reasonCode}`,
-        { toolName, retryable: false },
+        { details: { toolName }, retryable: false },
       );
     }
   }
@@ -259,7 +264,7 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.policy_denied",
         `Tool ${toolName} denied by policy engine: ${decision.reasonCode}`,
-        { toolName, retryable: false },
+        { details: { toolName }, retryable: false },
       );
     }
 
@@ -267,7 +272,7 @@ class MultiStepToolRegistry {
       throw new ToolExecutionError(
         "tool.approval_required",
         `Tool ${toolName} requires approval: ${decision.reasonCode}`,
-        { toolName, retryable: false },
+        { details: { toolName }, retryable: false },
       );
     }
   }
@@ -301,7 +306,7 @@ class MultiStepToolRegistry {
           throw new ToolExecutionError(
             "tool.sandbox_policy_denied",
             `Sandbox policy denies tool ${toolName} with operation ${request.operation}: empty policy defaults to deny`,
-            { toolName, retryable: false },
+            { details: { toolName }, retryable: false },
           );
         }
         // Check if operation is explicitly allowed
@@ -310,7 +315,7 @@ class MultiStepToolRegistry {
           throw new ToolExecutionError(
             "tool.sandbox_violation",
             `Tool ${toolName} with operation ${request.operation} denied by sandbox policy`,
-            { toolName, retryable: false },
+            { details: { toolName }, retryable: false },
           );
         }
       }
@@ -331,7 +336,7 @@ class MultiStepToolRegistry {
         throw new ToolExecutionError(
           "tool.sandbox_violation",
           `Git operation outside sandbox: ${pathCheck.reasonCode}`,
-          { toolName, retryable: false },
+          { details: { toolName }, retryable: false },
         );
       }
     }
@@ -344,7 +349,7 @@ class MultiStepToolRegistry {
         throw new ToolExecutionError(
           "tool.sandbox_violation",
           `Repo-map operation outside sandbox: ${pathCheck.reasonCode}`,
-          { toolName, retryable: false },
+          { details: { toolName }, retryable: false },
         );
       }
     }

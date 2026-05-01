@@ -11,6 +11,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

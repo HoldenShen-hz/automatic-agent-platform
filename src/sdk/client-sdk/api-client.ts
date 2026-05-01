@@ -315,7 +315,7 @@ export class RetryableApiClient {
     const envelope = createContractEnvelope({
       payload: request.body ?? {},
       principal: this.config.principal,
-      idempotencyKey,
+      ...(idempotencyKey != null ? { idempotencyKey } : {}),
     });
     body = envelope;
     headers["content-type"] = "application/json";
@@ -842,10 +842,10 @@ export function createEventSubscriber(
     },
 
     getPendingEvents(consumerId: string): readonly (PlatformFactEvent | ProjectionUpdate)[] {
-      return eventBus.pendingForConsumer(consumerId).map((event) => ({
+      return (eventBus.pendingForConsumer(consumerId).map((event) => ({
         ...event,
         payload: parsePayload<PlatformFactEvent["payload"]>(event.payloadJson),
-      })) as readonly (PlatformFactEvent | ProjectionUpdate)[];
+      })) as unknown) as readonly (PlatformFactEvent | ProjectionUpdate)[];
     },
 
     async deliverPending(consumerId: string): Promise<number> {

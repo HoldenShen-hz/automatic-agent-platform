@@ -394,11 +394,11 @@ export class UserPortalService implements UserPortalPort {
           { nodeId: "node_trigger", componentId: "manual_trigger", label: "手动触发" },
           { nodeId: "node_action", componentId: "domain_action", label: `${primaryDomain} 主动作` },
           { nodeId: "node_output", componentId: "report_output", label: "输出结果" },
-        ],
+        ] as const,
         edges: [
           { fromNodeId: "node_trigger", toNodeId: "node_action" },
           { fromNodeId: "node_action", toNodeId: "node_output" },
-        ],
+        ] as const,
       },
       componentPalette,
       livePreview: {

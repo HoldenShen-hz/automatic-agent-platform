@@ -221,6 +221,13 @@ export class ServiceRegistry {
   }
 
   /**
+   * Checks whether a service is registered.
+   */
+  public has(name: string): boolean {
+    return this.services.has(name);
+  }
+
+  /**
    * Checks whether a service instance has been initialized.
    */
   public isInitialized(name: string): boolean {

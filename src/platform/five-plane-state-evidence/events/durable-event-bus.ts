@@ -111,7 +111,7 @@ interface ConsumerGroupState {
  */
 interface ConsumerRegistration {
   consumerId: string;
-  groupId: string | null;
+  groupId: string;
   handler: EventHandler;
 }
 
@@ -305,7 +305,14 @@ export class DurableEventBus {
    */
   public subscribe(consumerId: string, handler: EventHandler, options?: { priority?: "high" | "normal" | "low"; groupId?: string }): void {
     this.assertNotDisposed();
-    this.subscriberRegistry.register(consumerId, handler, { priority: options?.priority, groupId: options?.groupId });
+    const regOptions: { groupId?: string; priority?: "high" | "normal" | "low" } = {};
+    if (options?.priority !== undefined) regOptions.priority = options.priority;
+    if (options?.groupId !== undefined) regOptions.groupId = options.groupId;
+    if (Object.keys(regOptions).length > 0) {
+      this.subscriberRegistry.register(consumerId, handler, regOptions);
+    } else {
+      this.subscriberRegistry.register(consumerId, handler);
+    }
     this.registerActiveConsumer(consumerId);
     this.ensurePolling(consumerId);
   }

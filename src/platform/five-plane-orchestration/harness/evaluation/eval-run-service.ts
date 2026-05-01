@@ -1,4 +1,4 @@
-import { getConstraintOutputPolicy, type HarnessRun } from "../index.js";
+import { getConstraintOutputPolicy, type HarnessRunRuntimeState } from "../index.js";
 import { TaskOutcomeGrader, type TaskOutcomeGrade } from "./task-outcome-grader.js";
 
 export interface HarnessEvaluationReport {
@@ -16,7 +16,7 @@ export class EvalRunService {
     this.grader = grader;
   }
 
-  public evaluate(run: HarnessRun): HarnessEvaluationReport {
+  public evaluate(run: HarnessRunRuntimeState): HarnessEvaluationReport {
     const grade = this.grader.grade({
       evaluatorScore: run.decision?.confidence ?? 0,
       expectedEvidenceRefs: getConstraintOutputPolicy(run.constraintPack).requiredEvidence,

@@ -93,11 +93,12 @@ test("readValidatedJsonBody parses and sanitizes JSON", () => {
   assert.equal(result.name, "test");
 });
 
-test("readValidatedJsonBody passes through null/undefined", () => {
+test("readValidatedJsonBody handles empty/null body as empty object", () => {
   const parser = (value: unknown) => value;
 
-  assert.equal(readValidatedJsonBody(null, parser), null);
-  assert.equal(readValidatedJsonBody(undefined, parser), undefined);
+  // readJsonBody returns {} for null/undefined
+  assert.deepEqual(readValidatedJsonBody(null, parser), {});
+  assert.deepEqual(readValidatedJsonBody(undefined, parser), {});
 });
 
 test("DEFAULT_CONTENT_TYPE_CONFIG has secure defaults", () => {

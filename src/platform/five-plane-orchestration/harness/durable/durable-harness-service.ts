@@ -1,10 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { newId, nowIso } from "../../../../platform/contracts/types/ids.js";
-import type { HarnessRun, WorkflowSleepLease } from "../index.js";
+import type { HarnessRunRuntimeState, WorkflowSleepLease } from "../index.js";
 
 export interface DurableHarnessRecord {
   readonly recordId: string;
-  readonly run: HarnessRun;
+  readonly run: HarnessRunRuntimeState;
   readonly checkpointRef: string | null;
   readonly persistedAt: string;
 }
@@ -12,14 +12,14 @@ export interface DurableHarnessRecord {
 export interface DurableHarnessStore {
   saveRecord(record: DurableHarnessRecord): void;
   getRecord(runId: string): DurableHarnessRecord | null;
-  saveCheckpoint(checkpointRef: string, run: HarnessRun): void;
-  getCheckpoint(checkpointRef: string): HarnessRun | null;
+  saveCheckpoint(checkpointRef: string, run: HarnessRunRuntimeState): void;
+  getCheckpoint(checkpointRef: string): HarnessRunRuntimeState | null;
   listRecords(): DurableHarnessRecord[];
 }
 
 export class InMemoryDurableHarnessStore implements DurableHarnessStore {
   private readonly runs = new Map<string, DurableHarnessRecord>();
-  private readonly checkpoints = new Map<string, HarnessRun>();
+  private readonly checkpoints = new Map<string, HarnessRunRuntimeState>();
 
   public saveRecord(record: DurableHarnessRecord): void {
     this.runs.set(record.run.runId, record);
@@ -29,11 +29,11 @@ export class InMemoryDurableHarnessStore implements DurableHarnessStore {
     return this.runs.get(runId) ?? null;
   }
 
-  public saveCheckpoint(checkpointRef: string, run: HarnessRun): void {
+  public saveCheckpoint(checkpointRef: string, run: HarnessRunRuntimeState): void {
     this.checkpoints.set(checkpointRef, run);
   }
 
-  public getCheckpoint(checkpointRef: string): HarnessRun | null {
+  public getCheckpoint(checkpointRef: string): HarnessRunRuntimeState | null {
     return this.checkpoints.get(checkpointRef) ?? null;
   }
 
@@ -89,13 +89,13 @@ export class SqliteDurableHarnessStore implements DurableHarnessStore {
     }
     return {
       recordId: row.record_id,
-      run: JSON.parse(row.run_json) as HarnessRun,
+      run: JSON.parse(row.run_json) as HarnessRunRuntimeState,
       checkpointRef: row.checkpoint_ref,
       persistedAt: row.persisted_at,
     };
   }
 
-  public saveCheckpoint(checkpointRef: string, run: HarnessRun): void {
+  public saveCheckpoint(checkpointRef: string, run: HarnessRunRuntimeState): void {
     this.db.prepare(`
       INSERT INTO harness_checkpoints (checkpoint_ref, run_json, created_at)
       VALUES (?, ?, ?)
@@ -105,11 +105,11 @@ export class SqliteDurableHarnessStore implements DurableHarnessStore {
     `).run(checkpointRef, JSON.stringify(run), nowIso());
   }
 
-  public getCheckpoint(checkpointRef: string): HarnessRun | null {
+  public getCheckpoint(checkpointRef: string): HarnessRunRuntimeState | null {
     const row = this.db.prepare(`
       SELECT run_json FROM harness_checkpoints WHERE checkpoint_ref = ?
     `).get(checkpointRef) as { run_json: string } | undefined;
-    return row ? JSON.parse(row.run_json) as HarnessRun : null;
+    return row ? JSON.parse(row.run_json) as HarnessRunRuntimeState : null;
   }
 
   public listRecords(): DurableHarnessRecord[] {
@@ -120,7 +120,7 @@ export class SqliteDurableHarnessStore implements DurableHarnessStore {
     `).all() as { record_id: string; run_json: string; checkpoint_ref: string | null; persisted_at: string }[];
     return rows.map((row) => ({
       recordId: row.record_id,
-      run: JSON.parse(row.run_json) as HarnessRun,
+      run: JSON.parse(row.run_json) as HarnessRunRuntimeState,
       checkpointRef: row.checkpoint_ref,
       persistedAt: row.persisted_at,
     }));
@@ -137,18 +137,18 @@ export interface DurableHarnessTimelineEvent {
 
 export class DurableHarnessService {
   private readonly store: DurableHarnessStore;
-  private readonly validateRun: ((run: HarnessRun) => void) | null;
+  private readonly validateRun: ((run: HarnessRunRuntimeState) => void) | null;
   private readonly timeline: DurableHarnessTimelineEvent[] = [];
 
   public constructor(options: {
     store?: DurableHarnessStore;
-    validateRun?: ((run: HarnessRun) => void) | null;
+    validateRun?: ((run: HarnessRunRuntimeState) => void) | null;
   } = {}) {
     this.store = options.store ?? new InMemoryDurableHarnessStore();
     this.validateRun = options.validateRun ?? null;
   }
 
-  public persist(run: HarnessRun): DurableHarnessRecord {
+  public persist(run: HarnessRunRuntimeState): DurableHarnessRecord {
     this.validateRun?.(run);
     const existing = this.store.getRecord(run.runId);
     const record: DurableHarnessRecord = {
@@ -161,7 +161,7 @@ export class DurableHarnessService {
     return record;
   }
 
-  public checkpoint(run: HarnessRun): string {
+  public checkpoint(run: HarnessRunRuntimeState): string {
     this.validateRun?.(run);
     const checkpointRef = newId("harness_checkpoint");
     this.store.saveCheckpoint(checkpointRef, run);
@@ -174,7 +174,7 @@ export class DurableHarnessService {
     return checkpointRef;
   }
 
-  public restore(runId: string): HarnessRun | null {
+  public restore(runId: string): HarnessRunRuntimeState | null {
     const run = this.store.getRecord(runId)?.run ?? null;
     if (run) {
       this.validateRun?.(run);
@@ -182,7 +182,7 @@ export class DurableHarnessService {
     return run;
   }
 
-  public restoreFromCheckpoint(checkpointRef: string): HarnessRun | null {
+  public restoreFromCheckpoint(checkpointRef: string): HarnessRunRuntimeState | null {
     const run = this.store.getCheckpoint(checkpointRef);
     if (run) {
       this.validateRun?.(run);

@@ -529,7 +529,8 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       critical: 3.0,
     };
     const totalEstimatedTaskCostUsd = tasks.reduce((sum, t) => sum + t.estimatedCost.estimatedCostUsd, 0);
-    const budgetAllocations: { taskId: string; budgetUsd: number; riskMultiplier: number }[] = rawConstraintEnvelope.budgetLimitUsd != null
+    const budgetLimit = rawConstraintEnvelope.budgetLimitUsd;
+    const budgetAllocations: { taskId: string; budgetUsd: number; riskMultiplier: number }[] = budgetLimit != null
       ? tasks.map((task) => {
           const proportion = totalEstimatedTaskCostUsd > 0
             ? task.estimatedCost.estimatedCostUsd / totalEstimatedTaskCostUsd
@@ -537,7 +538,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
           const riskMultiplier = riskMultiplierMap[task.constraintEnvelope?.riskTolerance ?? "medium"] ?? 1.5;
           return {
             taskId: task.taskId,
-            budgetUsd: Number((rawConstraintEnvelope.budgetLimitUsd * proportion).toFixed(4)),
+            budgetUsd: Number((budgetLimit * proportion).toFixed(4)),
             riskMultiplier,
           };
         })

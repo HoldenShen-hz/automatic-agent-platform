@@ -6,6 +6,7 @@ export type PluginRuntimeAction =
   | "health_check"
   | "deactivate"
   | "unload"
+  | "suspend"
   | "retrieve"
   | "present"
   | "authenticate"

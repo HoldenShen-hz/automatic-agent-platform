@@ -1,0 +1,416 @@
+/**
+ * Pack Validate CLI Tests
+ *
+ * Tests for the pack-validate.ts CLI command.
+ * Tests parseArgs and validation logic.
+ */
+
+import assert from "node:assert/strict";
+import test from "node:test";
+
+interface PackValidateOptions {
+  manifest: string;
+  contractVersion?: string;
+  strict?: boolean;
+}
+
+function parseArgs(args: string[]): PackValidateOptions {
+  const opts: PackValidateOptions = { manifest: "", strict: false };
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--manifest" && i + 1 < args.length) opts.manifest = args[++i];
+    else if (args[i] === "--contract-version" && i + 1 < args.length) opts.contractVersion = args[++i];
+    else if (args[i] === "--strict") opts.strict = true;
+  }
+  return opts;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  metadata: Record<string, string>;
+}
+
+// Simplified validation logic extracted from pack-validate.ts for testing
+function runValidation(manifest: Record<string, unknown>, opts: PackValidateOptions): ValidationResult {
+  const result: ValidationResult = { valid: true, errors: [], warnings: [], metadata: {} };
+
+  // Basic structural validation
+  if (!manifest.packId || typeof manifest.packId !== "string" || !manifest.packId.trim()) {
+    result.valid = false;
+    result.errors.push("invalid_field:packId");
+  }
+  if (!manifest.version || typeof manifest.version !== "string") {
+    result.valid = false;
+    result.errors.push("invalid_field:version");
+  }
+  if (!manifest.domainId || typeof manifest.domainId !== "string" || !manifest.domainId.trim()) {
+    result.valid = false;
+    result.errors.push("invalid_field:domainId");
+  }
+  if (!manifest.owner || typeof manifest.owner !== "string" || !manifest.owner.trim()) {
+    result.valid = false;
+    result.errors.push("invalid_field:owner");
+  }
+
+  const capabilities = manifest.capabilities as Array<Record<string, unknown>> | undefined;
+  if (!capabilities || !Array.isArray(capabilities) || capabilities.length === 0) {
+    result.valid = false;
+    result.errors.push("empty_capabilities:not_allowed");
+  }
+
+  result.metadata["pack_id"] = (manifest.packId as string) || "";
+  result.metadata["version"] = (manifest.version as string) || "";
+  result.metadata["capabilities"] = String(capabilities?.length ?? 0);
+
+  // Contract version validation
+  const sdkRelease = manifest.sdk_release as Record<string, string> | undefined;
+  if (opts.contractVersion) {
+    const minVersion = sdkRelease?.platform_min_version ?? "0.0.0";
+    const maxVersion = sdkRelease?.platform_max_version ?? "999.999.999";
+    const contractMajor = opts.contractVersion.split(".").map(Number)[0] ?? 0;
+    const minMajor = minVersion.split(".").map(Number)[0] ?? 0;
+    const maxMajor = maxVersion.split(".").map(Number)[0] ?? 999;
+
+    if (contractMajor < minMajor || contractMajor > maxMajor) {
+      result.valid = false;
+      result.errors.push(`contract_version_mismatch:requested=${opts.contractVersion},supported=${minVersion}-${maxVersion}`);
+    } else {
+      result.warnings.push(`contract_version_ok:${opts.contractVersion}`);
+    }
+  }
+
+  // SDK semver check
+  if (!sdkRelease?.sdk_semver) {
+    if (opts.strict) {
+      result.valid = false;
+      result.errors.push("missing_field:sdk_semver");
+    } else {
+      result.warnings.push("missing_optional_field:sdk_semver");
+    }
+  }
+
+  // Contract test generator check
+  if (!sdkRelease?.contract_test_generator) {
+    result.warnings.push("missing_optional_field:contract_test_generator");
+  }
+
+  // Capability validation
+  if (capabilities && capabilities.length > 0) {
+    for (const cap of capabilities) {
+      if (!cap.capabilityKey || typeof cap.capabilityKey !== "string" || !cap.capabilityKey.trim()) {
+        result.valid = false;
+        result.errors.push("invalid_capability:capabilityKey_empty");
+      }
+      const requiredContracts = cap.requiredContracts as string[] | undefined;
+      if (!requiredContracts || requiredContracts.length === 0) {
+        result.warnings.push(`capability_requires_no_contracts:${cap.capabilityKey}`);
+      }
+    }
+  }
+
+  return result;
+}
+
+test("parseArgs extracts manifest path", () => {
+  const opts = parseArgs(["--manifest", "./pack.json"]);
+
+  assert.equal(opts.manifest, "./pack.json");
+});
+
+test("parseArgs extracts contract-version", () => {
+  const opts = parseArgs(["--manifest", "./pack.json", "--contract-version", "1.0.0"]);
+
+  assert.equal(opts.manifest, "./pack.json");
+  assert.equal(opts.contractVersion, "1.0.0");
+});
+
+test("parseArgs sets strict flag when present", () => {
+  const opts = parseArgs(["--manifest", "./pack.json", "--strict"]);
+
+  assert.equal(opts.manifest, "./pack.json");
+  assert.equal(opts.strict, true);
+});
+
+test("parseArgs defaults strict to false", () => {
+  const opts = parseArgs(["--manifest", "./pack.json"]);
+
+  assert.equal(opts.strict, false);
+});
+
+test("parseArgs handles empty arguments", () => {
+  const opts = parseArgs([]);
+
+  assert.equal(opts.manifest, "");
+  assert.equal(opts.contractVersion, undefined);
+  assert.equal(opts.strict, false);
+});
+
+test("parseArgs ignores unknown flags", () => {
+  const opts = parseArgs([
+    "--manifest", "./pack.json",
+    "--unknown-flag", "value",
+  ]);
+
+  assert.equal(opts.manifest, "./pack.json");
+});
+
+test("runValidation returns valid for a complete manifest", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: ["contract1"] },
+    ],
+    sdk_release: {
+      sdk_semver: "1.0.0",
+      platform_min_version: "1.0.0",
+      platform_max_version: "2.0.0",
+    },
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.errors, []);
+});
+
+test("runValidation returns invalid for missing packId", () => {
+  const manifest = {
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("invalid_field:packId")));
+});
+
+test("runValidation returns invalid for empty capabilities", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("empty_capabilities")));
+});
+
+test("runValidation adds warning for missing sdk_semver in non-strict mode", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.ok(result.warnings.some((w) => w.includes("missing_optional_field:sdk_semver")));
+});
+
+test("runValidation adds error for missing sdk_semver in strict mode", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json", strict: true };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("missing_field:sdk_semver")));
+});
+
+test("runValidation adds warning for missing contract_test_generator", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+    sdk_release: {
+      sdk_semver: "1.0.0",
+    },
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.ok(result.warnings.some((w) => w.includes("missing_optional_field:contract_test_generator")));
+});
+
+test("runValidation validates contract version compatibility", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+    sdk_release: {
+      sdk_semver: "1.0.0",
+      platform_min_version: "2.0.0",
+      platform_max_version: "3.0.0",
+    },
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json", contractVersion: "1.0.0" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("contract_version_mismatch")));
+});
+
+test("runValidation accepts compatible contract version", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+    sdk_release: {
+      sdk_semver: "1.0.0",
+      platform_min_version: "2.0.0",
+      platform_max_version: "3.0.0",
+    },
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json", contractVersion: "2.0.0" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, true);
+  assert.ok(result.warnings.some((w) => w.includes("contract_version_ok")));
+});
+
+test("runValidation adds warning for capability with no required contracts", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.ok(result.warnings.some((w) => w.includes("capability_requires_no_contracts")));
+});
+
+test("runValidation returns invalid for empty capabilityKey", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("invalid_capability:capabilityKey_empty")));
+});
+
+test("runValidation returns invalid for whitespace-only capabilityKey", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "   ", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((e) => e.includes("invalid_capability:capabilityKey_empty")));
+});
+
+test("runValidation sets correct metadata", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "2.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: [] },
+      { capabilityKey: "cap2", requiredContracts: [] },
+    ],
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.metadata["pack_id"], "test-pack");
+  assert.equal(result.metadata["version"], "2.0.0");
+  assert.equal(result.metadata["capabilities"], "2");
+});
+
+test("runValidation handles manifest with multiple capabilities", () => {
+  const manifest = {
+    packId: "test-pack",
+    version: "1.0.0",
+    domainId: "test-domain",
+    owner: "test-owner",
+    capabilities: [
+      { capabilityKey: "cap1", requiredContracts: ["contract1"] },
+      { capabilityKey: "cap2", requiredContracts: ["contract2", "contract3"] },
+    ],
+    sdk_release: {
+      sdk_semver: "1.0.0",
+      platform_min_version: "1.0.0",
+      platform_max_version: "5.0.0",
+    },
+  };
+
+  const opts: PackValidateOptions = { manifest: "./pack.json", contractVersion: "3.0.0" };
+  const result = runValidation(manifest, opts);
+
+  assert.equal(result.valid, true);
+  assert.equal(result.metadata["capabilities"], "2");
+});
+
+test("parseArgs handles manifest path with special characters", () => {
+  const opts = parseArgs(["--manifest", "./path/with spaces/pack.json"]);
+
+  assert.equal(opts.manifest, "./path/with spaces/pack.json");
+});

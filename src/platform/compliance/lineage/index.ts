@@ -80,7 +80,7 @@ export class DataLineageService {
       }
 
       // Recompute expected hash
-      const edgeData = JSON.stringify({
+      const edgeData: string = JSON.stringify({
         edgeId: edge.edgeId,
         sourceRef: edge.sourceRef,
         targetRef: edge.targetRef,
@@ -90,7 +90,7 @@ export class DataLineageService {
         createdAt: edge.createdAt,
         previousHash,
       });
-      const expectedHash = createHash("sha256").update(edgeData).digest("hex");
+      const expectedHash: string = createHash("sha256").update(edgeData).digest("hex");
 
       if (storedHash !== expectedHash) {
         return { valid: false, lastHash: this.lastEdgeHash, corruptedAt: edge.createdAt };

@@ -6,6 +6,7 @@ import type {
   PlatformPlane,
   PlatformStartupTarget,
 } from "./platform-architecture-types.js";
+export type { PlatformPlane } from "./platform-architecture-types.js";
 import { ServiceRegistry } from "./platform/shared/lifecycle/service-registry.js";
 import {
   ArchitectureInvariantRegistry,
@@ -28,7 +29,7 @@ export const PLATFORM_STARTUP_ORDER: readonly PlatformPlane[] = Object.freeze(["
 
 export interface StartupOrderViolation {
   readonly requiredOrder: readonly PlatformPlane[];
-  readonly actualOrder: readonly PlatformPlane[];
+  readonly actualOrder: readonly PlatformPlane[] | readonly ["not_started"];
   readonly violatedPosition: number;
 }
 
@@ -39,7 +40,7 @@ export function validateStartupOrder(actualOrder: readonly PlatformPlane[]): Sta
     if (actual !== required) {
       return {
         requiredOrder: PLATFORM_STARTUP_ORDER,
-        actualOrder: actualOrder.length > 0 ? actualOrder : ["not_started"],
+        actualOrder: actualOrder.length > 0 ? actualOrder : (["not_started"] as const),
         violatedPosition: i,
       };
     }

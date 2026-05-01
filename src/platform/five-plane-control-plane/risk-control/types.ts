@@ -34,6 +34,7 @@ export type BlastRadius = z.infer<typeof BlastRadiusSchema>;
  * Confidence level per §10.2
  */
 export const ConfidenceLevelSchema = z.enum(["high", "medium", "low"]);
+export type ConfidenceLevel = z.infer<typeof ConfidenceLevelSchema>;
 
 /**
  * Reversibility - how easily can the operation be undone per §10.2

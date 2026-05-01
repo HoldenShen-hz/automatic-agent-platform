@@ -12,7 +12,7 @@ export interface SdkVersionHandshakeRequest {
 export interface SdkVersionHandshakeDecision {
   readonly accepted: boolean;
   readonly statusCode: 200 | 426;
-  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required";
+  readonly reasonCode: "sdk.accepted" | "sdk.upgrade_required" | "sdk.platform_incompatible";
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly warnings: readonly string[];
 }

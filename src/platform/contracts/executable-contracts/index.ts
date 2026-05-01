@@ -96,6 +96,11 @@ export interface ArtifactRef {
   readonly uri: string;
   readonly hash?: string;
   readonly version?: string;
+  readonly kind?: string;
+  readonly mimeType?: string;
+  readonly sizeBytes?: number;
+  readonly createdAt?: string;
+  readonly checksum?: string;
 }
 
 // =============================================================================

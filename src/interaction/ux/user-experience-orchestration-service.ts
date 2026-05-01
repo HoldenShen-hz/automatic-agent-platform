@@ -108,14 +108,14 @@ export class UserExperienceOrchestrationService {
     const nodes = canvasNodes.map((node, idx) => ({
       nodeId: String(node.componentId ?? `node_${idx}`),
       label: String(node.label ?? node.componentId ?? `Node ${idx}`),
-      inputBindings: (node.inputBindings as string[] | undefined) ?? [],
+      inputBindings: (node.inputBindings as readonly string[] | undefined) ?? ([] as readonly string[]),
       outputKey: String(node.outputKey ?? `output_${idx}`),
       toolset: node.toolset as string | undefined,
       parallel: node.parallel as boolean | undefined,
-    }));
+    })) as WorkflowBuilderDraft["planGraph"]["nodes"];
 
     // Build edges from canvas edges or infer from template steps order
-    const edges: WorkflowBuilderDraft["planGraph"]["edges"] = [];
+    const edges: { fromNodeId: string; toNodeId: string; dependencyType: "hard" | "soft" }[] = [];
     if (canvasEdges.length > 0) {
       for (const edge of canvasEdges) {
         edges.push({
@@ -126,7 +126,7 @@ export class UserExperienceOrchestrationService {
       }
     } else {
       // Infer sequential edges from template steps
-      for (let i = 0; i < templateSteps.length - 1; i++) {
+      for (let i = 0; i < Math.max(0, templateSteps.length - 1); i++) {
         edges.push({
           fromNodeId: templateSteps[i] ?? "",
           toNodeId: templateSteps[i + 1] ?? "",
@@ -135,6 +135,6 @@ export class UserExperienceOrchestrationService {
       }
     }
 
-    return { nodes, edges };
+    return { nodes: nodes as WorkflowBuilderDraft["planGraph"]["nodes"], edges: edges as WorkflowBuilderDraft["planGraph"]["edges"] };
   }
 }

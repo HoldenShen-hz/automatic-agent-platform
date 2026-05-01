@@ -127,14 +127,15 @@ export class AdmissionController {
     const riskClassDistribution: Record<string, number> = {};
     const tasks = this.store.task.listTasks();
     for (const task of tasks) {
-      const rc = task.riskClass ?? "unknown";
+      // riskClass not available on TaskRecord - use "unknown" as placeholder
+      const rc = "unknown";
       riskClassDistribution[rc] = (riskClassDistribution[rc] ?? 0) + 1;
     }
 
     // Tenant usage (simplified - would need real tenant tracking)
     const tenantUsage: Record<string, number> = {};
     for (const task of tasks) {
-      const tid = task.tenantId;
+      const tid = task.tenantId ?? "unknown";
       tenantUsage[tid] = (tenantUsage[tid] ?? 0) + 1;
     }
 

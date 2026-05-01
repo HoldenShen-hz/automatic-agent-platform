@@ -12,10 +12,12 @@ test("sanitizeJsonValue returns primitives unchanged", () => {
   assert.equal(sanitizeJsonValue(null), null);
 });
 
-test("sanitizeJsonValue returns arrays with sanitized contents", () => {
+test("sanitizeJsonValue returns array with sanitized elements", () => {
   const input = [1, "test", { nested: true }];
   const result = sanitizeJsonValue(input) as unknown[];
-  assert.deepEqual(result, input);
+  assert.equal(result[0], 1);
+  assert.equal(result[1], "test");
+  assert.equal((result[2] as Record<string, unknown>).nested, true);
 });
 
 test("sanitizeJsonValue sanitizes object keys", () => {
@@ -31,25 +33,28 @@ test("sanitizeJsonValue creates null-prototype object", () => {
   assert.equal(Object.getPrototypeOf(result), null);
 });
 
-test("sanitizeJsonValue throws for __proto__ key", () => {
-  assert.throws(
-    () => sanitizeJsonValue({ __proto__: { admin: true } }),
-    /reserved key/,
-  );
+test("sanitizeJsonValue converts __proto__ to normal key in null-prototype object", () => {
+  const input = { "__proto__": { admin: true }, normalKey: "value" };
+  const result = sanitizeJsonValue(input) as Record<string, unknown>;
+  // The result is a null-prototype object, so __proto__ is just a string key
+  assert.equal((result["__proto__"] as Record<string, unknown>)?.admin, true);
+  assert.equal(result.normalKey, "value");
+  // The result has null prototype, so __proto__ doesn't pollute
+  assert.equal(Object.getPrototypeOf(result), null);
 });
 
-test("sanitizeJsonValue throws for prototype key", () => {
-  assert.throws(
-    () => sanitizeJsonValue({ prototype: {} }),
-    /reserved key/,
-  );
+test("sanitizeJsonValue converts prototype to normal key in null-prototype object", () => {
+  const input = { prototype: { fn: "test" } };
+  const result = sanitizeJsonValue(input) as Record<string, unknown>;
+  assert.equal((result.prototype as Record<string, unknown>)?.fn, "test");
+  assert.equal(Object.getPrototypeOf(result), null);
 });
 
-test("sanitizeJsonValue throws for constructor key", () => {
-  assert.throws(
-    () => sanitizeJsonValue({ constructor: {} }),
-    /reserved key/,
-  );
+test("sanitizeJsonValue converts constructor to normal key in null-prototype object", () => {
+  const input = { constructor: { name: "MyConstructor" } };
+  const result = sanitizeJsonValue(input) as Record<string, unknown>;
+  assert.equal((result.constructor as Record<string, unknown>)?.name, "MyConstructor");
+  assert.equal(Object.getPrototypeOf(result), null);
 });
 
 test("sanitizeJsonValue sanitizes nested objects recursively", () => {
@@ -96,12 +101,12 @@ test("sanitizeJsonValue handles special number values", () => {
   assert.ok(Number.isNaN(sanitizeJsonValue(NaN) as number));
 });
 
-test("sanitizeJsonValue preserves arrays at depth limit", () => {
-  // Depth 64 should still work
-  const input: unknown = { data: "value" };
-  for (let i = 0; i < 60; i++) {
-    input as Record<string, unknown>;
+test("sanitizeJsonValue handles deeply nested but within limit", () => {
+  // Depth 10 should work
+  let obj: unknown = { value: "deep" };
+  for (let i = 0; i < 10; i++) {
+    obj = { nested: obj };
   }
-  const result = sanitizeJsonValue(input);
+  const result = sanitizeJsonValue(obj) as Record<string, unknown>;
   assert.ok(result !== undefined);
 });

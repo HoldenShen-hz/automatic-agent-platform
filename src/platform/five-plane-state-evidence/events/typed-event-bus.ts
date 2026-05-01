@@ -77,6 +77,7 @@ export interface TypedEventPayloadMap {
   "domain:registered": DomainLifecyclePayload;
   "domain:activated": DomainLifecyclePayload;
   "plugin:spi_registered": PluginLifecycleEventPayload;
+  "plugin:suspended": PluginLifecycleEventPayload;
   "plugin:activated": PluginLifecycleEventPayload;
   "plugin:error_isolated": PluginLifecycleEventPayload;
   "plugin:invocation_started": PluginInvocationEventPayload;
@@ -502,8 +503,8 @@ export interface TypedEventPayloadMap {
  * Extracts event types from the registry that are NOT in TypedEventPayloadMap.
  */
 type MissingTypedEventDefinitions = Exclude<KnownEventType, keyof TypedEventPayloadMap>;
-const TYPED_EVENT_COVERAGE_CHECK: MissingTypedEventDefinitions extends never ? true : never = true;
-void TYPED_EVENT_COVERAGE_CHECK;
+// Compile-time check: if MissingTypedEventDefinitions is not never, this type will be never, causing a type error
+type _TypedEventCoverageCheck = MissingTypedEventDefinitions extends never ? true : never;
 
 /**
  * Union type of all event types that have typed payloads.

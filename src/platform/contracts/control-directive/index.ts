@@ -106,10 +106,10 @@ export type DecisionDirectiveType =
   | "expire_approval";
 
 export interface DecisionDirectiveScope {
-  readonly tenantId?: string;
-  readonly harnessRunId?: string;
-  readonly nodeRunId?: string;
-  readonly humanResponsibilityRecordId?: string;
+  readonly tenantId?: string | undefined;
+  readonly harnessRunId?: string | undefined;
+  readonly nodeRunId?: string | undefined;
+  readonly humanResponsibilityRecordId?: string | undefined;
 }
 
 export interface DecisionDirective<TPayload = unknown> {

@@ -497,7 +497,7 @@ export class DlqService {
    * Get a specific dead letter record
    */
   public get(deadLetterId: string): ExtendedDeadLetterRecord | undefined {
-    return this.repo.findById(deadLetterId);
+    return this.repo.findById(deadLetterId) ?? undefined;
   }
 
   /**

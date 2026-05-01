@@ -96,6 +96,17 @@ export class TransactionalEventAppender {
       payloadJson: eventData.payloadJson,
       traceId: options.traceId ?? null,
       createdAt: now,
+      schemaVersion: null,
+      aggregateId: null,
+      runId: null,
+      sequence: null,
+      causationId: null,
+      correlationId: null,
+      payloadHash: null,
+      idempotencyKey: null,
+      replayBehavior: null,
+      principal: null,
+      evidenceRefs: [],
     };
 
     // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
@@ -156,6 +167,17 @@ export class TransactionalEventAppender {
           payloadJson: eventData.payloadJson,
           traceId: options.traceId ?? null,
           createdAt: now,
+          schemaVersion: null,
+          aggregateId: null,
+          runId: null,
+          sequence: null,
+          causationId: null,
+          correlationId: null,
+          payloadHash: null,
+          idempotencyKey: null,
+          replayBehavior: null,
+          principal: null,
+          evidenceRefs: [],
         };
 
         const insertedEvent = this.insertEventInternal(event);

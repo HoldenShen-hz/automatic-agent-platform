@@ -289,11 +289,12 @@ export class BillingService {
           tenantId: input.budgetControl.tenantId,
           traceId: input.budgetControl.traceId ?? newId("trace"),
           emittedBy: input.budgetControl.emittedBy ?? "BillingService",
-          tier: "default",
+          tier: "step",
           tierLimit: 0,
-          watermarkAlert: false,
-          autoThrottle: false,
-          burstAllowance: 0,
+          watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
+          autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.8 },
+          crossRunPriority: { priority: 0, weightFactor: 1.0 },
+          streamingSettle: { enabled: false, tokenInterval: 100, timeIntervalMs: 1000 },
         },
       });
     }
@@ -384,8 +385,13 @@ export class BillingService {
           actualAmount: ledgerEntry.amountUsd,
           context: {
             tenantId: input.budgetControl!.tenantId,
-            traceId: input.budgetControl!.traceId,
-            emittedBy: input.budgetControl!.emittedBy,
+            traceId: input.budgetControl!.traceId ?? newId("trace"),
+            emittedBy: input.budgetControl!.emittedBy ?? "BillingService",
+            tier: "default",
+            tierLimit: 0,
+            watermarkAlert: false,
+            autoThrottle: false,
+            burstAllowance: 0,
           },
         });
     } catch (error) {
@@ -396,8 +402,13 @@ export class BillingService {
           reasonCode: "budget.billing_usage_record_failed",
           context: {
             tenantId: input.budgetControl!.tenantId,
-            traceId: input.budgetControl!.traceId,
-            emittedBy: input.budgetControl!.emittedBy,
+            traceId: input.budgetControl!.traceId ?? newId("trace"),
+            emittedBy: input.budgetControl!.emittedBy ?? "BillingService",
+            tier: "default",
+            tierLimit: 0,
+            watermarkAlert: false,
+            autoThrottle: false,
+            burstAllowance: 0,
           },
         });
       }

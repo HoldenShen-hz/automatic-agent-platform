@@ -25,6 +25,9 @@ const GITHUB_ADAPTER_MANIFEST: PluginManifest = {
     maxQueuedInvocations: 8,
     runtimeIsolation: "serialized_in_process",
     cooldownMs: 0,
+    allowedExternalDomains: ["api.github.com", "github.com"],
+    maxResponseSizeBytes: 5 * 1024 * 1024,
+    rateLimitPerMinute: 60,
   },
 };
 

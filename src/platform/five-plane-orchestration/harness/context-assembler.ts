@@ -1,5 +1,6 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
-import type { ContextSnapshot, HarnessRun } from "./index.js";
+import type { ContextSnapshot } from "./index.js";
+import type { HarnessRunRuntimeState } from "./index.js";
 
 export interface HarnessContextSourceSet {
   readonly conversation?: Readonly<Record<string, unknown>>;
@@ -122,7 +123,7 @@ export class ContextAssembler {
     };
   }
 
-  public snapshot(run: HarnessRun, context: HarnessContext): ContextSnapshot {
+  public snapshot(run: HarnessRunRuntimeState, context: HarnessContext): ContextSnapshot {
     return {
       snapshotId: newId("ctx_snapshot"),
       runId: run.runId,

@@ -1,4 +1,4 @@
-import type { HarnessRun } from "../index.js";
+import type { HarnessRunRuntimeState } from "../index.js";
 import { DurableHarnessService } from "./durable-harness-service.js";
 
 export class HarnessSleepScheduler {
@@ -6,14 +6,14 @@ export class HarnessSleepScheduler {
 
   public constructor(
     private readonly durableService: DurableHarnessService,
-    private readonly onDueRun?: (run: HarnessRun) => void,
+    private readonly onDueRun?: (run: HarnessRunRuntimeState) => void,
   ) {}
 
-  public pollDueRuns(referenceTime?: string): HarnessRun[] {
+  public pollDueRuns(referenceTime?: string): HarnessRunRuntimeState[] {
     const leases = this.durableService.listDueSleepLeases(referenceTime);
     const dueRuns = leases
       .map((lease) => this.durableService.restore(lease.runId))
-      .filter((run): run is HarnessRun =>
+      .filter((run): run is HarnessRunRuntimeState =>
         run != null && run.status === "paused" && run.pauseReason === "sleep" && run.sleepLease != null,
       );
 

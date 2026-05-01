@@ -36,6 +36,7 @@
 import { existsSync, lstatSync, realpathSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 const sandboxLogger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -427,6 +428,7 @@ export function checkSandboxPath(policy: SandboxPolicy, inputPath: string): Sand
       allowed: false,
       normalizedPath: normalizedInput,
       reasonCode: "sandbox.path_invalid_encoding",
+      effectiveResourceLimits: getEffectiveResourceLimits(policy),
     };
   }
 

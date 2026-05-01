@@ -1181,7 +1181,7 @@ export class NlEntryService implements NlEntryPort {
           budgetIntent: {
             amount: Number(costEstimate.estimatedCostUsd.toFixed(4)),
             currency: "USD",
-            resourceKinds: ["llm"],
+            resourceKinds: (["llm"] as const),
           },
           policyContext: {
             channel: request.channel ?? null,
@@ -1199,7 +1199,7 @@ export class NlEntryService implements NlEntryPort {
         requestEnvelope: null,
         riskPreview,
         costEstimate,
-        dryRunPreview,
+        dryRunPreview: dryRunPreview ?? undefined,
         confirmationRequired: true,
         humanSummary: surfacedSummary,
         taskDraft,
@@ -1214,7 +1214,7 @@ export class NlEntryService implements NlEntryPort {
         },
         conversationState: "Clarifying",
         canonicalTaskDraft,
-        clarificationSession,
+        clarificationSession: clarificationSession ?? undefined,
         confirmedTaskSpec: null,
         canonicalRequestEnvelope: null,
       };
@@ -1261,10 +1261,10 @@ export class NlEntryService implements NlEntryPort {
     );
 
     return {
-      requestEnvelope,
+      requestEnvelope: requestEnvelope ?? undefined,
       riskPreview,
       costEstimate,
-      dryRunPreview,
+      dryRunPreview: dryRunPreview ?? undefined,
       confirmationRequired,
       humanSummary: surfacedSummary,
       taskDraft,
@@ -1272,9 +1272,9 @@ export class NlEntryService implements NlEntryPort {
       confirmationReceipt,
       conversationState,
       canonicalTaskDraft,
-      clarificationSession,
-      confirmedTaskSpec,
-      canonicalRequestEnvelope,
+      clarificationSession: clarificationSession ?? undefined,
+      confirmedTaskSpec: confirmedTaskSpec ?? undefined,
+      canonicalRequestEnvelope: canonicalRequestEnvelope ?? undefined,
     };
   }
 
@@ -1612,15 +1612,18 @@ export class ConversationContextManager {
     try {
       const memories = this.memoryService.findMemories({ scope });
       if (memories.length > 0) {
-        const parsed = JSON.parse(memories[memories.length - 1].content);
-        return {
-          tenantId: parsed.tenantId,
-          userId: parsed.userId,
-          turnCount: parsed.turnCount,
-          maxTurns: parsed.maxTurns,
-          turns: parsed.turns ?? [],
-          lastIntent: parsed.lastIntent,
-        };
+        const lastMemory = memories[memories.length - 1];
+        if (lastMemory) {
+          const parsed = JSON.parse(lastMemory.content);
+          return {
+            tenantId: parsed.tenantId,
+            userId: parsed.userId,
+            turnCount: parsed.turnCount,
+            maxTurns: parsed.maxTurns,
+            turns: parsed.turns ?? [],
+            lastIntent: parsed.lastIntent,
+          };
+        }
       }
     } catch {
       // Best effort - Memory read failure returns null, causing fresh context creation

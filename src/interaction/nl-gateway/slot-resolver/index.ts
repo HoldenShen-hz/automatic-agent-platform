@@ -203,7 +203,7 @@ export class SlotResolver {
 export function resolveRequiredSlots(
   entities: readonly ExtractedEntity[],
   requiredEntityTypes: readonly string[],
-): { readonly missing: string[]; readonly resolved: Record<string, unknown> } {
+): { readonly missing: readonly string[]; readonly resolved: Record<string, unknown> } {
   const resolver = new SlotResolver();
   const result = resolver.resolveRequiredSlots(entities, requiredEntityTypes);
   return {

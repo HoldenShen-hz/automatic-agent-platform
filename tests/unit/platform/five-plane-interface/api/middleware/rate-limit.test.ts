@@ -127,6 +127,7 @@ test("RateLimitMiddleware.getLimiter returns underlying limiter", () => {
 
 test("createRateLimiter merges config with defaults", () => {
   const limiter = createRateLimiter({ maxRequests: 500 });
+  limiter.check("test"); // Initialize bucket
   const status = limiter.status("test");
   assert.ok(status !== null);
   assert.equal(status.tokens, 499);

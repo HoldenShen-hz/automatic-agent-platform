@@ -30,8 +30,8 @@ export interface VersionRoutingDecision {
   acceptable: boolean;
   /** Selected version */
   version: string;
-  /** Status code if not acceptable */
-  statusCode: 406 | 400;
+  /** Status code: 200 if acceptable, 400 or 406 if not */
+  statusCode: 200 | 406 | 400;
   /** Reason code */
   reasonCode: string;
   /** Warning messages */

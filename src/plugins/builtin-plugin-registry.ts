@@ -1,3 +1,4 @@
+import { nowIso } from "../platform/contracts/types/ids.js";
 import type { RegisteredPlugin, PluginManifest } from "../domains/registry/plugin-spi.js";
 
 /**

@@ -46,7 +46,7 @@ interface IdempotencyEntry {
   /** Response status code */
   statusCode: number;
   /** Cached response body */
-  responseBody: unknown;
+  responseBody: unknown | undefined;
   /** When this entry expires */
   expiresAt: number;
   /** Tenant ID if per-tenant isolation is enabled */

@@ -200,7 +200,8 @@ export class DisambiguationHandler {
    * Format an intent type for user display
    */
   private formatIntentOption(intentType: DetectedIntent["intentType"]): string {
-    const labels: Record<DetectedIntent["intentType"], string> = {
+    const labels: Record<"why" | DetectedIntent["intentType"], string> = {
+      why: "解释原因/查询状态",
       task_create: "创建新任务",
       task_query: "查询/获取信息",
       task_modify: "修改/更新已有内容",

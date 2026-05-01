@@ -146,7 +146,7 @@ export function normalizeConstraintPack(constraintPack: ConstraintPack): Constra
   const sandboxRequirement = constraintPack.sandboxRequirement ?? constraintPack.sandbox_requirement;
   const approvalRequirement = constraintPack.approvalRequirement ?? constraintPack.approval_requirement;
 
-  const result: Record<string, unknown> = {
+  const result: ConstraintPack = {
     policyIds: [...constraintPack.policyIds],
     approvalMode: constraintPack.approvalMode,
     autonomyMode: constraintPack.autonomyMode,
@@ -192,7 +192,7 @@ export function normalizeConstraintPack(constraintPack: ConstraintPack): Constra
     };
   }
 
-  return result as ConstraintPack;
+  return result;
 }
 
 export interface PlanBundle {
@@ -716,7 +716,7 @@ export class HarnessRuntimeService {
       latency: input.latency,
       cost: input.cost,
       error: input.error ?? null,
-      nextAction: input.nextAction,
+      nextAction: input.nextAction ?? undefined,
     };
     return {
       ...run,
