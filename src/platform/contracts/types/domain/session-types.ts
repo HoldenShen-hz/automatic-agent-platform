@@ -253,20 +253,20 @@ export interface EventRecord {
   payloadJson: string;
   traceId: string | null;
   createdAt: Timestamp;
-  // §28.1 required fields for replay ordering and audit
-  schemaVersion: string | null;
-  aggregateId: string | null;
-  runId: string | null;
-  sequence: number | null;
+  // §28.1 fields for replay ordering and audit - optional for callers
+  schemaVersion?: string | null;
+  aggregateId?: string | null;
+  runId?: string | null;
+  sequence?: number | null;
   // §28.1 causation tracking for event chain reconstruction
-  causationId: string | null;
-  correlationId: string | null;
+  causationId?: string | null;
+  correlationId?: string | null;
   // §28.1 payload integrity for replay verification
-  payloadHash: string | null;
+  payloadHash?: string | null;
   // §28.1 idempotency key for duplicate detection
-  idempotencyKey: string | null;
-  replayBehavior: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
-  principal: string | null;
+  idempotencyKey?: string | null;
+  replayBehavior?: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
+  principal?: string | null;
   evidenceRefs?: readonly string[];
 }
 

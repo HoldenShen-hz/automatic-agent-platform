@@ -13,8 +13,10 @@ import type {
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { HealthService } from "../../shared/observability/health-service.js";
+import { DeadLetterQueueService } from "../../state-evidence/dlq/index.js";
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
+import { SqliteDeadLetterQueueRepository } from "../../state-evidence/truth/sqlite/repositories/dlq-repository.js";
 import type { AdmissionBackpressureSnapshot } from "./admission-controller.js";
 import { ExecutionLeaseService } from "../lease/execution-lease-service.js";
 import { ExecutionPriorityPreemptionService } from "./execution-priority-preemption-service.js";
@@ -57,6 +59,10 @@ import { nowIso as nowDate } from "../../contracts/types/ids.js";
 import type { HealthReportProvider } from "../../contracts/types/health.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const DISPATCH_ORDERING_POLICY_VERSION = "dispatch.partial-deterministic.v2";
+const DISPATCH_DLQ_CONSUMER_ID = "execution_dispatch_service";
+
+type DispatchDeadLetterQueue = Pick<DeadLetterQueueService, "enqueue">;
 
 /**
  * Error thrown when lease acquisition fails during dispatch.
@@ -87,17 +93,20 @@ export class ExecutionDispatchService {
   private readonly workers: WorkerRegistryService;
   private cachedHealthService: HealthService | null = null;
   private readonly scalingController: HorizontalScalingController;
+  private readonly dispatchDeadLetterQueue: DispatchDeadLetterQueue | null;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
     private readonly queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
     private readonly healthReportProvider: HealthReportProvider | null = null,
+    dispatchDeadLetterQueue: DispatchDeadLetterQueue | null = null,
   ) {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
     this.scalingController = new HorizontalScalingController("default", DEFAULT_SCALING_POLICY);
+    this.dispatchDeadLetterQueue = dispatchDeadLetterQueue ?? this.createDispatchDeadLetterQueue();
   }
 
   private getOrCreateHealthService(occurredAt: string): HealthService {
@@ -127,6 +136,109 @@ export class ExecutionDispatchService {
       };
     }
     return null;
+  }
+
+  private createDispatchDeadLetterQueue(): DispatchDeadLetterQueue | null {
+    if (this.db.backendType !== "sqlite") {
+      return null;
+    }
+    return new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(this.db.connection));
+  }
+
+  private buildWorkerPoolSnapshotRef(
+    ticket: ExecutionTicketRecord,
+    occurredAt: string,
+    selectedWorkerId: string | null,
+  ): string {
+    if (selectedWorkerId != null) {
+      return `worker_pool://${selectedWorkerId}/snapshot/${occurredAt}`;
+    }
+    return `worker_pool://dispatch/${ticket.queueName ?? "default"}/snapshot/${occurredAt}`;
+  }
+
+  private buildSchedulerTraceFields(
+    ticket: ExecutionTicketRecord,
+    occurredAt: string,
+    readySet: readonly string[],
+    selectedNodeIds: readonly string[],
+    selectedWorkerId: string | null,
+  ): Pick<DispatchDecisionTrace, "readySet" | "selectedNodeIds" | "orderingPolicyVersion" | "workerPoolSnapshotRef"> {
+    return {
+      readySet,
+      selectedNodeIds,
+      orderingPolicyVersion: DISPATCH_ORDERING_POLICY_VERSION,
+      workerPoolSnapshotRef: this.buildWorkerPoolSnapshotRef(ticket, occurredAt, selectedWorkerId),
+    };
+  }
+
+  private isBackpressureBlockedReason(reasonCode: string | null): boolean {
+    return reasonCode === "queue_unavailable" || (reasonCode != null && reasonCode.startsWith("backpressure."));
+  }
+
+  private recordBlockedDispatchArtifacts(
+    ticket: ExecutionTicketRecord,
+    occurredAt: string,
+    trace: DispatchDecisionTrace,
+    failureCategory: string,
+  ): void {
+    if (this.isBackpressureBlockedReason(trace.reasonCode)) {
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: ticket.taskId,
+        executionId: ticket.executionId,
+        eventType: "dispatch.backpressure_rejected",
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          ticketId: ticket.id,
+          priority: ticket.priority,
+          reasonCode: trace.reasonCode,
+          readySet: trace.readySet ?? [],
+          selectedNodeIds: trace.selectedNodeIds ?? [],
+          orderingPolicyVersion: trace.orderingPolicyVersion ?? null,
+          workerPoolSnapshotRef: trace.workerPoolSnapshotRef ?? null,
+        }),
+        traceId: null,
+        createdAt: occurredAt,
+      });
+    }
+
+    if (this.dispatchDeadLetterQueue == null) {
+      return;
+    }
+
+    const deadLetter = this.dispatchDeadLetterQueue.enqueue({
+      sourceEventId: `dispatch:${ticket.id}:${trace.reasonCode ?? trace.outcome}`,
+      consumerId: DISPATCH_DLQ_CONSUMER_ID,
+      errorCode: trace.reasonCode ?? "dispatch.blocked",
+      payloadJson: JSON.stringify({
+        ticketId: ticket.id,
+        executionId: ticket.executionId,
+        taskId: ticket.taskId,
+        priority: ticket.priority,
+        queueName: ticket.queueName,
+        trace,
+      }),
+      originalTimestamp: occurredAt,
+      failureCategory,
+    });
+
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: ticket.taskId,
+      executionId: ticket.executionId,
+      eventType: "dispatch.dlq_enqueue",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        ticketId: ticket.id,
+        executionId: ticket.executionId,
+        deadLetterId: deadLetter.deadLetterId,
+        consumerId: DISPATCH_DLQ_CONSUMER_ID,
+        reasonCode: trace.reasonCode,
+        failureCategory,
+      }),
+      traceId: null,
+      createdAt: occurredAt,
+    });
   }
   public createTicket(input: CreateExecutionTicketInput): ExecutionTicketDecision {
     const occurredAt = input.occurredAt ?? nowIso();
@@ -260,11 +372,11 @@ export class ExecutionDispatchService {
               leaseId: null,
               fallbackApplied: false,
               evaluations: [],
-              // R6-7: §14.9 scheduler event fields
-              readySet,
-              selectedNodeIds: [],
-              orderingPolicyVersion: "1.0",
+              ...this.buildSchedulerTraceFields(ticket, occurredAt, readySet, [], null),
             });
+      if (ticket != null && trace != null) {
+        this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "queue_availability");
+      }
 
       return {
         outcome: "blocked",
@@ -330,7 +442,7 @@ export class ExecutionDispatchService {
       const blockedByBackpressure = resolveDispatchBackpressureReason(ticket, backpressure);
       if (blockedByBackpressure) {
         blockedReason = blockedByBackpressure;
-        lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
+        const trace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
           remoteAvailability: null,
           requiredIsolationLevel,
@@ -343,11 +455,10 @@ export class ExecutionDispatchService {
           leaseId: null,
           fallbackApplied: false,
           evaluations: [],
-          // R6-7: §14.9 scheduler event fields
-          readySet,
-          selectedNodeIds: [],
-          orderingPolicyVersion: "1.0",
+          ...this.buildSchedulerTraceFields(ticket, occurredAt, readySet, [], null),
         });
+        this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "dispatch_backpressure");
+        lastTrace = trace;
         continue;
       }
 
@@ -421,23 +532,6 @@ export class ExecutionDispatchService {
         }
       }
       if (eligibleWorkers.length === 0) {
-        // R6-6: Emit dispatch_backpressure_rejected event for backpressure scenarios
-        this.store.event.insertEvent({
-          id: newId("evt"),
-          taskId: ticket.taskId,
-          executionId: ticket.executionId,
-          eventType: "dispatch.backpressure_rejected",
-          eventTier: "tier_2",
-          payloadJson: JSON.stringify({
-            ticketId: ticket.id,
-            priority: ticket.priority,
-            reasonCode: blockedReason,
-            backpressureSnapshot: null, // Would be populated from backpressure
-          }),
-          traceId: null,
-          createdAt: occurredAt,
-        });
-
         // R6-5: Emergency lane for critical priority NodeRuns
         if (ticket.priority === "critical") {
           // Critical NodeRun needs independent channel - try emergency worker pool
@@ -497,105 +591,18 @@ export class ExecutionDispatchService {
                   fallbackApplied: true,
                   preemption: preemptionTrace,
                   evaluations,
+                  ...this.buildSchedulerTraceFields(
+                    ticket,
+                    occurredAt,
+                    readySet,
+                    [ticket.executionId],
+                    emergencyWorker.workerId,
+                  ),
                 }),
               };
             }
           }
-          // R6-6: No emergency worker available - DLQ integration
-          this.store.event.insertEvent({
-            id: newId("evt"),
-            taskId: ticket.taskId,
-            executionId: ticket.executionId,
-            eventType: "dispatch.dlq_enqueue",
-            eventTier: "tier_2",
-            payloadJson: JSON.stringify({
-              ticketId: ticket.id,
-              reason: "no_emergency_worker_available",
-              priority: "critical",
-            }),
-            traceId: null,
-            createdAt: occurredAt,
-          });
-        }
-
-        // R6-5: Emergency lane for critical priority NodeRuns
-        if (ticket.priority === "critical") {
-          // Critical NodeRun needs independent channel - try emergency worker pool
-          const emergencyWorkers = this.workers.listWorkers().filter(
-            (w) => w.status === "idle" && w.placement === "local" && w.availableSlots > 0,
-          );
-          if (emergencyWorkers.length > 0) {
-            const emergencyWorker = emergencyWorkers[0]!;
-            const lease = this.leases.acquireLease({
-              executionId: ticket.executionId,
-              workerId: emergencyWorker.workerId,
-              ttlMs: options.leaseTtlMs,
-              queueName: "emergency_lane",
-              occurredAt,
-            });
-            if (lease.outcome === "granted" && lease.lease) {
-              // Dispatch via emergency lane
-              // Note: Do NOT wrap in a transaction - acquireLease already opened one
-              // and SQLite does not support nested transactions/SAVEPOINT
-              this.store.worker.claimExecutionTicket({
-                ticketId: ticket.id,
-                assignedWorkerId: emergencyWorker.workerId,
-                leaseId: lease.lease.id,
-                claimedAt: occurredAt,
-              });
-              this.store.event.insertEvent({
-                id: newId("evt"),
-                taskId: ticket.taskId,
-                executionId: ticket.executionId,
-                eventType: "dispatch.emergency_lane_used",
-                eventTier: "tier_2",
-                payloadJson: JSON.stringify({
-                  ticketId: ticket.id,
-                  workerId: emergencyWorker.workerId,
-                  leaseId: lease.lease.id,
-                }),
-                traceId: null,
-                createdAt: occurredAt,
-              });
-              return {
-                outcome: "dispatched",
-                reasonCode: "dispatch.emergency_lane",
-                ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
-                worker: emergencyWorker,
-                leaseId: lease.lease.id,
-                trace: this.recordDecisionEvent(ticket, occurredAt, {
-                  dispatchTarget,
-                  remoteAvailability: null,
-                  requiredIsolationLevel,
-                  requiredRepoVersion,
-                  preferredWorkerId: options.preferredWorkerId ?? null,
-                  requiredCapabilities,
-                  outcome: "dispatched",
-                  reasonCode: "dispatch.emergency_lane",
-                  selectedWorkerId: emergencyWorker.workerId,
-                  leaseId: lease.lease.id,
-                  fallbackApplied: true,
-                  preemption: preemptionTrace,
-                  evaluations,
-                }),
-              };
-            }
-          }
-          // R6-6: No emergency worker available - DLQ integration
-          this.store.event.insertEvent({
-            id: newId("evt"),
-            taskId: ticket.taskId,
-            executionId: ticket.executionId,
-            eventType: "dispatch.dlq_enqueue",
-            eventTier: "tier_2",
-            payloadJson: JSON.stringify({
-              ticketId: ticket.id,
-              reason: "no_emergency_worker_available",
-              priority: "critical",
-            }),
-            traceId: null,
-            createdAt: occurredAt,
-          });
+          blockedReason = "dispatch.no_emergency_worker_available";
         }
 
         const remoteBlockReason =
@@ -616,25 +623,30 @@ export class ExecutionDispatchService {
         if (remoteBlockReason) {
           blockedReason = remoteBlockReason;
         }
-        lastTrace = this.recordDecisionEvent(ticket, occurredAt, {
+        const trace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
           remoteAvailability,
           requiredIsolationLevel,
           requiredRepoVersion,
           preferredWorkerId: options.preferredWorkerId ?? null,
           requiredCapabilities,
-          outcome: remoteBlockReason ? "blocked" : "no_worker",
-          reasonCode: remoteBlockReason,
+          outcome: blockedReason ? "blocked" : "no_worker",
+          reasonCode: blockedReason,
           selectedWorkerId: null,
           leaseId: null,
           fallbackApplied: false,
           preemption: preemptionTrace,
           evaluations,
+          ...this.buildSchedulerTraceFields(ticket, occurredAt, readySet, [], null),
         });
+        if (trace.outcome === "blocked") {
+          this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "worker_selection_blocked");
+        }
+        lastTrace = trace;
         continue;
       }
 
-      const selectedWorker = eligibleWorkers[0]!;
+      const selectedWorker = this.selectDeterministicWorker(eligibleWorkers, evaluations);
 
       // Issue #1900 P1: Move lease acquisition inside transaction to ensure atomic
       // lease+claim. Previously lease was acquired outside (TOCTOU race), now we
@@ -699,10 +711,6 @@ export class ExecutionDispatchService {
         return { lease, execution };
       });
 
-      // R6-7: Build scheduler event fields for dispatch decision trace
-      const workerPoolSnapshotRef = `worker_pool://${selectedWorker.workerId}/snapshot/${occurredAt}`;
-      const selectedNodeIds = [ticket.executionId];
-
       const trace = this.recordDecisionEvent(ticket, occurredAt, {
         dispatchTarget,
         remoteAvailability,
@@ -717,11 +725,13 @@ export class ExecutionDispatchService {
         fallbackApplied: selection.fallbackApplied,
         preemption: preemptionTrace,
         evaluations,
-        // R6-7: §14.9 scheduler event fields
-        readySet,
-        selectedNodeIds,
-        orderingPolicyVersion: "1.0",
-        workerPoolSnapshotRef,
+        ...this.buildSchedulerTraceFields(
+          ticket,
+          occurredAt,
+          readySet,
+          [ticket.executionId],
+          selectedWorker.workerId,
+        ),
       });
 
       return {
@@ -962,6 +972,52 @@ export class ExecutionDispatchService {
       remoteSessionReason,
       remoteRepoVersionReason,
     );
+  }
+
+  private selectDeterministicWorker(
+    eligibleWorkers: readonly RegisteredWorkerView[],
+    evaluations: readonly DispatchWorkerEvaluation[],
+  ): RegisteredWorkerView {
+    const acceptedEvaluations = new Map(
+      evaluations
+        .filter((evaluation) => evaluation.accepted)
+        .map((evaluation) => [evaluation.workerId, evaluation] as const),
+    );
+    return [...eligibleWorkers].sort((left, right) => {
+      const leftEvaluation = acceptedEvaluations.get(left.workerId);
+      const rightEvaluation = acceptedEvaluations.get(right.workerId);
+      const leftScore = leftEvaluation?.dispatchScore ?? Number.NEGATIVE_INFINITY;
+      const rightScore = rightEvaluation?.dispatchScore ?? Number.NEGATIVE_INFINITY;
+      if (rightScore !== leftScore) {
+        return rightScore - leftScore;
+      }
+
+      if (right.availableSlots !== left.availableSlots) {
+        return right.availableSlots - left.availableSlots;
+      }
+
+      const leftActiveLeaseCount = leftEvaluation?.activeLeaseCount ?? left.activeLeaseCount;
+      const rightActiveLeaseCount = rightEvaluation?.activeLeaseCount ?? right.activeLeaseCount;
+      if ((leftActiveLeaseCount ?? 0) !== (rightActiveLeaseCount ?? 0)) {
+        return (leftActiveLeaseCount ?? 0) - (rightActiveLeaseCount ?? 0);
+      }
+
+      const leftRunningExecutionCount =
+        leftEvaluation?.runningExecutionCount ?? (Array.isArray(left.runningExecutionIds) ? left.runningExecutionIds.length : 0);
+      const rightRunningExecutionCount =
+        rightEvaluation?.runningExecutionCount ?? (Array.isArray(right.runningExecutionIds) ? right.runningExecutionIds.length : 0);
+      if (leftRunningExecutionCount !== rightRunningExecutionCount) {
+        return leftRunningExecutionCount - rightRunningExecutionCount;
+      }
+
+      const leftToolBacklogCount = leftEvaluation?.toolBacklogCount ?? left.toolBacklogCount;
+      const rightToolBacklogCount = rightEvaluation?.toolBacklogCount ?? right.toolBacklogCount;
+      if ((leftToolBacklogCount ?? 0) !== (rightToolBacklogCount ?? 0)) {
+        return (leftToolBacklogCount ?? 0) - (rightToolBacklogCount ?? 0);
+      }
+
+      return left.workerId.localeCompare(right.workerId);
+    })[0]!;
   }
 
   private toWorkerEvaluation(

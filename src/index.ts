@@ -17,11 +17,12 @@ import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js
 import {
   buildPlatformArchitectureBootstrapSummary,
   assertStartupOrderEnforced,
+  getPlatformArchitectureServices,
   type PlatformPlane,
   type StartupOrderViolation,
 } from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
-import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
+import type { PlatformAppKind, PlatformStartupTargetKind, PlatformRootEntryMode } from "./platform-architecture-types.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 

@@ -7,6 +7,8 @@ import {
   X1_FABRIC_BOOTSTRAP_SERVICE_ID,
   buildX1FabricBootstrap,
   registerFivePlaneRuntimeCatalog,
+  performBootstrapHealthCheck,
+  type BootstrapHealthCheck,
 } from "../../../src/platform/five-plane-runtime-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 import {
@@ -104,6 +106,61 @@ test("registerFivePlaneRuntimeCatalog registers plane catalogs in the service re
     assert.equal(registry.isInitialized("plane.interface.catalog"), true);
     assert.equal(registry.isInitialized("plane.interface.bootstrap"), true);
     assert.equal(registry.isInitialized(X1_FABRIC_BOOTSTRAP_SERVICE_ID), true);
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("performBootstrapHealthCheck returns healthy status when all services are initialized", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    registerFivePlaneRuntimeCatalog(registry);
+    const health = performBootstrapHealthCheck(registry);
+    assert.equal(health.healthy, true, "health check should be healthy");
+    assert.deepEqual(health.failedServices, [], "no services should have failed");
+    assert.deepEqual(health.errors, [], "no errors should be present");
+    assert.ok(health.checkedAt, "checkedAt should be set");
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("performBootstrapHealthCheck returns correct BootstrapHealthCheck structure", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    registerFivePlaneRuntimeCatalog(registry);
+    const health = performBootstrapHealthCheck(registry);
+    assert.ok("healthy" in health, "health check should have healthy property");
+    assert.ok("failedServices" in health, "health check should have failedServices property");
+    assert.ok("errors" in health, "health check should have errors property");
+    assert.ok("checkedAt" in health, "health check should have checkedAt property");
+    assert.equal(typeof health.healthy, "boolean", "healthy should be boolean");
+    assert.ok(Array.isArray(health.failedServices), "failedServices should be an array");
+    assert.ok(Array.isArray(health.errors), "errors should be an array");
+    assert.equal(typeof health.checkedAt, "string", "checkedAt should be a string");
+  } finally {
+    await registry.reset();
+  }
+});
+
+test("performBootstrapHealthCheck includes all five plane bootstrap services", async () => {
+  const registry = ServiceRegistry.getInstance();
+  try {
+    registerFivePlaneRuntimeCatalog(registry);
+    const health = performBootstrapHealthCheck(registry);
+    const expectedServices = [
+      "plane.interface.bootstrap",
+      "plane.control.bootstrap",
+      "plane.orchestration.bootstrap",
+      "plane.execution.bootstrap",
+      "plane.state-evidence.bootstrap",
+    ];
+    for (const serviceId of expectedServices) {
+      assert.ok(
+        !health.failedServices.includes(serviceId),
+        `${serviceId} should not be in failedServices`,
+      );
+    }
   } finally {
     await registry.reset();
   }

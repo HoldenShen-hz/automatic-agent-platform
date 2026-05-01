@@ -7,6 +7,16 @@ import type {
 import { BudgetAllocator } from "../../platform/execution/budget-allocator.js";
 import type { Goal, PlannedTask, TaskDependency } from "./index.js";
 
+// Default budget allocator context settings for goal decomposition
+const DEFAULT_BUDGET_CONTEXT = {
+  tier: "step" as const,
+  tierLimit: 100,
+  watermarkAlert: { warningThreshold: 0.7, criticalThreshold: 0.9, hardCapThreshold: 1.0 },
+  autoThrottle: { enabled: false, throttleRatio: 0.5, recoveryRatio: 0.1 },
+  crossRunPriority: { priority: 0, weightFactor: 1.0 },
+  streamingSettle: { enabled: false, tokenInterval: 1000, timeIntervalMs: 5000 },
+};
+
 export interface LlmPlan {
   readonly tasks: readonly PlannedTask[];
   readonly dependencyGraph: readonly TaskDependency[];

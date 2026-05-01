@@ -45,6 +45,12 @@ function createMockStore(): AuthoritativeTaskStore {
       getAgentExecutionRecord: () => null,
       upsertAgentExecutionRecord: () => {},
       getActiveExecutionLease: () => null,
+      getExecutionLease: () => null,
+      getLatestFencingToken: () => 0,
+      insertExecutionLease: () => {},
+      insertLeaseAudit: () => {},
+      closeExecutionLease: () => {},
+      renewExecutionLease: () => {},
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
       getWorker: () => null,
@@ -259,9 +265,9 @@ test("dispatchNext creates HealthService once when no backpressureSnapshot provi
   const service = new ExecutionDispatchService(db, store, null); // No backpressureSnapshot
 
   // First dispatchNext call
-  const result1 = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result1 = service.dispatchNext({ leaseTtlMs: 30_000 });
   // Second dispatchNext call with different time should use cached health service
-  const result2 = service.dispatchNext({ leaseTtlMs: 60000, occurredAt: "2025-01-02T00:00:00.000Z" });
+  const result2 = service.dispatchNext({ leaseTtlMs: 30_000, occurredAt: "2025-01-02T00:00:00.000Z" });
 
   // Both should return same outcome pattern (worker selected or not)
   // The key is that HealthService is cached, not that results are the same
@@ -292,9 +298,9 @@ test("dispatchNext reuses cached HealthService across multiple calls", () => {
   const service = new ExecutionDispatchService(db, store, null);
 
   // Make multiple dispatchNext calls - HealthService should be cached
-  service.dispatchNext({ leaseTtlMs: 60000 });
-  service.dispatchNext({ leaseTtlMs: 60000 });
-  service.dispatchNext({ leaseTtlMs: 60000 });
+  service.dispatchNext({ leaseTtlMs: 30_000 });
+  service.dispatchNext({ leaseTtlMs: 30_000 });
+  service.dispatchNext({ leaseTtlMs: 30_000 });
 
   // If we get here without error, the caching works
   assert.ok(true);
@@ -341,7 +347,7 @@ test("dispatchNext uses provided backpressureSnapshot instead of creating Health
   const db = createMockDb();
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   assert.ok(backpressureCalled, "Provided backpressureSnapshot should be called");
   assert.ok(result.outcome !== undefined);
@@ -389,8 +395,8 @@ test("dispatchNext does not cache HealthService when backpressureSnapshot is pro
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
   // Multiple calls should all go to the provided backpressureSnapshot
-  service.dispatchNext({ leaseTtlMs: 60000 });
-  service.dispatchNext({ leaseTtlMs: 60000 });
+  service.dispatchNext({ leaseTtlMs: 30_000 });
+  service.dispatchNext({ leaseTtlMs: 30_000 });
 
   // backpressureSnapshot should be called multiple times (not cached)
   assert.equal(callCount, 2);
@@ -406,7 +412,7 @@ test("HealthService is not created when backpressureSnapshot returns null", () =
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
   // Should return no_ticket without creating HealthService
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   assert.equal(result.outcome, "no_ticket");
 });
@@ -434,9 +440,9 @@ test("dispatchNext with different occurredAt values uses same cached HealthServi
   const service = new ExecutionDispatchService(db, store, null);
 
   // Different occurredAt values should still use cached HealthService
-  const result1 = service.dispatchNext({ leaseTtlMs: 60000, occurredAt: "2025-01-01T00:00:00.000Z" });
-  const result2 = service.dispatchNext({ leaseTtlMs: 60000, occurredAt: "2025-01-02T00:00:00.000Z" });
-  const result3 = service.dispatchNext({ leaseTtlMs: 60000, occurredAt: "2025-01-03T00:00:00.000Z" });
+  const result1 = service.dispatchNext({ leaseTtlMs: 30_000, occurredAt: "2025-01-01T00:00:00.000Z" });
+  const result2 = service.dispatchNext({ leaseTtlMs: 30_000, occurredAt: "2025-01-02T00:00:00.000Z" });
+  const result3 = service.dispatchNext({ leaseTtlMs: 30_000, occurredAt: "2025-01-03T00:00:00.000Z" });
 
   // All calls should complete without error (caching works)
   assert.ok(result1.outcome !== undefined);

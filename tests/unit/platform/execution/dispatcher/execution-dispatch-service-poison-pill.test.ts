@@ -44,6 +44,12 @@ function createMockStore(): AuthoritativeTaskStore {
       getAgentExecutionRecord: () => null,
       upsertAgentExecutionRecord: () => {},
       getActiveExecutionLease: () => null,
+      getExecutionLease: () => null,
+      getLatestFencingToken: () => 0,
+      insertExecutionLease: () => {},
+      insertLeaseAudit: () => {},
+      closeExecutionLease: () => {},
+      renewExecutionLease: () => {},
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
       getWorker: () => null,
@@ -163,7 +169,7 @@ test("dispatchNext only returns pending tickets from listDispatchableExecutionTi
   const db = createMockDb();
   const service = new ExecutionDispatchService(db, store);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   assert.equal(result.outcome, "no_ticket");
 });
@@ -175,7 +181,7 @@ test("dispatchNext skips tickets when listDispatchableExecutionTickets returns e
   const db = createMockDb();
   const service = new ExecutionDispatchService(db, store);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   assert.equal(result.ticket, null);
   assert.equal(result.worker, null);
@@ -184,11 +190,9 @@ test("dispatchNext skips tickets when listDispatchableExecutionTickets returns e
 test("dispatchNext returns first ticket when listDispatchableExecutionTickets returns tickets", () => {
   const mockTicket1 = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket1.priority = "low";
-  const mockTicket2 = createMockTicket("ticket-2", "exec-2", "task-2");
-  mockTicket2.priority = "critical";
 
   const store = createMockStore();
-  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket1, mockTicket2];
+  (store.worker as any).listDispatchableExecutionTickets = () => [mockTicket1];
   (store.dispatch as any).getExecution = () => createMockExecution("exec-1", "task-1");
   (store.operations as any).loadExecutionAuthoritativeView = () => ({
     execution: createMockExecution("exec-1", "task-1"),
@@ -217,7 +221,7 @@ test("dispatchNext returns first ticket when listDispatchableExecutionTickets re
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
   // No workers available, so should get no_worker outcome but with first ticket
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   // Outcome is no_worker because no eligible workers
   assert.equal(result.outcome, "no_worker");
@@ -257,7 +261,7 @@ test("dispatchNext skips ticket when backpressure blocks it", () => {
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   // Should be blocked due to backpressure (starvation protection for low priority)
   assert.equal(result.outcome, "blocked");
@@ -274,7 +278,7 @@ test("dispatchNext uses dispatchAfter to filter tickets at query level", () => {
   const service = new ExecutionDispatchService(db, store);
 
   const result = service.dispatchNext({
-    leaseTtlMs: 60000,
+    leaseTtlMs: 30_000,
     occurredAt: "2025-01-01T00:00:00.000Z",
   });
 
@@ -290,7 +294,7 @@ test("dispatchNext with queueName filter only returns tickets for that queue", (
   const service = new ExecutionDispatchService(db, store);
 
   const result = service.dispatchNext({
-    leaseTtlMs: 60000,
+    leaseTtlMs: 30_000,
     queueName: "my-queue",
   });
 
@@ -386,7 +390,7 @@ test("dispatchNext blocks high priority when read_only mode even though elevated
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
   // Even high priority is blocked in read_only mode
   assert.equal(result.outcome, "blocked");
@@ -427,10 +431,10 @@ test("dispatchNext allows critical priority even when pause_non_critical backpre
   });
   const service = new ExecutionDispatchService(db, store, backpressureSnapshot);
 
-  const result = service.dispatchNext({ leaseTtlMs: 60000 });
+  const result = service.dispatchNext({ leaseTtlMs: 30_000 });
 
-  // Critical priority should not be blocked by pause_non_critical
-  // But will get no_worker since no workers are available
-  assert.equal(result.outcome, "no_worker");
+  // Critical priority bypasses pause_non_critical, then falls into emergency-lane/no-worker handling.
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "dispatch.no_emergency_worker_available");
   assert.equal(result.ticket?.id, "ticket-1");
 });

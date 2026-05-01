@@ -41,6 +41,12 @@ function createMockStore(): AuthoritativeTaskStore {
       getAgentExecutionRecord: () => null,
       upsertAgentExecutionRecord: () => {},
       getActiveExecutionLease: () => null,
+      getExecutionLease: () => null,
+      getLatestFencingToken: () => 0,
+      insertExecutionLease: () => {},
+      insertLeaseAudit: () => {},
+      closeExecutionLease: () => {},
+      renewExecutionLease: () => {},
       listExecutionTicketsByStatuses: () => [],
       listWorkers: () => [],
       getWorker: () => null,
@@ -66,7 +72,7 @@ test("ExecutionDispatchService.createTicket throws when execution not found", (t
   const service = new ExecutionDispatchService(mockDb, mockStore);
   assert.throws(
     () => service.createTicket({ executionId: "non-existent" }),
-    /storage\.execution_not_found/,
+    (error) => error instanceof Error && "code" in error && error.code === "storage.execution_not_found",
   );
 });
 
@@ -149,15 +155,16 @@ test("ExecutionDispatchService.dispatchNext blocked by backpressure", (t) => {
     execution: { id: "exec-1", taskId: "task-1", traceId: "trace-1" },
     task: { id: "task-1", priority: "normal" as const },
   });
+  mockStore.dispatch.getExecution = () => ({ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 1 });
 
   const service = new ExecutionDispatchService(
     mockDb,
     mockStore,
     () => ({
-      globalBackpressureScore: 1.0,
-      nodeBackpressureScores: [],
-      reasonCode: "backpressure_high",
-      isGlobalBlocked: true,
+      status: "overloaded",
+      degradationMode: "queue_only",
+      queueGovernance: { starvationDetected: false },
+      findings: [],
     }),
   );
   const result = service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000 });
@@ -190,13 +197,33 @@ test("ExecutionDispatchService.evaluateWorkersForTicket filters workers by capab
     execution: { id: "exec-cap", taskId: "task-cap", traceId: "trace-cap" },
     task: { id: "task-cap", priority: "normal" as const },
   });
+  mockStore.dispatch.getExecution = () => ({ id: "exec-cap", taskId: "task-cap", traceId: "trace-cap", attempt: 1 });
+  mockStore.worker.getExecutionTicket = () => ({
+    id: "ticket-cap",
+    executionId: "exec-cap",
+    taskId: "task-cap",
+    priority: "normal" as const,
+    queueName: "default",
+    dispatchTarget: "any" as const,
+    requiredIsolationLevel: "standard" as const,
+    requiredRepoVersion: null,
+    requiredCapabilitiesJson: JSON.stringify(["python", "bash"]),
+    dispatchAfter: null,
+    attempt: 1,
+    status: "claimed" as const,
+    assignedWorkerId: "w2",
+    leaseId: "lease-1",
+    claimedAt: "2026-05-01T00:00:00.000Z",
+    consumedAt: null,
+    invalidatedAt: null,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+  });
 
   const service = new ExecutionDispatchService(mockDb, mockStore);
-  service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000, preferredWorkerId: null });
-
-  // w1 rejected for missing_capabilities, w2 accepted
-  const events = mockStore.event.insertEvent.mockcalls ?? [];
-  assert.ok(events.length > 0);
+  const result = service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000, preferredWorkerId: null });
+  assert.equal(result.outcome, "dispatched");
+  assert.equal(result.worker?.workerId, "w2");
 });
 
 test("ExecutionDispatchService.dispatchNext applies worker placement filter", (t) => {
@@ -223,6 +250,20 @@ test("ExecutionDispatchService.dispatchNext applies worker placement filter", (t
   mockStore.operations.loadExecutionAuthoritativeView = () => ({
     execution: { id: "exec-placement", taskId: "task-placement", traceId: "trace-placement" },
     task: { id: "task-placement", priority: "normal" as const },
+  });
+  mockStore.dispatch.getExecution = () => ({ id: "exec-placement", taskId: "task-placement", traceId: "trace-placement", attempt: 1 });
+  mockStore.worker.getExecutionTicket = () => ({
+    ...ticket,
+    dispatchAfter: null,
+    attempt: 1,
+    status: "claimed" as const,
+    assignedWorkerId: "w-local",
+    leaseId: "lease-local",
+    claimedAt: "2026-05-01T00:00:00.000Z",
+    consumedAt: null,
+    invalidatedAt: null,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
   });
 
   const service = new ExecutionDispatchService(mockDb, mockStore);
@@ -265,7 +306,7 @@ test("ExecutionDispatchService: lease is acquired atomically with ticket claim (
   const trackedDb = {
     transaction: (fn: () => void) => {
       transactionCount++;
-      fn();
+      return fn();
     },
   } as unknown as AuthoritativeSqlDatabase;
 
@@ -289,8 +330,22 @@ test("ExecutionDispatchService: lease is acquired atomically with ticket claim (
     execution: { id: "exec-lease-test", taskId: "task-lease-test", traceId: "trace-lease-test" },
     task: { id: "task-lease-test", priority: "normal" as const },
   });
+  mockStore.dispatch.getExecution = () => ({ id: "exec-lease-test", taskId: "task-lease-test", traceId: "trace-lease-test", attempt: 1 });
   mockStore.worker.getActiveExecutionLease = () => null;
   mockStore.worker.getWorkerSnapshot = () => null;
+  mockStore.worker.getExecutionTicket = () => ({
+    ...ticket,
+    dispatchAfter: null,
+    attempt: 1,
+    status: "claimed" as const,
+    assignedWorkerId: "w-lease-test",
+    leaseId: "lease-test",
+    claimedAt: "2026-05-01T00:00:00.000Z",
+    consumedAt: null,
+    invalidatedAt: null,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+  });
 
   const service = new ExecutionDispatchService(trackedDb, mockStore);
   const result = service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000 });
@@ -356,15 +411,31 @@ test("ExecutionDispatchService: activeLeaseCount should reflect actual count (is
     toolBacklogCount: 0,
     cpuPct: 0,
     repoVersion: null,
-    lastProgressAt: nowIso(),
+    lastProgressAt: "2026-05-01T00:00:00.000Z",
     currentStepId: null,
-    updatedAt: nowIso(),
+    lastHeartbeatAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+    version: 1,
   });
   mockStore.operations.loadExecutionAuthoritativeView = () => ({
     execution: { id: "exec-alc-test", taskId: "task-alc-test", traceId: "trace-alc-test" },
     task: { id: "task-alc-test", priority: "normal" as const },
   });
+  mockStore.dispatch.getExecution = () => ({ id: "exec-alc-test", taskId: "task-alc-test", traceId: "trace-alc-test", attempt: 1 });
   mockStore.worker.getActiveExecutionLease = () => null;
+  mockStore.worker.getExecutionTicket = () => ({
+    ...ticket,
+    dispatchAfter: null,
+    attempt: 1,
+    status: "claimed" as const,
+    assignedWorkerId: "w-alc-test",
+    leaseId: "lease-alc",
+    claimedAt: "2026-05-01T00:00:00.000Z",
+    consumedAt: null,
+    invalidatedAt: null,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+  });
 
   const service = new ExecutionDispatchService(mockDb, mockStore);
   service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000 });
@@ -502,8 +573,22 @@ test("ExecutionDispatchService: spawnDepth affects dispatch decision", () => {
     execution: { id: "exec-spawn", taskId: "task-spawn", traceId: "trace-spawn" },
     task: { id: "task-spawn", priority: "normal" as const },
   });
+  mockStore.dispatch.getExecution = () => ({ id: "exec-spawn", taskId: "task-spawn", traceId: "trace-spawn", attempt: 1 });
   mockStore.worker.getActiveExecutionLease = () => null;
   mockStore.worker.getWorkerSnapshot = () => null;
+  mockStore.worker.getExecutionTicket = () => ({
+    ...ticket,
+    dispatchAfter: null,
+    attempt: 1,
+    status: "claimed" as const,
+    assignedWorkerId: "w-spawn",
+    leaseId: "lease-spawn",
+    claimedAt: "2026-05-01T00:00:00.000Z",
+    consumedAt: null,
+    invalidatedAt: null,
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+  });
 
   const service = new ExecutionDispatchService(mockDb, mockStore);
   const result = service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000 });
