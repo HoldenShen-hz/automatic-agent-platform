@@ -130,7 +130,7 @@ test("canPublisherReleaseArtifact returns false when artifactType is not in allo
   assert.equal(canPublisherReleaseArtifact(profile, "integration"), false);
 });
 
-test("canPublisherReleaseArtifact returns false when reputationScore < 0.4", () => {
+test("canPublisherReleaseArtifact returns false for sandboxed publishers even with low reputation", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Low Reputation Publisher",
@@ -144,7 +144,7 @@ test("canPublisherReleaseArtifact returns false when reputationScore < 0.4", () 
   assert.equal(canPublisherReleaseArtifact(profile, "workflow"), false);
 });
 
-test("canPublisherReleaseArtifact returns true when reputationScore is exactly 0.4", () => {
+test("canPublisherReleaseArtifact returns false for sandboxed publishers at the old 0.4 threshold", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Borderline Publisher",
@@ -154,10 +154,10 @@ test("canPublisherReleaseArtifact returns true when reputationScore is exactly 0
     publishedArtifactCount: 5,
   };
 
-  assert.equal(canPublisherReleaseArtifact(profile, "tool"), true);
+  assert.equal(canPublisherReleaseArtifact(profile, "tool"), false);
 });
 
-test("canPublisherReleaseArtifact returns true when reputationScore is 0.41", () => {
+test("canPublisherReleaseArtifact returns false for sandboxed publishers above the old 0.4 threshold", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Just Above Publisher",
@@ -167,7 +167,7 @@ test("canPublisherReleaseArtifact returns true when reputationScore is 0.41", ()
     publishedArtifactCount: 5,
   };
 
-  assert.equal(canPublisherReleaseArtifact(profile, "tool"), true);
+  assert.equal(canPublisherReleaseArtifact(profile, "tool"), false);
 });
 
 test("canPublisherReleaseArtifact works with empty allowedArtifactTypes", () => {

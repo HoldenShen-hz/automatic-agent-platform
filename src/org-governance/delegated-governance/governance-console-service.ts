@@ -29,6 +29,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
   GovernanceDelegationSchema,
   type GovernanceDelegation,
+  type GovernanceDelegationLevel,
   type GovernancePermission,
 } from "./delegation-registry/index.js";
 import {
