@@ -16,12 +16,15 @@ const DomainRecipeArchetypeSchemaInternal = z.enum([
 ]);
 
 export const DomainLifecycleStateSchema = z.enum([
+  "draft",
   "validating",
   "certified",
   "canary",
   "active",
   "deprecated",
   "retired",
+  "archived",
+  "updating",
 ]);
 
 export const DomainPlanningModeSchema = z.enum(["llm_assisted", "deterministic_only"]);
