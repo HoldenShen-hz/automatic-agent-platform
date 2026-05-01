@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { TenantScopeFilter } from "../../../../../src/platform/interface/channel-gateway/index.js";
-import type { TaskProjectionScope, PrincipalScope } from "../../../../../src/platform/interface/channel-gateway/index.js";
+import { TenantScopeFilter } from "../../../../../src/platform/interface/channel-gateway/tenant-scope-filter.js";
+import type { TaskProjectionScope, PrincipalScope } from "../../../../../src/platform/interface/channel-gateway/tenant-scope-filter.js";
 
 test("TenantScopeFilter allows principal with matching tenant", () => {
   const taskScope: TaskProjectionScope = { taskId: "task-1", tenantId: "tenant-A" };
