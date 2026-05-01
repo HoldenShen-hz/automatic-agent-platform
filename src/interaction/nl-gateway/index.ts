@@ -1256,7 +1256,7 @@ export class NlEntryService implements NlEntryPort {
     );
 
     return {
-      requestEnvelope: requestEnvelope ?? undefined,
+      requestEnvelope: requestEnvelope ?? null,
       riskPreview,
       costEstimate,
       dryRunPreview: dryRunPreview ?? undefined,
