@@ -131,6 +131,7 @@ interface DomainPresenterPlugin {
   readonly domainId: string;
 
   // 格式化输出
+  // §R11-61: 必须使用 NodeAttemptReceipt（不是废弃的 DualChannelStepOutput）
   present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>;
 
   // 生命周期（canonical hook 名称）
@@ -157,6 +158,8 @@ interface PresentedOutput {
 `NodeAttemptReceipt` 必须携带：`harnessRunId`、`planGraphBundleId`、`graphVersion`、`nodeRunId`、`nodeAttemptId`、`status`、`outputRef?`、`evidenceRefs[]`。
 
 **废弃警告**：`DualChannelStepOutput` 已被废弃，不得作为 Plugin 边界类型传递。必须使用 `NodeAttemptReceipt` 作为 present() 的唯一输入类型。
+
+**R11-61 FIX**: `DomainPresenterPlugin.present()` 方法签名已确认使用 `NodeAttemptReceipt`（不是废弃的 `DualChannelStepOutput`）。
 
 ## 3. ExternalAdapterPlugin（8 种适配类型）
 

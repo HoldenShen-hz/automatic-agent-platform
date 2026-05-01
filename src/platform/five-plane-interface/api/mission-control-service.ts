@@ -144,8 +144,10 @@ export interface StabilityPanelView {
 
 export interface AdminTakeoverConsoleView {
   generatedAt: string;
+  // R7-33/R7-34 fix: scope uses harness_run_id/node_run_id instead of legacy taskId
   scope: {
-    taskId: string;
+    harnessRunId: string;
+    nodeRunId: string | null;
     divisionId: string | null;
     workspaceId: string | null;
     tenantId: string | null;
@@ -167,6 +169,12 @@ export interface AdminTakeoverConsoleView {
   billingAccounts: BillingAccountPreview[];
   inspect: ReturnType<InspectService["getTaskInspectView"]>;
   timeline: ReturnType<TaskTimelineService["buildTaskTimeline"]>;
+  // R7-33 fix: canonical override/retry/skip operations (replaces legacy retry_step/skip_step/override_step_output)
+  overrideActions: {
+    retryNodeRun: (nodeRunId: string) => Promise<void>;
+    skipNodeRun: (nodeRunId: string) => Promise<void>;
+    overrideNodeOutput: (nodeRunId: string, output: unknown) => Promise<void>;
+  };
 }
 
 export interface MissionControlServiceOptions {
@@ -323,25 +331,33 @@ export class MissionControlService {
     }
 
     // Build UI spec presentation shape from inspect data
+    // R7-32 fix: canonical PlanGraph/DAG model replaces legacy linear steps/current_step_index
     const workflowState = inspect.workflowState;
     const statusLabel = this.deriveStatusLabel(inspect.task.taskStatus);
     const progressPercent = this.deriveProgressPercent(workflowState);
-    const activeStep = this.deriveActiveStep(workflowState);
     const elapsedTimeMs = this.deriveElapsedTimeMs(inspect.task.createdAtIso);
     const estimatedRemainingMs = this.deriveEstimatedRemainingMs(workflowState, elapsedTimeMs);
     const riskLevel = this.deriveRiskLevel(inspect);
     const recentEvents = this.deriveRecentEvents(inspect);
     const keyMetrics = this.deriveKeyMetrics(inspect);
 
+    // Build planGraph nodes/edges from workflowState (R7-32 fix: DAG replaces linear steps)
+    const planGraphNodes = this.buildPlanGraphNodes(inspect);
+    const planGraphEdges = this.buildPlanGraphEdges(inspect);
+    const activeNodeRunId = this.deriveActiveNodeRunId(inspect, planGraphNodes);
+    const nodeRuns = this.deriveNodeRuns(inspect, planGraphNodes);
+
     return {
       generatedAt: new Date().toISOString(),
       summary,
       presentation: {
-        taskId,
+        harnessRunId: String(inspect.task.id ?? taskId),
         taskTitle: inspect.task.title ?? `Task ${taskId}`,
         statusLabel,
         progressPercent,
-        activeStep,
+        planGraph: { nodes: planGraphNodes, edges: planGraphEdges },
+        nodeRuns,
+        activeNodeRunId,
         elapsedTimeMs,
         estimatedRemainingMs,
         riskLevel,
@@ -351,6 +367,72 @@ export class MissionControlService {
       inspect,
       timeline: this.timelineService.buildTaskTimeline(taskId),
     };
+  }
+
+  private buildPlanGraphNodes(inspect: ReturnType<InspectService["getTaskInspectView"]>): ReadonlyArray<{ nodeId: string; status: string; label: string }> {
+    // Build nodes from workflowState or use a default single-node representation
+    const ws = inspect.workflowState as Record<string, unknown> | null;
+    if (!ws) return [];
+    const nodeArray = ws.nodes as ReadonlyArray<Record<string, unknown>> | undefined;
+    if (!Array.isArray(nodeArray)) {
+      // Fallback: create single node from task
+      return [{
+        nodeId: String(inspect.task.id ?? ""),
+        status: inspect.task.taskStatus ?? "pending",
+        label: "Root",
+      }];
+    }
+    return nodeArray.map((n) => ({
+      nodeId: String(n.nodeId ?? n.id ?? ""),
+      status: String(n.status ?? "pending"),
+      label: String(n.label ?? n.nodeId ?? ""),
+    }));
+  }
+
+  private buildPlanGraphEdges(inspect: ReturnType<InspectService["getTaskInspectView"]>): ReadonlyArray<{ fromNodeId: string; toNodeId: string }> {
+    const ws = inspect.workflowState as Record<string, unknown> | null;
+    if (!ws) return [];
+    const edgeArray = ws.edges as ReadonlyArray<Record<string, unknown>> | undefined;
+    if (!Array.isArray(edgeArray)) return [];
+    return edgeArray.map((e) => ({
+      fromNodeId: String(e.from ?? e.fromNodeId ?? ""),
+      toNodeId: String(e.to ?? e.toNodeId ?? ""),
+    }));
+  }
+
+  private deriveActiveNodeRunId(
+    inspect: ReturnType<InspectService["getTaskInspectView"]>,
+    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
+  ): string | null {
+    // Find first non-terminal node as active
+    const active = nodes.find((n) => n.status === "in_progress" || n.status === "pending");
+    return active?.nodeId ?? null;
+  }
+
+  private deriveNodeRuns(
+    inspect: ReturnType<InspectService["getTaskInspectView"]>,
+    nodes: ReadonlyArray<{ nodeId: string; status: string; label: string }>,
+  ): ReadonlyArray<{
+    nodeRunId: string;
+    nodeId: string;
+    status: string;
+    attempts: number;
+    startedAt: string | null;
+    completedAt: string | null;
+  }> {
+    // Map nodes to NodeRun-shaped objects with attempt info from inspect
+    const executions = inspect.executions ?? [];
+    return nodes.map((node, idx) => {
+      const exec = executions[idx];
+      return {
+        nodeRunId: `noderun_${node.nodeId}`,
+        nodeId: node.nodeId,
+        status: node.status,
+        attempts: exec?.attempt ?? 1,
+        startedAt: exec?.startedAt ?? null,
+        completedAt: exec?.completedAt ?? null,
+      };
+    });
   }
 
   private deriveStatusLabel(taskStatus: string | undefined): string {

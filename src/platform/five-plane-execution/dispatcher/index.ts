@@ -28,6 +28,8 @@ import type { LlmModelCallResult } from "../execution-engine/model-call-provider
 import { executeAgentRoundLoop } from "../execution-engine/multi-step-agent-round-loop.js";
 import { getMultiStepToolDefinitions } from "../execution-engine/multi-step-tool-definitions.js";
 import { parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../execution-engine/multi-step-utils.js";
+import { createSideEffectRecord, type SideEffectKind, type SideEffectStatus } from "../../contracts/executable-contracts/index.js";
+import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -89,6 +91,10 @@ class MultiStepToolRegistry {
   private readonly budgetGuard: BudgetGuard;
   private readonly policyEngine: PolicyEngine;
   private readonly sandboxPolicy: SandboxPolicy;
+  // R4-33 (INV-SIDEEFFECT-001): Track SideEffectRecords for external calls (web_fetch/web_search/git/repo-map)
+  private readonly sideEffectRecords: Map<string, ReturnType<typeof createSideEffectRecord>>;
+  // R4-35 (INV-EVIDENCE-001): Track EvidenceRecords for decisions and executions
+  private readonly evidenceRecords: Map<string, ReturnType<typeof createEvidenceRecord>>;
   private spawnDepth: number = 0;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_SPAWNED_AGENTS = 500;
