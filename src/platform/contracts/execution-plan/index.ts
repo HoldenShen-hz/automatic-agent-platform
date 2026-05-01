@@ -1,16 +1,8 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
+import type { PlanGraphBundle } from "../executable-contracts/index.js";
 
-// Runtime warning for imports from legacy contract path
-console.warn(
-  "[DEPRECATED] ExecutionPlan/ExecutionPlanStep from execution-plan/ are deprecated. " +
-  "Use PlanGraphBundle from src/platform/contracts/executable-contracts instead. " +
-  "See: https://docs.example.com/platform/contracts#execution-plan-migration",
-);
-
-// =============================================================================
-// Re-export canonical PlanGraphBundle from executable-contracts
-// =============================================================================
+// Re-export canonical PlanGraphBundle from executable-contracts for backward compatibility
 export {
   type PlanGraphBundle,
   type PlanGraph,

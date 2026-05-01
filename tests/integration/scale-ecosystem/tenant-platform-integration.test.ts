@@ -108,6 +108,7 @@ test("integration: create organization with billing account", () => {
   const service = new TenantPlatformService(db, store);
 
   const org = service.createOrganization({
+    ownerId: "owner_enterprise_001",
     displayName: "Enterprise Corp",
     billingAccountId: "bill_acct_001",
   });
@@ -124,6 +125,7 @@ test("integration: create organization without billing account", () => {
   const service = new TenantPlatformService(db, store);
 
   const org = service.createOrganization({
+    ownerId: "owner_startup_001",
     displayName: "Startup Inc",
   });
 
@@ -133,21 +135,18 @@ test("integration: create organization without billing account", () => {
 
 test("integration: add organization membership", () => {
   const mock = createMockStore();
-  mock.organizations.set("org_001", {
-    organizationId: "org_001",
-    displayName: "Test Org",
-    billingAccountId: null,
-    defaultTenantId: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  });
-
   const store = createMockTaskStore(mock);
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
+  const organization = service.createOrganization({
+    organizationId: "org_001",
+    ownerId: "owner_org_001",
+    displayName: "Test Org",
+  });
 
   const membership = service.addOrganizationMembership({
-    organizationId: "org_001",
+    organizationId: organization.organizationId,
+    callerUserId: "owner_org_001",
     userId: "user_001",
     role: "admin",
   });
@@ -213,22 +212,19 @@ test("integration: create workspace adds owner as member", () => {
 
 test("integration: add workspace membership", () => {
   const mock = createMockStore();
-  mock.workspaces.set("ws_001", {
+  const store = createMockTaskStore(mock);
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+  const workspace = service.createWorkspace({
     workspaceId: "ws_001",
     ownerId: "owner_x",
     displayName: "Test WS",
     planId: "plan_basic",
-    organizationId: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
   });
 
-  const store = createMockTaskStore(mock);
-  const db = createMockDb();
-  const service = new TenantPlatformService(db, store);
-
   const membership = service.addWorkspaceMembership({
-    workspaceId: "ws_001",
+    workspaceId: workspace.workspaceId,
+    callerUserId: "owner_x",
     userId: "developer_001",
     role: "developer",
   });
@@ -790,6 +786,7 @@ test("integration: reject non-existent billing account", () => {
 
   assert.throws(() => {
     service.createOrganization({
+      ownerId: "owner_bad_billing",
       displayName: "Bad Billing Org",
       billingAccountId: "nonexistent_billing",
     });

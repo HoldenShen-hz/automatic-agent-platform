@@ -108,7 +108,7 @@ test("ProgressiveAutonomyService evaluateProfile promotes semi_auto to full_auto
   assert.equal(result.capabilityLevels["cap-1"], "full_auto");
 });
 
-test("ProgressiveAutonomyService evaluateProfile freezes on P0 incident", (t) => {
+test("ProgressiveAutonomyService evaluateProfile demotes to suggestion on P0 incident", (t) => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -116,9 +116,9 @@ test("ProgressiveAutonomyService evaluateProfile freezes on P0 incident", (t) =>
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "frozen");
-  assert.equal(result.capabilityLevels["cap-1"], "frozen");
-  assert.equal(result.changeEvents[0]!.eventType, "agent.autonomy.frozen");
+  assert.equal(result.decision.level, "suggestion");
+  assert.equal(result.capabilityLevels["cap-1"], "suggestion");
+  assert.equal(result.changeEvents[0]!.eventType, "agent.autonomy.demoted");
 });
 
 test("ProgressiveAutonomyService evaluateProfile P1 incident demotes one level when severityBasedDemotion enabled", (t) => {

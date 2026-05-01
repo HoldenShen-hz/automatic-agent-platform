@@ -170,7 +170,7 @@ test("AutonomyGovernanceService evaluateProfile maps trust level correctly", () 
   assert.ok(snapshot.overallTrustLevel === "trusted" || snapshot.overallTrustLevel === "fully_trusted");
 });
 
-test("AutonomyGovernanceService evaluateCapability with P1 incident does not auto-demote", () => {
+test("AutonomyGovernanceService evaluateCapability demotes P1 incidents by one level", () => {
   const service = new AutonomyGovernanceService();
   const score = makeScore({
     capabilityId: "deploy",
@@ -185,8 +185,28 @@ test("AutonomyGovernanceService evaluateCapability with P1 incident does not aut
 
   const decision = service.evaluateCapability("agent_1", score);
 
-  // Calculate: 295/300*100=98.33 - 20%*(2/300)=0.13 - 1*15=15 + 6 volume = 89
   assert.equal(decision.capabilityId, "deploy");
   assert.equal(decision.trustScore, 89);
   assert.equal(decision.trustLevel, "trusted");
+  assert.equal(decision.recommendedLevel, "supervised");
+  assert.deepEqual(decision.reasonCodes, ["autonomy.promotion_blocked_by_p1_incident"]);
+});
+
+test("AutonomyGovernanceService evaluateCapability demotes P0 incidents to suggestion regardless of trust score", () => {
+  const service = new AutonomyGovernanceService();
+  const score = makeScore({
+    capabilityId: "deploy",
+    currentAutonomy: "full_auto",
+    totalExecutions: 600,
+    successfulExecutions: 596,
+    failedExecutions: 1,
+    humanOverrides: 0,
+    incidents: 1,
+    lastIncidentSeverity: "P0",
+  });
+
+  const decision = service.evaluateCapability("agent_1", score);
+
+  assert.equal(decision.recommendedLevel, "suggestion");
+  assert.deepEqual(decision.reasonCodes, ["autonomy.promotion_blocked_by_p0_incident"]);
 });

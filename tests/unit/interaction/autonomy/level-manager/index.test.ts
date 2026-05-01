@@ -9,18 +9,19 @@ import {
 import type { AutonomyLevel } from "../../../../../src/interaction/autonomy/index.js";
 
 test("AUTONOMY_LEVEL_ORDER contains all five levels", () => {
-  assert.deepEqual(AUTONOMY_LEVEL_ORDER, ["suggestion", "supervised", "semi_auto", "full_auto", "frozen"]);
+  assert.deepEqual(AUTONOMY_LEVEL_ORDER, ["frozen", "suggestion", "supervised", "semi_auto", "full_auto"]);
 });
 
 test("compareAutonomyLevels returns negative when left is lower", () => {
+  assert.ok(compareAutonomyLevels("frozen", "suggestion") < 0);
   assert.ok(compareAutonomyLevels("suggestion", "supervised") < 0);
   assert.ok(compareAutonomyLevels("supervised", "semi_auto") < 0);
   assert.ok(compareAutonomyLevels("semi_auto", "full_auto") < 0);
-  assert.ok(compareAutonomyLevels("full_auto", "frozen") < 0);
 });
 
 test("compareAutonomyLevels returns positive when left is higher", () => {
-  assert.ok(compareAutonomyLevels("frozen", "full_auto") > 0);
+  assert.ok(compareAutonomyLevels("suggestion", "frozen") > 0);
+  assert.ok(compareAutonomyLevels("full_auto", "frozen") > 0);
   assert.ok(compareAutonomyLevels("full_auto", "semi_auto") > 0);
   assert.ok(compareAutonomyLevels("semi_auto", "supervised") > 0);
   assert.ok(compareAutonomyLevels("supervised", "suggestion") > 0);
@@ -33,8 +34,8 @@ test("compareAutonomyLevels returns 0 for same level", () => {
 });
 
 test("compareAutonomyLevels handles frozen specially", () => {
-  assert.ok(compareAutonomyLevels("frozen", "suggestion") > 0);
-  assert.ok(compareAutonomyLevels("suggestion", "frozen") < 0);
+  assert.ok(compareAutonomyLevels("frozen", "suggestion") < 0);
+  assert.ok(compareAutonomyLevels("suggestion", "frozen") > 0);
 });
 
 test("nextAutonomyLevel advances suggestion to supervised", () => {
@@ -49,8 +50,8 @@ test("nextAutonomyLevel advances semi_auto to full_auto", () => {
   assert.equal(nextAutonomyLevel("semi_auto"), "full_auto");
 });
 
-test("nextAutonomyLevel keeps frozen at frozen", () => {
-  assert.equal(nextAutonomyLevel("frozen"), "frozen");
+test("nextAutonomyLevel recovers frozen to suggestion", () => {
+  assert.equal(nextAutonomyLevel("frozen"), "suggestion");
 });
 
 test("nextAutonomyLevel does not exceed full_auto", () => {
@@ -58,11 +59,10 @@ test("nextAutonomyLevel does not exceed full_auto", () => {
 });
 
 test("nextAutonomyLevel order is consistent with AUTONOMY_LEVEL_ORDER", () => {
-  // The AUTONOMY_LEVEL_ORDER is ["suggestion", "supervised", "semi_auto", "full_auto", "frozen"]
-  // but nextAutonomyLevel caps at "full_auto" (index 3), not "frozen" (index 4)
+  // Frozen is the lowest level and recovery re-enters the progression at suggestion.
+  assert.equal(nextAutonomyLevel("frozen"), "suggestion");
   assert.equal(nextAutonomyLevel("suggestion"), "supervised");
   assert.equal(nextAutonomyLevel("supervised"), "semi_auto");
   assert.equal(nextAutonomyLevel("semi_auto"), "full_auto");
-  assert.equal(nextAutonomyLevel("full_auto"), "full_auto"); // capped, not frozen
-  assert.equal(nextAutonomyLevel("frozen"), "frozen"); // frozen stays frozen
+  assert.equal(nextAutonomyLevel("full_auto"), "full_auto");
 });

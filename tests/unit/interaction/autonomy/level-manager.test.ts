@@ -22,13 +22,13 @@ test("compareAutonomyLevels returns zero for equal levels", () => {
 });
 
 test("compareAutonomyLevels handles frozen level", () => {
-  assert.ok(compareAutonomyLevels("frozen", "suggestion") > 0);
-  assert.ok(compareAutonomyLevels("frozen", "full_auto") > 0);
+  assert.ok(compareAutonomyLevels("frozen", "suggestion") < 0);
+  assert.ok(compareAutonomyLevels("frozen", "full_auto") < 0);
   assert.equal(compareAutonomyLevels("frozen", "frozen"), 0);
 });
 
-test("nextAutonomyLevel returns frozen for frozen input", () => {
-  assert.equal(nextAutonomyLevel("frozen"), "frozen");
+test("nextAutonomyLevel returns suggestion for frozen input", () => {
+  assert.equal(nextAutonomyLevel("frozen"), "suggestion");
 });
 
 test("nextAutonomyLevel suggestion goes to supervised", () => {
@@ -49,6 +49,6 @@ test("nextAutonomyLevel full_auto goes to full_auto (capped)", () => {
 });
 
 test("nextAutonomyLevel handles frozen as last element", () => {
-  // Frozen should stay frozen
-  assert.equal(nextAutonomyLevel("frozen"), "frozen");
+  // Frozen is the lowest level; recovery re-enters at suggestion.
+  assert.equal(nextAutonomyLevel("frozen"), "suggestion");
 });

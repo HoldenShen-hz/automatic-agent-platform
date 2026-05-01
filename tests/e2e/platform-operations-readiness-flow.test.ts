@@ -100,6 +100,7 @@ test("E2E: platform operator exports execution-plane readiness with topology and
 
     const organization = tenantPlatform.createOrganization({
       organizationId: "org-operator-e2e",
+      ownerId: "owner-operator-e2e",
       displayName: "Operator Org",
     });
     const workspace = tenantPlatform.createWorkspace({
@@ -277,6 +278,7 @@ test("E2E: compliance and HA program exports summarize tenant residency and HA r
 
     const organization = tenantPlatform.createOrganization({
       organizationId: "org-compliance-ha-e2e",
+      ownerId: "owner-compliance-ha-e2e",
       displayName: "Compliance HA Org",
     });
     const workspace = tenantPlatform.createWorkspace({

@@ -58,6 +58,7 @@ export function loadTenantPlatformCliEnv(env: NodeJS.ProcessEnv = process.env): 
     dbPath: requiredEnv(env, "AA_DB_PATH"),
     action: optionalEnumValue(env, "AA_TENANT_ACTION", TENANT_ACTIONS) ?? "topology",
     ownerId: optionalEnv(env, "AA_OWNER_ID"),
+    callerUserId: optionalEnv(env, "AA_CALLER_USER_ID"),
     displayName: optionalEnv(env, "AA_DISPLAY_NAME"),
     planId: optionalEnv(env, "AA_PLAN_ID"),
     workspaceId: optionalEnv(env, "AA_WORKSPACE_ID"),

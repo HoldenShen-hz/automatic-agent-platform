@@ -93,6 +93,29 @@ test("ProgressiveAutonomyService freezes on incident when freezeOnIncident is tr
   assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.frozen");
 });
 
+test("ProgressiveAutonomyService demotes P0 incidents to suggestion instead of frozen", () => {
+  const service = new ProgressiveAutonomyService();
+  const evaluation = service.evaluateProfile(makeProfile({
+    capabilityScores: [
+      {
+        capabilityId: "deploy",
+        currentAutonomy: "full_auto",
+        trustScore: 90,
+        totalExecutions: 600,
+        successfulExecutions: 594,
+        failedExecutions: 1,
+        humanOverrides: 0,
+        incidents: 1,
+        lastIncidentAgeDays: 1,
+        lastIncidentSeverity: "P0",
+      },
+    ],
+  }), { freezeOnIncident: true, severityBasedDemotion: true, windowDays: 30 });
+
+  assert.equal(evaluation.decision.level, "suggestion");
+  assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.demoted");
+});
+
 test("ProgressiveAutonomyService preserves frozen state under P1 severity-based demotion", () => {
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile({

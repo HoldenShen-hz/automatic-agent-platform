@@ -24,10 +24,12 @@ test("data plane movement jobs fail-close across tenant boundaries", () => {
   try {
     const orgA = harness.tenantPlatform.createOrganization({
       organizationId: "org-a",
+      ownerId: "owner-a",
       displayName: "Org A",
     });
     const orgB = harness.tenantPlatform.createOrganization({
       organizationId: "org-b",
+      ownerId: "owner-b",
       displayName: "Org B",
     });
     const tenantA = harness.tenantPlatform.createTenant({

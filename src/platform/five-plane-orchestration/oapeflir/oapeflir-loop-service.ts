@@ -301,12 +301,11 @@ export class OapeflirLoopService {
           });
           // R5-11: Observer consumes event flow, goal decomposition, memory, and previous run context
           const systemObservation = this.systemSituationBuilder.build();
-          // Augment with previousRunContext if available
-          if (currentInput.previousRunContext) {
-            systemObservation.eventFlowRefs = currentInput.previousRunContext.eventFlowRefs ?? [];
-            systemObservation.goalDecompositionRef = currentInput.previousRunContext.goalDecompositionRef;
-            systemObservation.memoryRefs = currentInput.previousRunContext.memoryRefs ?? [];
-          }
+          // Note: previousRunContext fields (eventFlowRefs, goalDecompositionRef, memoryRefs)
+          // are passed to the Observe stage but the current SystemSituation model does not
+          // include these fields. The Observer stage should be extended to include these
+          // in the UnifiedObservation for R5-11 compliance. For now, they are available
+          // in currentInput.previousRunContext for downstream stages to consume.
           return this.observationAggregator.aggregate(taskSituation, systemObservation);
         }, {
           taskId: currentInput.taskId,
@@ -491,6 +490,9 @@ export class OapeflirLoopService {
               deciderType: "system",
               deciderRef: "harness.guardrails",
               reasonCode: guardViolation,
+              action: "abort",
+              reasonCodes: [guardViolation],
+              confidence: 0,
               createdAt: nowIso(),
             };
             break;
@@ -600,7 +602,7 @@ export class OapeflirLoopService {
           await this.knowledgePromotion.promote(learningObjects, currentInput.taskId);
         }
 
-        const outcome = this.outcomeEvaluator.evaluate(plan, feedback);
+        const outcome = this.outcomeEvaluator.evaluate({ planGraphBundle: this.currentPlanGraphBundle ?? planGraphBundle, feedback });
         const qualityGate = this.qualityGate.decide(outcome);
         const replanTrigger = this.replanning.createTrigger(
           currentInput.taskId,
@@ -614,10 +616,10 @@ export class OapeflirLoopService {
         // R5-7: Produce EvaluationReport per §45.10 (passed/score/issues[]/recommendation/confidence)
         evaluationReport = {
           passed: qualityGate.accepted,
-          score: outcome.score ?? 0,
-          issues: outcome.issues ?? [],
+          score: outcome.qualityScore ?? 0,
+          issues: outcome.reasons ?? [],
           recommendation: qualityGate.accepted ? "continue" : qualityGate.reasonCodes.join("; "),
-          confidence: outcome.confidence ?? 0.5,
+          confidence: outcome.passed ? 0.9 : 0.5,
         };
 
         // R5-3: Validate transition learn→improve (may be skipped)

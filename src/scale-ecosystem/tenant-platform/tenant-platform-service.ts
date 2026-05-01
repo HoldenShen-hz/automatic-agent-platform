@@ -89,6 +89,8 @@ export interface CreateWorkspaceInput {
 export interface AddWorkspaceMembershipInput {
   /** Workspace to add membership to */
   workspaceId: string;
+  /** Authenticated caller issuing the request */
+  callerUserId: string;
   /** User ID to add */
   userId: string;
   /** Role identifier for this membership */
@@ -101,6 +103,8 @@ export interface AddWorkspaceMembershipInput {
 export interface CreateOrganizationInput {
   /** Optional organization ID (auto-generated if not provided) */
   organizationId?: string;
+  /** Owner user ID used to bootstrap authoritative membership */
+  ownerId: string;
   /** Human-readable display name */
   displayName: string;
   /** Optional billing account binding */
@@ -115,6 +119,8 @@ export interface CreateOrganizationInput {
 export interface AddOrganizationMembershipInput {
   /** Organization to add membership to */
   organizationId: string;
+  /** Authenticated caller issuing the request */
+  callerUserId: string;
   /** User ID to add */
   userId: string;
   /** Role identifier for this membership */
@@ -320,17 +326,15 @@ export class TenantPlatformService {
   public addWorkspaceMembership(input: AddWorkspaceMembershipInput): WorkspaceMembershipRecord {
     return this.db.transaction(() => {
       const workspace = this.requireWorkspace(input.workspaceId);
-      // Root cause: No caller permission check - any user can add members to any workspace
-      // Fix: Require caller to be a member of the workspace with appropriate role
-      // For now, require caller to be the workspace owner or have admin role
-      // In production, caller context should be injected via context parameter
-      const callerWorkspaceMemberships = this.store.organization.listWorkspaceMemberships(workspace.workspaceId);
-      const callerMembership = callerWorkspaceMemberships.find((m) => m.userId === workspace.ownerId);
+      const callerUserId = assertIdentifier(input.callerUserId, "tenant.invalid_caller_user_id");
+      const callerMembership = this.store.organization
+        .listWorkspaceMemberships(workspace.workspaceId)
+        .find((membership) => membership.userId === callerUserId);
       if (!callerMembership || !["owner", "admin"].includes(callerMembership.role)) {
         throw new ValidationError("tenant.add_membership_not_authorized", "Caller must be workspace owner or admin to add members", {
           category: "tenant",
           source: "runtime",
-          details: { workspaceId: workspace.workspaceId },
+          details: { workspaceId: workspace.workspaceId, callerUserId },
         });
       }
       const membership: WorkspaceMembershipRecord = {
@@ -357,6 +361,8 @@ export class TenantPlatformService {
   public createOrganization(input: CreateOrganizationInput): OrganizationRecord {
     return this.db.transaction(() => {
       const createdAt = input.createdAt ?? nowIso();
+      const organizationId = assertIdentifier(input.organizationId ?? newId("org"), "tenant.invalid_organization_id");
+      const ownerId = assertIdentifier(input.ownerId, "tenant.invalid_owner_id");
 
       // Validate billing account exists if provided
       if (input.billingAccountId) {
@@ -378,12 +384,11 @@ export class TenantPlatformService {
       // Fix: Use the actual organizationId being created (either provided or auto-generated)
       if (input.defaultTenantId) {
         const tenant = this.requireTenant(input.defaultTenantId);
-        const newOrgId = input.organizationId ?? newId("org");
-        if (tenant.organizationId !== newOrgId) {
+        if (tenant.organizationId !== organizationId) {
           throw new TenantBoundaryError("tenant.default_tenant_mismatch", "tenant.default_tenant_mismatch", {
             details: {
               defaultTenantId: input.defaultTenantId,
-              organizationId: newOrgId,
+              organizationId,
               tenantOrganizationId: tenant.organizationId,
             },
           });
@@ -391,7 +396,7 @@ export class TenantPlatformService {
       }
 
       const organization: OrganizationRecord = {
-        organizationId: assertIdentifier(input.organizationId ?? newId("org"), "tenant.invalid_organization_id"),
+        organizationId,
         displayName: assertNonEmpty(input.displayName, "tenant.invalid_organization_display_name"),
         billingAccountId: input.billingAccountId ? assertIdentifier(input.billingAccountId, "tenant.invalid_billing_account_id") : null,
         defaultTenantId: input.defaultTenantId ? assertIdentifier(input.defaultTenantId, "tenant.invalid_default_tenant_id") : null,
@@ -399,6 +404,12 @@ export class TenantPlatformService {
         updatedAt: createdAt,
       };
       this.store.organization.upsertOrganizationRecord(organization);
+      this.store.organization.upsertOrganizationMembershipRecord({
+        organizationId,
+        userId: ownerId,
+        role: "owner",
+        joinedAt: createdAt,
+      });
       return organization;
     });
   }
@@ -413,29 +424,29 @@ export class TenantPlatformService {
   public addOrganizationMembership(input: AddOrganizationMembershipInput): OrganizationMembershipRecord {
     return this.db.transaction(() => {
       const organization = this.requireOrganization(input.organizationId);
-      // Root cause: No authorization check - any user can add themselves as admin
-      // Fix: Require caller to be an org member with admin role to add new members
-      const callerMemberships = this.store.organization.listOrganizationMemberships(organization.organizationId);
-      const callerMembership = callerMemberships.find((m) => m.userId === organization.ownerId);
+      const callerUserId = assertIdentifier(input.callerUserId, "tenant.invalid_caller_user_id");
+      const callerMembership = this.store.organization
+        .listOrganizationMemberships(organization.organizationId)
+        .find((membership) => membership.userId === callerUserId);
       if (!callerMembership || !["owner", "admin"].includes(callerMembership.role)) {
         throw new ValidationError("tenant.add_membership_not_authorized", "Caller must be organization owner or admin to add members", {
           category: "tenant",
           source: "runtime",
-          details: { organizationId: organization.organizationId },
+          details: { organizationId: organization.organizationId, callerUserId },
         });
       }
-      // Security: Prevent self-adding admin role without proper authorization
-      if (input.role === "admin") {
-        throw new ValidationError("tenant.cannot_add_admin_role", "Admin role cannot be directly assigned without proper authorization", {
+      const targetRole = assertIdentifier(input.role, "tenant.invalid_organization_role");
+      if (targetRole === "owner" && callerMembership.role !== "owner") {
+        throw new ValidationError("tenant.owner_role_requires_owner_caller", "Only an organization owner can assign the owner role", {
           category: "tenant",
           source: "runtime",
-          details: { organizationId: organization.organizationId },
+          details: { organizationId: organization.organizationId, callerUserId },
         });
       }
       const membership: OrganizationMembershipRecord = {
         organizationId: assertIdentifier(input.organizationId, "tenant.invalid_organization_id"),
         userId: assertIdentifier(input.userId, "tenant.invalid_user_id"),
-        role: assertIdentifier(input.role, "tenant.invalid_organization_role"),
+        role: targetRole,
         joinedAt: input.joinedAt ?? nowIso(),
       };
       this.store.organization.upsertOrganizationMembershipRecord(membership);

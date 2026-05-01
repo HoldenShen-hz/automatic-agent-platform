@@ -50,6 +50,20 @@ export type CanonicalContractName = (typeof CANONICAL_CONTRACT_NAMES)[number];
 //   - execution-receipt/ ExecutionReceipt -> use NodeAttemptReceipt from executable-contracts
 //   - request-envelope/ RequestEnvelope -> use RequestEnvelope from executable-contracts
 //   - state-command/ StateCommand -> use inter-plane commands (EventAppendCommand, etc.) from executable-contracts
+
+// Re-export canonical directives from control-directive/ for R6-14/R6-18 fix
+// OperationalDirective and DecisionDirective are canonical P2→P3/P4 directives per §4.3
+// These were defined in control-directive/ but tests expect them from executable-contracts
+export {
+  type OperationalDirectiveType,
+  type OperationalDirectiveScope,
+  type OperationalDirective,
+  type DecisionDirectiveType,
+  type DecisionDirectiveScope,
+  type DecisionDirective,
+  createOperationalDirective,
+  createDecisionDirective,
+} from "../control-directive/index.js";
 export const LEGACY_CONTRACT_NAMES = [
   "ExecutionPlan",
   "ExecutionReceipt",

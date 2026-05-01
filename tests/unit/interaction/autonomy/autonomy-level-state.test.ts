@@ -157,9 +157,9 @@ test("supervised requires 50+ executions at 95%+ success", () => {
   assert.equal(result.decision.level, "supervised");
 });
 
-// ============ P0 Freeze Behavior Tests ============
+// ============ P0 Suggestion-Demotion Behavior Tests ============
 
-test("P0 incident immediately freezes agent", () => {
+test("P0 incident immediately demotes agent to suggestion", () => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -173,10 +173,10 @@ test("P0 incident immediately freezes agent", () => {
     ],
   });
   const result = service.evaluateProfile(profile, { freezeOnIncident: true });
-  assert.equal(result.decision.level, "frozen");
+  assert.equal(result.decision.level, "suggestion");
 });
 
-test("P0 incident freezes regardless of current autonomy level", () => {
+test("P0 incident demotes to suggestion regardless of current autonomy level", () => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -190,7 +190,7 @@ test("P0 incident freezes regardless of current autonomy level", () => {
     ],
   });
   const result = service.evaluateProfile(profile, { freezeOnIncident: true });
-  assert.equal(result.decision.level, "frozen");
+  assert.equal(result.decision.level, "suggestion");
 });
 
 // ============ P1 Severity-Based Demotion Tests ============
