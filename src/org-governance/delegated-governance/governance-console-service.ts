@@ -126,7 +126,7 @@ export class SelfServiceGovernanceConsole {
       delegationId: newId("del"),
       grantorId: request.grantorId,
       granteeId: request.granteeId,
-      level: (request as { level?: string }).level ?? "view",
+      level: ((request as { level?: string }).level ?? "view") as GovernanceDelegationLevel,
       delegatable: (request as { delegatable?: boolean }).delegatable ?? false,
       orgNodeIds: request.orgNodeIds,
       domainIds: request.domainIds,

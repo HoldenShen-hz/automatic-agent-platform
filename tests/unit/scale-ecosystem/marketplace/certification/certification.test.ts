@@ -295,3 +295,68 @@ test("CertificationGate checkPackCertification allows approved pack with all gat
 
   assert.equal(result.allowed, true);
 });
+
+test("CertificationGate checkPackCertification blocks approved pack without approvedAt", () => {
+  const cert: PackCertification = {
+    certificationId: "cert_010",
+    packId: "pack_004",
+    version: "1.0.0",
+    status: "approved",
+    securityScan: {
+      scanId: "scan_005",
+      passed: true,
+      findings: [],
+      scannedAt: "2026-04-01T00:00:00.000Z",
+      expiresAt: "2027-04-01T00:00:00.000Z",
+    },
+    evaluationResult: null,
+    sbomRef: {
+      sbomId: "sbom_005",
+      uri: "https://example.com/sbom.json",
+      hash: "mno345",
+      format: "spdx",
+      version: "1.0",
+      createdAt: "2026-04-01T00:00:00.000Z",
+    },
+    sandboxCertification: {
+      sandboxId: "sandbox_002",
+      passed: true,
+      sandboxType: "isolated",
+      capabilitiesVerified: ["net_isolation"],
+      isolationLevel: "high",
+      testedAt: "2026-04-01T00:00:00.000Z",
+      expiresAt: "2027-04-01T00:00:00.000Z",
+    },
+    compatibilityTest: {
+      testId: "test_002",
+      passed: true,
+      apiContract: "v1",
+      permissionSurface: "minimal",
+      runtimeCapability: "standard",
+      testResults: [],
+      testedAt: "2026-04-01T00:00:00.000Z",
+      expiresAt: "2027-04-01T00:00:00.000Z",
+    },
+    egressPolicyReview: {
+      reviewId: "review_002",
+      passed: true,
+      allowedEgressEndpoints: ["https://api.example.com"],
+      blockedEgressEndpoints: [],
+      reviewNotes: "All clear",
+      reviewedAt: "2026-04-01T00:00:00.000Z",
+      expiresAt: "2027-04-01T00:00:00.000Z",
+    },
+    trustLevel: "community",
+    approvedAt: null,
+    revokedAt: null,
+    expiresAt: null,
+    approvedBy: "admin",
+    notes: "",
+  };
+
+  const gate = new CertificationGate();
+  const result = gate.checkPackCertification(cert);
+
+  assert.equal(result.allowed, false);
+  assert.ok(result.blockedBy.includes("certification_invalid"));
+});
