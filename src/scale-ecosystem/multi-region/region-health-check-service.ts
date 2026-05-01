@@ -362,7 +362,10 @@ export class RegionHealthCheckService {
     const regionId = [...this.healthResults.entries()]
       .find(([, result]) =>
         result.metrics.length === metrics.length &&
-        result.metrics.every((m, i) => m.metricName === metrics[i].metricName && m.value === metrics[i].value)
+        result.metrics.every((m, i) => {
+          const other = metrics[i];
+          return other !== undefined && m.metricName === other.metricName && m.value === other.value;
+        })
       )?.[0];
     const config = regionId == null ? null : this.configs.get(regionId);
     // §187-2193: Fixed - was checking `latencyMs === config.thresholds.maxLatencyMs`
