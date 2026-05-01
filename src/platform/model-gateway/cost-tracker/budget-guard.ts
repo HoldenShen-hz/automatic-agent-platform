@@ -257,6 +257,17 @@ export class BudgetGuard {
       resourceKind: input.resourceKind ?? "token",
       expiresAt: input.expiresAt ?? new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       expectedVersion: ledger.version,
+      context: {
+        tenantId: input.tenantId,
+        traceId: input.traceId,
+        emittedBy: input.emittedBy,
+        tier: "task",
+        tierLimit: input.policy.maxTaskCostUsd,
+        watermarkAlert: { warnAtRatio: input.policy.warnAtRatio, criticalAtRatio: 1 },
+        autoThrottle: { enabled: false, throttleRatio: 1, releaseRatio: 0 },
+        crossRunPriority: { enabled: false, sameTenantBoost: 0, sharedTenantPenalty: 0, globalPenalty: 0 },
+        streamingSettle: { enabled: false, chunkBudgetRatio: 0, maxOpenReservations: 0 },
+      },
     });
 
     return {

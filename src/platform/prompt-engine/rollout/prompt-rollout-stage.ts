@@ -44,12 +44,7 @@ export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRollout
  * Quality gate thresholds for automatic rollback per §16.3.
  * If error rate exceeds these thresholds at a canary stage, auto-rollback occurs.
  */
-export const QUALITY_GATE_THRESHOLDS: {
-  readonly "canary(5%)": { readonly maxErrorRate: number; readonly minPassthrough: number };
-  readonly "canary(20%)": { readonly maxErrorRate: number; readonly minPassthrough: number };
-  readonly stable: { readonly maxErrorRate: number; readonly minPassthrough: number };
-  readonly rolled_back: null;
-} = {
+export const QUALITY_GATE_THRESHOLDS: Partial<Record<PromptRolloutStage, { readonly maxErrorRate: number; readonly minPassthrough: number } | null>> = {
   "canary(5%)": {
     maxErrorRate: 0.05,  // 5% error rate threshold for 5% canary
     minPassthrough: 0.95,

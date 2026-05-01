@@ -17,7 +17,7 @@ export class PostExecutionQualityGate {
   }): PostExecutionQualityGateDecision {
     // §21.5: Hard gate - if critical cases exist and not all passed, block release
     if (context?.criticalCaseCount != null && context.criticalCaseCount > 0) {
-      const criticalPassRate = context.criticalCasePassedCount / context.criticalCaseCount;
+      const criticalPassRate = (context.criticalCasePassedCount ?? 0) / context.criticalCaseCount;
       if (criticalPassRate < 1) {
         return {
           accepted: false,

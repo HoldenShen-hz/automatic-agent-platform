@@ -466,7 +466,6 @@ test("requestApproval throws when critical risk with approve timeout without bre
       createTestRequest({
         riskLevel: "critical",
         timeoutPolicy: "approve",
-        breakGlassApproved: undefined,
       }),
     ),
     /hitl_approval\.critical_timeout_auto_approve_forbidden/,

@@ -17,7 +17,7 @@ function makeConstraintPack(overrides: Partial<ConstraintPack> = {}): Constraint
   return {
     policyIds: [],
     approvalMode: "none",
-    autonomyMode: "full_auto",
+    autonomyMode: "semi_auto",
     toolPolicy: { allowedTools: ["read_file", "write_file"] },
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
@@ -388,10 +388,11 @@ test("HarnessRuntimeService.createRun sets loopMetrics with budget constraints",
     }),
   });
 
-  assert.ok(run.loopMetrics !== null);
-  assert.equal(run.loopMetrics.maxIterations, 5);
-  assert.equal(run.loopMetrics.maxCost, 2.0);
-  assert.equal(run.loopMetrics.maxDurationMs, 120000);
+  const metrics = run.loopMetrics;
+  assert.ok(metrics != null);
+  assert.equal(metrics.maxIterations, 5);
+  assert.equal(metrics.maxCost, 2.0);
+  assert.equal(metrics.maxDurationMs, 120000);
 });
 
 test("HarnessRuntimeService.createRun initializes planGraphBundle", () => {

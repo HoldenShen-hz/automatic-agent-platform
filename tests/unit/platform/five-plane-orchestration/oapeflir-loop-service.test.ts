@@ -62,8 +62,8 @@ test("buildSerializedHandoff accepts result with minimal structure", () => {
     4096,
   );
   assert.ok(handoff);
-  assert.equal(handoff.header.fromAgentId, "agent-1");
-  assert.equal(handoff.header.toAgentId, "agent-2");
+  assert.equal(handoff.fromAgentId, "agent-1");
+  assert.equal(handoff.toAgentId, "agent-2");
 });
 
 test("buildSerializedHandoff with empty feedback signals returns empty summary", () => {

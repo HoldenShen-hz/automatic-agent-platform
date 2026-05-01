@@ -13,10 +13,12 @@ import test from "node:test";
 import {
   ContextIsolator,
   IsolationLevel,
-  type AgentContext,
-  type DelegationSpec,
-  type PermissionSet,
 } from "../../../../../src/platform/five-plane-orchestration/agent-delegation/context-isolator.js";
+import type {
+  AgentContext,
+  DelegationSpec,
+  PermissionSet,
+} from "../../../../../src/platform/five-plane-orchestration/agent-delegation/delegation-types.js";
 
 function createParentContext(overrides: Partial<AgentContext> = {}): AgentContext {
   return {

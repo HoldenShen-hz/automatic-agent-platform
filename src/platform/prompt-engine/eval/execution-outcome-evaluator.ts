@@ -104,7 +104,9 @@ export class ExecutionOutcomeEvaluator {
 
   public constructor(options: ExecutionOutcomeEvaluatorOptions = {}) {
     this.config = options.config ?? DEFAULT_QUALITY_GATE_CONFIG;
-    this.domainId = options.domainId;
+    if (options.domainId !== undefined) {
+      this.domainId = options.domainId;
+    }
   }
 
   /**

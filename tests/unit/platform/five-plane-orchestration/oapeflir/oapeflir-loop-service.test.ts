@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import test from "node:test";
 import { MockExecuteBridge } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import type { DualChannelStepOutput } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
 import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
@@ -32,18 +33,26 @@ function makeMinimalPlan(planId: string, taskId: string): Plan {
       {
         stepId: "step_1",
         action: "tool_action",
+        status: "pending",
         inputs: {},
         dependencies: [],
         timeout: 30000,
+        retryPolicy: { maxRetries: 0, backoffMs: 0 },
       },
       {
         stepId: "step_2",
         action: "tool_action_2",
+        status: "pending",
         inputs: {},
         dependencies: ["step_1"],
         timeout: 30000,
+        retryPolicy: { maxRetries: 0, backoffMs: 0 },
       },
     ],
+    nodes: [],
+    edges: [],
+    entryNodeIds: [],
+    graphConstraints: {},
     createdAt: Date.now(),
   };
 }
@@ -53,12 +62,14 @@ function makeStepOutputs(planId: string): DualChannelStepOutput[] {
     {
       stepId: "step_1",
       planRef: planId,
+      status: "succeeded",
       userFacingResult: { summary: "Completed step 1", artifacts: [] },
       systemTelemetry: { durationMs: 100, tokensUsed: 50, modelId: "test-model", retryCount: 0, validationPassed: true },
     },
     {
       stepId: "step_2",
       planRef: planId,
+      status: "succeeded",
       userFacingResult: { summary: "Completed step 2", artifacts: [] },
       systemTelemetry: { durationMs: 200, tokensUsed: 100, modelId: "test-model", retryCount: 0, validationPassed: true },
     },

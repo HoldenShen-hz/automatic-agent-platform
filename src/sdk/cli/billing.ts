@@ -89,11 +89,8 @@ class RedactedString {
  * Any logging, toString(), or JSON serialization will show "[REDACTED]".
  */
 function wrapStripeSecretKey(secretKey: string): { secretKey: string | RedactedString } {
-  // Return an object that the StripeBillingPaymentGateway can use.
-  // The secret key is stored in memory but wrapped to prevent accidental logging.
   return {
-    secretKey: secretKey, // Stripe SDK needs actual string
-    _wrappedSecret: new RedactedString(secretKey), // For internal redaction if needed
+    secretKey: secretKey.length > 0 ? secretKey : new RedactedString(secretKey),
   };
 }
 

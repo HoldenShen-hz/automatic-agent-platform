@@ -193,7 +193,7 @@ export async function performOAuthLogin(config: OAuthPkceConfig): Promise<{
       accessToken: tokens.access_token,
       tokenType: tokens.token_type,
       expiresIn: tokens.expires_in,
-      refreshToken: tokens.refresh_token,
+      ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
     };
   }
 

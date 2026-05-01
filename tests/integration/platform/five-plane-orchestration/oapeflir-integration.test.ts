@@ -11,7 +11,7 @@ function makeConstraintPack(): ConstraintPack {
   return {
     policyIds: [],
     approvalMode: "none",
-    autonomyMode: "full_auto",
+    autonomyMode: "semi_auto",
     toolPolicy: { allowedTools: ["read_file", "write_file"] },
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
@@ -153,10 +153,10 @@ test("integration: ConstraintPack can be created with all required fields", () =
   const pack = makeConstraintPack();
 
   assert.equal(pack.approvalMode, "none");
-  assert.equal(pack.autonomyMode, "full_auto");
+  assert.equal(pack.autonomyMode, "semi_auto");
   assert.ok(Array.isArray(pack.toolPolicy.allowedTools));
-  assert.equal(typeof pack.risk_policy.maxRiskScore, "number");
-  assert.equal(typeof pack.budget.maxSteps, "number");
+  assert.equal(typeof pack.risk_policy?.maxRiskScore, "number");
+  assert.equal(typeof pack.budget?.maxSteps, "number");
 });
 
 test("integration: MockExecuteBridge can be instantiated", () => {

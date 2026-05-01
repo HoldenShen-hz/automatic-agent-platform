@@ -240,7 +240,10 @@ export class DirectoryConventionValidator {
     }
 
     try {
-      const entries = Deno.readDirSync?.(fullPath) ?? require("node:fs").readdirSync(fullPath, { withFileTypes: true });
+      const denoRuntime = globalThis as typeof globalThis & {
+        Deno?: { readDirSync?: (path: string) => Iterable<{ isDirectory(): boolean; name: string }> };
+      };
+      const entries = denoRuntime.Deno?.readDirSync?.(fullPath) ?? require("node:fs").readdirSync(fullPath, { withFileTypes: true });
       if (Array.isArray(entries)) {
         return entries
           .filter((entry: { isDirectory: () => boolean; name: string }) => entry.isDirectory() && !entry.name.startsWith("_") && !entry.name.startsWith("."))

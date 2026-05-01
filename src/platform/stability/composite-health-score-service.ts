@@ -5,7 +5,7 @@
  * combining multiple health indicators into a single 0-100 score.
  */
 
-import { newId, nowIso } from "../../contracts/types/ids.js";
+import { newId, nowIso } from "../contracts/types/ids.js";
 
 /**
  * Health status levels (legacy 4-level for backward compatibility).

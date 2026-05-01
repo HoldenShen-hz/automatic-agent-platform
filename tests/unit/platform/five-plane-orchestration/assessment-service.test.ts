@@ -23,15 +23,6 @@ function makeTaskSituation(overrides: Partial<TaskSituation> = {}): TaskSituatio
   };
 }
 
-test("AssessmentService defaults high-risk tools and division", () => {
-  const service = new AssessmentService();
-  // @ts-ignore - accessing private for testing
-  assert.ok(service.highRiskTools.has("apply_patch"));
-  assert.ok(service.highRiskTools.has("shell"));
-  // @ts-ignore - accessing private for testing
-  assert.equal(service.defaultDivision, "coding");
-});
-
 test("assess returns UnifiedAssessment with correct structure", () => {
   const service = new AssessmentService();
   const situation = makeTaskSituation();
@@ -53,7 +44,7 @@ test("assess returns UnifiedAssessment with correct structure", () => {
 test("assess identifies critical blocker elevates to critical risk", () => {
   const service = new AssessmentService();
   const situation = makeTaskSituation({
-    blockers: [{ severity: "critical", description: "System unavailable", blockedAt: Date.now(), blockingSince: Date.now() - 60000 }],
+    blockers: [{ severity: "critical", description: "System unavailable" }],
   });
   const result = service.assess(situation);
   assert.equal(result.risk, "critical");
@@ -92,7 +83,7 @@ test("assess with ConstraintPack approval mode required", () => {
   const situation = makeTaskSituation();
   const result = service.assess({
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "required", budgetEnvelope: { maxSteps: 5, maxCostUsd: 10 }, autonomyMode: "full" },
+    constraintPack: { policyIds: ["p1"], approvalMode: "required", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } },
   });
   assert.ok(result.riskAssessment.factors.includes("approval_mode_required"));
 });
@@ -102,7 +93,7 @@ test("assess with ConstraintPack supervised mode", () => {
   const situation = makeTaskSituation();
   const result = service.assess({
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "supervised", budgetEnvelope: { maxSteps: 5, maxCostUsd: 10 }, autonomyMode: "full" },
+    constraintPack: { policyIds: ["p1"], approvalMode: "supervised", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } },
   });
   assert.ok(result.riskAssessment.factors.includes("approval_mode_supervised"));
 });
@@ -112,7 +103,7 @@ test("assess with tight budget envelope", () => {
   const situation = makeTaskSituation();
   const result = service.assess({
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 1, maxCostUsd: 0.1 }, autonomyMode: "full" },
+    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 1, maxCost: 0.1, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } },
   });
   assert.ok(result.riskAssessment.factors.includes("tight_budget_envelope"));
 });
@@ -145,12 +136,12 @@ test("assess sets correct executionMode based on risk", () => {
   assert.equal(lowRisk.executionMode, "auto");
 
   const serviceHigh = new AssessmentService();
-  const highBlocker = makeTaskSituation({ blockers: [{ severity: "high", description: "test", blockedAt: Date.now(), blockingSince: Date.now() }] });
+  const highBlocker = makeTaskSituation({ blockers: [{ severity: "high", description: "test" }] });
   const highRisk = serviceHigh.assess(highBlocker);
   assert.ok(highRisk.executionMode === "supervised" || highRisk.executionMode === "auto");
 
   const serviceCritical = new AssessmentService();
-  const criticalSituation = makeTaskSituation({ blockers: [{ severity: "critical", description: "test", blockedAt: Date.now(), blockingSince: Date.now() }] });
+  const criticalSituation = makeTaskSituation({ blockers: [{ severity: "critical", description: "test" }] });
   const criticalRisk = serviceCritical.assess(criticalSituation);
   assert.equal(criticalRisk.executionMode, "manual");
 });
@@ -168,7 +159,7 @@ test("assess sets workflow to multi-step for moderate+ complexity", () => {
   const situation = makeTaskSituation({
     fileRefs: ["a.ts", "b.ts", "c.ts"],
     codebaseSnapshot: { rootPath: ".", fileCount: 30, relevantFiles: [{ path: "a.ts" }, { path: "b.ts" }, { path: "c.ts" }] },
-    blockers: [{ severity: "high", description: "test", blockedAt: Date.now(), blockingSince: Date.now() }],
+    blockers: [{ severity: "high", description: "test" }],
   });
   const result = service.assess(situation);
   assert.equal(result.routingDecision.workflow, "multi-step");
@@ -194,7 +185,7 @@ test("assess complexity scoring - critical with many files and critical blocker"
   const files = Array.from({ length: 50 }, (_, i) => ({ path: `file${i}.ts` }));
   const situation = makeTaskSituation({
     fileRefs: files.map(f => f.path),
-    blockers: [{ severity: "critical", description: "system down", blockedAt: Date.now(), blockingSince: Date.now() }],
+    blockers: [{ severity: "critical", description: "system down" }],
     relevantMemory: Array.from({ length: 30 }, (_, i) => `mem${i}`),
     codebaseSnapshot: { rootPath: ".", fileCount: 100, relevantFiles: files },
   });
@@ -207,7 +198,7 @@ test("assess resource allocation sizes correctly", () => {
   const files = Array.from({ length: 50 }, (_, i) => ({ path: `f${i}.ts` }));
   const critical = makeTaskSituation({
     fileRefs: files.map(f => f.path),
-    blockers: [{ severity: "critical", description: "test", blockedAt: Date.now(), blockingSince: Date.now() }],
+    blockers: [{ severity: "critical", description: "test" }],
     codebaseSnapshot: { rootPath: ".", fileCount: 80, relevantFiles: files },
   });
   const result = service.assess(critical);
@@ -219,7 +210,7 @@ test("assess resource allocation sizes correctly", () => {
 test("assess suggestedActions includes resolve for blockers", () => {
   const service = new AssessmentService();
   const situation = makeTaskSituation({
-    blockers: [{ severity: "high", description: "config missing", blockedAt: Date.now(), blockingSince: Date.now() }],
+    blockers: [{ severity: "high", description: "config missing" }],
   });
   const result = service.assess(situation);
   assert.ok(result.suggestedActions.some(a => a.startsWith("resolve:")));
@@ -228,7 +219,7 @@ test("assess suggestedActions includes resolve for blockers", () => {
 test("assess suggestedActions includes request_approval when required", () => {
   const service = new AssessmentService();
   const situation = makeTaskSituation({
-    blockers: [{ severity: "critical", description: "test", blockedAt: Date.now(), blockingSince: Date.now() }],
+    blockers: [{ severity: "critical", description: "test" }],
   });
   const result = service.assess(situation);
   assert.ok(result.suggestedActions.includes("request_approval"));
@@ -247,12 +238,9 @@ test("assess suggestedActions includes produce_explicit_plan for non-trivial", (
 test("AssessmentService constructor accepts options", () => {
   const service = new AssessmentService({
     highRiskTools: ["custom_tool"],
-    defaultDivision: "data",
   });
   // @ts-ignore - accessing private
   assert.ok(service.highRiskTools.has("custom_tool"));
-  // @ts-ignore - accessing private
-  assert.equal(service.defaultDivision, "data");
 });
 
 test("assess works with AssessmentInput wrapper", () => {
@@ -260,7 +248,7 @@ test("assess works with AssessmentInput wrapper", () => {
   const situation = makeTaskSituation();
   const input = {
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 5, maxCostUsd: 10 }, autonomyMode: "full" as const },
+    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } as const },
   };
   const result = service.assess(input);
   assert.equal(result.taskId, "test-task-001");

@@ -1290,13 +1290,13 @@ export class HarnessRuntimeService {
       const lastNodeRunId = run.nodeRunIds.at(-1);
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
-        requiresHuman: !!(input.requiresHuman || guardrailAssessment.requiresHuman),
-        maxIterationsReached: !!(inputBudget && run.steps.length >= inputBudget.maxSteps),
+        ...(input.requiresHuman || guardrailAssessment.requiresHuman ? { requiresHuman: true } : {}),
+        ...(inputBudget && run.steps.length >= inputBudget.maxSteps ? { maxIterationsReached: true } : {}),
         ...(input.riskScore !== undefined ? { riskScore: input.riskScore } : {}),
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,
         ...(lastNodeRunId !== undefined ? { nodeRunId: lastNodeRunId } : {}),
-        ...(input.producedEvidenceRefs !== undefined ? { evidenceRefs: input.producedEvidenceRefs } : {}),
+        ...(input.producedEvidenceRefs != null ? { evidenceRefs: input.producedEvidenceRefs } : {}),
         deciderRef: "harness.run_loop",
       });
 
