@@ -1,4 +1,4 @@
-import type { TaskStatus, WorkflowStatus } from "../../contracts/types/status.js";
+import type { TaskStatus, WorkflowStatus } from "../../../platform/contracts/types/status.js";
 
 export interface TaskMetricSnapshot {
   readonly total: number;
