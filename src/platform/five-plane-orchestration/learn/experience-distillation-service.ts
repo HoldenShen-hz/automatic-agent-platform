@@ -15,7 +15,7 @@ export class ExperienceDistillationService {
       recommendation: this.buildRecommendation(signal.learningType),
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: signal.generatedAt,
+      createdAt: String(signal.generatedAt),
     }));
   }
 

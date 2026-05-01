@@ -28,7 +28,7 @@ import { openAuthoritativeStorageContext } from "../../state-evidence/truth/stor
 import { HealthService } from "../../shared/observability/health-service.js";
 import { createChildTraceContext, createRootTraceContext, injectTraceContext } from "../../shared/observability/trace-context.js";
 import { ensureMessagePartsJson } from "../../model-gateway/messages/message-parts.js";
-import { IntakeRouter } from "../../orchestration/routing/intake-router.js";
+import { IntakeRouter, type IntakeRouteDecision } from "../../orchestration/routing/intake-router.js";
 import { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
 import { assertWorkflowValid } from "../../orchestration/oapeflir/workflow/workflow-validator.js";
 import { StreamBridge } from "../../interface/channel-gateway/stream-bridge.js";
@@ -171,7 +171,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   initializeToolRegistryWithRepository(runtimeTruthRepository);
 
   let plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
-  let routing: ReturnType<IntakeRouter["route"]>;
+  let routing: IntakeRouteDecision;
   if (isOapeflirPlanRequest(input.request)) {
     const oapeflirSteps = deserializeOapeflirPlan(input.request);
     plannedWorkflow = buildOapeflirPlannedWorkflow(oapeflirSteps, input.title);
@@ -182,10 +182,12 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       routeTrace: ["oapeflir_bridge:bypass"],
       requiresOrchestration: true,
       classification: { intent: "create" as const, confidence: 1.0, continuation: "new_task" as const, matchedRules: [] as string[] },
+      confirmedTaskSpecId: `oapeflir:${plannedWorkflow.workflow.workflowId}`,
     };
   } else {
     const router = new IntakeRouter();
-    routing = router.route({ title: input.title, request: input.request });
+    const routingResult = await router.route({ title: input.title, request: input.request });
+    routing = routingResult;
     const planner = new WorkflowPlanner();
     plannedWorkflow = planner.plan({ workflowId: routing.workflowId, request: input.request });
     assertWorkflowValid(plannedWorkflow.workflow);

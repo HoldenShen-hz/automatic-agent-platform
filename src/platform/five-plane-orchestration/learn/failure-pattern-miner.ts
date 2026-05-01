@@ -62,7 +62,7 @@ export class FailurePatternMiner {
       recommendation: pattern.recommendation,
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: pattern.detectedAt,
+      createdAt: String(pattern.detectedAt),
     };
   }
 
@@ -78,7 +78,7 @@ export class FailurePatternMiner {
       recommendation: "Prefer replanning with narrower scope and stronger validation.",
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: signal.generatedAt,
+      createdAt: String(signal.generatedAt),
     };
   }
 }

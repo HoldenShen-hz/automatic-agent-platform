@@ -21,7 +21,7 @@ import { CallGovernance, type DistributedRateLimiterLike } from "./call-governan
 import { DistributedRateLimiter } from "../../interface/ingress/distributed-rate-limiter.js";
 import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
 import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
-import { BudgetAllocator, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
+import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
 import { createBudgetLedger, type BudgetLedger, type BudgetReservation, reserveBudgetHardCap } from "../../contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
 
@@ -226,9 +226,9 @@ export class ModelCallProviderService {
       messages: request.messages,
       maxTokens: request.maxTokens,
       stream: false,
-      ...(request.traceId !== undefined ? { traceId: request.traceId } : {}),
-      ...(request.tenantId !== undefined ? { tenantId: request.tenantId } : {}),
-      ...(request.costTag !== undefined ? { costTag: request.costTag } : {}),
+      traceId: request.traceId ?? newId("trace"),
+      tenantId: request.tenantId ?? null,
+      costTag: request.costTag ?? "default",
       ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
@@ -257,9 +257,9 @@ export class ModelCallProviderService {
       messages: request.messages,
       maxTokens: request.maxTokens,
       stream: true,
-      ...(request.traceId !== undefined ? { traceId: request.traceId } : {}),
-      ...(request.tenantId !== undefined ? { tenantId: request.tenantId } : {}),
-      ...(request.costTag !== undefined ? { costTag: request.costTag } : {}),
+      traceId: request.traceId ?? newId("trace"),
+      tenantId: request.tenantId ?? null,
+      costTag: request.costTag ?? "default",
       ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
       ...(request.tools !== undefined ? { tools: request.tools } : {}),
     };
@@ -368,8 +368,13 @@ export class ModelCallProviderService {
   private getDefaultBudgetPolicy(): BudgetPolicy {
     return {
       maxTaskCostUsd: 10,
+      maxPackCostUsd: 100,
+      maxPlatformCostUsd: 1000,
       maxDailyCostUsd: 100,
       maxMonthlyCostUsd: 1000,
+      maxModelTokens: 100000,
+      maxSteps: 100,
+      maxDurationMs: 600000,
       warnAtRatio: 0.8,
       mode: "auto",
     };

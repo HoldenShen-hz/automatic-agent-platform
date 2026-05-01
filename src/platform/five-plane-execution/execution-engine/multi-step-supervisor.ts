@@ -31,6 +31,7 @@ import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
+import type { IntakeRouteDecision } from "../../orchestration/routing/intake-router.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
@@ -80,7 +81,7 @@ export interface StepSupervisorContext {
   streamId: string;
   admissionDecision: AdmissionDecision;
   input: MultiStepToolExecutionInput;
-  routing: ReturnType<typeof import("../../orchestration/routing/intake-router.js").IntakeRouter.prototype.route>;
+  routing: IntakeRouteDecision;
   plannedWorkflow: ReturnType<typeof import("../../orchestration/routing/workflow-planner.js").WorkflowPlanner.prototype.plan>;
   validatedPlanGraphBundle: PlanGraphBundle;
   outputs: Record<string, unknown>;

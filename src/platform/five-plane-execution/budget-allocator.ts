@@ -174,7 +174,7 @@ export class BudgetAllocator {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly streamingStates = new Map<string, StreamingSettleState>();
   private readonly throttleState = new Map<string, boolean>(); // runId -> isThrottled
-  private readonly events?: BudgetAllocatorEvents;
+  private readonly events: BudgetAllocatorEvents | undefined;
   private readonly sweeperConfig: SweeperConfig;
 
   public constructor(options: {
@@ -183,7 +183,7 @@ export class BudgetAllocator {
     readonly sweeperConfig?: SweeperConfig;
   } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
-    this.events = options.events !== undefined ? options.events : undefined;
+    this.events = options.events;
     this.sweeperConfig = options.sweeperConfig ?? { enabled: false, scanIntervalMs: 60000, maxReservationsToScan: 100 };
   }
 

@@ -402,7 +402,7 @@ test("RecipeExecutor handles Zod validation error", async () => {
     defaultToolBundleIds: [],
   };
 
-  const result = await executor.execute(invalidRecipe as DomainRecipe, createContext());
+  const result = await executor.execute(invalidRecipe as unknown as DomainRecipe, createContext());
 
   assert.equal(result.success, false);
   assert.ok(result.error !== undefined);

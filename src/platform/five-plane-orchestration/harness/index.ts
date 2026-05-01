@@ -739,7 +739,7 @@ export class HarnessRuntimeService {
       latency: input.latency,
       cost: input.cost,
       error: input.error ?? null,
-      ...(input.nextAction != null ? { nextAction: input.nextAction } : {}),
+      ...(input.nextAction !== null ? { nextAction: input.nextAction } : {}),
     };
     return {
       ...run,
@@ -1287,6 +1287,7 @@ export class HarnessRuntimeService {
       this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
       this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
 
+      const lastNodeRunId = run.nodeRunIds.at(-1);
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
         requiresHuman: (input.requiresHuman === true || guardrailAssessment.requiresHuman) || undefined,
@@ -1294,7 +1295,7 @@ export class HarnessRuntimeService {
         riskScore: input.riskScore,
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         harnessRunId: run.harnessRunId,
-        nodeRunId: run.nodeRunIds.at(-1),
+        ...(lastNodeRunId !== undefined ? { nodeRunId: lastNodeRunId } : {}),
         evidenceRefs: input.producedEvidenceRefs,
         deciderRef: "harness.run_loop",
       });
@@ -1530,8 +1531,21 @@ export class HarnessRuntimeService {
     if (run.completedAt != null) {
       (baseAggregate as { terminalAt?: string }).terminalAt = run.completedAt;
     }
-    const aggregate: CanonicalHarnessRun = baseAggregate;
-    const transitioned = this.stateMachine.transition({
+    const transitionParams: {
+      aggregateType: "HarnessRun";
+      aggregate: CanonicalHarnessRun;
+      fromStatus: typeof run.status;
+      toStatus: typeof toStatus;
+      expectedSeq: number;
+      tenantId: string;
+      traceId: string;
+      reasonCode: string;
+      emittedBy: string;
+      auditRef: string;
+      runVersionLockId?: string;
+      policyGuard?: { allowed: true; policyProofRef: string };
+      budgetPrecondition?: { reservationId: string; hardCapSatisfied: true };
+    } = {
       aggregateType: "HarnessRun",
       aggregate,
       fromStatus: run.status,
@@ -1541,21 +1555,20 @@ export class HarnessRuntimeService {
       traceId: `trace:${run.harnessRunId ?? run.runId}`,
       reasonCode,
       emittedBy: "harness-runtime-service",
-      ...(toStatus === "admitted"
-        ? {
-          runVersionLockId: run.versionLockId ?? `${run.runId}:version_lock`,
-          policyGuard: {
-            allowed: true,
-            policyProofRef: run.constraintPackRef ?? `constraint_pack:${run.domainId}`,
-          },
-          budgetPrecondition: {
-            reservationId: run.budgetLedgerId ?? `${run.runId}:compat_budget_ledger`,
-            hardCapSatisfied: true,
-          },
-        }
-        : {}),
       auditRef: `audit://harness-runs/${run.harnessRunId ?? run.runId}/${reasonCode}`,
-    });
+    };
+    if (toStatus === "admitted") {
+      transitionParams.runVersionLockId = run.versionLockId ?? `${run.runId}:version_lock`;
+      transitionParams.policyGuard = {
+        allowed: true,
+        policyProofRef: run.constraintPackRef ?? `constraint_pack:${run.domainId}`,
+      };
+      transitionParams.budgetPrecondition = {
+        reservationId: run.budgetLedgerId ?? `${run.runId}:compat_budget_ledger`,
+        hardCapSatisfied: true,
+      };
+    }
+    const transitioned = this.stateMachine.transition(transitionParams);
 
     return {
       ...run,

@@ -479,7 +479,7 @@ export function openAuthoritativeStorageContext(
   const storage = openAuthoritativeStorageBackend(options);
   return {
     ...storage,
-    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)),
+    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)) as unknown as AuthoritativeTaskStore,
   };
 }
 
@@ -537,7 +537,7 @@ export async function openAsyncAuthoritativeStorageContext(
     return {
       ...storage,
       sql: shadowSqlite,
-      store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(shadowSqlite)),
+      store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(shadowSqlite)) as unknown as AuthoritativeTaskStore,
       shadowSqlite,
       async migrate(): Promise<void> {
         await storage.migrate();
@@ -550,6 +550,6 @@ export async function openAsyncAuthoritativeStorageContext(
   const storage = await openAsyncAuthoritativeStorageBackend(options);
   return {
     ...storage,
-    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)),
-  } as SqliteAuthoritativeStorageContext;
+    store: decorateAuthoritativeTaskStore(new AuthoritativeTaskStore(storage.sql)) as unknown as AuthoritativeTaskStore,
+  } as unknown as SqliteAuthoritativeStorageContext;
 }

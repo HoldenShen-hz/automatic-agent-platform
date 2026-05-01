@@ -6,18 +6,18 @@
  */
 
 const SECRET_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
-  { pattern: /(?i)(api[_-]?key|apikey|api[_-]?secret|access[_-]?token|auth[_-]?token|bearer[_-]?token|refresh[_-]?token|client[_-]?secret)/, name: "api_key" },
-  { pattern: /(?i)(password|passwd|pwd|secret|passphrase)/, name: "password" },
-  { pattern: /(?i)(private[_-]?key|secret[_-]?key|encryption[_-]?key)/, name: "private_key" },
-  { pattern: /(?i)(database[_-]?credential|db[_-]?credential|connection[_-]?string)/, name: "db_credential" },
+  { pattern: /(api[_-]?key|apikey|api[_-]?secret|access[_-]?token|auth[_-]?token|bearer[_-]?token|refresh[_-]?token|client[_-]?secret)/i, name: "api_key" },
+  { pattern: /(password|passwd|pwd|secret|passphrase)/i, name: "password" },
+  { pattern: /(private[_-]?key|secret[_-]?key|encryption[_-]?key)/i, name: "private_key" },
+  { pattern: /(database[_-]?credential|db[_-]?credential|connection[_-]?string)/i, name: "db_credential" },
   { pattern: /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/, name: "jwt_token" },
-  { pattern: /(?i)(AKIA[0-9A-Z]{16})/, name: "aws_access_key" },
+  { pattern: /(AKIA[0-9A-Z]{16})/i, name: "aws_access_key" },
   { pattern: /[A-Za-z0-9/+=]{40,}/, name: "high_entropy_secret" },
 ];
 
 const PII_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, name: "email" },
-  { pattern: /(?i)(\+?1?[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/, name: "phone" },
+  { pattern: /(\+?1?[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/i, name: "phone" },
   { pattern: /\d{3}[-.\s]?\d{2}[-.\s]?\d{4}/, name: "ssn" },
   { pattern: /\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}/, name: "credit_card" },
   { pattern: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/, name: "ip_address" },
@@ -117,9 +117,7 @@ export class FixtureRedactor {
     if (typeof value === "object") {
       const result: Record<string, unknown> = {};
       const entries = Object.entries(value as Record<string, unknown>);
-      for (let i = 0; i < entries.length; i++) {
-        const key = entries[i][0];
-        const val = entries[i][1];
+      for (const [key, val] of entries) {
         const path = fieldPrefix ? fieldPrefix + "." + key : key;
         if (this.shouldAlwaysRedact(key)) {
           const replacement = this.options.replaceWith;

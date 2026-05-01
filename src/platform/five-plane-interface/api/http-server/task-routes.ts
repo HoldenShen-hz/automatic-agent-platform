@@ -34,6 +34,7 @@ import type { InspectService } from "../../../shared/observability/inspect-servi
 import type { MissionControlService } from "../mission-control-service.js";
 import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/authoritative-task-store.js";
 import { AppError } from "../../../contracts/errors.js";
+import type { TaskStatus } from "../../../contracts/types/status.js";
 import type { IntakeAdmissionService } from "../../orchestration/harness/runtime/intake-admission-service.js";
 import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource } from "../../contracts/executable-contracts/index.js";
 import { createPrincipalRef } from "../../contracts/executable-contracts/index.js";
@@ -336,7 +337,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       divisionId: payload.divisionId,
       tenantId,
       title: payload.title,
-      status: "admitted",
+      status: "pending" as TaskStatus,
       source: payload.source ?? "user",
       priority: payload.priority ?? "normal",
       inputJson: payload.inputJson ?? "{}",
@@ -383,14 +384,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         if (payload.title != null) {
           deps.taskStore.task.updateTaskTitle(taskId, payload.title, now);
         }
-        if (payload.inputJson != null) {
-          deps.taskStore.task.updateTaskInput(taskId, payload.inputJson, existing.normalizedInputJson ?? existing.inputJson, now);
-        }
         if (payload.status != null) {
           deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);
         }
         if (payload.outputJson != null) {
-          deps.taskStore.task.updateTaskOutput(taskId, undefined, payload.outputJson, now);
+          deps.taskStore.task.updateTaskOutput(taskId, existing.status, payload.outputJson, now);
         }
 
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, principal.tenantId ?? undefined);

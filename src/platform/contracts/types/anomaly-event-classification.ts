@@ -1,8 +1,14 @@
 import {
   anomalySeverityToUnifiedSeverity,
   type ObservabilitySeverity,
+  type AlertingSeverity,
+  type RunbookSeverity,
+  type DiagnosticSeverity,
   type UnifiedSeverity,
 } from "./unified-severity.js";
+
+// Re-export severity types for convenience (tests expect them from this module)
+export type { ObservabilitySeverity, AlertingSeverity, RunbookSeverity, DiagnosticSeverity };
 
 export const ANOMALY_EVENT_CLASSES = [
   "E1_BUSINESS",

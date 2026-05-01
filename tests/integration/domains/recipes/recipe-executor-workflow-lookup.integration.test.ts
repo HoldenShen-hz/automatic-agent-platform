@@ -23,11 +23,13 @@ function createRecipe(overrides: Partial<DomainRecipe> = {}): DomainRecipe {
     defaultWorkflowId: "wf_valid",
     defaultToolBundleIds: ["bundle1"],
     archetype: "crud_heavy",
+    riskLevel: "medium",
     risk_profile_ref: "risk-default",
     guardrail_overlay: "guard-default",
     recommended_workflow_ids: [],
     default_prompt_bundle_ref: "prompt-default",
     acceptance_checklist_ref: "checklist-default",
+    requiredApproval: false,
     ...overrides,
   };
   return DomainRecipeSchema.parse(validRecipe);
@@ -130,7 +132,7 @@ test("recipe executor: schema validation on recipe input", async () => {
     domainId: "",
     defaultWorkflowId: "",
     defaultToolBundleIds: [],
-  } as DomainRecipe;
+  } as unknown as DomainRecipe;
   const context = createContext();
 
   const result = await executor.execute(invalidRecipe, context);

@@ -249,7 +249,7 @@ export async function buildStepOutput(input: BuildStepOutputInput): Promise<Buil
     request: input.request,
     priorSummaries: input.priorSummaries,
     routingReason: input.routingReason,
-    tools: input.tools,
+    ...(input.tools !== undefined ? { tools: input.tools } : {}),
     harnessRunId: input.harnessRunId,
     budgetLedger: input.budgetLedger,
   });

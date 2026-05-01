@@ -195,86 +195,83 @@ function isEventProcessed(state: DispatchTicketStateInternal, eventId: string): 
  *
  * Handles dispatch events and maintains dispatch ticket state.
  */
-export const dispatchProjectionHandler: ProjectionHandler<DispatchTicketState> = {
-  name: "dispatch-ticket-projection",
+export const dispatchProjectionHandler: ProjectionHandler = (
+  state: Record<string, unknown> | null,
+  event: ProjectionInputEvent,
+): Record<string, unknown> => {
+  // Cast state to DispatchTicketState | null
+  const currentState = state as DispatchTicketState | null;
+  const baseState = currentState ? { ...currentState } : createInitialDispatchTicketState();
+  const internalState = toInternalState(baseState);
 
-  initialState: createInitialDispatchTicketState,
+  // Idempotency check - skip already processed events using O(1) Set lookup
+  if (isEventProcessed(internalState, event.eventId)) {
+    return toSerializedState(internalState) as unknown as Record<string, unknown>;
+  }
 
-  apply(state: DispatchTicketState, event: ProjectionInputEvent): DispatchTicketState {
-    // Convert to internal state with Set for O(1) idempotency lookup
-    const currentState = state;
-    const baseState = currentState ? { ...currentState } : createInitialDispatchTicketState();
-    const internalState = toInternalState(baseState);
+  const occurredAt = event.createdAt;
+  const timelineEntry: DispatchTicketTimelineEntry = {
+    eventType: event.eventType,
+    occurredAt,
+  };
 
-    // Idempotency check - skip already processed events using O(1) Set lookup
-    if (isEventProcessed(internalState, event.event.id)) {
-      return currentState;
+  // Mark event as processed using O(1) Set add
+  internalState._processedEventIdSet.add(event.eventId);
+  internalState.eventCount = internalState.eventCount + 1;
+
+  switch (event.eventType) {
+    case "dispatch:ticket_created": {
+      const payload = JSON.parse(event.payloadJson as string) as DispatchTicketCreatedPayload;
+      const newTimeline = [...internalState.timeline];
+      newTimeline.push({ ...timelineEntry, details: `ticket_created:${payload.ticketId}` });
+      return toSerializedState({
+        ...internalState,
+        ticketId: payload.ticketId,
+        executionId: event.taskId,
+        taskId: event.taskId,
+        queueName: payload.queueName,
+        dispatchTarget: payload.dispatchTarget,
+        priority: payload.priority,
+        status: "pending",
+        timeline: newTimeline,
+        firstEventAt: internalState.firstEventAt ?? occurredAt,
+        lastEventAt: occurredAt,
+        lastProjectedAt: occurredAt,
+      }) as unknown as Record<string, unknown>;
     }
 
-    const occurredAt = event.event.createdAt;
-    const timelineEntry: DispatchTicketTimelineEntry = {
-      eventType: event.event.eventType,
-      occurredAt,
-    };
-
-    // Mark event as processed using O(1) Set add
-    internalState._processedEventIdSet.add(event.event.id);
-    internalState.eventCount = internalState.eventCount + 1;
-
-    switch (event.event.eventType) {
-      case "dispatch:ticket_created": {
-        const payload = JSON.parse(event.event.payloadJson as string) as DispatchTicketCreatedPayload;
-        const newTimeline = [...internalState.timeline];
-        newTimeline.push({ ...timelineEntry, details: `ticket_created:${payload.ticketId}` });
-        return {
-          ...internalState,
-          ticketId: payload.ticketId,
-          executionId: event.event.executionId,
-          taskId: event.event.taskId,
-          queueName: payload.queueName,
-          dispatchTarget: payload.dispatchTarget,
-          priority: payload.priority,
-          status: "pending",
-          timeline: newTimeline,
-          firstEventAt: internalState.firstEventAt ?? occurredAt,
-          lastEventAt: occurredAt,
-          lastProjectedAt: occurredAt,
-        };
-      }
-
-      case "dispatch:ticket_claimed": {
-        const payload = JSON.parse(event.event.payloadJson as string) as DispatchTicketClaimedPayload;
-        const newTimeline = [...internalState.timeline];
-        newTimeline.push({ ...timelineEntry, details: `ticket_claimed:${payload.ticketId} by ${payload.workerId}` });
-        return {
-          ...internalState,
-          workerId: payload.workerId,
-          status: "claimed",
-          claimedAt: occurredAt,
-          timeline: newTimeline,
-          lastEventAt: occurredAt,
-          lastProjectedAt: occurredAt,
-        };
-      }
-
-      case "dispatch:decision_recorded": {
-        const payload = JSON.parse(event.event.payloadJson as string) as DispatchDecisionRecordedPayload;
-        const newTimeline = [...internalState.timeline];
-        newTimeline.push({ ...timelineEntry, details: `decision_recorded:${payload.outcome}` });
-        return {
-          ...internalState,
-          decisionOutcome: payload.outcome,
-          decisionReasonCode: payload.reasonCode,
-          decisionSelectedWorkerId: payload.selectedWorkerId,
-          decisionTraceJson: JSON.stringify(payload),
-          timeline: newTimeline,
-          lastEventAt: occurredAt,
-          lastProjectedAt: occurredAt,
-        };
-      }
-
-      default:
-        return toSerializedState(internalState);
+    case "dispatch:ticket_claimed": {
+      const payload = JSON.parse(event.payloadJson as string) as DispatchTicketClaimedPayload;
+      const newTimeline = [...internalState.timeline];
+      newTimeline.push({ ...timelineEntry, details: `ticket_claimed:${payload.ticketId} by ${payload.workerId}` });
+      return toSerializedState({
+        ...internalState,
+        workerId: payload.workerId,
+        status: "claimed",
+        claimedAt: occurredAt,
+        timeline: newTimeline,
+        lastEventAt: occurredAt,
+        lastProjectedAt: occurredAt,
+      }) as unknown as Record<string, unknown>;
     }
-  },
+
+    case "dispatch:decision_recorded": {
+      const payload = JSON.parse(event.payloadJson as string) as DispatchDecisionRecordedPayload;
+      const newTimeline = [...internalState.timeline];
+      newTimeline.push({ ...timelineEntry, details: `decision_recorded:${payload.outcome}` });
+      return toSerializedState({
+        ...internalState,
+        decisionOutcome: payload.outcome,
+        decisionReasonCode: payload.reasonCode,
+        decisionSelectedWorkerId: payload.selectedWorkerId,
+        decisionTraceJson: JSON.stringify(payload),
+        timeline: newTimeline,
+        lastEventAt: occurredAt,
+        lastProjectedAt: occurredAt,
+      }) as unknown as Record<string, unknown>;
+    }
+
+    default:
+      return toSerializedState(internalState) as unknown as Record<string, unknown>;
+  }
 };

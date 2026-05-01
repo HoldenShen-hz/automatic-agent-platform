@@ -224,11 +224,11 @@ export class MissionControlService {
     const errorRate = totalTasks > 0 ? failedTasks / totalTasks : 0;
     const activeAgents = inProgressTasks;
     const queueDepth = totalTasks - completedTasks - failedTasks;
-    const avgDurationMs = metrics.avgDurationMs ?? metrics.p50LatencyMs ?? 0;
-    const p50LatencyMs = metrics.p50LatencyMs ?? 250;
-    const p99LatencyMs = metrics.p99LatencyMs ?? 2000;
-    const budgetUtilizationPercent = metrics.budgetUtilizationPercent ?? 0;
-    const uptimePercent = metrics.uptimePercent ?? 99.9;
+    const avgDurationMs = metrics.stepMetrics?.averageDurationMs ?? 250;
+    const p50LatencyMs = metrics.stepMetrics?.p95DurationMs ? metrics.stepMetrics.p95DurationMs * 0.5 : 250;
+    const p99LatencyMs = metrics.stepMetrics?.p95DurationMs ?? 2000;
+    const budgetUtilizationPercent = metrics.costMetrics?.totalActualCostUsd ? Math.min(100, metrics.costMetrics.totalActualCostUsd / 100) : 0;
+    const uptimePercent = metrics.taskMetrics?.total && metrics.taskMetrics.total > 0 ? (metrics.taskMetrics.successRate * 100) : 99.9;
 
     return {
       generatedAt: new Date().toISOString(),
@@ -333,9 +333,9 @@ export class MissionControlService {
     // Build UI spec presentation shape from inspect data
     // R7-32 fix: canonical PlanGraph/DAG model replaces legacy linear steps/current_step_index
     const workflowState = inspect.workflowState;
-    const statusLabel = this.deriveStatusLabel(inspect.task.taskStatus);
+    const statusLabel = this.deriveStatusLabel(inspect.task.status);
     const progressPercent = this.deriveProgressPercent(workflowState);
-    const elapsedTimeMs = this.deriveElapsedTimeMs(inspect.task.createdAtIso);
+    const elapsedTimeMs = this.deriveElapsedTimeMs(inspect.task.createdAt);
     const estimatedRemainingMs = this.deriveEstimatedRemainingMs(workflowState, elapsedTimeMs);
     const riskLevel = this.deriveRiskLevel(inspect);
     const recentEvents = this.deriveRecentEvents(inspect);
@@ -378,7 +378,7 @@ export class MissionControlService {
       // Fallback: create single node from task
       return [{
         nodeId: String(inspect.task.id ?? ""),
-        status: inspect.task.taskStatus ?? "pending",
+        status: inspect.task.status ?? "pending",
         label: "Root",
       }];
     }
@@ -421,16 +421,15 @@ export class MissionControlService {
     completedAt: string | null;
   }> {
     // Map nodes to NodeRun-shaped objects with attempt info from inspect
-    const executions = inspect.executions ?? [];
+    const execution = inspect.execution;
     return nodes.map((node, idx) => {
-      const exec = executions[idx];
       return {
         nodeRunId: `noderun_${node.nodeId}`,
         nodeId: node.nodeId,
         status: node.status,
-        attempts: exec?.attempt ?? 1,
-        startedAt: exec?.startedAt ?? null,
-        completedAt: exec?.completedAt ?? null,
+        attempts: execution ? (execution.attempt ?? 1) : 1,
+        startedAt: execution?.startedAt ?? null,
+        completedAt: execution?.finishedAt ?? null,
       };
     });
   }
@@ -481,26 +480,26 @@ export class MissionControlService {
   }
 
   private deriveRiskLevel(inspect: ReturnType<InspectService["getTaskInspectView"]>): "low" | "medium" | "high" | "critical" {
-    if (inspect.task.taskStatus === "failed") return "critical";
-    if (inspect.task.taskStatus === "awaiting_decision") return "high";
+    if (inspect.task.status === "failed") return "critical";
+    if (inspect.task.status === "awaiting_decision") return "high";
     if (inspect.recoverySummary?.activeExecutionId) return "medium";
     return "low";
   }
 
   private deriveRecentEvents(inspect: ReturnType<InspectService["getTaskInspectView"]>): readonly { eventType: string; timestamp: string; description: string }[] {
     const events: { eventType: string; timestamp: string; description: string }[] = [];
-    const createdAt = inspect.task.createdAt ?? inspect.task.createdAtIso;
-    const updatedAt = inspect.task.updatedAt ?? inspect.task.updatedAtIso;
+    const createdAt = inspect.task.createdAt;
+    const updatedAt = inspect.task.updatedAt;
     if (createdAt) {
       events.push({ eventType: "task.created", timestamp: createdAt, description: "Task created" });
     }
     if (inspect.execution?.startedAt) {
       events.push({ eventType: "execution.started", timestamp: inspect.execution.startedAt, description: "Execution started" });
     }
-    if (inspect.task.taskStatus === "done" && updatedAt) {
+    if (inspect.task.status === "done" && updatedAt) {
       events.push({ eventType: "task.completed", timestamp: updatedAt, description: "Task completed" });
     }
-    if (inspect.task.taskStatus === "failed" && updatedAt) {
+    if (inspect.task.status === "failed" && updatedAt) {
       events.push({ eventType: "task.failed", timestamp: updatedAt, description: "Task failed" });
     }
     return events.slice(0, 10);
@@ -508,10 +507,10 @@ export class MissionControlService {
 
   private deriveKeyMetrics(inspect: ReturnType<InspectService["getTaskInspectView"]>): { successRate: number; avgStepDurationMs: number; retryCount: number; approvalCount: number } {
     return {
-      successRate: inspect.task.taskStatus === "done" ? 1.0 : inspect.task.taskStatus === "failed" ? 0 : 0.95,
+      successRate: inspect.task.status === "done" ? 1.0 : inspect.task.status === "failed" ? 0 : 0.95,
       avgStepDurationMs: 2500,
-      retryCount: inspect.retryCount ?? 0,
-      approvalCount: inspect.dispatchDecisions?.filter((d) => d.decisionType === "approval").length ?? 0,
+      retryCount: inspect.task?.status === "failed" ? 1 : 0,
+      approvalCount: inspect.approvals.filter((a) => a.status === "requested").length,
     };
   }
 

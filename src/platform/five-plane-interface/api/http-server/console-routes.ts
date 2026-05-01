@@ -377,7 +377,7 @@ function buildAdminTakeoverHtml(view: ReturnType<MissionControlService["getAdmin
   <body>
     <h1>Admin Takeover Console</h1>
     ${buildConsoleNav("admin")}
-    <p>Task Scope: <strong>${escapeHtml(view.scope.taskId)}</strong></p>
+    <p>Task Scope: <strong>${escapeHtml(view.scope.harnessRunId)}</strong></p>
     <p>Division: ${escapeHtml(view.scope.divisionId ?? "none")}</p>
     <p>Workspace: ${escapeHtml(view.scope.workspaceId ?? "none")}</p>
     <p>Tenant: ${escapeHtml(view.scope.tenantId ?? "none")}</p>

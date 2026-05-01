@@ -143,7 +143,7 @@ Return a JSON array of LearningObjects, one per signal.`;
       recommendation: (item.recommendation as string) ?? this.templateRecommendation(signal),
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: Date.now(),
+      createdAt: String(Date.now()),
     };
   }
 
@@ -159,7 +159,7 @@ Return a JSON array of LearningObjects, one per signal.`;
       recommendation: this.templateRecommendation(signal),
       validatedBy: "none",
       promotionStatus: "draft",
-      createdAt: signal.generatedAt,
+      createdAt: String(signal.generatedAt),
     }));
   }
 

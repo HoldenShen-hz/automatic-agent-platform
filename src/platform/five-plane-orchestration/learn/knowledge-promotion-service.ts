@@ -81,7 +81,7 @@ export class KnowledgePromotionService {
           namespace: "system.learned.patterns",
           uri: `learning://${obj.learningType}/${obj.learningObjectId}`,
           sourceType: "text",
-          trustLevel: "reviewed",
+          trustLevel: "team_reviewed" as const,
           tags: [obj.learningType, `confidence:${obj.confidence.toFixed(2)}`],
         });
 

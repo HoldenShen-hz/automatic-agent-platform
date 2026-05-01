@@ -106,7 +106,8 @@ export function createBillingRoutes(deps: BillingRouteDeps): RouteDefinition[] {
       pathname: "/v1/billing/webhooks/reconcile",
       handler: (ctx) => {
         const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
-        return buildReconcileResponse(ctx, deps, payload);
+        const result = buildReconcileResponse(ctx, deps, payload);
+        return buildJsonResponse(ctx.requestId, 200, result);
       },
     },
   ];

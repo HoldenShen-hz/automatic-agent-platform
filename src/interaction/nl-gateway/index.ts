@@ -31,8 +31,11 @@ import { SlotResolver } from "./slot-resolver/index.js";
 import { LlmIntentParser, type IntentParser, type IntentParserModelGateway } from "./intent-parser/index.js";
 import { IntakeRouter } from "../../platform/orchestration/routing/intake-router.js";
 import type { CostEstimate } from "../../platform/contracts/types/cost.js";
-import { createPlatformPrincipal } from "../../platform/contracts/types/platform-contracts.js";
-import { createRequestEnvelope, type RequestEnvelope } from "../../platform/contracts/request-envelope/index.js";
+import {
+  createPlatformPrincipal,
+  createRequestEnvelope,
+  type RequestEnvelopeLegacy as LegacyRequestEnvelope,
+} from "../../platform/contracts/types/platform-contracts.js";
 import {
   createConfirmedTaskSpec,
   createPrincipalRef,
@@ -168,7 +171,7 @@ export interface NlRequestPayload {
   readonly generatedSummary: string;
 }
 
-export type NlRequestEnvelope = RequestEnvelope<NlRequestPayload>;
+export type NlRequestEnvelope = LegacyRequestEnvelope<NlRequestPayload>;
 
 export type ConversationState =
   | "Idle"

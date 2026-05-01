@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainRecipeSchema, matchDomainRecipe } from "../../../../src/domains/recipes/index.js";
+import { DomainRecipeSchema, matchDomainRecipe, type DomainRecipe } from "../../../../src/domains/recipes/index.js";
 
 test("DomainRecipeSchema parses valid recipe", () => {
   const recipe = {
@@ -59,13 +59,22 @@ test("DomainRecipeSchema requires defaultWorkflowId to be non-empty", () => {
 });
 
 test("matchDomainRecipe returns recipe when input matches trigger phrase", () => {
-  const recipes = [
+  const recipes: DomainRecipe[] = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["write code", "implement"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
+      name: "Recipe 1",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
     {
       recipeId: "recipe_2",
@@ -73,6 +82,15 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
       triggerPhrases: ["deploy", "release"],
       defaultWorkflowId: "workflow_2",
       defaultToolBundleIds: [],
+      name: "Recipe 2",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
   ];
 
@@ -82,13 +100,22 @@ test("matchDomainRecipe returns recipe when input matches trigger phrase", () =>
 });
 
 test("matchDomainRecipe is case insensitive", () => {
-  const recipes = [
+  const recipes: DomainRecipe[] = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["Write Code", "Implement"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
+      name: "Recipe 1",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
   ];
 
@@ -98,13 +125,22 @@ test("matchDomainRecipe is case insensitive", () => {
 });
 
 test("matchDomainRecipe returns first matching recipe", () => {
-  const recipes = [
+  const recipes: DomainRecipe[] = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
+      name: "Recipe 1",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
     {
       recipeId: "recipe_2",
@@ -112,6 +148,15 @@ test("matchDomainRecipe returns first matching recipe", () => {
       triggerPhrases: ["code"],
       defaultWorkflowId: "workflow_2",
       defaultToolBundleIds: [],
+      name: "Recipe 2",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
   ];
 
@@ -121,13 +166,22 @@ test("matchDomainRecipe returns first matching recipe", () => {
 });
 
 test("matchDomainRecipe returns null when no recipe matches", () => {
-  const recipes = [
+  const recipes: DomainRecipe[] = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["write code"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
+      name: "Recipe 1",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
   ];
 
@@ -141,13 +195,22 @@ test("matchDomainRecipe returns null for empty recipes array", () => {
 });
 
 test("matchDomainRecipe matches partial phrase (substring)", () => {
-  const recipes = [
+  const recipes: DomainRecipe[] = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: ["implement feature"],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
+      name: "Recipe 1",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
   ];
 
@@ -157,13 +220,22 @@ test("matchDomainRecipe matches partial phrase (substring)", () => {
 });
 
 test("matchDomainRecipe handles empty trigger phrases array", () => {
-  const recipes = [
+  const recipes: DomainRecipe[] = [
     {
       recipeId: "recipe_1",
       domainId: "coding",
       triggerPhrases: [],
       defaultWorkflowId: "workflow_1",
       defaultToolBundleIds: [],
+      name: "Recipe 1",
+      archetype: "crud_heavy",
+      riskLevel: "medium",
+      risk_profile_ref: "coding.risk",
+      guardrail_overlay: "coding.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "coding.prompts",
+      acceptance_checklist_ref: "coding.acceptance",
+      requiredApproval: false,
     },
   ];
 
