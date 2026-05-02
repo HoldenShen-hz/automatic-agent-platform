@@ -234,7 +234,8 @@ export class PlanGraphHarnessRuntime {
         traceId: input.context.traceId,
         reasonCode: `runtime.${toStatus}`,
         emittedBy: input.context.emittedBy,
-        ...(toStatus === "leased" || toStatus === "running" ? { leaseId, fencingToken } : {}),
+        leaseId,
+        fencingToken,
       });
       nodeRun = result.aggregate;
       events.push(result.event);

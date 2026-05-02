@@ -17,35 +17,42 @@ export interface StructuredHealthScore {
 }
 
 /**
- * Score system health and return structured data per UI spec.
- * Replaces single-number score with 8-field structured output.
- *
- * Uses SystemSituationPort to avoid direct coupling to P4/P5 internals.
+ * Build structured health score data per UI spec.
  */
-export function scoreSystemHealth(system: SystemSituationPort): StructuredHealthScore {
-  const baseUptime = system.healthStatus === "ok" ? 99.9 : system.healthStatus === "degraded" ? 95 : 85;
-  const baseErrorRate = system.healthStatus === "ok" ? 0.01 : system.healthStatus === "degraded" ? 0.05 : 0.15;
-
-  const backlogPenalty = Math.min(30, system.queueBacklog.size * 5);
+export function buildStructuredHealthScore(system: SystemSituationPort): StructuredHealthScore {
+  const baseScore = system.healthStatus === "ok"
+    ? 100
+    : system.healthStatus === "degraded"
+      ? 80
+      : system.healthStatus === "overloaded"
+        ? 60
+        : 30;
+  const backlogPenalty = Math.min(30, system.queueBacklog.size);
   const findingPenalty = Math.min(20, system.findings.length * 5);
+  const overall = Math.max(0, baseScore - backlogPenalty - findingPenalty);
 
-  const uptime = Number((baseUptime - backlogPenalty / 10).toFixed(1));
-  const errorRate = Number((baseErrorRate + findingPenalty / 100).toFixed(4));
+  const uptime = system.healthStatus === "ok"
+    ? 99.9
+    : system.healthStatus === "degraded"
+      ? 95
+      : system.healthStatus === "overloaded"
+        ? 90
+        : 85;
+  const errorRate = system.healthStatus === "ok"
+    ? 0.01
+    : system.healthStatus === "degraded"
+      ? 0.05
+      : system.healthStatus === "overloaded"
+        ? 0.1
+        : 0.15;
   const p50LatencyMs = system.queueBacklog.degraded ? 2000 : 250;
   const p99LatencyMs = system.queueBacklog.degraded ? 10000 : 2000;
   const queueDepth = system.queueBacklog.size;
   const activeWorkers = system.healthStatus === "ok" ? 10 : system.healthStatus === "degraded" ? 7 : 3;
   const budgetUtilizationPercent = Math.min(100, system.queueBacklog.size * 5);
 
-  const overall = Math.max(0, Math.min(100,
-    (uptime / 100) * 100 -
-    errorRate * 50 -
-    Math.min(20, queueDepth) -
-    findingPenalty
-  ));
-
   return {
-    overall: Math.round(overall),
+    overall,
     uptime,
     errorRate,
     p50LatencyMs,
@@ -55,4 +62,12 @@ export function scoreSystemHealth(system: SystemSituationPort): StructuredHealth
     budgetUtilizationPercent: Number(budgetUtilizationPercent.toFixed(1)),
     findings: [...system.findings],
   };
+}
+
+/**
+ * Score system health using the long-standing numeric contract.
+ * The structured UI projection remains available via buildStructuredHealthScore.
+ */
+export function scoreSystemHealth(system: SystemSituationPort): number {
+  return buildStructuredHealthScore(system).overall;
 }

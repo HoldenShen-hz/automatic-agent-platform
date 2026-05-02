@@ -73,10 +73,10 @@ test("DomainSmokeTestRunner.run passes for valid domain", () => {
     status: "draft",
     executionProfile: {
       executionMode: {
-        planningMode: "async",
-        hotPathMode: "sync",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "normal",
+      latencyTier: "interactive",
     },
     externalAdapters: [],
     pluginBindings: [],
@@ -195,10 +195,10 @@ test("DomainSmokeTestRunner.run validates executionProfile", () => {
     ],
     executionProfile: {
       executionMode: {
-        planningMode: "async",
-        hotPathMode: "sync",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "normal",
+      latencyTier: "interactive",
     },
   };
 
@@ -246,10 +246,10 @@ test("DomainSmokeTestRunner.run validates dependency graph", () => {
     ],
     executionProfile: {
       executionMode: {
-        planningMode: "async",
-        hotPathMode: "sync",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "normal",
+      latencyTier: "interactive",
     },
   };
 
@@ -291,10 +291,10 @@ test("DomainSmokeTestRunner.run validates resource quotas", () => {
     },
     executionProfile: {
       executionMode: {
-        planningMode: "async",
-        hotPathMode: "sync",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "normal",
+      latencyTier: "interactive",
     },
   };
 
@@ -337,10 +337,10 @@ test("DomainSmokeTestRunner.run validates sandbox compatibility for restricted t
     },
     executionProfile: {
       executionMode: {
-        planningMode: "async",
-        hotPathMode: "sync",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "normal",
+      latencyTier: "interactive",
     },
   };
 
@@ -383,10 +383,10 @@ test("DomainSmokeTestRunner.run passes sandbox compatibility for restricted tool
     },
     executionProfile: {
       executionMode: {
-        planningMode: "async",
-        hotPathMode: "sync",
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
       },
-      latencyTier: "normal",
+      latencyTier: "interactive",
     },
   };
 

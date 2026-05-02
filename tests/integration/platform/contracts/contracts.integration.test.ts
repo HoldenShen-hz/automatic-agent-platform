@@ -218,9 +218,9 @@ test("contracts-integration: GraphPatch operations maintain order", () => {
   });
 
   assert.equal(patch.operations.length, 3);
-  assert.equal(patch.operations[0].operationId, "op_1");
-  assert.equal(patch.operations[1].operationId, "op_2");
-  assert.equal(patch.operations[2].operationId, "op_3");
+  assert.equal(patch.operations[0]?.operationId, "op_1");
+  assert.equal(patch.operations[1]?.operationId, "op_2");
+  assert.equal(patch.operations[2]?.operationId, "op_3");
 });
 
 test("contracts-integration: BudgetIntent resource kinds are preserved", () => {
@@ -267,8 +267,8 @@ test("contracts-integration: BudgetIntent resource kinds are preserved", () => {
     },
   });
 
-  assert.equal(bundle.graph.nodes[0].budgetIntent.amount, 500);
-  assert.deepEqual(bundle.graph.nodes[0].budgetIntent.resourceKinds, ["token", "tool", "api"]);
+  assert.equal(bundle.graph.nodes[0]?.budgetIntent.amount, 500);
+  assert.deepEqual(bundle.graph.nodes[0]?.budgetIntent.resourceKinds, ["token", "tool", "api"]);
 });
 
 // =============================================================================

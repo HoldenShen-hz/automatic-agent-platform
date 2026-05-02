@@ -10,7 +10,7 @@ import {
   buildDomainsBootstrap,
   listVerticalDomainBaselines,
   listVerticalDomainBaselinesByPhase,
-} from "../../../src/domains/domain-baseline-catalog.js";
+} from "../../../src/domains/domains-bootstrap.js";
 
 test("buildDomainsRuntimeCatalog returns catalog with all three readiness rings", () => {
   const catalog = buildDomainsRuntimeCatalog();

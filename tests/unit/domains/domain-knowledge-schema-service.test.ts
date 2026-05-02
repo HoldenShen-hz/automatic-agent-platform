@@ -138,7 +138,7 @@ test("DomainKnowledgeSchema rejects schema missing required schemaId", () => {
   const invalidSchema = {
     domainId: "test_domain",
     namespaceIds: [],
-  } as DomainKnowledgeSchema;
+  } as unknown as DomainKnowledgeSchema;
 
   const result = DomainKnowledgeSchemaSchema.safeParse(invalidSchema);
   assert.equal(result.success, false);

@@ -41,7 +41,7 @@ test("PackMigrationService plan steps have correct order values", () => {
   const plan = service.createMigrationPlan("pack-a", "pack-b");
 
   for (let i = 0; i < plan.steps.length; i++) {
-    assert.equal(plan.steps[i].order, i + 1);
+    assert.equal(plan.steps[i]!.order, i + 1);
   }
 });
 
@@ -227,7 +227,7 @@ test("PackMigrationService.validateMigration with whitespace plan ID", () => {
   assert.equal(result.valid, false);
 });
 
-test("PackMigrationService.validateMigration for completed plan returns warnings", () => {
+test("PackMigrationService.validateMigration for completed plan returns warnings", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
 
@@ -240,7 +240,7 @@ test("PackMigrationService.validateMigration for completed plan returns warnings
   assert.ok(result.errors.length > 0 || result.warnings.length > 0);
 });
 
-test("PackMigrationService.validateMigration for failed plan returns errors", () => {
+test("PackMigrationService.validateMigration for failed plan returns errors", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
   service.seedPackState("pack-b", { migrationLocked: true });
@@ -254,7 +254,7 @@ test("PackMigrationService.validateMigration for failed plan returns errors", ()
   assert.ok(result.errors.length > 0);
 });
 
-test("PackMigrationService.validateMigration for rolled back plan", () => {
+test("PackMigrationService.validateMigration for rolled back plan", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
 
@@ -297,7 +297,7 @@ test("PackMigrationService.listMigrationsForPack returns plans where pack is sou
   const plans = service.listMigrationsForPack("pack-source");
 
   assert.equal(plans.length, 1);
-  assert.equal(plans[0].fromPackId, "pack-source");
+  assert.equal(plans[0]!.fromPackId, "pack-source");
 });
 
 test("PackMigrationService.listMigrationsForPack returns plans where pack is target", () => {
@@ -308,7 +308,7 @@ test("PackMigrationService.listMigrationsForPack returns plans where pack is tar
   const plans = service.listMigrationsForPack("pack-target");
 
   assert.equal(plans.length, 1);
-  assert.equal(plans[0].toPackId, "pack-target");
+  assert.equal(plans[0]!.toPackId, "pack-target");
 });
 
 test("PackMigrationService.listMigrationsForPack returns plans in both directions", () => {
@@ -670,7 +670,7 @@ test("PackMigrationService.wasRolledBack returns false for unknown plan", () => 
   assert.equal(result, false);
 });
 
-test("PackMigrationService.wasRolledBack returns false for non-rolled back plan", () => {
+test("PackMigrationService.wasRolledBack returns false for non-rolled back plan", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
 

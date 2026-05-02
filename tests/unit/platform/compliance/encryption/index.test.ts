@@ -52,21 +52,21 @@ test("Issue #2098: protectRecord must use AES-256-GCM format with auth tag, not 
     "Issue #2098: AES-256-GCM format must have 5 parts: enc:fingerprint:iv:authTag:ciphertext");
 
   // Part 1: fingerprint (12 hex chars = 48 bits)
-  assert.equal(parts[1].length, 12, "fingerprint should be 12 hex chars");
+  assert.equal(parts[1]!.length, 12, "fingerprint should be 12 hex chars");
 
   // Part 2: IV (24 hex chars = 96 bits for GCM)
-  assert.equal(parts[2].length, 24, "Issue #2098: IV must be 24 hex chars (96-bit GCM IV)");
+  assert.equal(parts[2]!.length, 24, "Issue #2098: IV must be 24 hex chars (96-bit GCM IV)");
 
   // Part 3: auth tag (32 hex chars = 128 bits)
-  assert.equal(parts[3].length, 32, "Issue #2098: authTag must be 32 hex chars (128-bit GCM tag)");
+  assert.equal(parts[3]!.length, 32, "Issue #2098: authTag must be 32 hex chars (128-bit GCM tag)");
 
   // Part 4: ciphertext (hex encoded)
-  assert.ok(parts[4].length > 0, "ciphertext must not be empty");
+  assert.ok(parts[4]!.length > 0, "ciphertext must not be empty");
 
   // All hex parts must be valid hex (not base64url)
-  assert.ok(/^[0-9a-f]+$/i.test(parts[2]), "IV must be hex, not base64url");
-  assert.ok(/^[0-9a-f]+$/i.test(parts[3]), "authTag must be hex, not base64url");
-  assert.ok(/^[0-9a-f]+$/i.test(parts[4]), "ciphertext must be hex, not base64url");
+  assert.ok(/^[0-9a-f]+$/i.test(parts[2]!), "IV must be hex, not base64url");
+  assert.ok(/^[0-9a-f]+$/i.test(parts[3]!), "authTag must be hex, not base64url");
+  assert.ok(/^[0-9a-f]+$/i.test(parts[4]!), "ciphertext must be hex, not base64url");
 });
 
 test("Issue #2098: revealField must decrypt AES-256-GCM ciphertext, not just base64 decode", () => {

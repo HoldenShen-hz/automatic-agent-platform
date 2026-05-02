@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import test from "node:test";
 import { DOMAIN_SEEDS, type DomainSeed } from "../../../src/domains/domain-baseline-seeds.js";
 import {
   VERTICAL_DOMAIN_BASELINES,
@@ -10,6 +11,7 @@ import {
   listVerticalDomainBaselinesByPhase,
 } from "../../../src/domains/domain-baseline-catalog.js";
 import type { DomainLatencyProfile, VerticalDomainPhase, VerticalDomainId } from "../../../src/domains/domain-baseline-catalog.js";
+import type { DomainRiskLevel } from "../../../src/domains/risk-profile/index.js";
 
 const VALID_PHASES: readonly VerticalDomainPhase[] = ["9a", "9b", "9c", "9d", "9e", "9f"];
 

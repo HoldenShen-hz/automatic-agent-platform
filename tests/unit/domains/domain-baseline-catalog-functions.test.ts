@@ -9,6 +9,7 @@ import {
   getVerticalDomainBaseline,
   listVerticalDomainBaselinesByPhase,
 } from "../../../src/domains/domain-baseline-catalog.js";
+import type { VerticalDomainId } from "../../../src/domains/domain-baseline-catalog.js";
 
 test("listVerticalDomainIds returns array of all domain IDs", () => {
   const ids = listVerticalDomainIds();

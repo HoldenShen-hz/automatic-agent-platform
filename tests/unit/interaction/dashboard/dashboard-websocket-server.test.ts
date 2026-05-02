@@ -21,6 +21,7 @@ import {
   createDashboardWebSocketServer,
   type ChannelSubscription,
   type DashboardChannel,
+  type DashboardSubscriptionAuthorization,
 } from "../../../../src/interaction/dashboard/dashboard-websocket-server.js";
 import type { DashboardDelta } from "../../../../src/interaction/dashboard/dashboard-projection-service.js";
 
@@ -35,7 +36,7 @@ function createDashboardDelta(
     deltaId: "delta-" + Math.random().toString(36).slice(2, 8),
     timestamp: new Date().toISOString(),
     tenantId: null,
-    visibilityScope: "tenant",
+    visibilityScope: "global",
     changes: [],
     affectedMetrics: ["totalTasks"],
     ...overrides,
@@ -47,6 +48,21 @@ function createChannelSubscription(
   filterId?: string,
 ): ChannelSubscription {
   return { channel, filterId };
+}
+
+function createAuthorization(
+  channels: readonly ChannelSubscription[],
+  tenantId: string,
+): DashboardSubscriptionAuthorization {
+  const allowedTaskIds = channels
+    .filter((subscription) => subscription.channel === "task")
+    .map((subscription) => subscription.filterId)
+    .filter((filterId): filterId is string => filterId !== undefined && filterId.length > 0);
+  return {
+    allowedChannels: [...new Set(channels.map((subscription) => subscription.channel))],
+    allowedTenantIds: [tenantId],
+    ...(allowedTaskIds.length > 0 ? { allowedTaskIds } : {}),
+  };
 }
 
 function createTimedOutConnection(
@@ -165,6 +181,12 @@ test("unregisterClient removes client from server", () => {
     [createChannelSubscription("global")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    {
+      allowedChannels: ["global", "admin", "approvals"],
+      allowedTenantIds: ["tenant-1"],
+    },
   );
 
   assert.equal(server.getClientCount(), 1);
@@ -193,6 +215,12 @@ test("isClientConnected returns true for registered client", () => {
     [createChannelSubscription("global")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    {
+      allowedChannels: ["global", "admin"],
+      allowedTenantIds: ["tenant-1"],
+    },
   );
 
   assert.equal(server.isClientConnected(clientId), true);
@@ -213,10 +241,7 @@ test("isClientConnected returns false for unregistered client", () => {
 // Issue #2040: Heartbeat marks disconnect but doesn't unregister
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("heartbeat marks disconnect but does NOT unregister (issue #2040)", () => {
-  // This test verifies the behavior described in issue #2040:
-  // Heartbeat marks disconnect but doesn't unregister
-
+test("heartbeat unregisters timed out clients (issue #2040 fixed)", () => {
   const server = new DashboardWebSocketServer({
     heartbeatIntervalMs: 60000, // 60 seconds
     connectionTimeoutMs: 100, // 100ms timeout for testing
@@ -228,31 +253,19 @@ test("heartbeat marks disconnect but does NOT unregister (issue #2040)", () => {
     "tenant-1",
   );
 
-  // Initially connected
-  assert.equal(server.isClientConnected(clientId), true);
+  const connection = (server as { connections: Map<string, { lastActivityAt: string }> }).connections.get(clientId);
+  assert.ok(connection);
+  connection!.lastActivityAt = new Date(Date.now() - 1_000).toISOString();
 
-  // Simulate time passing - set lastActivityAt to the past
-  // We can't easily manipulate internal state, so we test the behavior
-  // by checking that connection is marked but not removed
+  (server as { performHeartbeat: () => void }).performHeartbeat();
 
-  // First, verify the client is still connected before heartbeat
-  assert.equal(server.getClientCount(), 1);
-
-  // The heartbeat checks for timeout and marks disconnect but doesn't unregister
-  // This is the issue #2040 behavior - we verify it exists by checking that
-  // the client count doesn't change even if we simulate disconnect
-
-  // Get the connection and manually set lastActivityAt to trigger timeout
-  // In the real implementation, heartbeat would set isConnected = false
-  // but NOT call unregisterClient
-
-  // After the heartbeat runs, client should be marked disconnected but still present
-  // This is the bug described in issue #2040
+  assert.equal(server.isClientConnected(clientId), false);
+  assert.equal(server.getClientCount(), 0);
 
   server.stop();
 });
 
-test("performHeartbeat sets isConnected to false on timed out connections", () => {
+test("performHeartbeat removes timed out connections from the registry", () => {
   const server = new DashboardWebSocketServer({
     heartbeatIntervalMs: 100, // Short interval for testing
     connectionTimeoutMs: 50, // Very short timeout
@@ -264,26 +277,19 @@ test("performHeartbeat sets isConnected to false on timed out connections", () =
     "tenant-heartbeat",
   );
 
-  // Start the heartbeat timer
-  server.start();
+  const connection = (server as { connections: Map<string, { lastActivityAt: string }> }).connections.get(clientId);
+  assert.ok(connection);
+  connection!.lastActivityAt = new Date(Date.now() - 1_000).toISOString();
 
-  // Wait for heartbeat to trigger
-  // Since timeout is 50ms and heartbeat runs every 100ms, it should trigger soon
+  (server as { performHeartbeat: () => void }).performHeartbeat();
 
-  // Wait enough time for heartbeat to run
-  const startTime = Date.now();
-  while (Date.now() - startTime < 200) {
-    // busy wait
-  }
-
-  // After heartbeat timeout, client should be marked as disconnected
-  // but NOT unregistered (issue #2040)
-  // The isClientConnected returns connection?.isConnected ?? false
+  assert.equal(server.isClientConnected(clientId), false);
+  assert.equal(server.getClientCount(), 0);
 
   server.stop();
 });
 
-test("heartbeat does not remove timed out clients immediately (issue #2040)", () => {
+test("heartbeat cleanup removes timed out clients from counts and routing", () => {
   const server = new DashboardWebSocketServer({
     heartbeatIntervalMs: 100,
     connectionTimeoutMs: 50,
@@ -295,17 +301,20 @@ test("heartbeat does not remove timed out clients immediately (issue #2040)", ()
     "tenant-test",
   );
 
-  server.start();
+  const connection = (server as { connections: Map<string, { lastActivityAt: string }> }).connections.get(clientId);
+  assert.ok(connection);
+  connection!.lastActivityAt = new Date(Date.now() - 1_000).toISOString();
 
-  // Wait for heartbeat to trigger
-  const startTime = Date.now();
-  while (Date.now() - startTime < 300) {
-    // busy wait
-  }
+  (server as { performHeartbeat: () => void }).performHeartbeat();
 
-  // The issue #2040 is that heartbeat marks disconnect but doesn't unregister
-  // So the connection might still be in the connections map
-  // We verify that getClientCount > 0 after timeout (bug behavior)
+  assert.equal(server.getClientCount(), 0);
+  assert.equal(
+    server.pushDelta(createDashboardDelta({
+      changes: [{ changeType: "system_health_changed", entityId: "platform", newValue: {} }],
+      affectedMetrics: ["totalTasks"],
+    })),
+    0,
+  );
 
   server.stop();
 });
@@ -320,6 +329,12 @@ test("updateSubscriptions modifies client subscriptions", () => {
     [createChannelSubscription("global")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    {
+      allowedChannels: ["global", "admin", "approvals"],
+      allowedTenantIds: ["tenant-1"],
+    },
   );
 
   const result = server.updateSubscriptions(clientId, [
@@ -351,6 +366,12 @@ test("updateSubscriptions removes from old channels", () => {
     [createChannelSubscription("global")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    {
+      allowedChannels: ["global", "admin"],
+      allowedTenantIds: ["tenant-1"],
+    },
   );
 
   // Push to global should work initially
@@ -385,6 +406,9 @@ test("registerClient with task channel requires filterId", () => {
         [createChannelSubscription("task")], // no filterId
         "principal-1",
         "tenant-1",
+        null,
+        "1.0",
+        { allowedChannels: ["task"], allowedTenantIds: ["tenant-1"] },
       );
     },
     /Task channel subscriptions require a task filterId/,
@@ -400,6 +424,9 @@ test("registerClient with valid task channel subscription works", () => {
     [createChannelSubscription("task", "task-123")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    createAuthorization([createChannelSubscription("task", "task-123")], "tenant-1"),
   );
 
   assert.ok(clientId.length > 0);
@@ -418,6 +445,9 @@ test("registerClient with invalid task filterId throws", () => {
         [createChannelSubscription("task", "")], // empty filterId
         "principal-1",
         "tenant-1",
+        null,
+        "1.0",
+        { allowedChannels: ["task"], allowedTenantIds: ["tenant-1"] },
       );
     },
     /Task channel subscriptions require a task filterId/,
@@ -452,12 +482,19 @@ test("registerClient with non-task channel ignores filterId", () => {
 test("pushDelta sends to subscribed clients", () => {
   const server = new DashboardWebSocketServer();
   const { clientId } = server.registerClient(
-    [createChannelSubscription("totalTasks")],
+    [createChannelSubscription("approvals")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    ["totalTasks"],
   );
 
-  const delta = createDashboardDelta({ affectedMetrics: ["totalTasks"] });
+  const delta = createDashboardDelta({
+    changes: [{ changeType: "system_health_changed", entityId: "platform", newValue: {} }],
+    affectedMetrics: ["totalTasks"],
+  });
   const sentCount = server.pushDelta(delta);
 
   assert.equal(sentCount, 1);
@@ -469,12 +506,19 @@ test("pushDelta sends to subscribed clients", () => {
 test("pushDelta does not send to unsubscribed clients", () => {
   const server = new DashboardWebSocketServer();
   const { clientId } = server.registerClient(
-    [createChannelSubscription("totalTasks")],
+    [createChannelSubscription("approvals")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    ["incidentCount"],
   );
 
-  const delta = createDashboardDelta({ affectedMetrics: ["incidentCount"] });
+  const delta = createDashboardDelta({
+    changes: [{ changeType: "system_health_changed", entityId: "platform", newValue: {} }],
+    affectedMetrics: ["totalTasks"],
+  });
   const sentCount = server.pushDelta(delta);
 
   assert.equal(sentCount, 0);
@@ -485,9 +529,16 @@ test("pushDelta does not send to unsubscribed clients", () => {
 
 test("pushDelta with wildcard subscription receives all", () => {
   const server = new DashboardWebSocketServer();
-  const { clientId } = server.registerClient([createChannelSubscription("global")]);
+  const { clientId } = server.registerClient(
+    [createChannelSubscription("global")],
+    "principal-global",
+    "tenant-global",
+  );
 
-  const delta = createDashboardDelta({ affectedMetrics: ["totalTasks", "incidentCount", "budgetAlerts"] });
+  const delta = createDashboardDelta({
+    changes: [{ changeType: "system_health_changed", entityId: "platform", newValue: {} }],
+    affectedMetrics: ["totalTasks", "incidentCount", "budgetAlerts"],
+  });
   const sentCount = server.pushDelta(delta);
 
   assert.equal(sentCount, 1);
@@ -503,12 +554,18 @@ test("pushDelta routes task delta to specific task subscribers", () => {
     [createChannelSubscription("task", "task-123")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    createAuthorization([createChannelSubscription("task", "task-123")], "tenant-1"),
   );
 
   server.registerClient(
     [createChannelSubscription("task", "task-456")],
     "principal-2",
     "tenant-2",
+    null,
+    "1.0",
+    createAuthorization([createChannelSubscription("task", "task-456")], "tenant-2"),
   );
 
   // Push delta for task-123
@@ -530,6 +587,9 @@ test("pushDelta routes incident delta to admin channel", () => {
     [createChannelSubscription("admin")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    createAuthorization([createChannelSubscription("admin")], "tenant-1"),
   );
 
   const delta = createDashboardDelta({
@@ -768,7 +828,7 @@ test("handleProjectionDelta pushes delta to clients", () => {
   const server = new DashboardWebSocketServer();
 
   server.registerClient(
-    [createChannelSubscription("totalTasks")],
+    [createChannelSubscription("global")],
     "principal-1",
     "tenant-1",
   );
@@ -796,12 +856,19 @@ test("handleProjectionDelta uses deltaHandler if set", () => {
   });
 
   server.registerClient(
-    [createChannelSubscription("totalTasks")],
+    [createChannelSubscription("approvals")],
     "principal-1",
     "tenant-1",
+    null,
+    "1.0",
+    { allowedChannels: ["approvals"], allowedTenantIds: ["tenant-1"] },
+    ["totalTasks"],
   );
 
-  const delta = createDashboardDelta({ affectedMetrics: ["totalTasks"] });
+  const delta = createDashboardDelta({
+    changes: [{ changeType: "system_health_changed", entityId: "platform", newValue: {} }],
+    affectedMetrics: ["totalTasks"],
+  });
   server.handleProjectionDelta(delta);
 
   assert.equal(handlerCalled, true);
@@ -829,7 +896,7 @@ test("integrateWithProjectionService returns cleanup function", () => {
   server.stop();
 });
 
-test("integrateWithProjectionService polls for deltas", () => {
+test("integrateWithProjectionService polls for deltas", async () => {
   const server = new DashboardWebSocketServer();
 
   let pollCount = 0;
@@ -841,16 +908,12 @@ test("integrateWithProjectionService polls for deltas", () => {
     },
   };
 
-  server.integrateWithProjectionService(mockProjectionService);
-
-  // Wait for a few polls
-  const startTime = Date.now();
-  while (Date.now() - startTime < 300) {
-    // busy wait
-  }
+  const cleanup = server.integrateWithProjectionService(mockProjectionService);
+  await new Promise((resolve) => setTimeout(resolve, 250));
 
   assert.ok(pollCount >= 1, "Should have polled at least once");
 
+  cleanup();
   server.stop();
 });
 
@@ -923,7 +986,7 @@ test("registerClient with non-existent lastEventId returns gap", () => {
   server.stop();
 });
 
-test("registerClient with future lastEventId returns gap", () => {
+test("registerClient with lastEventId but no replayable history returns no gap", () => {
   const server = new DashboardWebSocketServer();
 
   const result = server.registerClient(
@@ -933,8 +996,8 @@ test("registerClient with future lastEventId returns gap", () => {
     "future-delta-id",
   );
 
-  // Should have a gap because the delta doesn't exist
-  assert.ok(result.gapMessage !== undefined);
+  assert.equal(result.gapMessage, undefined);
+  assert.deepEqual(result.missedEvents, []);
 
   server.stop();
 });

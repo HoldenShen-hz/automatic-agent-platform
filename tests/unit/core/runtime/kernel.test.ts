@@ -8,39 +8,45 @@ import test from "node:test";
 import { StateTransitionMachine } from "../../../../src/platform/execution/state-transition/state-transition-machine.js";
 import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
 
+// Define task state type for tests
+type TaskState = "queued" | "in_progress" | "done" | "failed" | "cancelled";
+
 test("StateTransitionMachine constructor requires entity kind and transitions map", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress", "cancelled"],
     in_progress: ["done", "failed"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   assert.ok(machine instanceof StateTransitionMachine);
 });
 
 test("StateTransitionMachine assertTransition valid transition", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress", "cancelled"],
     in_progress: ["done", "failed", "cancelled"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   // Should not throw
   machine.assertTransition("queued", "in_progress");
 });
 
 test("StateTransitionMachine assertTransition invalid transition throws", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress", "cancelled"],
     in_progress: ["done", "failed", "cancelled"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   // queued -> done is not allowed
   assert.throws(() => {
@@ -49,13 +55,14 @@ test("StateTransitionMachine assertTransition invalid transition throws", () => 
 });
 
 test("StateTransitionMachine noop transition throws", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress", "cancelled"],
     in_progress: ["done", "failed", "cancelled"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   // Same state transition is not allowed
   assert.throws(() => {
@@ -64,14 +71,16 @@ test("StateTransitionMachine noop transition throws", () => {
 });
 
 test("StateTransitionMachine works with workflow entity", () => {
-  const machine = new StateTransitionMachine("workflow", {
+  type WorkflowState = "running" | "paused" | "cancelling" | "cancelled" | "completed" | "failed";
+  const transitions: Record<WorkflowState, readonly WorkflowState[]> = {
     running: ["paused", "cancelling", "failed"],
     paused: ["running", "failed"],
     cancelling: ["cancelled"],
     cancelled: [],
     completed: [],
     failed: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("workflow", transitions);
 
   // Valid transition
   machine.assertTransition("running", "paused");
@@ -83,12 +92,14 @@ test("StateTransitionMachine works with workflow entity", () => {
 });
 
 test("StateTransitionMachine works with session entity", () => {
-  const machine = new StateTransitionMachine("session", {
+  type SessionState = "open" | "streaming" | "completed" | "failed";
+  const transitions: Record<SessionState, readonly SessionState[]> = {
     open: ["streaming", "completed"],
     streaming: ["open", "completed", "failed"],
     completed: [],
     failed: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("session", transitions);
 
   // Valid transition
   machine.assertTransition("open", "streaming");
@@ -98,14 +109,16 @@ test("StateTransitionMachine works with session entity", () => {
 });
 
 test("StateTransitionMachine works with execution entity", () => {
-  const machine = new StateTransitionMachine("execution", {
+  type ExecutionState = "created" | "prechecking" | "executing" | "succeeded" | "failed" | "cancelled";
+  const transitions: Record<ExecutionState, readonly ExecutionState[]> = {
     created: ["prechecking", "cancelled"],
     prechecking: ["executing", "cancelled"],
     executing: ["succeeded", "failed", "cancelled"],
     succeeded: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("execution", transitions);
 
   // Valid lifecycle transitions
   machine.assertTransition("created", "prechecking");
@@ -114,13 +127,14 @@ test("StateTransitionMachine works with execution entity", () => {
 });
 
 test("StateTransitionMachine terminal states have no outgoing transitions", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress"],
     in_progress: ["done"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   // done is terminal - any transition should throw
   assert.throws(() => {
@@ -129,9 +143,9 @@ test("StateTransitionMachine terminal states have no outgoing transitions", () =
 });
 
 test("StateTransitionMachine with generic string states", () => {
-  type TaskState = "idle" | "running" | "stopped";
+  type GenericTaskState = "idle" | "running" | "stopped";
 
-  const machine = new StateTransitionMachine<TaskState>("generic-task", {
+  const machine = new StateTransitionMachine<GenericTaskState>("generic-task", {
     idle: ["running"],
     running: ["stopped"],
     stopped: [],
@@ -147,13 +161,14 @@ test("StateTransitionMachine with generic string states", () => {
 });
 
 test("StateTransitionMachine reports entity kind in error", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress"],
     in_progress: ["done"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   try {
     machine.assertTransition("queued", "done");
@@ -169,13 +184,15 @@ test("StateTransitionMachine reports entity kind in error", () => {
 });
 
 test("StateTransitionMachine.errorCode in WorkflowStateError", () => {
-  const machine = new StateTransitionMachine("execution", {
+  type ExecState = "created" | "running" | "done" | "failed" | "cancelled";
+  const transitions: Record<ExecState, readonly ExecState[]> = {
     created: ["running"],
     running: ["done"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("execution", transitions);
 
   try {
     machine.assertTransition("created", "done");
@@ -191,11 +208,13 @@ test("StateTransitionMachine.errorCode in WorkflowStateError", () => {
 });
 
 test("StateTransitionMachine with approval entity", () => {
-  const machine = new StateTransitionMachine("approval", {
+  type ApprovalState = "pending" | "approved" | "rejected";
+  const transitions: Record<ApprovalState, readonly ApprovalState[]> = {
     pending: ["approved", "rejected"],
     approved: [],
     rejected: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("approval", transitions);
 
   // Valid transitions
   machine.assertTransition("pending", "approved");
@@ -208,7 +227,8 @@ test("StateTransitionMachine with approval entity", () => {
 });
 
 test("StateTransitionMachine with complex workflow transitions", () => {
-  const machine = new StateTransitionMachine("workflow", {
+  type ComplexWorkflowState = "created" | "running" | "pausing" | "paused" | "cancelling" | "cancelled" | "completed" | "failed";
+  const transitions: Record<ComplexWorkflowState, readonly ComplexWorkflowState[]> = {
     created: ["running"],
     running: ["paused", "completed", "failed", "cancelling"],
     pausing: ["paused"],
@@ -217,7 +237,8 @@ test("StateTransitionMachine with complex workflow transitions", () => {
     cancelled: [],
     completed: [],
     failed: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("workflow", transitions);
 
   // Valid transitions
   machine.assertTransition("created", "running");
@@ -228,13 +249,14 @@ test("StateTransitionMachine with complex workflow transitions", () => {
 });
 
 test("StateTransitionMachine validates transition existence", () => {
-  const machine = new StateTransitionMachine("task", {
+  const transitions: Record<TaskState, readonly TaskState[]> = {
     queued: ["in_progress"],
     in_progress: ["done", "failed"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   // Transition from non-existent state should throw
   assert.throws(() => {
@@ -243,14 +265,16 @@ test("StateTransitionMachine validates transition existence", () => {
 });
 
 test("StateTransitionMachine handles multi-state transitions", () => {
-  const machine = new StateTransitionMachine("task", {
+  type MultiTaskState = "queued" | "pending" | "in_progress" | "done" | "failed" | "cancelled";
+  const transitions: Record<MultiTaskState, readonly MultiTaskState[]> = {
     queued: ["pending", "in_progress"],
     pending: ["in_progress", "cancelled"],
     in_progress: ["done", "failed", "cancelled"],
     done: [],
     failed: [],
     cancelled: [],
-  } as const);
+  };
+  const machine = new StateTransitionMachine("task", transitions);
 
   // From queued, can go to pending or in_progress
   machine.assertTransition("queued", "pending");

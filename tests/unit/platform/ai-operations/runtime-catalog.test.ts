@@ -33,7 +33,7 @@ test("capability baselines have expected structure", () => {
   const catalog = buildAiOperationsRuntimeCatalog();
 
   if (catalog.modelGateway.length > 0) {
-    const cap = catalog.modelGateway[0];
+    const cap = catalog.modelGateway[0]!;
     assert.ok("capabilityId" in cap, "capability should have capabilityId");
     assert.ok("entryModule" in cap, "capability should have entryModule");
     assert.ok("description" in cap, "capability should have description");
@@ -41,7 +41,7 @@ test("capability baselines have expected structure", () => {
   }
 
   if (catalog.promptEngine.length > 0) {
-    const cap = catalog.promptEngine[0];
+    const cap = catalog.promptEngine[0]!;
     assert.ok("capabilityId" in cap, "capability should have capabilityId");
     assert.ok("entryModule" in cap, "capability should have entryModule");
     assert.ok("description" in cap, "capability should have description");
@@ -49,7 +49,7 @@ test("capability baselines have expected structure", () => {
   }
 
   if (catalog.compliance.length > 0) {
-    const cap = catalog.compliance[0];
+    const cap = catalog.compliance[0]!;
     assert.ok("capabilityId" in cap, "capability should have capabilityId");
     assert.ok("entryModule" in cap, "capability should have entryModule");
     assert.ok("description" in cap, "capability should have description");
@@ -57,7 +57,7 @@ test("capability baselines have expected structure", () => {
   }
 
   if (catalog.harness.length > 0) {
-    const cap = catalog.harness[0];
+    const cap = catalog.harness[0]!;
     assert.ok("capabilityId" in cap, "capability should have capabilityId");
     assert.ok("entryModule" in cap, "capability should have entryModule");
     assert.ok("description" in cap, "capability should have description");

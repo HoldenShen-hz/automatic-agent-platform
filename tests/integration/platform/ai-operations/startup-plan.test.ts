@@ -60,7 +60,7 @@ test("AI operations startup plan integration - each step has required fields", (
 test("AI operations startup plan integration - startupOrder matches stepIds", () => {
   const plan = buildAiOperationsStartupPlan();
 
-  const orderMatches = plan.startupOrder.every((stepId, index) => plan.steps[index].stepId === stepId);
+  const orderMatches = plan.startupOrder.every((stepId, index) => plan.steps[index]?.stepId === stepId);
   assert.ok(orderMatches, "startupOrder should match the order of steps in the plan");
 });
 

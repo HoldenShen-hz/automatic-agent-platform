@@ -352,7 +352,7 @@ test("DomainDescriptor: review produces onboardingReadiness", () => {
         domainId: "test_review",
         prompts: [{ promptId: "test_prompt", stage: "execute", version: "1.0", template: "Test", guardrails: [] }],
       },
-      recipes: [{ recipeId: "test_recipe", domainId: "test_review", triggerPhrases: ["test"], defaultWorkflowId: "wf_test", defaultToolBundleIds: ["tools_test"] }],
+      recipes: [{ recipeId: "test_recipe", name: "Test Recipe", domainId: "test_review", archetype: "analytics", risk_profile_ref: "risk_test", guardrail_overlay: "standard", default_prompt_bundle_ref: "prompt_test", acceptance_checklist_ref: "check_test", triggerPhrases: ["test"], defaultWorkflowId: "wf_test", defaultToolBundleIds: ["tools_test"], riskLevel: "medium", recommended_workflow_ids: [], requiredApproval: false }],
       defaultToolBundleIds: ["tools_test"],
       defaultWorkflowIds: ["wf_test"],
     });

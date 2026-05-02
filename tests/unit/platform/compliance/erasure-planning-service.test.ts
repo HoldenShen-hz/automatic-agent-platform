@@ -19,8 +19,8 @@ test("ErasurePlanningService creates plan with erase action for PII", () => {
 
   assert.equal(plan.status, "ready");
   assert.equal(plan.steps.length, 1);
-  assert.equal(plan.steps[0].action, "erase");
-  assert.equal(plan.steps[0].reason, "pii_subject_request");
+  assert.equal(plan.steps[0]!.action, "erase");
+  assert.equal(plan.steps[0]!.reason, "pii_subject_request");
 });
 
 test("ErasurePlanningService creates plan with hold action for legal hold", () => {
@@ -37,8 +37,8 @@ test("ErasurePlanningService creates plan with hold action for legal hold", () =
   });
 
   assert.equal(plan.status, "blocked_by_legal_hold");
-  assert.equal(plan.steps[0].action, "hold");
-  assert.equal(plan.steps[0].reason, "legal_hold");
+  assert.equal(plan.steps[0]!.action, "hold");
+  assert.equal(plan.steps[0]!.reason, "legal_hold");
 });
 
 test("ErasurePlanningService creates plan with redact action for backup copies", () => {
@@ -55,8 +55,8 @@ test("ErasurePlanningService creates plan with redact action for backup copies",
   });
 
   assert.equal(plan.status, "ready");
-  assert.equal(plan.steps[0].action, "redact");
-  assert.equal(plan.steps[0].reason, "backup_copy_redaction");
+  assert.equal(plan.steps[0]!.action, "redact");
+  assert.equal(plan.steps[0]!.reason, "backup_copy_redaction");
 });
 
 test("ErasurePlanningService creates plan with skip action for non-PII", () => {
@@ -73,8 +73,8 @@ test("ErasurePlanningService creates plan with skip action for non-PII", () => {
   });
 
   assert.equal(plan.status, "ready");
-  assert.equal(plan.steps[0].action, "skip");
-  assert.equal(plan.steps[0].reason, "no_pii");
+  assert.equal(plan.steps[0]!.action, "skip");
+  assert.equal(plan.steps[0]!.reason, "no_pii");
 });
 
 test("ErasurePlanningService calculates dueAt correctly", () => {
@@ -188,7 +188,7 @@ test("ErasurePlanningService preserves target kind in steps", () => {
     slaHours: 24,
   });
 
-  assert.equal(plan.steps[0].targetKind, "task");
-  assert.equal(plan.steps[1].targetKind, "message");
-  assert.equal(plan.steps[2].targetKind, "artifact");
+  assert.equal(plan.steps[0]!.targetKind, "task");
+  assert.equal(plan.steps[1]!.targetKind, "message");
+  assert.equal(plan.steps[2]!.targetKind, "artifact");
 });

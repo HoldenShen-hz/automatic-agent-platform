@@ -148,7 +148,7 @@ test("spawnTracked creates child process and registers it", () => {
   const child = spawnTracked(tracker, "echo", ["hello"], undefined, "bash-tool");
 
   try {
-    assert.ok(child.pid > 0);
+    assert.ok(child.pid != null && child.pid > 0);
     // Process may have already exited since echo is fast
     // Just verify no error was thrown during spawn
   } finally {
@@ -169,7 +169,7 @@ test("spawnTracked with args works", () => {
   );
 
   try {
-    assert.ok(child.pid > 0);
+    assert.ok(child.pid != null && child.pid > 0);
   } finally {
     tracker.killAll("SIGKILL", 100);
   }
@@ -188,7 +188,7 @@ test("spawnTracked uses provided cwd", () => {
   );
 
   try {
-    assert.ok(child.pid > 0);
+    assert.ok(child.pid != null && child.pid > 0);
   } finally {
     tracker.killAll("SIGKILL", 100);
   }
@@ -201,7 +201,7 @@ test("spawnTracked defaults owner to unknown", () => {
   const child = spawnTracked(tracker, "sleep", ["0.01"]);
 
   try {
-    assert.ok(child.pid > 0);
+    assert.ok(child.pid != null && child.pid > 0);
   } finally {
     tracker.killAll("SIGKILL", 100);
   }

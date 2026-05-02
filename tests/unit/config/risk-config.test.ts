@@ -18,31 +18,32 @@ const RISK_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");
 const riskConfig = JSON.parse(readFileSync(RISK_CONFIG_PATH, "utf-8"));
 
 /**
- * Issue #1987: Risk config should have 8 factors, not 6
+ * Risk config should expose the canonical 8-factor model.
  *
  * The factorWeights object should include all risk factors:
- * 1. stepTypeRisk
- * 2. targetSystemRisk
- * 3. dataClassRisk
- * 4. blastRadius
- * 5. priorFailureRate
- * 6. confidence
- * 7. (missing factor 7)
- * 8. (missing factor 8)
+ * 1. targetSystemRisk
+ * 2. dataClassRisk
+ * 3. blastRadius
+ * 4. priorFailureRate
+ * 5. confidence
+ * 6. aiModelRisk
+ * 7. thirdPartyRisk
+ * 8. supplyChainRisk
  */
 test("risk-config: factorWeights should contain all expected risk factors", () => {
   const expectedFactors = [
-    "stepTypeRisk",
     "targetSystemRisk",
     "dataClassRisk",
     "blastRadius",
     "priorFailureRate",
     "confidence",
+    "aiModelRisk",
+    "thirdPartyRisk",
+    "supplyChainRisk",
   ];
 
   const actualFactors = Object.keys(riskConfig.factorWeights);
 
-  // Verify we have the 6 known factors
   for (const factor of expectedFactors) {
     assert.ok(
       actualFactors.includes(factor),
@@ -50,12 +51,10 @@ test("risk-config: factorWeights should contain all expected risk factors", () =
     );
   }
 
-  // Issue #1987: The config only has 6 factors but should have 8
-  // This test documents the current state (6 factors)
   assert.equal(
     actualFactors.length,
-    6,
-    "factorWeights should have 6 factors (current implementation). Issue #1987: Should have 8 factors for complete risk assessment.",
+    8,
+    "factorWeights should expose the canonical 8-factor risk model.",
   );
 });
 
@@ -80,28 +79,17 @@ test("risk-config: riskCategories should include ai category", () => {
 });
 
 /**
- * Issue #1998: medium risk autoExecute:true violates defense-in-depth
- *
  * Medium risk tasks should NOT auto-execute as they require human oversight.
- * autoExecute should be false for medium risk to enforce defense-in-depth.
  */
 test("risk-config: medium risk should NOT auto-execute (defense-in-depth)", () => {
   const mediumRiskAction = riskConfig.riskLevelActions.medium;
 
-  // Issue #1998: autoExecute:true for medium risk is a security concern
-  // Medium risk tasks should require human approval
   assert.equal(
     mediumRiskAction.autoExecute,
-    true,
-    "Issue #1998: medium risk autoExecute is currently true - this violates defense-in-depth. Should be false.",
+    false,
+    "Medium-risk actions must require approval and cannot auto-execute.",
   );
-
-  // Document the security concern
-  if (mediumRiskAction.autoExecute === true) {
-    console.warn(
-      "SECURITY CONCERN: medium risk has autoExecute:true which bypasses human approval gates",
-    );
-  }
+  assert.equal(mediumRiskAction.requiresApproval, true);
 });
 
 test("risk-config: high risk should require approval", () => {

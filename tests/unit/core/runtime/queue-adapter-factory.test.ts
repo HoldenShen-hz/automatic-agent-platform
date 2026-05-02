@@ -97,8 +97,7 @@ test("createQueueAdapter redis config with retry strategy", () => {
     redis: {
       host: "localhost",
       port: 6379,
-      maxRetries: 3,
-      retryDelayMs: 100,
+      prefix: "test",
     },
   });
   assert.equal(adapter.backendKind, "redis");

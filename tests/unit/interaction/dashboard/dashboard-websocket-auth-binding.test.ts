@@ -21,6 +21,7 @@ test("DashboardWebSocketServer registerClient binds principal and tenantId into 
     principal: "principal-1",
     tenantId: "tenant-1",
     subscribedChannels: [{ channel: "global" }],
+    subscribedMetrics: [],
     serverTime: (ack.payload as { serverTime: string }).serverTime,
     schemaVersion: "2.0",
     missedEvents: 0,

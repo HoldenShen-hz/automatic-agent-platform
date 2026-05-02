@@ -153,7 +153,7 @@ test("BenchmarkInventoryService records are deeply immutable", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
   const first = benchmarks[0];
-
+  assert.ok(first, "Expected at least one benchmark");
   // The record itself should be frozen to prevent modification
   assert.ok(Object.isFrozen(first), "Benchmark record should be frozen");
   // Verify all property values are primitives (strings) which are immutable by nature

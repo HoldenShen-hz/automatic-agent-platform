@@ -18,6 +18,23 @@ import type {
   BuildStepOutputInput,
 } from "../../../../../src/core/runtime/planner/index.js";
 
+// Mock BudgetLedger for tests
+const mockBudgetLedger = {
+  budgetLedgerId: "test-ledger-1",
+  tenantId: "test-tenant",
+  harnessRunId: "test-harness-1",
+  currency: "USD",
+  hardCap: 1000,
+  softCap: 800,
+  reservedAmount: 0,
+  settledAmount: 0,
+  releasedAmount: 0,
+  status: "open" as const,
+  version: 1,
+};
+
+const mockHarnessRunId = "test-harness-1";
+
 test("core/runtime/planner shim exports executeAgentRoundLoop", () => {
   assert.equal(typeof executeAgentRoundLoop, "function", "executeAgentRoundLoop should be a function");
 });
@@ -199,6 +216,8 @@ test("fallbackStepOutput handles intake_triage step", () => {
     request: "Analyze request",
     priorSummaries: [],
     routingReason: "initial_intake",
+    harnessRunId: mockHarnessRunId,
+    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(typeof result.summary === "string");
@@ -214,6 +233,8 @@ test("fallbackStepOutput handles draft_solution step", () => {
     request: "Create solution",
     priorSummaries: ["Prior step completed"],
     routingReason: "triage_complete",
+    harnessRunId: mockHarnessRunId,
+    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(result.summary.includes("draft") || result.summary.includes("solution"));
@@ -227,6 +248,8 @@ test("fallbackStepOutput handles final_review step", () => {
     request: "Review output",
     priorSummaries: ["Step 1", "Step 2"],
     routingReason: "review_requested",
+    harnessRunId: mockHarnessRunId,
+    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(result.summary.includes("review") || result.summary.includes("final"));
@@ -240,6 +263,8 @@ test("fallbackStepOutput returns correct structure", () => {
     request: "Test",
     priorSummaries: [],
     routingReason: "test",
+    harnessRunId: mockHarnessRunId,
+    budgetLedger: mockBudgetLedger,
   };
   const result = fallbackStepOutput(input);
   assert.ok(typeof result.summary === "string");
@@ -257,6 +282,8 @@ test("AgentRoundLoopInput type is usable", () => {
     request: "request",
     priorSummaries: [],
     routingReason: "reason",
+    harnessRunId: mockHarnessRunId,
+    budgetLedger: mockBudgetLedger,
   };
   assert.equal(input.stepId, "test");
   assert.equal(input.roleId, "agent");
@@ -269,6 +296,8 @@ test("BuildStepOutputInput type is usable", () => {
     request: "request",
     priorSummaries: [],
     routingReason: "reason",
+    harnessRunId: mockHarnessRunId,
+    budgetLedger: mockBudgetLedger,
   };
   assert.equal(input.stepId, "test");
 });

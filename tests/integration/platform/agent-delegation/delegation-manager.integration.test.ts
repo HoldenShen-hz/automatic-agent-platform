@@ -154,7 +154,7 @@ test("getDelegationChain returns chain after delegation", async () => {
   assert.equal(chain.rootAgentId, "parent-agent");
   assert.equal(chain.totalDelegations, 1);
   assert.equal(chain.nodes.length, 1);
-  assert.equal(chain.nodes[0].agentId, "child-agent");
+  assert.equal(chain.nodes[0]?.agentId, "child-agent");
   assert.equal(chain.maxDepthReached, 1);
 });
 
@@ -301,7 +301,7 @@ test("getActiveDelegations returns pending and active delegations", async () => 
 
   const active = service.getActiveDelegations("parent-agent");
   assert.equal(active.length, 1);
-  assert.equal(active[0].delegationId, handle2.delegationId);
+  assert.equal(active[0]?.delegationId, handle2.delegationId);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

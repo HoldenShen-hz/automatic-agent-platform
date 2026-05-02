@@ -59,7 +59,7 @@ test("DomainDescriptorOrchestrationService.review returns ready when all require
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -69,7 +69,7 @@ test("DomainDescriptorOrchestrationService.review returns ready when all require
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -246,7 +246,7 @@ test("DomainDescriptorOrchestrationService.review determines onboardingReadiness
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -256,7 +256,7 @@ test("DomainDescriptorOrchestrationService.review determines onboardingReadiness
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -310,9 +310,9 @@ test("DomainDescriptorOrchestrationService.review lists prompt IDs and stage cov
       libraryId: "prompt-test",
       domainId: "test-domain",
       prompts: [
-        { promptId: "plan-prompt", stage: "plan", version: "1.0", template: "Plan" },
-        { promptId: "execute-prompt", stage: "execute", version: "1.0", template: "Execute" },
-        { promptId: "assess-prompt", stage: "assess", version: "1.0", template: "Assess" },
+        { promptId: "plan-prompt", stage: "plan", version: "1.0", template: "Plan", guardrails: [] },
+        { promptId: "execute-prompt", stage: "execute", version: "1.0", template: "Execute", guardrails: [] },
+        { promptId: "assess-prompt", stage: "assess", version: "1.0", template: "Assess", guardrails: [] },
       ],
     },
   });
@@ -327,8 +327,8 @@ test("DomainDescriptorOrchestrationService.review lists recipe IDs from recipes"
   const service = new DomainDescriptorOrchestrationService();
   const input = createMinimalInput({
     recipes: [
-      { recipeId: "recipe-1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: [] },
-      { recipeId: "recipe-2", domainId: "test-domain", triggerPhrases: ["run"], defaultWorkflowId: "wf-2", defaultToolBundleIds: [] },
+      { recipeId: "recipe-1", name: "recipe-1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: [], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false },
+      { recipeId: "recipe-2", name: "recipe-2", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["run"], defaultWorkflowId: "wf-2", defaultToolBundleIds: [], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false },
     ],
   });
 
@@ -363,7 +363,7 @@ test("DomainDescriptorOrchestrationService.review builds cross-domain modes from
   const input = createMinimalInput({
     interactionRules: [
       { sourceDomainId: "domain-a", targetDomainId: "domain-b", mode: "approval_required", maxConcurrentWorkflows: 1, compensationRequired: true },
-      { sourceDomainId: "domain-a", targetDomainId: "domain-c", mode: "supervised", maxConcurrentWorkflows: 5, compensationRequired: false },
+      { sourceDomainId: "domain-a", targetDomainId: "domain-c", mode: "approval_required", maxConcurrentWorkflows: 5, compensationRequired: false },
     ],
   });
 
@@ -375,7 +375,7 @@ test("DomainDescriptorOrchestrationService.review builds cross-domain modes from
 
 test("DomainDescriptorOrchestrationService.review returns empty cross-domain modes when no interaction rules", () => {
   const service = new DomainDescriptorOrchestrationService();
-  const input = createMinimalInput({ interactionRules: undefined });
+  const input = createMinimalInput({});
 
   const review = service.review(input);
 
@@ -442,7 +442,7 @@ test("DomainDescriptorOrchestrationService.review normalizes validating lifecycl
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -452,7 +452,7 @@ test("DomainDescriptorOrchestrationService.review normalizes validating lifecycl
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -480,7 +480,7 @@ test("DomainDescriptorOrchestrationService.review normalizes canary lifecycle st
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -490,7 +490,7 @@ test("DomainDescriptorOrchestrationService.review normalizes canary lifecycle st
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",
@@ -523,7 +523,7 @@ test("DomainDescriptorOrchestrationService.review includes reviewRequiredTaskTyp
     promptLibrary: {
       libraryId: "prompt-test",
       domainId: "test-domain",
-      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test" }],
+      prompts: [{ promptId: "p1", stage: "plan", version: "1.0", template: "Test", guardrails: [] }],
     },
     evalFramework: {
       frameworkId: "eval-test",
@@ -533,7 +533,7 @@ test("DomainDescriptorOrchestrationService.review includes reviewRequiredTaskTyp
       onlineMetrics: [],
       releaseGates: { minFewShotCount: 5, minRegressionCaseCount: 20, requirePromptInjectionCoverage: true },
     },
-    recipes: [{ recipeId: "r1", domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"] }],
+    recipes: [{ recipeId: "r1", name: "r1", archetype: "crud_heavy" as const, riskLevel: "medium" as const, domainId: "test-domain", triggerPhrases: ["test"], defaultWorkflowId: "wf-1", defaultToolBundleIds: ["bundle-1"], risk_profile_ref: "default", guardrail_overlay: "standard", default_prompt_bundle_ref: "default", acceptance_checklist_ref: "default", recommended_workflow_ids: [], requiredApproval: false }],
     knowledgeSchema: {
       schemaId: "knowledge-test",
       domainId: "test-domain",

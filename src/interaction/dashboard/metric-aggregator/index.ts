@@ -267,12 +267,13 @@ export function calculateMetricTrend(current: number, previous: number): MetricT
   if (previous === 0) {
     return { direction: "stable", deltaPercent: 0, confidence: "low" };
   }
-  const deltaPercent = ((current - previous) / previous) * 100;
-  const direction = deltaPercent > 5 ? "up" : deltaPercent < -5 ? "down" : "stable";
-  const confidence: MetricTrend["confidence"] = previous > 10 ? "high" : previous > 5 ? "medium" : "low";
+  const deltaPercent = Number((((current - previous) / previous) * 100).toFixed(2));
+  const referencePercent = Math.abs(previous) <= 1 ? previous * 100 : previous;
+  const direction = deltaPercent >= 5 ? "up" : deltaPercent <= -5 ? "down" : "stable";
+  const confidence: MetricTrend["confidence"] = referencePercent >= 10 ? "high" : referencePercent >= 5 ? "medium" : "low";
   return {
     direction,
-    deltaPercent: Number(deltaPercent.toFixed(2)),
+    deltaPercent,
     confidence,
   };
 }
@@ -287,12 +288,12 @@ export function compareSloValue(
 ): SloComparison {
   if (metricType === "success_rate") {
     // For success rate, higher is better
-    const gap = sloTarget - currentValue;
-    const status = gap > 0.05 ? "breached" : gap > 0.01 ? "at_risk" : "healthy";
+    const gap = Number((sloTarget - currentValue).toFixed(4));
+    const status = gap >= 0.05 ? "breached" : gap >= 0.01 ? "at_risk" : "healthy";
     return {
       sloTarget,
       currentValue: Number(currentValue.toFixed(4)),
-      gap: Number(gap.toFixed(4)),
+      gap,
       status,
     };
   } else {

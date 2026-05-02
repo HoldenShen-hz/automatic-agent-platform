@@ -9,10 +9,16 @@ function createTestRecipe(overrides?: Partial<DomainRecipe>): DomainRecipe {
     recipeId: "recipe_test",
     domainId: "coding",
     name: "Test Recipe",
-    description: "Test recipe description",
-    triggerPhrases: ["test", "debug"],
+    archetype: "crud_heavy",
+    riskLevel: "medium",
+    risk_profile_ref: "default",
+    guardrail_overlay: "standard",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "default",
+    acceptance_checklist_ref: "default",
     defaultWorkflowId: "wf_test",
     defaultToolBundleIds: ["tools_test"],
+    triggerPhrases: ["test", "debug"],
     ...overrides,
   };
 }

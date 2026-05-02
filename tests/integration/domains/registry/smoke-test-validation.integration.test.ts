@@ -64,8 +64,11 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       executionMode: {
         planningMode: "llm_assisted",
         hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
       latencyTier: "interactive",
+      compiledArtifactRef: null,
     },
     ...overrides,
   };
@@ -228,9 +231,12 @@ test("smoke test: executionProfile without planningMode fails", async () => {
       executionMode: {
         planningMode: undefined as unknown as "llm_assisted",
         hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
       latencyTier: "interactive",
-    },
+      compiledArtifactRef: null,
+    } as DomainExecutionProfile,
   });
   const runner = new DomainSmokeTestRunner();
 
@@ -249,9 +255,12 @@ test("smoke test: executionProfile without hotPathMode fails", async () => {
       executionMode: {
         planningMode: "llm_assisted",
         hotPathMode: undefined as unknown as "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
       latencyTier: "interactive",
-    },
+      compiledArtifactRef: null,
+    } as DomainExecutionProfile,
   });
   const runner = new DomainSmokeTestRunner();
 
@@ -270,9 +279,12 @@ test("smoke test: executionProfile without latencyTier fails", async () => {
       executionMode: {
         planningMode: "llm_assisted",
         hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
       },
       latencyTier: undefined as unknown as "interactive",
-    },
+      compiledArtifactRef: null,
+    } as DomainExecutionProfile,
   });
   const runner = new DomainSmokeTestRunner();
 

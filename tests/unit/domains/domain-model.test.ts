@@ -345,7 +345,7 @@ test("WorkflowConfigSchema accepts valid workflow config", () => {
 
   assert.equal(workflow.workflowId, "wf1");
   assert.equal(workflow.name, "My Workflow");
-  assert.deepEqual(workflow.steps, expect.any(Array));
+  assert.ok(Array.isArray(workflow.steps));
 });
 
 test("WorkflowConfigSchema defaults triggerConditions and steps", () => {

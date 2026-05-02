@@ -219,7 +219,15 @@ const DEFAULT_LLM_PLAN_LATENCY_MS = 10_000;
 const DEFAULT_DOMAIN_RECIPES: readonly DomainRecipe[] = Object.freeze(
   VERTICAL_DOMAIN_BASELINES.flatMap((baseline) => baseline.recipes),
 );
-type DomainBaselineStatus = "draft" | "validated" | "registered" | "active" | "updating" | "deprecated" | "archived";
+type DomainBaselineStatus =
+  | "draft"
+  | "validated"
+  | "registered"
+  | "active"
+  | "canary"
+  | "updating"
+  | "deprecated"
+  | "archived";
 
 interface TaskDomainPolicy {
   readonly baselineDomainId: string;
@@ -231,6 +239,7 @@ const ACTIVE_DOMAIN_BASELINE_STATUSES = new Set<DomainBaselineStatus>([
   "validated",
   "registered",
   "active",
+  "canary",
   "updating",
 ]);
 
@@ -341,7 +350,7 @@ function normalizeGoal(goal: Goal | string): Goal {
 
 function resolveTaskDomainPolicy(domainId: string): TaskDomainPolicy | null {
   const normalized = normalizeDomainBindingId(domainId);
-  return TASK_DOMAIN_POLICIES[normalized] ?? null;
+  return TASK_DOMAIN_POLICIES[domainId] ?? TASK_DOMAIN_POLICIES[normalized] ?? null;
 }
 
 /**
