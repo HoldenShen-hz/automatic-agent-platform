@@ -632,15 +632,59 @@ function deriveConversationState(
   return "Executing";
 }
 
+function buildRequestEnvelope(
+  request: NlEntryRequest,
+  detailed: IntentParseResult,
+  surfacedSummary: string,
+  primaryIntent: DetectedIntent,
+  confirmationRequired: boolean,
+  canonicalRequestEnvelope: CanonicalRequestEnvelope | null,
+): NlRequestEnvelope | null {
+  return createRequestEnvelope<NlRequestPayload>({
+    principal: createPlatformPrincipal({
+      actorId: request.userId,
+      tenantId: request.tenantId,
+      roles: ["requester"],
+      authMethod: "nl_entry",
+    }),
+    tenantId: request.tenantId,
+    requestId: `request:${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}`,
+    idempotencyKey: buildIntakeIdempotencyKey(request, taskDraftIdFromMessage(request.message)),
+    traceId: buildIntakeTraceId(request, taskDraftIdFromMessage(request.message)),
+    payload: {
+      userId: request.userId,
+      title: deriveTitle(request.message),
+      request: request.message,
+      locale: detailed.locale,
+      channel: request.channel ?? null,
+      divisionId: detailed.suggestedDivisionId,
+      workflowId: detailed.suggestedWorkflowId,
+      intent: primaryIntent.intentType,
+      continuation: detailed.continuation,
+      entities: primaryIntent.entities,
+      confirmationRequired,
+      generatedSummary: surfacedSummary,
+    },
+    metadata: {
+      source: "nl_entry",
+      confirmationRequired,
+      divisionId: detailed.suggestedDivisionId,
+      workflowId: detailed.suggestedWorkflowId,
+      locale: detailed.locale,
+      canonicalRequestEnvelopeId: canonicalRequestEnvelope?.requestId ?? null,
+    },
+  });
+}
+
 /**
  * §39: Dry-run execution for high/critical risk instructions.
  * Simulates task with no-op tools to capture real side effects.
  */
-async function executeDryRunForRisk(
+function executeDryRunForRisk(
   message: string,
   intentType: DetectedIntent["intentType"],
   context: ContextEnrichment,
-): Promise<{ capturedSideEffects: string[]; dryRunPassed: boolean }> {
+): { capturedSideEffects: string[]; dryRunPassed: boolean } {
   // For high/critical risk, perform actual dry-run simulation
   // to capture real side effects rather than relying on keyword matching
   const capturedSideEffects: string[] = [];
@@ -1083,9 +1127,6 @@ export class NlEntryService implements NlEntryPort {
     // If risk requires independent review, block before intent parsing
     if (requiresIndependentReview) {
       return {
-        intent: "task_query",
-        confidence: 0,
-        entities: {},
         requestEnvelope: null,
         riskPreview: standaloneRiskPreview,
         costEstimate: defaultCostEstimate(),
@@ -1099,11 +1140,11 @@ export class NlEntryService implements NlEntryPort {
             intentType: "task_query",
             domainHint: null,
             entities: [],
-            urgency: standaloneRiskPreview.overallRisk === "critical" ? "urgent" : "high",
+            urgency: standaloneRiskPreview.overallRisk === "critical" ? "critical" : "high",
             confidence: 0,
           },
           context: {
-            domainHint: null,
+            domainHint: "",
             extractedConstraints: [],
             targetEnvironments: [],
             requestedChannels: [],
@@ -1112,20 +1153,28 @@ export class NlEntryService implements NlEntryPort {
           riskPreview: standaloneRiskPreview,
           state: "Confirming",
         },
-        clarificationState: { state: "none" },
+        clarificationState: { state: "none" as const, reasonCodes: [], questions: [], rounds: 0, maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS },
         confirmationReceipt: {
           confirmationId: `conf:${taskDraftIdFromMessage(request.message)}`,
           required: true,
           state: "pending_user_confirmation",
           reasonCodes: ["nl_gateway.risk_classification_required"],
+          summary: `风险分类完成：${standaloneRiskPreview.overallRisk}级别任务需要人工审核后处理`,
           scope: standaloneRiskPreview.overallRisk === "critical" ? "critical" : "high",
         },
         conversationState: "Clarifying",
-        canonicalTaskDraft: {
-          taskDraftId: `taskdraft:${request.tenantId}:${request.userId}:blocked`,
+        canonicalTaskDraft: createCanonicalTaskDraft({
           tenantId: request.tenantId,
+          principal: createPrincipalRef({
+            principalId: request.userId,
+            tenantId: request.tenantId,
+            roles: ["requester"],
+            displayName: request.userId,
+            authorizationLevel: "operator",
+          }),
           source: "nl",
           domainId: "",
+          taskDraftId: `taskdraft:${request.tenantId}:${request.userId}:blocked`,
           normalizedIntent: {
             intent: "task_query",
             continuation: "new_task",
@@ -1148,7 +1197,7 @@ export class NlEntryService implements NlEntryPort {
             uri: `artifact://nl-input/${encodeURIComponent(request.tenantId)}/${encodeURIComponent(request.userId)}/blocked`,
           },
           expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        },
+        }),
         clarificationSession: null,
         confirmedTaskSpec: null,
         canonicalRequestEnvelope: null,
@@ -1163,7 +1212,7 @@ export class NlEntryService implements NlEntryPort {
       urgency: "low" as const,
       confidence: detailed.confidence,
     };
-    const riskPreview = buildRiskPreview(request.message, primaryIntent.intentType);
+    const riskPreview = buildRiskPreview(request.message, primaryIntent.intentType, detailed.context);
     const costEstimate = this.costEstimator?.estimate(detailed.suggestedDivisionId) ?? defaultCostEstimate();
     const confirmationRequired = detailed.requiresClarification || riskPreview.approvalNeeded || riskPreview.overallRisk === "critical" || detailed.blockedByPolicy;
     const clarificationRounds = detailed.requiresClarification
@@ -1372,42 +1421,7 @@ export class NlEntryService implements NlEntryPort {
         canonicalRequestEnvelope: null,
       };
     }
-    const requestEnvelope: NlRequestEnvelope | null =
-      !confirmationRequired || confirmedTaskSpec != null
-        ? createRequestEnvelope<NlRequestPayload>({
-          principal: createPlatformPrincipal({
-            actorId: request.userId,
-            tenantId: request.tenantId,
-            roles: ["requester"],
-            authMethod: "nl_entry",
-          }),
-          tenantId: request.tenantId,
-          requestId: `request:${request.tenantId}:${request.userId}:${taskDraftIdFromMessage(request.message)}`,
-          idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
-          traceId: buildIntakeTraceId(request, taskDraft.draftId),
-          payload: {
-            userId: request.userId,
-            title: deriveTitle(request.message),
-            request: request.message,
-            locale: detailed.locale,
-            channel: request.channel ?? null,
-            divisionId: detailed.suggestedDivisionId,
-            workflowId: detailed.suggestedWorkflowId,
-            intent: primaryIntent.intentType,
-            continuation: detailed.continuation,
-            entities: primaryIntent.entities,
-            confirmationRequired,
-            generatedSummary: surfacedSummary,
-          },
-          metadata: {
-            source: "nl_entry",
-            confirmationRequired,
-            divisionId: detailed.suggestedDivisionId,
-            workflowId: detailed.suggestedWorkflowId,
-            locale: detailed.locale,
-            canonicalRequestEnvelopeId: canonicalRequestEnvelope?.requestId ?? null,
-          },
-        });
+    const requestEnvelope: NlRequestEnvelope | null = buildRequestEnvelope(request, detailed, surfacedSummary, primaryIntent, confirmationRequired, canonicalRequestEnvelope);
 
     // §39.5: Record this turn in conversation context for subsequent turns
     this.conversationContextManager.addTurn(

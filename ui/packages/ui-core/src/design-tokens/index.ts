@@ -293,6 +293,8 @@ export interface SemanticTokens {
     readonly card: string;
     readonly input: string;
     readonly badge: string;
+    readonly lg: string;
+    readonly sm: string;
   };
   readonly spacing: {
     readonly buttonPaddingX: number;
@@ -372,6 +374,8 @@ export const semanticTokens: SemanticTokens = {
     card: primitiveTokens.radius.md,
     input: primitiveTokens.radius.sm,
     badge: primitiveTokens.radius.full,
+    lg: primitiveTokens.radius.lg,
+    sm: primitiveTokens.radius.sm,
   },
   spacing: {
     buttonPaddingX: 16,

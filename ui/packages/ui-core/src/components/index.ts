@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ForwardedRef, type InputHTMLAttributes, type PropsWithChildren, type ReactElement, type ReactNode, type SelectHTMLAttributes, forwardRef } from "react";
+import React, { createElement, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ForwardedRef, type InputHTMLAttributes, type PropsWithChildren, type ReactElement, type ReactNode, type SelectHTMLAttributes, forwardRef } from "react";
 import type { ImplementationStatus } from "@aa/shared-types";
 import { animation, createPanelStyle, designTokens } from "../design-tokens";
 import { LayoutFrame, ThreePaneLayout } from "../layouts";
@@ -1038,9 +1038,10 @@ export function FeatureWorkbenchPanel(
 
 // §R8-58: React error boundary for feature component rendering
 // Classifies errors as P0-P3, shows appropriate fallback UI, reports to error tracking service
-export class ComponentErrorBoundary extends createElement.Component<{
+export class ComponentErrorBoundary extends React.Component<{
   fallback?: (error: Error, errorInfo: unknown) => ReactElement;
   onError?: (error: Error, errorInfo: unknown) => void;
+  children?: ReactNode;
 }> {
   state: { hasError: boolean; error: Error | null };
 
