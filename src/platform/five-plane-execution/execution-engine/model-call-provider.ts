@@ -20,7 +20,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { CallGovernance, type DistributedRateLimiterLike } from "./call-governance.js";
 import { DistributedRateLimiter } from "../../interface/ingress/distributed-rate-limiter.js";
 import { readRedisConnectionConfigFromEnv } from "../../shared/utils/redis-client-options.js";
-import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
+import { BudgetGuard, type BudgetPolicy, BudgetExecutionSessionManager, type BudgetExecutionContext, BudgetExecutionState } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext } from "../../five-plane-execution/budget-allocator.js";
 import { createBudgetLedger, type BudgetLedger, type BudgetReservation, reserveBudgetHardCap } from "../../contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
@@ -90,6 +90,8 @@ export class ModelCallProviderService {
   private readonly budgetGuard: BudgetGuard;
   private readonly budgetAllocator: BudgetAllocator;
   private readonly budgetLedger: BudgetLedger;
+  // R8-01 FIX: Use BudgetExecutionSessionManager for atomic reserve→execute→settle
+  private readonly budgetSessionManager: BudgetExecutionSessionManager;
   private disposed = false;
 
   public constructor(config: ModelCallProviderConfig) {
@@ -119,6 +121,8 @@ export class ModelCallProviderService {
     this.callGovernance = createModelCallGovernance(config, process.env);
     this.budgetGuard = new BudgetGuard();
     this.budgetAllocator = new BudgetAllocator();
+    // R8-01: Initialize BudgetExecutionSessionManager
+    this.budgetSessionManager = new BudgetExecutionSessionManager({ allocator: this.budgetAllocator });
     // R4-25 (INV-BUDGET-001): Use external budgetLedger if provided, otherwise create isolated one
     // The external budgetLedger flows from validatedPlanGraphBundle through the execution chain
     this.budgetLedger = config.budgetLedger ?? createBudgetLedger({
@@ -173,73 +177,70 @@ export class ModelCallProviderService {
       });
     }
 
-    // R4-25 (INV-BUDGET-001): Reserve budget before LLM call using BudgetAllocator.reserve()
+    // R4-25 (INV-BUDGET-001) + R8-01 FIX: Atomic reserve→execute→settle via BudgetExecutionSession
     const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
     const policy = this.getDefaultBudgetPolicy();
+    const traceId = request.traceId ?? newId("trace");
 
-    // Pre-check using BudgetGuard evaluation
-    const budgetEvaluation = this.budgetGuard.evaluateTaskSpend({
-      policy,
-      currentTaskCostUsd: 0,
-      nextEstimatedCostUsd: estimatedCostUsd,
-    });
-    if (!budgetEvaluation.allowed) {
-      throw new ProviderError("model_call.budget_exceeded", `Budget limit exceeded for LLM call: ${budgetEvaluation.reasonCode}`, {
-        retryable: false,
-      });
-    }
-
-    // R4-25: Actually reserve the budget using BudgetAllocator.reserve()
-    const reservationContext: BudgetAllocatorContext = {
-      tenantId: "tenant:local",
-      traceId: request.traceId ?? newId("trace"),
+    // R8-01: Use BudgetExecutionSessionManager for atomic reserve→execute→settle
+    // This prevents concurrent requests from overspending due to race conditions
+    const executionContext: BudgetExecutionContext = {
+      tenantId: request.tenantId ?? "tenant:local",
+      harnessRunId: this.budgetLedger.harnessRunId,
+      traceId,
       emittedBy: "ModelCallProviderService",
-      tier: BudgetTier.STEP,
-      tierLimit: policy.maxTaskCostUsd,
-      watermarkAlert: {
-        warningThreshold: policy.warnAtRatio,
-        criticalThreshold: 0.95,
-        hardCapThreshold: 1.0,
-      },
-      autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 1 },
-      crossRunPriority: { priority: 1, weightFactor: 1 },
-      streamingSettle: { enabled: false, tokenInterval: Number.MAX_SAFE_INTEGER, timeIntervalMs: Number.MAX_SAFE_INTEGER },
-    };
-
-    const reservation = this.budgetAllocator.reserve({
       ledger: this.budgetLedger,
-      amount: Number(estimatedCostUsd.toFixed(4)),
-      resourceKind: "token",
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-      expectedVersion: this.budgetLedger.version,
-      context: reservationContext,
-    });
-
-    if (!reservation.reservation) {
-      throw new ProviderError("model_call.budget_reservation_failed", `Budget reservation failed`, {
-        retryable: true,
-      });
-    }
-
-    const req: ChatCompletionRequest = {
-      model: request.model,
-      messages: request.messages,
-      maxTokens: request.maxTokens,
-      stream: false,
-      traceId: request.traceId ?? newId("trace"),
-      tenantId: request.tenantId ?? null,
-      costTag: request.costTag ?? "default",
-      ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
-      ...(request.tools !== undefined ? { tools: request.tools } : {}),
+      policy,
     };
-    if (request.system !== undefined) {
-      req.system = request.system;
-    }
-    if (request.temperature !== undefined) {
-      req.temperature = request.temperature;
-    }
 
-    return this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
+    let session;
+    try {
+      // R8-01: Step 1 - Reserve budget atomically
+      session = this.budgetSessionManager.reserveAndCreateSession(
+        executionContext,
+        estimatedCostUsd,
+        "token",
+      );
+
+      // Mark as executing
+      this.budgetSessionManager.markExecuting(session.sessionId);
+
+      // Proceed with actual LLM call
+      const req: ChatCompletionRequest = {
+        model: request.model,
+        messages: request.messages,
+        maxTokens: request.maxTokens,
+        stream: false,
+        traceId,
+        tenantId: request.tenantId ?? null,
+        costTag: request.costTag ?? "default",
+        ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
+        ...(request.tools !== undefined ? { tools: request.tools } : {}),
+      };
+      if (request.system !== undefined) {
+        req.system = request.system;
+      }
+      if (request.temperature !== undefined) {
+        req.temperature = request.temperature;
+      }
+
+      const result = await this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
+
+      // R8-01: Step 2 - Settle with actual cost based on token usage
+      const actualCost = this.calculateActualCost(result.usage.totalTokens, request.model);
+      this.budgetSessionManager.settle(session.sessionId, actualCost);
+
+      return result;
+    } catch (error) {
+      // R8-01: Step 3 - Release reservation on failure
+      if (session) {
+        this.budgetSessionManager.release(
+          session.sessionId,
+          error instanceof Error ? error.message : "model_call_failed",
+        );
+      }
+      throw error;
+    }
   }
 
   public async createStreamingCompletion(
@@ -395,6 +396,23 @@ export class ModelCallProviderService {
     };
     const rate = costPerThousandTokens[model] ?? 0.001;
     return (maxTokens / 1000) * rate;
+  }
+
+  // R8-01 FIX: Calculate actual cost from token usage after LLM call completes
+  private calculateActualCost(totalTokens: number, model: string): number {
+    const costPerThousandTokens: Record<string, number> = {
+      "MiniMax-M2.7": 0.001,
+      "MiniMax-M2.7-highspeed": 0.002,
+      "MiniMax-M2": 0.0008,
+      "MiniMax-M1": 0.0005,
+      "claude-opus-4-5": 0.015,
+      "claude-sonnet-4": 0.008,
+      "claude-haiku-3-5": 0.002,
+      "gpt-4o": 0.005,
+      "gpt-4o-mini": 0.0015,
+    };
+    const rate = costPerThousandTokens[model] ?? 0.001;
+    return (totalTokens / 1000) * rate;
   }
 
   private toGovernanceError(

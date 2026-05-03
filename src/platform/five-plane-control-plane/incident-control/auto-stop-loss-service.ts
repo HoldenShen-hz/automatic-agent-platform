@@ -823,10 +823,26 @@ export class AutoStopLossService {
           // Note: fire-and-forget since approvePendingExecution returns synchronously
           // The caller of this method should not await the playbook execution
           this.executeApprovedPlaybook(playbook, event).catch((err) => {
+            // §9.6: Classify and record playbook failure with evidence
+            const errorRecord = classifyPlaybookError(
+              err,
+              playbook.id,
+              playbook.name,
+              this.lastHealthCheck?.status ?? "unknown",
+            );
+            this.recordError(errorRecord);
             event.success = false;
             event.errorMessage = err instanceof Error ? err.message : String(err);
           });
         } catch (err) {
+          // §9.6: Classify and record playbook failure with evidence
+          const errorRecord = classifyPlaybookError(
+            err,
+            playbook.id,
+            playbook.name,
+            this.lastHealthCheck?.status ?? "unknown",
+          );
+          this.recordError(errorRecord);
           event.success = false;
           event.errorMessage = err instanceof Error ? err.message : String(err);
         }

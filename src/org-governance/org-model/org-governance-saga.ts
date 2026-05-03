@@ -1,3 +1,5 @@
+import { newId } from "../../platform/contracts/types/ids.js";
+
 export interface OrgGovernanceSagaStep {
   readonly stepId: string;
   readonly targetOrgNodeId: string;
@@ -56,6 +58,8 @@ export interface OrgGovernanceSagaReceipt {
   readonly committedByPhase: Readonly<Record<OrgGovernancePhase, readonly string[]>>;
   readonly compensatedByPhase: Readonly<Record<OrgGovernancePhase, readonly string[]>>;
   readonly failedPhase: OrgGovernancePhase | null;
+  readonly orgVersion: OrgVersionSnapshot | null;
+  readonly impactDiff: OrgImpactDiff | null;
   readonly executionLog: readonly {
     stepId: string;
     action: OrgGovernanceSagaStep["action"];
@@ -63,6 +67,39 @@ export interface OrgGovernanceSagaReceipt {
     targetOrgNodeId: string;
     outcome: "prepared" | "committed" | "compensated" | "audited" | "skipped" | "failed";
   }[];
+}
+
+/**
+ * Frozen snapshot of org state at saga start.
+ * §46.3: Freeze orgVersion before commit to ensure consistent rollback point.
+ */
+export interface OrgVersionSnapshot {
+  readonly snapshotId: string;
+  readonly frozenAt: number;
+  readonly frozenBy: string;
+  readonly orgNodeIds: readonly string[];
+  readonly versionHash: string;
+}
+
+/**
+ * Impact diff describing what changes when org structure changes.
+ * §46.3: Compute impact diff to understand scope of org changes.
+ */
+export interface OrgImpactDiff {
+  readonly diffId: string;
+  readonly computedAt: number;
+  readonly addedNodeIds: readonly string[];
+  readonly removedNodeIds: readonly string[];
+  readonly modifiedNodeIds: readonly string[];
+  readonly affectedPrincipalIds: readonly string[];
+  readonly crossBoundaryChanges: readonly CrossBoundaryImpact[];
+}
+
+export interface CrossBoundaryImpact {
+  readonly sourceBoundaryId: string;
+  readonly targetBoundaryId: string;
+  readonly changeType: "legal_entity" | "jurisdiction" | "data_residency" | "budget_transfer";
+  readonly severity: "low" | "medium" | "high";
 }
 
 export class OrgGovernanceSaga {
@@ -224,7 +261,12 @@ export class OrgGovernanceSaga {
     };
   }
 
-  public executeWithReceipt(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaReceipt {
+  public executeWithReceipt(
+    sagaId: string,
+    steps: readonly OrgGovernanceSagaStep[],
+    orgVersionSnapshot?: OrgVersionSnapshot,
+    impactDiff?: OrgImpactDiff,
+  ): OrgGovernanceSagaReceipt {
     const result = this.execute(sagaId, steps);
 
     const enrichedLog = result.executionLog.map((entry) => {
@@ -249,8 +291,70 @@ export class OrgGovernanceSaga {
       committedByPhase,
       compensatedByPhase,
       failedPhase,
+      orgVersion: orgVersionSnapshot ?? null,
+      impactDiff: impactDiff ?? null,
       executionLog: enrichedLog,
     };
+  }
+
+  /**
+   * Freeze the current org version before saga commit.
+   * §46.3: Freeze orgVersion before commit to ensure consistent rollback point.
+   */
+  public freezeOrgVersion(params: {
+    sagaId: string;
+    orgNodeIds: readonly string[];
+    frozenBy: string;
+  }): OrgVersionSnapshot {
+    return {
+      snapshotId: newId("org_snapshot"),
+      frozenAt: Date.now(),
+      frozenBy: params.frozenBy,
+      orgNodeIds: params.orgNodeIds,
+      versionHash: this.computeVersionHash(params.orgNodeIds),
+    };
+  }
+
+  /**
+   * Compute impact diff describing what changes when org structure changes.
+   * §46.3: Compute impact diff to understand scope of org changes.
+   */
+  public computeImpactDiff(params: {
+    beforeNodeIds: readonly string[];
+    afterNodeIds: readonly string[];
+    affectedPrincipalIds: readonly string[];
+    crossBoundaryChanges?: readonly CrossBoundaryImpact[];
+  }): OrgImpactDiff {
+    const beforeSet = new Set(params.beforeNodeIds);
+    const afterSet = new Set(params.afterNodeIds);
+
+    const addedNodeIds = params.afterNodeIds.filter((id) => !beforeSet.has(id));
+    const removedNodeIds = params.beforeNodeIds.filter((id) => !afterSet.has(id));
+    const modifiedNodeIds = params.beforeNodeIds.filter(
+      (id) => beforeSet.has(id) && afterSet.has(id),
+    );
+
+    return {
+      diffId: newId("org_diff"),
+      computedAt: Date.now(),
+      addedNodeIds,
+      removedNodeIds,
+      modifiedNodeIds,
+      affectedPrincipalIds: params.affectedPrincipalIds,
+      crossBoundaryChanges: params.crossBoundaryChanges ?? [],
+    };
+  }
+
+  private computeVersionHash(orgNodeIds: readonly string[]): string {
+    const sorted = [...orgNodeIds].sort();
+    const fingerprint = sorted.join("|");
+    let hash = 0;
+    for (let i = 0; i < fingerprint.length; i++) {
+      const char = fingerprint.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return `v_${Math.abs(hash).toString(16)}`;
   }
 }
 

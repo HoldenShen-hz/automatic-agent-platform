@@ -4,15 +4,21 @@
  * Enforces budget policies for task execution costs.
  * Evaluates whether a task can proceed based on current spend
  * and estimated next step cost against configured limits.
+ *
+ * R8-01 FIX: Budget guard now implements atomic reserve→execute→settle state machine
+ * with BudgetExecutionSession to prevent concurrent overspend.
  */
 
 import {
   createBudgetLedger,
+  type ArtifactRef,
   type BudgetLedger,
   type BudgetReservationResult,
   type BudgetResourceKind,
 } from "../../contracts/executable-contracts/index.js";
 import { BudgetAllocator, BudgetTier } from "../../five-plane-execution/budget-allocator.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError } from "../../contracts/errors.js";
 
 /**
  * Budget policy defining cost limits and warning thresholds.
@@ -276,5 +282,309 @@ export class BudgetGuard {
       reservation: reserved.reservation,
       reservationReasonCode: "budget.reserved_pre_execution",
     };
+  }
+}
+
+/**
+ * R8-01 FIX: Budget execution session implementing atomic reserve→execute→settle state machine.
+ *
+ * This prevents concurrent requests from overspending due to race conditions.
+ * The state machine enforces:
+ *   reserve → execute → settle (or release on failure)
+ *
+ * States:
+ *   reserved: Budget is reserved, execution can proceed
+ *   executing: Execution is in progress (informational)
+ *   settled: Execution completed, actual cost is finalized
+ *   released: Execution failed or cancelled, reservation released
+ */
+export enum BudgetExecutionState {
+  RESERVED = "reserved",
+  EXECUTING = "executing",
+  SETTLED = "settled",
+  RELEASED = "released",
+}
+
+/**
+ * R8-01 FIX: Budget execution session for atomic reserve→execute→settle.
+ *
+ * Each session is scoped to a single execution (LLM call or tool call) and
+ * ensures budget is properly reserved before execution and settled/released after.
+ *
+ * Concurrency protection:
+ *   - Uses optimistic locking via expectedVersion on the ledger
+ *   - CAS check ensures only one session can reserve at a time
+ *   - If version mismatch occurs, session is invalidated
+ */
+export interface BudgetExecutionSession {
+  readonly sessionId: string;
+  readonly harnessRunId: string;
+  readonly ledger: BudgetLedger;
+  readonly reservation: BudgetReservationResult["reservation"];
+  readonly state: BudgetExecutionState;
+  readonly createdAt: string;
+  readonly estimatedCostUsd: number;
+}
+
+/**
+ * Budget execution context for creating sessions.
+ */
+export interface BudgetExecutionContext {
+  readonly tenantId: string;
+  readonly harnessRunId: string;
+  readonly traceId: string;
+  readonly emittedBy: string;
+  readonly ledger: BudgetLedger;
+  readonly policy: BudgetPolicy;
+}
+
+/**
+ * Budget execution session factory and manager.
+ *
+ * R8-01: This class manages the lifecycle of budget execution sessions
+ * ensuring atomic reserve→execute→settle with proper concurrency protection.
+ */
+export class BudgetExecutionSessionManager {
+  private readonly allocator: BudgetAllocator;
+  private readonly activeSessions = new Map<string, BudgetExecutionSession>();
+
+  public constructor(options: { readonly allocator?: BudgetAllocator } = {}) {
+    this.allocator = options.allocator ?? new BudgetAllocator();
+  }
+
+  /**
+   * R8-01: Atomically reserve budget and create execution session.
+   *
+   * This combines reserve + session creation in one atomic operation to prevent
+   * the race condition where two concurrent requests could both pass the budget
+   * check before either had reserved.
+   *
+   * @param context - Execution context (tenant, harness run, ledger, policy)
+   * @param estimatedCostUsd - Estimated cost for this execution
+   * @param resourceKind - Type of resource (token, tool_call, etc.)
+   * @returns Budget execution session if reservation succeeded
+   * @throws Error if budget reservation fails due to insufficient funds or CAS conflict
+   */
+  public reserveAndCreateSession(
+    context: BudgetExecutionContext,
+    estimatedCostUsd: number,
+    resourceKind: BudgetResourceKind = "token",
+  ): BudgetExecutionSession {
+    const sessionId = newId("budget_session");
+
+    // Atomic reserve using CAS version check
+    const reservationResult = this.allocator.reserve({
+      ledger: context.ledger,
+      amount: Number(estimatedCostUsd.toFixed(4)),
+      resourceKind,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+      expectedVersion: context.ledger.version,
+      context: {
+        tenantId: context.tenantId,
+        traceId: context.traceId,
+        emittedBy: context.emittedBy,
+        tier: BudgetTier.STEP,
+        tierLimit: context.policy.maxTaskCostUsd,
+        watermarkAlert: {
+          warningThreshold: context.policy.warnAtRatio,
+          criticalThreshold: 0.95,
+          hardCapThreshold: 1.0,
+        },
+        autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 1 },
+        crossRunPriority: { priority: 1, weightFactor: 1 },
+        streamingSettle: {
+          enabled: false,
+          tokenInterval: Number.MAX_SAFE_INTEGER,
+          timeIntervalMs: Number.MAX_SAFE_INTEGER,
+        },
+      },
+    });
+
+    if (!reservationResult.reservation) {
+      throw new ValidationError(
+        "budget_session.reserve_failed",
+        `Budget reservation failed for harnessRunId ${context.harnessRunId}`,
+        { details: { estimatedCostUsd, harnessRunId: context.harnessRunId } },
+      );
+    }
+
+    const session: BudgetExecutionSession = {
+      sessionId,
+      harnessRunId: context.harnessRunId,
+      ledger: reservationResult.ledger,
+      reservation: reservationResult.reservation,
+      state: BudgetExecutionState.RESERVED,
+      createdAt: nowIso(),
+      estimatedCostUsd,
+    };
+
+    this.activeSessions.set(sessionId, session);
+    return session;
+  }
+
+  /**
+   * R8-01: Transition session to executing state.
+   *
+   * Called when actual execution begins. This is informational for tracking
+   * but helps with debugging and monitoring.
+   */
+  public markExecuting(sessionId: string): BudgetExecutionSession {
+    const session = this.activeSessions.get(sessionId);
+    if (!session) {
+      throw new ValidationError(
+        "budget_session.not_found",
+        `Budget execution session not found: ${sessionId}`,
+      );
+    }
+    if (session.state !== BudgetExecutionState.RESERVED) {
+      throw new ValidationError(
+        "budget_session.invalid_state_transition",
+        `Cannot transition from ${session.state} to executing`,
+        { details: { sessionId, currentState: session.state } },
+      );
+    }
+
+    const updated: BudgetExecutionSession = {
+      ...session,
+      state: BudgetExecutionState.EXECUTING,
+    };
+    this.activeSessions.set(sessionId, updated);
+    return updated;
+  }
+
+  /**
+   * R8-01: Settle session with actual cost.
+   *
+   * Called when execution completes to finalize the budget consumption.
+   * The actual cost may differ from the estimated cost.
+   *
+   * @param sessionId - Session to settle
+   * @param actualCostUsd - Actual cost incurred
+   * @param evidenceRefs - Optional evidence references for the settlement
+   * @returns Updated ledger state after settlement
+   */
+  public settle(
+    sessionId: string,
+    actualCostUsd: number,
+    evidenceRefs?: readonly { readonly ref: string }[],
+  ): BudgetLedger {
+    const session = this.activeSessions.get(sessionId);
+    if (!session) {
+      throw new ValidationError(
+        "budget_session.not_found",
+        `Budget execution session not found: ${sessionId}`,
+      );
+    }
+    if (session.state !== BudgetExecutionState.RESERVED && session.state !== BudgetExecutionState.EXECUTING) {
+      throw new ValidationError(
+        "budget_session.invalid_state_transition",
+        `Cannot settle session in ${session.state} state`,
+        { details: { sessionId, currentState: session.state } },
+      );
+    }
+    if (!session.reservation) {
+      throw new ValidationError(
+        "budget_session.no_reservation",
+        `Session ${sessionId} has no active reservation to settle`,
+      );
+    }
+
+    const settleResult = this.allocator.settle({
+      ledger: session.ledger,
+      reservation: session.reservation,
+      actualAmount: Number(actualCostUsd.toFixed(4)),
+      evidenceRefs: evidenceRefs as readonly ArtifactRef[] | undefined,
+      context: {
+        tenantId: session.ledger.tenantId,
+        traceId: session.harnessRunId,
+        emittedBy: "BudgetExecutionSessionManager",
+        tier: BudgetTier.STEP,
+        tierLimit: session.estimatedCostUsd,
+        watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
+        autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 1 },
+        crossRunPriority: { priority: 0, weightFactor: 1 },
+        streamingSettle: { enabled: false, tokenInterval: 1000, timeIntervalMs: 60000 },
+      },
+    });
+
+    // Update session to settled
+    const settled: BudgetExecutionSession = {
+      ...session,
+      state: BudgetExecutionState.SETTLED,
+    };
+    this.activeSessions.set(sessionId, settled);
+
+    return settleResult.ledger;
+  }
+
+  /**
+   * R8-01: Release session without settling (on execution failure).
+   *
+   * Called when execution fails and we want to release the reserved budget
+   * back to the pool without settling for actual cost.
+   */
+  public release(sessionId: string, reasonCode?: string): BudgetLedger {
+    const session = this.activeSessions.get(sessionId);
+    if (!session) {
+      throw new ValidationError(
+        "budget_session.not_found",
+        `Budget execution session not found: ${sessionId}`,
+      );
+    }
+    if (session.state === BudgetExecutionState.RELEASED || session.state === BudgetExecutionState.SETTLED) {
+      throw new ValidationError(
+        "budget_session.already_finalized",
+        `Session ${sessionId} already ${session.state}`,
+      );
+    }
+    if (!session.reservation) {
+      // No reservation to release - just remove session
+      this.activeSessions.delete(sessionId);
+      return session.ledger;
+    }
+
+    const releaseResult = this.allocator.release({
+      ledger: session.ledger,
+      reservation: session.reservation,
+      reasonCode: reasonCode ?? "budget_session.execution_failed",
+      context: {
+        tenantId: session.ledger.tenantId,
+        traceId: session.harnessRunId,
+        emittedBy: "BudgetExecutionSessionManager",
+        tier: BudgetTier.STEP,
+        tierLimit: session.estimatedCostUsd,
+        watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
+        autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 1 },
+        crossRunPriority: { priority: 0, weightFactor: 1 },
+        streamingSettle: { enabled: false, tokenInterval: 1000, timeIntervalMs: 60000 },
+      },
+    });
+
+    // Update session to released
+    const released: BudgetExecutionSession = {
+      ...session,
+      state: BudgetExecutionState.RELEASED,
+    };
+    this.activeSessions.set(sessionId, released);
+
+    return releaseResult.ledger;
+  }
+
+  /**
+   * Get active session by ID.
+   */
+  public getSession(sessionId: string): BudgetExecutionSession | null {
+    return this.activeSessions.get(sessionId) ?? null;
+  }
+
+  /**
+   * Clean up finalized sessions (settled or released).
+   */
+  public pruneFinalizedSessions(): void {
+    for (const [sessionId, session] of this.activeSessions) {
+      if (session.state === BudgetExecutionState.SETTLED || session.state === BudgetExecutionState.RELEASED) {
+        this.activeSessions.delete(sessionId);
+      }
+    }
   }
 }

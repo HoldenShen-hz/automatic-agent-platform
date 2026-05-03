@@ -12,13 +12,11 @@ export const FeedbackTrustScoreSchema = z.object({
   /** Composite trust score 0-1; signals below threshold are excluded from learning */
   overallScore: z.number().min(0).max(1),
   /** Trustworthiness of the feedback source (execution engine, user, HITL, etc.) */
-  sourceReliability: z.number().min(0).max(1),
+  sourceCredibility: z.number().min(0).max(1),
   /** Historical accuracy of this source/class of feedback */
   historicalAccuracy: z.number().min(0).max(1),
   /** Attack surface indicator: higher values indicate more adversarial exposure */
-  adversarialRisk: z.enum(["low", "medium", "high", "critical"]),
-  /** Whether this signal passed basic sanity checks */
-  passedSanityCheck: z.boolean(),
+  attackSurface: z.number().min(0).max(1),
 });
 
 export type FeedbackTrustScore = z.output<typeof FeedbackTrustScoreSchema>;

@@ -176,8 +176,8 @@ export class HarnessSdk {
    * Per §5.3, produces NodeAttemptReceipt for tracking execution.
    */
   public appendStep(run: HarnessRun, input: HarnessSdkAppendStepInput): HarnessRun {
-    // Map phase to stage for semantic phase tracking per §5.3
-    // nodeRunId is passed as a proper field, not stuffed into inputs or stage
+    // nodeRunId is the primary routing mechanism per §5.3
+    // phase is passed through for runtime's semanticPhase mapping via mapHarnessStepToOapeflirPhase
     const runtimeInput = {
       role: input.role,
       stage: input.phase ?? "default",
