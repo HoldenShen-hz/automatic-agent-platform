@@ -331,17 +331,32 @@ const MIGRATION_05_EVENTS_APPROVALS = defineMigration(5, "events_approvals", `
 CREATE TABLE IF NOT EXISTS events (
   id VARCHAR(255) PRIMARY KEY,
   task_id VARCHAR(255) NULL,
+  session_id VARCHAR(255) NULL,
   execution_id VARCHAR(255) NULL,
   event_type TEXT NOT NULL,
   event_tier TEXT NOT NULL,
   payload_json JSONB NOT NULL,
   trace_id VARCHAR(255) NULL,
+  schema_version VARCHAR(100) NULL,
+  aggregate_id VARCHAR(255) NULL,
+  run_id VARCHAR(255) NULL,
+  sequence INTEGER NULL,
+  causation_id VARCHAR(255) NULL,
+  correlation_id VARCHAR(255) NULL,
+  payload_hash TEXT NULL,
+  idempotency_key VARCHAR(255) NULL,
+  replay_behavior TEXT NULL,
+  principal TEXT NULL,
+  evidence_refs JSONB NULL,
   created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_task_created_at ON events(task_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_execution_created_at ON events(execution_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_type_created_at ON events(event_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
 
 CREATE TABLE IF NOT EXISTS event_consumer_acks (
   id VARCHAR(255) PRIMARY KEY,

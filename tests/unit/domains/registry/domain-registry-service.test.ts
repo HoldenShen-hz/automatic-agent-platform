@@ -60,7 +60,17 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
+    },
+    executionProfile: {
+      executionMode: {
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
+      },
+      latencyTier: "interactive",
+      compiledArtifactRef: null,
     },
     status: "validated",
     externalAdapters: [],
@@ -73,31 +83,32 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
 // Canary State Tests (Issue #2174)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("activate with canary=true allows transition from registered to active", () => {
+test("activate with canary=true transitions registered domains into canary", () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "canary_registered", status: "registered" }));
 
   const result = service.activate("canary_registered", true);
 
-  assert.equal(result.status, "active");
+  assert.equal(result.status, "canary");
 });
 
-test("activate with canary=false requires registered state", () => {
+test("activate with canary=false requires prior canary promotion", () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "standard_registered", status: "registered" }));
 
-  const result = service.activate("standard_registered", false);
-
-  assert.equal(result.status, "active");
+  assert.throws(
+    () => service.activate("standard_registered", false),
+    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
+  );
 });
 
-test("activate with canary=true allows transition from updating to active", () => {
+test("activate with canary=true transitions updating domains into canary", () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "canary_updating", status: "updating" }));
 
   const result = service.activate("canary_updating", true);
 
-  assert.equal(result.status, "active");
+  assert.equal(result.status, "canary");
 });
 
 test("activate with canary=false throws for non-registered domains", () => {
@@ -132,6 +143,7 @@ test("canary activation publishes domain:activated event", () => {
   service.register(createTestDomain({ domainId: "canary_event_test", status: "registered" }));
 
   service.activate("canary_event_test", true);
+  service.activate("canary_event_test", false);
 
   assert.ok(events.some((e) => e.eventType === "domain:activated"));
 });
@@ -148,6 +160,7 @@ test("canary activation sets correct status in event payload", () => {
   service.register(createTestDomain({ domainId: "canary_payload_test", status: "registered" }));
 
   service.activate("canary_payload_test", true);
+  service.activate("canary_payload_test", false);
 
   const activatedEvent = events.find((e) => e.eventType === "domain:activated");
   assert.ok(activatedEvent);
@@ -357,8 +370,10 @@ test("full lifecycle: registered -> active -> updating -> active -> deprecated -
   const service = new DomainRegistryService();
   service.register(createTestDomain({ domainId: "full_lifecycle_test", status: "registered" }));
 
-  // registered -> active (standard activation)
-  let domain = service.activate("full_lifecycle_test", false);
+  // registered -> canary -> active
+  let domain = service.activate("full_lifecycle_test", true);
+  assert.equal(domain.status, "canary");
+  domain = service.activate("full_lifecycle_test", false);
   assert.equal(domain.status, "active");
 
   // active -> updating
@@ -401,7 +416,7 @@ test("archived domains cannot be activated", () => {
 
   assert.throws(
     () => service.activate("archived_no_activate", false),
-    /invalid_activation_state|registered/,
+    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.invalid_activation_state",
   );
 });
 
@@ -431,56 +446,52 @@ test("archived domains cannot be deprecated", () => {
 
 test("activate fails smoke test when domain has invalid configuration", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({
-    domainId: "smoke_fail_activate",
-    status: "registered",
-    workflows: [], // Empty workflows will fail smoke test
-  }));
-
   assert.throws(
-    () => service.activate("smoke_fail_activate", false),
+    () => service.register(createTestDomain({
+      domainId: "smoke_fail_activate",
+      status: "registered",
+      workflows: [],
+    })),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });
 
 test("completeUpdate fails smoke test when domain configuration becomes invalid", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({
-    domainId: "smoke_fail_complete",
-    status: "updating",
-    workflows: [
-      {
-        workflowId: "wf_fail",
-        name: "Failing Workflow",
-        triggerConditions: {},
-        steps: [
-          {
-            stepName: "step_a",
-            toolHints: [],
-            modelHints: {},
-            outputSchema: null,
-            retryPolicy: { maxRetries: 0, backoffMs: 0 },
-            requiresReview: false,
-            timeoutMs: 60000,
-            dependsOn: ["step_b"],
-          },
-          {
-            stepName: "step_b",
-            toolHints: [],
-            modelHints: {},
-            outputSchema: null,
-            retryPolicy: { maxRetries: 0, backoffMs: 0 },
-            requiresReview: false,
-            timeoutMs: 60000,
-            dependsOn: ["step_a"], // Circular dependency
-          },
-        ],
-      },
-    ],
-  }));
-
   assert.throws(
-    () => service.completeUpdate("smoke_fail_complete"),
+    () => service.register(createTestDomain({
+      domainId: "smoke_fail_complete",
+      status: "updating",
+      workflows: [
+        {
+          workflowId: "wf_fail",
+          name: "Failing Workflow",
+          triggerConditions: {},
+          steps: [
+            {
+              stepName: "step_a",
+              toolHints: [],
+              modelHints: {},
+              outputSchema: null,
+              retryPolicy: { maxRetries: 0, backoffMs: 0 },
+              requiresReview: false,
+              timeoutMs: 60000,
+              dependsOn: ["step_b"],
+            },
+            {
+              stepName: "step_b",
+              toolHints: [],
+              modelHints: {},
+              outputSchema: null,
+              retryPolicy: { maxRetries: 0, backoffMs: 0 },
+              requiresReview: false,
+              timeoutMs: 60000,
+              dependsOn: ["step_a"],
+            },
+          ],
+        },
+      ],
+    })),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });

@@ -286,10 +286,12 @@ export class PackMigrationService {
     }
 
     if (plan.status !== "completed" && plan.status !== "failed") {
-      throw this.validationError(
-        "pack_migration.invalid_state",
-        `Cannot rollback plan in ${plan.status} state.`,
-      );
+      return {
+        success: false,
+        planId,
+        executedSteps: 0,
+        error: `Cannot rollback plan in ${plan.status} state.`,
+      };
     }
 
     const updatedPlan: MigrationPlan = {

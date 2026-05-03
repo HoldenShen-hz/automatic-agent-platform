@@ -575,8 +575,67 @@ CREATE INDEX IF NOT EXISTS idx_worker_registration_challenges_worker_created_at
           "session_id",
           "ALTER TABLE events ADD COLUMN session_id TEXT NULL;",
         );
+        this.ensureColumn(
+          "events",
+          "schema_version",
+          "ALTER TABLE events ADD COLUMN schema_version TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "aggregate_id",
+          "ALTER TABLE events ADD COLUMN aggregate_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "run_id",
+          "ALTER TABLE events ADD COLUMN run_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "sequence",
+          "ALTER TABLE events ADD COLUMN sequence INTEGER NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "causation_id",
+          "ALTER TABLE events ADD COLUMN causation_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "correlation_id",
+          "ALTER TABLE events ADD COLUMN correlation_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "payload_hash",
+          "ALTER TABLE events ADD COLUMN payload_hash TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "idempotency_key",
+          "ALTER TABLE events ADD COLUMN idempotency_key TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "replay_behavior",
+          "ALTER TABLE events ADD COLUMN replay_behavior TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "principal",
+          "ALTER TABLE events ADD COLUMN principal TEXT NULL;",
+        );
+        this.ensureColumn(
+          "events",
+          "evidence_refs",
+          "ALTER TABLE events ADD COLUMN evidence_refs TEXT NULL;",
+        );
         this.connection.exec(
-          "CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);",
+          `
+CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
+`,
         );
         return true;
       case 13:

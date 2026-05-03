@@ -85,7 +85,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         ...command,
         aggregate: stored as TAggregate,
       });
-      this.storeAggregate(command.aggregateType, result.aggregate);
+      this.replaceAggregate(command.aggregateType, result.aggregate);
       const event = this.appendEvent(result.event);
       if (command.auditRef != null) {
         this.state.auditRefs.push(command.auditRef);
@@ -305,6 +305,26 @@ export class RuntimeTruthRepository implements RuntimeRepository {
           (aggregate as BudgetReservation).budgetReservationId,
           aggregate as BudgetReservation,
         );
+        return;
+    }
+  }
+
+  private replaceAggregate(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
+    switch (aggregateType) {
+      case "HarnessRun":
+        this.state.harnessRuns.set((aggregate as HarnessRun).harnessRunId, aggregate as HarnessRun);
+        return;
+      case "NodeRun":
+        this.state.nodeRuns.set((aggregate as NodeRun).nodeRunId, aggregate as NodeRun);
+        return;
+      case "SideEffectRecord":
+        this.state.sideEffects.set((aggregate as SideEffectRecord).sideEffectId, aggregate as SideEffectRecord);
+        return;
+      case "BudgetLedger":
+        this.state.budgetLedgers.set((aggregate as BudgetLedger).budgetLedgerId, aggregate as BudgetLedger);
+        return;
+      case "BudgetReservation":
+        this.state.budgetReservations.set((aggregate as BudgetReservation).budgetReservationId, aggregate as BudgetReservation);
         return;
     }
   }

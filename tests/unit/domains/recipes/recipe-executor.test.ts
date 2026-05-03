@@ -21,6 +21,10 @@ function createRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; dom
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
     description: overrides.description ?? "Test recipe",
     triggerPhrases: overrides.triggerPhrases ?? [],
+    risk_profile_ref: overrides.risk_profile_ref ?? `${overrides.domainId}.risk`,
+    guardrail_overlay: overrides.guardrail_overlay ?? `${overrides.domainId}.guardrails`,
+    default_prompt_bundle_ref: overrides.default_prompt_bundle_ref ?? `${overrides.domainId}.prompts`,
+    acceptance_checklist_ref: overrides.acceptance_checklist_ref ?? `${overrides.domainId}.acceptance`,
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
   });
@@ -40,22 +44,21 @@ function createContext(overrides: Partial<RecipeExecutionContext> = {}): RecipeE
 // Workflow Existence Check Tests (Issue #2183)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeExecutor.execute returns failure when workflow matches nonexistent pattern", async () => {
+test("RecipeExecutor.execute returns success when workflow registry is unavailable", async () => {
   const executor = new RecipeExecutor();
   const recipe = createRecipe({
     recipeId: "recipe_nonexistent_1",
     domainId: "coding",
-    defaultWorkflowId: "nonexistent_workflow", // Will be caught by regex
+    defaultWorkflowId: "nonexistent_workflow",
   });
 
   const result = await executor.execute(recipe, createContext());
 
-  assert.equal(result.success, false);
-  assert.ok(result.error !== undefined);
-  assert.ok(result.error!.includes("not available") || result.error!.includes("nonexistent"));
+  assert.equal(result.success, true);
+  assert.equal(result.workflowId, "nonexistent_workflow");
 });
 
-test("RecipeExecutor.execute returns failure for workflow starting with 'nonexistent' (case insensitive)", async () => {
+test("RecipeExecutor.execute accepts nonexistent-prefixed workflow IDs when registry is unavailable", async () => {
   const executor = new RecipeExecutor();
 
   const patterns = ["NONEXISTENT_workflow", "NonexistentWorkflow", "nonexistent"];
@@ -69,46 +72,27 @@ test("RecipeExecutor.execute returns failure for workflow starting with 'nonexis
 
     const result = await executor.execute(recipe, createContext({ executionId: `exec_${pattern}` }));
 
-    assert.equal(result.success, false, `Expected failure for pattern: ${pattern}`);
-    assert.ok(result.error !== undefined);
+    assert.equal(result.success, true, `Expected success for pattern: ${pattern}`);
   }
 });
 
-test("RecipeExecutor.execute uses regex to check workflow availability", async () => {
+test("RecipeExecutor.execute does not reject workflow IDs by prefix without a workflow registry", async () => {
   const executor = new RecipeExecutor();
 
-  // Workflows that should be caught by the regex stub
-  const invalidWorkflows = [
+  const workflows = [
     "nonexistent_wf",
     "NONEXISTENT",
     "NonexistentWorkflow",
     "nonexistent",
-  ];
-
-  for (const workflowId of invalidWorkflows) {
-    const recipe = createRecipe({
-      recipeId: `recipe_regex_${workflowId}`,
-      domainId: "coding",
-      defaultWorkflowId: workflowId,
-    });
-
-    const result = await executor.execute(recipe, createContext({ executionId: `exec_${workflowId}` }));
-
-    assert.equal(result.success, false, `Expected failure for workflow: ${workflowId}`);
-    assert.ok(result.error !== undefined);
-  }
-
-  // Valid workflows that should pass
-  const validWorkflows = [
     "wf_coding",
     "workflow_primary",
     "build_and_test",
     "deploy_production",
   ];
 
-  for (const workflowId of validWorkflows) {
+  for (const workflowId of workflows) {
     const recipe = createRecipe({
-      recipeId: `recipe_valid_${workflowId}`,
+      recipeId: `recipe_registry_missing_${workflowId}`,
       domainId: "coding",
       defaultWorkflowId: workflowId,
     });
@@ -133,7 +117,7 @@ test("RecipeExecutor.execute returns success for non-nonexistent workflow names"
   assert.equal(result.workflowId, "wf_primary");
 });
 
-test("RecipeExecutor.execute returns success for workflow name 'nonexistent' (exact match)", async () => {
+test("RecipeExecutor.execute returns success for exact nonexistent workflow without registry", async () => {
   const executor = new RecipeExecutor();
   const recipe = createRecipe({
     recipeId: "recipe_exact_nonexistent",
@@ -141,11 +125,9 @@ test("RecipeExecutor.execute returns success for workflow name 'nonexistent' (ex
     defaultWorkflowId: "nonexistent", // This IS the word "nonexistent" as a workflow name
   });
 
-  // The regex checks if workflowId STARTS WITH "nonexistent" (case-insensitive)
-  // So "nonexistent" (exact) should fail
   const result = await executor.execute(recipe, createContext());
 
-  assert.equal(result.success, false);
+  assert.equal(result.success, true);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,6 +250,10 @@ test("RecipeExecutor.execute handles recipe without optional fields", async () =
     name: "Minimal Recipe",
     description: "A minimal recipe for testing",
     triggerPhrases: [],
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "wf_minimal",
     defaultToolBundleIds: [],
   });
@@ -431,7 +417,7 @@ test("RecipeExecutor.execute is async", async () => {
 // Special Workflow Name Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeExecutor.execute workflow names with 'nonexistent' prefix are rejected", async () => {
+test("RecipeExecutor.execute workflow names with 'nonexistent' prefix are accepted without registry", async () => {
   const executor = new RecipeExecutor();
 
   const invalidNames = [
@@ -449,7 +435,7 @@ test("RecipeExecutor.execute workflow names with 'nonexistent' prefix are reject
 
     const result = await executor.execute(recipe, createContext({ executionId: `exec_${name}` }));
 
-    assert.equal(result.success, false, `Should reject workflow: ${name}`);
+    assert.equal(result.success, true, `Should accept workflow without registry: ${name}`);
   }
 });
 

@@ -1,0 +1,32 @@
+{
+  "packId": "my_pack_id",
+  "version": "0.1.0",
+  "domainId": "test-domain",
+  "domain": "test-domain",
+  "owner": "test-owner",
+  "sideEffects": [],
+  "dataClasses": [],
+  "maxRiskClass": "low",
+  "tools": [],
+  "connectors": [],
+  "plugins": [],
+  "evalRequirements": {
+    "requiredDatasets": [],
+    "blockingEvaluators": []
+  },
+  "compatibility": {
+    "requiresActiveDomain": true,
+    "supportedDomainSpecVersions": [
+      "cdm-v2"
+    ]
+  },
+  "capabilities": [
+    {
+      "capabilityKey": "query.execute",
+      "maturity": "ga",
+      "requiredContracts": [
+        "runtime_execution_contract"
+      ]
+    }
+  ]
+}

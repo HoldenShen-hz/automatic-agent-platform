@@ -142,7 +142,7 @@ test("PackMigrationService.executeMigration with locked target fails", async () 
   assert.ok(result.error!.includes("locked") || result.error!.includes("Locked"));
 });
 
-test("PackMigrationService.executeMigration with target state missing on verify fails", async () => {
+test("PackMigrationService.executeMigration creates target state before verify", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
   // Note: pack-b is NOT seeded before migration
@@ -150,8 +150,13 @@ test("PackMigrationService.executeMigration with target state missing on verify 
   const plan = service.createMigrationPlan("pack-a", "pack-b");
   const result = await service.executeMigration(plan.planId);
 
-  // Verify step will fail because target state is missing after transfer
-  assert.equal(result.success, false);
+  // Transfer step materializes the target pack state, so verify runs against the migrated copy.
+  assert.equal(result.success, true);
+  assert.deepEqual(service.getPackState("pack-b"), {
+    data: "test",
+    migratedByPlanId: plan.planId,
+    migratedFromPackId: "pack-a",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

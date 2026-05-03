@@ -261,16 +261,18 @@ test("PackMigrationService.rollbackMigration throws for unknown plan", async () 
   });
 });
 
-test("PackMigrationService.rollbackMigration throws for invalid plan status", async () => {
+test("PackMigrationService.rollbackMigration returns failure result for invalid plan status", async () => {
   const service = createService();
   service.seedPackState("pack-a", { data: "test" });
 
   const plan = service.createMigrationPlan("pack-a", "pack-b");
   // Plan is in "planned" status, not "completed" or "failed"
 
-  await assert.rejects(async () => {
-    await service.rollbackMigration(plan.planId);
-  });
+  const result = await service.rollbackMigration(plan.planId);
+
+  assert.equal(result.success, false);
+  assert.equal(result.executedSteps, 0);
+  assert.equal(result.error, "Cannot rollback plan in planned state.");
 });
 
 test("PackMigrationService.rollbackMigration rolls back failed rollback gracefully", async () => {

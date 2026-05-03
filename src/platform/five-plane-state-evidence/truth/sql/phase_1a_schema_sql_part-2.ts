@@ -186,19 +186,34 @@ CREATE INDEX IF NOT EXISTS idx_compaction_records_task_created_at ON compaction_
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   task_id TEXT NULL,
+  session_id TEXT NULL,
   execution_id TEXT NULL,
   event_type TEXT NOT NULL,
   event_tier TEXT NOT NULL,
   payload_json TEXT NOT NULL,
   trace_id TEXT NULL,
+  schema_version TEXT NULL,
+  aggregate_id TEXT NULL,
+  run_id TEXT NULL,
+  sequence INTEGER NULL,
+  causation_id TEXT NULL,
+  correlation_id TEXT NULL,
+  payload_hash TEXT NULL,
+  idempotency_key TEXT NULL,
+  replay_behavior TEXT NULL,
+  principal TEXT NULL,
+  evidence_refs TEXT NULL,
   created_at TEXT NOT NULL,
   FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
   FOREIGN KEY(execution_id) REFERENCES executions(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_task_created_at ON events(task_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_execution_created_at ON events(execution_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_type_created_at ON events(event_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
 
 CREATE TABLE IF NOT EXISTS event_consumer_acks (
   id TEXT PRIMARY KEY,
