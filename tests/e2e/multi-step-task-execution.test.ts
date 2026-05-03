@@ -1,6 +1,11 @@
 /**
  * E2E Multi-Step Task Execution Flow Tests
  *
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * The v4.3 canonical model uses HarnessRun/NodeRun with PlanGraphBundle/PlanNode.
+ * Tests using the canonical model (PlanGraphBundle, NodeAttemptReceipt) should remain as-is.
+ * Legacy WorkflowState tests should be migrated to use HarnessRuntimeService.appendStep().
+ *
  * End-to-end tests covering multi-step task execution:
  * - Task creation and dispatch
  * - Execution lifecycle through steps
@@ -109,6 +114,10 @@ function insertTaskWithExecution(
   });
 }
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task executes step 0 and transitions to step 1", () => {
   const h = createE2eHarness("e2e-mstep-exec-");
 
@@ -147,6 +156,10 @@ test("E2E: multi-step task executes step 0 and transitions to step 1", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task completes all steps and reaches terminal state", () => {
   const h = createE2eHarness("e2e-mstep-complete-");
 
@@ -239,6 +252,10 @@ test("E2E: multi-step task completes all steps and reaches terminal state", () =
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task fails mid-execution and task fails", () => {
   const h = createE2eHarness("e2e-mstep-fail-");
 
@@ -306,6 +323,10 @@ test("E2E: multi-step task fails mid-execution and task fails", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task with dependencies waits for prerequisite", () => {
   const h = createE2eHarness("e2e-mstep-dep-");
 
@@ -345,6 +366,10 @@ test("E2E: multi-step task with dependencies waits for prerequisite", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task resumes from checkpoint after failure", () => {
   const h = createE2eHarness("e2e-mstep-resume-");
 
@@ -393,6 +418,10 @@ test("E2E: multi-step task resumes from checkpoint after failure", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task with parallel branches converges", () => {
   const h = createE2eHarness("e2e-mstep-parallel-");
 
@@ -428,6 +457,10 @@ test("E2E: multi-step task with parallel branches converges", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E: multi-step task exceeds timeout and fails gracefully", () => {
   const h = createE2eHarness("e2e-mstep-timeout-");
 

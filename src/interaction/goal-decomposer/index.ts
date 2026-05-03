@@ -760,11 +760,24 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     description: string,
   ): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
     const recipes = this.options.domainRecipes ?? DEFAULT_DOMAIN_RECIPES;
+
+    // R9-46: Use matchDomainRecipe directly for proper word-boundary matching
+    // before falling back to regex-based hint matching
     const recipe = matchDomainRecipe(recipes, description);
     if (recipe == null) {
       return null;
     }
 
+    // R9-46: Map archetype directly to template when matched via trigger phrase
+    // This avoids false positives from the hint-based regex below
+    if (recipe.archetype === "incident_ops") {
+      return "incident_response";
+    }
+    if (recipe.archetype === "creative") {
+      return "marketing_campaign";
+    }
+
+    // Build hint string from matched recipe for additional pattern matching
     const recipeHints = [
       recipe.domainId,
       recipe.archetype,
@@ -774,13 +787,13 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       ...recipe.defaultToolBundleIds,
     ].join(" ").toLowerCase();
 
-    if (recipe.archetype === "incident_ops" || /(incident|outage|recovery|rollback|切流|故障)/i.test(recipeHints)) {
+    if (/(incident|outage|recovery|rollback|切流|故障)/i.test(recipeHints)) {
       return "incident_response";
     }
     if (/(release|deploy|rollout|launch|change_managed|灰度)/i.test(recipeHints)) {
       return "release_launch";
     }
-    if (recipe.archetype === "creative" || /(marketing|campaign|advertising|creative|roi|素材|投放)/i.test(recipeHints)) {
+    if (/(marketing|campaign|advertising|creative|roi|素材|投放)/i.test(recipeHints)) {
       return "marketing_campaign";
     }
     if (/(hire|recruit|candidate|onboard|hr|招聘|入职)/i.test(recipeHints)) {

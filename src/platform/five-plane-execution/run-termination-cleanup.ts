@@ -157,11 +157,11 @@ export interface CleanupVerification {
 }
 
 export class RunTerminationCleanup {
-  private readonly cleanupHandlers: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<CleanupVerification>>>;
+  private readonly cleanupHandlers: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<CleanupVerification> | CleanupVerification>>;
   private readonly externalHandlers: CleanupHandlers;
 
   public constructor(options?: {
-    readonly cleanupHandlers?: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<CleanupVerification>>>;
+    readonly cleanupHandlers?: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<CleanupVerification> | CleanupVerification>>;
     readonly externalHandlers?: CleanupHandlers;
   }) {
     this.cleanupHandlers = options?.cleanupHandlers ?? {};
@@ -171,7 +171,7 @@ export class RunTerminationCleanup {
   /**
    * Registers a cleanup handler for a resource kind.
    */
-  public registerCleanupHandler(kind: CleanupResourceKind, handler: (resourceId: string) => Promise<CleanupVerification>): void {
+  public registerCleanupHandler(kind: CleanupResourceKind, handler: (resourceId: string) => Promise<CleanupVerification> | CleanupVerification): void {
     this.cleanupHandlers[kind] = handler;
   }
 

@@ -105,47 +105,78 @@ export interface ApprovalStepRequirement {
   readonly dependsOnSteps?: readonly string[];
 }
 
+/**
+ * Mode for multi-approver approval routes.
+ * - sequential: approvers must approve one after another
+ * - parallel: all approvers can approve simultaneously (会签)
+ * - any: any one approver can approve to proceed
+ */
+export type ApprovalMode = "sequential" | "parallel" | "any";
+
+/**
+ * Build parallel sign-off groups for multi-approver scenarios.
+ * Groups approvers into batches for parallel (会签) approval where
+ * multiple approvers can sign off simultaneously.
+ */
 export function buildParallelSignoffGroups(
   approverChain: readonly string[],
   nodes: readonly OrgNode[],
   orgNodeId: string,
+  mode: ApprovalMode = "parallel",
 ): ParallelApproverGroup[] {
   if (approverChain.length <= 1) {
     return [];
   }
+
+  // For sequential mode, no parallel groups needed
+  if (mode === "sequential") {
+    return [];
+  }
+
+  // For parallel or any mode, group approvers for simultaneous sign-off
   const firstApprover = approverChain[0]!;
   const remainingApprovers = approverChain.slice(1);
   const firstApproverNode = nodes.find((n) => n.ownerUserIds.includes(firstApprover));
   const isFirstManager = firstApproverNode?.orgNodeId === orgNodeId
     || firstApproverNode?.parentOrgNodeId !== null;
+
   if (!isFirstManager) {
+    // When first is not a manager, all remaining can sign off in parallel (会签)
     return [{
       groupId: `parallel:${orgNodeId}`,
       approverIds: remainingApprovers,
-      requiredCount: 1,
+      requiredCount: mode === "any" ? 1 : remainingApprovers.length,
       timeoutMinutes: 30,
     }];
   }
+
+  // Batch remaining approvers into groups of up to 3 for parallel sign-off
   const groups: ParallelApproverGroup[] = [];
   for (let i = 0; i < remainingApprovers.length; i += 3) {
     const batch = remainingApprovers.slice(i, i + 3);
     groups.push({
       groupId: `parallel:${orgNodeId}:${i}`,
       approverIds: batch,
-      requiredCount: 1,
+      requiredCount: mode === "any" ? 1 : batch.length,
       timeoutMinutes: 30,
     });
   }
   return groups;
 }
 
+/**
+ * Resolve approval steps from an approver chain.
+ * Supports sequential (one-by-one), parallel (会签, simultaneous), and any (single approver) modes.
+ */
 export function resolveApprovalSteps(
   approverChain: readonly string[],
   nodes: readonly OrgNode[],
   orgNodeId: string,
+  mode: ApprovalMode = "parallel",
 ): ApprovalStepRequirement[] {
-  const groups = buildParallelSignoffGroups(approverChain, nodes, orgNodeId);
+  const groups = buildParallelSignoffGroups(approverChain, nodes, orgNodeId, mode);
   if (groups.length === 0) {
+    // Single approver or sequential mode - create individual steps
     return approverChain.map((approverId, idx) => ({
       stepId: `step:${idx}`,
       approverIds: [approverId] as readonly string[],
@@ -154,6 +185,8 @@ export function resolveApprovalSteps(
       dependsOnSteps: idx > 0 ? [`step:${idx - 1}`] as readonly string[] : undefined,
     })) as ApprovalStepRequirement[];
   }
+
+  // Build steps from parallel groups
   const steps: ApprovalStepRequirement[] = [];
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i]!;
@@ -161,7 +194,7 @@ export function resolveApprovalSteps(
       stepId: `parallel_step:${i}`,
       approverIds: group.approverIds,
       requiredApprovals: group.requiredCount,
-      stepType: "parallel" as const,
+      stepType: mode === "any" ? "any" as const : "parallel" as const,
       ...(i > 0 ? { dependsOnSteps: [`step:${i - 1}`, `parallel_step:${i - 1}`] as readonly string[] } : {}),
     });
   }

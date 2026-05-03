@@ -1,13 +1,17 @@
 /**
  * E2E Critical Workflows Tests
  *
+ * @deprecated Tests that use legacy WorkflowState/currentStepIndex linear model
+ * should migrate to HarnessRuntimeService with PlanGraphBundle/PlanNode.
+ * The v4.3 canonical model uses HarnessRun/NodeRun with PlanNode execution receipts.
+ *
  * End-to-end tests covering critical business workflows using the centralized
  * createE2EHarness() helper. These tests verify the complete integration path
  * across task lifecycle, workflow execution, error handling, and approval flows.
  *
  * Critical paths tested:
  * 1. Task lifecycle (create -> execute -> complete)
- * 2. Workflow execution (multi-step)
+ * 2. Workflow execution (multi-step) - DEPRECATED, use HarnessRun/NodeRun
  * 3. Error handling and recovery
  * 4. Approval flows
  */
@@ -302,9 +306,14 @@ test("E2E Critical: task fails mid-execution and reaches failed terminal state",
 });
 
 // ---------------------------------------------------------------------------
-// Critical Path 2: Workflow Execution (Multi-Step)
+// Critical Path 2: Workflow Execution (Multi-Step) - DEPRECATED
+// @deprecated Use HarnessRuntimeService.appendStep() with PlanGraphBundle/PlanNode instead
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E Critical: multi-step workflow executes all steps in dependency order", async () => {
   const harness = createE2EHarness("aa-e2e-workflow-multi-");
   try {
@@ -467,6 +476,10 @@ test("E2E Critical: multi-step workflow executes all steps in dependency order",
 // Critical Path 3: Error Handling and Recovery
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E Critical: task with retry recovers from transient failure", async () => {
   const harness = createE2EHarness("aa-e2e-retry-");
   try {
@@ -820,6 +833,10 @@ test("E2E Critical: cancelled task cannot transition to any other state", async 
 // Critical Path 4: Approval Flows
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E Critical: execution blocked for approval and resumes after approval", async () => {
   const harness = createE2EHarness("aa-e2e-approval-");
   try {
@@ -989,6 +1006,10 @@ test("E2E Critical: execution blocked for approval and resumes after approval", 
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E Critical: terminal state transition cascades to all entities", async () => {
   const harness = createE2EHarness("aa-e2e-cascade-");
   try {
@@ -1118,6 +1139,10 @@ test("E2E Critical: terminal state transition cascades to all entities", async (
 // Combined Critical Paths
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 test("E2E Critical: complete workflow with pause and resume", async () => {
   const harness = createE2EHarness("aa-e2e-pause-resume-");
   try {

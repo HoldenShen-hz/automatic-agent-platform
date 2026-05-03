@@ -488,3 +488,83 @@ test("RuntimeTruthRepository assigns sequential aggregateSeq", () => {
   const events = repository.listEvents();
   assert.equal(events.length, 3);
 });
+
+// ---------------------------------------------------------------------------
+// Snapshot versioning tests
+// ---------------------------------------------------------------------------
+
+test("snapshot returns version and createdAt fields", () => {
+  const repository = new RuntimeTruthRepository();
+  const snapshot1 = repository.snapshot();
+  const snapshot2 = repository.snapshot();
+
+  assert.equal(typeof snapshot1.version, "number");
+  assert.equal(typeof snapshot1.createdAt, "string");
+  assert.equal(snapshot1.version, 1);
+  assert.equal(snapshot2.version, 2);
+});
+
+test("snapshot version increments on each call", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const snap1 = repository.snapshot();
+  const snap2 = repository.snapshot();
+  const snap3 = repository.snapshot();
+
+  assert.equal(snap1.version, 1);
+  assert.equal(snap2.version, 2);
+  assert.equal(snap3.version, 3);
+});
+
+test("snapshot createdAt is a valid ISO timestamp", () => {
+  const repository = new RuntimeTruthRepository();
+  const snapshot = repository.snapshot();
+
+  const parsed = new Date(snapshot.createdAt);
+  assert.ok(!isNaN(parsed.getTime()), "createdAt should be a valid ISO date string");
+});
+
+test("snapshot version is unique per snapshot and increments sequentially", () => {
+  const repository = new RuntimeTruthRepository();
+
+  const snap1 = repository.snapshot();
+  repository.transition({
+    aggregateType: "NodeRun",
+    aggregate: createNodeRun({
+      nodeRunId: "nrun-1",
+      harnessRunId: "hrun-1",
+      planGraphBundleId: "pgb-1",
+      graphVersion: 1,
+      nodeId: "node-1",
+    }),
+    fromStatus: "created",
+    toStatus: "ready",
+    tenantId: "tenant-1",
+    traceId: "trace-1",
+    reasonCode: "test",
+    emittedBy: "test",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
+  });
+  const snap2 = repository.snapshot();
+
+  assert.ok(snap2.version > snap1.version, "Each snapshot should have a higher version than the previous");
+});
+
+test("snapshot returns empty state for new repository", () => {
+  const repository = new RuntimeTruthRepository();
+  const snapshot = repository.snapshot();
+
+  assert.deepEqual(snapshot.harnessRuns, []);
+  assert.deepEqual(snapshot.nodeRuns, []);
+  assert.deepEqual(snapshot.sideEffects, []);
+  assert.deepEqual(snapshot.budgetLedgers, []);
+  assert.deepEqual(snapshot.budgetReservations, []);
+  assert.deepEqual(snapshot.nodeAttemptReceipts, []);
+  assert.deepEqual(snapshot.runVersionLocks, []);
+  assert.deepEqual(snapshot.events, []);
+  assert.deepEqual(snapshot.outbox, []);
+  assert.deepEqual(snapshot.auditRefs, []);
+  assert.equal(snapshot.version, 1);
+  assert.ok(typeof snapshot.createdAt === "string");
+});

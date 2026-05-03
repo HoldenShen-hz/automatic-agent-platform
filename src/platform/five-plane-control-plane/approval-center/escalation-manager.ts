@@ -334,13 +334,13 @@ export class EscalationManager {
    * @param maxTtlResets - Maximum number of TTL resets allowed
    * @returns The created delegation
    */
-  public createDelegation(
+  public async createDelegation(
     fromApprover: string,
     toApprover: string,
     approvalId: string,
     ttlMs: number = DEFAULT_DELEGATION_TTL_MS,
     maxTtlResets: number = DEFAULT_MAX_TTL_RESETS,
-  ): Delegation {
+  ): Promise<Delegation> {
     if (fromApprover === toApprover) {
       throw new ValidationError(
         "delegation.self_delegation",
@@ -363,10 +363,9 @@ export class EscalationManager {
 
     this.delegationRecords.set(delegation.delegationId, delegation);
 
-    // R9-6: Persist delegation to repository for durability
+    // R9-06: Persist delegation to repository for durability
     if (this.delegationRepository) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.delegationRepository.create({
+      await this.delegationRepository.create({
         delegationId: delegation.delegationId,
         parentAgentId: fromApprover,
         childAgentId: toApprover,
@@ -410,10 +409,10 @@ export class EscalationManager {
    * @returns Updated delegation
    * @throws Error if max resets exceeded
    */
-  public resetDelegationTtl(
+  public async resetDelegationTtl(
     delegation: Delegation,
     ttlMs: number = DEFAULT_DELEGATION_TTL_MS,
-  ): Delegation {
+  ): Promise<Delegation> {
     if (delegation.ttlResetCount >= delegation.maxTtlResets) {
       throw new ValidationError(
         "delegation.max_resets_exceeded",
@@ -436,12 +435,11 @@ export class EscalationManager {
       ttlResetCount: delegation.ttlResetCount + 1,
     };
 
-    this.delegationRecords.set(delegation.delegationId, delegation);
+    this.delegationRecords.set(delegation.delegationId, updated);
 
-    // R9-6: Persist TTL reset to repository
+    // R9-06: Persist TTL reset to repository
     if (this.delegationRepository) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.delegationRepository.updateStatus(delegation.delegationId, "active");
+      await this.delegationRepository.updateStatus(delegation.delegationId, "active");
     }
 
     this.logger.info("Delegation TTL reset", {
@@ -458,7 +456,7 @@ export class EscalationManager {
    *
    * @param delegationId - ID of delegation to revoke
    */
-  public revokeDelegation(delegationId: string): void {
+  public async revokeDelegation(delegationId: string): Promise<void> {
     const delegation = this.delegationRecords.get(delegationId);
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation not found: ${delegationId}`);
@@ -468,6 +466,11 @@ export class EscalationManager {
       ...delegation,
       status: DelegationStatus.REVOKED,
     };
+
+    // R9-06: Persist revocation to repository before updating in-memory
+    if (this.delegationRepository) {
+      await this.delegationRepository.updateStatus(delegationId, "cancelled");
+    }
 
     this.delegationRecords.set(delegationId, updated);
 

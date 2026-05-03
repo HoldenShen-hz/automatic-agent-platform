@@ -153,10 +153,10 @@ export function resolveEscalationApprover(
   nodes: ReadonlyArray<{ orgNodeId: string; parentOrgNodeId: string | null; ownerUserIds: readonly string[] }>,
   rule: ApprovalEscalationRule,
 ): string {
-  if (rule.escalateToApproverId != null) {
-    return rule.escalateToApproverId;
-  }
+  // When escalateToParentManager is set, traverse the org hierarchy as primary mechanism
+  // to find the next approver who can approve (not just any parent manager)
   if (rule.escalateToParentManager) {
+    // Primary: Use org hierarchy traversal to find the next manager in the chain
     const escalationPath = traverseOrgHierarchyForEscalation(
       context.currentApproverId,
       context.orgNodeId,
@@ -165,6 +165,7 @@ export function resolveEscalationApprover(
     if (escalationPath.length > 0) {
       return escalationPath[0]!;
     }
+    // Fallback: Find parent node and return its first owner
     const currentNode = nodes.find((n) => n.orgNodeId === context.orgNodeId);
     if (currentNode?.parentOrgNodeId != null) {
       const parentNode = nodes.find((n) => n.orgNodeId === currentNode.parentOrgNodeId);
@@ -172,9 +173,32 @@ export function resolveEscalationApprover(
         return parentNode.ownerUserIds[0]!;
       }
     }
+    // Final fallback: use requester manager chain
     const managerChain = [...context.requesterManagerIds];
     if (managerChain.length > 0) {
       return managerChain[managerChain.length - 1] ?? context.currentApproverId;
+    }
+  }
+  // For explicit escalateToApproverId, still traverse org hierarchy to verify the approver exists
+  if (rule.escalateToApproverId != null) {
+    // Verify the specified approver exists in the org hierarchy
+    const escalationPath = traverseOrgHierarchyForEscalation(
+      context.currentApproverId,
+      context.orgNodeId,
+      nodes,
+    );
+    // If explicit approver is found in the escalation path, use it
+    if (escalationPath.includes(rule.escalateToApproverId)) {
+      return rule.escalateToApproverId;
+    }
+    // Otherwise return the explicit approver but check if they are valid
+    // (e.g., not the same as current approver)
+    if (rule.escalateToApproverId !== context.currentApproverId) {
+      return rule.escalateToApproverId;
+    }
+    // If it's the same as current, fall back to first in escalation path or current
+    if (escalationPath.length > 0) {
+      return escalationPath[0]!;
     }
   }
   return context.currentApproverId;

@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RunTerminationCleanup } from "../../../../src/platform/execution/run-termination-cleanup.js";
+import { RunTerminationCleanup, type CleanupVerification } from "../../../../src/platform/execution/run-termination-cleanup.js";
 
 test("RunTerminationCleanup emits cleanup_completed and includes callback in cleanup order", async () => {
   const cleanup = new RunTerminationCleanup({
     cleanupHandlers: {
-      lease: async () => {},
-      callback: async () => {},
+      lease: async (): Promise<CleanupVerification> => ({ verified: true }),
+      callback: async (): Promise<CleanupVerification> => ({ verified: true }),
     },
   });
   const completed: unknown[] = [];
@@ -41,7 +41,7 @@ test("RunTerminationCleanup emits cleanup_completed and includes callback in cle
 test("RunTerminationCleanup emits cleanup_failed when a handler is missing", async () => {
   const cleanup = new RunTerminationCleanup({
     cleanupHandlers: {
-      lease: async () => {},
+      lease: async (): Promise<CleanupVerification> => ({ verified: true }),
     },
   });
   const completed: unknown[] = [];

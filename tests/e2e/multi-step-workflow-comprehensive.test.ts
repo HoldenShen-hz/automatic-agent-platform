@@ -1,6 +1,11 @@
 /**
  * E2E Multi-Step Workflow Comprehensive Tests
  *
+ * @deprecated These tests use the legacy WorkflowState linear step model (currentStepIndex).
+ * The v4.3 canonical model uses HarnessRun/NodeRun with PlanGraphBundle/PlanNode.
+ * Tests using the canonical model (PlanGraphBundle, NodeAttemptReceipt) should remain as-is.
+ * Legacy WorkflowState tests should be migrated to use HarnessRuntimeService.appendStep().
+ *
  * End-to-end tests covering complex multi-step workflow scenarios:
  * - Parallel step execution
  * - Step output aggregation
@@ -36,6 +41,10 @@ function createE2eHarness(prefix: string) {
   return { workspace, db, store, transitions };
 }
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Five-step workflow completes all steps in order
 // ---------------------------------------------------------------------------
@@ -150,6 +159,10 @@ test("E2E Multi-Step: five-step workflow completes all steps in sequence", () =>
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Workflow pause at step boundary
 // ---------------------------------------------------------------------------
@@ -282,6 +295,10 @@ test("E2E Multi-Step: workflow pauses at step boundary and resumes", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Workflow cancellation at various stages
 // ---------------------------------------------------------------------------
@@ -381,6 +398,10 @@ test("E2E Multi-Step: workflow can be cancelled at any non-terminal stage", () =
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Step retry within multi-step workflow
 // ---------------------------------------------------------------------------
@@ -466,7 +487,7 @@ test("E2E Multi-Step: step retry recovers from transient failure", () => {
         currentStepIndex: 1,
         outputsJson: JSON.stringify({ step0_result: "completed" }),
         updatedAt: nowIso(),
-        resumableFromStep: 1, // Can retry from step 1
+        resumableFromStep: "1", // Can retry from step 1
         retryCount: 1, // First retry attempt
         lastErrorCode: "transient_network_error",
       });
@@ -496,6 +517,10 @@ test("E2E Multi-Step: step retry recovers from transient failure", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Conditional branching based on step output
 // ---------------------------------------------------------------------------
@@ -609,6 +634,10 @@ test("E2E Multi-Step: conditional branch selection based on step output", () => 
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Workflow with resumable step after failure
 // ---------------------------------------------------------------------------
@@ -684,7 +713,7 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
         }),
         lastErrorCode: "step2_transient_failure",
         retryCount: 1,
-        resumableFromStep: 1, // Can retry from step 1 (step 2 is idempotent)
+        resumableFromStep: "1", // Can retry from step 1 (step 2 is idempotent)
         startedAt: now,
         updatedAt: now,
       });
@@ -692,7 +721,7 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
 
     // Verify resumable state
     let workflow = h.store.getWorkflowState(taskId);
-    assert.equal(workflow!.resumableFromStep, 1, "Should be resumable from step 1");
+    assert.equal(workflow!.resumableFromStep, "1", "Should be resumable from step 1");
     assert.equal(workflow!.retryCount, 1, "Should have one retry count");
 
     // Retry: update state to running and resume from step 1
@@ -703,7 +732,7 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
         1, // Reset to step 1
         JSON.stringify({ step0_result: "completed", step1_result: "completed" }),
         nowIso(),
-        1, // resumableFromStep
+        "1", // resumableFromStep
       );
     });
 
@@ -715,6 +744,10 @@ test("E2E Multi-Step: workflow resumes from correct step after failure", () => {
   }
 });
 
+/**
+ * @deprecated Uses legacy WorkflowState/currentStepIndex linear model.
+ * Use HarnessRuntimeService with PlanGraphBundle/PlanNode instead.
+ */
 // ---------------------------------------------------------------------------
 // Test: Large workflow with many steps
 // ---------------------------------------------------------------------------

@@ -604,7 +604,7 @@ export class ApprovalFlowEngine {
     if (flow.delegation) {
       // Reset TTL on existing delegation
       try {
-        delegation = this.escalationManager.resetDelegationTtl(flow.delegation, ttlMs);
+        delegation = await this.escalationManager.resetDelegationTtl(flow.delegation, ttlMs);
         flow.delegation = delegation;
       } catch (err) {
         return {
@@ -615,7 +615,7 @@ export class ApprovalFlowEngine {
     } else {
       // Create new delegation
       try {
-        delegation = this.escalationManager.createDelegation(
+        delegation = await this.escalationManager.createDelegation(
           fromApprover,
           toApprover,
           flow.request.approvalId,
