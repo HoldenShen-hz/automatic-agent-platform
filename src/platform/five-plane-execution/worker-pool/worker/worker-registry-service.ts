@@ -715,6 +715,10 @@ export class WorkerRegistryService {
         });
       }
 
+      // R11-29: Remove stale worker from registry based on heartbeat timeout
+      // Mark as offline rather than hard delete to preserve audit trail
+      this.store.worker.updateWorkerStatus(worker.workerId, "offline", now);
+
       processedWorkerIds.push(worker.workerId);
     }
 

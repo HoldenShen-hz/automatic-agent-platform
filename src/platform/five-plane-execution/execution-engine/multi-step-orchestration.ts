@@ -40,7 +40,8 @@ import type {
 } from "./multi-step-orchestration-types.js";
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
-import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
+import { createBudgetLedger, createHarnessRun, createRunVersionLock, createEvidenceRecord } from "../../contracts/executable-contracts/index.js";
+import { createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 import { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
 
@@ -192,6 +193,27 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     plannedWorkflow = planner.plan({ workflowId: routing.workflowId, request: input.request });
     assertWorkflowValid(plannedWorkflow.workflow);
   }
+
+  // R8-5 (INV-ROUTING-001): Persist routing decision for auditing
+  // The routing decision contains domain/executor selection which must be auditable
+  const routingPrincipal = createPlatformPrincipal({ actorId: "intake-router", tenantId: tenantId });
+  const routingEvidence = createEvidenceRecord({
+    traceId,
+    principal: routingPrincipal,
+    category: "routing",
+    targetRef: `workflow:${routing.workflowId}`,
+    content: {
+      workflowId: routing.workflowId,
+      divisionId: routing.divisionId,
+      routeReason: routing.routeReason,
+      routeTrace: routing.routeTrace,
+      requiresOrchestration: routing.requiresOrchestration,
+      confirmedTaskSpecId: routing.confirmedTaskSpecId,
+      classification: routing.classification,
+    } as unknown as Record<string, unknown>,
+    metadata: { source: "multi-step-orchestration", version: "1.0" },
+  });
+  runtimeTruthRepository.appendEvidenceRecord(routingEvidence);
 
   // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as only P3→P4 contract
   // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard

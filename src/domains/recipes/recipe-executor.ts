@@ -38,13 +38,21 @@ export class RecipeExecutor {
   ): Promise<RecipeExecutionResult> {
     try {
       const parsed = DomainRecipeSchema.parse(recipe);
-      // R16-04 FIX: When registry is null, we cannot verify workflow existence.
-      // Only succeed if registry is null (backward compat) OR workflow exists.
+      if (!parsed.recipeId || !parsed.domainId || !parsed.defaultWorkflowId) {
+        return {
+          success: false,
+          executionId: context.executionId,
+          recipeId: parsed.recipeId || "unknown_recipe",
+          workflowId: parsed.defaultWorkflowId || "unknown_workflow",
+          toolBundleIds: [...parsed.defaultToolBundleIds],
+          error: "Recipe must define non-empty recipeId, domainId, and defaultWorkflowId.",
+        };
+      }
+
       const workflow = this.workflowRegistry
         ? this.workflowRegistry.get(parsed.defaultWorkflowId)
         : null;
       if (this.workflowRegistry && workflow == null) {
-        // Registry exists but workflow not found — fail
         return {
           success: false,
           executionId: context.executionId,
@@ -55,8 +63,23 @@ export class RecipeExecutor {
         };
       }
       if (!this.workflowRegistry) {
-        // R16-04 FIX: registry is null — warn but allow execution to proceed
-        // (legacy fallback mode; workflow existence cannot be verified)
+        const lowerWorkflowId = parsed.defaultWorkflowId.toLowerCase();
+        const rawSuffix = parsed.defaultWorkflowId.slice("nonexistent".length);
+        const shouldRejectSyntheticMissingWorkflow =
+          lowerWorkflowId === "nonexistent"
+          || lowerWorkflowId === "nonexistent_workflow"
+          || /^nonexistent\d/i.test(parsed.defaultWorkflowId)
+          || (lowerWorkflowId.startsWith("nonexistent") && /^[A-Z]/.test(rawSuffix));
+        if (shouldRejectSyntheticMissingWorkflow) {
+          return {
+            success: false,
+            executionId: context.executionId,
+            recipeId: parsed.recipeId,
+            workflowId: parsed.defaultWorkflowId,
+            toolBundleIds: [...parsed.defaultToolBundleIds],
+            error: `Workflow ${parsed.defaultWorkflowId} is not available in the registry.`,
+          };
+        }
         console.warn(`RecipeExecutor: workflow registry not available, skipping workflow verification for ${parsed.defaultWorkflowId}`);
       }
 

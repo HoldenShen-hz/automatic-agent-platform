@@ -37,6 +37,8 @@ export interface AdmissionPolicy {
   capabilityClassGateEnabled: boolean;
   maxRiskClassTasks: Record<string, number>;
   tenantTaskQuota: number;
+  // R9-5: §14.2 poison-pill detection - max time a ticket can wait before being considered abandoned
+  maxQueueAgeMs: number;
 }
 
 export interface AdmissionSnapshot {
@@ -102,6 +104,8 @@ const DEFAULT_POLICY: AdmissionPolicy = {
     high: 5,
   },
   tenantTaskQuota: 50,
+  // R9-5: §14.2 poison-pill detection - 1 hour max queue time before abandonment
+  maxQueueAgeMs: 3600000,
 };
 
 function isPriorityElevated(priority: TaskPriority): boolean {

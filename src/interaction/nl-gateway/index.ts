@@ -1306,9 +1306,9 @@ export class NlEntryService implements NlEntryPort {
         canonicalRequestEnvelope: null,
       };
     }
-    const requestEnvelope: NlRequestEnvelope | null = confirmationRequired
-      ? null
-      : createRequestEnvelope<NlRequestPayload>({
+    const requestEnvelope: NlRequestEnvelope | null =
+      !confirmationRequired || confirmedTaskSpec != null
+        ? createRequestEnvelope<NlRequestPayload>({
           principal: createPlatformPrincipal({
             actorId: request.userId,
             tenantId: request.tenantId,

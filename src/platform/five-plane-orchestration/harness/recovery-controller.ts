@@ -1,6 +1,9 @@
 import type { DurableHarnessService } from "./durable/durable-harness-service.js";
 import type { HarnessRun, HarnessRuntimeService, HarnessRunRuntimeState } from "./index.js";
 import { HarnessLoopController } from "./loop/index.js";
+import { TypedEventBusPublisher, type TypedEventPublisher } from "../../state-evidence/events/typed-event-publisher.js";
+import type { TypedEventBus } from "../../state-evidence/events/typed-event-bus.js";
+import { newId, nowIso } from "../../../contracts/types/ids.js";
 
 export type HarnessFailureType =
   | "worker_crash"
@@ -35,6 +38,7 @@ export class RecoveryController {
     private readonly durableService: DurableHarnessService,
     private readonly runtime: HarnessRuntimeService,
     private readonly loopController?: HarnessLoopController,
+    private readonly eventPublisher?: TypedEventPublisher,
   ) {}
 
   /**
@@ -55,6 +59,36 @@ export class RecoveryController {
       totalCost: run.loopMetrics?.totalCost ?? 0,
       lastRetryAt: run.sleepLease?.createdAt ? new Date(run.sleepLease.createdAt).getTime() : Date.now(),
     });
+  }
+
+  /**
+   * Emits a recovery event to the state-evidence plane.
+   * R9-22 fix: RecoveryController.handleFailure() must emit events to state-evidence plane
+   */
+  private emitRecoveryEvent(
+    eventType: "recovery:decision_recorded" | "recovery:repair_applied",
+    executionId: string,
+    reasonCode: string,
+    decisionDetails?: Record<string, unknown>,
+  ): void {
+    if (!this.eventPublisher) {
+      return;
+    }
+    try {
+      this.eventPublisher.publish({
+        eventType,
+        executionId,
+        payload: {
+          executionId,
+          decisionId: newId(),
+          occurredAt: nowIso(),
+          reasonCode,
+          ...decisionDetails,
+        },
+      });
+    } catch {
+      // Event emission failure should not interrupt recovery flow
+    }
   }
 
   /**
@@ -97,6 +131,11 @@ export class RecoveryController {
 
     switch (failure) {
       case "operator_abort":
+        // R9-22 fix: emit recovery event for operator_abort escalation
+        this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "operator_abort", {
+          scope,
+          action: "escalate_hitl",
+        });
         // Operator abort: no retry, transition to aborted and require human review per §45.11
         return this.runtime.openHitlReview(
           recovering,
@@ -107,6 +146,13 @@ export class RecoveryController {
       case "llm_provider_unavailable": {
         // R13-13 fix: exponential backoff with max retries and retry_exhausted escalation
         if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
+          // R9-22 fix: emit recovery event for llm_provider retry exhaustion escalation
+          this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "llm_provider_retry_exhausted", {
+            scope,
+            action: "escalate_hitl",
+            attempt: currentAttempt,
+            maxAttempts: RETRY_MAX_ATTEMPTS,
+          });
           // Retry budget exhausted → escalate to human review per §9.3
           const escalated = this.runtime.openHitlReview(
             recovering,
@@ -116,6 +162,14 @@ export class RecoveryController {
           this.durableService.persist(escalated);
           return escalated;
         }
+
+        // R9-22 fix: emit recovery event for llm_provider node-level retry
+        this.emitRecoveryEvent("recovery:repair_applied", run.runId, "llm_provider_unavailable", {
+          scope: "node",
+          action: "retry_same_plan",
+          attempt: currentAttempt + 1,
+          delayMs: computeBackoffDelayMs(currentAttempt + 1),
+        });
 
         const delayMs = computeBackoffDelayMs(currentAttempt + 1);
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
@@ -130,9 +184,16 @@ export class RecoveryController {
         const loop = this.getLoopController(run as HarnessRunRuntimeState);
         const hasRemainingIterations = (run.steps?.length ?? 0) < (run.loopMetrics?.maxIterations ?? Infinity);
         if (!loop.shouldContinue("retry_same_plan", hasRemainingIterations)) {
-          // Guard violation or no remaining iterations → escalate to human review
+          // R9-22 fix: emit recovery event for tool_timeout guard violation escalation
           const guardViolation = loop.getGuardViolation();
           const reasonCode = guardViolation ?? "harness.guard.retry_not_allowed";
+          this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "tool_timeout_loop_guard_violation", {
+            scope: "node",
+            action: "escalate_hitl",
+            reasonCode,
+            guardViolation,
+          });
+          // Guard violation or no remaining iterations → escalate to human review
           const escalated = this.runtime.openHitlReview(
             recovering,
             "tool_timeout_loop_guard_violation",
@@ -142,8 +203,16 @@ export class RecoveryController {
           return escalated;
         }
 
-        // Use LoopController's backoff with jitter per §9.3
+        // R9-22 fix: emit recovery event for tool_timeout node-level retry
         const backoffMs = loop.getBackoffMs();
+        this.emitRecoveryEvent("recovery:repair_applied", run.runId, "tool_timeout", {
+          scope: "node",
+          action: "retry_same_plan",
+          attempt: loop.getState().retryAttempt,
+          delayMs: backoffMs,
+        });
+
+        // Use LoopController's backoff with jitter per §9.3
         const resumeAt = new Date(Date.now() + backoffMs).toISOString();
         loop.recordIteration(0); // Record retry attempt in LoopController
         this.durableService.persist(recovering);
@@ -152,11 +221,22 @@ export class RecoveryController {
       }
 
       case "budget_exhausted":
+        // R9-22 fix: emit recovery event for budget_exhausted escalation
+        this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "budget_exhausted", {
+          scope,
+          action: "escalate_hitl",
+        });
         // Budget exhausted: transition to paused, requires human review
         this.durableService.persist(recovering);
         return this.runtime.openHitlReview(recovering, "budget_exhausted", []);
 
       case "platform_panic": {
+        // R9-22 fix: emit recovery event for platform_panic graph-scope replan
+        this.emitRecoveryEvent("recovery:repair_applied", run.runId, "platform_panic", {
+          scope: "graph",
+          action: "replan",
+          checkpointRef,
+        });
         // Platform panic: full recovery from checkpoint with graph-scope retry
         // R13-16 fix: platform_panic uses graph scope (replan semantics)
         this.durableService.persist(recovering);
@@ -168,6 +248,13 @@ export class RecoveryController {
         // worker_crash uses graph scope per §45.15
         // R13-13 fix: apply retry limits to worker_crash
         if (currentAttempt >= RETRY_MAX_ATTEMPTS) {
+          // R9-22 fix: emit recovery event for worker_crash retry exhaustion escalation
+          this.emitRecoveryEvent("recovery:decision_recorded", run.runId, "worker_crash_retry_exhausted", {
+            scope: "graph",
+            action: "escalate_hitl",
+            attempt: currentAttempt,
+            maxAttempts: RETRY_MAX_ATTEMPTS,
+          });
           const escalated = this.runtime.openHitlReview(
             recovering,
             "worker_crash_retry_exhausted",
@@ -177,7 +264,15 @@ export class RecoveryController {
           return escalated;
         }
 
+        // R9-22 fix: emit recovery event for worker_crash graph-level retry
         const delayMs = computeBackoffDelayMs(currentAttempt + 1);
+        this.emitRecoveryEvent("recovery:repair_applied", run.runId, "worker_crash", {
+          scope: "graph",
+          action: "replan",
+          attempt: currentAttempt + 1,
+          delayMs,
+        });
+
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
         this.durableService.persist(recovering);
         return this.runtime.sleep(recovering, `worker_crash_retry`, resumeAt, currentAttempt + 1);

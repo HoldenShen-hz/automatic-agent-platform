@@ -1,5 +1,12 @@
 import { nowIso } from "../contracts/types/ids.js";
 
+/**
+ * Type guard to check if a value is a Promise.
+ */
+function isPromise<T>(value: unknown): value is Promise<T> {
+  return value != null && typeof (value as { then?: unknown }).then === "function";
+}
+
 export type CleanupResourceKind =
   | "lease"
   | "secret"
@@ -140,12 +147,21 @@ export interface CleanupHandlers {
   readonly sendNotification?: (notification: RunTerminationNotification) => Promise<void>;
 }
 
+/**
+ * Result of a cleanup operation verification.
+ * The cleanup is only considered complete when verified = true.
+ */
+export interface CleanupVerification {
+  readonly verified: boolean;
+  readonly message?: string;
+}
+
 export class RunTerminationCleanup {
-  private readonly cleanupHandlers: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<void>>>;
+  private readonly cleanupHandlers: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<CleanupVerification>>>;
   private readonly externalHandlers: CleanupHandlers;
 
   public constructor(options?: {
-    readonly cleanupHandlers?: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<void>>>;
+    readonly cleanupHandlers?: Partial<Record<CleanupResourceKind, (resourceId: string) => Promise<CleanupVerification>>>;
     readonly externalHandlers?: CleanupHandlers;
   }) {
     this.cleanupHandlers = options?.cleanupHandlers ?? {};
@@ -155,7 +171,7 @@ export class RunTerminationCleanup {
   /**
    * Registers a cleanup handler for a resource kind.
    */
-  public registerCleanupHandler(kind: CleanupResourceKind, handler: (resourceId: string) => Promise<void>): void {
+  public registerCleanupHandler(kind: CleanupResourceKind, handler: (resourceId: string) => Promise<CleanupVerification>): void {
     this.cleanupHandlers[kind] = handler;
   }
 
@@ -255,8 +271,13 @@ export class RunTerminationCleanup {
       }
 
       try {
-        await handler(resource.resourceId);
-        cleanedResourceIds.push(resource.resourceId);
+        const verification = await handler(resource.resourceId);
+        if (verification.verified) {
+          cleanedResourceIds.push(resource.resourceId);
+        } else {
+          failedResourceIds.push(resource.resourceId);
+          allSucceeded = false;
+        }
       } catch {
         failedResourceIds.push(resource.resourceId);
         allSucceeded = false;
@@ -377,19 +398,23 @@ export class RunTerminationCleanup {
       }
 
       // Attempt synchronous cleanup
-      const cleanupPromise = handler(resource.resourceId);
-      if (cleanupPromise != null) {
+      const result = handler(resource.resourceId);
+      if (isPromise(result)) {
         // Async handler detected - we cannot await in sync mode
         // Track as pending rather than assuming success
         pendingCleanupIds.push(resource.resourceId);
         // Fire and forget - cleanup will happen eventually
-        cleanupPromise.catch(() => {
+        result.catch(() => {
           // Async cleanup failed - this cannot be reported in sync mode
           // The caller should use executeAsync() for proper error handling
         });
-      } else {
-        // Sync handler - assume success (no exception thrown)
+      } else if (result.verified) {
+        // Sync handler returned verification indicating success
         cleanedResourceIds.push(resource.resourceId);
+      } else {
+        // Sync handler returned verification indicating failure
+        failedResourceIds.push(resource.resourceId);
+        allSucceeded = false;
       }
     }
 

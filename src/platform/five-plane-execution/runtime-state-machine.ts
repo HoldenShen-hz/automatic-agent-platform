@@ -106,7 +106,7 @@ const NODE_RUN_TRANSITIONS: TransitionTable<NodeRunStatus> = {
   leased: ["running", "ready", "cancelled", "aborted"],
   running: ["retry_wait", "awaiting_hitl", "reconciling", "succeeded", "failed", "cancelled", "aborted"],
   retry_wait: ["ready", "failed", "aborted"],
-  awaiting_hitl: ["ready", "running", "failed", "cancelled", "aborted"],
+  awaiting_hitl: ["running", "succeeded", "failed", "cancelled", "aborted"],
   reconciling: ["succeeded", "failed", "aborted"],
   succeeded: [],
   failed: [],

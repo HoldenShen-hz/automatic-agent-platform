@@ -168,20 +168,19 @@ export const PluginBindingSchema = z.object({
   ),
   bindingRole: z.preprocess(
     (value) => {
-      // §198-2312: Reject invalid bindingRole values - return null to fail enum validation
-      // Root cause: Invalid string values not in aliases were being returned as-is, causing
-      // undefined/null to be stored instead of failing validation
+      if (value == null) {
+        return undefined;
+      }
       if (typeof value !== "string") {
         return null;
       }
       const normalized = DOMAIN_PLUGIN_ROLE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES];
-      // If value is not in aliases and not a valid enum value, return null to fail validation
       if (normalized === undefined && !["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"].includes(value)) {
         return null;
       }
       return normalized ?? value;
     },
-    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]),
+    z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]).optional(),
   ),
   pluginId: z.string().min(1),
   priority: z.number().int().default(0),

@@ -104,13 +104,8 @@ export interface ConstraintPack {
   readonly toolPolicy: ConstraintToolPolicy;
   readonly riskPolicy?: ConstraintRiskPolicy;
   readonly outputPolicy?: ConstraintOutputPolicy;
-  readonly risk_policy?: ConstraintRiskPolicy;
-  readonly output_policy?: ConstraintOutputPolicy;
-  readonly budget_envelope?: ConstraintBudgetEnvelope;
   readonly budgetEnvelope?: ConstraintBudgetEnvelope;
-  readonly sandbox_requirement?: ConstraintSandboxRequirement;
   readonly sandboxRequirement?: ConstraintSandboxRequirement;
-  readonly approval_requirement?: ConstraintApprovalRequirement;
   readonly approvalRequirement?: ConstraintApprovalRequirement;
   /** @deprecated Use budgetEnvelope or budget_envelope */
   readonly budget?: {
@@ -124,7 +119,7 @@ export interface ConstraintPack {
 }
 
 export function getConstraintRiskPolicy(constraintPack: ConstraintPack): ConstraintRiskPolicy {
-  const riskPolicy = constraintPack.riskPolicy ?? constraintPack.risk_policy;
+  const riskPolicy = constraintPack.riskPolicy;
   if (riskPolicy == null) {
     throw new Error("harness.constraint_pack.missing_risk_policy");
   }
@@ -132,7 +127,7 @@ export function getConstraintRiskPolicy(constraintPack: ConstraintPack): Constra
 }
 
 export function getConstraintOutputPolicy(constraintPack: ConstraintPack): ConstraintOutputPolicy {
-  const outputPolicy = constraintPack.outputPolicy ?? constraintPack.output_policy;
+  const outputPolicy = constraintPack.outputPolicy;
   if (outputPolicy == null) {
     throw new Error("harness.constraint_pack.missing_output_policy");
   }
@@ -140,15 +135,15 @@ export function getConstraintOutputPolicy(constraintPack: ConstraintPack): Const
 }
 
 export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
-  const riskPolicy = input.riskPolicy ?? input.risk_policy;
+  const riskPolicy = input.riskPolicy;
   if (riskPolicy == null) {
     throw new Error("harness.constraint_pack.missing_risk_policy");
   }
-  const outputPolicy = input.outputPolicy ?? input.output_policy;
+  const outputPolicy = input.outputPolicy;
   if (outputPolicy == null) {
     throw new Error("harness.constraint_pack.missing_output_policy");
   }
-  const budgetEnvelope = input.budgetEnvelope ?? input.budget_envelope ?? input.budget;
+  const budgetEnvelope = input.budgetEnvelope ?? input.budget;
 
   const partial: {
     policyIds: readonly string[];
@@ -185,11 +180,11 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     },
   };
 
-  const sandboxRequirement = input.sandboxRequirement ?? input.sandbox_requirement;
+  const sandboxRequirement = input.sandboxRequirement;
   if (sandboxRequirement != null) {
     partial.sandboxRequirement = sandboxRequirement;
   }
-  const approvalRequirement = input.approvalRequirement ?? input.approval_requirement;
+  const approvalRequirement = input.approvalRequirement;
   if (approvalRequirement != null) {
     partial.approvalRequirement = approvalRequirement;
   }

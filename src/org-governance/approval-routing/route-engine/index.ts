@@ -330,7 +330,7 @@ export function resolveApprovalRoute(
     : [];
   const approvalSteps = resolveApprovalSteps(approverChain, nodes, matched?.orgNodeId ?? request.orgNodeId);
   const nowIso = amount.fxSnapshot?.capturedAt ?? new Date().toISOString();
-  const expiresAtIso = new Date(Date.parse(nowIso) + 30 * 60 * 1000).toISOString();
+  const expiresAtIso = new Date(Date.parse(nowIso) + 24 * 60 * 60 * 1000).toISOString();
   const routeSnapshot: ApprovalRouteSnapshot = {
     snapshotId: `approval_route_snapshot:${request.requesterId}:${matched?.orgNodeId ?? request.orgNodeId}:${strategy.strategyId}`,
     // SECURITY FIX: Use current time as fallback instead of epoch 1970 when no fxRateSnapshot

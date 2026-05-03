@@ -23,6 +23,70 @@ export interface DispatchExecutionOptions {
   occurredAt?: string;
 }
 
+/**
+ * R9-9: Routing decision record for capability-based routing.
+ * Persisted to truth store for auditing capability-based routing decisions.
+ */
+export interface RoutingCapabilityDecision {
+  routingDecisionId: string;
+  executionId: string;
+  taskId: string;
+  requiredCapabilities: readonly string[];
+  matchedCapabilities: readonly string[];
+  unmatchedCapabilities: readonly string[];
+  routedWorkerId: string | null;
+  routingTimestamp: string;
+  decisionReason: string;
+}
+
+/**
+ * R9-9: Maps task risk class to required capabilities for capability-based routing.
+ * High-risk tasks require sandboxed execution capabilities.
+ */
+export const RISK_CLASS_CAPABILITY_REQUIREMENTS: Readonly<Record<string, readonly string[]>> = {
+  critical: ["sandboxed_execution", "high_isolation", "audit_tracking"],
+  high: ["sandboxed_execution", "medium_isolation"],
+  medium: [],
+  low: [],
+};
+
+/**
+ * R9-9: Determines required capabilities based on task risk class.
+ * Used by dispatch to route high-risk tasks to workers with appropriate capabilities.
+ */
+export function inferRequiredCapabilitiesForRisk(riskClass: string): readonly string[] {
+  return RISK_CLASS_CAPABILITY_REQUIREMENTS[riskClass] ?? [];
+}
+
+/**
+ * R9-9: Filters workers based on capability matching.
+ * Returns workers that have ALL required capabilities.
+ */
+export function filterWorkersByCapabilities(
+  workers: RegisteredWorkerView[],
+  requiredCapabilities: readonly string[],
+): { matched: RegisteredWorkerView[]; unmatched: readonly string[] } {
+  if (requiredCapabilities.length === 0) {
+    return { matched: workers, unmatched: [] };
+  }
+  const matched: RegisteredWorkerView[] = [];
+  const unmatchedSet = new Set<string>();
+  for (const worker of workers) {
+    const workerCapabilities = new Set(worker.capabilities);
+    const hasAllCapabilities = requiredCapabilities.every((cap) => workerCapabilities.has(cap));
+    if (hasAllCapabilities) {
+      matched.push(worker);
+    } else {
+      for (const cap of requiredCapabilities) {
+        if (!workerCapabilities.has(cap)) {
+          unmatchedSet.add(cap);
+        }
+      }
+    }
+  }
+  return { matched, unmatched: [...unmatchedSet] };
+}
+
 export interface DispatchQueueAvailabilitySnapshot {
   state: "available" | "degraded" | "unavailable";
   queueDepth: number;

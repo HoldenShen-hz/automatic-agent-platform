@@ -148,6 +148,8 @@ export abstract class AuthoritativeTaskStoreLegacyCompat {
   public abstract listAgentExecutionRecordsByTask(...args: RepoMethodArgs<WorkerRepository, "listAgentExecutionRecordsByTask">): RepoMethodResult<WorkerRepository, "listAgentExecutionRecordsByTask">;
   public abstract listWorkerSnapshots(...args: RepoMethodArgs<WorkerRepository, "listWorkerSnapshots">): RepoMethodResult<WorkerRepository, "listWorkerSnapshots">;
   public abstract listStaleWorkerSnapshots(...args: RepoMethodArgs<WorkerRepository, "listStaleWorkerSnapshots">): RepoMethodResult<WorkerRepository, "listStaleWorkerSnapshots">;
+  public abstract deleteWorkerSnapshot(...args: RepoMethodArgs<WorkerRepository, "deleteWorkerSnapshot">): RepoMethodResult<WorkerRepository, "deleteWorkerSnapshot">;
+  public abstract updateWorkerStatus(...args: RepoMethodArgs<WorkerRepository, "updateWorkerStatus">): RepoMethodResult<WorkerRepository, "updateWorkerStatus">;
   public abstract getCoordinatorInstanceSnapshot(...args: RepoMethodArgs<WorkerRepository, "getCoordinatorInstanceSnapshot">): NullableRepoMethodResult<WorkerRepository, "getCoordinatorInstanceSnapshot">;
   public abstract listCoordinatorInstanceSnapshots(...args: RepoMethodArgs<WorkerRepository, "listCoordinatorInstanceSnapshots">): RepoMethodResult<WorkerRepository, "listCoordinatorInstanceSnapshots">;
   public abstract listHeartbeatSnapshotsByExecution(...args: RepoMethodArgs<WorkerRepository, "listHeartbeatSnapshotsByExecution">): RepoMethodResult<WorkerRepository, "listHeartbeatSnapshotsByExecution">;

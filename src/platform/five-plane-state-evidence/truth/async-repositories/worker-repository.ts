@@ -1049,4 +1049,24 @@ export class AsyncWorkerRepository {
     );
     return Number(result?.maxFencingToken ?? 0);
   }
+
+  public async deleteWorkerSnapshot(workerId: string): Promise<boolean> {
+    const result = await asyncExecute(
+      this.conn,
+      `DELETE FROM worker_snapshots WHERE worker_id = $1`,
+      workerId,
+    );
+    return (result as { rowCount: number }).rowCount > 0;
+  }
+
+  public async updateWorkerStatus(workerId: string, status: string, updatedAt: string): Promise<boolean> {
+    const result = await asyncExecute(
+      this.conn,
+      `UPDATE worker_snapshots SET status = $1, updated_at = $2 WHERE worker_id = $3`,
+      status,
+      updatedAt,
+      workerId,
+    );
+    return (result as { rowCount: number }).rowCount > 0;
+  }
 }

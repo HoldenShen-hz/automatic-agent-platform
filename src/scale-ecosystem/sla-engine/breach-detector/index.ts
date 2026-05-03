@@ -92,3 +92,96 @@ export function detectSlaBreach(observation: SlaObservation, commitment: SlaComm
   if ((observation.dependencyAvailability ?? 1) < (commitment.minDependencyAvailability ?? 0)) breaches.push("sla.dependency_unavailability_breach");
   return breaches;
 }
+
+/**
+ * Latency percentile values for SLO tracking.
+ */
+export interface LatencyPercentiles {
+  readonly p50: number;
+  readonly p95: number;
+  readonly p99: number;
+}
+
+/**
+ * SLO compliance status for latency tracking.
+ * §R8-4: Tracks p50/p95/p99 latencies and SLO compliance.
+ */
+export interface LatencySloState {
+  /** Observed latency samples in milliseconds */
+  readonly samples: readonly number[];
+  /** Calculated percentile latencies */
+  readonly percentiles: LatencyPercentiles;
+  /** Whether SLO is currently being met */
+  readonly compliant: boolean;
+  /** Number of samples used in calculation */
+  readonly sampleCount: number;
+  /** Window start timestamp in ms */
+  readonly windowStartMs: number;
+}
+
+/**
+ * SLO configuration for latency tracking.
+ */
+export interface LatencySloConfig {
+  /** Maximum acceptable p50 latency in ms */
+  readonly targetP50Ms: number;
+  /** Maximum acceptable p95 latency in ms */
+  readonly targetP95Ms: number;
+  /** Maximum acceptable p99 latency in ms */
+  readonly targetP99Ms: number;
+  /** Window size in ms (default 1 hour) */
+  readonly windowMs?: number;
+}
+
+/**
+ * Sorts array numerically and selects value at given percentile.
+ */
+function percentile(arr: readonly number[], p: number): number {
+  if (arr.length === 0) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const index = Math.ceil((p / 100) * sorted.length) - 1;
+  return sorted[Math.max(0, index)];
+}
+
+/**
+ * Calculates latency percentiles (p50/p95/p99) from samples.
+ */
+export function calculateLatencyPercentiles(samples: readonly number[]): LatencyPercentiles {
+  return {
+    p50: percentile(samples, 50),
+    p95: percentile(samples, 95),
+    p99: percentile(samples, 99),
+  };
+}
+
+/**
+ * Tracks latency SLO compliance with p50/p95/p99 percentiles.
+ *
+ * @param samples - Latency observations in ms
+ * @param config - SLO targets for each percentile
+ * @returns Latency SLO state with compliance status
+ */
+export function trackLatencySlo(
+  samples: readonly number[],
+  config: LatencySloConfig,
+): LatencySloState {
+  const windowMs = config.windowMs ?? 3600000; // Default 1 hour
+  const now = Date.now();
+  const windowStartMs = now - windowMs;
+
+  const percentiles = calculateLatencyPercentiles(samples);
+
+  // SLO is compliant only if ALL percentiles are within targets
+  const compliant =
+    percentiles.p50 <= config.targetP50Ms &&
+    percentiles.p95 <= config.targetP95Ms &&
+    percentiles.p99 <= config.targetP99Ms;
+
+  return {
+    samples,
+    percentiles,
+    compliant,
+    sampleCount: samples.length,
+    windowStartMs,
+  };
+}

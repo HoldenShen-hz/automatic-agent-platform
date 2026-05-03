@@ -268,4 +268,12 @@ export class WorkerRepository {
   public getLatestFencingToken(executionId: string): number {
     return this.ticketRepo.getLatestFencingToken(executionId);
   }
+
+  public deleteWorkerSnapshot(workerId: string): boolean {
+    return this.snapshotRepo.deleteWorkerSnapshot(workerId);
+  }
+
+  public updateWorkerStatus(workerId: string, status: string, updatedAt: string): boolean {
+    return this.snapshotRepo.updateWorkerStatus(workerId, status, updatedAt);
+  }
 }

@@ -275,6 +275,21 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
   const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
 
+  // R9-23 fix: Add health/ready gate - validate all services are initialized before returning.
+  // This ensures bootstrap is truly complete before the platform considers itself ready.
+  const serviceIds = [
+    "architecture.layer-catalog",
+    "architecture.plane-catalog",
+    "architecture.app-catalog",
+    "architecture.startup-targets",
+    "architecture.bootstrap-summary",
+  ];
+  for (const serviceId of serviceIds) {
+    if (!registry.isInitialized(serviceId)) {
+      throw new Error(`Platform architecture service not fully initialized: ${serviceId}. Bootstrap may have failed.`);
+    }
+  }
+
   return {
     layers: PLATFORM_LAYER_MANIFESTS,
     planes: PLATFORM_PLANE_MANIFESTS,

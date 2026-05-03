@@ -1,10 +1,10 @@
-export function detectAmbiguity(message: string, confidence: number, requiredEntityCount = 1, extractedEntityCount = 0): boolean {
-  const normalized = message.trim();
-  if (normalized.length < 6) {
-    return true;
-  }
-  if (confidence < 0.7) {
-    return true;
-  }
-  return extractedEntityCount < requiredEntityCount;
-}
+/**
+ * Ambiguity Handler
+ *
+ * Re-exports detectAmbiguity from disambiguation-handler for backward compatibility.
+ * The canonical implementation lives in disambiguation-handler/index.ts.
+ *
+ * @see docs_en/reviews/architecture-design-vs-implementation-review.md §39
+ */
+
+export { detectAmbiguity } from "../disambiguation-handler/index.js";

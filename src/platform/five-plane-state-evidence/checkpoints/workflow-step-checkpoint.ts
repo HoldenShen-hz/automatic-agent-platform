@@ -78,7 +78,7 @@ export interface WorkflowStepCheckpointFileDiffSummary {
 export interface WorkflowStepCheckpoint {
   schemaVersion: typeof WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION;
   harnessRunId: string;
-  nodeRunId: string | null;
+  nodeRunId: string;
   planGraphBundleId: string;
   taskId: string;
   executionId: string | null;
@@ -105,7 +105,7 @@ export interface WorkflowStepCheckpoint {
  */
 export interface CreateWorkflowStepCheckpointInput {
   harnessRunId: string;
-  nodeRunId: string | null;
+  nodeRunId: string;
   planGraphBundleId: string;
   taskId: string;
   executionId: string | null;
@@ -134,7 +134,7 @@ export interface CreateWorkflowStepCheckpointInput {
 export interface WorkflowStepCheckpointSummary {
   artifactId: string;
   harnessRunId: string;
-  nodeRunId: string | null;
+  nodeRunId: string;
   planGraphBundleId: string;
   status: StepOutputRecord["status"];
   producedAt: string;
@@ -250,7 +250,7 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
   if (
     candidate.schemaVersion !== WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION
     || typeof candidate.harnessRunId !== "string"
-    || (candidate.nodeRunId !== null && typeof candidate.nodeRunId !== "string")
+    || typeof candidate.nodeRunId !== "string"
     || typeof candidate.planGraphBundleId !== "string"
     || typeof candidate.taskId !== "string"
     || (candidate.executionId !== null && typeof candidate.executionId !== "string")

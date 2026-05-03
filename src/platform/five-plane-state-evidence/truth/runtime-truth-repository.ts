@@ -1,4 +1,5 @@
 import { ValidationError } from "../../contracts/errors.js";
+import { nowIso } from "../../contracts/types/ids.js";
 import {
   type BudgetLedger,
   type BudgetReservation,
@@ -20,6 +21,8 @@ import {
 } from "../../execution/runtime-state-machine.js";
 
 export interface RuntimeTruthRepositorySnapshot {
+  readonly version: number;
+  readonly createdAt: string;
   readonly harnessRuns: readonly HarnessRun[];
   readonly nodeRuns: readonly NodeRun[];
   readonly sideEffects: readonly SideEffectRecord[];
@@ -59,6 +62,7 @@ interface RuntimeTruthRepositoryState {
 export class RuntimeTruthRepository implements RuntimeRepository {
   private state: RuntimeTruthRepositoryState = createEmptyState();
   private readonly stateMachine: RuntimeStateMachine;
+  private snapshotVersion = 0;
 
   public constructor(options: { readonly stateMachine?: RuntimeStateMachine } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
@@ -190,7 +194,12 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public snapshot(): RuntimeTruthRepositorySnapshot {
+    this.snapshotVersion++;
+    const version = this.snapshotVersion;
+    const createdAt = nowIso();
     return {
+      version,
+      createdAt,
       harnessRuns: [...this.state.harnessRuns.values()],
       nodeRuns: [...this.state.nodeRuns.values()],
       sideEffects: [...this.state.sideEffects.values()],

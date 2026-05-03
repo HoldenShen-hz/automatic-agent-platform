@@ -103,7 +103,7 @@ export class AssessmentService {
       },
       routingDecision: {
         // Division must come from actual domainId when available
-        division: situation.domainId ?? "general",
+        division: assessmentInput.domainId ?? "unknown",
         workflow,
         rationale: [
           `complexity=${complexity}`,

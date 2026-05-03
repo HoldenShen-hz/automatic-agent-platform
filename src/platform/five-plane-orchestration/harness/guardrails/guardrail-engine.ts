@@ -21,7 +21,7 @@ export interface GuardrailFinding {
 export interface GuardrailAssessment {
   readonly passed: boolean;
   readonly requiresHuman: boolean;
-  readonly suggestedAction: "proceed" | "retry_same_plan" | "escalate_to_human" | "abort";
+  readonly suggestedAction: "proceed" | "escalate_to_human" | "abort";
   readonly findings: readonly GuardrailFinding[];
 }
 
@@ -144,9 +144,7 @@ export class GuardrailEngine {
         ? "abort"
         : requiresHuman
           ? "escalate_to_human"
-          : hasRetryableWarning
-            ? "retry_same_plan"
-            : "proceed",
+          : "proceed",
       findings,
     };
   }

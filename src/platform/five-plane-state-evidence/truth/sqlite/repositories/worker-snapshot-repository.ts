@@ -301,4 +301,24 @@ export class WorkerSnapshotRepository {
       executionId,
     );
   }
+
+  public deleteWorkerSnapshot(workerId: string): boolean {
+    const result = execute(
+      this.conn,
+      `DELETE FROM worker_snapshots WHERE worker_id = ?`,
+      workerId,
+    );
+    return (result as { changes: number }).changes > 0;
+  }
+
+  public updateWorkerStatus(workerId: string, status: string, updatedAt: string): boolean {
+    const result = execute(
+      this.conn,
+      `UPDATE worker_snapshots SET status = ?, updated_at = ? WHERE worker_id = ?`,
+      status,
+      updatedAt,
+      workerId,
+    );
+    return (result as { changes: number }).changes > 0;
+  }
 }

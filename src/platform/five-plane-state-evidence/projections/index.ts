@@ -14,6 +14,10 @@ export interface ProjectionRecord {
   projectionName: string;
   entityRef: string;
   state: Record<string, unknown>;
+  /** R9-12: Version tracking for stale projection detection */
+  version: number;
+  /** R9-12: Event sequence number at time of projection build - used for idempotency */
+  lastEventSequence: number;
   updatedAt: string;
 }
 
@@ -26,6 +30,7 @@ export class EventProjectionService {
     const entityRef = event.taskId ?? String(payload.entityRef ?? payload.taskId ?? event.eventId);
     const key = `${projectionName}:${entityRef}`;
     const previous = this.projections.get(key);
+    // R9-12: Increment version on each update and track event sequence
     const record: ProjectionRecord = {
       projectionId: previous?.projectionId ?? newId("projection"),
       sourceEventId: event.eventId,
@@ -37,6 +42,10 @@ export class EventProjectionService {
         lastPayload: payload,
         lastEventAt: event.createdAt,
       },
+      // R9-12: Version incremented on every update - enables stale detection
+      version: (previous?.version ?? 0) + 1,
+      // R9-12: Track sequence for idempotency - skip already-processed events
+      lastEventSequence: previous?.lastEventSequence ?? 0,
       updatedAt: nowIso(),
     };
     this.projections.set(key, record);

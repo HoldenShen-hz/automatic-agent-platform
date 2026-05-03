@@ -37,6 +37,19 @@ export class HitlRuntime {
   private readonly requests = new Map<string, HitlRequest>();
   private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord>();
 
+  /** Persist a request to durable storage. Called by HarnessRuntimeService after open(). */
+  public persistRequest(request: HitlRequest): void {
+    // No-op: actual persistence is handled by HarnessRuntimeService which owns DurableHarnessService.
+    // This method exists as a signal point so callers can hook durable persistence.
+  }
+
+  /** Load previously persisted requests after process restart. Called on initialization. */
+  public loadRequests(requests: readonly HitlRequest[]): void {
+    for (const request of requests) {
+      this.requests.set(request.requestId, request);
+    }
+  }
+
   public hydrate(request: HitlRequest, record?: HumanResponsibilityRecord | null): void {
     this.requests.set(request.requestId, request);
     if (record != null) {
@@ -64,6 +77,7 @@ export class HitlRuntime {
       resolvedBy: null,
     };
     this.requests.set(request.requestId, request);
+    this.persistRequest(request);
     return request;
   }
 

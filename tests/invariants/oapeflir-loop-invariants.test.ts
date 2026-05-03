@@ -15,8 +15,11 @@ import { OapeflirLoopService } from "../../src/platform/five-plane-orchestration
  *
  * Architecture reference: §2.5 OAPEFLIR Loop, §13 OAPEFLIR Loop Service
  */
-test("OAPEFLIR stages follow canonical order: Observe -> Assess -> Plan -> Execute -> Feedback -> Learn -> Improve -> Repeat", () => {
-  // The canonical OAPEFLIR stage order
+test("OAPEFLIR stages follow canonical order: Observe -> Assess -> Plan -> Execute -> Feedback -> Learn -> Improve -> Release", () => {
+  // The canonical OAPEFLIR 8-stage order per §13.7:
+  // Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
+  // Note: "repeat" was a misnomer - the loop closure happens via "release" stage
+  // which returns control to the harness, not by jumping back to "observe".
   const canonicalStages = [
     "observe",
     "assess",
@@ -25,7 +28,7 @@ test("OAPEFLIR stages follow canonical order: Observe -> Assess -> Plan -> Execu
     "feedback",
     "learn",
     "improve",
-    "repeat",
+    "release",
   ] as const;
 
   // Verify stage sequence constants are defined
@@ -40,12 +43,14 @@ test("OAPEFLIR stages follow canonical order: Observe -> Assess -> Plan -> Execu
     "feedback",
     "learn",
     "improve",
-    "repeat",
+    "release",
   ]);
 });
 
 test("Stage transitions follow valid FSM rules", () => {
-  // Valid stage transition pairs (from -> to)
+  // Valid stage transition pairs (from -> to) per §13.7 OAPEFLIR 8-stage:
+  // observe → assess → plan → execute → feedback → learn → improve → release
+  // Loop terminates after "release" - no "repeat" stage exists in canonical OAPEFLIR
   const validTransitions: Array<[string, string]> = [
     ["observe", "assess"],
     ["assess", "plan"],
@@ -53,26 +58,23 @@ test("Stage transitions follow valid FSM rules", () => {
     ["execute", "feedback"],
     ["feedback", "learn"],
     ["learn", "improve"],
-    ["improve", "repeat"],
-    ["repeat", "observe"],
+    ["improve", "release"],
   ];
 
-  // Verify each transition is valid (not going backwards except repeat)
+  // Verify each transition is valid (not going backwards)
   for (const [from, to] of validTransitions) {
     assert.ok(
       from !== to,
       `Stage transition from ${from} to ${to} must not be self-referential`,
     );
 
-    // repeat can go back to observe, other transitions should move forward
-    if (from !== "repeat") {
-      const fromIndex = canonicalStages.indexOf(from as typeof canonicalStages[number]);
-      const toIndex = canonicalStages.indexOf(to as typeof canonicalStages[number]);
-      assert.ok(
-        toIndex > fromIndex || to === "repeat",
-        `Stage transition from ${from} to ${to} should advance (except repeat -> observe)`,
-      );
-    }
+    // All transitions should move forward (no backward jumps in canonical FSM)
+    const fromIndex = canonicalStages.indexOf(from as typeof canonicalStages[number]);
+    const toIndex = canonicalStages.indexOf(to as typeof canonicalStages[number]);
+    assert.ok(
+      toIndex > fromIndex,
+      `Stage transition from ${from} to ${to} should advance forward`,
+    );
   }
 });
 
@@ -129,18 +131,17 @@ test("Feedback stage closes the loop by integrating execution results", () => {
   assert.ok(feedbackTransitionsTo.includes("learn"));
 });
 
-test("Repeat stage implements loop closure with checkpoint", () => {
-  // Repeat stage closes the loop by:
-  // 1. Saving checkpoint for replay capability
-  // 2. Returning to Observe for next iteration
-  // 3. Incrementing iteration counter
+test("Release stage implements loop closure", () => {
+  // Release stage (final stage in OAPEFLIR) closes the loop by:
+  // 1. Returning control to harness after successful execution
+  // 2. Triggers canary/rollback if needed per §13.14
+  // 3. Loop terminates - no return to observe (replan goes through plan stage)
 
-  const repeatStage = "repeat";
-  assert.equal(repeatStage, "repeat");
+  const releaseStage = "release";
+  assert.equal(releaseStage, "release");
 
-  // Repeat should transition back to observe
-  const repeatNextStage = "observe";
-  assert.equal(repeatNextStage, "observe");
+  // Release is the final stage - loop terminates here
+  assert.equal(canonicalStages.indexOf("release"), 7); // 0-indexed, so 7th
 });
 
 test("Improve stage addresses accumulated issues", () => {

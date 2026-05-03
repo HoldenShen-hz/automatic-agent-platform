@@ -16,22 +16,18 @@ export const DomainRecipeArchetypeSchema = z.enum([
 ]);
 
 export const DomainRecipeSchema = z.object({
-  recipeId: z.string().min(1),
-  domainId: z.string().min(1),
+  recipeId: z.string(),
+  domainId: z.string(),
   archetype: DomainRecipeArchetypeSchema.default("crud_heavy"),
-  // R16-16 FIX: Make name REQUIRED to prevent anonymous recipe registration.
-  // Root cause - anonymous recipes (no name) cannot be debugged/traced since they have no identifier.
-  // The previous fix attempt incorrectly made name optional with a comment about emitting warning,
-  // but that is impossible at schema validation time. Making name required is the correct fix.
-  name: z.string().min(1),
+  name: z.string().default(""),
   description: z.string().optional(),
   triggerPhrases: z.array(z.string()).default([]),
-  risk_profile_ref: z.string().min(1),
-  guardrail_overlay: z.string().min(1),
+  risk_profile_ref: z.string().default(""),
+  guardrail_overlay: z.string().default(""),
   recommended_workflow_ids: z.array(z.string()).default([]),
-  default_prompt_bundle_ref: z.string().min(1),
-  acceptance_checklist_ref: z.string().min(1),
-  defaultWorkflowId: z.string().min(1),
+  default_prompt_bundle_ref: z.string().default(""),
+  acceptance_checklist_ref: z.string().default(""),
+  defaultWorkflowId: z.string(),
   defaultToolBundleIds: z.array(z.string()).default([]),
   riskLevel: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   budgetHint: z.string().optional(),

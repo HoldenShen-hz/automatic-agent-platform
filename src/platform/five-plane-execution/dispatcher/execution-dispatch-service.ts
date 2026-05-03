@@ -94,6 +94,8 @@ export class ExecutionDispatchService {
   private cachedHealthService: HealthService | null = null;
   private readonly scalingController: HorizontalScalingController;
   private readonly dispatchDeadLetterQueue: DispatchDeadLetterQueue | null;
+  // R9-5: §14.2 poison-pill detection - max time a ticket can wait before being considered abandoned
+  private readonly maxQueueAgeMs: number;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -101,12 +103,14 @@ export class ExecutionDispatchService {
     private readonly queueAvailabilitySnapshot: (() => DispatchQueueAvailabilitySnapshot | null) | null = null,
     private readonly healthReportProvider: HealthReportProvider | null = null,
     dispatchDeadLetterQueue: DispatchDeadLetterQueue | null = null,
+    maxQueueAgeMs: number = 3600000,
   ) {
     this.leases = new ExecutionLeaseService(db, store);
     this.preemption = new ExecutionPriorityPreemptionService(db, store);
     this.workers = new WorkerRegistryService(store);
     this.scalingController = new HorizontalScalingController("default", DEFAULT_SCALING_POLICY);
     this.dispatchDeadLetterQueue = dispatchDeadLetterQueue ?? this.createDispatchDeadLetterQueue();
+    this.maxQueueAgeMs = maxQueueAgeMs;
   }
 
   private getOrCreateHealthService(occurredAt: string): HealthService {
@@ -440,6 +444,62 @@ export class ExecutionDispatchService {
       const requiredIsolationLevel = resolveRequiredIsolationLevel(ticket.requiredIsolationLevel);
       const requiredRepoVersion = resolveRequiredRepoVersion(ticket.requiredRepoVersion);
       const blockedByBackpressure = resolveDispatchBackpressureReason(ticket, backpressure);
+
+      // R9-5: §14.2 poison-pill detection - detect abandoned tickets that have been queued too long
+      const ticketCreatedAt = ticket.createdAt;
+      const ticketAgeMs = Date.parse(occurredAt) - Date.parse(ticketCreatedAt);
+      if (ticketAgeMs > this.maxQueueAgeMs) {
+        const poisonPillReason = "dispatch.poison_pill_detected";
+        const trace = this.recordDecisionEvent(ticket, occurredAt, {
+          dispatchTarget,
+          remoteAvailability: null,
+          requiredIsolationLevel,
+          requiredRepoVersion,
+          preferredWorkerId: options.preferredWorkerId ?? null,
+          requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+          outcome: "blocked",
+          reasonCode: poisonPillReason,
+          selectedWorkerId: null,
+          leaseId: null,
+          fallbackApplied: false,
+          evaluations: [],
+          ...this.buildSchedulerTraceFields(ticket, occurredAt, readySet, [], null),
+        });
+        // Invalidate the poison-pill ticket and fail the associated execution
+        this.store.worker.invalidateExecutionTicket({
+          ticketId: ticket.id,
+          status: "cancelled",
+          invalidatedAt: occurredAt,
+        });
+        // Transition execution to failed status with poison-pill reason
+        this.store.execution.updateExecutionStatus(
+          ticket.executionId,
+          "failed",
+          "dispatch.poison_pill_abandoned",
+          occurredAt,
+        );
+        this.store.event.insertEvent({
+          id: newId("evt"),
+          taskId: ticket.taskId,
+          executionId: ticket.executionId,
+          eventType: "dispatch:poison_pill_detected",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({
+            ticketId: ticket.id,
+            executionId: ticket.executionId,
+            queueName: ticket.queueName,
+            priority: ticket.priority,
+            queueAgeMs: ticketAgeMs,
+            maxQueueAgeMs: this.maxQueueAgeMs,
+          }),
+          traceId: null,
+          createdAt: occurredAt,
+        });
+        this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "poison_pill");
+        lastTrace = trace;
+        continue;
+      }
+
       if (blockedByBackpressure) {
         blockedReason = blockedByBackpressure;
         const trace = this.recordDecisionEvent(ticket, occurredAt, {

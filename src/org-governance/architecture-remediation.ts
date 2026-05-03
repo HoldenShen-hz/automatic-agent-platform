@@ -28,6 +28,7 @@ export interface ApprovalRouteSnapshot {
   readonly evidenceRefs: readonly string[];
   readonly escalationChain: readonly string[];
   readonly timeoutAutoAction: "escalate" | "reject" | "freeze";
+  readonly expiresAt: string;
 }
 
 export interface ApprovalConflictInput {

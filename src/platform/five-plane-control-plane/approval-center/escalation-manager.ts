@@ -10,6 +10,7 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { ValidationError } from "../../contracts/errors.js";
+import type { DelegationRepository } from "../../state-evidence/truth/sqlite/repositories/delegation-repository.js";
 
 /**
  * Notification channel types.
@@ -164,14 +165,21 @@ const DEFAULT_MAX_TTL_RESETS = 3;
 export class EscalationManager {
   private readonly logger = new StructuredLogger({ retentionLimit: 50 });
   private readonly escalationHistory: Map<string, EscalationLevel[]> = new Map();
-  private readonly delegations: Map<string, Delegation> = new Map();
+  private readonly delegationRecords: Map<string, Delegation> = new Map();
+  // R9-6: Optional persistence layer for durable delegation state
+  private readonly delegationRepository: DelegationRepository | null = null;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_ENTRIES = 500;
   private readonly ENTRY_TTL_MS = 30 * 60 * 1000; // 30 minutes
   private lastEvictionTime = 0;
   private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
 
-  public constructor(private readonly defaultTimeoutMs: number = DEFAULT_ESCALATION_TIMEOUT_MS) {}
+  public constructor(
+    private readonly defaultTimeoutMs: number = DEFAULT_ESCALATION_TIMEOUT_MS,
+    delegationRepository?: DelegationRepository,
+  ) {
+    this.delegationRepository = delegationRepository ?? null;
+  }
 
   /**
    * C-11: Evict expired escalation entries to prevent memory leaks.
@@ -198,7 +206,7 @@ export class EscalationManager {
 
     for (const approvalId of entriesToDelete) {
       this.escalationHistory.delete(approvalId);
-      this.delegations.delete(approvalId);
+      this.delegationRecords.delete(approvalId);
     }
 
     // If still over capacity, remove oldest entries
@@ -213,7 +221,7 @@ export class EscalationManager {
       for (let i = 0; i < toRemove; i++) {
         const approvalId = sortedEntries[i]![0];
         this.escalationHistory.delete(approvalId);
-        this.delegations.delete(approvalId);
+        this.delegationRecords.delete(approvalId);
       }
     }
   }
@@ -353,7 +361,21 @@ export class EscalationManager {
       status: DelegationStatus.ACTIVE,
     };
 
-    this.delegations.set(delegation.delegationId, delegation);
+    this.delegationRecords.set(delegation.delegationId, delegation);
+
+    // R9-6: Persist delegation to repository for durability
+    if (this.delegationRepository) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.delegationRepository.create({
+        delegationId: delegation.delegationId,
+        parentAgentId: fromApprover,
+        childAgentId: toApprover,
+        delegationChain: [fromApprover, toApprover],
+        depth: 1,
+        expiresAt: delegation.expiresAt,
+        status: "active",
+      });
+    }
 
     this.logger.info("Delegation created", {
       delegationId: delegation.delegationId,
@@ -414,7 +436,13 @@ export class EscalationManager {
       ttlResetCount: delegation.ttlResetCount + 1,
     };
 
-    this.delegations.set(delegation.delegationId, updated);
+    this.delegationRecords.set(delegation.delegationId, delegation);
+
+    // R9-6: Persist TTL reset to repository
+    if (this.delegationRepository) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.delegationRepository.updateStatus(delegation.delegationId, "active");
+    }
 
     this.logger.info("Delegation TTL reset", {
       delegationId: delegation.delegationId,
@@ -431,7 +459,7 @@ export class EscalationManager {
    * @param delegationId - ID of delegation to revoke
    */
   public revokeDelegation(delegationId: string): void {
-    const delegation = this.delegations.get(delegationId);
+    const delegation = this.delegationRecords.get(delegationId);
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation not found: ${delegationId}`);
     }
@@ -441,7 +469,7 @@ export class EscalationManager {
       status: DelegationStatus.REVOKED,
     };
 
-    this.delegations.set(delegationId, updated);
+    this.delegationRecords.set(delegationId, updated);
 
     this.logger.info("Delegation revoked", { delegationId });
   }
@@ -452,7 +480,7 @@ export class EscalationManager {
    * @param delegationId - ID of delegation to complete
    */
   public completeDelegation(delegationId: string): void {
-    const delegation = this.delegations.get(delegationId);
+    const delegation = this.delegationRecords.get(delegationId);
     if (!delegation) {
       throw new ValidationError("delegation.not_found", `Delegation not found: ${delegationId}`);
     }
@@ -462,7 +490,7 @@ export class EscalationManager {
       status: DelegationStatus.COMPLETED,
     };
 
-    this.delegations.set(delegationId, updated);
+    this.delegationRecords.set(delegationId, updated);
 
     this.logger.info("Delegation completed", { delegationId });
   }
@@ -474,7 +502,7 @@ export class EscalationManager {
    * @returns Delegation or undefined
    */
   public getDelegation(delegationId: string): Delegation | undefined {
-    return this.delegations.get(delegationId);
+    return this.delegationRecords.get(delegationId);
   }
 
   /**
@@ -484,7 +512,7 @@ export class EscalationManager {
    * @returns Active delegation or undefined
    */
   public getActiveDelegationForApproval(approvalId: string): Delegation | undefined {
-    for (const delegation of this.delegations.values()) {
+    for (const delegation of this.delegationRecords.values()) {
       if (
         delegation.originalApprovalId === approvalId &&
         delegation.status === DelegationStatus.ACTIVE &&
