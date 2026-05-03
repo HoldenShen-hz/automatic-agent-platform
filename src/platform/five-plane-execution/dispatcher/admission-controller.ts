@@ -179,6 +179,17 @@ export class AdmissionController {
       };
     }
 
+    // R6-9 FIX: §14.2 verify active budget reservation exists before dispatch
+    // No active reservation = cannot dispatch (must reserve before execute)
+    if (!request.budgetReservationId || request.budgetReservationId.trim() === "") {
+      return {
+        decision: "reject",
+        reasonCode: "admission.reject_no_budget_reservation",
+        snapshot,
+        backpressure,
+      };
+    }
+
     if (backpressure?.degradationMode === "read_only_operations_only") {
       return {
         decision: "reject",
