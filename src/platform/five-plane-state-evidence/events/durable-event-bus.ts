@@ -702,8 +702,8 @@ export class DurableEventBus {
    * @param handler - The handler to deliver the event to
    * @param consumerId - The consumer ID for circuit breaker tracking
    */
-  private async deliverOne(item: PendingAckEvent, handler: EventHandler, consumerId: string): Promise<void> {
-    const result = await this.deliverOneWithResult(item, handler, consumerId);
+  private async deliverOne(item: PendingAckEvent, handler: EventHandler, consumerId: string, exhaustRetries: boolean = true): Promise<void> {
+    const result = await this.deliverOneWithResult(item, handler, consumerId, exhaustRetries);
     if (result.deadLettered) {
       throw new WorkflowStateError(
         `event_delivery.failed: event ${item.event.id} dead-lettered after ${MAX_DELIVERY_RETRIES} retries`,

@@ -328,21 +328,21 @@ export class RuntimeRecoveryService {
     record: RuntimeRecoveryRecord,
     operatorId: string,
   ): Promise<RecoveryExecutionResult> {
-    // Update execution status to resuming
-    this.store.operations.updateExecutionStatus(executionId, "resuming", { operatorId, reason: "resume_same_worker" });
-
-    // Emit recovery event
+    // Emit recovery event with status transition request
+    // The actual status update is handled by the execution state transition service
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId: record.taskId,
       sessionId: null,
       executionId,
-      eventType: "recovery:resumed",
+      eventType: "recovery:resume_requested",
       eventTier: "tier_2",
       payloadJson: JSON.stringify({
         action: "resume_same_worker",
         operatorId,
         executionId,
+        targetStatus: "resuming",
+        reason: "resume_same_worker",
         timestamp: nowIso(),
       }),
       traceId: record.traceId,
@@ -375,25 +375,23 @@ export class RuntimeRecoveryService {
     record: RuntimeRecoveryRecord,
     operatorId: string,
   ): Promise<RecoveryExecutionResult> {
-    // Cancel current execution
-    this.store.operations.updateExecutionStatus(executionId, "cancelled", { operatorId, reason: "retry_new_ticket" });
-
     // Create new execution ticket
     const newExecutionId = newId("exec");
 
-    // Emit recovery event for cancellation
+    // Emit recovery event for retry - actual status transition handled by state transition service
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId: record.taskId,
       sessionId: null,
       executionId,
-      eventType: "recovery:retried",
+      eventType: "recovery:retry_initiated",
       eventTier: "tier_2",
       payloadJson: JSON.stringify({
         action: "retry_new_ticket",
         oldExecutionId: executionId,
         newExecutionId,
         operatorId,
+        reason: "retry_new_ticket",
         timestamp: nowIso(),
       }),
       traceId: record.traceId,
@@ -474,21 +472,18 @@ export class RuntimeRecoveryService {
     record: RuntimeRecoveryRecord,
     operatorId: string,
   ): Promise<RecoveryExecutionResult> {
-    // Update execution to dead_lettered status
-    this.store.operations.updateExecutionStatus(executionId, "dead_lettered", { operatorId, reason: "move_dead_letter" });
-
-    // Emit recovery event
-    const eventId = newId("evt");
+    // Emit recovery event for dead-letter - actual DLQ handling is done by DLQ service
     this.store.event.insertEvent({
-      id: eventId,
+      id: newId("evt"),
       taskId: record.taskId,
       sessionId: null,
       executionId,
-      eventType: "recovery:dead_lettered",
+      eventType: "recovery:dead_letter_initiated",
       eventTier: "tier_2",
       payloadJson: JSON.stringify({
         action: "move_dead_letter",
         operatorId,
+        reason: "move_dead_letter",
         timestamp: nowIso(),
       }),
       traceId: record.traceId,
@@ -521,20 +516,18 @@ export class RuntimeRecoveryService {
     record: RuntimeRecoveryRecord,
     operatorId: string,
   ): Promise<RecoveryExecutionResult> {
-    // Update execution to cancelled status
-    this.store.operations.updateExecutionStatus(executionId, "cancelled", { operatorId, reason: "cancel" });
-
-    // Emit recovery event
+    // Emit recovery event for cancellation - actual status change handled by state transition service
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId: record.taskId,
       sessionId: null,
       executionId,
-      eventType: "recovery:cancelled",
+      eventType: "recovery:cancel_initiated",
       eventTier: "tier_2",
       payloadJson: JSON.stringify({
         action: "cancel",
         operatorId,
+        reason: "cancel",
         timestamp: nowIso(),
       }),
       traceId: record.traceId,
@@ -692,18 +685,50 @@ export class RuntimeRecoveryService {
     }
 
     const taskEvents = this.store.event.listEventsForTask(taskId, tenantId);
+    // Get compensation records from events that indicate compensation was executed
+    const compensationRecords = this.findCompensationRecordsFromEvents(taskEvents);
+
     return {
       taskId,
       divisionId: task.divisionId,
       candidates: this.store.operations.buildRuntimeRecoveryView(taskId, tenantId).map((record) => toCandidate(record, inferReason(record), this.config)),
       requestedApprovals: this.store.approval.listApprovalsByTask(taskId, tenantId).filter((approval) => approval.status === "requested"),
       deadLetters: this.store.dispatch.listDeadLettersByTask(taskId, tenantId),
+      compensationRecords,
       latestCheckpoint: findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
       recentRecoveryEvents: taskEvents
         .filter((event) => event.eventType.startsWith("recovery:"))
         .slice(-10)
         .map((event) => toRecoveryEvent(event)),
     };
+  }
+
+  /**
+   * Extracts compensation records from recovery events.
+   */
+  private findCompensationRecordsFromEvents(taskEvents: EventRecord[]): CompensationRecord[] {
+    const records: CompensationRecord[] = [];
+    for (const event of taskEvents) {
+      if (event.eventType === "recovery:compensated") {
+        const payload = safeParseRecord(event.payloadJson);
+        if (payload && typeof payload.compensationId === "string") {
+          records.push({
+            compensationId: payload.compensationId,
+            sideEffectId: (payload.sideEffectId as string) ?? "",
+            harnessRunId: (payload.harnessRunId as string) ?? "",
+            planRef: {
+              artifactId: payload.compensationId,
+              uri: `compensation://${payload.compensationId}`,
+              kind: "compensation_plan",
+            },
+            status: (payload.success ? "succeeded" : "failed") as CompensationRecord["status"],
+            evidenceRefs: event.evidenceRefs?.map((ref) => ({ artifactId: ref, uri: ref })) ?? [],
+            createdAt: event.createdAt,
+          });
+        }
+      }
+    }
+    return records;
   }
 
   /**
