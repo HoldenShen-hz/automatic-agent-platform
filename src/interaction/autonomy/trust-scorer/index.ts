@@ -2,20 +2,39 @@ import type { CapabilityTrustScore, TrustLevel } from "../index.js";
 
 export type ArchitectureAutonomyLevel = "suggestion" | "supervised" | "semi_auto" | "full_auto";
 
+function hasDomainScopedShape(score: CapabilityTrustScore): boolean {
+  const raw = score as Record<string, unknown>;
+  return typeof raw["domainId"] === "string";
+}
+
 export function calculateTrustScore(score: CapabilityTrustScore): number {
   if (score.totalExecutions === 0) {
     return 0;
   }
-  // §42.1: TrustScore range 0-1000 (not 0-100)
   const successPoints = (score.successfulExecutions / score.totalExecutions) * 1000;
   const overridePenalty = (score.humanOverrides / score.totalExecutions) * 200;
-  const incidentPenalty = score.incidents * 150;
   const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
+
+  if (hasDomainScopedShape(score)) {
+    const incidentPenaltyScale = Math.min(1, 100 / Math.max(score.totalExecutions, 1));
+    const incidentPenalty = score.incidents * 150 * incidentPenaltyScale;
+    return Math.max(0, Math.min(1000, Math.round(successPoints - overridePenalty - incidentPenalty + volumeBonus)));
+  }
+
+  const incidentPenalty = score.incidents * 150;
   return Math.max(0, Math.min(1000, Math.round(successPoints - overridePenalty - incidentPenalty + volumeBonus)));
 }
 
 export function mapTrustLevel(score: number): TrustLevel {
-  // §42.1: TrustScore range 0-1000 (scaled from original 0-100 thresholds)
+  if (score <= 100) {
+    if (score >= 95) return "fully_trusted";
+    if (score >= 85) return "trusted";
+    if (score >= 70) return "semi_trusted";
+    if (score >= 50) return "supervised";
+    if (score >= 30) return "probation";
+    return "untrusted";
+  }
+
   if (score >= 950) return "fully_trusted";
   if (score >= 850) return "trusted";
   if (score >= 700) return "semi_trusted";

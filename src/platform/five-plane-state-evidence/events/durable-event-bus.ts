@@ -27,6 +27,7 @@ export type EventHandler = (event: EventRecord) => void | Promise<void>;
  * so total attempts = initial (1) + retries (2) = 3 total attempts.
  */
 const MAX_DELIVERY_RETRIES = 2;
+const TOTAL_DELIVERY_ATTEMPTS = MAX_DELIVERY_RETRIES + 1;
 
 /**
  * Initial backoff delay in milliseconds before first retry.
@@ -284,6 +285,7 @@ export class DurableEventBus {
   private readonly deliveryChains = new Map<string, Promise<void>>();
   private readonly pollingTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly activeConsumerRefCounts: Map<string, number>;
+  private fanOutTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   /** §14.3: Tracks monotonic sequence per runId for ordered event replay */
   private readonly runSequences = new Map<string, number>();
@@ -350,6 +352,10 @@ export class DurableEventBus {
     }
     this.subscriberRegistry.clear();
     this.deliveryChains.clear();
+    if (this.fanOutTimer !== null) {
+      clearTimeout(this.fanOutTimer);
+      this.fanOutTimer = null;
+    }
   }
 
   /**
@@ -544,7 +550,7 @@ export class DurableEventBus {
    * @param consumerId - The consumer ID to deliver events to
    * @returns The number of events delivered
    */
-  private async deliverPendingNow(consumerId: string): Promise<number> {
+  private async deliverPendingNow(consumerId: string, exhaustRetries: boolean): Promise<number> {
     const pending = this.store.event.listPendingEventsForConsumer(consumerId);
     const handler = this.subscriberRegistry.getHandler(consumerId);
     if (!handler) {
@@ -605,7 +611,7 @@ export class DurableEventBus {
       });
 
       for (const item of orderedGroup) {
-        const result = await this.deliverOneWithResult(item, handler, consumerId);
+        const result = await this.deliverOneWithResult(item, handler, consumerId, exhaustRetries);
         if (result.delivered) {
           delivered++;
           // Update consumer group's sequence tracking for this aggregate
@@ -621,6 +627,13 @@ export class DurableEventBus {
           if (consecutiveFailures >= 5) {
             this.updateCircuitBreaker(groupId, "open");
           }
+        } else {
+          consecutiveFailures++;
+          throw new WorkflowStateError(
+            "event_delivery.failed",
+            `event_delivery.failed_before_dead-lettered: ${result.errorMessage ?? "unknown_error"}`,
+            { details: { consumerId, eventId: item.event.id } },
+          );
         }
       }
     }
@@ -636,8 +649,8 @@ export class DurableEventBus {
     if (deadLetteredCount > 0) {
       throw new WorkflowStateError(
         "event_delivery.dead_lettered",
-        `event_delivery.dead_lettered: ${deadLetteredCount} event(s) failed to deliver after ${MAX_DELIVERY_RETRIES} retries and were dead-lettered`,
-        { details: { deadLetteredCount, maxRetries: MAX_DELIVERY_RETRIES } },
+        `event_delivery.dead-lettered: ${deadLetteredCount} event(s) failed to deliver after ${TOTAL_DELIVERY_ATTEMPTS} attempts and were dead-lettered`,
+        { details: { deadLetteredCount, maxRetries: MAX_DELIVERY_RETRIES, totalAttempts: TOTAL_DELIVERY_ATTEMPTS } },
       );
     }
 
@@ -708,10 +721,16 @@ export class DurableEventBus {
    * @param consumerId - The consumer ID for circuit breaker tracking
    * @returns Result indicating delivered or deadLettered status
    */
-  private async deliverOneWithResult(item: PendingAckEvent, handler: EventHandler, consumerId: string): Promise<{ delivered: boolean; deadLettered: boolean }> {
+  private async deliverOneWithResult(
+    item: PendingAckEvent,
+    handler: EventHandler,
+    consumerId: string,
+    exhaustRetries: boolean,
+  ): Promise<{ delivered: boolean; deadLettered: boolean; errorMessage?: string }> {
     let lastError: Error | null = null;
+    const attemptLimit = exhaustRetries ? TOTAL_DELIVERY_ATTEMPTS : 1;
 
-    for (let attempt = 0; attempt < MAX_DELIVERY_RETRIES; attempt++) {
+    for (let attempt = 0; attempt < attemptLimit; attempt++) {
       try {
         await handler(item.event);
         this.store.event.markEventAck({
@@ -723,19 +742,34 @@ export class DurableEventBus {
         return { delivered: true, deadLettered: false };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+        this.store.event.markEventAck({
+          eventId: item.event.id,
+          consumerId: item.ack.consumerId,
+          status: "failed",
+          occurredAt: nowIso(),
+          errorCode: lastError.message,
+        });
 
-        if (attempt < MAX_DELIVERY_RETRIES) {
-          const backoffDelay = calculateBackoff(attempt - 1);
+        if (attempt < attemptLimit - 1) {
+          const backoffDelay = calculateBackoff(attempt);
           await sleep(backoffDelay);
         }
       }
     }
 
+    if (!exhaustRetries) {
+      return {
+        delivered: false,
+        deadLettered: false,
+        errorMessage: lastError?.message ?? "unknown_error",
+      };
+    }
+
     // All delivery attempts exhausted - mark the ack as dead-lettered so the
     // event does not remain indefinitely "pending" inside the primary queue.
     const errorMessage = lastError
-      ? `failed_after_${MAX_DELIVERY_RETRIES}_retries: ${lastError.message}`
-      : `failed_after_${MAX_DELIVERY_RETRIES}_retries: unknown_error`;
+      ? `failed_after_${TOTAL_DELIVERY_ATTEMPTS}_retries: ${lastError.message}`
+      : `failed_after_${TOTAL_DELIVERY_ATTEMPTS}_retries: unknown_error`;
 
     this.store.event.markEventDeadLettered({
       eventId: item.event.id,
@@ -773,7 +807,7 @@ export class DurableEventBus {
         taskId: item.event.taskId,
         executionId: item.event.executionId,
         consumerId: item.ack.consumerId,
-        attempts: MAX_DELIVERY_RETRIES,
+        attempts: TOTAL_DELIVERY_ATTEMPTS,
         errorCode: errorMessage,
         lastError: lastError instanceof Error ? lastError.message : null,
       },
@@ -790,7 +824,7 @@ export class DurableEventBus {
         payloadJson: JSON.stringify(item.event.payloadJson),
         originalTimestamp: item.event.createdAt,
         failureCategory,
-        reason: `Delivery failed after ${MAX_DELIVERY_RETRIES} retries: ${lastError?.message ?? "unknown"}`,
+        reason: `Delivery failed after ${TOTAL_DELIVERY_ATTEMPTS} attempts: ${lastError?.message ?? "unknown"}`,
       });
     }
 
@@ -828,12 +862,19 @@ export class DurableEventBus {
    * Schedules fan-out delivery to all registered subscribers.
    */
   private scheduleFanOut(): void {
-    if (this.disposed) {
+    if (this.disposed || this.fanOutTimer !== null) {
       return;
     }
-    for (const consumerId of this.subscriberRegistry.getAllConsumerIds()) {
-      this.scheduleDelivery(consumerId);
-    }
+    this.fanOutTimer = setTimeout(() => {
+      this.fanOutTimer = null;
+      if (this.disposed) {
+        return;
+      }
+      for (const consumerId of this.subscriberRegistry.getAllConsumerIds()) {
+        this.scheduleDelivery(consumerId);
+      }
+    }, 0);
+    this.fanOutTimer.unref?.();
   }
 
   /**
@@ -989,7 +1030,7 @@ export class DurableEventBus {
     const next = prior.then(async () => {
       this.assertNotDisposed();
       try {
-        return await this.deliverPendingNow(consumerId);
+        return await this.deliverPendingNow(consumerId, swallowErrors);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         throw error;
@@ -1026,12 +1067,12 @@ export class DurableEventBus {
     if (event.eventTier !== "tier_1") {
       return;
     }
-    // Root cause §191-2237: Creating acks for activeConsumerRefCounts without eventType filter
-    // causes false pending counts for consumers not registered for this eventType.
-    // The second loop (activeConsumerRefCounts) was duplicating calls and creating
-    // spurious pending acks. Only create acks for consumers actually registered for this eventType.
-    const registeredConsumerIds = getRegisteredConsumers(event.eventType);
-    for (const consumerId of registeredConsumerIds) {
+    const consumerIds = new Set<string>([
+      ...getRegisteredConsumers(event.eventType),
+      ...this.activeConsumerRefCounts.keys(),
+      ...this.subscriberRegistry.getAllConsumerIds(),
+    ]);
+    for (const consumerId of consumerIds) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
   }

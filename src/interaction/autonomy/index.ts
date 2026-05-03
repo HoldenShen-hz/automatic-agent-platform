@@ -8,10 +8,12 @@ import { autonomyAuditService, AutonomyAuditService } from "./autonomy-audit-ser
 export { AutonomyGovernanceService } from "./autonomy-governance-service.js";
 export {
   applyTrustDecay,
+  calculateTrustScore,
+  mapTrustLevel,
   mapTrustLevelToAutonomyLevel,
   type ArchitectureAutonomyLevel,
 } from "./trust-scorer/index.js";
-import { applyTrustDecay } from "./trust-scorer/index.js";
+import { applyTrustDecay, mapTrustLevel } from "./trust-scorer/index.js";
 
 export { autonomyAuditService, AutonomyAuditService };
 
@@ -193,29 +195,15 @@ function overrideRate(score: CapabilityTrustScore): number {
 }
 
 function trustLevelFromScore(score: number): TrustLevel {
-  if (score >= 950) return "fully_trusted";
-  if (score >= 850) return "trusted";
-  if (score >= 700) return "semi_trusted";
-  if (score >= 500) return "supervised";
-  if (score >= 300) return "probation";
-  return "untrusted";
+  return mapTrustLevel(score);
 }
 
 function scoreCapability(score: CapabilityTrustScore): number {
   const success = successRate(score);
-  const overridePenalty = overrideRate(score) * 200;
-  const incidentPenalty = score.incidents * 150;
-  // §42.1: Volume bonus scaled to max out at ~100 extra points at 5000+ executions
-  const volumeBonus = Math.min(200, Math.floor(score.totalExecutions / 50));
-  // §42.1: TrustScore range 0-1000
-  // success is 0-1, scaled to 0-1000; penalties remove from this base
-  return Math.max(
-    0,
-    Math.min(
-      1000,
-      Math.round(success * 1000 - overridePenalty - incidentPenalty + volumeBonus),
-    ),
-  );
+  const overridePenalty = overrideRate(score) * 20;
+  const incidentPenalty = score.incidents * 15;
+  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
+  return Math.max(0, Math.min(100, Math.round(success * 100 - overridePenalty - incidentPenalty + volumeBonus)));
 }
 
 /**

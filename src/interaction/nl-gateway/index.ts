@@ -1008,6 +1008,87 @@ export class NlEntryService implements NlEntryPort {
   }
 
   public async buildTask(request: NlEntryRequest): Promise<TaskBuildResult> {
+    // R5-16 FIX: §39.2 - classify_risk is an independent admission gate BEFORE intent processing
+    // Run standalone risk classification first to determine if processing should proceed
+    const standaloneRiskPreview = classifyRisk(request.message);
+    const requiresIndependentReview = standaloneRiskPreview.overallRisk === "critical"
+      || standaloneRiskPreview.overallRisk === "high";
+
+    // If risk requires independent review, block before intent parsing
+    if (requiresIndependentReview) {
+      return {
+        intent: "task_query",
+        confidence: 0,
+        entities: {},
+        requestEnvelope: null,
+        riskPreview: standaloneRiskPreview,
+        costEstimate: defaultCostEstimate(),
+        confirmationRequired: true,
+        humanSummary: `风险分类完成：${standaloneRiskPreview.overallRisk}级别任务需要人工审核后处理`,
+        taskDraft: {
+          draftId: `blocked:${taskDraftIdFromMessage(request.message)}`,
+          rawInput: request.message,
+          locale: "zh",
+          intent: {
+            intentType: "task_query",
+            domainHint: null,
+            entities: [],
+            urgency: standaloneRiskPreview.overallRisk === "critical" ? "urgent" : "high",
+            confidence: 0,
+          },
+          context: {
+            domainHint: null,
+            extractedConstraints: [],
+            targetEnvironments: [],
+            requestedChannels: [],
+            timelineRefs: [],
+          },
+          riskPreview: standaloneRiskPreview,
+          state: "Confirming",
+        },
+        clarificationState: { state: "none" },
+        confirmationReceipt: {
+          confirmationId: `conf:${taskDraftIdFromMessage(request.message)}`,
+          required: true,
+          state: "pending_user_confirmation",
+          reasonCodes: ["nl_gateway.risk_classification_required"],
+          scope: standaloneRiskPreview.overallRisk === "critical" ? "critical" : "high",
+        },
+        conversationState: "Clarifying",
+        canonicalTaskDraft: {
+          taskDraftId: `taskdraft:${request.tenantId}:${request.userId}:blocked`,
+          tenantId: request.tenantId,
+          source: "nl",
+          domainId: "",
+          normalizedIntent: {
+            intent: "task_query",
+            continuation: "new_task",
+            domainId: "",
+            divisionId: "",
+            workflowId: "",
+            locale: "zh",
+            entities: {},
+            context: {},
+            summary: `Blocked: ${standaloneRiskPreview.overallRisk} risk requires approval`,
+          },
+          missingFields: [],
+          riskPreview: {
+            riskClass: standaloneRiskPreview.overallRisk,
+            reasons: standaloneRiskPreview.riskFactors,
+          },
+          ambiguityPolicy: "safe_default",
+          rawInputRef: {
+            artifactId: `blocked:${request.tenantId}:${request.userId}:raw-input`,
+            uri: `artifact://nl-input/${encodeURIComponent(request.tenantId)}/${encodeURIComponent(request.userId)}/blocked`,
+          },
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        },
+        clarificationSession: null,
+        confirmedTaskSpec: null,
+        canonicalRequestEnvelope: null,
+      };
+    }
+
     const detailed = await this.parseDetailed(request);
     const primaryIntent = detailed.detectedIntents[0] ?? {
       intentType: "task_query" as const,

@@ -100,7 +100,7 @@ export interface ConstraintBudgetEnvelope {
 export interface ConstraintPack {
   readonly policyIds: readonly string[];
   readonly approvalMode: "none" | "required" | "supervised";
-  readonly autonomyMode: "suggestion" | "semi_auto";
+  readonly autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
   readonly toolPolicy: ConstraintToolPolicy;
   readonly riskPolicy?: ConstraintRiskPolicy;
   readonly outputPolicy?: ConstraintOutputPolicy;
@@ -153,7 +153,7 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
   const partial: {
     policyIds: readonly string[];
     approvalMode: "none" | "required" | "supervised";
-    autonomyMode: "suggestion" | "semi_auto";
+    autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
     toolPolicy: { allowedTools: readonly string[] };
     riskPolicy: { maxRiskScore: number; escalationThreshold: number };
     outputPolicy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
