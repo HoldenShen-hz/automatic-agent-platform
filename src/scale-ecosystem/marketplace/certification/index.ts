@@ -482,6 +482,35 @@ export class CertificationGate {
 }
 
 // =============================================================================
+// Security Scan Status (for certification gate service)
+// =============================================================================
+
+/**
+ * Security scan status for an artifact.
+ */
+export interface SecurityScanStatus {
+  readonly artifactId: string;
+  readonly scanId: string;
+  readonly status: "pending" | "in_progress" | "completed" | "failed";
+  readonly passed: boolean;
+  readonly findingsCount: number;
+  readonly scannedAt: string | null;
+  readonly expiresAt: string | null;
+}
+
+/**
+ * Result of a certification validation from the certification gate service.
+ */
+export interface CertificationResult {
+  readonly success: boolean;
+  readonly allowed: boolean;
+  readonly reasons: readonly string[];
+  readonly blockedBy: readonly string[];
+  readonly certificationId: string | null;
+  readonly expiresAt: string | null;
+}
+
+// =============================================================================
 // Certification Records
 // =============================================================================
 

@@ -4,7 +4,7 @@ import { createRouteGuardChain } from "@aa/shared-domain";
 import { FeatureScaffold } from "./components";
 import { designTokens } from "./design-tokens";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
-export { FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
+export { ComponentErrorBoundary, FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
 export { EChartSurface, MetricGrid, MiniTrendBars } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { LayoutFrame, ThreePaneLayout } from "./layouts";

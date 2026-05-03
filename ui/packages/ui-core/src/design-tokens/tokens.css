@@ -1,0 +1,263 @@
+/**
+ * AA Design System CSS Variables
+ *
+ * Provides CSS custom properties for theming with:
+ * - Light/dark mode via prefers-color-scheme
+ * - All design token layers exposed as CSS variables
+ * - Focus ring, radius, spacing, typography tokens
+ *
+ * Usage: Import this CSS file in your application, then use var(--aa-color-background) in styles.
+ */
+
+/* ==========================================================================
+   CSS CUSTOM PROPERTIES - DESIGN TOKENS
+   ========================================================================== */
+
+:root {
+  /* Layer 1: Primitive Color Tokens */
+  --aa-color-gray-50: #f8fafc;
+  --aa-color-gray-100: #f1f5f9;
+  --aa-color-gray-200: #e2e8f0;
+  --aa-color-gray-300: #cbd5e1;
+  --aa-color-gray-400: #94a3b8;
+  --aa-color-gray-500: #64748b;
+  --aa-color-gray-600: #475569;
+  --aa-color-gray-700: #334155;
+  --aa-color-gray-800: #1e293b;
+  --aa-color-gray-900: #0f172a;
+  --aa-color-gray-950: #020617;
+
+  /* Accent colors */
+  --aa-color-green-50: #f0fdf4;
+  --aa-color-green-500: #22c55e;
+  --aa-color-green-600: #16a34a;
+  --aa-color-blue-50: #eff6ff;
+  --aa-color-blue-500: #3b82f6;
+  --aa-color-blue-600: #2563eb;
+  --aa-color-amber-50: #fffbeb;
+  --aa-color-amber-500: #f59e0b;
+  --aa-color-amber-600: #d97706;
+  --aa-color-red-50: #fef2f2;
+  --aa-color-red-500: #ef4444;
+  --aa-color-red-600: #dc2626;
+  --aa-color-sky-50: #f0f9ff;
+  --aa-color-sky-500: #38bdf8;
+
+  /* Focus ring */
+  --aa-color-focus-ring: rgba(59, 130, 246, 0.24);
+  --aa-color-focus-ring-green: rgba(34, 197, 94, 0.45);
+
+  /* Layer 2: Semantic Color Tokens - Light Mode */
+  --aa-color-background: #f8fafc;
+  --aa-color-surface: #ffffff;
+  --aa-color-surface-elevated: #f1f5f9;
+  --aa-color-surface-hover: #f8fafc;
+  --aa-color-border: #cbd5e1;
+  --aa-color-border-strong: #94a3b8;
+  --aa-color-accent: #22c55e;
+  --aa-color-accent-hover: #16a34a;
+  --aa-color-text: #0f172a;
+  --aa-color-text-secondary: #334155;
+  --aa-color-text-subtle: #64748b;
+  --aa-color-planned: #f59e0b;
+  --aa-color-danger: #ef4444;
+  --aa-color-danger-hover: #dc2626;
+  --aa-color-success: #22c55e;
+  --aa-color-success-hover: #16a34a;
+  --aa-color-warning: #f59e0b;
+  --aa-color-warning-hover: #d97706;
+  --aa-color-info: #38bdf8;
+
+  /* Risk level colors */
+  --aa-color-risk-low: #22c55e;
+  --aa-color-risk-medium: #f59e0b;
+  --aa-color-risk-high: #ef4444;
+  --aa-color-risk-critical: #dc2626;
+
+  /* Autonomy level colors */
+  --aa-color-autonomy-manual: #3b82f6;
+  --aa-color-autonomy-assisted: #38bdf8;
+  --aa-color-autonomy-autonomous: #22c55e;
+  --aa-color-autonomy-full: #16a34a;
+
+  /* Status colors */
+  --aa-color-status-pending: #64748b;
+  --aa-color-status-running: #22c55e;
+  --aa-color-status-completed: #16a34a;
+  --aa-color-status-failed: #ef4444;
+  --aa-color-status-cancelled: #64748b;
+  --aa-color-status-paused: #f59e0b;
+
+  /* Radius tokens */
+  --aa-radius-none: 0px;
+  --aa-radius-sm: 8px;
+  --aa-radius-md: 12px;
+  --aa-radius-lg: 18px;
+  --aa-radius-xl: 24px;
+  --aa-radius-full: 9999px;
+
+  /* Button radius */
+  --aa-radius-button: 8px;
+  /* Card radius */
+  --aa-radius-card: 12px;
+  /* Input radius */
+  --aa-radius-input: 8px;
+  /* Badge radius */
+  --aa-radius-badge: 9999px;
+
+  /* Spacing tokens */
+  --aa-spacing-0: 0;
+  --aa-spacing-1: 4px;
+  --aa-spacing-2: 6px;
+  --aa-spacing-3: 8px;
+  --aa-spacing-4: 10px;
+  --aa-spacing-5: 12px;
+  --aa-spacing-6: 16px;
+  --aa-spacing-8: 20px;
+  --aa-spacing-10: 24px;
+  --aa-spacing-12: 32px;
+  --aa-spacing-16: 40px;
+  --aa-spacing-20: 48px;
+  --aa-spacing-24: 64px;
+
+  /* Button padding */
+  --aa-button-padding-x: 16px;
+  --aa-button-padding-y: 10px;
+  /* Input padding */
+  --aa-input-padding-x: 12px;
+  --aa-input-padding-y: 10px;
+  /* Card padding */
+  --aa-card-padding: 16px;
+  /* Section gap */
+  --aa-section-gap: 24px;
+
+  /* Typography tokens */
+  --aa-font-family-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --aa-font-family-mono: "IBM Plex Mono", "Fira Code", monospace;
+
+  --aa-font-size-xs: 0.75rem;
+  --aa-font-size-sm: 0.875rem;
+  --aa-font-size-base: 0.95rem;
+  --aa-font-size-lg: 1.125rem;
+  --aa-font-size-xl: 1.25rem;
+  --aa-font-size-2xl: 1.5rem;
+  --aa-font-size-3xl: 1.875rem;
+
+  --aa-line-height-none: 1;
+  --aa-line-height-tight: 1.2;
+  --aa-line-height-normal: 1.5;
+  --aa-line-height-relaxed: 1.75;
+
+  --aa-font-weight-normal: 400;
+  --aa-font-weight-medium: 500;
+  --aa-font-weight-semibold: 600;
+  --aa-font-weight-bold: 700;
+
+  /* Motion tokens */
+  --aa-motion-duration-fast: 120ms;
+  --aa-motion-duration-normal: 220ms;
+  --aa-motion-duration-slow: 400ms;
+
+  --aa-motion-easing-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --aa-motion-easing-enter: cubic-bezier(0, 0, 0.2, 1);
+  --aa-motion-easing-exit: cubic-bezier(0.2, 0, 1, 1);
+
+  /* Shadows */
+  --aa-shadow-card: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --aa-shadow-overlay: 0 16px 40px rgba(15, 23, 42, 0.12);
+  --aa-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --aa-shadow-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.24);
+  --aa-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --aa-shadow-md: 0 4px 6px rgba(15, 23, 42, 0.07);
+  --aa-shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.1);
+
+  /* Icon sizes */
+  --aa-icon-size-xs: 12px;
+  --aa-icon-size-sm: 14px;
+  --aa-icon-size-md: 18px;
+  --aa-icon-size-lg: 24px;
+  --aa-icon-size-xl: 32px;
+
+  /* Z-index scale */
+  --aa-z-dropdown: 100;
+  --aa-z-modal-backdrop: 200;
+  --aa-z-modal: 300;
+  --aa-z-tooltip: 400;
+  --aa-z-toast: 500;
+}
+
+/* ==========================================================================
+   DARK MODE (prefers-color-scheme: dark)
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Semantic colors - Dark mode */
+    --aa-color-background: #0f172a;
+    --aa-color-surface: #1e293b;
+    --aa-color-surface-elevated: #334155;
+    --aa-color-surface-hover: #1e293b;
+    --aa-color-border: #475569;
+    --aa-color-border-strong: #64748b;
+    --aa-color-accent: #22c55e;
+    --aa-color-accent-hover: #16a34a;
+    --aa-color-text: #f8fafc;
+    --aa-color-text-secondary: #e2e8f0;
+    --aa-color-text-subtle: #94a3b8;
+    --aa-color-planned: #f59e0b;
+    --aa-color-danger: #ef4444;
+    --aa-color-danger-hover: #dc2626;
+    --aa-color-success: #22c55e;
+    --aa-color-success-hover: #16a34a;
+    --aa-color-warning: #f59e0b;
+    --aa-color-warning-hover: #d97706;
+    --aa-color-info: #38bdf8;
+
+    /* Darker risk level colors for better contrast */
+    --aa-color-risk-low: #16a34a;
+    --aa-color-risk-medium: #d97706;
+    --aa-color-risk-high: #dc2626;
+    --aa-color-risk-critical: #b91c1c;
+
+    /* Darker autonomy level colors */
+    --aa-color-autonomy-manual: #2563eb;
+    --aa-color-autonomy-assisted: #0ea5e9;
+    --aa-color-autonomy-autonomous: #16a34a;
+    --aa-color-autonomy-full: #15803d;
+
+    /* Shadows for dark mode */
+    --aa-shadow-card: 0 10px 24px rgba(0, 0, 0, 0.3);
+    --aa-shadow-overlay: 0 16px 40px rgba(0, 0, 0, 0.4);
+    --aa-shadow-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* ==========================================================================
+   FOCUS VISIBLE STYLES
+   ========================================================================== */
+
+/* Apply focus ring to elements that receive focus via keyboard */
+:focus-visible {
+  outline: 2px solid var(--aa-color-accent);
+  outline-offset: 2px;
+}
+
+/* Remove default focus outline when not using keyboard navigation */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

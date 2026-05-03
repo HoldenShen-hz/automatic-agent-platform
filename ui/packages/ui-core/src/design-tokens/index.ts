@@ -505,6 +505,16 @@ export interface CoreDesignTokens {
   readonly primitive: PrimitiveTokens;
   readonly semantic: SemanticTokens;
   readonly domain: DomainTokens;
+  // Backward-compatible flat access (deprecated)
+  readonly color: SemanticTokens["color"];
+  readonly radius: SemanticTokens["radius"];
+  readonly typography: PrimitiveTokens["typography"];
+  readonly motion: { readonly fast: string; readonly normal: string; readonly easing: string };
+  readonly spacing: SemanticTokens["spacing"];
+  readonly shadows: SemanticTokens["shadows"];
+  readonly iconSizes: SemanticTokens["iconSizes"];
+  readonly breakpoints: SemanticTokens["breakpoints"];
+  readonly subtle: string;
 }
 
 /**
@@ -517,6 +527,16 @@ export const designTokens: CoreDesignTokens = {
   primitive: primitiveTokens,
   semantic: semanticTokens,
   domain: domainTokens,
+  // Backward-compatible flat access (deprecated)
+  color: semanticTokens.color,
+  radius: semanticTokens.radius,
+  typography: primitiveTokens.typography,
+  motion: semanticTokens.motion,
+  spacing: semanticTokens.spacing,
+  shadows: semanticTokens.shadows,
+  iconSizes: semanticTokens.iconSizes,
+  breakpoints: semanticTokens.breakpoints,
+  subtle: semanticTokens.color.textSubtle,
 };
 
 /**
@@ -533,6 +553,8 @@ export const legacyDesignTokens: Omit<CoreDesignTokens["semantic"], "riskLevel" 
   shadows: semanticTokens.shadows,
   iconSizes: semanticTokens.iconSizes,
 };
+
+export { animation, prefersReducedMotion, getAnimationDuration, getAnimationEasing } from "./animation";
 
 /**
  * Creates a panel style using semantic tokens.

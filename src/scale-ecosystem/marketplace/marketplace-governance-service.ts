@@ -39,6 +39,7 @@ import type {
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { PolicyDeniedError, StorageError, ValidationError } from "../../platform/contracts/errors.js";
+import { getCertificationGateService, type CertificationResult } from "./certification/certification-gate-service.js";
 
 /** Input for registering a new extension package */
 export interface RegisterExtensionPackageInput {
@@ -613,6 +614,26 @@ export class MarketplaceGovernanceService {
         details: {
           packageId: packageRecord.packageId,
           trustLevel: packageRecord.trustLevel,
+        },
+      });
+    }
+
+    // §55: Certification gate - validate agent/pack certification before release
+    const certGate = getCertificationGateService();
+    const packageId = packageRecord.packageId;
+    let certResult: CertificationResult;
+    if (packageRecord.packageType === "agent") {
+      certResult = await certGate.validateAgentCertification(packageId);
+    } else {
+      certResult = await certGate.validatePackCertification(packageId);
+    }
+    if (!certResult.allowed) {
+      throw new PolicyDeniedError("marketplace.certification_required", `Package does not meet certification requirements: ${certResult.reasons.join(", ")}`, {
+        retryable: false,
+        details: {
+          packageId: packageRecord.packageId,
+          blockedBy: certResult.blockedBy,
+          reasons: certResult.reasons,
         },
       });
     }

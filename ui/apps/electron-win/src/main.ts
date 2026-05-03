@@ -1,3 +1,9 @@
+import { app } from "electron";
+import { autoUpdater } from "electron-updater";
+
+// §R8-55: Auto-update mechanism via electron-updater
+autoUpdater.checkForUpdatesAndNotify();
+
 export const electronMainBaseline = {
   window: {
     width: 1440,

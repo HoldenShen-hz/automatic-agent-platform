@@ -724,11 +724,20 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     }
   }
 
+  /**
+   * §40.3 & §37.7: Template detection using DomainRecipe integration.
+   * Attempts DomainRecipe matching first (using trigger phrases with word-boundary
+   * semantics via matchDomainRecipe), then falls back to hardcoded regex patterns
+   * only when DomainRecipe matching yields no result.
+   */
   private detectTemplate(description: string): "marketing_campaign" | "release_launch" | "incident_response" | "hiring_pipeline" | "generic_multi_step" | null {
+    // §40.3: Primary matching via DomainRecipe trigger phrase matching
     const recipeTemplate = this.detectTemplateFromDomainRecipe(description);
     if (recipeTemplate != null) {
       return recipeTemplate;
     }
+    // §37.7: Fallback to keyword patterns only when DomainRecipe has no match
+    // These patterns are less precise than DomainRecipe matching - use as secondary
     if (/(campaign|marketing|广告|投放|素材|营销|推广)/i.test(description)) {
       return "marketing_campaign";
     }

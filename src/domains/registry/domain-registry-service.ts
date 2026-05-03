@@ -9,6 +9,7 @@ import { DomainSmokeTestRunner, type DomainSmokeTestResult } from "./domain-smok
 import { PluginSpiRegistry } from "./plugin-spi-registry.js";
 import { ToolBundleRegistry } from "./tool-bundle-registry.js";
 import { WorkflowRegistry } from "./workflow-registry.js";
+import { SchemaRegistry, getSchemaRegistry } from "./schema-registry.js";
 
 export interface DomainRegistryServiceOptions {
   installedPluginIds?: readonly string[];
@@ -28,12 +29,14 @@ export class DomainRegistryService {
   private readonly toolBundleRegistry = new ToolBundleRegistry();
   private readonly contractRegistry = new ContractRegistry();
   private readonly smokeTests = new DomainSmokeTestRunner();
+  private readonly schemaRegistry: SchemaRegistry;
 
   public constructor(options: DomainRegistryServiceOptions = {}) {
     this.pluginRegistry = options.pluginRegistry ?? null;
     this.installedPluginIds = new Set(options.installedPluginIds ?? []);
     this.healthyPluginIds = new Set(options.healthyPluginIds ?? options.installedPluginIds ?? []);
     this.eventPublisher = options.eventPublisher ?? null;
+    this.schemaRegistry = getSchemaRegistry();
   }
 
   public register(input: DomainDefinition): DomainDefinition {
@@ -350,6 +353,13 @@ export class DomainRegistryService {
     const existing = this.knowledgeNamespacesByDomain.get(ownerDomainId) ?? new Set<string>();
     existing.add(namespace);
     this.knowledgeNamespacesByDomain.set(ownerDomainId, existing);
+  }
+
+  /**
+   * §37: Returns the schema registry for domain input/output schema version management.
+   */
+  public getSchemaRegistry(): SchemaRegistry {
+    return this.schemaRegistry;
   }
 
   private getOrThrow(domainId: string): DomainDefinition {

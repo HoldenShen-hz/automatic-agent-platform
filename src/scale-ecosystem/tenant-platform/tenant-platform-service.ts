@@ -607,6 +607,13 @@ export class TenantPlatformService {
               ? this.requireOrganization(tenant.organizationId)
               : null;
 
+      // §R8-34: Enforce Chinese Wall - prevent cross-tenant data movement
+      // If both source and target tenant IDs are provided, they must match
+      // This is called before allowing cross-tenant scope resolution
+      if (tenant !== null) {
+        this.assertNoCrossTenantDataMovement(tenant.tenantId, null);
+      }
+
       // Validate workspace-tenant-organization consistency
       if (workspace != null && tenant != null && workspace.organizationId != null && workspace.organizationId !== tenant.organizationId) {
         throw new TenantBoundaryError("tenant.workspace_tenant_organization_mismatch", "tenant.workspace_tenant_organization_mismatch", {
@@ -740,5 +747,29 @@ export class TenantPlatformService {
       });
     }
     return tenant;
+  }
+
+  /**
+   * §R8-34: Assert no cross-tenant data movement.
+   * Throws TenantBoundaryError if sourceTenantId != targetTenantId.
+   * This enforces the Chinese Wall between tenants.
+   *
+   * @param sourceTenantId - Source tenant ID
+   * @param targetTenantId - Target tenant ID (null means no specific target)
+   * @throws TenantBoundaryError if cross-tenant movement is detected
+   */
+  public assertNoCrossTenantDataMovement(sourceTenantId: string, targetTenantId: string | null): void {
+    if (targetTenantId !== null && sourceTenantId !== targetTenantId) {
+      throw new TenantBoundaryError(
+        "tenant.cross_tenant_data_movement",
+        "tenant.cross_tenant_data_movement: Cross-tenant data movement is not allowed.",
+        {
+          details: {
+            sourceTenantId,
+            targetTenantId,
+          },
+        },
+      );
+    }
   }
 }

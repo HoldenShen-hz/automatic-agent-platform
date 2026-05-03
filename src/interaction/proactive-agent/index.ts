@@ -484,6 +484,130 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     return this.suggestions.delete(suggestionId);
   }
 
+  /**
+   * §47: ProactiveSuggestion pipeline with full stage decomposition.
+   *
+   * Pipeline stages:
+   * 1. Context Builder - builds suggestion context from trigger and input
+   * 2. Generator - generates the suggestion with metadata
+   * 3. Queue - enqueues suggestion for later processing
+   * 4. Quality Scoring - computes quality score for ranking/prioritization
+   */
+  private buildSuggestionPipeline(
+    trigger: TriggerDefinition,
+    input: TriggerEvaluationInput,
+  ): { context: ProactiveSuggestionContext; suggestion: ProactiveSuggestion } {
+    // Stage 1: Context Builder
+    const context = this.buildSuggestionContext(trigger, input);
+
+    // Stage 2: Generator - creates the suggestion object
+    const suggestionId = newId("suggestion");
+    const title = this.generateSuggestionTitle(trigger, context);
+
+    // Stage 3: Queue (enqueue) - suggestion is stored in suggestions map
+    // Stage 4: Quality Scoring - compute quality score before creating suggestion
+    const qualityScore = this.scoreSuggestionQuality(trigger, context);
+
+    const suggestion: ProactiveSuggestion = {
+      suggestionId,
+      triggerId: trigger.triggerId,
+      domainId: trigger.domainId,
+      createdAt: nowIso(),
+      title,
+      action: trigger.action,
+      context,
+      qualityScore,
+    };
+
+    // Enqueue to the queue
+    this.suggestions.set(suggestionId, suggestion);
+
+    return { context, suggestion };
+  }
+
+  /**
+   * Stage 1: Context Builder - builds suggestion context from trigger and input
+   */
+  private buildSuggestionContext(
+    trigger: TriggerDefinition,
+    input: TriggerEvaluationInput,
+  ): ProactiveSuggestionContext {
+    const normalizedType = normalizeTriggerType(trigger.type);
+    if ((normalizedType === "event" || normalizedType === "webhook") && input.event != null) {
+      return {
+        triggerType: normalizedType,
+        riskLevel: trigger.riskLevel,
+        sourceSummary: `${input.event.source}:${input.event.name}`,
+        matchedSignal: input.event.payload == null ? null : JSON.stringify(input.event.payload),
+        targetDomainId: trigger.domainId,
+        requireConfirmation: trigger.action.requireConfirmation,
+      };
+    }
+
+    if (normalizedType === "condition" && input.metric != null) {
+      const previousValue = input.metric.previousValue == null ? "" : ` (prev ${input.metric.previousValue})`;
+      return {
+        triggerType: normalizedType,
+        riskLevel: trigger.riskLevel,
+        sourceSummary: `${input.metric.source}:${input.metric.name}`,
+        matchedSignal: `${input.metric.value}${previousValue}`,
+        targetDomainId: trigger.domainId,
+        requireConfirmation: trigger.action.requireConfirmation,
+      };
+    }
+
+    return {
+      triggerType: normalizedType,
+      riskLevel: trigger.riskLevel,
+      sourceSummary: trigger.name,
+      matchedSignal: null,
+      targetDomainId: trigger.domainId,
+      requireConfirmation: trigger.action.requireConfirmation,
+    };
+  }
+
+  /**
+   * Stage 2: Generator - generates suggestion title
+   */
+  private generateSuggestionTitle(trigger: TriggerDefinition, context: ProactiveSuggestionContext): string {
+    const riskLabel = context.riskLevel === "critical" ? "critical" : context.riskLevel;
+    if (context.matchedSignal != null && context.matchedSignal.length > 0) {
+      return `[${riskLabel}] ${trigger.name}: ${context.sourceSummary}`;
+    }
+    return `[${riskLabel}] ${trigger.name}`;
+  }
+
+  /**
+   * Stage 4: Quality Scoring - computes quality score for suggestion ranking
+   */
+  private scoreSuggestionQuality(trigger: TriggerDefinition, context: ProactiveSuggestionContext): number {
+    let score = 0.4;
+    if (context.matchedSignal != null && context.matchedSignal.length > 0) {
+      score += 0.2;
+    }
+    if (Object.keys(trigger.action.template).length > 0) {
+      score += 0.15;
+    }
+    if (trigger.boundAgentId != null) {
+      score += 0.1;
+    }
+    if (trigger.feedbackTargetTriggerIds != null && trigger.feedbackTargetTriggerIds.length > 0) {
+      score += 0.05;
+    }
+    if (trigger.riskLevel === "low") {
+      score += 0.05;
+    }
+    return Number(Math.min(1, score).toFixed(4));
+  }
+
+  /**
+   * Stage 3: Queue - enqueues suggestion for later processing
+   */
+  private enqueueSuggestionToQueue(suggestion: ProactiveSuggestion): string {
+    this.suggestions.set(suggestion.suggestionId, suggestion);
+    return suggestion.suggestionId;
+  }
+
   private matchesTrigger(trigger: TriggerDefinition, input: TriggerEvaluationInput): boolean {
     if (normalizeTriggerType(trigger.type) !== normalizeTriggerType(input.kind)) {
       return false;
@@ -513,19 +637,9 @@ export class ProactiveAgentService implements ProactiveAgentPort {
   }
 
   private enqueueSuggestion(trigger: TriggerDefinition, input: TriggerEvaluationInput): string {
-    const suggestionId = newId("suggestion");
-    const context = buildSuggestionContext(trigger, input);
-    this.suggestions.set(suggestionId, {
-      suggestionId,
-      triggerId: trigger.triggerId,
-      domainId: trigger.domainId,
-      createdAt: nowIso(),
-      title: generateSuggestionTitle(trigger, context),
-      action: trigger.action,
-      context,
-      qualityScore: scoreSuggestionQuality(trigger, context),
-    });
-    return suggestionId;
+    // §47: Use the full pipeline with Context Builder, Generator, Queue, and Quality Scoring
+    const { suggestion } = this.buildSuggestionPipeline(trigger, input);
+    return suggestion.suggestionId;
   }
 
   private resolveBatchWindowInput(

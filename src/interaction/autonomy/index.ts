@@ -415,8 +415,20 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           fromLevel: item.currentAutonomy,
           toLevel: nextLevel,
           trigger: item.incidents > 0 ? "incident_response" : "rule_engine",
-          // §42.2: Promotions require domain_owner/platform_team approval; only incident-driven and demotions use "auto"
-          approvedBy: item.incidents > 0 || eventType === "agent.autonomy.demoted" ? "auto" : "domain_owner",
+          // §42.2: Promotions require domain_owner/platform_team approval based on target level
+          // - promotions to supervised: domain_owner
+          // - promotions to semi_auto: domain_owner
+          // - promotions to full_auto: platform_team (requires platform_team approval per §42.2)
+          // - incident-driven and demotions use "auto"
+          approvedBy: item.incidents > 0 || eventType === "agent.autonomy.demoted"
+            ? "auto"
+            : nextLevel === "full_auto"
+              ? "platform_team"
+              : nextLevel === "semi_auto"
+                ? "domain_owner"
+                : nextLevel === "supervised"
+                  ? "domain_owner"
+                  : "domain_owner",
           evidence,
         };
         changeEvents.push(changeEvent);

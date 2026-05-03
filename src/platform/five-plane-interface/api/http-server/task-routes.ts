@@ -52,6 +52,19 @@ class ApiError extends AppError {
   }
 }
 
+/**
+ * Idempotency-Key header extractor for task routes.
+ * §6.2 requires Idempotency-Key for all write operations.
+ */
+function extractIdempotencyKeyFromRequest(req: ApiRequestLike): string | undefined {
+  const getHeader = (name: string): string | undefined => {
+    const value = req.headers[name];
+    if (Array.isArray(value)) return value[0];
+    return value;
+  };
+  return getHeader("Idempotency-Key") ?? getHeader("idempotency-key");
+}
+
 export interface TaskRouteDeps {
   authService: ApiAuthService | null;
   inspectService: InspectService;
@@ -237,6 +250,8 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         }
 
         const correlationId = extractCorrelationId(ctx.request);
+        // R7-13: Extract Idempotency-Key from request headers for safe retries
+        const requestIdempotencyKey = extractIdempotencyKeyFromRequest(ctx.request);
         const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
@@ -248,10 +263,10 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             ? "scheduler"
             : "ui";
 
-        // Root cause: this route mixed API task-source enums with canonical intake-source enums
-        // and kept using an optional divisionId after validation, which no longer matches the
-        // intake admission contract after the request-envelope refactor.
-        const idempotencyKey = `${principal.actorId ?? "unknown"}:${payload.title}:${divisionId}:${now.split("T")[0]}`;
+        // R7-13: Use request Idempotency-Key if provided, otherwise generate one
+        // This enables safe retries of mutating operations per §6.2
+        const idempotencyKey = requestIdempotencyKey
+          ?? `${principal.actorId ?? "unknown"}:${payload.title}:${divisionId}:${now.split("T")[0]}`;
 
         if (deps.taskStore) {
           const existing = deps.taskStore.task.listTasks(1, missionControlTenantId, undefined);
