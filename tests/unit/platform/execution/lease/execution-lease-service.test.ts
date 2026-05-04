@@ -46,6 +46,9 @@ function createMockStore(state: MockStoreState = {
         const lease = state.latestLeaseByExecution.get(executionId);
         return lease?.fencingToken ?? 0;
       },
+      getActiveExecutionTicket(_executionId: string) {
+        return undefined;
+      },
       listExpiredExecutionLeases(_now: string): ExecutionLeaseRecord[] {
         const now = new Date();
         return Array.from(state.leases.values()).filter(
@@ -790,6 +793,34 @@ test("validateWriteAccess denies when fencing token mismatch", () => {
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "stale_fencing_token");
   assert.equal(result.authoritativeFencingToken, 5);
+});
+
+test("validateWriteAccess rejects stale tokens even when worker store omits getLatestFencingToken helper", () => {
+  const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 7 });
+  const state: MockStoreState = {
+    leases: new Map([[existingLease.id, existingLease]]),
+    activeLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    latestLeaseByExecution: new Map([[existingLease.executionId, existingLease]]),
+    audits: [],
+    executions: new Map([["exec-1", createExecution()]]),
+    workers: new Map(),
+    agentExecutionRecords: new Map(),
+  };
+  const storeWithMissingHelper = createMockStore(state) as any;
+  delete storeWithMissingHelper.worker.getLatestFencingToken;
+  const db = createMockDb((work) => work());
+  const service = new ExecutionLeaseService(db, storeWithMissingHelper);
+
+  const result = service.validateWriteAccess({
+    executionId: "exec-1",
+    workerId: "worker-1",
+    fencingToken: 6,
+  });
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "stale_fencing_token");
+  assert.equal(result.authoritativeFencingToken, 7);
+  assert.equal(result.activeLeaseId, "lease-1");
 });
 
 test("validateWriteAccess denies when worker mismatch", () => {

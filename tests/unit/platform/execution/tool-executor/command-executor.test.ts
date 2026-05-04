@@ -11,6 +11,22 @@ import { createWorkspaceWritePolicy } from "../../../../../src/platform/control-
 import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
+async function withMockedPlatform<T>(platform: NodeJS.Platform, work: () => Promise<T>): Promise<T> {
+  const descriptor = Object.getOwnPropertyDescriptor(process, "platform");
+  Object.defineProperty(process, "platform", {
+    configurable: true,
+    value: platform,
+  });
+
+  try {
+    return await work();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(process, "platform", descriptor);
+    }
+  }
+}
+
 function createCommandHarness(prefix: string): {
   workspace: string;
   db: SqliteDatabase;
@@ -122,6 +138,78 @@ test("command executor respects timeout", async () => {
     assert.equal(result.status, "timed_out");
     assert.equal(result.error?.code, "tool.timeout");
   } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("command executor timeout uses process-group kill on Unix platforms", async () => {
+  const workspace = createTempWorkspace("aa-command-");
+  const originalKill = process.kill;
+  const killCalls: Array<{ pid: number; signal?: NodeJS.Signals | number }> = [];
+
+  try {
+    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
+      killCalls.push({ pid, signal });
+      return originalKill(pid, signal);
+    }) as typeof process.kill;
+
+    await withMockedPlatform("darwin", async () => {
+      const executor = new CommandExecutor();
+      const result = await executor.execute({
+        callId: "call-timeout-unix-kill",
+        taskId: "task-timeout-unix-kill",
+        agentId: "agent-timeout-unix-kill",
+        traceId: "trace-timeout-unix-kill",
+        toolName: "command_exec",
+        timeoutMs: 50,
+        sandboxPolicy: createWorkspaceWritePolicy(workspace),
+        command: "sleep",
+        args: ["2"],
+        cwd: workspace,
+      });
+
+      assert.equal(result.status, "timed_out");
+    });
+
+    assert.ok(killCalls.some((call) => call.pid < 0 && call.signal === "SIGTERM"));
+  } finally {
+    process.kill = originalKill;
+    cleanupPath(workspace);
+  }
+});
+
+test("command executor timeout uses child.kill on win32 instead of process-group SIGTERM", async () => {
+  const workspace = createTempWorkspace("aa-command-");
+  const originalKill = process.kill;
+  const processKillCalls: Array<{ pid: number; signal?: NodeJS.Signals | number }> = [];
+
+  try {
+    process.kill = ((pid: number, signal?: NodeJS.Signals | number) => {
+      processKillCalls.push({ pid, signal });
+      return originalKill(pid, signal);
+    }) as typeof process.kill;
+
+    await withMockedPlatform("win32", async () => {
+      const executor = new CommandExecutor();
+      const result = await executor.execute({
+        callId: "call-timeout-win32-kill",
+        taskId: "task-timeout-win32-kill",
+        agentId: "agent-timeout-win32-kill",
+        traceId: "trace-timeout-win32-kill",
+        toolName: "command_exec",
+        timeoutMs: 50,
+        sandboxPolicy: createWorkspaceWritePolicy(workspace),
+        command: "sleep",
+        args: ["2"],
+        cwd: workspace,
+      });
+
+      assert.equal(result.status, "timed_out");
+    });
+
+    assert.equal(processKillCalls.some((call) => call.pid < 0 && call.signal === "SIGTERM"), false);
+  } finally {
+    process.kill = originalKill;
     cleanupPath(workspace);
   }
 });

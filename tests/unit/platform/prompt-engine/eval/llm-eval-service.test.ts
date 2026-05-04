@@ -8,6 +8,7 @@
  */
 
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
 import {
@@ -23,11 +24,10 @@ import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state
 
 // Create an in-memory SQLite database for testing
 function createMockDatabase(): AuthoritativeSqlDatabase {
-  const Database = require("better-sqlite3");
-  const db = new Database(":memory:");
+  const connection = new DatabaseSync(":memory:");
 
   // Initialize schema
-  db.exec(`
+  connection.exec(`
     CREATE TABLE eval_suites (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -69,7 +69,19 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
     );
   `);
 
-  return db as unknown as AuthoritativeSqlDatabase;
+  return {
+    filePath: ":memory:",
+    backendType: "sqlite",
+    connection: connection as unknown as AuthoritativeSqlDatabase["connection"],
+    migrate: () => {},
+    getSchemaStatus: () => ({ currentVersion: 1, pendingMigrations: 0 } as any),
+    assertSchemaCurrent: () => {},
+    integrityCheck: () => [],
+    healthCheck: async () => true,
+    transaction: <T>(work: () => T) => work(),
+    readTransaction: <T>(work: () => T) => work(),
+    close: () => {},
+  } as AuthoritativeSqlDatabase;
 }
 
 // ============================================================================
@@ -153,6 +165,42 @@ test("LlmEvalService.runAbTest produces varied results for different inputs", as
   assert.ok(result1.treatmentAvgScore >= 0 && result1.treatmentAvgScore <= 1);
   assert.ok(result2.controlAvgScore >= 0 && result2.controlAvgScore <= 1);
   assert.ok(result2.treatmentAvgScore >= 0 && result2.treatmentAvgScore <= 1);
+});
+
+test("LlmEvalService.runAbTest uses config significanceThreshold as the pass threshold for both arms", async () => {
+  const db = createMockDatabase();
+  const service = new LlmEvalService(db);
+
+  const suite = service.defineSuite({
+    name: "ab-threshold-suite",
+    kind: "ab_test",
+    cases: [
+      {
+        id: "case-1",
+        input: "input1",
+        expectedOutput: "abcdefghijklmnopqrst",
+      },
+    ],
+  });
+
+  const result = await service.runAbTest(suite.id, {
+    controlModelId: "model-a",
+    treatmentModelId: "model-b",
+    controlPromptVersion: "v1.0",
+    treatmentPromptVersion: "v2.0",
+    minSampleSize: 1,
+    significanceThreshold: 0.82,
+  });
+
+  const controlRun = service.getRun(result.controlRunId);
+  const treatmentRun = service.getRun(result.treatmentRunId);
+
+  assert.ok(controlRun);
+  assert.ok(treatmentRun);
+  assert.equal(controlRun?.passedCases, 0);
+  assert.equal(treatmentRun?.passedCases, 0);
+  assert.equal(controlRun?.failedCases, 1);
+  assert.equal(treatmentRun?.failedCases, 1);
 });
 
 // ============================================================================
@@ -281,7 +329,7 @@ test("LlmEvalService.getSuite handles malformed cases JSON", () => {
   const service = new LlmEvalService(db);
 
   // Directly insert malformed JSON into database
-  db.exec(`
+  db.connection.exec(`
     INSERT INTO eval_suites (id, name, kind, description, cases, created_at, updated_at)
     VALUES ('malformed-suite', 'Malformed Suite', 'golden', '', '{ not valid json', datetime('now'), datetime('now'))
   `);
@@ -300,7 +348,7 @@ test("LlmEvalService.getSuite handles null cases", () => {
   const service = new LlmEvalService(db);
 
   // Insert with NULL cases
-  db.exec(`
+  db.connection.exec(`
     INSERT INTO eval_suites (id, name, kind, description, cases, created_at, updated_at)
     VALUES ('null-cases-suite', 'Null Cases Suite', 'golden', '', NULL, datetime('now'), datetime('now'))
   `);
@@ -316,7 +364,7 @@ test("LlmEvalService.startRun handles suite with malformed cases", () => {
   const service = new LlmEvalService(db);
 
   // Create suite with malformed cases
-  db.exec(`
+  db.connection.exec(`
     INSERT INTO eval_suites (id, name, kind, description, cases, created_at, updated_at)
     VALUES ('malformed-run-suite', 'Malformed Run Suite', 'golden', '', 'invalid json', datetime('now'), datetime('now'))
   `);
@@ -328,7 +376,7 @@ test("LlmEvalService.startRun handles suite with malformed cases", () => {
   assert.equal(run.totalCases, 0, "Malformed cases should result in 0 total cases");
 });
 
-test("LlmEvalService.completeRun handles empty results", () => {
+test("LlmEvalService.completeRun returns null when a run has no recorded case results", () => {
   const db = createMockDatabase();
   const service = new LlmEvalService(db);
 
@@ -341,11 +389,7 @@ test("LlmEvalService.completeRun handles empty results", () => {
   const run = service.startRun(suite.id, "gpt-4", "v1.0");
   const completed = service.completeRun(run.id);
 
-  // Should handle gracefully
-  assert.ok(completed !== null);
-  assert.equal(completed!.passedCases, 0);
-  assert.equal(completed!.failedCases, 0);
-  assert.equal(completed!.verdict, "inconclusive");
+  assert.equal(completed, null);
 });
 
 // ============================================================================
@@ -501,6 +545,56 @@ test("LlmEvalService.completeRun computes verdict based on results", () => {
   assert.ok(completed!.averageScore! >= 0.85);
 });
 
+test("LlmEvalService.completeRun fails when any critical case fails even if pass rate remains above 95%", () => {
+  const db = createMockDatabase();
+  const service = new LlmEvalService(db);
+
+  const suite = service.defineSuite({
+    name: "critical-case-suite",
+    kind: "golden",
+    cases: Array.from({ length: 20 }, (_, index) => ({
+      id: `case-${index + 1}`,
+      input: `input-${index + 1}`,
+      expectedOutput: `expected-${index + 1}`,
+    })),
+  });
+
+  const run = service.startRun(suite.id, "gpt-4", "v1.0", "test");
+  for (let index = 0; index < 19; index++) {
+    service.recordCaseResult({
+      runId: run.id,
+      caseId: `case-${index + 1}`,
+      input: `input-${index + 1}`,
+      expectedOutput: `expected-${index + 1}`,
+      actualOutput: `expected-${index + 1}`,
+      score: 1,
+      passed: true,
+      latencyMs: 50,
+      metadata: { riskLevel: "standard" },
+    });
+  }
+
+  service.recordCaseResult({
+    runId: run.id,
+    caseId: "case-20",
+    input: "input-20",
+    expectedOutput: "expected-20",
+    actualOutput: "wrong",
+    score: 0.2,
+    passed: false,
+    latencyMs: 50,
+    metadata: { riskLevel: "critical" },
+  });
+
+  const completed = service.completeRun(run.id);
+
+  assert.ok(completed);
+  assert.equal(completed?.passedCases, 19);
+  assert.equal(completed?.failedCases, 1);
+  assert.equal(completed?.verdict, "fail");
+  assert.equal(completed?.status, "failed");
+});
+
 test("LlmEvalService.runCiGate evaluates with deterministic evaluator", () => {
   const db = createMockDatabase();
   const service = new LlmEvalService(db);
@@ -620,6 +714,80 @@ test("LlmEvalService.detectRegression no regression when score improves", () => 
 
   assert.equal(regression.hasRegression, false, "Should not detect regression");
   assert.ok(regression.delta > 0, "Delta should be positive");
+});
+
+test("LlmEvalService.detectRegression flags latency regression above 120% of baseline", () => {
+  const db = createMockDatabase();
+  const service = new LlmEvalService(db);
+
+  const suite = service.defineSuite({
+    name: "latency-regression-suite",
+    kind: "regression",
+    cases: [{ id: "case-1", input: "test", expectedOutput: "result" }],
+  });
+
+  service.runCiGate(suite.id, "gpt-4", "v1.0", {
+    evaluator: () => ({
+      actualOutput: "result",
+      score: 0.95,
+      passed: true,
+      latencyMs: 100,
+    }),
+  });
+
+  service.runCiGate(suite.id, "gpt-4", "v2.0", {
+    evaluator: () => ({
+      actualOutput: "result",
+      score: 0.95,
+      passed: true,
+      latencyMs: 121,
+    }),
+  });
+
+  const regression = service.detectRegression(suite.id, "gpt-4", "v2.0", "v1.0");
+
+  assert.equal(regression.latencyRegression, true);
+  assert.equal(regression.costRegression, false);
+  assert.equal(regression.hasRegression, true);
+  assert.equal(regression.previousLatencyMs, 100);
+  assert.equal(regression.currentLatencyMs, 121);
+});
+
+test("LlmEvalService.detectRegression flags cost regression above 150% of baseline", () => {
+  const db = createMockDatabase();
+  const service = new LlmEvalService(db);
+
+  const suite = service.defineSuite({
+    name: "cost-regression-suite",
+    kind: "regression",
+    cases: [{ id: "case-1", input: "test", expectedOutput: "result" }],
+  });
+
+  service.runCiGate(suite.id, "gpt-4", "v1.0", {
+    evaluator: () => ({
+      actualOutput: "result",
+      score: 0.95,
+      passed: true,
+      latencyMs: 100,
+      metadata: { cost: 10 },
+    }),
+  });
+
+  service.runCiGate(suite.id, "gpt-4", "v2.0", {
+    evaluator: () => ({
+      actualOutput: "result",
+      score: 0.95,
+      passed: true,
+      latencyMs: 100,
+      metadata: { cost: 16 },
+    }),
+  });
+
+  const regression = service.detectRegression(suite.id, "gpt-4", "v2.0", "v1.0");
+
+  assert.equal(regression.latencyRegression, false);
+  assert.equal(regression.costRegression, true);
+  assert.equal(regression.hasRegression, true);
 });
 
 test("LlmEvalService listRuns returns runs independently", () => {

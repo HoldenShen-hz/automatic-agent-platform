@@ -59,12 +59,71 @@ export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
     if (node.parentOrgNodeId === node.orgNodeId) {
       findings.push(`org_hierarchy.self_cycle:${node.orgNodeId}`);
     }
+    // R19-5: Validate node type is valid
+    const validTypes = ["company", "division", "department", "team"];
+    if (!validTypes.includes(node.nodeType)) {
+      findings.push(`org_hierarchy.invalid_node_type:${node.orgNodeId}:${node.nodeType}`);
+    }
+    // R19-5: Validate ownerUserIds is not empty for non-company nodes
+    if (node.nodeType !== "company" && node.ownerUserIds.length === 0) {
+      findings.push(`org_hierarchy.missing_owner:${node.orgNodeId}`);
+    }
+    // R19-5: Validate costCenter format
+    if (node.costCenter && !/^[A-Z]{2}\d{4,}$/.test(node.costCenter)) {
+      findings.push(`org_hierarchy.invalid_cost_center:${node.orgNodeId}:${node.costCenter}`);
+    }
   }
 
-  // Validate depth doesn't exceed 5 levels
+  // R19-5: Validate depth doesn't exceed 5 levels
   const { valid, depth } = validateHierarchyDepth(nodes);
   if (!valid) {
     findings.push(`org_hierarchy.exceeds_max_depth:${depth}`);
+  }
+
+  // R19-4: Validate no duplicate cost centers in same division
+  const costCentersByDivision = new Map<string, string[]>();
+  for (const node of nodes) {
+    if (node.nodeType === "division") {
+      const divisionChildren = nodes.filter((n) => n.parentOrgNodeId === node.orgNodeId);
+      const costCenters = divisionChildren.map((n) => n.costCenter).filter((cc) => cc.length > 0);
+      const duplicates = costCenters.filter((cc, idx) => costCenters.indexOf(cc) !== idx);
+      if (duplicates.length > 0) {
+        findings.push(`org_hierarchy.duplicate_cost_center:${node.orgNodeId}:${[...new Set(duplicates)].join(",")}`);
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * R19-4: Enforces maximum reporting limits per manager.
+ * Default maximum direct reports is 7 per management best practice.
+ *
+ * @param nodes - The org hierarchy nodes
+ * @param maxDirectReports - Maximum allowed direct reports per manager (default: 7)
+ * @returns Array of violation messages for managers who exceed the limit
+ */
+export function enforceReportingLimits(
+  nodes: readonly OrgNode[],
+  maxDirectReports: number = 7,
+): string[] {
+  const findings: string[] = [];
+
+  // Count direct reports per parent
+  const directReportsCount = new Map<string, number>();
+  for (const node of nodes) {
+    if (node.parentOrgNodeId != null) {
+      const count = directReportsCount.get(node.parentOrgNodeId) ?? 0;
+      directReportsCount.set(node.parentOrgNodeId, count + 1);
+    }
+  }
+
+  // Check each manager's direct reports count
+  for (const [managerId, count] of directReportsCount.entries()) {
+    if (count > maxDirectReports) {
+      findings.push(`org_hierarchy.reporting_limit_exceeded:${managerId}:${count}>${maxDirectReports}`);
+    }
   }
 
   return findings;

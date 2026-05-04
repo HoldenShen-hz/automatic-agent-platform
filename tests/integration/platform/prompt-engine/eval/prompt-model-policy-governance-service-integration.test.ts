@@ -193,7 +193,7 @@ test("governance service registerModelRelease dedupes fallback profiles", () => 
   }
 });
 
-test("governance service getRelease retrieves previously registered release", () => {
+test("governance service getRelease keeps newly registered releases at review_required even when reviewRequired=false", () => {
   const h = createHarness("gov-get-reg-");
   try {
     const prompt = h.governance.registerPromptRelease({
@@ -208,7 +208,7 @@ test("governance service getRelease retrieves previously registered release", ()
     assert.equal(retrieved?.id, prompt.id);
     assert.equal(retrieved?.objectKey, "test.prompt");
     assert.equal(retrieved?.version, "v1");
-    assert.equal(retrieved?.status, "approved");
+    assert.equal(retrieved?.status, "review_required");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

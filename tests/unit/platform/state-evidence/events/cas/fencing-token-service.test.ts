@@ -233,6 +233,21 @@ test("FencingTokenService generates unique tokens on multiple calls", () => {
   assert.ok(token2.includes("exec1"));
 });
 
+test("FencingTokenService shares a monotonic counter across service instances", () => {
+  const service1 = new FencingTokenService("node1");
+  const service2 = new FencingTokenService("node2");
+
+  const token1 = service1.generateFencingToken("exec-shared", "node1");
+  const token2 = service2.generateFencingToken("exec-shared", "node2");
+
+  const counter1 = Number.parseInt(token1.split("::")[2] ?? "", 10);
+  const counter2 = Number.parseInt(token2.split("::")[2] ?? "", 10);
+
+  assert.ok(Number.isFinite(counter1));
+  assert.ok(Number.isFinite(counter2));
+  assert.ok(counter2 > counter1, "counter should increase across instances");
+});
+
 test("FencingTokenService validateFencingToken parses all token components", () => {
   const service = new FencingTokenService("node1");
 

@@ -209,8 +209,10 @@ function evaluateRoleConstraints(
         const quota = constraint.value as { quotaType: string; limit: number };
         if (quota && typeof quota.limit === "number") {
           // Check if any workflow steps exceed resource limits
-          if (proposal.workflowSuggestion?.step.timeoutMs > quota.limit * 1000) {
-            violations.push(`hr.constraint_violation.resource_quota:${constraint.constraintId}:timeout:${proposal.workflowSuggestion.step.timeoutMs}>${quota.limit * 1000}`);
+          const workflowSuggestion = proposal.workflowSuggestion;
+          const stepTimeoutMs = workflowSuggestion?.step.timeoutMs ?? 0;
+          if (stepTimeoutMs > quota.limit * 1000) {
+            violations.push(`hr.constraint_violation.resource_quota:${constraint.constraintId}:timeout:${stepTimeoutMs}>${quota.limit * 1000}`);
           }
         }
         break;

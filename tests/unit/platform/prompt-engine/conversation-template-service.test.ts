@@ -122,12 +122,12 @@ test("ConversationTemplateExecutor completes conversation", () => {
   assert.ok(conversation?.nextPrompt === undefined);
 });
 
-test("ConversationTemplateExecutor.next returns the existing conversation when template is deactivated mid-flow", () => {
+test("ConversationTemplateExecutor.next returns the existing conversation when template is no longer available mid-flow", () => {
   const registry = new ConversationTemplateRegistry();
   registry.register({
-    templateId: "deactivate_mid_flow",
-    name: "Deactivate Mid Flow",
-    description: "Template deactivated after start",
+    templateId: "missing_mid_flow",
+    name: "Missing Mid Flow",
+    description: "Template removed after start",
     intent: "task_create",
     steps: [
       {
@@ -149,32 +149,12 @@ test("ConversationTemplateExecutor.next returns the existing conversation when t
   });
 
   const executor = new ConversationTemplateExecutor(registry);
-  const conversation = executor.start("deactivate_mid_flow");
+  const conversation = executor.start("missing_mid_flow");
   assert.ok(conversation !== null);
 
-  registry.register({
-    templateId: "deactivate_mid_flow",
-    name: "Deactivate Mid Flow",
-    description: "Template deactivated after start",
-    intent: "task_create",
-    steps: [
-      {
-        stepId: "step1",
-        prompt: "step1",
-        isRequired: true,
-        expectedEntities: [],
-        allowSkip: false,
-      },
-      {
-        stepId: "step2",
-        prompt: "step2",
-        isRequired: true,
-        expectedEntities: [],
-        allowSkip: false,
-      },
-    ],
-    isActive: false,
-  });
+  const originalGet = registry.get.bind(registry);
+  (registry as { get: (templateId: string) => ConversationTemplate | undefined }).get = (templateId: string) =>
+    templateId === "missing_mid_flow" ? undefined : originalGet(templateId);
 
   const advanced = executor.next(conversation!, "response");
   assert.equal(advanced, conversation);

@@ -230,17 +230,26 @@ export class KnowledgePromotionService {
       };
     }
 
-    // Check thresholds
+    // R20-8 FIX: Check if knowledge has passed validation before promoting
+    // Only validated objects can be promoted to higher tiers
+    if (memory.status !== "active") {
+      blockers.push(`memory status is '${memory.status}', must be 'active' to promote`);
+    }
+
+    // R20-9 FIX: Reject failed validations - if quality score is null or very low,
+    // this indicates a failed validation
     const qualityScore = memory.qualityScore ?? 0;
     if (qualityScore < rule.minQualityScore) {
       blockers.push(`qualityScore ${qualityScore} < ${rule.minQualityScore}`);
     }
 
+    // R20-9 FIX: Also reject if importance score indicates failure
     const importanceScore = memory.importanceScore ?? 0;
     if (importanceScore < rule.minImportanceScore) {
       blockers.push(`importanceScore ${importanceScore} < ${rule.minImportanceScore}`);
     }
 
+    // Check hit count threshold
     if ((memory.hitCount ?? 0) < rule.minHitCount) {
       blockers.push(`hitCount ${memory.hitCount} < ${rule.minHitCount}`);
     }

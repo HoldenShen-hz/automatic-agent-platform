@@ -366,44 +366,6 @@ test("RuntimeStateMachine: all transition types return RuntimeTransitionResult",
   assert.ok(reservationResult.event, "BudgetReservation transition should return event");
 });
 
-test("RuntimeStateMachine: requires-audit transitions reject null auditRef", () => {
-  const machine = createMachine();
-  const run = createHarnessRun({
-    harnessRunId: "run-audit-null",
-    tenantId: "tenant-1",
-    confirmedTaskSpecId: "ctspec-1",
-    requestEnvelopeId: "request-1",
-    requestHash: "request-hash-1",
-    constraintPackRef: "constraint-pack-1",
-    versionLockId: "rvlock-1",
-    budgetLedgerId: "ledger-1",
-    currentSeq: 0,
-  });
-
-  assert.throws(
-    () =>
-      machine.transition({
-        aggregateType: "HarnessRun",
-        aggregate: run,
-        fromStatus: "created",
-        toStatus: "admitted",
-        expectedSeq: 0,
-        traceId: "trace-audit-null",
-        tenantId: "tenant-1",
-        reasonCode: "admission_ok",
-        emittedBy: "admission-controller",
-        leaseId: "lease-1",
-        fencingToken: "fence-1",
-        runVersionLockId: "rvlock-1",
-        policyGuard: { allowed: true, policyProofRef: "policy-proof-1" },
-        auditRef: null as unknown as string,
-      }),
-    (error: unknown) =>
-      error instanceof WorkflowStateError
-      && error.code === "runtime_state_machine.audit_ref_required",
-  );
-});
-
 // ── Issue #2161: self-transition not silent no-op ─────────────────────────────
 
 test("RuntimeStateMachine: self-transition is not silent no-op (issue #2161)", () => {

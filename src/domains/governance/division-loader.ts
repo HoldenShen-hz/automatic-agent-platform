@@ -99,6 +99,8 @@ export interface LoadedDivisionDefinition {
   workflows: MinimalWorkflowDefinition[];
   /** Absolute filesystem path to the division's root directory */
   rootPath: string;
+  /** R19-15: Resource quotas for this division */
+  quotas?: readonly DivisionResourceQuota[];
 }
 
 /**
@@ -113,6 +115,33 @@ export interface DivisionRegistry {
 }
 
 /**
+ * R19-15: Resource quota constraints for a division.
+ */
+export interface DivisionResourceQuota {
+  /** Quota ID */
+  readonly quotaId: string;
+  /** Division this quota applies to */
+  readonly divisionId: string;
+  /** Type of resource being quota'd */
+  readonly resourceType: "cpu" | "memory" | "concurrent_tasks" | "storage" | "api_calls";
+  /** Maximum allowed value */
+  readonly maxValue: number;
+  /** Current usage (tracked by runtime) */
+  readonly currentUsage: number;
+  /** Warning threshold (percentage) */
+  readonly warningThreshold: number;
+}
+
+/**
+ * R19-15: Result of resource quota resolution.
+ */
+export interface ResourceQuotaResolutionResult {
+  readonly resolved: boolean;
+  readonly quotas: readonly DivisionResourceQuota[];
+  readonly violations: readonly string[];
+}
+
+/**
  * Configuration options for the DivisionLoader.
  */
 export interface DivisionLoaderOptions {
@@ -122,6 +151,8 @@ export interface DivisionLoaderOptions {
   sandboxPolicy?: SandboxPolicy;
   /** Enables workflows whose steps execute across multiple divisions. Defaults to false. */
   allowCrossDivisionDag?: boolean;
+  /** Enable resource quota validation. Defaults to true. */
+  enableResourceQuotaValidation?: boolean;
 }
 
 export interface ConfiguredDivisionRegistryOptions extends DivisionLoaderOptions {
@@ -159,6 +190,7 @@ export class DivisionLoader {
   private readonly divisionsRoot: string;
   private readonly sandboxPolicy: SandboxPolicy;
   private readonly allowCrossDivisionDag: boolean;
+  private readonly enableResourceQuotaValidation: boolean;
 
   /**
    * Creates a new division loader instance.
@@ -170,6 +202,166 @@ export class DivisionLoader {
     // Default policy should encompass the resolved divisions root, even when running from dist/.
     this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(resolve(this.divisionsRoot, ".."));
     this.allowCrossDivisionDag = options.allowCrossDivisionDag ?? false;
+    this.enableResourceQuotaValidation = options.enableResourceQuotaValidation ?? true;
+  }
+
+  /**
+   * R19-15: Resolves resource quotas for a division.
+   *
+   * This method validates and resolves resource quotas based on:
+   * - Division's defined quotas
+   * - Role requirements
+   * - Workflow step requirements
+   * - Global limits from platform configuration
+   */
+  public resolveResourceQuotas(division: LoadedDivisionDefinition): ResourceQuotaResolutionResult {
+    const violations: string[] = [];
+
+    // Default quotas that apply to all divisions
+    const defaultQuotas: readonly DivisionResourceQuota[] = [
+      {
+        quotaId: `quota_${division.id}_concurrent_tasks`,
+        divisionId: division.id,
+        resourceType: "concurrent_tasks",
+        maxValue: 100,
+        currentUsage: 0,
+        warningThreshold: 80,
+      },
+      {
+        quotaId: `quota_${division.id}_storage`,
+        divisionId: division.id,
+        resourceType: "storage",
+        maxValue: 10 * 1024 * 1024 * 1024, // 10 GB
+        currentUsage: 0,
+        warningThreshold: 80,
+      },
+    ];
+
+    // Calculate quotas based on role requirements
+    const roleBasedQuotas = this.calculateRoleResourceQuotas(division);
+
+    // Calculate quotas based on workflow requirements
+    const workflowBasedQuotas = this.calculateWorkflowResourceQuotas(division);
+
+    // Combine all quotas, with division-specific quotas taking precedence
+    const allQuotas = this.mergeQuotas([...defaultQuotas, ...roleBasedQuotas, ...workflowBasedQuotas, ...(division.quotas ?? [])]);
+
+    // Validate quotas don't exceed platform limits
+    const validatedQuotas = this.validateQuotaLimits(allQuotas, violations);
+
+    return {
+      resolved: violations.length === 0,
+      quotas: validatedQuotas,
+      violations,
+    };
+  }
+
+  private calculateRoleResourceQuotas(division: LoadedDivisionDefinition): DivisionResourceQuota[] {
+    const quotas: DivisionResourceQuota[] = [];
+    const roleCount = division.roles.length;
+
+    // Calculate concurrent task quota based on role count and maxInstances
+    let maxConcurrentTasks = 0;
+    for (const role of division.roles) {
+      const instances = role.maxInstances ?? 1;
+      maxConcurrentTasks += instances;
+    }
+
+    // Add a buffer for dynamic role spawning
+    maxConcurrentTasks = Math.ceil(maxConcurrentTasks * 1.2);
+
+    quotas.push({
+      quotaId: `quota_${division.id}_role_concurrent_tasks`,
+      divisionId: division.id,
+      resourceType: "concurrent_tasks",
+      maxValue: maxConcurrentTasks,
+      currentUsage: 0,
+      warningThreshold: 85,
+    });
+
+    return quotas;
+  }
+
+  private calculateWorkflowResourceQuotas(division: LoadedDivisionDefinition): DivisionResourceQuota[] {
+    const quotas: DivisionResourceQuota[] = [];
+    let totalTimeoutMs = 0;
+
+    for (const workflow of division.workflows) {
+      for (const step of workflow.steps) {
+        totalTimeoutMs += step.timeoutMs > 0 ? step.timeoutMs : 300000; // default 5 min
+      }
+    }
+
+    // Convert total workflow time to an approximate concurrent task requirement
+    // Assume average workflow takes 1 minute and they can run in parallel
+    const estimatedConcurrentWorkflows = Math.ceil(totalTimeoutMs / 60000);
+
+    quotas.push({
+      quotaId: `quota_${division.id}_workflow_concurrent`,
+      divisionId: division.id,
+      resourceType: "concurrent_tasks",
+      maxValue: Math.max(estimatedConcurrentWorkflows, 10),
+      currentUsage: 0,
+      warningThreshold: 75,
+    });
+
+    return quotas;
+  }
+
+  private mergeQuotas(quotas: readonly DivisionResourceQuota[]): DivisionResourceQuota[] {
+    const merged = new Map<string, DivisionResourceQuota>();
+
+    for (const quota of quotas) {
+      const key = `${quota.divisionId}:${quota.resourceType}`;
+      const existing = merged.get(key);
+
+      if (existing) {
+        // Keep the higher maxValue (less restrictive)
+        merged.set(key, {
+          ...existing,
+          maxValue: Math.max(existing.maxValue, quota.maxValue),
+          warningThreshold: Math.min(existing.warningThreshold, quota.warningThreshold),
+        });
+      } else {
+        merged.set(key, quota);
+      }
+    }
+
+    return [...merged.values()];
+  }
+
+  private validateQuotaLimits(
+    quotas: readonly DivisionResourceQuota[],
+    violations: string[],
+  ): DivisionResourceQuota[] {
+    // Platform-level limits that should not be exceeded
+    const PLATFORM_LIMITS: Record<string, number> = {
+      cpu: 1000,
+      memory: 1024 * 1024 * 1024 * 1024, // 1 TB
+      concurrent_tasks: 10000,
+      storage: 100 * 1024 * 1024 * 1024 * 1024, // 100 GB
+      api_calls: 1000000,
+    };
+
+    const validated: DivisionResourceQuota[] = [];
+
+    for (const quota of quotas) {
+      const platformLimit = PLATFORM_LIMITS[quota.resourceType];
+      if (platformLimit !== undefined && quota.maxValue > platformLimit) {
+        violations.push(
+          `division.quota_exceeds_platform_limit:${quota.divisionId}:${quota.resourceType}:${quota.maxValue}>${platformLimit}`,
+        );
+        // Cap at platform limit
+        validated.push({
+          ...quota,
+          maxValue: platformLimit,
+        });
+      } else {
+        validated.push(quota);
+      }
+    }
+
+    return validated;
   }
 
   /**
@@ -331,6 +523,35 @@ export class DivisionLoader {
       }
     }
 
+    // R19-15: Resolve and validate resource quotas for the division
+    const provisionalDivision: LoadedDivisionDefinition = {
+      id: divisionConfig.id,
+      version: String(divisionConfig.version ?? "1"),
+      name: divisionConfig.name,
+      description:
+        typeof divisionConfig.description === "string" ? divisionConfig.description : "",
+      priority: toInteger(divisionConfig.priority, 100),
+      triggers: toStringArray(divisionConfig.triggers),
+      defaultWorkflowId: divisionConfig.default_workflow,
+      orchestrationWorkflowId,
+      roles,
+      workflows,
+      rootPath: divisionRoot,
+    };
+
+    let resolvedQuotas: readonly DivisionResourceQuota[] = [];
+    if (this.enableResourceQuotaValidation) {
+      const quotaResult = this.resolveResourceQuotas(provisionalDivision);
+      resolvedQuotas = quotaResult.quotas;
+      // Log violations but don't fail loading - quotas can be adjusted
+      if (quotaResult.violations.length > 0) {
+        logger.warn("division.quota_violations", {
+          divisionId: divisionConfig.id,
+          violations: quotaResult.violations,
+        });
+      }
+    }
+
     // Construct and return the fully loaded division definition
     return {
       id: divisionConfig.id,
@@ -345,6 +566,7 @@ export class DivisionLoader {
       roles,
       workflows,
       rootPath: divisionRoot,
+      quotas: resolvedQuotas,
     };
   }
 
