@@ -5,6 +5,19 @@ import { nowIso } from "../../contracts/types/ids.js";
 
 export type PromptTemplateChannel = "planner" | "generator" | "evaluator" | "system";
 
+/**
+ * R10-43 FIX: Mapping between Harness pipeline role and LLM message role.
+ * §16.2 role (planner/generator/evaluator/system) maps to LLM message role (assistant/system/user).
+ * This ensures the registry uses Harness pipeline roles internally while
+ * emitting correct LLM message roles in prompt assembly.
+ */
+export const CHANNEL_TO_MESSAGE_ROLE: Record<PromptTemplateChannel, "system" | "user" | "assistant"> = {
+  planner: "assistant",   // Planner generates plans - LLM acts as assistant
+  generator: "assistant", // Generator produces content - LLM acts as assistant
+  evaluator: "assistant", // Evaluator assesses quality - LLM acts as assistant
+  system: "system",       // System provides system-level instructions
+};
+
 export interface PromptTemplateVariableSpec {
   key: string;
   required: boolean;

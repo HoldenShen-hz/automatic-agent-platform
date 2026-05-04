@@ -135,16 +135,26 @@ export class GuardrailEngine {
     const hasBlocker = findings.some((finding) => finding.severity === "block");
     const hasRiskWarning = findings.some((finding) => finding.severity === "warn" && finding.layer === "risk");
     const hasRetryableWarning = findings.some((finding) => finding.severity === "warn" && finding.layer === "evidence");
+    const hasRetryableFinding = findings.some((finding) => finding.code === "harness.guardrail.required_evidence_missing");
     const requiresHuman = hasRiskWarning;
+
+    // R9-28 fix: GuardrailEngine can return retry_same_plan action when:
+    // - No blockers (passed=true)
+    // - Only retryable warnings (evidence missing)
+    // - No human-required risk warnings
+    // This allows LoopController to retry the same plan without escalation
+    const canRetrySamePlan = !hasBlocker && hasRetryableFinding && !requiresHuman;
 
     return {
       passed: !hasBlocker,
       requiresHuman,
       suggestedAction: hasBlocker
         ? "abort"
-        : requiresHuman
-          ? "escalate_to_human"
-          : "proceed",
+        : canRetrySamePlan
+          ? "retry_same_plan"
+          : requiresHuman
+            ? "escalate_to_human"
+            : "proceed",
       findings,
     };
   }
