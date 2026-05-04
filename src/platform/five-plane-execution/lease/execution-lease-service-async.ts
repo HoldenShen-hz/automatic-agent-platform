@@ -540,6 +540,17 @@ export class ExecutionLeaseServiceAsync {
       };
     }
 
+    // R17-09 fix: Check if previous lease has expired before handover
+    // Cannot create a new active lease from a dead/expired lease
+    if (previousLease.expiresAt <= occurredAt) {
+      return {
+        outcome: "blocked",
+        reasonCode: "lease_expired",
+        previousLease,
+        lease: null,
+      };
+    }
+
     // Close the previous lease
     this.store.worker.closeExecutionLease({
       leaseId: input.leaseId,

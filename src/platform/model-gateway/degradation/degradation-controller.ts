@@ -608,11 +608,15 @@ export class DegradationController {
     if (shouldDeescalate) {
       this.consecutiveHealthyCount++;
       if (this.consecutiveHealthyCount >= this.config.deescalateMinHealthyCount) {
+        // R29-41 FIX: Capture consecutiveHealthyCount BEFORE deescalate() resets it to 0.
+        // Root cause: deescalate() sets consecutiveHealthyCount=0, then the reason string
+        // was using the reset value showing "recovered_after_0_checks" instead of actual count.
+        const recoveryCount = this.consecutiveHealthyCount;
         this.deescalate();
         return {
           action: "deescalate",
           newLevel: this.currentLevel,
-          reason: `recovered_after_${this.consecutiveHealthyCount}_checks`,
+          reason: `recovered_after_${recoveryCount}_checks`,
         };
       }
       return {

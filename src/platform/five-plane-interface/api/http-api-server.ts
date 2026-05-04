@@ -519,10 +519,18 @@ export class HttpApiServer {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
     }
-    return this.buildJsonErrorResponse(requestId, normalized.statusCode, {
-      code: normalized.code,
-      message: normalized.message,
-    });
+    // R25-04 FIX: Include traceId and details per §7 standardized error format
+    return this.buildJsonErrorResponse(
+      requestId,
+      normalized.statusCode,
+      {
+        code: normalized.code,
+        message: normalized.message,
+        traceId: normalized.traceId,
+        details: normalized.details,
+      },
+      normalized.traceId,
+    );
   }
 
   private buildRouteTable(): RouteDefinition[] {

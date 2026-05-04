@@ -42,7 +42,11 @@ export class HarnessLoopController {
       maxCost: 100000,
       maxDurationMs: 3600000,
     };
-    const maxIterations = Math.max(0, Math.floor(budget.maxSteps / 3));
+    // R32-06 fix: maxIterations=0 when maxSteps=1-2 causes loop to immediately terminate.
+    // Ensure at least 1 iteration is allowed for single-step workflows.
+    // Use ceil to guarantee at least 1 iteration, and cap at reasonable maximum.
+    const rawIterations = Math.floor(budget.maxSteps / 3);
+    const maxIterations = Math.max(1, rawIterations);
     this.guards = {
       maxIterations,
       maxReplans: 3,

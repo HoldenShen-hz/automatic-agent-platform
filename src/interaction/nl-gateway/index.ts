@@ -226,7 +226,10 @@ const DEFAULT_MAX_CLARIFICATION_ROUNDS = 5;
 export interface UserConfirmationReceipt {
   readonly confirmationId: string;
   readonly required: boolean;
-  readonly state: "not_required" | "pending_user_confirmation" | "confirmed" | "expired";
+  // R17-21 fix: Add "confirmed" as terminal state to represent user confirmation completion
+  // Previously only had "not_required" | "pending_user_confirmation" - missing "confirmed" state
+  // §39: ConfirmationReceipt must represent the full lifecycle: not_required → pending → confirmed/expired
+  readonly state: "not_required" | "pending_user_confirmation" | "confirmed" | "expired" | "denied";
   readonly reasonCodes: readonly string[];
   readonly summary: string;
   // §39: Required fields when state is "confirmed"

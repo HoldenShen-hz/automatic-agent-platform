@@ -110,7 +110,13 @@ export class AsyncSessionRepository {
   }
 
   public async listMessagesBySession(sessionId: string, limit?: number): Promise<MessageRecord[]> {
-    const limitClause = limit ? ` LIMIT ${limit}` : "";
+    // R31-28 FIX: Validate limit is a safe integer before string interpolation.
+    // Root cause: LIMIT ${limit} string interpolation could be exploited if limit
+    // contained malicious values. While the type signature says number, untrusted
+    // sources could pass values like "10; DROP TABLE users;--" if not validated.
+    // Fix: Sanitize limit to ensure it's a positive finite integer.
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.trunc(limit), 10000) : undefined;
+    const limitClause = safeLimit !== undefined ? ` LIMIT ${safeLimit}` : "";
     const sql = `SELECT
         id, session_id AS "sessionId", direction, message_type AS "messageType",
         content, parts_json AS "partsJson", attachments_json AS "attachmentsJson",

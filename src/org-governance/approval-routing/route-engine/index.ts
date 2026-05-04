@@ -205,10 +205,19 @@ export class OrgChartRoutingStrategy implements RoutingStrategy {
   public readonly strategyId = "org_chart" as const;
 
   public selectNode(nodes: readonly OrgNode[], request: ApprovalRouteRequest): OrgNode | null {
-    return nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
-      ?? nodes.find((item) => item.orgNodeId === request.orgNodeId)
-      ?? nodes[0]
-      ?? null;
+    // R30-30 FIX: Remove silent fallback to nodes[0] when orgNodeId not found.
+    // Root cause: When request.orgNodeId was not in the org chart, the code silently
+    // routed to nodes[0] - potentially any arbitrary node in the hierarchy.
+    // This violates org routing semantics and could route approvals to wrong owners.
+    // Now returns null when exact orgNodeId is not found, forcing upstream to handle
+    // the missing node case explicitly (e.g., escalation, error, default handling).
+    const exactMatch = nodes.find((item) => item.orgNodeId === request.orgNodeId && item.active)
+      ?? nodes.find((item) => item.orgNodeId === request.orgNodeId);
+    if (exactMatch) {
+      return exactMatch;
+    }
+    // Don't silently fall back to nodes[0] - return null to signal orgNodeId not found
+    return null;
   }
 }
 

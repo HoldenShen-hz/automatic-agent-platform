@@ -128,6 +128,16 @@ export function validateMcpToolDefinition(toolName: string): McpToolValidationIs
   }
 
   // Check for collision with builtin tools
+  // R32-04 fix: Check against full toolName (e.g., "mcp_github_builtin_fetch")
+  // not just remoteToolName (e.g., "fetch"), to detect MCP tools whose names
+  // after namespacing still collide with builtin tool names.
+  if (BUILTIN_TOOL_NAMES.has(toolName)) {
+    return {
+      code: "builtin_collision",
+      detail: `MCP tool ${toolName} collides with builtin tool ${toolName}.`,
+    };
+  }
+  // Also check if the remoteToolName alone collides (for MCP tools that wrap builtins)
   if (BUILTIN_TOOL_NAMES.has(parsed.remoteToolName)) {
     return {
       code: "builtin_collision",

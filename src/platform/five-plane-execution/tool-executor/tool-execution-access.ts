@@ -130,9 +130,14 @@ export function resolveExecutionAllowedTools(options: {
   }
 
   // Execution required but no execution provided
+  // R32-03 fix: Return empty array instead of undefined when execution is missing.
+  // undefined means "no restrictions" (all allowed), but when execution is required
+  // but not provided, we should deny all tools until execution context is established.
+  // Callers must check errorCode first - errorCode="tool.execution_missing" indicates
+  // the allowlist cannot be determined due to missing execution context.
   if (options.execution == null) {
     return {
-      allowedTools: undefined,
+      allowedTools: [], // Empty array = no tools allowed (deny-all until execution provided)
       errorCode: "tool.execution_missing",
     };
   }
@@ -193,6 +198,10 @@ export function resolveExecutionAllowedPathRoots(options: {
   }
 
   // Execution required but no execution provided
+  // R32-03 fix: Return undefined for allowedPathRoots when execution is missing.
+  // Unlike allowedTools (which should deny-all), path roots use undefined to indicate
+  // "no restrictions" - path scope checks only apply when explicitly configured.
+  // The errorCode indicates the execution context is missing so caller knows to handle this.
   if (options.execution == null) {
     return {
       allowedPathRoots: undefined,

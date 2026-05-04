@@ -166,7 +166,7 @@ export class AsyncDelegationRepository {
         created_at AS "createdAt",
         updated_at AS "updatedAt"
        FROM delegations
-       WHERE expires_at IS NOT NULL AND expires_at < datetime('now')
+       WHERE expires_at IS NOT NULL AND expires_at < NOW()
        ORDER BY expires_at ASC`,
     );
   }

@@ -70,8 +70,13 @@ export async function createLearningArtifact(
     const { createHash } = await import("node:crypto");
     checksum = createHash("sha256").update(content).digest("hex");
   } catch {
-    // Deterministic fallback — must still be 64 hex chars to satisfy schema
-    checksum = learningObject.learningObjectId.padEnd(64, "0").slice(0, 64);
+    // R29-01 FIX: Hash the learningObjectId to produce a valid hex checksum.
+    // Root cause: Previously used learningObjectId.padEnd(64, "0").slice(0, 64) directly,
+    // but learningObjectId may contain non-hex characters (_ , g-z) which violate the
+    // SHA-256 hex format requirement ^[a-f0-9]{64}$.
+    // Fix: Hash the learningObjectId to produce a proper 64-char hex string.
+    const { createHash } = await import("node:crypto");
+    checksum = createHash("sha256").update(learningObject.learningObjectId).digest("hex");
   }
 
   return {

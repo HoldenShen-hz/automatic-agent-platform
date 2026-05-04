@@ -95,6 +95,18 @@ export class SdkVersionHandshakeService {
   }
 
   private parse(version: string): readonly number[] {
-    return version.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+    // R30-33 FIX: Validate each version part is a positive integer, not just parseable.
+    // Root cause: parseInt("a", 10) returns NaN, which was coerced to 0 via || 0.
+    // This allowed malicious version "a.b.c" to parse as [0,0,0], potentially bypassing
+    // minimum version checks when minVersion is also low.
+    // Fix: Reject non-numeric parts instead of treating them as 0.
+    return version.split(".").slice(0, 3).map((part) => {
+      const parsed = Number.parseInt(part, 10);
+      // Only accept positive integers; NaN or negative values are invalid versions
+      if (!Number.isFinite(parsed) || parsed < 0 || !Number.isInteger(parsed)) {
+        return -1; // Invalid part signals version parse failure
+      }
+      return parsed;
+    });
   }
 }

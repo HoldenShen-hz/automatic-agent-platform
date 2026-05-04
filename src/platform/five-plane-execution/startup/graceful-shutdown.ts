@@ -40,6 +40,10 @@ export interface ShutdownHandler {
   handler: () => Promise<void>;
   timeoutMs?: number;
   critical?: boolean;
+  /** R20-42 FIX: List of handler names that must run AFTER this handler completes.
+   *  Used for dependency-aware ordering instead of fragile reverse-insertion-order.
+   *  Handlers with no dependsOn run first in the dependency order. */
+  dependsOn?: readonly string[];
 }
 
 export interface ShutdownResult {
@@ -69,6 +73,25 @@ export class GracefulShutdown {
     this.signalBus = options.signalBus ?? process;
     this.exitHandler = options.exitHandler ?? ((code) => {
       process.exitCode = code;
+    });
+
+    // R20-38 FIX: Register ServiceRegistry cleanup as the LAST handler (runs first in reverse order).
+    // ServiceRegistry teardown must happen AFTER all other handlers complete, but BEFORE
+    // the process exits, to ensure proper cleanup of global singletons.
+    // Note: We use a low priority to ensure it runs last in normal (non-reverse) order,
+    // which means it runs first in the reverse iteration during shutdown.
+    this.addHandler({
+      name: "service_registry_teardown",
+      handler: async () => {
+        // Import here to avoid circular dependency at module load time
+        const { ServiceRegistry } = await import("../../shared/lifecycle/service-registry.js");
+        const registry = ServiceRegistry.getInstance();
+        if (registry.isInitialized("platform.global-shutdown")) {
+          await registry.reset();
+        }
+      },
+      timeoutMs: 10000, // 10 second timeout for ServiceRegistry cleanup
+      critical: true,
     });
 
     // Register default handlers if provided
@@ -213,6 +236,82 @@ export class GracefulShutdown {
     this.shutdownResult = null;
   }
 
+  /**
+   * R20-42 FIX: Topologically sort handlers based on dependsOn relationships.
+   * Uses Kahn's algorithm for topological sorting.
+   * Handlers with no dependencies come first; handlers with dependencies come after.
+   *
+   * For example, if we have:
+   *   A dependsOn [B, C]
+   *   B dependsOn []
+   *   C dependsOn []
+   *
+   * Sort order will be: B, C, A (B and C first since they have no deps, then A)
+   *
+   * During shutdown (which iterates reversed), order becomes: A, C, B
+   * This ensures B and C run BEFORE A, satisfying the dependency requirement.
+   */
+  private topologicalSortHandlers(): ShutdownHandler[] {
+    const handlerMap = new Map<string, ShutdownHandler>();
+    const inDegree = new Map<string, number>();
+    const adjacency = new Map<string, string[]>();
+
+    for (const h of this.handlers) {
+      handlerMap.set(h.name, h);
+      inDegree.set(h.name, 0);
+      adjacency.set(h.name, []);
+    }
+
+    // Build graph: handler -> handlers that depend on it
+    for (const h of this.handlers) {
+      for (const dep of h.dependsOn ?? []) {
+        if (handlerMap.has(dep)) {
+          // dep must run BEFORE h, so edge dep -> h
+          adjacency.get(dep)!.push(h.name);
+          inDegree.set(h.name, (inDegree.get(h.name) ?? 0) + 1);
+        }
+      }
+    }
+
+    // Kahn's algorithm
+    const queue: string[] = [];
+    const result: string[] = [];
+
+    for (const [name, degree] of inDegree) {
+      if (degree === 0) {
+        queue.push(name);
+      }
+    }
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      result.push(current);
+
+      for (const neighbor of adjacency.get(current) ?? []) {
+        const newDegree = (inDegree.get(neighbor) ?? 1) - 1;
+        inDegree.set(neighbor, newDegree);
+        if (newDegree === 0) {
+          queue.push(neighbor);
+        }
+      }
+    }
+
+    // Check for cycles - if cycle exists, fall back to insertion order for cyclic handlers
+    if (result.length !== this.handlers.length) {
+      const cyclicHandlers = this.handlers.filter((h) => !result.includes(h.name));
+      this.logger.log({
+        level: "warn",
+        message: "Circular dependency detected in shutdown handlers, using insertion order for cyclic handlers",
+        data: { cyclicHandlers: cyclicHandlers.map((h) => h.name) },
+      });
+      for (const h of cyclicHandlers) {
+        result.push(h.name);
+      }
+    }
+
+    return result.map((name) => handlerMap.get(name)!);
+  }
+
   private async executeShutdown(): Promise<ShutdownResult> {
     const startTime = Date.now();
     const errors: string[] = [];
@@ -225,7 +324,13 @@ export class GracefulShutdown {
       data: { handlers: this.handlers.length },
     });
 
-    for (const { name, handler, timeoutMs, critical } of [...this.handlers].reverse()) {
+    // R20-42 FIX: Use dependency-aware topological sort instead of fragile reverse insertion order.
+    // Handlers with no dependsOn form the "leaves" (run first), those with dependencies run after
+    // their dependencies. This ensures proper drain→flush→close ordering per §9.
+    const sortedHandlers = this.topologicalSortHandlers();
+    const handlersToRun = [...sortedHandlers].reverse(); // Dependencies first, dependents after
+
+    for (const { name, handler, timeoutMs, critical } of handlersToRun) {
       const handlerTimeout = timeoutMs ?? this.timeoutMs;
       try {
         let timer: NodeJS.Timeout | null = null;

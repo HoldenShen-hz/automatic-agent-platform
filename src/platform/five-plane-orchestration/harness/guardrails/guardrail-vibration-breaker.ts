@@ -33,7 +33,11 @@ export class GuardrailVibrationBreaker {
 
     const repeated = state.lastGuardrailSignature === signal.signature;
     const nextCount = repeated ? state.guardrailActionCount + 1 : 1;
-    const cooldown = nextCount > this.maxRepeatedActions;
+    // R32-07 fix: off-by-one error - use >= so blocking occurs at maxRepeatedActions boundary.
+    // With >: nextCount=2, maxRepeat=1 → blocked (allows maxRepeat+1=2 actions).
+    // With >=: nextCount=2, maxRepeat=1 → blocked (allows maxRepeat=1 actions).
+    // For maxRepeat=0 with >=: nextCount=1 >= 0 → blocked immediately (allows 0 actions).
+    const cooldown = nextCount >= this.maxRepeatedActions;
     const nextState: GuardrailVibrationState = {
       guardrailActionCount: nextCount,
       lastGuardrailSignature: signal.signature,

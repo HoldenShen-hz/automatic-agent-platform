@@ -825,6 +825,7 @@ export class PluginSpiRegistry {
         pluginId: record.manifest.pluginId,
         domainId: context.domainId,
         spiType: record.plugin.spiType,
+        phase, // R23-57 FIX: phase field required by PluginIsolationEventPayload
         lifecycleState: record.lifecycleState,
         bindingId: context.bindingId,
         occurredAt: nowIso(),

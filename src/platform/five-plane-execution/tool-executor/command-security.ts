@@ -93,8 +93,13 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["cp", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["mv", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [1] }],
   ["rm", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
-  ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
-  ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  // R30-15/R30-16 FIX: chmod/chown writePathArgPositions should be [1], not [0].
+  // Root cause: For "chmod 755 file.txt", arg[0]="755" is the mode and arg[1]="file.txt" is the path.
+  // The previous config validated arg[0] (the mode) instead of arg[1] (the actual file path),
+  // allowing sandbox bypass - attackers could modify arbitrary files by controlling the path arg.
+  // Same issue applies to chown with "user:group file.txt" format.
+  ["chmod", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
+  ["chown", { allowed: true, riskLevel: "high", writePathArgPositions: [1] }],
   // R12-22 fix: curl/wget must route through NetworkEgressPolicyService - blocked by default
   // until proper egress policy integration is implemented
   ["curl", { allowed: false, riskLevel: "critical", reasonCode: "tool.curl_blocked_requires_egress_policy" }],

@@ -86,8 +86,9 @@ async function persistLlmDecisionEvidence(input: PersistLlmDecisionEvidenceInput
   });
 
   // Determine decision kind based on LLM output
-  const hasToolCalls = llmResult.toolCalls && llmResult.toolCalls.length > 0;
-  const decisionKind = hasToolCalls ? "tool_selection" : "content_generation";
+  // R27-06 FIX: decisionKind must be a valid DecisionInputBundle["decisionKind"] value
+  // The LLM's suggestion to generate content or select tools is an "approve" decision
+  const decisionKind: "approve" = "approve";
 
   // Create DecisionInputBundle with input context
   const decisionInputBundle = createCanonicalDecisionInputBundle({
@@ -101,10 +102,12 @@ async function persistLlmDecisionEvidence(input: PersistLlmDecisionEvidenceInput
 
   // Create HarnessDecision with output/reasoning
   const harnessDecisionId = newId("harness_decision");
+  // R27-06 FIX: decision must be a valid HarnessDecision["decision"] value
+  // "accept" is correct because the harness is accepting the LLM's proposed content/tool
   const canonicalDecision = createCanonicalHarnessDecision({
     decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
     decisionKind,
-    decision: llmResult.finishReason as "stop" | "end_turn" | "tool_use" | "error",
+    decision: "accept",
     deciderType: "llm",
     deciderRef: `multi-step-agent:${stepId}`,
     reasonCode: `llm.${llmResult.finishReason}`,

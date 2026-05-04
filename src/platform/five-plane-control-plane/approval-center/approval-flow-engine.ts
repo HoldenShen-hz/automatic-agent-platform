@@ -576,12 +576,12 @@ export class ApprovalFlowEngine {
    * @param ttlMs - Optional TTL override
    * @returns The created delegation or error
    */
-  public delegateApproval(
+  public async delegateApproval(
     flowId: string,
     fromApprover: string,
     toApprover: string,
     ttlMs?: number,
-  ): { success: boolean; delegation?: Delegation; error?: string } {
+  ): Promise<{ success: boolean; delegation?: Delegation; error?: string }> {
     const flow = this.flows.get(flowId);
     if (!flow) {
       return { success: false, error: "Flow not found" };

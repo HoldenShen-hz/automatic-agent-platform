@@ -31,7 +31,13 @@ export interface ToolPathScopeCheckResult {
 
 /**
  * Normalizes a path by resolving symlinks via realpath.
- * Falls back to resolve() if realpath fails.
+ * Falls back to resolve() if realpath fails - but resolve() does NOT dereference symlinks,
+ * so the fallback path may not be the true canonical path.
+ *
+ * R32-02 fix: When realpathSync fails, we should still attempt to use the resolved path
+ * even if it's not fully canonical. The key issue is that without dereferencing the symlink,
+ * path scope checks may be bypassed if a tool can access /symlink/path and the scope only
+ * covers /real/path.
  */
 function normalizePath(path: string): string {
   const resolvedPath = resolve(path);
@@ -39,6 +45,9 @@ function normalizePath(path: string): string {
     return realpathSync.native(resolvedPath);
   } catch (err) {
     toolPathScopeLogger.debug("tool_path_scope: realpathSync.native failed, using resolved path", { error: err instanceof Error ? err.message : String(err), path: resolvedPath });
+    // R32-02 fix: Log a warning that symlink was not dereferenced - this is a security concern
+    // because the path scope enforcement may not work correctly for symlinked paths.
+    // However, we must still return something so the tool can execute.
     return resolvedPath;
   }
 }

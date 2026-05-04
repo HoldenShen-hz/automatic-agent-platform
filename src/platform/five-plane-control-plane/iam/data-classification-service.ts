@@ -217,6 +217,7 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "allow",
     cross_worker: "allow",
     debug: "allow",
+    audit: "allow",
   },
   internal: {
     prompt: "allow",
@@ -225,6 +226,7 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "allow",
     cross_worker: "audit",
     debug: "redact",
+    audit: "audit",
   },
   confidential: {
     prompt: "audit",
@@ -233,6 +235,7 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "audit",
     cross_worker: "deny",
     debug: "deny",
+    audit: "audit",
   },
   restricted: {
     prompt: "deny",
@@ -241,6 +244,7 @@ const DEFAULT_HANDLING_RULES: Record<DataClassificationLevel, Record<DataHandlin
     artifact: "summarize",
     cross_worker: "deny",
     debug: "deny",
+    audit: "deny",
   },
 };
 

@@ -182,14 +182,22 @@ export function buildJsonErrorResponse(
   error: {
     code: string;
     message: string;
+    traceId?: string | null;
+    details?: Record<string, unknown> | null;
   },
+  traceIdHeader?: string | null,
 ): ApiResponsePayload {
+  const headers: Record<string, string> = {
+    "content-type": "application/json; charset=utf-8",
+    "x-request-id": requestId,
+  };
+  // R25-04 FIX: Include traceId in response header per §7 standardized error format
+  if (traceIdHeader) {
+    headers["x-trace-id"] = traceIdHeader;
+  }
   return {
     statusCode,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "x-request-id": requestId,
-    },
+    headers,
     body: JSON.stringify({ requestId, error }, null, 2),
   };
 }

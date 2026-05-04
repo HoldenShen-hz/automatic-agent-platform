@@ -1079,6 +1079,15 @@ export class ExecutionDispatchService {
         return (leftToolBacklogCount ?? 0) - (rightToolBacklogCount ?? 0);
       }
 
+      // R17-16 fix: Add jitter to break ties evenly among workers with equal scores
+      // Previously used only workerId tiebreaker which created deterministic hotspots
+      // when multiple workers had identical metrics. Now we use a small random offset
+      // to distribute load more evenly across equal-caliber workers.
+      const jitter = Math.random() - 0.5;
+      if (jitter !== 0) {
+        return jitter;
+      }
+
       return left.workerId.localeCompare(right.workerId);
     })[0]!;
   }

@@ -65,6 +65,18 @@ export class KnowledgeArchive {
       }
       return updated;
     }
+    // R30-02 FIX: Remove any existing record for this documentId when inserting new checksum.
+    // Root cause: When the same documentId is re-archived with a different checksum (e.g., after
+    // content update), the old checksum entry remained in documentsByChecksum, causing stale record
+    // leakage where queries by checksum could return outdated content.
+    const existingByDocId = this.recordsByDocumentId.get(record.document.documentId);
+    if (existingByDocId) {
+      // Remove old checksum entry and its chunks
+      this.documentsByChecksum.delete(existingByDocId.source.checksum);
+      for (const oldChunk of existingByDocId.chunks) {
+        this.recordsByChunkId.delete(oldChunk.chunkId);
+      }
+    }
     // R25-5 Fix: Record initial version
     this.addVersionHistory(record.document.documentId, record, 1, "create");
     this.documentsByChecksum.set(record.source.checksum, record);

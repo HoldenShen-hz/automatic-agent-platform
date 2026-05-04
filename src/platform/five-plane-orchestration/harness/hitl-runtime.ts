@@ -170,6 +170,10 @@ export class HitlRuntime {
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
+    // R23-34 FIX: Add idempotency protection - reject double-resolution of already-resolved requests
+    if (request.status !== "pending") {
+      throw new Error(`harness.hitl.request_already_resolved:${requestId}:${request.status}`);
+    }
     const resolved: HitlRequest = {
       ...request,
       status: resolution,

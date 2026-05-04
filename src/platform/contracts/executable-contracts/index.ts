@@ -639,7 +639,7 @@ export interface HarnessDecision {
   readonly decisionInputBundleId: string;
   readonly decisionKind: DecisionInputBundle["decisionKind"];
   readonly decision: "accept" | "reject" | "retry" | "replan" | "escalate" | "abort" | "takeover" | "patch";
-  readonly deciderType: "system" | "policy" | "evaluator" | "human" | "operator";
+  readonly deciderType: "system" | "policy" | "evaluator" | "human" | "operator" | "llm";
   readonly deciderRef: string;
   readonly reasonCode: string;
   readonly expiresAt?: string;
