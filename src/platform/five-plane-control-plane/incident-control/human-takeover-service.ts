@@ -22,6 +22,7 @@ import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
 import type { TaskTerminalStatus } from "../../contracts/types/status.js";
 import { createRecoverySession, isSessionTerminalStatus } from "../../contracts/types/status.js";
+import { ValidationError } from "../../contracts/errors.js";
 import {
   executionTerminalForTask,
   normalizeInputJson,
@@ -361,11 +362,11 @@ export class HumanTakeoverService {
       const outputs = parseOutputs(workflow.outputsJson);
       const normalizedOutputJson = normalizeJson(input.outputJson, "takeover.output_json_invalid");
       const parsedOutput = JSON.parse(normalizedOutputJson) as unknown;
+      const status = input.status ?? "succeeded";
 
       // R14-6/R14-7: Validate step output before storing
       this.validateStepOutput(parsedOutput, target.step.stepId, status);
 
-      const status = input.status ?? "succeeded";
       const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId, parsedOutput);
 
       // Store the output keyed by the step's outputKey
@@ -654,9 +655,14 @@ export class HumanTakeoverService {
       };
     }, input.tenantId);
 
-    // R14-5: Emit resume OperationalDirective when human takeover task is completed
-    const session = this.store.approval.getTakeoverSession(input.takeoverSessionId, input.tenantId);
-    if (session) {
+    // R14-5/R14-15: Emit resume OperationalDirective only if task is not reaching a terminal state
+    // Resume should only be emitted if the task can continue execution
+    const terminalStatuses: readonly TaskTerminalStatus[] = ["done", "failed", "cancelled"];
+    const shouldResume = !terminalStatuses.includes(input.terminalStatus);
+
+    if (shouldResume) {
+      const sessionRecord = this.store.approval.getTakeoverSession(input.takeoverSessionId, input.tenantId);
+      const session: TakeoverSessionRecord = sessionRecord as TakeoverSessionRecord;
       this.emitResumeDirective(session.taskId, session.executionId, session.operatorId, input.reasonCode);
     }
   }

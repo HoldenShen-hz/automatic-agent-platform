@@ -192,4 +192,6 @@ ALTER TABLE events ADD COLUMN evidence_refs TEXT NULL;
 CREATE INDEX IF NOT EXISTS idx_events_session_created_at ON events(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id, sequence);
 CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_events_correlation_id ON events(correlation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_events_causation_id ON events(causation_id, created_at);
 `;

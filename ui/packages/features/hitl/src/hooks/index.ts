@@ -1,6 +1,14 @@
 import type { RESTClient, WSClient, WSEventEnvelope } from "@aa/shared-api-client";
-import { fetchApprovals, approveApproval, rejectApproval, delegateApproval, resumeWorkflow } from "@aa/shared-api-client";
+import {
+  fetchApprovals,
+  approveApproval,
+  rejectApproval,
+  delegateApproval,
+  resumeWorkflow,
+  submitApprovalTextInput,
+} from "@aa/shared-api-client";
 import type { ApprovalDTO } from "@aa/shared-types";
+import { useRestClient, useWsClient } from "@aa/shared-state";
 import { useEffect, useState } from "react";
 
 export type RecoveryMode = "normal" | "replan" | "supervised" | "abort";
@@ -50,16 +58,18 @@ export function useHitlVm(
   wsClient?: WSClient,
   userId?: string,
 ): HitlVm {
+  const sharedClient = useRestClient();
+  const sharedWsClient = useWsClient();
+  const effectiveClient = client ?? sharedClient;
+  const effectiveWsClient = wsClient ?? sharedWsClient;
   const [items, setItems] = useState<readonly HitlItem[]>(DEFAULT_HITL_ITEMS);
   const [isLoading, setIsLoading] = useState(false);
 
   // §4.6.2: Fetch approval items from REST API when client provided
   useEffect(() => {
-    if (client == null) return;
-
     let cancelled = false;
     setIsLoading(true);
-    void fetchApprovals(client).then((approvals) => {
+    void fetchApprovals(effectiveClient).then((approvals) => {
       if (cancelled) return;
       setItems(approvals.map((a: ApprovalDTO): HitlItem => ({
         id: a.approvalId,
@@ -72,14 +82,14 @@ export function useHitlVm(
       if (!cancelled) setIsLoading(false);
     });
     return () => { cancelled = true; };
-  }, [client]);
+  }, [effectiveClient]);
 
   // §4.6.2: Subscribe to ws events for real-time approval updates
   useEffect(() => {
-    if (wsClient == null || userId == null) return;
+    if (userId == null) return;
 
     const channel = `approvals.${userId}`;
-    const unsubscribe = wsClient.subscribe(channel, (event: WSEventEnvelope) => {
+    const unsubscribe = effectiveWsClient.subscribe(channel, (event: WSEventEnvelope) => {
       if (event.type === "approval.created" || event.type === "approval.requested") {
         const payload = event.payload as ApprovalDTO;
         const newItem: HitlItem = {
@@ -99,44 +109,44 @@ export function useHitlVm(
     });
 
     return unsubscribe;
-  }, [wsClient, userId]);
+  }, [effectiveWsClient, userId]);
 
   async function approve(itemId: string): Promise<void> {
-    if (client == null) return;
-    await approveApproval(client, itemId);
+    await approveApproval(effectiveClient, itemId);
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function reject(itemId: string): Promise<void> {
-    if (client == null) return;
-    await rejectApproval(client, itemId);
+    await rejectApproval(effectiveClient, itemId);
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function edit(itemId: string, edits: Record<string, unknown>): Promise<void> {
     // §4.6.2: Edit allows modifying the approval parameters before resolution
-    if (client == null) return;
     console.info(`[HITL] Edit item ${itemId}:`, edits);
     // In production this would call an updateApproval API
   }
 
   async function patch(itemId: string, patch: Record<string, unknown>): Promise<void> {
-    // §4.6.2: Patch allows partial modification of the approval/workflow context
-    if (client == null) return;
-    console.info(`[HITL] Patch item ${itemId}:`, patch);
-    // In production this would call a patchApproval API endpoint
+    await submitApprovalTextInput(
+      effectiveClient,
+      itemId,
+      JSON.stringify({ action: "patch", patch }),
+    );
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function override(itemId: string, override: Record<string, unknown>): Promise<void> {
-    // §4.6.2: Override replaces the entire approval/workflow context with new values
-    if (client == null) return;
-    console.info(`[HITL] Override item ${itemId}:`, override);
-    // In production this would call an overrideApproval API endpoint
+    await submitApprovalTextInput(
+      effectiveClient,
+      itemId,
+      JSON.stringify({ action: "override", override }),
+    );
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function escalate(itemId: string, reason: string): Promise<void> {
     // §4.6.2: Escalate moves the approval to a higher authority
-    if (client == null) return;
     console.info(`[HITL] Escalate item ${itemId}: ${reason}`);
     // Escalation would call escalateApproval API
     setItems((prev) => prev.filter((item) => item.id !== itemId));
@@ -144,25 +154,22 @@ export function useHitlVm(
 
   async function defer(itemId: string, until: string): Promise<void> {
     // §4.6.2: Defer delays the approval until a specified time
-    if (client == null) return;
     console.info(`[HITL] Defer item ${itemId} until ${until}`);
     // Deferral would call deferApproval API with a timestamp
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function delegate(itemId: string, delegateTo: string): Promise<void> {
-    if (client == null) return;
-    await delegateApproval(client, itemId, delegateTo);
+    await delegateApproval(effectiveClient, itemId, delegateTo);
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function resume(itemId: string, mode: RecoveryMode): Promise<void> {
     // §4.6.2: Resume with specific recovery mode - integrate with execution engine
-    if (client == null) return;
     console.info(`[HITL] Resume item ${itemId} with mode ${mode}`);
     // For resume items, call the workflow resume API with the appropriate mode
     // The itemId represents the workflow/execution to resume
-    await resumeWorkflow(client, itemId);
+    await resumeWorkflow(effectiveClient, itemId);
   }
 
   return { items, isLoading, approve, reject, edit, patch, override, escalate, defer, delegate, resume };

@@ -26,6 +26,12 @@ import type { HumanTakeoverService } from "./human-takeover-service.js";
 type AutoCloseHandler = (sessionId: string, taskId: string) => Promise<void>;
 
 /**
+ * R14-14: Callback type for escalation action handling.
+ * Called when a session is escalated to a new level.
+ */
+type EscalationActionHandler = (sessionId: string, taskId: string, level: EscalationLevel, reason: string) => Promise<void>;
+
+/**
  * Emitter interface for lifecycle events.
  */
 interface TakeoverEventEmitter {
@@ -66,6 +72,7 @@ export class TakeoverEscalationManager {
     private readonly config: TakeoverTimeoutConfig,
     private readonly eventEmitter: TakeoverEventEmitter,
     private readonly onAutoClose?: AutoCloseHandler,
+    private readonly onEscalationAction?: EscalationActionHandler,
   ) {}
 
   /**
@@ -258,6 +265,11 @@ export class TakeoverEscalationManager {
       message: "takeover.session_escalated",
       data: { sessionId, taskId, fromLevel: previousLevel, toLevel: nextLevel, reason },
     });
+
+    // R14-14: Trigger escalation action for the new level
+    if (this.onEscalationAction) {
+      await this.onEscalationAction(sessionId, taskId, nextLevel, reason);
+    }
 
     if (nextLevel !== "auto_close") {
       this.scheduleEscalationCheck(sessionId, taskId);

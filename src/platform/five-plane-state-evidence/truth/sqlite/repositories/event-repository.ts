@@ -615,6 +615,32 @@ export class EventRepository {
     );
   }
 
+  // R13-12 FIX: Implement getEventsByTenantId for multi-tenant isolation queries.
+  // Tenant isolation is maintained via JOIN with tasks table.
+  public listEventsByTenantId(tenantId: string, limit?: number, cursor?: string | null): EventRecord[] {
+    let sql = `SELECT ${EVENT_COLS_PREFIXED}
+       FROM events e
+       INNER JOIN tasks t ON t.id = e.task_id
+       WHERE t.tenant_id = ?`;
+    const params: (string | number)[] = [tenantId];
+
+    if (cursor !== undefined && cursor !== null) {
+      // cursor is encoded as base64url JSON: {id, createdAt}
+      const cursorData = decodeEventStreamCursor(cursor);
+      sql += ` AND (e.created_at > ? OR (e.created_at = ? AND e.id > ?))`;
+      params.push(cursorData.createdAt, cursorData.createdAt, cursorData.id);
+    }
+
+    sql += ` ORDER BY e.created_at ASC, e.id ASC`;
+
+    if (limit !== undefined) {
+      sql += ` LIMIT ?`;
+      params.push(limit);
+    }
+
+    return queryAll<EventRecord>(this.conn, sql, ...params);
+  }
+
   public getEvent(eventId: string): EventRecord | undefined {
     return queryOne<EventRecord>(
       this.conn,
@@ -623,6 +649,32 @@ export class EventRepository {
        WHERE id = ?`,
       eventId,
     );
+  }
+
+  // R13-10 FIX: Implement getEventsByCorrelationId for workflow linking.
+  // correlation_id links events belonging to the same workflow or business transaction.
+  public listEventsByCorrelationId(correlationId: string, limit?: number): EventRecord[] {
+    let sql = `SELECT ${EVENT_COLS}
+       FROM events
+       WHERE correlation_id = ?
+       ORDER BY created_at ASC, id ASC`;
+    if (limit !== undefined) {
+      sql += ` LIMIT ${limit}`;
+    }
+    return queryAll<EventRecord>(this.conn, sql, correlationId);
+  }
+
+  // R13-11 FIX: Implement getEventsByCausationId for cause-effect chain tracking.
+  // causation_id links an event to its originating event (the cause).
+  public listEventsByCausationId(causationId: string, limit?: number): EventRecord[] {
+    let sql = `SELECT ${EVENT_COLS}
+       FROM events
+       WHERE causation_id = ?
+       ORDER BY created_at ASC, id ASC`;
+    if (limit !== undefined) {
+      sql += ` LIMIT ${limit}`;
+    }
+    return queryAll<EventRecord>(this.conn, sql, causationId);
   }
 
   public listDispatchDecisionTracesByTask(taskId: string, tenantId?: string | null): DispatchDecisionTrace[] {

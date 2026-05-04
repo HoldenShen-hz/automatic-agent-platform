@@ -564,7 +564,7 @@ export class ApprovalService {
   /**
    * R14-2/R14-3: Emits OperationalDirective for approval/rejection decisions.
    * - Approved: emits "resume" to unblock execution
-   * - Rejected/Expired: emits "cancel" to terminate the blocked execution
+   * - Rejected/Expired: emits "kill" to terminate the blocked execution
    */
   private emitApprovalOperationalDirective(
     request: ApprovalRequest,
@@ -578,15 +578,17 @@ export class ApprovalService {
     }
 
     const operationalType: OperationalDirective["type"] =
-      approvalStatus === "approved" ? "resume" : "cancel";
+      approvalStatus === "approved" ? "resume" : "kill";
+
+    const scope: OperationalDirective["scope"] = {
+      ...(tenantId != null ? { tenantId } : {}),
+      ...(request.harnessRunId != null ? { harnessRunId: request.harnessRunId } : {}),
+      ...(request.nodeRunId != null ? { nodeRunId: request.nodeRunId } : {}),
+    };
 
     const directive = createOperationalDirective({
       type: operationalType,
-      scope: {
-        tenantId: tenantId ?? undefined,
-        harnessRunId: request.harnessRunId ?? undefined,
-        nodeRunId: request.nodeRunId ?? undefined,
-      },
+      scope,
       issuedBy: {
         principalId: decision.respondedBy,
         tenantId: tenantId ?? "system",

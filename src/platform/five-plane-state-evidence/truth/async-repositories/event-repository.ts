@@ -260,6 +260,33 @@ export class AsyncEventRepository {
     );
   }
 
+  // R13-12 FIX: Implement getEventsByTenantId for multi-tenant isolation queries.
+  // Tenant isolation is maintained via JOIN with tasks table.
+  public async listEventsByTenantId(tenantId: string, limit?: number, cursor?: string | null): Promise<EventRecord[]> {
+    let sql = `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
+        e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
+        e.trace_id AS "traceId", e.created_at AS "createdAt"
+       FROM events e
+       INNER JOIN tasks t ON t.id = e.task_id
+       WHERE t.tenant_id = $1`;
+    const params: unknown[] = [tenantId];
+
+    if (cursor !== undefined && cursor !== null) {
+      const cursorData = decodeEventStreamCursor(cursor);
+      sql += ` AND (e.created_at > $${params.length + 1} OR (e.created_at = $${params.length + 1} AND e.id > $${params.length + 2}))`;
+      params.push(cursorData.createdAt, cursorData.createdAt, cursorData.id);
+    }
+
+    sql += ` ORDER BY e.created_at ASC, e.id ASC`;
+
+    if (limit !== undefined) {
+      sql += ` LIMIT $${params.length + 1}`;
+      params.push(limit);
+    }
+
+    return asyncQueryAll<EventRecord>(this.conn, sql, ...params);
+  }
+
   public async getEvent(eventId: string): Promise<EventRecord | null> {
     const result = await asyncQueryOne<EventRecord>(
       this.conn,
@@ -267,6 +294,28 @@ export class AsyncEventRepository {
       eventId,
     );
     return result ?? null;
+  }
+
+  // R13-10 FIX: Implement getEventsByCorrelationId for workflow linking.
+  // correlation_id links events belonging to the same workflow or business transaction.
+  public async listEventsByCorrelationId(correlationId: string, limit?: number): Promise<EventRecord[]> {
+    let sql = `SELECT ${EVENT_COLS} FROM events WHERE correlation_id = $1 ORDER BY created_at ASC, id ASC`;
+    if (limit !== undefined) {
+      sql += ` LIMIT $2`;
+      return asyncQueryAll<EventRecord>(this.conn, sql, correlationId, limit);
+    }
+    return asyncQueryAll<EventRecord>(this.conn, sql, correlationId);
+  }
+
+  // R13-11 FIX: Implement getEventsByCausationId for cause-effect chain tracking.
+  // causation_id links an event to its originating event (the cause).
+  public async listEventsByCausationId(causationId: string, limit?: number): Promise<EventRecord[]> {
+    let sql = `SELECT ${EVENT_COLS} FROM events WHERE causation_id = $1 ORDER BY created_at ASC, id ASC`;
+    if (limit !== undefined) {
+      sql += ` LIMIT $2`;
+      return asyncQueryAll<EventRecord>(this.conn, sql, causationId, limit);
+    }
+    return asyncQueryAll<EventRecord>(this.conn, sql, causationId);
   }
 
   public async countPendingTier1Acks(): Promise<number> {

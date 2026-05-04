@@ -177,6 +177,20 @@ export async function delegateApproval(client: RESTClient, approvalId: string, d
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { delegateTo });
 }
 
+export async function submitApprovalTextInput(
+  client: RESTClient,
+  approvalId: string,
+  inputText: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(
+    `/approvals/${approvalId}/decision`,
+    {
+      decisionType: "text_input",
+      inputText,
+    },
+  );
+}
+
 // §210-2493: requestMoreContextApproval not previously defined - add endpoint for requesting additional context
 export async function requestMoreContextApproval(client: RESTClient, approvalId: string): Promise<{ ok: true; body?: unknown }> {
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.approvalsDelegate.path, { approvalId }), { action: "request_context" });

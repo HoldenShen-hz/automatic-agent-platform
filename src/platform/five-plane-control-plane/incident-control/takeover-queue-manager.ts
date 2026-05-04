@@ -87,6 +87,7 @@ export class TakeoverQueueManager {
       payload: request.payload,
       status: "pending",
       attempts: 0,
+      nextRetryTime: 0, // Immediately available for processing
     };
 
     // Insert sorted by priority
@@ -136,9 +137,20 @@ export class TakeoverQueueManager {
 
   /**
    * Finds the next pending request.
+   * R14-12: Returns the highest priority (lowest priority number) pending request.
+   * R14-9: Only returns requests whose nextRetryTime has passed.
    */
   public findNextPending(): TakeoverRequestEntry | undefined {
-    return this.pendingQueue.find((e) => e.status === "pending");
+    const now = Date.now();
+    let best: TakeoverRequestEntry | undefined;
+    for (const entry of this.pendingQueue) {
+      if (entry.status === "pending" && entry.nextRetryTime <= now) {
+        if (best === undefined || entry.priority < best.priority) {
+          best = entry;
+        }
+      }
+    }
+    return best;
   }
 
   /**
@@ -170,6 +182,50 @@ export class TakeoverQueueManager {
     if (idx !== -1) {
       this.pendingQueue.splice(idx, 1);
     }
+  }
+
+  /**
+   * R14-9: Updates the next retry time for a request with exponential backoff.
+   * @param requestId The request ID
+   * @param backoffDelayMs Base delay for exponential backoff calculation
+   */
+  public setRetryTime(requestId: string, backoffDelayMs: number): void {
+    const entry = this.pendingQueue.find((e) => e.requestId === requestId);
+    if (!entry) return;
+
+    // Exponential backoff: delay * 2^(attempts-1), with jitter
+    const exponentialDelay = backoffDelayMs * Math.pow(2, entry.attempts - 1);
+    const jitter = Math.random() * 0.1 * exponentialDelay; // 10% jitter
+    entry.nextRetryTime = Date.now() + exponentialDelay + jitter;
+  }
+
+  /**
+   * R14-13: Expires requests that have been pending too long.
+   * Returns the number of requests that were expired.
+   */
+  public expireTimedOutRequests(maxPendingTimeMs: number): number {
+    const now = Date.now();
+    let expiredCount = 0;
+
+    for (const entry of this.pendingQueue) {
+      if (entry.status === "pending") {
+        const enqueuedTime = new Date(entry.enqueuedAt).getTime();
+        if (now - enqueuedTime > maxPendingTimeMs) {
+          entry.status = "failed";
+          entry.lastError = "Request timed out while pending";
+          this.eventEmitter.emit("takeover:request_processed", {
+            requestId: entry.requestId,
+            taskId: entry.taskId,
+            actionType: entry.actionType,
+            success: false,
+            error: "Request timed out while pending",
+          });
+          expiredCount++;
+        }
+      }
+    }
+
+    return expiredCount;
   }
 
   /**

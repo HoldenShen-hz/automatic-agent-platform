@@ -12,6 +12,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
+import type { DurableEventBus } from "./durable-event-bus.js";
 
 /**
  * Failure categories for DLQ entries
@@ -58,6 +59,7 @@ export type OperatorActionType =
 export interface ExtendedDeadLetterRecord {
   deadLetterId: string;
   sourceEventId: string;
+  eventType: string;
   consumerId: string;
   errorCode: string;
   errorMessage: string | null;
@@ -76,6 +78,8 @@ export interface ExtendedDeadLetterRecord {
   reason: string | null;
   /** Timestamp when all retries were exhausted */
   retryExhaustedAt: string | null;
+  /** Timestamp of last retry attempt */
+  lastAttemptAt: string | null;
   /** Operator action log for audit trail */
   operatorActionLog: OperatorActionRecord[];
 }
@@ -204,6 +208,7 @@ export class DlqService {
    */
   public enqueue(input: {
     sourceEventId: string;
+    eventType: string;
     consumerId: string;
     errorCode: string;
     errorMessage?: string | null;
@@ -216,6 +221,7 @@ export class DlqService {
     const record: ExtendedDeadLetterRecord = {
       deadLetterId: newId("dlq"),
       sourceEventId: input.sourceEventId,
+      eventType: input.eventType,
       consumerId: input.consumerId,
       errorCode: input.errorCode,
       errorMessage: input.errorMessage ?? null,
@@ -230,6 +236,7 @@ export class DlqService {
       failureCategory: input.failureCategory ?? null,
       reason: input.reason ?? null,
       retryExhaustedAt: null,
+      lastAttemptAt: null,
       operatorActionLog: [],
     };
     this.repo.insert(record);
@@ -274,6 +281,7 @@ export class DlqService {
       retryCount: record.retryCount + 1,
       nextRetryAt,
       updatedAt: now,
+      lastAttemptAt: now,
     };
     this.repo.update(updated);
     return updated;
@@ -493,6 +501,16 @@ export class DlqService {
     return this.repo.listAll().filter((record) => record.status === status);
   }
 
+  // R13-4/R13-5 FIX: Add listRetryable method to DlqService for DLQ consumer
+  /**
+   * List dead letter records that are ready for retry.
+   * @param asOf - ISO timestamp to check against nextRetryAt
+   * @returns Array of records eligible for retry
+   */
+  public listRetryable(asOf: string): ExtendedDeadLetterRecord[] {
+    return this.repo.listRetryable(asOf);
+  }
+
   /**
    * Get a specific dead letter record
    */
@@ -560,5 +578,195 @@ export class DlqService {
       );
     }
     return record;
+  }
+}
+
+/**
+ * DLQ Consumer - Processes messages from the dead letter queue.
+ * R13-4 FIX: Implements DLQConsumer that processes messages from the DLQ.
+ * R13-5 FIX: Implements retry mechanism for DLQ messages.
+ * R13-6 FIX: Handles max retry exceeded properly.
+ * R13-7 FIX: Creates dead letter record after max retries are exhausted.
+ */
+export interface DlqConsumerOptions {
+  /** Maximum retry attempts before giving up */
+  maxRetries?: number;
+  /** Initial backoff delay in milliseconds */
+  initialBackoffMs?: number;
+  /** Maximum backoff delay in milliseconds */
+  maxBackoffMs?: number;
+  /** Consumer ID for this DLQ consumer */
+  consumerId?: string;
+}
+
+const DEFAULT_DLQ_CONSUMER_OPTIONS: Required<DlqConsumerOptions> = {
+  maxRetries: 3,
+  initialBackoffMs: 1000,
+  maxBackoffMs: 30000,
+  consumerId: "dlq_consumer",
+};
+
+/**
+ * DLQ Consumer that processes dead letter records and attempts retries.
+ */
+export class DlqConsumer {
+  private readonly options: Required<DlqConsumerOptions>;
+  private readonly eventBus: DurableEventBus | null = null;
+  private disposed = false;
+
+  /**
+   * Creates a DLQ consumer for processing dead letter records.
+   * @param dlqService - The DLQ service to use
+   * @param eventBus - Optional event bus for re-publishing events
+   * @param options - Consumer configuration options
+   */
+  public constructor(
+    private readonly dlqService: DlqService,
+    eventBus?: DurableEventBus,
+    options: DlqConsumerOptions = {},
+  ) {
+    this.options = { ...DEFAULT_DLQ_CONSUMER_OPTIONS, ...options };
+    this.eventBus = eventBus ?? null;
+  }
+
+  /**
+   * Processes all pending retryable DLQ entries.
+   * R13-4 FIX: Main entry point for processing DLQ messages.
+   * @returns Number of entries processed
+   */
+  public async processPending(): Promise<number> {
+    if (this.disposed) {
+      return 0;
+    }
+
+    const now = nowIso();
+    // R13-4 FIX: Use listRetryable to get entries ready for retry
+    const retryable = this.dlqService.listRetryable(now);
+
+    let processed = 0;
+    for (const record of retryable) {
+      if (this.disposed) {
+        break;
+      }
+
+      try {
+        const result = await this.processOne(record);
+        if (result.retryAgain) {
+          // Schedule next retry with backoff
+          this.dlqService.scheduleRetry(record.deadLetterId);
+        }
+        processed++;
+      } catch (error) {
+        // Log error but continue processing other entries
+        console.error(`DLQ consumer error processing ${record.deadLetterId}:`, error);
+      }
+    }
+
+    return processed;
+  }
+
+  /**
+   * Processes a single dead letter record.
+   * R13-5 FIX: Implements retry mechanism for DLQ messages.
+   * R13-6 FIX: Handles max retry exceeded properly.
+   * R13-7 FIX: Creates dead letter record after max retries are exhausted.
+   */
+  private async processOne(record: ExtendedDeadLetterRecord): Promise<{ retryAgain: boolean }> {
+    // R13-6 FIX: Check if max retries exceeded
+    if (record.retryCount >= record.maxRetries) {
+      // R13-7 FIX: Mark as retry exhausted - this creates the dead letter record
+      this.dlqService.markRetryExhausted(record.deadLetterId);
+      return { retryAgain: false };
+    }
+
+    // R13-5 FIX: Attempt retry with backoff
+    const backoffDelay = this.calculateBackoff(record.retryCount);
+
+    // Check if enough time has passed since last attempt
+    if (record.lastAttemptAt) {
+      const timeSinceLastAttempt = Date.now() - new Date(record.lastAttemptAt).getTime();
+      if (timeSinceLastAttempt < backoffDelay) {
+        return { retryAgain: true };
+      }
+    }
+
+    // If we have an event bus, try to re-publish the event
+    if (this.eventBus && record.status !== "discarded") {
+      try {
+        const payload = JSON.parse(record.payloadJson);
+        // Re-publish to event bus for another attempt
+        this.eventBus.publish({
+          eventType: this.inferEventType(record) || "dlq:republished",
+          payload,
+          aggregateId: this.extractAggregateId(payload),
+        });
+
+        // Mark as resolved since re-publishing succeeded
+        this.dlqService.markResolved(record.deadLetterId);
+        return { retryAgain: false };
+      } catch (error) {
+        // Re-publishing failed, schedule retry
+        this.dlqService.scheduleRetry(record.deadLetterId);
+        return { retryAgain: true };
+      }
+    }
+
+    // No event bus available, just mark as needing retry
+    this.dlqService.scheduleRetry(record.deadLetterId);
+    return { retryAgain: true };
+  }
+
+  /**
+   * Calculates exponential backoff delay with jitter.
+   * R13-5 FIX: Uses exponential backoff for retry delays.
+   */
+  private calculateBackoff(retryCount: number): number {
+    const exponentialDelay = Math.min(
+      this.options.initialBackoffMs * Math.pow(2, retryCount),
+      this.options.maxBackoffMs,
+    );
+    const jitter = Math.random() * exponentialDelay * 0.1;
+    return Math.round(exponentialDelay + jitter);
+  }
+
+  /**
+   * Infers event type from dead letter record for re-publishing.
+   */
+  private inferEventType(record: ExtendedDeadLetterRecord): string | null {
+    // Try to extract event type from payload
+    try {
+      const payload = JSON.parse(record.payloadJson);
+      return payload?.eventType ?? record.eventType ?? null;
+    } catch {
+      return record.eventType ?? null;
+    }
+  }
+
+  /**
+   * Extracts aggregate ID from payload if available.
+   */
+  private extractAggregateId(payload: Record<string, unknown>): string | null {
+    return payload?.aggregateId as string | null
+        ?? payload?.runId as string | null
+        ?? null;
+  }
+
+  /**
+   * Disposes the consumer and releases resources.
+   */
+  public dispose(): void {
+    this.disposed = true;
+  }
+
+  /**
+   * Gets metrics about the DLQ consumer state.
+   */
+  public getMetrics(): { pendingCount: number; retryingCount: number; discardedCount: number } {
+    const all = this.dlqService.listAll();
+    return {
+      pendingCount: all.filter((r) => r.status === "pending").length,
+      retryingCount: all.filter((r) => r.status === "retrying").length,
+      discardedCount: all.filter((r) => r.status === "discarded").length,
+    };
   }
 }

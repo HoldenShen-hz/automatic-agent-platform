@@ -835,6 +835,7 @@ export class DurableEventBus {
       const failureCategory = this.categorizeFailure(lastError);
       this.dlqService.enqueue({
         sourceEventId: item.event.id,
+        eventType: item.event.eventType,
         consumerId: item.ack.consumerId,
         errorCode: errorMessage,
         errorMessage: lastError?.message ?? null,
