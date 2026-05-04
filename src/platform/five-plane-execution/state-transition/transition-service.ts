@@ -132,18 +132,14 @@ function assertNotCanonicalEntity(entityId: string, entityType: string): void {
     }
   }
 
-  // Additional check: if the entityId looks like a GUID/UUID pattern typical of
-  // canonical entities, warn. This catches cases where prefix conventions may vary.
-  // UUID v4 pattern: 8-4-4-4-12 hex characters
+  // R4-15 (INV-STATE-001): TransitionService bypasses RuntimeStateMachine for legacy entities.
+  // This is INTENTIONAL for legacy Task/Workflow/Session/Execution/Approval types.
+  // However, UUID-formatted entity IDs from canonical five-plane entities (HarnessRun, NodeRun, etc.)
+  // should NEVER be passed here - they must use RuntimeStateMachine. The code below detects this
+  // and throws InvState001BypassError.
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (entityType !== "approval" && uuidPattern.test(entityId)) {
-    // For non-approval entities with UUIDs, be more cautious
-    // This is a heuristic - approval IDs may legitimately be UUIDs
-    console.warn(
-      `[INV-STATE-001] WARNING: Entity "${entityId}" (${entityType}) has UUID format ` +
-        `and may be a canonical five-plane entity. Prefer RuntimeStateMachine for UUID-formatted ` +
-        `entity IDs in five-plane workloads. TransitionService is designed for legacy entities.`,
-    );
+    throw new InvState001BypassError(entityId, entityType);
   }
 }
 

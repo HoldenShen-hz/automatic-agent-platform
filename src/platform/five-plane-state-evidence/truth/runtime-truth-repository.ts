@@ -220,6 +220,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   // NOTE: For true durability, this requires external persistence (DB transaction,
   // write-ahead log to disk, or replicated log). The WAL markers here provide
   // intra-process crash recovery within the current execution context.
+  // R5-48 FIX NEEDED: Replace with real db.transaction() for crash-safe durability.
   private transaction<TResult>(operation: () => TResult): TResult {
     // Write-ahead: begin transaction marker before any state mutation
     this.state.auditRefs.push(`BEGIN_TXN_${Date.now()}`);

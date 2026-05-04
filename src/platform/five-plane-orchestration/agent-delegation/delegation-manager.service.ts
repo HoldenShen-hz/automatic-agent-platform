@@ -165,10 +165,18 @@ export class DelegationManagerService {
    * @returns DelegationHandle for tracking the delegation
    * @throws DelegationDepthExceededError | DelegationFanoutExceededError | DelegationCycleDetectedError
    */
-  public delegate(
+  /**
+   * Creates a new delegation from parent agent to child agent.
+   *
+   * @param parent - Parent agent context
+   * @param spec - Delegation specification
+   * @returns DelegationHandle for tracking the delegation
+   * @throws DelegationDepthExceededError | DelegationFanoutExceededError | DelegationCycleDetectedError
+   */
+  public async delegate(
     parent: AgentContext,
     spec: DelegationSpec,
-  ): AwaitableDelegationHandle {
+  ): Promise<AwaitableDelegationHandle> {
     // Step 0: Call depth budget evaluation - each dimension is distinct.
     // A plain delegation adds one new delegation frame; it does not triple-count
     // the current delegation depth as goal decomposition or global call depth.
@@ -197,12 +205,12 @@ export class DelegationManagerService {
     // Step 3: Create isolated child context
     this.createIsolatedContext(parent, narrowedPermissions, spec);
 
-    // Step 4: Create delegation record
-    const delegationResult = this.createDelegationRecord(parent, spec, narrowedPermissions);
+    // Step 4: Create delegation record (await persistence)
+    const delegationResult = await this.createDelegationRecord(parent, spec, narrowedPermissions);
 
     // Step 5: Update delegation chain
     const rootAgentId = this.resolveRootAgentId(parent);
-    this.updateDelegationChain(rootAgentId, parent, spec, delegationResult);
+    await this.updateDelegationChain(rootAgentId, parent, spec, delegationResult);
     this.delegationRootStore.set(delegationResult.delegationId, rootAgentId);
 
     // Step 6: Return handle (actual dispatch would be handled by caller/dispatch engine)
@@ -537,11 +545,11 @@ export class DelegationManagerService {
     };
   }
 
-  private createDelegationRecord(
+  private async createDelegationRecord(
     parent: AgentContext,
     spec: DelegationSpec,
     permissions: PermissionSet,
-  ): DelegationResult {
+  ): Promise<DelegationResult> {
     // C-11: Evict expired entries before creating new one
     this.evictExpired();
 
@@ -578,8 +586,7 @@ export class DelegationManagerService {
 
     // R17-13: Persist to repository if available for durability across restarts
     if (this.delegationRepository) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.delegationRepository.create({
+      await this.delegationRepository.create({
         delegationId: delegation.delegationId,
         parentAgentId: delegation.parentAgentId,
         childAgentId: delegation.childAgentId,

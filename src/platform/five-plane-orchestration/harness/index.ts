@@ -12,6 +12,9 @@ import {
   type PolicyFinding,
   type RiskClass,
 } from "../../../platform/contracts/executable-contracts/index.js";
+import type { EvidenceRecord } from "../../../platform/contracts/types/platform-contracts.js";
+import { createEvidenceRecord, createPlatformPrincipal } from "../../../platform/contracts/types/platform-contracts.js";
+import type { RuntimeRepository } from "../../../platform/state-evidence/truth/runtime-truth-repository.js";
 import { RuntimeStateMachine, RuntimeTransitionCommand } from "../../../platform/execution/runtime-state-machine.js";
 import { AsyncHarnessService } from "./async-harness-service.js";
 import { ContextAssembler, type HarnessContext, type HarnessContextSourceSet } from "./context-assembler.js";
@@ -587,6 +590,8 @@ export class HarnessRuntimeService {
   private readonly contextAssembler: ContextAssembler;
   private readonly recoveryController: RecoveryController;
   private readonly stateMachine: RuntimeStateMachine;
+  /** R4-35: RuntimeTruthRepository for persisting decisions as immutable EvidenceRecords */
+  private readonly runtimeTruthRepository: RuntimeRepository | undefined;
   /** Vibration state per-run, maintained across runLoop iterations per §45.20 */
   private vibrationState: GuardrailVibrationState = {
     guardrailActionCount: 0,
@@ -604,6 +609,8 @@ export class HarnessRuntimeService {
       evalRunService?: EvalRunService;
       durableService?: DurableHarnessService;
       contextAssembler?: ContextAssembler;
+      /** R4-35: Optional RuntimeTruthRepository for persisting evidence records */
+      runtimeTruthRepository?: RuntimeRepository;
     } = {},
   ) {
     this.toolbeltAssembler = options.toolbeltAssembler ?? new ToolbeltAssembler();
@@ -618,6 +625,7 @@ export class HarnessRuntimeService {
     this.durableService = options.durableService ?? new DurableHarnessService();
     this.contextAssembler = options.contextAssembler ?? new ContextAssembler();
     this.stateMachine = new RuntimeStateMachine();
+    this.runtimeTruthRepository = options.runtimeTruthRepository;
     this.recoveryController = new RecoveryController(this.durableService, this);
     // R18-05 fix: Reset vibration state for each new service instance
     this.vibrationState = {
@@ -1133,6 +1141,9 @@ export class HarnessRuntimeService {
       harnessDecisionId,
     });
 
+    // R4-35: Persist decision as immutable EvidenceRecord after creating canonicalDecision
+    this.persistDecisionEvidence(canonicalDecision, decisionInputBundle, input);
+
     return {
       decisionId: canonicalDecision.harnessDecisionId,
       harnessDecisionId: canonicalDecision.harnessDecisionId,
@@ -1147,6 +1158,66 @@ export class HarnessRuntimeService {
       confidence: Number(input.evaluatorScore.toFixed(4)),
       createdAt: canonicalDecision.createdAt,
     };
+  }
+
+  /**
+   * R4-35: Persist a harness decision as an immutable EvidenceRecord.
+   * This ensures decisions are auditable and can be replayed for debugging/certification.
+   */
+  private persistDecisionEvidence(
+    decision: ReturnType<typeof createCanonicalHarnessDecision>,
+    inputBundle: ReturnType<typeof createCanonicalDecisionInputBundle>,
+    input: Parameters<typeof this.decide>[0],
+  ): void {
+    if (this.runtimeTruthRepository == null) {
+      return; // Evidence persistence is optional - runtime functions without RTR
+    }
+
+    const principal = createPlatformPrincipal({
+      actorId: decision.deciderRef,
+      tenantId: input.harnessRunId != null && input.harnessRunId !== "harness_run:compat"
+        ? `tenant:${input.harnessRunId.split(":")[0] ?? "local"}`
+        : "tenant:local",
+      roles: ["harness", "decider"],
+    });
+
+    const evidenceRecord = createEvidenceRecord({
+      traceId: `trace:${input.harnessRunId ?? "harness_run:compat"}`,
+      principal,
+      category: "decision",
+      targetRef: `harness_decision:${decision.harnessDecisionId}`,
+      content: {
+        decisionId: decision.harnessDecisionId,
+        decisionInputBundleId: decision.decisionInputBundleId,
+        decisionKind: decision.decisionKind,
+        decision: decision.decision,
+        deciderType: decision.deciderType,
+        deciderRef: decision.deciderRef,
+        reasonCode: decision.reasonCode,
+        action: input.riskScore,
+        evaluatorScore: input.evaluatorScore,
+        riskScore: input.riskScore,
+        requiresHuman: input.requiresHuman ?? false,
+        maxIterationsReached: input.maxIterationsReached ?? false,
+        hitlPending: input.hitlPending ?? false,
+        guardrailAbort: input.guardrailAbort ?? false,
+        sideEffectMayCommit: input.sideEffectMayCommit,
+        budgetExhausted: input.budgetExhausted ?? false,
+        guardrailSuggestedAction: input.guardrailSuggestedAction,
+        reasonCodes: input.sideEffectRefs,
+        evidenceRefs: input.evidenceRefs,
+        sideEffectRefs: input.sideEffectRefs,
+        nodeRunId: input.nodeRunId,
+        createdAt: decision.createdAt,
+      },
+      metadata: {
+        deciderType: decision.deciderType,
+        decisionKind: decision.decisionKind,
+        action: decision.decision,
+      },
+    });
+
+    this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
   }
 
   public runLoop(input: HarnessLoopInput): HarnessRunRuntimeState {

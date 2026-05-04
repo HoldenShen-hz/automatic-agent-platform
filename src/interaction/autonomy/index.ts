@@ -76,7 +76,10 @@ export interface AutonomyChangeEvent {
   readonly fromLevel: AutonomyLevel;
   readonly toLevel: AutonomyLevel;
   readonly trigger: "rule_engine" | "manual" | "incident_response";
+  // R9-44: "auto" = immediate, domain_owner/platform_team = requires approval queue
   readonly approvedBy: string | "auto";
+  // R9-44: true when promotion requires human approval before being applied
+  readonly requiresApprovalResolution?: boolean;
   readonly evidence: {
     readonly successRate: number;
     readonly totalExecutions: number;
@@ -407,6 +410,26 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           ...(item.lastIncidentSeverity == null ? {} : { incidentSeverity: item.lastIncidentSeverity }),
         };
 
+        // §42.2: Promotions require domain_owner/platform_team approval based on target level
+        // - promotions to supervised: domain_owner
+        // - promotions to semi_auto: domain_owner
+        // - promotions to full_auto: platform_team (requires platform_team approval per §42.2)
+        // - incident-driven and demotions use "auto"
+        const approvedBy: AutonomyChangeEvent["approvedBy"] =
+          item.incidents > 0 || eventType === "agent.autonomy.demoted"
+            ? "auto"
+            : nextLevel === "full_auto"
+              ? "platform_team"
+              : nextLevel === "semi_auto"
+                ? "domain_owner"
+                : nextLevel === "supervised"
+                  ? "domain_owner"
+                  : "domain_owner";
+
+        // R9-44: Flag promotions that require approval queue integration
+        // When approvedBy is domain_owner/platform_team, promotion must be routed to approval queue
+        const requiresApprovalResolution = approvedBy !== "auto" && eventType === "agent.autonomy.promoted";
+
         const changeEvent: AutonomyChangeEvent = {
           eventId: `autonomy_event_${Date.now()}_${changeEvents.length + 1}`,
           eventType,
@@ -415,20 +438,8 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           fromLevel: item.currentAutonomy,
           toLevel: nextLevel,
           trigger: item.incidents > 0 ? "incident_response" : "rule_engine",
-          // §42.2: Promotions require domain_owner/platform_team approval based on target level
-          // - promotions to supervised: domain_owner
-          // - promotions to semi_auto: domain_owner
-          // - promotions to full_auto: platform_team (requires platform_team approval per §42.2)
-          // - incident-driven and demotions use "auto"
-          approvedBy: item.incidents > 0 || eventType === "agent.autonomy.demoted"
-            ? "auto"
-            : nextLevel === "full_auto"
-              ? "platform_team"
-              : nextLevel === "semi_auto"
-                ? "domain_owner"
-                : nextLevel === "supervised"
-                  ? "domain_owner"
-                  : "domain_owner",
+          approvedBy,
+          requiresApprovalResolution,
           evidence,
         };
         changeEvents.push(changeEvent);
