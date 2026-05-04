@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 
@@ -153,6 +154,13 @@ export interface UserConfirmationReceipt {
   readonly riskClass: RiskClass;
   readonly confirmedAt: string;
   readonly expiresAt?: string;
+  // R9-40 fix: Add state field for full lifecycle tracking
+  readonly state: "not_required" | "pending_user_confirmation" | "confirmed" | "expired" | "denied";
+  // R9-40 fix: Add risk preview fields for confirmed state
+  readonly riskPreviewVersion?: string;
+  readonly scope?: string;
+  readonly actor?: string;
+  readonly timestamp?: string;
 }
 
 export type RiskClass = "low" | "medium" | "high" | "critical";
@@ -1713,4 +1721,112 @@ export function createContractEnvelope<TPayload>(input: {
     signature: input.signature ?? null,
     ttl: input.ttl ?? null,
   };
+}
+
+/**
+ * R7-44 FIX: Inter-plane ContractEnvelope signature verification.
+ * Verifies the signature of a ContractEnvelope to ensure authenticity
+ * and integrity of cross-plane contract delivery per §5.5.
+ */
+export interface ContractEnvelopeVerificationResult {
+  readonly valid: boolean;
+  readonly error?: string;
+  readonly verifiedAt: string;
+}
+
+/**
+ * Verifies the signature of a ContractEnvelope.
+ * Uses HMAC-SHA256 for signature verification.
+ *
+ * @param envelope - The ContractEnvelope to verify
+ * @param secretKey - The shared secret key for HMAC verification
+ * @returns Verification result with validity and error details
+ */
+export function verifyContractEnvelopeSignature<TPayload>(
+  envelope: ContractEnvelope<TPayload>,
+  secretKey: string,
+): ContractEnvelopeVerificationResult {
+  const verifiedAt = nowIso();
+
+  if (envelope.signature == null) {
+    return {
+      valid: false,
+      error: "signature_missing: ContractEnvelope has no signature",
+      verifiedAt,
+    };
+  }
+
+  try {
+    // Compute expected signature using HMAC-SHA256
+    // Signature covers: version + schema + payload (stringified)
+    const payloadString = typeof envelope.payload === "string"
+      ? envelope.payload
+      : JSON.stringify(envelope.payload);
+    const signatureInput = `${envelope.version}:${envelope.schema}:${payloadString}`;
+    const expectedSignature = createHash("sha256")
+      .update(signatureInput)
+      .update(secretKey)
+      .digest("hex");
+
+    // Constant-time comparison to prevent timing attacks
+    if (!timingSafeEqual(envelope.signature, expectedSignature)) {
+      return {
+        valid: false,
+        error: "signature_invalid: ContractEnvelope signature verification failed",
+        verifiedAt,
+      };
+    }
+
+    return {
+      valid: true,
+      verifiedAt,
+    };
+  } catch (err) {
+    return {
+      valid: false,
+      error: `signature_verification_error: ${err instanceof Error ? err.message : "unknown error"}`,
+      verifiedAt,
+    };
+  }
+}
+
+/**
+ * Signs a ContractEnvelope payload for inter-plane delivery.
+ * Returns a new envelope with the signature field populated.
+ *
+ * @param envelope - The ContractEnvelope to sign
+ * @param secretKey - The shared secret key for HMAC signing
+ * @returns New envelope with signature field populated
+ */
+export function signContractEnvelope<TPayload>(
+  envelope: ContractEnvelope<TPayload>,
+  secretKey: string,
+): ContractEnvelope<TPayload> {
+  const payloadString = typeof envelope.payload === "string"
+    ? envelope.payload
+    : JSON.stringify(envelope.payload);
+  const signatureInput = `${envelope.version}:${envelope.schema}:${payloadString}`;
+  const signature = createHash("sha256")
+    .update(signatureInput)
+    .update(secretKey)
+    .digest("hex");
+
+  return {
+    ...envelope,
+    signature,
+  };
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }

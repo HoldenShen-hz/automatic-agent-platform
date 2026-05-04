@@ -51,6 +51,12 @@ import {
   type JsonValue,
 } from "../../platform/contracts/executable-contracts/index.js";
 import type { ClarificationSession } from "../../platform/five-plane-orchestration/harness/runtime/intake-admission-service.js";
+import { GuardrailEngine } from "../../platform/five-plane-orchestration/harness/guardrails/guardrail-engine.js";
+import {
+  mapAutonomyLevelToUnifiedRuntimeMode,
+  type InteractionAutonomyMode,
+  type UnifiedRuntimeMode,
+} from "../../platform/contracts/types/unified-runtime-mode.js";
 
 export interface NlEntryRequest {
   readonly tenantId: string;
@@ -192,6 +198,11 @@ export interface PromptInjectionFinding {
   readonly matchedText: string;
 }
 
+interface ExecutionPolicyContext {
+  readonly autonomyMode: InteractionAutonomyMode;
+  readonly runtimeMode: UnifiedRuntimeMode;
+}
+
 export interface ContextEnrichment {
   readonly domainHint: string;
   readonly extractedConstraints: readonly string[];
@@ -222,6 +233,7 @@ export interface ClarificationState {
 }
 
 const DEFAULT_MAX_CLARIFICATION_ROUNDS = 5;
+const inputGuardrailEngine = new GuardrailEngine();
 
 export interface UserConfirmationReceipt {
   readonly confirmationId: string;
@@ -608,6 +620,29 @@ function dedupeStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
 }
 
+function severityRank(severity: PromptInjectionFinding["severity"]): number {
+  switch (severity) {
+    case "high":
+      return 3;
+    case "medium":
+      return 2;
+    default:
+      return 1;
+  }
+}
+
+function dedupePromptInjectionFindings(findings: readonly PromptInjectionFinding[]): PromptInjectionFinding[] {
+  const deduped = new Map<string, PromptInjectionFinding>();
+  for (const finding of findings) {
+    const key = `${finding.reasonCode}:${finding.matchedText}`;
+    const existing = deduped.get(key);
+    if (existing == null || severityRank(finding.severity) > severityRank(existing.severity)) {
+      deduped.set(key, finding);
+    }
+  }
+  return [...deduped.values()];
+}
+
 function detectPromptInjection(message: string): PromptInjectionFinding[] {
   const findings: PromptInjectionFinding[] = [];
   for (const pattern of PROMPT_INJECTION_PATTERNS) {
@@ -625,6 +660,53 @@ function detectPromptInjection(message: string): PromptInjectionFinding[] {
     }
   }
   return findings;
+}
+
+function assessInputGuardrails(message: string): PromptInjectionFinding[] {
+  const promptInjectionFindings = detectPromptInjection(message);
+  const guardrailAssessment = inputGuardrailEngine.assess({
+    toolbelt: {
+      allowedTools: [],
+      grantedTools: [],
+      blockedTools: [],
+      requiredEvidence: [],
+    },
+    evidenceRefs: [],
+    riskScore: 0,
+    maxRiskScore: 1,
+    escalationThreshold: 1,
+    currentStepCount: 0,
+    maxSteps: 1,
+    inputPrompt: message,
+  });
+  const guardrailFindings = guardrailAssessment.findings
+    .filter((finding) => finding.layer === "input")
+    .map<PromptInjectionFinding>((finding) => ({
+      reasonCode: finding.code,
+      severity: finding.severity === "block" ? "high" : finding.severity === "warn" ? "medium" : "low",
+      blocked: finding.severity === "block",
+      matchedText: message,
+    }));
+  return dedupePromptInjectionFindings([...promptInjectionFindings, ...guardrailFindings]);
+}
+
+function deriveExecutionPolicyContext(
+  riskPreview: Pick<RiskPreview, "overallRisk">,
+  blockedByPolicy: boolean,
+): ExecutionPolicyContext {
+  const autonomyMode: InteractionAutonomyMode = blockedByPolicy
+    ? "frozen"
+    : riskPreview.overallRisk === "critical"
+      ? "suggestion"
+      : riskPreview.overallRisk === "high"
+        ? "supervised"
+        : riskPreview.overallRisk === "medium"
+          ? "semi_auto"
+          : "full_auto";
+  return {
+    autonomyMode,
+    runtimeMode: mapAutonomyLevelToUnifiedRuntimeMode(autonomyMode),
+  };
 }
 
 function deriveConversationState(
@@ -1018,6 +1100,8 @@ export class NlEntryService implements NlEntryPort {
     const locale = this.resolveLocale(request);
     const riskPreview = classifyRisk(request.message);
     const draftId = taskDraftIdFromMessage(request.message);
+    const securityFindings = assessInputGuardrails(request.message);
+    const blockedByPolicy = securityFindings.some((item) => item.blocked);
     const principalRef = createPrincipalRef({
       principalId: request.userId,
       tenantId: request.tenantId,
@@ -1025,7 +1109,14 @@ export class NlEntryService implements NlEntryPort {
       displayName: request.userId,
       authorizationLevel: "viewer",
     });
-    const parsedIntent = await this.intentParser.parseWithLlm(request.message, locale);
+    const parsedIntent = blockedByPolicy
+      ? {
+          intentType: "task_query" as const,
+          confidence: 0,
+          reasoning: "blocked_by_input_guardrail",
+          language: locale,
+        }
+      : await this.intentParser.parseWithLlm(request.message, locale);
     // §39.5: Inject prior conversation context into intent parsing
     const pipeline = await this.intakeRouter.route({
       title: deriveTitle(request.message),
@@ -1040,17 +1131,18 @@ export class NlEntryService implements NlEntryPort {
         riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
         reasons: riskPreview.riskFactors,
       },
-      preferredIntent: {
-        intent: mapIntentTypeToIntakeIntent(parsedIntent.intentType),
-        confidence: parsedIntent.confidence,
-        reasoning: parsedIntent.reasoning,
-        language: parsedIntent.language,
-        source: "nl_intent_parser",
-      },
+      ...(blockedByPolicy ? {} : {
+        preferredIntent: {
+          intent: mapIntentTypeToIntakeIntent(parsedIntent.intentType),
+          confidence: parsedIntent.confidence,
+          reasoning: parsedIntent.reasoning,
+          language: parsedIntent.language,
+          source: "nl_intent_parser",
+        },
+      }),
     });
-    const route = pipeline.routeDecision;
+    const route = "routeDecision" in pipeline ? pipeline.routeDecision : pipeline;
     const entities = extractEntities(request.message);
-    const securityFindings = detectPromptInjection(request.message);
     const detectedIntent: DetectedIntent = {
       intentType: mapIntentType(route.classification.intent),
       domainHint: route.divisionId,
@@ -1090,7 +1182,6 @@ export class NlEntryService implements NlEntryPort {
       slotResolution != null && requiredSlots.length > 0 && slotResolution.missing.length === 0
         ? Math.max(slotConfidence, 0.95)
         : slotConfidence;
-    const blockedByPolicy = securityFindings.some((item) => item.blocked);
     const clarificationRounds = this.getClarificationRounds(request.tenantId, request.userId);
     const requiresClarification =
       blockedByPolicy
@@ -1131,18 +1222,6 @@ export class NlEntryService implements NlEntryPort {
   }
 
   public async buildTask(request: NlEntryRequest): Promise<TaskBuildResult> {
-    // R5-16 FIX: §39.2 - classify_risk is an independent admission gate BEFORE intent processing
-    // Run standalone risk classification first to determine if processing should proceed
-    const standaloneRiskPreview = classifyRisk(request.message);
-    const requiresIndependentReview = standaloneRiskPreview.overallRisk === "critical"
-      || standaloneRiskPreview.overallRisk === "high";
-
-    // If risk requires independent review, throw to block processing
-    // §39.2: classify_risk is an independent pipeline gate - throw if classification fails
-    if (requiresIndependentReview) {
-      throw new Error(`nl_gateway.risk_classification_failed: ${standaloneRiskPreview.overallRisk} risk requires approval before processing`);
-    }
-
     const detailed = await this.parseDetailed(request);
     const primaryIntent = detailed.detectedIntents[0] ?? {
       intentType: "task_query" as const,
@@ -1152,6 +1231,7 @@ export class NlEntryService implements NlEntryPort {
       confidence: detailed.confidence,
     };
     const riskPreview = buildRiskPreview(request.message, primaryIntent.intentType, detailed.context);
+    const executionPolicy = deriveExecutionPolicyContext(riskPreview, detailed.blockedByPolicy);
     const costEstimate = this.costEstimator?.estimate(detailed.suggestedDivisionId) ?? defaultCostEstimate();
     const confirmationRequired = detailed.requiresClarification || riskPreview.approvalNeeded || riskPreview.overallRisk === "critical" || detailed.blockedByPolicy;
     const clarificationRounds = detailed.requiresClarification
@@ -1220,7 +1300,11 @@ export class NlEntryService implements NlEntryPort {
         workflowId: detailed.suggestedWorkflowId,
         locale: detailed.locale,
         entities: primaryIntent.entities as unknown as JsonValue,
-        context: detailed.context as unknown as JsonValue,
+        context: {
+          ...detailed.context,
+          autonomyMode: executionPolicy.autonomyMode,
+          runtimeMode: executionPolicy.runtimeMode,
+        } as unknown as JsonValue,
         summary: surfacedSummary,
       },
       missingFields: clarificationState.questions,
@@ -1281,54 +1365,13 @@ export class NlEntryService implements NlEntryPort {
             ...(canonicalTaskDraft.expiresAt !== undefined ? { expiresAt: canonicalTaskDraft.expiresAt } : {}),
           }
         : undefined;
-    const confirmedTaskSpec = createConfirmedTaskSpec({
-          confirmedTaskSpecId: `ctspec:${canonicalTaskDraft.taskDraftId}`,
-          taskDraftId: canonicalTaskDraft.taskDraftId,
-          tenantId: request.tenantId,
-          principal: principalRef,
-          domainId: canonicalDomainId,
-          goal: surfacedSummary,
-          inputs: {
-            request: request.message,
-            domainId: canonicalDomainId,
-            divisionId: detailed.suggestedDivisionId,
-            workflowId: detailed.suggestedWorkflowId,
-            continuation: detailed.continuation,
-            channel: request.channel ?? null,
-            entities: primaryIntent.entities as unknown as JsonValue,
-            context: detailed.context as unknown as JsonValue,
-          },
-          constraintPackRef: buildConstraintPackRef(canonicalDomainId, detailed.suggestedWorkflowId),
-          riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-          ...(canonicalConfirmationReceipt !== undefined ? { confirmationReceipt: canonicalConfirmationReceipt } : {}),
-          idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
-          traceId: buildIntakeTraceId(request, taskDraft.draftId),
-        });
-    const canonicalRequestEnvelope = confirmedTaskSpec == null
-      ? null
-      : createRequestEnvelopeFromConfirmedTask({
-          confirmedTaskSpec,
-          requestId: `request:${confirmedTaskSpec.confirmedTaskSpecId}`,
-          requestHash: `request_hash:${confirmedTaskSpec.confirmedTaskSpecId}`,
-          priority: ((): number => {
-            switch (riskPreview.overallRisk) {
-              case "critical": return 100;
-              case "high": return 80;
-              default: return 40;
-            }
-          })(),
-          budgetIntent: {
-            amount: Number(costEstimate.estimatedCostUsd.toFixed(4)),
-            currency: "USD",
-            resourceKinds: (["token"] as readonly BudgetResourceKind[]),
-          },
-          policyContext: {
-            channel: request.channel ?? null,
-            approvalRequired: riskPreview.approvalNeeded,
-            blockedByPolicy: detailed.blockedByPolicy,
-          },
-          artifactRefs: canonicalTaskDraft.rawInputRef == null ? [] : [canonicalTaskDraft.rawInputRef],
-        });
+    const policyContext = {
+      channel: request.channel ?? null,
+      approvalRequired: riskPreview.approvalNeeded,
+      blockedByPolicy: detailed.blockedByPolicy,
+      autonomyMode: executionPolicy.autonomyMode,
+      runtimeMode: executionPolicy.runtimeMode,
+    };
 
     // §39.2: Only emit RequestEnvelope after TaskSpec is confirmed
     // When confirmation is pending, return null requestEnvelope to prevent premature execution
@@ -1358,6 +1401,54 @@ export class NlEntryService implements NlEntryPort {
         canonicalRequestEnvelope: null,
       };
     }
+
+    const confirmedTaskSpec = createConfirmedTaskSpec({
+      confirmedTaskSpecId: `ctspec:${canonicalTaskDraft.taskDraftId}`,
+      taskDraftId: canonicalTaskDraft.taskDraftId,
+      tenantId: request.tenantId,
+      principal: principalRef,
+      domainId: canonicalDomainId,
+      goal: surfacedSummary,
+      inputs: {
+        request: request.message,
+        domainId: canonicalDomainId,
+        divisionId: detailed.suggestedDivisionId,
+        workflowId: detailed.suggestedWorkflowId,
+        continuation: detailed.continuation,
+        channel: request.channel ?? null,
+        entities: primaryIntent.entities as unknown as JsonValue,
+        context: {
+          ...detailed.context,
+          autonomyMode: executionPolicy.autonomyMode,
+          runtimeMode: executionPolicy.runtimeMode,
+        } as unknown as JsonValue,
+        policyContext: policyContext as unknown as JsonValue,
+      },
+      constraintPackRef: buildConstraintPackRef(canonicalDomainId, detailed.suggestedWorkflowId),
+      riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
+      ...(canonicalConfirmationReceipt !== undefined ? { confirmationReceipt: canonicalConfirmationReceipt } : {}),
+      idempotencyKey: buildIntakeIdempotencyKey(request, taskDraft.draftId),
+      traceId: buildIntakeTraceId(request, taskDraft.draftId),
+    });
+    const canonicalRequestEnvelope = createRequestEnvelopeFromConfirmedTask({
+      confirmedTaskSpec,
+      requestId: `request:${confirmedTaskSpec.confirmedTaskSpecId}`,
+      requestHash: `request_hash:${confirmedTaskSpec.confirmedTaskSpecId}`,
+      priority: ((): number => {
+        switch (riskPreview.overallRisk) {
+          case "critical": return 100;
+          case "high": return 80;
+          default: return 40;
+        }
+      })(),
+      budgetIntent: {
+        amount: Number(costEstimate.estimatedCostUsd.toFixed(4)),
+        currency: "USD",
+        resourceKinds: (["token"] as readonly BudgetResourceKind[]),
+      },
+      policyContext: policyContext as unknown as JsonValue,
+      artifactRefs: canonicalTaskDraft.rawInputRef == null ? [] : [canonicalTaskDraft.rawInputRef],
+    });
     // §39.6: Architecture requires only confirmed TaskSpec can generate RequestEnvelope
     // Gate RequestEnvelope creation behind confirmation state check
     if (confirmationReceipt.state === "pending_user_confirmation") {

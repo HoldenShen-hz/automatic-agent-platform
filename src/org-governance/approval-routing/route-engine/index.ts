@@ -472,9 +472,99 @@ function normalizeThresholdCny(
   return Number.POSITIVE_INFINITY;
 }
 
-// Default FX rate fallback for legacy USD amounts when no fxRateSnapshot is provided
-// In production, use a real exchange rate service or configured rate
+// R9-34 fix: FX Rate Provider interface for live currency conversion
+// In production, replace with a real FX rate service (e.g., central bank API, commercial FX provider)
+
+export interface FxRateProvider {
+  /**
+   * Gets the FX rate for converting from one currency to another.
+   * @param fromCurrency Source currency code (e.g., "USD")
+   * @param toCurrency Target currency code (e.g., "CNY")
+   * @returns The conversion rate, or null if unavailable
+   */
+  getRate(fromCurrency: string, toCurrency: string): Promise<number | null>;
+
+  /**
+   * Gets the source name for audit trail (e.g., "central_bank", "commercial_api")
+   */
+  getSourceName(): string;
+}
+
+/**
+ * Default FX rate provider that uses environment-configured fallback rates.
+ * R9-34 fix: This replaces the hardcoded 7.2 rate with a configurable provider.
+ *
+ * In production, set APPROVAL_ROUTE_FX_RATE_PROVIDER to "live" and configure
+ * APPROVAL_ROUTE_FX_RATE_SOURCE to point to a live FX rate endpoint.
+ */
+class ConfiguredFxRateProvider implements FxRateProvider {
+  private readonly fallbackRate: number;
+  private readonly source: string;
+
+  constructor() {
+    // R9-34 fix: Environment variable override with explicit default
+    this.fallbackRate = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
+    this.source = process.env["APPROVAL_ROUTE_FX_RATE_SOURCE"] ?? "configured_fallback";
+  }
+
+  async getRate(fromCurrency: string, toCurrency: string): Promise<number | null> {
+    // CNY to CNY is 1:1
+    if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) {
+      return 1;
+    }
+
+    // USD to CNY is the common case for approval routing
+    if (fromCurrency.toUpperCase() === "USD" && toCurrency.toUpperCase() === "CNY") {
+      // R9-34 fix: Check for live rate configuration first
+      const liveRate = process.env["APPROVAL_ROUTE_USD_CNY_RATE"];
+      if (liveRate != null) {
+        const rate = parseFloat(liveRate);
+        if (!isNaN(rate) && rate > 0) {
+          return rate;
+        }
+      }
+      return this.fallbackRate;
+    }
+
+    // For other currency pairs, return null to indicate no rate available
+    // Caller should handle this by requiring fxRateSnapshot in the request
+    return null;
+  }
+
+  getSourceName(): string {
+    return this.source;
+  }
+}
+
+// Global FX rate provider instance
+let fxRateProvider: FxRateProvider = new ConfiguredFxRateProvider();
+
+/**
+ * R9-34 fix: Sets a custom FX rate provider for live rate fetching.
+ * Use this in production to integrate with a real FX rate service.
+ */
+export function setFxRateProvider(provider: FxRateProvider): void {
+  fxRateProvider = provider;
+}
+
+/**
+ * R9-34 fix: Gets the current FX rate provider.
+ */
+export function getFxRateProvider(): FxRateProvider {
+  return fxRateProvider;
+}
+
+// Legacy constant for backward compatibility - use getUsdToCnyRate() instead
 const DEFAULT_LEGACY_FX_RATE = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
+
+/**
+ * R9-34 fix: Returns the USD to CNY conversion rate from the configured provider.
+ * This replaces direct usage of the hardcoded 7.2 fallback.
+ */
+async function getUsdToCnyRate(): Promise<number> {
+  const rate = await fxRateProvider.getRate("USD", "CNY");
+  return rate ?? DEFAULT_LEGACY_FX_RATE;
+}
 
 export function setDefaultLegacyFxRate(rate: number): void {
   // For testing purposes - allows test files to override the default rate

@@ -538,7 +538,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: [],
-          routing,
+          routing: buildSyntheticPipelineResult(routing),
           plannedWorkflow,
           compaction: null,
         };
@@ -605,7 +605,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: streamBridge.replayAfterSequence(streamId, 0),
-          routing,
+          routing: buildSyntheticPipelineResult(routing),
           plannedWorkflow,
           compaction: latestCompaction,
         };

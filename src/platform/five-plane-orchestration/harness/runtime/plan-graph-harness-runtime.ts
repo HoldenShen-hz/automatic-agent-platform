@@ -130,13 +130,33 @@ export class PlanGraphAnalyzer {
   }
 }
 
+export interface PlanGraphSchedulerInput {
+  readonly planGraphBundle: PlanGraphBundle;
+  readonly completedNodeIds?: readonly string[];
+}
+
+/**
+ * @deprecated PlanGraphScheduler is deprecated per §14.9.
+ * Use ReadyNodeSchedulingPolicy with "critical_path_rank" field instead.
+ * This scheduler is retained for backward compatibility only.
+ */
 export class PlanGraphScheduler {
+  /**
+   * @deprecated Use computeCriticalPathRanks() from plan-graph-analyzer instead.
+   * Computes critical path rank for each node based on longest path to terminal nodes.
+   * Higher rank = more critical for overall execution time.
+   */
+  public computeCriticalPathRanks(bundle: PlanGraphBundle): ReadonlyMap<string, number> {
+    return computeCriticalPathRanksFromGraph(bundle.graph);
+  }
+
   public decisionEvent(input: PlanGraphSchedulerInput & {
     readonly tenantId: string;
     readonly traceId: string;
     readonly emittedBy: string;
   }): PlatformFactEvent {
     const readyNodes = this.readyNodes(input);
+    const criticalPathRanks = this.computeCriticalPathRanks(input.planGraphBundle);
     return createPlatformFactEvent({
       eventType: "platform.graph_scheduler.decision_recorded",
       aggregateType: "PlanGraphBundle",
@@ -148,6 +168,7 @@ export class PlanGraphScheduler {
       payload: {
         schedulerPolicy: input.planGraphBundle.schedulerPolicy.strategy,
         readyNodeIds: readyNodes.map((node) => node.nodeId),
+        criticalPathRanks: Object.fromEntries(criticalPathRanks.entries()),
         completedNodeIds: input.completedNodeIds ?? [],
         deterministicSeed: input.planGraphBundle.graph.graphHash,
         emittedBy: input.emittedBy,
@@ -160,7 +181,14 @@ export class PlanGraphScheduler {
   public readyNodes(input: PlanGraphSchedulerInput): readonly PlanNode[] {
     const completed = new Set(input.completedNodeIds ?? []);
     const graph = input.planGraphBundle.graph;
-    const sortedNodes = [...graph.nodes].sort((left, right) => left.nodeId.localeCompare(right.nodeId));
+    const criticalPathRanks = computeCriticalPathRanksFromGraph(graph);
+    const sortedNodes = [...graph.nodes].sort((left, right) => {
+      // R6-04 FIX: Sort by critical_path_rank descending (most critical first)
+      // Then by nodeId ascending for determinism within same rank
+      const rankDelta = (criticalPathRanks.get(right.nodeId) ?? 0) - (criticalPathRanks.get(left.nodeId) ?? 0);
+      if (rankDelta !== 0) return rankDelta;
+      return left.nodeId.localeCompare(right.nodeId);
+    });
     return sortedNodes.filter((node) => {
       if (completed.has(node.nodeId)) {
         return false;
@@ -172,6 +200,68 @@ export class PlanGraphScheduler {
       return incomingHardEdges.every((edge) => completed.has(edge.fromNodeId));
     });
   }
+}
+
+/**
+ * R6-04 FIX: Compute critical path ranks for all nodes.
+ * Uses dynamic programming (longest path) to determine each node's
+ * position on the critical path - higher rank = more critical.
+ */
+function computeCriticalPathRanksFromGraph(graph: PlanGraph): ReadonlyMap<string, number> {
+  const ranks = new Map<string, number>();
+  const terminalNodes = new Set(graph.terminalNodeIds);
+
+  // Build adjacency list for reverse traversal (from terminal to entry)
+  const incomingEdges = new Map<string, PlanEdge[]>();
+  for (const node of graph.nodes) {
+    incomingEdges.set(node.nodeId, []);
+  }
+  for (const edge of graph.edges) {
+    const edges = incomingEdges.get(edge.toNodeId);
+    if (edges) {
+      edges.push(edge);
+    }
+  }
+
+  // Initialize terminal nodes with rank 0 (base case)
+  for (const terminalId of terminalNodes) {
+    ranks.set(terminalId, 0);
+  }
+
+  // Process nodes in reverse topological order using iterative approach
+  const visited = new Set<string>();
+  const processing = new Set<string>();
+
+  function computeRank(nodeId: string): number {
+    if (ranks.has(nodeId)) {
+      return ranks.get(nodeId)!;
+    }
+    if (processing.has(nodeId)) {
+      // Cycle detected, use 0 as fallback
+      return 0;
+    }
+    processing.add(nodeId);
+
+    const edges = incomingEdges.get(nodeId) ?? [];
+    let maxRank = 0;
+    for (const edge of edges) {
+      if (edge.dependencyType === "hard" || edge.dependencyType === "compensation") {
+        const fromRank = computeRank(edge.fromNodeId);
+        maxRank = Math.max(maxRank, fromRank + 1);
+      }
+    }
+    processing.delete(nodeId);
+    ranks.set(nodeId, maxRank);
+    return maxRank;
+  }
+
+  for (const node of graph.nodes) {
+    if (!ranks.has(node.nodeId)) {
+      computeRank(node.nodeId);
+    }
+  }
+
+  return ranks;
 }
 
 export class PlanGraphHarnessRuntime {

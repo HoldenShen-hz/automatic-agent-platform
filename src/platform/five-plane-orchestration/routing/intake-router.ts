@@ -773,6 +773,11 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   // Stage 1: RawInput → TaskDraft
   // =========================================================================
   const ambiguityFlags = detectAmbiguityFlags(input.request ?? "");
+  const normalized = [normalize(input.title), normalize(input.request)]
+    .filter((segment) => segment.length > 0)
+    .join(" ");
+  const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
+  let classification = classifyIntent(normalized, matchedHints);
 
   // Build normalized intent from classification
   const normalizedIntent: JsonValue = {
@@ -828,15 +833,6 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   // =========================================================================
   // Stage 3: TaskDraft (+ ClarificationSession) → ConfirmedTaskSpec
   // =========================================================================
-  // Normalize input for analysis
-  const normalized = [normalize(input.title), normalize(input.request)]
-    .filter((segment) => segment.length > 0)
-    .join(" ");
-
-  // Perform intent classification for the ConfirmedTaskSpec
-  const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
-  let classification = classifyIntent(normalized, matchedHints);
-
   // R6-11: Try LLM intent extraction with 0.80 confidence threshold per §39.3
   let useLlmClassification = false;
 
@@ -903,7 +899,16 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
     principal: pipelineContext.principal,
     domainId: taskDraft.domainId,
     goal: input.request ?? input.title ?? "",
-    inputs: { title: input.title, request: input.request, classification },
+    inputs: {
+      title: input.title ?? null,
+      request: input.request,
+      classification: {
+        intent: classification.intent,
+        continuation: classification.continuation,
+        confidence: classification.confidence,
+        matchedRules: [...classification.matchedRules],
+      },
+    },
     constraintPackRef: "default_constraint_pack",
     riskClass,
     idempotencyKey: pipelineContext.idempotencyKey,
@@ -997,10 +1002,10 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
     routeTrace.push(`route:fallback_due_to_capability_match=false`);
   }
 
+  const agentId = capabilityMatch.capableWorkerFound ? `${division?.id ?? "general_ops"}_agent` : undefined;
   const routeDecision: IntakeRouteDecision = {
     workflowId: effectiveWorkflowId,
     divisionId: effectiveDivisionId,
-    agentId: capabilityMatch.capableWorkerFound ? `${division?.id ?? "general_ops"}_agent` : undefined,
     routeReason: capabilityMatch.capableWorkerFound
       ? "route.simple_request"
       : "route.capability_fallback_no_worker_available",
@@ -1009,6 +1014,7 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
     classification,
     confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
     capabilityMatch,
+    ...(agentId != null ? { agentId } : {}),
   };
 
   return {

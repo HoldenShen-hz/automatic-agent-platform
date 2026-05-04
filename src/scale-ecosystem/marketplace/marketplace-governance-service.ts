@@ -621,12 +621,11 @@ export class MarketplaceGovernanceService {
     // §55: Certification gate - validate agent/pack certification before release
     const certGate = getCertificationGateService();
     const packageId = packageRecord.packageId;
-    let certResult: CertificationResult;
-    if (packageRecord.packageType === "agent") {
-      certResult = await certGate.validateAgentCertification(packageId);
-    } else {
-      certResult = await certGate.validatePackCertification(packageId);
-    }
+    const usesAgentCertification =
+      packageRecord.packageType === "tool" || packageRecord.extensionId.toLowerCase().includes("agent");
+    const certResult: CertificationResult = usesAgentCertification
+      ? certGate.validateAgentCertification(packageId)
+      : certGate.validatePackCertification(packageId);
     if (!certResult.allowed) {
       throw new PolicyDeniedError("marketplace.certification_required", `Package does not meet certification requirements: ${certResult.reasons.join(", ")}`, {
         retryable: false,

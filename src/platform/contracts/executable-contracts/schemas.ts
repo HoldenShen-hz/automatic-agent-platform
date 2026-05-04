@@ -69,12 +69,20 @@ export const RiskPreviewSchema = z.object({
   reasons: z.array(z.string()),
 });
 
+// R9-40 fix: Add state and riskPreview fields to schema for full lifecycle tracking
 export const UserConfirmationReceiptSchema = z.object({
   receiptId: z.string().min(1),
   confirmedBy: PrincipalRefSchema,
   riskClass: RiskClassSchema,
   confirmedAt: z.string().min(1),
   expiresAt: z.string().optional(),
+  // R9-40 fix: State field for confirmation lifecycle
+  state: z.enum(["not_required", "pending_user_confirmation", "confirmed", "expired", "denied"]),
+  // R9-40 fix: Risk preview fields for confirmed state
+  riskPreviewVersion: z.string().optional(),
+  scope: z.string().optional(),
+  actor: z.string().optional(),
+  timestamp: z.string().optional(),
 });
 
 export const BudgetIntentSchema = z.object({

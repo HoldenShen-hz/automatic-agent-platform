@@ -322,6 +322,16 @@ test("mapHarnessStepToOapeflirPhase maps loop_controller to improve phase", () =
   assert.equal(mapHarnessStepToOapeflirPhase("loop_controller", "loop"), "improve");
 });
 
+test("mapHarnessStepToOapeflirPhase maps learner role to learn phase", () => {
+  assert.equal(mapHarnessStepToOapeflirPhase("learner", "learn"), "learn");
+  assert.equal(mapHarnessStepToOapeflirPhase("learner", "other"), "learn");
+});
+
+test("mapHarnessStepToOapeflirPhase maps release_manager role to release phase", () => {
+  assert.equal(mapHarnessStepToOapeflirPhase("release_manager", "release"), "release");
+  assert.equal(mapHarnessStepToOapeflirPhase("release_manager", "other"), "release");
+});
+
 test("HarnessRuntimeService.createAsyncService returns AsyncHarnessService", () => {
   const service = new HarnessRuntimeService();
   const asyncService = service.createAsyncService();

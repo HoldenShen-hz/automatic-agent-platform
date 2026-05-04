@@ -221,6 +221,39 @@ test("TaskBuildResult riskPreview includes side effects", async () => {
   assert.ok(result.riskPreview.sideEffects.some(e => e.includes("成本") || e.includes("环境")));
 });
 
+test("buildTask injects downgraded autonomy and runtime policy for critical risk before confirmation", async () => {
+  const service = new NlEntryService({
+    intakeRouter: createMockIntakeRouter({
+      intent: "modify",
+      confidence: 0.99,
+    }) as any,
+  });
+
+  const result = await service.buildTask(createTestRequest({ message: "delete all production data" }));
+  const normalizedContext = result.canonicalTaskDraft.normalizedIntent.context as Record<string, unknown>;
+
+  assert.equal(result.confirmationRequired, true);
+  assert.equal(result.canonicalRequestEnvelope, null);
+  assert.equal(normalizedContext["autonomyMode"], "suggestion");
+  assert.equal(normalizedContext["runtimeMode"], "no_write");
+});
+
+test("buildTask injects runtime and autonomy policy into canonical request envelope for low-risk work", async () => {
+  const service = new NlEntryService({
+    intakeRouter: createMockIntakeRouter({
+      intent: "query",
+      confidence: 0.95,
+    }) as any,
+  });
+
+  const result = await service.buildTask(createTestRequest({ message: "查询一下今日天气" }));
+  const policyContext = result.canonicalRequestEnvelope?.policyContext as Record<string, unknown> | undefined;
+
+  assert.ok(policyContext);
+  assert.equal(policyContext?.["autonomyMode"], "full_auto");
+  assert.equal(policyContext?.["runtimeMode"], "full_auto");
+});
+
 test("TaskBuildResult riskPreview for approval_action", async () => {
   const service = new NlEntryService({
     intakeRouter: createMockIntakeRouter({ intent: "approve", confidence: 0.95 }) as any,

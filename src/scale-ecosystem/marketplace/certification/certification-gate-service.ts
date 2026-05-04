@@ -13,7 +13,12 @@
  * @see docs_zh/architecture/00-platform-architecture.md §55
  */
 
-import { type AgentCertification, type PackCertification } from "./index.js";
+import {
+  type AgentCertification,
+  type PackCertification,
+  type CertificationResult,
+  type SecurityScanStatus,
+} from "./index.js";
 import { getAgentCertification, getPackCertification, CertificationGate } from "./index.js";
 
 // Re-export the types from index.ts
@@ -34,7 +39,7 @@ export class CertificationGateService {
    * @param agentId - The agent to validate
    * @returns Certification result with allowed status and reasons
    */
-  public async validateAgentCertification(agentId: string): Promise<CertificationResult> {
+  public validateAgentCertification(agentId: string): CertificationResult {
     const certification = getAgentCertification(agentId);
 
     if (!certification) {
@@ -66,7 +71,7 @@ export class CertificationGateService {
    * @param packId - The pack to validate
    * @returns Certification result with allowed status and reasons
    */
-  public async validatePackCertification(packId: string): Promise<CertificationResult> {
+  public validatePackCertification(packId: string): CertificationResult {
     const certification = getPackCertification(packId);
 
     if (!certification) {
@@ -98,7 +103,7 @@ export class CertificationGateService {
    * @param artifactId - The artifact to check
    * @returns Security scan status
    */
-  public async checkSecurityScanStatus(artifactId: string): Promise<SecurityScanStatus> {
+  public checkSecurityScanStatus(artifactId: string): SecurityScanStatus {
     // Check agent certifications for this artifact
     const agentCert = getAgentCertification(artifactId);
     if (agentCert && agentCert.securityScan) {

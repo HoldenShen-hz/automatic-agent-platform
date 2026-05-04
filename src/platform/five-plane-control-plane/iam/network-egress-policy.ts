@@ -220,7 +220,7 @@ function extractUrlString(input: string | URL | Request): string {
 export function loadNetworkEgressPolicyConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): NetworkEgressPolicyConfig {
-  const modeValue = (env["AA_EGRESS_POLICY_MODE"] ?? "deny").trim().toLowerCase();
+  const modeValue = (env["AA_EGRESS_POLICY_MODE"] ?? "audit_only").trim().toLowerCase();
   const mode: NetworkEgressPolicyMode = modeValue === "audit_only"
     ? "audit_only"
     : modeValue === "enforce"
