@@ -1,13 +1,18 @@
 export type PanicScope = "global" | "tenant" | "domain";
 export type PanicAcknowledgmentStatus = "ack" | "failed" | "timeout";
 export type DriftSeverity = "low" | "medium" | "high";
-export type AgentLifecycleState = "draft" | "canary" | "active" | "paused" | "deprecated" | "archived";
+export type AgentLifecycleState = "draft" | "canary" | "active" | "paused" | "deprecated" | "archived" | "removed";
 
+// R3-34 FIX: §63.1 PlatformPanicDirective requires additional fields
 export interface PlatformPanicDirective {
   readonly directiveId: string;
   readonly scope: PanicScope;
   readonly requiredApprovers: readonly [string, string, ...string[]];
   readonly reason: string;
+  readonly issuedAt: string;
+  readonly expirationTime: string;
+  readonly pausedResources: readonly string[];
+  readonly auditRef: string;
 }
 
 export interface PanicAcknowledgment {
@@ -77,6 +82,7 @@ export function transitionAgentLifecycle(from: AgentLifecycleState, to: AgentLif
     paused: ["active", "deprecated"],
     deprecated: ["archived"],
     archived: [],
+    removed: [],
   };
   return allowed[from].includes(to);
 }

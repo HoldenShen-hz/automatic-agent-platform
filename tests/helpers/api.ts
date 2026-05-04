@@ -198,6 +198,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     extensionKind: "domain_plugin",
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
+    dependencies: [],
     settingsSchema: {},
     sandbox: {
       timeoutMs: 1000,
@@ -231,6 +232,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     extensionKind: "domain_plugin",
     trustLevel: "trusted",
     publicSdkSurface: "tests/mock",
+    dependencies: [],
     settingsSchema: {},
     sandbox: {
       timeoutMs: 1000,

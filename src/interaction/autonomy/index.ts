@@ -479,7 +479,7 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
         // - promotions to semi_auto: domain_owner
         // - promotions to full_auto: platform_team (requires platform_team approval per §42.2)
         // - incident-driven and demotions use "auto"
-        const approvedBy: AutonomyChangeEvent["approvedBy"] =
+        const approvedBy: "auto" | "domain_owner" | "platform_team" =
           item.incidents > 0 || eventType === "agent.autonomy.demoted"
             ? "auto"
             : nextLevel === "full_auto"

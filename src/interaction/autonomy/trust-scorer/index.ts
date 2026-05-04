@@ -29,20 +29,26 @@ export function calculateTrustScore(score: CapabilityTrustScore): number {
 }
 
 export function mapTrustLevel(score: number): TrustLevel {
-  if (score <= 100) {
-    if (score >= 95) return "fully_trusted";
-    if (score >= 85) return "trusted";
-    if (score >= 70) return "semi_trusted";
-    if (score >= 50) return "supervised";
-    if (score >= 30) return "probation";
+  // R5-21 fix: §42.1 requires TrustScore range 0-1000 for domain-scoped profiles
+  // Detect domain-scoped range by checking if score > 100 (the non-domainScoped max)
+  const isDomainScoped = score > 100;
+  const maxRange = isDomainScoped ? 1000 : 100;
+
+  if (score <= maxRange * 0.1) {
+    if (score >= maxRange * 0.95) return "fully_trusted";
+    if (score >= maxRange * 0.85) return "trusted";
+    if (score >= maxRange * 0.70) return "semi_trusted";
+    if (score >= maxRange * 0.50) return "supervised";
+    if (score >= maxRange * 0.30) return "probation";
     return "untrusted";
   }
 
-  if (score >= 950) return "fully_trusted";
-  if (score >= 850) return "trusted";
-  if (score >= 700) return "semi_trusted";
-  if (score >= 500) return "supervised";
-  if (score >= 300) return "probation";
+  // score > 10% of maxRange
+  if (score >= maxRange * 0.95) return "fully_trusted";
+  if (score >= maxRange * 0.85) return "trusted";
+  if (score >= maxRange * 0.70) return "semi_trusted";
+  if (score >= maxRange * 0.50) return "supervised";
+  if (score >= maxRange * 0.30) return "probation";
   return "untrusted";
 }
 

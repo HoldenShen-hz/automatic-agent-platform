@@ -785,6 +785,16 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         );
         // R5-1 FIX: Use PlanGraphBundle directly for replanning decision
         const replanDecision = this.replanning.decide(planGraphBundle, feedback, replanTrigger);
+
+        // R5-5: Determine downgrade_mode decision branch per §45.25
+        // downgrade_mode applies when risk score is high but not critical
+        const highRiskDowngrade = validatedAssessment.risk === "high"
+          || validatedAssessment.executionMode === "supervised";
+        const downgradeModeTriggered = highRiskDowngrade
+          && !qualityGate.accepted
+          && replanDecision.shouldReplan
+          && replanDecision.strategy !== "full_rebuild";
+
         let rolloutRecord: RolloutRecord | null = null;
 
         // R5-7: Produce EvaluationReport per §45.10 (passed/score/issues[]/recommendation/confidence)
@@ -792,7 +802,11 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           passed: qualityGate.accepted,
           score: outcome.qualityScore ?? 0,
           issues: outcome.reasons ?? [],
-          recommendation: qualityGate.accepted ? "continue" : qualityGate.reasonCodes.join("; "),
+          recommendation: downgradeModeTriggered
+            ? "downgrade_mode"
+            : qualityGate.accepted
+              ? "continue"
+              : qualityGate.reasonCodes.join("; "),
           confidence: outcome.passed ? 0.9 : 0.5,
         };
         decisionInputBundle = this.buildDecisionInputBundle({

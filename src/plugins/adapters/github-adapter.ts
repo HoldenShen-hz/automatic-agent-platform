@@ -16,6 +16,7 @@ const GITHUB_ADAPTER_MANIFEST: PluginManifest = {
   extensionKind: "external_adapter",
   trustLevel: "trusted",
   publicSdkSurface: "@automatic-agent/plugin-github-adapter",
+  dependencies: [],
   settingsSchema: {},
   sandbox: {
     timeoutMs: 5000,

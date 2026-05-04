@@ -30,6 +30,17 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
   const overrides = overrideRate(score);
   const lastIncidentAgeDays = incidentFreeDays(score);
 
+  // §42.2: Incident-free time window check using lastIncidentTimestamp
+  // Check that the incident-free window has actually elapsed, not just that no recent incident occurred
+  const now = Date.now();
+  const incidentFreeWindowMs = {
+    toSupervised: INCIDENT_FREE_WINDOWS_DAYS.toSupervised * 24 * 3600 * 1000,
+    toSemiAuto: INCIDENT_FREE_WINDOWS_DAYS.toSemiAuto * 24 * 3600 * 1000,
+    toFullAuto: INCIDENT_FREE_WINDOWS_DAYS.toFullAuto * 24 * 3600 * 1000,
+  };
+  const lastIncidentTime = score.lastIncidentTimestamp ? new Date(score.lastIncidentTimestamp).getTime() : 0;
+  const isIncidentFree = (windowMs: number) => lastIncidentTime === 0 || (now - lastIncidentTime) >= windowMs;
+
   // §42.2: Incident severity grading — P0/P1 incidents trigger immediate demotion regardless of override rate
   if (score.lastIncidentSeverity === "P0") {
     return {
@@ -85,7 +96,9 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       reasonCodes: ["autonomy.promotion_blocked_by_incident"],
     };
   }
-  if (score.currentAutonomy === "suggestion" && lastIncidentAgeDays < INCIDENT_FREE_WINDOWS_DAYS.toSupervised) {
+  // R5-22 fix: Verify incident-free window has actually elapsed using lastIncidentTimestamp
+  // lastIncidentAgeDays alone is insufficient - must confirm the full window has passed
+  if (score.currentAutonomy === "suggestion" && !isIncidentFree(incidentFreeWindowMs.toSupervised)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,
@@ -93,7 +106,7 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       reasonCodes: ["autonomy.promotion_blocked_by_incident_window"],
     };
   }
-  if (score.currentAutonomy === "supervised" && lastIncidentAgeDays < INCIDENT_FREE_WINDOWS_DAYS.toSemiAuto) {
+  if (score.currentAutonomy === "supervised" && !isIncidentFree(incidentFreeWindowMs.toSemiAuto)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,
@@ -101,7 +114,7 @@ export function assessPromotion(score: CapabilityTrustScore): PromotionAssessmen
       reasonCodes: ["autonomy.promotion_blocked_by_incident_window"],
     };
   }
-  if (score.currentAutonomy === "semi_auto" && lastIncidentAgeDays < INCIDENT_FREE_WINDOWS_DAYS.toFullAuto) {
+  if (score.currentAutonomy === "semi_auto" && !isIncidentFree(incidentFreeWindowMs.toFullAuto)) {
     return {
       shouldPromote: false,
       currentLevel: score.currentAutonomy,

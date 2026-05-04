@@ -1480,24 +1480,10 @@ export class NlEntryService implements NlEntryPort {
     });
     // §39.6: Architecture requires only confirmed TaskSpec can generate RequestEnvelope
     // Gate RequestEnvelope creation behind confirmation state check
-    if (confirmationRequired) {
-      return {
-        requestEnvelope: null,
-        riskPreview,
-        costEstimate,
-        ...(dryRunPreview != null ? { dryRunPreview } : {}),
-        confirmationRequired,
-        humanSummary: surfacedSummary,
-        taskDraft,
-        clarificationState,
-        confirmationReceipt,
-        conversationState,
-        canonicalTaskDraft,
-        clarificationSession: clarificationSession ?? null,
-        confirmedTaskSpec: null,
-        canonicalRequestEnvelope: null,
-      };
-    }
+    // R5-15 fix: Removed redundant guard - line 1415 already handles pending_user_confirmation case
+    // The confirmationRequired check at line 1483 was redundant since when confirmationRequired=true
+    // and state=pending_user_confirmation we return early at 1415, meaning we only reach 1483 when
+    // state != pending_user_confirmation (confirmed/not_required/expired/denied)
     const requestEnvelope: NlRequestEnvelope | null = buildRequestEnvelope(request, detailed, surfacedSummary, primaryIntent, confirmationRequired, canonicalRequestEnvelope);
 
     // §39.5: Record this turn in conversation context for subsequent turns

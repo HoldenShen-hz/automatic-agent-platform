@@ -29,7 +29,8 @@ export function evaluateKnowledgeShare(
 ): CrossBoundaryTransform | null {
   const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
   if (boundary.ownerOrgNodeId === requesterOrgNodeId || allowedOrgNodeIds.includes(requesterOrgNodeId)) {
-    return { mode: "summary", allowedFieldKeys: undefined };
+    // Return CrossBoundaryTransform with only mode (allowedFieldKeys omitted when not needed)
+    return { mode: "summary" };
   }
   const nowMs = Date.parse(nowIso);
   const matchingGrant = grants.find((item) =>
@@ -37,10 +38,11 @@ export function evaluateKnowledgeShare(
     && item.requesterOrgNodeId === requesterOrgNodeId
     && (item.expiresAt == null || Date.parse(item.expiresAt) > nowMs));
   if (matchingGrant != null) {
-    return {
-      mode: matchingGrant.transformMode ?? "summary",
-      allowedFieldKeys: matchingGrant.allowedFieldKeys ?? undefined,
-    };
+    // Build CrossBoundaryTransform - use spread to conditionally include allowedFieldKeys
+    const result: CrossBoundaryTransform = matchingGrant.allowedFieldKeys != null && matchingGrant.allowedFieldKeys.length > 0
+      ? { mode: matchingGrant.transformMode ?? "summary", allowedFieldKeys: matchingGrant.allowedFieldKeys as readonly string[] }
+      : { mode: matchingGrant.transformMode ?? "summary" };
+    return result;
   }
   return null;
 }

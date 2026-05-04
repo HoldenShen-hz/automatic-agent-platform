@@ -308,7 +308,7 @@ export class ExecutionDispatchService {
         createdAt: occurredAt,
         updatedAt: occurredAt,
         // R6-3: Risk class for isolation routing
-        riskClass: input.riskClass ?? task.riskClass ?? null,
+        riskClass: input.riskClass ?? null,
         // R6-3: Sandbox type matching
         requiredSandboxType: input.requiredSandboxType ?? null,
         // R6-3: Tenant quota reference

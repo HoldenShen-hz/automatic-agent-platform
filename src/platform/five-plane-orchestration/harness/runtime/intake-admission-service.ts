@@ -79,6 +79,7 @@ function nowIso(): string {
 
 /**
  * Detects ambiguity flags from raw task input for clarification tracking.
+ * R6-11: Enhanced with confidence threshold and AmbiguityResolver support.
  */
 function detectAmbiguityFlags(input: RawTaskInput): readonly string[] {
   const flags: string[] = [];
@@ -88,7 +89,12 @@ function detectAmbiguityFlags(input: RawTaskInput): readonly string[] {
     flags.push("vague_goal_language");
   }
 
-  // Check for missing constraints
+  // R6-11: Check for ambiguous temporal references
+  if (/\b(soon|later|eventually|eventually|when possible)\b/i.test(input.goal)) {
+    flags.push("ambiguous_timing");
+  }
+
+  // R6-11: Check for missing or vague constraints
   if (!input.constraintPackRef || input.constraintPackRef.trim() === "") {
     flags.push("missing_constraints");
   }
@@ -103,7 +109,65 @@ function detectAmbiguityFlags(input: RawTaskInput): readonly string[] {
     flags.push("missing_budget");
   }
 
+  // R6-11: Check for conditional language that may need clarification
+  if (/\b(if|unless|maybe|either|perhaps|depending on)\b/i.test(input.goal)) {
+    flags.push("conditional_language");
+  }
+
+  // R6-11: Check for conflicting or underspecified requirements
+  if (/\b(but|however|although|though)\b/i.test(input.goal) && input.goal.length < 50) {
+    flags.push("potential_conflict");
+  }
+
   return flags;
+}
+
+/**
+ * R6-11: Intent extraction result with confidence scoring.
+ */
+interface IntentExtractionResult {
+  extractedGoal: string;
+  confidence: number; // 0.0 - 1.0
+  ambiguityDetected: boolean;
+  ambiguityFlags: readonly string[];
+  suggestedClarifications: readonly string[];
+}
+
+/**
+ * R6-11: Extracts intent from goal text with confidence scoring.
+ * Uses pattern-based extraction as a fallback when LLM is unavailable.
+ */
+function extractIntentWithConfidence(goal: string): IntentExtractionResult {
+  const ambiguityFlags = detectAmbiguityFlags({ goal } as RawTaskInput);
+
+  // Calculate confidence based on ambiguity flags
+  // Fewer flags = higher confidence
+  const baseConfidence = 1.0;
+  const penaltyPerFlag = 0.15;
+  const confidence = Math.max(0.0, baseConfidence - (ambiguityFlags.length * penaltyPerFlag));
+
+  // R6-11: Generate suggested clarifications based on flags
+  const suggestedClarifications: string[] = [];
+  if (ambiguityFlags.includes("vague_goal_language")) {
+    suggestedClarifications.push("Specify concrete requirements or criteria");
+  }
+  if (ambiguityFlags.includes("ambiguous_timing")) {
+    suggestedClarifications.push("Provide a specific deadline or time frame");
+  }
+  if (ambiguityFlags.includes("missing_constraints")) {
+    suggestedClarifications.push("Define constraints or preferences");
+  }
+  if (ambiguityFlags.includes("conditional_language")) {
+    suggestedClarifications.push("Clarify the conditions or dependencies");
+  }
+
+  return {
+    extractedGoal: goal,
+    confidence,
+    ambiguityDetected: ambiguityFlags.length > 0,
+    ambiguityFlags,
+    suggestedClarifications,
+  };
 }
 
 /**
@@ -390,9 +454,10 @@ export class IntakeAdmissionService {
         allowed: policyGuardResult.allowed,
         policyProofRef: policyGuardResult.proofRef ?? input.constraintPackRef,
       },
+      // R6-9: Validate budget reservation exists and hard cap is satisfied before dispatch
       budgetPrecondition: {
         reservationId: budgetLedger.budgetLedgerId,
-        hardCapSatisfied: true,
+        hardCapSatisfied: this.validateBudgetReservation(budgetLedger, input.budgetIntent),
       },
       auditRef: `audit://harness-runs/${createdRun.harnessRunId}/admission`,
     });
@@ -426,5 +491,28 @@ export class IntakeAdmissionService {
     };
     this.admittedByIdempotencyKey.set(input.idempotencyKey, result);
     return result;
+  }
+
+  /**
+   * R6-9: Validates that a budget reservation exists and satisfies the hard cap.
+   * Throws if the budget ledger is invalid or the hard cap is not satisfied.
+   */
+  private validateBudgetReservation(
+    budgetLedger: { budgetLedgerId: string; hardCap: number },
+    budgetIntent: BudgetIntent,
+  ): boolean {
+    // Validate budget ledger ID exists
+    if (!budgetLedger.budgetLedgerId || budgetLedger.budgetLedgerId.trim() === "") {
+      throw new Error("admission.budget_reservation_missing: Budget ledger ID is required");
+    }
+
+    // Validate hard cap satisfies the budget intent amount
+    if (budgetLedger.hardCap < budgetIntent.amount) {
+      throw new Error(
+        `admission.budget_reservation_insufficient: Budget hard cap ${budgetLedger.hardCap} is less than requested amount ${budgetIntent.amount}`,
+      );
+    }
+
+    return true;
   }
 }

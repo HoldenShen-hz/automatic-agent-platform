@@ -78,7 +78,10 @@ export type DispatchWorkerRejectionReason =
   | "worker_placement_mismatch"
   | "worker_isolation_mismatch"
   | "worker_repo_version_mismatch"
-  | "worker_remote_session_unready";
+  | "worker_remote_session_unready"
+  // R6-3: Risk class isolation routing rejection reasons
+  | "risk_class_isolation_mismatch"
+  | "sandbox_type_mismatch";
 export type LeaseAuditEventType =
   | "lease_granted"
   | "lease_renewed"

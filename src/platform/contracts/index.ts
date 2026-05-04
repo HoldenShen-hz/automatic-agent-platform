@@ -52,6 +52,9 @@ export {
   type CanonicalContractName,
 } from "./executable-contracts/index.js";
 
+// emitDeprecationWarning and assertNotDeprecated are defined in this file below
+// and provide runtime enforcement for LEGACY_CONTRACT_NAMES usage
+
 // -----------------------------------------------------------------------------
 // Evidence Record contracts
 // -----------------------------------------------------------------------------
@@ -72,9 +75,9 @@ export * from "./evidence-record/index.js";
  */
 export * as requestEnvelopeContract from "./request-envelope/index.js";
 
-// -----------------------------------------------------------------------------
-// LEGACY_CONTRACT_NAMES - for linting/deprecation enforcement
-// -----------------------------------------------------------------------------
+// =============================================================================
+// LEGACY_CONTRACT_NAMES - centralized enforcement (R4-11)
+// =============================================================================
 // These contracts are deprecated. New code should NOT import from these paths:
 // - request-envelope/ (use RequestEnvelope from executable-contracts)
 // - control-directive/ (use OperationalDirective/DecisionDirective)
