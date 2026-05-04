@@ -305,6 +305,10 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
       let decisionInputBundle: HarnessDecisionInputBundle | null = null;
       // R5-7: Will be produced by evaluator
       let evaluationReport: EvaluationReport = { passed: false, score: 0, issues: [], recommendation: "", confidence: 0 };
+      let normalizationReport: OapeflirLoopResult["normalizationReport"];
+      let validationReport: OapeflirLoopResult["validationReport"];
+      let riskPropagation: OapeflirLoopResult["riskPropagation"];
+      let worstPath: OapeflirLoopResult["worstPath"];
 
       // R5-3: Validate initial state machine transition to observe
       const observeTransition = this.stageFsm.canTransitionTo("observe");
@@ -526,6 +530,55 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           createdAt: Date.now(),
         };
         this.currentPlanGraphBundle = planGraphBundle;
+        // R5-9: Extract normalization and validation reports from PlanGraphBundle
+        normalizationReport = {
+          normalizedNodes: planGraphBundle.graph.nodes.length,
+          normalizedEdges: planGraphBundle.graph.edges.length,
+          conflictsResolved: 0,
+          warnings: [...(planGraphBundle.validationReport?.findings ?? [])].slice(0, 5) as readonly string[],
+        };
+        validationReport = {
+          valid: planGraphBundle.validationReport?.valid ?? true,
+          findings: [...(planGraphBundle.validationReport?.findings ?? [])].map((issue, idx) => ({
+            severity: "warning" as const,
+            code: `validation.issue.${idx}`,
+            message: String(issue),
+          })),
+        };
+        riskPropagation = {
+          riskScore: Math.max(
+            0,
+            ...(planGraphBundle.validationReport?.riskPropagation ?? []).map((finding) => {
+              switch (finding.inheritedRiskClass) {
+                case "critical":
+                  return 1;
+                case "high":
+                  return 0.75;
+                case "medium":
+                  return 0.5;
+                default:
+                  return 0.25;
+              }
+            }),
+          ),
+          criticalPathNodes: (planGraphBundle.validationReport?.riskPropagation ?? []).map((finding) => finding.nodeId),
+          riskEscalationFactors: Array.from(
+            new Set((planGraphBundle.validationReport?.riskPropagation ?? []).flatMap((finding) => finding.reasons)),
+          ),
+        };
+        worstPath = planGraphBundle.validationReport?.worstPath
+          ? {
+              pathLength: planGraphBundle.validationReport.worstPath.pathNodeIds.length,
+              estimatedDurationMs: planGraphBundle.validationReport.worstPath.timeoutMs,
+              budgetEstimate: planGraphBundle.validationReport.worstPath.estimatedBudgetAmount,
+              bottleneckNodes: [...planGraphBundle.validationReport.worstPath.pathNodeIds],
+            }
+          : {
+              pathLength: 0,
+              estimatedDurationMs: 0,
+              budgetEstimate: 0,
+              bottleneckNodes: [],
+            };
         timeline.record("plan", "completed", planGraphBundle.planGraphBundleId, null, "Built PlanGraphBundle with graph nodes/edges structure per §13.7.");
         this.stageFsm.recordStageCompletion("plan");
 
@@ -1007,6 +1060,10 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           decisionInputBundle,
           graphPatch,
           harnessDecision,
+          normalizationReport,
+          validationReport,
+          riskPropagation,
+          worstPath,
         };
       }
 
@@ -1037,6 +1094,10 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         decisionInputBundle,
         graphPatch,
         harnessDecision,
+        normalizationReport,
+        validationReport,
+        riskPropagation,
+        worstPath,
       };
     });
   }

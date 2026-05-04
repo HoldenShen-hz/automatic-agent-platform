@@ -33,11 +33,37 @@ ALTER TABLE harness_runs ADD COLUMN fencing_token TEXT NULL;
 `;
 
 const SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL = `
+CREATE TABLE IF NOT EXISTS side_effect_records (
+  side_effect_id TEXT PRIMARY KEY,
+  harness_run_id TEXT NOT NULL DEFAULT 'harness_run:bootstrap',
+  node_run_id TEXT NOT NULL DEFAULT 'node_run:bootstrap',
+  node_attempt_id TEXT NOT NULL DEFAULT 'node_attempt:bootstrap',
+  effect_kind TEXT NOT NULL DEFAULT 'other',
+  idempotency_key TEXT NOT NULL DEFAULT 'bootstrap',
+  status TEXT NOT NULL DEFAULT 'pending',
+  risk_class TEXT NOT NULL DEFAULT 'medium',
+  pre_commit_policy_proof_ref TEXT NOT NULL DEFAULT 'policy_proof:bootstrap',
+  deadline TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z',
+  created_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z',
+  updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'
+);
 ALTER TABLE side_effect_records ADD COLUMN lease_id TEXT NULL;
 ALTER TABLE side_effect_records ADD COLUMN fencing_token TEXT NULL;
 `;
 
 const BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL = `
+CREATE TABLE IF NOT EXISTS budget_ledgers (
+  budget_ledger_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL DEFAULT 'tenant:local',
+  harness_run_id TEXT NOT NULL DEFAULT 'harness_run:bootstrap',
+  currency TEXT NOT NULL DEFAULT 'USD',
+  hard_cap REAL NOT NULL DEFAULT 0,
+  reserved_amount REAL NOT NULL DEFAULT 0,
+  settled_amount REAL NOT NULL DEFAULT 0,
+  released_amount REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'open',
+  version INTEGER NOT NULL DEFAULT 0
+);
 ALTER TABLE budget_ledgers ADD COLUMN lease_id TEXT NULL;
 ALTER TABLE budget_ledgers ADD COLUMN fencing_token TEXT NULL;
 `;

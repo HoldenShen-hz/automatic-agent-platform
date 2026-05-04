@@ -33,7 +33,6 @@ test("OapeflirStageSchema accepts all valid stages", () => {
     "learn",
     "improve",
     "release",
-    "knowledge_promotion",
   ];
 
   for (const stage of stages) {
@@ -265,7 +264,6 @@ test("OapeflirStageTimelineBuilder records all stage types", () => {
     "learn",
     "improve",
     "release",
-    "knowledge_promotion",
   ];
 
   for (const stage of stages) {
@@ -273,7 +271,7 @@ test("OapeflirStageTimelineBuilder records all stage types", () => {
   }
 
   const timeline = builder.build();
-  assert.equal(timeline.length, 9);
+  assert.equal(timeline.length, 8);
 });
 
 test("OapeflirStageTimelineBuilder tick increments correctly", () => {

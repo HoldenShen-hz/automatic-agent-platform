@@ -77,7 +77,16 @@ function createSingleStepWorkflow(taskId: string) {
         stepId: `step_${taskId}`,
         divisionId: "coding",
         roleId: "writer",
+        title: "Write implementation change",
+        executor: "agent_writer",
         inputKeys: [],
+        inputs: {
+          riskClass: "medium",
+          budget: {
+            amount: 2,
+            currency: "USD",
+          },
+        },
         agentId: "agent_writer",
         outputKey: "result",
         outputSchemaPath: null,
@@ -85,6 +94,12 @@ function createSingleStepWorkflow(taskId: string) {
         dependencyTypes: {},
         timeoutMs: 1000,
         maxAttempts: 1,
+        retryPolicy: {
+          maxRetries: 0,
+          backoffMs: 0,
+        },
+        tools: ["read"],
+        sandboxMode: "workspace-write",
       },
     ],
     planReason: "workflow.single_step_execution",
@@ -186,4 +201,26 @@ test("OapeflirLoopService packages feedback-stage decision input with budget and
   assert.equal(decisionInputBundle.risk.escalationThreshold, 0.7);
   assert.equal(decisionInputBundle.evaluator.score, 0.42);
   assert.equal(decisionInputBundle.decisionKind, "replan");
+});
+
+test("OapeflirLoopService exposes plan diagnostics on the loop result", async () => {
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+  });
+
+  const result = await service.produceStageRationale({
+    taskId: "task_review_plan_diagnostics",
+    objective: "Generate a graph-native plan and surface diagnostics.",
+    workflow: createSingleStepWorkflow("task_review_plan_diagnostics"),
+  });
+
+  assert.ok(result.normalizationReport);
+  assert.equal(result.normalizationReport?.normalizedNodes, result.planGraphBundle.graph.nodes.length);
+  assert.equal(result.normalizationReport?.normalizedEdges, result.planGraphBundle.graph.edges.length);
+  assert.ok(result.validationReport);
+  assert.equal(result.validationReport?.valid, true);
+  assert.ok(result.riskPropagation);
+  assert.equal(typeof result.riskPropagation?.riskScore, "number");
+  assert.ok(result.worstPath);
+  assert.equal(result.worstPath?.pathLength, result.planGraphBundle.validationReport.worstPath?.pathNodeIds.length ?? 0);
 });

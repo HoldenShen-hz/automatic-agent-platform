@@ -98,6 +98,8 @@ test("agent-loop phase-1 schemas accept valid minimal payloads", () => {
   assert.doesNotThrow(() => DualChannelStepOutputSchema.parse({
     stepId: "step_1",
     planRef: "plan_1",
+    harnessRunId: "harness_1",
+    nodeRunId: "node_run_1",
     userFacingResult: {
       summary: "done",
       artifacts: [],
@@ -108,6 +110,11 @@ test("agent-loop phase-1 schemas accept valid minimal payloads", () => {
       modelId: "demo",
       retryCount: 0,
       validationPassed: true,
+    },
+    trustScore: {
+      score: 0.9,
+      band: "trusted",
+      reasons: [],
     },
   }));
 
@@ -181,6 +188,60 @@ test("agent-loop phase-1 schemas reject invalid payloads", () => {
     transitionedAt: 1,
     evidence: [],
   }));
+});
+
+test("PlanSchema accepts graph-native fields alongside legacy steps", () => {
+  const plan = PlanSchema.parse({
+    planId: "plan_graph_1",
+    taskId: "task_graph_1",
+    version: 1,
+    assessmentRef: "assessment:task_graph_1:1",
+    strategy: "goal_driven",
+    steps: [
+      {
+        stepId: "step_1",
+        action: "read",
+        timeout: 1000,
+      },
+    ],
+    nodes: [
+      {
+        nodeId: "node_1",
+        nodeType: "tool",
+        inputRefs: [],
+        riskClass: "high",
+        budgetIntent: {
+          amount: 3,
+          currency: "USD",
+          resourceKinds: ["compute"],
+        },
+        sideEffectProfile: {
+          mayCommitExternalEffect: true,
+          reversible: false,
+        },
+        timeoutMs: 1000,
+      },
+    ],
+    edges: [
+      {
+        edgeId: "edge_1",
+        fromNodeId: "node_1",
+        toNodeId: "node_1",
+        condition: { type: "always" },
+        dependencyType: "soft",
+      },
+    ],
+    entryNodeIds: ["node_1"],
+    graphConstraints: {
+      joinStrategy: "all",
+    },
+    createdAt: 3,
+  });
+
+  assert.equal(plan.nodes[0]?.nodeId, "node_1");
+  assert.equal(plan.edges[0]?.dependencyType, "soft");
+  assert.deepEqual(plan.entryNodeIds, ["node_1"]);
+  assert.deepEqual(plan.graphConstraints, { joinStrategy: "all" });
 });
 
 test("TaskSituationSchema accepts blockers with various severities", () => {
