@@ -122,6 +122,27 @@ test("SelfServiceGovernanceConsole.revokeDelegation fails for non-revocable dele
   assert.strictEqual(result.error, "delegation_not_revocable");
 });
 
+test("SelfServiceGovernanceConsole.revokeDelegation rejects non-grantor callers", () => {
+  const console = new SelfServiceGovernanceConsole({
+    delegationStore: new InMemoryDelegationStore(),
+    auditLogStore: new InMemoryAuditLogStore(),
+  });
+
+  const delegation = console.createDelegation({
+    grantorId: "grantor-1",
+    granteeId: "grantee-1",
+    permissions: ["read"],
+    expiresAt: "2025-12-31T23:59:59Z",
+    revocable: true,
+  });
+
+  const result = console.revokeDelegation(delegation.delegationId, "random-user");
+
+  assert.strictEqual(result.success, false);
+  assert.strictEqual(result.error, "permission_denied");
+  assert.strictEqual(console.getDelegation(delegation.delegationId)?.status, "active");
+});
+
 test("SelfServiceGovernanceConsole.listDelegationsForGrantee returns only active delegations", () => {
   const console = new SelfServiceGovernanceConsole({
     delegationStore: new InMemoryDelegationStore(),

@@ -3,7 +3,7 @@ import type { HarnessRun, HarnessRuntimeService, HarnessRunRuntimeState } from "
 import { HarnessLoopController } from "./loop/index.js";
 import { TypedEventBusPublisher, type TypedEventPublisher } from "../../state-evidence/events/typed-event-publisher.js";
 import type { TypedEventBus } from "../../state-evidence/events/typed-event-bus.js";
-import { newId, nowIso } from "../../../contracts/types/ids.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type HarnessFailureType =
   | "worker_crash"

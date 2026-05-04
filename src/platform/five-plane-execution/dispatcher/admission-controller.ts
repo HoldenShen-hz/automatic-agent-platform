@@ -24,7 +24,7 @@ import type { TaskPriority } from "../../contracts/types/domain.js";
 import type { HealthStatusReport } from "../../shared/observability/health-service.js";
 
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
-import { BudgetExecutionSessionManager, BudgetExecutionState } from "../model-gateway/cost-tracker/budget-guard.js";
+import { BudgetExecutionSessionManager, BudgetExecutionState } from "../../model-gateway/cost-tracker/budget-guard.js";
 
 export interface AdmissionPolicy {
   maxQueuedTasks: number;
@@ -195,7 +195,7 @@ export class AdmissionController {
     if (!request.budgetReservationId || request.budgetReservationId.trim() === "") {
       return {
         decision: "reject",
-        reasonCode: "admission.reject_no_budget_reservation",
+        reasonCode: "admission.reject_no_active_budget_reservation",
         snapshot,
         backpressure,
       };

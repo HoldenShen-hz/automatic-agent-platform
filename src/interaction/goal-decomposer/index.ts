@@ -958,6 +958,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const bootstrapRun = createHarnessRun({
       harnessRunId: `${goal.goalId}:harness_run`,
       tenantId: harnessContext.tenantId,
+      traceId: harnessContext.traceId,
+      riskLevel: this.toExecutableRiskProfile(riskSummary).riskClass,
+      ownership: { ownerId: harnessContext.tenantId, ownerType: "tenant" },
       domainId: harnessDomainId,
       confirmedTaskSpecId: `${goal.goalId}:confirmed_task_spec`,
       requestEnvelopeId: `${goal.goalId}:request_envelope`,
@@ -998,6 +1001,9 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const harnessRun = createHarnessRun({
       harnessRunId: bootstrapRun.harnessRunId,
       tenantId: bootstrapRun.tenantId,
+      traceId: bootstrapRun.traceId,
+      riskLevel: bootstrapRun.riskLevel,
+      ownership: bootstrapRun.ownership,
       domainId: bootstrapRun.domainId,
       confirmedTaskSpecId: bootstrapRun.confirmedTaskSpecId,
       requestEnvelopeId: bootstrapRun.requestEnvelopeId,

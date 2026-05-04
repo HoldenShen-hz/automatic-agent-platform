@@ -954,9 +954,9 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
 
 export function createHarnessRun(input: {
   tenantId: string;
-  traceId: string;
-  riskLevel: RiskClass;
-  ownership: Readonly<{ ownerId: string; ownerType: string }>;
+  traceId?: string;
+  riskLevel?: RiskClass;
+  ownership?: Readonly<{ ownerId: string; ownerType: string }>;
   auditRefs?: readonly string[];
   domainId?: string;
   confirmedTaskSpecId: string;
@@ -977,6 +977,7 @@ export function createHarnessRun(input: {
   terminalReason?: string;
 }): HarnessRun {
   const timestamp = input.createdAt ?? nowIso();
+  const harnessRunId = input.harnessRunId ?? newId("hrun");
   const domainId = resolveDomainBindingId({
     ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
     refCandidate: input.constraintPackRef,
@@ -984,11 +985,11 @@ export function createHarnessRun(input: {
     errorMessage: "HarnessRun requires a domainId or a constraintPackRef that preserves the domain binding.",
   });
   return {
-    harnessRunId: input.harnessRunId ?? newId("hrun"),
+    harnessRunId,
     tenantId: input.tenantId,
-    traceId: input.traceId,
-    riskLevel: input.riskLevel,
-    ownership: input.ownership,
+    traceId: input.traceId ?? `trace:${harnessRunId}`,
+    riskLevel: input.riskLevel ?? "medium",
+    ownership: input.ownership ?? { ownerId: input.tenantId, ownerType: "tenant" },
     auditRefs: input.auditRefs ?? [],
     domainId,
     confirmedTaskSpecId: input.confirmedTaskSpecId,

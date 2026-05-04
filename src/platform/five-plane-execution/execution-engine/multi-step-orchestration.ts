@@ -52,6 +52,70 @@ const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
 
 const OAPEFLIR_PLAN_PREFIX = "oapeflir://plan ";
 
+function buildSyntheticPipelineResult(routeDecision: IntakeRouteDecision) {
+  const now = nowIso();
+  const confirmedTaskSpecId = routeDecision.confirmedTaskSpecId;
+  const requestId = `request_envelope:${confirmedTaskSpecId}`;
+  return {
+    taskDraft: {
+      taskDraftId: `task_draft:${confirmedTaskSpecId}`,
+      tenantId: "tenant:local",
+      principal: {
+        principalId: "system:intake-router",
+        tenantId: "tenant:local",
+        roles: ["system"],
+      },
+      source: "cli" as const,
+      domainId: routeDecision.divisionId,
+      normalizedIntent: { intent: routeDecision.classification.intent },
+      missingFields: [],
+      riskPreview: { riskClass: "medium" as const, reasons: [] },
+      ambiguityPolicy: "require_confirmation" as const,
+      createdAt: now,
+    },
+    clarificationSession: null,
+    confirmedTaskSpec: {
+      confirmedTaskSpecId,
+      taskDraftId: `task_draft:${confirmedTaskSpecId}`,
+      tenantId: "tenant:local",
+      principal: {
+        principalId: "system:intake-router",
+        tenantId: "tenant:local",
+        roles: ["system"],
+      },
+      domainId: routeDecision.divisionId,
+      goal: routeDecision.routeReason,
+      inputs: {},
+      constraintPackRef: `constraint_pack:${routeDecision.divisionId}`,
+      riskClass: "medium" as const,
+      idempotencyKey: confirmedTaskSpecId,
+      traceId: confirmedTaskSpecId,
+      createdAt: now,
+    },
+    requestEnvelope: {
+      requestId,
+      confirmedTaskSpecId,
+      tenantId: "tenant:local",
+      principal: {
+        principalId: "system:intake-router",
+        tenantId: "tenant:local",
+        roles: ["system"],
+      },
+      domainId: routeDecision.divisionId,
+      traceId: confirmedTaskSpecId,
+      idempotencyKey: confirmedTaskSpecId,
+      priority: 0,
+      requestHash: `request_hash:${confirmedTaskSpecId}`,
+      constraintPackRef: `constraint_pack:${routeDecision.divisionId}`,
+      budgetIntent: { amount: 0, currency: "USD", resourceKinds: ["tokens"] as const },
+      policyContext: {},
+      artifactRefs: [],
+      submittedAt: now,
+    },
+    routeDecision,
+  };
+}
+
 function isOapeflirPlanRequest(request: string): boolean {
   return request.startsWith(OAPEFLIR_PLAN_PREFIX);
 }
@@ -184,11 +248,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       requiresOrchestration: true,
       classification: { intent: "create" as const, confidence: 1.0, continuation: "new_task" as const, matchedRules: [] as string[] },
       confirmedTaskSpecId: `oapeflir:${plannedWorkflow.workflow.workflowId}`,
+      capabilityMatch: {
+        capableWorkerFound: true,
+        targetDivisionId: plannedWorkflow.workflow.divisionId,
+        requiredCapabilities: [],
+        eligibleWorkerCount: 1,
+      },
     };
   } else {
     const router = new IntakeRouter();
     const routingResult = await router.route({ title: input.title, request: input.request });
-    routing = routingResult;
+    routing = routingResult.routeDecision;
     const planner = new WorkflowPlanner();
     plannedWorkflow = planner.plan({ workflowId: routing.workflowId, request: input.request });
     assertWorkflowValid(plannedWorkflow.workflow);
@@ -202,7 +272,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   const routingEvidence = createEvidenceRecord({
     traceId,
     principal: routingPrincipal,
-    category: "routing",
+    category: "decision",
     targetRef: `workflow:${routing.workflowId}`,
     content: {
       workflowId: routing.workflowId,
@@ -258,6 +328,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
   const harnessRun = createHarnessRun({
     tenantId,
+    traceId,
+    riskLevel: routing.classification.intent === "approve" ? "high" : "medium",
+    ownership: { ownerId: tenantId, ownerType: "tenant" },
     domainId: plannedWorkflow.workflow.divisionId,
     confirmedTaskSpecId: `pending:${taskId}`,
     requestEnvelopeId: `pending:${taskId}`,
@@ -594,7 +667,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       return {
         snapshot: store.operations.loadTaskSnapshot(taskId),
         streamFrames: streamBridge.replayAfterSequence(streamId, 0),
-        routing,
+        routing: buildSyntheticPipelineResult(routing),
         plannedWorkflow,
         compaction: latestCompaction,
       };

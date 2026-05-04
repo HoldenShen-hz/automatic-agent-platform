@@ -679,7 +679,8 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           "feedback",
           qualityGate.reasonCodes.join(","),
         );
-        const replanDecision = this.replanning.decide(plan, feedback, replanTrigger);
+        // R5-1 FIX: Use PlanGraphBundle directly for replanning decision
+        const replanDecision = this.replanning.decide(planGraphBundle, feedback, replanTrigger);
         let rolloutRecord: RolloutRecord | null = null;
 
         // R5-7: Produce EvaluationReport per §45.10 (passed/score/issues[]/recommendation/confidence)

@@ -317,13 +317,13 @@ type TaskTerminalTransitionInput = {
   outputsJson: string;
   context: TransitionAuditContext;
   /** R9-02: Fencing token for task - used as CAS expected value */
-  expectedTaskUpdatedAt: string;
+  expectedTaskUpdatedAt?: string;
   /** R9-02: Fencing token for workflow - current_step_index used as CAS expected value */
-  expectedWorkflowStepIndex: number;
+  expectedWorkflowStepIndex?: number;
   /** R9-02: Fencing token for session - used as CAS expected value */
-  expectedSessionUpdatedAt: string;
+  expectedSessionUpdatedAt?: string;
   /** R9-02: Fencing token for execution - used as CAS expected value */
-  expectedExecutionUpdatedAt: string;
+  expectedExecutionUpdatedAt?: string;
 };
 
 /**
@@ -847,10 +847,10 @@ class TaskTerminalTransitionService {
     const freshWorkflowStatus = currentWorkflow?.status ?? input.currentWorkflowStatus;
     const freshSessionStatus = currentSession?.status ?? input.currentSessionStatus;
     const freshExecutionStatus = currentExecution?.status ?? input.currentExecutionStatus;
-    const freshTaskUpdatedAt = currentTask?.updatedAt ?? input.expectedTaskUpdatedAt;
-    const freshSessionUpdatedAt = currentSession?.updatedAt ?? input.expectedSessionUpdatedAt;
-    const freshExecutionUpdatedAt = currentExecution?.updatedAt ?? input.expectedExecutionUpdatedAt;
-    const freshWorkflowStepIndex = currentWorkflow?.currentStepIndex ?? input.expectedWorkflowStepIndex;
+    const freshTaskUpdatedAt = currentTask?.updatedAt ?? input.expectedTaskUpdatedAt ?? input.context.occurredAt;
+    const freshSessionUpdatedAt = currentSession?.updatedAt ?? input.expectedSessionUpdatedAt ?? input.context.occurredAt;
+    const freshExecutionUpdatedAt = currentExecution?.updatedAt ?? input.expectedExecutionUpdatedAt ?? input.context.occurredAt;
+    const freshWorkflowStepIndex = currentWorkflow?.currentStepIndex ?? input.expectedWorkflowStepIndex ?? 0;
 
     // R9-02: Validate transitions using fresh status values
     taskStateMachine.assertTransition(freshTaskStatus, input.terminalStatus);

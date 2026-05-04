@@ -29,6 +29,13 @@ const DEFAULT_POLICIES: Record<TrustLevel, SourceTrustPolicy> = {
     maxRetrievalWeight: 0.3,
     humanReviewRequired: true,
   },
+  contested: {
+    level: "contested",
+    allowedInFinalResponse: false,
+    requiresCitation: true,
+    maxRetrievalWeight: 0.1,
+    humanReviewRequired: true,
+  },
 };
 
 export class SourceTrustPolicyRegistry {

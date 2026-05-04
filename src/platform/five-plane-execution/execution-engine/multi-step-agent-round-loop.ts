@@ -283,7 +283,7 @@ ${priorContext}`,
         harnessRunId: input.harnessRunId,
         routingReason: input.routingReason,
         iterations,
-        tools: llmTools,
+        ...(llmTools != null ? { tools: llmTools } : {}),
       });
 
       if (llmResult.toolCalls && llmResult.toolCalls.length > 0) {

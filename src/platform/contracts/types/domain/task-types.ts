@@ -76,8 +76,8 @@ export interface TaskRecord {
   parentId: string | null;
   /** Root task ID for the entire task tree (same as id for top-level tasks) */
   rootId: string;
-  /** HarnessRun ID that authorizes this task's execution - established at task creation per R4-27 */
-  harnessRunId: string | null;
+  /** HarnessRun ID that authorizes this task's execution. Optional during migration of legacy task producers. */
+  harnessRunId?: string | null;
   divisionId: string | null;
   tenantId?: string | null;
   title: string;

@@ -21,7 +21,7 @@ export interface GuardrailFinding {
 export interface GuardrailAssessment {
   readonly passed: boolean;
   readonly requiresHuman: boolean;
-  readonly suggestedAction: "proceed" | "escalate_to_human" | "abort";
+  readonly suggestedAction: "proceed" | "escalate_to_human" | "abort" | "retry_same_plan";
   readonly findings: readonly GuardrailFinding[];
 }
 

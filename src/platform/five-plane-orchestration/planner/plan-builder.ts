@@ -1,7 +1,7 @@
 import { newId } from "../../contracts/types/ids.js";
 import { createPlanGraphBundle, type PlanGraphBundle, type GraphValidationReport, type GraphRiskFinding, type GraphWorstPathAnalysis, type RiskPreview, type PlanNode } from "../../contracts/executable-contracts/index.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
-import { createAssessmentRef, parsePlan, type Plan, type PlanStep, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
+import { createAssessmentRef, parsePlan, type PlanStep, type TaskSituation, type UnifiedAssessment } from "../oapeflir/types/index.js";
 import { TaskDecompositionService } from "./task-decomposition-service.js";
 import { PlanDagValidator } from "./plan-dag-validator.js";
 import { PlanStrategySelector } from "./plan-strategy-selector.js";
@@ -171,7 +171,7 @@ export class PlanBuilder {
     return this.build({
       ...input,
       harnessRunId: input.harnessRunId,
-      riskProfile: input.riskProfile,
+      ...(input.riskProfile !== undefined ? { riskProfile: input.riskProfile } : {}),
     });
   }
 
@@ -267,11 +267,15 @@ export class PlanBuilder {
     return findings;
   }
 
-  public replan(previousPlan: Plan, input: Omit<PlanBuilderInput, "version" | "parentVersion">): Plan {
+  /**
+   * R5-1 FIX: replan() now accepts PlanGraphBundle instead of legacy Plan.
+   * Returns PlanGraphBundle with proper DAG structure per §13.7.
+   */
+  public replan(previousPlan: PlanGraphBundle, input: Omit<PlanBuilderInput, "version" | "parentVersion">): PlanGraphBundle {
     return this.build({
       ...input,
-      version: previousPlan.version + 1,
-      parentVersion: previousPlan.version,
+      version: previousPlan.graphVersion + 1,
+      parentVersion: previousPlan.graphVersion,
     });
   }
 }

@@ -7,10 +7,10 @@
  * Part of R18-30: Idempotency-key enforcement middleware per §6.2
  */
 
-import type { RedisConnectionConfig } from "../../../../shared/utils/redis-client-options.js";
-import { buildRedisClientOptions } from "../../../../shared/utils/redis-client-options.js";
+import type { RedisConnectionConfig } from "../../../shared/utils/redis-client-options.js";
+import { buildRedisClientOptions } from "../../../shared/utils/redis-client-options.js";
 import { Redis } from "ioredis";
-import type { AuthoritativeSqlDatabase } from "../../../../state-evidence/truth/sqlite/sqlite-database.js";
+import type { AuthoritativeSqlDatabase } from "../../../state-evidence/truth/sqlite/sqlite-database.js";
 
 /**
  * Idempotency key entry stored in cache.
@@ -261,7 +261,7 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
         ${limitClause}
       `);
       const result = stmt.run(now);
-      return result.changes;
+      return Number(result.changes);
     });
   }
 }
@@ -281,6 +281,9 @@ export function createIdempotencyStorage(
     case "sqlite":
       if (config == null || !("db" in config)) {
         throw new Error("SqliteIdempotencyStorage requires a db option");
+      }
+      if (config.db == null) {
+        throw new Error("SqliteIdempotencyStorage requires a non-null db option");
       }
       return new SqliteIdempotencyStorage(config.db, config.tableName);
   }

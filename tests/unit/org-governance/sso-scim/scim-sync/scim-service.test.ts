@@ -590,6 +590,21 @@ describe("ScimProvisionService - listUsers", () => {
     assert.strictEqual(result.Resources[0].userName, "alice.smith");
   });
 
+  it("should filter by nested emails.value", () => {
+    service.createUser(createTestUser({
+      userName: "email.filter",
+      emails: [{ value: "nested.filter@example.com", primary: true }],
+    }), "tenant-1");
+
+    const result = service.listUsers({
+      filter: 'emails.value eq "nested.filter@example.com"',
+      tenantId: "tenant-1",
+    });
+
+    assert.strictEqual(result.totalResults, 1);
+    assert.strictEqual(result.Resources[0].userName, "email.filter");
+  });
+
   it("should paginate results", () => {
     const page1 = service.listUsers({ startIndex: 1, count: 2, tenantId: "tenant-1" });
     const page2 = service.listUsers({ startIndex: 3, count: 2, tenantId: "tenant-1" });

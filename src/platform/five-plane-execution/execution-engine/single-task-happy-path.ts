@@ -188,6 +188,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
     const harnessRun = createHarnessRun({
       tenantId: input.tenantId ?? "tenant:local",
+      traceId: `trace:${harnessRunIdFromBundle}`,
+      riskLevel: "medium",
+      ownership: { ownerId: input.tenantId ?? "tenant:local", ownerType: "tenant" },
       confirmedTaskSpecId: `pending:${taskId}`,
       requestEnvelopeId: `pending:${taskId}`,
       requestHash: `request:${taskId}`,

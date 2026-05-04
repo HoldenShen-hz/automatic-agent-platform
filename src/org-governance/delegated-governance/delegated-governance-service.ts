@@ -197,10 +197,12 @@ export class DelegatedGovernanceService {
         return { allowed: true, reason: "Appending constraints allowed" };
 
       case "delete":
-        // R21-3 FIX: Lower roles cannot delete higher roles' constraints.
-        // Child can only delete constraints at the same or lower role level (not parent).
-        // Only parent can delete its own constraints.
-        return { allowed: childIndex > parentIndex, reason: childIndex > parentIndex ? "Delete allowed at lower role level" : "Cannot delete parent role constraints" };
+        // Lower roles must not delete higher-level constraints.
+        // Deletion is only allowed when acting on constraints owned at the same role level.
+        if (childIndex !== parentIndex) {
+          return { allowed: false, reason: "Cannot delete parent role constraints" };
+        }
+        return { allowed: true, reason: "Delete allowed for same role level" };
 
       default:
         return { allowed: false, reason: "Unknown action" };

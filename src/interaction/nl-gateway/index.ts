@@ -1027,7 +1027,7 @@ export class NlEntryService implements NlEntryPort {
     });
     const parsedIntent = await this.intentParser.parseWithLlm(request.message, locale);
     // §39.5: Inject prior conversation context into intent parsing
-    const route = await this.intakeRouter.route({
+    const pipeline = await this.intakeRouter.route({
       title: deriveTitle(request.message),
       request: request.message,
       ...(priorContext.turns.length > 0 ? { priorConversationContext: priorContext } : {}),
@@ -1048,6 +1048,7 @@ export class NlEntryService implements NlEntryPort {
         source: "nl_intent_parser",
       },
     });
+    const route = pipeline.routeDecision;
     const entities = extractEntities(request.message);
     const securityFindings = detectPromptInjection(request.message);
     const detectedIntent: DetectedIntent = {

@@ -915,38 +915,54 @@ export class ScimProvisionService {
 
   private applyFilter<T extends ScimUser | ScimGroup>(items: T[], filter: string): T[] {
     // Simple filter parsing: "userName eq \"john\""
-    const match = filter.match(/(\w+)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
+    const match = filter.match(/(\w+(?:\.\w+)*)\s+(eq|ne|co|sw)\s+"([^"]+)"/);
     if (!match) return items;
 
-    // SECURITY FIX: Properly extract and use the field name from the filter.
-    // Previously, match[1] (fieldName) was discarded and only userName/displayName
-    // were checked, causing all filters to be applied to userName regardless of
-    // the actual field specified in the filter.
     const [, fieldName, op, value] = match;
     const filterValue = value ?? "";
 
     return items.filter((item) => {
-      // SECURITY FIX: Use the actual field name from the filter to get the value.
-      // Previously defaulted to userName/displayName only, ignoring the field name.
-      const itemRecord = item as unknown as Record<string, unknown>;
-      const itemValue = itemRecord[fieldName as string];
-      if (typeof itemValue !== "string") {
+      const values = this.getFilterValues(item, fieldName.split("."));
+      if (values.length === 0) {
         return false;
       }
 
       switch (op) {
         case "eq":
-          return itemValue.toLowerCase() === filterValue.toLowerCase();
+          return values.some((entry) => entry.toLowerCase() === filterValue.toLowerCase());
         case "ne":
-          return itemValue.toLowerCase() !== filterValue.toLowerCase();
+          return values.every((entry) => entry.toLowerCase() !== filterValue.toLowerCase());
         case "co":
-          return itemValue.toLowerCase().includes(filterValue.toLowerCase());
+          return values.some((entry) => entry.toLowerCase().includes(filterValue.toLowerCase()));
         case "sw":
-          return itemValue.toLowerCase().startsWith(filterValue.toLowerCase());
+          return values.some((entry) => entry.toLowerCase().startsWith(filterValue.toLowerCase()));
         default:
           return false;
       }
     });
+  }
+
+  private getFilterValues(value: unknown, path: readonly string[]): string[] {
+    if (path.length === 0) {
+      if (typeof value === "string") {
+        return [value];
+      }
+      if (Array.isArray(value)) {
+        return value.flatMap((entry) => this.getFilterValues(entry, path));
+      }
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((entry) => this.getFilterValues(entry, path));
+    }
+
+    if (value && typeof value === "object") {
+      const [segment, ...rest] = path;
+      return this.getFilterValues((value as Record<string, unknown>)[segment!], rest);
+    }
+
+    return [];
   }
 }
 

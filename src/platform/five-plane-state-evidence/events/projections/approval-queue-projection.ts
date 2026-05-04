@@ -314,7 +314,7 @@ export const approvalQueueProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return toSerializedState(newState) as unknown as Record<string, unknown>;
 };
 
 /**
@@ -357,7 +357,7 @@ function handleDecisionResponded(
     state.approvalsReceived = 1;
   } else if (decisionType === "rejected") {
     state.status = "rejected";
-    state.rejectionsReceived = 1;
+    state.rejectionsReceived = state.rejectionsReceived + 1;
   } else if (decisionType === "expired") {
     state.status = "expired";
   } else if (decisionType === "text_input") {

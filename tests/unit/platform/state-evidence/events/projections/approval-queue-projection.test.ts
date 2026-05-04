@@ -105,6 +105,38 @@ test("approvalQueueProjectionHandler handles decision:responded with rejected", 
   assert.equal(state.rejectionsReceived, 1);
 });
 
+test("approvalQueueProjectionHandler accumulates repeated rejected responses", () => {
+  const first = makeEvent(
+    "evt_reject_1",
+    "decision:responded",
+    "task_reject",
+    JSON.stringify({
+      approvalId: "approval_reject",
+      decisionType: "rejected",
+      respondedBy: "user_2",
+    }),
+  );
+  const second = makeEvent(
+    "evt_reject_2",
+    "decision:responded",
+    "task_reject",
+    JSON.stringify({
+      approvalId: "approval_reject",
+      decisionType: "rejected",
+      respondedBy: "user_3",
+    }),
+  );
+
+  const stateAfterFirst = approvalQueueProjectionHandler(null, first) as unknown as ApprovalQueueState;
+  const stateAfterSecond = approvalQueueProjectionHandler(
+    stateAfterFirst as unknown as Record<string, unknown>,
+    second,
+  ) as unknown as ApprovalQueueState;
+
+  assert.equal(stateAfterSecond.status, "rejected");
+  assert.equal(stateAfterSecond.rejectionsReceived, 2);
+});
+
 test("approvalQueueProjectionHandler handles decision:responded with text_input", () => {
   const payload = {
     approvalId: "approval_text",

@@ -6,6 +6,7 @@ import {
   type HarnessRole,
   type HarnessTimelineEvent,
   type HarnessRunRuntimeState,
+  toCanonicalHarnessRun,
 } from "../../platform/orchestration/harness/index.js";
 import {
   createNodeAttemptReceipt,
@@ -205,11 +206,11 @@ export class HarnessSdk {
     return createApiContractEnvelope({
       payload,
       principal,
-      schemaVersion: options?.schemaVersion,
-      commandId: options?.commandId,
-      correlationId: options?.correlationId,
-      idempotencyKey: options?.idempotencyKey,
-      metadata: options?.metadata,
+      ...(options?.schemaVersion !== undefined ? { schemaVersion: options.schemaVersion } : {}),
+      ...(options?.commandId !== undefined ? { commandId: options.commandId } : {}),
+      ...(options?.correlationId !== undefined ? { correlationId: options.correlationId } : {}),
+      ...(options?.idempotencyKey !== undefined ? { idempotencyKey: options.idempotencyKey } : {}),
+      ...(options?.metadata !== undefined ? { metadata: options.metadata } : {}),
     });
   }
 
@@ -358,7 +359,7 @@ export class HarnessSdk {
       }
     }
 
-    return this.runtime.createRun(input);
+    return toCanonicalHarnessRun(this.runtime.createRun(input));
   }
 
   /**
@@ -376,7 +377,7 @@ export class HarnessSdk {
       ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
       nodeRunId: input.nodeRunId,
     };
-    return this.runtime.appendStep(run as HarnessRunRuntimeState, runtimeInput);
+    return toCanonicalHarnessRun(this.runtime.appendStep(run as HarnessRunRuntimeState, runtimeInput));
   }
 
   /**
@@ -430,11 +431,13 @@ export class HarnessSdk {
   }
 
   public restore(runId: string): HarnessRun | null {
-    return this.runtime.restoreRun(runId);
+    const restored = this.runtime.restoreRun(runId);
+    return restored == null ? null : toCanonicalHarnessRun(restored);
   }
 
   public restoreFromCheckpoint(checkpointRef: string): HarnessRun | null {
-    return this.runtime.restoreFromCheckpoint(checkpointRef);
+    const restored = this.runtime.restoreFromCheckpoint(checkpointRef);
+    return restored == null ? null : toCanonicalHarnessRun(restored);
   }
 
   public assertInvariants(run: HarnessRun) {
@@ -443,12 +446,12 @@ export class HarnessSdk {
 
   public sleep(runOrId: HarnessRun | string, reason: string, resumeAt: string): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.sleep(run as HarnessRunRuntimeState, reason, resumeAt);
+    return toCanonicalHarnessRun(this.runtime.sleep(run as HarnessRunRuntimeState, reason, resumeAt));
   }
 
   public resume(runOrId: HarnessRun | string): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.resume(run as HarnessRunRuntimeState);
+    return toCanonicalHarnessRun(this.runtime.resume(run as HarnessRunRuntimeState));
   }
 
   public requestHumanReview(
@@ -457,7 +460,7 @@ export class HarnessSdk {
     evidenceRefs: readonly string[] = [],
   ): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.openHitlReview(run as HarnessRunRuntimeState, reason, evidenceRefs);
+    return toCanonicalHarnessRun(this.runtime.openHitlReview(run as HarnessRunRuntimeState, reason, evidenceRefs));
   }
 
   public resolveReview(
@@ -466,7 +469,7 @@ export class HarnessSdk {
     actorId: string,
   ): HarnessRun {
     const run = this.requireRun(runOrId);
-    return this.runtime.resolveHitlReview(run as HarnessRunRuntimeState, resolution, actorId);
+    return toCanonicalHarnessRun(this.runtime.resolveHitlReview(run as HarnessRunRuntimeState, resolution, actorId));
   }
 
   public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {
@@ -484,7 +487,8 @@ export class HarnessSdk {
     // Per spec, traceReplay provides deterministic replay capability for testing/debugging
     if (!traceEvents || traceEvents.length === 0) {
       // No trace events provided - fall back to checkpoint restore
-      return this.runtime.restoreRun(runOrId);
+      const restored = this.runtime.restoreRun(runOrId);
+      return restored == null ? null : toCanonicalHarnessRun(restored);
     }
 
     // Sort trace events deterministically by eventId to ensure consistent replay
@@ -504,14 +508,15 @@ export class HarnessSdk {
     }
 
     // Restore the run after replay
-    return this.runtime.restoreRun(runOrId);
+    const restored = this.runtime.restoreRun(runOrId);
+    return restored == null ? null : toCanonicalHarnessRun(restored);
   }
 
   public sideEffectReconciliation(runOrId: HarnessRun | string): HarnessRun {
     // sideEffectReconciliation placeholder - HarnessRuntimeService.reconcileSideEffects not yet implemented
     const run = this.requireRun(runOrId);
     this.runtime.persistRun(run as HarnessRunRuntimeState);
-    return run;
+    return toCanonicalHarnessRun(run as HarnessRunRuntimeState);
   }
 
   /**
@@ -533,7 +538,7 @@ export class HarnessSdk {
     const run = this.requireRun(runOrId);
     // Budget settlement is tracked via BudgetLedger - persist run to trigger settlement
     this.runtime.persistRun(run as HarnessRunRuntimeState);
-    return run;
+    return toCanonicalHarnessRun(run as HarnessRunRuntimeState);
   }
 
   private requireRun(runOrId: HarnessRun | string): HarnessRun {

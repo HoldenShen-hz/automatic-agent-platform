@@ -1,5 +1,39 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const securityLogger = new StructuredLogger({ retentionLimit: 1000, service: "console-backend-security" });
+
+/**
+ * Roles that are explicitly authorized for cross-tenant system operations.
+ * These roles may use null tenantId only for designated system-level operations.
+ */
+const SYSTEM_ROLES = new Set(["platform_admin", "system_service", "audit_service"]);
+
+/**
+ * Determines if an operator with a null tenantId is authorized for cross-tenant access.
+ * Returns true only for operators with explicit system roles.
+ */
+function isAuthorizedForCrossTenantAccess(operator: OperatorIdentity): boolean {
+  return operator.roles.some((role) => SYSTEM_ROLES.has(role));
+}
+
+/**
+ * Logs a security event when null tenantId access is attempted.
+ */
+function logSecurityEvent(
+  eventType: string,
+  operator: OperatorIdentity,
+  details: Record<string, unknown>,
+): void {
+  securityLogger.warn(`SECURITY EVENT: ${eventType}`, {
+    crosscuttingFabric: "security",
+    tenantId: operator.tenantId ?? "NULL_WILDCARD_ATTEMPT",
+    operatorId: operator.operatorId,
+    operatorRoles: operator.roles,
+    ...details,
+  });
+}
 
 export type ConsoleModuleId =
   | "worker_management"
@@ -108,9 +142,22 @@ export class OperatorConsoleBackendService {
     const taskBoard = this.filterByOperatorScope(this.sources.listTasks?.() ?? [], operator);
     const approvalQueue = this.filterByOperatorScope(this.sources.listPendingApprovals?.() ?? [], operator);
     const workerPanel = this.sources.listWorkers?.() ?? [];
-    const tenantPanel = (this.sources.listTenants?.() ?? []).filter((tenant) =>
-      operator.tenantId == null || tenant.tenantId === operator.tenantId,
-    );
+    const tenantPanel = (this.sources.listTenants?.() ?? []).filter((tenant) => {
+      // R13-31 FIX: Reject null tenantId unless operator has explicit system role for cross-tenant access
+      if (operator.tenantId == null) {
+        if (isAuthorizedForCrossTenantAccess(operator)) {
+          logSecurityEvent("CROSS_TENANT_ACCESS_GRANTED", operator, {
+            action: "buildSnapshot_tenantPanel",
+          });
+          return true;
+        }
+        logSecurityEvent("NULL_TENANT_ID_ACCESS_DENIED", operator, {
+          action: "buildSnapshot_tenantPanel",
+        });
+        return false;
+      }
+      return tenant.tenantId === operator.tenantId;
+    });
     const incidentTimeline = this.filterByOperatorScope(this.sources.listIncidents?.() ?? [], operator)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .slice(0, 50);
@@ -154,11 +201,25 @@ export class OperatorConsoleBackendService {
     }
     const requiresBreakGlass = BREAK_GLASS_ACTIONS.has(input.actionType) && !input.operator.roles.includes("break_glass");
     const requiresPolicyEvaluation = HIGH_RISK_ACTIONS.has(input.actionType) || requiresBreakGlass;
+
+    // R13-31 FIX: Deny null tenantId in action plans unless operator has explicit system role
+    const effectiveTenantId = input.tenantId ?? input.operator.tenantId ?? null;
+    if (effectiveTenantId == null && !isAuthorizedForCrossTenantAccess(input.operator)) {
+      logSecurityEvent("NULL_TENANT_ID_ACTION_DENIED", input.operator, {
+        actionType: input.actionType,
+        taskId: input.taskId,
+      });
+      throw new ValidationError(
+        "console.tenant_id_required",
+        "Operator action requires a valid tenantId. Null tenantId is not permitted without system role.",
+      );
+    }
+
     return {
       actionId: input.actionId,
       actionType: input.actionType,
       taskId: input.taskId,
-      tenantId: input.tenantId ?? input.operator.tenantId ?? null,
+      tenantId: effectiveTenantId,
       workspaceId: input.workspaceId ?? input.operator.workspaceId ?? null,
       operatorId: input.operator.operatorId,
       requiresPolicyEvaluation,
@@ -173,7 +234,22 @@ export class OperatorConsoleBackendService {
   }
 
   private filterByOperatorScope<T extends { tenantId: string | null }>(items: T[], operator: OperatorIdentity): T[] {
-    return operator.tenantId == null ? items : items.filter((item) => item.tenantId === operator.tenantId);
+    // R13-31 FIX: Reject null tenantId unless operator has explicit system role for cross-tenant access
+    if (operator.tenantId == null) {
+      if (isAuthorizedForCrossTenantAccess(operator)) {
+        logSecurityEvent("CROSS_TENANT_ACCESS_GRANTED", operator, {
+          action: "filterByOperatorScope",
+          itemCount: items.length,
+        });
+        return items;
+      }
+      logSecurityEvent("NULL_TENANT_ID_ACCESS_DENIED", operator, {
+        action: "filterByOperatorScope",
+        itemCount: items.length,
+      });
+      return [];
+    }
+    return items.filter((item) => item.tenantId === operator.tenantId);
   }
 }
 

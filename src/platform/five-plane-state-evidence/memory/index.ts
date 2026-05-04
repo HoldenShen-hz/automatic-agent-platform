@@ -17,9 +17,18 @@ export * from './experience-cache-service.js';
 export * from './memory-layer-model.js';
 export * from './project-memory-store.js';
 export * from './user-memory-store.js';
-export * from './memory-promotion-engine.js';
+export {
+  MemoryPromotionEngine,
+  type PromotionResult as MemoryPromotionResultLegacy,
+  type MemoryPromotionResult,
+} from './memory-promotion-engine.js';
 export * from './memory-write-request.js';
 export * from './layer-transition-service.js';
 export * from './memory-decay-service.js';
-export * from './knowledge-promotion-service.js';
+export {
+  KnowledgePromotionService,
+  type PromotionRequest,
+  type PromotionRule,
+  type PromotionResult as KnowledgePromotionResult,
+} from './knowledge-promotion-service.js';
 export * from './trust-level-service.js';

@@ -579,7 +579,7 @@ export class RuntimeRecoveryService {
     return {
       success: compensationIds.length > 0,
       action: "compensate",
-      compensationId: compensationIds[0],
+      ...(compensationIds[0] != null ? { compensationId: compensationIds[0] } : {}),
       evidenceRefs,
       completedAt: nowIso(),
     };

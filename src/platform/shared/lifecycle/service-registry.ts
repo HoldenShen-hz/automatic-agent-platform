@@ -177,6 +177,13 @@ export class ServiceRegistry {
     // Already initialized - return cached
     const cached = this.instances.get(name) as T | undefined;
     if (cached !== undefined) return cached;
+    if (visiting.has(name)) {
+      throw new InternalAppError(
+        "service_registry.circular_dependency",
+        `service_registry.circular_dependency: Circular dependency detected while resolving "${name}"`,
+        { source: "internal", details: { serviceName: name } },
+      );
+    }
     if (this.initializing.has(name)) {
       throw new InternalAppError(
         "service_registry.circular_dependency",
@@ -196,13 +203,21 @@ export class ServiceRegistry {
     }
 
     // Initialize transitive dependencies first (depth-first)
-    if (registration.dependsOn && !visiting.has(name)) {
+    if (registration.dependsOn) {
       visiting.add(name);
       try {
         for (const dep of registration.dependsOn) {
-          if (this.services.has(dep) && !visiting.has(dep)) {
-            this.getRecursive(dep, visiting);
+          if (!this.services.has(dep)) {
+            continue;
           }
+          if (visiting.has(dep)) {
+            throw new InternalAppError(
+              "service_registry.circular_dependency",
+              `service_registry.circular_dependency: Circular dependency detected between "${name}" and "${dep}"`,
+              { source: "internal", details: { serviceName: name, dependencyName: dep } },
+            );
+          }
+          this.getRecursive(dep, visiting);
         }
       } finally {
         visiting.delete(name);

@@ -340,7 +340,18 @@ export class ExecutionDispatchService {
   }
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
-    const tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
+    let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
+
+    // R13-14 fix: Sort tickets by priority (highest first) so that workers pick
+    // highest priority tasks first, not just for preemption decisions but for
+    // deterministic queue ordering per §14.
+    const PRIORITY_RANK: Record<string, number> = { critical: 4, high: 3, normal: 2, low: 1 };
+    tickets = [...tickets].sort((a, b) => {
+      const priorityDiff = (PRIORITY_RANK[b.priority] ?? 0) - (PRIORITY_RANK[a.priority] ?? 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      // Preserve relative order for equal priorities (stable sort)
+      return a.createdAt.localeCompare(b.createdAt);
+    });
 
     // R6-7: Capture ready_set for scheduler event (all pending tickets considered)
     const readySet = tickets.map((t) => t.id);

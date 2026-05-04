@@ -284,6 +284,9 @@ export class IntakeAdmissionService {
         }), { _placeholder: true } as unknown as RunVersionLock),
         harnessRun: Object.assign({}, createHarnessRun({
           tenantId: input.tenantId,
+          traceId: input.traceId,
+          riskLevel: input.riskPreview.riskClass,
+          ownership: { ownerId: input.principal.principalId, ownerType: "principal" },
           domainId: input.domainId,
           confirmedTaskSpecId: `pending:${input.idempotencyKey}`,
           requestEnvelopeId: `pending:${input.idempotencyKey}`,
@@ -323,6 +326,9 @@ export class IntakeAdmissionService {
     });
     const createdRun = createHarnessRun({
       tenantId: input.tenantId,
+      traceId: input.traceId,
+      riskLevel: input.riskPreview.riskClass,
+      ownership: { ownerId: input.principal.principalId, ownerType: "principal" },
       domainId: input.domainId,
       confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
       requestEnvelopeId: requestEnvelope.requestId,

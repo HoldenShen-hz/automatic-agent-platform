@@ -2,11 +2,14 @@ import {
   buildRecoveryCadence,
   type RecoveryCadence,
   type RecoveryReport,
-  type RecoverySuggestedAction,
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type { RuntimeRecoveryCandidate, RecoveryExecutionResult } from "../recovery/runtime-recovery-service.js";
+import type {
+  RuntimeRecoveryCandidate,
+  RecoveryExecutionResult,
+  RecoverySuggestedAction,
+} from "../recovery/runtime-recovery-service.js";
 
 export interface ExecutionRecoveryWorkerOptions {
   readonly recoveryService: {
@@ -76,7 +79,7 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
             if (result.success) {
               recoveredCount++;
             } else {
-              errors.push({ code: "recovery_execution_failed", message: result.errorMessage });
+              errors.push({ code: "recovery_execution_failed", message: result.errorMessage ?? "Recovery action failed without an error message" });
             }
           } catch (err) {
             errors.push({
@@ -99,7 +102,7 @@ export class ExecutionRecoveryWorker implements RecoveryWorker {
             if (result.success) {
               recoveredCount++;
             } else {
-              errors.push({ code: "recovery_execution_failed", message: result.errorMessage });
+              errors.push({ code: "recovery_execution_failed", message: result.errorMessage ?? "Recovery action failed without an error message" });
             }
           } catch (err) {
             errors.push({

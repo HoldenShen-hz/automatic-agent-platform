@@ -20,12 +20,12 @@ import { join } from "node:path";
 
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { EventRepository } from "../../../../../src/platform/state-evidence/truth/sqlite/repositories/event-repository.js";
-import { OutboxRepository } from "../../../../../src/shared/outbox/outbox-repository.js";
+import { OutboxRepository } from "../../../../../src/platform/shared/outbox/outbox-repository.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { TransactionalEventAppender } from "../../../../../src/platform/state-evidence/events/transactional-event-appender.js";
 import { createTempWorkspace, cleanupPath } from "../../../../../helpers/fs.js";
 import { OUTBOX_TABLE_DDL } from "../../../../../src/platform/shared/outbox/outbox-table.js";
-import { seedTaskAndExecution } from "../../../../../helpers/seed.js";
+import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
 function createDbWithOutbox(workspace: string): SqliteDatabase {
   const db = new SqliteDatabase(join(workspace, "test.db"));

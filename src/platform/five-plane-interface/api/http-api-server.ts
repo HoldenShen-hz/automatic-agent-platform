@@ -638,6 +638,8 @@ export class HttpApiServer {
     error: {
       code: string;
       message: string;
+      traceId?: string;
+      details?: unknown;
     },
   ): ApiResponsePayload {
     return {
@@ -645,6 +647,7 @@ export class HttpApiServer {
       headers: {
         "content-type": "application/json; charset=utf-8",
         "x-request-id": requestId,
+        ...(error.traceId ? { "x-trace-id": error.traceId } : {}),
       },
       body: JSON.stringify({ requestId, error }, null, 2),
     };

@@ -1,31 +1,85 @@
 /**
  * Replanning Service Unit Tests
+ * R5-1 FIX: Updated to use PlanGraphBundle instead of legacy Plan
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ReplanningService } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/five-plane-orchestration/planner/replanning-service.js";
+import { newId } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/contracts/types/ids.js";
 
-function makePlan(overrides: Partial<{ planId: string; taskId: string; version: number }> = {}): {
-  planId: string;
-  taskId: string;
-  version: number;
-  strategy: "linear" | "hierarchical" | "reflexive";
-  createdAt: number;
-} {
+/**
+ * R5-1 FIX: makePlanGraphBundle creates a proper PlanGraphBundle for testing
+ * instead of the legacy Plan { steps[] } type.
+ */
+function makePlanGraphBundle(overrides: Partial<{
+  planGraphBundleId: string;
+  harnessRunId: string;
+  graphVersion: number;
+}> = {}): ReturnType<typeof createPlanGraphBundle> {
+  const planGraphBundleId = overrides.planGraphBundleId ?? "pgb-001";
+  const harnessRunId = overrides.harnessRunId ?? "harness-run-001";
+  const graphVersion = overrides.graphVersion ?? 1;
+
   return {
-    planId: "plan-001",
-    taskId: "task-001",
-    version: 1,
-    strategy: "linear",
-    createdAt: Date.now(),
-    ...overrides,
+    planGraphBundleId,
+    harnessRunId,
+    graphVersion,
+    graph: {
+      graphId: newId("graph"),
+      nodes: [
+        {
+          nodeId: "node-1",
+          nodeType: "tool" as const,
+          inputRefs: [],
+          outputSchemaRef: "schema:node.1",
+          riskClass: "medium" as const,
+          budgetIntent: { amount: 1000, currency: "USD", resourceKinds: ["compute"] as const },
+          sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+          retryPolicyRef: "retry:node.1",
+          timeoutMs: 60000,
+        },
+        {
+          nodeId: "node-2",
+          nodeType: "tool" as const,
+          inputRefs: ["node-1"],
+          outputSchemaRef: "schema:node.2",
+          riskClass: "medium" as const,
+          budgetIntent: { amount: 1000, currency: "USD", resourceKinds: ["compute"] as const },
+          sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+          retryPolicyRef: "retry:node.2",
+          timeoutMs: 60000,
+        },
+      ],
+      edges: [
+        {
+          edgeId: newId("edge"),
+          fromNodeId: "node-1",
+          toNodeId: "node-2",
+          condition: { type: "always" as const },
+          dependencyType: "hard" as const,
+        },
+      ],
+      entryNodeIds: ["node-1"],
+      terminalNodeIds: ["node-2"],
+      joinStrategy: "all" as const,
+      graphHash: `${harnessRunId}:${planGraphBundleId}:${graphVersion}:2`,
+    },
+    schedulerPolicy: {
+      policyId: "scheduler:oapeflir.deterministic_fifo",
+      strategy: "deterministic_fifo" as const,
+    },
+    budgetPlanRef: `budget:plan.${planGraphBundleId}`,
+    riskProfile: { riskClass: "medium" as const, reasons: ["test.default"] },
+    validationReport: { valid: true, findings: [] },
+    artifactRefs: [],
+    createdAt: new Date().toISOString(),
   };
 }
 
 function makeFeedback(overrides: Partial<{
-  outcome: string;
+  outcome: "repairable" | "failed" | "escalated" | "succeeded";
   signals: Array<{ category: string }>;
 }> = {}): {
   outcome: "repairable" | "failed" | "escalated" | "succeeded";
@@ -51,7 +105,7 @@ test("ReplanningService.createTrigger creates valid trigger", () => {
 
 test("ReplanningService.decide returns shouldReplan=true for repairable outcome", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "repairable" }));
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "repairable" }));
 
   assert.equal(decision.shouldReplan, true);
   assert.equal(decision.nextPlanVersion, 2);
@@ -59,21 +113,21 @@ test("ReplanningService.decide returns shouldReplan=true for repairable outcome"
 
 test("ReplanningService.decide returns shouldReplan=true for failed outcome", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "failed" }));
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "failed" }));
 
   assert.equal(decision.shouldReplan, true);
 });
 
 test("ReplanningService.decide returns shouldReplan=true for escalated outcome", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "escalated" }));
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "escalated" }));
 
   assert.equal(decision.shouldReplan, true);
 });
 
 test("ReplanningService.decide returns shouldReplan=true for correction signal", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({
     outcome: "succeeded",
     signals: [{ category: "correction" }],
   }));
@@ -83,7 +137,7 @@ test("ReplanningService.decide returns shouldReplan=true for correction signal",
 
 test("ReplanningService.decide returns shouldReplan=false for successful outcome", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "succeeded" }));
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "succeeded" }));
 
   assert.equal(decision.shouldReplan, false);
   assert.equal(decision.nextPlanVersion, null);
@@ -92,44 +146,44 @@ test("ReplanningService.decide returns shouldReplan=false for successful outcome
 
 test("ReplanningService.decide sets strategy to replanned when shouldReplan", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "failed" }));
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "failed" }));
 
   assert.equal(decision.strategy, "replanned");
 });
 
 test("ReplanningService.decide passes through trigger reasonCode", () => {
   const service = new ReplanningService();
-  const trigger = service.createTrigger("task-001", "custom.reason", "operator", "Manual trigger");
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "failed" }), trigger);
+  const trigger = service.createTrigger("harness-run-001", "custom.reason", "operator", "Manual trigger");
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "failed" }), trigger);
 
   assert.equal(decision.reasonCode, "custom.reason");
 });
 
 test("ReplanningService.decide uses default reasonCode when no trigger", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "failed" }), null);
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "failed" }), null);
 
   assert.ok(decision.reasonCode.length > 0);
 });
 
 test("ReplanningService.decide includes decisionId", () => {
   const service = new ReplanningService();
-  const decision = service.decide(makePlan(), makeFeedback({ outcome: "repairable" }));
+  const decision = service.decide(makePlanGraphBundle(), makeFeedback({ outcome: "repairable" }));
 
   assert.ok(decision.decisionId.length > 0);
 });
 
-test("ReplanningService.decide includes taskId from plan", () => {
+test("ReplanningService.decide includes taskId from harnessRunId", () => {
   const service = new ReplanningService();
-  const plan = makePlan({ taskId: "task-custom-123" });
+  const plan = makePlanGraphBundle({ harnessRunId: "harness-custom-123" });
   const decision = service.decide(plan, makeFeedback());
 
-  assert.equal(decision.taskId, "task-custom-123");
+  assert.equal(decision.taskId, "harness-custom-123");
 });
 
 test("ReplanningService.decide increments version correctly", () => {
   const service = new ReplanningService();
-  const plan = makePlan({ version: 5 });
+  const plan = makePlanGraphBundle({ graphVersion: 5 });
   const decision = service.decide(plan, makeFeedback({ outcome: "repairable" }));
 
   assert.equal(decision.nextPlanVersion, 6);
