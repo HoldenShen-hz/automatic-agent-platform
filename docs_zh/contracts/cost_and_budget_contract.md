@@ -118,10 +118,10 @@
 
 | 操作 | 归属规则 | CostEvent 标注 |
 | --- | --- | --- |
-| 上下文压缩（compaction stage 2 summarize） | 归属到触发压缩的 session 和 task | `budget_scope: compaction`、关联 `session_id` 和 `task_id` |
+| 上下文压缩（compaction stage 2 summarize） | 归属到触发压缩的 session 和 harness run | `budget_scope: compaction`、关联 `session_id` 和 `harness_run_id` |
 | skill 缓存未命中后的模型调用 | 归属到触发 skill 执行的 harness run 和 node run | `budget_scope: skill_execution`、关联 `harness_run_id / node_run_id` |
-| 自愈 / 恢复重试 | 归属到原始 task（非新建恢复任务） | `budget_scope: recovery_retry`、关联原始 `task_id` |
-| guardian / reviewer subagent 推理 | 归属到触发审批的 task | `budget_scope: approval_review`、关联 `approval_id` |
+| 自愈 / 恢复重试 | 归属到原始 harness run（非新建恢复任务） | `budget_scope: recovery_retry`、关联原始 `harness_run_id` |
+| guardian / reviewer subagent 推理 | 归属到触发审批的 harness run | `budget_scope: approval_review`、关联 `harness_run_id` |
 
 规则：
 

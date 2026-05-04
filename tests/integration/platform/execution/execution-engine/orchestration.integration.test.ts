@@ -45,7 +45,7 @@ test("orchestration: Run multi-step orchestration from request to completion", a
     // Verify events were recorded
     assert.ok(result.snapshot.events.length >= 3, "Should have events (routing, planned, completed)");
     const eventTypes = result.snapshot.events.map((e) => e.eventType);
-    assert.ok(eventTypes.includes("routing:decided"), "Should have routing:decided event");
+    assert.ok(eventTypes.includes("platform.graph_scheduler.decision_recorded"), "Should have platform.graph_scheduler.decision_recorded event");
     assert.ok(eventTypes.includes("workflow:planned"), "Should have workflow:planned event");
     assert.ok(eventTypes.includes("division:completed"), "Should have division:completed event");
 
@@ -300,7 +300,7 @@ test("orchestration: Runtime entry guard validates no legacy truth writes", asyn
 
     // Verify events show proper routing (not legacy truth writes)
     const eventTypes = result.snapshot.events.map((e) => e.eventType);
-    assert.ok(eventTypes.includes("routing:decided"), "Should have routing event");
+    assert.ok(eventTypes.includes("platform.graph_scheduler.decision_recorded"), "Should have routing event");
     assert.ok(!eventTypes.some((e) => e === "legacy:routing_completed"), "Should not have legacy event type");
   } finally {
     cleanupPath(workspace);

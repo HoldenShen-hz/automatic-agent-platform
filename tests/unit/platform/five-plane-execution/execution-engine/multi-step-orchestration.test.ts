@@ -162,7 +162,7 @@ test("runMultiStepOrchestration creates workflow and session records", async () 
   }
 });
 
-test("runMultiStepOrchestration emits routing:decided event", async () => {
+test("runMultiStepOrchestration emits platform.graph_scheduler.decision_recorded event", async () => {
   const dbPath = await createTempDbPath();
 
   try {
@@ -175,8 +175,8 @@ test("runMultiStepOrchestration emits routing:decided event", async () => {
     });
 
     const events = result.snapshot.events ?? [];
-    const routingEvent = events.find((e: any) => e.eventType === "routing:decided");
-    assert.ok(routingEvent, "Should emit routing:decided event");
+    const routingEvent = events.find((e: any) => e.eventType === "platform.graph_scheduler.decision_recorded");
+    assert.ok(routingEvent, "Should emit platform.graph_scheduler.decision_recorded event");
   } finally {
     try {
       const { openAuthoritativeStorageContext } = await import("../../../../../../src/platform/state-evidence/truth/storage-backend-factory.js");

@@ -41,7 +41,7 @@ describe("repository-harness", () => {
       try {
         assert.ok(harness.db, "db should be defined");
         // Should be able to run a simple query
-        const result = harness.db.prepare("SELECT 1 as val").get();
+        const result = harness.db.connection.prepare("SELECT 1 as val").get() as { val: number };
         assert.strictEqual(result.val, 1);
       } finally {
         harness.cleanup();
@@ -52,7 +52,9 @@ describe("repository-harness", () => {
       const harness = createRepositoryHarness("repo-migrated-");
       try {
         // Check that tables exist by querying sqlite_master
-        const tables = harness.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+        const tables = harness.db.connection
+          .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+          .all() as Array<{ name: string }>;
         assert.ok(tables.length > 0, "database should have tables");
       } finally {
         harness.cleanup();
@@ -99,19 +101,14 @@ describe("repository-harness", () => {
   });
 
   describe("createRepositoryWithStoreHarness", () => {
-    // Note: createRepositoryWithStoreHarness uses CommonJS `require()` internally
-    // which does not work in ESM context. These tests document the issue.
-
     it("should create a harness basic properties", () => {
-      // This test will fail due to the require() bug in the helper
-      // but we keep it to document the behavior
+      const harness = createRepositoryWithStoreHarness("repo-store-");
       try {
-        const harness = createRepositoryWithStoreHarness("repo-store-");
         assert.ok(harness.store, "store should be defined");
         assert.ok(harness.db, "db should still be defined");
-      } catch (err) {
-        // Expected - the helper has a bug using require() in ESM context
-        assert.match((err as Error).message, /require is not defined|require\(\)/);
+        assert.deepEqual(harness.store.listTasks(10), []);
+      } finally {
+        harness.cleanup();
       }
     });
   });

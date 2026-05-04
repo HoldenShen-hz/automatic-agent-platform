@@ -24,7 +24,7 @@ Before the system truly writes code, two things must be frozen:
 | --- | --- | --- |
 | Migration version | Schema version consistent with ledger | fail-closed |
 | Active task and workflow alignment | `in_progress / awaiting_decision` task must have corresponding workflow_state or explainable absence | mark recoverable |
-| Illegal step index | `current_step_index` must not be out of bounds | fail-closed or manual repair |
+| Illegal step index | `current_step_index` must not be out of bounds; `current_step_index` must be accompanied by valid `workflow_state` reference | fail-closed or manual repair |
 | stale execution | `prechecking / executing` and heartbeat expired (note: `retrying` deprecated, retry implemented via new execution attempt) | mark recoverable |
 | hanging session | session in active state but task already terminal | auto-close or alert |
 | expired file lock | `expires_at < now` and holder inactive | clean and record event |

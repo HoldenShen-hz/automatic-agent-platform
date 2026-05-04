@@ -86,19 +86,12 @@ interface ImprovementCandidate {
   updatedAt: string;
 }
 
+// Per §56.4 LearningCandidate State Definition
 type ImprovementCandidateStatus =
-  | 'candidate_created'
-  | 'under_review'
-  | 'approved'
-  | 'rejected'
-  | 'evaluation_enabled'
-  | 'canary_5'
-  | 'partial_25'
-  | 'stable_75'
-  | 'stable_100'
-  | 'released'
-  | 'auto_rollback'
-  | 'rolled_back';
+  | 'quarantine'    // Initial quarantine state
+  | 'approved'      // Approved
+  | 'rejected'      // Rejected
+  | 'released';     // Released
 ```
 
 ### 6. Autonomy Boundary

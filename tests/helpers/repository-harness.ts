@@ -11,6 +11,7 @@ import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 import { SqliteDatabase } from "../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "./fs.js";
 
 export interface RepositoryHarness {
@@ -67,10 +68,6 @@ export function createRepositoryHarness(prefix: string = "aa-repo-"): Repository
  */
 export function createRepositoryWithStoreHarness(prefix: string = "aa-repo-store-") {
   const harness = createRepositoryHarness(prefix);
-
-  // Lazy import to avoid circular dependencies
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { AuthoritativeTaskStore } = require("../../src/platform/state-evidence/truth/authoritative-task-store.js");
   const store = new AuthoritativeTaskStore(harness.db);
 
   return {

@@ -98,6 +98,32 @@ export interface DecoratedAuthoritativeTaskStore<T extends AuthoritativeTaskStor
   resetMetrics(): void;
 }
 
+const LEGACY_STORE_NAMESPACE_ALIASES = new Set([
+  "task",
+  "workflow",
+  "session",
+  "event",
+  "execution",
+  "dispatch",
+  "worker",
+  "approval",
+  "artifact",
+  "artifacts",
+  "billing",
+  "memory",
+  "organization",
+  "operations",
+  "lock",
+  "lease",
+  "intelligence",
+  "marketplace",
+  "release",
+  "secret",
+  "evolution",
+  "compliance",
+  "sessionCandidates",
+]);
+
 export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>(
   store: T,
   options: DecoratedAuthoritativeTaskStoreOptions = {},
@@ -191,9 +217,26 @@ export function decorateAuthoritativeTaskStore<T extends AuthoritativeTaskStore>
     },
   });
 
-  return {
-    store: proxy as T,
-    getMetricsSnapshot,
-    resetMetrics,
-  };
+  return new Proxy(
+    {
+      store: proxy as T,
+      getMetricsSnapshot,
+      resetMetrics,
+    } as DecoratedAuthoritativeTaskStore<T>,
+    {
+      get(target, property, receiver) {
+        if (Reflect.has(target, property)) {
+          return Reflect.get(target, property, receiver);
+        }
+        const delegated = Reflect.get(proxy as object, property, proxy);
+        if (delegated !== undefined) {
+          return delegated;
+        }
+        if (typeof property === "string" && LEGACY_STORE_NAMESPACE_ALIASES.has(property)) {
+          return proxy;
+        }
+        return delegated;
+      },
+    },
+  );
 }

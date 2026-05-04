@@ -61,19 +61,22 @@ Rules:
 
 `ExplanationDepth` is fixed to:
 
-- `brief`
-- `standard`
-- `audit`
+- `L1` — Summary
+- `L2` — Reasoning
+- `L3` — Forensic
 
 Rules:
 
+- `L1` corresponds to Summary, `L2` corresponds to Reasoning, `L3` corresponds to Forensic.
 - Higher depth can only add evidence and context, must not change factual conclusions.
 - Explanation content must comply with data classification and redaction rules.
+- Explanations must be permission-aware; over-permission evidence can only be exposed as redacted refs.
+- Explanation objects must be incorporated into Evidence Plane; they must not be replaced by temporary UI text as authoritative rationale.
 
 ## v4.3 Contract Remediation
 
 - T-68: This document originally wrote `task_id + stage` as `StageRationale` primary key. The root cause was that the explanation layer reused the old cognitive view draft and did not bind explanations to the concrete runtime chain. Fix: The main text now uses `harness_run_id / node_run_id / stage_view_ref` as the authoritative key; `task_id` is retained only for user-facing query purposes.
-- R2-70 Fix: `StageRationale` now has 14 fields including the previously missing `rationaleId`, `decisionInputRef`, `versionLockRef`, `visibilityLabels`, `confidence`, and `alternatives`.
+- T-77 / T-80: This document originally used `brief / standard / audit` depth names and did not write permission-aware / Evidence Plane constraints as explicit rules. Fix: The main text now unifies to `L1 / L2 / L3` and requires explanation objects to enter Evidence Plane with permission-aware rendering.
 
 ## 5. Testing Requirements
 

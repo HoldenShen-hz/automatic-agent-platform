@@ -13,10 +13,12 @@ Different businesses have different SLA requirements, and the platform needs to 
 
 | Tier | Name | Availability | Response Time | Concurrency |
 |------|------|--------------|---------------|-------------|
-| platinum | Platinum | 99.99% | < 100ms | 1000+ |
+| platinum | Platinum | 99.99% (requires multi-region HA deployment) | < 100ms | 1000+ |
 | gold | Gold | 99.9% | < 500ms | 500 |
 | silver | Silver | 99.5% | < 1s | 100 |
 | bronze | Bronze | 99% | < 5s | 50 |
+
+**Note**: Platinum 99.99% availability requires multi-region HA deployment, automatic failover, and separate SLA contract terms. "No preconditions" 99.99% is not achievable for single-region deployments.
 
 ### SLA Metrics
 

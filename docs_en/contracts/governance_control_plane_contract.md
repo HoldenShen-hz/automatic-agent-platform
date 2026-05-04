@@ -249,7 +249,7 @@ For OAPEFLIR Phase 1-4, governance plane must cover at minimum the following gat
 Rules:
 
 - `Observe / Assess / Plan` can submit recommendations, but must not bypass governance gate to directly accept improvement or advance release.
-- `release_transition_gate` within current authoritative scope only allows advancing to `off / suggest / shadow`.
+- `release_transition_gate` semantics evaluate lifecycle advancement requests per ADR-061 agent lifecycle (draft → testing → staging → canary → active → paused → deprecated → archived → removed) and ADR-075 release levels (L0:off → L1:evaluate_0 → L2:canary_5 → L3:partial_25 → L4:stable_75 → L5:stable_100). The gate must map to canonical lifecycle states, not legacy alias names.
 - `canary_promote / full_release / rollback automation` belong to subsequent extension gates, must not masquerade as phase1-4 delivered capabilities.
 - Low-risk read-only actions can be downgraded per configuration.
 - Emergency control always takes priority.

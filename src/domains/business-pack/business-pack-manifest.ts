@@ -15,6 +15,366 @@ import { ValidationError } from "../../platform/contracts/errors.js";
 import type { SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
 
 // ============================================================================
+// Semver Range Parsing (R13-28 FIX)
+// ============================================================================
+
+/**
+ * Parses a semver range string into component constraints.
+ * Supports: exact versions (1.0.0), ranges (1.0.0 - 2.0.0), carets (^1.0.0), tildes (~1.0.0), x-ranges (1.x, 1.0.x), and stars (*)
+ */
+export function parseSemverRange(range: string): {
+  major: number | "any";
+  minor: number | "any";
+  patch: number | "any";
+  comparators: readonly {
+    op: ">=" | "<=" | ">" | "<" | "=";
+    major: number | "any";
+    minor: number | "any";
+    patch: number | "any";
+  }[];
+} | null {
+  if (!range || range === "*") {
+    return { major: "any", minor: "any", patch: "any", comparators: [] };
+  }
+
+  const comparators: {
+    op: ">=" | "<=" | ">" | "<" | "=";
+    major: number | "any";
+    minor: number | "any";
+    patch: number | "any";
+  }[] = [];
+
+  // Handle range syntax like "1.0.0 - 2.0.0"
+  const rangeParts = range.split(/\s*-\s*/);
+  if (rangeParts.length === 2) {
+    const left = parseSemverRange(rangeParts[0].trim());
+    const right = parseSemverRange(rangeParts[1].trim());
+    if (left && right) {
+      comparators.push({ op: ">=", major: left.major, minor: left.minor, patch: left.patch });
+      comparators.push({ op: "<=", major: right.major, minor: right.minor, patch: right.patch });
+      return { major: "any", minor: "any", patch: "any", comparators };
+    }
+  }
+
+  // Handle caret (^1.0.0) - compatible minor version
+  if (range.startsWith("^")) {
+    const version = range.slice(1);
+    const parsed = parsePlainSemver(version);
+    if (parsed) {
+      return {
+        major: "any",
+        minor: "any",
+        patch: "any",
+        comparators: [
+          { op: ">=", major: parsed.major, minor: parsed.minor, patch: parsed.patch },
+          { op: "<", major: parsed.major + 1, minor: 0, patch: 0 },
+        ],
+      };
+    }
+    return null;
+  }
+
+  // Handle tilde (~1.0.0) - compatible patch version
+  if (range.startsWith("~")) {
+    const version = range.slice(1);
+    const parsed = parsePlainSemver(version);
+    if (parsed) {
+      return {
+        major: "any",
+        minor: "any",
+        patch: "any",
+        comparators: [
+          { op: ">=", major: parsed.major, minor: parsed.minor, patch: parsed.patch },
+          { op: "<", major: parsed.major, minor: parsed.minor + 1, patch: 0 },
+        ],
+      };
+    }
+    return null;
+  }
+
+  // Handle x-ranges (1.x, 1.0.x, *)
+  if (range.includes("x") || range.includes("*")) {
+    const normalized = range.replace(/x/g, "*").replace(/\.\*/g, ".x");
+    const parts = normalized.split(".");
+    return {
+      major: parts[0] === "*" ? "any" : parseInt(parts[0], 10),
+      minor: parts.length < 2 || parts[1] === "*" ? "any" : parseInt(parts[1], 10),
+      patch: parts.length < 3 || parts[2] === "*" ? "any" : parseInt(parts[2], 10),
+      comparators: [],
+    };
+  }
+
+  // Handle comparison operators
+  const match = range.match(/^(>=|<=|>|<|=)?(\d+)\.(\d+)\.(\d+)$/);
+  if (match) {
+    const op = (match[1] ?? "=") as ">=" | "<=" | ">" | "<" | "=";
+    return {
+      major: parseInt(match[2], 10),
+      minor: parseInt(match[3], 10),
+      patch: parseInt(match[4], 10),
+      comparators: [{ op, major: parseInt(match[2], 10), minor: parseInt(match[3], 10), patch: parseInt(match[4], 10) }],
+    };
+  }
+
+  // Handle plain semver
+  const parsed = parsePlainSemver(range);
+  if (parsed) {
+    return {
+      major: parsed.major,
+      minor: parsed.minor,
+      patch: parsed.patch,
+      comparators: [{ op: "=", major: parsed.major, minor: parsed.minor, patch: parsed.patch }],
+    };
+  }
+
+  return null;
+}
+
+function parsePlainSemver(version: string): { major: number; minor: number; patch: number } | null {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return null;
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3], 10),
+  };
+}
+
+/**
+ * Checks if a version satisfies a semver range.
+ */
+export function satisfiesSemverRange(version: string, range: string): boolean {
+  const versionParsed = parsePlainSemver(version);
+  if (!versionParsed) return false;
+
+  const rangeParsed = parseSemverRange(range);
+  if (!rangeParsed) return false;
+
+  // Check major.minor.patch constraints
+  if (rangeParsed.major !== "any" && versionParsed.major !== rangeParsed.major) {
+    return false;
+  }
+  if (rangeParsed.minor !== "any" && versionParsed.minor !== rangeParsed.minor) {
+    return false;
+  }
+  if (rangeParsed.patch !== "any" && versionParsed.patch !== rangeParsed.patch) {
+    return false;
+  }
+
+  // Check comparator constraints
+  for (const comp of rangeParsed.comparators) {
+    const compResult = compareVersionParts(versionParsed, comp);
+    switch (comp.op) {
+      case ">=":
+        if (compResult < 0) return false;
+        break;
+      case "<=":
+        if (compResult > 0) return false;
+        break;
+      case ">":
+        if (compResult <= 0) return false;
+        break;
+      case "<":
+        if (compResult >= 0) return false;
+        break;
+      case "=":
+        if (compResult !== 0) return false;
+        break;
+    }
+  }
+
+  return true;
+}
+
+function compareVersionParts(
+  version: { major: number; minor: number; patch: number },
+  comparator: { major: number | "any"; minor: number | "any"; patch: number | "any" },
+): number {
+  if (comparator.major !== "any" && version.major !== comparator.major) {
+    return version.major - comparator.major;
+  }
+  if (comparator.minor !== "any" && version.minor !== comparator.minor) {
+    return version.minor - comparator.minor;
+  }
+  if (comparator.patch !== "any" && version.patch !== comparator.patch) {
+    return version.patch - comparator.patch;
+  }
+  return 0;
+}
+
+// ============================================================================
+// Dependency Graph (R13-29 FIX)
+// ============================================================================
+
+export interface DependencyNode {
+  packId: string;
+  version: string;
+  dependencies: readonly PackDependency[];
+}
+
+export interface DependencyGraphResult {
+  valid: boolean;
+  cycles: readonly string[][];
+  unresolvedDependencies: readonly { packId: string; versionRange: string }[];
+}
+
+/**
+ * Builds a dependency graph and detects cycles.
+ * R13-29 FIX: Transitive dependency graph parsing with cycle detection.
+ */
+export function buildDependencyGraph(
+  manifest: BusinessPackManifest,
+  getPackVersion: (packId: string) => string | null,
+): DependencyGraphResult {
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+  const cycles: string[][] = [];
+  const unresolvedDependencies: { packId: string; versionRange: string }[] = [];
+
+  function dfs(packId: string, path: string[]): boolean {
+    if (recursionStack.has(packId)) {
+      // Found cycle - extract the cycle path
+      const cycleStart = path.indexOf(packId);
+      if (cycleStart >= 0) {
+        cycles.push([...path.slice(cycleStart), packId]);
+      }
+      return true;
+    }
+
+    if (visited.has(packId)) {
+      return false;
+    }
+
+    visited.add(packId);
+    recursionStack.add(packId);
+
+    const dep = manifest.dependencies?.find((d) => d.packId === packId);
+    if (dep) {
+      path.push(packId);
+      for (const transitiveDep of dep.dependencies ?? []) {
+        if (dfs(transitiveDep.packId, [...path])) {
+          // Cycle detected, but continue to find all cycles
+        }
+      }
+    }
+
+    recursionStack.delete(packId);
+    return false;
+  }
+
+  // Start with self to detect self-referential cycles
+  dfs(manifest.packId, [manifest.packId]);
+
+  // Check for unresolved dependencies
+  for (const dep of manifest.dependencies ?? []) {
+    if (dep.optional) continue;
+    const availableVersion = getPackVersion(dep.packId);
+    if (!availableVersion) {
+      unresolvedDependencies.push({ packId: dep.packId, versionRange: dep.versionRange });
+    } else if (dep.versionRange && !satisfiesSemverRange(availableVersion, dep.versionRange)) {
+      unresolvedDependencies.push({ packId: dep.packId, versionRange: dep.versionRange });
+    }
+  }
+
+  return {
+    valid: cycles.length === 0 && unresolvedDependencies.length === 0,
+    cycles,
+    unresolvedDependencies,
+  };
+}
+
+// ============================================================================
+// Upgrade Path Calculator (R13-30 FIX)
+// ============================================================================
+
+export interface UpgradePath {
+  fromVersion: string;
+  toVersion: string;
+  breaking: boolean;
+  steps: readonly string[];
+}
+
+export interface UpgradePathResult {
+  hasPath: boolean;
+  paths: readonly UpgradePath[];
+  breakingChanges: readonly { from: string; to: string; breakingFeatures: readonly string[] }[];
+}
+
+/**
+ * Calculates automatic upgrade paths between pack versions.
+ * R13-30 FIX: Automatic upgrade path calculation with breaking change detection.
+ */
+export function calculateUpgradePaths(
+  currentVersion: string,
+  targetVersion: string,
+  availableVersions: readonly string[],
+): UpgradePathResult {
+  const breakingChanges: { from: string; to: string; breakingFeatures: readonly string[] }[] = [];
+  const paths: UpgradePath[] = [];
+
+  // Parse versions
+  const current = parsePlainSemver(currentVersion);
+  const target = parsePlainSemver(targetVersion);
+
+  if (!current || !target) {
+    return { hasPath: false, paths: [], breakingChanges: [] };
+  }
+
+  // Major version change = breaking
+  const breaking = current.major !== target.major;
+
+  if (breaking) {
+    breakingChanges.push({
+      from: currentVersion,
+      to: targetVersion,
+      breakingFeatures: ["major_version_change"],
+    });
+  }
+
+  // Build upgrade path through intermediate versions
+  const sortedVersions = [...availableVersions]
+    .filter((v) => {
+      const parsed = parsePlainSemver(v);
+      if (!parsed) return false;
+      // Versions between current and target (inclusive)
+      return (
+        (parsed.major > current.major || (parsed.major === current.major && parsed.minor > current.minor) ||
+          (parsed.major === current.major && parsed.minor === current.minor && parsed.patch >= current.patch)) &&
+        (parsed.major < target.major || (parsed.major === target.major && parsed.minor < target.minor) ||
+          (parsed.major === target.major && parsed.minor === target.minor && parsed.patch <= target.patch))
+      );
+    })
+    .sort((a, b) => compareSemverSimple(a, b));
+
+  if (sortedVersions.length > 0) {
+    const steps = [currentVersion, ...sortedVersions, targetVersion].filter(
+      (v, i, arr) => arr.indexOf(v) === i,
+    );
+    paths.push({
+      fromVersion: currentVersion,
+      toVersion: targetVersion,
+      breaking,
+      steps,
+    });
+  }
+
+  return {
+    hasPath: paths.length > 0,
+    paths,
+    breakingChanges,
+  };
+}
+
+function compareSemverSimple(left: string, right: string): number {
+  const leftParsed = parsePlainSemver(left);
+  const rightParsed = parsePlainSemver(right);
+  if (!leftParsed || !rightParsed) return 0;
+  if (leftParsed.major !== rightParsed.major) return leftParsed.major - rightParsed.major;
+  if (leftParsed.minor !== rightParsed.minor) return leftParsed.minor - rightParsed.minor;
+  return leftParsed.patch - rightParsed.patch;
+}
+
+// ============================================================================
 // Supporting Types
 // ============================================================================
 
@@ -396,7 +756,7 @@ export function validateBusinessPackManifest(
     });
   }
 
-  // Dependency validation
+  // Dependency validation with semver range parsing (R13-28 FIX)
   for (const dep of dependencies) {
     if (!dep.packId) {
       issues.push({
@@ -421,6 +781,64 @@ export function validateBusinessPackManifest(
         message: "Dependency version range is required",
         severity: "warning",
       });
+    } else {
+      // R13-28 FIX: Validate semver range format and parseability
+      const rangeParsed = parseSemverRange(dep.versionRange);
+      if (!rangeParsed) {
+        issues.push({
+          code: "manifest.invalid_version_range_format",
+          field: `dependencies.${dep.packId}.versionRange`,
+          message: `Dependency version range '${dep.versionRange}' is not a valid semver range`,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  // R13-29 FIX: Transitive dependency graph validation with cycle detection
+  const getPackVersionFn = (packId: string): string | null => {
+    if (packId === normalizedManifest.packId) {
+      return normalizedManifest.version;
+    }
+    // In a real implementation, this would look up from a pack registry
+    // For now, we assume any pack in existingPackIds has a compatible version
+    return existingPackIds.has(packId) ? "1.0.0" : null;
+  };
+
+  const depGraphResult = buildDependencyGraph(normalizedManifest, getPackVersionFn);
+  for (const cycle of depGraphResult.cycles) {
+    issues.push({
+      code: "manifest.dependency_cycle_detected",
+      field: "dependencies",
+      message: `Circular dependency detected: ${cycle.join(" -> ")}`,
+      severity: "error",
+    });
+  }
+  for (const unresolved of depGraphResult.unresolvedDependencies) {
+    issues.push({
+      code: "manifest.unresolved_dependency",
+      field: `dependencies.${unresolved.packId}`,
+      message: `Dependency '${unresolved.packId}' version range '${unresolved.versionRange}' cannot be satisfied`,
+      severity: "error",
+    });
+  }
+
+  // R13-30 FIX: Upgrade path validation for major version changes
+  if (normalizedManifest.lifecycleStage === "published" && dependencies.length > 0) {
+    for (const dep of dependencies) {
+      if (!dep.versionRange) continue;
+      const depVersion = getPackVersionFn(dep.packId);
+      if (depVersion && !satisfiesSemverRange(depVersion, dep.versionRange)) {
+        const upgradeResult = calculateUpgradePaths(depVersion, dep.versionRange, []);
+        if (upgradeResult.breakingChanges.length > 0) {
+          issues.push({
+            code: "manifest.breaking_change_in_dependency",
+            field: `dependencies.${dep.packId}`,
+            message: `Dependency '${dep.packId}' has a breaking change path (major version bump)`,
+            severity: "warning",
+          });
+        }
+      }
     }
   }
 

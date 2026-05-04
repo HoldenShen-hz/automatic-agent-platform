@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const repoRoot = "/Users/holden/Project/automatic_agent/automatic_agent_platform";
 
 function readJson(path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+  return Function(`"use strict"; return (${readFileSync(path, "utf8")});`)() as Record<string, unknown>;
 }
 
 test("runtime default config includes configVersion for version tracking", () => {

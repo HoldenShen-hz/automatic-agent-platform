@@ -364,7 +364,7 @@ test("integration: runMultiStepOrchestration creates events during execution", a
     assert.ok(result.snapshot.events.length > 0);
 
     const eventTypes = result.snapshot.events.map((e) => e.eventType);
-    assert.ok(eventTypes.includes("routing:decided"), "should have routing:decided event");
+    assert.ok(eventTypes.includes("platform.graph_scheduler.decision_recorded"), "should have platform.graph_scheduler.decision_recorded event");
     assert.ok(eventTypes.includes("workflow:planned"), "should have workflow:planned event");
   } finally {
     if (fs.existsSync(dbPath)) {

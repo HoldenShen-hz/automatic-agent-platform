@@ -93,6 +93,7 @@ Phase 1-4 loop events must provide typed payloads, corresponding to ADR-079 and 
 - `planGraphId` — plan graph ID (formerly plan_id)
 - `baseGraphVersion` — base graph version (formerly old_version)
 - `newGraphVersion` — new graph version (formerly new_version)
+- `derivedFromEventId` — source event ID that triggered the replan (for audit chain)
 - `triggerType` — trigger type
 - `traceId` — trace ID
 - `nodeRunId?` — optional node identifier

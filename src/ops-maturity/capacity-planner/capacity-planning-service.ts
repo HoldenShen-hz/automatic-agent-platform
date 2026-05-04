@@ -3,6 +3,7 @@ import { CapacityForecasterService, forecastCapacityUsage } from "./forecaster/i
 import { CapacityScenarioSimulatorService, simulateCapacityScenario, type CapacityScenarioInput } from "./simulator/index.js";
 import { CapacityTrendAnalyzerService, analyzeCapacityTrend } from "./trend-analyzer/index.js";
 
+// R9-58 fix: Added tenantId and harnessRunId to CapacitySignal for proper multi-tenant tracking
 export interface CapacitySignal {
   readonly resourceType: string;
   readonly regionId?: string;
@@ -10,6 +11,8 @@ export interface CapacitySignal {
   readonly usage: number;
   readonly queueDepth?: number;
   readonly errorBudgetBurn?: number;
+  readonly tenantId?: string;
+  readonly harnessRunId?: string;
 }
 
 export interface CapacityForecast {

@@ -225,7 +225,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   // R4-26/R4-27 (INV-GRAPH-001/INV-RUN-001): RuntimeEntryGuard is mandatory at dispatch entry
   // All execution paths must pass through PlanGraphBundle validation before writing truth
   const entryGuard = new RuntimeEntryGuard();
-  entryGuard.assertNoLegacyTruthWrite({ eventType: "routing:decided" });
+  entryGuard.assertNoLegacyTruthWrite({ eventType: "platform.graph_scheduler.decision_recorded" });
 
   // Reset the tool registry to ensure clean state for this orchestration run
   resetMultiStepToolRegistryForTests();
@@ -482,7 +482,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           id: newId("evt"),
           taskId,
           executionId: null,
-          eventType: "routing:decided",
+          eventType: "platform.graph_scheduler.decision_recorded",
           eventTier: "tier_2",
           payloadJson: JSON.stringify(routing),
           traceId,

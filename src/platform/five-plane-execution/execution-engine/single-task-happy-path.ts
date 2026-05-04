@@ -151,7 +151,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   // All execution paths must pass through PlanGraphBundle validation before writing truth
   const entryGuard = new RuntimeEntryGuard();
   // Verify that any event writes follow the platform.* fact event requirement
-  entryGuard.assertNoLegacyTruthWrite({ eventType: "routing:decided" });
+  entryGuard.assertNoLegacyTruthWrite({ eventType: "platform.graph_scheduler.decision_recorded" });
 
   assertWorkflowValid(SINGLE_AGENT_MINIMAL_WORKFLOW);
 

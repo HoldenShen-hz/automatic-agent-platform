@@ -59,6 +59,7 @@ import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-contr
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
 import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";
+import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../../../five-plane-state-evidence/truth/runtime-physical-schema.js";
 
 /**
  * Defines a SQLite database migration with version, name, SQL, and checksum.
@@ -351,6 +352,8 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(45, "0045_side_effect_lease_fencing", SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL),
   // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to budget_ledgers for fencing enforcement
   defineMigration(46, "0046_budget_ledger_lease_fencing", BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL),
+  // Bridge legacy authoritative storage with the canonical five-plane runtime schema.
+  defineMigration(47, "0047_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_SQL),
 ] as const;
 
 /**
