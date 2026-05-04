@@ -499,7 +499,8 @@ export class RuntimeRecoveryService {
         continue;
       }
 
-      // R8-02 FIX: Actually execute compensation using the CompensationManager
+      // R8-02 FIX: Plan and execute compensation using the CompensationManager
+      const compensationPlan = this.compensationManager.planCompensation(sideEffect, compensationContext);
       const compensationResult = this.compensationManager.executeCompensationSteps(compensationPlan, compensationContext);
 
       // Update compensation record with execution result
@@ -507,7 +508,7 @@ export class RuntimeRecoveryService {
         sideEffect.sideEffectId,
         sideEffect.harnessRunId,
         { artifactId: compensationPlan.compensationId, uri: `compensation://${compensationPlan.compensationId}`, kind: "compensation_plan" },
-        compensationResult.success ? "succeeded" : "failed",
+        compensationResult.finalStatus,
       );
 
       // Record evidence refs from execution

@@ -21,6 +21,43 @@ export interface OrgGovernanceSagaHandlers {
   readonly audit?: (step: OrgGovernanceSagaStep, context: OrgGovernanceSagaHandlerContext) => void;
 }
 
+/**
+ * Handler interfaces for org operations performed during saga commit phase.
+ * §46.3: commit phase must update in fixed order: identity → approval → budget → domain → agent
+ */
+export interface OrgIdentityOperation {
+  updatePrincipalOrgNode(principalId: string, newOrgNodeId: string, sagaId: string): Promise<void>;
+  transferPrincipal(principalId: string, fromOrgNodeId: string, toOrgNodeId: string, sagaId: string): Promise<void>;
+}
+
+export interface OrgApprovalOperation {
+  updateApprovalRoute(orgNodeId: string, newApproverIds: readonly string[], sagaId: string): Promise<void>;
+  rerouteApprovalsForOrgChange(orgNodeId: string, affectedApprovalIds: readonly string[], newApproverIds: readonly string[], sagaId: string): Promise<void>;
+}
+
+export interface OrgBudgetOperation {
+  updateBudgetOwner(orgNodeId: string, newOwnerUserId: string, sagaId: string): Promise<void>;
+  transferBudgetAllocation(fromOrgNodeId: string, toOrgNodeId: string, amount: number, currency: string, sagaId: string): Promise<void>;
+}
+
+export interface OrgDomainOperation {
+  updateDomainOwner(domainId: string, newOwnerUserId: string, sagaId: string): Promise<void>;
+  reassignDomainOwnership(orgNodeId: string, affectedDomainIds: readonly string[], newOwnerUserId: string, sagaId: string): Promise<void>;
+}
+
+export interface OrgAgentOwnershipOperation {
+  freezeAgentAdmission(orgNodeId: string, frozen: boolean, reason: string, sagaId: string): Promise<void>;
+  reassignAgentOwnership(orgNodeId: string, fromPrincipalId: string, toPrincipalId: string, sagaId: string): Promise<void>;
+}
+
+export interface OrgOperationHandlers {
+  readonly identity: OrgIdentityOperation;
+  readonly approval: OrgApprovalOperation;
+  readonly budget: OrgBudgetOperation;
+  readonly domain: OrgDomainOperation;
+  readonly agent: OrgAgentOwnershipOperation;
+}
+
 export interface OrgGovernanceSagaResult {
   readonly sagaId: string;
   readonly status: "committed" | "compensated";

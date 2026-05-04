@@ -517,10 +517,11 @@ export class ConfigAuditService {
    * @param limit - Maximum entries to return
    * @returns Pending approval entries
    */
-  public getPendingApprovals(
+  public async getPendingApprovals(
     layer?: string | null,
     limit: number = 50,
-  ): ConfigAuditEntry[] {
+  ): Promise<ConfigAuditEntry[]> {
+    await this.ensureInitialized();
     return this.entries
       .filter(
         (entry) =>
@@ -538,7 +539,8 @@ export class ConfigAuditService {
    * @param auditId - Audit entry ID
    * @returns The audit entry or null if not found
    */
-  public getEntry(auditId: string): ConfigAuditEntry | null {
+  public async getEntry(auditId: string): Promise<ConfigAuditEntry | null> {
+    await this.ensureInitialized();
     return this.findEntry(auditId);
   }
 
@@ -550,11 +552,11 @@ export class ConfigAuditService {
    * @param sourceId - Source ID if applicable
    * @returns Statistics about the audit trail
    */
-  public getStats(
+  public async getStats(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): {
+  ): Promise<{
     totalEntries: number;
     createCount: number;
     updateCount: number;
@@ -563,8 +565,8 @@ export class ConfigAuditService {
     pendingApprovalCount: number;
     firstEntryAt: string | null;
     lastEntryAt: string | null;
-  } {
-    const entries = this.getEntriesForConfig(configPath, layer, sourceId);
+  }> {
+    const entries = await this.getEntriesForConfig(configPath, layer, sourceId);
 
     return {
       totalEntries: entries.length,
