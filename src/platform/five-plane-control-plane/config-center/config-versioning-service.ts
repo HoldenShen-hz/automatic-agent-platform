@@ -296,11 +296,12 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns The latest version snapshot or null if none exists
    */
-  public getCurrentVersion(
+  public async getCurrentVersion(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): ConfigVersionSnapshot | null {
+  ): Promise<ConfigVersionSnapshot | null> {
+    await this.ensureInitialized();
     const key = this.buildKey(configPath, layer, sourceId);
     const versions = this.snapshots.get(key);
     if (!versions || versions.length === 0) {
@@ -315,7 +316,8 @@ export class ConfigVersioningService {
    * @param versionId - The version ID to find
    * @returns The version snapshot or null if not found
    */
-  public getVersion(versionId: string): ConfigVersionSnapshot | null {
+  public async getVersion(versionId: string): Promise<ConfigVersionSnapshot | null> {
+    await this.ensureInitialized();
     for (const versions of this.snapshots.values()) {
       const found = versions.find((v) => v.versionId === versionId);
       if (found) {
@@ -333,11 +335,12 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns Array of version snapshots, oldest first
    */
-  public getVersionHistory(
+  public async getVersionHistory(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): ConfigVersionSnapshot[] {
+  ): Promise<ConfigVersionSnapshot[]> {
+    await this.ensureInitialized();
     const key = this.buildKey(configPath, layer, sourceId);
     return this.snapshots.get(key) ?? [];
   }

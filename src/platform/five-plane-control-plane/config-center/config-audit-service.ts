@@ -200,6 +200,17 @@ export class ConfigAuditService {
   }
 
   /**
+   * Ensures the service is initialized before operations.
+   * Calls initialize() if not already initialized.
+   * §24.4: Ensures audit entries are rebuilt from persisted events on startup.
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this._initialized) {
+      await this.initialize();
+    }
+  }
+
+  /**
    * Records a configuration creation event.
    *
    * @param configPath - Dot-notation config path
@@ -454,7 +465,8 @@ export class ConfigAuditService {
    * @param query - Query options
    * @returns Matching audit entries with pagination info
    */
-  public query(query: ConfigAuditQuery = {}): ConfigAuditResult {
+  public async query(query: ConfigAuditQuery = {}): Promise<ConfigAuditResult> {
+    await this.ensureInitialized();
     let filtered = this.entries.filter((entry) => this.matchesQuery(entry, query));
 
     // Sort by timestamp descending (newest first)
@@ -482,11 +494,12 @@ export class ConfigAuditService {
    * @param sourceId - Source ID if applicable
    * @returns All matching audit entries (newest first)
    */
-  public getEntriesForConfig(
+  public async getEntriesForConfig(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): ConfigAuditEntry[] {
+  ): Promise<ConfigAuditEntry[]> {
+    await this.ensureInitialized();
     return this.entries
       .filter(
         (entry) =>

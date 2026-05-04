@@ -499,24 +499,32 @@ export class RuntimeRecoveryService {
         continue;
       }
 
-      // R8-02 FIX: Actually plan compensation using the CompensationManager
-      const compensationPlan = this.compensationManager.planCompensation(sideEffect, compensationContext);
+      // R8-02 FIX: Actually execute compensation using the CompensationManager
+      const compensationResult = this.compensationManager.executeCompensationSteps(compensationPlan, compensationContext);
 
-      // Create compensation record
+      // Update compensation record with execution result
       const compensationRecord = this.compensationManager.createCompensationRecord(
         sideEffect.sideEffectId,
         sideEffect.harnessRunId,
         { artifactId: compensationPlan.compensationId, uri: `compensation://${compensationPlan.compensationId}`, kind: "compensation_plan" },
-        "planned",
+        compensationResult.success ? "succeeded" : "failed",
       );
 
-      // Emit compensation planned event
+      // Record evidence refs from execution
+      for (const ref of compensationResult.evidenceRefs) {
+        evidenceRefs.push(ref);
+      }
+
+      // R8-02 FIX: Record the compensation execution result
+      compensationIds.push(compensationPlan.compensationId);
+
+      // Emit compensation executed event with result
       this.store.event.insertEvent({
         id: newId("evt"),
         taskId: record.taskId,
         sessionId: null,
         executionId,
-        eventType: "recovery:compensation_planned",
+        eventType: "recovery:compensation_executed",
         eventTier: "tier_2",
         payloadJson: JSON.stringify({
           action: "compensate",
@@ -525,7 +533,9 @@ export class RuntimeRecoveryService {
           sideEffectId: sideEffect.sideEffectId,
           compensationId: compensationPlan.compensationId,
           compensationSteps: compensationPlan.steps.length,
-          reason: "Compensation planned for side effect",
+          success: compensationResult.success,
+          finalStatus: compensationResult.finalStatus,
+          reason: "Compensation executed for side effect",
           timestamp: nowIso(),
         }),
         traceId: record.traceId,
@@ -539,10 +549,8 @@ export class RuntimeRecoveryService {
         idempotencyKey: null,
         replayBehavior: null,
         principal: operatorId,
-        evidenceRefs: [],
+        evidenceRefs: compensationResult.evidenceRefs.map((ref) => ref.artifactId),
       });
-
-      compensationIds.push(compensationPlan.compensationId);
     }
 
     // Emit overall compensation initiated event

@@ -435,15 +435,15 @@ async runAbTest(
     void runPromises();
   } else {
     // Fallback: use scoring based on string similarity when no LLM evaluator provided
-    // This is more realistic than hardcoded 0.85/0.90
+    // Fair scoring: both control and treatment get the same base offset
     for (const c of cases) {
       // Compute similarity-based score for control
       const controlSimilarity = computeStringSimilarity(`control:${c.expectedOutput}`, c.expectedOutput);
-      const controlScore = Math.min(1, controlSimilarity + 0.1); // Add base score
+      const controlScore = Math.min(1, controlSimilarity + 0.1); // Same base as treatment
 
-      // Compute similarity-based score for treatment
+      // Compute similarity-based score for treatment (same base as control)
       const treatmentSimilarity = computeStringSimilarity(`treatment:${c.expectedOutput}`, c.expectedOutput);
-      const treatmentScore = Math.min(1, treatmentSimilarity + 0.15); // Slightly higher base
+      const treatmentScore = Math.min(1, treatmentSimilarity + 0.1); // Same base offset as control
 
       this.recordCaseResult({
         runId: controlRun.id,

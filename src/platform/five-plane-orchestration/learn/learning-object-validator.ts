@@ -147,7 +147,7 @@ export class LearningObjectValidator {
     const titleLower = obj.title.toLowerCase();
     const recLower = obj.recommendation.toLowerCase();
     // Check for negation patterns that suggest conflicting guidance
-    const negationPatterns = [
+    const negationPatterns: readonly [string, string][] = [
       ["do not", "do"], ["avoid", "use"], ["never", "always"],
       ["don't", "do"], ["should not", "should"], ["prevent", "enable"],
     ];

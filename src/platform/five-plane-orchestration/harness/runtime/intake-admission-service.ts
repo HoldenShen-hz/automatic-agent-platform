@@ -71,6 +71,42 @@ export interface HarnessAdmissionResult {
 }
 
 /**
+ * Result of a clarification session resume operation.
+ */
+export interface ClarificationResumeResult {
+  readonly clarificationSession: ClarificationSession;
+  readonly confirmedTaskSpec: ConfirmedTaskSpec;
+  readonly requestEnvelope: RequestEnvelope;
+  readonly runVersionLock: RunVersionLock;
+  readonly harnessRun: HarnessRun;
+  readonly events: readonly PlatformFactEvent[];
+}
+
+/**
+ * Maps clarification stage to the next action or state.
+ * R6-1: Per §5.3, ClarificationSession must gate the creation of ConfirmedTaskSpec.
+ */
+function getNextClarificationStage(
+  currentStage: ClarificationSessionStage,
+  confirmationReceipt: UserConfirmationReceipt | null,
+): ClarificationSessionStage {
+  switch (currentStage) {
+    case "pending_clarification":
+      return confirmationReceipt != null ? "confirmed" : "pending_clarification";
+    case "clarification_received":
+      return "confirmed";
+    case "confirmed":
+      return "confirmed";
+    case "expired":
+      return "expired";
+    case "abandoned":
+      return "abandoned";
+    default:
+      return currentStage;
+  }
+}
+
+/**
  * Returns the current ISO timestamp.
  */
 function nowIso(): string {
@@ -491,6 +527,144 @@ export class IntakeAdmissionService {
     };
     this.admittedByIdempotencyKey.set(input.idempotencyKey, result);
     return result;
+  }
+
+  /**
+   * R6-1: Resume a clarification session after user provides confirmation.
+   *
+   * Per §5.3, ClarificationSession must gate the creation of ConfirmedTaskSpec.
+   * When user responds to clarification with confirmationReceipt, this method
+   * transitions the session to "confirmed" and creates the ConfirmedTaskSpec.
+   *
+   * @param sessionId - The clarification session ID to resume
+   * @param confirmationReceipt - The user's confirmation receipt
+   * @returns Result with confirmed TaskSpec or error if session not found/invalid
+   */
+  public resumeClarification(
+    sessionId: string,
+    confirmationReceipt: UserConfirmationReceipt,
+  ): ClarificationResumeResult {
+    // Find the pending clarification session by sessionId
+    // In production, this would be a database lookup; here we use the in-memory map
+    // by searching through admitted results for matching session
+    let foundSession: ClarificationSession | null = null;
+    let foundResult: HarnessAdmissionResult | null = null;
+
+    for (const [idempotencyKey, result] of this.admittedByIdempotencyKey) {
+      // Check if this result has a clarification session
+      const clarificationEvent = result.events.find(
+        (e) => e.eventType === "platform.intake.clarification_needed",
+      );
+      if (clarificationEvent && (clarificationEvent.payload as Record<string, unknown>)?.sessionId === sessionId) {
+        // Reconstruct the clarification session from the event
+        const payload = clarificationEvent.payload as Record<string, unknown>;
+        foundSession = {
+          sessionId: payload.sessionId as string,
+          taskDraftId: payload.taskDraftId as string,
+          stage: getNextClarificationStage("pending_clarification", confirmationReceipt),
+          ambiguityFlags: (payload.ambiguityFlags as string[]) ?? [],
+          createdAt: payload.createdAt as string,
+          expiresAt: payload.expiresAt as string | null,
+          confirmationReceipt,
+        };
+        foundResult = result;
+        break;
+      }
+    }
+
+    if (foundSession == null || foundResult == null) {
+      throw new Error(`clarification.session_not_found: Session ${sessionId} not found or already resolved`);
+    }
+
+    // R6-1: Validate the confirmation receipt satisfies the risk requirements
+    if (foundSession.confirmationReceipt == null) {
+      throw new Error(`clarification.confirmation_required: Session ${sessionId} requires confirmation before proceeding`);
+    }
+
+    // Create the confirmed task spec now that clarification is complete
+    const confirmedTaskSpec = createConfirmedTaskSpec({
+      taskDraftId: foundResult.taskDraft.taskDraftId,
+      tenantId: foundResult.harnessRun.tenantId,
+      principal: foundResult.harnessRun.ownership.ownerId as unknown as PrincipalRef,
+      goal: (foundResult.taskDraft.normalizedIntent as Record<string, unknown>)?.goal as string ?? "",
+      inputs: (foundResult.taskDraft.normalizedIntent as Record<string, unknown>)?.inputs as JsonValue ?? {},
+      constraintPackRef: foundResult.harnessRun.constraintPackRef ?? "",
+      riskClass: foundResult.harnessRun.riskLevel as "low" | "medium" | "high" | "critical",
+      confirmationReceipt: foundSession.confirmationReceipt,
+      idempotencyKey: sessionId,
+      traceId: foundResult.harnessRun.traceId,
+    });
+
+    const requestEnvelope = createRequestEnvelopeFromConfirmedTask({
+      confirmedTaskSpec,
+      budgetIntent: {
+        amount: 100,
+        currency: "USD",
+        resourceKinds: ["compute", "tool"],
+      },
+      requestHash: `request:${sessionId}`,
+    });
+
+    const runVersionLock = createRunVersionLock({
+      harnessRunId: foundResult.harnessRun.harnessRunId,
+      runtimeProfileVersion: "runtime-profile:default",
+    });
+
+    // Emit clarification confirmed event
+    const confirmedEvent = createPlatformFactEvent({
+      eventType: "platform.intake.clarification_confirmed",
+      aggregateType: "TaskDraft",
+      aggregateId: foundResult.taskDraft.taskDraftId,
+      aggregateSeq: 2,
+      tenantId: foundResult.harnessRun.tenantId,
+      runId: foundResult.harnessRun.traceId,
+      traceId: foundResult.harnessRun.traceId,
+      payload: {
+        sessionId: foundSession.sessionId,
+        taskDraftId: foundSession.taskDraftId,
+        stage: foundSession.stage,
+        confirmationReceipt: foundSession.confirmationReceipt,
+        confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
+      } as unknown as JsonValue,
+      schemaOwner: "intake-admission-service",
+      consumerContractTests: ["intake-admission-service.test.ts"],
+    });
+
+    return {
+      clarificationSession: foundSession,
+      confirmedTaskSpec,
+      requestEnvelope,
+      runVersionLock,
+      harnessRun: foundResult.harnessRun,
+      events: [confirmedEvent],
+    };
+  }
+
+  /**
+   * R6-1: Check if a clarification session exists for the given sessionId.
+   *
+   * @param sessionId - The clarification session ID to check
+   * @returns The ClarificationSession if found and pending, null otherwise
+   */
+  public getClarificationSession(sessionId: string): ClarificationSession | null {
+    for (const [idempotencyKey, result] of this.admittedByIdempotencyKey) {
+      const clarificationEvent = result.events.find(
+        (e) => e.eventType === "platform.intake.clarification_needed",
+      );
+      if (clarificationEvent && (clarificationEvent.payload as Record<string, unknown>)?.sessionId === sessionId) {
+        const payload = clarificationEvent.payload as Record<string, unknown>;
+        return {
+          sessionId: payload.sessionId as string,
+          taskDraftId: payload.taskDraftId as string,
+          stage: payload.stage as ClarificationSessionStage,
+          ambiguityFlags: (payload.ambiguityFlags as string[]) ?? [],
+          createdAt: payload.createdAt as string,
+          expiresAt: payload.expiresAt as string | null,
+          confirmationReceipt: null,
+        };
+      }
+    }
+    return null;
   }
 
   /**

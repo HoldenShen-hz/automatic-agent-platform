@@ -227,9 +227,8 @@ export class HierarchicalPromptRegistryService {
       },
       updatedAt: nowIso(),
     };
-    // Update the stored reference with the new object in both level-specific and version storage
-    this.storeBundle(updatedBundle, level, domain, packId);
     this.storeVersion(updatedBundle, level, domain, packId);
+    this.refreshScopeBundle(level, updatedBundle.name, updatedBundle.taskType, domain ?? updatedBundle.domain, packId ?? updatedBundle.packId);
   }
 
   public removeBundle(
@@ -249,6 +248,7 @@ export class HierarchicalPromptRegistryService {
         }
       }
     }
+    this.refreshScopeBundle(level, name, undefined, domain, packId);
     return removedFromScope;
   }
 
@@ -490,7 +490,13 @@ export class HierarchicalPromptRegistryService {
     for (const scopeKey of scopeKeys) {
       const bundles = [...(this.versionsByScope.get(scopeKey)?.values() ?? [])]
         .filter((bundle) => bundle.metadata.deprecated !== true)
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+        .sort((left, right) => {
+          const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
+          if (createdAtOrder !== 0) {
+            return createdAtOrder;
+          }
+          return right.version - left.version;
+        });
       if (bundles.length > 0) {
         return bundles;
       }
@@ -525,7 +531,11 @@ export class HierarchicalPromptRegistryService {
         if (weightOrder !== 0) {
           return weightOrder;
         }
-        return right.createdAt.localeCompare(left.createdAt);
+        const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
+        if (createdAtOrder !== 0) {
+          return createdAtOrder;
+        }
+        return right.version - left.version;
       });
     return eligible[0] ?? null;
   }
@@ -553,5 +563,78 @@ export class HierarchicalPromptRegistryService {
 
   private findCurrentScopeBundle(scopeKey: string): PromptBundle | null {
     return this.selectDefaultBundle([...(this.versionsByScope.get(scopeKey)?.values() ?? [])]);
+  }
+
+  private refreshScopeBundle(
+    level: RegistryLevel,
+    name: string,
+    taskType?: string,
+    domain?: string,
+    packId?: string,
+  ): void {
+    const scopeKey = this.buildScopeKey(name, level, taskType, domain, packId);
+    const current = this.findCurrentScopeBundle(scopeKey);
+    switch (level) {
+      case "global":
+        if (current == null) {
+          this.globalBundles.delete(name);
+        } else {
+          this.globalBundles.set(name, current);
+        }
+        break;
+      case "domain": {
+        const key = domain ?? "";
+        const scope = this.domainBundles.get(key);
+        if (scope == null) {
+          break;
+        }
+        if (current == null) {
+          scope.delete(name);
+        } else {
+          scope.set(name, current);
+        }
+        if (scope.size === 0) {
+          this.domainBundles.delete(key);
+        }
+        break;
+      }
+      case "pack": {
+        const key = packId ?? "";
+        const scope = this.packBundles.get(key);
+        if (scope == null) {
+          break;
+        }
+        if (current == null) {
+          scope.delete(name);
+        } else {
+          scope.set(name, current);
+        }
+        if (scope.size === 0) {
+          this.packBundles.delete(key);
+        }
+        break;
+      }
+      case "task-type": {
+        const packKey = packId ?? "";
+        const typeKey = taskType ?? "";
+        const packScope = this.taskTypeBundles.get(packKey);
+        const typeScope = packScope?.get(typeKey);
+        if (typeScope == null) {
+          break;
+        }
+        if (current == null) {
+          typeScope.delete(name);
+        } else {
+          typeScope.set(name, current);
+        }
+        if (typeScope.size === 0) {
+          packScope?.delete(typeKey);
+        }
+        if (packScope?.size === 0) {
+          this.taskTypeBundles.delete(packKey);
+        }
+        break;
+      }
+    }
   }
 }

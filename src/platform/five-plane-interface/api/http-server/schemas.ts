@@ -397,6 +397,8 @@ const updateTaskPayloadSchema = z.object({
   ]).optional(),
   priority: z.enum(["low", "normal", "high", "critical"]).optional(),
   outputJson: z.string().optional(),
+  // R14-13: inputJson must be accepted for partial update symmetry with CREATE
+  inputJson: z.string().optional(),
 }).strict();
 
 export interface CreateTaskPayload {
@@ -413,6 +415,7 @@ export interface UpdateTaskPayload {
   status?: "created" | "admitted" | "planning" | "ready" | "running" | "pausing" | "paused" | "resuming" | "replanning" | "compensating" | "completed" | "failed" | "aborted";
   priority?: "low" | "normal" | "high" | "critical";
   outputJson?: string;
+  inputJson?: string; // R14-13: PATCH must accept inputJson for partial update symmetry
 }
 
 export function parseCreateTaskPayload(body: unknown): CreateTaskPayload {
@@ -444,6 +447,8 @@ export function parseUpdateTaskPayload(body: unknown): UpdateTaskPayload {
     ...(payload.status != null ? { status: payload.status } : {}),
     ...(payload.priority != null ? { priority: payload.priority } : {}),
     ...(payload.outputJson != null ? { outputJson: payload.outputJson } : {}),
+    // R14-13: inputJson update for partial task input modification
+    ...(payload.inputJson != null ? { inputJson: payload.inputJson } : {}),
   };
 }
 

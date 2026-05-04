@@ -165,3 +165,54 @@ test("EvalDatasetJudgeService turns canary regression into rollback decision", (
   assert.ok(report.blockingFindings.some((item) => item.startsWith("latency_regressed")));
   assert.ok(report.blockingFindings.some((item) => item.startsWith("cost_regressed")));
 });
+
+test("EvalDatasetJudgeService clamps out-of-range criterion signals into [0, 1]", () => {
+  const service = createService();
+
+  const report = service.evaluateDataset({
+    datasetId: "dataset_prompt_release",
+    candidateProvider: "openai",
+    candidateProviderFamily: "openai",
+    candidateModel: "gpt-release",
+    results: [
+      {
+        caseId: "critical_json_shape",
+        output: { severity: "sev3", summary: "incident summarized" },
+        criterionSignals: { judge_reasonable: 999 },
+      },
+      {
+        caseId: "standard_contains",
+        output: "notify on-call",
+      },
+    ],
+  });
+
+  const criterion = report.caseResults[0]?.criterionResults.find((item) => item.criterionId === "judge_reasonable");
+  assert.equal(criterion?.score, 1);
+});
+
+test("EvalDatasetJudgeService supports deterministic holdout evaluation subset", () => {
+  const service = createService();
+
+  const report = service.evaluateDataset({
+    datasetId: "dataset_prompt_release",
+    candidateProvider: "openai",
+    candidateProviderFamily: "openai",
+    candidateModel: "gpt-release",
+    holdoutRatio: 0.5,
+    results: [
+      {
+        caseId: "critical_json_shape",
+        output: { severity: "sev3", summary: "incident summarized" },
+        criterionSignals: { judge_reasonable: 0.91 },
+      },
+      {
+        caseId: "standard_contains",
+        output: "notify on-call and create a follow-up incident task",
+      },
+    ],
+  });
+
+  assert.ok(report.caseResults.length > 0);
+  assert.ok(report.caseResults.length < 2);
+});

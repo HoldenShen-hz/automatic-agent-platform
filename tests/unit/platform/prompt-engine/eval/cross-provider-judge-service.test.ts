@@ -163,7 +163,7 @@ test("CrossProviderJudgeService evaluateWithPipeline computes agreementScore wit
   assert.ok(result.agreementScore >= 0 && result.agreementScore <= 1);
 });
 
-test("CrossProviderJudgeService evaluateWithPipeline agreementScore handles rollback", () => {
+test("CrossProviderJudgeService evaluateWithPipeline treats unanimous rollback as full agreement", () => {
   const service = createHarness();
 
   // All judges return rollback -> agreementScore should be 1.0 for rollback
@@ -186,13 +186,11 @@ test("CrossProviderJudgeService evaluateWithPipeline agreementScore handles roll
     },
   });
 
-  // Issue #1965: agreementScore only considers promote ratio
-  // If no one promoted, agreementScore would be 0
-  assert.ok(typeof result.agreementScore === "number");
-  assert.ok(result.agreementScore >= 0);
+  assert.equal(result.consensusDecision, "rollback");
+  assert.equal(result.agreementScore, 1);
 });
 
-test("CrossProviderJudgeService evaluateWithPipeline agreementScore with no promotes", () => {
+test("CrossProviderJudgeService evaluateWithPipeline treats unanimous hold as full agreement", () => {
   const service = createHarness();
 
   // All judges return hold/rollback, no promote
@@ -208,15 +206,14 @@ test("CrossProviderJudgeService evaluateWithPipeline agreementScore with no prom
     },
     pipeline: {
       primaryJudgeId: "judge-anthropic",
-      fallbackJudgeIds: [],
+      fallbackJudgeIds: ["judge-minimax"],
       parallelEvaluation: false,
       consensusThreshold: 0.5,
     },
   });
 
-  // Issue #1965: agreementScore only uses promote count / total
-  // With 0 promote out of 1 judge, agreementScore = 0
-  assert.equal(result.agreementScore, 0);
+  assert.equal(result.consensusDecision, "hold");
+  assert.equal(result.agreementScore, 1);
 });
 
 test("CrossProviderJudgeService evaluateWithPipeline runs primary judge", () => {
@@ -269,6 +266,32 @@ test("CrossProviderJudgeService evaluateWithPipeline includes fallback judges", 
   const judgeIds = result.individualResults.map((r) => r.judgeId);
   assert.ok(judgeIds.includes("judge-anthropic"));
   assert.ok(judgeIds.includes("judge-minimax"));
+});
+
+test("CrossProviderJudgeService evaluateWithPipeline honors parallelEvaluation branch", () => {
+  const service = createHarness();
+  const result = service.evaluateWithPipeline({
+    evaluation: {
+      datasetId: "dataset-multi-judge",
+      candidateProvider: "openai",
+      candidateProviderFamily: "openai",
+      candidateModel: "gpt-test",
+      results: [
+        { caseId: "multi-judge-case-0", output: "ok", criterionSignals: { "judge-0": 0.9 } },
+        { caseId: "multi-judge-case-1", output: "ok", criterionSignals: { "judge-1": 0.8 } },
+      ],
+    },
+    pipeline: {
+      primaryJudgeId: "judge-anthropic",
+      fallbackJudgeIds: ["judge-minimax"],
+      parallelEvaluation: true,
+      consensusThreshold: 0.5,
+    },
+  });
+
+  assert.equal(result.individualResults.length, 2);
+  assert.ok(result.individualResults.some((item) => item.judgeId === "judge-anthropic"));
+  assert.ok(result.individualResults.some((item) => item.judgeId === "judge-minimax"));
 });
 
 test("CrossProviderJudgeService evaluateWithPipeline skips non-ready judges", () => {

@@ -34,7 +34,7 @@ function makeTrigger(overrides: Partial<TriggerDefinition> = {}): TriggerDefinit
 }
 
 test("ProactiveAgentService detects feedback loop between triggers", async () => {
-  const service = new ProactiveAgentService();
+  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
 
   // Register trigger A with feedback to trigger B
   const triggerA: TriggerDefinition = {
@@ -61,7 +61,7 @@ test("ProactiveAgentService detects feedback loop between triggers", async () =>
 });
 
 test("ProactiveAgentService disables triggers in feedback loop", async () => {
-  const service = new ProactiveAgentService();
+  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
 
   const triggerA: TriggerDefinition = {
     ...makeTrigger(),
@@ -232,7 +232,7 @@ test("ProactiveAgentService evaluate does not call resolveTriggerActionMode dire
     now: new Date().toISOString(),
   });
 
-  // Low risk without confirmation should get auto_execute
+  // Low risk without confirmation can auto-execute once autonomy is semi_auto+.
   assert.equal(decision.actionMode, "auto_execute");
 });
 
@@ -261,7 +261,7 @@ test("ProactiveAgentService medium risk uses suggest action mode", () => {
   assert.equal(decision.actionMode, "suggest");
 });
 
-test("ProactiveAgentService critical risk uses silent_record", () => {
+test("ProactiveAgentService critical risk uses suggest", () => {
   const service = new ProactiveAgentService();
 
   const criticalTrigger: TriggerDefinition = {
@@ -282,12 +282,12 @@ test("ProactiveAgentService critical risk uses silent_record", () => {
     now: new Date().toISOString(),
   });
 
-  // Critical risk should silent_record
-  assert.equal(decision.actionMode, "silent_record");
+  // Critical risk must remain in suggestion mode.
+  assert.equal(decision.actionMode, "suggest");
 });
 
-test("ProactiveAgentService dashboard update action uses silent_record", () => {
-  const service = new ProactiveAgentService();
+test("ProactiveAgentService low risk action follows shared action-mode logic", () => {
+  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
 
   const dashboardTrigger: TriggerDefinition = {
     ...makeTrigger(),
@@ -307,6 +307,6 @@ test("ProactiveAgentService dashboard update action uses silent_record", () => {
     now: new Date().toISOString(),
   });
 
-  // Dashboard updates should silent_record
-  assert.equal(decision.actionMode, "silent_record");
+  // There is no per-actionType override branch here anymore.
+  assert.equal(decision.actionMode, "auto_execute");
 });

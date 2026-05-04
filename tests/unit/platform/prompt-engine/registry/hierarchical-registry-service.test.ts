@@ -31,10 +31,10 @@ function createTestBundle(name: string, version: number, domain = "test-domain")
     fewShotExamples: undefined,
     constraints: undefined,
     compatibilityMatrix: {
-      toolSchemaVersions: [],
-      evaluatorSchemaVersions: [],
-      domainDescriptorVersions: [],
-      modelRoutingProfiles: [],
+      toolSchemaVersions: [{ toolName: "tool", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "judge", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: domain, version: 1 }],
+      modelRoutingProfiles: [{ modelId: "model", profileVersion: 1 }],
     },
     metadata: {
       owner: "test-owner",
@@ -405,10 +405,13 @@ test("HierarchicalPromptRegistryService pack hierarchy lookup", () => {
   const registry = new HierarchicalPromptRegistryService();
 
   registry.registerBundle(createTestBundle("pack-test", 1), "global");
-  registry.registerBundle(createTestBundle("pack-test", 2, "pack-domain"), "pack", "pack-id");
+  registry.registerBundle(createTestBundle("pack-test", 2, "pack-domain"), "pack", undefined, "pack-id");
 
   const globalBundle = registry.getBundle("pack-test", "classification", undefined, undefined);
   assert.equal(globalBundle?.version, 1);
+
+  const packBundle = registry.getBundle("pack-test", "classification", "pack-id", "pack-domain");
+  assert.equal(packBundle?.version, 2);
 });
 
 test("HierarchicalPromptRegistryService task-type hierarchy lookup", () => {

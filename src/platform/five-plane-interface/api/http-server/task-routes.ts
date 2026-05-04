@@ -407,6 +407,20 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         if (payload.outputJson != null) {
           deps.taskStore.task.updateTaskOutput(taskId, existing.status, payload.outputJson, now);
         }
+        // R14-13: inputJson partial update — must parse and persist like CREATE does
+        if (payload.inputJson != null) {
+          try {
+            const parsedInput = JSON.parse(payload.inputJson);
+            deps.taskStore.task.updateTaskInput(
+              taskId,
+              payload.inputJson,
+              JSON.stringify(parsedInput),
+              now,
+            );
+          } catch {
+            throw new ApiError(400, "api.invalid_input_json", "inputJson must be valid JSON.");
+          }
+        }
 
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, principal.tenantId ?? undefined);
         return buildJsonResponse(ctx.requestId, 200, cockpit);
