@@ -475,8 +475,9 @@ export class RegionFailoverOrchestrator {
 
     if (candidateRegionIds.length === 1) {
       // Single candidate - elect if healthy
-      const summary = this.healthCheckService.getHealthSummary(candidateRegionIds[0]);
-      return summary?.isHealthyForFailover ?? false ? candidateRegionIds[0] : null;
+      const soleCandidate = candidateRegionIds[0]!;
+      const summary = this.healthCheckService.getHealthSummary(soleCandidate);
+      return summary?.isHealthyForFailover ?? false ? soleCandidate : null;
     }
 
     // Score each candidate based on multiple factors

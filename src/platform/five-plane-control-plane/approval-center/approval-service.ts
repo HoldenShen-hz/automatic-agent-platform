@@ -44,7 +44,7 @@ import {
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { TransitionService } from "../../execution/state-transition/transition-service.js";
 import { ValidationError } from "../../contracts/errors.js";
-import { createDecisionDirective, type DecisionDirective } from "../../contracts/control-directive/index.js";
+import { createDecisionDirective, createOperationalDirective, type DecisionDirective, type OperationalDirective } from "../../contracts/control-directive/index.js";
 import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
 
 /**
@@ -291,6 +291,9 @@ export class ApprovalService {
       });
     });
 
+    // R14-1: Emit DecisionDirective when approval request is created
+    this.emitApprovalRequestDirective(approval);
+
     return approval;
   }
 
@@ -511,6 +514,93 @@ export class ApprovalService {
       riskAcknowledged: request.riskLevel === "high" || request.riskLevel === "critical",
     });
     this.directiveSink.emitDecisionDirective(directive);
+
+    // R14-2/R14-3: Emit OperationalDirective for approve/reject to control execution
+    this.emitApprovalOperationalDirective(request, decision, approvalStatus, taskId, tenantId);
+  }
+
+  /**
+   * R14-1: Emits a DecisionDirective when an approval request is created.
+   * This notifies downstream systems that a HITL decision is required.
+   */
+  private emitApprovalRequestDirective(request: ApprovalRequest): void {
+    if (this.directiveSink == null) {
+      return;
+    }
+
+    const tenantId = resolveDirectiveTenantId(request.context);
+    const directive = createDecisionDirective({
+      type: "takeover",
+      scope: {
+        tenantId: tenantId ?? undefined,
+        harnessRunId: request.harnessRunId ?? undefined,
+        nodeRunId: request.nodeRunId ?? undefined,
+      },
+      issuedBy: {
+        principalId: request.sourceAgentId,
+        tenantId: tenantId ?? "system",
+        roles: ["agent"],
+      },
+      targetRef: `approval:${request.approvalId}`,
+      payload: {
+        approvalId: request.approvalId,
+        approvalStatus: "pending" as const,
+        decisionType: "option_selected" as const,
+        taskId: request.taskId,
+        harnessRunId: request.harnessRunId ?? null,
+        nodeRunId: request.nodeRunId ?? null,
+        selectedOptionId: null,
+        confirmed: false,
+        inputText: null,
+        respondedAt: request.createdAt,
+        cascadeDeny: false,
+      },
+      reason: request.reason,
+      riskAcknowledged: request.riskLevel === "high" || request.riskLevel === "critical",
+    });
+    this.directiveSink.emitDecisionDirective(directive);
+  }
+
+  /**
+   * R14-2/R14-3: Emits OperationalDirective for approval/rejection decisions.
+   * - Approved: emits "resume" to unblock execution
+   * - Rejected/Expired: emits "cancel" to terminate the blocked execution
+   */
+  private emitApprovalOperationalDirective(
+    request: ApprovalRequest,
+    decision: ApprovalDecision,
+    approvalStatus: "approved" | "rejected" | "expired",
+    taskId: string,
+    tenantId: string | null,
+  ): void {
+    if (this.directiveSink == null) {
+      return;
+    }
+
+    const operationalType: OperationalDirective["type"] =
+      approvalStatus === "approved" ? "resume" : "cancel";
+
+    const directive = createOperationalDirective({
+      type: operationalType,
+      scope: {
+        tenantId: tenantId ?? undefined,
+        harnessRunId: request.harnessRunId ?? undefined,
+        nodeRunId: request.nodeRunId ?? undefined,
+      },
+      issuedBy: {
+        principalId: decision.respondedBy,
+        tenantId: tenantId ?? "system",
+        roles: [decision.respondedBy === "system" ? "system" : "approver"],
+      },
+      reason: `approval.${approvalStatus}: ${request.reason}`,
+      params: {
+        approvalId: decision.approvalId,
+        taskId,
+        approvalStatus,
+        decisionType: decision.decisionType,
+      },
+    });
+    this.directiveSink.emitOperationalDirective(directive);
   }
 }
 

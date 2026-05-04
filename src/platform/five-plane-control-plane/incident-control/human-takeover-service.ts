@@ -35,6 +35,8 @@ import {
   throwTakeoverWorkflowError,
   workflowTerminalForTask,
 } from "./human-takeover-support.js";
+import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
+import { createOperationalDirective } from "../../contracts/control-directive/index.js";
 
 /**
  * Result of a takeover action operation.
@@ -60,6 +62,7 @@ export class HumanTakeoverService {
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
+    private readonly directiveSink?: ControlPlaneDirectiveSink | null,
   ) {}
 
   /**
@@ -119,6 +122,9 @@ export class HumanTakeoverService {
         createdAt: now,
       });
     });
+
+    // R14-4: Emit pause OperationalDirective when human takeover session is opened
+    this.emitPauseDirective(input.taskId, snapshot.execution?.id ?? null, input.operatorId, input.reasonCode);
 
     return {
       taskId: input.taskId,
@@ -355,6 +361,10 @@ export class HumanTakeoverService {
       const outputs = parseOutputs(workflow.outputsJson);
       const normalizedOutputJson = normalizeJson(input.outputJson, "takeover.output_json_invalid");
       const parsedOutput = JSON.parse(normalizedOutputJson) as unknown;
+
+      // R14-6/R14-7: Validate step output before storing
+      this.validateStepOutput(parsedOutput, target.step.stepId, status);
+
       const status = input.status ?? "succeeded";
       const summary = input.summary ?? resolveManualStepOutputSummary(target.step.stepId, parsedOutput);
 
@@ -643,6 +653,12 @@ export class HumanTakeoverService {
         executionId: snapshot.execution?.id ?? null,
       };
     }, input.tenantId);
+
+    // R14-5: Emit resume OperationalDirective when human takeover task is completed
+    const session = this.store.approval.getTakeoverSession(input.takeoverSessionId, input.tenantId);
+    if (session) {
+      this.emitResumeDirective(session.taskId, session.executionId, session.operatorId, input.reasonCode);
+    }
   }
 
   /**
@@ -737,6 +753,127 @@ export class HumanTakeoverService {
       });
     }
     return session;
+  }
+
+  /**
+   * R14-4: Emits a pause OperationalDirective when human takeover session is opened.
+   * This notifies downstream systems that execution should be paused.
+   */
+  private emitPauseDirective(taskId: string, executionId: string | null, operatorId: string, reasonCode: string): void {
+    if (this.directiveSink == null) {
+      return;
+    }
+
+    const directive = createOperationalDirective({
+      type: "pause",
+      scope: {
+        ...(executionId != null ? { harnessRunId: executionId } : {}),
+      },
+      issuedBy: {
+        principalId: operatorId,
+        tenantId: "tenant:local",
+        roles: ["human_operator"],
+      },
+      reason: `human_takeover:${reasonCode}`,
+      params: {
+        taskId,
+        executionId,
+        operatorId,
+        takeoverAction: "pause",
+      },
+    });
+    this.directiveSink.emitOperationalDirective(directive);
+  }
+
+  /**
+   * R14-5: Emits a resume OperationalDirective when human takeover is resolved.
+   * This notifies downstream systems that execution can resume.
+   */
+  private emitResumeDirective(taskId: string, executionId: string | null, operatorId: string, reasonCode: string): void {
+    if (this.directiveSink == null) {
+      return;
+    }
+
+    const directive = createOperationalDirective({
+      type: "resume",
+      scope: {
+        ...(executionId != null ? { harnessRunId: executionId } : {}),
+      },
+      issuedBy: {
+        principalId: operatorId,
+        tenantId: "tenant:local",
+        roles: ["human_operator"],
+      },
+      reason: `human_takeover_resolved:${reasonCode}`,
+      params: {
+        taskId,
+        executionId,
+        operatorId,
+        takeoverAction: "resume",
+      },
+    });
+    this.directiveSink.emitOperationalDirective(directive);
+  }
+
+  /**
+   * R14-6/R14-7: Validates step output before storing.
+   * Ensures the output is a non-null object and conforms to basic validation rules.
+   * Throws ValidationError if the output is invalid.
+   */
+  private validateStepOutput(output: unknown, stepId: string, status: StepOutputRecord["status"]): void {
+    // Null/undefined is only allowed for skipped steps
+    if (output == null) {
+      if (status !== "skipped" && status !== "partial_success") {
+        throw new ValidationError(
+          "takeover.step_output_invalid",
+          "Step output cannot be null or undefined unless explicitly skipped",
+          { retryable: false, details: { stepId, status } },
+        );
+      }
+      return;
+    }
+
+    // Output must be an object (not an array) for most step types
+    if (Array.isArray(output)) {
+      throw new ValidationError(
+        "takeover.step_output_invalid",
+        "Step output cannot be an array",
+        { retryable: false, details: { stepId, outputType: "array" } },
+      );
+    }
+
+    if (typeof output !== "object") {
+      throw new ValidationError(
+        "takeover.step_output_invalid",
+        "Step output must be an object",
+        { retryable: false, details: { stepId, outputType: typeof output } },
+      );
+    }
+
+    // For failed steps, allow error-like objects
+    if (status === "failed") {
+      const errorObj = output as Record<string, unknown>;
+      if (typeof errorObj.error !== "string" && typeof errorObj.message !== "string") {
+        throw new ValidationError(
+          "takeover.step_output_invalid",
+          "Failed step output must contain an 'error' or 'message' field",
+          { retryable: false, details: { stepId } },
+        );
+      }
+    }
+
+    // For succeeded steps, ensure basic structure is present
+    if (status === "succeeded" || status === "partial_success") {
+      const outputObj = output as Record<string, unknown>;
+      // Allow any object structure for succeeded steps, but warn if it's empty
+      if (Object.keys(outputObj).length === 0 && status === "succeeded") {
+        throw new ValidationError(
+          "takeover.step_output_invalid",
+          "Succeeded step output cannot be an empty object",
+          { retryable: false, details: { stepId } },
+        );
+      }
+    }
   }
 
 }

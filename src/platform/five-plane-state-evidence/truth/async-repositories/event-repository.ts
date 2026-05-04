@@ -8,6 +8,7 @@ import type { EventConsumerAckRecord, EventDeadLetterRecord, EventRecord } from 
 import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
+import { buildTenantClause } from "../async-query-helper.js";
 
 const EVENT_COLS = `id, task_id AS "taskId", session_id AS "sessionId", execution_id AS "executionId",
         event_type AS "eventType", event_tier AS "eventTier", payload_json AS "payloadJson",
@@ -282,5 +283,71 @@ export class AsyncEventRepository {
       `SELECT COUNT(*) AS count FROM events e JOIN event_consumer_acks a ON a.event_id = e.id WHERE e.event_tier = 'tier_1' AND a.status = 'failed'`,
     );
     return Number(result?.count ?? 0);
+  }
+
+  /**
+   * R12-04: Get all events for a specific HarnessRun.
+   * Events are filtered by run_id matching the harness run ID.
+   * Tenant filtering is applied when tenantId is provided.
+   */
+  public async getHarnessRunEvents(harnessRunId: string, tenantId?: string | null): Promise<EventRecord[]> {
+    const scopedTenantId = resolveTenantScope(tenantId);
+    if (scopedTenantId !== undefined) {
+      // R12-07: Use buildTenantClause helper for consistent tenant filtering
+      const tenantClause = buildTenantClause(scopedTenantId, 2);
+      return asyncQueryAll<EventRecord>(
+        this.conn,
+        `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
+          e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
+          e.trace_id AS "traceId", e.created_at AS "createdAt"
+         FROM events e
+         INNER JOIN tasks t ON t.id = e.task_id
+         WHERE e.run_id = $1 ${tenantClause.clause}
+         ORDER BY e.created_at ASC, e.id ASC`,
+        harnessRunId,
+        ...tenantClause.args,
+      );
+    }
+    return asyncQueryAll<EventRecord>(
+      this.conn,
+      `SELECT ${EVENT_COLS}
+       FROM events
+       WHERE run_id = $1
+       ORDER BY created_at ASC, id ASC`,
+      harnessRunId,
+    );
+  }
+
+  /**
+   * R12-05: Get all events for a specific NodeRun.
+   * Events are filtered by run_id matching the node run ID.
+   * Tenant filtering is applied when tenantId is provided.
+   */
+  public async getNodeRunEvents(nodeRunId: string, tenantId?: string | null): Promise<EventRecord[]> {
+    const scopedTenantId = resolveTenantScope(tenantId);
+    if (scopedTenantId !== undefined) {
+      // R12-07: Use buildTenantClause helper for consistent tenant filtering
+      const tenantClause = buildTenantClause(scopedTenantId, 2);
+      return asyncQueryAll<EventRecord>(
+        this.conn,
+        `SELECT e.id, e.task_id AS "taskId", e.session_id AS "sessionId", e.execution_id AS "executionId",
+          e.event_type AS "eventType", e.event_tier AS "eventTier", e.payload_json AS "payloadJson",
+          e.trace_id AS "traceId", e.created_at AS "createdAt"
+         FROM events e
+         INNER JOIN tasks t ON t.id = e.task_id
+         WHERE e.run_id = $1 ${tenantClause.clause}
+         ORDER BY e.created_at ASC, e.id ASC`,
+        nodeRunId,
+        ...tenantClause.args,
+      );
+    }
+    return asyncQueryAll<EventRecord>(
+      this.conn,
+      `SELECT ${EVENT_COLS}
+       FROM events
+       WHERE run_id = $1
+       ORDER BY created_at ASC, id ASC`,
+      nodeRunId,
+    );
   }
 }

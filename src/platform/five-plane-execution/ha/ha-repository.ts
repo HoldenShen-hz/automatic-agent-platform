@@ -11,7 +11,14 @@ import type {
   SqliteAuthoritativeStorageBackendHandle,
   PostgresAuthoritativeStorageBackendHandle,
 } from "../../state-evidence/truth/storage-backend-factory.js";
-import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
+import type {
+  CoordinatorNode,
+  CoordinatorNodeStatus,
+  FailoverDecision,
+  LeaderLease,
+  LeadershipAcquisitionInput,
+  LeadershipEpoch,
+} from "./types.js";
 import { SqliteHaRepository } from "./ha-repository-sqlite.js";
 import { PostgresHaRepository } from "./ha-repository-postgres.js";
 
@@ -61,6 +68,18 @@ export interface LeaderActionAuditEntry {
   authorized: boolean;
   reasonCode: string;
   performedAt: string;
+}
+
+export interface AtomicLeadershipAcquisitionResult {
+  acquired: boolean;
+  lease: LeaderLease | null;
+  epoch: number;
+  fencingToken: number;
+  cause?: string;
+}
+
+export interface AtomicLeadershipCapableRepository {
+  acquireLeadershipAtomically(input: LeadershipAcquisitionInput): Promise<AtomicLeadershipAcquisitionResult>;
 }
 
 // ── Repository Factory ────────────────────────────────────────────────────────

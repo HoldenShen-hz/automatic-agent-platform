@@ -7,10 +7,23 @@
 
 import { createHash } from "node:crypto";
 import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-database.js";
-import type { HaRepository, LeaderActionAuditEntry } from "./ha-repository.js";
-import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
+import type {
+  AtomicLeadershipAcquisitionResult,
+  AtomicLeadershipCapableRepository,
+  HaRepository,
+  LeaderActionAuditEntry,
+} from "./ha-repository.js";
+import type {
+  CoordinatorNode,
+  CoordinatorNodeStatus,
+  FailoverDecision,
+  LeaderLease,
+  LeadershipAcquisitionInput,
+  LeadershipEpoch,
+} from "./types.js";
+import { newId, nowIso } from "../../contracts/types/ids.js";
 
-export class PostgresHaRepository implements HaRepository {
+export class PostgresHaRepository implements HaRepository, AtomicLeadershipCapableRepository {
   private readonly lockId: bigint;
 
   constructor(
@@ -249,6 +262,150 @@ export class PostgresHaRepository implements HaRepository {
       entry.reasonCode,
       entry.performedAt,
     );
+  }
+
+  async acquireLeadershipAtomically(
+    input: LeadershipAcquisitionInput,
+  ): Promise<AtomicLeadershipAcquisitionResult> {
+    return this.db.transaction(async (conn) => {
+      const { nodeId, ttlMs, forceAcquire = false } = input;
+      const lock = await conn.queryOne<{ acquired: boolean }>(
+        `SELECT pg_try_advisory_xact_lock($1) AS acquired`,
+        this.lockId,
+      );
+      const now = nowIso();
+      const currentEpochRow = await conn.queryOne<EpochRow>(
+        `SELECT * FROM leadership_epochs ORDER BY epoch DESC LIMIT 1`,
+      );
+      const currentEpoch = currentEpochRow
+        ? this.mapRowToEpoch(currentEpochRow)
+        : {
+          epoch: 0,
+          leaderNodeId: null,
+          startedAt: now,
+          endedAt: null,
+          cause: "acquired" as const,
+          fencingToken: 0,
+        };
+
+      if (!lock?.acquired) {
+        return {
+          acquired: false,
+          lease: null,
+          epoch: currentEpoch.epoch,
+          fencingToken: currentEpoch.fencingToken,
+          cause: "leadership_lock_unavailable",
+        };
+      }
+
+      const nodeRow = await conn.queryOne<CoordinatorNodeRow>(
+        `SELECT * FROM coordinator_nodes WHERE node_id = $1`,
+        nodeId,
+      );
+      if (!nodeRow) {
+        throw new Error("Must register node before acquiring leadership");
+      }
+
+      const currentLeaderRow = await conn.queryOne<CoordinatorNodeRow>(
+        `SELECT * FROM coordinator_nodes WHERE is_leader = 1 LIMIT 1`,
+      );
+      const currentLeader = currentLeaderRow ? this.mapRowToNode(currentLeaderRow) : null;
+      const currentLeaderLeaseRow =
+        currentLeader == null
+          ? undefined
+          : await conn.queryOne<LeaderLeaseRow>(
+            `SELECT * FROM leadership_leases WHERE node_id = $1 AND status = 'active' ORDER BY acquired_at DESC LIMIT 1`,
+            currentLeader.nodeId,
+          );
+      const currentLeaderLease = currentLeaderLeaseRow ? this.mapRowToLease(currentLeaderLeaseRow) : null;
+
+      if (currentLeader && !forceAcquire && currentLeaderLease && currentLeader.nodeId !== nodeId) {
+        const isExpired = new Date(currentLeaderLease.expiresAt) <= new Date(now);
+        if (!isExpired) {
+          return {
+            acquired: false,
+            lease: null,
+            epoch: currentEpoch.epoch,
+            fencingToken: currentEpoch.fencingToken,
+            cause: "leadership_held_by_another_node",
+          };
+        }
+      }
+
+      const newEpoch = currentEpoch.epoch + 1;
+      const newFencingToken = currentEpoch.fencingToken + 1;
+      const lease: LeaderLease = {
+        leaseId: newId("llease"),
+        nodeId,
+        epoch: newEpoch,
+        acquiredAt: now,
+        expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+        status: "active",
+        ttlMs,
+      };
+
+      await conn.execute(`UPDATE coordinator_nodes SET is_leader = 0 WHERE is_leader = 1`);
+      await conn.execute(`UPDATE leadership_leases SET status = 'expired' WHERE status = 'active'`);
+      if (currentEpoch.epoch > 0) {
+        await conn.execute(
+          `UPDATE leadership_epochs SET ended_at = $1, cause = $2 WHERE epoch = $3 AND ended_at IS NULL`,
+          now,
+          forceAcquire ? "preempted" : "expired",
+          currentEpoch.epoch,
+        );
+      }
+
+      await conn.execute(
+        `INSERT INTO leadership_leases (lease_id, node_id, epoch, acquired_at, expires_at, status, ttl_ms, fencing_token)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        lease.leaseId,
+        lease.nodeId,
+        lease.epoch,
+        lease.acquiredAt,
+        lease.expiresAt,
+        lease.status,
+        lease.ttlMs,
+        newFencingToken,
+      );
+      await conn.execute(
+        `UPDATE coordinator_nodes SET is_leader = $1, leadership_epoch = $2 WHERE node_id = $3`,
+        1,
+        newEpoch,
+        nodeId,
+      );
+      await conn.execute(
+        `INSERT INTO leadership_epochs (epoch, leader_node_id, started_at, ended_at, cause, fencing_token)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        newEpoch,
+        nodeId,
+        now,
+        null,
+        forceAcquire ? "preempted" : "acquired",
+        newFencingToken,
+      );
+
+      if (currentLeader && currentLeader.nodeId !== nodeId) {
+        await conn.execute(
+          `INSERT INTO failover_decisions (decision_id, old_leader_node_id, new_leader_node_id, epoch, cause, outcome, decided_at, fencing_token)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          newId("failover"),
+          currentLeader.nodeId,
+          nodeId,
+          newEpoch,
+          forceAcquire ? "epoch_preempted" : "voluntary",
+          "leader_changed",
+          now,
+          newFencingToken,
+        );
+      }
+
+      return {
+        acquired: true,
+        lease,
+        epoch: newEpoch,
+        fencingToken: newFencingToken,
+      };
+    });
   }
 
   // Stale Detection

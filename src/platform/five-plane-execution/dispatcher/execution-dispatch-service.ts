@@ -633,8 +633,9 @@ export class ExecutionDispatchService {
             });
             if (lease.outcome === "granted" && lease.lease) {
               // Dispatch via emergency lane
-              // Note: Do NOT wrap in a transaction - acquireLease already opened one
-              // and SQLite does not support nested transactions/SAVEPOINT
+              // Note: Do NOT wrap in another transaction here. acquireLease already
+              // opened one, and the follow-up claim/update steps intentionally happen
+              // as a small best-effort fallback path outside the main dispatch batch.
               this.store.worker.claimExecutionTicket({
                 ticketId: ticket.id,
                 assignedWorkerId: emergencyWorker.workerId,

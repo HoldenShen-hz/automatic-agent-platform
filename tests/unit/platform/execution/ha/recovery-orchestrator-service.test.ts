@@ -39,3 +39,44 @@ test("RecoveryOrchestratorService orders workers by priority and interval", asyn
   assert.deepStrictEqual(calls, ["critical-worker", "high-worker", "normal-worker"]);
   assert.equal(report.workerReports.length, 3);
 });
+
+test("RecoveryOrchestratorService runs recovery workers in parallel once sorted", async () => {
+  let runningWorkers = 0;
+  let maxConcurrentWorkers = 0;
+  const startedWorkers: string[] = [];
+  const finishedWorkers: string[] = [];
+  const createWorker = (workerId: string): RecoveryWorker => ({
+    getWorkerId: () => workerId,
+    getRecoveryCadence: () => ({ intervalMs: 60_000, maxConcurrent: 1, priority: "normal" }),
+    runRecoveryCycle: async () => {
+      startedWorkers.push(workerId);
+      runningWorkers += 1;
+      maxConcurrentWorkers = Math.max(maxConcurrentWorkers, runningWorkers);
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      runningWorkers -= 1;
+      finishedWorkers.push(workerId);
+      return {
+        workerId,
+        workerType: workerId,
+        startedAt: "2026-04-24T00:00:00.000Z",
+        completedAt: "2026-04-24T00:00:01.000Z",
+        durationMs: 1000,
+        itemsProcessed: 1,
+        itemsRecovered: 1,
+        errors: [],
+      };
+    },
+  });
+
+  const service = new RecoveryOrchestratorService([
+    createWorker("worker-a"),
+    createWorker("worker-b"),
+  ]);
+
+  const report = await service.runCycle();
+
+  assert.deepStrictEqual(startedWorkers, ["worker-a", "worker-b"]);
+  assert.deepStrictEqual(finishedWorkers.sort(), ["worker-a", "worker-b"]);
+  assert.equal(report.workerReports.length, 2);
+  assert.ok(maxConcurrentWorkers >= 2);
+});

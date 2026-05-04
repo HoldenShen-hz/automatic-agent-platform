@@ -244,13 +244,14 @@ export function buildFederationCatalog(
     const trusts = Array.from((gateway as unknown as { trustRelationships: Map<string, TrustRelationship> }).trustRelationships.values())
       .filter((t) => t.sourceOrgId === org.id || t.targetOrgId === org.id);
 
+    const firstTrust = trusts[0];
     const entry: FederationCatalogEntry = {
       federationId: (gateway as unknown as { config: FederationGatewayConfig }).config.federationId,
       name: org.name,
       description: `Federation for ${org.domain}`,
       regionCount: 1, // Placeholder - would be derived from region tracking
       orgCount: orgs.length,
-      trustLevel: trusts.length > 0 ? trusts[0].level : TrustLevel.NONE,
+      trustLevel: firstTrust !== undefined ? firstTrust.level : TrustLevel.NONE,
       capabilities: Array.from(org.capabilities),
       status: org.enabled ? "active" : "inactive",
       createdAt: new Date().toISOString(),

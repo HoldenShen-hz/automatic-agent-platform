@@ -842,15 +842,20 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
             if (this.directiveSink != null) {
               this.directiveSink.emitOperationalDirective(
                 createOperationalDirective({
-                  type: boundary.allowed ? "strategy_improve_allowed" : "strategy_improve_blocked",
+                  type: boundary.allowed ? "mode_switch" : "mode_switch",
                   scope: {
-                    scope: "planning_policy",
-                    targetId: currentInput.taskId,
+                    harnessRunId: `oapeflir_run_${currentInput.taskId}`,
                   },
-                  reasonCode: boundary.reasonCode,
-                  metadata: {
+                  issuedBy: {
+                    principalId: "oapeflir_loop_service",
+                    tenantId: "tenant:local",
+                    roles: ["oapeflir_service"],
+                  },
+                  reason: boundary.reasonCode,
+                  params: {
                     learningObjectCount: validatedLearningObjects.length,
                     loopIteration: this.loopIteration,
+                    improvementDecision: boundary.allowed ? "allowed" : "blocked",
                   },
                 }),
               );

@@ -453,6 +453,41 @@ test("HaCoordinatorServiceAsync - acquireLeadership increments epoch", async () 
   assert.ok(result2.epoch > result1.epoch);
 });
 
+test("HaCoordinatorServiceAsync - acquireLeadership delegates to atomic repo path when available", async () => {
+  const repo = createMockRepo();
+  const atomicCalls: Array<{ nodeId: string; ttlMs: number; forceAcquire?: boolean }> = [];
+  (repo as any).acquireLeadershipAtomically = async (input: {
+    nodeId: string;
+    ttlMs: number;
+    forceAcquire?: boolean;
+  }) => {
+    atomicCalls.push(input);
+    return {
+      acquired: true,
+      lease: {
+        leaseId: "lease-atomic",
+        nodeId: input.nodeId,
+        epoch: 7,
+        acquiredAt: nowIso(),
+        expiresAt: new Date(Date.now() + input.ttlMs).toISOString(),
+        status: "active" as const,
+        ttlMs: input.ttlMs,
+      },
+      epoch: 7,
+      fencingToken: 12,
+    };
+  };
+
+  const service = new HaCoordinatorServiceAsync(repo);
+  const result = await service.acquireLeadership({ nodeId: "node-7", ttlMs: 100 });
+
+  assert.equal(result.acquired, true);
+  assert.equal(result.epoch, 7);
+  assert.deepEqual(atomicCalls, [{ nodeId: "node-7", ttlMs: MIN_LEASE_TTL_MS, forceAcquire: false }]);
+  assert.equal(service.verifyWriteAuthority(12), false);
+  assert.equal(service.verifyWriteAuthority(13), true);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests: Leadership Renewal
 // ─────────────────────────────────────────────────────────────────────────────

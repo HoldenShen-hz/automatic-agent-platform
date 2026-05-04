@@ -31,12 +31,12 @@ export function validateCanaryRolloutPercentages(): CanaryValidationResult {
 
   // Validate that canary percentages are monotonically increasing
   const canaryStages: RolloutStatus[] = ["canary_5", "canary_20", "canary_50"];
-  const expectedPercentages = [5, 20, 50];
+  const expectedPercentages: number[] = [5, 20, 50];
 
-  for (let i = 0; i < canaryStages.length; i++) {
-    const stage = canaryStages[i];
+  for (let idx = 0; idx < canaryStages.length; idx++) {
+    const stage = canaryStages[idx]!; // assert defined - array is literal
+    const expected = expectedPercentages[idx]!;
     const actualPercentage = TRAFFIC_PERCENTAGES[stage];
-    const expected = expectedPercentages[i];
 
     if (actualPercentage === undefined) {
       errors.push(`Missing percentage for ${stage}`);
@@ -46,24 +46,29 @@ export function validateCanaryRolloutPercentages(): CanaryValidationResult {
   }
 
   // Validate stable_100 is 100%
-  if (TRAFFIC_PERCENTAGES["stable_100"] !== 100) {
-    errors.push(`Invalid percentage for stable_100: expected 100, got ${TRAFFIC_PERCENTAGES["stable_100"]}`);
+  const stablePercentage = TRAFFIC_PERCENTAGES["stable_100"];
+  if (stablePercentage !== 100) {
+    errors.push(`Invalid percentage for stable_100: expected 100, got ${stablePercentage}`);
   }
 
   // Validate canary progression is monotonically increasing
-  if (TRAFFIC_PERCENTAGES["canary_5"] >= TRAFFIC_PERCENTAGES["canary_20"]) {
+  const canary5 = TRAFFIC_PERCENTAGES["canary_5"];
+  const canary20 = TRAFFIC_PERCENTAGES["canary_20"];
+  const canary50 = TRAFFIC_PERCENTAGES["canary_50"];
+
+  if (canary5 !== undefined && canary20 !== undefined && canary5 >= canary20) {
     errors.push("canary_5 percentage must be less than canary_20");
   }
-  if (TRAFFIC_PERCENTAGES["canary_20"] >= TRAFFIC_PERCENTAGES["canary_50"]) {
+  if (canary20 !== undefined && canary50 !== undefined && canary20 >= canary50) {
     errors.push("canary_20 percentage must be less than canary_50");
   }
-  if (TRAFFIC_PERCENTAGES["canary_50"] >= TRAFFIC_PERCENTAGES["stable_100"]) {
+  if (canary50 !== undefined && stablePercentage !== undefined && canary50 >= stablePercentage) {
     errors.push("canary_50 percentage must be less than stable_100");
   }
 
   // Warn if canary percentages seem unusual
-  if (TRAFFIC_PERCENTAGES["canary_5"] < 1 || TRAFFIC_PERCENTAGES["canary_5"] > 10) {
-    warnings.push(`canary_5 percentage ${TRAFFIC_PERCENTAGES["canary_5"]} is outside typical range (1-10%)`);
+  if (canary5 !== undefined && (canary5 < 1 || canary5 > 10)) {
+    warnings.push(`canary_5 percentage ${canary5} is outside typical range (1-10%)`);
   }
 
   return {

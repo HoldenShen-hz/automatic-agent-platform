@@ -10,10 +10,11 @@ function createMockAsyncDb() {
   const leases: Map<string, unknown> = new Map();
   const epochs: Map<number, unknown> = new Map();
   const failoverDecisions: Map<string, unknown> = new Map();
+  const statements: string[] = [];
 
-  return {
-    asyncConnection: {
+  const asyncConnection = {
       execute: async (sql: string, ...args: unknown[]) => {
+        statements.push(sql);
         if (sql.includes("INSERT INTO coordinator_nodes") || sql.includes("UPSERT")) {
           const nodeId = args[0];
           nodes.set(nodeId, {
@@ -29,6 +30,23 @@ function createMockAsyncDb() {
           });
           return { rowCount: 1 };
         }
+        if (sql.includes("UPDATE coordinator_nodes SET is_leader = 0 WHERE is_leader = 1")) {
+          for (const [nodeId, node] of nodes.entries()) {
+            nodes.set(nodeId, { ...(node as Record<string, unknown>), is_leader: 0 });
+          }
+          return { rowCount: 1 };
+        }
+        if (sql.includes("UPDATE coordinator_nodes SET is_leader = $1, leadership_epoch = $2 WHERE node_id = $3")) {
+          const existing = nodes.get(args[2] as string) as Record<string, unknown> | undefined;
+          if (existing) {
+            nodes.set(args[2] as string, {
+              ...existing,
+              is_leader: args[0],
+              leadership_epoch: args[1],
+            });
+          }
+          return { rowCount: existing ? 1 : 0 };
+        }
         if (sql.includes("INSERT INTO leadership_leases")) {
           const leaseId = args[0];
           leases.set(leaseId, {
@@ -41,6 +59,14 @@ function createMockAsyncDb() {
             ttl_ms: args[6],
             fencing_token: 0,
           });
+          return { rowCount: 1 };
+        }
+        if (sql.includes("UPDATE leadership_leases SET status = 'expired' WHERE status = 'active'")) {
+          for (const [leaseId, lease] of leases.entries()) {
+            if ((lease as Record<string, unknown>).status === "active") {
+              leases.set(leaseId, { ...(lease as Record<string, unknown>), status: "expired" });
+            }
+          }
           return { rowCount: 1 };
         }
         if (sql.includes("UPDATE leadership_leases SET status")) {
@@ -99,6 +125,14 @@ function createMockAsyncDb() {
         return { rowCount: 0 };
       },
       queryOne: async <T>(sql: string, ...args: unknown[]): Promise<T | null> => {
+        statements.push(sql);
+        if (sql.includes("pg_try_advisory_xact_lock")) {
+          return ({ acquired: true } as T) ?? null;
+        }
+        if (sql.includes("FROM coordinator_nodes WHERE is_leader = 1")) {
+          const leader = Array.from(nodes.values()).find((node: any) => node.is_leader === 1);
+          return (leader as T) ?? null;
+        }
         if (sql.includes("FROM coordinator_nodes WHERE node_id")) {
           return (nodes.get(args[0] as string) as T) ?? null;
         }
@@ -120,6 +154,7 @@ function createMockAsyncDb() {
         return null;
       },
       query: async <T>(sql: string, ...args: unknown[]): Promise<{ rows: T[] }> => {
+        statements.push(sql);
         if (sql.includes("FROM leadership_leases")) {
           return { rows: Array.from(leases.values()) as T[] };
         }
@@ -138,7 +173,12 @@ function createMockAsyncDb() {
         }
         return { rows: [] };
       },
-    },
+  };
+
+  return {
+    asyncConnection,
+    transaction: async <T>(work: (conn: typeof asyncConnection) => Promise<T>) => work(asyncConnection),
+    _statements: statements,
   };
 }
 
@@ -356,4 +396,60 @@ test("PostgresHaRepository.recordActionAudit inserts audit entry", async () => {
 
   // Should not throw
   await repo.recordActionAudit(entry);
+});
+
+test("PostgresHaRepository.acquireLeadershipAtomically uses xact lock and rotates leader state", async () => {
+  const mockDb = createMockAsyncDb() as any;
+  const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
+  const now = new Date().toISOString();
+
+  await repo.upsertNode({
+    nodeId: "node-1",
+    region: "us-east-1",
+    status: "active",
+    isLeader: true,
+    leadershipEpoch: 1,
+    lastHeartbeatAt: now,
+    metadata: null,
+  });
+  await repo.upsertNode({
+    nodeId: "node-2",
+    region: "us-east-1",
+    status: "active",
+    isLeader: false,
+    leadershipEpoch: 0,
+    lastHeartbeatAt: now,
+    metadata: null,
+  });
+  await repo.insertLease({
+    leaseId: "lease-old",
+    nodeId: "node-1",
+    epoch: 1,
+    acquiredAt: now,
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    status: "active",
+    ttlMs: 30_000,
+  });
+  await repo.insertEpoch({
+    epoch: 1,
+    leaderNodeId: "node-1",
+    startedAt: now,
+    endedAt: null,
+    cause: "acquired",
+    fencingToken: 1,
+  });
+
+  const result = await repo.acquireLeadershipAtomically({
+    nodeId: "node-2",
+    ttlMs: 20_000,
+    forceAcquire: true,
+  });
+
+  assert.equal(result.acquired, true);
+  assert.equal(result.lease?.nodeId, "node-2");
+  assert.equal((await repo.getNode("node-1"))?.isLeader, false);
+  assert.equal((await repo.getNode("node-2"))?.isLeader, true);
+  assert.equal((await repo.getLeaseById("lease-old"))?.status, "expired");
+  assert.equal((await repo.getLatestEpoch())?.leaderNodeId, "node-2");
+  assert.ok((mockDb._statements as string[]).some((sql) => sql.includes("pg_try_advisory_xact_lock")));
 });

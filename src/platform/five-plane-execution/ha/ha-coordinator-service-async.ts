@@ -12,7 +12,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { HaRepository } from "./ha-repository.js";
+import type { AtomicLeadershipCapableRepository, HaRepository } from "./ha-repository.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, HaCoordinatorServiceOptions, LeaderActionAuthority, LeaderActionAuthorization, LeaderLease, LeadershipAcquisitionInput, LeadershipEpoch, LeadershipQueryResult, LeadershipRenewalInput } from "./types.js";
 import { DEFAULT_LEASE_TTL_MS, EPOCH_FENCING_TOKEN_START, MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "./types.js";
 
@@ -109,12 +109,22 @@ export class HaCoordinatorServiceAsync {
     cause?: string;
   }> {
     const { nodeId, ttlMs = this.defaultTtlMs, forceAcquire = false } = input;
+    const effectiveTtl = Math.min(MAX_LEASE_TTL_MS, Math.max(MIN_LEASE_TTL_MS, ttlMs));
+    if (supportsAtomicLeadershipAcquisition(this.repo)) {
+      const result = await this.repo.acquireLeadershipAtomically({
+        nodeId,
+        ttlMs: effectiveTtl,
+        forceAcquire,
+      });
+      this.cachedFencingToken = result.fencingToken;
+      return result;
+    }
+
     const node = await this.getNode(nodeId);
     if (!node) {
       throw new Error("Must register node before acquiring leadership");
     }
 
-    const effectiveTtl = Math.min(MAX_LEASE_TTL_MS, Math.max(MIN_LEASE_TTL_MS, ttlMs));
     const now = nowIso();
     const expiresAt = new Date(Date.now() + effectiveTtl).toISOString();
 
@@ -138,7 +148,8 @@ export class HaCoordinatorServiceAsync {
     }
 
     const newEpoch = currentEpoch.epoch + 1;
-    // §209-2468: await async nextFencingToken to get DB-consistent unique token
+    // Compatibility fallback for non-atomic mock repos only. Real SQLite/Postgres
+    // backends now provide acquireLeadershipAtomically() above.
     const newFencingToken = await this.nextFencingToken();
 
     const leaseId = newId("llease");
@@ -529,8 +540,8 @@ export class HaCoordinatorServiceAsync {
 
   // ── Helpers ─────────────────────────────────────────────────────
 
-  // §209-2467: Use MAX(fencing_token)+1 from DB via repo instead of in-memory counter
-  // In-memory counter is local to each node; distributed increments cause token collisions
+  // Compatibility fallback for non-atomic mock repos. Real backends derive the fencing
+  // token inside acquireLeadershipAtomically() under a database lock/transaction boundary.
   private async nextFencingToken(): Promise<number> {
     const latestEpoch = await this.getLatestEpoch();
     return latestEpoch.fencingToken + 1;
@@ -558,4 +569,10 @@ export class HaCoordinatorServiceAsync {
     };
     await this.repo.recordActionAudit(entry);
   }
+}
+
+function supportsAtomicLeadershipAcquisition(
+  repo: HaRepository,
+): repo is HaRepository & AtomicLeadershipCapableRepository {
+  return typeof (repo as Partial<AtomicLeadershipCapableRepository>).acquireLeadershipAtomically === "function";
 }
