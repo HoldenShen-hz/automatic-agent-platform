@@ -33,14 +33,10 @@ export type PolicyRiskCategory =
   | "governance_sensitive";
 
 export type PolicyMode =
-  | "supervised"
   | "auto"
   | "full-auto"
   | "read-only"
-  | "maintenance"
-  | "incident-mode"
-  | "degraded"
-  | "emergency";
+  | "incident-mode";
 export type OapeflirStage = "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release";
 export type PolicyDecision = "allow" | "deny" | "allow_with_constraints" | "escalate_for_approval";
 

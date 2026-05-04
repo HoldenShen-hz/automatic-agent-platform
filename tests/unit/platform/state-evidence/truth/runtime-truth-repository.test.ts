@@ -73,6 +73,28 @@ test("seed stores HarnessRun and makes it retrievable", () => {
   assert.equal(repository.getHarnessRun("hrun-1")?.harnessRunId, "hrun-1");
 });
 
+test("seed rejects overwriting an existing aggregate", () => {
+  const repository = new RuntimeTruthRepository();
+  const run = createHarnessRun({
+    harnessRunId: "hrun-append-only",
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "request-1",
+    requestHash: "hash-1",
+    constraintPackRef: "cp-1",
+    versionLockId: "rvlock-1",
+    budgetLedgerId: "bledger-1",
+  });
+
+  repository.seed("HarnessRun", run);
+
+  assert.throws(
+    () => repository.seed("HarnessRun", run),
+    (error: unknown) =>
+      error instanceof ValidationError && error.code === "runtime_truth_repository.append_only_violation",
+  );
+});
+
 test("seed stores NodeRun and makes it retrievable", () => {
   const repository = new RuntimeTruthRepository();
   const nodeRun = createNodeRun({

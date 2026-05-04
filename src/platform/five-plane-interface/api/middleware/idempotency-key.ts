@@ -240,6 +240,27 @@ export class IdempotencyKeyMiddleware {
   public getStorage(): IdempotencyStorage {
     return this.storage;
   }
+
+  /**
+   * Clear all idempotency key entries.
+   */
+  public clearAll(): void {
+    const storage = this.storage as InMemoryIdempotencyStorage;
+    if (typeof storage.clear === "function") {
+      storage.clear();
+    }
+  }
+
+  /**
+   * Get the current entry count.
+   */
+  public size(): number {
+    const storage = this.storage as InMemoryIdempotencyStorage;
+    if (typeof storage.size === "function") {
+      return storage.size();
+    }
+    return 0;
+  }
 }
 
 /**

@@ -28,6 +28,7 @@ import { mkdirSync } from "node:fs";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
   GovernanceDelegationSchema,
+  GovernanceDelegationLevelSchema,
   type GovernanceDelegation,
   type GovernanceDelegationLevel,
   type GovernancePermission,
@@ -63,6 +64,8 @@ export type GovernanceConsoleAction = z.infer<typeof GovernanceConsoleActionSche
 export const CreateDelegationRequestSchema = z.object({
   grantorId: z.string().min(1),
   granteeId: z.string().min(1),
+  level: GovernanceDelegationLevelSchema.default("view"),
+  delegatable: z.boolean().default(false),
   orgNodeIds: z.array(z.string()).default([]),
   domainIds: z.array(z.string()).default([]),
   permissions: z.array(z.string()).default([]),
@@ -120,15 +123,12 @@ export class SelfServiceGovernanceConsole {
    */
   public createDelegation(input: CreateDelegationRequestInput): GovernanceDelegation {
     const request = CreateDelegationRequestSchema.parse(input);
-    // SECURITY FIX: Accept level and delegatable from request instead of hardcoding.
-    // Previously all delegations were hardcoded to level:"view" and delegatable:false,
-    // which prevented proper delegation hierarchy per §51.2.
     const delegation: GovernanceDelegation = {
       delegationId: newId("del"),
       grantorId: request.grantorId,
       granteeId: request.granteeId,
-      level: ((request as { level?: string }).level ?? "view") as GovernanceDelegationLevel,
-      delegatable: (request as { delegatable?: boolean }).delegatable ?? false,
+      level: request.level as GovernanceDelegationLevel,
+      delegatable: request.delegatable,
       orgNodeIds: request.orgNodeIds,
       domainIds: request.domainIds,
       derivedDelegationIds: [],

@@ -221,7 +221,7 @@ export interface ClarificationState {
   readonly maxRounds: number;
 }
 
-const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
+const DEFAULT_MAX_CLARIFICATION_ROUNDS = 5;
 
 export interface UserConfirmationReceipt {
   readonly confirmationId: string;
@@ -231,7 +231,7 @@ export interface UserConfirmationReceipt {
   readonly summary: string;
   // §39: Required fields when state is "confirmed"
   readonly scope?: string;
-  readonly timestamp?: string;
+  readonly time?: string;
   readonly riskPreviewVersion?: string;
   readonly actor?: string;
   readonly confirmedAt?: string;

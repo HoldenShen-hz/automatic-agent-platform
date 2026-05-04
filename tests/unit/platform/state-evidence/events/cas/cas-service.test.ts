@@ -209,14 +209,14 @@ test("CasService getVersion returns undefined for nonexistent key", () => {
   assert.equal(service.getVersion("nonexistent"), undefined);
 });
 
-test("CasService setValue overwrites existing value", () => {
+test("CasService setValue overwrites existing value and increments version", () => {
   const service = new CasService();
 
   service.setValue("key1", "value1");
   service.setValue("key1", "value2");
 
   assert.equal(service.getValue("key1"), "value2");
-  assert.equal(service.getVersion("key1"), 1); // setValue doesn't increment version
+  assert.equal(service.getVersion("key1"), 2);
 });
 
 test("CasService compareAndSwap handles empty string as expected value", () => {

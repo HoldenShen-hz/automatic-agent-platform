@@ -407,7 +407,7 @@ export class MiniMaxChatService {
               }
             } catch (err) {
               logger.log({
-                level: "debug",
+                level: "error",
                 message: "Skipped malformed JSON in stream",
                 data: { error: err instanceof Error ? err.message : String(err) },
               });

@@ -58,6 +58,18 @@ test("listAncestorNodeIds returns empty for root", () => {
   assert.deepEqual(ancestors, []);
 });
 
+test("listAncestorNodeIds throws on circular hierarchy references", () => {
+  const nodes = [
+    { orgNodeId: "team-a", nodeType: "team" as const, active: true, ownerUserIds: [], parentOrgNodeId: "team-b" },
+    { orgNodeId: "team-b", nodeType: "team" as const, active: true, ownerUserIds: [], parentOrgNodeId: "team-a" },
+  ];
+
+  assert.throws(
+    () => listAncestorNodeIds(nodes, "team-a"),
+    /org_hierarchy\.circular_reference_detected:team-a/,
+  );
+});
+
 test("listDescendantNodeIds returns all descendants", () => {
   const nodes = [
     { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: [], parentOrgNodeId: null },
@@ -188,6 +200,27 @@ test("detectOrgChangeEvents detects department merge and restructure", () => {
   ];
   const events = detectOrgChangeEvents(before, after);
   assert.ok(events.some(e => e.type === "department_merge" || e.type === "org_restructure"));
+});
+
+test("detectOrgChangeEvents records employee transfer target as destination team id", () => {
+  const before = [
+    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["ceo"], parentOrgNodeId: null },
+    { orgNodeId: "dept-a", nodeType: "department" as const, active: true, ownerUserIds: ["mgr-a"], parentOrgNodeId: "company" },
+    { orgNodeId: "team-a", nodeType: "team" as const, active: true, ownerUserIds: ["lead-a"], parentOrgNodeId: "dept-a" },
+  ];
+  const after = [
+    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["ceo"], parentOrgNodeId: null },
+    { orgNodeId: "dept-b", nodeType: "department" as const, active: true, ownerUserIds: ["mgr-b"], parentOrgNodeId: "company" },
+    { orgNodeId: "team-a", nodeType: "team" as const, active: true, ownerUserIds: ["lead-a"], parentOrgNodeId: "dept-b" },
+  ];
+
+  const events = detectOrgChangeEvents(before, after, [
+    { principalId: "seat-1", userId: "emp-1", homeNodeId: "team-a", managerUserId: "mgr-b", active: true },
+  ]);
+
+  const transfer = events.find((event) => event.type === "employee_transfer");
+  assert.ok(transfer);
+  assert.equal(transfer.toTeamId, "team-a");
 });
 
 test("detectOrgChangeEvents returns empty when no changes", () => {

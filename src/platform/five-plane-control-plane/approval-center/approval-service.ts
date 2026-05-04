@@ -48,6 +48,31 @@ import { createDecisionDirective, type DecisionDirective } from "../../contracts
 import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
 
 /**
+ * OAPEFLIR stage reference for timeline/interpretive view.
+ * Must NOT be used as truth source or status progression key.
+ */
+export type OapeflirStageRef =
+  | "observe"
+  | "assess"
+  | "plan"
+  | "execute"
+  | "feedback"
+  | "learn"
+  | "improve"
+  | "release";
+
+/**
+ * Single hop in an explicit escalation chain.
+ */
+export interface ApprovalEscalationHop {
+  level: number;
+  reviewerType: string;
+  reviewerRef: string;
+  timeoutMs: number;
+  onTimeout: "reject" | "escalate" | "remain_pending";
+}
+
+/**
  * Represents a request for human approval before proceeding.
  *
  * Contains the context for the decision, available options, risk assessment,
@@ -67,6 +92,12 @@ export interface ApprovalRequest {
   options: readonly string[];
   context: Record<string, unknown>;
   timeoutPolicy: "reject" | "approve" | "remain_pending";
+  /** Auto-action to execute on timeout (control plane semantics, not UI-inferred) */
+  timeoutAutoAction?: "reject" | "escalate" | "remain_pending" | "continue_readonly";
+  /** Explicit escalation chain with per-hop timeout and reviewer */
+  escalationChain?: readonly ApprovalEscalationHop[];
+  /** OAPEFLIR stage view reference (interpretive only, not truth source) */
+  stageViewRef?: OapeflirStageRef;
   createdAt: string;
   /** Number of approvals required for multi-party approval (N-of-M). Default: 1 */
   requiredApprovals?: number;

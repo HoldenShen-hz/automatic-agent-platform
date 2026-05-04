@@ -58,6 +58,30 @@ test("LayeredEventInbox projection consumers receive platform facts and OAPEFLIR
   ]);
 });
 
+test("LayeredEventInbox drain deduplicates duplicate event IDs for the same consumer", () => {
+  const inbox = new LayeredEventInbox();
+  inbox.registerConsumer({ consumerId: "truth-projector", kind: "truth" });
+  inbox.append(platformFact);
+  inbox.append(platformFact);
+
+  const events = inbox.drain("truth-projector");
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.eventId, platformFact.eventId);
+});
+
+test("LayeredEventInbox drain does not advance cursor for events a consumer cannot receive", () => {
+  const inbox = new LayeredEventInbox();
+  inbox.registerConsumer({ consumerId: "truth-projector", kind: "truth" });
+  inbox.append(oapeflirView);
+  inbox.append(platformFact);
+
+  const events = inbox.drain("truth-projector");
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.eventType, "platform.harness_run.created");
+});
+
 test("LayeredEventInbox rejects unsupported event namespaces", () => {
   const inbox = new LayeredEventInbox();
 

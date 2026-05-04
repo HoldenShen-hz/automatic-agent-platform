@@ -67,9 +67,9 @@ const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
   },
   qualityScoreWeights: {
     successSignal: 0.35,
-    completionOutcome: 0.45,
-    failureSignal: 0.3,
-    partialSignal: 0.1,
+    completionOutcome: 0.40,
+    failureSignal: 0.20,
+    partialSignal: 0.05,
   },
   actionThresholds: {
     completeMinScore: 0.5,

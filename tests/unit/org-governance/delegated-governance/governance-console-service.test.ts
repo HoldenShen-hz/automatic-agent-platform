@@ -30,6 +30,25 @@ test("SelfServiceGovernanceConsole.createDelegation creates a valid delegation",
   assert.ok(delegation.delegationId.startsWith("del_"));
 });
 
+test("SelfServiceGovernanceConsole.createDelegation preserves requested level and delegatable flag", () => {
+  const console = new SelfServiceGovernanceConsole({
+    delegationStore: new InMemoryDelegationStore(),
+    auditLogStore: new InMemoryAuditLogStore(),
+  });
+
+  const delegation = console.createDelegation({
+    grantorId: "grantor-1",
+    granteeId: "grantee-1",
+    permissions: ["read"],
+    expiresAt: "2025-12-31T23:59:59Z",
+    level: "operate",
+    delegatable: true,
+  } as Parameters<SelfServiceGovernanceConsole["createDelegation"]>[0]);
+
+  assert.strictEqual(delegation.level, "operate");
+  assert.strictEqual(delegation.delegatable, true);
+});
+
 test("SelfServiceGovernanceConsole.createDelegation adds audit log entry", () => {
   const delegationStore = new InMemoryDelegationStore();
   const auditLogStore = new InMemoryAuditLogStore();

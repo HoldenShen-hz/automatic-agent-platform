@@ -1,0 +1,464 @@
+/**
+ * Federation Gateway
+ * Cross-org trust and capability delegation
+ */
+
+import { EventEmitter } from "events";
+import { randomUUID } from "crypto";
+
+// Types
+export interface FederationOrg {
+  id: string;
+  name: string;
+  domain: string;
+  tier: "standard" | "enterprise" | "strategic";
+  capabilities: Set<string>;
+  enabled: boolean;
+}
+
+export interface TrustRelationship {
+  id: string;
+  sourceOrgId: string;
+  targetOrgId: string;
+  level: TrustLevel;
+  capabilities: string[];
+  grantedBy: string;
+  grantedAt: Date;
+  expiresAt?: Date;
+  metadata?: Record<string, unknown>;
+}
+
+export enum TrustLevel {
+  NONE = "none",
+  AUDIT_ONLY = "audit_only", // Read-only audit access
+  READ = "read", // Read access to specified capabilities
+  WRITE = "write", // Write access to delegated capabilities
+  ADMIN = "admin", // Full administrative trust
+}
+
+export interface CapabilityGrant {
+  id: string;
+  orgId: string;
+  targetOrgId: string;
+  capability: string;
+  permissions: CapabilityPermission[];
+  constraints: CapabilityConstraint[];
+  grantedAt: Date;
+  expiresAt?: Date;
+  status: "active" | "suspended" | "revoked";
+}
+
+export type CapabilityPermission = "invoke" | "configure" | "delegate" | "audit";
+
+export interface CapabilityConstraint {
+  type: "rate_limit" | "quota" | "geography" | "custom";
+  value: unknown;
+  description?: string;
+}
+
+export interface DelegationRequest {
+  id: string;
+  sourceOrgId: string;
+  targetOrgId: string;
+  capabilities: string[];
+  requestedPermissions: CapabilityPermission[];
+  constraints: CapabilityConstraint[];
+  reason?: string;
+  requestedBy: string;
+  requestedAt: Date;
+  expiresAt?: Date;
+}
+
+export interface DelegationResult {
+  success: boolean;
+  grant?: CapabilityGrant;
+  error?: string;
+  errorCode?: string;
+}
+
+export interface FederationEvent {
+  type: string;
+  sourceOrgId: string;
+  targetOrgId?: string;
+  timestamp: Date;
+  actor?: string;
+  data: Record<string, unknown>;
+}
+
+// Gateway configuration
+export interface FederationGatewayConfig {
+  enableAudit: boolean;
+  maxDelegationDepth: number;
+  requireApproval: boolean;
+  autoExpiryDays?: number;
+}
+
+const DEFAULT_CONFIG: FederationGatewayConfig = {
+  enableAudit: true,
+  maxDelegationDepth: 3,
+  requireApproval: true,
+  autoExpiryDays: 365,
+};
+
+/**
+ * FederationGateway manages cross-organization trust relationships
+ * and capability delegation for the federation mesh.
+ */
+export class FederationGateway extends EventEmitter {
+  private readonly config: FederationGatewayConfig;
+  private readonly organizations: Map<string, FederationOrg> = new Map();
+  private readonly trustRelationships: Map<string, TrustRelationship> = new Map();
+  private readonly capabilityGrants: Map<string, CapabilityGrant> = new Map();
+  private readonly pendingRequests: Map<string, DelegationRequest> = new Map();
+  private readonly auditLog: FederationEvent[] = [];
+
+  constructor(config: Partial<FederationGatewayConfig> = {}) {
+    super();
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  // Organization Management
+  async registerOrganization(org: Omit<FederationOrg, "capabilities" | "enabled">): Promise<FederationOrg> {
+    const federationOrg: FederationOrg = {
+      ...org,
+      capabilities: new Set<string>(),
+      enabled: true,
+    };
+    this.organizations.set(org.id, federationOrg);
+    this.emitAudit({
+      type: "org.registered",
+      sourceOrgId: org.id,
+      timestamp: new Date(),
+      data: { orgId: org.id, name: org.name, domain: org.domain },
+    });
+    return federationOrg;
+  }
+
+  async getOrganization(orgId: string): Promise<FederationOrg | undefined> {
+    return this.organizations.get(orgId);
+  }
+
+  async updateOrganizationCapabilities(orgId: string, capabilities: string[]): Promise<void> {
+    const org = this.organizations.get(orgId);
+    if (!org) {
+      throw new Error(`Organization not found: ${orgId}`);
+    }
+    org.capabilities = new Set(capabilities);
+    this.emitAudit({
+      type: "org.capabilities_updated",
+      sourceOrgId: orgId,
+      timestamp: new Date(),
+      data: { orgId, capabilities },
+    });
+  }
+
+  async enableOrganization(orgId: string, enabled: boolean): Promise<void> {
+    const org = this.organizations.get(orgId);
+    if (!org) {
+      throw new Error(`Organization not found: ${orgId}`);
+    }
+    org.enabled = enabled;
+    this.emitAudit({
+      type: "org.status_changed",
+      sourceOrgId: orgId,
+      timestamp: new Date(),
+      data: { orgId, enabled },
+    });
+  }
+
+  // Trust Relationship Management
+  async establishTrust(request: {
+    sourceOrgId: string;
+    targetOrgId: string;
+    level: TrustLevel;
+    capabilities: string[];
+    grantedBy: string;
+    expiresAt?: Date;
+    metadata?: Record<string, unknown>;
+  }): Promise<TrustRelationship> {
+    const sourceOrg = this.organizations.get(request.sourceOrgId);
+    const targetOrg = this.organizations.get(request.targetOrgId);
+    if (!sourceOrg || !targetOrg) {
+      throw new Error("Source or target organization not found");
+    }
+    if (!sourceOrg.enabled || !targetOrg.enabled) {
+      throw new Error("Cannot establish trust with disabled organization");
+    }
+
+    // Validate trust level hierarchy
+    if (!this.isValidTrustLevel(request.level, sourceOrg, request.capabilities)) {
+      throw new Error("Invalid trust level for organization capabilities");
+    }
+
+    const trustRelationship: TrustRelationship = {
+      id: randomUUID(),
+      sourceOrgId: request.sourceOrgId,
+      targetOrgId: request.targetOrgId,
+      level: request.level,
+      capabilities: request.capabilities,
+      grantedBy: request.grantedBy,
+      grantedAt: new Date(),
+      ...(request.expiresAt !== undefined && { expiresAt: request.expiresAt }),
+      ...(request.metadata !== undefined && { metadata: request.metadata }),
+    };
+
+    this.trustRelationships.set(trustRelationship.id, trustRelationship);
+    this.emitAudit({
+      type: "trust.established",
+      sourceOrgId: request.sourceOrgId,
+      targetOrgId: request.targetOrgId,
+      timestamp: new Date(),
+      actor: request.grantedBy,
+      data: {
+        trustId: trustRelationship.id,
+        level: request.level,
+        capabilities: request.capabilities,
+      },
+    });
+
+    return trustRelationship;
+  }
+
+  async getTrustRelationship(trustId: string): Promise<TrustRelationship | undefined> {
+    return this.trustRelationships.get(trustId);
+  }
+
+  async getTrustsForOrg(orgId: string): Promise<TrustRelationship[]> {
+    return Array.from(this.trustRelationships.values()).filter(
+      (trust) => trust.sourceOrgId === orgId || trust.targetOrgId === orgId
+    );
+  }
+
+  async revokeTrust(trustId: string, revokedBy: string): Promise<void> {
+    const trust = this.trustRelationships.get(trustId);
+    if (!trust) {
+      throw new Error(`Trust relationship not found: ${trustId}`);
+    }
+    if (trust.expiresAt && trust.expiresAt < new Date()) {
+      throw new Error("Trust relationship already expired");
+    }
+
+    // Set expiry to now to effectively revoke
+    trust.expiresAt = new Date();
+    this.emitAudit({
+      type: "trust.revoked",
+      sourceOrgId: trust.sourceOrgId,
+      targetOrgId: trust.targetOrgId,
+      timestamp: new Date(),
+      actor: revokedBy,
+      data: { trustId, originalExpiry: trust.expiresAt },
+    });
+  }
+
+  // Capability Delegation
+  async requestDelegation(request: Omit<DelegationRequest, "id" | "requestedAt">): Promise<DelegationResult> {
+    const sourceOrg = this.organizations.get(request.sourceOrgId);
+    const targetOrg = this.organizations.get(request.targetOrgId);
+    if (!sourceOrg || !targetOrg) {
+      return { success: false, error: "Organization not found", errorCode: "ORG_NOT_FOUND" };
+    }
+
+    // Check if there's an existing trust relationship
+    const existingTrust = this.findExistingTrust(request.sourceOrgId, request.targetOrgId);
+    if (!existingTrust) {
+      return { success: false, error: "No trust relationship exists", errorCode: "NO_TRUST" };
+    }
+
+    // Verify requested capabilities are covered by trust
+    const allowedCapabilities = existingTrust.capabilities;
+    const requestedAllowed = request.capabilities.every((cap) => allowedCapabilities.includes(cap));
+    if (!requestedAllowed) {
+      return { success: false, error: "Requested capabilities not in trust", errorCode: "CAP_NOT_IN_TRUST" };
+    }
+
+    const delegationRequest: DelegationRequest = {
+      ...request,
+      id: randomUUID(),
+      requestedAt: new Date(),
+    };
+
+    if (this.config.requireApproval) {
+      this.pendingRequests.set(delegationRequest.id, delegationRequest);
+      return { success: true, error: "Request pending approval", errorCode: "PENDING_APPROVAL" };
+    }
+
+    return this.createCapabilityGrant(delegationRequest);
+  }
+
+  async approveDelegation(requestId: string, approverId: string): Promise<DelegationResult> {
+    const request = this.pendingRequests.get(requestId);
+    if (!request) {
+      return { success: false, error: "Delegation request not found", errorCode: "REQUEST_NOT_FOUND" };
+    }
+
+    this.pendingRequests.delete(requestId);
+    return this.createCapabilityGrant(request, approverId);
+  }
+
+  async createCapabilityGrant(
+    request: DelegationRequest,
+    approverId?: string
+  ): Promise<DelegationResult> {
+    const sourceOrg = this.organizations.get(request.sourceOrgId);
+    const targetOrg = this.organizations.get(request.targetOrgId);
+    if (!sourceOrg || !targetOrg) {
+      return { success: false, error: "Organization not found", errorCode: "ORG_NOT_FOUND" };
+    }
+
+    // Check delegation depth
+    const currentDepth = await this.getDelegationDepth(request.targetOrgId, request.sourceOrgId);
+    if (currentDepth >= this.config.maxDelegationDepth) {
+      return { success: false, error: "Maximum delegation depth exceeded", errorCode: "DEPTH_EXCEEDED" };
+    }
+
+    const capability = request.capabilities[0];
+    if (!capability) {
+      return { success: false, error: "No capabilities requested", errorCode: "NO_CAPABILITY" };
+    }
+
+    const grant: CapabilityGrant = {
+      id: randomUUID(),
+      orgId: request.sourceOrgId,
+      targetOrgId: request.targetOrgId,
+      capability: request.capabilities[0],
+      permissions: request.requestedPermissions,
+      constraints: request.constraints,
+      grantedAt: new Date(),
+      ...(request.expiresAt !== undefined && { expiresAt: request.expiresAt }),
+      status: "active",
+    };
+
+    this.capabilityGrants.set(grant.id, grant);
+    this.emitAudit({
+      type: "capability.granted",
+      sourceOrgId: request.sourceOrgId,
+      targetOrgId: request.targetOrgId,
+      timestamp: new Date(),
+      actor: approverId ?? "system",
+      data: {
+        grantId: grant.id,
+        capability: grant.capability,
+        permissions: grant.permissions,
+      },
+    });
+
+    return { success: true, grant };
+  }
+
+  async revokeCapabilityGrant(grantId: string, revokedBy: string): Promise<void> {
+    const grant = this.capabilityGrants.get(grantId);
+    if (!grant) {
+      throw new Error(`Capability grant not found: ${grantId}`);
+    }
+    grant.status = "revoked";
+    this.emitAudit({
+      type: "capability.revoked",
+      sourceOrgId: grant.orgId,
+      targetOrgId: grant.targetOrgId,
+      timestamp: new Date(),
+      actor: revokedBy,
+      data: { grantId },
+    });
+  }
+
+  async getCapabilityGrantsForOrg(orgId: string): Promise<CapabilityGrant[]> {
+    return Array.from(this.capabilityGrants.values()).filter(
+      (grant) => grant.orgId === orgId || grant.targetOrgId === orgId
+    );
+  }
+
+  async checkCapabilityAccess(
+    orgId: string,
+    targetOrgId: string,
+    capability: string,
+    permission: CapabilityPermission
+  ): Promise<boolean> {
+    const grant = this.findActiveGrant(orgId, targetOrgId, capability);
+    if (!grant) {
+      return false;
+    }
+    return grant.permissions.includes(permission);
+  }
+
+  // Audit
+  private emitAudit(event: FederationEvent): void {
+    if (this.config.enableAudit) {
+      this.auditLog.push(event);
+    }
+    this.emit("federation-event", event);
+  }
+
+  getAuditLog(orgId?: string, limit?: number): FederationEvent[] {
+    let events = orgId
+      ? this.auditLog.filter((e) => e.sourceOrgId === orgId || e.targetOrgId === orgId)
+      : [...this.auditLog];
+    if (limit) {
+      events = events.slice(-limit);
+    }
+    return events;
+  }
+
+  // Helper methods
+  private findExistingTrust(sourceOrgId: string, targetOrgId: string): TrustRelationship | undefined {
+    return Array.from(this.trustRelationships.values()).find(
+      (trust) =>
+        trust.sourceOrgId === sourceOrgId &&
+        trust.targetOrgId === targetOrgId &&
+        (!trust.expiresAt || trust.expiresAt > new Date())
+    );
+  }
+
+  private findActiveGrant(
+    orgId: string,
+    targetOrgId: string,
+    capability: string
+  ): CapabilityGrant | undefined {
+    return Array.from(this.capabilityGrants.values()).find(
+      (grant) =>
+        grant.orgId === orgId &&
+        grant.targetOrgId === targetOrgId &&
+        grant.capability === capability &&
+        grant.status === "active" &&
+        (!grant.expiresAt || grant.expiresAt > new Date())
+    );
+  }
+
+  private isValidTrustLevel(level: TrustLevel, org: FederationOrg, capabilities: string[]): boolean {
+    // Validate that org has the capabilities it's trying to delegate
+    for (const cap of capabilities) {
+      if (!org.capabilities.has(cap)) {
+        return false;
+      }
+    }
+
+    // Tier-based constraints
+    const tierTrustLevels: Record<FederationOrg["tier"], TrustLevel[]> = {
+      standard: [TrustLevel.READ, TrustLevel.AUDIT_ONLY],
+      enterprise: [TrustLevel.READ, TrustLevel.WRITE, TrustLevel.AUDIT_ONLY],
+      strategic: [TrustLevel.READ, TrustLevel.WRITE, TrustLevel.ADMIN, TrustLevel.AUDIT_ONLY],
+    };
+
+    return tierTrustLevels[org.tier]?.includes(level) ?? false;
+  }
+
+  private async getDelegationDepth(orgId: string, originalOrgId: string, depth = 0): Promise<number> {
+    if (orgId === originalOrgId) {
+      return depth;
+    }
+    const grants = await this.getCapabilityGrantsForOrg(orgId);
+    const delegatedGrants = grants.filter((g) => g.permissions.includes("delegate"));
+    if (delegatedGrants.length === 0) {
+      return depth;
+    }
+    let maxDepth = depth;
+    for (const grant of delegatedGrants) {
+      const grantDepth = await this.getDelegationDepth(grant.targetOrgId, originalOrgId, depth + 1);
+      maxDepth = Math.max(maxDepth, grantDepth);
+    }
+    return maxDepth;
+  }
+}
+
+export function createFederationGateway(config?: Partial<FederationGatewayConfig>): FederationGateway {
+  return new FederationGateway(config);
+}

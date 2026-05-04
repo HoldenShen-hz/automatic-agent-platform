@@ -33,9 +33,10 @@ import type {
   WorkspaceRecord,
 } from "../../platform/contracts/types/domain.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { QuotaEnforcerService, type QuotaPolicy, type MultiResourceQuotaVector } from "../../scale-ecosystem/resource-manager/quota-enforcer/index.js";
+import { QuotaEnforcerService, type QuotaPolicy, type MultiResourceQuotaVector, type MultiDimensionalQuotaDecision } from "../../scale-ecosystem/resource-manager/quota-enforcer/index.js";
 import { orderFairQueue, type FairQueueItem } from "../../scale-ecosystem/resource-manager/fair-queue/index.js";
-import { choosePreemptionVictim, type PreemptionCandidate } from "../../scale-ecosystem/resource-manager/preemption/index.js";
+import { FairSchedulingService, type ResourceClaim } from "../../scale-ecosystem/resource-manager/fair-scheduling-service.js";
+import { choosePreemptionVictim, type PreemptionCandidate, type PreemptionDecision } from "../../scale-ecosystem/resource-manager/preemption/index.js";
 
 /**
  * Validates an identifier string against the allowed pattern.
@@ -268,6 +269,13 @@ export interface TenantTopologySummary {
   dataNamespaces: DataNamespaceRecord[];
 }
 
+/** Input for tenant scheduling request per R21-08 */
+export interface TenantSchedulingInput {
+  tenantId: string;
+  requestedUnits: number;
+  preemptionCandidates?: readonly PreemptionCandidate[];
+}
+
 /**
  * Service for managing the tenant platform topology.
  *
@@ -276,6 +284,9 @@ export interface TenantTopologySummary {
  * boundaries and validates scope relationships when creating namespaces.
  */
 export class TenantPlatformService {
+  private readonly quotaEnforcer = new QuotaEnforcerService();
+  private readonly fairScheduler = new FairSchedulingService();
+
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -771,5 +782,74 @@ export class TenantPlatformService {
         },
       );
     }
+  }
+
+  /**
+   * Enforces quota for a given scope and scopeId per R21-08.
+   * Checks if the requested units would exceed the registered quota policy
+   * and returns the multi-dimensional quota decision.
+   *
+   * @param scope - Scope type (e.g., "tenant", "workspace", "organization")
+   * @param scopeId - Identifier within that scope
+   * @param requested - Multi-resource quota vector being requested
+   * @returns Multi-dimensional quota decision indicating pass/fail and warning dimensions
+   */
+  public enforceQuota(scope: string, scopeId: string, requested: MultiResourceQuotaVector): MultiDimensionalQuotaDecision {
+    return this.quotaEnforcer.checkQuota(scope, scopeId, requested);
+  }
+
+  /**
+   * Selects a preemption victim from a list of candidates per §53.4.
+   * Only candidates with completed checkpoints are eligible.
+   * Returns the lowest priority candidate that has a checkpoint.
+   *
+   * @param candidates - List of preemption candidates to evaluate
+   * @returns PreemptionDecision with victim and reason
+   */
+  public selectPreemptionVictim(candidates: readonly PreemptionCandidate[]): PreemptionDecision {
+    return choosePreemptionVictim(candidates);
+  }
+
+  /**
+   * Schedules a tenant request using fair scheduling per R21-08.
+   * Evaluates quota, checks for starvation, and optionally preempts a victim
+   * if quota would be exceeded.
+   *
+   * @param input - Tenant scheduling input with tenantId, requestedUnits, and optional candidates
+   * @returns TenantSchedulingDecision indicating admission and queue position
+   */
+  public scheduleTenant(input: TenantSchedulingInput): TenantSchedulingDecision {
+    const policy: QuotaPolicy = {
+      scope: "tenant",
+      scopeId: input.tenantId,
+      resourceType: "runtime_units",
+      hardLimit: 0,
+      currentUsage: 0,
+    };
+
+    const claim: ResourceClaim = {
+      claimId: newId("claim"),
+      schedulingClass: {
+        tenantId: input.tenantId,
+        domainId: "default",
+        slaTierId: "default",
+        priority: 1,
+      },
+      requestedUnits: input.requestedUnits,
+    };
+
+    const fairDecision = this.fairScheduler.schedule({
+      quotaPolicy: policy,
+      claim,
+      queueItems: [],
+      preemptionCandidates: input.preemptionCandidates ?? [],
+    });
+
+    return {
+      admitted: !fairDecision.queue.quotaExceeded,
+      victimExecutionId: fairDecision.preemption.victimExecutionId,
+      reason: fairDecision.preemption.reason ?? "admitted",
+      queuePosition: fairDecision.queue.orderedItemIds.length > 0 ? fairDecision.queue.orderedItemIds.length : null,
+    };
   }
 }
