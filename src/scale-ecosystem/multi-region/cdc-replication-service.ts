@@ -48,7 +48,7 @@ export interface CDCReplicationCheckpoint {
 export interface CDCReplicationEvent {
   readonly id: string;
   readonly sequence: number;
-  readonly epoch: number;
+  readonly epoch?: number;
   readonly eventType: string;
   readonly taskId: string;
   readonly payloadJson: string;
@@ -260,6 +260,7 @@ export class CDCReplicationService {
   private readonly replicationQueues = new Map<string, CDCReplicationBatch[]>();
   private readonly stateFilePath: string | null;
   private readonly vectorClocks = new Map<string, VectorClock>();
+  private readonly entityEpochs = new Map<string, number>();
   private readonly conflictHistory = new Map<string, ConflictInfo[]>();
   private readonly conflictConfig: ConflictResolutionConfig = {
     defaultStrategy: "lww",
@@ -687,9 +688,11 @@ export class CDCReplicationService {
 
     for (const remoteEvent of remoteEvents) {
       // §R8-33: If incoming event epoch < local epoch, reject the write (stale event)
-      if (remoteEvent.epoch < currentEpoch) {
-        cdcLogger.warn(`§R8-33: Rejected stale event ${remoteEvent.id} with epoch ${remoteEvent.epoch} < local epoch ${currentEpoch}`, {
-          data: { entityId, eventId: remoteEvent.id, remoteEpoch: remoteEvent.epoch, localEpoch: currentEpoch },
+      // Events without an epoch are considered legacy and always accepted (backwards compatible)
+      const remoteEpoch = remoteEvent.epoch ?? Number.MAX_SAFE_INTEGER;
+      if (remoteEpoch < currentEpoch) {
+        cdcLogger.warn(`§R8-33: Rejected stale event ${remoteEvent.id} with epoch ${remoteEpoch} < local epoch ${currentEpoch}`, {
+          data: { entityId, eventId: remoteEvent.id, remoteEpoch, localEpoch: currentEpoch },
         });
         continue;
       }
@@ -711,11 +714,59 @@ export class CDCReplicationService {
    */
   private getCurrentEpochForEntity(entityId: string): number {
     // Track per-entity epoch based on events received
-    const clock = this.vectorClocks.get(entityId);
-    if (!clock) {
-      return 0;
+    return this.entityEpochs.get(entityId) ?? 0;
+  }
+
+  /**
+   * §R8-33: Validate that the leader holds a valid fencing token before allowing writes.
+   * This is called by truth/budget/side-effect write operations.
+   *
+   * @param entityId - Entity ID for the write
+   * @param leaderFencingToken - Fencing token from the current leader
+   * @returns Validation result with rejection reason if token is invalid
+   */
+  public validateLeaderFencingToken(
+    entityId: string,
+    leaderFencingToken: { epoch: number; regionId: string },
+  ): { valid: boolean; reason: string | null } {
+    const currentEpoch = this.getCurrentEpochForEntity(entityId);
+
+    // If we don't have an epoch tracked yet, allow the write (leader is establishing initial epoch)
+    if (currentEpoch === 0) {
+      return { valid: true, reason: null };
     }
-    return clock.getMaxSequence();
+
+    // Leader must have epoch >= current local epoch
+    // If leader's epoch is less than our current epoch, they are stale
+    if (leaderFencingToken.epoch < currentEpoch) {
+      cdcLogger.warn(`§R8-32: Rejected write from stale leader ${leaderFencingToken.regionId} with epoch ${leaderFencingToken.epoch} < local epoch ${currentEpoch}`, {
+        data: { entityId, leaderRegionId: leaderFencingToken.regionId, leaderEpoch: leaderFencingToken.epoch, localEpoch: currentEpoch },
+      });
+      return {
+        valid: false,
+        reason: `stale_leader_epoch: leader epoch ${leaderFencingToken.epoch} < local epoch ${currentEpoch}`,
+      };
+    }
+
+    return { valid: true, reason: null };
+  }
+
+  /**
+   * §R8-32: Record a new epoch for an entity (called when leader advances epoch).
+   * This establishes the fencing token epoch for subsequent writes.
+   *
+   * @param entityId - Entity ID
+   * @param epoch - New epoch number
+   * @param regionId - Region that owns this epoch
+   */
+  public recordEntityEpoch(entityId: string, epoch: number, regionId: string): void {
+    const currentEpoch = this.getCurrentEpochForEntity(entityId);
+    if (epoch > currentEpoch) {
+      this.entityEpochs.set(entityId, epoch);
+      cdcLogger.info(`§R8-32: Recorded new epoch for entity ${entityId}: ${epoch} from region ${regionId}`, {
+        data: { entityId, epoch, regionId },
+      });
+    }
   }
 
   /**

@@ -21,7 +21,6 @@ import {
 } from "../../platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { createPrincipalRef, type PrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
-import type { PlatformFactEvent } from "../../platform/contracts/executable-contracts/index.js";
 import type { ContractEnvelope } from "../client-sdk/api-client.js";
 import {
   createContractEnvelope as createApiContractEnvelope,
@@ -122,10 +121,190 @@ export function getLifecycleHookRegistry(): LifecycleHookRegistry {
 }
 
 export class HarnessSdk {
+  private eventSubscriber: TypedEventSubscriber | null = null;
+  private eventBusAdapter: EventBusAdapter | null = null;
+
   public constructor(
     private readonly runtime: HarnessRuntimeService = new HarnessRuntimeService(),
     private readonly budgetChecker?: (budgetRef: string) => BudgetValidationResult,
+    private readonly interPlaneTransport?: InterPlaneTransport,
   ) {}
+
+  // =============================================================================
+  // R8-19: Inter-plane messaging with ContractEnvelope wrapper
+  // §5.2 requires all inter-plane messages with schemaVersion/commandId/
+  // correlationId/signature wrapped in a ContractEnvelope.
+  // =============================================================================
+
+  /**
+   * R8-19: Send an inter-plane message wrapped in a ContractEnvelope.
+   * All messages between planes must use this wrapper per §5.2 spec.
+   *
+   * @param targetPlane - The target plane (e.g., "control-plane", "execution-plane")
+   * @param commandId - The command identifier for routing
+   * @param payload - The message payload
+   * @param options - Optional envelope customization
+   * @returns The response payload from the target plane
+   */
+  public async sendInterPlaneMessage<TPayload = unknown, TResponse = unknown>(
+    targetPlane: string,
+    commandId: string,
+    payload: TPayload,
+    options?: {
+      correlationId?: string;
+      idempotencyKey?: string;
+      schemaVersion?: string;
+      timeoutMs?: number;
+    },
+  ): Promise<TResponse> {
+    if (!this.interPlaneTransport) {
+      throw new HarnessSdkError(
+        "harness_sdk.no_transport",
+        "Inter-plane transport not configured. Provide interPlaneTransport in constructor.",
+        { targetPlane, commandId },
+      );
+    }
+
+    // R8-19: Wrap message in ContractEnvelope per §5.2 spec requirement
+    // This ensures schemaVersion/commandId/correlationId/signature are present
+    const envelope = createApiContractEnvelope({
+      payload,
+      principal: createPrincipalRef({
+        principalId: "harness-sdk",
+        tenantId: "tenant:local",
+        roles: ["harness-sdk"],
+      }),
+      schemaVersion: options?.schemaVersion ?? "v4.3",
+      commandId,
+      correlationId: options?.correlationId ?? newId("corr"),
+      idempotencyKey: options?.idempotencyKey ?? newId("idem"),
+    });
+
+    return this.interPlaneTransport.send<TResponse>({
+      targetPlane,
+      envelope,
+      timeoutMs: options?.timeoutMs ?? 30000,
+    });
+  }
+
+  /**
+   * R8-19: Create a ContractEnvelope for inter-plane messaging.
+   * Utility method for SDK consumers who need to wrap messages manually.
+   */
+  public wrapMessage<TPayload>(
+    payload: TPayload,
+    principal: PrincipalRef,
+    options?: {
+      schemaVersion?: string;
+      commandId?: string;
+      correlationId?: string;
+      idempotencyKey?: string;
+      metadata?: Readonly<Record<string, string>>;
+    },
+  ): ContractEnvelope<TPayload> {
+    return createApiContractEnvelope({
+      payload,
+      principal,
+      schemaVersion: options?.schemaVersion,
+      commandId: options?.commandId,
+      correlationId: options?.correlationId,
+      idempotencyKey: options?.idempotencyKey,
+      metadata: options?.metadata,
+    });
+  }
+
+  // =============================================================================
+  // R8-20: Typed event subscription/streaming API
+  // PlatformFactEvent/ProjectionUpdate/run lifecycle event subscription per §6/§28.
+  // =============================================================================
+
+  /**
+   * R8-20: Initialize the event subscriber with an event bus adapter.
+   * Must be called before subscribing to events.
+   *
+   * @param eventBus - The event bus adapter providing publish/subscribe semantics
+   */
+  public initializeEventSubscriber(
+    eventBus: EventBusAdapter,
+  ): void {
+    this.eventBusAdapter = eventBus;
+    this.eventSubscriber = createEventSubscriber(eventBus);
+  }
+
+  /**
+   * R8-20: Subscribe to specific platform event types.
+   * Use for PlatformFactEvent/ProjectionUpdate subscription per §6.
+   *
+   * @param consumerId - Unique consumer identifier for this subscription
+   * @param eventTypes - Array of event types (e.g., ["platform.harness_run.status_changed"])
+   * @param handler - Callback invoked for each matching event
+   * @returns Subscription handle for managing lifecycle
+   */
+  public subscribeToEvents(
+    consumerId: string,
+    eventTypes: readonly string[],
+    handler: (event: ApiPlatformFactEvent | ProjectionUpdate) => void | Promise<void>,
+  ): EventSubscription {
+    this.ensureEventSubscriberInitialized();
+    return this.eventSubscriber!.subscribe(consumerId, eventTypes, handler);
+  }
+
+  /**
+   * R8-20: Subscribe to run lifecycle events for a specific run.
+   * Events include: run created/updated/completed/failed status changes.
+   *
+   * @param consumerId - Unique consumer identifier
+   * @param runId - Harness run ID to track lifecycle events for
+   * @param handler - Callback invoked for each run lifecycle event
+   * @returns Subscription handle for managing lifecycle
+   */
+  public subscribeToRunLifecycle(
+    consumerId: string,
+    runId: string,
+    handler: (event: ApiPlatformFactEvent) => void | Promise<void>,
+  ): EventSubscription {
+    this.ensureEventSubscriberInitialized();
+    return this.eventSubscriber!.subscribeToRunLifecycle(consumerId, runId, handler);
+  }
+
+  /**
+   * R8-20: Unsubscribe a consumer from all event subscriptions.
+   *
+   * @param consumerId - Consumer ID to unsubscribe
+   */
+  public unsubscribe(consumerId: string): void {
+    this.eventSubscriber?.unsubscribe(consumerId);
+  }
+
+  /**
+   * R8-20: Get pending events for a consumer that have not been delivered.
+   *
+   * @param consumerId - Consumer ID
+   * @returns Array of pending events
+   */
+  public getPendingEvents(consumerId: string): readonly (ApiPlatformFactEvent | ProjectionUpdate)[] {
+    return this.eventSubscriber?.getPendingEvents(consumerId) ?? [];
+  }
+
+  /**
+   * R8-20: Deliver pending events to a specific consumer.
+   *
+   * @param consumerId - Consumer ID
+   * @returns Number of events delivered
+   */
+  public async deliverPendingEvents(consumerId: string): Promise<number> {
+    return this.eventSubscriber?.deliverPending(consumerId) ?? 0;
+  }
+
+  private ensureEventSubscriberInitialized(): void {
+    if (!this.eventSubscriber) {
+      throw new HarnessSdkError(
+        "harness_sdk.event_subscriber_not_initialized",
+        "Event subscriber not initialized. Call initializeEventSubscriber(eventBus) first.",
+        {},
+      );
+    }
+  }
 
   /**
    * Register a lifecycle hook for a run.
@@ -501,3 +680,79 @@ export function validatePlanGraphBundle(bundle: PlanGraphBundle): PlanGraphValid
     ...(graphValidation.normalizedNodeIds != null ? { normalizedNodeIds: graphValidation.normalizedNodeIds } : {}),
   };
 }
+
+// =============================================================================
+// R8-19: Inter-plane transport interface for ContractEnvelope delivery
+// =============================================================================
+
+/**
+ * R8-19: Inter-plane transport for sending ContractEnvelope-wrapped messages.
+ * The transport is responsible for routing envelopes to target planes.
+ */
+export interface InterPlaneTransport {
+  /**
+   * Send a ContractEnvelope-wrapped message to a target plane.
+   * @param params.targetPlane - The target plane identifier
+   * @param params.envelope - The ContractEnvelope to deliver
+   * @param params.timeoutMs - Request timeout in milliseconds
+   * @returns The response payload from the target plane
+   */
+  send<TResponse>(
+    params: {
+      targetPlane: string;
+      envelope: ContractEnvelope<unknown>;
+      timeoutMs?: number;
+    },
+  ): Promise<TResponse>;
+}
+
+// =============================================================================
+// R8-20: Event bus adapter interface for typed event subscription
+// =============================================================================
+
+/**
+ * R8-20: Event bus adapter providing publish/subscribe semantics for the SDK.
+ * Implement this interface to connect the SDK to a specific event bus implementation.
+ */
+export interface EventBusAdapter {
+  /**
+   * Publish an event to the event bus.
+   * @param event - Event with eventType and JSON-serialized payload
+   */
+  publish(event: { eventType: string; payload: unknown }): void;
+
+  /**
+   * Subscribe to events by consumer ID.
+   * @param consumerId - Unique consumer identifier
+   * @param handler - Callback invoked when matching events are published
+   */
+  subscribe(
+    consumerId: string,
+    handler: (event: { eventType: string; payloadJson: string }) => void,
+  ): void;
+
+  /**
+   * Unsubscribe a consumer from all events.
+   * @param consumerId - Consumer ID to unsubscribe
+   */
+  unsubscribe(consumerId: string): void;
+
+  /**
+   * Get pending events for a consumer that have not been delivered.
+   * @param consumerId - Consumer ID
+   * @returns Array of pending events with eventType and JSON payload
+   */
+  pendingForConsumer(
+    consumerId: string,
+  ): Array<{ eventType: string; payloadJson: string }>;
+
+  /**
+   * Deliver pending events to a specific consumer.
+   * @param consumerId - Consumer ID
+   * @returns Number of events delivered
+   */
+  deliverPending(consumerId: string): Promise<number>;
+}
+
+// Re-export types for SDK consumers
+export type { PlatformFactEvent, ContractEnvelope } from "../client-sdk/api-client.js";

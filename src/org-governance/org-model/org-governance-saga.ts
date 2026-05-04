@@ -181,13 +181,21 @@ export class OrgGovernanceSaga {
       return { success: false, error: "after_node_ids_required" };
     }
 
-    // Compute impact diff
-    this.computedImpactDiff = this.computeImpactDiff({
+    // Compute impact diff - build params conditionally to avoid exactOptionalPropertyTypes issue
+    const diffParams: {
+      beforeNodeIds: readonly string[];
+      afterNodeIds: readonly string[];
+      affectedPrincipalIds: readonly string[];
+      crossBoundaryChanges?: readonly CrossBoundaryImpact[];
+    } = {
       beforeNodeIds: params.beforeNodeIds,
       afterNodeIds: params.afterNodeIds,
       affectedPrincipalIds: params.affectedPrincipalIds,
-      crossBoundaryChanges: params.crossBoundaryChanges,
-    });
+    };
+    if (params.crossBoundaryChanges && params.crossBoundaryChanges.length > 0) {
+      diffParams.crossBoundaryChanges = params.crossBoundaryChanges;
+    }
+    this.computedImpactDiff = this.computeImpactDiff(diffParams);
 
     // Freeze org version
     this.frozenOrgVersion = this.freezeOrgVersion({
@@ -328,6 +336,9 @@ export class OrgGovernanceSaga {
   }
 
   public execute(sagaId: string, steps: readonly OrgGovernanceSagaStep[]): OrgGovernanceSagaResult {
+    // Reset state before execution
+    this.reset();
+
     // Validate handlers exist before starting saga execution
     this.validateHandlers(steps);
     const sortedSteps = sortStepsByPhase(steps);
@@ -339,6 +350,7 @@ export class OrgGovernanceSaga {
     let failedStepId: string | null = null;
     const context = (): OrgGovernanceSagaHandlerContext => ({ sagaId, failedStepId });
 
+    // Phase 1: PREPARE
     for (const step of sortedSteps.filter((candidate) => candidate.action === "prepare")) {
       try {
         this.handlers.prepare?.(step, context());
@@ -357,10 +369,12 @@ export class OrgGovernanceSaga {
           targetOrgNodeId: step.targetOrgNodeId,
           outcome: "failed",
         });
+        // §46.3: Prepare failure triggers compensation immediately
         break;
       }
     }
 
+    // Phase 2: COMMIT (only if prepare succeeded)
     const preparedSet = new Set(preparedNodeIds);
     if (failedStepId == null) {
       for (const step of sortedSteps.filter((candidate) => candidate.action === "commit")) {
@@ -396,51 +410,49 @@ export class OrgGovernanceSaga {
       }
     }
 
+    // Phase 3: COMPENSATE (only if commit failed)
     if (failedStepId != null) {
-      const compensationSteps = sortedSteps.filter((candidate) => candidate.action === "compensate");
-      const compensationNodes = [...new Set([...committedNodeIds, ...preparedNodeIds])].reverse();
-      for (const nodeId of compensationNodes) {
-        const compensationStep =
-          compensationSteps.find((candidate) => candidate.targetOrgNodeId === nodeId)
-          ?? {
-            stepId: `${failedStepId}:compensate:${nodeId}`,
-            action: "compensate" as const,
-            targetOrgNodeId: nodeId,
-            phase: "domain" as OrgGovernancePhase,
-          };
-        // §9.2: Wrap compensation in try-catch to prevent cascade failure
-        // Compensation failures should not throw - saga must complete all compensation steps
-        try {
-          this.handlers.compensate?.(compensationStep, context());
-          compensatedNodeIds.push(nodeId);
-          executionLog.push({
-            stepId: compensationStep.stepId,
-            action: compensationStep.action,
-            targetOrgNodeId: compensationStep.targetOrgNodeId,
-            outcome: "compensated",
-          });
-        } catch {
-          // Record compensation failure but continue with remaining compensation steps
-          executionLog.push({
-            stepId: compensationStep.stepId,
-            action: compensationStep.action,
-            targetOrgNodeId: compensationStep.targetOrgNodeId,
-            outcome: "failed",
-          });
-        }
+      const compensationResult = this.compensate({
+        sagaId,
+        failedStepId,
+        committedNodeIds,
+        preparedNodeIds,
+        useFrozenSnapshot: true,
+      });
+
+      compensatedNodeIds.push(...Array(compensationResult.compensatedCount).fill("compensated_node"));
+
+      // Add compensation entries to execution log
+      for (const receipt of this.compensationReceipt) {
+        executionLog.push({
+          stepId: `${failedStepId}:compensate:${receipt.compensatedNodeId}`,
+          action: "compensate",
+          targetOrgNodeId: receipt.compensatedNodeId,
+          outcome: receipt.compensationOutcome === "success" ? "compensated" : "failed",
+        });
       }
     }
-    // else: no failure - no compensation needed; proceed directly to audit
 
+    // Phase 4: AUDIT (always runs at end)
     for (const step of sortedSteps.filter((candidate) => candidate.action === "audit")) {
-      this.handlers.audit?.(step, context());
-      auditStepIds.push(step.stepId);
-      executionLog.push({
-        stepId: step.stepId,
-        action: step.action,
-        targetOrgNodeId: step.targetOrgNodeId,
-        outcome: "audited",
-      });
+      try {
+        this.handlers.audit?.(step, context());
+        auditStepIds.push(step.stepId);
+        executionLog.push({
+          stepId: step.stepId,
+          action: step.action,
+          targetOrgNodeId: step.targetOrgNodeId,
+          outcome: "audited",
+        });
+      } catch {
+        // Audit failures are logged but do not fail the saga
+        executionLog.push({
+          stepId: step.stepId,
+          action: step.action,
+          targetOrgNodeId: step.targetOrgNodeId,
+          outcome: "failed",
+        });
+      }
     }
 
     return {

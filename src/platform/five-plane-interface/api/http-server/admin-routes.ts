@@ -113,7 +113,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
   return [
     {
       method: "GET",
-      pathname: "/v1/stability",
+      pathname: "/api/v1/stability",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         assertGlobalTenantScopeSupported(principal, "stability panels");
@@ -128,22 +128,23 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const { segments } = ctx.route;
         if (
-          segments[0] !== "v1"
-          || segments[1] !== "admin"
-          || segments[2] !== "tasks"
-          || segments.length !== 4
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "admin"
+          || segments[3] !== "tasks"
+          || segments.length !== 5
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin takeover consoles");
-        const taskId = validateTaskId(segments[3], "Admin route");
+        const taskId = validateTaskId(segments[4], "Admin route");
         return buildJsonResponse(ctx.requestId, 200, deps.missionControlService.getAdminTakeoverConsole(taskId));
       },
     },
     {
       method: "GET",
-      pathname: "/v1/admin/control-plane/load-balancing",
+      pathname: "/api/v1/admin/control-plane/load-balancing",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "global control-plane load balancing");
@@ -156,7 +157,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "POST",
-      pathname: "/v1/admin/control-plane/load-balancing/select",
+      pathname: "/api/v1/admin/control-plane/load-balancing/select",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "global control-plane load balancing");
@@ -180,7 +181,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     // GET /v1/admin/workers - List workers
     {
       method: "GET",
-      pathname: "/v1/admin/workers",
+      pathname: "/api/v1/admin/workers",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin workers list");
@@ -197,7 +198,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     // POST /v1/admin/config - Update configuration
     {
       method: "POST",
-      pathname: "/v1/admin/config",
+      pathname: "/api/v1/admin/config",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin config update");
@@ -226,7 +227,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     // GET /v1/admin/rollouts - List rollout configurations
     {
       method: "GET",
-      pathname: "/v1/admin/rollouts",
+      pathname: "/api/v1/admin/rollouts",
       handler: (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "viewer");
         const rollouts = deps.configRolloutService?.getActiveRollouts() ?? [];
@@ -239,7 +240,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     // GET /v1/admin/tenants - List tenants
     {
       method: "GET",
-      pathname: "/v1/admin/tenants",
+      pathname: "/api/v1/admin/tenants",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin tenants list");
@@ -258,7 +259,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     // GET /v1/admin/budgets - List budgets
     {
       method: "GET",
-      pathname: "/v1/admin/budgets",
+      pathname: "/api/v1/admin/budgets",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         const tenantId = resolveTenantScope(principal, undefined);
@@ -271,7 +272,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/chargeback/reports",
+      pathname: "/api/v1/admin/chargeback/reports",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         const tenantId = resolveTenantScope(principal, undefined);
@@ -288,7 +289,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/inventories/benchmarks",
+      pathname: "/api/v1/admin/inventories/benchmarks",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "benchmark inventories");
@@ -297,7 +298,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/inventories/projections",
+      pathname: "/api/v1/admin/inventories/projections",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "projection inventories");
@@ -306,7 +307,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/inventories/deployments",
+      pathname: "/api/v1/admin/inventories/deployments",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "deployment inventories");
@@ -315,7 +316,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/inventories/schema",
+      pathname: "/api/v1/admin/inventories/schema",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "schema inventories");
@@ -328,7 +329,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/judges",
+      pathname: "/api/v1/admin/judges",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "judge inventories");
@@ -339,7 +340,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "GET",
-      pathname: "/v1/admin/compliance/program-templates",
+      pathname: "/api/v1/admin/compliance/program-templates",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "compliance program templates");
@@ -449,7 +450,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     // ── R5-36: Admin write methods - PUT config, POST panic/resume directives ─
     {
       method: "PUT",
-      pathname: "/v1/admin/config",
+      pathname: "/api/v1/admin/config",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin config update");
@@ -476,7 +477,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "POST",
-      pathname: "/v1/admin/panic-directives",
+      pathname: "/api/v1/admin/panic-directives",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin panic directives");
@@ -493,7 +494,7 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
     },
     {
       method: "POST",
-      pathname: "/v1/admin/resume-directives",
+      pathname: "/api/v1/admin/resume-directives",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         assertGlobalTenantScopeSupported(principal, "admin resume directives");

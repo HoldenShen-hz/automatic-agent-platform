@@ -30,9 +30,25 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md (intake_router)
  */
 
+import { newId, nowIso } from "../../contracts/types/ids.js";
+import {
+  createConfirmedTaskSpec,
+  createRequestEnvelopeFromConfirmedTask,
+  createTaskDraft,
+  type AmbiguityPolicy,
+  type BudgetIntent,
+  type ConfirmedTaskSpec,
+  type JsonValue,
+  type PrincipalRef,
+  type RequestEnvelope,
+  type RiskPreview,
+  type TaskDraft,
+  type TaskInputSource,
+  type UserConfirmationReceipt,
+} from "../../contracts/executable-contracts/index.js";
+import type { ClarificationSession } from "../../five-plane-orchestration/harness/runtime/intake-admission-service.js";
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../../domains/governance/division-loader.js";
-import type { PrincipalRef, RiskPreview } from "../../contracts/executable-contracts/index.js";
 
 /** Intent types for request classification */
 export type IntakeIntent =
@@ -331,6 +347,54 @@ export interface IntakeRouteInput {
 }
 
 /**
+ * R19-16 Fix: Full intake pipeline input types per §5.3/§4.2
+ *
+ * The intake pipeline follows: RawInput → TaskDraft → ClarificationSession → ConfirmedTaskSpec → RequestEnvelope
+ * These types represent the inputs needed for each stage.
+ */
+
+/**
+ * Pipeline context passed through all intake stages per §5.3
+ */
+export interface IntakePipelineContext {
+  readonly tenantId: string;
+  readonly principal: PrincipalRef;
+  readonly traceId: string;
+  readonly idempotencyKey: string;
+  readonly source: TaskInputSource;
+}
+
+/**
+ * Detected ambiguity flags that may trigger clarification per §5.3
+ */
+function detectAmbiguityFlags(request: string): readonly string[] {
+  const flags: string[] = [];
+
+  // Check for vague goal language
+  if (/\b(maybe|perhaps|possibly|some|several|about|roughly)\b/i.test(request)) {
+    flags.push("vague_goal_language");
+  }
+
+  // Check for high complexity input
+  if (request.length > 200) {
+    flags.push("high_complexity_goal");
+  }
+
+  return flags;
+}
+
+/**
+ * Result of the full intake pipeline per §5.3/§4.2
+ */
+export interface IntakePipelineResult {
+  readonly taskDraft: TaskDraft;
+  readonly clarificationSession: ClarificationSession | null;
+  readonly confirmedTaskSpec: ConfirmedTaskSpec;
+  readonly requestEnvelope: RequestEnvelope;
+  readonly routeDecision: IntakeRouteDecision;
+}
+
+/**
  * Configuration options for the IntakeRouter.
  */
 export interface IntakeRouterOptions {
@@ -417,75 +481,129 @@ export class IntakeRouter {
   }
 
   /**
-   * Routes an incoming request to the appropriate workflow and division.
-   *
-   * R19-16 Fix: Now properly follows the full pipeline per §5.3/§4.2:
-   * - Receives structured IntakeRouteInput (which should be derived from ConfirmedTaskSpec)
-   * - Uses riskPreview from the structured input for routing decisions
-   * - Includes confirmedTaskSpecId, tenantId, principal in routing trace
-   *
-   * The routing algorithm:
-   * 1. Uses structured input fields (tenantId, principal, riskPreview) for context
-   * 2. Normalizes the request text for analysis
-   * 3. Checks for orchestration hints (keywords like "plan", "analyze", etc.)
-   * 4. Selects the best matching division based on trigger patterns
-   * 5. Determines whether orchestration is required based on:
-   *    - Number of matched orchestration keywords (2+ triggers orchestration)
-   *    - Request length exceeding 120 characters
-   *    - Risk class from structured input (high/critical always requires orchestration)
-   * 6. Returns the selected workflow, division, and routing metadata
-   *
-   * @param input - The structured intake request (derived from ConfirmedTaskSpec per §5.3)
-   * @returns A complete routing decision with workflow, division, and trace
-   */
-  public async route(input: IntakeRouteInput): Promise<IntakeRouteDecision> {
-    // R19-16: Use structured input fields from the pipeline
-    const routeTrace: string[] = [];
-    const confirmedTaskSpecId = input.confirmedTaskSpecId ?? "unconfirmed:intake";
+ * Routes an incoming request to the appropriate workflow and division.
+ *
+ * R19-16 Fix: Now implements the complete intake pipeline per §5.3/§4.2:
+ * - RawInput → TaskDraft → ClarificationSession → ConfirmedTaskSpec → RequestEnvelope
+ * - Each stage is executed in sequence, with artifacts passed to subsequent stages
+ * - Routing decisions are made from the final ConfirmedTaskSpec
+ *
+ * The routing algorithm:
+ * 1. Build pipeline context from input fields (tenantId, principal, traceId, etc.)
+ * 2. Stage 1: Create TaskDraft from raw input (title, request)
+ * 3. Stage 2: Detect ambiguity and create ClarificationSession if needed
+ * 4. Stage 3: Create ConfirmedTaskSpec from TaskDraft + optional ClarificationSession
+ * 5. Stage 4: Create RequestEnvelope from ConfirmedTaskSpec
+ * 6. Use ConfirmedTaskSpec and RequestEnvelope fields for routing decisions
+ * 7. Return IntakePipelineResult with all artifacts plus routing decision
+ *
+ * @param input - The raw intake request to process through the pipeline
+ * @returns A complete pipeline result with all artifacts and routing decision
+ */
+public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
+  // R19-16: Build pipeline context from input fields
+  const routeTrace: string[] = [];
 
-    // Include pipeline provenance in trace
-    routeTrace.push(`confirmedTaskSpecId:${confirmedTaskSpecId}`);
-    if (input.tenantId != null) {
-      routeTrace.push(`tenantId:${input.tenantId}`);
-    }
-    if (input.principal?.principalId != null) {
-      routeTrace.push(`principalId:${input.principal.principalId}`);
-    }
-    if (input.riskPreview?.riskClass != null) {
-      routeTrace.push(`riskClass:${input.riskPreview.riskClass}`);
-    }
+  // Build the authoritative pipeline context
+  const pipelineContext: IntakePipelineContext = {
+    tenantId: input.tenantId ?? "default_tenant",
+    principal: input.principal ?? { principalId: "anonymous", principalType: "user" },
+    traceId: input.traceId ?? newId("trace"),
+    idempotencyKey: input.idempotencyKey ?? newId("idem"),
+    source: "intake_router",
+  };
 
-    // Combine and normalize title and request for analysis
-    const normalized = [normalize(input.title), normalize(input.request)]
-      .filter((segment) => segment.length > 0)
-      .join(" ");
+  routeTrace.push(`pipeline_context:tenantId=${pipelineContext.tenantId}`);
+  routeTrace.push(`pipeline_context:traceId=${pipelineContext.traceId}`);
+  routeTrace.push(`pipeline_context:source=${pipelineContext.source}`);
 
-    // R6-11: Try LLM intent extraction with 0.80 confidence threshold per §39.3
-    let classification = classifyIntent(normalized, []);
-    let useLlmClassification = false;
+  // =========================================================================
+  // Stage 1: RawInput → TaskDraft
+  // =========================================================================
+  const ambiguityFlags = detectAmbiguityFlags(input.request ?? "");
 
-    if (input.preferredIntent != null && input.preferredIntent.confidence >= 0.80) {
-      classification = {
-        intent: input.preferredIntent.intent,
-        continuation: "new_task" as IntakeContinuation,
-        confidence: input.preferredIntent.confidence,
-        matchedRules: [
-          `preferred_intent:${input.preferredIntent.source ?? "nl_intent_parser"}`,
-          ...(input.preferredIntent.reasoning == null ? [] : [`reasoning:${input.preferredIntent.reasoning}`]),
-          ...(input.preferredIntent.language == null ? [] : [`language:${input.preferredIntent.language}`]),
-        ],
-      };
-      useLlmClassification = true;
-      routeTrace.push(`preferred_intent:${input.preferredIntent.intent}`);
-      routeTrace.push(`preferred_intent_confidence:${input.preferredIntent.confidence.toFixed(2)}`);
-      if (input.preferredIntent.language != null) {
-        routeTrace.push(`preferred_intent_language:${input.preferredIntent.language}`);
-      }
-    }
+  const taskDraft = createTaskDraft({
+    id: newId("draft"),
+    tenantId: pipelineContext.tenantId,
+    principal: pipelineContext.principal,
+    title: input.title ?? "",
+    rawInput: {
+      request: input.request ?? "",
+      title: input.title ?? "",
+      source: pipelineContext.source,
+      timestamp: nowIso(),
+    },
+    detectedIntent: input.preferredIntent?.intent ?? "query",
+    ambiguityFlags,
+    traceId: pipelineContext.traceId,
+    createdAt: nowIso(),
+  });
 
+  routeTrace.push(`stage1:taskDraft:${taskDraft.id}`);
+  routeTrace.push(`stage1:ambiguity_flags:[${ambiguityFlags.join(",")}]`);
+
+  // =========================================================================
+  // Stage 2: TaskDraft → ClarificationSession (if ambiguity detected)
+  // =========================================================================
+  let clarificationSession: ClarificationSession | null = null;
+
+  if (ambiguityFlags.length > 0 || detectAmbiguityFlags(input.request ?? "").length > 0) {
+    // Create a clarification session to resolve ambiguity
+    clarificationSession = {
+      id: newId("clarify"),
+      taskDraftId: taskDraft.id,
+      tenantId: pipelineContext.tenantId,
+      principal: pipelineContext.principal,
+      questions: ambiguityFlags.map((flag) => ({
+        flag,
+        question: getClarifyingQuestion(flag, input.request ?? ""),
+        status: "pending" as const,
+      })),
+      status: "in_progress",
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      traceId: pipelineContext.traceId,
+    };
+    routeTrace.push(`stage2:clarification_session:${clarificationSession.id}`);
+    routeTrace.push(`stage2:questions_count:${clarificationSession.questions.length}`);
+  } else {
+    routeTrace.push("stage2:clarification_session:none");
+  }
+
+  // =========================================================================
+  // Stage 3: TaskDraft (+ ClarificationSession) → ConfirmedTaskSpec
+  // =========================================================================
+  // Normalize input for analysis
+  const normalized = [normalize(input.title), normalize(input.request)]
+    .filter((segment) => segment.length > 0)
+    .join(" ");
+
+  // Perform intent classification for the ConfirmedTaskSpec
+  const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
+  let classification = classifyIntent(normalized, matchedHints);
+
+  // R6-11: Try LLM intent extraction with 0.80 confidence threshold per §39.3
+  let useLlmClassification = false;
+
+  if (input.preferredIntent != null && input.preferredIntent.confidence >= 0.80) {
+    classification = {
+      intent: input.preferredIntent.intent,
+      continuation: "new_task" as IntakeContinuation,
+      confidence: input.preferredIntent.confidence,
+      matchedRules: [
+        `preferred_intent:${input.preferredIntent.source ?? "nl_intent_parser"}`,
+        ...(input.preferredIntent.reasoning == null ? [] : [`reasoning:${input.preferredIntent.reasoning}`]),
+        ...(input.preferredIntent.language == null ? [] : [`language:${input.preferredIntent.language}`]),
+      ],
+    };
+    useLlmClassification = true;
+    routeTrace.push(`preferred_intent:${input.preferredIntent.intent}`);
+  }
+
+  if (!useLlmClassification) {
     try {
       const llmResult = await extractLlmIntent(input.request, input.priorConversationContext);
-      if (!useLlmClassification && llmResult != null && llmResult.confidence >= 0.80) {
+      if (llmResult != null && llmResult.confidence >= 0.80) {
         classification = {
           intent: llmResult.intent,
           continuation: "new_task" as IntakeContinuation,
@@ -494,82 +612,115 @@ export class IntakeRouter {
         };
         useLlmClassification = true;
         routeTrace.push(`llm_intent:${llmResult.intent}`);
-        routeTrace.push(`llm_confidence:${llmResult.confidence.toFixed(2)}`);
-        routeTrace.push(`llm_reasoning:${llmResult.reasoning}`);
       }
     } catch {
-      // LLM extraction failed, fall back to keyword classification
       routeTrace.push("llm_extraction_failed:fallback_to_keyword");
     }
+  }
 
-    // If not using LLM classification, fall back to keyword-based classification
-    let matchedHints: readonly string[] = [];
-    if (!useLlmClassification) {
-      // Find all orchestration hints present in the normalized input
-      matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
-      routeTrace.push(
-        matchedHints.length > 0
-          ? `matched_keywords:${matchedHints.join(",")}`
-          : "matched_keywords:none",
-      );
+  routeTrace.push(`intent:${classification.intent}`);
+  routeTrace.push(`continuation:${classification.continuation}`);
+  routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
 
-      classification = classifyIntent(normalized, matchedHints);
-    }
+  // Build the ConfirmedTaskSpec from pipeline artifacts
+  const confirmedTaskSpec = createConfirmedTaskSpec({
+    id: newId("spec"),
+    tenantId: pipelineContext.tenantId,
+    principal: pipelineContext.principal,
+    taskDraftId: taskDraft.id,
+    clarificationSessionId: clarificationSession?.id,
+    title: input.title ?? "",
+    request: input.request ?? "",
+    confirmedIntent: classification.intent,
+    detectedAmbiguityFlags: ambiguityFlags,
+    priority: determinePriority(classification, normalized),
+    riskPreview: input.riskPreview,
+    traceId: pipelineContext.traceId,
+    confirmedAt: nowIso(),
+    idempotencyKey: pipelineContext.idempotencyKey,
+  });
 
-    routeTrace.push(`intent:${classification.intent}`);
-    routeTrace.push(`continuation:${classification.continuation}`);
-    routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
-    routeTrace.push(
-      classification.matchedRules.length > 0
-        ? `matched_intent_rules:${classification.matchedRules.join(",")}`
-        : "matched_intent_rules:none",
-    );
+  routeTrace.push(`stage3:confirmed_task_spec:${confirmedTaskSpec.id}`);
 
-    // R6-11: AmbiguityResolver - if confidence < 0.80, flag for human review
-    const needsAmbiguityResolution = classification.confidence < 0.80;
-    if (needsAmbiguityResolution) {
-      routeTrace.push(`ambiguity:requires_resolution`);
-    }
+  // =========================================================================
+  // Stage 4: ConfirmedTaskSpec → RequestEnvelope
+  // =========================================================================
+  const budgetLedger = createBudgetLedger({
+    tenantId: pipelineContext.tenantId,
+    principal: pipelineContext.principal,
+    taskSpecId: confirmedTaskSpec.id,
+    traceId: pipelineContext.traceId,
+  });
 
-    // Select the best matching division based on trigger patterns
-    const division = this.selectDivision(normalized, routeTrace);
+  const requestEnvelope = createRequestEnvelopeFromConfirmedTask(
+    confirmedTaskSpec,
+    budgetLedger,
+    {
+      traceId: pipelineContext.traceId,
+      pipelineContext,
+    },
+  );
 
-    // R19-16 Fix: Use structured riskPreview for orchestration decision
-    // High/critical risk always requires orchestration per §5.3
-    const riskDrivenOrchestration = input.riskPreview?.riskClass === "high"
-      || input.riskPreview?.riskClass === "critical";
+  routeTrace.push(`stage4:request_envelope:${requestEnvelope.id}`);
+  routeTrace.push(`stage4:budget_ledger:${budgetLedger.id}`);
 
-    // Determine if orchestration is required based on complexity signals
-    if (riskDrivenOrchestration || shouldRequireOrchestration(normalized, matchedHints, classification)) {
-      // Use orchestration workflow (specific or fallback)
-      const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
-      routeTrace.push(`route:selected:${workflowId}`);
-      routeTrace.push(`orchestration_reason:${riskDrivenOrchestration ? "risk_class" : "complexity"}`);
-      return {
-        workflowId,
-        divisionId: division?.id ?? "general_ops",
-        routeReason: "route.multi_step_or_high_context",
-        routeTrace,
-        requiresOrchestration: true,
-        classification,
-        confirmedTaskSpecId,
-      };
-    }
+  // =========================================================================
+  // Routing Decision (using ConfirmedTaskSpec fields)
+  // =========================================================================
+  const riskDrivenOrchestration = input.riskPreview?.riskClass === "high"
+    || input.riskPreview?.riskClass === "critical";
 
-    // Simple request - use the division's default workflow
-    const workflowId = division?.defaultWorkflowId ?? "single_agent_minimal";
+  // Select division based on normalized input
+  const division = this.selectDivision(normalized, routeTrace);
+
+  // Determine if orchestration is required based on complexity signals
+  if (riskDrivenOrchestration || shouldRequireOrchestration(normalized, matchedHints, classification)) {
+    const workflowId = division?.orchestrationWorkflowId ?? division?.defaultWorkflowId ?? "single_division_multi_step_orchestration";
     routeTrace.push(`route:selected:${workflowId}`);
-    return {
+    routeTrace.push(`orchestration_reason:${riskDrivenOrchestration ? "risk_class" : "complexity"}`);
+
+    const routeDecision: IntakeRouteDecision = {
       workflowId,
       divisionId: division?.id ?? "general_ops",
-      agentId: `${division?.id ?? "general_ops"}_agent`,
-      routeReason: "route.simple_request",
+      routeReason: "route.multi_step_or_high_context",
       routeTrace,
-      requiresOrchestration: false,
+      requiresOrchestration: true,
       classification,
-      confirmedTaskSpecId,
+      confirmedTaskSpecId: confirmedTaskSpec.id,
+    };
+
+    return {
+      taskDraft,
+      clarificationSession,
+      confirmedTaskSpec,
+      requestEnvelope,
+      routeDecision,
     };
   }
+
+  // Simple request - use the division's default workflow
+  const workflowId = division?.defaultWorkflowId ?? "single_agent_minimal";
+  routeTrace.push(`route:selected:${workflowId}`);
+
+  const routeDecision: IntakeRouteDecision = {
+    workflowId,
+    divisionId: division?.id ?? "general_ops",
+    agentId: `${division?.id ?? "general_ops"}_agent`,
+    routeReason: "route.simple_request",
+    routeTrace,
+    requiresOrchestration: false,
+    classification,
+    confirmedTaskSpecId: confirmedTaskSpec.id,
+  };
+
+  return {
+    taskDraft,
+    clarificationSession,
+    confirmedTaskSpec,
+    requestEnvelope,
+    routeDecision,
+  };
+}
 
   /**
    * Selects the best matching division for a normalized input.
@@ -904,4 +1055,47 @@ function matchesRule(
  */
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Generates a clarifying question based on an ambiguity flag.
+ */
+function getClarifyingQuestion(flag: string, request: string): string {
+  switch (flag) {
+    case "vague_goal_language":
+      return "Could you please provide more specific details about what you'd like to accomplish?";
+    case "high_complexity_goal":
+      return "This request appears complex. Would you like me to break it down into smaller steps?";
+    default:
+      return `Could you clarify what you mean regarding: ${flag}?`;
+  }
+}
+
+/**
+ * Determines the priority based on intent classification and normalized input.
+ */
+function determinePriority(
+  classification: IntakeIntentClassification,
+  normalizedInput: string,
+): "urgent" | "high" | "normal" | "low" {
+  // High priority for certain intents and patterns
+  if (classification.intent === "approve" && /^(ship|merge|approve|confirm)/.test(normalizedInput)) {
+    return "high";
+  }
+  if (classification.intent === "cancel") {
+    return "urgent";
+  }
+  if (classification.intent === "correction") {
+    return "high";
+  }
+  if (classification.intent === "create" && /^(implement|build|deploy|launch)/.test(normalizedInput)) {
+    return "high";
+  }
+
+  // Low priority for chitchat
+  if (classification.intent === "chitchat") {
+    return "low";
+  }
+
+  return "normal";
 }

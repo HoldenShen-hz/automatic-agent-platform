@@ -98,6 +98,10 @@ export interface ConstraintBudgetEnvelope {
   readonly maxCost: number;
   readonly maxDurationMs: number;
   readonly maxTokens?: number;
+  /** @deprecated Use maxModelTokens/maxContextTokens/maxOutputTokens directly */
+  readonly maxModelTokens?: number;
+  readonly maxContextTokens?: number;
+  readonly maxOutputTokens?: number;
 }
 
 export interface ConstraintPack {
@@ -202,12 +206,31 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       partial.budget.maxContextTokens = budgetEnvelope.maxTokens;
       partial.budget.maxOutputTokens = budgetEnvelope.maxTokens;
     }
+    // R18-01 fix: Copy explicit token budget fields per §45.3
+    if ("maxModelTokens" in budgetEnvelope && budgetEnvelope.maxModelTokens != null) {
+      partial.budget.maxModelTokens = budgetEnvelope.maxModelTokens;
+    }
+    if ("maxContextTokens" in budgetEnvelope && budgetEnvelope.maxContextTokens != null) {
+      partial.budget.maxContextTokens = budgetEnvelope.maxContextTokens;
+    }
+    if ("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null) {
+      partial.budget.maxOutputTokens = budgetEnvelope.maxOutputTokens;
+    }
     partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,
       maxCost: budgetEnvelope.maxCost,
       maxDurationMs: budgetEnvelope.maxDurationMs,
       ...("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null
         ? { maxTokens: budgetEnvelope.maxTokens }
+        : {}),
+      ...("maxModelTokens" in budgetEnvelope && budgetEnvelope.maxModelTokens != null
+        ? { maxModelTokens: budgetEnvelope.maxModelTokens }
+        : {}),
+      ...("maxContextTokens" in budgetEnvelope && budgetEnvelope.maxContextTokens != null
+        ? { maxContextTokens: budgetEnvelope.maxContextTokens }
+        : {}),
+      ...("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null
+        ? { maxOutputTokens: budgetEnvelope.maxOutputTokens }
         : {}),
     };
   }

@@ -857,12 +857,76 @@ export class OapeflirLoopService {
               },
             };
 
-            // R5-4: Record loop metrics
+            // R5-4: Record loop metrics and check iteration/cost/duration limits
             if (this.loopController) {
               runtimeMetricsRegistry.recordOapeflirStageEntry("loop_iteration");
               runtimeMetricsRegistry.recordOapeflirStageExit("loop_iteration", "completed", 0);
+
+              // R5-4: Check iteration limit
+              const iterViolation = this.loopController.checkIterationLimit();
+              if (iterViolation !== null) {
+                harnessDecision = {
+                  decisionId: newId("harness_decision"),
+                  decisionInputBundleId: "",
+                  decisionKind: "replan",
+                  decision: "abort",
+                  deciderType: "system",
+                  deciderRef: "harness.guardrails",
+                  reasonCode: iterViolation,
+                  action: "abort",
+                  reasonCodes: [iterViolation],
+                  confidence: 1,
+                  createdAt: nowIso(),
+                };
+                shouldContinue = false;
+              }
+
+              // R5-4: Check cost limit
+              if (harnessDecision === null) {
+                const costViolation = this.loopController.checkCostLimit();
+                if (costViolation !== null) {
+                  harnessDecision = {
+                    decisionId: newId("harness_decision"),
+                    decisionInputBundleId: "",
+                    decisionKind: "replan",
+                    decision: "abort",
+                    deciderType: "system",
+                    deciderRef: "harness.guardrails",
+                    reasonCode: costViolation,
+                    action: "abort",
+                    reasonCodes: [costViolation],
+                    confidence: 1,
+                    createdAt: nowIso(),
+                  };
+                  shouldContinue = false;
+                }
+              }
+
+              // R5-4: Check duration limit
+              if (harnessDecision === null) {
+                const durationViolation = this.loopController.checkDurationLimit();
+                if (durationViolation !== null) {
+                  harnessDecision = {
+                    decisionId: newId("harness_decision"),
+                    decisionInputBundleId: "",
+                    decisionKind: "replan",
+                    decision: "abort",
+                    deciderType: "system",
+                    deciderRef: "harness.guardrails",
+                    reasonCode: durationViolation,
+                    action: "abort",
+                    reasonCodes: [durationViolation],
+                    confidence: 1,
+                    createdAt: nowIso(),
+                  };
+                  shouldContinue = false;
+                }
+              }
             }
-            continue;
+
+            if (shouldContinue) {
+              continue;
+            }
           }
         }
 

@@ -259,11 +259,15 @@ function validateCommandSignature(command: string, args: readonly string[], risk
   }
 
   if (SCRIPT_FILE_INTERPRETERS.has(command)) {
-    const scriptPath = args[0] ?? null;
-    if (scriptPath === null) {
+    // R17-04 fix: Find the actual script path by locating the first non-flag argument,
+    // not just assuming args[0] is the script. Commands like `python --verbose script.py`
+    // have the script at args[1], not args[0].
+    const nonFlagArgIndex = args.findIndex((arg) => !arg.startsWith("-"));
+    if (nonFlagArgIndex === -1) {
       return deniedAssessment("tool.command_script_missing", "high");
     }
-    // S-04 (fixed): Block only when ALL args look like interpreter flags.
+    const scriptPath = args[nonFlagArgIndex]!;
+    // R17-04 fix: Block only when ALL args look like interpreter flags.
     // python -c "code" → blocked (all args are flags, no script)
     // python --verbose script.py → ALLOWED (script path is after flags)
     // python /path/script.py → ALLOWED (script path is normal file)

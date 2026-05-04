@@ -11,18 +11,21 @@ export function calculateTrustScore(score: CapabilityTrustScore): number {
   if (score.totalExecutions === 0) {
     return 0;
   }
-  const successPoints = (score.successfulExecutions / score.totalExecutions) * 1000;
-  const overridePenalty = (score.humanOverrides / score.totalExecutions) * 200;
-  const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
 
   if (hasDomainScopedShape(score)) {
+    const successPoints = (score.successfulExecutions / score.totalExecutions) * 1000;
+    const overridePenalty = (score.humanOverrides / score.totalExecutions) * 200;
+    const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
     const incidentPenaltyScale = Math.min(1, 100 / Math.max(score.totalExecutions, 1));
     const incidentPenalty = score.incidents * 150 * incidentPenaltyScale;
     return Math.max(0, Math.min(1000, Math.round(successPoints - overridePenalty - incidentPenalty + volumeBonus)));
   }
 
-  const incidentPenalty = score.incidents * 150;
-  return Math.max(0, Math.min(1000, Math.round(successPoints - overridePenalty - incidentPenalty + volumeBonus)));
+  const successPoints = (score.successfulExecutions / score.totalExecutions) * 100;
+  const overridePenalty = (score.humanOverrides / score.totalExecutions) * 20;
+  const incidentPenalty = score.incidents * 15;
+  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
+  return Math.max(0, Math.min(100, Math.round(successPoints - overridePenalty - incidentPenalty + volumeBonus)));
 }
 
 export function mapTrustLevel(score: number): TrustLevel {

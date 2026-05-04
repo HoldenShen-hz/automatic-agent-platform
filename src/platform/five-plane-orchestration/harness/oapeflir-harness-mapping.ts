@@ -21,7 +21,11 @@ export function mapHarnessStepToOapeflirPhase(role: HarnessRole, stage: string):
     return "feedback";
   }
   if (role === "hitl_operator") {
-    return "assess";
+    // R9-27 Fix: HITL is a feedback/gate mechanism per §45, not automatic risk assessment.
+    // The "assess" phase is for risk assessment; "feedback" phase is for evaluation
+    // and human approval gates. HITL operator handles human-in-the-loop approvals
+    // which are fundamentally feedback/gate mechanisms.
+    return "feedback";
   }
   if (role === "loop_controller") {
     return "improve";

@@ -30,7 +30,7 @@ export type DataClassificationLevel = "public" | "internal" | "confidential" | "
  * Dimensions along which data handling decisions are made.
  * Each dimension represents a different context where data might flow.
  */
-export type DataHandlingDimension = "prompt" | "logs" | "memory" | "artifact" | "cross_worker" | "debug";
+export type DataHandlingDimension = "prompt" | "logs" | "memory" | "artifact" | "cross_worker" | "debug" | "audit";
 
 /**
  * Types of Personally Identifiable Information that can be detected.
@@ -671,9 +671,30 @@ export class DataClassificationService {
 
   /**
    * Clears the audit log.
-   * Use with caution - this cannot be undone.
+   * Requires platform_admin or service_operator role.
+   * Emits an audit-of-clear event before clearing.
+   *
+   * @param principalContext - The principal performing the clear operation
+   * @throws {Error} If caller is not authorized
    */
-  clearAuditLog(): void {
+  clearAuditLog(principalContext: { principalType: string; roles?: readonly string[] }): void {
+    const authorizedRoles = ["platform_admin", "service_operator"];
+    const hasPermission = principalContext.roles?.some((role) => authorizedRoles.includes(role)) ?? false;
+    if (!hasPermission) {
+      throw new Error("Unauthorized: clearAuditLog requires platform_admin or service_operator role");
+    }
+
+    // Emit audit-of-clear event before clearing
+    this.logAuditEntry({
+      originalContent: `[audit-of-clear] Audit log cleared by ${principalContext.principalType} at ${nowIso()}`,
+      classificationLevel: "confidential",
+      dimension: "audit",
+      decision: "audit",
+      reason: "audit_log_cleared",
+      auditTrailId: newId("clfsaudit"),
+      piiAnnotations: [],
+    });
+
     this.auditLog.length = 0;
   }
 

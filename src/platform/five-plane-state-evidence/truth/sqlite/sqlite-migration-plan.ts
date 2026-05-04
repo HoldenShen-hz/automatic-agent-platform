@@ -16,6 +16,10 @@ import {
   REMOTE_LOG_AGGREGATION_SQL,
   TRUSTED_REMOTE_WORKER_REGISTRATION_SQL,
   EVENT_SESSION_ID_SQL,
+  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns for fencing token enforcement
+  HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL,
+  SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL,
+  BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL,
 } from "./sqlite-migration-runtime-part1.js";
 import {
   REMOTE_WORKSPACE_SYNC_TELEMETRY_SQL,
@@ -341,6 +345,12 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(41, "0041_dlq_records_persistence", DLQ_RECORDS_SQL),
   defineMigration(42, "0042_outbox_schema", OUTBOX_SCHEMA_SQL),
   defineMigration(43, "0043_billing_usage_event_canonical_attribution", BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL),
+  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to harness_runs for single-leader enforcement
+  defineMigration(44, "0044_harness_run_lease_fencing", HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL),
+  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to side_effect_records for fencing enforcement
+  defineMigration(45, "0045_side_effect_lease_fencing", SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL),
+  // R4-30 (INV-FENCING): Add lease_id and fencing_token columns to budget_ledgers for fencing enforcement
+  defineMigration(46, "0046_budget_ledger_lease_fencing", BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL),
 ] as const;
 
 /**

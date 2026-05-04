@@ -49,8 +49,9 @@ interface RawEventSchemaDefinition {
  * Registry of all event schemas in the system.
  *
  * Tier 1 events (must have reliable delivery and ack):
- * - task:status_changed, workflow:step_completed, decision:requested, decision:responded
- * - division:completed, division:failed, subtask:completed, subtask:failed, cost:limit_reached
+ * - platform.harness_run.*, platform.node_run.*, platform.side_effect.*, platform.budget.*
+ * - Legacy: task:status_changed, workflow:step_completed, decision:requested, decision:responded
+ * - Legacy: division:completed, division:failed, subtask:completed, subtask:failed, cost:limit_reached
  *
  * Tier 2 events (at-least-once delivery):
  * - dispatch:* events, worker:* events, takeover:* events, recovery:* events

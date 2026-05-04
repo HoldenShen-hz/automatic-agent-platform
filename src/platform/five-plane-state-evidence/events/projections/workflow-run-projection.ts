@@ -157,6 +157,14 @@ function toInternalState(state: WorkflowRunState): WorkflowRunStateInternal {
 }
 
 /**
+ * Maximum size of processed event ID set before watermark eviction.
+ * Prevents unbounded memory growth during long-running workflow replays.
+ * R12-10: When set exceeds this size, oldest 10% of entries are evicted.
+ */
+const MAX_PROCESSED_EVENT_ID_SET_SIZE = 10_000;
+const EVICTION_WATERMARK = 0.9; // Evict when 90% of max
+
+/**
  * Converts internal state (with Set) back to serialized state (with array for JSON).
  */
 function toSerializedState(state: WorkflowRunStateInternal): WorkflowRunState {
@@ -164,6 +172,24 @@ function toSerializedState(state: WorkflowRunStateInternal): WorkflowRunState {
     ...state,
     processedEventIds: Array.from(state._processedEventIdSet),
   };
+}
+
+/**
+ * Marks an event as processed and handles watermark eviction to prevent unbounded growth.
+ */
+function markEventProcessed(state: WorkflowRunStateInternal, eventId: string): void {
+  state._processedEventIdSet.add(eventId);
+  // R12-10: Watermark eviction when set exceeds max size
+  if (state._processedEventIdSet.size > MAX_PROCESSED_EVENT_ID_SET_SIZE) {
+    // Evict oldest 10% of entries (first 10% of Array order, which is insertion order)
+    const entries = Array.from(state._processedEventIdSet);
+    const evictCount = Math.floor(MAX_PROCESSED_EVENT_ID_SET_SIZE * (1 - EVICTION_WATERMARK));
+    const newSet = new Set(entries.slice(evictCount));
+    state._processedEventIdSet.clear();
+    for (const entry of newSet) {
+      state._processedEventIdSet.add(entry);
+    }
+  }
 }
 
 /**
@@ -254,8 +280,8 @@ export const workflowRunProjectionHandler: ProjectionHandler = (
   };
   newState.timeline = [...newState.timeline, timelineEntry];
 
-  // Mark event as processed using O(1) Set add
-  newState._processedEventIdSet.add(event.eventId);
+  // Mark event as processed using O(1) Set add with watermark eviction
+  markEventProcessed(newState, event.eventId);
   newState.eventCount = newState.eventCount + 1;
 
   // Update state based on event type

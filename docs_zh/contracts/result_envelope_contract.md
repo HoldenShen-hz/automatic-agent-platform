@@ -69,7 +69,7 @@ Reduce lateral proliferation of result objects through unified result envelope:
 
 ### 4A.2 NodeRun Result Builder
 
-`buildNodeRunResultEnvelope(nodeRun, stepOutputs, artifacts)` projects NodeRun output to result envelope:
+`buildNodeRunResultEnvelope(nodeRun, nodeAttemptReceipts, artifacts)` projects NodeRun output to result envelope:
 
 - `completed` -> `success`, `failed` -> `error`, others -> `partial`
 - `warnings` source: append warnings, validation failures, validation warnings when NodeRun status is `partial_success`.

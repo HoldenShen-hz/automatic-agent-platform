@@ -237,7 +237,6 @@ export function inferCapabilitiesForAction(action: AuthorizationAction): readonl
 export function resolvePrincipalAccessProfile(input: {
   principalType: PlatformPrincipalType;
   roles?: readonly PlatformRole[];
-  capabilities?: readonly PlatformCapability[];
 }): PrincipalAccessProfile {
   const roles = dedupeRoles(input.roles?.length ? input.roles : defaultRolesForPrincipalType(input.principalType));
   // Walk inheritance chain for each role to collect all inherited capabilities

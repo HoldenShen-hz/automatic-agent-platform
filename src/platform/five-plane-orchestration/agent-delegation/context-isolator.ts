@@ -177,7 +177,7 @@ export class ContextIsolator {
     // #2178: Guard against division by zero when parent has no actions
     const parentActionCount = parent.permissions.actions.length;
     const childRequiredCount = spec.requiredPermissions.actions.length;
-    let permissionRatio = 1.0; // Default to FULL if parent has no actions
+    let permissionRatio = 0; // Default to MINIMAL if parent has no actions
     if (parentActionCount > 0) {
       permissionRatio = childRequiredCount / parentActionCount;
     }

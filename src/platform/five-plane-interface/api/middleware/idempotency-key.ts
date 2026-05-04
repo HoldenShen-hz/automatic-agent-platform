@@ -3,10 +3,18 @@
  *
  * Implements idempotency-key enforcement per §6.2 to prevent duplicate write operations.
  * All write operations (POST/PUT/PATCH/DELETE) must carry an idempotency key.
- * Duplicate keys within the TTL window return 409 Conflict.
+ * Duplicate keys within the TTL window return cached responses.
+ *
+ * Part of R18-30: No idempotency-key enforcement middleware
  */
 
 import { AppError } from "../../../contracts/errors.js";
+import {
+  type IdempotencyStorage,
+  type IdempotencyEntry,
+  InMemoryIdempotencyStorage,
+  createIdempotencyStorage,
+} from "./idempotency-key-storage.js";
 
 /**
  * HTTP methods that require idempotency key.
@@ -17,7 +25,7 @@ export const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * Idempotency key configuration.
  */
 export interface IdempotencyKeyConfig {
-  /** TTL for idempotency keys in milliseconds */
+  /** TTL for idempotency keys in milliseconds (default 24 hours) */
   ttlMs: number;
   /** Whether to require idempotency key for write operations */
   required: boolean;
@@ -25,6 +33,8 @@ export interface IdempotencyKeyConfig {
   perTenant: boolean;
   /** Header name for idempotency key */
   headerName: string;
+  /** Storage backend type */
+  storageType: "memory" | "redis" | "sqlite";
 }
 
 /**
@@ -35,23 +45,8 @@ export const DEFAULT_IDEMPOTENCY_KEY_CONFIG: IdempotencyKeyConfig = {
   required: true,
   perTenant: true,
   headerName: "Idempotency-Key",
+  storageType: "memory",
 };
-
-/**
- * Idempotency key entry stored in cache.
- */
-interface IdempotencyEntry {
-  /** Request method that created this key */
-  method: string;
-  /** Response status code */
-  statusCode: number;
-  /** Cached response body */
-  responseBody: unknown | undefined;
-  /** When this entry expires */
-  expiresAt: number;
-  /** Tenant ID if per-tenant isolation is enabled */
-  tenantId?: string;
-}
 
 /**
  * Idempotency key enforcement decision.
@@ -82,11 +77,15 @@ export interface IdempotencyDecision {
  */
 export class IdempotencyKeyMiddleware {
   private readonly config: IdempotencyKeyConfig;
-  private readonly entries = new Map<string, IdempotencyEntry>();
-  private requestCounter = 0;
+  private readonly storage: IdempotencyStorage;
 
-  constructor(config: Partial<IdempotencyKeyConfig> = {}) {
+  constructor(config: Partial<IdempotencyKeyConfig> & { storage?: IdempotencyStorage } = {}) {
     this.config = { ...DEFAULT_IDEMPOTENCY_KEY_CONFIG, ...config };
+    if (config.storage) {
+      this.storage = config.storage;
+    } else {
+      this.storage = createIdempotencyStorage(this.config.storageType);
+    }
   }
 
   /**
@@ -112,12 +111,12 @@ export class IdempotencyKeyMiddleware {
    * @param options - Request options
    * @returns IdempotencyDecision with allowed status and cached response if duplicate
    */
-  public check(options: {
+  public async check(options: {
     method: string;
     idempotencyKey?: string;
     tenantId?: string;
     body?: unknown;
-  }): IdempotencyDecision {
+  }): Promise<IdempotencyDecision> {
     const { method, idempotencyKey, tenantId } = options;
     const isWriteOp = this.isWriteOperation(method);
 
@@ -143,10 +142,9 @@ export class IdempotencyKeyMiddleware {
 
       // Check for duplicate idempotency key
       const storageKey = this.generateStorageKey(idempotencyKey, tenantId);
-      const now = Date.now();
-      const existing = this.entries.get(storageKey);
+      const existing = await this.storage.get(storageKey);
 
-      if (existing && now < existing.expiresAt) {
+      if (existing && Date.now() < existing.expiresAt) {
         // Check if the method matches (same key with different method = conflict)
         if (existing.method !== method) {
           return {
@@ -161,25 +159,34 @@ export class IdempotencyKeyMiddleware {
         }
 
         // Same method - return cached response
+        let body: unknown;
+        if (existing.responseBody != null) {
+          try {
+            body = JSON.parse(existing.responseBody);
+          } catch {
+            body = existing.responseBody;
+          }
+        } else {
+          body = undefined;
+        }
+
         return {
           allowed: true,
           isDuplicate: true,
           cachedResponse: {
             statusCode: existing.statusCode,
-            body: existing.responseBody,
+            body,
           },
         };
       }
 
       // New idempotency key or expired - store pending entry
-      const expiresAt = now + this.config.ttlMs;
-      this.entries.set(storageKey, {
+      await this.storage.set(storageKey, {
         method,
         statusCode: 0, // Will be updated when request completes
-        responseBody: undefined,
-        expiresAt,
-        ...(tenantId !== undefined && { tenantId }),
-      });
+        responseBody: null,
+        requestHash: null,
+      }, this.config.ttlMs);
 
       return { allowed: true, isDuplicate: false };
     }
@@ -192,58 +199,46 @@ export class IdempotencyKeyMiddleware {
    * Record the response for an idempotency key.
    * Should be called after the request completes to cache the response.
    */
-  public record(options: {
+  public async record(options: {
     idempotencyKey: string;
     tenantId?: string;
     statusCode: number;
     responseBody: unknown;
-  }): void {
+  }): Promise<void> {
     const { idempotencyKey, tenantId, statusCode, responseBody } = options;
     const storageKey = this.generateStorageKey(idempotencyKey, tenantId);
-    const existing = this.entries.get(storageKey);
-
-    if (existing) {
-      existing.statusCode = statusCode;
-      existing.responseBody = responseBody;
+    let bodyStr: string | null = null;
+    if (responseBody != null) {
+      bodyStr = JSON.stringify(responseBody);
     }
+    await this.storage.set(storageKey, {
+      method: "", // Method already stored
+      statusCode,
+      responseBody: bodyStr,
+      requestHash: null,
+    }, this.config.ttlMs);
   }
 
   /**
    * Clear an idempotency key entry.
    */
-  public clear(idempotencyKey: string, tenantId?: string): void {
+  public async clear(idempotencyKey: string, tenantId?: string): Promise<void> {
     const storageKey = this.generateStorageKey(idempotencyKey, tenantId);
-    this.entries.delete(storageKey);
+    await this.storage.delete(storageKey);
   }
 
   /**
    * Clean up expired entries.
    */
-  public cleanup(): void {
-    const now = Date.now();
-    const keysToDelete: string[] = [];
-    this.entries.forEach((entry, key) => {
-      if (now >= entry.expiresAt) {
-        keysToDelete.push(key);
-      }
-    });
-    for (const key of keysToDelete) {
-      this.entries.delete(key);
-    }
+  public async cleanup(maxDelete?: number): Promise<number> {
+    return this.storage.cleanup(maxDelete);
   }
 
   /**
-   * Clear all entries.
+   * Get the underlying storage instance.
    */
-  public clearAll(): void {
-    this.entries.clear();
-  }
-
-  /**
-   * Get the current number of tracked idempotency keys.
-   */
-  public size(): number {
-    return this.entries.size;
+  public getStorage(): IdempotencyStorage {
+    return this.storage;
   }
 }
 
@@ -251,7 +246,7 @@ export class IdempotencyKeyMiddleware {
  * Create an idempotency key middleware with the given configuration.
  */
 export function createIdempotencyKeyMiddleware(
-  config: Partial<IdempotencyKeyConfig> = {},
+  config: Partial<IdempotencyKeyConfig> & { storage?: IdempotencyStorage } = {},
 ): IdempotencyKeyMiddleware {
   return new IdempotencyKeyMiddleware(config);
 }

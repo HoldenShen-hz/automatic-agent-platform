@@ -207,6 +207,9 @@ export class DisambiguationHandler {
       task_modify: "修改/更新已有内容",
       status_inquiry: "状态查询",
       approval_action: "审批操作",
+      cancel_task: "取消任务",
+      create_goal: "创建目标",
+      decompress_goal: "分解目标",
     };
     return labels[intentType] ?? intentType;
   }
@@ -382,6 +385,9 @@ export class DisambiguationHandler {
       "task_modify",
       "status_inquiry",
       "approval_action",
+      "cancel_task",
+      "create_goal",
+      "decompress_goal",
     ];
 
     return allIntents.filter((i) => i !== currentIntent.intentType);

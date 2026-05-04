@@ -33,3 +33,7 @@
 - integration：高优先级任务抢占低优先级任务
 - contract：超配额任务不得静默进入执行
 
+## v4.3 Contract Remediation
+
+- T-45: 本文原先不足 60 行，缺少 ContractEnvelope 合规声明与 remediation section。v4.3 要求所有 contract 必须包含 v4.3 Contract Remediation 小节，记录历史偏差与修复结论。修复：本文新增本节，并要求新增对象必须携带 `harness_run_id` / `node_run_id` 关联字段。
+

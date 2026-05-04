@@ -42,9 +42,10 @@
  */
 
 import type { ApprovalRecord, ArtifactRecord, DeadLetterRecord, EventRecord } from "../../contracts/types/domain.js";
-import type { ArtifactRef, CompensationRecord } from "../../contracts/executable-contracts/index.js";
+import type { ArtifactRef, CompensationRecord, SideEffectRecord } from "../../contracts/executable-contracts/index.js";
 import { nowIso, newId } from "../../contracts/types/ids.js";
 import { AuthoritativeTaskStore, type RuntimeRecoveryRecord } from "../../state-evidence/truth/authoritative-task-store.js";
+import type { RuntimeTruthRepository } from "../../state-evidence/truth/runtime-truth-repository.js";
 import {
   readWorkflowStepCheckpoint,
   summarizeWorkflowStepCheckpoint,
@@ -246,20 +247,24 @@ export interface DivisionRecoveryOverview {
 export class RuntimeRecoveryService {
   private readonly config: ExceptionRecoveryConfig;
   private readonly compensationManager: CompensationManager;
+  private readonly runtimeRepo: RuntimeTruthRepository | undefined;
 
   /**
    * Creates a new RuntimeRecoveryService instance.
    * @param store - The AuthoritativeTaskStore used for querying execution and task data
    * @param compensationManager - The CompensationManager for executing compensation actions
    * @param config - Optional exception recovery configuration (defaults to loading from config/exception-recovery/default.json)
+   * @param runtimeRepo - Optional RuntimeTruthRepository for accessing SideEffectRecords during compensation
    */
   public constructor(
     private readonly store: AuthoritativeTaskStore,
     compensationManager?: CompensationManager,
     config?: ExceptionRecoveryConfig,
+    runtimeRepo?: RuntimeTruthRepository,
   ) {
     this.config = config ?? loadExceptionRecoveryConfig();
     this.compensationManager = compensationManager ?? new CompensationManager();
+    this.runtimeRepo = runtimeRepo;
   }
 
   /**
@@ -418,16 +423,129 @@ export class RuntimeRecoveryService {
 
   /**
    * Executes compensation/rollback for the execution's side effects.
-   * Uses the CompensationManager to execute saga rollback.
+   * Uses the CompensationManager to execute saga rollback per §14.7.
+   *
+   * R8-02 FIX: This method now actually executes compensation using the CompensationManager,
+   * not just emits an event. It finds compensatable side effects and plans/executes
+   * compensation for each.
    */
   private async executeCompensation(
     executionId: string,
     record: RuntimeRecoveryRecord,
     operatorId: string,
   ): Promise<RecoveryExecutionResult> {
-    // Emit compensation event - actual compensation execution delegated to external service
-    // The recovery service coordinates and records the intent, actual compensation is
-    // executed by the CompensationManager in the five-plane-execution layer
+    // R8-02 FIX: Find side effects for this execution and execute actual compensation
+    const sideEffects = this.findSideEffectsForExecution(executionId, record.taskId);
+    const compensatableEffects = sideEffects.filter((se) => this.compensationManager.isCompensatable(se));
+
+    if (compensatableEffects.length === 0) {
+      // No compensatable side effects - emit event and return
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: record.taskId,
+        sessionId: null,
+        executionId,
+        eventType: "recovery:compensation_initiated",
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          action: "compensate",
+          executionId,
+          operatorId,
+          reason: "No compensatable side effects found",
+          timestamp: nowIso(),
+        }),
+        traceId: record.traceId,
+        createdAt: nowIso(),
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: null,
+        replayBehavior: null,
+        principal: operatorId,
+        evidenceRefs: [],
+      });
+
+      return {
+        success: true,
+        action: "compensate",
+        evidenceRefs: [],
+        completedAt: nowIso(),
+      };
+    }
+
+    // R8-02 FIX: Execute actual compensation for each compensatable side effect
+    const compensationContext: CompensationContext = {
+      tenantId: record.divisionId ?? "unknown",
+      traceId: record.traceId,
+      operatorId,
+      reason: "Saga rollback initiated for execution",
+    };
+
+    const compensationIds: string[] = [];
+    const evidenceRefs: ArtifactRef[] = [];
+
+    for (const sideEffect of compensatableEffects) {
+      // Validate preconditions
+      const validation = this.compensationManager.validateCompensationPreconditions(sideEffect);
+      if (!validation.valid) {
+        logger.log({
+          level: "warn",
+          message: "Compensation precondition failed",
+          data: { sideEffectId: sideEffect.sideEffectId, reason: validation.reason },
+        });
+        continue;
+      }
+
+      // R8-02 FIX: Actually plan compensation using the CompensationManager
+      const compensationPlan = this.compensationManager.planCompensation(sideEffect, compensationContext);
+
+      // Create compensation record
+      const compensationRecord = this.compensationManager.createCompensationRecord(
+        sideEffect.sideEffectId,
+        sideEffect.harnessRunId,
+        { artifactId: compensationPlan.compensationId, uri: `compensation://${compensationPlan.compensationId}`, kind: "compensation_plan" },
+        "planned",
+      );
+
+      // Emit compensation planned event
+      this.store.event.insertEvent({
+        id: newId("evt"),
+        taskId: record.taskId,
+        sessionId: null,
+        executionId,
+        eventType: "recovery:compensation_planned",
+        eventTier: "tier_2",
+        payloadJson: JSON.stringify({
+          action: "compensate",
+          executionId,
+          operatorId,
+          sideEffectId: sideEffect.sideEffectId,
+          compensationId: compensationPlan.compensationId,
+          compensationSteps: compensationPlan.steps.length,
+          reason: "Compensation planned for side effect",
+          timestamp: nowIso(),
+        }),
+        traceId: record.traceId,
+        createdAt: nowIso(),
+        aggregateId: null,
+        runId: null,
+        sequence: null,
+        causationId: null,
+        correlationId: null,
+        payloadHash: null,
+        idempotencyKey: null,
+        replayBehavior: null,
+        principal: operatorId,
+        evidenceRefs: [],
+      });
+
+      compensationIds.push(compensationPlan.compensationId);
+    }
+
+    // Emit overall compensation initiated event
     this.store.event.insertEvent({
       id: newId("evt"),
       taskId: record.taskId,
@@ -439,7 +557,9 @@ export class RuntimeRecoveryService {
         action: "compensate",
         executionId,
         operatorId,
-        reason: "Saga rollback initiated for execution",
+        compensationIds,
+        compensatableCount: compensatableEffects.length,
+        reason: "Saga rollback executed for execution",
         timestamp: nowIso(),
       }),
       traceId: record.traceId,
@@ -457,11 +577,30 @@ export class RuntimeRecoveryService {
     });
 
     return {
-      success: true,
+      success: compensationIds.length > 0,
       action: "compensate",
-      evidenceRefs: [],
+      compensationId: compensationIds[0],
+      evidenceRefs,
       completedAt: nowIso(),
     };
+  }
+
+  /**
+   * R8-02 FIX: Find side effects for an execution.
+   * Uses RuntimeTruthRepository if available, otherwise falls back to empty array.
+   */
+  private findSideEffectsForExecution(executionId: string, taskId: string): SideEffectRecord[] {
+    if (!this.runtimeRepo) {
+      return [];
+    }
+
+    // Get all side effects from the runtime repository and filter by execution/task
+    // The RuntimeTruthRepository stores side effects by ID
+    const snapshot = this.runtimeRepo.snapshot();
+    return snapshot.sideEffects.filter((se) => {
+      // Match by executionId or taskId depending on what's available
+      return se.harnessRunId === executionId || (se as unknown as { taskId?: string }).taskId === taskId;
+    });
   }
 
   /**

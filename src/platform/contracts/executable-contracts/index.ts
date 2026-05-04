@@ -238,6 +238,10 @@ export const HARNESS_RUN_TERMINAL_STATUSES = ["completed", "failed", "aborted"] 
 export interface HarnessRun {
   readonly harnessRunId: string;
   readonly tenantId: string;
+  readonly traceId: string;
+  readonly riskLevel: RiskClass;
+  readonly ownership: Readonly<{ ownerId: string; ownerType: string }>;
+  readonly auditRefs: readonly string[];
   readonly domainId: string;
   readonly confirmedTaskSpecId: string;
   readonly requestEnvelopeId: string;
@@ -942,6 +946,10 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
 
 export function createHarnessRun(input: {
   tenantId: string;
+  traceId: string;
+  riskLevel: RiskClass;
+  ownership: Readonly<{ ownerId: string; ownerType: string }>;
+  auditRefs?: readonly string[];
   domainId?: string;
   confirmedTaskSpecId: string;
   requestEnvelopeId: string;
@@ -970,6 +978,10 @@ export function createHarnessRun(input: {
   return {
     harnessRunId: input.harnessRunId ?? newId("hrun"),
     tenantId: input.tenantId,
+    traceId: input.traceId,
+    riskLevel: input.riskLevel,
+    ownership: input.ownership,
+    auditRefs: input.auditRefs ?? [],
     domainId,
     confirmedTaskSpecId: input.confirmedTaskSpecId,
     requestEnvelopeId: input.requestEnvelopeId,
