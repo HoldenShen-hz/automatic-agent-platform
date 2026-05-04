@@ -190,6 +190,83 @@ export class RuntimeMetricsRegistry {
     this.setGauge("event_bus_backpressure_high_water", { consumerId }, isHighWaterMark ? 1 : 0);
   }
 
+  // R29-10: Worker metrics instrumentation
+  public recordWorkerRegistration(workerId: string, placement: string): void {
+    this.incrementCounter("worker_registrations_total", { workerId, placement }, 1);
+  }
+
+  public recordWorkerHeartbeat(workerId: string, status: string): void {
+    this.incrementCounter("worker_heartbeats_total", { workerId, status }, 1);
+  }
+
+  public recordWorkerLeaseAcquired(workerId: string, queueName: string | null): void {
+    this.incrementCounter("worker_lease_acquired_total", { workerId, queueName: queueName ?? "default" }, 1);
+    this.setGauge("worker_active_leases", { workerId }, 1);
+  }
+
+  public recordWorkerLeaseReleased(workerId: string, queueName: string | null): void {
+    this.incrementCounter("worker_lease_released_total", { workerId, queueName: queueName ?? "default" }, 1);
+  }
+
+  public recordWorkerFailure(workerId: string, reason: string): void {
+    this.incrementCounter("worker_failures_total", { workerId, reason }, 1);
+  }
+
+  public recordWorkerSaturation(workerId: string, saturation: number): void {
+    this.setGauge("worker_saturation", { workerId }, saturation);
+  }
+
+  public recordWorkerCapacity(workerId: string, used: number, max: number): void {
+    this.setGauge("worker_capacity_used", { workerId }, used);
+    this.setGauge("worker_capacity_max", { workerId }, max);
+  }
+
+  // R29-11: Queue metrics instrumentation
+  public recordQueueDepth(queueName: string, depth: number): void {
+    this.setGauge("queue_depth", { queueName }, depth);
+  }
+
+  public recordQueueEnqueue(queueName: string): void {
+    this.incrementCounter("queue_enqueued_total", { queueName }, 1);
+  }
+
+  public recordQueueDequeue(queueName: string): void {
+    this.incrementCounter("queue_dequeued_total", { queueName }, 1);
+  }
+
+  public recordQueueFailure(queueName: string, reason: string): void {
+    this.incrementCounter("queue_failures_total", { queueName, reason }, 1);
+  }
+
+  public recordQueueWaitTime(queueName: string, waitTimeMs: number): void {
+    this.observeHistogram("queue_wait_time_ms", { queueName }, waitTimeMs);
+  }
+
+  // R29-12: Lock metrics instrumentation
+  public recordLockAcquired(lockKey: string, backend: string): void {
+    this.incrementCounter("lock_acquired_total", { lockKey, backend }, 1);
+  }
+
+  public recordLockReleased(lockKey: string, backend: string): void {
+    this.incrementCounter("lock_released_total", { lockKey, backend }, 1);
+  }
+
+  public recordLockFailed(lockKey: string, backend: string, reason: string): void {
+    this.incrementCounter("lock_failed_total", { lockKey, backend, reason }, 1);
+  }
+
+  public recordLockTimeout(lockKey: string, backend: string): void {
+    this.incrementCounter("lock_timeouts_total", { lockKey, backend }, 1);
+  }
+
+  public recordLockDeadlock(lockKey: string, backend: string): void {
+    this.incrementCounter("lock_deadlocks_total", { lockKey, backend }, 1);
+  }
+
+  public recordLockExtension(lockKey: string, owner: string, additionalMs: number): void {
+    this.observeHistogram("lock_extension_ms", { lockKey, owner }, additionalMs);
+  }
+
   public getCounters(name: string): CounterSeries[] {
     return [...this.counters.entries()]
       .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)

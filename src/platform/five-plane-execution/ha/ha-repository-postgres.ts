@@ -334,14 +334,15 @@ export class PostgresHaRepository implements HaRepository, AtomicLeadershipCapab
 
       const newEpoch = currentEpoch.epoch + 1;
       const newFencingToken = currentEpoch.fencingToken + 1;
+      const effectiveTtlMs = ttlMs ?? 15_000;
       const lease: LeaderLease = {
         leaseId: newId("llease"),
         nodeId,
         epoch: newEpoch,
         acquiredAt: now,
-        expiresAt: new Date(Date.now() + ttlMs).toISOString(),
+        expiresAt: new Date(Date.now() + effectiveTtlMs).toISOString(),
         status: "active",
-        ttlMs,
+        ttlMs: effectiveTtlMs,
       };
 
       await conn.execute(`UPDATE coordinator_nodes SET is_leader = 0 WHERE is_leader = 1`);

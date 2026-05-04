@@ -53,6 +53,12 @@ export interface ExecutionTicketRecord {
   invalidatedAt: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // R6-3: Risk class for isolation routing and capability-based dispatch
+  riskClass?: string | null;
+  // R6-3: Required sandbox type for this execution
+  requiredSandboxType?: string | null;
+  // R6-3: Tenant quota reference for resource governance
+  tenantQuotaRef?: string | null;
 }
 
 export type ExecutionTicketStatus = "pending" | "claimed" | "consumed" | "cancelled" | "expired";

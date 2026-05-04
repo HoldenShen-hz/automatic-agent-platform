@@ -41,10 +41,20 @@ export interface ApprovalConflictInput {
   readonly conflictOfInterestActorIds?: readonly string[];
 }
 
+// R3-22 FIX: AuditSpec for structured audit requirements per §47.3
+export interface AuditSpec {
+  readonly controlId: string;
+  readonly frequency: "realtime" | "hourly" | "daily" | "weekly" | "monthly" | "quarterly" | "annually";
+  readonly evidenceType: string;
+  readonly retentionPeriodDays: number;
+  readonly scope: "global" | "tenant" | "domain" | "agent";
+}
+
 export interface ComplianceFrameworkDefinition {
   readonly frameworkId: string;
   readonly type: ComplianceFrameworkType;
-  readonly auditRequirements: readonly string[];
+  // R3-22 FIX: auditRequirements must be AuditSpec[] not string[]
+  readonly auditRequirements: readonly AuditSpec[];
   readonly reportTemplate: string;
 }
 

@@ -107,8 +107,12 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     };
     const result = await this.redis.set(lockKey, JSON.stringify(lockData), "EX", ttlSec, "NX");
     if (result !== "OK") {
+      // R29-12: Record lock acquisition failure (lock held)
+      runtimeMetricsRegistry.recordLockFailed(input.lockKey, "redis", "lock_held");
       return { acquired: false };
     }
+    // R29-12: Record successful lock acquisition
+    runtimeMetricsRegistry.recordLockAcquired(input.lockKey, "redis");
     return {
       acquired: true,
       lock: {
@@ -126,7 +130,12 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   public async releaseAsync(lockKey: string, owner: string): Promise<boolean> {
     await this.ensureConnected();
     const script = "local current=redis.call('GET',KEYS[1]) if not current then return -1 end local data=cjson.decode(current) if data.owner~=ARGV[1] then return 0 end return redis.call('DEL',KEYS[1])";
-    return Number(await this.redis.eval(script, 1, `lock:${lockKey}`, owner)) === 1;
+    const result = Number(await this.redis.eval(script, 1, `lock:${lockKey}`, owner)) === 1;
+    // R29-12: Record lock release
+    if (result) {
+      runtimeMetricsRegistry.recordLockReleased(lockKey, "redis");
+    }
+    return result;
   }
 
   public async extendAsync(lockKey: string, owner: string, additionalMs: number): Promise<LockRecord | null> {
@@ -147,8 +156,12 @@ return 1`;
     const newTtlMs = Math.min(additionalMs, 600_000);
     const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
     if (result !== 1) {
+      // R29-12: Record lock extension failure
+      runtimeMetricsRegistry.recordLockFailed(lockKey, "redis", "extend_failed");
       return null;
     }
+    // R29-12: Record lock extension
+    runtimeMetricsRegistry.recordLockExtension(lockKey, owner, newTtlMs);
     const current = await this.redis.get(key);
     if (!current) {
       return null;

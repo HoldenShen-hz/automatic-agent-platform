@@ -1,93 +1,25 @@
 /**
  * platform-contracts.ts
  *
- * Central platform-level contract definitions.
+ * Platform-level contract definitions.
  * Canonical types are exported from executable-contracts/ or their respective directories.
- * This file provides platform-level aggregation and deprecated legacy type stubs.
+ * This file provides platform-specific types ONLY.
  *
- * ARCHITECTURAL DEBT (R4-4):
- * This file contains TWO overlapping contract sets:
- * 1. Re-exports from executable-contracts/ (PlanGraphBundle, NodeAttemptReceipt, SideEffectRecord, etc.)
- * 2. Platform-specific types (PlatformPrincipal, EvidenceRecord, ProjectionUpdate, ContractEnvelope)
+ * ARCHITECTURAL R4-4 FIX:
+ * This file now contains ONLY platform-specific types (PlatformPrincipal, EvidenceRecord,
+ * ProjectionUpdate, ContractEnvelope). All canonical types (PlanGraphBundle, NodeAttemptReceipt,
+ * SideEffectRecord, RequestEnvelope, EventEnvelope, etc.) are exported from
+ * executable-contracts/ directly or via the contracts/index.ts barrel.
  *
- * The re-exports here duplicate exports in src/platform/contracts/index.ts barrel.
- * Additionally, some types here (PlatformPrincipal, EvidenceRecord, ProjectionUpdate) are also
- * re-exported from contracts/index.ts, creating confusion about the canonical source.
- *
- * Cleanup direction per §4:
- * - Move platform-specific types (PlatformPrincipal, EvidenceRecord, ProjectionUpdate) to a new
- *   file or to contracts/index.ts directly
- * - Remove re-exports of executable-contracts types from this file - they should only be
- *   imported from executable-contracts/ directly or via the contracts/index.ts barrel
- * - Keep ContractEnvelope and legacy stubs (RequestEnvelopeLegacy, SideEffectExpectation) here
- *   until migration is complete
+ * Legacy type stubs (RequestEnvelopeLegacy, SideEffectExpectation) are retained here
+ * for backward compatibility until migration is complete.
  */
 
 import { newId, nowIso } from "./ids.js";
 
 // =============================================================================
-// Re-exports from executable-contracts (canonical types per §4)
-// =============================================================================
-
-// PlanGraphBundle - canonical P3→P4 execution contract (re-exported for convenience)
-export {
-  type PlanGraphBundle,
-  type PlanGraph,
-  type PlanNode,
-  type PlanEdge,
-  type GraphValidationReport,
-  type GraphPatch,
-  type GraphPatchOperation,
-  type ReadyNodeSchedulingPolicy,
-  createPlanGraphBundle,
-  createGraphPatch,
-} from "../executable-contracts/index.js";
-
-// NodeAttemptReceipt - canonical P4→P3 execution receipt (re-exported for convenience)
-export {
-  type NodeAttemptReceipt,
-  type AppErrorRef,
-  createNodeAttemptReceipt,
-} from "../executable-contracts/index.js";
-
-// SideEffectRecord - canonical with 16 states per §14.5/§14.11 (re-exported for convenience)
-export {
-  type SideEffectRecord,
-  type SideEffectKind,
-  type SideEffectStatus,
-  type SideEffectProfile,
-  createSideEffectRecord,
-} from "../executable-contracts/index.js";
-
-// PlatformFactEvent and OapeflirViewEvent - canonical event types per §28.1
-export {
-  type PlatformFactEvent,
-  type OapeflirViewEvent,
-} from "../executable-contracts/index.js";
-
-// RequestEnvelope - canonical inter-plane envelope per §5.3
-export {
-  type RequestEnvelope,
-} from "../executable-contracts/index.js";
-
-// =============================================================================
-// Re-exports from control-directive (canonical directives per §4.3)
-// =============================================================================
-
-// OperationalDirective and DecisionDirective - canonical P2→P3/P4 directives
-export {
-  type OperationalDirectiveType,
-  type OperationalDirectiveScope,
-  type OperationalDirective,
-  type DecisionDirectiveType,
-  type DecisionDirectiveScope,
-  type DecisionDirective,
-  createOperationalDirective,
-  createDecisionDirective,
-} from "../control-directive/index.js";
-
-// =============================================================================
 // ContractEnvelope - canonical envelope per §5.5
+// =============================================================================
 // Root cause: §5.5 mandates a standard envelope with version, schema, payload,
 // signature, ttl. This type was completely missing from the codebase.
 // =============================================================================

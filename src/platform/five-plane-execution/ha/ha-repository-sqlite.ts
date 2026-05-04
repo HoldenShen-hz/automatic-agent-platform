@@ -19,6 +19,7 @@ import type {
   LeadershipAcquisitionInput,
   LeadershipEpoch,
 } from "./types.js";
+import { DEFAULT_LEASE_TTL_MS } from "./types.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export class SqliteHaRepository implements HaRepository, AtomicLeadershipCapableRepository {
@@ -242,7 +243,8 @@ export class SqliteHaRepository implements HaRepository, AtomicLeadershipCapable
       }
 
       const now = nowIso();
-      const expiresAt = new Date(Date.now() + ttlMs).toISOString();
+      const effectiveTtlMs = ttlMs ?? DEFAULT_LEASE_TTL_MS;
+      const expiresAt = new Date(Date.now() + effectiveTtlMs).toISOString();
       const currentLeaderRow = this.db.connection
         .prepare(`SELECT * FROM coordinator_nodes WHERE is_leader = 1 LIMIT 1`)
         .get() as CoordinatorNodeRow | undefined;
@@ -290,7 +292,7 @@ export class SqliteHaRepository implements HaRepository, AtomicLeadershipCapable
         acquiredAt: now,
         expiresAt,
         status: "active",
-        ttlMs,
+        ttlMs: effectiveTtlMs,
       };
 
       this.db.connection

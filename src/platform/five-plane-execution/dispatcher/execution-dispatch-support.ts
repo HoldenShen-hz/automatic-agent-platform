@@ -13,6 +13,12 @@ export interface CreateExecutionTicketInput {
   requiredCapabilities?: string[];
   dispatchAfter?: string | null;
   occurredAt?: string;
+  // R6-3: Risk class for capability-based routing and isolation
+  riskClass?: string;
+  // R6-3: Sandbox matching - required sandbox type for execution
+  requiredSandboxType?: string | null;
+  // R6-3: Tenant quota enforcement
+  tenantQuotaRef?: string | null;
 }
 
 export interface DispatchExecutionOptions {

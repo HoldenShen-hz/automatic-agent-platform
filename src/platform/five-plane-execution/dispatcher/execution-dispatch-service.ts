@@ -107,6 +107,8 @@ export class ExecutionDispatchService {
   private readonly activeDispatchAttempts: Map<string, { ticketId: string; startedAt: number; workerId: string }>;
   // R10-8: Track recently failed lock acquisitions for deadlock detection
   private readonly recentLockFailures: Map<string, { timestamp: number; blockedByWorkerId: string }>;
+  // R6-10: Heartbeat staleness threshold (30 seconds per §14)
+  private readonly heartbeatStalenessThresholdMs = 30_000;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -305,6 +307,12 @@ export class ExecutionDispatchService {
         invalidatedAt: null,
         createdAt: occurredAt,
         updatedAt: occurredAt,
+        // R6-3: Risk class for isolation routing
+        riskClass: input.riskClass ?? task.riskClass ?? null,
+        // R6-3: Sandbox type matching
+        requiredSandboxType: input.requiredSandboxType ?? null,
+        // R6-3: Tenant quota reference
+        tenantQuotaRef: input.tenantQuotaRef ?? null,
       };
 
       this.store.worker.insertExecutionTicket(ticket);
@@ -522,6 +530,80 @@ export class ExecutionDispatchService {
         this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "poison_pill");
         lastTrace = trace;
         continue;
+      }
+
+      // R6-10: Heartbeat staleness detection - if worker hasn't sent heartbeat in >30s,
+      // trigger worker_heartbeat_missing event and lease_reclaim
+      if (ticket.assignedWorkerId != null) {
+        const workerSnapshot = this.store.worker.getWorkerSnapshot(ticket.assignedWorkerId);
+        if (workerSnapshot != null) {
+          const lastHeartbeatAgeMs = Date.parse(occurredAt) - Date.parse(workerSnapshot.lastHeartbeatAt);
+          if (lastHeartbeatAgeMs > this.heartbeatStalenessThresholdMs) {
+            // Emit worker_heartbeat_missing event
+            this.store.event.insertEvent({
+              id: newId("evt"),
+              taskId: ticket.taskId,
+              executionId: ticket.executionId,
+              eventType: "worker.heartbeat_missing",
+              eventTier: "tier_2",
+              payloadJson: JSON.stringify({
+                workerId: ticket.assignedWorkerId,
+                ticketId: ticket.id,
+                lastHeartbeatAt: workerSnapshot.lastHeartbeatAt,
+                stalenessMs: lastHeartbeatAgeMs,
+                thresholdMs: this.heartbeatStalenessThresholdMs,
+              }),
+              traceId: null,
+              createdAt: occurredAt,
+            });
+            // Emit lease_reclaim event
+            this.store.event.insertEvent({
+              id: newId("evt"),
+              taskId: ticket.taskId,
+              executionId: ticket.executionId,
+              eventType: "execution.lease_reclaim",
+              eventTier: "tier_2",
+              payloadJson: JSON.stringify({
+                workerId: ticket.assignedWorkerId,
+                executionId: ticket.executionId,
+                reason: "worker_heartbeat_stale",
+                stalenessMs: lastHeartbeatAgeMs,
+              }),
+              traceId: null,
+              createdAt: occurredAt,
+            });
+            // Invalidate the stale ticket and continue to next
+            this.store.worker.invalidateExecutionTicket({
+              ticketId: ticket.id,
+              status: "cancelled",
+              invalidatedAt: occurredAt,
+            });
+            this.store.execution.updateExecutionStatus(
+              ticket.executionId,
+              "failed",
+              "dispatch.worker_heartbeat_stale",
+              occurredAt,
+            );
+            const staleTrace = this.recordDecisionEvent(ticket, occurredAt, {
+              dispatchTarget,
+              remoteAvailability: null,
+              requiredIsolationLevel,
+              requiredRepoVersion,
+              preferredWorkerId: options.preferredWorkerId ?? null,
+              requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+              outcome: "blocked",
+              reasonCode: "worker.heartbeat_stale",
+              selectedWorkerId: null,
+              leaseId: null,
+              fallbackApplied: false,
+              evaluations: [],
+              ...this.buildSchedulerTraceFields(ticket, occurredAt, readySet, [], null),
+            });
+            this.recordBlockedDispatchArtifacts(ticket, occurredAt, staleTrace, "heartbeat_stale");
+            lastTrace = staleTrace;
+            continue;
+          }
+        }
       }
 
       if (blockedByBackpressure) {
@@ -889,6 +971,17 @@ export class ExecutionDispatchService {
         }
         if (!meetsIsolationRequirement(worker.isolationLevel, requiredIsolationLevel)) {
           return this.toWorkerEvaluation(worker, false, "worker_isolation_mismatch", []);
+        }
+        // R6-3: Risk class isolation routing - high/critical risk tasks require stricter isolation
+        if (ticket.riskClass === "critical" && worker.isolationLevel !== "strict") {
+          return this.toWorkerEvaluation(worker, false, "risk_class_isolation_mismatch", []);
+        }
+        if (ticket.riskClass === "high" && worker.isolationLevel === "standard") {
+          return this.toWorkerEvaluation(worker, false, "risk_class_isolation_mismatch", []);
+        }
+        // R6-3: Sandbox type matching - ensure worker supports required sandbox type
+        if (ticket.requiredSandboxType != null && !worker.capabilities.includes(`sandbox:${ticket.requiredSandboxType}`)) {
+          return this.toWorkerEvaluation(worker, false, "sandbox_type_mismatch", [ticket.requiredSandboxType]);
         }
         if (requiredRepoVersion != null && worker.repoVersion !== requiredRepoVersion) {
           return this.toWorkerEvaluation(worker, false, "worker_repo_version_mismatch", []);
