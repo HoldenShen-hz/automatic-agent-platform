@@ -193,6 +193,10 @@ export class StartupConsistencyChecker {
     const pendingAckOlderThanMs = options.pendingAckOlderThanMs ?? 2 * 60 * 1000;
 
     const findings: ConsistencyFinding[] = [];
+    // R32-11 fix: Track if we've found P0 issues to short-circuit DB-intensive checks.
+    // Querying a potentially corrupted database when we already know we have P0
+    // issues could cause further damage or produce misleading results.
+    let hasP0Finding = false;
     let configValidation: StartupConfigValidationResult | null = null;
     const toolContractViolations = (this.options.toolMetadataValidator ?? validateToolMetadataRegistry)(listBuiltinToolExecutionMetadata());
 
@@ -222,20 +226,28 @@ export class StartupConsistencyChecker {
       }
     }
 
+    // P0 config failure - short circuit to avoid querying potentially corrupted DB
+    if (configValidation?.ok === false || (configValidation?.issues.length ?? 0) > 0) {
+      hasP0Finding = true;
+    }
+
     if (this.options.providerReadinessProbe) {
       try {
+        const probeResults = this.options
+          .providerReadinessProbe(configValidation)
+          .filter((result) => !result.ready);
         findings.push(
-          ...this.options
-            .providerReadinessProbe(configValidation)
-            .filter((result) => !result.ready)
-            .map((result) => ({
-              code: "provider_not_ready" as const,
-              severity: "p0" as const,
-              message: `${result.message} (${result.reasonCode})`,
-              entityType: "provider" as const,
-              entityId: result.provider,
-            })),
+          ...probeResults.map((result) => ({
+            code: "provider_not_ready" as const,
+            severity: "p0" as const,
+            message: `${result.message} (${result.reasonCode})`,
+            entityType: "provider" as const,
+            entityId: result.provider,
+          })),
         );
+        if (probeResults.length > 0) {
+          hasP0Finding = true;
+        }
       } catch (error) {
         findings.push({
           code: "provider_not_ready",
@@ -244,7 +256,28 @@ export class StartupConsistencyChecker {
           entityType: "provider",
           entityId: "default",
         });
+        hasP0Finding = true;
       }
+    }
+
+    if (hasP0Finding) {
+      // R32-11 fix: Short-circuit - P0 findings mean we should not continue
+      // to query database which may be in a corrupted state
+      const repairActions = uniqueRepairActions(
+        findings.map((finding) => ({
+          action: "manual_intervention_required" as const,
+          reasonCode: finding.code,
+          targetType: finding.entityType,
+          targetId: finding.entityId,
+        } satisfies RepairAction)),
+      );
+      return {
+        checkedAt,
+        status: "fail_closed" as const,
+        trafficBlocked: true,
+        findings,
+        repairActions,
+      };
     }
 
     for (const result of this.db.integrityCheck()) {
@@ -256,7 +289,28 @@ export class StartupConsistencyChecker {
           entityType: "database",
           entityId: "sqlite",
         });
+        hasP0Finding = true;
       }
+    }
+
+    if (hasP0Finding) {
+      // R32-11 fix: Short-circuit before database-heavy checks
+      // P0 findings indicate critical issues that make further DB queries risky
+      const repairActions = uniqueRepairActions(
+        findings.map((finding) => ({
+          action: "manual_intervention_required" as const,
+          reasonCode: finding.code,
+          targetType: finding.entityType,
+          targetId: finding.entityId,
+        } satisfies RepairAction)),
+      );
+      return {
+        checkedAt,
+        status: "fail_closed" as const,
+        trafficBlocked: true,
+        findings,
+        repairActions,
+      };
     }
 
     findings.push(
@@ -268,6 +322,29 @@ export class StartupConsistencyChecker {
         entityId: violation.toolName,
       })),
     );
+
+    if (toolContractViolations.length > 0) {
+      hasP0Finding = true;
+    }
+
+    if (hasP0Finding) {
+      // R32-11 fix: Short-circuit before database-heavy checks
+      const repairActions = uniqueRepairActions(
+        findings.map((finding) => ({
+          action: "manual_intervention_required" as const,
+          reasonCode: finding.code,
+          targetType: finding.entityType,
+          targetId: finding.entityId,
+        } satisfies RepairAction)),
+      );
+      return {
+        checkedAt,
+        status: "fail_closed" as const,
+        trafficBlocked: true,
+        findings,
+        repairActions,
+      };
+    }
 
     const schemaStatus = this.db.getSchemaStatus();
     if (schemaStatus.pendingVersions.length > 0) {

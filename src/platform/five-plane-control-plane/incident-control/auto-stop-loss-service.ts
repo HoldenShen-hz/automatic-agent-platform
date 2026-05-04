@@ -781,9 +781,17 @@ export class AutoStopLossService {
   /**
    * Generates a key based on the current hour for rate limiting.
    */
+  // R29-42 FIX: Add proper separators to getHourKey to prevent date ambiguity collisions.
+  // Root cause: getMonth() returns 0-11 and getDate() returns 1-31, concatenated without
+  // separators. "2024101" is ambiguous - it could be January 10 or October 1.
+  // Fix: Use proper date formatting with separators (YYYY-MM-DD-HH) to eliminate ambiguity.
   private getHourKey(): string {
     const now = new Date();
-    return `${now.getFullYear()}${now.getMonth()}${now.getDate()}${now.getHours()}`;
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0"); // getMonth is 0-indexed
+    const day = String(now.getDate()).padStart(2, "0");
+    const hour = String(now.getHours()).padStart(2, "0");
+    return `${year}-${month}-${day}-${hour}`;
   }
 
   /**

@@ -124,7 +124,12 @@ const UX_TO_PLATFORM_EVENT_MAP: Record<UxEventType, PlatformUxEventType> = {
 export class UxEventTrackingService {
   private readonly eventPublisher: TypedEventPublisher | null;
   private readonly abTestAssignments = new Map<string, ABTestAssignment>();
+  // R29-35 FIX: Add bounded eventLog with eviction to prevent memory leaks.
+  // Root cause: eventLog array grew unbounded - in long-running processes this caused
+  // memory exhaustion as events were only added but never removed.
+  // Fix: Maintain maximum event log size with FIFO eviction of oldest entries.
   private readonly eventLog: UxEventTrack[] = [];
+  private static readonly MAX_EVENT_LOG_SIZE = 10000;
 
   public constructor(eventPublisher?: TypedEventPublisher) {
     this.eventPublisher = eventPublisher ?? null;
@@ -157,6 +162,10 @@ export class UxEventTrackingService {
     };
 
     this.eventLog.push(trackEntry);
+    // Evict oldest entries if log exceeds maximum size to prevent memory leak
+    if (this.eventLog.length > UxEventTrackingService.MAX_EVENT_LOG_SIZE) {
+      this.eventLog.splice(0, this.eventLog.length - UxEventTrackingService.MAX_EVENT_LOG_SIZE);
+    }
 
     if (this.eventPublisher) {
       // Use canonical platform.ux.* event type per §5.4

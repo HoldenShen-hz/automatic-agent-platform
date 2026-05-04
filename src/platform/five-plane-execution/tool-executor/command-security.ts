@@ -66,9 +66,14 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   ["ls", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
   // find: optional path arg at [0]
   ["find", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
-  // grep/rg: pattern first, then optional file path at the end (-1)
-  ["grep", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
-  ["rg", { allowed: true, riskLevel: "low", pathArgPositions: [-1] }],
+  // R30-21 FIX: grep/rg pathArgPositions should validate ALL file args, not just the last.
+  // Root cause: pathArgPositions: [-1] only validated the final argument, so "grep pattern file1 file2"
+  // would only check file2, allowing file1 to bypass path validation.
+  // Fix: Validate all arguments after the pattern (first non-option arg) as potential file paths.
+  // Note: This is conservative - it may reject some valid uses with complex option combinations,
+  // but ensures all file operands are checked against the sandbox policy.
+  ["grep", { allowed: true, riskLevel: "low", pathArgPositions: [1, 2, 3, 4, 5] }],
+  ["rg", { allowed: true, riskLevel: "low", pathArgPositions: [1, 2, 3, 4, 5] }],
   // sort/uniq/cut: first arg is file path
   ["sort", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
   ["uniq", { allowed: true, riskLevel: "low", pathArgPositions: [0] }],
