@@ -446,52 +446,57 @@ test("archived domains cannot be deprecated", () => {
 
 test("activate fails smoke test when domain has invalid configuration", () => {
   const service = new DomainRegistryService();
+  service.register(createTestDomain({
+    domainId: "smoke_fail_activate",
+    status: "registered",
+    workflows: [],
+  }));
   assert.throws(
-    () => service.register(createTestDomain({
-      domainId: "smoke_fail_activate",
-      status: "registered",
-      workflows: [],
-    })),
+    () => {
+      service.activate("smoke_fail_activate", true);
+      service.activate("smoke_fail_activate");
+    },
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });
 
 test("completeUpdate fails smoke test when domain configuration becomes invalid", () => {
   const service = new DomainRegistryService();
+  service.register(createTestDomain({
+    domainId: "smoke_fail_complete",
+    status: "updating",
+    workflows: [
+      {
+        workflowId: "wf_fail",
+        name: "Failing Workflow",
+        triggerConditions: {},
+        steps: [
+          {
+            stepName: "step_a",
+            toolHints: [],
+            modelHints: {},
+            outputSchema: null,
+            retryPolicy: { maxRetries: 0, backoffMs: 0 },
+            requiresReview: false,
+            timeoutMs: 60000,
+            dependsOn: ["step_b"],
+          },
+          {
+            stepName: "step_b",
+            toolHints: [],
+            modelHints: {},
+            outputSchema: null,
+            retryPolicy: { maxRetries: 0, backoffMs: 0 },
+            requiresReview: false,
+            timeoutMs: 60000,
+            dependsOn: ["step_a"],
+          },
+        ],
+      },
+    ],
+  }));
   assert.throws(
-    () => service.register(createTestDomain({
-      domainId: "smoke_fail_complete",
-      status: "updating",
-      workflows: [
-        {
-          workflowId: "wf_fail",
-          name: "Failing Workflow",
-          triggerConditions: {},
-          steps: [
-            {
-              stepName: "step_a",
-              toolHints: [],
-              modelHints: {},
-              outputSchema: null,
-              retryPolicy: { maxRetries: 0, backoffMs: 0 },
-              requiresReview: false,
-              timeoutMs: 60000,
-              dependsOn: ["step_b"],
-            },
-            {
-              stepName: "step_b",
-              toolHints: [],
-              modelHints: {},
-              outputSchema: null,
-              retryPolicy: { maxRetries: 0, backoffMs: 0 },
-              requiresReview: false,
-              timeoutMs: 60000,
-              dependsOn: ["step_a"],
-            },
-          ],
-        },
-      ],
-    })),
+    () => service.completeUpdate("smoke_fail_complete"),
     (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
   );
 });

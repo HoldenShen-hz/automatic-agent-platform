@@ -94,13 +94,14 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
       handler: async (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
 
-        // #2360: Check idempotency key to prevent duplicate sends
-        const idempotencyKey = ctx.request.headers["x-idempotency-key"] as string | undefined;
-        if (idempotencyKey) {
-          const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
-          if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
-            return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
-          }
+        const idempotencyKeyHeader = ctx.request.headers["x-idempotency-key"];
+        const idempotencyKey = typeof idempotencyKeyHeader === "string" ? idempotencyKeyHeader.trim() : "";
+        if (idempotencyKey.length === 0) {
+          throw new ApiError(400, "api.idempotency_key_required", "POST /v1/gateway/messages/send requires x-idempotency-key.");
+        }
+        const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
+        if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
+          return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
         }
 
         const channelGatewayService = deps.channelGatewayService;
@@ -121,9 +122,7 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
         };
 
         // Record idempotency key result if key was provided
-        if (idempotencyKey) {
-          globalIdempotencyMiddleware.complete(idempotencyKey, responseData);
-        }
+        globalIdempotencyMiddleware.complete(idempotencyKey, responseData);
 
         return buildJsonResponse(ctx.requestId, 201, responseData);
       },
@@ -146,28 +145,24 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
         const nonce = ctx.request.headers["x-webhook-nonce"] as string | undefined ?? null;
 
         const webhookSecret = deps.webhookSecret ?? null;
-        if (webhookSecret != null) {
-          if (!signature) {
-            throw new ApiError(401, "gateway.signature_required", "Webhook request must include x-webhook-signature header.");
-          }
-          const signatureResult = deliveryService.verifySignature(
-            payloadText,
-            signature,
-            timestamp,
-            { secret: webhookSecret, toleranceSeconds: 300 },
-          );
-          if (!signatureResult.valid) {
-            throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
-          }
-        } else if (signature) {
-          // §213-2357: CRITICAL SECURITY - webhookSecret is null but signature was provided.
-          // This indicates a misconfiguration where signature verification is skipped.
-          // REJECT the request instead of silently continuing.
+        if (webhookSecret == null) {
           logger.error("WEBHOOK SECURITY MISCONFIGURATION: signature provided but webhookSecret is not configured. Rejecting request.", {
-            hasSignature: true,
+            hasSignature: Boolean(signature),
             hasTimestamp: !!timestamp,
           });
-          throw new ApiError(500, "gateway.signature_config_invalid", "Webhook signature verification cannot be performed because webhookSecret is not configured. Contact system administrator.");
+          throw new ApiError(503, "gateway.signature_config_missing", "Webhook signature verification is required but webhookSecret is not configured.");
+        }
+        if (!signature) {
+          throw new ApiError(401, "gateway.signature_required", "Webhook request must include x-webhook-signature header.");
+        }
+        const signatureResult = deliveryService.verifySignature(
+          payloadText,
+          signature,
+          timestamp,
+          { secret: webhookSecret, toleranceSeconds: 300 },
+        );
+        if (!signatureResult.valid) {
+          throw new ApiError(401, "gateway.signature_invalid", signatureResult.error ?? "Invalid signature");
         }
 
         if (nonce) {

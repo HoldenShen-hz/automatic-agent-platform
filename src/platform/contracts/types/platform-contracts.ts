@@ -18,25 +18,6 @@
 import { newId, nowIso } from "./ids.js";
 
 // =============================================================================
-// ContractEnvelope - canonical envelope per §5.5
-// =============================================================================
-// Root cause: §5.5 mandates a standard envelope with version, schema, payload,
-// signature, ttl. This type was completely missing from the codebase.
-// =============================================================================
-
-/**
- * ContractEnvelope - canonical wire format for inter-plane contract delivery.
- * Required fields per §5.5: version, schema, payload, signature, ttl.
- */
-export interface ContractEnvelope<TPayload = unknown> {
-  readonly version: string;
-  readonly schema: string;
-  readonly payload: TPayload;
-  readonly signature: string;
-  readonly ttl: number;
-}
-
-// =============================================================================
 // Platform-Level Contract Types
 // =============================================================================
 

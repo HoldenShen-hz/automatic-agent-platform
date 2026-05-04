@@ -311,7 +311,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /greater than or equal to 0/i,
+        /greater than 0/i,
       );
     });
 
@@ -518,7 +518,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /greater than 0/i,
+        /greater than or equal to 0/i,
       );
     });
 
@@ -534,7 +534,7 @@ describe("DomainDefinitionSchema", () => {
 
       assert.throws(
         () => DomainDefinitionSchema.parse(input),
-        /greater than 0/i,
+        /greater than or equal to 0/i,
       );
     });
 

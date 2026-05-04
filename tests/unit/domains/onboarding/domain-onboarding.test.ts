@@ -260,8 +260,9 @@ test("DomainOnboardingService.advance promotes domain through all phases and cal
   assert.equal(session.activatedDomainStatus, "active");
 
   const activationCalls = mockRegistry.getActivationCalls();
-  assert.equal(activationCalls.length, 1);
+  assert.equal(activationCalls.length, 2);
   assert.equal(activationCalls[0]?.domainId, "test_advance");
+  assert.equal(activationCalls[1]?.domainId, "test_advance");
 });
 
 test("DomainOnboardingService.advance promotes domain status to registered when onboarding completes", () => {

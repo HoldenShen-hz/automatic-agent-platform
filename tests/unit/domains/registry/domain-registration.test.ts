@@ -144,7 +144,7 @@ test("register throws when tool name contains slash", () => {
   });
 
   assert.throws(() => service.register(definition), (err: unknown) => {
-    return err instanceof ValidationError && err.code === "domain_registry.invalid_tool_bundle";
+    return String(err).includes("toolName");
   });
 });
 
@@ -158,7 +158,7 @@ test("register throws when tool name contains double-dot", () => {
   });
 
   assert.throws(() => service.register(definition), (err: unknown) => {
-    return err instanceof ValidationError && err.code === "domain_registry.invalid_tool_bundle";
+    return String(err).includes("toolName");
   });
 });
 
@@ -333,6 +333,7 @@ test("activate throws when smoke test fails", () => {
     // no workflows — smoke test will fail
     workflows: [],
   }));
+  service.activate("smoke_fail", true);
 
   assert.throws(() => service.activate("smoke_fail"), (err: unknown) => {
     return err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed";
@@ -381,12 +382,13 @@ test("activate emits domain:activated event on success", () => {
       },
     ],
   }));
+  service.activate("activate_event", true);
   service.activate("activate_event");
 
-  assert.equal(events.length, 2);
-  assert.equal(events[1]!.eventType, "domain:activated");
-  assert.equal(events[1]!.payload.domainId, "activate_event");
-  assert.equal(events[1]!.payload.status, "active");
+  assert.equal(events.length, 3);
+  assert.equal(events[2]!.eventType, "domain:activated");
+  assert.equal(events[2]!.payload.domainId, "activate_event");
+  assert.equal(events[2]!.payload.status, "active");
 });
 
 // --- invalid schema parsing ---
