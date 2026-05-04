@@ -130,6 +130,68 @@ export function isQuotaExceeded(policy: QuotaPolicy, requestedUnits: number): bo
   return evaluateQuota(policy, requestedUnits).exceeded;
 }
 
+// R13-31 FIX: Scope compatibility validation - prevents tenantId:null bypass
+export interface ScopeCompatibilityResult {
+  readonly compatible: boolean;
+  readonly requiresExplicitPolicy: boolean;
+  readonly reason: string;
+}
+
+/**
+ * Validates scope compatibility - ensures tenant-scoped requests cannot bypass
+ * quota checks by using null tenantId.
+ *
+ * R13-31 FIX: Per §53, tenant-scoped resources require explicit quota policy registration.
+ * A null tenantId does NOT grant permission to bypass quota enforcement.
+ */
+export function scopeCompatibility(
+  scope: string,
+  scopeId: string | null,
+  requested: MultiResourceQuotaVector,
+): ScopeCompatibilityResult {
+  // Tenant-scoped requests with null tenantId bypass security check - reject
+  if (scope === "tenant" && scopeId === null) {
+    return {
+      compatible: false,
+      requiresExplicitPolicy: true,
+      reason: "Tenant-scoped quota requires non-null tenantId per §53",
+    };
+  }
+
+  // Tenant-scoped with valid tenantId requires registered policy
+  if (scope === "tenant" && scopeId !== null) {
+    return {
+      compatible: true,
+      requiresExplicitPolicy: true,
+      reason: "Tenant-scoped quota requires registered policy",
+    };
+  }
+
+  // Workspace-scoped requests also require non-null workspaceId
+  if (scope === "workspace" && scopeId === null) {
+    return {
+      compatible: false,
+      requiresExplicitPolicy: true,
+      reason: "Workspace-scoped quota requires non-null workspaceId",
+    };
+  }
+
+  // Organization-scoped requests require non-null orgId
+  if (scope === "organization" && scopeId === null) {
+    return {
+      compatible: false,
+      requiresExplicitPolicy: true,
+      reason: "Organization-scoped quota requires non-null organizationId",
+    };
+  }
+
+  return {
+    compatible: true,
+    requiresExplicitPolicy: false,
+    reason: "Scope is valid for quota enforcement",
+  };
+}
+
 /**
  * Quota enforcement service per §53.2
  * Enforces MultiResourceQuotaVector limits across all resource dimensions
@@ -147,15 +209,51 @@ export class QuotaEnforcerService {
 
   /**
    * Check if a multi-resource request would exceed quota limits
+   * R13-31 FIX: Enforces scope compatibility to prevent null tenantId bypass
+   * R13-32 FIX: Rejects tenant-scoped requests without registered policy
    */
   public checkQuota(
     scope: string,
-    scopeId: string,
+    scopeId: string | null,
     requested: MultiResourceQuotaVector,
   ): MultiDimensionalQuotaDecision {
-    const policy = this.quotaPolicies.get(this.buildKey(scope, scopeId));
+    // R13-31 FIX: Validate scope compatibility first
+    const scopeCheck = scopeCompatibility(scope, scopeId, requested);
+    if (!scopeCheck.compatible) {
+      return {
+        passed: false,
+        failedDimensions: ["scope_compatibility"],
+        warningDimensions: [],
+        overallDecision: {
+          exceeded: true,
+          warning: false,
+          usesBurst: false,
+          remainingUnits: 0,
+        },
+      };
+    }
+
+    // Only check for registered policy if scopeId is not null
+    const policy = scopeId !== null ? this.quotaPolicies.get(this.buildKey(scope, scopeId)) : null;
+
+    // R13-32 FIX: Tenant-scoped quotas require explicit policy registration
+    // Do not allow bypass when scope requires explicit policy
+    if (!policy && scopeCheck.requiresExplicitPolicy) {
+      return {
+        passed: false,
+        failedDimensions: ["quota_not_registered"],
+        warningDimensions: [],
+        overallDecision: {
+          exceeded: true,
+          warning: false,
+          usesBurst: false,
+          remainingUnits: 0,
+        },
+      };
+    }
+
     if (!policy) {
-      // No policy registered - allow by default
+      // No policy registered for non-tenant scopes - allow by default
       return {
         passed: true,
         failedDimensions: [],
@@ -210,7 +308,7 @@ export class QuotaEnforcerService {
     }
   }
 
-  private buildKey(scope: string, scopeId: string): string {
-    return `${scope}:${scopeId}`;
+  private buildKey(scope: string, scopeId: string | null): string {
+    return `${scope}:${scopeId ?? "null"}`;
   }
 }

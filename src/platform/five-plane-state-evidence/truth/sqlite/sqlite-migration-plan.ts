@@ -20,6 +20,7 @@ import {
   HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL,
   SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL,
   BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL,
+  WORKER_IDENTITY_AND_CAPACITY_SQL,
 } from "./sqlite-migration-runtime-part1.js";
 import {
   REMOTE_WORKSPACE_SYNC_TELEMETRY_SQL,
@@ -354,6 +355,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(46, "0046_budget_ledger_lease_fencing", BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL),
   // Bridge legacy authoritative storage with the canonical five-plane runtime schema.
   defineMigration(47, "0047_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_SQL),
+  defineMigration(48, "0048_worker_identity_and_capacity", WORKER_IDENTITY_AND_CAPACITY_SQL),
 ] as const;
 
 /**

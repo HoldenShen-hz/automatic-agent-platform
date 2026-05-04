@@ -50,15 +50,16 @@ interface EdgeRuntime {
 
 | Strategy | Scope | Description |
 |----------|-------|-------------|
-| server_wins | truth / budget / side effect objects | Server single leader write (required); complies with §25.11/§52.3 fencing requirements |
-| last_write_wins | projection / non-critical statistical objects | Client timestamp priority write |
-| merge | projection / non-critical statistical objects | Merge conflicts (can use CRDT) |
-| manual | all objects | Manual resolution |
+| `server_wins` | truth / budget / side effect objects | Server single leader write (required); complies with §25.11/§52.3 fencing requirements |
+| `last_write_wins` | projection / non-critical statistical objects | Client timestamp priority write (allowed for projections only, NOT for truth objects) |
+| `merge` | projection / non-critical statistical objects | Merge conflicts (can use CRDT) |
+| `manual` | all objects | Manual resolution |
 
 **Constraints**:
-- truth / budget / side effect objects must use `server_wins` (single leader write + fencing); `last_write_wins` is NOT allowed
+- truth / budget / side effect objects must use `server_wins` (single leader write + fencing); `last_write_wins` is NOT allowed for truth/budget/side-effect objects, even if they are in offline scenarios
 - projection / non-critical statistical objects may use `last_write_wins` or `merge`
 - §25.11/§52.3 requires that single leader write does not use fencing token protection
+- `server_wins` is the ONLY acceptable strategy for truth and budget objects, including in edge/offline deployments
 
 ## Consequences
 

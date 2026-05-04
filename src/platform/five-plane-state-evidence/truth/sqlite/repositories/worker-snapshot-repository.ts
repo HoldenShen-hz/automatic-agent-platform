@@ -125,10 +125,11 @@ export class WorkerSnapshotRepository {
         session_consistency_check_status, session_consistency_checked_at, workspace_sync_status,
         workspace_sync_checked_at, saturation, active_lease_count, mean_startup_latency_ms,
         sandbox_success_rate, repo_cache_hit_rate, registration_verified_at, registration_challenge_id,
-        capabilities_json, running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
+        service_identity, mtls_peer_fingerprint, allowed_node_run_tenants, capabilities_json,
+        running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
         restarted_from_runtime_instance_id, restart_generation, cpu_pct, memory_mb, tool_backlog_count,
         current_step_id, last_progress_at, last_heartbeat_at, updated_at, version
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(worker_id) DO UPDATE SET
         status = excluded.status,
         placement = excluded.placement,
@@ -149,6 +150,9 @@ export class WorkerSnapshotRepository {
         repo_cache_hit_rate = excluded.repo_cache_hit_rate,
         registration_verified_at = excluded.registration_verified_at,
         registration_challenge_id = excluded.registration_challenge_id,
+        service_identity = excluded.service_identity,
+        mtls_peer_fingerprint = excluded.mtls_peer_fingerprint,
+        allowed_node_run_tenants = excluded.allowed_node_run_tenants,
         capabilities_json = excluded.capabilities_json,
         running_executions_json = excluded.running_executions_json,
         max_concurrency = excluded.max_concurrency,
@@ -185,6 +189,9 @@ export class WorkerSnapshotRepository {
       snapshot.repoCacheHitRate ?? null,
       snapshot.registrationVerifiedAt ?? null,
       snapshot.registrationChallengeId ?? null,
+      snapshot.serviceIdentity ?? null,
+      snapshot.mtlsPeerFingerprint ?? null,
+      snapshot.allowedNodeRunTenants != null ? JSON.stringify(snapshot.allowedNodeRunTenants) : null,
       snapshot.capabilitiesJson,
       snapshot.runningExecutionsJson,
       snapshot.maxConcurrency,

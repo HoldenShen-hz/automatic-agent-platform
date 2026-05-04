@@ -444,6 +444,60 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    */
   private applyCompatibleColumnMigrationIfKnown(migration: SqliteMigrationDefinition): boolean {
     switch (migration.version) {
+      case 2:
+        this.ensureColumn(
+          "worker_snapshots",
+          "cpu_pct",
+          "ALTER TABLE worker_snapshots ADD COLUMN cpu_pct REAL NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "memory_mb",
+          "ALTER TABLE worker_snapshots ADD COLUMN memory_mb REAL NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "tool_backlog_count",
+          "ALTER TABLE worker_snapshots ADD COLUMN tool_backlog_count INTEGER NOT NULL DEFAULT 0;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "current_step_id",
+          "ALTER TABLE worker_snapshots ADD COLUMN current_step_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "last_progress_at",
+          "ALTER TABLE worker_snapshots ADD COLUMN last_progress_at TEXT NULL;",
+        );
+        return true;
+      case 3:
+        this.ensureColumn(
+          "worker_snapshots",
+          "runtime_instance_id",
+          "ALTER TABLE worker_snapshots ADD COLUMN runtime_instance_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "restarted_from_runtime_instance_id",
+          "ALTER TABLE worker_snapshots ADD COLUMN restarted_from_runtime_instance_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "restart_generation",
+          "ALTER TABLE worker_snapshots ADD COLUMN restart_generation INTEGER NOT NULL DEFAULT 0;",
+        );
+        this.ensureColumn(
+          "heartbeat_snapshots",
+          "runtime_instance_id",
+          "ALTER TABLE heartbeat_snapshots ADD COLUMN runtime_instance_id TEXT NULL;",
+        );
+        this.ensureColumn(
+          "heartbeat_snapshots",
+          "restart_generation",
+          "ALTER TABLE heartbeat_snapshots ADD COLUMN restart_generation INTEGER NOT NULL DEFAULT 0;",
+        );
+        return true;
       case 5:
         this.ensureColumn(
           "worker_snapshots",
@@ -648,6 +702,48 @@ CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key)
           "worker_snapshots",
           "workspace_sync_checked_at",
           "ALTER TABLE worker_snapshots ADD COLUMN workspace_sync_checked_at TEXT NULL;",
+        );
+        return true;
+      case 48:
+        this.ensureColumn(
+          "worker_snapshots",
+          "service_identity",
+          "ALTER TABLE worker_snapshots ADD COLUMN service_identity TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "mtls_peer_fingerprint",
+          "ALTER TABLE worker_snapshots ADD COLUMN mtls_peer_fingerprint TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "allowed_node_run_tenants",
+          "ALTER TABLE worker_snapshots ADD COLUMN allowed_node_run_tenants TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "capabilities_json",
+          "ALTER TABLE worker_snapshots ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "running_executions_json",
+          "ALTER TABLE worker_snapshots ADD COLUMN running_executions_json TEXT NOT NULL DEFAULT '[]';",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "max_concurrency",
+          "ALTER TABLE worker_snapshots ADD COLUMN max_concurrency INTEGER NOT NULL DEFAULT 1;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "queue_affinity",
+          "ALTER TABLE worker_snapshots ADD COLUMN queue_affinity TEXT NULL;",
+        );
+        this.ensureColumn(
+          "worker_snapshots",
+          "version",
+          "ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 0;",
         );
         return true;
       case 15:

@@ -1,4 +1,5 @@
 import type { InteractionAutonomyMode } from "../../contracts/types/unified-runtime-mode.js";
+import { enforceResponsibilityBoundary, type ResponsibilityBoundary } from "../../../domains/domain-specs.js";
 
 export interface HotPathExecutionRequest {
   readonly routeId: string;
@@ -7,6 +8,8 @@ export interface HotPathExecutionRequest {
   readonly deterministicFallbackAvailable: boolean;
   /** Allowed autonomy level per §3.2 responsibility boundary */
   readonly allowedAutonomyLevel: InteractionAutonomyMode;
+  /** Responsibility boundary for the domain per §3.2 */
+  readonly responsibilityBoundary?: ResponsibilityBoundary;
 }
 
 export interface HotPathExecutionDecision {
@@ -16,7 +19,8 @@ export interface HotPathExecutionDecision {
     | "hot_path.allowed"
     | "hot_path.llm_blocked"
     | "hot_path.no_deterministic_fallback"
-    | "hot_path.autonomy_exceeded";
+    | "hot_path.autonomy_exceeded"
+    | "hot_path.responsibility_boundary_blocked";
 }
 
 /** Autonomy levels that permit LLM hot path execution */
@@ -27,6 +31,25 @@ const SUPERVISED_AUTONOMY_LEVELS = new Set<InteractionAutonomyMode>(["supervised
 
 export class DeterministicHotPathGate {
   public evaluate(request: HotPathExecutionRequest): HotPathExecutionDecision {
+    // R13-41 FIX: Enforce responsibility boundary per §3.2
+    // Map allowedAutonomyLevel to the corresponding autonomy proposal
+    const autonomyProposal = this.mapAutonomyLevel(request.allowedAutonomyLevel);
+
+    // If a responsibility boundary is specified, enforce it
+    if (request.responsibilityBoundary) {
+      const boundaryViolation = enforceResponsibilityBoundary(
+        request.responsibilityBoundary,
+        autonomyProposal,
+      );
+      if (boundaryViolation !== null) {
+        return {
+          allowed: false,
+          routeMode: "deterministic_hot_path_only",
+          reasonCode: "hot_path.responsibility_boundary_blocked",
+        };
+      }
+    }
+
     if (request.latencyClass !== "low_latency") {
       return { allowed: true, routeMode: "llm_allowed", reasonCode: "hot_path.allowed" };
     }
@@ -66,5 +89,23 @@ export class DeterministicHotPathGate {
     // when LLM wasn't even being blocked (usesLlmHotPath=false).
     // Now routeMode correctly reflects that LLM is allowed when not explicitly blocked.
     return { allowed: true, routeMode: "llm_allowed", reasonCode: "hot_path.allowed" };
+  }
+
+  /**
+   * Maps InteractionAutonomyMode to the autonomy proposal expected by enforceResponsibilityBoundary.
+   */
+  private mapAutonomyLevel(level: InteractionAutonomyMode): "full_auto" | "llm_assisted" | "human_required" {
+    switch (level) {
+      case "full_auto":
+        return "full_auto";
+      case "semi_auto":
+        return "llm_assisted";
+      case "supervised":
+      case "suggestion":
+      case "frozen":
+        return "human_required";
+      default:
+        return "human_required";
+    }
   }
 }

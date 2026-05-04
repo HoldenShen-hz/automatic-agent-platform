@@ -47,12 +47,16 @@ export function parseSemverRange(range: string): {
   // Handle range syntax like "1.0.0 - 2.0.0"
   const rangeParts = range.split(/\s*-\s*/);
   if (rangeParts.length === 2) {
-    const left = parseSemverRange(rangeParts[0].trim());
-    const right = parseSemverRange(rangeParts[1].trim());
-    if (left && right) {
-      comparators.push({ op: ">=", major: left.major, minor: left.minor, patch: left.patch });
-      comparators.push({ op: "<=", major: right.major, minor: right.minor, patch: right.patch });
-      return { major: "any", minor: "any", patch: "any", comparators };
+    const leftPart = rangeParts[0];
+    const rightPart = rangeParts[1];
+    if (leftPart !== undefined && rightPart !== undefined) {
+      const left = parseSemverRange(leftPart.trim());
+      const right = parseSemverRange(rightPart.trim());
+      if (left && right) {
+        comparators.push({ op: ">=", major: left.major, minor: left.minor, patch: left.patch });
+        comparators.push({ op: "<=", major: right.major, minor: right.minor, patch: right.patch });
+        return { major: "any", minor: "any", patch: "any", comparators };
+      }
     }
   }
 
@@ -96,10 +100,13 @@ export function parseSemverRange(range: string): {
   if (range.includes("x") || range.includes("*")) {
     const normalized = range.replace(/x/g, "*").replace(/\.\*/g, ".x");
     const parts = normalized.split(".");
+    const majorPart = parts[0];
+    const minorPart = parts[1];
+    const patchPart = parts[2];
     return {
-      major: parts[0] === "*" ? "any" : parseInt(parts[0], 10),
-      minor: parts.length < 2 || parts[1] === "*" ? "any" : parseInt(parts[1], 10),
-      patch: parts.length < 3 || parts[2] === "*" ? "any" : parseInt(parts[2], 10),
+      major: majorPart === "*" ? "any" : majorPart !== undefined ? parseInt(majorPart, 10) : "any",
+      minor: minorPart === undefined || minorPart === "*" ? "any" : parseInt(minorPart, 10),
+      patch: patchPart === undefined || patchPart === "*" ? "any" : parseInt(patchPart, 10),
       comparators: [],
     };
   }
@@ -108,12 +115,17 @@ export function parseSemverRange(range: string): {
   const match = range.match(/^(>=|<=|>|<|=)?(\d+)\.(\d+)\.(\d+)$/);
   if (match) {
     const op = (match[1] ?? "=") as ">=" | "<=" | ">" | "<" | "=";
-    return {
-      major: parseInt(match[2], 10),
-      minor: parseInt(match[3], 10),
-      patch: parseInt(match[4], 10),
-      comparators: [{ op, major: parseInt(match[2], 10), minor: parseInt(match[3], 10), patch: parseInt(match[4], 10) }],
-    };
+    const majorStr = match[2];
+    const minorStr = match[3];
+    const patchStr = match[4];
+    if (majorStr !== undefined && minorStr !== undefined && patchStr !== undefined) {
+      return {
+        major: parseInt(majorStr, 10),
+        minor: parseInt(minorStr, 10),
+        patch: parseInt(patchStr, 10),
+        comparators: [{ op, major: parseInt(majorStr, 10), minor: parseInt(minorStr, 10), patch: parseInt(patchStr, 10) }],
+      };
+    }
   }
 
   // Handle plain semver
@@ -133,10 +145,14 @@ export function parseSemverRange(range: string): {
 function parsePlainSemver(version: string): { major: number; minor: number; patch: number } | null {
   const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!match) return null;
+  const majorStr = match[1];
+  const minorStr = match[2];
+  const patchStr = match[3];
+  if (majorStr === undefined || minorStr === undefined || patchStr === undefined) return null;
   return {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3], 10),
+    major: parseInt(majorStr, 10),
+    minor: parseInt(minorStr, 10),
+    patch: parseInt(patchStr, 10),
   };
 }
 
@@ -223,13 +239,21 @@ export interface DependencyGraphResult {
  * R13-29 FIX: Transitive dependency graph parsing with cycle detection.
  */
 export function buildDependencyGraph(
-  manifest: BusinessPackManifest,
+  manifest: NormalizedBusinessPackManifest,
   getPackVersion: (packId: string) => string | null,
 ): DependencyGraphResult {
   const visited = new Set<string>();
   const recursionStack = new Set<string>();
   const cycles: string[][] = [];
   const unresolvedDependencies: { packId: string; versionRange: string }[] = [];
+
+  // Build adjacency list from manifest dependencies
+  const dependencyMap = new Map<string, PackDependency[]>();
+  for (const dep of manifest.dependencies ?? []) {
+    const existing = dependencyMap.get(manifest.packId) ?? [];
+    existing.push(dep);
+    dependencyMap.set(manifest.packId, existing);
+  }
 
   function dfs(packId: string, path: string[]): boolean {
     if (recursionStack.has(packId)) {
@@ -248,13 +272,12 @@ export function buildDependencyGraph(
     visited.add(packId);
     recursionStack.add(packId);
 
-    const dep = manifest.dependencies?.find((d) => d.packId === packId);
-    if (dep) {
-      path.push(packId);
-      for (const transitiveDep of dep.dependencies ?? []) {
-        if (dfs(transitiveDep.packId, [...path])) {
-          // Cycle detected, but continue to find all cycles
-        }
+    // Get direct dependencies for this pack
+    const directDeps = dependencyMap.get(packId) ?? [];
+    path.push(packId);
+    for (const transitiveDep of directDeps) {
+      if (dfs(transitiveDep.packId, [...path])) {
+        // Cycle detected, but continue to find all cycles
       }
     }
 
@@ -270,7 +293,7 @@ export function buildDependencyGraph(
     if (dep.optional) continue;
     const availableVersion = getPackVersion(dep.packId);
     if (!availableVersion) {
-      unresolvedDependencies.push({ packId: dep.packId, versionRange: dep.versionRange });
+      unresolvedDependencies.push({ packId: dep.packId, versionRange: dep.versionRange ?? "*" });
     } else if (dep.versionRange && !satisfiesSemverRange(availableVersion, dep.versionRange)) {
       unresolvedDependencies.push({ packId: dep.packId, versionRange: dep.versionRange });
     }
@@ -805,7 +828,10 @@ export function validateBusinessPackManifest(
     return existingPackIds.has(packId) ? "1.0.0" : null;
   };
 
-  const depGraphResult = buildDependencyGraph(normalizedManifest, getPackVersionFn);
+  const depGraphResult = buildDependencyGraph(
+    normalizedManifest as NormalizedBusinessPackManifest,
+    getPackVersionFn,
+  );
   for (const cycle of depGraphResult.cycles) {
     issues.push({
       code: "manifest.dependency_cycle_detected",

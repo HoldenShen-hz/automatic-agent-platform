@@ -35,9 +35,11 @@ interface GlobalCircuitBreaker {
   state: 'closed' | 'open' | 'half_open';
   threshold: number;       // Failure rate threshold
   window_ms: number;      // Statistics window
-  open_duration_ms: number; // Circuit breaker duration
+  open_duration_ms: number; // Circuit breaker open duration before attempting half-open
 }
 ```
+
+**Important**: `open_duration_ms` is the timeout before transitioning from `open` to `half_open` (probe attempt). The circuit breaker does NOT automatically restore full function after `open_duration_ms` - it only transitions to `half_open` for probe. Explicit `closed` transition (manual or via successful probe) is required to fully restore. This distinguishes the circuit breaker from TTL-based auto-expiry patterns.
 
 ### Recovery Process
 

@@ -14,6 +14,7 @@ export {
   HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL,
   SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL,
   BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL,
+  WORKER_IDENTITY_AND_CAPACITY_SQL,
 };
 
 const HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL = `
@@ -194,4 +195,14 @@ CREATE INDEX IF NOT EXISTS idx_events_aggregate_sequence ON events(aggregate_id,
 CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key);
 CREATE INDEX IF NOT EXISTS idx_events_correlation_id ON events(correlation_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_causation_id ON events(causation_id, created_at);
+`;
+const WORKER_IDENTITY_AND_CAPACITY_SQL = `
+ALTER TABLE worker_snapshots ADD COLUMN service_identity TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN mtls_peer_fingerprint TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN allowed_node_run_tenants TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN capabilities_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE worker_snapshots ADD COLUMN running_executions_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE worker_snapshots ADD COLUMN max_concurrency INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE worker_snapshots ADD COLUMN queue_affinity TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 0;
 `;

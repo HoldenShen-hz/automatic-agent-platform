@@ -77,8 +77,30 @@ Rules:
 
 - T-68: This document originally wrote `task_id + stage` as `StageRationale` primary key. The root cause was that the explanation layer reused the old cognitive view draft and did not bind explanations to the concrete runtime chain. Fix: The main text now uses `harness_run_id / node_run_id / stage_view_ref` as the authoritative key; `task_id` is retained only for user-facing query purposes.
 - T-77 / T-80: This document originally used `brief / standard / audit` depth names and did not write permission-aware / Evidence Plane constraints as explicit rules. Fix: The main text now unifies to `L1 / L2 / L3` and requires explanation objects to enter Evidence Plane with permission-aware rendering.
+- R2-48 Fix: This document originally lacked a remediation section. A remediation section has been added to document past fixes and ensure traceability.
 
-## 5. Testing Requirements
+## 5. Remediation Section
+
+### R2-36 Historical Fix
+
+StageRationale originally had only 7 fields, which was insufficient for audit and explainability requirements. The following fields were added to meet the 15-field minimum:
+- `rationale_id` — globally unique tamper-proof identifier
+- `harness_run_id` — authoritative runtime chain anchor
+- `node_run_id?` — optional node reference
+- `stage_view_ref` — OAPEFLIR stage view reference
+- `version_lock_ref?` — locks plan/prompt/policy versions
+- `visibility_labels?` — data classification labels
+- `alternatives?` — alternative options for audit
+
+### R2-45 Historical Fix
+
+ExplanationDepth originally used `brief / standard / audit` naming. This was inconsistent with the L1/L2/L3 naming convention used elsewhere in the platform. Fix: The main text now uses `L1 / L2 / L3` (Summary / Reasoning / Forensic) as the canonical depth levels.
+
+### R2-48 Historical Fix
+
+This document originally lacked a remediation section, making it difficult to track historical contract fixes. Fix: A remediation section has been added to document all past fixes and ensure traceability.
+
+## 6. Testing Requirements
 
 - unit: rationale schema, depth rendering, redaction
 - integration: runtime -> evidence -> explanation generation

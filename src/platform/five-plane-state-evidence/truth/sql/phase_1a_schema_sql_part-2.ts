@@ -1,31 +1,4 @@
 export const PHASE_1A_SCHEMA_SQL_PART_2 = `
-  status TEXT NOT NULL,
-  repo_version TEXT NULL,
-  remote_session_status TEXT NULL,
-  last_acknowledged_stream_offset TEXT NULL,
-  stream_resume_success_rate REAL NULL,
-  credential_refresh_success_rate REAL NULL,
-  session_consistency_check_status TEXT NULL,
-  session_consistency_checked_at TEXT NULL,
-  workspace_sync_status TEXT NULL,
-  workspace_sync_checked_at TEXT NULL,
-  saturation REAL NULL,
-  active_lease_count INTEGER NOT NULL DEFAULT 0,
-  mean_startup_latency_ms INTEGER NULL,
-  sandbox_success_rate REAL NULL,
-  repo_cache_hit_rate REAL NULL,
-  capabilities_json TEXT NOT NULL,
-  running_executions_json TEXT NOT NULL,
-  max_concurrency INTEGER NOT NULL,
-  queue_affinity TEXT NULL,
-  last_heartbeat_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  version INTEGER NOT NULL DEFAULT 1
-);
-
-CREATE INDEX IF NOT EXISTS idx_worker_snapshots_status_updated_at ON worker_snapshots(status, updated_at);
-CREATE INDEX IF NOT EXISTS idx_worker_snapshots_heartbeat ON worker_snapshots(last_heartbeat_at);
-
 CREATE TABLE IF NOT EXISTS execution_tickets (
   id TEXT PRIMARY KEY,
   execution_id TEXT NOT NULL,

@@ -269,7 +269,7 @@ function buildWorkflowListHtml(workflows: ReturnType<MissionControlService["list
       ${workflows
         .map(
           (workflow) =>
-            `<li><a href="/console/workflows/${encodeURIComponent(workflow.taskId)}">${escapeHtml(workflow.workflowId)}</a> :: ${escapeHtml(workflow.workflowStatus)} :: task ${escapeHtml(workflow.taskId)} :: step ${workflow.currentStepIndex}</li>`,
+            `<li><a href="/console/workflows/${encodeURIComponent(workflow.taskId)}">${escapeHtml(workflow.workflowId)}</a> :: ${escapeHtml(workflow.workflowStatus)} :: task ${escapeHtml(workflow.taskId)}</li>`,
         )
         .join("") || "<li>No workflows available</li>"}
     </ul>
@@ -290,10 +290,9 @@ function buildWorkflowCockpitHtml(cockpit: ReturnType<MissionControlService["get
     <p>Workflow: <strong>${escapeHtml(cockpit.summary.workflowId)}</strong></p>
     <p>Task: <a href="/console/tasks/${encodeURIComponent(cockpit.summary.taskId)}">${escapeHtml(cockpit.summary.taskId)}</a></p>
     <p>Status: ${escapeHtml(cockpit.summary.workflowStatus)}</p>
-    <p>Current Step Index: ${cockpit.summary.currentStepIndex}</p>
-    <p>Retry Count: ${cockpit.summary.retryCount}</p>
+    <p>Node Progress: ${cockpit.presentation?.progressPercent ?? 0}%</p>
+    <p>Active Node: ${escapeHtml(cockpit.presentation?.activeNodeRunId ?? "none")}</p>
     <p>Pending Approvals: ${cockpit.summary.pendingApprovalCount}</p>
-    <p>Resumable From Step: ${escapeHtml(cockpit.summary.resumableFromStep ?? "n/a")}</p>
     <p>Recovery Recommendation: ${escapeHtml(cockpit.inspect.runtimeRecovery.candidates[0]?.suggestedAction ?? "none")}</p>
     <section>
       <h2>Timeline</h2>
