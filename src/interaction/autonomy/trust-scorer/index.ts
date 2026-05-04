@@ -108,3 +108,22 @@ export function applyTrustDecay(
   const decayed = score * Math.pow(1 - decayRate, inactiveDays);
   return Math.max(0, Math.round(decayed));
 }
+
+/**
+ * R5-27: Validates that a trust score value is within the expected range.
+ * TrustScore per §42.1 should be in range [0, 1000] for domain-scoped profiles.
+ * Returns true if valid, false if out of range.
+ */
+export function validateTrustScoreRange(score: number, isDomainScoped = false): boolean {
+  const maxRange = isDomainScoped ? 1000 : 100;
+  return Number.isFinite(score) && score >= 0 && score <= maxRange;
+}
+
+/**
+ * R5-27: Clamps a trust score to the valid range [0, maxRange].
+ * maxRange is 1000 for domain-scoped profiles, 100 for non-domain-scoped.
+ */
+export function clampTrustScore(score: number, isDomainScoped = false): number {
+  const maxRange = isDomainScoped ? 1000 : 100;
+  return Math.max(0, Math.min(maxRange, score));
+}

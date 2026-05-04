@@ -99,6 +99,13 @@ export interface GoalDecomposition {
   readonly taskGraphDraft: TaskGraphDraft;
   readonly plannerHandoff: PlannerHandoffReceipt;
   readonly harnessRouting: GoalHarnessRoutingReceipt;
+  /** R5-29: Report from LLM output normalization during plan generation */
+  readonly normalizationReport?: {
+    readonly inputLength: number;
+    readonly outputLength: number;
+    readonly normalizedAt: string;
+    readonly warnings: readonly string[];
+  };
 }
 
 export type GoalLifecycleState =

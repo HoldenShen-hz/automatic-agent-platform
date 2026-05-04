@@ -229,6 +229,37 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     return parsed;
   }
 
+  /**
+   * R5-28: Normalizes LLM output to ensure consistent format and quality.
+   * Handles common LLM output issues like extra whitespace, markdown formatting,
+   * and non-standard JSON structures.
+   */
+  private normalizeLlmOutput(rawOutput: string): string {
+    // Remove leading/trailing whitespace
+    let normalized = rawOutput.trim();
+
+    // Remove markdown code blocks if present
+    if (normalized.startsWith("```")) {
+      normalized = normalized
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "");
+    }
+
+    // Remove any leading/trailing whitespace after code block removal
+    normalized = normalized.trim();
+
+    // Handle cases where LLM might wrap JSON in quotes
+    if (normalized.startsWith('"') && normalized.endsWith('"')) {
+      try {
+        normalized = JSON.parse(normalized);
+      } catch {
+        // Not a quoted string, keep as-is
+      }
+    }
+
+    return normalized;
+  }
+
   private normalizeTaskReference(goalId: string, ref: string): string {
     const numeric = Number(ref);
     if (Number.isInteger(numeric) && numeric > 0) {

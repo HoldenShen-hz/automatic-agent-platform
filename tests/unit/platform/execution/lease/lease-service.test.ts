@@ -592,9 +592,7 @@ test("releaseLease blocks when worker mismatch", async () => {
   assert.equal(result.reasonCode, "worker_mismatch");
 });
 
-test("releaseLease releases lease even when not active (async service behavior)", async () => {
-  // Note: ExecutionLeaseServiceAsync does NOT check lease status before release
-  // This differs from ExecutionLeaseService (sync) which blocks on non-active leases
+test("releaseLease blocks when lease is not active (async service behavior)", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", status: "released" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -615,8 +613,8 @@ test("releaseLease releases lease even when not active (async service behavior)"
     workerId: "worker-1",
   });
 
-  // Async version releases regardless of status
-  assert.equal(result.outcome, "released");
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.reasonCode, "lease_not_active");
 });
 
 test("releaseLease creates audit record with reasonCode", async () => {
