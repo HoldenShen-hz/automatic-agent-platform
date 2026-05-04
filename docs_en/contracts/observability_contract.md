@@ -23,7 +23,10 @@ For more detailed inspect, healthz, and backpressure rules, refer to the drill-d
 - `timestamp`
 - `level`
 - `message`
-- `task_id?`
+- `harness_run_id` (required - canonical runtime chain anchor)
+- `node_run_id?` (optional - for node-level logs)
+- `attempt_id?` (optional - for attempt-level logs)
+- `task_id?` (deprecated - use harness_run_id instead)
 - `agent_id?`
 - `stage?`
 - `trace_id?`

@@ -11,6 +11,24 @@ import type { HarnessSdkCreateRunInput, HarnessSdkAppendStepInput } from "../../
 import { buildPlanGraphBundle, validatePlanGraph, validatePlanGraphBundle } from "../../../../src/sdk/harness-sdk/index.js";
 import type { PlanGraphBuildInput } from "../../../../src/sdk/harness-sdk/index.js";
 import type { PlanNode, PlanEdge } from "../../../../src/platform/contracts/executable-contracts/index.js";
+import {
+  HarnessRuntimeService,
+  toCanonicalHarnessRun,
+  type ConstraintPack,
+} from "../../../../src/platform/five-plane-orchestration/harness/index.js";
+
+function makeConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
+  return {
+    policyIds: [],
+    approvalMode: "none",
+    autonomyMode: "semi_auto",
+    toolPolicy: { allowedTools: ["read_file", "write_file"] },
+    riskPolicy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
+    outputPolicy: { requiredEvidence: [], redactSensitiveData: false },
+    budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
+    ...overrides,
+  };
+}
 
 // ============================================================================
 // HarnessSdkError
@@ -115,16 +133,19 @@ test("HarnessSdk.createRun with budgetRef and disallowed budget throws", () => {
 // ============================================================================
 
 test("HarnessSdk.appendStep appends step to run", () => {
-  const sdk = new HarnessSdk();
+  const runtime = new HarnessRuntimeService();
+  const sdk = new HarnessSdk(runtime);
 
   // Create a run first
   const runInput: HarnessSdkCreateRunInput = {
     taskId: "task-123",
     domainId: "domain-1",
-    constraintPack: { phase: "execution" } as any,
+    constraintPack: makeConstraintPack(),
     tenantId: "tenant-1",
   };
-  const run = sdk.createRun(runInput);
+  const runtimeRun = runtime.createRun(runInput);
+  runtime.persistRun(runtimeRun);
+  const run = toCanonicalHarnessRun(runtimeRun);
 
   const stepInput: HarnessSdkAppendStepInput = {
     role: "executor",
@@ -137,7 +158,7 @@ test("HarnessSdk.appendStep appends step to run", () => {
   const updatedRun = sdk.appendStep(run, stepInput);
   assert.ok(updatedRun !== undefined);
   assert.ok(updatedRun.harnessRunId === run.harnessRunId);
-  assert.ok(updatedRun.nodeRunIds.includes("node-1"));
+  assert.ok(runtime.restoreRun(run.harnessRunId)?.nodeRunIds.includes("node-1"));
 });
 
 test("HarnessSdk.appendStepWithReceipt returns run and receipt", () => {
@@ -249,7 +270,7 @@ test("HarnessSdk.settleBudget persists an existing run", () => {
   const run = sdk.createRun({
     taskId: "task-123",
     domainId: "domain-1",
-    constraintPack: { phase: "execution" } as any,
+    constraintPack: makeConstraintPack(),
     tenantId: "tenant-1",
   });
 

@@ -7,7 +7,7 @@
 
 In multi-agent scenarios, agents need to pass execution context (state, plan, summary). Current implementation uses natural language `priorSummaries` for transmission, lacking structured serialization and token budget control.
 
-§12 defines a four-layer Handoff model; this ADR formally adopts that model.
+The architecture handoff subsection defines a four-layer Handoff model; this ADR formally adopts that model.
 
 ## Decision
 
@@ -68,5 +68,5 @@ Total budget: 10000 tokens
 
 ## Source Sections
 
-- `§12 Agent Handoff`
-- `§13 OAPEFLIR Loop`
+- `§13` OAPEFLIR / Harness Collaboration and Handoff Subsection
+- `§59` Explainability and Handoff Audit Requirements

@@ -422,10 +422,13 @@ test("BasicEvaluatorPlugin produceHarnessDecision detects high risk", async () =
   assert.ok(hasSafetyRisk);
 });
 
-test("BasicEvaluatorPlugin healthCheck returns true", async () => {
+test("BasicEvaluatorPlugin healthCheck follows initialize/shutdown lifecycle", async () => {
   const plugin = createBasicEvaluatorPlugin();
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize();
+  assert.equal(await plugin.healthCheck(), true);
+  await plugin.shutdown();
+  assert.equal(await plugin.healthCheck(), false);
 });
 
 test("BasicEvaluatorPlugin initialize returns undefined", async () => {

@@ -241,7 +241,7 @@ test("SimpleBenchmarkRunner: runBenchmarks filters by relevance correctly", asyn
   assert.ok(results.length >= 1);
 });
 
-test("SimpleBenchmarkRunner: evaluate handles missing baseline data", async () => {
+test("SimpleBenchmarkRunner: evaluate rejects missing baseline data", async () => {
   const runner = new SimpleBenchmarkRunner();
 
   runner.setProposalExecutor(
@@ -252,14 +252,12 @@ test("SimpleBenchmarkRunner: evaluate handles missing baseline data", async () =
     )
   );
 
-  // No baseline set - should use actual results as baseline
   runner.addBenchmarkCase({ id: "case_1", taskType: "tool_task", input: { testCaseId: "case_1" } });
 
-  const report = await runner.evaluate(createProposal());
-
-  // When no baseline, successRateBefore equals successRateAfter
-  assert.equal(report.successRateBefore, report.successRateAfter);
-  assert.equal(report.regressionRate, 0);
+  await assert.rejects(
+    () => runner.evaluate(createProposal()),
+    /benchmark_runner\.baseline_required/,
+  );
 });
 
 test("SimpleBenchmarkRunner: evaluate returns promote when all metrics good", async () => {

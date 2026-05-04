@@ -27,8 +27,10 @@ A unified Policy Engine must at least solve:
 | Field | Type | Description |
 | --- | --- | --- |
 | `decision_id` | `string` | Decision request ID |
-| `task_id` | `string` | Current task |
-| `execution_id` | `string?` | Current execution |
+| `task_id` | `string?` | Current task (deprecated - use harness_run_id instead) |
+| `harness_run_id` | `string` | Canonical runtime chain anchor |
+| `node_run_id` | `string?` | Current node run |
+| `attempt_id` | `string?` | Current attempt |
 | `session_id` | `string?` | Current session |
 | `subject_type` | `user \| agent \| system` | Request subject |
 | `subject_id` | `string` | Subject ID |

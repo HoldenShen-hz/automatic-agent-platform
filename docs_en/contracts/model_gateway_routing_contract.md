@@ -15,6 +15,11 @@ Related documents:
 ```typescript
 interface ModelRouteRequest {
   requestId: string;
+  /** Canonical runtime chain anchor - use instead of deprecated taskId */
+  harnessRunId: string | null;
+  /** Node run for node-level routing decisions */
+  nodeRunId: string | null;
+  /** @deprecated Use harnessRunId instead */
   taskId: string | null;
   sessionId: string | null;
   tenantId: string | null;

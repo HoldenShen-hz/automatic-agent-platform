@@ -97,6 +97,21 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
     const results = await this.runBenchmarksInternal(proposal, true);
 
     const benchmarkCases = results.length;
+    if (benchmarkCases === 0) {
+      return {
+        proposalId: proposal.id,
+        benchmarkCases: 0,
+        successRateBefore: 0,
+        successRateAfter: 0,
+        regressionRate: 0,
+        avgCostDelta: 0,
+        avgLatencyDelta: 0,
+        safetyViolations: 0,
+        decision: 'promote',
+        createdAt: nowIso(),
+      };
+    }
+
     const successCount = results.filter((r) => r.success).length;
     const successRateAfter = benchmarkCases > 0 ? successCount / benchmarkCases : 0;
 

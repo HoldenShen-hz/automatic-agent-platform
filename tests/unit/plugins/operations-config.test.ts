@@ -60,11 +60,12 @@ test("operationsDomainDefinition has ops-core tool bundle", () => {
   assert.equal(patchTool!.enabled, false);
 });
 
-test("operationsDomainDefinition has two output contracts", () => {
-  assert.equal(operationsDomainDefinition.outputContracts.length, 2);
+test("operationsDomainDefinition has three output contracts", () => {
+  assert.equal(operationsDomainDefinition.outputContracts.length, 3);
   const contractIds = operationsDomainDefinition.outputContracts.map((c) => c.contractId);
   assert.ok(contractIds.includes("ops.incident_response"));
   assert.ok(contractIds.includes("ops.runbook_execution"));
+  assert.ok(contractIds.includes("ops.monitoring_review"));
 });
 
 test("operationsDomainDefinition output contracts have correct validation levels", () => {
@@ -72,6 +73,20 @@ test("operationsDomainDefinition output contracts have correct validation levels
   assert.equal(incident!.validationLevel, "strict");
   const runbook = operationsDomainDefinition.outputContracts.find((c) => c.contractId === "ops.runbook_execution");
   assert.equal(runbook!.validationLevel, "lenient");
+  const monitoringReview = operationsDomainDefinition.outputContracts.find((c) => c.contractId === "ops.monitoring_review");
+  assert.equal(monitoringReview!.validationLevel, "lenient");
+});
+
+test("monitoring_review output contract is present and structured", () => {
+  const contract = operationsDomainDefinition.outputContracts.find((c) => c.contractId === "ops.monitoring_review");
+  assert.ok(contract !== undefined);
+  assert.equal(contract!.name, "Monitoring Review Output");
+  assert.deepEqual(contract!.schema, {
+    alertId: "string",
+    reviewedAt: "string",
+    findings: "string[]",
+    severityOverride: "string | null",
+  });
 });
 
 test("operationsDomainDefinition has correct capabilities", () => {

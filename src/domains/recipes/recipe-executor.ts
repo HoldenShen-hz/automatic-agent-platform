@@ -278,10 +278,8 @@ export class RecipeExecutor {
       // R17-2: Emit started event before execution
       this.emitStartedEvent(context, parsed, startedAtIso);
 
-      const workflow = this.workflowRegistry
-        ? this.workflowRegistry.get(parsed.defaultWorkflowId)
-        : null;
-      if (this.workflowRegistry && workflow == null) {
+      const workflow = this.workflowRegistry?.get(parsed.defaultWorkflowId) ?? null;
+      if (workflow == null) {
         const completedAt = Date.now();
         const completedAtIso = nowIso();
         const durationMs = completedAt - startedAt;
@@ -301,37 +299,6 @@ export class RecipeExecutor {
         this.recordMetrics(context, parsed, false, startedAt, completedAt);
 
         return errorResult;
-      }
-      if (!this.workflowRegistry) {
-        const lowerWorkflowId = parsed.defaultWorkflowId.toLowerCase();
-        const rawSuffix = parsed.defaultWorkflowId.slice("nonexistent".length);
-        const shouldRejectSyntheticMissingWorkflow =
-          lowerWorkflowId === "nonexistent"
-          || lowerWorkflowId === "nonexistent_workflow"
-          || /^nonexistent\d/i.test(parsed.defaultWorkflowId)
-          || (lowerWorkflowId.startsWith("nonexistent") && /^[A-Z]/.test(rawSuffix));
-        if (shouldRejectSyntheticMissingWorkflow) {
-          const completedAt = Date.now();
-          const completedAtIso = nowIso();
-          const durationMs = completedAt - startedAt;
-
-          const errorResult = {
-            success: false,
-            executionId: context.executionId,
-            recipeId: parsed.recipeId,
-            workflowId: parsed.defaultWorkflowId,
-            toolBundleIds: [...parsed.defaultToolBundleIds],
-            error: `Workflow ${parsed.defaultWorkflowId} is not available in the registry.`,
-          };
-
-          // R17-3: Emit completed event with error
-          this.emitCompletedEvent(context, parsed, false, startedAtIso, completedAtIso, durationMs, errorResult);
-          // R17-4: Record metrics
-          this.recordMetrics(context, parsed, false, startedAt, completedAt);
-
-          return errorResult;
-        }
-        console.warn(`RecipeExecutor: workflow registry not available, skipping workflow verification for ${parsed.defaultWorkflowId}`);
       }
 
       // R17-5: Evaluate with governance before returning success

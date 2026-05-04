@@ -65,8 +65,8 @@ export class UserExperienceOrchestrationService {
 
   public async bootstrap(request: UserExperienceBootstrapRequest): Promise<UserExperienceBootstrapResult> {
     const sessionId = await this.portalService.createSession(request.session, request.context);
-    const plan = this.portalService.buildOnboardingPlan(request.businessDescription, request.context);
-    const wizard = this.portalService.buildDomainOnboardingWizard(request.businessDescription, request.context);
+    const plan = await this.portalService.buildOnboardingPlan(request.businessDescription, request.context);
+    const wizard = await this.portalService.buildDomainOnboardingWizard(request.businessDescription, request.context);
     const template = applyInteractionTemplate(request.template);
     const builder = this.workflowBuilderService.build({
       session: request.wizardSession,

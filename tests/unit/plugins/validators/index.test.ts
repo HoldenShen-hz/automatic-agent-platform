@@ -32,6 +32,8 @@ test("ValidatorsIndex basic-evaluator has capabilityIds", () => {
   const plugin = ValidatorsIndex.createBasicEvaluatorPlugin();
   assert.ok(Array.isArray(plugin.capabilityIds));
   assert.ok(plugin.capabilityIds.includes("output.validate"));
+  assert.ok(plugin.capabilityIds.includes("output.evaluate"));
+  assert.ok(plugin.capabilityIds.includes("output.harness-decision"));
 });
 
 test("ValidatorsIndex basic-evaluator initialize returns undefined", async () => {
@@ -39,17 +41,22 @@ test("ValidatorsIndex basic-evaluator initialize returns undefined", async () =>
   assert.ok(plugin.initialize !== undefined);
   const result = await plugin.initialize();
   assert.equal(result, undefined);
+  assert.equal(await plugin.healthCheck?.(), true);
 });
 
-test("ValidatorsIndex basic-evaluator healthCheck returns true", async () => {
+test("ValidatorsIndex basic-evaluator healthCheck follows lifecycle state", async () => {
   const plugin = ValidatorsIndex.createBasicEvaluatorPlugin();
   assert.ok(plugin.healthCheck !== undefined);
-  const result = await plugin.healthCheck();
-  assert.equal(result, true);
+  assert.equal(await plugin.healthCheck(), false);
+  await plugin.initialize?.();
+  assert.equal(await plugin.healthCheck(), true);
+  await plugin.shutdown?.();
+  assert.equal(await plugin.healthCheck(), false);
 });
 
 test("ValidatorsIndex basic-evaluator shutdown returns undefined", async () => {
   const plugin = ValidatorsIndex.createBasicEvaluatorPlugin();
+  await plugin.initialize?.();
   assert.ok(plugin.shutdown !== undefined);
   const result = await plugin.shutdown();
   assert.equal(result, undefined);

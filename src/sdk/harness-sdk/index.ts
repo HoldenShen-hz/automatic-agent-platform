@@ -359,7 +359,9 @@ export class HarnessSdk {
       }
     }
 
-    return toCanonicalHarnessRun(this.runtime.createRun(input));
+    const created = this.runtime.createRun(input);
+    this.runtime.persistRun(created);
+    return toCanonicalHarnessRun(created);
   }
 
   /**
@@ -377,7 +379,10 @@ export class HarnessSdk {
       ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
       nodeRunId: input.nodeRunId,
     };
-    return toCanonicalHarnessRun(this.runtime.appendStep(run as HarnessRunRuntimeState, runtimeInput));
+    const runtimeRun = this.requireRuntimeRun(run);
+    const updated = this.runtime.appendStep(runtimeRun, runtimeInput);
+    this.runtime.persistRun(updated);
+    return toCanonicalHarnessRun(updated);
   }
 
   /**
@@ -418,16 +423,17 @@ export class HarnessSdk {
   }
 
   public evaluate(run: HarnessRun) {
-    return this.runtime.evaluateRun(run as HarnessRunRuntimeState);
+    return this.runtime.evaluateRun(this.requireRuntimeRun(run));
   }
 
   public persist(run: HarnessRun): HarnessRun {
-    this.runtime.persistRun(run as HarnessRunRuntimeState);
-    return run;
+    const runtimeRun = this.requireRuntimeRun(run);
+    this.runtime.persistRun(runtimeRun);
+    return toCanonicalHarnessRun(runtimeRun);
   }
 
   public checkpoint(run: HarnessRun): string {
-    return this.runtime.checkpointRun(run as HarnessRunRuntimeState);
+    return this.runtime.checkpointRun(this.requireRuntimeRun(run));
   }
 
   public restore(runId: string): HarnessRun | null {
@@ -441,17 +447,21 @@ export class HarnessSdk {
   }
 
   public assertInvariants(run: HarnessRun) {
-    return this.runtime.assertInvariants(run as HarnessRunRuntimeState);
+    return this.runtime.assertInvariants(this.requireRuntimeRun(run));
   }
 
   public sleep(runOrId: HarnessRun | string, reason: string, resumeAt: string): HarnessRun {
-    const run = this.requireRun(runOrId);
-    return toCanonicalHarnessRun(this.runtime.sleep(run as HarnessRunRuntimeState, reason, resumeAt));
+    const run = this.requireRuntimeRun(runOrId);
+    const updated = this.runtime.sleep(run, reason, resumeAt);
+    this.runtime.persistRun(updated);
+    return toCanonicalHarnessRun(updated);
   }
 
   public resume(runOrId: HarnessRun | string): HarnessRun {
-    const run = this.requireRun(runOrId);
-    return toCanonicalHarnessRun(this.runtime.resume(run as HarnessRunRuntimeState));
+    const run = this.requireRuntimeRun(runOrId);
+    const updated = this.runtime.resume(run);
+    this.runtime.persistRun(updated);
+    return toCanonicalHarnessRun(updated);
   }
 
   public requestHumanReview(
@@ -459,8 +469,10 @@ export class HarnessSdk {
     reason: string,
     evidenceRefs: readonly string[] = [],
   ): HarnessRun {
-    const run = this.requireRun(runOrId);
-    return toCanonicalHarnessRun(this.runtime.openHitlReview(run as HarnessRunRuntimeState, reason, evidenceRefs));
+    const run = this.requireRuntimeRun(runOrId);
+    const updated = this.runtime.openHitlReview(run, reason, evidenceRefs);
+    this.runtime.persistRun(updated);
+    return toCanonicalHarnessRun(updated);
   }
 
   public resolveReview(
@@ -468,18 +480,20 @@ export class HarnessSdk {
     resolution: "approved" | "rejected",
     actorId: string,
   ): HarnessRun {
-    const run = this.requireRun(runOrId);
-    return toCanonicalHarnessRun(this.runtime.resolveHitlReview(run as HarnessRunRuntimeState, resolution, actorId));
+    const run = this.requireRuntimeRun(runOrId);
+    const updated = this.runtime.resolveHitlReview(run, resolution, actorId);
+    this.runtime.persistRun(updated);
+    return toCanonicalHarnessRun(updated);
   }
 
   public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {
-    const run = this.requireRun(runOrId);
-    return this.runtime.listTimeline(run as HarnessRunRuntimeState);
+    const run = this.requireRuntimeRun(runOrId);
+    return this.runtime.listTimeline(run);
   }
 
   public getEvaluation(runOrId: HarnessRun | string) {
-    const run = this.requireRun(runOrId);
-    return this.runtime.evaluateRun(run as HarnessRunRuntimeState);
+    const run = this.requireRuntimeRun(runOrId);
+    return this.runtime.evaluateRun(run);
   }
 
   public traceReplay(runOrId: string, traceEvents: readonly HarnessTimelineEvent[]): HarnessRun | null {
@@ -514,9 +528,9 @@ export class HarnessSdk {
 
   public sideEffectReconciliation(runOrId: HarnessRun | string): HarnessRun {
     // sideEffectReconciliation placeholder - HarnessRuntimeService.reconcileSideEffects not yet implemented
-    const run = this.requireRun(runOrId);
-    this.runtime.persistRun(run as HarnessRunRuntimeState);
-    return toCanonicalHarnessRun(run as HarnessRunRuntimeState);
+    const run = this.requireRuntimeRun(runOrId);
+    this.runtime.persistRun(run);
+    return toCanonicalHarnessRun(run);
   }
 
   /**
@@ -535,21 +549,19 @@ export class HarnessSdk {
    * Called after a run finishes to finalize actual token usage against the reservation.
    */
   public settleBudget(runOrId: HarnessRun | string): HarnessRun {
-    const run = this.requireRun(runOrId);
+    const run = this.requireRuntimeRun(runOrId);
     // Budget settlement is tracked via BudgetLedger - persist run to trigger settlement
-    this.runtime.persistRun(run as HarnessRunRuntimeState);
-    return toCanonicalHarnessRun(run as HarnessRunRuntimeState);
+    this.runtime.persistRun(run);
+    return toCanonicalHarnessRun(run);
   }
 
-  private requireRun(runOrId: HarnessRun | string): HarnessRun {
-    if (typeof runOrId !== "string") {
-      return runOrId;
-    }
-    const restored = this.runtime.restoreRun(runOrId);
+  private requireRuntimeRun(runOrId: HarnessRun | string): HarnessRunRuntimeState {
+    const runId = typeof runOrId === "string" ? runOrId : runOrId.harnessRunId;
+    const restored = this.runtime.restoreRun(runId);
     if (restored == null) {
-      throw new Error(`harness_sdk.run_not_found:${runOrId}`);
+      throw new Error(`harness_sdk.run_not_found:${runId}`);
     }
-    return toCanonicalHarnessRun(restored);
+    return restored;
   }
 }
 

@@ -38,9 +38,12 @@ interface AgentComponent {
 | draft | Draft |
 | testing | Testing |
 | staging | Staging |
-| production | Production |
+| canary | Canary release |
+| active | Active/Production |
+| paused | Paused |
 | deprecated | Deprecated |
-| retired | Retired |
+| archived | Archived |
+| removed | Removed |
 
 ### Version Management
 

@@ -13,11 +13,10 @@ Agents with different maturity levels require different autonomy permissions. Ne
 
 | Level | Name | Permission |
 |-------|------|------------|
-| 0 | supervised | Full human supervision |
-| 1 | assisted | Assisted suggestions |
-| 2 | partial_auto | Partial automation |
-| 3 | high_auto | High automation |
-| 4 | full_auto | Full automation |
+| 0 | suggestion | Provides suggestions only, requires human confirmation |
+| 1 | supervised | Full human supervision during execution |
+| 2 | semi_auto | Semi-automatic, can auto-execute but requires human oversight |
+| 3 | full_auto | Full automation |
 
 Rules:
 

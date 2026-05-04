@@ -4,6 +4,8 @@
 - Decision Date: 2026-04-02
 - Superseded by: ADR-020 (2026-04-17) redefined the six-layer plane model with different TTL and promotion rules
 
+**Note**: This ADR title says "Six-Layer" and defines a six-layer model (L1-L6), consistent with ADR-020 and the actual architecture. The filename "seven-layers" is a legacy artifact from an earlier draft and does not reflect the actual content.
+
 ## Context
 
 Automatic Agent is a multi-headquarters, multi-division, multi-role collaborative system. Memory must both share organizational knowledge and isolate role contexts. Single-agent CLI-style memory models cannot directly adapt to this organizational structure.

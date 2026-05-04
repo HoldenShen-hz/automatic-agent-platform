@@ -8,10 +8,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const CONFIG_ROOT = join(fileURLToPath(import.meta.url), "../../../../..", "config");
+const CONFIG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../..", "config");
 
 async function readConfig(filePath: string): Promise<Record<string, unknown>> {
   try {

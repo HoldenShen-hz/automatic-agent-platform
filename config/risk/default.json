@@ -82,9 +82,10 @@
       "evidenceLevel": "basic"
     },
     "medium": {
-      "autoExecute": true,
+      "autoExecute": false,
       "logLevel": "warn",
-      "requiresApproval": false,
+      "requiresApproval": true,
+      "approvalType": "standard",
       "sideEffect": "normal_with_validation",
       "evidenceLevel": "enhanced"
     },

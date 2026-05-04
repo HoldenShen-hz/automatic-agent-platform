@@ -292,16 +292,29 @@ function decideLevel(
     return "suggestion";
   }
 
+  // R9-45 fix: Non-P0/P1 incidents require time window check for demotion
+  // Only demote if incident is recent (within the promotion time window)
+  // Older incidents don't cause demotion - similar to how promotion requires incident-free period
+  const timeWindows = options.promotionTimeWindows ?? {};
+  const lastIncidentAgeDays = score.lastIncidentAgeDays ?? Number.POSITIVE_INFINITY;
+  const recentIncidentThreshold = Math.min(
+    timeWindows.toSupervisedDays ?? 30,
+    timeWindows.toSemiAutoDays ?? 60,
+    timeWindows.toFullAutoDays ?? 90,
+  );
+
   if (score.incidents > 0) {
-    if (severity === "P1" && options.severityBasedDemotion) {
+    // Only apply demotion if incident is recent; older incidents don't trigger demotion
+    if (lastIncidentAgeDays > recentIncidentThreshold) {
+      // Incident is old - don't demote, but still require incident-free for promotion
+    } else if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing
       return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);
-    }
-
-    if (options.freezeOnIncident) {
+    } else if (options.freezeOnIncident) {
       return "frozen";
+    } else {
+      return "suggestion";
     }
-    return "suggestion";
   }
 
   if (score.failedExecutions >= (options.minVolumeForDemotion ?? 3)) {
@@ -315,7 +328,7 @@ function decideLevel(
   }
 
   // §42.2: Promotion time window checks (incident-free period required)
-  const timeWindows = options.promotionTimeWindows ?? {};
+  // R9-45 fix: timeWindows already declared above for demotion time window check
   const lastIncidentAge = score.lastIncidentAgeDays ?? Number.POSITIVE_INFINITY;
 
   // §42.3: 180d no-execution -> suggestion demotion

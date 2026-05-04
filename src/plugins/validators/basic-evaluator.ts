@@ -80,24 +80,24 @@ function calculateDeviation(actual: unknown, target: unknown): number {
 }
 
 export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
+  const lifecycleState = {
+    initialized: false,
+  };
+
   const plugin: DomainValidatorPlugin = {
     pluginId: "plugin.core.basic-evaluator",
     domainId: "core",
     spiType: "validator",
     capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
-    // §204-2392: initialize/shutdown now perform actual lifecycle operations.
-    // initialize() validates configuration and prepares plugin resources.
     async initialize() {
-      // Plugin lifecycle initialization - validate configuration and allocate resources
-      // Per PluginLifecycleHooks, initialize is called once when plugin is loaded
+      lifecycleState.initialized = true;
       return undefined;
     },
     async healthCheck() {
-      return true;
+      return lifecycleState.initialized;
     },
-    // shutdown() releases plugin resources and cleans up state.
     async shutdown() {
-      // Release any allocated resources per PluginLifecycleHooks
+      lifecycleState.initialized = false;
       return undefined;
     },
     async validate(input): Promise<{

@@ -12,6 +12,23 @@ This contract defines explanation pipeline, `StageRationale` data model, and exp
 - `ExplanationDepth`
 - `ExplanationCacheEntry`
 
+### 2A. `ExplanationRequest` Definition
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `explanation_request_id` | `string` | Request ID |
+| `harness_run_id` | `string` | Canonical runtime chain anchor |
+| `node_run_id` | `string?` | Associated NodeRun (if node has been reached) |
+| `plan_graph_id` | `string?` | PlanGraph identifier (replaces deprecated workflow_id) |
+| `stage_view_ref` | `string` | OAPEFLIR stage view reference |
+| `depth` | `ExplanationDepth` | Explanation depth level |
+| `focus_areas?` | `string[]?` | Specific focus areas for explanation |
+| `include_alternatives?` | `boolean` | Whether to include alternative decisions |
+| `trace_id?` | `string?` | Trace ID for correlation |
+
+Rules:
+- `harness_run_id` / `node_run_id?` are the authoritative runtime chain identifiers; `workflow_id` and `step_id` are deprecated and must not be used.
+
 ## 3. `StageRationale` Minimum Fields
 
 | Field | Type | Description |

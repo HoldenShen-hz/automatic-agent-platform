@@ -220,8 +220,7 @@ test("growthDomainDefinition capabilities has valid security level", () => {
 test("growthDomainDefinition has external adapters", () => {
   const adapters = growthDomainDefinition.externalAdapters;
   assert.ok(Array.isArray(adapters));
-  assert.ok(adapters.includes("github"));
-  assert.ok(adapters.includes("jira"));
+  assert.deepEqual(adapters, ["github"]);
 });
 
 test("growthDomainDefinition has four plugin bindings", () => {

@@ -32,7 +32,7 @@
  * | risk_level | auto_execute | log_level | approval | side_effect    | evidence |
  * |------------|--------------|-----------|----------|----------------|----------|
  * | low        | ✅           | info      | no        | normal          | basic      |
- * | medium     | ✅           | warn      | no        | normal+validate | enhanced   |
+ * | medium     | ❌           | warn      | standard   | normal+validate | enhanced   |
  * | high       | ❌           | error     | required   | restricted     | complete   |
  * | critical   | ❌           | critical  | break-glass | prohibited    | legal-grade |
  *
@@ -238,7 +238,7 @@ export class RiskEvaluationEngine {
         actions.push("log", "proceed");
         break;
       case "medium":
-        actions.push("log", "proceed_with_validation", "enhanced_monitoring");
+        actions.push("log", "require_approval", "proceed_with_validation", "enhanced_monitoring");
         break;
       case "high":
         actions.push("log", "block", "require_approval", "full_evidence");

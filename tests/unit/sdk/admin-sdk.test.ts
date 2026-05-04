@@ -10,6 +10,17 @@ import { AdminSdk } from "../../../src/sdk/admin-sdk/index.js";
 import { createApiClient } from "../../../src/sdk/client-sdk/api-client.js";
 import type { ApiClientConfig } from "../../../src/sdk/client-sdk/api-client.js";
 
+const ADMIN_SDK_TEST_CONFIG = {
+  baseUrl: "https://api.example.com",
+  apiVersion: "v1",
+  bearerToken: "test-token",
+  principal: {
+    principalId: "sdk-admin",
+    tenantId: "t_tenant",
+    roles: ["admin"],
+  },
+} as const;
+
 // ============================================================================
 // R8-23: OperationalDirective methods via AdminSdk
 // ============================================================================
@@ -64,11 +75,7 @@ test("AdminSdk.abortHarnessRun creates kill operational directive", () => {
 });
 
 test("AdminSdk.resumeHarnessRun creates resume operational directive", () => {
-  const sdk = new AdminSdk({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-  });
+  const sdk = new AdminSdk(ADMIN_SDK_TEST_CONFIG);
 
   const directive = sdk.resumeHarnessRun("harness_run_resume", {
     principalId: "p_operator",
@@ -409,11 +416,7 @@ test("AdminSdk.publishPack calls client.publishPack", async () => {
 });
 
 test("AdminSdk.listWorkers and getConfig call operational endpoints", async () => {
-  const sdk = new AdminSdk({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-  });
+  const sdk = new AdminSdk(ADMIN_SDK_TEST_CONFIG);
   const seenUrls: string[] = [];
 
   const originalFetch = globalThis.fetch;
@@ -429,8 +432,8 @@ test("AdminSdk.listWorkers and getConfig call operational endpoints", async () =
     await sdk.listWorkers("tenant-1");
     await sdk.getConfig("runtime/default");
     assert.deepEqual(seenUrls, [
-      "https://api.example.com/workers?tenantId=tenant-1",
-      "https://api.example.com/config/runtime/default",
+      "https://api.example.com/v1/workers?tenantId=tenant-1",
+      "https://api.example.com/v1/config/runtime/default",
     ]);
   } finally {
     globalThis.fetch = originalFetch;
@@ -438,11 +441,7 @@ test("AdminSdk.listWorkers and getConfig call operational endpoints", async () =
 });
 
 test("AdminSdk sends X-Platform-Version and X-SDK-Version headers", async () => {
-  const sdk = new AdminSdk({
-    baseUrl: "https://api.example.com",
-    apiVersion: "v1",
-    bearerToken: "test-token",
-  });
+  const sdk = new AdminSdk(ADMIN_SDK_TEST_CONFIG);
   const seenHeaders: Headers[] = [];
 
   const originalFetch = globalThis.fetch;

@@ -73,6 +73,8 @@ const CLARIFICATION_THRESHOLD = 0.7;  // Confidence < 0.7 → human assistance
 const DEFAULT_MAX_DEPTH = 5;  // Maximum decomposition depth 5 layers
 ```
 
+**Global Call Depth Constraint**: Goal decomposition depth limit must coordinate with the global `call_depth` hard cap (default 8) defined in §19.2. Decomposition depth must not exceed global call depth, and must not be multiplied with delegation local caps to circumvent the limit (see §19.2 call depth contradiction analysis).
+
 ### GoalProjection and HarnessRun Lifecycle Relationship
 
 `Goal` itself only describes the decomposition input; upon entering execution, the truth state must converge to `HarnessRun.status`.

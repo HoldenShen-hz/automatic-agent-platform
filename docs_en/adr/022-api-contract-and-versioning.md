@@ -15,7 +15,9 @@ The platform exposes REST/WebSocket APIs externally and requires a unified versi
 |--------|------|-------------|
 | POST/GET | /api/v1/tasks | Task CRUD |
 | GET/DELETE | /api/v1/tasks/{id} | Single task operations |
-| GET | /api/v1/workflow-runs | Workflow run list |
+| GET | /api/v1/harness-runs | Harness run list |
+| GET | /api/v1/node-runs | Node run list |
+| GET | /api/v1/workflow-runs | Legacy query projection (deprecated) |
 | GET/POST | /api/v1/approvals | Approval management |
 | GET | /api/v1/incidents | Incident viewing |
 | GET/POST | /api/v1/knowledge | Knowledge management |

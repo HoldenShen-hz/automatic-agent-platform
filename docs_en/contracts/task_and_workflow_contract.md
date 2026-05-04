@@ -92,7 +92,8 @@ Rules:
 
 Each step contains at minimum:
 
-- `step_id`
+- `step_id` (deprecated - retained for legacy compatibility)
+- `node_id` (canonical - PlanNode ID that this step maps to)
 - `role_id`
 - `input_binding`
 - `output_key`
@@ -105,6 +106,7 @@ Each step contains at minimum:
 
 Rules:
 
+- `step_id` is deprecated; new implementations should use `node_id` to reference `PlanNode`.
 - `input_binding` must be resolvable to upstream output, task input, or system context.
 - `output_key` is unique within same workflow.
 - `approval_policy` only defines whether escalation is needed, does not carry channel interaction details.
@@ -142,7 +144,8 @@ Rules:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `step_id` | `string` | Step ID |
+| `node_run_id` | `string` | Canonical NodeRun ID (replaces deprecated step_id) |
+| `step_id` | `string` | Deprecated - retained for legacy compatibility; use node_run_id instead |
 | `role_id` | `string` | Execution role |
 | `status` | `succeeded \| failed \| partial_success` | Step result |
 | `data` | `json` | Main output data |

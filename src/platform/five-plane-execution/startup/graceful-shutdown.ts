@@ -33,6 +33,8 @@ export interface GracefulShutdownOptions {
   registerSignalHandlers?: boolean;
   /** Optional exit hook for signal timeout/failure paths */
   exitHandler?: (code: number) => void;
+  /** Whether to automatically register the platform-wide ServiceRegistry teardown handler */
+  includeServiceRegistryTeardown?: boolean;
 }
 
 export interface ShutdownHandler {
@@ -75,24 +77,24 @@ export class GracefulShutdown {
       process.exitCode = code;
     });
 
-    // R20-38 FIX: Register ServiceRegistry cleanup as the LAST handler (runs first in reverse order).
-    // ServiceRegistry teardown must happen AFTER all other handlers complete, but BEFORE
-    // the process exits, to ensure proper cleanup of global singletons.
-    // Note: We use a low priority to ensure it runs last in normal (non-reverse) order,
-    // which means it runs first in the reverse iteration during shutdown.
-    this.addHandler({
-      name: "service_registry_teardown",
-      handler: async () => {
-        // Import here to avoid circular dependency at module load time
-        const { ServiceRegistry } = await import("../../shared/lifecycle/service-registry.js");
-        const registry = ServiceRegistry.getInstance();
-        if (registry.isInitialized("platform.global-shutdown")) {
-          await registry.reset();
-        }
-      },
-      timeoutMs: 10000, // 10 second timeout for ServiceRegistry cleanup
-      critical: true,
-    });
+    if (options.includeServiceRegistryTeardown === true) {
+      // R20-38 FIX: Register ServiceRegistry cleanup only for the global process shutdown instance.
+      // Per-instance test and helper shutdowns must not gain an implicit extra handler because that
+      // changes handler counts and execution order in ways callers did not request.
+      this.addHandler({
+        name: "service_registry_teardown",
+        handler: async () => {
+          // Import here to avoid circular dependency at module load time
+          const { ServiceRegistry } = await import("../../shared/lifecycle/service-registry.js");
+          const registry = ServiceRegistry.getInstance();
+          if (registry.isInitialized("platform.global-shutdown")) {
+            await registry.reset();
+          }
+        },
+        timeoutMs: 10000,
+        critical: true,
+      });
+    }
 
     // Register default handlers if provided
     if (options.handlers) {
@@ -391,6 +393,7 @@ export function getGlobalGracefulShutdown(registry: ServiceRegistry = ServiceReg
   }
   if (!globalShutdownInstance) {
     globalShutdownInstance = new GracefulShutdown({
+      includeServiceRegistryTeardown: true,
       registerSignalHandlers: true,
     });
   }

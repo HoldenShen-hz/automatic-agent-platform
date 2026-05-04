@@ -44,12 +44,16 @@ Proactive behavior must go through explicit trigger declaration, at minimum cont
 
 ### 2. Autonomy is Not a Boolean Switch, But a Level State Machine
 
-Autonomy must distinguish at minimum:
+Autonomy levels must be consistent with the §42.1 specification model (4 levels):
 
-- `manual_only`
-- `suggest_only`
-- `supervised_execute`
-- `trusted_auto_execute`
+| Level | Name | Permission |
+|-------|------|------------|
+| 0 | suggestion | Provides suggestions only, requires human confirmation |
+| 1 | supervised | Full human supervision during execution |
+| 2 | semi_auto | Semi-automatic, can auto-execute but requires human oversight |
+| 3 | full_auto | Full automation |
+
+Note: `full_auto` does not represent unlimited automation. High-risk domains default cannot enter `full_auto` unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance with human accountability boundaries.
 
 Autonomy levels must be promotable, demotable, and freezable.
 

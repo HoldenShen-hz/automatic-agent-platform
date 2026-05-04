@@ -301,11 +301,11 @@ export class UserPortalService implements UserPortalPort {
     };
   }
 
-  public buildOnboardingPlan(description: string, context: UserPortalContext): PortalOnboardingPlan {
+  public async buildOnboardingPlan(description: string, context: UserPortalContext): Promise<PortalOnboardingPlan> {
     const mode = this.resolveMode(context);
-    // §44.4: Domain recommendation now uses DomainRecommenderPort (async)
-    // For sync context, we use the legacy method; production code should await recommendDomainsAsync
-    const recommendedDomains = this.recommendDomains(description);
+    // §44.4: Use DomainRecommenderPort for intelligent domain recommendation
+    const domainRecommendations = await this.recommendDomainsAsync(description);
+    const recommendedDomains = domainRecommendations.map((r) => r.domainId);
     const recommendedNextActions = [
       "确认业务目标和首个自动化场景",
       "选择合适的域模板并检查默认风控",
@@ -320,11 +320,13 @@ export class UserPortalService implements UserPortalPort {
     };
   }
 
-  public buildDomainOnboardingWizard(description: string, context: UserPortalContext): DomainOnboardingWizard {
+  public async buildDomainOnboardingWizard(description: string, context: UserPortalContext): Promise<DomainOnboardingWizard> {
     const mode = this.resolveMode(context);
     // §44.5: Progressive disclosure - simplify wizard steps based on mode
     const steps = this.getWizardStepsForMode(mode.mode);
-    const recommendedDomains = this.recommendDomains(description);
+    // §44.4: Use DomainRecommenderPort for intelligent domain recommendation
+    const domainRecommendations = await this.recommendDomainsAsync(description);
+    const recommendedDomains = domainRecommendations.map((r) => r.domainId);
 
     return {
       steps,
@@ -377,11 +379,15 @@ export class UserPortalService implements UserPortalPort {
     }
   }
 
-  public buildVisualWorkflowBuilder(description: string, selectedDomains?: readonly string[]): VisualWorkflowBuilder {
-    // §44.4: Domain recommendation now uses DomainRecommenderPort
+  /**
+   * §44.4: Builds a visual workflow builder with domain-aware components.
+   * Uses DomainRecommenderPort for intelligent domain recommendation.
+   */
+  public async buildVisualWorkflowBuilder(description: string, selectedDomains?: readonly string[]): Promise<VisualWorkflowBuilder> {
+    // §44.4: Use DomainRecommenderPort for intelligent domain recommendation
     const domains = selectedDomains != null && selectedDomains.length > 0
       ? [...selectedDomains]
-      : this.recommendDomains(description);
+      : (await this.recommendDomainsAsync(description)).map((r) => r.domainId);
     const primaryDomain = domains[0] ?? "general_ops";
 
     // §44.5: Progressive disclosure - get components filtered by mode
@@ -500,24 +506,6 @@ export class UserPortalService implements UserPortalPort {
     }
 
     return baseCategories;
-  }
-
-  /**
-   * §44.4: Recommends domains using the injected DomainRecommenderPort.
-   * Falls back to legacy keyword matching if no recommender is configured.
-   * @deprecated Use recommendDomainsAsync() for production code with LLM/user-history recommendation.
-   */
-  private recommendDomains(description: string): string[] {
-    // Synchronous fallback using legacy keyword matching
-    const normalized = description.toLowerCase();
-    const recommendations = new Set<string>();
-    if (/(marketing|campaign|广告|投放|增长)/i.test(description)) recommendations.add("advertising");
-    if (/(finance|invoice|budget|财务|预算)/i.test(description)) recommendations.add("finance");
-    if (/(recruit|hire|hr|招聘|入职)/i.test(description)) recommendations.add("hr");
-    if (/(support|customer|客服|工单)/i.test(description)) recommendations.add("customer_support");
-    if (/(code|engineering|deploy|bug|代码|研发|发布)/i.test(description)) recommendations.add("engineering_ops");
-    if (recommendations.size === 0 && normalized.length > 0) recommendations.add("general_ops");
-    return [...recommendations];
   }
 
   /**

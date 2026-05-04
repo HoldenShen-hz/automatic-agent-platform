@@ -4,13 +4,14 @@ export type DriftSeverity = "low" | "medium" | "high";
 export type AgentLifecycleState = "draft" | "canary" | "active" | "paused" | "deprecated" | "archived" | "removed";
 
 // R3-34 FIX: §63.1 PlatformPanicDirective requires additional fields
+// R9-48 FIX: Removed expirationTime TTL field - §2.4 invariant says Panic cannot auto-relieve via TTL
 export interface PlatformPanicDirective {
   readonly directiveId: string;
   readonly scope: PanicScope;
   readonly requiredApprovers: readonly [string, string, ...string[]];
   readonly reason: string;
   readonly issuedAt: string;
-  readonly expirationTime: string;
+  // R9-48 fix: Removed expirationTime - Panic requires explicit reconfirmation, not TTL auto-relief
   readonly pausedResources: readonly string[];
   readonly auditRef: string;
 }
