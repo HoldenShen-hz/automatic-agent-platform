@@ -17,6 +17,17 @@ export {
 };
 
 const HARNESS_RUN_LEASE_FENCING_MIGRATION_SQL = `
+CREATE TABLE IF NOT EXISTS harness_runs (
+  harness_run_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL DEFAULT 'tenant:local',
+  confirmed_task_spec_id TEXT NOT NULL DEFAULT 'confirmed_task_spec:bootstrap',
+  request_envelope_id TEXT NOT NULL DEFAULT 'request_envelope:bootstrap',
+  status TEXT NOT NULL DEFAULT 'created',
+  version_lock_id TEXT NOT NULL DEFAULT 'version_lock:bootstrap',
+  budget_ledger_id TEXT NOT NULL DEFAULT 'budget_ledger:bootstrap',
+  current_seq INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000Z'
+);
 ALTER TABLE harness_runs ADD COLUMN lease_id TEXT NULL;
 ALTER TABLE harness_runs ADD COLUMN fencing_token TEXT NULL;
 `;
