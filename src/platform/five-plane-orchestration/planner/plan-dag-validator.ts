@@ -69,10 +69,14 @@ export class PlanDagValidator {
 
     if (orderedSteps.length !== steps.length) {
       issues.push("planning.cycle_detected");
-      // R20-02: When cycle detected, topological sort produces partial result.
-      // Return empty array so callers know this is a failure, not a valid ordering.
-      // The plan-builder should detect !valid and handle appropriately.
-      orderedSteps.length = 0; // Clear to signal failure
+      // R20-02: When cycle detected, do NOT return the original unsorted steps.
+      // Return empty orderedSteps to signal failure - plan-builder must check valid flag
+      // and reject the plan rather than proceed with an invalid ordering.
+      return {
+        valid: false,
+        issues,
+        orderedSteps: [], // Empty signals failure - never use unsorted steps as fallback
+      };
     }
 
     // §13.10 Extended validation: entry node existence
@@ -110,9 +114,7 @@ export class PlanDagValidator {
     return {
       valid: issues.length === 0,
       issues,
-      // When cycle detected, topological sort produces partial result - use it
-      // so downstream can still see dependency order even though valid=false
-      orderedSteps: orderedSteps.length === steps.length ? orderedSteps : orderedSteps.length > 0 ? orderedSteps : [...steps],
+      orderedSteps, // Only reach here if topological sort succeeded (no cycle)
     };
   }
 

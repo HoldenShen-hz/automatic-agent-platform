@@ -421,7 +421,6 @@ export class OpenAIChatService {
       let finalFinishReason: string = "stop";
       const accumulatedToolCalls: OpenAIFunctionCallResult[] = [];
       let accumulatedUsage: OpenAIUsage | null = null;
-      let firstChunk = true;
 
       try {
         while (true) {
@@ -465,12 +464,9 @@ export class OpenAIChatService {
                   // Streaming chunk
                   // R34-36 FIX #2089: In streaming mode, finish_reason is on the choice object
                   // (not delta). It's null during streaming and only set on the final chunk.
-                  // We need to track it across ALL chunks, not just the first.
-                  if (firstChunk) {
-                    firstChunk = false;
-                    if (choice.finish_reason != null) {
-                      finalFinishReason = choice.finish_reason;
-                    }
+                  // We must check ALL chunks, not just the first, to capture content_filter/tool_calls/length.
+                  if (choice.finish_reason != null) {
+                    finalFinishReason = choice.finish_reason;
                   }
 
                   if (choice.delta.content) {

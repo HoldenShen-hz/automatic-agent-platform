@@ -7248,7 +7248,7 @@ ReplaySandboxPolicy：所有 Re-execution Replay 使用独立 budget、独立 da
 
 > LoopController(§45.7) 的裁决升级为一级协议。基础裁决为 accept/retry_same_plan/replan/escalate_to_human/downgrade_mode/abort；生产扩展裁决用于隔离、撤销授权、等待外部系统和重新校验。
 
-**十种裁决**：
+**十种裁决**（基础裁决 6 种 + 生产扩展裁决 4 种）：
 
 | 裁决              | 语义                      | 触发条件                               | 后续动作                                        |
 | ----------------- | ------------------------- | -------------------------------------- | ----------------------------------------------- |
@@ -7258,14 +7258,14 @@ ReplaySandboxPolicy：所有 Re-execution Replay 使用独立 budget、独立 da
 | escalate_to_human | 转交 HITL Runtime(§45.18) | risk 升高 / confidence 过低 / 策略要求 | Durable Harness pause + HITL 介入               |
 | downgrade_mode    | 降级运行模式              | 信任不足 / 预算紧张 / 风险接近阈值     | autonomy_mode 降一级（如 semi_auto→supervised） |
 | abort             | 安全终止                  | 预算耗尽 / 不可恢复错误 / 策略禁止     | 保存状态 + 记录证据 + 通知用户                  |
-| quarantine        | 隔离 run / agent / pack   | 污染、泄露、供应链或行为漂移风险       | 停止新执行 + 进入安全审查                       |
-| revoke_approval   | 撤销已批准授权            | scope 不匹配、approval 过期、风险升高  | SideEffect 进入 revoked / expired              |
-| pause_for_external | 等待外部系统或人类窗口    | 外部系统不可查询、合规等待、维护窗口    | Durable Harness pause                           |
-| require_revalidation | 要求重新校验            | version/policy/domain/config 漂移       | 重新运行 Validation / Policy / Budget checks    |
+| quarantine        | 隔离 run / agent / pack（生产扩展） | 污染、泄露、供应链或行为漂移风险 | 停止新执行 + 进入安全审查                       |
+| revoke_approval   | 撤销已批准授权（生产扩展） | scope 不匹配、approval 过期、风险升高 | SideEffect 进入 revoked / expired              |
+| pause_for_external | 等待外部系统或人类窗口（生产扩展） | 外部系统不可查询、合规等待、维护窗口 | Durable Harness pause                          |
+| require_revalidation | 要求重新校验（生产扩展） | version/policy/domain/config 漂移      | 重新运行 Validation / Policy / Budget checks    |
 
 **HarnessDecision 标准化字段**：
 
-- decision：六种裁决之一
+- decision：十种裁决之一（基础六种或生产扩展四种）
 - reason：结构化原因（error_class + root_cause_category）
 - evaluatorReport：触发裁决的 EvaluationReport 引用
 - confidence：裁决置信度 0.0-1.0

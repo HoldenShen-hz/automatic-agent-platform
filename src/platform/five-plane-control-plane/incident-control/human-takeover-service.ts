@@ -521,13 +521,14 @@ export class HumanTakeoverService {
         this.store.event.createTier1StatusEvent({
           taskId: snapshot.task.id,
           executionId: snapshot.execution?.id ?? null,
-          eventType: "task:status_changed",
+          eventType: "platform.harness_run.status_changed",
           traceId: newId("trace"),
           payload: {
+            aggregateType: "harness_run",
             fromStatus: snapshot.task.status,
             toStatus: "done",
             reasonCode: input.reasonCode,
-            occurredAt: now,
+            emittedBy: "human_takeover_service",
           },
         });
         this.store.approval.closeTakeoverSession(session.id, now);
@@ -620,18 +621,18 @@ export class HumanTakeoverService {
       }
       this.store.approval.closeTakeoverSession(session.id, now);
 
-      // Emit task status changed event with manual override flag
+      // Emit harness run status changed event with manual override flag
       this.store.event.createTier1StatusEvent({
         taskId: snapshot.task.id,
         executionId: snapshot.execution?.id ?? null,
-        eventType: "task:status_changed",
+        eventType: "platform.harness_run.status_changed",
         traceId: newId("trace"),
         payload: {
+          aggregateType: "harness_run",
           fromStatus: snapshot.task.status,
           toStatus: input.terminalStatus,
           reasonCode: input.reasonCode,
-          occurredAt: now,
-          manualOverride: true,
+          emittedBy: "human_takeover_service",
         },
       });
 

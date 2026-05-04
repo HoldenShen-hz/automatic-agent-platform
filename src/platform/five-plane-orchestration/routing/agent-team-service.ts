@@ -162,8 +162,8 @@ export class AgentTeamService {
     const rootDepth = 0;
     const effectiveGlobalDepth = rootDepth + 1;
 
-    // R19-17: Validate delegation depth limits
-    if (effectiveGlobalDepth > MAX_GLOBAL_DELEGATION_DEPTH) {
+    // R19-17: Validate delegation depth limits (use >= since depth of exactly MAX should be rejected)
+    if (effectiveGlobalDepth >= MAX_GLOBAL_DELEGATION_DEPTH) {
       throw new Error(
         `delegation.depth_exceeded: global depth ${effectiveGlobalDepth} exceeds max ${MAX_GLOBAL_DELEGATION_DEPTH}`,
       );
@@ -194,9 +194,9 @@ export class AgentTeamService {
       // C6: Budget propagation - each lane gets proportional budget
       const laneBudget = Math.floor(parentBudget / (workflow.executionSteps.length + 1));
 
-      // R19-17: Per-path depth check (max 3 per path)
+      // R19-17: Per-path depth check (max 3 per path, >= since exactly 3 is not allowed)
       const pathDepth = rootDepth + idx + 1;
-      if (pathDepth > MAX_DELEGATION_DEPTH_PER_PATH) {
+      if (pathDepth >= MAX_DELEGATION_DEPTH_PER_PATH) {
         throw new Error(
           `delegation.depth_exceeded: path depth ${pathDepth} exceeds max ${MAX_DELEGATION_DEPTH_PER_PATH}`,
         );

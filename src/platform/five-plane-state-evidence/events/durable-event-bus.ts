@@ -153,8 +153,8 @@ class PartitionAwareSubscriberRegistry {
     const group = this.consumerGroups.get(groupId)!;
     group.memberIds.add(consumerId);
 
-    // Create aggregate partition if needed
-    const partition = this.getOrCreatePartition("default");
+    // Create aggregate partition for this consumer group
+    const partition = this.getOrCreatePartition(groupId);
     if (!partition.consumerGroupSequences.has(groupId)) {
       partition.consumerGroupSequences.set(groupId, 0);
     }

@@ -20,6 +20,17 @@ import {
   type RiskPreview,
 } from "../../platform/contracts/executable-contracts/index.js";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { createPrincipalRef, type PrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
+import type { PlatformFactEvent } from "../../platform/contracts/executable-contracts/index.js";
+import type { ContractEnvelope } from "../client-sdk/api-client.js";
+import {
+  createContractEnvelope as createApiContractEnvelope,
+  type TypedEventSubscriber,
+  type EventSubscription,
+  type PlatformFactEvent as ApiPlatformFactEvent,
+  type ProjectionUpdate,
+  createEventSubscriber,
+} from "../client-sdk/api-client.js";
 
 export interface HarnessSdkCreateRunInput {
   readonly taskId: string;

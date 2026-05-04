@@ -102,8 +102,202 @@ export interface CrossBoundaryImpact {
   readonly severity: "low" | "medium" | "high";
 }
 
+/**
+ * Compensation receipt entry for audit trail and retry safety.
+ * §46.3: Each compensation step produces a receipt for tracking and replay.
+ */
+export interface CompensationReceiptEntry {
+  readonly receiptId: string;
+  readonly sagaId: string;
+  readonly failedStepId: string;
+  readonly compensatedNodeId: string;
+  readonly compensatedAt: number;
+  readonly compensationOutcome: "success" | "failed";
+  readonly errorMessage: string | null;
+  readonly canRetry: boolean;
+}
+
 export class OrgGovernanceSaga {
+  private frozenOrgVersion: OrgVersionSnapshot | null = null;
+  private computedImpactDiff: OrgImpactDiff | null = null;
+  private compensationReceipt: CompensationReceiptEntry[] = [];
+
   public constructor(private readonly handlers: OrgGovernanceSagaHandlers = {}) {}
+
+  /**
+   * Get current org version snapshot frozen during prepare phase.
+   * Returns null if prepare has not been called or freeze failed.
+   */
+  public getFrozenOrgVersion(): OrgVersionSnapshot | null {
+    return this.frozenOrgVersion;
+  }
+
+  /**
+   * Get impact diff computed during prepare phase.
+   * Returns null if prepare has not been called or diff computation failed.
+   */
+  public getComputedImpactDiff(): OrgImpactDiff | null {
+    return this.computedImpactDiff;
+  }
+
+  /**
+   * Get compensation receipt entries for rollback tracking.
+   * §46.3: Track compensation with receipt for audit and retry.
+   */
+  public getCompensationReceipt(): readonly CompensationReceiptEntry[] {
+    return [...this.compensationReceipt];
+  }
+
+  /**
+   * Reset internal state between saga executions.
+   * Must be called before each new execute() call.
+   */
+  public reset(): void {
+    this.frozenOrgVersion = null;
+    this.computedImpactDiff = null;
+    this.compensationReceipt = [];
+  }
+
+  /**
+   * Prepare phase: validate inputs, compute impact diff, freeze org version.
+   * §46.3: Prepare must establish the frozen snapshot and computed diff before commit.
+   */
+  public prepare(params: {
+    sagaId: string;
+    beforeNodeIds: readonly string[];
+    afterNodeIds: readonly string[];
+    affectedPrincipalIds: readonly string[];
+    crossBoundaryChanges?: readonly CrossBoundaryImpact[];
+    requestedBy: string;
+  }): { success: boolean; error?: string } {
+    // Validate inputs
+    if (!params.sagaId) {
+      return { success: false, error: "saga_id_required" };
+    }
+    if (!params.beforeNodeIds?.length) {
+      return { success: false, error: "before_node_ids_required" };
+    }
+    if (!params.afterNodeIds?.length) {
+      return { success: false, error: "after_node_ids_required" };
+    }
+
+    // Compute impact diff
+    this.computedImpactDiff = this.computeImpactDiff({
+      beforeNodeIds: params.beforeNodeIds,
+      afterNodeIds: params.afterNodeIds,
+      affectedPrincipalIds: params.affectedPrincipalIds,
+      crossBoundaryChanges: params.crossBoundaryChanges,
+    });
+
+    // Freeze org version
+    this.frozenOrgVersion = this.freezeOrgVersion({
+      sagaId: params.sagaId,
+      orgNodeIds: params.afterNodeIds,
+      frozenBy: params.requestedBy,
+    });
+
+    return { success: true };
+  }
+
+  /**
+   * Commit phase: apply ordered substeps in phase order.
+   * §46.3: Ordered substeps ensure deterministic execution across retries.
+   */
+  public commit(params: {
+    sagaId: string;
+    steps: readonly OrgGovernanceSagaStep[];
+    onStepCommit?: (step: OrgGovernanceSagaStep) => void;
+  }): { success: boolean; failedStepId: string | null; error?: string } {
+    if (!this.frozenOrgVersion) {
+      return { success: false, failedStepId: null, error: "org_version_not_frozen" };
+    }
+    if (!this.computedImpactDiff) {
+      return { success: false, failedStepId: null, error: "impact_diff_not_computed" };
+    }
+
+    const sortedSteps = sortStepsByPhase(params.steps.filter((s) => s.action === "commit"));
+
+    for (const step of sortedSteps) {
+      try {
+        this.handlers.commit?.(step, { sagaId: params.sagaId, failedStepId: null });
+        params.onStepCommit?.(step);
+      } catch (err) {
+        return {
+          success: false,
+          failedStepId: step.stepId,
+          error: err instanceof Error ? err.message : "commit_failed",
+        };
+      }
+    }
+
+    return { success: true, failedStepId: null };
+  }
+
+  /**
+   * Compensate phase: rollback with receipt tracking.
+   * §46.3: Each compensation produces a receipt entry for audit and retry.
+   */
+  public compensate(params: {
+    sagaId: string;
+    failedStepId: string;
+    committedNodeIds: readonly string[];
+    preparedNodeIds: readonly string[];
+    useFrozenSnapshot?: boolean;
+  }): { success: boolean; compensatedCount: number; hasFailures: boolean } {
+    const allNodes = [...params.committedNodeIds, ...params.preparedNodeIds];
+    const uniqueNodes = [...new Set(allNodes)].reverse(); // §46.3: Reverse order for rollback
+    let compensatedCount = 0;
+    let hasFailures = false;
+
+    // Restore from frozen snapshot if requested
+    if (params.useFrozenSnapshot && this.frozenOrgVersion) {
+      // Restore nodes from snapshot before compensation
+      // In real implementation, this would interact with the org model
+    }
+
+    for (const nodeId of uniqueNodes) {
+      const receiptId = newId("comp_receipt");
+      const compensationStep: OrgGovernanceSagaStep = {
+        stepId: `${params.failedStepId}:compensate:${nodeId}`,
+        targetOrgNodeId: nodeId,
+        action: "compensate",
+        phase: "domain", // default phase, would be derived from failed step
+      };
+
+      try {
+        this.handlers.compensate?.(compensationStep, {
+          sagaId: params.sagaId,
+          failedStepId: params.failedStepId,
+        });
+
+        this.compensationReceipt.push({
+          receiptId,
+          sagaId: params.sagaId,
+          failedStepId: params.failedStepId,
+          compensatedNodeId: nodeId,
+          compensatedAt: Date.now(),
+          compensationOutcome: "success",
+          errorMessage: null,
+          canRetry: false,
+        });
+        compensatedCount++;
+      } catch (err) {
+        hasFailures = true;
+        this.compensationReceipt.push({
+          receiptId,
+          sagaId: params.sagaId,
+          failedStepId: params.failedStepId,
+          compensatedNodeId: nodeId,
+          compensatedAt: Date.now(),
+          compensationOutcome: "failed",
+          errorMessage: err instanceof Error ? err.message : "compensation_failed",
+          canRetry: true, // Failed compensation CAN be retried
+        });
+      }
+    }
+
+    return { success: !hasFailures, compensatedCount, hasFailures };
+  }
 
   /**
    * Validate that saga has sufficient handlers for execution.

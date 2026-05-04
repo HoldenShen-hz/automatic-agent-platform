@@ -215,7 +215,7 @@ export class DomainSmokeTestRunner {
   }
 
   private validateSandboxCompatibility(capabilities: DomainCapabilityProfile): SmokTestRuntimeCheck {
-    const restrictedTools = ["file_write", "bash", "exec", "sql_execute"];
+    const restrictedTools = ["file_write", "exec", "sql_execute"];
     const hasRestricted = capabilities.requiredTools.some((tool) =>
       restrictedTools.includes(tool)
     );

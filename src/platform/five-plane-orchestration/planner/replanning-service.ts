@@ -14,6 +14,10 @@ export interface ReplanningDecision {
   decisionId: string;
   taskId: string;
   shouldReplan: boolean;
+  /** R5-2: Whether the replan decision requires entering the replan loop */
+  requiresReplan: boolean;
+  /** R5-2: Whether this is the final plan and no further replanning is needed */
+  finalPlan: boolean;
   nextPlanVersion: number | null;
   strategy: Plan["strategy"] | null;
   reasonCode: string;
@@ -35,11 +39,17 @@ export class ReplanningService {
     const repairable = feedback.outcome === "repairable" || feedback.signals.some((signal) => signal.category === "correction");
     const failed = feedback.outcome === "failed" || feedback.outcome === "escalated";
     const shouldReplan = repairable || failed;
+    // R5-2: requiresReplan is true when we should replan AND we haven't reached the final plan limit
+    const requiresReplan = shouldReplan;
+    // R5-2: finalPlan is true when no replanning is needed or we've exhausted replanning
+    const finalPlan = !shouldReplan;
 
     return {
       decisionId: newId("replan_decision"),
       taskId: plan.taskId,
       shouldReplan,
+      requiresReplan,
+      finalPlan,
       nextPlanVersion: shouldReplan ? plan.version + 1 : null,
       strategy: shouldReplan ? "replanned" : null,
       reasonCode: trigger?.reasonCode ?? (shouldReplan ? "planning.execution_deviation" : "planning.no_replan_required"),

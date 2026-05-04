@@ -48,6 +48,7 @@ export interface CDCReplicationCheckpoint {
 export interface CDCReplicationEvent {
   readonly id: string;
   readonly sequence: number;
+  readonly epoch: number;
   readonly eventType: string;
   readonly taskId: string;
   readonly payloadJson: string;
@@ -661,11 +662,13 @@ export class CDCReplicationService {
   /**
    * §R8-33: Apply a batch of remote events with conflict resolution and epoch validation.
    * Ensures conflict resolution is called before applying events.
+   * Rejects writes if incoming event epoch < local epoch (stale event).
    *
    * @param entityId - Entity ID for the events
    * @param localEvents - Current local events
    * @param remoteEvents - Remote events to apply
    * @param strategy - Conflict resolution strategy
+   * @param localEpoch - Current local epoch for fence validation
    * @returns Events after applying conflict resolution
    */
   public applyBatch(
@@ -673,26 +676,46 @@ export class CDCReplicationService {
     localEvents: readonly CDCReplicationEvent[],
     remoteEvents: readonly CDCReplicationEvent[],
     strategy?: ConflictResolutionStrategy,
+    localEpoch?: number,
   ): CDCReplicationEvent[] {
-    // §R8-33: Validate epochs/versions before applying events
-    // Get current vector clock for epoch validation
-    const currentClock = this.getVectorClock(entityId);
+    // §R8-33: Reject events with stale epoch (incoming epoch < local epoch)
+    // This enforces single-leader ordering: only events from the current leader epoch
+    // should be accepted. Events from an older epoch are stale and must be rejected.
+    const currentEpoch = localEpoch ?? this.getCurrentEpochForEntity(entityId);
 
-    // Check if remote events are causally valid (epoch/version validation)
+    const filteredRemoteEvents: CDCReplicationEvent[] = [];
+
     for (const remoteEvent of remoteEvents) {
-      if (currentClock) {
-        const remoteClock = this.getVectorClock(`${entityId}::${remoteEvent.taskId}`);
-        // If we have a later local sequence for this task, the remote event may be stale
-        if (remoteClock && remoteClock.getMaxSequence() > remoteEvent.sequence) {
-          // Remote event is stale - will be resolved via conflict resolution below
-          continue;
-        }
+      // §R8-33: If incoming event epoch < local epoch, reject the write (stale event)
+      if (remoteEvent.epoch < currentEpoch) {
+        cdcLogger.warn(`§R8-33: Rejected stale event ${remoteEvent.id} with epoch ${remoteEvent.epoch} < local epoch ${currentEpoch}`, {
+          data: { entityId, eventId: remoteEvent.id, remoteEpoch: remoteEvent.epoch, localEpoch: currentEpoch },
+        });
+        continue;
       }
+      filteredRemoteEvents.push(remoteEvent);
+    }
+
+    // If all events were filtered out as stale, return just local events
+    if (filteredRemoteEvents.length === 0) {
+      return [...localEvents];
     }
 
     // §R8-33: Call conflict resolution before applying events
     // Use mergeEventsWithConflictResolution which internally calls conflict resolution
-    return this.mergeEventsWithConflictResolution(entityId, localEvents, remoteEvents, strategy);
+    return this.mergeEventsWithConflictResolution(entityId, localEvents, filteredRemoteEvents, strategy);
+  }
+
+  /**
+   * Get current epoch for an entity (tracks the highest epoch seen)
+   */
+  private getCurrentEpochForEntity(entityId: string): number {
+    // Track per-entity epoch based on events received
+    const clock = this.vectorClocks.get(entityId);
+    if (!clock) {
+      return 0;
+    }
+    return clock.getMaxSequence();
   }
 
   /**

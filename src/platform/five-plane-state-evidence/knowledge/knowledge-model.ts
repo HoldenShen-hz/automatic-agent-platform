@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const TrustLevelSchema = z.enum(["private_unverified", "team_reviewed", "official", "authoritative"]);
+export const TrustLevelSchema = z.enum(["private_unverified", "team_reviewed", "official", "authoritative", "contested"]);
 
 export const KnowledgeNamespaceSchema = z.object({
   namespaceId: z.string().min(1),

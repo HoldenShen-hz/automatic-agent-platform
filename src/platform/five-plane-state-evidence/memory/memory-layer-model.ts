@@ -314,10 +314,13 @@ export function getEvictionPriority(memory: MemoryRecord): number {
 
   switch (strategy) {
     case "lru": {
+      const now = Date.now();
       const lastAccessed = memory.lastAccessedAt
         ? new Date(memory.lastAccessedAt).getTime()
         : new Date(memory.createdAt).getTime();
-      return lastAccessed;
+      // Normalize to 0-1: older items get lower values (evicted first)
+      // priority = lastAccessed / now ranges from ~0 (ancient) to ~1 (just accessed)
+      return lastAccessed / now;
     }
     case "quality": {
       const quality = memory.qualityScore ?? 0.5;

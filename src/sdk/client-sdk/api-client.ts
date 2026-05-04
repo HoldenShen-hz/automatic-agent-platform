@@ -128,9 +128,9 @@ export function buildAuthHeaders(config: ApiClientConfig): Record<string, string
   }
   return {
     authorization: `Bearer ${config.bearerToken.trim()}`,
-    ...(config.platformVersion ? { "X-Platform-Version": config.platformVersion } : {}),
-    ...(config.sdkVersion ? { "X-SDK-Version": config.sdkVersion } : {}),
-    ...(config.contractVersion ? { "X-Contract-Version": config.contractVersion } : {}),
+    "X-Platform-Version": config.platformVersion ?? "v4.3",
+    "X-SDK-Version": config.sdkVersion ?? "1.0.0",
+    "X-Contract-Version": config.contractVersion ?? "v4.3",
   };
 }
 
@@ -338,9 +338,13 @@ export class RetryableApiClient {
       // POST/PUT/DELETE/OPTIONS/PATCH are never idempotent and MUST NOT be retried
       // to prevent duplicate side effects. 4xx errors indicate client mistakes
       // (malformed request, auth failure, etc.) that retrying won't fix.
+      // R15-01: GET retries unconditionally; PUT/DELETE only retry if idempotency key present.
       const method: string = request.method ?? "GET";
-      const isNonIdempotentMethod = method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH" || method === "OPTIONS";
-      if (!isNonIdempotentMethod && response.status >= 500 && attempt < this.retryConfig.maxRetries) {
+      const isPostLike = method === "POST" || method === "PATCH" || method === "OPTIONS";
+      const isPutDelete = method === "PUT" || method === "DELETE";
+      const hasIdempotencyKey = idempotencyKey != null;
+      const canRetry = method === "GET" || (isPutDelete && hasIdempotencyKey);
+      if (canRetry && response.status >= 500 && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,
@@ -393,9 +397,13 @@ export class RetryableApiClient {
       // §22: Network errors (fetch throws) - only retry for truly idempotent methods.
       // POST/PUT/DELETE/PATCH/OPTIONS network errors may have caused partial side effects
       // and MUST NOT be retried blindly. Only GET/HEAD can be safely retried on network errors.
+      // R15-01: GET retries unconditionally; PUT/DELETE only retry if idempotency key present.
       const method: string = request.method ?? "GET";
-      const isNonIdempotentMethod = method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH" || method === "OPTIONS";
-      if (!isNonIdempotentMethod && attempt < this.retryConfig.maxRetries) {
+      const isPostLike = method === "POST" || method === "PATCH" || method === "OPTIONS";
+      const isPutDelete = method === "PUT" || method === "DELETE";
+      const hasIdempotencyKey = idempotencyKey != null;
+      const canRetry = method === "GET" || (isPutDelete && hasIdempotencyKey);
+      if (canRetry && attempt < this.retryConfig.maxRetries) {
         const retryAfter = Math.min(
           this.retryConfig.backoffMs * Math.pow(this.retryConfig.backoffMultiplier, attempt),
           this.retryConfig.maxBackoffMs,

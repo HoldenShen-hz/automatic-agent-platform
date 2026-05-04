@@ -293,10 +293,8 @@ export class KnowledgeRetrievalService {
     keyword: string,
     options: KnowledgeQueryOptions,
   ): Array<[string, number]> {
-    // Sync path does not support pgvector backend - use async path for semantic search
-    if (!this.semanticVectorStore) {
-      return [];
-    }
+    // Sync path does not support pgvector backend - fall back to local archive iteration
+    // when vector store is not available, to maintain sync fallback semantics
     const queryEmbedding = buildSemanticEmbedding(keyword);
     if (!queryEmbedding) {
       return [];

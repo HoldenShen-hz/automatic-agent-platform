@@ -2,6 +2,7 @@ import type { ExternalAdapterPlugin, PluginLifecycleContext, PluginManifest } fr
 import { PluginManifestSchema } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/control-plane/iam/network-egress-policy.js";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 // §10 Built-in plugins require PluginManifest with owner/trustLevel/sbomRef/publicSdkSurface
 const GITHUB_ADAPTER_MANIFEST: PluginManifest = {
@@ -50,10 +51,11 @@ function requireString(value: unknown, field: string): string {
 /**
  * Verify plugin signature before activation per §10.
  * Requires signing.keyId/signature/algorithm verification before activation.
+ * Uses HMAC-SHA256 with timing-safe comparison for cryptographic verification.
  */
 function verifyPluginSignature(
   manifest: PluginManifest,
-  expectedSignature?: string,
+  secretKey?: string,
 ): void {
   // Cast to any to access signing field which may exist on manifest but not in schema
   const signing = (manifest as Record<string, unknown>).signing as { keyId?: string; signature?: string; algorithm?: string } | undefined;
@@ -70,9 +72,26 @@ function verifyPluginSignature(
     throw new Error("github_adapter.invalid_signature: signing.keyId/signature/algorithm are required");
   }
 
-  // If expected signature is provided, verify it matches
-  if (expectedSignature && signature !== expectedSignature) {
-    throw new Error("github_adapter.signature_mismatch: Plugin signature verification failed");
+  // If secret key is provided, perform actual HMAC-SHA256 cryptographic verification
+  if (secretKey) {
+    // Compute HMAC-SHA256 of the canonical manifest content
+    const canonicalContent = JSON.stringify({
+      pluginId: manifest.pluginId,
+      name: manifest.name,
+      version: manifest.version,
+      owner: manifest.owner,
+      domainIds: manifest.domainIds,
+      capabilityIds: manifest.capabilityIds,
+    });
+    const computedSignature = createHmac("sha256", secretKey).update(canonicalContent).digest("base64url");
+
+    // Timing-safe comparison to prevent timing attacks
+    const providedSigBuffer = Buffer.from(signature, "base64url");
+    const computedSigBuffer = Buffer.from(computedSignature, "base64url");
+
+    if (providedSigBuffer.length !== computedSigBuffer.length || !timingSafeEqual(providedSigBuffer, computedSigBuffer)) {
+      throw new Error("github_adapter.signature_mismatch: Plugin signature verification failed");
+    }
   }
 }
 

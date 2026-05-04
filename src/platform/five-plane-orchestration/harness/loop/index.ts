@@ -104,15 +104,27 @@ export class HarnessLoopController {
   }
 
   public getGuardViolation(now = Date.now()): string | null {
+    return this.checkIterationLimit() ?? this.checkCostLimit() ?? this.checkDurationLimit() ?? null;
+  }
+
+  /** R5-4: Check if iteration limit has been reached */
+  public checkIterationLimit(now = Date.now()): string | null {
     if (this.state.iteration >= this.guards.maxIterations) {
       return "harness.guard.max_iterations_reached";
     }
-    if (this.state.replanCount > this.guards.maxReplans) {
-      return "harness.guard.max_replans_reached";
-    }
+    return null;
+  }
+
+  /** R5-4: Check if cost limit has been reached */
+  public checkCostLimit(now = Date.now()): string | null {
     if (this.state.totalCost > this.guards.maxCost) {
       return "harness.guard.max_cost_exceeded";
     }
+    return null;
+  }
+
+  /** R5-4: Check if duration limit has been reached */
+  public checkDurationLimit(now = Date.now()): string | null {
     if (now - this.state.startedAt > this.guards.maxDurationMs) {
       return "harness.guard.max_duration_exceeded";
     }

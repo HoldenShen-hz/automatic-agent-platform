@@ -762,9 +762,10 @@ export class OapeflirLoopService {
         }
 
         // R5-2: Re-entrant loop check - if replanDecision says replan, loop back to plan stage
-        shouldContinue = false;
+        // R5-2: Set shouldContinue based on requiresReplan and finalPlan flags
+        shouldContinue = replanDecision.requiresReplan && !replanDecision.finalPlan;
         // R19-03: replanDecision is authoritative — act on it regardless of loopController presence
-        if (replanDecision.shouldReplan) {
+        if (replanDecision.shouldReplan && shouldContinue) {
           // R5-4: Record iteration and check guards if loopController exists
           if (this.loopController) {
             this.loopController.recordIteration(0); // Cost estimation would need actual metrics

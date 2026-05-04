@@ -489,11 +489,13 @@ export class DelegationManagerService {
     parentPermissions: PermissionSet,
     requiredPermissions: PermissionSet,
   ): PermissionSet {
-    // §19: Permissions must be narrowed via intersection, not replacement
-    // Child can only request resources that parent already has
-    const allowedResources = requiredPermissions.resources.length > 0
-      ? parentPermissions.resources.filter((resource) => requiredPermissions.resources.includes(resource))
-      : parentPermissions.resources;
+    // R17-01 fix: Always intersect child and parent permissions, even when child
+    // requests no specific resources. This ensures child never receives more
+    // permissions than parent holds. Previously returned parent resources as-is
+    // when requiredPermissions.resources was empty, which was too permissive.
+    const allowedResources = parentPermissions.resources.filter((resource) =>
+      requiredPermissions.resources.includes(resource),
+    );
     return {
       resources: allowedResources,
       actions: this.intersectActions(parentPermissions.actions, requiredPermissions.actions),

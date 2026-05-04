@@ -86,6 +86,9 @@ export interface DetectedIntent {
     | "task_modify"
     | "status_inquiry"
     | "approval_action"
+    | "cancel_task"
+    | "create_goal"
+    | "decompress_goal"
     | "why"; // §39: explanation query type
   readonly domainHint: string | null;
   readonly entities: readonly ExtractedEntity[];
@@ -223,7 +226,7 @@ const DEFAULT_MAX_CLARIFICATION_ROUNDS = 3;
 export interface UserConfirmationReceipt {
   readonly confirmationId: string;
   readonly required: boolean;
-  readonly state: "not_required" | "pending_user_confirmation" | "confirmed";
+  readonly state: "not_required" | "pending_user_confirmation" | "confirmed" | "expired";
   readonly reasonCodes: readonly string[];
   readonly summary: string;
   // §39: Required fields when state is "confirmed"
@@ -434,9 +437,14 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     case "create":
       return "task_create";
     case "modify":
-    case "cancel":
     case "correction":
       return "task_modify";
+    case "cancel":
+      return "cancel_task";
+    case "create_goal":
+      return "create_goal";
+    case "decompress_goal":
+      return "decompress_goal";
     case "approve":
       return "approval_action";
     case "clarify":
@@ -453,8 +461,11 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
 function mapIntentTypeToIntakeIntent(intent: DetectedIntent["intentType"]): "create" | "modify" | "approve" | "query" {
   switch (intent) {
     case "task_create":
+    case "create_goal":
       return "create";
     case "task_modify":
+    case "cancel_task":
+    case "decompress_goal":
       return "modify";
     case "approval_action":
       return "approve";
@@ -1124,84 +1135,10 @@ export class NlEntryService implements NlEntryPort {
     const requiresIndependentReview = standaloneRiskPreview.overallRisk === "critical"
       || standaloneRiskPreview.overallRisk === "high";
 
-    // If risk requires independent review, block before intent parsing
+    // If risk requires independent review, throw to block processing
+    // §39.2: classify_risk is an independent pipeline gate - throw if classification fails
     if (requiresIndependentReview) {
-      return {
-        requestEnvelope: null,
-        riskPreview: standaloneRiskPreview,
-        costEstimate: defaultCostEstimate(),
-        confirmationRequired: true,
-        humanSummary: `风险分类完成：${standaloneRiskPreview.overallRisk}级别任务需要人工审核后处理`,
-        taskDraft: {
-          draftId: `blocked:${taskDraftIdFromMessage(request.message)}`,
-          rawInput: request.message,
-          locale: "zh",
-          intent: {
-            intentType: "task_query",
-            domainHint: null,
-            entities: [],
-            urgency: standaloneRiskPreview.overallRisk === "critical" ? "critical" : "high",
-            confidence: 0,
-          },
-          context: {
-            domainHint: "",
-            extractedConstraints: [],
-            targetEnvironments: [],
-            requestedChannels: [],
-            timelineRefs: [],
-          },
-          riskPreview: standaloneRiskPreview,
-          state: "Confirming",
-        },
-        clarificationState: { state: "none" as const, reasonCodes: [], questions: [], rounds: 0, maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS },
-        confirmationReceipt: {
-          confirmationId: `conf:${taskDraftIdFromMessage(request.message)}`,
-          required: true,
-          state: "pending_user_confirmation",
-          reasonCodes: ["nl_gateway.risk_classification_required"],
-          summary: `风险分类完成：${standaloneRiskPreview.overallRisk}级别任务需要人工审核后处理`,
-          scope: standaloneRiskPreview.overallRisk === "critical" ? "critical" : "high",
-        },
-        conversationState: "Clarifying",
-        canonicalTaskDraft: createCanonicalTaskDraft({
-          tenantId: request.tenantId,
-          principal: createPrincipalRef({
-            principalId: request.userId,
-            tenantId: request.tenantId,
-            roles: ["requester"],
-            displayName: request.userId,
-            authorizationLevel: "operator",
-          }),
-          source: "nl",
-          domainId: "",
-          taskDraftId: `taskdraft:${request.tenantId}:${request.userId}:blocked`,
-          normalizedIntent: {
-            intent: "task_query",
-            continuation: "new_task",
-            domainId: "",
-            divisionId: "",
-            workflowId: "",
-            locale: "zh",
-            entities: {},
-            context: {},
-            summary: `Blocked: ${standaloneRiskPreview.overallRisk} risk requires approval`,
-          },
-          missingFields: [],
-          riskPreview: {
-            riskClass: standaloneRiskPreview.overallRisk,
-            reasons: standaloneRiskPreview.riskFactors,
-          },
-          ambiguityPolicy: "safe_default",
-          rawInputRef: {
-            artifactId: `blocked:${request.tenantId}:${request.userId}:raw-input`,
-            uri: `artifact://nl-input/${encodeURIComponent(request.tenantId)}/${encodeURIComponent(request.userId)}/blocked`,
-          },
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        }),
-        clarificationSession: null,
-        confirmedTaskSpec: null,
-        canonicalRequestEnvelope: null,
-      };
+      throw new Error(`nl_gateway.risk_classification_failed: ${standaloneRiskPreview.overallRisk} risk requires approval before processing`);
     }
 
     const detailed = await this.parseDetailed(request);
@@ -1342,9 +1279,7 @@ export class NlEntryService implements NlEntryPort {
             ...(canonicalTaskDraft.expiresAt !== undefined ? { expiresAt: canonicalTaskDraft.expiresAt } : {}),
           }
         : undefined;
-    const confirmedTaskSpec = confirmationRequired
-      ? null
-      : createConfirmedTaskSpec({
+    const confirmedTaskSpec = createConfirmedTaskSpec({
           confirmedTaskSpecId: `ctspec:${canonicalTaskDraft.taskDraftId}`,
           taskDraftId: canonicalTaskDraft.taskDraftId,
           tenantId: request.tenantId,
@@ -1415,6 +1350,26 @@ export class NlEntryService implements NlEntryPort {
           state: "pending_user_confirmation" as const,
         },
         conversationState: "Clarifying",
+        canonicalTaskDraft,
+        clarificationSession: clarificationSession ?? null,
+        confirmedTaskSpec: null,
+        canonicalRequestEnvelope: null,
+      };
+    }
+    // §39.6: Architecture requires only confirmed TaskSpec can generate RequestEnvelope
+    // Gate RequestEnvelope creation behind confirmation state check
+    if (confirmationReceipt.state === "pending_user_confirmation") {
+      return {
+        requestEnvelope: null,
+        riskPreview,
+        costEstimate,
+        ...(dryRunPreview != null ? { dryRunPreview } : {}),
+        confirmationRequired,
+        humanSummary: surfacedSummary,
+        taskDraft,
+        clarificationState,
+        confirmationReceipt,
+        conversationState,
         canonicalTaskDraft,
         clarificationSession: clarificationSession ?? null,
         confirmedTaskSpec: null,

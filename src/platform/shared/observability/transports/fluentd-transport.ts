@@ -117,7 +117,10 @@ export class FluentdTransport implements LogTransport {
   async flush(): Promise<void> {
     return new Promise((resolve) => {
       if (this.socket?.writable) {
-        this.socket.once("drain", resolve);
+        // If socket is already writable (buffer has room), resolve immediately.
+        // The 'drain' event only fires after the buffer becomes full, so waiting
+        // for it when the socket is already writable would cause a deadlock.
+        resolve();
       } else {
         resolve();
       }

@@ -158,12 +158,9 @@ export class DomainRegistryService {
 
   public deprecate(domainId: string): DomainDefinition {
     const current = this.getOrThrow(domainId);
-    // §198-2317: Root cause - deprecate() only checked "active" state but "updating" domains
-    // should also not be deprecated mid-update (in-progress updates should complete or cancel first).
-    // Domains in "updating" state are actively being modified, deprecating them is premature.
-    // Fix: Add "updating" to the invalid states for deprecation.
-    if (current.status !== "active" && current.status !== "updating") {
-      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only be deprecated from active or updating state.", {
+    // §37.10: Only active domains can transition to deprecated
+    if (current.status !== "active") {
+      throw new ValidationError("domain_registry.invalid_deprecate_state", "Domains can only be deprecated from active state.", {
         category: "validation",
         source: "internal",
         details: { currentStatus: current.status },

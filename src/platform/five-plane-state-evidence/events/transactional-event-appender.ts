@@ -35,6 +35,10 @@ export interface TransactionalAppendOptions {
    * This closes the gap where callers previously had no way to atomically update truth + event.
    */
   mutateTruth?: (db: AuthoritativeSqlDatabase) => void;
+  // §28.1 replay ordering fields
+  aggregateId?: string | null;
+  runId?: string | null;
+  sequence?: number | null;
 }
 
 /**
@@ -97,9 +101,9 @@ export class TransactionalEventAppender {
       traceId: options.traceId ?? null,
       createdAt: now,
       schemaVersion: null,
-      aggregateId: null,
-      runId: null,
-      sequence: null,
+      aggregateId: options.aggregateId ?? null,
+      runId: options.runId ?? null,
+      sequence: options.sequence ?? null,
       causationId: null,
       correlationId: null,
       payloadHash: null,
@@ -168,9 +172,9 @@ export class TransactionalEventAppender {
           traceId: options.traceId ?? null,
           createdAt: now,
           schemaVersion: null,
-          aggregateId: null,
-          runId: null,
-          sequence: null,
+          aggregateId: options.aggregateId ?? null,
+          runId: options.runId ?? null,
+          sequence: options.sequence ?? null,
           causationId: null,
           correlationId: null,
           payloadHash: null,

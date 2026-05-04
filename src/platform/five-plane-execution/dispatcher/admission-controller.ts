@@ -24,6 +24,7 @@ import type { TaskPriority } from "../../contracts/types/domain.js";
 import type { HealthStatusReport } from "../../shared/observability/health-service.js";
 
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import { BudgetExecutionSessionManager, BudgetExecutionState } from "../model-gateway/cost-tracker/budget-guard.js";
 
 export interface AdmissionPolicy {
   maxQueuedTasks: number;
@@ -54,9 +55,10 @@ export interface AdmissionSnapshot {
 
 export interface AdmissionRequest {
   priority: TaskPriority;
-  riskClass?: string;
-  tenantId?: string;
-  sandboxType?: string;
+  budgetReservationId?: string; // R6-9: required for dispatch; must reserve before execute
+  riskClass?: string; // R6-3/R6-9: §14.2 scheduling factors
+  tenantId?: string; // R6-3/R6-9: §14.2 scheduling factors
+  sandboxType?: string; // R6-3/R6-9: §14.2 scheduling factors
   requiredCapabilities?: readonly string[];
   estimatedCostUsd?: number | null;
   budgetRemainingUsd?: number | null;
@@ -81,6 +83,8 @@ export interface AdmissionDecision {
     | "admission.reject_queue_saturated"
     | "admission.reject_tier1_backlog"
     | "admission.reject_budget_exceeded"
+    | "admission.reject_no_active_budget_reservation"
+    | "admission.reject_budget_reservation_not_active"
     | "admission.reject_risk_class_isolation"
     | "admission.reject_tenant_quota"
     | "admission.reject_sandbox_matching"
@@ -108,6 +112,8 @@ const DEFAULT_POLICY: AdmissionPolicy = {
   maxQueueAgeMs: 3600000,
 };
 
+// R6-8: §5.3 canonical naming - elevated priorities are "high" and "critical"
+// Note: legacy references to "urgent" are not used; this matches the authoritative taxonomy
 function isPriorityElevated(priority: TaskPriority): boolean {
   return priority === "high" || priority === "critical";
 }
@@ -117,6 +123,7 @@ export class AdmissionController {
     private readonly store: AuthoritativeTaskStore,
     private readonly policy: AdmissionPolicy = DEFAULT_POLICY,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
+    private readonly budgetSessionManager?: BudgetExecutionSessionManager,
   ) {}
 
   public snapshot(): AdmissionSnapshot {
@@ -192,6 +199,29 @@ export class AdmissionController {
         snapshot,
         backpressure,
       };
+    }
+
+    // R8-01 FIX: Verify the budget reservation is actually ACTIVE (not settled/released/expired)
+    // Uses atomic reserve→execute→settle state machine via BudgetExecutionSessionManager
+    if (this.budgetSessionManager && request.budgetReservationId) {
+      const session = this.budgetSessionManager.getSession(request.budgetReservationId);
+      if (!session) {
+        return {
+          decision: "reject",
+          reasonCode: "admission.reject_no_active_budget_reservation",
+          snapshot,
+          backpressure,
+        };
+      }
+      // Verify the session is in a valid state for dispatch (reserved or executing)
+      if (session.state !== BudgetExecutionState.RESERVED && session.state !== BudgetExecutionState.EXECUTING) {
+        return {
+          decision: "reject",
+          reasonCode: "admission.reject_budget_reservation_not_active",
+          snapshot,
+          backpressure,
+        };
+      }
     }
 
     if (backpressure?.degradationMode === "read_only_operations_only") {

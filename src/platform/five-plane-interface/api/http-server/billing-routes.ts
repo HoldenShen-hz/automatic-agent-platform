@@ -44,6 +44,7 @@ function buildReconcileResponse(ctx: { requestId: string; request: { headers: Re
     throw new ApiError(503, "api.billing_unavailable", "Billing service is not configured.");
   }
 
+  // R20-18 fix: Proper HMAC validation - require valid signature for webhook endpoints
   const hasAuthCredential =
     (typeof ctx.request.headers.authorization === "string" && ctx.request.headers.authorization.trim().length > 0)
     || (typeof ctx.request.headers["x-api-key"] === "string" && ctx.request.headers["x-api-key"]!.trim().length > 0);
@@ -51,7 +52,7 @@ function buildReconcileResponse(ctx: { requestId: string; request: { headers: Re
   const signature = ctx.request.headers["x-webhook-signature"] as string | undefined;
   const expected = deps.webhookSecret;
 
-  // R20-18 fix: If x-webhook-signature is present, ALWAYS verify it regardless of auth credentials
+  // Billing webhooks MUST have a valid HMAC signature - auth credentials alone don't suffice
   if (typeof signature === "string" && signature.length > 0) {
     if (typeof expected !== "string" || expected.length === 0) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
@@ -59,9 +60,10 @@ function buildReconcileResponse(ctx: { requestId: string; request: { headers: Re
     if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
       throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
     }
-  } else if (!hasAuthCredential) {
-    // No signature AND no auth credentials - reject
-    throw new ApiError(401, "api.webhook_signature_invalid", "Webhook signature is invalid.");
+  } else {
+    // No signature provided - reject regardless of auth credentials
+    // Webhook endpoints require HMAC signature, not just auth headers
+    throw new ApiError(401, "api.webhook_signature_required", "Webhook signature is required.");
   }
 
   return billingService.reconcilePaymentSession({

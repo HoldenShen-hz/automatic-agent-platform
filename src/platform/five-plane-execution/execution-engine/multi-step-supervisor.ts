@@ -588,7 +588,7 @@ export async function executeStepLoop(
         fileName: `${step.stepId}.json`,
         content: createWorkflowStepCheckpoint({
           harnessRunId: validatedPlanGraphBundle.harnessRunId,
-          nodeRunId: null,
+          nodeRunId: step.stepId,
           planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
           taskId,
           executionId,

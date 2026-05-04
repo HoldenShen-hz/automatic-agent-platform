@@ -711,7 +711,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       fileName: `${step.stepId}.json`,
       content: createWorkflowStepCheckpoint({
         harnessRunId: harnessRunIdFromBundle,
-        nodeRunId: null,
+        nodeRunId: step.stepId,
         planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
         taskId,
         executionId,

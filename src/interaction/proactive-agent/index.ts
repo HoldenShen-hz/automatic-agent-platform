@@ -445,6 +445,14 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       state.trigger.riskLevel,
     );
 
+    // R17-23 FIX: Enforce suggestion mode for medium+ risk when confirmation is disabled.
+    // If requireConfirmation=false but risk is medium+, we must NOT auto-execute.
+    // resolveTriggerActionMode only runs when requireConfirmation is true, so we need
+    // an explicit check here to catch the requireConfirmation=false case.
+    if (!state.trigger.action.requireConfirmation && (state.trigger.riskLevel === "medium" || state.trigger.riskLevel === "high" || state.trigger.riskLevel === "critical")) {
+      actionMode = "suggest";
+    }
+
     // §42.5: Autonomy level must be semi_auto+ for auto_execute
     // If autonomy is suggestion/supervised/frozen, downgrade auto_execute to suggest
     const autoExecutePermitted = this.currentAutonomyLevel === "semi_auto"

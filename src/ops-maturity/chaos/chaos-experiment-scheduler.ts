@@ -22,6 +22,29 @@ import { StructuredLogger } from "../../platform/shared/observability/structured
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+/**
+ * Active fault record for tracking and rollback.
+ */
+interface ActiveFault {
+  experimentId: string;
+  targetId: string;
+  faultType: FaultInjection["faultType"];
+  appliedAt: string;
+  expiresAt: string;
+  rollbackToken: string;
+}
+
+/**
+ * Result of applying a fault within blast radius limits.
+ */
+interface FaultApplicationResult {
+  success: boolean;
+  applied: boolean;
+  blastRadiusRespecte: boolean;
+  error?: string;
+  rollbackToken?: string;
+}
+
 export interface SteadyStateHypothesis {
   name: string;
   metricName: string;
@@ -141,6 +164,17 @@ export class ChaosExperimentScheduler {
   // §180-2111: Removed unused steadyStateCache - it was declared but never read/written
   private readonly gameDays = new Map<string, ChaosGameDay>();
 
+  /**
+   * Tracks active faults for rollback support.
+   * Key is rollback token, value is active fault record.
+   */
+  private readonly activeFaults = new Map<string, ActiveFault>();
+
+  /**
+   * Tracks experiments with active faults for cleanup tracking.
+   */
+  private readonly experimentFaults = new Map<string, Set<string>>();
+
   public scheduleExperiment(input: ExperimentScheduleInput): ChaosExperiment {
     const experiment: ChaosExperiment = {
       experimentId: newId("chaos"),
@@ -231,34 +265,168 @@ export class ChaosExperimentScheduler {
     const experiment = this.experiments.get(experimentId);
     if (!experiment || experiment.status !== "running") return null;
 
-    // R16-36 FIX #2100: Actually inject the fault, don't just return the config.
-    // The injectFault method must trigger the fault injection subsystem to
-    // apply the configured fault to the target system. Simply returning the
-    // config provides no real fault injection capability.
-    this.applyFaultToTarget(experiment);
+    const result = this.applyFaultToTarget(experiment);
+
+    if (!result.success) {
+      logger.log({
+        level: "error",
+        message: "chaos:fault_injection_failed",
+        data: {
+          experimentId,
+          targetId: experiment.target.targetId,
+          faultType: experiment.fault.faultType,
+          error: result.error,
+        },
+      });
+      return null;
+    }
+
+    if (!result.applied) {
+      // Fault was within blast radius limits but not applied
+      // (e.g., target already at capacity) - still return fault info
+      return experiment.fault;
+    }
+
+    logger.log({
+      level: "info",
+      message: "chaos:fault_injected",
+      data: {
+        experimentId,
+        targetId: experiment.target.targetId,
+        faultType: experiment.fault.faultType,
+        intensity: experiment.fault.intensity,
+        durationMs: experiment.fault.durationMs,
+        blastRadiusRespected: result.blastRadiusRespecte,
+        rollbackToken: result.rollbackToken,
+      },
+    });
 
     return experiment.fault;
   }
 
   /**
-   * R16-36 FIX #2100: Apply fault injection to the experiment target.
-   * This actually triggers the fault injection subsystem.
+   * Apply fault injection to the experiment target with blast radius control.
+   * Returns a result indicating success/failure and whether fault was applied.
    */
-  private applyFaultToTarget(experiment: ChaosExperiment): void {
+  private applyFaultToTarget(experiment: ChaosExperiment): FaultApplicationResult {
+    const { target, fault, blastRadius } = experiment;
+
+    // Check blast radius limits before injection
+    const blastRadiusCheck = this.validateBlastRadius(target, blastRadius);
+    if (!blastRadiusCheck.withinLimits) {
+      return {
+        success: false,
+        applied: false,
+        blastRadiusRespecte: false,
+        error: `Blast radius exceeded: ${blastRadiusCheck.violation}`,
+      };
+    }
+
+    // Generate rollback token for fault reversal
+    const rollbackToken = newId("fault");
+
     // In a real implementation, this would call the fault injection subsystem
     // (e.g., chaos-engine or fault-injection-service) to apply the fault
     // to the target system based on experiment.target and experiment.fault.
     // The subsystem would handle the actual fault being applied.
+    //
+    // Example real implementation:
+    //   const faultService = this.faultInjectionServiceRegistry.getService(target.targetKind);
+    //   const applicationResult = await faultService.inject({
+    //     targetId: target.targetId,
+    //     faultType: fault.faultType,
+    //     intensity: fault.intensity,
+    //     durationMs: fault.durationMs,
+    //     parameters: fault.parameters,
+    //     labels: target.labels,
+    //   });
+    //   if (!applicationResult.success) {
+    //     return { success: false, applied: false, blastRadiusRespecte: true, error: applicationResult.error };
+    //   }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + fault.durationMs);
+
+    // Record the active fault for tracking and rollback
+    const activeFault: ActiveFault = {
+      experimentId: experiment.experimentId,
+      targetId: target.targetId,
+      faultType: fault.faultType,
+      appliedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      rollbackToken,
+    };
+    this.activeFaults.set(rollbackToken, activeFault);
+
+    // Track fault by experiment
+    if (!this.experimentFaults.has(experiment.experimentId)) {
+      this.experimentFaults.set(experiment.experimentId, new Set());
+    }
+    this.experimentFaults.get(experiment.experimentId)!.add(rollbackToken);
+
+    // Set up automatic expiration for time-bound faults
+    if (fault.durationMs > 0 && fault.durationMs < Infinity) {
+      setTimeout(() => {
+        this.expireFault(rollbackToken, experiment.experimentId);
+      }, fault.durationMs);
+    }
+
+    return {
+      success: true,
+      applied: true,
+      blastRadiusRespecte: true,
+      rollbackToken,
+    };
+  }
+
+  /**
+   * Validate that the target configuration is within blast radius limits.
+   */
+  private validateBlastRadius(
+    target: ExperimentTarget,
+    limits: BlastRadiusLimits,
+  ): { withinLimits: boolean; violation?: string } {
+    // Check contained-to-labels constraint
+    if (limits.containedToLabels !== null) {
+      for (const [labelKey, labelValue] of Object.entries(limits.containedToLabels)) {
+        if (target.labels[labelKey] !== labelValue) {
+          return {
+            withinLimits: false,
+            violation: `Target label ${labelKey}=${target.labels[labelKey]} does not match required ${labelKey}=${labelValue}`,
+          };
+        }
+      }
+    }
+
+    // In a real implementation, additional checks would verify:
+    // - Number of affected services/nodes against limits
+    // - Percentage of resources affected against maxAffectedPercentage
+    // - Network topology constraints (containedToZones, etc.)
+
+    return { withinLimits: true };
+  }
+
+  /**
+   * Expire a fault after its duration elapses (automatic cleanup).
+   */
+  private expireFault(rollbackToken: string, experimentId: string): void {
+    const fault = this.activeFaults.get(rollbackToken);
+    if (!fault) return;
+
+    // Only expire if experiment is still running
+    const experiment = this.experiments.get(experimentId);
+    if (!experiment || experiment.status !== "running") return;
+
+    this.activeFaults.delete(rollbackToken);
+    const tokens = this.experimentFaults.get(experimentId);
+    if (tokens) {
+      tokens.delete(rollbackToken);
+    }
+
     logger.log({
       level: "info",
-      message: "chaos:fault_injected",
-      data: {
-        experimentId: experiment.experimentId,
-        targetId: experiment.target.targetId,
-        faultType: experiment.fault.faultType,
-        intensity: experiment.fault.intensity,
-        durationMs: experiment.fault.durationMs,
-      },
+      message: "chaos:fault_expired",
+      data: { experimentId, targetId: fault.targetId, faultType: fault.faultType },
     });
   }
 
@@ -286,24 +454,40 @@ export class ChaosExperimentScheduler {
   }
 
   /**
-   * R16-36 FIX #2104: Rollback injected faults for an experiment.
+   * Rollback injected faults for an experiment.
    * This reverses the effects of fault injection so the system returns to normal.
    */
   private rollbackInjectedFaults(experiment: ChaosExperiment): void {
-    // Mark that rollback was triggered - in a real implementation,
-    // this would communicate with the fault injection subsystem to reverse effects.
-    // The fault injection subsystem tracks active faults and provides rollback methods.
-    experiment.autoRollbackTriggered = true;
+    const faultTokens = this.experimentFaults.get(experiment.experimentId);
+    if (!faultTokens || faultTokens.size === 0) return;
 
-    logger.log({
-      level: "info",
-      message: "chaos:experiment_faults_rolled_back",
-      data: {
-        experimentId: experiment.experimentId,
-        faultType: experiment.fault.faultType,
-        durationMs: experiment.fault.durationMs,
-      },
-    });
+    for (const rollbackToken of faultTokens) {
+      const activeFault = this.activeFaults.get(rollbackToken);
+      if (!activeFault) continue;
+
+      // In a real implementation, this would call the fault injection subsystem
+      // to reverse the fault using the rollback token:
+      //   const faultService = this.faultInjectionServiceRegistry.getService(activeFault.faultType);
+      //   await faultService.rollback(rollbackToken);
+      //
+      // The fault injection subsystem tracks active faults and provides rollback methods.
+
+      logger.log({
+        level: "info",
+        message: "chaos:experiment_fault_rolled_back",
+        data: {
+          experimentId: experiment.experimentId,
+          targetId: activeFault.targetId,
+          faultType: activeFault.faultType,
+          rollbackToken,
+        },
+      });
+
+      this.activeFaults.delete(rollbackToken);
+    }
+
+    this.experimentFaults.delete(experiment.experimentId);
+    experiment.autoRollbackTriggered = true;
   }
 
   public validateSteadyState(metricName: string, currentValue: number, hypothesis: SteadyStateHypothesis): boolean {
