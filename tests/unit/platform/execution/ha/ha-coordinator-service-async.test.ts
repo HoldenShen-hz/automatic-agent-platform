@@ -453,6 +453,22 @@ test("HaCoordinatorServiceAsync - acquireLeadership increments epoch", async () 
   assert.ok(result2.epoch > result1.epoch);
 });
 
+test("HaCoordinatorServiceAsync - fencing token remains monotonic across service instances sharing the same repo", async () => {
+  const repo = createMockRepo();
+  (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
+  (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
+
+  const firstService = new HaCoordinatorServiceAsync(repo);
+  const secondService = new HaCoordinatorServiceAsync(repo);
+
+  const firstAcquire = await firstService.acquireLeadership({ nodeId: "node-1" });
+  await firstService.releaseLeadership("node-1");
+  const secondAcquire = await secondService.acquireLeadership({ nodeId: "node-2" });
+
+  assert.ok(secondAcquire.fencingToken > firstAcquire.fencingToken);
+  assert.equal(secondAcquire.fencingToken, firstAcquire.fencingToken + 1);
+});
+
 test("HaCoordinatorServiceAsync - acquireLeadership delegates to atomic repo path when available", async () => {
   const repo = createMockRepo();
   const atomicCalls: Array<{ nodeId: string; ttlMs: number; forceAcquire?: boolean }> = [];
@@ -510,6 +526,19 @@ test("HaCoordinatorServiceAsync - renewLeadership succeeds for current leader", 
 
   assert.equal(result.renewed, true);
   assert.ok(result.lease !== null);
+});
+
+test("HaCoordinatorServiceAsync - renewLeadership returns epoch fencing token instead of ttlMs", async () => {
+  const repo = createMockRepo();
+  (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
+
+  const service = new HaCoordinatorServiceAsync(repo);
+  const acquired = await service.acquireLeadership({ nodeId: "node-1", ttlMs: 10_000 });
+  const result = await service.renewLeadership({ nodeId: "node-1", ttlMs: 30_000 });
+
+  assert.equal(result.renewed, true);
+  assert.equal(result.fencingToken, acquired.fencingToken);
+  assert.notEqual(result.fencingToken, result.lease?.ttlMs);
 });
 
 test("HaCoordinatorServiceAsync - renewLeadership fails for unregistered node", async () => {

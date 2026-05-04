@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { ProgressiveAutonomyService, type AgentTrustProfile } from "../../../../src/interaction/autonomy/index.js";
 
-test("ProgressiveAutonomyService routes rule-engine promotions into domain_owner approval instead of auto-applying", () => {
+test("ProgressiveAutonomyService routes semi_auto to full_auto promotions into platform_team approval instead of auto-applying", () => {
   const service = new ProgressiveAutonomyService();
   const profile: AgentTrustProfile = {
     agentId: "agent-approval-attribution",
@@ -31,7 +31,7 @@ test("ProgressiveAutonomyService routes rule-engine promotions into domain_owner
   const evaluation = service.evaluateProfile(profile);
 
   assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.promoted");
-  assert.equal(evaluation.changeEvents[0]?.approvedBy, "domain_owner");
+  assert.equal(evaluation.changeEvents[0]?.approvedBy, "platform_team");
   assert.equal(evaluation.changeEvents[0]?.requiresApprovalResolution, true);
   assert.equal(evaluation.decision.level, "semi_auto");
   assert.equal(service.listPendingApprovalRequests("agent-approval-attribution").length, 1);

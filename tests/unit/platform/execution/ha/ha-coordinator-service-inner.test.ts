@@ -94,6 +94,7 @@ class MockDatabase {
           const hasIsLeader1 = /is_leader\s*=\s*1/i.test(sql);
           const hasExpiresAt = /expires_at\s*>/i.test(sql);
           const hasSequenceNumber = /sequence_number\s*>/i.test(sql);
+          const hasMaxFencingToken = /SELECT\s+MAX\(fencing_token\)/i.test(sql);
 
           return {
             run() { return { changes: 0 }; },
@@ -102,6 +103,18 @@ class MockDatabase {
               if (!tableMatch) return undefined;
               const tableName = tableMatch[1]!;
               const table = self.getTable(tableName);
+
+              if (hasMaxFencingToken) {
+                let maxToken: number | null = null;
+                for (const row of table.values()) {
+                  const token = Number(row["fencing_token"]);
+                  if (!Number.isFinite(token)) {
+                    continue;
+                  }
+                  maxToken = maxToken == null ? token : Math.max(maxToken, token);
+                }
+                return { max_token: maxToken };
+              }
 
               if (hasWhere) {
                 const whereMatch = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i);
@@ -434,6 +447,22 @@ test("HaCoordinatorService - acquireLeadership increments epoch", () => {
   assert.ok(result2.epoch > result1.epoch);
 });
 
+test("HaCoordinatorService - fencing token remains monotonic across service instances sharing the same DB", () => {
+  const db = new MockDatabase();
+  const firstService = new HaCoordinatorService(db as any);
+  const secondService = new HaCoordinatorService(db as any);
+
+  firstService.registerNode("node-1", "us-east-1");
+  firstService.registerNode("node-2", "us-east-1");
+
+  const firstAcquire = firstService.acquireLeadership({ nodeId: "node-1" });
+  firstService.releaseLeadership("node-1");
+  const secondAcquire = secondService.acquireLeadership({ nodeId: "node-2" });
+
+  assert.ok(secondAcquire.fencingToken > firstAcquire.fencingToken);
+  assert.equal(secondAcquire.fencingToken, firstAcquire.fencingToken + 1);
+});
+
 test("HaCoordinatorService - acquireLeadership with forceAcquire preempts existing leader", () => {
   const service = createService();
 
@@ -502,6 +531,19 @@ test("HaCoordinatorService - renewLeadership updates expiration", () => {
   const result = service.renewLeadership({ nodeId: "node-1", ttlMs: 30_000 });
 
   assert.equal(result.renewed, true);
+});
+
+test("HaCoordinatorService - renewLeadership returns epoch fencing token instead of ttlMs", () => {
+  const service = createService();
+
+  service.registerNode("node-1", "us-east-1");
+  const acquired = service.acquireLeadership({ nodeId: "node-1", ttlMs: 10_000 });
+
+  const result = service.renewLeadership({ nodeId: "node-1", ttlMs: 30_000 });
+
+  assert.equal(result.renewed, true);
+  assert.equal(result.fencingToken, acquired.fencingToken);
+  assert.notEqual(result.fencingToken, result.lease?.ttlMs);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -721,15 +763,17 @@ test("HaCoordinatorService - getFailoverHistory returns decisions", () => {
 // Tests: Write Authority Verification
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - verifyWriteAuthority returns true for valid token", () => {
+test("HaCoordinatorService - verifyWriteAuthority only accepts tokens greater than current token", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
   const result = service.acquireLeadership({ nodeId: "node-1" });
 
-  const valid = service.verifyWriteAuthority(result.fencingToken);
+  const stale = service.verifyWriteAuthority(result.fencingToken);
+  const newer = service.verifyWriteAuthority(result.fencingToken + 1);
 
-  assert.equal(valid, true);
+  assert.equal(stale, false);
+  assert.equal(newer, true);
 });
 
 test("HaCoordinatorService - verifyWriteAuthority returns false for stale token", () => {

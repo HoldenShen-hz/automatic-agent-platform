@@ -69,8 +69,11 @@ interface BuiltinPluginEntry {
   readonly manifest: PluginManifest;
 }
 
-const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<string, BuiltinPluginEntry>([
-  ["plugin.coding.retriever", {
+const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
+  const map = new Map<string, BuiltinPluginEntry>();
+
+  // §G1: Coding domain plugins
+  map.set("plugin.coding.retriever", {
     factory: createCodingRetrieverPlugin,
     manifest: {
       pluginId: "plugin.coding.retriever",
@@ -83,6 +86,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-coding-retriever",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -98,8 +102,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.coding.presenter", {
+  });
+
+  map.set("plugin.coding.presenter", {
     factory: createCodingPresenterPlugin,
     manifest: {
       pluginId: "plugin.coding.presenter",
@@ -112,6 +117,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-coding-presenter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -127,8 +133,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.core.basic-evaluator", {
+  });
+
+  // §G2: Core plugins
+  map.set("plugin.core.basic-evaluator", {
     factory: createBasicEvaluatorPlugin,
     manifest: {
       pluginId: "plugin.core.basic-evaluator",
@@ -141,6 +149,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-basic-evaluator",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -156,8 +165,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.core.basic-planner", {
+  });
+
+  map.set("plugin.core.basic-planner", {
     factory: createBasicPlannerPlugin,
     manifest: {
       pluginId: "plugin.core.basic-planner",
@@ -170,6 +180,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-basic-planner",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -185,8 +196,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.shared.github_adapter", {
+  });
+
+  // §G3: Shared plugins
+  map.set("plugin.shared.github_adapter", {
     factory: createGithubAdapterPlugin,
     manifest: {
       pluginId: "plugin.shared.github_adapter",
@@ -199,6 +212,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "external_adapter",
       trustLevel: "trusted",
       publicSdkSurface: "@automatic-agent/plugin-github-adapter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -214,9 +228,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
+  });
+
   // §G8: Operations domain plugins
-  ["plugin.operations.retriever", {
+  map.set("plugin.operations.retriever", {
     factory: createOperationsRetrieverPlugin,
     manifest: {
       pluginId: "plugin.operations.retriever",
@@ -229,6 +244,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-operations-retriever",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -244,8 +260,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.operations.presenter", {
+  });
+
+  map.set("plugin.operations.presenter", {
     factory: createOperationsPresenterPlugin,
     manifest: {
       pluginId: "plugin.operations.presenter",
@@ -258,6 +275,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-operations-presenter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -273,9 +291,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
+  });
+
   // §G8: Growth domain plugins (M2 Phase 2)
-  ["plugin.growth.retriever", {
+  map.set("plugin.growth.retriever", {
     factory: createGrowthRetrieverPlugin,
     manifest: {
       pluginId: "plugin.growth.retriever",
@@ -288,6 +307,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-growth-retriever",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -303,8 +323,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.growth.presenter", {
+  });
+
+  map.set("plugin.growth.presenter", {
     factory: createGrowthPresenterPlugin,
     manifest: {
       pluginId: "plugin.growth.presenter",
@@ -317,6 +338,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-growth-presenter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -332,8 +354,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.growth.crm_adapter", {
+  });
+
+  map.set("plugin.growth.crm_adapter", {
     factory: createCrmAdapterPlugin,
     manifest: {
       pluginId: "plugin.growth.crm_adapter",
@@ -346,6 +369,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "external_adapter",
       trustLevel: "trusted",
       publicSdkSurface: "@automatic-agent/plugin-crm-adapter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -361,9 +385,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
+  });
+
   // §G8: Game Dev domain plugins (M2 Phase 3)
-  ["plugin.gamedev.retriever", {
+  map.set("plugin.gamedev.retriever", {
     factory: createGameDevRetrieverPlugin,
     manifest: {
       pluginId: "plugin.gamedev.retriever",
@@ -376,6 +401,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-gamedev-retriever",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -391,8 +417,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.gamedev.unity_adapter", {
+  });
+
+  map.set("plugin.gamedev.unity_adapter", {
     factory: createGameDevAdapterPlugin,
     manifest: {
       pluginId: "plugin.gamedev.unity_adapter",
@@ -405,6 +432,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "external_adapter",
       trustLevel: "trusted",
       publicSdkSurface: "@automatic-agent/plugin-unity-adapter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -420,9 +448,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
+  });
+
   // §G8: Asset Production domain plugins (M2 Phase 4)
-  ["plugin.assetproduction.retriever", {
+  map.set("plugin.assetproduction.retriever", {
     factory: createAssetProductionRetrieverPlugin,
     manifest: {
       pluginId: "plugin.assetproduction.retriever",
@@ -435,6 +464,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-assetproduction-retriever",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -450,8 +480,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.assetproduction.figma_adapter", {
+  });
+
+  map.set("plugin.assetproduction.figma_adapter", {
     factory: createAssetProductionAdapterPlugin,
     manifest: {
       pluginId: "plugin.assetproduction.figma_adapter",
@@ -464,6 +495,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "external_adapter",
       trustLevel: "trusted",
       publicSdkSurface: "@automatic-agent/plugin-figma-adapter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -479,9 +511,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
+  });
+
   // §G8: Livestream domain plugins (M2 Phase 5)
-  ["plugin.livestream.retriever", {
+  map.set("plugin.livestream.retriever", {
     factory: createLivestreamRetrieverPlugin,
     manifest: {
       pluginId: "plugin.livestream.retriever",
@@ -494,6 +527,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "domain_plugin",
       trustLevel: "internal",
       publicSdkSurface: "@automatic-agent/plugin-livestream-retriever",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -509,8 +543,9 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-  ["plugin.livestream.obs_adapter", {
+  });
+
+  map.set("plugin.livestream.obs_adapter", {
     factory: createLivestreamAdapterPlugin,
     manifest: {
       pluginId: "plugin.livestream.obs_adapter",
@@ -523,6 +558,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
       extensionKind: "external_adapter",
       trustLevel: "trusted",
       publicSdkSurface: "@automatic-agent/plugin-obs-adapter",
+      dependencies: [],
       settingsSchema: {},
       sandbox: {
         timeoutMs: 5000,
@@ -538,8 +574,10 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }]) as Array<[string, BuiltinPluginEntry]>,
-);
+  });
+
+  return map;
+})();
 
 /**
  * Create a built-in plugin by plugin ID.

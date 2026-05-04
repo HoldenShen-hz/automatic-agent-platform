@@ -48,7 +48,7 @@ function makeProfile(overrides: Partial<AgentTrustProfile> = {}): AgentTrustProf
 
 // ============ Safety Boundary Tests ============
 
-test("full_auto requires 500+ executions at 99%+ success", () => {
+test("full_auto promotions are queued behind platform_team approval", () => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -63,7 +63,10 @@ test("full_auto requires 500+ executions at 99%+ success", () => {
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "full_auto");
+  assert.equal(result.decision.level, "semi_auto");
+  assert.equal(result.changeEvents[0]?.toLevel, "full_auto");
+  assert.equal(result.changeEvents[0]?.approvedBy, "platform_team");
+  assert.equal(result.changeEvents[0]?.requiresApprovalResolution, true);
 });
 
 test("full_auto blocked with less than 500 executions", () => {
@@ -121,7 +124,7 @@ test("full_auto requires 90+ incident-free days", () => {
   assert.notEqual(result.decision.level, "full_auto");
 });
 
-test("semi_auto requires 200+ executions at 98%+ success", () => {
+test("semi_auto promotions are queued behind domain_owner approval", () => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -136,10 +139,13 @@ test("semi_auto requires 200+ executions at 98%+ success", () => {
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "semi_auto");
+  assert.equal(result.decision.level, "supervised");
+  assert.equal(result.changeEvents[0]?.toLevel, "semi_auto");
+  assert.equal(result.changeEvents[0]?.approvedBy, "domain_owner");
+  assert.equal(result.changeEvents[0]?.requiresApprovalResolution, true);
 });
 
-test("supervised requires 50+ executions at 95%+ success", () => {
+test("supervised promotions are queued behind domain_owner approval", () => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -154,7 +160,10 @@ test("supervised requires 50+ executions at 95%+ success", () => {
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "supervised");
+  assert.equal(result.decision.level, "suggestion");
+  assert.equal(result.changeEvents[0]?.toLevel, "supervised");
+  assert.equal(result.changeEvents[0]?.approvedBy, "domain_owner");
+  assert.equal(result.changeEvents[0]?.requiresApprovalResolution, true);
 });
 
 // ============ P0 Suggestion-Demotion Behavior Tests ============

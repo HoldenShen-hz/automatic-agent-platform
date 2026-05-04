@@ -274,19 +274,21 @@ test("ProgressiveAutonomyService evaluateProfile incident_response trigger when 
   assert.equal(event?.trigger, "incident_response");
 });
 
-test("ProgressiveAutonomyService evaluateProfile handles frozen to full_auto recovery path", (t) => {
+test("ProgressiveAutonomyService evaluateProfile keeps frozen capability pending approval during recovery", (t) => {
   const service = new ProgressiveAutonomyService();
-  // When frozen agent has 500+ executions at 99%+ success, it becomes full_auto via threshold
+  // Frozen recovery must remain gated until a human approves the promotion.
   const profile = makeProfile({
     capabilityScores: [
       makeScore({ capabilityId: "cap-1", currentAutonomy: "frozen", totalExecutions: 500, successfulExecutions: 495, failedExecutions: 0, incidents: 0 }),
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.capabilityLevels["cap-1"], "full_auto");
+  assert.equal(result.capabilityLevels["cap-1"], "frozen");
+  assert.equal(result.changeEvents[0]?.approvedBy, "platform_team");
+  assert.equal(service.listPendingApprovalRequests("agent-001").length, 1);
 });
 
-test("ProgressiveAutonomyService evaluateProfile two capabilities with different promotion levels", (t) => {
+test("ProgressiveAutonomyService evaluateProfile keeps multi-capability promotions pending until approval", (t) => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -295,13 +297,9 @@ test("ProgressiveAutonomyService evaluateProfile two capabilities with different
     ],
   });
   const result = service.evaluateProfile(profile);
-  // cap-1: suggestion with 50 execs at 96% -> supervised (50>=50, 96%>=95%)
-  // cap-2: supervised with 200 execs at 98% -> semi_auto (200>=200, 98%>=98%) BUT
-  //   This only promotes if currentAutonomy is supervised, not suggestion.
-  //   The promotion thresholds apply from currentAutonomy, not from suggestion.
-  //   supervised->semi_auto: requires >=200, >=98%, which cap-2 meets
-  assert.equal(result.capabilityLevels["cap-1"], "supervised");
-  assert.equal(result.capabilityLevels["cap-2"], "semi_auto");
-  // Overall decision is lowest level: supervised (lowest of supervised, semi_auto)
-  assert.equal(result.decision.level, "supervised");
+  assert.equal(result.capabilityLevels["cap-1"], "suggestion");
+  assert.equal(result.capabilityLevels["cap-2"], "supervised");
+  assert.equal(result.changeEvents.length, 2);
+  assert.equal(result.decision.level, "suggestion");
+  assert.equal(service.listPendingApprovalRequests("agent-001").length, 2);
 });
