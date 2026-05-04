@@ -87,6 +87,7 @@ import type {
   RuntimeTransitionCommand,
   RuntimeStateAggregateType,
 } from "../../five-plane-execution/runtime-state-machine.js";
+import { createPlatformFactEvent, type JsonValue } from "../../contracts/executable-contracts/index.js";
 
 /**
  * Canonical entity type prefixes used by RuntimeStateMachine.
@@ -296,6 +297,12 @@ export interface BlockedForApprovalTransitionResult {
  * entities (workflow, session, execution) must also transition to their
  * corresponding terminal states atomically. This input captures the current
  * state of each entity for validation.
+ *
+ * R9-02: The current*Status fields are provided by the caller but MUST be
+ * re-validated against fresh database state before use in CAS operations.
+ * Use the version/fencing fields (expectedTaskUpdatedAt, expectedWorkflowStepIndex,
+ * expectedSessionUpdatedAt, expectedExecutionUpdatedAt) for CAS to prevent
+ * TOCTOU race conditions per §25.3.
  */
 type TaskTerminalTransitionInput = {
   taskId: string;
@@ -309,6 +316,14 @@ type TaskTerminalTransitionInput = {
   taskOutputJson: string;
   outputsJson: string;
   context: TransitionAuditContext;
+  /** R9-02: Fencing token for task - used as CAS expected value */
+  expectedTaskUpdatedAt: string;
+  /** R9-02: Fencing token for workflow - current_step_index used as CAS expected value */
+  expectedWorkflowStepIndex: number;
+  /** R9-02: Fencing token for session - used as CAS expected value */
+  expectedSessionUpdatedAt: string;
+  /** R9-02: Fencing token for execution - used as CAS expected value */
+  expectedExecutionUpdatedAt: string;
 };
 
 /**
@@ -357,6 +372,10 @@ export class TaskTransitionService {
    * Validates the transition against the task state machine, updates the task
    * record in the repository, and emits a tier-1 event for reliable delivery.
    *
+   * R4-28 (INV-STATE-001): PlatformFactEvent is appended BEFORE the state mutation
+   * to establish the event as the source of truth. The state mutation is derived
+   * from the event, not the other way around.
+   *
    * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: TaskStatusTransitionCommand): void {
@@ -364,6 +383,19 @@ export class TaskTransitionService {
     assertNotCanonicalEntity(command.entityId, "task");
     taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
+
+    // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
+    const platformEvent = buildLegacyTransitionPlatformFactEvent(
+      "Task",
+      command.entityId,
+      "platform.task.status_changed",
+      command.traceId,
+      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      command.occurredAt,
+      command.entityId,
+    );
+    this.repository.appendPlatformFactEvent(platformEvent);
+
     // RT-01: CAS on status. If another transaction already moved the task
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
     // emit the state-change event. Previously a plain UPDATE + assertTransition
@@ -384,6 +416,7 @@ export class TaskTransitionService {
         `task.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
+    // Legacy tier-1 event still emitted for backward compatibility with existing consumers
     this.repository.createTier1StatusEvent({
       taskId: command.entityId,
       executionId: resolveExistingExecutionId(this.db, command.executionId),
@@ -470,6 +503,9 @@ export class WorkflowTransitionService {
    * Updates the workflow state with the new status, step index, and outputs.
    * The outputs capture the accumulated results from completed workflow steps.
    *
+   * R4-28 (INV-STATE-001): PlatformFactEvent is appended BEFORE the state mutation
+   * to establish the event as the source of truth.
+   *
    * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: WorkflowStatusTransitionCommand): void {
@@ -485,6 +521,20 @@ export class WorkflowTransitionService {
         `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
       );
     }
+
+    // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
+    const traceContext = buildEventTraceContext(command, command.entityId);
+    const platformEvent = buildLegacyTransitionPlatformFactEvent(
+      "Workflow",
+      command.entityId,
+      "platform.workflow.status_changed",
+      command.traceId,
+      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      command.occurredAt,
+      command.entityId,
+    );
+    this.repository.appendPlatformFactEvent(platformEvent);
+
     const affected = this.repository.updateWorkflowStateCas(
       command.entityId,
       current.currentStepIndex,
@@ -499,13 +549,13 @@ export class WorkflowTransitionService {
         `workflow.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
-    // §28: Emit tier-1 status change event for workflow transitions
+    // §28: Emit tier-1 status change event for workflow transitions (legacy compatibility)
     this.repository.createTier1StatusEvent({
       taskId: command.entityId, // workflows are keyed by taskId
       executionId: null,
       eventType: "workflow:status_changed",
       traceId: command.traceId,
-      payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
     });
   }
 }
@@ -540,12 +590,29 @@ export class SessionTransitionService {
    * Updates the session status to reflect the current interaction state,
    * such as "streaming", "awaiting_user", or "completed".
    *
+   * R4-28 (INV-STATE-001): PlatformFactEvent is appended BEFORE the state mutation
+   * to establish the event as the source of truth.
+   *
    * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: SessionStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "session");
     sessionStateMachine.assertTransition(command.fromStatus, command.toStatus);
+    const traceContext = buildEventTraceContext(command, command.entityId);
+
+    // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
+    const platformEvent = buildLegacyTransitionPlatformFactEvent(
+      "Session",
+      command.entityId,
+      "platform.session.status_changed",
+      command.traceId,
+      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      command.occurredAt,
+      command.entityId,
+    );
+    this.repository.appendPlatformFactEvent(platformEvent);
+
     // RT-01: CAS on status. If another transaction already moved the session
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
     // emit the state-change event.
@@ -560,13 +627,13 @@ export class SessionTransitionService {
         `session.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
-    // §28: Emit tier-1 status change event for session transitions
+    // §28: Emit tier-1 status change event for session transitions (legacy compatibility)
     this.repository.createTier1StatusEvent({
       taskId: command.entityId, // sessionId for correlation
       executionId: null,
       eventType: "session:status_changed",
       traceId: command.traceId,
-      payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
     });
   }
 }
@@ -604,6 +671,9 @@ export class ExecutionTransitionService {
    * Updates execution status and records timing metadata: startedAt is set when
    * execution begins (prechecking or executing), finishedAt when execution ends.
    *
+   * R4-28 (INV-STATE-001): PlatformFactEvent is appended BEFORE the state mutation
+   * to establish the event as the source of truth.
+   *
    * @throws InvState001BypassError if entityId appears to be a canonical entity
    */
   public apply(command: ExecutionStatusTransitionCommand): void {
@@ -619,6 +689,19 @@ export class ExecutionTransitionService {
         ? command.occurredAt
         : null;
     const lastErrorCode = command.toStatus === "failed" ? command.reasonCode ?? null : null;
+    const traceContext = buildEventTraceContext(command, command.entityId);
+
+    // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
+    const platformEvent = buildLegacyTransitionPlatformFactEvent(
+      "Execution",
+      command.entityId,
+      "platform.execution.status_changed",
+      command.traceId,
+      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      command.occurredAt,
+      command.entityId,
+    );
+    this.repository.appendPlatformFactEvent(platformEvent);
 
     // RT-01: CAS on status. If another transaction already moved the execution
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
@@ -637,13 +720,13 @@ export class ExecutionTransitionService {
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${command.toStatus}`,
       );
     }
-    // §28: Emit tier-1 status change event for execution transitions
+    // §28: Emit tier-1 status change event for execution transitions (legacy compatibility)
     this.repository.createTier1StatusEvent({
       taskId: "",
       executionId: command.entityId,
       eventType: "execution:status_changed",
       traceId: command.traceId,
-      payload: injectTraceContext(buildStatusTransitionEventPayload(command), buildEventTraceContext(command, command.entityId)),
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
     });
   }
 }
@@ -735,6 +818,11 @@ class TaskTerminalTransitionService {
    * workflow (completed/failed/cancelled), session (completed/failed/cancelled),
    * and execution (succeeded/failed/cancelled). All transitions are validated
    * before any updates are applied.
+   *
+   * R9-02: This method implements proper CAS with version/fencing tokens per §25.3.
+   * Fresh state is read at the start of the method and used in all CAS operations
+   * to prevent TOCTOU race conditions where concurrent transitions could overwrite
+   * each other.
    */
   public apply(input: TaskTerminalTransitionInput): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
@@ -746,60 +834,110 @@ class TaskTerminalTransitionService {
     const sessionTerminal: SessionStatus = input.terminalStatus === "done" ? "completed" : input.terminalStatus;
     const executionTerminal: ExecutionStatus = input.terminalStatus === "done" ? "succeeded" : input.terminalStatus;
 
-    taskStateMachine.assertTransition(input.currentTaskStatus, input.terminalStatus);
-    workflowStateMachine.assertTransition(input.currentWorkflowStatus, workflowTerminal);
-    sessionStateMachine.assertTransition(input.currentSessionStatus, sessionTerminal);
-    executionStateMachine.assertTransition(input.currentExecutionStatus, executionTerminal);
+    // R9-02: Read fresh state BEFORE any CAS operations to prevent TOCTOU races.
+    // The input fields (currentTaskStatus, etc.) may be stale if another
+    // concurrent transition modified the entity since the input was constructed.
+    const currentTask = this.repository.getTask(input.taskId);
+    const currentWorkflow = this.repository.getWorkflowState(input.taskId);
+    const currentSession = this.repository.getSession(input.sessionId);
+    const currentExecution = this.repository.getExecution(input.executionId);
 
-    // RT-01: updateTaskOutput must use CAS to avoid TOCTOU race (§25.3).
-    // Only update output if the task is still in the expected status.
-    const outputAffected = this.repository.updateTaskOutput(
+    // R9-02: Use fresh status values from freshly-read state for validation and CAS
+    const freshTaskStatus = currentTask?.status ?? input.currentTaskStatus;
+    const freshWorkflowStatus = currentWorkflow?.status ?? input.currentWorkflowStatus;
+    const freshSessionStatus = currentSession?.status ?? input.currentSessionStatus;
+    const freshExecutionStatus = currentExecution?.status ?? input.currentExecutionStatus;
+    const freshTaskUpdatedAt = currentTask?.updatedAt ?? input.expectedTaskUpdatedAt;
+    const freshSessionUpdatedAt = currentSession?.updatedAt ?? input.expectedSessionUpdatedAt;
+    const freshExecutionUpdatedAt = currentExecution?.updatedAt ?? input.expectedExecutionUpdatedAt;
+    const freshWorkflowStepIndex = currentWorkflow?.currentStepIndex ?? input.expectedWorkflowStepIndex;
+
+    // R9-02: Validate transitions using fresh status values
+    taskStateMachine.assertTransition(freshTaskStatus, input.terminalStatus);
+    workflowStateMachine.assertTransition(freshWorkflowStatus, workflowTerminal);
+    sessionStateMachine.assertTransition(freshSessionStatus, sessionTerminal);
+    executionStateMachine.assertTransition(freshExecutionStatus, executionTerminal);
+
+    // R4-28 (INV-STATE-001): Append PlatformFactEvent BEFORE state mutations - event is source of truth
+    // This establishes the terminal transition as a PlatformFactEvent before any derived table updates
+    const taskPlatformEvent = buildLegacyTransitionPlatformFactEvent(
+      "Task",
       input.taskId,
-      input.currentTaskStatus,
+      "platform.task.status_changed",
+      input.context.traceId,
+      injectTraceContext({
+        fromStatus: freshTaskStatus,
+        toStatus: input.terminalStatus,
+        reasonCode: input.context.reasonCode,
+        occurredAt: input.context.occurredAt,
+      }, traceContext),
+      input.context.occurredAt,
+      input.taskId,
+    );
+    this.repository.appendPlatformFactEvent(taskPlatformEvent);
+
+    // R9-02: updateTaskOutputCas uses updated_at as fencing token (§25.3) to prevent
+    // TOCTOU races. Only updates if the task's updated_at matches expectedTaskUpdatedAt
+    // AND status matches expectedStatus.
+    const outputAffected = this.repository.updateTaskOutputCas(
+      input.taskId,
+      freshTaskUpdatedAt,
+      freshTaskStatus,
       input.taskOutputJson,
       input.context.occurredAt,
     );
     if (outputAffected === 0) {
-      throw new Error(`task.output_cas_failed:${input.taskId}:${input.currentTaskStatus}`);
+      throw new Error(
+        `task.output_cas_failed:${input.taskId}:${freshTaskStatus}:fencing_token_mismatch`,
+      );
     }
+    // R9-02: updateTaskStatusCas uses status check (no explicit version column in tasks table)
     const taskAffected = this.repository.updateTaskStatusCas(
       input.taskId,
-      input.currentTaskStatus,
+      freshTaskStatus,
       input.terminalStatus,
       input.context.occurredAt,
       input.terminalStatus === "failed" ? input.context.reasonCode : null,
       input.context.occurredAt,
     );
     if (taskAffected === 0) {
-      throw new Error(`task.transition_cas_failed:${input.taskId}:${input.currentTaskStatus}->${input.terminalStatus}`);
+      throw new Error(
+        `task.transition_cas_failed:${input.taskId}:${freshTaskStatus}->${input.terminalStatus}:status_changed`,
+      );
     }
-    const currentWorkflow = this.repository.getWorkflowState(input.taskId);
-    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
 
+    // R9-02: updateWorkflowStateCas uses current_step_index as fencing token (§25.3)
+    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
     const workflowAffected = this.repository.updateWorkflowStateCas(
       input.taskId,
-      currentWorkflow?.currentStepIndex ?? 0,
-      input.currentWorkflowStatus,
+      freshWorkflowStepIndex,
+      freshWorkflowStatus,
       workflowTerminal,
       terminalStepIndex,
       input.outputsJson,
       input.context.occurredAt,
     );
     if (workflowAffected === 0) {
-      throw new Error(`workflow.transition_cas_failed:${input.taskId}:${input.currentWorkflowStatus}->${workflowTerminal}`);
+      throw new Error(
+        `workflow.transition_cas_failed:${input.taskId}:${freshWorkflowStatus}->${workflowTerminal}:fencing_token_mismatch`,
+      );
     }
+    // R9-02: updateSessionStatusCas uses status check (no explicit version in sessions table)
     const sessionAffected = this.repository.updateSessionStatusCas(
       input.sessionId,
-      input.currentSessionStatus,
+      freshSessionStatus,
       sessionTerminal,
       input.context.occurredAt,
     );
     if (sessionAffected === 0) {
-      throw new Error(`session.transition_cas_failed:${input.sessionId}:${input.currentSessionStatus}->${sessionTerminal}`);
+      throw new Error(
+        `session.transition_cas_failed:${input.sessionId}:${freshSessionStatus}->${sessionTerminal}:status_changed`,
+      );
     }
+    // R9-02: updateExecutionStatusCas uses status check (no explicit version in executions table)
     const executionAffected = this.repository.updateExecutionStatusCas(
       input.executionId,
-      input.currentExecutionStatus,
+      freshExecutionStatus,
       executionTerminal,
       input.context.occurredAt,
       null,
@@ -807,7 +945,9 @@ class TaskTerminalTransitionService {
       input.terminalStatus === "failed" ? input.context.reasonCode : null,
     );
     if (executionAffected === 0) {
-      throw new Error(`execution.transition_cas_failed:${input.executionId}:${input.currentExecutionStatus}->${executionTerminal}`);
+      throw new Error(
+        `execution.transition_cas_failed:${input.executionId}:${freshExecutionStatus}->${executionTerminal}:status_changed`,
+      );
     }
     this.repository.createTier1StatusEvent({
       taskId: input.taskId,
@@ -815,7 +955,7 @@ class TaskTerminalTransitionService {
       eventType: "task:status_changed",
       traceId: input.context.traceId,
       payload: injectTraceContext({
-        fromStatus: input.currentTaskStatus,
+        fromStatus: freshTaskStatus,
         toStatus: input.terminalStatus,
         reasonCode: input.context.reasonCode,
         occurredAt: input.context.occurredAt,
@@ -1094,6 +1234,42 @@ function buildEventTraceContext(context: TransitionAuditContext, taskId: string)
     spanId: traceContext.spanId ?? newId("span"),
     correlationId: context.correlationId ?? taskId,
   };
+}
+
+/**
+ * R4-28 (INV-STATE-001): Builds a PlatformFactEvent for a legacy entity transition.
+ * The event is the source of truth and is appended BEFORE the state mutation.
+ *
+ * @param aggregateType - The legacy entity type (task, workflow, session, execution)
+ * @param aggregateId - The entity ID
+ * @param eventType - The event type (e.g., "platform.task.status_changed")
+ * @param traceId - Trace context ID
+ * @param payload - Event payload with transition details
+ * @param occurredAt - When the transition occurred
+ * @param correlationId - Optional correlation ID for linking related events
+ * @returns A PlatformFactEvent ready to be appended to the event store
+ */
+function buildLegacyTransitionPlatformFactEvent(
+  aggregateType: string,
+  aggregateId: string,
+  eventType: `platform.${string}`,
+  traceId: string,
+  payload: Record<string, unknown>,
+  occurredAt: string,
+  correlationId?: string,
+): ReturnType<typeof createPlatformFactEvent> {
+  return createPlatformFactEvent({
+    eventType,
+    aggregateType,
+    aggregateId,
+    aggregateSeq: 1, // Legacy entities don't use sequencing; starts at 1
+    tenantId: "global", // Legacy entities use global tenant
+    runId: aggregateId, // Use entity ID as runId for legacy entities
+    traceId,
+    payload: payload as unknown as JsonValue,
+    occurredAt,
+    ...(correlationId != null ? { correlationId } : {}),
+  });
 }
 
 function resolveExistingExecutionId(db: AuthoritativeSqlDatabase, executionId: string | null): string | null {

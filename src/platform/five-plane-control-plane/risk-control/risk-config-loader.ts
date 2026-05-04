@@ -20,28 +20,28 @@ const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/risk/default.json");
  */
 const RiskConfigSchema = z.object({
   factorWeights: z.object({
-    stepTypeRisk: z.number(),
-    targetSystemRisk: z.number(),
-    dataClassRisk: z.number(),
+    operationRisk: z.number(),
+    targetResourceCriticality: z.number(),
+    dataSensitivity: z.number(),
+    autonomyModeRisk: z.number(),
+    tenantImpact: z.number(),
     blastRadius: z.number(),
-    priorFailureRate: z.number(),
-    confidence: z.number(),
-    reversibility: z.number().optional(),
-    temporalContext: z.number().optional(),
+    historicalFailureRate: z.number(),
+    evidenceConfidence: z.number(),
   }),
-  stepTypeRiskValues: z.record(z.string(), z.number()),
-  targetSystemRiskValues: z.record(z.string(), z.number()),
-  dataClassRiskValues: z.record(z.string(), z.number()),
+  operationRiskValues: z.record(z.string(), z.number()),
+  targetResourceCriticalityValues: z.record(z.string(), z.number()),
+  dataSensitivityValues: z.record(z.string(), z.number()),
+  autonomyModeRiskValues: z.record(z.string(), z.number()),
+  tenantImpactValues: z.record(z.string(), z.number()),
   blastRadiusValues: z.record(z.string(), z.number()),
-  priorFailureRateThresholds: z.object({
+  historicalFailureRateThresholds: z.object({
     low: z.object({ maxPercent: z.number(), value: z.number() }),
     medium: z.object({ maxPercent: z.number(), value: z.number() }),
     high: z.object({ maxPercent: z.number(), value: z.number() }),
     critical: z.object({ maxPercent: z.number(), value: z.number() }),
   }),
-  confidenceValues: z.record(z.string(), z.number()),
-  reversibilityValues: z.record(z.string(), z.number()).optional(),
-  temporalContextValues: z.record(z.string(), z.number()).optional(),
+  evidenceConfidenceValues: z.record(z.string(), z.number()),
   riskLevelThresholds: z.object({
     low: z.number(),
     medium: z.number(),
@@ -135,32 +135,32 @@ export function loadRiskConfig(
 
   function normalizeFactorWeights(fw: z.infer<typeof RiskConfigSchema.shape.factorWeights>): RiskConfig["factorWeights"] {
     return {
-      stepTypeRisk: fw.stepTypeRisk,
-      targetSystemRisk: fw.targetSystemRisk,
-      dataClassRisk: fw.dataClassRisk,
+      operationRisk: fw.operationRisk,
+      targetResourceCriticality: fw.targetResourceCriticality,
+      dataSensitivity: fw.dataSensitivity,
+      autonomyModeRisk: fw.autonomyModeRisk,
+      tenantImpact: fw.tenantImpact,
       blastRadius: fw.blastRadius,
-      priorFailureRate: fw.priorFailureRate,
-      confidence: fw.confidence,
-      ...(fw.reversibility !== undefined && { reversibility: fw.reversibility }),
-      ...(fw.temporalContext !== undefined && { temporalContext: fw.temporalContext }),
+      historicalFailureRate: fw.historicalFailureRate,
+      evidenceConfidence: fw.evidenceConfidence,
     };
   }
 
   return {
     factorWeights: normalizeFactorWeights(validated.factorWeights),
-    stepTypeRiskValues: validated.stepTypeRiskValues as RiskConfig["stepTypeRiskValues"],
-    targetSystemRiskValues: validated.targetSystemRiskValues as RiskConfig["targetSystemRiskValues"],
-    dataClassRiskValues: validated.dataClassRiskValues as RiskConfig["dataClassRiskValues"],
+    operationRiskValues: validated.operationRiskValues as RiskConfig["operationRiskValues"],
+    targetResourceCriticalityValues: validated.targetResourceCriticalityValues as RiskConfig["targetResourceCriticalityValues"],
+    dataSensitivityValues: validated.dataSensitivityValues as RiskConfig["dataSensitivityValues"],
+    autonomyModeRiskValues: validated.autonomyModeRiskValues as RiskConfig["autonomyModeRiskValues"],
+    tenantImpactValues: validated.tenantImpactValues as RiskConfig["tenantImpactValues"],
     blastRadiusValues: validated.blastRadiusValues as RiskConfig["blastRadiusValues"],
-    priorFailureRateThresholds: {
-      low: { maxPercent: validated.priorFailureRateThresholds.low.maxPercent, value: validated.priorFailureRateThresholds.low.value },
-      medium: { maxPercent: validated.priorFailureRateThresholds.medium.maxPercent, value: validated.priorFailureRateThresholds.medium.value },
-      high: { maxPercent: validated.priorFailureRateThresholds.high.maxPercent, value: validated.priorFailureRateThresholds.high.value },
-      critical: { maxPercent: validated.priorFailureRateThresholds.critical.maxPercent, value: validated.priorFailureRateThresholds.critical.value },
+    historicalFailureRateThresholds: {
+      low: { maxPercent: validated.historicalFailureRateThresholds.low.maxPercent, value: validated.historicalFailureRateThresholds.low.value },
+      medium: { maxPercent: validated.historicalFailureRateThresholds.medium.maxPercent, value: validated.historicalFailureRateThresholds.medium.value },
+      high: { maxPercent: validated.historicalFailureRateThresholds.high.maxPercent, value: validated.historicalFailureRateThresholds.high.value },
+      critical: { maxPercent: validated.historicalFailureRateThresholds.critical.maxPercent, value: validated.historicalFailureRateThresholds.critical.value },
     },
-    confidenceValues: validated.confidenceValues as RiskConfig["confidenceValues"],
-    ...(validated.reversibilityValues !== undefined && { reversibilityValues: validated.reversibilityValues }),
-    ...(validated.temporalContextValues !== undefined && { temporalContextValues: validated.temporalContextValues }),
+    evidenceConfidenceValues: validated.evidenceConfidenceValues as RiskConfig["evidenceConfidenceValues"],
     riskLevelThresholds: {
       low: validated.riskLevelThresholds.low,
       medium: validated.riskLevelThresholds.medium,

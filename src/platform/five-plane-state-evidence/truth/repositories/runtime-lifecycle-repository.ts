@@ -1,6 +1,7 @@
-import type { ApprovalRecord, EventRecord, WorkflowStateRecord } from "../../../contracts/types/domain.js";
+import type { ApprovalRecord, EventRecord, WorkflowStateRecord, TaskRecord, SessionRecord, ExecutionRecord } from "../../../contracts/types/domain.js";
 import { StructuredLogger } from "../../../shared/observability/structured-logger.js";
 import { AuthoritativeTaskStore } from "../authoritative-task-store.js";
+import type { PlatformFactEvent } from "../../../contracts/executable-contracts/index.js";
 
 const runtimeLifecycleRepositoryLogger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -25,7 +26,16 @@ export interface RuntimeLifecycleRepository {
     errorCode?: string | null,
     completedAt?: string | null,
   ): number;
+  // Legacy CAS without version fencing (only checks status, not version)
   updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number;
+  // R9-02: CAS variant with version/fencing token (expectedTaskUpdatedAt) per §25.3
+  updateTaskOutputCas(
+    taskId: string,
+    expectedTaskUpdatedAt: string,
+    expectedStatus: string,
+    outputJson: string,
+    updatedAt: string,
+  ): number;
   updateWorkflowState(
     taskId: string,
     status: string,
@@ -46,6 +56,12 @@ export interface RuntimeLifecycleRepository {
     resumableFromStep?: string | null,
   ): number;
   getWorkflowState(taskId: string): WorkflowStateRecord | null;
+  // R9-02: Added to support reading fresh state for CAS operations
+  getTask(taskId: string): TaskRecord | null;
+  // R9-02: Added to support reading fresh state for CAS operations
+  getSession(sessionId: string): SessionRecord | null;
+  // R9-02: Added to support reading fresh state for CAS operations
+  getExecution(executionId: string): ExecutionRecord | null;
   updateSessionStatus(sessionId: string, status: string, updatedAt: string): void;
   updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number;
   updateExecutionStatus(
@@ -98,6 +114,16 @@ export interface RuntimeLifecycleRepository {
       sessionId?: string | null;
     },
   ): EventRecord;
+  /**
+   * R4-28 (INV-STATE-001): Append a PlatformFactEvent as the source of truth BEFORE
+   * any state mutation. This ensures events are the authoritative record of state changes,
+   * not the derived table updates.
+   *
+   * Unlike createTier1StatusEvent which creates EventRecord objects after state mutations,
+   * this method appends PlatformFactEvent objects BEFORE mutations to establish the event
+   * as the source of truth.
+   */
+  appendPlatformFactEvent(event: PlatformFactEvent): EventRecord;
 }
 
 /**
@@ -128,8 +154,25 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
     return this.store.task.updateTaskStatusCas(taskId, expectedStatus, status, updatedAt, errorCode, completedAt);
   }
 
-  public updateTaskOutput(taskId: string, expectedStatus: string, outputJson: string, updatedAt: string): number {
+  // Legacy CAS without version fencing (only checks status, not version)
+  public updateTaskOutput(
+    taskId: string,
+    expectedStatus: string,
+    outputJson: string,
+    updatedAt: string,
+  ): number {
     return this.store.task.updateTaskOutput(taskId, expectedStatus, outputJson, updatedAt);
+  }
+
+  // R9-02: CAS variant with version/fencing token per §25.3
+  public updateTaskOutputCas(
+    taskId: string,
+    expectedTaskUpdatedAt: string,
+    expectedStatus: string,
+    outputJson: string,
+    updatedAt: string,
+  ): number {
+    return this.store.task.updateTaskOutputCas(taskId, expectedTaskUpdatedAt, expectedStatus, outputJson, updatedAt);
   }
 
   public updateWorkflowState(
@@ -158,6 +201,21 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
 
   public getWorkflowState(taskId: string): WorkflowStateRecord | null {
     return this.store.workflow.getWorkflowState(taskId);
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getTask(taskId: string): TaskRecord | null {
+    return this.store.task.getTask(taskId) ?? null;
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getSession(sessionId: string): SessionRecord | null {
+    return this.store.session.getSession(sessionId) ?? null;
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getExecution(executionId: string): ExecutionRecord | null {
+    return this.store.execution.getExecution(executionId) ?? null;
   }
 
   public updateSessionStatus(sessionId: string, status: string, updatedAt: string): void {
@@ -244,6 +302,35 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
   ): EventRecord {
     return this.store.event.insertEvent(event);
   }
+
+  /**
+   * R4-28 (INV-STATE-001): Append a PlatformFactEvent as the source of truth.
+   * Maps PlatformFactEvent fields to EventRecord fields for persistence.
+   */
+  public appendPlatformFactEvent(event: PlatformFactEvent): EventRecord {
+    return this.store.event.insertEvent({
+      id: event.eventId,
+      taskId: null,
+      sessionId: null,
+      executionId: null,
+      eventType: event.eventType,
+      eventTier: "tier_1",
+      payloadJson: JSON.stringify(event.payload),
+      traceId: event.traceId,
+      createdAt: event.occurredAt,
+      schemaVersion: String(event.schemaVersion),
+      aggregateId: event.aggregateId,
+      runId: event.runId,
+      sequence: event.aggregateSeq,
+      causationId: event.causationId ?? null,
+      correlationId: event.correlationId ?? null,
+      payloadHash: event.payloadHash,
+      idempotencyKey: null,
+      replayBehavior: event.replayBehavior,
+      principal: null,
+      evidenceRefs: [],
+    });
+  }
 }
 
 /**
@@ -306,6 +393,17 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.run("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, expectedStatus, outputJson, updatedAt));
   }
 
+  // R9-02: CAS variant with version/fencing token per §25.3
+  public updateTaskOutputCas(
+    taskId: string,
+    expectedTaskUpdatedAt: string,
+    expectedStatus: string,
+    outputJson: string,
+    updatedAt: string,
+  ): number {
+    return this.run("updateTaskOutputCas", () => this.inner.updateTaskOutputCas(taskId, expectedTaskUpdatedAt, expectedStatus, outputJson, updatedAt));
+  }
+
   public updateWorkflowState(taskId: string, status: string, currentStepIndex: number, outputsJson: string, updatedAt: string, resumableFromStep: string | null = null): void {
     return this.run("updateWorkflowState", () => this.inner.updateWorkflowState(
       taskId,
@@ -338,6 +436,21 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
 
   public getWorkflowState(taskId: string): WorkflowStateRecord | null {
     return this.run("getWorkflowState", () => this.inner.getWorkflowState(taskId));
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getTask(taskId: string): TaskRecord | null {
+    return this.run("getTask", () => this.inner.getTask(taskId));
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getSession(sessionId: string): SessionRecord | null {
+    return this.run("getSession", () => this.inner.getSession(sessionId));
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getExecution(executionId: string): ExecutionRecord | null {
+    return this.run("getExecution", () => this.inner.getExecution(executionId));
   }
 
   public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
@@ -414,6 +527,10 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   ): EventRecord {
     return this.run("insertEvent", () => this.inner.insertEvent(event));
   }
+
+  public appendPlatformFactEvent(event: PlatformFactEvent): EventRecord {
+    return this.run("appendPlatformFactEvent", () => this.inner.appendPlatformFactEvent(event));
+  }
 }
 
 /**
@@ -465,6 +582,17 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     return this.observe("updateTaskOutput", () => this.inner.updateTaskOutput(taskId, expectedStatus, outputJson, updatedAt));
   }
 
+  // R9-02: CAS variant with version/fencing token per §25.3
+  public updateTaskOutputCas(
+    taskId: string,
+    expectedTaskUpdatedAt: string,
+    expectedStatus: string,
+    outputJson: string,
+    updatedAt: string,
+  ): number {
+    return this.observe("updateTaskOutputCas", () => this.inner.updateTaskOutputCas(taskId, expectedTaskUpdatedAt, expectedStatus, outputJson, updatedAt));
+  }
+
   public updateWorkflowState(taskId: string, status: string, currentStepIndex: number, outputsJson: string, updatedAt: string, resumableFromStep: string | null = null): void {
     return this.observe("updateWorkflowState", () => this.inner.updateWorkflowState(
       taskId,
@@ -497,6 +625,21 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
 
   public getWorkflowState(taskId: string): WorkflowStateRecord | null {
     return this.observe("getWorkflowState", () => this.inner.getWorkflowState(taskId));
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getTask(taskId: string): TaskRecord | null {
+    return this.observe("getTask", () => this.inner.getTask(taskId));
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getSession(sessionId: string): SessionRecord | null {
+    return this.observe("getSession", () => this.inner.getSession(sessionId));
+  }
+
+  // R9-02: Added to support reading fresh state for CAS operations
+  public getExecution(executionId: string): ExecutionRecord | null {
+    return this.observe("getExecution", () => this.inner.getExecution(executionId));
   }
 
   public updateSessionStatusCas(sessionId: string, expectedStatus: string, status: string, updatedAt: string): number {
@@ -572,6 +715,10 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
     },
   ): EventRecord {
     return this.observe("insertEvent", () => this.inner.insertEvent(event));
+  }
+
+  public appendPlatformFactEvent(event: PlatformFactEvent): EventRecord {
+    return this.observe("appendPlatformFactEvent", () => this.inner.appendPlatformFactEvent(event));
   }
 }
 

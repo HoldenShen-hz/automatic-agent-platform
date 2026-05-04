@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   parent_id TEXT NULL,
   root_id TEXT NOT NULL,
+  harness_run_id TEXT NULL,
   division_id TEXT NULL,
   title TEXT NOT NULL,
   status TEXT NOT NULL,

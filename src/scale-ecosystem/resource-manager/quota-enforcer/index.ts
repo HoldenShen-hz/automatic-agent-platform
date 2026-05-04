@@ -60,12 +60,15 @@ export function evaluateQuota(policy: QuotaPolicy, requestedUnits: number): Quot
   const hardLimit = policy.hardLimit;
   const softLimit = policy.softLimit ?? hardLimit;
   const burstLimit = policy.burstLimit ?? hardLimit;
-  const exceeded = projected > burstLimit;
+  // R24-7 FIX: Rejection (exceeded) must use hardLimit, not burstLimit.
+  // hardLimit is the absolute maximum - exceeding it means the request must be rejected.
+  // burstLimit is for burst/warning behavior - exceeded only means burst usage occurred.
+  const exceeded = projected > hardLimit;
   return {
     exceeded,
     warning: projected > softLimit,
     usesBurst: projected > hardLimit && projected <= burstLimit,
-    remainingUnits: Math.max(0, burstLimit - projected),
+    remainingUnits: Math.max(0, hardLimit - projected),
   };
 }
 

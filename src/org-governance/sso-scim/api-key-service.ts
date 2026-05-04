@@ -92,6 +92,9 @@ export class ApiKeyService {
     }
 
     if (record.expiresAt && new Date(record.expiresAt) < new Date()) {
+      // Keep persisted status aligned with validation result so later management
+      // flows do not treat an already expired key as active.
+      record.status = "expired";
       return { valid: false, keyId: record.keyId, ownerId: null, scopes: [], reason: "key_expired" };
     }
 

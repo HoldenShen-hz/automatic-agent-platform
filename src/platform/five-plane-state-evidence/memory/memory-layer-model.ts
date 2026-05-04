@@ -137,6 +137,26 @@ export type EvictionStrategy =
 /**
  * Default TTL configurations per §29.2.
  * Maps internal scopes to architecture layer names and TTL values.
+ *
+ * NOTE: These rules must be consistent with LayerTransitionService's
+ * DEFAULT_SIX_LAYER_TRANSITION_RULES and MemoryPromotionEngine's
+ * DEFAULT_MEMORY_PROMOTION_RULES. All three define promotion thresholds.
+ *
+ * Inconsistencies between these rule sets constitute R25-4:
+ * - memory-layer-model.ts: DEFAULT_MEMORY_PROMOTION_RULES (runtime/session/agent/project/user/evolution)
+ * - layer-transition-service.ts: DEFAULT_SIX_LAYER_TRANSITION_RULES (working/session/episodic/semantic/procedural/meta)
+ * - memory-promotion-engine.ts: uses DEFAULT_MEMORY_PROMOTION_RULES
+ *
+ * The layer names are mapped via mapMemoryScopeToLayer()/architectureLayerToScope():
+ *   runtime ↔ working, session ↔ session, agent ↔ episodic,
+ *   project ↔ semantic, user ↔ procedural, evolution ↔ meta
+ *
+ * Known discrepancies (R25-4):
+ * - runtime→session: memory-layer-model has (2, 0.5, 0.4) but layer-transition-service has (3, 0.4, 0.3, 0.5h)
+ * - session→agent: memory-layer-model has (3, 0.6, 0.5) but layer-transition-service has (8, 0.55, 0.5, 2h)
+ * - agent→project: memory-layer-model has (8, 0.75, 0.65) but layer-transition-service has (15, 0.7, 0.65, 24h)
+ * - project→user: memory-layer-model has (12, 0.8, 0.75) but layer-transition-service has (25, 0.8, 0.75, 72h)
+ * - user→evolution: memory-layer-model has (20, 0.9, 0.85) but layer-transition-service has (40, 0.9, 0.85, 168h)
  */
 export const DEFAULT_LAYER_TTL_CONFIGS: readonly LayerTtlConfig[] = [
   {

@@ -1,6 +1,7 @@
 import { detectSlaBreach, type SlaCommitment, type SlaObservation } from "./breach-detector/index.js";
 import { allocateReservedCapacity, type ReservedCapacityAllocation } from "./resource-allocator/index.js";
 import { resolveHighestPriorityTier, type SlaTier } from "./tier-resolver/index.js";
+import { newId } from "../../platform/contracts/types/ids.js";
 
 // §54.3: Domain-specific SLA alert threshold overrides
 // Global defaults can be overridden per domain for latency/success rate thresholds
@@ -77,6 +78,14 @@ export interface SlaEscalationAction {
 export interface SlaPenaltyDecision {
   readonly tierId: string;
   readonly penaltyType: "credit" | "capacity_boost" | "contract_review";
+  /** R24-8 FIX: Penalty amount in currency units (e.g., cents) for credit calculations */
+  readonly penaltyAmount?: number;
+  /** R24-8 FIX: Credit issued to consumer for SLA breach compensation */
+  readonly creditIssued?: number;
+  /** R24-8 FIX: Credit record ID for tracking compensation history */
+  readonly creditRecordId?: string;
+  /** R24-8 FIX: Compensation notes describing the breach and resolution */
+  readonly compensationNotes?: string;
   readonly severity: "warning" | "critical";
 }
 
@@ -364,11 +373,21 @@ export class SlaOperationsService {
       action: (record.severity === "critical" ? "page_sre" : "notify_owner") as "notify_owner" | "page_sre",
       reason: record.breachCodes.join(","),
     }));
-    const penaltyDecisions = breachRecords.map((record) => ({
-      tierId: record.tierId,
-      penaltyType: (record.severity === "critical" ? "contract_review" : "credit") as "credit" | "capacity_boost" | "contract_review",
-      severity: record.severity,
-    }));
+    const penaltyDecisions = breachRecords.map((record) => {
+      // R24-8 FIX: Calculate actual penalty amounts for credit/compensation tracking
+      // severity determines the penalty magnitude (critical = full refund, warning = partial)
+      const penaltyAmount = record.severity === "critical" ? 10000 : 5000; // cents
+      const creditIssued = record.severity === "critical" ? penaltyAmount : 0; // only critical breaches issue credit
+      return {
+        tierId: record.tierId,
+        penaltyType: (record.severity === "critical" ? "contract_review" : "credit") as "credit" | "capacity_boost" | "contract_review",
+        penaltyAmount,
+        creditIssued,
+        creditRecordId: creditIssued > 0 ? `cr_${newId("credit")}` : undefined,
+        compensationNotes: `SLA breach: ${record.breachCodes.join(", ")} at ${record.observedAt} - ${record.severity} severity`,
+        severity: record.severity,
+      };
+    });
 
     const starvationProtected = request.tiers.some((tier) => (reservedCapacity[tier.tierId] ?? 0) > 0);
     // R16-36 FIX #2123: preemptionCapApplied was always true due to incorrect condition.

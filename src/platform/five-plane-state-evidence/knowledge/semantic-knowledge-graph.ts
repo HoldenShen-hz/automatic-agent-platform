@@ -8,6 +8,7 @@ export type KnowledgeGraphEdgeType =
   | "references"        // §13.9: Entity relation edge - one entity references another
   | "derives_from"      // Knowledge derives from source
   | "contradicts"       // Contradicting knowledge
+  | "specializes"       // Specializes/generalizes relationship
   | "trust_boost"       // Trust propagation edge
   | "trust_degrades"   // Trust degradation edge
   | "learned_from"     // R13-07: Learned knowledge edge - knowledge learned from another source
@@ -310,8 +311,12 @@ export class SemanticKnowledgeGraph {
       weight,
     });
     const adjacency = this.adjacencyByNodeId.get(fromNodeId) ?? [];
-    adjacency.push(this.edges.get(id)!);
-    this.adjacencyByNodeId.set(fromNodeId, adjacency);
+    // R25-3 Fix: Deduplicate adjacency entries - prevent unbounded growth from duplicate edge additions
+    // Without this check, repeated upsertRecord calls cause same edge to be pushed multiple times
+    if (!adjacency.some((e) => e.edgeId === id)) {
+      adjacency.push(this.edges.get(id)!);
+      this.adjacencyByNodeId.set(fromNodeId, adjacency);
+    }
   }
 
   /**
@@ -321,7 +326,7 @@ export class SemanticKnowledgeGraph {
   public addEntityRelation(
     fromEntityRef: string,
     toEntityRef: string,
-    relation: "references" | "derives_from" | "contradicts" = "references",
+    relation: "references" | "derives_from" | "contradicts" | "specializes" = "references",
     weight: number = 1.0,
   ): void {
     const fromNodeId = `entity:${fromEntityRef}`;

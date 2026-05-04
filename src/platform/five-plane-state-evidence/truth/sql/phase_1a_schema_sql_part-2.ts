@@ -19,7 +19,8 @@ export const PHASE_1A_SCHEMA_SQL_PART_2 = `
   max_concurrency INTEGER NOT NULL,
   queue_affinity TEXT NULL,
   last_heartbeat_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE INDEX IF NOT EXISTS idx_worker_snapshots_status_updated_at ON worker_snapshots(status, updated_at);

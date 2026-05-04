@@ -949,6 +949,8 @@ export class BillingService {
       id: "billing_reporting",
       parentId: null,
       rootId: "billing_reporting",
+      // R4-27 (INV-RUN-001): System placeholder task has no HarnessRun - legacy/system task
+      harnessRunId: null,
       divisionId: "system_admin",
       title: "Billing reporting",
       status: "done",

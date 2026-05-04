@@ -27,6 +27,10 @@ export abstract class AuthoritativeTaskStoreDelegatingLifecycle extends Authorit
     return this.delegateLegacy("updateTaskOutput", "task", "updateTaskOutput", ...args);
   }
 
+  public override updateTaskOutputCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskOutputCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskOutputCas"]> {
+    return this.delegateLegacy("updateTaskOutputCas", "task", "updateTaskOutputCas", ...args);
+  }
+
   public override updateTaskStatusCas(...args: Parameters<AuthoritativeTaskStoreLegacyCompat["updateTaskStatusCas"]>): ReturnType<AuthoritativeTaskStoreLegacyCompat["updateTaskStatusCas"]> {
     return this.delegateLegacy("updateTaskStatusCas", "task", "updateTaskStatusCas", ...args);
   }

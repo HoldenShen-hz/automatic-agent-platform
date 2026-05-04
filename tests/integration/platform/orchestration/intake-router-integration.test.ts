@@ -24,10 +24,10 @@ test("IntakeRouter classifies simple query request", () => {
     const input = makeRouteInput("Status check", "what is the current status of the deployment?");
     const result = router.route(input);
 
-    assert.equal(result.classification.intent, "query");
-    assert.equal(result.classification.continuation, "new_task");
-    assert.ok(result.classification.confidence >= 0.45);
-    assert.ok(result.routeTrace.length > 0);
+    assert.equal(result.routeDecision.classification.intent, "query");
+    assert.equal(result.routeDecision.classification.continuation, "new_task");
+    assert.ok(result.routeDecision.classification.confidence >= 0.45);
+    assert.ok(result.routeDecision.routeTrace.length > 0);
   } finally {
     ctx.cleanup();
   }
@@ -41,8 +41,8 @@ test("IntakeRouter classifies create request", () => {
     const input = makeRouteInput("New feature", "create a new API endpoint for user management");
     const result = router.route(input);
 
-    assert.equal(result.classification.intent, "create");
-    assert.ok(result.routeTrace.some((t) => t.startsWith("intent:")));
+    assert.equal(result.routeDecision.classification.intent, "create");
+    assert.ok(result.routeDecision.routeTrace.some((t) => t.startsWith("intent:")));
   } finally {
     ctx.cleanup();
   }
@@ -56,7 +56,7 @@ test("IntakeRouter classifies modify request", () => {
     const input = makeRouteInput("Fix bug", "fix the authentication bug in the login flow");
     const result = router.route(input);
 
-    assert.equal(result.classification.intent, "modify");
+    assert.equal(result.routeDecision.classification.intent, "modify");
   } finally {
     ctx.cleanup();
   }
@@ -70,10 +70,10 @@ test("IntakeRouter detects orchestration hints and routes to multi-step workflow
     const input = makeRouteInput("Analysis task", "plan analyze and implement a security review across the codebase");
     const result = router.route(input);
 
-    assert.equal(result.requiresOrchestration, true);
-    assert.equal(result.routeReason, "route.multi_step_or_high_context");
-    assert.ok(result.workflowId.length > 0, "Should select a workflow");
-    assert.ok(result.routeTrace.some((trace) => trace.startsWith("route:selected:")));
+    assert.equal(result.routeDecision.requiresOrchestration, true);
+    assert.equal(result.routeDecision.routeReason, "route.multi_step_or_high_context");
+    assert.ok(result.routeDecision.workflowId.length > 0, "Should select a workflow");
+    assert.ok(result.routeDecision.routeTrace.some((trace) => trace.startsWith("route:selected:")));
   } finally {
     ctx.cleanup();
   }
@@ -88,8 +88,8 @@ test("IntakeRouter uses simple workflow for short requests without orchestration
     const input = makeRouteInput("Hello", "hi");
     const result = router.route(input);
 
-    assert.equal(result.requiresOrchestration, false);
-    assert.ok(result.workflowId.includes("single_agent") || result.workflowId.includes("minimal"));
+    assert.equal(result.routeDecision.requiresOrchestration, false);
+    assert.ok(result.routeDecision.workflowId.includes("single_agent") || result.routeDecision.workflowId.includes("minimal"));
   } finally {
     ctx.cleanup();
   }
@@ -103,7 +103,7 @@ test("IntakeRouter classifies approval request", () => {
     const input = makeRouteInput("Approval", "approve the deployment to production");
     const result = router.route(input);
 
-    assert.equal(result.classification.intent, "approve");
+    assert.equal(result.routeDecision.classification.intent, "approve");
   } finally {
     ctx.cleanup();
   }
@@ -117,7 +117,7 @@ test("IntakeRouter classifies cancel request", () => {
     const input = makeRouteInput("Cancel", "cancel the current operation");
     const result = router.route(input);
 
-    assert.equal(result.classification.intent, "cancel");
+    assert.equal(result.routeDecision.classification.intent, "cancel");
   } finally {
     ctx.cleanup();
   }
@@ -131,8 +131,8 @@ test("IntakeRouter classifies correction request", () => {
     const input = makeRouteInput("Correction", "actually, that was wrong - please fix it");
     const result = router.route(input);
 
-    assert.equal(result.classification.intent, "correction");
-    assert.equal(result.classification.continuation, "correction");
+    assert.equal(result.routeDecision.classification.intent, "correction");
+    assert.equal(result.routeDecision.classification.continuation, "correction");
   } finally {
     ctx.cleanup();
   }
@@ -146,7 +146,7 @@ test("IntakeRouter detects follow-up continuation", () => {
     const input = makeRouteInput("Continue", "continue from where we left off");
     const result = router.route(input);
 
-    assert.equal(result.classification.continuation, "follow_up");
+    assert.equal(result.routeDecision.classification.continuation, "follow_up");
   } finally {
     ctx.cleanup();
   }
@@ -162,7 +162,7 @@ test("IntakeRouter routes long requests to orchestration", () => {
     const input = makeRouteInput("Complex task", longRequest);
     const result = router.route(input);
 
-    assert.equal(result.requiresOrchestration, true);
+    assert.equal(result.routeDecision.requiresOrchestration, true);
   } finally {
     ctx.cleanup();
   }
@@ -176,9 +176,9 @@ test("IntakeRouter produces route trace for debugging", () => {
     const input = makeRouteInput("Test", "analyze the system status");
     const result = router.route(input);
 
-    assert.ok(result.routeTrace.length > 0, "Should have route trace entries");
-    assert.ok(result.routeTrace.some((t) => t.startsWith("matched_keywords:")), "Should include keyword matching");
-    assert.ok(result.routeTrace.some((t) => t.startsWith("intent:")), "Should include intent classification");
+    assert.ok(result.routeDecision.routeTrace.length > 0, "Should have route trace entries");
+    assert.ok(result.routeDecision.routeTrace.some((t) => t.startsWith("matched_keywords:")), "Should include keyword matching");
+    assert.ok(result.routeDecision.routeTrace.some((t) => t.startsWith("intent:")), "Should include intent classification");
   } finally {
     ctx.cleanup();
   }
@@ -192,12 +192,12 @@ test("IntakeRouter assigns correct division ID", () => {
     const input = makeRouteInput("Coding task", "implement a new feature in the codebase");
     const result = router.route(input);
 
-    assert.ok(result.divisionId, "Should have divisionId");
+    assert.ok(result.routeDecision.divisionId, "Should have divisionId");
     // Default should be general_ops or coding
     assert.ok(
-      result.divisionId === "general_ops" ||
-      result.divisionId === "coding" ||
-      result.divisionId.length > 0,
+      result.routeDecision.divisionId === "general_ops" ||
+      result.routeDecision.divisionId === "coding" ||
+      result.routeDecision.divisionId.length > 0,
     );
   } finally {
     ctx.cleanup();
@@ -213,9 +213,9 @@ test("IntakeRouter uses seeded context", () => {
     const input = makeRouteInput("Test", "simple test request");
     const result = router.route(input);
 
-    assert.ok(result.workflowId);
-    assert.ok(result.divisionId);
-    assert.ok(result.routeReason);
+    assert.ok(result.routeDecision.workflowId);
+    assert.ok(result.routeDecision.divisionId);
+    assert.ok(result.routeDecision.routeReason);
   } finally {
     ctx.cleanup();
   }

@@ -6,63 +6,79 @@ import { z } from "zod";
 export const RiskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 export type RiskLevel = z.infer<typeof RiskLevelSchema>;
 
-/**
- * Step type risk classification per §10.2
- */
-export const StepTypeRiskSchema = z.enum(["read", "write", "delete", "external_call"]);
-export type StepTypeRisk = z.infer<typeof StepTypeRiskSchema>;
+// ============================================================================
+// ADR-026 8-Factor Canonical Model
+//
+// The canonical risk model per ADR-026 §8 uses 8 weighted factors:
+//   operationRisk (w=3), targetResourceCriticality (w=3), dataSensitivity (w=3),
+//   autonomyModeRisk (w=2), tenantImpact (w=2), blastRadius (w=2),
+//   historicalFailureRate (w=2), evidenceConfidence (w=1)
+// Max possible weighted score = 18 (divisor 18 produces normalized 0-1 score).
+//
+// Legacy 6-factor model (stepTypeRisk / targetSystemRisk / dataClassRisk /
+// blastRadius / priorFailureRate / confidence) is superseded.
+// ============================================================================
 
 /**
- * Target system classification per §10.2
+ * Operation risk - type of operation and side effect risk per ADR-026
  */
-export const TargetSystemRiskSchema = z.enum(["internal", "staging", "production"]);
-export type TargetSystemRisk = z.infer<typeof TargetSystemRiskSchema>;
+export const OperationRiskSchema = z.enum(["read", "write", "delete", "external_call"]);
+export type OperationRisk = z.infer<typeof OperationRiskSchema>;
 
 /**
- * Data classification per §10.2
+ * Target resource criticality per ADR-026
  */
-export const DataClassRiskSchema = z.enum(["public", "internal", "confidential", "restricted"]);
-export type DataClassRisk = z.infer<typeof DataClassRiskSchema>;
+export const TargetResourceCriticalitySchema = z.enum(["internal", "staging", "production"]);
+export type TargetResourceCriticality = z.infer<typeof TargetResourceCriticalitySchema>;
 
 /**
- * Blast radius scope per §10.2
+ * Data sensitivity level per ADR-026
+ */
+export const DataSensitivitySchema = z.enum(["public", "internal", "confidential", "restricted"]);
+export type DataSensitivity = z.infer<typeof DataSensitivitySchema>;
+
+/**
+ * Autonomy mode risk - automation amplification risk per ADR-026
+ */
+export const AutonomyModeRiskSchema = z.enum(["full_auto", "semi_auto", "supervised", "manual"]);
+export type AutonomyModeRisk = z.infer<typeof AutonomyModeRiskSchema>;
+
+/**
+ * Tenant impact scope per ADR-026
+ */
+export const TenantImpactSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
+export type TenantImpact = z.infer<typeof TenantImpactSchema>;
+
+/**
+ * Blast radius - failure propagation radius per ADR-026
  */
 export const BlastRadiusSchema = z.enum(["single_task", "workflow", "tenant", "platform"]);
 export type BlastRadius = z.infer<typeof BlastRadiusSchema>;
 
 /**
- * Confidence level per §10.2
+ * Historical failure rate per ADR-026
  */
-export const ConfidenceLevelSchema = z.enum(["high", "medium", "low"]);
-export type ConfidenceLevel = z.infer<typeof ConfidenceLevelSchema>;
+export const HistoricalFailureRateSchema = z.enum(["low", "medium", "high", "critical"]);
+export type HistoricalFailureRate = z.infer<typeof HistoricalFailureRateSchema>;
 
 /**
- * Reversibility - how easily can the operation be undone per §10.2
+ * Evidence confidence - sufficiency of evidence and judgment confidence per ADR-026
  */
-export const ReversibilitySchema = z.enum(["instant", "hours", "days", "irreversible"]);
-export type Reversibility = z.infer<typeof ReversibilitySchema>;
+export const EvidenceConfidenceSchema = z.enum(["high", "medium", "low"]);
+export type EvidenceConfidence = z.infer<typeof EvidenceConfidenceSchema>;
 
 /**
- * Temporal context - time sensitivity of the operation per §10.2
- */
-export const TemporalContextSchema = z.enum(["background", "normal", "urgent", "critical_time"]);
-export type TemporalContext = z.infer<typeof TemporalContextSchema>;
-
-/**
- * Input factors for risk score calculation per §10.2
+ * Input factors for risk score calculation per ADR-026 8-factor model
  */
 export const RiskFactorsSchema = z.object({
-  stepTypeRisk: StepTypeRiskSchema,
-  targetSystemRisk: TargetSystemRiskSchema,
-  dataClassRisk: DataClassRiskSchema,
+  operationRisk: OperationRiskSchema,
+  targetResourceCriticality: TargetResourceCriticalitySchema,
+  dataSensitivity: DataSensitivitySchema,
+  autonomyModeRisk: AutonomyModeRiskSchema,
+  tenantImpact: TenantImpactSchema,
   blastRadius: BlastRadiusSchema,
-  priorFailureRatePercent: z.number().min(0).max(100),
-  confidence: ConfidenceLevelSchema,
-  // R16-36 FIX #2121: Missing reversibility and temporal_context factors.
-  // The spec requires 8 factors but only 6 were implemented. These two factors
-  // capture how easily an operation can be undone and its time sensitivity.
-  reversibility: ReversibilitySchema,
-  temporalContext: TemporalContextSchema,
+  historicalFailureRate: HistoricalFailureRateSchema,
+  evidenceConfidence: EvidenceConfidenceSchema,
 });
 export type RiskFactors = z.infer<typeof RiskFactorsSchema>;
 
@@ -120,33 +136,32 @@ export interface RiskEvaluationEngineOptions {
 
 /**
  * Risk configuration loaded from config/risk/default.json
+ * Updated to ADR-026 8-factor canonical model
  */
 export interface RiskConfig {
   readonly factorWeights: {
-    readonly stepTypeRisk: number;
-    readonly targetSystemRisk: number;
-    readonly dataClassRisk: number;
+    readonly operationRisk: number;
+    readonly targetResourceCriticality: number;
+    readonly dataSensitivity: number;
+    readonly autonomyModeRisk: number;
+    readonly tenantImpact: number;
     readonly blastRadius: number;
-    readonly priorFailureRate: number;
-    readonly confidence: number;
-    // R16-36 FIX #2121: Add weights for new reversibility and temporal_context factors
-    readonly reversibility?: number;
-    readonly temporalContext?: number;
+    readonly historicalFailureRate: number;
+    readonly evidenceConfidence: number;
   };
-  readonly stepTypeRiskValues: Record<StepTypeRisk, number>;
-  readonly targetSystemRiskValues: Record<TargetSystemRisk, number>;
-  readonly dataClassRiskValues: Record<DataClassRisk, number>;
+  readonly operationRiskValues: Record<OperationRisk, number>;
+  readonly targetResourceCriticalityValues: Record<TargetResourceCriticality, number>;
+  readonly dataSensitivityValues: Record<DataSensitivity, number>;
+  readonly autonomyModeRiskValues: Record<AutonomyModeRisk, number>;
+  readonly tenantImpactValues: Record<TenantImpact, number>;
   readonly blastRadiusValues: Record<BlastRadius, number>;
-  readonly priorFailureRateThresholds: {
+  readonly historicalFailureRateThresholds: {
     readonly low: { readonly maxPercent: number; readonly value: number };
     readonly medium: { readonly maxPercent: number; readonly value: number };
     readonly high: { readonly maxPercent: number; readonly value: number };
     readonly critical: { readonly maxPercent: number; readonly value: number };
   };
-  readonly confidenceValues: Record<ConfidenceLevel, number>;
-  // R16-36 FIX #2121: Add value maps for new reversibility and temporal_context factors
-  readonly reversibilityValues?: Record<Reversibility, number>;
-  readonly temporalContextValues?: Record<TemporalContext, number>;
+  readonly evidenceConfidenceValues: Record<EvidenceConfidence, number>;
   readonly riskLevelThresholds: {
     readonly low: number;
     readonly medium: number;

@@ -374,7 +374,7 @@ export class InspectService {
     const executions = this.store.execution.listExecutionsByTask(task.id);
     const approvals = this.store.approval.listApprovalsByTask(task.id);
     const session = this.store.operations.loadTaskSnapshot(task.id).session;
-    const events = this.store.event.listEventsForTask(task.id);
+    const events = this.store.event.listEventsForTaskSnapshot(task.id);
 
     return {
       taskId: task.id,
@@ -404,7 +404,7 @@ export class InspectService {
 
     const executions = this.store.execution.listExecutionsByTask(workflow.taskId);
     const approvals = this.store.approval.listApprovalsByTask(workflow.taskId);
-    const events = this.store.event.listEventsForTask(workflow.taskId);
+    const events = this.store.event.listEventsForTaskSnapshot(workflow.taskId);
 
     return {
       taskId: workflow.taskId,
@@ -447,7 +447,7 @@ export class InspectService {
       };
     });
     const dispatchDecisions = this.store
-      .listEventsForTask(taskId)
+      .listEventsForTaskSnapshot(taskId)
       .flatMap((event) => {
         const decision = parseDispatchDecisionTraceFromEvent(event);
         if (!decision) {

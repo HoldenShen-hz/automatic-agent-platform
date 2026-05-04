@@ -119,9 +119,9 @@ export interface ConstraintPack {
     readonly maxSteps: number;
     readonly maxCost: number;
     readonly maxDurationMs: number;
-    readonly maxModelTokens?: number;
-    readonly maxContextTokens?: number;
-    readonly maxOutputTokens?: number;
+    readonly max_model_tokens?: number;
+    readonly max_context_tokens?: number;
+    readonly max_output_tokens?: number;
   };
 }
 
@@ -166,9 +166,9 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       maxSteps: number;
       maxCost: number;
       maxDurationMs: number;
-      maxModelTokens?: number;
-      maxContextTokens?: number;
-      maxOutputTokens?: number;
+      max_model_tokens?: number;
+      max_context_tokens?: number;
+      max_output_tokens?: number;
     };
   } = {
     policyIds: [...input.policyIds],
@@ -202,19 +202,19 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       maxDurationMs: budgetEnvelope.maxDurationMs,
     };
     if ("maxTokens" in budgetEnvelope && budgetEnvelope.maxTokens != null) {
-      partial.budget.maxModelTokens = budgetEnvelope.maxTokens;
-      partial.budget.maxContextTokens = budgetEnvelope.maxTokens;
-      partial.budget.maxOutputTokens = budgetEnvelope.maxTokens;
+      partial.budget.max_model_tokens = budgetEnvelope.maxTokens;
+      partial.budget.max_context_tokens = budgetEnvelope.maxTokens;
+      partial.budget.max_output_tokens = budgetEnvelope.maxTokens;
     }
     // R18-01 fix: Copy explicit token budget fields per §45.3
     if ("maxModelTokens" in budgetEnvelope && budgetEnvelope.maxModelTokens != null) {
-      partial.budget.maxModelTokens = budgetEnvelope.maxModelTokens;
+      partial.budget.max_model_tokens = budgetEnvelope.maxModelTokens;
     }
     if ("maxContextTokens" in budgetEnvelope && budgetEnvelope.maxContextTokens != null) {
-      partial.budget.maxContextTokens = budgetEnvelope.maxContextTokens;
+      partial.budget.max_context_tokens = budgetEnvelope.maxContextTokens;
     }
     if ("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null) {
-      partial.budget.maxOutputTokens = budgetEnvelope.maxOutputTokens;
+      partial.budget.max_output_tokens = budgetEnvelope.maxOutputTokens;
     }
     partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,
@@ -467,6 +467,11 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     currentSeq: state.currentSeq,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
+    // R18-02 fix: Map traceId/riskLevel/ownership/auditRefs with defaults per §45.3
+    traceId: state.traceId ?? `trace:${state.harnessRunId}`,
+    riskLevel: state.riskLevel ?? "medium",
+    ownership: state.ownership ?? { ownerId: state.tenantId, ownerType: "harness" },
+    auditRefs: state.auditRefs ?? [],
   };
   if (state.completedAt != null) {
     return { ...base, terminalAt: state.completedAt };
@@ -1377,12 +1382,17 @@ export class HarnessRuntimeService {
       this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
 
       const lastNodeRunId = run.nodeRunIds.at(-1);
+      // R18-03 fix: Pass all decision factors to decide() per §45.25
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
         ...(input.requiresHuman || guardrailAssessment.requiresHuman ? { requiresHuman: true } : {}),
         ...(inputBudget && run.steps.length >= inputBudget.maxSteps ? { maxIterationsReached: true } : {}),
         ...(input.riskScore !== undefined ? { riskScore: input.riskScore } : {}),
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
+        // R18-03 fix: Include all decision factors (policy/budget/risk/sideEffect/guardrail/HITL)
+        guardrailAbort: guardrailAssessment.suggestedAction === "abort",
+        hitlPending: run.hitlRequest?.status === "pending",
+        budgetExhausted: inputBudget != null && run.steps.length >= inputBudget.maxSteps,
         harnessRunId: run.harnessRunId,
         ...(lastNodeRunId !== undefined ? { nodeRunId: lastNodeRunId } : {}),
         ...(input.producedEvidenceRefs != null ? { evidenceRefs: input.producedEvidenceRefs } : {}),

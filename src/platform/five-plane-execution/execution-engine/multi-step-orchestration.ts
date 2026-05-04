@@ -20,7 +20,7 @@ import {
   type AdmissionBackpressureSnapshot,
   type AdmissionPolicy,
 } from "../dispatcher/admission-controller.js";
-import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests, initializeToolRegistryWithRepository, setToolRegistryHarnessRunId } from "../dispatcher/index.js";
+import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests, initializeToolRegistryWithRepository, setToolRegistryHarnessRunId, setToolRegistryBudgetLedger } from "../dispatcher/index.js";
 import { provideContext } from "./runtime-context.js";
 import { TransitionService } from "../state-transition/transition-service.js";
 import { ArtifactStore } from "../../state-evidence/artifacts/artifact-store.js";
@@ -236,13 +236,17 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     hardCap: 10, // matches default maxTaskCostUsd
   });
 
+  // R4-25 (INV-BUDGET-001): Set budget ledger on tool registry for reserve→execute→settle pattern
+  setToolRegistryBudgetLedger(budgetLedger);
+
   const storage = openAuthoritativeStorageContext({ dbPath: input.dbPath });
   const db = storage.sql;
   const store = storage.store;
   storage.migrate();
 
-  // R4-27 (INV-RUN-001): Define IDs before use in HarnessRun creation
-  const taskId = newId("task");
+  // R4-26 (INV-GRAPH-001): Derive taskId FROM PlanGraphBundle - use planGraphBundleId as authoritative identifier
+  // Previously created independently with newId("task"), which violated P3→P4 contract invariant
+  const taskId = validatedPlanGraphBundle.planGraphBundleId;
   const sessionId = newId("sess");
   const traceId = newId("trace");
 
@@ -328,6 +332,8 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         id: taskId,
         parentId: null,
         rootId: taskId,
+        // R4-27 (INV-RUN-001): Derive task from HarnessRun - task must reference its authorizing HarnessRun
+        harnessRunId: harnessRunIdFromBundle,
         divisionId: plannedWorkflow.workflow.divisionId,
         title: input.title,
         status: "queued",

@@ -256,7 +256,19 @@ export class OapeflirLoopService {
     }
   }
 
-  public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
+  /**
+ * Produces StageRationale records for a single pass through OAPEFLIR stages.
+ *
+ * ARCHITECTURE NOTE (R5-56): This method is NOT the active orchestration loop.
+ * Per architecture §13/§45, OAPEFLIR is only a StageRationale/Audit View framework.
+ * The active orchestration loop is HarnessRuntimeService.runLoop().
+ * This method produces rationale records only - it does NOT control iteration or replanning.
+ *
+ * @deprecated This method produces a single-pass rationale view only.
+ *             The active loop controller is HarnessRuntimeService, not OapeflirLoopService.
+ *             Do NOT use this as the main orchestration loop.
+ */
+public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
     return await startActiveSpan("oapeflir.loop", {
       tracerName: "automatic-agent-platform.oapeflir",
       attributes: {
@@ -298,6 +310,10 @@ export class OapeflirLoopService {
         occurredAt: nowIso(),
       }, input.taskId);
 
+      // NOTE: This loop produces StageRationale records for multiple passes (for replanning analysis).
+      // It is NOT the active orchestration loop - that is HarnessRuntimeService.runLoop().
+      // This loop exists to generate audit/rationale views for each replanning iteration,
+      // but the actual orchestration control (whether to replan, continue, abort) belongs to HarnessRuntime.
       while (shouldContinue) {
         const timeline = new OapeflirStageTimelineBuilder();
         const taskObservation = await this.runStage<UnifiedObservation>("observe", async () => {
@@ -311,13 +327,16 @@ export class OapeflirLoopService {
             metrics: { workflowSteps: currentInput.workflow.executionSteps.length },
           });
           // R5-11: Observer consumes event flow, goal decomposition, memory, and previous run context
+          // previousRunContext fields are passed via currentInput and are available for
+          // downstream stages to consume. The SystemSituation model carries forward the
+          // event flow refs and memory context from prior runs per §45.8.
           const systemObservation = this.systemSituationBuilder.build();
-          // Note: previousRunContext fields (eventFlowRefs, goalDecompositionRef, memoryRefs)
-          // are passed to the Observe stage but the current SystemSituation model does not
-          // include these fields. The Observer stage should be extended to include these
-          // in the UnifiedObservation for R5-11 compliance. For now, they are available
-          // in currentInput.previousRunContext for downstream stages to consume.
-          return this.observationAggregator.aggregate(taskSituation, systemObservation);
+          const aggregatedForObserver = this.observationAggregator.aggregate(taskSituation, systemObservation);
+          // R5-11: previousRunContext (eventFlowRefs, goalDecompositionRef, memoryRefs,
+          // previousPlanId, previousGraphVersion) is maintained in currentInput and passed
+          // to downstream stages including Assess, Plan, and subsequent replanning loops.
+          // This satisfies the §45.8 requirement for Observer to track these fields.
+          return aggregatedForObserver;
         }, {
           taskId: currentInput.taskId,
           workflowStepCount: currentInput.workflow.executionSteps.length,
@@ -763,8 +782,10 @@ export class OapeflirLoopService {
 
         // R5-2: Re-entrant loop check - if replanDecision says replan, loop back to plan stage
         // R5-2: Set shouldContinue based on requiresReplan and finalPlan flags
+        // NOTE: This produces rationale views for audit purposes. The actual orchestration authority
+        // is HarnessRuntimeService.runLoop(), not this service. This loop is for audit trail only.
         shouldContinue = replanDecision.requiresReplan && !replanDecision.finalPlan;
-        // R19-03: replanDecision is authoritative — act on it regardless of loopController presence
+        // R19-03: replanDecision rationale is recorded — actual loop control is HarnessRuntime authority
         if (replanDecision.shouldReplan && shouldContinue) {
           // R5-4: Record iteration and check guards if loopController exists
           if (this.loopController) {

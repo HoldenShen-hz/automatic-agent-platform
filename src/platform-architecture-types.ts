@@ -42,39 +42,8 @@ export interface PlatformStartupTarget {
   appManifest: PlatformAppManifest | null;
 }
 
-// Canonical runtime types (R4-60)
-export type HarnessRunStatus =
-  | "created"
-  | "admitted"
-  | "planning"
-  | "ready"
-  | "running"
-  | "pausing"
-  | "paused"
-  | "resuming"
-  | "replanning"
-  | "compensating"
-  | "completed"
-  | "failed"
-  | "aborted";
-
-export interface HarnessRun {
-  readonly harnessRunId: string;
-  readonly tenantId: string;
-  readonly confirmedTaskSpecId: string;
-  readonly requestEnvelopeId: string;
-  readonly requestHash: string;
-  readonly status: HarnessRunStatus;
-  readonly constraintPackRef: string;
-  readonly versionLockId: string;
-  readonly planGraphBundleId?: string;
-  readonly budgetLedgerId: string;
-  readonly currentSeq: number;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-  readonly terminalAt?: string;
-  readonly terminalReason?: string;
-}
+// Canonical runtime types - HarnessRun/HarnessRunStatus now in executable-contracts (per §5.5)
+// NodeRun is still defined here as it's used across multiple layers
 
 export interface NodeRun {
   readonly nodeRunId: string;

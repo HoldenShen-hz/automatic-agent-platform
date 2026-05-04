@@ -180,8 +180,9 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
   const store = storage.store;
   storage.migrate();
 
-  // Generate taskId early for use in HarnessRun creation (before task is actually created)
-  const taskId = newId("task");
+  // R4-26 (INV-GRAPH-001): Derive taskId FROM PlanGraphBundle - use planGraphBundleId as authoritative identifier
+  // Previously created independently with newId("task"), which violated P3→P4 contract invariant
+  const taskId = validatedPlanGraphBundle.planGraphBundleId;
 
     // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
     // This establishes the runtime truth that HarnessRuntime is the authoritative execution root
@@ -340,6 +341,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       id: taskId,
       parentId: null,
       rootId: taskId,
+      // R4-27 (INV-RUN-001): Derive task from HarnessRun - task must reference its authorizing HarnessRun
+      harnessRunId: harnessRunIdFromBundle,
       divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
       tenantId: input.tenantId ?? null,
       title: input.title,

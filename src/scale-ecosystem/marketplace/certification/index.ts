@@ -23,7 +23,7 @@ import { ValidationError } from "../../../platform/contracts/errors.js";
 /**
  * Certification status for agents and packs.
  */
-export type CertificationStatus = "pending" | "in_review" | "approved" | "revoked" | "expired";
+export type CertificationStatus = "pending" | "reviewing" | "in_review" | "approved" | "published" | "suspended" | "revoked" | "expired";
 
 /**
  * Security scan result for a certification.
@@ -133,7 +133,7 @@ export const AgentCertificationSchema = z.object({
   certificationId: z.string().min(1),
   agentId: z.string().min(1),
   version: z.string().min(1),
-  status: z.enum(["pending", "in_review", "approved", "revoked", "expired"]),
+  status: z.enum(["pending", "reviewing", "in_review", "approved", "published", "suspended", "revoked", "expired"]),
   securityScan: z.object({
     scanId: z.string().min(1),
     passed: z.boolean(),
@@ -219,7 +219,7 @@ export const PackCertificationSchema = z.object({
   certificationId: z.string().min(1),
   packId: z.string().min(1),
   version: z.string().min(1),
-  status: z.enum(["pending", "in_review", "approved", "revoked", "expired"]),
+  status: z.enum(["pending", "reviewing", "in_review", "approved", "published", "suspended", "revoked", "expired"]),
   securityScan: z.object({
     scanId: z.string().min(1),
     passed: z.boolean(),

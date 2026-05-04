@@ -114,6 +114,7 @@ test("ApiKeyService.validateApiKey returns invalid for expired key", () => {
 
   assert.equal(result.valid, false);
   assert.equal(result.reason, "key_expired");
+  assert.equal(service.getApiKey(record.keyId)?.status, "expired");
 });
 
 test("ApiKeyService.revokeApiKey revokes active key", () => {

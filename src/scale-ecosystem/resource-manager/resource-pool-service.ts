@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-// §54.2: Per-resource-type capacity weight for weighted multi-resource scheduling
+// R24-5 FIX: Per-consumer resource breakdown for noisy neighbor detection
+// Track allocations per consumer to enable per-consumer utilization analysis
+interface ConsumerAllocation {
+  readonly consumerId: string;
+  readonly units: number;
+  readonly allocatedAt: string;
+}
+
 export interface ResourceCapacityWeight {
   readonly resourceType: string;
   readonly weight: number;
@@ -20,6 +27,8 @@ export const ResourcePoolSchema = z.object({
   // §9.8: Failure tracking for automatic isolation
   failureRate: z.number().min(0).max(1).optional().default(0),
   isolatedAt: z.string().nullable().optional(),
+  // R24-5 FIX: Per-consumer allocation breakdown for noisy neighbor detection
+  consumerAllocations: z.record(z.string(), z.number().int().nonnegative()).optional().default({}),
 });
 
 export type ResourcePool = z.infer<typeof ResourcePoolSchema>;
@@ -32,11 +41,23 @@ export interface ResourcePoolAllocation {
   readonly reasonCodes: readonly string[];
 }
 
+// R24-5 FIX: Per-consumer utilization record for noisy neighbor detection
+export interface ConsumerUtilization {
+  readonly poolId: string;
+  readonly consumerId: string;
+  readonly allocatedUnits: number;
+  readonly utilizationPercent: number;
+  readonly isNoisyNeighbor: boolean;
+}
+
 export class ResourcePoolService {
   private readonly pools = new Map<string, ResourcePool>();
 
   // §9.8: Failure rate threshold for automatic isolation
   private static readonly FAILURE_RATE_ISOLATION_THRESHOLD = 0.3;
+
+  // R24-5 FIX: Noisy neighbor detection threshold (50% of pool capacity)
+  private static readonly NOISY_NEIGHBOR_THRESHOLD = 0.5;
 
   public registerPool(pool: ResourcePool): ResourcePool {
     const parsed = ResourcePoolSchema.parse(pool);
@@ -75,6 +96,11 @@ export class ResourcePoolService {
     this.pools.set(poolId, {
       ...pool,
       allocatedUnits: pool.allocatedUnits + units,
+      // R24-5 FIX: Track per-consumer allocation for noisy neighbor detection
+      consumerAllocations: {
+        ...pool.consumerAllocations,
+        [consumerId]: (pool.consumerAllocations[consumerId] ?? 0) + units,
+      },
     });
     return {
       poolId,
@@ -85,15 +111,47 @@ export class ResourcePoolService {
     };
   }
 
-  public release(poolId: string, units: number): ResourcePool {
+  public release(poolId: string, consumerId: string, units: number): ResourcePool {
     const pool = this.requirePool(poolId);
     const allocatedUnits = Math.max(0, pool.allocatedUnits - units);
+    // R24-5 FIX: Update per-consumer allocation tracking
+    const currentConsumerAlloc = pool.consumerAllocations[consumerId] ?? 0;
+    const updatedConsumerAllocations = { ...pool.consumerAllocations };
+    if (currentConsumerAlloc <= units) {
+      delete updatedConsumerAllocations[consumerId];
+    } else {
+      updatedConsumerAllocations[consumerId] = currentConsumerAlloc - units;
+    }
     const updated: ResourcePool = {
       ...pool,
       allocatedUnits,
+      consumerAllocations: updatedConsumerAllocations,
     };
     this.pools.set(poolId, updated);
     return updated;
+  }
+
+  /**
+   * R24-5 FIX: Get per-consumer utilization for noisy neighbor detection.
+   * Returns utilization metrics per consumer including noisy neighbor flag.
+   */
+  public getConsumerUtilization(poolId: string): ConsumerUtilization[] {
+    const pool = this.pools.get(poolId);
+    if (!pool) return [];
+
+    const totalCapacity = pool.capacityUnits + pool.burstUnits;
+    if (totalCapacity === 0) return [];
+
+    return Object.entries(pool.consumerAllocations).map(([consumerId, units]) => {
+      const utilizationPercent = totalCapacity > 0 ? units / totalCapacity : 0;
+      return {
+        poolId,
+        consumerId,
+        allocatedUnits: units,
+        utilizationPercent,
+        isNoisyNeighbor: utilizationPercent > ResourcePoolService.NOISY_NEIGHBOR_THRESHOLD,
+      };
+    });
   }
 
   public getPool(poolId: string): ResourcePool | null {

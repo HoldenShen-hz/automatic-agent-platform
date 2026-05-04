@@ -48,9 +48,8 @@ export { buildPlatformArchitectureBootstrapSummary } from "./platform-architectu
 export type {
   HarnessRun,
   HarnessRunStatus,
-  NodeRun,
-  PlanGraphBundle,
-} from "./platform-architecture-types.js";
+} from "./platform/contracts/executable-contracts/index.js";
+export type { NodeRun, PlanGraphBundle } from "./platform-architecture-types.js";
 export type { PlatformAppKind, PlatformStartupTargetKind, PlatformRootEntryMode } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 export { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";

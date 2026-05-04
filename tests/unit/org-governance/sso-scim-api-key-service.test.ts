@@ -58,7 +58,7 @@ test("ApiKeyService validateApiKey returns invalid for wrong key", () => {
 test("ApiKeyService validateApiKey returns expired for expired key", () => {
   const service = new ApiKeyService();
   const pastDate = "2020-01-01T00:00:00.000Z";
-  const { rawKey } = service.generateApiKey({
+  const { record, rawKey } = service.generateApiKey({
     name: "expired-key",
     ownerId: "user_1",
     expiresAt: pastDate,
@@ -69,6 +69,7 @@ test("ApiKeyService validateApiKey returns expired for expired key", () => {
 
   assert.strictEqual(result.valid, false);
   assert.strictEqual(result.reason, "key_expired");
+  assert.strictEqual(service.getApiKey(record.keyId)?.status, "expired");
 });
 
 test("ApiKeyService revokeApiKey marks key as revoked", () => {

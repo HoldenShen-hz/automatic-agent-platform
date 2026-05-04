@@ -143,7 +143,7 @@ export interface TaskGraphDraft {
 export interface PlannerHandoffReceipt {
   readonly handoffId: string;
   readonly goalId: string;
-  readonly state: "ready_for_planner";
+  readonly state: "ready_for_planner" | "pending_human_review";
   readonly graphId: string;
   readonly constraintEnvelope: GoalConstraintEnvelope;
   readonly budgetLedgerId?: string;
@@ -646,7 +646,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         || message.includes(".unauthorized_permission:")
         || message.includes(".domain_not_found:");
     });
-    const lifecycleState: GoalLifecycleState = "decomposed";
+    const lifecycleState: GoalLifecycleState = graphAnalysis.hasCycle ? "decomposing" : "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
       goalId: goal.goalId,
       lifecycleState,
@@ -666,7 +666,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const plannerHandoff: PlannerHandoffReceipt = {
       handoffId: `${goal.goalId}:planner_handoff`,
       goalId: goal.goalId,
-      state: "ready_for_planner" as const,
+      state: graphAnalysis.hasCycle ? "pending_human_review" as const : "ready_for_planner" as const,
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };

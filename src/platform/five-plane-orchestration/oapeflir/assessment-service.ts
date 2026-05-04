@@ -102,8 +102,10 @@ export class AssessmentService {
         factors: riskFactors,
       },
       routingDecision: {
-        // Division must come from actual domainId when available
-        division: assessmentInput.domainId ?? "unknown",
+        // R5-5 FIX: Division must come from actual domainId in parsed TaskSituation
+        // Previously used assessmentInput.domainId which doesn't exist on AssessmentInput
+        // TaskSituation.domainId is set from workflow.workflow.divisionId in oapeflir-loop-service
+        division: situation.domainId ?? "unknown",
         workflow,
         rationale: [
           `complexity=${complexity}`,

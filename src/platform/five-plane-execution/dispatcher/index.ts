@@ -19,7 +19,7 @@ import { createWebSearchTool } from "../tool-executor/web-search.js";
 import { CommandExecutor } from "../tool-executor/command-executor.js";
 import { SemanticRepoMapService } from "../tool-executor/semantic-repo-map-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
+import { BudgetGuard, BudgetExecutionSessionManager, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
 import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
 import { ToolRiskLevel } from "../tool-executor/tool-metadata.js";
@@ -102,6 +102,10 @@ class MultiStepToolRegistry {
   private runtimeTruthRepository: RuntimeTruthRepository | null = null;
   // R4-33: Current harnessRunId for correlating side effect records with the execution context
   private currentHarnessRunId: string | null = null;
+  // R4-25 (INV-BUDGET-001): Budget ledger for reserve→execute→settle pattern
+  private currentBudgetLedger: BudgetLedger | null = null;
+  // R4-25 (INV-BUDGET-001): Session manager for atomic budget reservation lifecycle
+  private readonly budgetSessionManager: BudgetExecutionSessionManager;
   private spawnDepth: number = 0;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_SPAWNED_AGENTS = 500;
@@ -120,6 +124,8 @@ class MultiStepToolRegistry {
     this.sideEffectRecords = new Map();
     this.evidenceRecords = new Map();
     this.budgetGuard = new BudgetGuard();
+    // R4-25 (INV-BUDGET-001): Initialize BudgetExecutionSessionManager for atomic reserve→execute→settle
+    this.budgetSessionManager = new BudgetExecutionSessionManager();
     this.sandboxPolicy = createWorkspaceWritePolicy(this.repoRoot);
     // R4-34 (INV-POLICY-001): Initialize PolicyEngine with default budget policy
     this.policyEngine = new PolicyEngine({
@@ -155,6 +161,21 @@ class MultiStepToolRegistry {
    */
   public getCurrentHarnessRunId(): string | null {
     return this.currentHarnessRunId;
+  }
+
+  /**
+   * R4-25 (INV-BUDGET-001): Set the current budget ledger for reserve→execute→settle pattern.
+   * This should be called before tool execution with the budgetLedger from validatedPlanGraphBundle.
+   */
+  public setCurrentBudgetLedger(budgetLedger: BudgetLedger): void {
+    this.currentBudgetLedger = budgetLedger;
+  }
+
+  /**
+   * R4-25 (INV-BUDGET-001): Get the current budget ledger.
+   */
+  public getCurrentBudgetLedger(): BudgetLedger | null {
+    return this.currentBudgetLedger;
   }
 
   private getDefaultBudgetPolicy(): BudgetPolicy {
@@ -355,6 +376,48 @@ class MultiStepToolRegistry {
         );
       }
     }
+  }
+
+  /**
+   * R4-32 (INV-SANDBOX): Validates that a tool definition is allowed by sandbox policy.
+   * Called before passing tool definitions to the LLM to ensure only sandboxed tools
+   * are made available for execution.
+   *
+   * @param toolName - The name of the tool to validate
+   * @throws ToolExecutionError if the tool is not allowed by sandbox policy
+   */
+  public assertToolDefinitionAllowed(toolName: string): void {
+    // R4-32 (INV-SANDBOX): Deny-by-default - any tool not explicitly allowed should be blocked
+    // Check based on sandbox mode and tool risk level
+
+    // High-risk tools require workspace_write or restricted_exec mode
+    const highRiskTools = ["git", "spawn-agent"];
+    const mediumRiskTools = ["web_fetch", "web_search", "batch_tool"];
+
+    if (highRiskTools.includes(toolName)) {
+      // High-risk tools are only allowed in workspace_write, scoped_external_access, or restricted_exec
+      if (this.sandboxPolicy.mode === "read_only") {
+        throw new ToolExecutionError(
+          "tool.sandbox_policy_denied",
+          `Tool ${toolName} is not allowed in read_only sandbox mode`,
+          { details: { toolName }, retryable: false },
+        );
+      }
+    }
+
+    if (mediumRiskTools.includes(toolName)) {
+      // Medium-risk tools are not allowed in read_only mode
+      if (this.sandboxPolicy.mode === "read_only") {
+        throw new ToolExecutionError(
+          "tool.sandbox_policy_denied",
+          `Tool ${toolName} is not allowed in read_only sandbox mode`,
+          { details: { toolName }, retryable: false },
+        );
+      }
+    }
+
+    // R4-34 (INV-POLICY-001): Also check PolicyEngine for tool-specific constraints
+    this.assertPolicyAllowed(toolName, {});
   }
 
   private createSideEffectRecordForExternalCall(
@@ -565,8 +628,9 @@ class MultiStepToolRegistry {
   /**
    * Executes a tool by name with the given JSON arguments.
    * Returns a JSON string result for tool call result injection into LLM history.
+   * R4-25 (INV-BUDGET-001): Implements atomic reserve→execute→settle pattern for budget enforcement.
    */
-  async executeToolCall(toolName: string, argumentsJson: string): Promise<string> {
+  async executeToolCall(toolName: string, argumentsJson: string, budgetLedger?: BudgetLedger): Promise<string> {
     let args: Record<string, unknown>;
     try {
       args = JSON.parse(argumentsJson);
@@ -579,8 +643,47 @@ class MultiStepToolRegistry {
       args = { raw: argumentsJson };
     }
 
-    // R4-25 (INV-BUDGET-001): Enforce budget check before tool execution
-    this.assertBudgetAllowed(toolName);
+    // R4-25 (INV-BUDGET-001): Get budget ledger - prefer parameter, fall back to registry state
+    const ledger = budgetLedger ?? this.currentBudgetLedger;
+    if (ledger == null) {
+      throw new ToolExecutionError(
+        "tool.budget_context_missing",
+        `Budget ledger not available for tool execution: ${toolName}. Ensure budget context is set via setCurrentBudgetLedger().`,
+        { details: { toolName }, retryable: false },
+      );
+    }
+
+    // R4-25 (INV-BUDGET-001): Estimate cost and create budget session for atomic reserve→execute→settle
+    const estimatedCost = this.estimateToolCost(toolName);
+    const harnessRunId = this.currentHarnessRunId ?? "harness_run:dispatcher";
+    let sessionId: string | null = null;
+
+    try {
+      // R4-25 (INV-BUDGET-001): Step 1 - Reserve budget atomically before tool execution
+      const session = this.budgetSessionManager.reserveAndCreateSession(
+        {
+          tenantId: ledger.tenantId,
+          harnessRunId,
+          traceId: newId("trace"),
+          emittedBy: "MultiStepToolRegistry",
+          ledger,
+          policy: this.getDefaultBudgetPolicy(),
+        },
+        estimatedCost,
+        "tool",
+      );
+      sessionId = session.sessionId;
+
+      // Mark session as executing
+      this.budgetSessionManager.markExecuting(sessionId);
+    } catch (error) {
+      // Budget reservation failed - tool cannot execute
+      throw new ToolExecutionError(
+        "tool.budget_reservation_failed",
+        `Budget reservation failed for tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,
+        { details: { toolName, estimatedCost }, retryable: false },
+      );
+    }
 
     // R4-34 (INV-POLICY-001): Deny-by-default - PolicyEngine check before tool dispatch
     this.assertPolicyAllowed(toolName, args);
@@ -632,6 +735,36 @@ class MultiStepToolRegistry {
       }
     }
 
+    let result: string;
+    try {
+      // Execute the tool (this was previously just the switch statement, now wrapped)
+      result = await this.executeToolImplementation(toolName, args);
+    } catch (error) {
+      // R4-25 (INV-BUDGET-001): Step 3 - Release reservation on failure
+      if (sessionId != null) {
+        this.budgetSessionManager.release(
+          sessionId,
+          error instanceof Error ? error.message : "tool_execution_failed",
+        );
+      }
+      throw error;
+    }
+
+    // R4-25 (INV-BUDGET-001): Step 2 - Settle with actual cost after successful tool execution
+    if (sessionId != null) {
+      // Use estimated cost as actual cost for now - could be refined based on actual resource usage
+      this.budgetSessionManager.settle(sessionId, estimatedCost);
+    }
+
+    return result;
+  }
+
+  /**
+   * R4-25 (INV-BUDGET-001): Internal method to execute tool implementation.
+   * This separates the tool execution logic from the budget lifecycle management.
+   */
+  private async executeToolImplementation(toolName: string, args: Record<string, unknown>): Promise<string> {
+
     switch (toolName) {
       case "todo_write": {
         const request = {
@@ -640,7 +773,7 @@ class MultiStepToolRegistry {
           agentId: "multi-step",
           traceId: "",
           toolName: "todo_write",
-          sandboxPolicy: { allow: [], deny: [] },
+          sandboxPolicy: this.sandboxPolicy,
           operation: (args.operation as "create" | "update" | "delete" | "list" | "get") ?? "create",
           sessionId: args.sessionId as string | null ?? null,
           todoId: args.todoId as string | null ?? null,
@@ -866,11 +999,22 @@ export function setToolRegistryHarnessRunId(harnessRunId: string): void {
 }
 
 /**
+ * R4-25 (INV-BUDGET-001): Sets the current budget ledger on the tool registry singleton.
+ * This enables atomic reserve→execute→settle pattern for tool executions.
+ * Should be called before tool execution with the budgetLedger from validatedPlanGraphBundle.
+ */
+export function setToolRegistryBudgetLedger(budgetLedger: BudgetLedger): void {
+  const registry = getToolRegistry();
+  registry.setCurrentBudgetLedger(budgetLedger);
+}
+
+/**
  * Executes a tool call using the multi-step tool registry.
  * Delegates to the real tool implementations (TodoWriteToolService, WebFetchTool).
+ * R4-25 (INV-BUDGET-001): Optionally accepts budgetLedger for reserve→execute→settle pattern.
  */
-export async function executeToolCall(toolName: string, argumentsJson: string): Promise<string> {
-  return getToolRegistry().executeToolCall(toolName, argumentsJson);
+export async function executeToolCall(toolName: string, argumentsJson: string, budgetLedger?: BudgetLedger): Promise<string> {
+  return getToolRegistry().executeToolCall(toolName, argumentsJson, budgetLedger);
 }
 
 /**

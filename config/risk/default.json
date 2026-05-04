@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Canonical risk configuration aligned with §28 Event Registry and DLQ model",
+  "description": "Canonical risk configuration aligned with ADR-026 8-factor/18-point model",
   "riskCategories": [
     "operational",
     "financial",
@@ -12,42 +12,60 @@
     "data"
   ],
   "factorWeights": {
-    "targetSystemRisk": 4,
-    "dataClassRisk": 3,
+    "operationRisk": 3,
+    "targetResourceCriticality": 3,
+    "dataSensitivity": 3,
+    "autonomyModeRisk": 2,
+    "tenantImpact": 2,
     "blastRadius": 2,
-    "priorFailureRate": 2,
-    "confidence": 1,
-    "aiModelRisk": 4,
-    "thirdPartyRisk": 2,
-    "supplyChainRisk": 2
+    "historicalFailureRate": 2,
+    "evidenceConfidence": 1
   },
-  "systemRiskValues": {
-    "internal": 1,
-    "staging": 2,
-    "production": 5
+  "operationRiskValues": {
+    "read": 0.2,
+    "write": 0.6,
+    "delete": 1.0,
+    "external_call": 0.8
   },
-  "dataClassRiskValues": {
-    "public": 1,
-    "internal": 2,
-    "confidential": 4,
-    "restricted": 5
+  "targetResourceCriticalityValues": {
+    "internal": 0.2,
+    "staging": 0.4,
+    "production": 1.0
+  },
+  "dataSensitivityValues": {
+    "public": 0.2,
+    "internal": 0.4,
+    "confidential": 0.8,
+    "restricted": 1.0
+  },
+  "autonomyModeRiskValues": {
+    "full_auto": 0.2,
+    "semi_auto": 0.4,
+    "supervised": 0.6,
+    "manual": 1.0
+  },
+  "tenantImpactValues": {
+    "single_task": 0.2,
+    "workflow": 0.4,
+    "tenant": 0.6,
+    "platform": 1.0
   },
   "blastRadiusValues": {
-    "single_task": 1,
-    "workflow": 2,
-    "tenant": 3,
-    "platform": 5
+    "single_task": 0.2,
+    "workflow": 0.4,
+    "tenant": 0.6,
+    "platform": 1.0
   },
-  "priorFailureRateThresholds": {
-    "low": { "maxPercent": 10, "value": 1 },
-    "medium": { "maxPercent": 30, "value": 2 },
-    "high": { "maxPercent": 50, "value": 3 },
-    "critical": { "maxPercent": 100, "value": 5 }
+  "historicalFailureRateThresholds": {
+    "low": { "maxPercent": 10, "value": 0.2 },
+    "medium": { "maxPercent": 30, "value": 0.4 },
+    "high": { "maxPercent": 50, "value": 0.6 },
+    "critical": { "maxPercent": 100, "value": 1.0 }
   },
-  "confidenceValues": {
-    "high": 1,
-    "medium": 3,
-    "low": 5
+  "evidenceConfidenceValues": {
+    "high": 0.2,
+    "medium": 0.6,
+    "low": 1.0
   },
   "riskLevelThresholds": {
     "low": 0.25,
@@ -64,10 +82,9 @@
       "evidenceLevel": "basic"
     },
     "medium": {
-      "autoExecute": false,
+      "autoExecute": true,
       "logLevel": "warn",
-      "requiresApproval": true,
-      "approvalType": "standard",
+      "requiresApproval": false,
       "sideEffect": "normal_with_validation",
       "evidenceLevel": "enhanced"
     },
