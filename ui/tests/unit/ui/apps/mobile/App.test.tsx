@@ -2,9 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import type { ReactElement } from "react";
 import React from "react";
-import { MobileApp } from "./App";
-
-// Issue #2169: Platform hardcoded "android", iOS gets wrong adapter
+import { createMobilePlatformAdapter } from "@aa/shared-platform";
+import { MobileApp } from "../../../../../apps/mobile/src/App";
 
 // Mock shared-platform module
 vi.mock("@aa/shared-platform", () => ({
@@ -39,6 +38,10 @@ const mockMobileBridge = {
 describe("MobileApp component", () => {
   beforeEach(() => {
     globalThis.__AA_MOBILE__ = mockMobileBridge;
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+    });
   });
 
   afterEach(() => {
@@ -71,6 +74,10 @@ describe("MobileApp component", () => {
 describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
+    });
   });
 
   afterEach(() => {
@@ -78,27 +85,23 @@ describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
     delete globalThis.__AA_MOBILE__;
   });
 
-  it("hardcodes 'android' platform - iOS gets wrong adapter", () => {
-    // Issue #2169: Platform is hardcoded to "android"
-    // iOS devices will incorrectly use android adapter
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
-
+  it("detects android user agents and passes android to the adapter", () => {
     render(<MobileApp />);
 
-    // Verify adapter was created with hardcoded "android"
     expect(createMobilePlatformAdapter).toHaveBeenCalledWith("android");
   });
 
-  it("should detect platform from environment, not hardcode", () => {
-    // This test documents the security issue
-    // A correct implementation would use a dynamic platform detection
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
+  it("detects ios user agents instead of hardcoding android", () => {
+    Object.defineProperty(window.navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+    });
 
     render(<MobileApp />);
 
-    // Currently hardcoded - this is the bug
     const callArgs = (createMobilePlatformAdapter as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(callArgs[0]).toBe("android");
+    expect(callArgs[0]).toBe("ios");
+    expect(screen.getByText(/Platform: ios/)).toBeInTheDocument();
   });
 });
 
@@ -112,55 +115,47 @@ describe("mobile platform adapter interface", () => {
   });
 
   it("adapter has platform property", () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     expect(adapter.platform).toBe("android");
   });
 
   it("adapter supports clipboard operations", async () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     await adapter.copyToClipboard("test");
     expect(typeof adapter.copyToClipboard).toBe("function");
   });
 
   it("adapter supports deep link operations", async () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     await adapter.openDeepLink("aa://test");
     expect(typeof adapter.openDeepLink).toBe("function");
   });
 
   it("adapter supports vibration", async () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     await adapter.vibrate([100, 200, 100]);
     expect(typeof adapter.vibrate).toBe("function");
   });
 
   it("adapter has analytics consent baseline", async () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     const consent = await adapter.getAnalyticsConsent();
     expect(consent).toBe(true);
   });
 
   it("adapter supports screen security", async () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     await adapter.enableScreenSecurity(true);
     expect(typeof adapter.enableScreenSecurity).toBe("function");
   });
 
   it("adapter has foreground listener", () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     const unsubscribe = adapter.onForeground(() => {});
     expect(typeof unsubscribe).toBe("function");
   });
 
   it("adapter has background listener", () => {
-    const { createMobilePlatformAdapter } = require("@aa/shared-platform");
     const adapter = createMobilePlatformAdapter("android");
     const unsubscribe = adapter.onBackground(() => {});
     expect(typeof unsubscribe).toBe("function");

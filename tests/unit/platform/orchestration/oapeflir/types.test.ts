@@ -120,6 +120,8 @@ test("agent-loop phase-1 schemas accept valid minimal payloads", () => {
 
   assert.doesNotThrow(() => FeedbackSignalSchema.parse({
     signalId: "sig_1",
+    harnessRunId: "harness_1",
+    nodeRunId: "node_run_1",
     taskId: "task_1",
     source: "execution",
     category: "success",
@@ -127,6 +129,12 @@ test("agent-loop phase-1 schemas accept valid minimal payloads", () => {
     payload: {},
     stepOutputRefs: [],
     timestamp: 4,
+    trustScore: {
+      overallScore: 0.95,
+      sourceCredibility: 0.9,
+      historicalAccuracy: 0.92,
+      attackSurface: 0.1,
+    },
   }));
 
   assert.doesNotThrow(() => ImprovementCandidateSchema.parse({

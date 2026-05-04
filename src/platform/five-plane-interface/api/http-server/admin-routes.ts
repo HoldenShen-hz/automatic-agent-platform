@@ -30,6 +30,7 @@ import { parseControlPlaneLoadBalancingSelectionPayload } from "./schemas.js";
 import { buildJsonResponse, requirePrincipal, assertGlobalTenantScopeSupported, resolveTenantScope, validateTaskId, readLimit } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { MissionControlService } from "../mission-control-service.js";
+import type { RuntimeRecoveryReplayService } from "../../../five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
 import type { ApiDelegationService } from "../facade-interfaces.js";
 import type { ConfigRolloutService } from "../../../control-plane/config-center/config-rollout-service.js";
 import type { TenantBoundaryRegistryService } from "../../../control-plane/tenant/index.js";
@@ -102,6 +103,7 @@ export interface AdminConfigUpdatePayload {
 export interface AdminRouteDeps {
   authService: ApiAuthService | null;
   missionControlService: MissionControlService;
+  replayService?: RuntimeRecoveryReplayService | null;
   coordinatorLoadBalancingService: ApiDelegationService | null;
   configRolloutService?: ConfigRolloutService | null;
   tenantRegistryService?: TenantBoundaryRegistryService | null;
@@ -354,10 +356,19 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
         const limit = readLimit(ctx.request, 50);
-        // Placeholder - in production this would query missionControlService for harness runs
+        const workflowSummaries = deps.missionControlService.listWorkflowCockpits(limit);
+        const harnessRuns = workflowSummaries.map((summary) => ({
+          harnessRunId: summary.taskId,
+          status: summary.taskStatus,
+          divisionId: summary.divisionId,
+          workflowId: summary.workflowId,
+          activeExecutionId: summary.activeExecutionId,
+          updatedAt: summary.updatedAt,
+          latestEventAt: summary.latestEventAt,
+        }));
         return buildJsonResponse(ctx.requestId, 200, {
-          harnessRuns: [],
-          total: 0,
+          harnessRuns,
+          total: harnessRuns.length,
           limit,
         });
       },
@@ -377,11 +388,16 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const harnessRunId = segments[3];
-        // Placeholder - in production this would query missionControlService for harness run
+        const harnessRunId = segments[3]!;
+        const cockpit = deps.missionControlService.getWorkflowCockpit(harnessRunId);
         return buildJsonResponse(ctx.requestId, 200, {
           harnessRunId,
-          status: "unknown",
+          taskId: cockpit.summary.taskId,
+          status: cockpit.summary.taskStatus,
+          divisionId: cockpit.summary.divisionId,
+          workflowId: cockpit.summary.workflowId,
+          activeExecutionId: cockpit.summary.activeExecutionId,
+          updatedAt: cockpit.summary.updatedAt,
         });
       },
     },
@@ -401,11 +417,14 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const harnessRunId = segments[3];
-        // Placeholder - in production this would query event store for harness run events
+        const harnessRunId = segments[3]!;
+        const cockpit = deps.missionControlService.getWorkflowCockpit(harnessRunId);
+        const events = cockpit.timeline ?? [];
         return buildJsonResponse(ctx.requestId, 200, {
           harnessRunId,
-          events: [],
+          workflowId: cockpit.summary.workflowId,
+          taskId: cockpit.summary.taskId,
+          events,
         });
       },
     },
@@ -416,10 +435,35 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
         const limit = readLimit(ctx.request, 50);
-        // Placeholder - in production this would query replay service
+        // Query replay service for replay session data via MissionControlService workflow list
+        const workflowSummaries = deps.missionControlService.listWorkflowCockpits(limit);
+        const replayService = deps.replayService;
+        const replaySessions = workflowSummaries.map((summary) => {
+          const taskId = summary.taskId;
+          let outcome: string | null = null;
+          let executionCount = 0;
+          if (replayService) {
+            try {
+              const report = replayService.buildTaskReplayReport(taskId);
+              outcome = report.outcome;
+              executionCount = report.executions.length;
+            } catch {
+              // Task may not have replay data
+            }
+          }
+          return {
+            replaySessionId: taskId,
+            harnessRunId: taskId,
+            status: summary.taskStatus,
+            divisionId: summary.divisionId,
+            workflowId: summary.workflowId,
+            outcome,
+            executionCount,
+          };
+        });
         return buildJsonResponse(ctx.requestId, 200, {
-          replaySessions: [],
-          total: 0,
+          replaySessions,
+          total: replaySessions.length,
           limit,
         });
       },
@@ -439,12 +483,46 @@ export function createAdminRoutes(deps: AdminRouteDeps): RouteDefinition[] {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
-        const replaySessionId = segments[3];
-        // Placeholder - in production this would query replay service
-        return buildJsonResponse(ctx.requestId, 200, {
-          replaySessionId,
-          status: "unknown",
-        });
+        const replaySessionId = segments[3]!;
+        const replayService = deps.replayService;
+        if (!replayService) {
+          return buildJsonResponse(ctx.requestId, 200, {
+            replaySessionId,
+            status: "unavailable",
+            message: "Replay service not configured",
+          });
+        }
+        try {
+          const report = replayService.buildTaskReplayReport(replaySessionId);
+          return buildJsonResponse(ctx.requestId, 200, {
+            replaySessionId,
+            harnessRunId: report.taskId,
+            taskId: report.taskId,
+            divisionId: report.divisionId,
+            status: report.outcome,
+            activeExecutionId: report.activeExecutionId,
+            candidateCount: report.candidateCount,
+            requestedApprovalCount: report.requestedApprovalCount,
+            deadLetterCount: report.deadLetterCount,
+            recoveryEventCount: report.recoveryEventCount,
+            outcome: report.outcome,
+            generatedAt: report.generatedAt,
+            executions: report.executions.map((exec: { executionId: string; status: string; attempt: number; latestErrorCode: string | null }) => ({
+              executionId: exec.executionId,
+              status: exec.status,
+              attempt: exec.attempt,
+              latestErrorCode: exec.latestErrorCode,
+            })),
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("not found")) {
+            return buildJsonResponse(ctx.requestId, 404, {
+              replaySessionId,
+              status: "not_found",
+            });
+          }
+          throw error;
+        }
       },
     },
     // ── R5-36: Admin write methods - PUT config, POST panic/resume directives ─

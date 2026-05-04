@@ -19,6 +19,7 @@ import {
 import { BudgetAllocator, BudgetTier } from "../../five-plane-execution/budget-allocator.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
+import type { CostOptimizationService } from "../../../ops-maturity/cost-optimizer/cost-optimization-service.js";
 
 /**
  * Budget policy defining cost limits and warning thresholds.
@@ -347,9 +348,14 @@ export interface BudgetExecutionContext {
 export class BudgetExecutionSessionManager {
   private readonly allocator: BudgetAllocator;
   private readonly activeSessions = new Map<string, BudgetExecutionSession>();
+  private readonly costOptimizationService: CostOptimizationService | null;
 
-  public constructor(options: { readonly allocator?: BudgetAllocator } = {}) {
+  public constructor(options: {
+    readonly allocator?: BudgetAllocator;
+    readonly costOptimizationService?: CostOptimizationService | null;
+  } = {}) {
     this.allocator = options.allocator ?? new BudgetAllocator();
+    this.costOptimizationService = options.costOptimizationService ?? null;
   }
 
   /**
@@ -513,6 +519,24 @@ export class BudgetExecutionSessionManager {
         streamingSettle: { enabled: false, tokenInterval: 1000, timeIntervalMs: 60000 },
       },
     });
+
+    // R12-32 FIX: Record actual cost with CostOptimizationService after settlement
+    if (this.costOptimizationService != null && actualCostUsd > 0) {
+      this.costOptimizationService.recordCost({
+        harness_run_id: session.harnessRunId,
+        node_run_id: session.sessionId,
+        costType: "llm",
+        amountUsd: actualCostUsd,
+        llmCostUsd: actualCostUsd,
+        toolCostUsd: 0,
+        computeCostUsd: 0,
+        storageCostUsd: 0,
+        egressCostUsd: 0,
+        humanReviewCostUsd: 0,
+        decisionRef: `budget_session:${sessionId}`,
+        capturedAt: nowIso(),
+      });
+    }
 
     // Update session to settled
     const settled: BudgetExecutionSession = {

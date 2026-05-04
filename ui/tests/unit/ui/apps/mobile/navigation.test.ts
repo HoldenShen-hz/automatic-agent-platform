@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mobileNavigation, type MobileScreenDefinition } from "./navigation";
+import { mobileNavigation, settingsSubRoutes, type MobileScreenDefinition } from "../../../../../apps/mobile/src/navigation";
 
 describe("mobileNavigation", () => {
   it("defines tabs array", () => {
@@ -42,6 +42,33 @@ describe("mobileNavigation", () => {
       const settings = mobileNavigation.tabs.find((t) => t.id === "settings");
       expect(settings).toBeDefined();
       expect(settings?.title).toBe("Settings");
+    });
+
+    it("includes workflow cockpit entry for mobile drill-down", () => {
+      const workflowCockpit = mobileNavigation.tabs.find((t) => t.id === "workflow-cockpit");
+      expect(workflowCockpit).toBeDefined();
+      expect(workflowCockpit?.path).toBe("/mission-control/workflows/:id");
+    });
+
+    it("settings tab exposes seven dedicated sub-routes", () => {
+      expect(settingsSubRoutes).toHaveLength(7);
+      expect(mobileNavigation.settingsSubRoutes).toHaveLength(7);
+      expect(mobileNavigation.settingsSubRoutes).toEqual(settingsSubRoutes);
+      expect(mobileNavigation.settingsSubRoutes.map((route) => route.id)).toEqual([
+        "profile",
+        "notifications",
+        "security",
+        "appearance",
+        "language",
+        "about",
+        "advanced",
+      ]);
+    });
+
+    it("settings sub-routes stay under the shared settings namespace", () => {
+      mobileNavigation.settingsSubRoutes.forEach((route) => {
+        expect(route.path.startsWith("/shared/settings/")).toBe(true);
+      });
     });
 
     it("all tabs require authentication", () => {
@@ -144,7 +171,7 @@ describe("navigation path structure", () => {
 describe("navigation completeness", () => {
   it("covers main user workflows", () => {
     const pathIds = mobileNavigation.tabs.map((t) => t.id);
-    const expectedWorkflows = ["dashboard", "tasks", "approvals", "conversation", "settings"];
+    const expectedWorkflows = ["dashboard", "tasks", "workflow-cockpit", "approvals", "conversation", "settings"];
 
     expectedWorkflows.forEach((workflow) => {
       expect(pathIds).toContain(workflow);

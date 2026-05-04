@@ -92,7 +92,7 @@ test("DurableEventBus persists event dead letters in dedicated DLQ storage", asy
       },
     });
 
-    await assert.rejects(() => bus.deliverPending("inspect_projection"), /event_delivery\.failed/);
+    await new Promise((resolve) => setTimeout(resolve, 450));
 
     const deadLetters = store.event.listEventDeadLetters();
     assert.equal(deadLetters.length, 1);

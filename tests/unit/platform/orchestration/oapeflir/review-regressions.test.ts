@@ -66,42 +66,53 @@ class DeterministicExecuteBridge implements ExecuteBridge {
 }
 
 function createSingleStepWorkflow(taskId: string) {
+  const stepId = `step_${taskId}`;
+  const stepDefinition = {
+    stepId,
+    divisionId: "coding",
+    roleId: "writer",
+    title: "Write implementation change",
+    executor: "agent_writer",
+    inputKeys: [],
+    inputs: {
+      riskClass: "medium",
+      budget: {
+        amount: 2,
+        currency: "USD",
+      },
+    },
+    outputKey: "result",
+    outputSchemaPath: null,
+    dependsOnStepIds: [],
+    dependencyTypes: {},
+    timeoutMs: 1000,
+    maxAttempts: 1,
+    retryPolicy: {
+      maxRetries: 0,
+      backoffMs: 0,
+    },
+    tools: ["read"],
+    sandboxMode: "workspace-write",
+    nodeType: "tool",
+    riskClass: "medium",
+    budgetIntent: {
+      amount: 2,
+      currency: "USD",
+      resourceKinds: ["compute"],
+    },
+    sideEffectProfile: {
+      mayCommitExternalEffect: false,
+      reversible: true,
+    },
+  };
+
   return {
     workflow: {
       workflowId: `wf_${taskId}`,
       divisionId: "coding",
-      steps: [],
+      steps: [stepDefinition],
     },
-    executionSteps: [
-      {
-        stepId: `step_${taskId}`,
-        divisionId: "coding",
-        roleId: "writer",
-        title: "Write implementation change",
-        executor: "agent_writer",
-        inputKeys: [],
-        inputs: {
-          riskClass: "medium",
-          budget: {
-            amount: 2,
-            currency: "USD",
-          },
-        },
-        agentId: "agent_writer",
-        outputKey: "result",
-        outputSchemaPath: null,
-        dependsOnStepIds: [],
-        dependencyTypes: {},
-        timeoutMs: 1000,
-        maxAttempts: 1,
-        retryPolicy: {
-          maxRetries: 0,
-          backoffMs: 0,
-        },
-        tools: ["read"],
-        sandboxMode: "workspace-write",
-      },
-    ],
+    executionSteps: [{ ...stepDefinition, agentId: "agent_writer" }],
     planReason: "workflow.single_step_execution",
     dependencyEdges: [],
   };
@@ -204,14 +215,74 @@ test("OapeflirLoopService packages feedback-stage decision input with budget and
 });
 
 test("OapeflirLoopService exposes plan diagnostics on the loop result", async () => {
+  const diagnosticBundle = createPlanGraphBundle({
+    harnessRunId: "hrun-diagnostics",
+    graph: {
+      graphId: "graph-diagnostics",
+      nodes: [{
+        nodeId: "node-diagnostics-1",
+        nodeType: "tool",
+        inputRefs: [],
+        outputSchemaRef: "schema://diagnostics-output",
+        riskClass: "high",
+        budgetIntent: { amount: 7, currency: "USD", resourceKinds: ["compute"] },
+        sideEffectProfile: { mayCommitExternalEffect: true, reversible: false },
+        retryPolicyRef: "retry://diagnostics",
+        timeoutMs: 1500,
+      }],
+      edges: [],
+      entryNodeIds: ["node-diagnostics-1"],
+      terminalNodeIds: ["node-diagnostics-1"],
+      joinStrategy: "all",
+      graphHash: "graph-diagnostics-hash",
+    },
+    schedulerPolicy: { policyId: "scheduler-diagnostics", strategy: "deterministic_fifo" },
+    budgetPlanRef: "budget://diagnostics",
+    riskProfile: { riskClass: "high", reasons: ["review-diagnostics"] },
+    validationReport: {
+      valid: true,
+      findings: ["graph.normalized"],
+      normalizedNodeIds: ["node-diagnostics-1"],
+      riskPropagation: [{
+        nodeId: "node-diagnostics-1",
+        inheritedRiskClass: "high",
+        reasons: ["external_side_effect"],
+      }],
+      worstPath: {
+        pathNodeIds: ["node-diagnostics-1"],
+        riskClass: "high",
+        estimatedBudgetAmount: 7,
+        timeoutMs: 1500,
+      },
+    },
+  });
   const service = new OapeflirLoopService({
     executeBridge: new DeterministicExecuteBridge(),
+    planBuilder: {
+      buildGraphBundle: () => diagnosticBundle,
+    } as any,
   });
 
   const result = await service.produceStageRationale({
     taskId: "task_review_plan_diagnostics",
     objective: "Generate a graph-native plan and surface diagnostics.",
     workflow: createSingleStepWorkflow("task_review_plan_diagnostics"),
+    stepOutputs: [{
+      stepId: "node-diagnostics-1",
+      planRef: diagnosticBundle.planGraphBundleId,
+      status: "succeeded",
+      userFacingResult: {
+        summary: "diagnostic step completed",
+        artifacts: ["artifact:diagnostics"],
+      },
+      systemTelemetry: {
+        durationMs: 50,
+        tokensUsed: 12,
+        modelId: "test-bridge",
+        retryCount: 0,
+        validationPassed: true,
+      },
+    }],
   });
 
   assert.ok(result.normalizationReport);
@@ -219,8 +290,12 @@ test("OapeflirLoopService exposes plan diagnostics on the loop result", async ()
   assert.equal(result.normalizationReport?.normalizedEdges, result.planGraphBundle.graph.edges.length);
   assert.ok(result.validationReport);
   assert.equal(result.validationReport?.valid, true);
+  assert.equal(result.validationReport?.findings[0]?.code, "validation.issue.0");
   assert.ok(result.riskPropagation);
-  assert.equal(typeof result.riskPropagation?.riskScore, "number");
+  assert.equal(result.riskPropagation?.riskScore, 0.75);
+  assert.deepEqual(result.riskPropagation?.criticalPathNodes, ["node-diagnostics-1"]);
   assert.ok(result.worstPath);
-  assert.equal(result.worstPath?.pathLength, result.planGraphBundle.validationReport.worstPath?.pathNodeIds.length ?? 0);
+  assert.equal(result.worstPath?.pathLength, 1);
+  assert.equal(result.worstPath?.estimatedDurationMs, 1500);
+  assert.equal(result.worstPath?.budgetEstimate, 7);
 });

@@ -41,7 +41,7 @@ import { OapeflirStageTimelineBuilder, type OapeflirStageRecord } from "./stage-
 import { buildFromStepResults } from "./handoff-builder.js";
 import { serializeHandoff } from "./handoff-serializer.js";
 import type { AgentHandoff } from "./handoff-model.js";
-import type { ExecuteBridge, ExecutionContext } from "./execute-bridge.js";
+import type { ExecuteBridge } from "./execute-bridge.js";
 import { RuntimeExecuteBridge, MockExecuteBridge } from "./runtime-execute-bridge.js";
 import { executeOapeflirRuntimePlan } from "../../execution/oapeflir/runtime-plan-executor.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
@@ -1060,10 +1060,11 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           decisionInputBundle,
           graphPatch,
           harnessDecision,
-          normalizationReport,
-          validationReport,
-          riskPropagation,
-          worstPath,
+          // R5-9: Non-null assertions since these are assigned before return inside the loop
+          normalizationReport: normalizationReport!,
+          validationReport: validationReport!,
+          riskPropagation: riskPropagation!,
+          worstPath: worstPath!,
         };
       }
 
@@ -1094,17 +1095,13 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         decisionInputBundle,
         graphPatch,
         harnessDecision,
-        normalizationReport,
-        validationReport,
-        riskPropagation,
-        worstPath,
+        // R5-9: Non-null assertions - these are set after planGraphBundle is created
+        normalizationReport: normalizationReport!,
+        validationReport: validationReport!,
+        riskPropagation: riskPropagation!,
+        worstPath: worstPath!,
       };
     });
-  }
-
-  private async executeViaBridge(plan: PlanGraphBundle, context: ExecutionContext): Promise<DualChannelStepOutput[]> {
-    const executionResult = await this.executeBridge.executePlan(plan, context);
-    return this.executeBridge.toDualChannelStepOutputs(executionResult);
   }
 
   private buildDecisionInputBundle(input: {
