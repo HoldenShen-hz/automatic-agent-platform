@@ -82,7 +82,8 @@ export interface RuntimeLifecycleRepository {
     lastErrorCode?: string | null,
   ): number;
   createTier1StatusEvent(input: {
-    taskId: string;
+    taskId: string | null;
+    sessionId?: string | null;
     executionId: string | null;
     eventType: string;
     traceId: string;
@@ -250,7 +251,8 @@ export class AuthoritativeTaskStoreRuntimeLifecycleRepository implements Runtime
   }
 
   public createTier1StatusEvent(input: {
-    taskId: string;
+    taskId: string | null;
+    sessionId?: string | null;
     executionId: string | null;
     eventType: string;
     traceId: string;
@@ -475,7 +477,8 @@ export class RetryingRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   }
 
   public createTier1StatusEvent(input: {
-    taskId: string;
+    taskId: string | null;
+    sessionId?: string | null;
     executionId: string | null;
     eventType: string;
     traceId: string;
@@ -664,7 +667,8 @@ export class ObservedRuntimeLifecycleRepository implements RuntimeLifecycleRepos
   }
 
   public createTier1StatusEvent(input: {
-    taskId: string;
+    taskId: string | null;
+    sessionId?: string | null;
     executionId: string | null;
     eventType: string;
     traceId: string;

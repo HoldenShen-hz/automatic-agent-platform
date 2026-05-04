@@ -629,7 +629,8 @@ export class SessionTransitionService {
     }
     // §28: Emit tier-1 status change event for session transitions (legacy compatibility)
     this.repository.createTier1StatusEvent({
-      taskId: command.entityId, // sessionId for correlation
+      taskId: null,
+      sessionId: command.entityId,
       executionId: null,
       eventType: "session:status_changed",
       traceId: command.traceId,
@@ -722,7 +723,7 @@ export class ExecutionTransitionService {
     }
     // §28: Emit tier-1 status change event for execution transitions (legacy compatibility)
     this.repository.createTier1StatusEvent({
-      taskId: "",
+      taskId: null,
       executionId: command.entityId,
       eventType: "execution:status_changed",
       traceId: command.traceId,

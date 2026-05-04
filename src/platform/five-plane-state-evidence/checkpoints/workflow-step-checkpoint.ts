@@ -18,7 +18,9 @@
  * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
 import type { CompensationModel } from "../../orchestration/oapeflir/workflow/minimal-workflow.js";
