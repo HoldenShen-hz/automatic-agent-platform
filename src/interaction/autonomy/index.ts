@@ -109,6 +109,19 @@ export interface AutonomyChangeImpactReport {
   readonly businessOwnerAction: "inform" | "confirm" | "immediate_pause";
 }
 
+export interface PendingAutonomyApprovalRequest {
+  readonly requestId: string;
+  readonly agentId: string;
+  readonly capabilityId: string;
+  readonly fromLevel: AutonomyLevel;
+  readonly toLevel: AutonomyLevel;
+  readonly requiredApprover: "domain_owner" | "platform_team";
+  readonly status: "pending" | "approved" | "rejected";
+  readonly createdAt: string;
+  readonly resolvedAt: string | null;
+  readonly resolvedBy: string | null;
+}
+
 export class TrustDecayWorker {
   public run(
     profile: AgentTrustProfile,
@@ -369,6 +382,7 @@ function lowestLevel(levels: readonly AutonomyLevel[]): AutonomyLevel {
 export class ProgressiveAutonomyService implements AutonomyPolicyPort {
   private readonly profiles = new Map<string, AgentTrustProfile>();
   private readonly auditCallbacks: Array<(event: AutonomyChangeEvent) => void> = [];
+  private readonly pendingApprovalRequests = new Map<string, PendingAutonomyApprovalRequest>();
 
   public registerProfile(profile: AgentTrustProfile): void {
     this.profiles.set(profile.agentId, profile);
@@ -376,6 +390,46 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
 
   public onAutonomyChange(callback: (event: AutonomyChangeEvent) => void): void {
     this.auditCallbacks.push(callback);
+  }
+
+  public listPendingApprovalRequests(agentId?: string): PendingAutonomyApprovalRequest[] {
+    const requests = [...this.pendingApprovalRequests.values()].filter((request) => request.status === "pending");
+    return agentId == null ? requests : requests.filter((request) => request.agentId === agentId);
+  }
+
+  public resolvePendingApproval(
+    requestId: string,
+    resolution: { readonly approved: boolean; readonly resolvedBy: string; readonly resolvedAt?: string },
+  ): PendingAutonomyApprovalRequest | null {
+    const existing = this.pendingApprovalRequests.get(requestId);
+    if (existing == null || existing.status !== "pending") {
+      return null;
+    }
+    const resolvedAt = resolution.resolvedAt ?? nowIso();
+    const updated: PendingAutonomyApprovalRequest = {
+      ...existing,
+      status: resolution.approved ? "approved" : "rejected",
+      resolvedAt,
+      resolvedBy: resolution.resolvedBy,
+    };
+    this.pendingApprovalRequests.set(requestId, updated);
+
+    if (resolution.approved) {
+      const profile = this.profiles.get(existing.agentId);
+      if (profile != null) {
+        const capabilityScores = profile.capabilityScores.map((score) =>
+          score.capabilityId === existing.capabilityId
+            ? { ...score, currentAutonomy: existing.toLevel }
+            : score);
+        this.profiles.set(existing.agentId, {
+          ...profile,
+          capabilityScores,
+          lastEvaluation: resolvedAt,
+        });
+      }
+    }
+
+    return updated;
   }
 
   public evaluate(subjectId: string): AutonomyDecision {
@@ -395,13 +449,14 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
     profile: AgentTrustProfile,
     options: AutonomyEvaluationOptions = DEFAULT_OPTIONS,
   ): ProgressiveAutonomyEvaluation {
+    this.profiles.set(profile.agentId, profile);
     const capabilityLevels: Record<string, AutonomyLevel> = {};
     const changeEvents: AutonomyChangeEvent[] = [];
     const impactReports: AutonomyChangeImpactReport[] = [];
     const recalculatedScores = profile.capabilityScores.map((item) => {
       const nextScore = scoreCapability(item);
       const nextLevel = applyDomainRiskAutonomyCap(profile.domainId, decideLevel(item, options), options);
-      capabilityLevels[item.capabilityId] = nextLevel;
+      let effectiveLevel = nextLevel;
 
       if (nextLevel !== item.currentAutonomy) {
         const eventType: AutonomyChangeEvent["eventType"] =
@@ -438,6 +493,16 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
         // R9-44: Flag promotions that require approval queue integration
         // When approvedBy is domain_owner/platform_team, promotion must be routed to approval queue
         const requiresApprovalResolution = approvedBy !== "auto" && eventType === "agent.autonomy.promoted";
+        if (requiresApprovalResolution) {
+          effectiveLevel = item.currentAutonomy;
+          this.ensurePendingApprovalRequest(
+            profile.agentId,
+            item.capabilityId,
+            item.currentAutonomy,
+            nextLevel,
+            approvedBy,
+          );
+        }
 
         const changeEvent: AutonomyChangeEvent = {
           eventId: `autonomy_event_${Date.now()}_${changeEvents.length + 1}`,
@@ -460,12 +525,17 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
           toLevel: nextLevel,
           activeRunsImpact: item.currentAutonomy === "full_auto" && nextLevel !== "full_auto" ? "broad" : "limited",
           slaImpact: item.currentAutonomy === "full_auto" && nextLevel === "suggestion" ? "degradation_risk" : "warning",
-          approvalQueueImpact: nextLevel === "suggestion" || nextLevel === "supervised" ? "increase_expected" : "none",
+          approvalQueueImpact: requiresApprovalResolution ? "increase_expected" : "none",
           budgetImpact: nextLevel === "suggestion" ? "higher_human_review_cost" : "none",
-          businessOwnerAction: nextLevel === "frozen" ? "immediate_pause" : "inform",
+          businessOwnerAction: nextLevel === "frozen"
+            ? "immediate_pause"
+            : requiresApprovalResolution
+              ? "confirm"
+              : "inform",
         });
         this.auditCallbacks.forEach((cb) => cb(changeEvent));
       }
+      capabilityLevels[item.capabilityId] = effectiveLevel;
       return nextScore;
     });
 
@@ -487,6 +557,38 @@ export class ProgressiveAutonomyService implements AutonomyPolicyPort {
       changeEvents,
       impactReports,
     };
+  }
+
+  private ensurePendingApprovalRequest(
+    agentId: string,
+    capabilityId: string,
+    fromLevel: AutonomyLevel,
+    toLevel: AutonomyLevel,
+    requiredApprover: "domain_owner" | "platform_team",
+  ): void {
+    const existing = [...this.pendingApprovalRequests.values()].find((request) =>
+      request.agentId === agentId
+      && request.capabilityId === capabilityId
+      && request.fromLevel === fromLevel
+      && request.toLevel === toLevel
+      && request.status === "pending");
+    if (existing != null) {
+      return;
+    }
+    const createdAt = nowIso();
+    const request: PendingAutonomyApprovalRequest = {
+      requestId: `autonomy_approval_${Date.now()}_${this.pendingApprovalRequests.size + 1}`,
+      agentId,
+      capabilityId,
+      fromLevel,
+      toLevel,
+      requiredApprover,
+      status: "pending",
+      createdAt,
+      resolvedAt: null,
+      resolvedBy: null,
+    };
+    this.pendingApprovalRequests.set(request.requestId, request);
   }
 }
 

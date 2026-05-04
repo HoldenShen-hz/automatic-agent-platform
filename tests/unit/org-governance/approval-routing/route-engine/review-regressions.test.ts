@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach } from "node:test";
 
 import type { OrgNode } from "../../../../../src/org-governance/org-model/org-node/index.js";
 import {
   AmountBasedRoutingStrategy,
   ApprovalRouteRequestSchema,
   resolveApprovalRoute,
+  setDefaultLegacyFxRate,
 } from "../../../../../src/org-governance/approval-routing/route-engine/index.js";
 
 function createOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeType?: OrgNode["nodeType"] }): OrgNode {
@@ -22,7 +23,15 @@ function createOrgNode(overrides: Partial<OrgNode> & { orgNodeId: string; nodeTy
   };
 }
 
-test("resolveApprovalRoute uses current time instead of epoch when fx snapshot is absent", () => {
+beforeEach(() => {
+  setDefaultLegacyFxRate(7.2);
+});
+
+afterEach(() => {
+  setDefaultLegacyFxRate(null);
+});
+
+test("resolveApprovalRoute stamps current time when legacy amountUsd generates a compatibility FX snapshot", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1" })];
   const before = Date.now();
   const decision = resolveApprovalRoute(nodes, ApprovalRouteRequestSchema.parse({
@@ -37,7 +46,7 @@ test("resolveApprovalRoute uses current time instead of epoch when fx snapshot i
   assert.ok(Number.isFinite(createdAt));
   assert.ok(createdAt >= before);
   assert.ok(createdAt <= after);
-  assert.notEqual(decision.routeSnapshot.createdAt, new Date(0).toISOString());
+  assert.equal(decision.routeSnapshot.amount.fxSnapshot?.source, "configured_legacy_fx_rate");
 });
 
 test("AmountBasedRoutingStrategy uses provided fx snapshot instead of legacy default rate", () => {

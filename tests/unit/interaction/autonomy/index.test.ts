@@ -35,10 +35,11 @@ test("ProgressiveAutonomyService promotes highly reliable capability to full_aut
   const service = new ProgressiveAutonomyService();
   const evaluation = service.evaluateProfile(makeProfile());
 
-  assert.equal(evaluation.decision.level, "full_auto");
+  assert.equal(evaluation.decision.level, "semi_auto");
   assert.equal(evaluation.decision.trustLevel, "fully_trusted");
-  assert.equal(evaluation.capabilityLevels.deploy, "full_auto");
+  assert.equal(evaluation.capabilityLevels.deploy, "semi_auto");
   assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.promoted");
+  assert.equal(evaluation.changeEvents[0]?.approvedBy, "platform_team");
 });
 
 test("ProgressiveAutonomyService demotes risky capability to suggestion when freeze-on-incident is disabled", () => {

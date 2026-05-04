@@ -70,7 +70,7 @@ test("ProgressiveAutonomyService evaluateProfile returns suggestion for no execu
   assert.equal(result.changeEvents.length, 0);
 });
 
-test("ProgressiveAutonomyService evaluateProfile promotes suggestion to supervised at 95% with 50+ executions", (t) => {
+test("ProgressiveAutonomyService evaluateProfile queues suggestion to supervised promotion until approval", (t) => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -78,13 +78,14 @@ test("ProgressiveAutonomyService evaluateProfile promotes suggestion to supervis
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "supervised");
-  assert.equal(result.capabilityLevels["cap-1"], "supervised");
+  assert.equal(result.decision.level, "suggestion");
+  assert.equal(result.capabilityLevels["cap-1"], "suggestion");
   assert.equal(result.changeEvents.length, 1);
   assert.equal(result.changeEvents[0]!.eventType, "agent.autonomy.promoted");
+  assert.equal(result.changeEvents[0]!.requiresApprovalResolution, true);
 });
 
-test("ProgressiveAutonomyService evaluateProfile promotes supervised to semi_auto at 98% with 200+ executions", (t) => {
+test("ProgressiveAutonomyService evaluateProfile queues supervised to semi_auto promotion until approval", (t) => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -92,11 +93,12 @@ test("ProgressiveAutonomyService evaluateProfile promotes supervised to semi_aut
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "semi_auto");
-  assert.equal(result.capabilityLevels["cap-1"], "semi_auto");
+  assert.equal(result.decision.level, "supervised");
+  assert.equal(result.capabilityLevels["cap-1"], "supervised");
+  assert.equal(result.changeEvents[0]!.approvedBy, "domain_owner");
 });
 
-test("ProgressiveAutonomyService evaluateProfile promotes semi_auto to full_auto at 99% with 500+ executions", (t) => {
+test("ProgressiveAutonomyService evaluateProfile routes semi_auto to full_auto through platform_team approval", (t) => {
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
@@ -104,8 +106,10 @@ test("ProgressiveAutonomyService evaluateProfile promotes semi_auto to full_auto
     ],
   });
   const result = service.evaluateProfile(profile);
-  assert.equal(result.decision.level, "full_auto");
-  assert.equal(result.capabilityLevels["cap-1"], "full_auto");
+  assert.equal(result.decision.level, "semi_auto");
+  assert.equal(result.capabilityLevels["cap-1"], "semi_auto");
+  assert.equal(result.changeEvents[0]!.approvedBy, "platform_team");
+  assert.equal(service.listPendingApprovalRequests("agent-001").length, 1);
 });
 
 test("ProgressiveAutonomyService evaluateProfile demotes to suggestion on P0 incident", (t) => {
@@ -192,7 +196,7 @@ test("ProgressiveAutonomyService evaluateProfile promote threshold requires suff
   const result = service.evaluateProfile(profile);
   // At 50 executions, still needs >50 for supervised promotion
   // success rate = 48/50 = 96%, so level should be supervised (threshold met)
-  assert.equal(result.decision.level, "supervised");
+  assert.equal(result.decision.level, "suggestion");
 });
 
 test("ProgressiveAutonomyService evaluateProfile respects minVolumeForDemotion option", (t) => {
@@ -207,7 +211,7 @@ test("ProgressiveAutonomyService evaluateProfile respects minVolumeForDemotion o
   // With success rate 96% and 50 executions, should get to supervised
   // failedExecutions=2 is not >= minVolumeForDemotion=10, so stays supervised
   const result = service.evaluateProfile(profile, { minVolumeForDemotion: 10 });
-  assert.equal(result.decision.level, "supervised");
+  assert.equal(result.decision.level, "suggestion");
 });
 
 test("ProgressiveAutonomyService records change event with correct evidence", (t) => {
@@ -236,6 +240,26 @@ test("ProgressiveAutonomyService records change event with correct evidence", (t
   assert.equal(record.approvedBy, "domain_owner");
   assert.ok(record.successRate > 0);
   assert.ok(record.totalExecutions === 50);
+});
+
+test("ProgressiveAutonomyService applies pending promotion only after approval resolution", () => {
+  const service = new ProgressiveAutonomyService();
+  const profile = makeProfile({
+    agentId: "agent-approval-flow",
+    capabilityScores: [
+      makeScore({ capabilityId: "cap-approval", currentAutonomy: "suggestion", totalExecutions: 50, successfulExecutions: 48, failedExecutions: 2 }),
+    ],
+  });
+
+  const initial = service.evaluateProfile(profile);
+  assert.equal(initial.decision.level, "suggestion");
+  const request = service.listPendingApprovalRequests("agent-approval-flow")[0];
+  assert.ok(request != null);
+  assert.equal(request?.requiredApprover, "domain_owner");
+
+  service.resolvePendingApproval(request!.requestId, { approved: true, resolvedBy: "domain-owner-1" });
+  const approvedDecision = service.evaluate("agent-approval-flow");
+  assert.equal(approvedDecision.level, "supervised");
 });
 
 test("ProgressiveAutonomyService evaluateProfile incident_response trigger when incidents present", (t) => {

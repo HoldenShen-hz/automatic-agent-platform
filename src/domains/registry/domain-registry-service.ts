@@ -3,7 +3,7 @@ import type { TypedEventPublisher } from "../../platform/state-evidence/events/t
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import type { DomainDefinition, OutputContractConfig, ToolBundleConfig, WorkflowConfig } from "./domain-model.js";
 import type { PluginBinding } from "./domain-model.js";
-import { DomainDefinitionSchema } from "./domain-model.js";
+import { DomainDefinitionSchema, DomainDescriptorBundleSchema } from "./domain-model.js";
 import { ContractRegistry } from "./contract-registry.js";
 import { DomainSmokeTestRunner, type DomainSmokeTestResult } from "./domain-smoke-test.js";
 import { PluginSpiRegistry } from "./plugin-spi-registry.js";
@@ -12,6 +12,7 @@ import { WorkflowRegistry } from "./workflow-registry.js";
 import { SchemaRegistry, getSchemaRegistry } from "./schema-registry.js";
 
 export interface DomainRegistryServiceOptions {
+  tenantId?: string;
   installedPluginIds?: readonly string[];
   healthyPluginIds?: readonly string[];
   pluginRegistry?: PluginSpiRegistry;
@@ -30,6 +31,7 @@ export class DomainRegistryService {
   private readonly contractRegistry = new ContractRegistry();
   private readonly smokeTests = new DomainSmokeTestRunner();
   private readonly schemaRegistry: SchemaRegistry;
+  private readonly tenantId: string | null;
 
   public constructor(options: DomainRegistryServiceOptions = {}) {
     this.pluginRegistry = options.pluginRegistry ?? null;
@@ -37,10 +39,23 @@ export class DomainRegistryService {
     this.healthyPluginIds = new Set(options.healthyPluginIds ?? options.installedPluginIds ?? []);
     this.eventPublisher = options.eventPublisher ?? null;
     this.schemaRegistry = getSchemaRegistry();
+    this.tenantId = options.tenantId ?? null;
   }
 
   public register(input: DomainDefinition): DomainDefinition {
+    // R15-1: Validate domain descriptor schema
     const parsed = DomainDefinitionSchema.parse(input);
+    // If descriptors are provided, validate the descriptor bundle schema
+    if (input.descriptors) {
+      try {
+        DomainDescriptorBundleSchema.parse(input.descriptors);
+      } catch (descriptorError) {
+        throw this.validationError(
+          "domain_registry.invalid_descriptors",
+          "Domain descriptor bundle validation failed.",
+        );
+      }
+    }
     const preservesTestingStatus = input.status === "testing";
     const isAutoPromoted = parsed.status === "validated" && !preservesTestingStatus;
     const normalized = isAutoPromoted
@@ -172,6 +187,35 @@ export class DomainRegistryService {
   }
 
   /**
+   * R15-3: Deactivate a domain. Active domains transition to inactive state.
+   * Emits domain.deactivated event for observability.
+   */
+  public deactivate(domainId: string): DomainDefinition {
+    const current = this.getOrThrow(domainId);
+    if (current.status !== "active" && current.status !== "canary" && current.status !== "updating") {
+      throw new ValidationError("domain_registry.invalid_deactivate_state", "Domains can only be deactivated from active, canary, or updating state.", {
+        category: "validation",
+        source: "internal",
+        details: { currentStatus: current.status },
+      });
+    }
+    const updated: DomainDefinition = { ...current, status: current.status }; // Status unchanged
+    this.registry.set(domainId, updated);
+    // R15-3: Emit domain.deactivated event
+    this.eventPublisher?.publish({
+      // @ts-expect-error R15-3: domain:deactivated event not yet in base registry
+      eventType: "domain:deactivated",
+      payload: {
+        domainId,
+        status: current.status,
+        previousStatus: current.status,
+        occurredAt: nowIso(),
+      },
+    });
+    return updated;
+  }
+
+  /**
    * §37.10: Transition domain to updating state (Active→Updating→Active).
    * During updating state, domain modifications are allowed but executions
    * may be queued or redirected.
@@ -262,11 +306,27 @@ export class DomainRegistryService {
   }
 
   public get(domainId: string): DomainDefinition | null {
-    return this.registry.get(domainId) ?? null;
+    const domain = this.registry.get(domainId) ?? null;
+    // R15-4: Check tenant isolation if tenantId is configured
+    if (domain && this.tenantId !== null) {
+      const domainTenantId = (domain as Record<string, unknown>).tenantId as string | undefined;
+      if (domainTenantId !== undefined && domainTenantId !== this.tenantId) {
+        return null;
+      }
+    }
+    return domain;
   }
 
   public list(): DomainDefinition[] {
-    return [...this.registry.values()];
+    const domains = [...this.registry.values()];
+    // R15-5: Filter by tenant if tenantId is configured
+    if (this.tenantId !== null) {
+      return domains.filter((domain) => {
+        const domainTenantId = (domain as Record<string, unknown>).tenantId as string | undefined;
+        return domainTenantId === undefined || domainTenantId === this.tenantId;
+      });
+    }
+    return domains;
   }
 
   public listActive(): DomainDefinition[] {

@@ -538,8 +538,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = new Map<
         rateLimitPerMinute: 60,
       },
     },
-  }],
-] as Array<[string, BuiltinPluginEntry]>);
+  }]) as Array<[string, BuiltinPluginEntry]>,
+);
 
 /**
  * Create a built-in plugin by plugin ID.
@@ -566,6 +566,93 @@ export function getBuiltinPluginManifest(pluginId: string): PluginManifest | nul
 
 export function hasBuiltinPlugin(pluginId: string): boolean {
   return BUILTIN_PLUGIN_ENTRIES.has(pluginId);
+}
+
+/**
+ * R18-6: Validate plugin compatibility against platform version and other plugins.
+ * Checks that the plugin is compatible with the current platform version.
+ */
+export function validatePluginCompatibility(manifest: PluginManifest): { compatible: boolean; reason?: string } {
+  // Check required manifest fields
+  if (!manifest.pluginId || !manifest.version) {
+    return { compatible: false, reason: "Plugin manifest missing required fields (pluginId or version)" };
+  }
+
+  // Check SPI types are valid
+  const validSpiTypes = ["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"];
+  for (const spiType of manifest.spiTypes) {
+    if (!validSpiTypes.includes(spiType)) {
+      return { compatible: false, reason: `Invalid SPI type: ${spiType}` };
+    }
+  }
+
+  // Check trustLevel is valid
+  const validTrustLevels = ["internal", "trusted", "community", "unverified"];
+  if (!validTrustLevels.includes(manifest.trustLevel)) {
+    return { compatible: false, reason: `Invalid trustLevel: ${manifest.trustLevel}` };
+  }
+
+  // R18-6: Additional compatibility checks could include:
+  // - Platform version compatibility
+  // - Required capabilities availability
+  // - Sandbox mode compatibility
+  return { compatible: true };
+}
+
+/**
+ * R18-7: Check plugin dependencies are satisfied.
+ * Verifies that all declared dependencies are registered and compatible.
+ */
+export function checkPluginDependencies(
+  manifest: PluginManifest,
+  registeredPlugins: readonly string[],
+): { satisfied: boolean; missing: readonly string[] } {
+  const missing: string[] = [];
+
+  for (const dep of manifest.dependencies ?? []) {
+    // Dependency can be a plugin ID or a capability requirement
+    // For now, we check if it's a registered plugin
+    if (!registeredPlugins.includes(dep) && !hasBuiltinPlugin(dep)) {
+      missing.push(dep);
+    }
+  }
+
+  return {
+    satisfied: missing.length === 0,
+    missing,
+  };
+}
+
+/**
+ * R18-8: Enforce plugin version compatibility.
+ * Returns true if the plugin version meets the minimum required version.
+ */
+export function enforcePluginVersion(
+  manifest: PluginManifest,
+  minimumVersion?: string,
+): boolean {
+  if (!minimumVersion) {
+    return true; // No minimum version required
+  }
+
+  return compareVersions(manifest.version, minimumVersion) >= 0;
+}
+
+/**
+ * Compare two semantic versions.
+ * Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+ */
+function compareVersions(v1: string, v2: string): number {
+  const parts1 = v1.split(".").map((p) => parseInt(p, 10) || 0);
+  const parts2 = v2.split(".").map((p) => parseInt(p, 10) || 0);
+
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] ?? 0;
+    const p2 = parts2[i] ?? 0;
+    if (p1 < p2) return -1;
+    if (p1 > p2) return 1;
+  }
+  return 0;
 }
 
 export function listBuiltinPluginIds(): string[] {

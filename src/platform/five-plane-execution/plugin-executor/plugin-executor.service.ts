@@ -35,7 +35,13 @@ import {
   createScopedExternalAccessSandbox,
   type ScopedExternalAccessConfig,
 } from "./scoped-external-access-sandbox.js";
-import { propagateDataTaint } from "../../../plugins/builtin-plugin-registry.js";
+import {
+  propagateDataTaint,
+  isPluginRevoked,
+  getPluginRevocationStatus,
+  type BundleRevocationRecord,
+} from "../../../plugins/builtin-plugin-registry.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -68,6 +74,27 @@ export interface PluginExecutorOptions {
   pluginDir?: string;
   sandboxPolicy?: SandboxPolicy;
   artifactStore?: ArtifactStore;
+  /** Optional event publisher for emitting plugin.execution.started and plugin.execution.completed events */
+  eventPublisher?: EventPublisher | null;
+  /** Optional metrics registry for recording execution metrics (defaults to global registry) */
+  metricsRegistry?: RuntimeMetricsRegistry | null;
+}
+
+/** Interface for the runtime metrics registry (subset of RuntimeMetricsRegistry) */
+interface RuntimeMetricsRegistry {
+  incrementCounter(name: string, labels: Record<string, string | number | boolean | null | undefined>, delta?: number): void;
+  observeHistogram(name: string, labels: Record<string, string | number | boolean | null | undefined>, value: number): void;
+  setGauge(name: string, labels: Record<string, string | number | boolean | null | undefined>, value: number): void;
+}
+
+/** Interface for event publishing (subset of TypedEventPublisher) */
+interface EventPublisher {
+  publish<TType extends string>(input: {
+    eventType: TType;
+    payload: Record<string, unknown>;
+    taskId?: string | null;
+    executionId?: string | null;
+  }): void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,12 +125,16 @@ export class PluginExecutorService {
   private readonly plugins = new Map<string, PluginInstance>();
   private readonly sandboxPolicy: SandboxPolicy;
   private readonly artifactStore: ArtifactStore;
+  private readonly eventPublisher: EventPublisher | null;
+  private readonly metricsRegistry: RuntimeMetricsRegistry | null;
   private readonly pluginDir: string;
 
   public constructor(options: PluginExecutorOptions = {}) {
     this.pluginDir = options.pluginDir ?? join(process.cwd(), "plugins");
     this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
     this.artifactStore = options.artifactStore ?? new ArtifactStore();
+    this.eventPublisher = options.eventPublisher ?? null;
+    this.metricsRegistry = options.metricsRegistry ?? runtimeMetricsRegistry;
   }
 
   // ── Registry Operations ────────────────────────────────────────────────────
@@ -257,8 +288,10 @@ export class PluginExecutorService {
     params: Record<string, unknown>,
   ): Promise<ExecutionResult> {
     const startTime = Date.now();
+    const executionId = newId("exec");
     const normalizedContext: ExecutionContext = {
       ...context,
+      executionId, // R18-2: Set executionId from the generated ID for event correlation
       sandboxTier: normalizeSandboxMode(context.sandboxTier),
     };
     const instance = this.plugins.get(pluginId);
@@ -268,6 +301,19 @@ export class PluginExecutorService {
         "plugin_executor.not_found",
         `Plugin ${pluginId} not found`,
         { details: { pluginId } },
+      );
+    }
+
+    // R18-1: Validate plugin manifest before execution
+    this.validatePluginManifest(instance.manifest);
+
+    // R18-8: Check plugin version enforcement - reject if revoked
+    const revocationStatus = getPluginRevocationStatus(pluginId);
+    if (revocationStatus) {
+      throw new SandboxError(
+        "plugin_executor.plugin_revoked",
+        `Plugin ${pluginId} has been revoked: ${revocationStatus.reason}`,
+        { details: { pluginId, severity: revocationStatus.severity, revokedAt: revocationStatus.revokedAt } },
       );
     }
 
@@ -291,11 +337,23 @@ export class PluginExecutorService {
     const timeout = instance.manifest.sandbox?.timeoutMs ?? 5000;
     const sandboxTier = normalizedContext.sandboxTier;
 
+    // R18-9: Enforce sandbox isolation by creating and validating sandbox policy
     // Create sandbox policy based on tier
     const pluginSandboxPolicy = this.createPluginSandbox(
       instance.manifest,
       sandboxTier,
     );
+
+    // R18-9: Verify sandbox path is allowed before execution
+    const pluginRoot = this.pluginDir;
+    const pathCheck = checkSandboxPath(pluginSandboxPolicy, pluginRoot);
+    if (!pathCheck.allowed) {
+      throw new SandboxError(
+        "plugin_executor.sandbox_path_rejected",
+        `Plugin sandbox path is outside allowed roots: ${pathCheck.reasonCode}`,
+        { details: { pluginId, reasonCode: pathCheck.reasonCode } },
+      );
+    }
 
     // Create sandbox context for execution
     const sandbox = this.createSandboxContext(pluginSandboxPolicy, sandboxTier);
@@ -315,10 +373,30 @@ export class PluginExecutorService {
       );
     }
 
+    // R18-2: Emit plugin.execution.started event before execution
+    this.emitPluginEvent("plugin.execution.started", {
+      executionId,
+      pluginId,
+      action,
+      tenantId: normalizedContext.tenantId,
+      taskId: normalizedContext.taskId,
+      sandboxTier,
+      timestamp: nowIso(),
+    });
+
+    // R18-5: Record execution start metrics
+    this.metricsRegistry?.incrementCounter("plugin_execution_started_total", { pluginId, action }, 1);
+    this.metricsRegistry?.setGauge("plugin_execution_active", { pluginId }, 1);
+
+    let output: unknown;
+    let status: ExecutionResult["status"] = "ok";
+    let errorMessage: string | undefined;
+
     try {
       // Execute with timeout constraint
-      const output = await this.executeWithTimeout(
-        () => this.invokePluginAction(instance.hooks, action, params, normalizedContext, scopedSandbox),
+      // R18-10: Integrate callDepth tracking - pass pluginId for proper taint propagation
+      output = await this.executeWithTimeout(
+        () => this.invokePluginAction(instance.hooks, action, params, normalizedContext, scopedSandbox, pluginId),
         timeout,
       );
 
@@ -332,7 +410,7 @@ export class PluginExecutorService {
 
       // Build result, conditionally include artifactRef
       const result: ExecutionResult = {
-        executionId: newId("exec"),
+        executionId,
         pluginId,
         status: "ok",
         output,
@@ -342,10 +420,30 @@ export class PluginExecutorService {
       if (artifactRef) {
         result.artifactRef = artifactRef;
       }
+
+      // R18-3: Emit plugin.execution.completed event on success
+      this.emitPluginEvent("plugin.execution.completed", {
+        executionId,
+        pluginId,
+        action,
+        tenantId: normalizedContext.tenantId,
+        taskId: normalizedContext.taskId,
+        status: "ok",
+        durationMs: Date.now() - startTime,
+        timestamp: nowIso(),
+      });
+
+      // R18-5: Record success metrics
+      this.metricsRegistry?.incrementCounter("plugin_execution_completed_total", { pluginId, action, status: "ok" }, 1);
+      this.metricsRegistry?.observeHistogram("plugin_execution_duration_ms", { pluginId, action }, Date.now() - startTime);
+      this.metricsRegistry?.setGauge("plugin_execution_active", { pluginId }, 0);
+
       return result;
     } catch (error) {
+      status = "error";
       instance.errorCount++;
       instance.lastError = error instanceof Error ? error.message : String(error);
+      errorMessage = instance.lastError;
 
       // Check if timeout
       const isTimeout =
@@ -353,16 +451,19 @@ export class PluginExecutorService {
         (error.message.includes(`Timeout after ${timeout}ms`) ||
           error.name === "TimeoutError");
 
+      if (isTimeout) {
+        status = "timeout";
+        errorMessage = `Execution timed out after ${timeout}ms`;
+      }
+
       const result: ExecutionResult = {
-        executionId: newId("exec"),
+        executionId,
         pluginId,
-        status: isTimeout ? "timeout" : "error",
+        status,
         output: {},
         durationMs: Date.now() - startTime,
         timestamp: nowIso(),
-        error: isTimeout
-          ? `Execution timed out after ${timeout}ms`
-          : instance.lastError ?? "Unknown error",
+        error: errorMessage,
       };
 
       // Write error artifact
@@ -375,6 +476,24 @@ export class PluginExecutorService {
       if (errorArtifactRef) {
         result.artifactRef = errorArtifactRef;
       }
+
+      // R18-3: Emit plugin.execution.completed event on failure
+      this.emitPluginEvent("plugin.execution.completed", {
+        executionId,
+        pluginId,
+        action,
+        tenantId: normalizedContext.tenantId,
+        taskId: normalizedContext.taskId,
+        status,
+        error: errorMessage,
+        durationMs: Date.now() - startTime,
+        timestamp: nowIso(),
+      });
+
+      // R18-5: Record failure metrics
+      this.metricsRegistry?.incrementCounter("plugin_execution_completed_total", { pluginId, action, status }, 1);
+      this.metricsRegistry?.observeHistogram("plugin_execution_duration_ms", { pluginId, action }, Date.now() - startTime);
+      this.metricsRegistry?.setGauge("plugin_execution_active", { pluginId }, 0);
 
       return result;
     } finally {
@@ -470,6 +589,7 @@ export class PluginExecutorService {
     params: Record<string, unknown>,
     context: ExecutionContext,
     scopedSandbox?: ScopedExternalAccessSandbox,
+    pluginId?: string,
   ): Promise<unknown> {
     const handler = (hooks as Record<string, unknown>)[action];
     if (typeof handler === "function") {
@@ -479,13 +599,14 @@ export class PluginExecutorService {
         : { ...params, context };
       const result = await handler.call(hooks, executionContext);
 
-      // R12-5 fix: Enforce DataTaintPropagation in sandbox execution.
+      // R12-5/R18-4/R18-14 fix: Enforce DataTaintPropagation in sandbox execution.
       // When plugin executes in sandbox, propagate taint labels for the output data.
       // This ensures cross-plugin data contamination is tracked.
-      if (result != null && context.executionId) {
+      if (result != null && context.executionId && pluginId) {
         const outputDataId = `plugin_output:${context.executionId}:${action}`;
         // Propagate taint with "sandbox_execution" label to mark data as from sandbox
-        propagateDataTaint(outputDataId, hooks.constructor.name, ["sandbox_execution"]);
+        // R18-4: Properly propagate data taint with correct pluginId
+        propagateDataTaint(outputDataId, pluginId, ["sandbox_execution"]);
       }
 
       return result;
@@ -550,6 +671,72 @@ export class PluginExecutorService {
     } catch {
       // Artifact writing is best-effort; don't fail execution
       return undefined;
+    }
+  }
+
+  // R18-1: Validate plugin manifest before execution
+  private validatePluginManifest(manifest: PluginManifest): void {
+    // Validate required manifest fields
+    if (!manifest.pluginId?.trim()) {
+      throw new ValidationError(
+        "plugin_executor.invalid_manifest",
+        "Plugin manifest missing or empty pluginId",
+      );
+    }
+    if (!manifest.name?.trim()) {
+      throw new ValidationError(
+        "plugin_executor.invalid_manifest",
+        "Plugin manifest missing or empty name",
+        { details: { pluginId: manifest.pluginId } },
+      );
+    }
+    if (!manifest.version?.trim()) {
+      throw new ValidationError(
+        "plugin_executor.invalid_manifest",
+        "Plugin manifest missing or empty version",
+        { details: { pluginId: manifest.pluginId } },
+      );
+    }
+    if (!manifest.owner?.trim()) {
+      throw new ValidationError(
+        "plugin_executor.invalid_manifest",
+        "Plugin manifest missing or empty owner",
+        { details: { pluginId: manifest.pluginId } },
+      );
+    }
+    if (!manifest.spiTypes || manifest.spiTypes.length === 0) {
+      throw new ValidationError(
+        "plugin_executor.invalid_manifest",
+        "Plugin manifest must declare at least one SPI type",
+        { details: { pluginId: manifest.pluginId } },
+      );
+    }
+    // Validate trustLevel is appropriate
+    const validTrustLevels = ["internal", "trusted", "community", "unverified"];
+    if (manifest.trustLevel && !validTrustLevels.includes(manifest.trustLevel)) {
+      throw new ValidationError(
+        "plugin_executor.invalid_manifest",
+        `Plugin trustLevel '${manifest.trustLevel}' is not valid`,
+        { details: { pluginId: manifest.pluginId, trustLevel: manifest.trustLevel } },
+      );
+    }
+  }
+
+  // R18-2, R18-3: Emit plugin.execution.started and plugin.execution.completed events
+  private emitPluginEvent(
+    eventType: "plugin.execution.started" | "plugin.execution.completed",
+    payload: Record<string, unknown>,
+  ): void {
+    if (!this.eventPublisher) {
+      return;
+    }
+    try {
+      this.eventPublisher.publish({
+        eventType,
+        payload,
+      });
+    } catch {
+      // Event emission is best-effort; don't fail execution
     }
   }
 }

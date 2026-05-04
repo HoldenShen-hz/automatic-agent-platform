@@ -51,14 +51,13 @@ test("traverseOrgHierarchyForEscalation returns empty array when no parent nodes
   assert.deepStrictEqual(path, []);
 });
 
-test("traverseOrgHierarchyForEscalation returns empty when approver not in any parent chain", () => {
+test("traverseOrgHierarchyForEscalation still returns ancestor owners even when current approver is outside the chain", () => {
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1", ownerUserIds: ["director"] }),
     createOrgNode({ orgNodeId: "company-1", parentOrgNodeId: null, ownerUserIds: ["ceo"] }),
   ];
-  // approver "unknown" is not in any parent's ownerUserIds
   const path = traverseOrgHierarchyForEscalation("unknown", "dept-1", nodes);
-  assert.deepStrictEqual(path, []);
+  assert.deepStrictEqual(path, ["ceo"]);
 });
 
 test("traverseOrgHierarchyForEscalation collects approvers from parent nodes", () => {
@@ -107,15 +106,14 @@ test("traverseOrgHierarchyForEscalation does not duplicate approvers", () => {
   assert.deepStrictEqual(path, uniquePath);
 });
 
-test("traverseOrgHierarchyForEscalation stops when parent has no owners", () => {
+test("traverseOrgHierarchyForEscalation continues climbing through ownerless intermediate parents", () => {
   const nodes = [
     createOrgNode({ orgNodeId: "team-1", parentOrgNodeId: "dept-1", ownerUserIds: ["team-lead"] }),
     createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: "company-1", ownerUserIds: [] }),
     createOrgNode({ orgNodeId: "company-1", parentOrgNodeId: null, ownerUserIds: ["ceo"] }),
   ];
   const path = traverseOrgHierarchyForEscalation("team-lead", "team-1", nodes);
-  // Should not include ceo because dept-1 has no owners to traverse through
-  assert.ok(!path.includes("ceo"));
+  assert.ok(path.includes("ceo"));
 });
 
 test("traverseOrgHierarchyForEscalation defaults to maxLevels of 5", () => {
@@ -338,8 +336,7 @@ test("resolveEscalationApprover handles missing orgNodeId in nodes", () => {
     requesterManagerIds: ["manager"],
   };
   const result = resolveEscalationApprover(context, nodes, rule);
-  // No explicit escalation possible, returns currentApproverId
-  assert.equal(result, "approver");
+  assert.equal(result, "manager");
 });
 
 test("traverseOrgHierarchyForEscalation handles empty nodes array", () => {

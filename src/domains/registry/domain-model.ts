@@ -205,12 +205,12 @@ export const DomainDefinitionSchema = z.object({
   outputContracts: z.array(OutputContractConfigSchema).default([]),
   promptOverrides: z.record(z.string(), z.string()).default({}),
   capabilities: DomainCapabilityProfileSchema.default({}),
-  // Status: draft→canary→active→deprecated→archived per spec
+  // Status: draft→canary→active→inactive→deprecated→archived per spec
   status: z.preprocess(
     (value) => typeof value === "string"
       ? DOMAIN_STATUS_ALIASES[value as keyof typeof DOMAIN_STATUS_ALIASES] ?? value
       : value,
-    z.enum(["draft", "registered", "canary", "active", "updating", "deprecated", "archived", "validated"]),
+    z.enum(["draft", "registered", "canary", "active", "inactive", "updating", "deprecated", "archived", "validated"]),
   ).default("draft"),
   executionProfile: DomainExecutionProfileSchema.default({}),
   externalAdapters: z.array(z.string()).default([]),

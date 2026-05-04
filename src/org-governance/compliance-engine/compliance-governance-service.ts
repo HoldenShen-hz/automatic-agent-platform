@@ -9,7 +9,13 @@ import {
   buildGovernanceAuditRecord,
   type GovernanceAuditRecord,
 } from "./audit-enforcer/index.js";
-import { ComplianceEvidenceCollector, type ComplianceEvidenceRecord } from "./evidence-collector.js";
+import {
+  ComplianceEvidenceCollector,
+  type ComplianceEvidenceRecord,
+  type EvidenceCollectionJob,
+  type EvidenceCollectionSchedule,
+  type ScheduledEvidenceCollection,
+} from "./evidence-collector.js";
 import type { PolicyLayer } from "./inheritance/index.js";
 import { resolveCompliancePolicyForNode } from "./policy-resolver/index.js";
 
@@ -44,6 +50,29 @@ export interface EvidenceQualityScore {
   readonly frameworkId: string;
   readonly score: number;
   readonly missingEvidenceIds: readonly string[];
+  readonly completenessScore: number;
+  readonly freshnessScore: number;
+  readonly sourceTrustScore: number;
+  readonly tamperIntegrityScore: number;
+  readonly staleScheduleIds: readonly string[];
+  readonly untrustedEvidenceIds: readonly string[];
+  readonly tamperedEvidenceIds: readonly string[];
+}
+
+export type ControlCoverageStatus = "pass" | "fail" | "partial" | "not_applicable";
+
+export interface ControlCoverageStatusEntry {
+  readonly controlId: string;
+  readonly status: ControlCoverageStatus;
+  readonly evidenceIds: readonly string[];
+  readonly remediationOwner: string | null;
+}
+
+export interface ControlCoverageGap {
+  readonly controlId: string;
+  readonly status: Exclude<ControlCoverageStatus, "pass">;
+  readonly missingEvidenceIds: readonly string[];
+  readonly remediationOwner: string | null;
 }
 
 export interface ControlCoverageReport {
@@ -51,6 +80,8 @@ export interface ControlCoverageReport {
   readonly coveredControlIds: readonly string[];
   readonly missingControlIds: readonly string[];
   readonly coverageRatio: number;
+  readonly controlStatuses: readonly ControlCoverageStatusEntry[];
+  readonly gaps: readonly ControlCoverageGap[];
 }
 
 export class ComplianceGovernanceService {
@@ -109,18 +140,46 @@ export class ComplianceGovernanceService {
     };
   }
 
-  public scoreEvidenceQuality(frameworkId: string): EvidenceQualityScore {
+  public scoreEvidenceQuality(frameworkId: string, nowIsoStr?: string): EvidenceQualityScore {
     const evidence = this.listEvidence(frameworkId);
     const missingEvidenceIds = evidence
       .filter((item) => item.artifactRef.trim().length === 0 || item.source.trim().length === 0)
       .map((item) => item.evidenceId);
-    const score = evidence.length === 0
-      ? 0
-      : Number((((evidence.length - missingEvidenceIds.length) / evidence.length) * 100).toFixed(2));
+    const schedules = this.listScheduledCollections(frameworkId);
+    const staleScheduleIds = schedules
+      .filter((schedule) => schedule.active && !this.evidenceCollector.checkFreshness(schedule.scheduleId, nowIsoStr))
+      .map((schedule) => schedule.scheduleId);
+    const untrustedEvidenceIds = evidence
+      .filter((item) => item.source.trim().length === 0 || item.source === "unknown")
+      .map((item) => item.evidenceId);
+    const tamperedEvidenceIds = [...this.evidenceCollector.verifyChain(frameworkId)];
+    const completenessScore = percentage(
+      evidence.length === 0 ? 0 : evidence.length - missingEvidenceIds.length,
+      evidence.length,
+    );
+    const freshnessScore = schedules.length === 0
+      ? (evidence.length > 0 ? 100 : 0)
+      : percentage(schedules.length - staleScheduleIds.length, schedules.length);
+    const sourceTrustScore = percentage(
+      evidence.length === 0 ? 0 : evidence.length - untrustedEvidenceIds.length,
+      evidence.length,
+    );
+    const tamperIntegrityScore = percentage(
+      evidence.length === 0 ? 0 : evidence.length - tamperedEvidenceIds.length,
+      evidence.length,
+    );
+    const score = Number((((completenessScore + freshnessScore + sourceTrustScore + tamperIntegrityScore) / 4)).toFixed(2));
     return {
       frameworkId,
       score,
       missingEvidenceIds,
+      completenessScore,
+      freshnessScore,
+      sourceTrustScore,
+      tamperIntegrityScore,
+      staleScheduleIds,
+      untrustedEvidenceIds,
+      tamperedEvidenceIds,
     };
   }
 
@@ -132,19 +191,92 @@ export class ComplianceGovernanceService {
         coveredControlIds: [],
         missingControlIds: [],
         coverageRatio: 0,
+        controlStatuses: [],
+        gaps: [],
       };
     }
     const effectivePolicy = resolveCompliancePolicyForNode(this.nodes, orgNodeId, this.policiesByNodeId);
-    const coveredControlIds = framework.controlIds.filter((controlId) => controlId in effectivePolicy);
-    const missingControlIds = framework.controlIds.filter((controlId) => !coveredControlIds.includes(controlId));
+    const owner = this.nodes.find((node) => node.orgNodeId === orgNodeId)?.ownerUserIds[0] ?? null;
+    const frameworkEvidence = this.listEvidence(frameworkId);
+    const controlStatuses = framework.controlIds.map<ControlCoverageStatusEntry>((controlId) => {
+      const evidenceIds = frameworkEvidence
+        .filter((record) => record.controlId === controlId)
+        .map((record) => record.evidenceId);
+      const hasPolicy = controlId in effectivePolicy;
+      const notApplicable = isControlMarkedNotApplicable(effectivePolicy, controlId);
+      const hasEvidence = evidenceIds.length > 0;
+      const status: ControlCoverageStatus = notApplicable
+        ? "not_applicable"
+        : (hasPolicy && hasEvidence ? "pass" : (hasPolicy || hasEvidence ? "partial" : "fail"));
+      return {
+        controlId,
+        status,
+        evidenceIds,
+        remediationOwner: status === "pass" ? null : owner,
+      };
+    });
+    const coveredControlIds = controlStatuses
+      .filter((entry) => entry.status === "pass" || entry.status === "partial" || entry.status === "not_applicable")
+      .map((entry) => entry.controlId);
+    const missingControlIds = controlStatuses
+      .filter((entry) => entry.status === "fail")
+      .map((entry) => entry.controlId);
+    const gaps = controlStatuses
+      .filter((entry): entry is ControlCoverageStatusEntry & { status: Exclude<ControlCoverageStatus, "pass"> } => entry.status !== "pass")
+      .map((entry) => ({
+        controlId: entry.controlId,
+        status: entry.status,
+        missingEvidenceIds: entry.status === "fail" || entry.status === "partial" ? entry.evidenceIds : [],
+        remediationOwner: entry.remediationOwner,
+      }));
     return {
       frameworkId,
       coveredControlIds,
       missingControlIds,
       coverageRatio: framework.controlIds.length === 0
         ? 1
-        : Number((coveredControlIds.length / framework.controlIds.length).toFixed(4)),
+        : Number((controlStatuses.filter((entry) =>
+          entry.status === "pass" || entry.status === "partial" || entry.status === "not_applicable").length / framework.controlIds.length).toFixed(4)),
+      controlStatuses,
+      gaps,
     };
+  }
+
+  public scheduleEvidenceCollection(
+    frameworkId: string,
+    controlId: string,
+    schedule: EvidenceCollectionSchedule,
+    freshnessDeadlineMinutes?: number,
+  ): ScheduledEvidenceCollection {
+    return this.evidenceCollector.scheduleEvidenceCollection(
+      frameworkId,
+      controlId,
+      schedule,
+      freshnessDeadlineMinutes,
+    );
+  }
+
+  public listScheduledCollections(frameworkId?: string): ScheduledEvidenceCollection[] {
+    return this.evidenceCollector.listScheduledCollections(frameworkId);
+  }
+
+  public getDueEvidenceCollections(nowIsoStr?: string): ScheduledEvidenceCollection[] {
+    return this.evidenceCollector.getDueCollections(nowIsoStr);
+  }
+
+  public executeScheduledEvidenceCollection(
+    scheduleId: string,
+    collector: (controlId: string) => Omit<ComplianceEvidenceRecord, "evidenceId" | "collectedAt" | "previousHash" | "hash"> & { collectedAt?: string },
+  ): EvidenceCollectionJob | null {
+    return this.evidenceCollector.executeScheduledCollection(scheduleId, collector);
+  }
+
+  public checkEvidenceFreshness(scheduleId: string, nowIsoStr?: string): boolean {
+    return this.evidenceCollector.checkFreshness(scheduleId, nowIsoStr);
+  }
+
+  public deactivateEvidenceCollectionSchedule(scheduleId: string): boolean {
+    return this.evidenceCollector.deactivateSchedule(scheduleId);
   }
 
   public evaluate(input: ComplianceEvaluationInput): ComplianceEvaluationResult {
@@ -211,6 +343,21 @@ export class ComplianceGovernanceService {
       .map((frameworkId) => this.frameworks.get(frameworkId))
       .filter((item): item is ComplianceFramework => item != null);
   }
+}
+
+function percentage(completed: number, total: number): number {
+  if (total <= 0) {
+    return 0;
+  }
+  return Number(((completed / total) * 100).toFixed(2));
+}
+
+function isControlMarkedNotApplicable(
+  effectivePolicy: Readonly<Record<string, unknown>>,
+  controlId: string,
+): boolean {
+  return effectivePolicy[`${controlId}_not_applicable`] === true
+    || effectivePolicy[`${controlId}NotApplicable`] === true;
 }
 
 function matchesFrameworkRequirement(observed: unknown, required: unknown): boolean {

@@ -72,6 +72,8 @@ export const PluginManifestSchema = z.object({
   extensionKind: z.enum(["domain_plugin", "external_adapter"]).default("domain_plugin"),
   trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
   publicSdkSurface: z.string().min(1),
+  /** R18-7: Plugin dependencies - list of plugin IDs this plugin depends on */
+  dependencies: z.array(z.string().min(1)).default([]),
   settingsSchema: z.record(z.string(), z.unknown()).default({}),
   sandbox: PluginSandboxPolicySchema.default({
     timeoutMs: 5000,

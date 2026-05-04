@@ -171,8 +171,11 @@ test("ComplianceGovernanceService scoreEvidenceQuality calculates score correctl
 
   assert.strictEqual(score.frameworkId, "gdpr");
   assert.strictEqual(score.missingEvidenceIds.length, 1);
+  assert.ok(score.completenessScore > 66 && score.completenessScore <= 67);
+  assert.ok(score.sourceTrustScore > 66 && score.sourceTrustScore <= 67);
+  assert.equal(score.tamperIntegrityScore, 100);
   // 2 good out of 3 = 66.67%
-  assert.ok(score.score > 66 && score.score <= 67);
+  assert.ok(score.score > 66 && score.score <= 92);
 });
 
 test("ComplianceGovernanceService scoreEvidenceQuality returns 0 for no evidence", () => {
@@ -224,6 +227,10 @@ test("ComplianceGovernanceService buildControlCoverageReport calculates coverage
   assert.deepStrictEqual(report.coveredControlIds, ["control_a", "control_b"]);
   assert.deepStrictEqual(report.missingControlIds, ["control_c"]);
   assert.ok(report.coverageRatio > 0.66 && report.coverageRatio <= 0.67);
+  assert.equal(report.controlStatuses.length, 3);
+  assert.equal(report.gaps.length, 3);
+  assert.ok(report.gaps.some((gap) => gap.controlId === "control_c" && gap.status === "fail"));
+  assert.ok(report.gaps.some((gap) => gap.controlId === "control_a" && gap.status === "partial"));
 });
 
 test("ComplianceGovernanceService evaluate returns allowed when no policies required and none missing", () => {
@@ -489,6 +496,8 @@ test("ComplianceGovernanceService buildControlCoverageReport with empty controlI
 
   const report = service.buildControlCoverageReport("empty_test", "org_1");
   assert.strictEqual(report.coverageRatio, 1);
+  assert.deepStrictEqual(report.controlStatuses, []);
+  assert.deepStrictEqual(report.gaps, []);
 });
 
 test("ComplianceGovernanceService scoreEvidenceQuality handles evidence with missing source", () => {
@@ -500,4 +509,48 @@ test("ComplianceGovernanceService scoreEvidenceQuality handles evidence with mis
 
   const score = service.scoreEvidenceQuality("test");
   assert.strictEqual(score.missingEvidenceIds.length, 1);
+  assert.strictEqual(score.untrustedEvidenceIds.length, 1);
+});
+
+test("ComplianceGovernanceService exposes scheduled evidence collection lifecycle", () => {
+  const service = new ComplianceGovernanceService([], {}, [], []);
+  const schedule = service.scheduleEvidenceCollection(
+    "sox",
+    "access_review",
+    { type: "quarterly" },
+    5,
+  );
+
+  assert.ok(schedule.scheduleId.startsWith("evidence_schedule_"));
+  assert.equal(service.listScheduledCollections("sox").length, 1);
+  assert.equal(service.checkEvidenceFreshness(schedule.scheduleId), true);
+
+  const due = service.getDueEvidenceCollections(schedule.nextRunAt);
+  assert.ok(due.some((entry) => entry.scheduleId === schedule.scheduleId));
+
+  const job = service.executeScheduledEvidenceCollection(schedule.scheduleId, (controlId) => ({
+    frameworkId: "sox",
+    controlId,
+    source: "rbac_export",
+    artifactRef: "quarterly_access_snapshot",
+  }));
+  assert.ok(job != null);
+  assert.equal(job?.results.length, 1);
+  assert.equal(service.deactivateEvidenceCollectionSchedule(schedule.scheduleId), true);
+});
+
+test("ComplianceGovernanceService scoreEvidenceQuality includes stale schedule penalties", () => {
+  const service = new ComplianceGovernanceService([], {}, [], []);
+  const schedule = service.scheduleEvidenceCollection(
+    "sox",
+    "access_review",
+    { type: "continuous" },
+    1,
+  );
+
+  const staleNow = new Date(Date.parse(schedule.freshnessDeadline ?? schedule.nextRunAt) + 60_000).toISOString();
+  assert.equal(service.checkEvidenceFreshness(schedule.scheduleId, staleNow), false);
+  const staleScore = service.scoreEvidenceQuality("sox", staleNow);
+  assert.ok(staleScore.staleScheduleIds.includes(schedule.scheduleId));
+  assert.ok(staleScore.freshnessScore < 100);
 });

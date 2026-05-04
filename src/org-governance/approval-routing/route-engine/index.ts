@@ -105,6 +105,14 @@ export interface ApprovalStepRequirement {
   readonly dependsOnSteps?: readonly string[];
 }
 
+function parsePositiveFxRate(raw: string | undefined): number | null {
+  if (raw == null) {
+    return null;
+  }
+  const rate = Number.parseFloat(raw);
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
 /**
  * Mode for multi-approver approval routes.
  * - sequential: approvers must approve one after another
@@ -466,8 +474,8 @@ function normalizeThresholdCny(
     if (fxSnapshot != null) {
       return rule.maxAmountUsd * fxSnapshot.rate;
     }
-    // Use configured default for legacy amounts without fxSnapshot
-    return rule.maxAmountUsd * DEFAULT_FX_RATE;
+    const legacyFx = resolveLegacyUsdToCnyRate();
+    return rule.maxAmountUsd * legacyFx.rate;
   }
   return Number.POSITIVE_INFINITY;
 }
@@ -498,12 +506,12 @@ export interface FxRateProvider {
  * APPROVAL_ROUTE_FX_RATE_SOURCE to point to a live FX rate endpoint.
  */
 class ConfiguredFxRateProvider implements FxRateProvider {
-  private readonly fallbackRate: number;
+  private readonly fallbackRate: number | null;
   private readonly source: string;
 
   constructor() {
-    // R9-34 fix: Environment variable override with explicit default
-    this.fallbackRate = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
+    this.fallbackRate = parsePositiveFxRate(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"])
+      ?? parsePositiveFxRate(process.env["APPROVAL_ROUTE_USD_CNY_RATE"]);
     this.source = process.env["APPROVAL_ROUTE_FX_RATE_SOURCE"] ?? "configured_fallback";
   }
 
@@ -554,20 +562,38 @@ export function getFxRateProvider(): FxRateProvider {
   return fxRateProvider;
 }
 
-// R9-34 fix: Uses configurable FX rate from provider
-// Default rate fallback for sync contexts (tests/legacy)
-const DEFAULT_FX_RATE = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
+let defaultLegacyFxRate = parsePositiveFxRate(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"]);
 
-function getSyncUsdToCnyRate(): number {
-  // Check for live rate environment variable first
-  const liveRate = process.env["APPROVAL_ROUTE_USD_CNY_RATE"];
-  if (liveRate != null) {
-    const rate = parseFloat(liveRate);
-    if (!isNaN(rate) && rate > 0) {
-      return rate;
-    }
+/**
+ * Test/runtime hook for the legacy amountUsd compatibility path.
+ * When unset, legacy USD inputs must supply a structured amount+fx snapshot instead.
+ */
+export function setDefaultLegacyFxRate(rate: number | null): void {
+  if (rate == null) {
+    defaultLegacyFxRate = null;
+    return;
   }
-  return DEFAULT_FX_RATE;
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new Error("approval_route.invalid_legacy_fx_rate");
+  }
+  defaultLegacyFxRate = rate;
+}
+
+function resolveLegacyUsdToCnyRate(): { rate: number; source: string } {
+  const runtimeRate = parsePositiveFxRate(process.env["APPROVAL_ROUTE_USD_CNY_RATE"]);
+  if (runtimeRate != null) {
+    return {
+      rate: runtimeRate,
+      source: process.env["APPROVAL_ROUTE_FX_RATE_SOURCE"] ?? "env_usd_cny_rate",
+    };
+  }
+  if (defaultLegacyFxRate != null) {
+    return {
+      rate: defaultLegacyFxRate,
+      source: "configured_legacy_fx_rate",
+    };
+  }
+  throw new Error("approval_route.fx_snapshot_required:USD");
 }
 
 function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountSnapshot {
@@ -597,20 +623,26 @@ function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountS
       },
     };
   }
-  const legacyAmountUsd = request.amountUsd ?? 0;
-  // R21-6 FIX: Use current time as capturedAt instead of epoch 1970.
-  // R9-34 fix: Use configurable rate instead of hardcoded 7.2
+  if (request.amountUsd == null) {
+    return {
+      originalValue: 0,
+      originalCurrency: "CNY",
+      amountCny: 0,
+      fxSnapshot: null,
+    };
+  }
+  const legacyAmountUsd = request.amountUsd;
   const now = new Date().toISOString();
-  const fxRate = getSyncUsdToCnyRate();
+  const legacyFx = resolveLegacyUsdToCnyRate();
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
-    amountCny: legacyAmountUsd * fxRate,
+    amountCny: legacyAmountUsd * legacyFx.rate,
     fxSnapshot: {
       baseCurrency: "USD",
       quoteCurrency: "CNY",
-      rate: fxRate,
-      source: "configured_fx_rate",
+      rate: legacyFx.rate,
+      source: legacyFx.source,
       capturedAt: now,
     },
   };

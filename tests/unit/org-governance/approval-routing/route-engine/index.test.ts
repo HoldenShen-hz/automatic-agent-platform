@@ -5,7 +5,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach } from "node:test";
 
 import {
   ApprovalRouteRequestSchema,
@@ -17,6 +17,7 @@ import {
   revalidateApprovalRoute,
   buildParallelSignoffGroups,
   resolveApprovalSteps,
+  setDefaultLegacyFxRate,
   type ApprovalRouteDecision,
   type AmountThresholdRule,
   type ApprovalRouteSnapshot,
@@ -49,6 +50,14 @@ function createOrgNode(overrides: Partial<{
     metadata: {},
   };
 }
+
+beforeEach(() => {
+  setDefaultLegacyFxRate(7.2);
+});
+
+afterEach(() => {
+  setDefaultLegacyFxRate(null);
+});
 
 // R3-24: SOD policy same-chain prevention
 
@@ -175,7 +184,7 @@ test("buildParallelSignoffGroups creates single group when first is not manager"
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", parentOrgNodeId: null, ownerUserIds: ["director"] }),
   ];
-  // firstApproverNode has no parent, so isFirstManager = false
+  // Matching the current org node also counts as a manager-level first approver.
   const groups = buildParallelSignoffGroups(["director", "second", "third"], nodes, "dept-1");
   assert.equal(groups.length, 1);
   assert.equal(groups[0].groupId, "parallel:dept-1:0");
@@ -228,7 +237,7 @@ test("resolveApprovalSteps sequential steps have correct dependencies", () => {
 
 // R9-34: Exchange rate handling
 
-test("normalizeApprovalAmount uses default FX rate for legacy amountUsd", () => {
+test("normalizeApprovalAmount uses configured legacy FX rate for amountUsd compatibility", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const decision = resolveApprovalRoute(nodes, ApprovalRouteRequestSchema.parse({
     requesterId: "user-1",
@@ -240,7 +249,18 @@ test("normalizeApprovalAmount uses default FX rate for legacy amountUsd", () => 
   assert.equal(decision.routeSnapshot.amount.amountCny, 720);
   assert.equal(decision.routeSnapshot.amount.originalCurrency, "USD");
   assert.equal(decision.routeSnapshot.amount.fxSnapshot?.rate, 7.2);
-  assert.equal(decision.routeSnapshot.amount.fxSnapshot?.source, "legacy_amount_usd_default");
+  assert.equal(decision.routeSnapshot.amount.fxSnapshot?.source, "configured_legacy_fx_rate");
+});
+
+test("normalizeApprovalAmount rejects legacy amountUsd when no legacy FX rate is configured", () => {
+  setDefaultLegacyFxRate(null);
+  const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
+  assert.throws(() => resolveApprovalRoute(nodes, ApprovalRouteRequestSchema.parse({
+    requesterId: "user-1",
+    orgNodeId: "dept-1",
+    riskLevel: "low",
+    amountUsd: 100,
+  })), { message: /approval_route\.fx_snapshot_required:USD/ });
 });
 
 test("normalizeApprovalAmount handles CNY amount directly", () => {
@@ -307,6 +327,7 @@ test("normalizeThresholdCny uses maxAmountCny directly", () => {
 });
 
 test("normalizeThresholdCny requires FX snapshot when USD thresholds are applied to non-USD request amounts", () => {
+  setDefaultLegacyFxRate(null);
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", nodeType: "department", active: true, ownerUserIds: ["director"] }),
     createOrgNode({ orgNodeId: "company-1", nodeType: "company", active: true, ownerUserIds: ["admin"] }),
@@ -355,7 +376,7 @@ test("normalizeThresholdCny uses provided FX snapshot for USD conversion", () =>
 
 // R9-35: ApprovalRouteSnapshot.expiresAt
 
-test("ApprovalRouteSnapshot.expiresAt is set to createdAt plus 30 minutes", () => {
+test("ApprovalRouteSnapshot.expiresAt is set to createdAt plus 24 hours", () => {
   const nodes = [createOrgNode({ orgNodeId: "dept-1", ownerUserIds: ["director"] })];
   const before = new Date().toISOString();
   const decision = resolveApprovalRoute(nodes, ApprovalRouteRequestSchema.parse({
@@ -370,8 +391,7 @@ test("ApprovalRouteSnapshot.expiresAt is set to createdAt plus 30 minutes", () =
   const expiresAt = new Date(decision.routeSnapshot.expiresAt);
   const diffMs = expiresAt.getTime() - createdAt.getTime();
 
-  // 30 minutes = 30 * 60 * 1000 = 1,800,000 ms
-  assert.equal(diffMs, 30 * 60 * 1000);
+  assert.equal(diffMs, 24 * 60 * 60 * 1000);
 });
 
 test("ApprovalRouteSnapshot.expiresAt uses fxSnapshot.capturedAt when available", () => {
@@ -398,7 +418,7 @@ test("ApprovalRouteSnapshot.expiresAt uses fxSnapshot.capturedAt when available"
   const fxCapturedAt = new Date(capturedAt);
   const diffMs = expiresAt.getTime() - fxCapturedAt.getTime();
 
-  assert.equal(diffMs, 30 * 60 * 1000);
+  assert.equal(diffMs, 24 * 60 * 60 * 1000);
   assert.equal(decision.routeSnapshot.createdAt, capturedAt);
 });
 

@@ -12,6 +12,8 @@
 
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
+import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import { validateBusinessPackManifest, type BusinessPackManifest } from "./business-pack-manifest.js";
 
 // ============================================================================
 // Migration Types
@@ -117,6 +119,12 @@ function canonicalNodeId(step: Pick<MigrationPlanStep, "nodeId" | "stepId"> | Pi
  * - Execute migrations with rollback support
  * - Track migration history
  */
+export interface PackMigrationServiceOptions {
+  eventPublisher?: TypedEventPublisher;
+  existingPackIds?: readonly string[];
+  installedPluginIds?: readonly string[];
+}
+
 export class PackMigrationService {
   private readonly plans = new Map<string, MigrationPlan>();
   private readonly executedNodeIds = new Map<string, string[]>();
@@ -124,6 +132,15 @@ export class PackMigrationService {
   private readonly packStates = new Map<string, Record<string, unknown>>();
   private readonly exportedSnapshots = new Map<string, Record<string, unknown>>();
   private readonly executionTrace = new Map<string, MigrationStepExecutionRecord[]>();
+  private readonly eventPublisher: TypedEventPublisher | null;
+  private readonly existingPackIds: ReadonlySet<string>;
+  private readonly installedPluginIds: ReadonlySet<string>;
+
+  public constructor(options: PackMigrationServiceOptions = {}) {
+    this.eventPublisher = options.eventPublisher ?? null;
+    this.existingPackIds = new Set(options.existingPackIds ?? []);
+    this.installedPluginIds = new Set(options.installedPluginIds ?? []);
+  }
 
   /**
    * Creates a migration plan from one pack to another.
@@ -209,6 +226,75 @@ export class PackMigrationService {
   }
 
   /**
+   * R15-6 & R15-10: Validates migration preconditions for a pack.
+   * Checks dependencies, plugin requirements, and schema validity.
+   */
+  public validateMigrationPreconditions(packManifest: BusinessPackManifest): MigrationValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Validate the pack manifest schema
+    const validationResult = validateBusinessPackManifest(packManifest, {
+      existingPackIds: [...this.existingPackIds],
+      installedPluginIds: [...this.installedPluginIds],
+    });
+
+    for (const issue of validationResult.issues) {
+      if (issue.severity === "error") {
+        errors.push(`[${issue.code}] ${issue.field}: ${issue.message}`);
+      } else {
+        warnings.push(`[${issue.code}] ${issue.field}: ${issue.message}`);
+      }
+    }
+
+    // Check if dependencies are available
+    for (const dep of packManifest.dependencies ?? []) {
+      if (!this.existingPackIds.has(dep.packId) && !dep.optional) {
+        errors.push(`Dependency '${dep.packId}' is not available`);
+      }
+    }
+
+    // Check if required plugins are installed
+    for (const pluginId of packManifest.pluginIds ?? []) {
+      if (!this.installedPluginIds.has(pluginId)) {
+        errors.push(`Required plugin '${pluginId}' is not installed`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * R15-6: Migrates a pack with full schema validation.
+   * Validates the pack manifest before creating a migration plan.
+   */
+  public migratePack(packManifest: BusinessPackManifest, targetVersion: string): MigrationExecutionResult {
+    // R15-6: Validate pack schema before migration
+    const preconditions = this.validateMigrationPreconditions(packManifest);
+    if (!preconditions.valid) {
+      return {
+        success: false,
+        planId: "",
+        executedSteps: 0,
+        error: `Pack validation failed: ${preconditions.errors.join("; ")}`,
+      };
+    }
+
+    // Create migration plan
+    const plan = this.createMigrationPlan(packManifest.packId, `${packManifest.packId}_v${targetVersion}`);
+    return {
+      success: true,
+      planId: plan.planId,
+      executedSteps: 0,
+      error: null,
+    };
+  }
+
+  /**
    * Executes a migration plan.
    */
   public async executeMigration(planId: string): Promise<MigrationExecutionResult> {
@@ -234,6 +320,19 @@ export class PackMigrationService {
     };
     this.plans.set(planId, updatedPlan);
 
+    // R15-7: Emit pack.migration.started event
+    this.eventPublisher?.publish({
+      // @ts-expect-error R15-7: pack.migration.started event not yet in base registry
+      eventType: "pack.migration.started",
+      payload: {
+        planId,
+        fromPackId: plan.fromPackId,
+        toPackId: plan.toPackId,
+        stepCount: plan.steps.length,
+        occurredAt: nowIso(),
+      },
+    });
+
     let executedSteps = 0;
     try {
       // Execute each step
@@ -248,6 +347,19 @@ export class PackMigrationService {
         completedAt: nowIso(),
       };
       this.plans.set(planId, completedPlan);
+
+      // R15-8: Emit pack.migration.completed event
+      this.eventPublisher?.publish({
+        // @ts-expect-error R15-8: pack.migration.completed event not yet in base registry
+        eventType: "pack.migration.completed",
+        payload: {
+          planId,
+          fromPackId: plan.fromPackId,
+          toPackId: plan.toPackId,
+          executedSteps,
+          occurredAt: nowIso(),
+        },
+      });
 
       return {
         success: true,
@@ -299,6 +411,18 @@ export class PackMigrationService {
       status: "rolling_back",
     };
     this.plans.set(planId, updatedPlan);
+
+    // R15-9: Emit pack.migration.rolled_back event
+    this.eventPublisher?.publish({
+      // @ts-expect-error R15-9: pack.migration.rolled_back event not yet in base registry
+      eventType: "pack.migration.rolled_back",
+      payload: {
+        planId,
+        fromPackId: plan.fromPackId,
+        toPackId: plan.toPackId,
+        occurredAt: nowIso(),
+      },
+    });
 
     const steps = this.executedNodeIds.get(planId) ?? [];
     let rolledBackSteps = 0;

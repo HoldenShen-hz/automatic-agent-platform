@@ -32,6 +32,8 @@ export const DomainRecipeSchema = z.object({
   riskLevel: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   budgetHint: z.string().optional(),
   requiredApproval: z.boolean().default(false),
+  // R17-8: Recipe version field
+  version: z.string().optional(),
 });
 
 export type DomainRecipe = z.infer<typeof DomainRecipeSchema>;
@@ -61,4 +63,13 @@ export function matchDomainRecipe(recipes: readonly DomainRecipe[], input: strin
 }
 
 export { RecipeRegistry } from "./recipe-registry.js";
-export { RecipeExecutor, type RecipeExecutionContext, type RecipeExecutionResult } from "./recipe-executor.js";
+export {
+  RecipeExecutor,
+  type RecipeExecutionContext,
+  type RecipeExecutionResult,
+  type RecipeExecutionStartedPayload,
+  type RecipeExecutionCompletedPayload,
+  type RecipeExecutionMetrics,
+  type RecipeExecutorOptions,
+  type RecipeMetricsCollector,
+} from "./recipe-executor.js";
