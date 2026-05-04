@@ -158,32 +158,10 @@ export class MemoryPromotionEngine {
     memories: readonly MemoryRecord[],
     context: { projectId?: string | null; userId?: string | null } = {},
   ): MemoryPromotionResult {
-    const promoted: MemoryPromotionCandidate[] = [];
-    const rejected: MemoryPromotionCandidate[] = [];
-    const projectEntries: ProjectMemoryEntry[] = [];
-    const userEntries: UserMemoryEntry[] = [];
-
-    for (const memory of memories) {
-      const candidate = this.evaluatePromotion(memory);
-      if (!candidate.targetLayer) {
-        rejected.push(candidate);
-        continue;
-      }
-      promoted.push(candidate);
-      if (candidate.targetLayer === "project" && context.projectId) {
-        projectEntries.push(this.projectStore.upsert(context.projectId, cloneMemoryWithLayer(memory, "project")));
-      }
-      if (candidate.targetLayer === "user" && context.userId) {
-        userEntries.push(this.userStore.upsert(context.userId, cloneMemoryWithLayer(memory, "user")));
-      }
-    }
-
-    return {
-      promoted,
-      rejected,
-      projectEntries,
-      userEntries,
-    };
+    // R27-19 FIX: ADR-020 requires evaluateDemotion() and runPromotionCycle() returning
+    // PromotionResult. The existing promote() is a sync-only convenience - add new methods
+    // for ADR compliance and keep promote() for backward compatibility.
+    return this.runPromotionCycle(memories, context);
   }
 
   public listProjectMemory(projectId: string): ProjectMemoryEntry[] {

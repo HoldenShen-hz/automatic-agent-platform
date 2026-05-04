@@ -27,7 +27,7 @@ export class AsyncReleaseRepository {
         deployment_credential_ref, publish_workflow_path, deploy_workflow_path,
         required_readiness_checks_json, recommended_commands_json, task_id, json_artifact_uri,
         markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
       record.bundleId,
       record.environment,
       record.version,
@@ -102,7 +102,7 @@ export class AsyncReleaseRepository {
         deployment_secret_resolved, publish_workflow_run_id, publish_workflow_run_url, deploy_workflow_run_id,
         deploy_workflow_run_url, execution_mode, publish_command, deploy_command, command_results_json,
         release_bundle_id, task_id, json_artifact_uri, markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
       record.executionId,
       record.environment,
       record.version,
@@ -223,9 +223,16 @@ export class AsyncReleaseRepository {
          exported_at AS "exportedAt"
        FROM release_bundles`;
     if (options.environment !== undefined) {
+      if (options.environment === null) {
+        return asyncQueryAll<ReleaseBundleRecord>(
+          this.conn,
+          `${sql} WHERE environment IS NULL ORDER BY exported_at DESC, bundle_id DESC LIMIT $1`,
+          safeLimit,
+        );
+      }
       return asyncQueryAll<ReleaseBundleRecord>(
         this.conn,
-        `${sql} WHERE environment IS $1 ORDER BY exported_at DESC, bundle_id DESC LIMIT $2`,
+        `${sql} WHERE environment = $1 ORDER BY exported_at DESC, bundle_id DESC LIMIT $2`,
         options.environment,
         safeLimit,
       );

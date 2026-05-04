@@ -55,6 +55,11 @@ export class KnowledgeArchive {
       };
       this.documentsByChecksum.set(record.source.checksum, updated);
       this.recordsByDocumentId.set(updated.document.documentId, updated);
+      // R30-02/R30-03 Fix: Remove old chunks from recordsByChunkId before adding new ones
+      // When a document is updated, its old chunks must be purged to prevent stale data leakage
+      for (const oldChunk of existing.chunks) {
+        this.recordsByChunkId.delete(oldChunk.chunkId);
+      }
       for (const chunk of updated.chunks) {
         this.recordsByChunkId.set(chunk.chunkId, { record: updated, chunk });
       }

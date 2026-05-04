@@ -25,7 +25,10 @@ export interface GovernanceRule {
 }
 
 export interface GovernanceCondition {
-  subjectType?: "user" | "agent" | "system";
+  // R31-63 fix: agentType is a free-form string in AgentContext, so subjectType must also be string
+  // to enable meaningful comparison. Use subjectType for high-level classification (system/user/agent)
+  // and targetAgentType for specific agent type matching.
+  subjectType?: string;
   targetAgentType?: string;
   delegationDepth?: number;
   permissionActions?: string[];

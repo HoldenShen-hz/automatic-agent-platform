@@ -35,6 +35,7 @@ import type { ModelMetadataRegistry, ModelProfileMetadata } from "../../control-
 import type { ProviderHealthSummary } from "../../shared/observability/provider-health-tracker.js";
 import type { ModelGovernanceSnapshot } from "../../contracts/types/governance.js";
 import { AppError } from "../../contracts/errors.js";
+import type { RiskLevel } from "../../five-plane-control-plane/risk-control/types.js";
 
 /**
  * Classification of the type of work being performed.
@@ -45,8 +46,9 @@ export type ModelRouteClass = "default" | "classification" | "writing" | "coding
 /**
  * Risk level affects tier selection and fallback behavior.
  * Higher risk prefers more capable models.
+ * §10.2: Shares RiskLevel contract with risk-control subsystem.
  */
-export type ModelRouteRiskLevel = "low" | "medium" | "high" | "critical";
+export type ModelRouteRiskLevel = RiskLevel;
 
 /**
  * Request for model routing decision

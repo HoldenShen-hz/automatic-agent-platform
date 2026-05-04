@@ -36,6 +36,16 @@ import type {
   DelegationStatus,
 } from "./delegation-types.js";
 import type { DelegationRepository, DelegationEventRepository } from "../../state-evidence/truth/sqlite/repositories/delegation-repository.js";
+import {
+  DelegationGovernanceService,
+  defaultDelegationGovernanceService,
+  type DelegationGovernanceRequest,
+  type DelegationGovernanceDecision,
+} from "./delegation-governance-service.js";
+import {
+  DelegationAuditService,
+  delegationAuditService,
+} from "./delegation-audit-service.js";
 
 export interface DelegationExpirationConfig {
   checkIntervalMs?: number;
@@ -70,6 +80,8 @@ export class DelegationManagerService {
   private readonly topologyValidator: TopologyValidator;
   private readonly collaborationProtocol: CollaborationProtocolService;
   private readonly callDepthBudget: CallDepthBudget;
+  private readonly governanceService: DelegationGovernanceService;
+  private readonly auditService: DelegationAuditService;
   private readonly defaultTimeout: number;
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
@@ -92,6 +104,8 @@ export class DelegationManagerService {
     this.topologyValidator = createTopologyValidator(config);
     this.collaborationProtocol = new CollaborationProtocolService();
     this.callDepthBudget = new CallDepthBudget();
+    this.governanceService = options.governanceService ?? defaultDelegationGovernanceService;
+    this.auditService = options.auditService ?? delegationAuditService;
     this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
     this.delegationStore = new Map();
     this.chainStore = new Map();
@@ -193,6 +207,43 @@ export class DelegationManagerService {
       );
     }
 
+    // Step 0b: Governance evaluation - §51 delegation governance rules must be evaluated
+    // Note: DelegationSpec does not carry riskLevel; governance evaluates based on
+    // parentContext.delegationDepth and other context factors.
+    const governanceRequest: DelegationGovernanceRequest = {
+      parentContext: parent,
+      delegationSpec: spec,
+    };
+    const governanceDecision = this.governanceService.evaluate(governanceRequest);
+    // §51: Record governance decision in audit trail
+    this.auditService.recordGovernanceEvaluation({
+      delegationId: null,
+      parentAgentId: parent.agentId,
+      childAgentId: spec.targetAgentId ?? null,
+      depth: parent.delegationDepth + 1,
+      reasonCode: governanceDecision.reasonCode,
+      decision: governanceDecision.decision,
+      evaluatedRules: governanceDecision.evaluatedRules,
+      actorId: parent.agentId,
+      actorType: "agent",
+    });
+    // §51: Deny if governance denied
+    if (governanceDecision.decision === "deny") {
+      throw new ValidationError(
+        "delegation.governance_denied",
+        `Delegation denied by governance: ${governanceDecision.reasonCode}`,
+        { details: { reasonCode: governanceDecision.reasonCode, evaluatedRules: governanceDecision.evaluatedRules } },
+      );
+    }
+    // §51: Require approval if governance requires it - for now, block until approval flow is implemented
+    if (governanceDecision.decision === "require_approval") {
+      throw new ValidationError(
+        "delegation.requires_approval",
+        `Delegation requires approval: ${governanceDecision.reasonCode}`,
+        { details: { reasonCode: governanceDecision.reasonCode, evaluatedRules: governanceDecision.evaluatedRules } },
+      );
+    }
+
     // Step 1: Topology validation
     this.validateTopology(parent, spec);
 
@@ -212,6 +263,17 @@ export class DelegationManagerService {
     const rootAgentId = this.resolveRootAgentId(parent);
     await this.updateDelegationChain(rootAgentId, parent, spec, delegationResult);
     this.delegationRootStore.set(delegationResult.delegationId, rootAgentId);
+
+    // Step 5b: Record delegation creation in audit trail
+    this.auditService.recordDelegationCreated({
+      delegationId: delegationResult.delegationId,
+      parentAgentId: parent.agentId,
+      childAgentId: delegationResult.childAgentId,
+      depth: delegationResult.depth,
+      reasonCode: governanceDecision.reasonCode,
+      actorId: parent.agentId,
+      actorType: "agent",
+    });
 
     // Step 6: Return handle (actual dispatch would be handled by caller/dispatch engine)
     return this.createHandle(delegationResult, parent.correlationId);
@@ -310,9 +372,18 @@ export class DelegationManagerService {
    * @param delegationId - Delegation to fail
    * @param error - Error message
    */
-  public fail(delegationId: string, _error: string): void {
+  public fail(delegationId: string, error: string): void {
     const delegation = this.requireDelegation(delegationId);
     this.transitionDelegationStatus(delegation, "failed");
+    // R31-55 fix: Record failure in audit trail with error reason
+    this.auditService.recordDelegationFailed({
+      delegationId,
+      parentAgentId: delegation.parentAgentId,
+      childAgentId: delegation.childAgentId,
+      error,
+      actorId: delegation.parentAgentId,
+      actorType: "agent",
+    });
   }
 
   public handleDelegationTimeout(delegationId: string): void {

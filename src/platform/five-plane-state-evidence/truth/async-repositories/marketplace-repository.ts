@@ -11,6 +11,7 @@ import type {
 import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
+import { buildTenantClause } from "../async-query-helper.js";
 
 export class AsyncMarketplaceRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
@@ -139,6 +140,7 @@ export class AsyncMarketplaceRepository {
 
   public async getExtensionPackage(packageId: string, tenantId?: string | null): Promise<ExtensionPackageRecord | null> {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          package_id AS "packageId",
          tenant_id AS "tenantId",
@@ -159,16 +161,13 @@ export class AsyncMarketplaceRepository {
          created_at AS "createdAt",
          updated_at AS "updatedAt"
        FROM extension_packages
-       WHERE package_id = $1`;
-    if (scopedTenantId === undefined) {
-      const result = await asyncQueryOne<ExtensionPackageRecord>(this.conn, `${sql} LIMIT 1`, packageId);
-      return result ?? null;
-    }
+       WHERE package_id = $1${tenantClause ? ` AND ${tenantClause}` : ""}
+       LIMIT 1`;
     const result = await asyncQueryOne<ExtensionPackageRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 LIMIT 1`,
+      sql,
       packageId,
-      scopedTenantId,
+      ...tenantArgs,
     );
     return result ?? null;
   }
@@ -176,6 +175,7 @@ export class AsyncMarketplaceRepository {
   public async listExtensionPackages(limit = 100, tenantId?: string | null): Promise<ExtensionPackageRecord[]> {
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 100;
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          package_id AS "packageId",
          tenant_id AS "tenantId",
@@ -195,24 +195,19 @@ export class AsyncMarketplaceRepository {
          review_required AS "reviewRequired",
          created_at AS "createdAt",
          updated_at AS "updatedAt"
-       FROM extension_packages`;
-    if (scopedTenantId === undefined) {
-      return asyncQueryAll<ExtensionPackageRecord>(
-        this.conn,
-        `${sql} ORDER BY updated_at DESC, package_id DESC LIMIT $1`,
-        safeLimit,
-      );
-    }
+       FROM extension_packages${tenantClause ? ` WHERE ${tenantClause}` : ""}
+       ORDER BY updated_at DESC, package_id DESC LIMIT $${tenantArgs.length + 1}`;
     return asyncQueryAll<ExtensionPackageRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY updated_at DESC, package_id DESC LIMIT $2`,
-      scopedTenantId,
+      sql,
+      ...tenantArgs,
       safeLimit,
     );
   }
 
   public async getMarketplaceReview(reviewId: string, tenantId?: string | null): Promise<MarketplaceReviewRecord | null> {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          review_id AS "reviewId",
          tenant_id AS "tenantId",
@@ -226,16 +221,13 @@ export class AsyncMarketplaceRepository {
          submitted_at AS "submittedAt",
          decided_at AS "decidedAt"
        FROM marketplace_reviews
-       WHERE review_id = $1`;
-    if (scopedTenantId === undefined) {
-      const result = await asyncQueryOne<MarketplaceReviewRecord>(this.conn, `${sql} LIMIT 1`, reviewId);
-      return result ?? null;
-    }
+       WHERE review_id = $1${tenantClause ? ` AND ${tenantClause}` : ""}
+       LIMIT 1`;
     const result = await asyncQueryOne<MarketplaceReviewRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 LIMIT 1`,
+      sql,
       reviewId,
-      scopedTenantId,
+      ...tenantArgs,
     );
     return result ?? null;
   }
@@ -243,6 +235,7 @@ export class AsyncMarketplaceRepository {
   public async listMarketplaceReviews(limit = 100, tenantId?: string | null): Promise<MarketplaceReviewRecord[]> {
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 100;
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          review_id AS "reviewId",
          tenant_id AS "tenantId",
@@ -255,18 +248,12 @@ export class AsyncMarketplaceRepository {
          permission_surface_hash AS "permissionSurfaceHash",
          submitted_at AS "submittedAt",
          decided_at AS "decidedAt"
-       FROM marketplace_reviews`;
-    if (scopedTenantId === undefined) {
-      return asyncQueryAll<MarketplaceReviewRecord>(
-        this.conn,
-        `${sql} ORDER BY submitted_at DESC, review_id DESC LIMIT $1`,
-        safeLimit,
-      );
-    }
+       FROM marketplace_reviews${tenantClause ? ` WHERE ${tenantClause}` : ""}
+       ORDER BY submitted_at DESC, review_id DESC LIMIT $${tenantArgs.length + 1}`;
     return asyncQueryAll<MarketplaceReviewRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY submitted_at DESC, review_id DESC LIMIT $2`,
-      scopedTenantId,
+      sql,
+      ...tenantArgs,
       safeLimit,
     );
   }
@@ -276,6 +263,7 @@ export class AsyncMarketplaceRepository {
     tenantId?: string | null,
   ): Promise<MarketplaceReviewRecord | null> {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          review_id AS "reviewId",
          tenant_id AS "tenantId",
@@ -289,20 +277,13 @@ export class AsyncMarketplaceRepository {
          submitted_at AS "submittedAt",
          decided_at AS "decidedAt"
        FROM marketplace_reviews
-       WHERE package_id = $1`;
-    if (scopedTenantId === undefined) {
-      const result = await asyncQueryOne<MarketplaceReviewRecord>(
-        this.conn,
-        `${sql} ORDER BY submitted_at DESC, review_id DESC LIMIT 1`,
-        packageId,
-      );
-      return result ?? null;
-    }
+       WHERE package_id = $1${tenantClause ? ` AND ${tenantClause}` : ""}
+       ORDER BY submitted_at DESC, review_id DESC LIMIT 1`;
     const result = await asyncQueryOne<MarketplaceReviewRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 ORDER BY submitted_at DESC, review_id DESC LIMIT 1`,
+      sql,
       packageId,
-      scopedTenantId,
+      ...tenantArgs,
     );
     return result ?? null;
   }
@@ -312,6 +293,7 @@ export class AsyncMarketplaceRepository {
     tenantId?: string | null,
   ): Promise<MarketplacePublicationRecord | null> {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          publication_id AS "publicationId",
          tenant_id AS "tenantId",
@@ -324,20 +306,13 @@ export class AsyncMarketplaceRepository {
          published_at AS "publishedAt",
          updated_at AS "updatedAt"
        FROM marketplace_publications
-       WHERE publication_id = $1`;
-    if (scopedTenantId === undefined) {
-      const result = await asyncQueryOne<MarketplacePublicationRecord>(
-        this.conn,
-        `${sql} LIMIT 1`,
-        publicationId,
-      );
-      return result ?? null;
-    }
+       WHERE publication_id = $1${tenantClause ? ` AND ${tenantClause}` : ""}
+       LIMIT 1`;
     const result = await asyncQueryOne<MarketplacePublicationRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 LIMIT 1`,
+      sql,
       publicationId,
-      scopedTenantId,
+      ...tenantArgs,
     );
     return result ?? null;
   }
@@ -347,6 +322,7 @@ export class AsyncMarketplaceRepository {
     tenantId?: string | null,
   ): Promise<MarketplacePublicationRecord | null> {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          publication_id AS "publicationId",
          tenant_id AS "tenantId",
@@ -359,20 +335,13 @@ export class AsyncMarketplaceRepository {
          published_at AS "publishedAt",
          updated_at AS "updatedAt"
        FROM marketplace_publications
-       WHERE package_id = $1 AND status = 'published'`;
-    if (scopedTenantId === undefined) {
-      const result = await asyncQueryOne<MarketplacePublicationRecord>(
-        this.conn,
-        `${sql} ORDER BY updated_at DESC, publication_id DESC LIMIT 1`,
-        packageId,
-      );
-      return result ?? null;
-    }
+       WHERE package_id = $1 AND status = 'published'${tenantClause ? ` AND ${tenantClause}` : ""}
+       ORDER BY updated_at DESC, publication_id DESC LIMIT 1`;
     const result = await asyncQueryOne<MarketplacePublicationRecord>(
       this.conn,
-      `${sql} AND tenant_id IS $2 ORDER BY updated_at DESC, publication_id DESC LIMIT 1`,
+      sql,
       packageId,
-      scopedTenantId,
+      ...tenantArgs,
     );
     return result ?? null;
   }
@@ -383,6 +352,7 @@ export class AsyncMarketplaceRepository {
   ): Promise<MarketplacePublicationRecord[]> {
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 100;
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          publication_id AS "publicationId",
          tenant_id AS "tenantId",
@@ -394,18 +364,12 @@ export class AsyncMarketplaceRepository {
          revocation_reason_code AS "revocationReasonCode",
          published_at AS "publishedAt",
          updated_at AS "updatedAt"
-       FROM marketplace_publications`;
-    if (scopedTenantId === undefined) {
-      return asyncQueryAll<MarketplacePublicationRecord>(
-        this.conn,
-        `${sql} ORDER BY updated_at DESC, publication_id DESC LIMIT $1`,
-        safeLimit,
-      );
-    }
+       FROM marketplace_publications${tenantClause ? ` WHERE ${tenantClause}` : ""}
+       ORDER BY updated_at DESC, publication_id DESC LIMIT $${tenantArgs.length + 1}`;
     return asyncQueryAll<MarketplacePublicationRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY updated_at DESC, publication_id DESC LIMIT $2`,
-      scopedTenantId,
+      sql,
+      ...tenantArgs,
       safeLimit,
     );
   }
@@ -416,24 +380,19 @@ export class AsyncMarketplaceRepository {
   ): Promise<MarketplaceGovernanceReportRecord[]> {
     const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 20;
     const scopedTenantId = resolveTenantScope(tenantId);
+    const { clause: tenantClause, args: tenantArgs } = buildTenantClause(scopedTenantId);
     const sql = `SELECT
          report_id AS "reportId",
          tenant_id AS "tenantId",
          summary_json AS "summaryJson",
          report_json AS "reportJson",
          generated_at AS "generatedAt"
-       FROM marketplace_governance_reports`;
-    if (scopedTenantId === undefined) {
-      return asyncQueryAll<MarketplaceGovernanceReportRecord>(
-        this.conn,
-        `${sql} ORDER BY generated_at DESC LIMIT $1`,
-        safeLimit,
-      );
-    }
+       FROM marketplace_governance_reports${tenantClause ? ` WHERE ${tenantClause}` : ""}
+       ORDER BY generated_at DESC LIMIT $${tenantArgs.length + 1}`;
     return asyncQueryAll<MarketplaceGovernanceReportRecord>(
       this.conn,
-      `${sql} WHERE tenant_id IS $1 ORDER BY generated_at DESC LIMIT $2`,
-      scopedTenantId,
+      sql,
+      ...tenantArgs,
       safeLimit,
     );
   }

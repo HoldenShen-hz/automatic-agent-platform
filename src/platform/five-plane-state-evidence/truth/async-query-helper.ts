@@ -8,6 +8,22 @@
 import type { AsyncSqlConnection } from "./async-sql-database.js";
 
 /**
+ * Build a tenant scope filter clause for PostgreSQL queries.
+ * Returns { clause: "", args: [] } when tenantId is undefined (no filter).
+ * Returns { clause: "tenant_id = $1", args: [tenantId] } when tenantId is a string.
+ * Returns { clause: "tenant_id IS NULL", args: [] } when tenantId is null.
+ */
+export function buildTenantClause(scopedTenantId: string | null | undefined): { clause: string; args: unknown[] } {
+  if (scopedTenantId === undefined) {
+    return { clause: "", args: [] };
+  }
+  if (scopedTenantId === null) {
+    return { clause: "tenant_id IS NULL", args: [] };
+  }
+  return { clause: "tenant_id = $1", args: [scopedTenantId] };
+}
+
+/**
  * Execute a query and return all rows as the target type.
  */
 export async function asyncQueryAll<T>(

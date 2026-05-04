@@ -216,6 +216,10 @@ export interface RequestEnvelope {
   readonly policyContext: JsonValue;
   readonly artifactRefs: readonly ArtifactRef[];
   readonly submittedAt: string;
+  // R27-17 FIX: ADR-021 requires source_plane/target_plane for cross-plane routing.
+  // These fields were missing, causing no cross-plane routing capability.
+  readonly sourcePlane?: string;
+  readonly targetPlane?: string;
 }
 
 export type HarnessRunStatus =
@@ -925,6 +929,8 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
   requestHash?: string;
   priority?: number;
   submittedAt?: string;
+  sourcePlane?: string;
+  targetPlane?: string;
 }): RequestEnvelope {
   return {
     requestId: input.requestId ?? newId("request"),
@@ -941,6 +947,8 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
     policyContext: input.policyContext ?? {},
     artifactRefs: input.artifactRefs ?? [],
     submittedAt: input.submittedAt ?? nowIso(),
+    ...(input.sourcePlane != null ? { sourcePlane: input.sourcePlane } : {}),
+    ...(input.targetPlane != null ? { targetPlane: input.targetPlane } : {}),
   };
 }
 

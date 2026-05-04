@@ -231,4 +231,6 @@ export interface DelegationOptions {
   allowedPackIds?: readonly string[];
   defaultTimeout?: number;
   defaultTimeoutMs?: number;
+  governanceService?: import("./delegation-governance-service.js").DelegationGovernanceService;
+  auditService?: import("./delegation-audit-service.js").DelegationAuditService;
 }

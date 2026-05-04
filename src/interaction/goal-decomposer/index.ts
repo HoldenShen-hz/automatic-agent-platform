@@ -338,14 +338,31 @@ function normalizeGoal(goal: Goal | string): Goal {
   if (typeof goal !== "string") {
     return goal;
   }
+  // R32-31 FIX: use full string for goalId to avoid 16-char prefix collisions
+  // when different goals share the same first 16 characters.
+  // Use hash of description to keep goalId bounded while uniqueness is preserved.
+  const hashKey = hashDescription(goal);
   return {
-    goalId: `goal:${goal.slice(0, 16)}`,
+    goalId: `goal:${hashKey}`,
     description: goal,
     owner: "unknown",
     successCriteria: [],
     constraints: [],
     priority: "normal",
   };
+}
+
+/** FNV-1a hash to create a compact unique key from description string */
+function hashDescription(description: string): string {
+  // Use a subset of chars for readability, but enough to avoid collisions
+  // Take first 16 meaningful chars + hash suffix for uniqueness
+  const prefix = description.replace(/[^a-zA-Z0-9]/g, "").slice(0, 16) || "empty";
+  let hash = 2166136261;
+  for (let i = 0; i < description.length; i++) {
+    hash ^= description.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${prefix}_${(hash >>> 0).toString(36)}`;
 }
 
 function resolveTaskDomainPolicy(domainId: string): TaskDomainPolicy | null {
@@ -680,11 +697,26 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       routedAt: harnessRouting.routedAt,
     };
 
+    const criticalPathDurationMs = graphAnalysis.criticalPathTaskIds.reduce(
+      (sum, taskId) => {
+        const task = tasks.find((t) => t.taskId === taskId);
+        return sum + (task ? parseDurationHours(task.estimatedDuration) : 0);
+      },
+      0,
+    );
+    // R32-33 FIX: use actual critical-path duration instead of hardcoded `tasks.length}d`
+    const estimatedDurationMs = criticalPathDurationMs * 3600 * 1000;
+    const estimatedDurationStr = estimatedDurationMs >= 86400
+      ? `${Math.ceil(estimatedDurationMs / 86400000)}d`
+      : estimatedDurationMs >= 3600000
+        ? `${Math.ceil(estimatedDurationMs / 3600000)}h`
+        : `${Math.ceil(estimatedDurationMs / 60000)}m`;
+
     return {
       goalId: goal.goalId,
       tasks,
       dependencyGraph,
-      estimatedDuration: `${Math.max(1, tasks.length)}d`,
+      estimatedDuration: estimatedDurationStr,
       estimatedCost,
       riskSummary,
       decompositionConfidence,

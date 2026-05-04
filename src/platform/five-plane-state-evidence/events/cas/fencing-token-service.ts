@@ -171,7 +171,23 @@ export class FencingTokenService {
    */
   public acquireFence(executionId: string, mode: FenceMode): FenceInfo | null {
     this.pruneExpiredFences();
-    // Check if any fence exists for this execution
+
+    // R30-08 Fix: Check if this node already holds a fence for this execution
+    // Same node re-acquiring exclusive fence is not allowed (exclusive = single holder)
+    // Same node re-acquiring shared fence is allowed (shared = multiple holders allowed)
+    for (const fence of FencingTokenService.activeFences.values()) {
+      if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
+        // Same node already holds a fence - check mode compatibility
+        if (fence.mode === "exclusive" || mode === "exclusive") {
+          // Either existing or requested is exclusive - exclusive locks are single-holder
+          // Return the existing fence to allow the caller to see it
+          return fence;
+        }
+        // Both are shared mode - allow multiple shared holders
+      }
+    }
+
+    // Check if any fence exists for this execution (from other nodes)
     for (const fence of FencingTokenService.activeFences.values()) {
       if (fence.executionId === executionId) {
         // A fence exists - check if we can acquire

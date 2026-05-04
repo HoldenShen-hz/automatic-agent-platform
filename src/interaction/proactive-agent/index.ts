@@ -638,7 +638,12 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       if (config.condition === "lt") return metric.value < config.threshold;
       if (config.condition === "eq") return metric.value === config.threshold;
       if (metric.previousValue == null) return false;
-      return Math.abs(metric.value - metric.previousValue) > config.threshold;
+      // R32-27 FIX: change_rate_gt must compute relative change abs(v-prev)/prev, not absolute diff
+      // Special case: prev===0 means infinite change rate if v!=0 (any non-zero from zero is significant)
+      if (metric.previousValue === 0) {
+        return metric.value !== 0;
+      }
+      return Math.abs(metric.value - metric.previousValue) / metric.previousValue > config.threshold;
     }
 
     return true;

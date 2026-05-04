@@ -217,6 +217,15 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
     if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dependencyGraph)) {
       throw new Error("goal_decomposer.invalid_llm_plan_shape");
     }
+    // R32-28 FIX: validate and coerce estimatedCostUsd — LLM may return non-numeric (e.g. "0.05" or malformed)
+    for (const task of parsed.tasks) {
+      const cost = Number(task.estimatedCostUsd);
+      if (!Number.isFinite(cost)) {
+        throw new Error(`goal_decomposer.invalid_task_cost:${task.description?.slice(0, 20)}`);
+      }
+      // Mutate in place so later toFixed() calls always succeed
+      (task as { estimatedCostUsd: number }).estimatedCostUsd = cost;
+    }
     return parsed;
   }
 
