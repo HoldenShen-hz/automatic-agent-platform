@@ -178,7 +178,7 @@ export class PanicPropagationService {
     const idx = events.findIndex((e) => e.plane === plane);
     if (idx < 0) return;
 
-    const updated = { ...events[idx], localState: "acknowledged" as const };
+    const updated = { ...events[idx]!, localState: "acknowledged" as const };
     const updatedEvents = [...events];
     updatedEvents[idx] = updated;
     this.haltingLog.set(directiveId, updatedEvents);

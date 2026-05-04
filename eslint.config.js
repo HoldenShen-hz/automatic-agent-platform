@@ -23,6 +23,10 @@ export default [
   // =============================================================================
   // Deprecation Enforcement - Block imports of legacy contracts
   // =============================================================================
+  // R4-11: LEGACY_CONTRACT_NAMES enforcement via ESLint
+  // Note: Only contracts with dedicated module paths can be blocked via import patterns.
+  // Contracts without separate modules (StateMutationCommand, WorkflowStep, StepOutput, workflow_run)
+  // are enforced via runtime validation (assertNotDeprecated, emitDeprecationWarning in code).
   {
     files: ["src/**/*.ts"],
     rules: {

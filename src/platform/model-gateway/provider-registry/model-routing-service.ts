@@ -162,10 +162,33 @@ export interface ModelRouteDecision {
   fallbackLease: ModelRouteFallbackLease | null;
 }
 
+export interface ModelRoutingDecisionRecord {
+  readonly routingDecisionId: string;
+  readonly requestedAt: string;
+  readonly routeClass: ModelRouteClass;
+  readonly riskLevel: ModelRouteRiskLevel;
+  readonly requiredCapabilities: readonly string[];
+  readonly selectedProfileName: string;
+  readonly selectedProvider: string;
+  readonly routeReason: ModelRouteTrace["routeReason"];
+  readonly latencySloTargetMs: number;
+  readonly latencyP99Ms: number;
+  readonly dataResidencyConstraint: string | null;
+  readonly dataResidencyMet: boolean;
+  readonly fallbackLeaseIssued: boolean;
+  readonly fallbackProfileName: string | null;
+}
+
+export interface ModelRoutingPersistence {
+  persistRoutingDecision(decision: ModelRoutingDecisionRecord): void;
+}
+
 export interface ModelRoutingServiceOptions {
   registry: ModelMetadataRegistry;
   // Health status per provider
   providerHealth?: Record<string, ProviderHealthSummary>;
+  // R8-05 FIX: Optional persistence for routing decisions
+  persistence?: ModelRoutingPersistence;
 }
 
 // Internal: eligible profile with provider status attached
@@ -696,7 +719,7 @@ export class ModelRoutingService {
         } satisfies ModelRouteFallbackLease
       : null;
 
-    return buildDecision(
+    const decision = buildDecision(
       chosen,
       routeReason,
       issuedTurnFallbackLease,
@@ -708,5 +731,28 @@ export class ModelRoutingService {
         turnScopedFallbackAutoRecoveryNextTurn: issuedTurnFallbackLease != null,
       },
     );
+
+    // R8-05 FIX: Persist routing decision to BudgetLedger for auditability
+    if (this.persistence != null) {
+      const routingRecord: ModelRoutingDecisionRecord = {
+        routingDecisionId: newId("routing"),
+        requestedAt: new Date().toISOString(),
+        routeClass,
+        riskLevel,
+        requiredCapabilities,
+        selectedProfileName: chosen.profileName,
+        selectedProvider: chosen.profile.provider,
+        routeReason,
+        latencySloTargetMs: getLatencySloTarget(routeClass, riskLevel),
+        latencyP99Ms: getLatencyP99(chosen.profileName, this.registry),
+        dataResidencyConstraint: request.data_residency ?? null,
+        dataResidencyMet: checkDataResidency(chosen.profileName, request.data_residency, this.registry),
+        fallbackLeaseIssued: issuedTurnFallbackLease != null,
+        fallbackProfileName: issuedTurnFallbackLease?.fallbackProfileName ?? null,
+      };
+      this.persistence.persistRoutingDecision(routingRecord);
+    }
+
+    return decision;
   }
 }

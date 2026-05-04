@@ -53,6 +53,10 @@ export const defaultMockApiShape: MockApiShape = {
     activeExecutions: 12,
     approvalBacklog: 3,
     alertSummary: "2 medium alerts",
+    // §R7-15: Required metrics
+    successRate: 98.2,
+    avgDurationMs: 1250,
+    activeAgents: 8,
   },
   tasks: [
     { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },

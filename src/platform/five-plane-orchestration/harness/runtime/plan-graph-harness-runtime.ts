@@ -13,7 +13,9 @@ import {
   type NodeAttemptReceipt,
   type NodeRun,
   type PlanGraphBundle,
+  type PlanGraph,
   type PlanNode,
+  type PlanEdge,
   type PlatformFactEvent,
 } from "../../../contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../execution/runtime-state-machine.js";

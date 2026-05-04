@@ -467,7 +467,7 @@ function normalizeThresholdCny(
       return rule.maxAmountUsd * fxSnapshot.rate;
     }
     // Use configured default for legacy amounts without fxSnapshot
-    return rule.maxAmountUsd * DEFAULT_LEGACY_FX_RATE;
+    return rule.maxAmountUsd * DEFAULT_FX_RATE;
   }
   return Number.POSITIVE_INFINITY;
 }
@@ -554,21 +554,20 @@ export function getFxRateProvider(): FxRateProvider {
   return fxRateProvider;
 }
 
-// Legacy constant for backward compatibility - use getUsdToCnyRate() instead
-const DEFAULT_LEGACY_FX_RATE = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
+// R9-34 fix: Uses configurable FX rate from provider
+// Default rate fallback for sync contexts (tests/legacy)
+const DEFAULT_FX_RATE = parseFloat(process.env["APPROVAL_ROUTE_DEFAULT_FX_RATE"] ?? "7.2");
 
-/**
- * R9-34 fix: Returns the USD to CNY conversion rate from the configured provider.
- * This replaces direct usage of the hardcoded 7.2 fallback.
- */
-async function getUsdToCnyRate(): Promise<number> {
-  const rate = await fxRateProvider.getRate("USD", "CNY");
-  return rate ?? DEFAULT_LEGACY_FX_RATE;
-}
-
-export function setDefaultLegacyFxRate(rate: number): void {
-  // For testing purposes - allows test files to override the default rate
-  (process.env as Record<string, string>)["APPROVAL_ROUTE_DEFAULT_FX_RATE"] = String(rate);
+function getSyncUsdToCnyRate(): number {
+  // Check for live rate environment variable first
+  const liveRate = process.env["APPROVAL_ROUTE_USD_CNY_RATE"];
+  if (liveRate != null) {
+    const rate = parseFloat(liveRate);
+    if (!isNaN(rate) && rate > 0) {
+      return rate;
+    }
+  }
+  return DEFAULT_FX_RATE;
 }
 
 function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountSnapshot {
@@ -600,17 +599,18 @@ function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountS
   }
   const legacyAmountUsd = request.amountUsd ?? 0;
   // R21-6 FIX: Use current time as capturedAt instead of epoch 1970.
-  // Epoch 1970 makes audit timestamps meaningless.
+  // R9-34 fix: Use configurable rate instead of hardcoded 7.2
   const now = new Date().toISOString();
+  const fxRate = getSyncUsdToCnyRate();
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
-    amountCny: legacyAmountUsd * DEFAULT_LEGACY_FX_RATE,
+    amountCny: legacyAmountUsd * fxRate,
     fxSnapshot: {
       baseCurrency: "USD",
       quoteCurrency: "CNY",
-      rate: DEFAULT_LEGACY_FX_RATE,
-      source: "legacy_amount_usd_default",
+      rate: fxRate,
+      source: "configured_fx_rate",
       capturedAt: now,
     },
   };

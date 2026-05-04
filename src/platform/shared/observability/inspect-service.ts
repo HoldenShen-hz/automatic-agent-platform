@@ -404,7 +404,8 @@ export class InspectService {
 
     const executions = this.store.execution.listExecutionsByTask(workflow.taskId);
     const approvals = this.store.approval.listApprovalsByTask(workflow.taskId);
-    const events = this.store.event.listEventsForTaskSnapshot(workflow.taskId);
+    const eventSnapshot = this.store.event.listEventsForTaskSnapshot(workflow.taskId);
+    const events = eventSnapshot.events;
 
     return {
       taskId: workflow.taskId,
@@ -446,9 +447,8 @@ export class InspectService {
         respondedAt: approval.respondedAt,
       };
     });
-    const dispatchDecisions = this.store
-      .listEventsForTaskSnapshot(taskId)
-      .flatMap((event) => {
+    const dispatchEventSnapshot = this.store.event.listEventsForTaskSnapshot(taskId);
+    const dispatchDecisions = dispatchEventSnapshot.events.flatMap((event) => {
         const decision = parseDispatchDecisionTraceFromEvent(event);
         if (!decision) {
           return [];

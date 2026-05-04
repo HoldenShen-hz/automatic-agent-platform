@@ -557,12 +557,64 @@ export class TypedEventBus {
     traceId?: string | null;
     traceContext?: TraceContext | null;
     payload: TypedEventPayloadMap[TType];
+    // §28.1/R12-21: aggregateId for partition-by-aggregate ordering
+    aggregateId?: string | null;
+    // §28.1/R12-21: runId for monotonic sequence tracking
+    runId?: string | null;
+    // §28.1/R12-21: explicit sequence for replay ordering
+    sequence?: number | null;
+    // §28.1: principal that emitted the event
+    principal?: string | null;
   }): EventRecord {
     getEventSchema(input.eventType);
-    return this.bus.publish({
-      ...input,
-      payload: input.payload as unknown as Record<string, unknown>,
-    });
+    // Cast payload to Record<string, unknown> and spread input to pass all optional fields
+    // §28.1/R12-21: aggregateId/runId/sequence/principal for ordering and replay
+    return this.bus.publish(input as Parameters<typeof this.bus.publish>[0]);
+  }
+
+  // §28.1/R12-24: Replay events for a specific run from a given sequence number.
+  // Enables targeted replay within a run's event stream.
+  /**
+   * Replays events for a specific run from a given sequence number.
+   * Enables targeted replay within a run's event stream (R12-24).
+   * @param runId - The run identifier
+   * @param fromSequence - The sequence number to replay from (exclusive)
+   * @param consumerId - The consumer ID to replay events for
+   * @returns Promise resolving to the number of events delivered
+   */
+  public async replayFromSequence(runId: string, fromSequence: number, consumerId: string): Promise<number> {
+    // Get pending events that are part of this run and past the fromSequence
+    const pending = this.bus.pendingForConsumer(consumerId);
+    const relevantEvents = pending.filter(
+      (item) => item.event.runId === runId && (item.event.sequence ?? 0) > fromSequence,
+    );
+
+    // Reset ack state for these specific events
+    for (const item of relevantEvents) {
+      this.bus.resetAckForReplay(item.event.id, consumerId);
+    }
+
+    // Deliver the events
+    return this.bus.deliverPending(consumerId);
+  }
+
+  // §28.1/R12-25: Backpressure signal API - expose queue depth for monitoring.
+  /**
+   * Gets backpressure metrics for a consumer.
+   * Returns queue depth and high-water mark status for monitoring (R12-25).
+   * @param consumerId - The consumer ID to check
+   * @returns Backpressure metrics including pending count and high-water mark flag
+   */
+  public getBackpressureMetrics(consumerId: string): {
+    pendingCount: number;
+    isHighWaterMark: boolean;
+    highWaterMark: number;
+  } {
+    const pending = this.bus.pendingForConsumer(consumerId);
+    const pendingCount = pending.length;
+    const highWaterMark = 100; // §9.2: threshold for graduated backpressure
+    const isHighWaterMark = pendingCount >= highWaterMark;
+    return { pendingCount, isHighWaterMark, highWaterMark };
   }
 
   /**

@@ -226,10 +226,9 @@ export class FeedbackQualityGrader {
           timestamp: sig.generatedAt,
           trustScore: {
             overallScore: 0.5,
-            sourceReliability: 0.6,
+            sourceCredibility: 0.6,
             historicalAccuracy: 0.5,
-            adversarialRisk: "low" as const,
-            passedSanityCheck: false,
+            attackSurface: 0.4,
           },
           evidenceRefs: sig.evidenceRefs,
         });

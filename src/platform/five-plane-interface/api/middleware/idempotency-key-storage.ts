@@ -273,18 +273,19 @@ export function createIdempotencyStorage(
   type: "memory" | "redis" | "sqlite",
   config?: RedisConnectionConfig | { db?: AuthoritativeSqlDatabase; tableName?: string },
 ): IdempotencyStorage {
+  const sqliteConfig = config as { db?: AuthoritativeSqlDatabase; tableName?: string } | undefined;
   switch (type) {
     case "memory":
       return new InMemoryIdempotencyStorage();
     case "redis":
       return new RedisIdempotencyStorage(config as RedisConnectionConfig);
     case "sqlite":
-      if (config == null || !("db" in config)) {
+      if (sqliteConfig == null) {
         throw new Error("SqliteIdempotencyStorage requires a db option");
       }
-      if (config.db == null) {
+      if (sqliteConfig.db == null) {
         throw new Error("SqliteIdempotencyStorage requires a non-null db option");
       }
-      return new SqliteIdempotencyStorage(config.db, config.tableName);
+      return new SqliteIdempotencyStorage(sqliteConfig.db, sqliteConfig.tableName);
   }
 }

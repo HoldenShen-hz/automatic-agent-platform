@@ -58,7 +58,7 @@ export class PromptRolloutService {
     const record: PromptRolloutRecord = {
       rolloutId: newId("prompt_rollout"),
       templateKey: input.template.templateKey,
-      version: input.template.version,
+      version: String(input.template.version),
       mode: input.mode,
       // R16-04 FIX: Start at canary_5 per §16.3 canonical pipeline
       status: decision.allowed ? "canary_5" : "blocked",

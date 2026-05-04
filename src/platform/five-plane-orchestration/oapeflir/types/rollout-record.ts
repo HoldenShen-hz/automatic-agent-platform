@@ -5,8 +5,8 @@ export const RolloutLevelSchema = z.enum([
   "off",
   "evaluate_0",
   "canary_5",
-  "partial_25",
-  "stable_75",
+  "canary_20",
+  "canary_50",
   "stable_100",
 ]);
 export const RolloutStatusSchema = z.enum([
@@ -17,8 +17,8 @@ export const RolloutStatusSchema = z.enum([
   "rejected",
   "evaluation_enabled",
   "canary_5",
-  "partial_25",
-  "stable_75",
+  "canary_20",
+  "canary_50",
   "stable_100",
   "released",
   "rolled_back",

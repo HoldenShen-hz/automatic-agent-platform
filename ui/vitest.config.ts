@@ -12,8 +12,9 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],
+      // §7.2.6: shared≥90%/ui-core≥80%/features≥70%/apps≥50%
+      // R7-2 fix: was incorrectly set to 30%/20%, now matches spec
       thresholds: {
-        // §7.2.6: shared≥90%/ui-core≥80%/features≥70%/apps≥50%
         90: {
           lines: 90,
           functions: 90,
@@ -38,8 +39,9 @@ export default defineConfig({
           statements: 50,
           branches: 50,
         },
-        perManualProject: true,
       },
+      // R7-2 fix: removed perManualProject which bypassed threshold enforcement
+      // perManualProject: true,
     },
   },
 });

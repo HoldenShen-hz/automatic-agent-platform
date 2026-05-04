@@ -566,12 +566,14 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         }
 
         // R5-13: Execute with subgraph/child-run support if parentContext provided
-        const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
-          currentInput.stepOutputs ?? await this.executeViaBridge(planGraphBundle!, {
-            taskId: currentInput.taskId,
-            ...(currentInput.parentContext != null ? { parentContext: currentInput.parentContext } : {}),
-          })
-        ), {
+        // R9-14 fix: OAPEFLIR should be projection/view only. Do NOT call executeViaBridge here.
+        // Caller must provide stepOutputs from execution plane. This removes direct execution coupling.
+        const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => {
+          if (currentInput.stepOutputs == null) {
+            throw new Error("oapeflir.execute_violation: stepOutputs must be provided by caller - OAPEFLIR does not execute");
+          }
+          return currentInput.stepOutputs;
+        }, {
           taskId: currentInput.taskId,
           planId: plan.planId,
         });

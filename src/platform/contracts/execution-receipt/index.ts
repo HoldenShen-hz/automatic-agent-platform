@@ -1,13 +1,6 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 
-// Runtime warning for imports from legacy contract path
-console.warn(
-  "[DEPRECATED] ExecutionReceipt from execution-receipt/ is deprecated. " +
-  "Use NodeAttemptReceipt from src/platform/contracts/executable-contracts instead. " +
-  "See: https://docs.example.com/platform/contracts#execution-receipt-migration",
-);
-
 // =============================================================================
 // Re-export canonical NodeAttemptReceipt from executable-contracts
 // =============================================================================

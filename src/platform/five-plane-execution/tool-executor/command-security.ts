@@ -109,11 +109,15 @@ const DEFAULT_COMMAND_POLICY_ENTRIES: ReadonlyArray<readonly [string, CommandPol
   // until proper egress policy integration is implemented
   ["curl", { allowed: false, riskLevel: "critical", reasonCode: "tool.curl_blocked_requires_egress_policy" }],
   ["wget", { allowed: false, riskLevel: "critical", reasonCode: "tool.wget_blocked_requires_egress_policy" }],
-  ["tar", { allowed: true, riskLevel: "high" }],
-  ["unzip", { allowed: true, riskLevel: "high" }],
-  ["zip", { allowed: true, riskLevel: "high" }],
-  ["sqlite3", { allowed: true, riskLevel: "high" }],
-  ["psql", { allowed: true, riskLevel: "high" }],
+  // R12-4 fix: tar with archive extraction can write to arbitrary paths - validate target dirs
+  // tar [-x|-t|-c] [-f] archive [member...] - arg[0] is usually flag, arg[1] is archive, rest are members
+  ["tar", { allowed: true, riskLevel: "high", pathArgPositions: [1], writePathArgPositions: [1, 2, 3, 4] }],
+  ["unzip", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
+  ["zip", { allowed: true, riskLevel: "high", pathArgPositions: [1], writePathArgPositions: [0] }],
+  // sqlite3 can read/write database files - arg[0] is the db path
+  ["sqlite3", { allowed: true, riskLevel: "high", pathArgPositions: [0], writePathArgPositions: [0] }],
+  // psql can execute SQL files - arg[0] is typically a flag, arg[1] can be a file
+  ["psql", { allowed: true, riskLevel: "high", pathArgPositions: [1] }],
   // tee: arg[0] is a file path (writes to file)
   ["tee", { allowed: true, riskLevel: "high", writePathArgPositions: [0] }],
   ["jq", { allowed: true, riskLevel: "medium" }],

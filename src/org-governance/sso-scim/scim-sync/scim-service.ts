@@ -920,9 +920,10 @@ export class ScimProvisionService {
 
     const [, fieldName, op, value] = match;
     const filterValue = value ?? "";
+    const fieldPath = (fieldName ?? "").split(".");
 
     return items.filter((item) => {
-      const values = this.getFilterValues(item, fieldName.split("."));
+      const values = this.getFilterValues(item, fieldPath);
       if (values.length === 0) {
         return false;
       }

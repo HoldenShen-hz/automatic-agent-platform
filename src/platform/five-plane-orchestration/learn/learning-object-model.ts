@@ -18,6 +18,21 @@ export const LearningObjectSchema = z.object({
 
 export type LearningObject = z.infer<typeof LearningObjectSchema>;
 
+export function normalizeLearningType(
+  learningType: LearningObject["learningType"] | "model_retraining" | "dataset_gap",
+): LearningObject["learningType"] {
+  switch (learningType) {
+    case "failure_pattern":
+    case "user_correction":
+    case "recovery_playbook":
+      return learningType;
+    case "model_retraining":
+      return "user_correction";
+    case "dataset_gap":
+      return "failure_pattern";
+  }
+}
+
 export function parseLearningObject(input: unknown): LearningObject {
   return LearningObjectSchema.parse(input);
 }

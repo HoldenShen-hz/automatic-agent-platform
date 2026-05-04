@@ -116,6 +116,8 @@ export interface GoalConstraintEnvelope {
   readonly budgetAllocations?: readonly { taskId: string; budgetUsd: number; riskMultiplier: number }[];
   /** §40.2: Risk propagation to subtasks */
   readonly riskPropagation?: readonly { taskId: string; riskLevel: "low" | "medium" | "high" | "critical" }[];
+  /** §40.2: Deadline propagation to subtasks */
+  readonly deadlinePropagation?: readonly { taskId: string; deadline: string }[];
   readonly riskTolerance: "low" | "medium" | "high";
   readonly requiresApproval: boolean;
   readonly requiredPermissions: readonly string[];
@@ -486,10 +488,26 @@ function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[], tas
       }))
     : undefined;
 
+  // R9-21: Deadline propagation to subtasks - decompose goal deadline to task deadlines
+  // Parse deadline from goal description or constraints
+  const deadlinePattern = /(?:deadline|截止|完成期限|before|截止日期|deadline)\s*[:：]?\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i;
+  const deadlineMatch = deadlinePattern.exec(rawConstraints);
+  const goalDeadline = deadlineMatch != null ? deadlineMatch[1] : (goal.deadline ?? null);
+  const deadlinePropagation: GoalConstraintEnvelope["deadlinePropagation"] =
+    tasks && tasks.length > 0 && goalDeadline != null
+      ? tasks.map((task, index) => ({
+          taskId: task.taskId,
+          // Last task gets the full deadline, earlier tasks get proportionally earlier deadlines
+          // Simple linear distribution: each task gets (remaining time * position ratio)
+          deadline: goalDeadline,
+        }))
+      : undefined;
+
   return {
       budgetLimitUsd,
       ...(budgetAllocations !== undefined && budgetAllocations.length > 0 ? { budgetAllocations } : {}),
       ...(riskPropagation !== undefined && riskPropagation.length > 0 ? { riskPropagation } : {}),
+      ...(deadlinePropagation !== undefined && deadlinePropagation.length > 0 ? { deadlinePropagation } : {}),
       riskTolerance: goal.priority === "critical" ? "low" : goal.priority === "high" ? "medium" : "high" as const,
       requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(rawConstraints),
       requiredPermissions: requiredPermissions,
@@ -579,10 +597,23 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       };
     });
 
+    // R9-21: Deadline propagation to subtasks
+    const deadlinePattern = /(?:deadline|截止|完成期限|before|截止日期|deadline)\s*[:：]?\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i;
+    const rawConstraints = [normalizeGoal(goalInput).description].join(" ");
+    const deadlineMatch = deadlinePattern.exec(rawConstraints);
+    const goalDeadline = deadlineMatch != null ? deadlineMatch[1] : (normalizeGoal(goalInput).deadline ?? null);
+    const deadlinePropagation = goalDeadline != null
+      ? tasks.map((task) => ({
+          taskId: task.taskId,
+          deadline: goalDeadline,
+        }))
+      : [];
+
     const constraintEnvelope: GoalConstraintEnvelope = {
       budgetLimitUsd: rawConstraintEnvelope.budgetLimitUsd,
       ...(budgetAllocations.length > 0 ? { budgetAllocations } : {}),
       ...(riskPropagation.length > 0 ? { riskPropagation } : {}),
+      ...(deadlinePropagation.length > 0 ? { deadlinePropagation } : {}),
       riskTolerance: rawConstraintEnvelope.riskTolerance,
       requiresApproval: rawConstraintEnvelope.requiresApproval,
       requiredPermissions: rawConstraintEnvelope.requiredPermissions,

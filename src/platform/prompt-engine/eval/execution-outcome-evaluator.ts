@@ -92,7 +92,7 @@ interface LegacyPlanLike {
 
 function toPlanGraphBundle(planLike: LegacyPlanLike | PlanGraphBundle): PlanGraphBundle {
   const maybeBundle = planLike as PlanGraphBundle;
-  if ((maybeBundle as Record<string, unknown>).riskProfile !== undefined) {
+  if ((maybeBundle as unknown as { riskProfile?: unknown }).riskProfile !== undefined) {
     return maybeBundle;
   }
 
@@ -103,7 +103,7 @@ function toPlanGraphBundle(planLike: LegacyPlanLike | PlanGraphBundle): PlanGrap
       riskClass: "medium",
     },
     budgetPlanRef: null,
-  } as PlanGraphBundle;
+  } as unknown as PlanGraphBundle;
 }
 
 export class ExecutionOutcomeEvaluator {

@@ -80,7 +80,7 @@ export class RecoveryController {
         executionId,
         payload: {
           executionId,
-          decisionId: newId(),
+          decisionId: newId("recovery_decision"),
           occurredAt: nowIso(),
           reasonCode,
           ...decisionDetails,

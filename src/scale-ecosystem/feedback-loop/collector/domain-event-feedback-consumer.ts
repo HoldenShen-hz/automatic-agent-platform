@@ -204,10 +204,9 @@ export class DomainEventFeedbackConsumer {
       timestamp: Date.parse(envelope.event.createdAt),
       trustScore: {
         overallScore: 0.5,
-        sourceReliability: 0.7,
+        sourceCredibility: 0.7,
         historicalAccuracy: 0.5,
-        adversarialRisk: "low",
-        passedSanityCheck: true,
+        attackSurface: 0.1,
       },
       evidenceRefs: [signalId],
     };

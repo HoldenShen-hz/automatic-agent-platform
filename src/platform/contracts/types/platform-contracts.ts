@@ -4,6 +4,23 @@
  * Central platform-level contract definitions.
  * Canonical types are exported from executable-contracts/ or their respective directories.
  * This file provides platform-level aggregation and deprecated legacy type stubs.
+ *
+ * ARCHITECTURAL DEBT (R4-4):
+ * This file contains TWO overlapping contract sets:
+ * 1. Re-exports from executable-contracts/ (PlanGraphBundle, NodeAttemptReceipt, SideEffectRecord, etc.)
+ * 2. Platform-specific types (PlatformPrincipal, EvidenceRecord, ProjectionUpdate, ContractEnvelope)
+ *
+ * The re-exports here duplicate exports in src/platform/contracts/index.ts barrel.
+ * Additionally, some types here (PlatformPrincipal, EvidenceRecord, ProjectionUpdate) are also
+ * re-exported from contracts/index.ts, creating confusion about the canonical source.
+ *
+ * Cleanup direction per §4:
+ * - Move platform-specific types (PlatformPrincipal, EvidenceRecord, ProjectionUpdate) to a new
+ *   file or to contracts/index.ts directly
+ * - Remove re-exports of executable-contracts types from this file - they should only be
+ *   imported from executable-contracts/ directly or via the contracts/index.ts barrel
+ * - Keep ContractEnvelope and legacy stubs (RequestEnvelopeLegacy, SideEffectExpectation) here
+ *   until migration is complete
  */
 
 import { newId, nowIso } from "./ids.js";

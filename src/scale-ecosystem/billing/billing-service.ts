@@ -1,4 +1,58 @@
 /**
+ * R8-15 FIX: FX Rate Service interface for multi-currency support per §18.4
+ */
+export interface FxRateService {
+  /**
+   * Gets the FX rate for converting a currency to USD.
+   * Returns the rate as multiplier (e.g., EUR/USD = 1.08 means 1 EUR = 1.08 USD)
+   */
+  getRateToUsd(currency: string): number;
+  /**
+   * Converts an amount from one currency to another.
+   */
+  convert(amount: number, fromCurrency: string, toCurrency: string): number;
+}
+
+/**
+ * Default FX rate service with static rates for development/testing.
+ * In production, this would be backed by a real FX rate provider.
+ */
+export class StaticFxRateService implements FxRateService {
+  private readonly rates: Record<string, number>;
+
+  public constructor(rates?: Record<string, number>) {
+    this.rates = rates ?? {
+      USD: 1.0,
+      EUR: 1.08,
+      GBP: 1.27,
+      JPY: 0.0067,
+      CNY: 0.14,
+      CAD: 0.74,
+      AUD: 0.65,
+      CHF: 1.12,
+      // Add more currencies as needed
+    };
+  }
+
+  public getRateToUsd(currency: string): number {
+    return this.rates[currency] ?? 1.0;
+  }
+
+  public convert(amount: number, fromCurrency: string, toCurrency: string): number {
+    if (fromCurrency === toCurrency) {
+      return amount;
+    }
+    // Convert to USD first, then to target currency
+    const amountInUsd = amount * this.getRateToUsd(fromCurrency);
+    const targetRate = this.getRateToUsd(toCurrency);
+    if (targetRate === 0) {
+      return amountInUsd;
+    }
+    return amountInUsd / targetRate;
+  }
+}
+
+/**
  * Billing Service
  *
  * Core billing and monetization engine handling accounts, quotas, usage tracking,
@@ -122,6 +176,7 @@ export class BillingService {
   private readonly policyVersion: string;
   private readonly paymentGateway: BillingPaymentGateway;
   private readonly budgetAllocator: BudgetAllocator;
+  private readonly fxRateService: FxRateService;
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -144,6 +199,8 @@ export class BillingService {
     // Default to manual gateway if none provided
     this.paymentGateway = options.paymentGateway ?? new ManualBillingPaymentGateway();
     this.budgetAllocator = new BudgetAllocator();
+    // R8-15 FIX: Initialize FX rate service for multi-currency support
+    this.fxRateService = options.fxRateService ?? new StaticFxRateService();
     // Artifact store for exporting billing reports
     this.artifactStore = new ArtifactStore(
       options.artifactStoreOptions ?? {

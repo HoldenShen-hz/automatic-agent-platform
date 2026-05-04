@@ -133,6 +133,10 @@ export interface WorkflowStateRecord {
 /**
  * Step output record - captures the result of a single workflow step execution.
  *
+ * @deprecated Per §5.5, stepId is a legacy semantic projection. Use nodeRunId for
+ * canonical step execution references. This interface is retained for legacy adapter
+ * compatibility only.
+ *
  * Produced when a step completes (succeeded, failed, partial_success) or is skipped.
  * The dataJson contains the step's structured output defined by the workflow schema.
  * summary is a human-readable brief description for display/logging purposes.

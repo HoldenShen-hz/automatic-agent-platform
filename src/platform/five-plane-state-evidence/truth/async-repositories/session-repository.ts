@@ -115,7 +115,9 @@ export class AsyncSessionRepository {
     // contained malicious values. While the type signature says number, untrusted
     // sources could pass values like "10; DROP TABLE users;--" if not validated.
     // Fix: Sanitize limit to ensure it's a positive finite integer.
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.trunc(limit), 10000) : undefined;
+    const safeLimit = typeof limit === "number" && Number.isFinite(limit) && limit > 0
+      ? Math.min(Math.trunc(limit), 10000)
+      : undefined;
     const limitClause = safeLimit !== undefined ? ` LIMIT ${safeLimit}` : "";
     const sql = `SELECT
         id, session_id AS "sessionId", direction, message_type AS "messageType",

@@ -35,6 +35,7 @@ import {
   createScopedExternalAccessSandbox,
   type ScopedExternalAccessConfig,
 } from "./scoped-external-access-sandbox.js";
+import { propagateDataTaint } from "../../../plugins/builtin-plugin-registry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types
@@ -476,7 +477,18 @@ export class PluginExecutorService {
       const executionContext = scopedSandbox
         ? { ...params, context: { ...context, scopedSandbox } }
         : { ...params, context };
-      return handler.call(hooks, executionContext);
+      const result = await handler.call(hooks, executionContext);
+
+      // R12-5 fix: Enforce DataTaintPropagation in sandbox execution.
+      // When plugin executes in sandbox, propagate taint labels for the output data.
+      // This ensures cross-plugin data contamination is tracked.
+      if (result != null && context.executionId) {
+        const outputDataId = `plugin_output:${context.executionId}:${action}`;
+        // Propagate taint with "sandbox_execution" label to mark data as from sandbox
+        propagateDataTaint(outputDataId, hooks.constructor.name, ["sandbox_execution"]);
+      }
+
+      return result;
     }
     throw new ValidationError(
       "plugin_executor.action_not_implemented",

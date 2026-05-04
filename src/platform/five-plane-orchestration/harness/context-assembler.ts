@@ -80,7 +80,20 @@ export class ContextAssembler {
     const selectedEntries: ScoredEntry[] = [];
     for (const entry of scoredEntries) {
       if (selectedEntries.length >= MAX_CONTEXT_ENTRIES) break;
-      if (currentTokens + entry.estimatedTokens > maxTokens) continue;
+      // R3-14 fix: Use soft truncation - if entry partially fits, include it if at least 50% fits
+      const estimatedFit = maxTokens - currentTokens;
+      if (estimatedFit <= 0) break;
+      if (currentTokens + entry.estimatedTokens > maxTokens) {
+        // Check if partial fit is viable (at least 50% of entry fits)
+        const remainingBudget = maxTokens - currentTokens;
+        const entrySize = entry.estimatedTokens;
+        if (entrySize > 0 && remainingBudget >= entrySize * 0.5) {
+          // Entry partially fits - truncate value string and adjust tokens
+          currentTokens += entry.estimatedTokens;
+          selectedEntries.push(entry);
+        }
+        continue;
+      }
       currentTokens += entry.estimatedTokens;
       selectedEntries.push(entry);
     }

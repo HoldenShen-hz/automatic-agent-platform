@@ -526,10 +526,10 @@ export class HttpApiServer {
       {
         code: normalized.code,
         message: normalized.message,
-        traceId: normalized.traceId,
+        ...(normalized.traceId != null ? { traceId: normalized.traceId } : {}),
         details: normalized.details,
       },
-      normalized.traceId,
+      normalized.traceId ?? undefined,
     );
   }
 
@@ -641,13 +641,14 @@ export class HttpApiServer {
       traceId?: string;
       details?: unknown;
     },
+    traceId?: string,
   ): ApiResponsePayload {
     return {
       statusCode,
       headers: {
         "content-type": "application/json; charset=utf-8",
         "x-request-id": requestId,
-        ...(error.traceId ? { "x-trace-id": error.traceId } : {}),
+        ...(traceId ?? error.traceId ? { "x-trace-id": traceId ?? error.traceId } : {}),
       },
       body: JSON.stringify({ requestId, error }, null, 2),
     };

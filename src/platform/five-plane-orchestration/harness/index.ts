@@ -1377,6 +1377,9 @@ export class HarnessRuntimeService {
         escalationThreshold: riskPolicy.escalationThreshold,
         currentStepCount: run.steps.length,
         maxSteps: inputBudget?.maxSteps ?? 100,
+        // R3-1 fix: Pass inputPrompt and memoryAccessPattern for Input/Memory guardrail checks
+        ...(typeof input.generatorOutput?.input === "string" ? { inputPrompt: input.generatorOutput.input as string } : {}),
+        ...(input.producedEvidenceRefs ? { memoryAccessPattern: input.producedEvidenceRefs } : {}),
       });
       this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
       this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
@@ -1391,7 +1394,7 @@ export class HarnessRuntimeService {
         guardrailSuggestedAction: guardrailAssessment.suggestedAction,
         // R18-03 fix: Include all decision factors (policy/budget/risk/sideEffect/guardrail/HITL)
         guardrailAbort: guardrailAssessment.suggestedAction === "abort",
-        hitlPending: run.hitlRequest?.status === "pending",
+        hitlPending: run.hitlRequest?.status === "pending_approval",
         budgetExhausted: inputBudget != null && run.steps.length >= inputBudget.maxSteps,
         harnessRunId: run.harnessRunId,
         ...(lastNodeRunId !== undefined ? { nodeRunId: lastNodeRunId } : {}),

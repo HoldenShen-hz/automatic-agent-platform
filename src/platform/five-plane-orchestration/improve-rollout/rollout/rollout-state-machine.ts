@@ -22,13 +22,13 @@ const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus
   pending_approval: ["evaluation_enabled", "rejected", "paused"],
   rejected: [],
   evaluation_enabled: ["canary_5", "rolled_back", "paused"],
-  canary_5: ["partial_25", "rolled_back", "paused"],
-  partial_25: ["stable_75", "rolled_back", "paused"],
-  stable_75: ["stable_100", "rolled_back", "paused"],
+  canary_5: ["canary_20", "rolled_back", "paused"],
+  canary_20: ["canary_50", "rolled_back", "paused"],
+  canary_50: ["stable_100", "rolled_back", "paused"],
   stable_100: ["released", "rolled_back", "paused"],
   released: ["rolled_back", "paused"],
   rolled_back: [],
-  paused: ["pending_approval", "evaluation_enabled", "canary_5", "partial_25", "stable_75", "stable_100", "released", "rolled_back"],
+  paused: ["pending_approval", "evaluation_enabled", "canary_5", "canary_20", "canary_50", "stable_100", "released", "rolled_back"],
 };
 
 export class RolloutStateMachine {
@@ -95,10 +95,10 @@ function inferStatusFromLevel(level: RolloutLevel, currentStatus: RolloutStatus)
       return "evaluation_enabled";
     case "canary_5":
       return "canary_5";
-    case "partial_25":
-      return "partial_25";
-    case "stable_75":
-      return "stable_75";
+    case "canary_20":
+      return "canary_20";
+    case "canary_50":
+      return "canary_50";
     case "stable_100":
       return "stable_100";
   }
@@ -112,12 +112,12 @@ function inferPreviousStatusFromLevel(level: RolloutLevel, fallback: RolloutStat
       return fallback;
     case "canary_5":
       return "evaluation_enabled";
-    case "partial_25":
+    case "canary_20":
       return "canary_5";
-    case "stable_75":
-      return "partial_25";
+    case "canary_50":
+      return "canary_20";
     case "stable_100":
-      return "stable_75";
+      return "canary_50";
   }
 }
 
@@ -135,10 +135,10 @@ function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
       return "evaluate_0";
     case "canary_5":
       return "canary_5";
-    case "partial_25":
-      return "partial_25";
-    case "stable_75":
-      return "stable_75";
+    case "canary_20":
+      return "canary_20";
+    case "canary_50":
+      return "canary_50";
     case "stable_100":
     case "released":
       return "stable_100";

@@ -16,6 +16,10 @@ export function mapDashboardSnapshotToVm(snapshot: DashboardSnapshotDTO | null):
       { label: "Queue Depth", value: snapshot.queueDepth },
       { label: "Active Executions", value: snapshot.activeExecutions },
       { label: "Approval Backlog", value: snapshot.approvalBacklog },
+      // §R7-15: Display new required metrics
+      { label: "Success Rate", value: `${snapshot.successRate}%` },
+      { label: "Avg Duration", value: `${snapshot.avgDurationMs}ms` },
+      { label: "Active Agents", value: snapshot.activeAgents },
     ],
   };
 }

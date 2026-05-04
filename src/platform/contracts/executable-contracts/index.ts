@@ -314,6 +314,10 @@ export interface PlanGraph {
 export interface ReadyNodeSchedulingPolicy {
   readonly policyId: string;
   readonly strategy: "deterministic_fifo" | "priority_then_fifo" | "risk_isolated";
+  // R6-04 FIX: Add critical_path_rank to enable deterministic graph scheduling
+  // Higher rank = more critical for overall execution time
+  // Used by PlanGraphScheduler.readyNodes() for critical-path-first ordering
+  readonly criticalPathRank?: ReadonlyMap<string, number>;
 }
 
 export interface PlanGraphBundle {
@@ -520,8 +524,11 @@ export interface SideEffectRecord {
   readonly externalRef?: string;
   /** Per-effect deadline (ISO 8601 timestamp) - must commit before this time per §14.11 */
   readonly deadline: string;
-  /** Inline rollback handler specification per §14.11 */
-  readonly rollbackHandler?: string;
+  /** R13-35: Inline rollback handler specification with timeout per §14.11 */
+  readonly rollbackHandler?: {
+    readonly handler: string;
+    readonly timeout: number; // milliseconds
+  };
   /** Inline compensation plan reference per §14.11 */
   readonly compensationPlan?: string;
   readonly createdAt: string;
@@ -1242,7 +1249,11 @@ export function createSideEffectRecord(input: {
   approvalRef?: string;
   externalRef?: string;
   deadline: string;
-  rollbackHandler?: string;
+  /** R13-35: rollback handler with timeout in milliseconds */
+  rollbackHandler?: {
+    handler: string;
+    timeout: number;
+  };
   compensationPlan?: string;
   createdAt?: string;
   updatedAt?: string;

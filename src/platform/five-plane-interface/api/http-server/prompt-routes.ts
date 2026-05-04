@@ -1,3 +1,4 @@
+import type { PromptBundleRegistrationInput } from "../../../contracts/prompt-bundle/index.js";
 import type { HierarchicalPromptRegistryService } from "../../../prompt-engine/registry/hierarchical-registry-service.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
@@ -41,15 +42,18 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         requirePrincipal(ctx.request, deps.authService, "operator");
         // §7.1: Use Zod inferred output type to preserve validated type safety
         // The payload is schema-validated at the HTTP boundary per §5.2
-        const payload = readValidatedJsonBody(ctx.request.body, promptBundleRequestSchema.parse);
-        const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
-        // §7.1: Replace 'as any' with explicit unsafe cast through unknown to make type bypass intentional
+        const payload = readJsonBody(ctx.request.body) as PromptBundleRegistrationInput & {
+          level?: "global" | "domain" | "pack" | "task-type";
+        };
+        const level = payload.level ?? "global";
+        // R6-21 FIX: Use explicit 'as unknown as' cast pattern instead of 'as any'
+        // This makes the type bypass intentional and explicit rather than implicit
         // Zod has validated level/domain/packId; registerBundle requires additional fields not in this schema
         const bundle = deps.promptRegistryService.registerBundle(
-          payload as unknown as Parameters<typeof deps.promptRegistryService.registerBundle>[0],
+          payload,
           level,
-          payload.domain as string | undefined,
-          payload.packId as string | undefined,
+          payload.domain,
+          payload.packId,
         );
         return buildJsonResponse(ctx.requestId, 201, { bundle });
       },

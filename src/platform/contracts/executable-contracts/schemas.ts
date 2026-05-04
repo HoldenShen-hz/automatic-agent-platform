@@ -396,8 +396,11 @@ export const SideEffectRecordSchema = z.object({
   externalRef: z.string().optional(),
   /** Per-effect deadline (ISO 8601 timestamp) - must commit before this time per §14.11 */
   deadline: z.string().min(1),
-  /** Inline rollback handler specification per §14.11 */
-  rollbackHandler: z.string().optional(),
+  /** R13-35: Inline rollback handler specification with timeout per §14.11 */
+  rollbackHandler: z.object({
+    handler: z.string(),
+    timeout: z.number().int().positive(),
+  }).optional(),
   /** Inline compensation plan reference per §14.11 */
   compensationPlan: z.string().optional(),
   createdAt: z.string().min(1),

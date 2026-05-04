@@ -24,16 +24,30 @@ export class RuntimeEntryGuard {
  * @deprecated Use RuntimeTruthRepository.assertNoLegacyTruthWrite() for compile-time enforcement.
  * This method only provides runtime checks. For build-time @deprecated enforcement on legacy imports,
  * use the ESLint no-restricted-imports rule configured in eslint.config.js.
+ *
+ * R6-24 FIX: This method now emits a console warning at runtime to aid migration.
+ * The console.warn message includes migration guidance per §4.3.
  */
 public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonly eventType?: string }): void {
     const legacyContractNames = new Set(["ExecutionPlan", "ExecutionReceipt", "ControlDirective", "WorkflowStep", "StepOutput"]);
+    // R6-24 FIX: Emit runtime warning for migration aid
     if (input.contractName != null && legacyContractNames.has(input.contractName)) {
+      console.warn(
+        `[DEPRECATION] Legacy contract '${input.contractName}' used. ` +
+        `Migrate to canonical contracts per §4.3. ` +
+        `Use PlanGraphBundle instead of ExecutionPlan, NodeAttemptReceipt instead of ExecutionReceipt, ` +
+        `OperationalDirective/DecisionDirective instead of ControlDirective.`,
+      );
       throw new ValidationError(
         "runtime_entry_guard.legacy_contract_forbidden",
         "Legacy execution contracts cannot write v4.3 runtime truth.",
       );
     }
     if (input.eventType != null && !input.eventType.startsWith("platform.")) {
+      console.warn(
+        `[DEPRECATION] Non-platform event type '${input.eventType}' used for truth write. ` +
+        `Runtime truth writes must use platform.* fact events per §28.1.`,
+      );
       throw new ValidationError(
         "runtime_entry_guard.platform_fact_required",
         "Runtime truth writes must be backed by platform.* fact events.",

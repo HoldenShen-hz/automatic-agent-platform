@@ -25,6 +25,13 @@ export interface HarnessSandboxLayer {
  * Creates sandbox layer bindings for tools in the harness.
  * Per §45.4 step 5, each tool may have its own sandbox-layer binding.
  */
+/**
+ * Creates sandbox layer bindings for tools in the harness.
+ * Per §45.4 step 5, each tool may have its own sandbox-layer binding.
+ *
+ * R12-1 fix: Default to "ephemeral" instead of "none" since "none" is rejected
+ * by normalizeSandboxMode() in sandbox-policy.ts as a security violation.
+ */
 export function createSandboxLayer(
   requestedTools: readonly string[],
   constraintPack: {
@@ -35,7 +42,9 @@ export function createSandboxLayer(
     };
   },
 ): HarnessSandboxLayer {
-  const defaultLayer = constraintPack.sandboxRequirement?.sandboxMode ?? "none";
+  // R12-1 fix: "none" is not a valid sandbox tier - must be explicitly rejected
+  // per §171/R21-15. Use "ephemeral" as the minimal-isolation default.
+  const defaultLayer = constraintPack.sandboxRequirement?.sandboxMode ?? "ephemeral";
   const timeoutMs = constraintPack.sandboxRequirement?.timeoutMs ?? 30000;
   const allowedHosts = constraintPack.sandboxRequirement?.allowedHosts;
 

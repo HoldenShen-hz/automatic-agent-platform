@@ -105,6 +105,32 @@ export class PlanDagValidator {
       if (!step.title || step.title.trim().length === 0) {
         issues.push(`planning.missing_title:${step.stepId}`);
       }
+      // §13.10: Validate executor availability
+      if (step.executor == null || typeof step.executor !== "string" || step.executor.trim().length === 0) {
+        issues.push(`planning.missing_executor:${step.stepId}`);
+      }
+      // §13.10: Validate risk/budget completeness
+      const inputs = step.inputs as Record<string, unknown> | undefined;
+      if (inputs?.riskClass == null) {
+        issues.push(`planning.missing_risk_class:${step.stepId}`);
+      }
+      if (inputs?.budget == null) {
+        issues.push(`planning.missing_budget:${step.stepId}`);
+      }
+      // §13.10: Validate tool availability
+      if (step.tools != null && Array.isArray(step.tools)) {
+        for (const tool of step.tools) {
+          if (!tool || typeof tool !== "string" || tool.trim().length === 0) {
+            issues.push(`planning.invalid_tool:${step.stepId}`);
+            break;
+          }
+        }
+      }
+      // §13.10: Validate sandbox mode
+      const sandboxMode = (step as Record<string, unknown>).sandboxMode as string | undefined;
+      if (sandboxMode == null || sandboxMode.trim().length === 0) {
+        issues.push(`planning.missing_sandbox_mode:${step.stepId}`);
+      }
     }
 
     // §13.10: Risk propagation check - identify nodes that inherit high risk

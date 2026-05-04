@@ -83,6 +83,24 @@ export interface ProactiveSuggestionContext {
   readonly requireConfirmation: boolean;
 }
 
+/**
+ * §47 R9-22: Situation awareness data for proactive agent context
+ */
+export interface SituationAwareness {
+  /** Current system load percentage */
+  readonly systemLoadPercent: number | null;
+  /** Current active execution count */
+  readonly activeExecutionsCount: number | null;
+  /** Recent error rate percentage */
+  readonly recentErrorRatePercent: number | null;
+  /** Whether system is in maintenance mode */
+  readonly isInMaintenanceMode: boolean;
+  /** Time since last successful trigger execution */
+  readonly timeSinceLastSuccessMs: number | null;
+  /** Number of pending suggestions in queue */
+  readonly pendingSuggestionsCount: number | null;
+}
+
 export interface ProactiveSuggestion {
   readonly suggestionId: string;
   readonly triggerId: string;
@@ -119,6 +137,16 @@ export interface ProactiveAgentServiceOptions {
     domainId: string,
     trigger: TriggerDefinition,
   ) => readonly string[] | null;
+  /** R9-22: Optional situation awareness provider for runtime context */
+  readonly situationAwarenessProvider?: SituationAwarenessProvider | null;
+}
+
+/**
+ * R9-22: Provider interface for situation awareness data
+ */
+export interface SituationAwarenessProvider {
+  /** Get current situation awareness snapshot */
+  getSituationAwareness(): SituationAwareness;
 }
 
 interface TriggerRuntimeState {
@@ -309,6 +337,8 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     domainId: string,
     trigger: TriggerDefinition,
   ) => readonly string[] | null;
+  /** R9-22: Situation awareness provider for runtime context */
+  private readonly situationAwarenessProvider: SituationAwarenessProvider | null;
 
   public constructor(options: ProactiveAgentServiceOptions = {}) {
     this.declaredTriggerIdsByDomain = options.declaredTriggerIdsByDomain ?? {};
@@ -317,6 +347,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     this.budgetPoolsByDomain = options.budgetPoolsByDomain ?? {};
     this.currentAutonomyLevel = options.currentAutonomyLevel ?? "supervised";
     this.domainDescriptorValidator = options.domainDescriptorValidator ?? (() => null);
+    this.situationAwarenessProvider = options.situationAwarenessProvider ?? null;
   }
 
   public async registerTrigger(trigger: ProactiveTrigger | TriggerDefinition): Promise<void> {
@@ -412,6 +443,33 @@ export class ProactiveAgentService implements ProactiveAgentPort {
       reasons.push("proactive_agent.trigger_condition_not_met");
     }
 
+    let actionMode = resolveTriggerActionMode(
+      state.trigger.action.requireConfirmation,
+      state.trigger.riskLevel,
+    );
+
+    // R9-22: Check situation awareness before allowing execution
+    if (this.situationAwarenessProvider != null) {
+      const awareness = this.situationAwarenessProvider.getSituationAwareness();
+      // If system is in maintenance mode, block auto-execution
+      if (awareness.isInMaintenanceMode && actionMode === "auto_execute") {
+        reasons.push("proactive_agent.system_in_maintenance_mode");
+        actionMode = "suggest";
+      }
+      // If error rate is too high, be more conservative
+      if (awareness.recentErrorRatePercent != null && awareness.recentErrorRatePercent > 10 && state.trigger.riskLevel !== "low") {
+        reasons.push("proactive_agent.elevated_error_rate");
+        if (actionMode === "auto_execute") {
+          actionMode = "suggest";
+        }
+      }
+      // If system load is very high, downgrade auto-execute to suggest
+      if (awareness.systemLoadPercent != null && awareness.systemLoadPercent > 90 && actionMode === "auto_execute") {
+        reasons.push("proactive_agent.high_system_load");
+        actionMode = "suggest";
+      }
+    }
+
     if (reasons.length > 0) {
       return {
         allowed: false,
@@ -440,11 +498,6 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
     // R16-21 FIX: Use resolveTriggerActionMode for all trigger action types to ensure
     // consistent action-mode determination across all risk levels (no duplication).
-    let actionMode = resolveTriggerActionMode(
-      state.trigger.action.requireConfirmation,
-      state.trigger.riskLevel,
-    );
-
     // R17-23 FIX: Enforce suggestion mode for medium+ risk when confirmation is disabled.
     // If requireConfirmation=false but risk is medium+, we must NOT auto-execute.
     // resolveTriggerActionMode only runs when requireConfirmation is true, so we need

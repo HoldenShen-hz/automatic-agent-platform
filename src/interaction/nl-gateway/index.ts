@@ -1362,6 +1362,7 @@ export class NlEntryService implements NlEntryPort {
             confirmedBy: principalRef,
             riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
             confirmedAt: confirmationReceipt.time ?? new Date().toISOString(),
+            state: "confirmed",
             ...(canonicalTaskDraft.expiresAt !== undefined ? { expiresAt: canonicalTaskDraft.expiresAt } : {}),
           }
         : undefined;
@@ -1395,6 +1396,28 @@ export class NlEntryService implements NlEntryPort {
           state: "pending_user_confirmation" as const,
         },
         conversationState: "Clarifying",
+        canonicalTaskDraft,
+        clarificationSession: clarificationSession ?? null,
+        confirmedTaskSpec: null,
+        canonicalRequestEnvelope: null,
+      };
+    }
+    // R9-32 fix: Only build confirmedTaskSpec and canonicalRequestEnvelope when confirmation is confirmed
+    // This ensures RequestEnvelope is only created after user confirmation is obtained
+    // Note: When confirmationRequired is false, state is "not_required" and we still build because
+    // no confirmation is needed - this is the correct behavior
+    if (confirmationReceipt.state === "pending_user_confirmation") {
+      return {
+        requestEnvelope: null,
+        riskPreview,
+        costEstimate,
+        ...(dryRunPreview != null ? { dryRunPreview } : {}),
+        confirmationRequired,
+        humanSummary: surfacedSummary,
+        taskDraft,
+        clarificationState,
+        confirmationReceipt,
+        conversationState,
         canonicalTaskDraft,
         clarificationSession: clarificationSession ?? null,
         confirmedTaskSpec: null,
@@ -1451,7 +1474,7 @@ export class NlEntryService implements NlEntryPort {
     });
     // §39.6: Architecture requires only confirmed TaskSpec can generate RequestEnvelope
     // Gate RequestEnvelope creation behind confirmation state check
-    if (confirmationReceipt.state === "pending_user_confirmation") {
+    if (confirmationRequired) {
       return {
         requestEnvelope: null,
         riskPreview,

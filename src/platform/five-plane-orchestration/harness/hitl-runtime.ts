@@ -1,7 +1,7 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 export type HitlMode = "inspect" | "patch" | "override" | "takeover" | "resume";
-export type HitlRequestStatus = "pending" | "approved" | "rejected" | "expired" | "patched" | "overridden" | "taken_over";
+export type HitlRequestStatus = "pending_approval" | "approved" | "rejected" | "paused" | "completed";
 
 export interface HitlRequest {
   readonly requestId: string;
@@ -72,7 +72,7 @@ export class HitlRuntime {
       reason: input.reason,
       evidenceRefs: [...input.evidenceRefs],
       requestedAt: nowIso(),
-      status: "pending",
+      status: "pending_approval",
       resolvedAt: null,
       resolvedBy: null,
     };
@@ -110,7 +110,7 @@ export class HitlRuntime {
     const beforeRef = `patch:before:${requestId}:${nowIso()}`;
     const patched: HitlRequest = {
       ...request,
-      status: "patched",
+      status: "completed",
       resolvedAt: nowIso(),
       resolvedBy: actorId,
       patchContent,
@@ -135,7 +135,7 @@ export class HitlRuntime {
     const afterRef = `override:after:${requestId}:${nowIso()}`;
     const overridden: HitlRequest = {
       ...request,
-      status: "overridden",
+      status: "completed",
       resolvedAt: nowIso(),
       resolvedBy: actorId,
       patchContent: overrideContent,
@@ -155,7 +155,7 @@ export class HitlRuntime {
     const beforeRef = `takeover:before:${requestId}:${nowIso()}`;
     const takenOver: HitlRequest = {
       ...request,
-      status: "taken_over",
+      status: "completed",
       resolvedAt: nowIso(),
       resolvedBy: actorId,
       beforeRef,
@@ -170,8 +170,8 @@ export class HitlRuntime {
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
-    // R23-34 FIX: Add idempotency protection - reject double-resolution of already-resolved requests
-    if (request.status !== "pending") {
+    // R23-34/R3-2 fix: Add idempotency protection - reject double-resolution of already-resolved requests
+    if (request.status !== "pending_approval") {
       throw new Error(`harness.hitl.request_already_resolved:${requestId}:${request.status}`);
     }
     const resolved: HitlRequest = {
@@ -182,6 +182,32 @@ export class HitlRuntime {
     };
     this.requests.set(requestId, resolved);
     return resolved;
+  }
+
+  /**
+   * R3-2 fix: Implement pause() method to transition request to "paused" status.
+   * §45.18 requires 5 HITL states including paused for workflow suspension.
+   */
+  public pause(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
+    const request = this.requests.get(requestId);
+    if (!request) {
+      throw new Error(`harness.hitl.request_not_found:${requestId}`);
+    }
+    // Only pending_approval or approved requests can be paused
+    if (request.status !== "pending_approval" && request.status !== "approved") {
+      throw new Error(`harness.hitl.cannot_pause_from_status:${requestId}:${request.status}`);
+    }
+    const beforeRef = `pause:before:${requestId}:${nowIso()}`;
+    const paused: HitlRequest = {
+      ...request,
+      status: "paused",
+      resolvedAt: nowIso(),
+      resolvedBy: actorId,
+      beforeRef,
+    };
+    this.requests.set(requestId, paused);
+    const record = this.createResponsibilityRecord(paused, actorId, "override", rationale, beforeRef);
+    return { request: paused, record };
   }
 
   public resume(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {

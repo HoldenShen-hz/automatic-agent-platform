@@ -149,6 +149,10 @@ export interface DashboardSnapshotDTO {
   readonly activeExecutions: number;
   readonly approvalBacklog: number;
   readonly alertSummary: string;
+  // §R7-15: Required metrics for dashboard
+  readonly successRate: number;        // percentage 0-100
+  readonly avgDurationMs: number;      // average execution duration in milliseconds
+  readonly activeAgents: number;      // count of active agents
 }
 
 export interface WorkflowStepDTO {

@@ -1137,6 +1137,35 @@ export class DurableEventBus {
     }
     this.activeConsumerRefCounts.set(consumerId, currentCount - 1);
   }
+
+  // §28.1/R12-24: Reset acknowledgment state for a specific event+consumer pair.
+  // Allows targeted replay of failed events without resetting all consumer state.
+  /**
+   * Resets the acknowledgment state for a specific event and consumer.
+   * Enables targeted replay of individual events (R12-24).
+   * @param eventId - The event ID to reset
+   * @param consumerId - The consumer ID whose ack to reset
+   */
+  public resetAckForReplay(eventId: string, consumerId: string): void {
+    this.store.event.markEventAck({
+      eventId,
+      consumerId,
+      status: "pending",
+      occurredAt: nowIso(),
+    });
+  }
+
+  // §28.1/R12-26: Schema version getter for event type validation.
+  // Returns the schema version for an event type to support schema evolution.
+  /**
+   * Gets the schema version for an event type (R12-26).
+   * @param eventType - The event type to check
+   * @returns The schema version string
+   */
+  public getSchemaVersion(eventType: string): string {
+    const schema = getEventSchema(eventType);
+    return schema.compatibilityPolicy === "versioned_breaking_change" ? "2.0" : "1.0";
+  }
 }
 
 /**

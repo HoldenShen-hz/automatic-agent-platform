@@ -107,7 +107,7 @@ function buildSyntheticPipelineResult(routeDecision: IntakeRouteDecision) {
       priority: 0,
       requestHash: `request_hash:${confirmedTaskSpecId}`,
       constraintPackRef: `constraint_pack:${routeDecision.divisionId}`,
-      budgetIntent: { amount: 0, currency: "USD", resourceKinds: ["tokens"] as const },
+      budgetIntent: { amount: 0, currency: "USD", resourceKinds: ["token"] as const },
       policyContext: {},
       artifactRefs: [],
       submittedAt: now,

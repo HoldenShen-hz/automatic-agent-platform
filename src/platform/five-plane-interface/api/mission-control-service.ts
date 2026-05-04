@@ -436,13 +436,16 @@ export class MissionControlService {
 
   private deriveStatusLabel(taskStatus: string | undefined): string {
     const status = taskStatus ?? "pending";
+    // R6-17 FIX: Complete labelMap to cover all TaskStatus values (7 states)
+    // Missing: queued (was in original 6), cancelled (was missing entirely)
     const labelMap: Record<string, string> = {
+      queued: "Queued",
       pending: "Pending",
       in_progress: "In Progress",
+      awaiting_decision: "Awaiting Decision",
       done: "Completed",
       failed: "Failed",
-      paused: "Paused",
-      awaiting_decision: "Awaiting Decision",
+      cancelled: "Cancelled",
     };
     return labelMap[status] ?? status;
   }
