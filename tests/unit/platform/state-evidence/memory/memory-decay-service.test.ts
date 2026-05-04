@@ -264,6 +264,18 @@ test("calculateFreshness with hitCount applies access boost", () => {
   assert.ok(freshness50 > freshness10, "hitCount 50 should have higher freshness than 10");
 });
 
+test("calculateFreshness slows decay for frequently accessed memories without pinning freshness to 1.0", () => {
+  const coldMemory = createMemoryRecord({ hitCount: 0, createdAt: "2026-04-01T00:00:00.000Z" });
+  const hotMemory = createMemoryRecord({ hitCount: 500, createdAt: "2026-04-01T00:00:00.000Z" });
+  const config = DEFAULT_DECAY_CONFIGS.session;
+
+  const coldFreshness = calculateFreshness(coldMemory, config, "2026-04-01T02:00:00.000Z");
+  const hotFreshness = calculateFreshness(hotMemory, config, "2026-04-01T02:00:00.000Z");
+
+  assert.ok(hotFreshness > coldFreshness, "high hitCount should slow decay instead of accelerating it");
+  assert.ok(hotFreshness < 1.0, "high hitCount must not saturate freshness at 1.0");
+});
+
 test("calculateFreshness infinite half-life means no decay", () => {
   const memory = createMemoryRecord({ createdAt: "2020-01-01T00:00:00.000Z" });
   const config = DEFAULT_DECAY_CONFIGS.meta;

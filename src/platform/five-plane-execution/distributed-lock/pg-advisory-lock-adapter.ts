@@ -41,7 +41,7 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
       hash = hash * FNV_PRIME;
     }
     // Map to positive 63-bit range (avoid negative advisory lock keys)
-    return (hash & BigInt("0x7FFFFFFFFFFFFFFF")) % BigInt(2 ** 63);
+    return hash & BigInt("0x7FFFFFFFFFFFFFFF");
   }
 
   private ensureConnected(): void {

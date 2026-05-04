@@ -20,6 +20,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
   private readonly redis: {
     status: string;
     connect(): Promise<void>;
+    incr(key: string): Promise<number>;
     set(key: string, value: string, ...args: Array<string | number>): Promise<string | null>;
     get(key: string): Promise<string | null>;
     del(key: string): Promise<number>;
@@ -94,11 +95,12 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     const ttlMs = input.ttlMs ?? 30_000;
     const ttlSec = Math.ceil(ttlMs / 1000);
     const lockKey = `lock:${input.lockKey}`;
-    this.fencingCounter += 1;
+    const fencingToken = await this.redis.incr("lock:fencing_counter");
+    this.fencingCounter = fencingToken;
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${this.fencingCounter}`,
+      id: `lock_${Date.now()}_${fencingToken}`,
       owner: input.owner,
-      fencingToken: this.fencingCounter,
+      fencingToken,
       ttlMs,
       acquiredAt: now,
       metadata: null,
@@ -139,10 +141,8 @@ if not current then return -1 end
 local data = cjson.decode(current)
 if data.owner ~= ARGV[1] then return 0 end
 local newTtl = math.min(tonumber(ARGV[2]), 600000)
-redis.call('pexpire', KEYS[1], newTtl)
--- R16-16 FIX: Update ttlMs in JSON so inspect() returns correct value
 data.ttlMs = newTtl
-redis.call('set', KEYS[1], cjson.encode(data))
+redis.call('set', KEYS[1], cjson.encode(data), 'PX', newTtl)
 return 1`;
     const newTtlMs = Math.min(additionalMs, 600_000);
     const result = await this.redis.eval(extendLua, 1, key, owner, String(newTtlMs));
@@ -169,12 +169,13 @@ return 1`;
     await this.ensureConnected();
     const key = `lock:${lockKey}`;
     const now = new Date().toISOString();
-    this.fencingCounter += 1;
+    const fencingToken = await this.redis.incr("lock:fencing_counter");
+    this.fencingCounter = fencingToken;
     const ttlMs = 30_000;
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${this.fencingCounter}`,
+      id: `lock_${Date.now()}_${fencingToken}`,
       owner: newOwner,
-      fencingToken: this.fencingCounter,
+      fencingToken,
       ttlMs,
       acquiredAt: now,
       metadata: JSON.stringify({ forceStealReason: reason }),
@@ -194,7 +195,7 @@ return 1`;
     return {
       lockKey,
       owner: newOwner,
-      fencingToken: this.fencingCounter,
+      fencingToken,
       status: "held",
       acquiredAt: now,
       ttlMs,

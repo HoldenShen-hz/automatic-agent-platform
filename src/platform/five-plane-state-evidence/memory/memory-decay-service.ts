@@ -139,11 +139,12 @@ export interface DecaySummary {
  * Calculates the freshness score for a memory
  *
  * Uses exponential decay with access boosting:
- * freshness = max(minFreshness, initial * exp(-decayRate * age * (1 + accessBoost)))
- * where accessBoost = accessBoostFactor * log(1 + hitCount)
+ * freshness = max(minFreshness, initial * exp(-(decayRate * age) / accessBoostMultiplier))
+ * where accessBoostMultiplier = 1 + accessBoostFactor * log(1 + hitCount)
  *
- * Access boost slows decay multiplicatively rather than adding to freshness,
- * ensuring high-frequency memories still decay over time per the 6-layer model.
+ * Access boost slows decay by damping the decay rate rather than adding
+ * directly to freshness, ensuring high-frequency memories still decay over
+ * time without saturating at 1.0.
  */
 export function calculateFreshness(
   memory: MemoryRecord,
@@ -157,18 +158,18 @@ export function calculateFreshness(
   // Base freshness starts at 1.0
   let freshness = 1.0;
 
-  // Calculate access boost (each hit slows decay multiplicatively)
-  // R20-3 FIX: Previous additive approach (freshness + boost) caused freshness to saturate at 1.0
-  // for high hitCount, violating the 6-layer model where frequent memories should still decay.
-  // The fix applies boost to the decay rate itself: exp(-decayRate * age * (1 + boost))
-  // boost > 0 slows decay, boost = 0 means normal decay
+  // Calculate access boost as a decay-rate dampener.
+  // Previous additive freshness boosts could saturate at 1.0, and multiplying the
+  // decay rate by the boost inverted the intended behavior by making hot memories
+  // decay faster. Dividing by the bounded multiplier preserves the "frequent access
+  // slows decay" contract while still allowing eventual decay over time.
   const hitCount = memory.hitCount ?? 0;
-  const accessBoost = config.accessBoostFactor * Math.log(1 + hitCount);
+  const accessBoostMultiplier = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
 
   // Apply exponential decay based on layer half-life, with access boost slowing decay
   if (config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {
     const decayRate = Math.LN2 / config.halfLifeSeconds;
-    const effectiveDecayRate = decayRate * config.decayRateMultiplier * (1 + accessBoost);
+    const effectiveDecayRate = (decayRate * config.decayRateMultiplier) / accessBoostMultiplier;
     freshness = freshness * Math.exp(-effectiveDecayRate * ageSeconds);
   } else {
     // Meta layer has no decay - freshness stays at 1.0
@@ -242,8 +243,8 @@ export class MemoryDecayService {
     const currentFreshness = calculateFreshness(memory, config, evaluatedAt);
     const decayAmount = Math.max(0, previousFreshness - currentFreshness);
 
-    // R16-16 FIX: Use logarithmic access boost to prevent freshness saturation
-    // logarithmic boost: boost = 1 + accessBoostFactor * log(1 + hitCount)
+    // Use the same bounded multiplier as calculateFreshness() so audit data reflects
+    // the actual decay-rate dampening applied during freshness evaluation.
     const hitCount = memory.hitCount ?? 0;
     const accessBoost = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
 
@@ -251,7 +252,9 @@ export class MemoryDecayService {
     const decayRate = config.halfLifeSeconds > 0
       ? Math.LN2 / config.halfLifeSeconds
       : 0;
-    const effectiveDecayRate = decayRate * config.decayRateMultiplier;
+    const effectiveDecayRate = accessBoost > 0
+      ? (decayRate * config.decayRateMultiplier) / accessBoost
+      : decayRate * config.decayRateMultiplier;
 
     return {
       memoryId: memory.id,

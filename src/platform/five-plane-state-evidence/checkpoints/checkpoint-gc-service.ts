@@ -10,12 +10,11 @@
  * R23-10 Fix: CheckpointGC implementation
  */
 
-import { existsSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { nowIso } from "../../../contracts/types/ids.js";
+
+import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import type { CheckpointRef } from "./checkpoint-ref-validator.js";
-import { validateCheckpointRef } from "./checkpoint-ref-validator.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -39,7 +38,12 @@ export interface CheckpointRetentionPolicy {
  * GC candidate checkpoint information.
  */
 export interface CheckpointGCCandidate {
-  checkpointRef: CheckpointRef;
+  checkpointRef: {
+    checkpointId: string;
+    storageUri: string;
+    checksum?: string;
+    createdAt?: string;
+  };
   storagePath: string;
   sizeBytes: number;
   createdAt: string;
@@ -122,7 +126,13 @@ export class CheckpointGCService {
       const executionDirs = readdirSync(this.rootDir);
       for (const executionId of executionDirs) {
         const executionPath = join(this.rootDir, executionId);
-        if (!statSync(executionPath).isDirectory()) {
+        let execStat;
+        try {
+          execStat = statSync(executionPath);
+        } catch {
+          continue;
+        }
+        if (!execStat.isDirectory()) {
           continue;
         }
 
@@ -202,46 +212,47 @@ export class CheckpointGCService {
       return 0;
     }
 
+    type CheckpointFileInfo = { file: string; path: string; stat: { mtimeMs: number; birthtime: Date; size: number; isDirectory(): boolean } };
+
+    const checkpointFiles: CheckpointFileInfo[] = [];
     try {
-      const checkpointFiles = readdirSync(executionPath)
-        .filter((f) => f.endsWith(".checkpoint.json"))
-        .map((f) => ({
-          file: f,
-          path: join(executionPath, f),
-          stat: statSync(join(executionPath, f)),
-        }))
-        .sort((a, b) => a.stat.mtimeMs - b.stat.mtimeMs); // Oldest first
-
-      const maxToRetain = this.retentionPolicy.maxCheckpointsPerExecution;
-      if (checkpointFiles.length <= maxToRetain) {
-        return 0;
-      }
-
-      const toDelete = checkpointFiles.slice(0, checkpointFiles.length - maxToRetain);
-      let deleted = 0;
-
-      for (const file of toDelete) {
+      for (const f of readdirSync(executionPath)) {
+        if (!f.endsWith(".checkpoint.json")) {
+          continue;
+        }
+        const filePath = join(executionPath, f);
         try {
-          rmSync(file.path, { force: true });
-          deleted++;
-        } catch (err) {
-          logger.log({
-            level: "warn",
-            message: "checkpoint_gc.version_limit_delete_failed",
-            data: { path: file.path, error: String(err) },
-          });
+          const s = statSync(filePath);
+          checkpointFiles.push({ file: f, path: filePath, stat: s });
+        } catch {
+          // Skip files we can't stat
         }
       }
-
-      return deleted;
-    } catch (err) {
-      logger.log({
-        level: "error",
-        message: "checkpoint_gc.version_limit_error",
-        data: { executionId, error: String(err) },
-      });
+    } catch {
+      logger.log({ level: "error", message: "checkpoint_gc.version_limit_error", data: { executionId } });
       return 0;
     }
+
+    checkpointFiles.sort((a, b) => Number(a.stat.mtimeMs) - Number(b.stat.mtimeMs));
+
+    const maxToRetain = this.retentionPolicy.maxCheckpointsPerExecution;
+    if (checkpointFiles.length <= maxToRetain) {
+      return 0;
+    }
+
+    const toDelete = checkpointFiles.slice(0, checkpointFiles.length - maxToRetain);
+    let deleted = 0;
+
+    for (const file of toDelete) {
+      try {
+        rmSync(file.path, { force: true });
+        deleted++;
+      } catch (err) {
+        logger.log({ level: "warn", message: "checkpoint_gc.version_limit_delete_failed", data: { path: file.path, error: String(err) } });
+      }
+    }
+
+    return deleted;
   }
 
   /**
@@ -268,7 +279,14 @@ export class CheckpointGCService {
       const executionDirs = readdirSync(this.rootDir);
       for (const executionId of executionDirs) {
         const executionPath = join(this.rootDir, executionId);
-        if (!statSync(executionPath).isDirectory()) {
+        let execStat;
+        try {
+          execStat = statSync(executionPath);
+        } catch {
+          orphanedCount++;
+          continue;
+        }
+        if (!execStat.isDirectory()) {
           orphanedCount++;
           continue;
         }
@@ -281,11 +299,17 @@ export class CheckpointGCService {
             }
 
             const filePath = join(executionPath, file);
-            const stats = statSync(filePath);
-            const createdAt = stats.birthtime.toISOString();
+            let fileStat;
+            try {
+              fileStat = statSync(filePath);
+            } catch {
+              continue;
+            }
+            const createdAt = fileStat.birthtime.toISOString();
+            const sizeBytes = Number(fileStat.size);
 
             totalCheckpoints++;
-            totalSizeBytes += stats.size;
+            totalSizeBytes += sizeBytes;
 
             if (!oldestCheckpoint || createdAt < oldestCheckpoint) {
               oldestCheckpoint = createdAt;
@@ -335,7 +359,12 @@ export class CheckpointGCService {
 
       for (const file of checkpointFiles) {
         const filePath = join(executionPath, file);
-        const stats = statSync(filePath);
+        let stats;
+        try {
+          stats = statSync(filePath);
+        } catch {
+          continue;
+        }
         const checkpointId = file.replace(".checkpoint.json", "");
 
         const candidate = this.evaluateCheckpointForGC(
@@ -367,7 +396,7 @@ export class CheckpointGCService {
   private evaluateCheckpointForGC(
     checkpointId: string,
     filePath: string,
-    stats: ReturnType<typeof statSync>,
+    stats: { mtimeMs: number; birthtime: Date; size: number },
     executionId: string,
     referenceTimestamp: number,
   ): CheckpointGCCandidate | null {
@@ -385,11 +414,10 @@ export class CheckpointGCService {
       checkpointRef: {
         checkpointId,
         storageUri: `file://${filePath}`,
-        checksum: undefined,
         createdAt: stats.birthtime.toISOString(),
       },
       storagePath: filePath,
-      sizeBytes: stats.size,
+      sizeBytes: Number(stats.size),
       createdAt: stats.birthtime.toISOString(),
       executionId,
       isOrphaned: false,
