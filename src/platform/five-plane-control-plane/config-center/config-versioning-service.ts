@@ -568,7 +568,9 @@ export class ConfigVersioningService {
       },
     });
 
-    if (eventType === "config.version.created" || eventType === "config.version.rollback") {
+    // Only emit config.changed for rollback events, not for new version creations
+    // to avoid duplicate event emission (config.version.created already covers this)
+    if (eventType === "config.version.rollback") {
       this.eventBus.publish({
         eventType: "config.changed",
         payload: {

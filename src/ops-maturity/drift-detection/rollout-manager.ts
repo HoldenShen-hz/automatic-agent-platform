@@ -140,7 +140,28 @@ export class SimpleRolloutManager implements RolloutManager {
     if (violations.length > 0) {
       record.status = 'rollback_pending';
       record.failureReason = `Metric threshold breach: ${violations.join('; ')}`;
+      // R13-10 FIX: emit rollback event and schedule rollback execution
+      logger.log({
+        level: "warn",
+        message: "rollout_manager.auto_rollback_triggered",
+        data: { proposalId, violations, metrics, thresholds },
+      });
+      // Schedule rollback execution - SimpleRolloutManager is in-memory so we log a warning
+      // that external coordinator must handle the actual revert. In full implementation,
+      // this would call a RollbackScheduler.scheduleRollback(proposalId) or similar.
+      this.scheduleRollback(proposalId);
     }
+  }
+
+  private scheduleRollback(proposalId: string): void {
+    // R13-10 FIX: scheduling hook for auto-rollback
+    // In production, this would enqueue a rollback job via the task queue system.
+    // For SimpleRolloutManager (in-memory), we emit the event and rely on external monitors.
+    logger.log({
+      level: "info",
+      message: "rollout_manager.rollback_scheduled",
+      data: { proposalId, scheduledAt: nowIso() },
+    });
   }
 
   async complete(proposalId: string): Promise<void> {

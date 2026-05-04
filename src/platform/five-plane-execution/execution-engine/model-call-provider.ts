@@ -253,42 +253,82 @@ export class ModelCallProviderService {
       });
     }
 
-    const req: ChatCompletionRequest = {
-      model: request.model,
-      messages: request.messages,
-      maxTokens: request.maxTokens,
-      stream: true,
-      traceId: request.traceId ?? newId("trace"),
-      tenantId: request.tenantId ?? null,
-      costTag: request.costTag ?? "default",
-      ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
-      ...(request.tools !== undefined ? { tools: request.tools } : {}),
-    };
-    if (request.system !== undefined) {
-      req.system = request.system;
-    }
-    if (request.temperature !== undefined) {
-      req.temperature = request.temperature;
-    }
+    // R4-25 (INV-BUDGET-001) + R8-01 FIX: Atomic reserve→execute→settle via BudgetExecutionSession
+    const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
+    const policy = this.getDefaultBudgetPolicy();
+    const traceId = request.traceId ?? newId("trace");
 
-    const governanceKey = buildModelGovernanceKey(request.model);
-    const executeStreaming = async (): Promise<void> => {
-      await this.unifiedProvider.createStreamingChatCompletion(
-        req,
-        (chunk) => {
-          onChunk(this.normalizeResult(chunk), false);
-        },
+    // R8-01: Use BudgetExecutionSessionManager for atomic reserve→execute→settle
+    // This prevents concurrent requests from overspending due to race conditions
+    const executionContext: BudgetExecutionContext = {
+      tenantId: request.tenantId ?? "tenant:local",
+      harnessRunId: this.budgetLedger.harnessRunId,
+      traceId,
+      emittedBy: "ModelCallProviderService",
+      ledger: this.budgetLedger,
+      policy,
+    };
+
+    let session;
+    try {
+      // R8-01: Step 1 - Reserve budget atomically
+      session = this.budgetSessionManager.reserveAndCreateSession(
+        executionContext,
+        estimatedCostUsd,
+        "token",
       );
-    };
 
-    if (this.callGovernance == null) {
-      await executeStreaming();
-      return;
-    }
+      // Mark as executing
+      this.budgetSessionManager.markExecuting(session.sessionId);
 
-    const result = await this.callGovernance.execute(governanceKey, executeStreaming);
-    if (!result.success) {
-      throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+      const req: ChatCompletionRequest = {
+        model: request.model,
+        messages: request.messages,
+        maxTokens: request.maxTokens,
+        stream: true,
+        traceId,
+        tenantId: request.tenantId ?? null,
+        costTag: request.costTag ?? "default",
+        ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
+        ...(request.tools !== undefined ? { tools: request.tools } : {}),
+      };
+      if (request.system !== undefined) {
+        req.system = request.system;
+      }
+      if (request.temperature !== undefined) {
+        req.temperature = request.temperature;
+      }
+
+      const governanceKey = buildModelGovernanceKey(request.model);
+      const executeStreaming = async (): Promise<void> => {
+        await this.unifiedProvider.createStreamingChatCompletion(
+          req,
+          (chunk) => {
+            onChunk(this.normalizeResult(chunk), false);
+          },
+        );
+      };
+
+      if (this.callGovernance == null) {
+        await executeStreaming();
+      } else {
+        const result = await this.callGovernance.execute(governanceKey, executeStreaming);
+        if (!result.success) {
+          throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
+        }
+      }
+
+      // R8-01: Step 2 - Settle with estimated cost (streaming can't predict actual tokens upfront)
+      this.budgetSessionManager.settle(session.sessionId, estimatedCostUsd);
+    } catch (error) {
+      // R8-01: Step 3 - Release reservation on failure
+      if (session) {
+        this.budgetSessionManager.release(
+          session.sessionId,
+          error instanceof Error ? error.message : "streaming_model_call_failed",
+        );
+      }
+      throw error;
     }
   }
 
