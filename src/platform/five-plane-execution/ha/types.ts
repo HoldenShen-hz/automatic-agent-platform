@@ -341,6 +341,8 @@ export interface LeaseReclaimerConfig {
   reclaimIntervalMs: number;
   /** Grace period before reclaiming a lease after expiration */
   gracePeriodMs: number;
+  /** Heartbeat age threshold beyond which a node is considered stale */
+  staleNodeThresholdMs: number;
   /** Whether to trigger automatic failover */
   autoFailover: boolean;
 }

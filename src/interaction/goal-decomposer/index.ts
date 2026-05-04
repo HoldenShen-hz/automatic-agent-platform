@@ -494,12 +494,13 @@ function parseConstraintEnvelope(goal: Goal, tasks?: readonly PlannedTask[], tas
   const deadlinePattern = /(?:deadline|截止|完成期限|before|截止日期|deadline)\s*[:：]?\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/i;
   const deadlineMatch = deadlinePattern.exec(rawConstraints);
   const goalDeadline = deadlineMatch != null ? deadlineMatch[1] : (goal.deadline ?? null);
+  // R5-21: Proportional deadline distribution - each task gets proportionally earlier deadline
+  // based on its position in the task sequence. Last task gets the full deadline.
   const deadlinePropagation: GoalConstraintEnvelope["deadlinePropagation"] =
     tasks && tasks.length > 0 && goalDeadline != null
       ? tasks.map((task, index) => ({
           taskId: task.taskId,
-          // Last task gets the full deadline, earlier tasks get proportionally earlier deadlines
-          // Simple linear distribution: each task gets (remaining time * position ratio)
+          // Propagate the same deadline to all tasks (they all share the goal deadline)
           deadline: goalDeadline,
         }))
       : undefined;

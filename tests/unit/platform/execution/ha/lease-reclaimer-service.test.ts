@@ -218,6 +218,25 @@ function createMockCoordinator(): HaCoordinatorService & {
       return 0;
     },
 
+    getExpiredLeaseRows() {
+      const now = Date.now();
+      return Array.from(mockState.leases.values()).filter(
+        (lease) => lease.status === "active" && Date.parse(lease.expiresAt) <= now,
+      );
+    },
+
+    expireLease(leaseId: string) {
+      for (const [nodeId, lease] of mockState.leases.entries()) {
+        if (lease.leaseId === leaseId) {
+          mockState.leases.set(nodeId, {
+            ...lease,
+            status: "expired",
+          });
+          return;
+        }
+      }
+    },
+
     purgeOldFailoverDecisions() {
       return 0;
     },
@@ -742,21 +761,33 @@ test("LeaseReclaimerService - expired lease detection", async () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - stale node detection (empty in basic mock)", async () => {
+test("LeaseReclaimerService - stale node detection reclaims leader node that missed heartbeats", async () => {
   const coordinator = createMockCoordinator();
 
-  // Register node without leadership
+  // Register leader node with an active lease, but force stale heartbeat + expired leadership view.
   coordinator.registerNode("node-1", "us-east-1");
+  coordinator.acquireLeadership({ nodeId: "node-1", ttlMs: 60_000 });
+  coordinator.mockState.isExpired = true;
+  coordinator.mockState.expiresAt = new Date(Date.now() - 1_000).toISOString();
+  const node = coordinator.getNode("node-1")!;
+  node.isLeader = true;
+  node.lastHeartbeatAt = new Date(Date.now() - 60_000).toISOString();
 
   const service = createReclaimer(coordinator, {
-    config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: false },
+    config: {
+      reclaimIntervalMs: 10_000,
+      gracePeriodMs: 2_000,
+      staleNodeThresholdMs: 5_000,
+      autoFailover: false,
+    },
   });
 
   service.start();
   const result = await service.reclaimOnce();
 
-  // getStaleNodes returns empty array in basic implementation
-  assert.equal(result.reclaimedCount, 0);
+  assert.equal(result.reclaimedCount, 1);
+  assert.equal(result.failoverTriggered, false);
+  assert.deepEqual(result.failedNodeIds, []);
 
   service.dispose();
 });

@@ -87,6 +87,7 @@ export class LeaseReclaimerService implements RecoveryWorker {
     this.config = {
       reclaimIntervalMs: options.config?.reclaimIntervalMs ?? haDefaults.leaseReclaimerIntervalMs,
       gracePeriodMs: options.config?.gracePeriodMs ?? DEFAULT_GRACE_PERIOD_MS,
+      staleNodeThresholdMs: options.config?.staleNodeThresholdMs ?? haDefaults.leaseTtlMs,
       autoFailover: options.config?.autoFailover ?? true,
     };
 
@@ -398,9 +399,13 @@ export class LeaseReclaimerService implements RecoveryWorker {
    * Gets nodes that have missed heartbeats.
    */
   private async getStaleNodes(): Promise<CoordinatorNode[]> {
-    // For stale detection, we'd query nodes with lastHeartbeatAt older than threshold
-    // This would be implemented via the repository
-    return [];
+    const staleBefore = Date.now() - this.config.staleNodeThresholdMs;
+    return this.coordinator
+      .listNodes("active")
+      .filter((node) => {
+        const heartbeatAt = Date.parse(node.lastHeartbeatAt);
+        return !Number.isFinite(heartbeatAt) || heartbeatAt < staleBefore;
+      });
   }
 
   /**

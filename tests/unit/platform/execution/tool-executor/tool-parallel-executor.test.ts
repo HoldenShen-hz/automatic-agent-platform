@@ -240,6 +240,28 @@ test("executeToolsInParallel failFast works between batches", async () => {
   assert.equal(secondCalled, true);
 });
 
+test("executeToolsInParallel marks failed slots explicitly instead of leaving sparse holes", async () => {
+  const fns = [
+    async () => "ok-0",
+    async () => {
+      throw new Error("boom");
+    },
+    async () => "ok-2",
+  ];
+  const metas = [
+    makeMetadata({ toolName: "t0", readOnly: true }),
+    makeMetadata({ toolName: "t1", readOnly: true }),
+    makeMetadata({ toolName: "t2", readOnly: true }),
+  ];
+
+  const result = await executeToolsInParallel(fns, metas, { maxParallelism: 3 });
+
+  assert.equal(result.anyFailed, true);
+  assert.equal(1 in result.results, true);
+  assert.equal(result.results[1], undefined);
+  assert.deepEqual(result.results, ["ok-0", undefined, "ok-2"]);
+});
+
 test("executeToolItemsInParallel passes through correctly", async () => {
   const items: Array<{ metadata: ToolExecutionMetadata; execute: () => Promise<number> }> = [
     { metadata: makeMetadata({ toolName: "a", readOnly: true }), execute: async () => 1 },

@@ -283,6 +283,12 @@ test("CommandSafetyClassifier allows interpreter with only script path", () => {
   assert.equal(result.riskLevel, "high");
 });
 
+test("CommandSafetyClassifier allows interpreter pre-flags when a real script path follows", () => {
+  const result = CLASSIFIER.assess("python", ["--verbose", "script.py"]);
+  assert.equal(result.allowed, true);
+  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // High-Risk Command Detection
 // ─────────────────────────────────────────────────────────────────────────────

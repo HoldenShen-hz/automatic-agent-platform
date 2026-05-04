@@ -2,6 +2,7 @@ export * from "./authoritative-sql-database.js";
 export * from "./authoritative-task-store.js";
 export * from "./async-sql-database.js";
 export * from "./async-repository-registry.js";
+export * from "./data-taint-propagation.js";
 export * from "./migration-runner.js";
 export * from "./schema-inventory-service.js";
 export * from "./storage-backend-config.js";

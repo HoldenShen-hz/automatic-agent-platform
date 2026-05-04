@@ -34,6 +34,26 @@ export interface IntentParserModelGateway {
 }
 
 /**
+ * R5-19: Intent extraction budget tracking interface.
+ * Tracks token usage during LLM-based intent extraction to enforce budget limits.
+ */
+export interface IntentExtractionBudget {
+  readonly maxTokens: number;
+  readonly usedTokens: number;
+  readonly remainingTokens: number;
+}
+
+/**
+ * R5-19: Default intent extraction budget limits
+ */
+const DEFAULT_MAX_INTENT_TOKENS = 800;
+
+/**
+ * R5-18: Delegation depth limits for intent parser
+ */
+const DEFAULT_MAX_DELEGATION_DEPTH = 3;
+
+/**
  * §39.3: Regex-based fallback parser for when LLM is unavailable.
  * Provides basic intent recognition without LLM dependency.
  */
@@ -114,6 +134,63 @@ export function validateIntentExtraction(
 }
 
 /**
+ * R5-19: Intent extraction budget tracker for tracking token usage during LLM parsing.
+ */
+export class IntentExtractionBudgetTracker {
+  private usedTokens: number = 0;
+
+  public constructor(
+    public readonly maxTokens: number = DEFAULT_MAX_INTENT_TOKENS,
+  ) {}
+
+  /**
+   * R5-19: Record tokens used for an intent extraction operation.
+   * Returns false if budget would be exceeded.
+   */
+  public recordTokens(tokensUsed: number): boolean {
+    if (this.usedTokens + tokensUsed > this.maxTokens) {
+      return false;
+    }
+    this.usedTokens += tokensUsed;
+    return true;
+  }
+
+  /**
+   * R5-19: Get current budget status.
+   */
+  public getBudget(): IntentExtractionBudget {
+    return {
+      maxTokens: this.maxTokens,
+      usedTokens: this.usedTokens,
+      remainingTokens: this.maxTokens - this.usedTokens,
+    };
+  }
+
+  /**
+   * R5-19: Check if budget allows a given token count.
+   */
+  public hasRemaining(tokensNeeded: number): boolean {
+    return this.usedTokens + tokensNeeded <= this.maxTokens;
+  }
+
+  /**
+   * R5-19: Reset the budget tracker.
+   */
+  public reset(): void {
+    this.usedTokens = 0;
+  }
+}
+
+/**
+ * R5-18: Delegation state for tracking delegation depth in intent parsing.
+ */
+export interface DelegationState {
+  readonly depth: number;
+  readonly maxDepth: number;
+  readonly isBounded: boolean;
+}
+
+/**
  * §39.7: LLM-based intent parser for multilingual intent recognition.
  * Uses ModelGateway for cross-lingual classification with confidence scoring.
  * Falls back to regex-based parsing when LLM is unavailable.
@@ -121,23 +198,65 @@ export function validateIntentExtraction(
 export class LlmIntentParser implements IntentParser {
   private readonly modelGateway: IntentParserModelGateway | null;
   private readonly fallbackEnabled: boolean;
+  /** R5-18: Delegation depth limit */
+  private readonly maxDelegationDepth: number;
+  /** R5-19: Budget tracker for intent extraction */
+  private readonly budgetTracker: IntentExtractionBudgetTracker;
 
-  public constructor(modelGateway?: IntentParserModelGateway | null, fallbackEnabled = true) {
+  public constructor(
+    modelGateway?: IntentParserModelGateway | null,
+    fallbackEnabled = true,
+    maxDelegationDepth = DEFAULT_MAX_DELEGATION_DEPTH,
+    maxIntentTokens = DEFAULT_MAX_INTENT_TOKENS,
+  ) {
     this.modelGateway = modelGateway ?? null;
     this.fallbackEnabled = fallbackEnabled;
+    this.maxDelegationDepth = maxDelegationDepth;
+    this.budgetTracker = new IntentExtractionBudgetTracker(maxIntentTokens);
+  }
+
+  /**
+   * R5-18: Get current delegation state.
+   */
+  public getDelegationState(): DelegationState {
+    return {
+      depth: 0,
+      maxDepth: this.maxDelegationDepth,
+      isBounded: true,
+    };
+  }
+
+  /**
+   * R5-19: Get current budget state.
+   */
+  public getBudgetState(): IntentExtractionBudget {
+    return this.budgetTracker.getBudget();
   }
 
   /**
    * Parse intent using LLM with confidence scoring.
    * Falls back to regex-based parsing on LLM failure or low confidence.
+   * R5-18: Enforces delegation depth limit.
+   * R5-19: Enforces token budget for intent extraction.
    */
-  async parseWithLlm(message: string, locale?: string): Promise<LlmIntentParseResult> {
+  async parseWithLlm(message: string, locale?: string, delegationDepth = 0): Promise<LlmIntentParseResult> {
+    // R5-18: Check delegation depth limit
+    if (delegationDepth >= this.maxDelegationDepth) {
+      return this.fallbackToRegex(message, locale ?? detectInputLanguage(message), delegationDepth);
+    }
+
+    const estimatedTokens = this.estimateTokenCount(message);
+    if (!this.budgetTracker.hasRemaining(estimatedTokens)) {
+      // Budget exhausted - fall back to regex
+      return this.fallbackToRegex(message, locale ?? detectInputLanguage(message), delegationDepth);
+    }
+
     const detectedLocale = locale ?? detectInputLanguage(message);
 
     // §39.7: Attempt LLM-based parsing if modelGateway is available
     if (this.modelGateway != null) {
       try {
-        const llmResult = await this.invokeModelGateway(message, detectedLocale);
+        const llmResult = await this.invokeModelGateway(message, detectedLocale, estimatedTokens);
         if (llmResult.confidence >= INTENT_CONFIDENCE_THRESHOLDS.LLM_ACCEPT_THRESHOLD) {
           return llmResult;
         }
@@ -149,7 +268,7 @@ export class LlmIntentParser implements IntentParser {
 
     // §39.7: Fallback to regex-based parsing when LLM fails or is unavailable
     if (this.fallbackEnabled) {
-      return this.fallbackToRegex(message, detectedLocale);
+      return this.fallbackToRegex(message, detectedLocale, delegationDepth);
     }
 
     // Return lowest confidence result if fallback is disabled
@@ -164,17 +283,32 @@ export class LlmIntentParser implements IntentParser {
   /**
    * Invoke ModelGateway for LLM-based intent classification.
    * Supports multilingual prompt construction.
+   * R5-19: Records token usage against budget.
    */
   private async invokeModelGateway(
     message: string,
     locale: string,
+    estimatedTokens: number,
   ): Promise<LlmIntentParseResult> {
     // §39.7: ModelGateway integration for multilingual intent recognition
     // The model gateway is injected at construction time and used for LLM-based
     // classification. Specific invocation depends on gateway implementation.
     const prompt = this.buildIntentClassificationPrompt(message, locale);
     const response = await this.modelGateway!.complete(prompt);
+
+    // R5-19: Record token usage - prompt tokens + estimated response tokens
+    const totalTokens = estimatedTokens + Math.floor(prompt.length / 4);
+    this.budgetTracker.recordTokens(totalTokens);
+
     return this.parseLlmResponse(response, locale);
+  }
+
+  /**
+   * R5-18: Estimate token count for a message.
+   * Rough estimation: ~4 characters per token on average.
+   */
+  private estimateTokenCount(message: string): number {
+    return Math.ceil(message.length / 4);
   }
 
   /**
@@ -220,15 +354,28 @@ export class LlmIntentParser implements IntentParser {
   /**
    * Fallback to regex-based parsing with language awareness and validation.
    * R9-20: Applies intent validation after parsing to ensure extraction quality.
+   * R5-18: Enforces delegation depth limit.
+   * R5-20: Validates intent extraction result.
    */
-  private fallbackToRegex(message: string, locale: string): LlmIntentParseResult {
+  private fallbackToRegex(message: string, locale: string, delegationDepth = 0): LlmIntentParseResult {
     const tokens = parseIntentTokens(message);
     const primary = tokens[0];
-    const validation = validateIntentExtraction(message, primary?.intentType ?? "task_query", primary?.confidence ?? 0.5);
+    const confidence = primary?.confidence ?? 0.5;
+
+    // R5-20: Apply intent validation
+    const validation = validateIntentExtraction(message, primary?.intentType ?? "task_query", confidence);
+
+    // R5-18: Enforce delegation depth in reasoning
+    const depthReason = delegationDepth >= this.maxDelegationDepth
+      ? "; max delegation depth reached"
+      : "";
+
     return {
       intentType: primary?.intentType ?? "task_query",
-      confidence: validation.valid ? (primary?.confidence ?? 0.5) : validation.reasonCode != null ? (primary?.confidence ?? 0.5) * 0.8 : (primary?.confidence ?? 0.5),
-      reasoning: validation.valid ? `Regex fallback for ${locale} input` : `Regex fallback for ${locale} input; ${validation.reasonCode}`,
+      confidence: validation.valid ? confidence : (validation.reasonCode != null ? confidence * 0.8 : confidence),
+      reasoning: validation.valid
+        ? `Regex fallback for ${locale} input${depthReason}`
+        : `Regex fallback for ${locale} input; ${validation.reasonCode}${depthReason}`,
       language: locale,
     };
   }

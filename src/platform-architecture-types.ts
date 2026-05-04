@@ -188,3 +188,9 @@ export type JsonValue =
   | string
   | readonly JsonValue[]
   | { readonly [key: string]: JsonValue };
+
+/**
+ * Crosscutting fabric classification for reliability/security/governance categorization.
+ * Used in structured logging per §12.4 to categorize log entries by their crosscutting concern.
+ */
+export type CrosscuttingFabricCategory = "reliability" | "security" | "governance";
