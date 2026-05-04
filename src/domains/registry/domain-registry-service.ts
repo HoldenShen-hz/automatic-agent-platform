@@ -470,10 +470,10 @@ export class DomainRegistryService {
         }
         continue;
       }
-      if (this.installedPluginIds.size > 0 && !this.installedPluginIds.has(binding.pluginId)) {
+      if (!this.installedPluginIds.has(binding.pluginId)) {
         throw this.validationError("domain_registry.plugin_missing", "Plugin binding references an unregistered plugin.");
       }
-      if (this.healthyPluginIds.size > 0 && !this.healthyPluginIds.has(binding.pluginId)) {
+      if (!this.healthyPluginIds.has(binding.pluginId)) {
         throw this.validationError("domain_registry.plugin_unhealthy", "Plugin binding references an unhealthy plugin.");
       }
     }

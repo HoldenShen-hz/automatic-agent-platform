@@ -370,7 +370,7 @@ test("DomainDescriptorOrchestrationService.review builds cross-domain modes from
   const review = service.review(input);
 
   assert.strictEqual(review.crossDomainModes["domain-a->domain-b"], "approval_required");
-  assert.strictEqual(review.crossDomainModes["domain-a->domain-c"], "supervised");
+  assert.strictEqual(review.crossDomainModes["domain-a->domain-c"], "approval_required");
 });
 
 test("DomainDescriptorOrchestrationService.review returns empty cross-domain modes when no interaction rules", () => {

@@ -93,39 +93,38 @@ test("DomainGovernancePolicySchema rejects negative freshness SLO", () => {
   });
 });
 
-test("DomainGovernancePolicySchema accepts zero latency SLO", () => {
-  const policy = DomainGovernancePolicySchema.parse({
-    policyId: "pol-latency-zero",
-    domainId: "domain-latency",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-    sloProfile: {
-      latencySloMs: 0,
-    },
+test("DomainGovernancePolicySchema rejects zero latency SLO", () => {
+  assert.throws(() => {
+    DomainGovernancePolicySchema.parse({
+      policyId: "pol-latency-zero",
+      domainId: "domain-latency",
+      ownerRoles: ["owner"],
+      operatorRoles: ["operator"],
+      approvalRoles: ["approver"],
+      sloProfile: {
+        latencySloMs: 0,
+      },
+    });
   });
-
-  assert.equal(policy.sloProfile.latencySloMs, 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Budget Constraints Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DomainGovernancePolicySchema accepts negative maxCostUsdPerDay", () => {
-  // Note: This might be intentional (refunds?) or a validation gap
-  const policy = DomainGovernancePolicySchema.parse({
-    policyId: "pol-budget-neg",
-    domainId: "domain-budget",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-    budgetConstraints: {
-      maxCostUsdPerDay: -100,
-    },
+test("DomainGovernancePolicySchema rejects negative maxCostUsdPerDay", () => {
+  assert.throws(() => {
+    DomainGovernancePolicySchema.parse({
+      policyId: "pol-budget-neg",
+      domainId: "domain-budget",
+      ownerRoles: ["owner"],
+      operatorRoles: ["operator"],
+      approvalRoles: ["approver"],
+      budgetConstraints: {
+        maxCostUsdPerDay: -100,
+      },
+    });
   });
-
-  assert.equal(policy.budgetConstraints.maxCostUsdPerDay, -100);
 });
 
 test("DomainGovernancePolicySchema accepts very large maxTokensPerDay", () => {
@@ -143,19 +142,19 @@ test("DomainGovernancePolicySchema accepts very large maxTokensPerDay", () => {
   assert.equal(policy.budgetConstraints.maxTokensPerDay, 999999999999);
 });
 
-test("DomainGovernancePolicySchema accepts zero maxConcurrentRuns", () => {
-  const policy = DomainGovernancePolicySchema.parse({
-    policyId: "pol-concurrent-zero",
-    domainId: "domain-concurrent",
-    ownerRoles: ["owner"],
-    operatorRoles: ["operator"],
-    approvalRoles: ["approver"],
-    budgetConstraints: {
-      maxConcurrentRuns: 0,
-    },
+test("DomainGovernancePolicySchema rejects zero maxConcurrentRuns", () => {
+  assert.throws(() => {
+    DomainGovernancePolicySchema.parse({
+      policyId: "pol-concurrent-zero",
+      domainId: "domain-concurrent",
+      ownerRoles: ["owner"],
+      operatorRoles: ["operator"],
+      approvalRoles: ["approver"],
+      budgetConstraints: {
+        maxConcurrentRuns: 0,
+      },
+    });
   });
-
-  assert.equal(policy.budgetConstraints.maxConcurrentRuns, 0);
 });
 
 test("DomainGovernancePolicySchema rejects negative maxConcurrentRuns", () => {
@@ -329,12 +328,12 @@ test("DomainGovernanceRolloutSchema rejects fractional rollback window", () => {
   });
 });
 
-test("DomainGovernanceRolloutSchema accepts zero rollback window", () => {
-  const rollout = DomainGovernanceRolloutSchema.parse({
-    rollbackWindowMinutes: 0,
+test("DomainGovernanceRolloutSchema rejects zero rollback window", () => {
+  assert.throws(() => {
+    DomainGovernanceRolloutSchema.parse({
+      rollbackWindowMinutes: 0,
+    });
   });
-
-  assert.equal(rollout.rollbackWindowMinutes, 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

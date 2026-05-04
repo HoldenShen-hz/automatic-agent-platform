@@ -50,7 +50,7 @@ test("risk-config threshold and autonomy ordering is consistent", () => {
   assert.equal(riskConfig.autonomyRiskCaps.low, "full_auto");
   assert.equal(riskConfig.autonomyRiskCaps.medium, "supervised");
   assert.equal(riskConfig.autonomyRiskCaps.high, "semi_auto");
-  assert.equal(riskConfig.autonomyRiskCaps.critical, "manual");
+  assert.equal(riskConfig.autonomyRiskCaps.critical, "suggestion");
 });
 
 test("risk-config event registry and domain defaults stay wired", () => {

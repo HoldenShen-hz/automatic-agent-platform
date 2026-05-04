@@ -72,12 +72,14 @@ export class AsyncSessionRepository {
   public async insertCompactionRecord(record: CompactionRecord): Promise<void> {
     await this.conn.execute(
       `INSERT INTO compaction_records (
-        id, session_id, task_id, stage, source_message_ids_json, summary_text, summary_ref,
+        id, session_id, task_id, harness_run_id, node_run_id, stage, source_message_ids_json, summary_text, summary_ref,
         compaction_reason, overflow_triggered, auto_triggered, token_reduction_estimate, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       record.id,
       record.sessionId,
       record.taskId,
+      record.harnessRunId,
+      record.nodeRunId,
       record.stage,
       record.sourceMessageIdsJson,
       record.summaryText,
@@ -269,6 +271,8 @@ export class AsyncSessionRepository {
           c.id,
           c.session_id AS "sessionId",
           c.task_id AS "taskId",
+          c.harness_run_id AS "harnessRunId",
+          c.node_run_id AS "nodeRunId",
           c.stage,
           c.source_message_ids_json AS "sourceMessageIdsJson",
           c.summary_text AS "summaryText",
@@ -293,6 +297,8 @@ export class AsyncSessionRepository {
         id,
         session_id AS "sessionId",
         task_id AS "taskId",
+        harness_run_id AS "harnessRunId",
+        node_run_id AS "nodeRunId",
         stage,
         source_message_ids_json AS "sourceMessageIdsJson",
         summary_text AS "summaryText",

@@ -231,12 +231,14 @@ test("DomainRiskSpecSchema accepts all risk classes with correct boundary mappin
 });
 
 test("DomainRiskSpecSchema validates required fields", () => {
-  assert.throws(() => {
-    DomainRiskSpecSchema.parse({
-      domainId: "",
-      riskClass: "high",
-      liabilityOwner: ["owner"],
-      compensationModel: ["manual_repair"],
-    });
-  }, /domainId.*minimum/);
+  const result = DomainRiskSpecSchema.safeParse({
+    domainId: "",
+    riskClass: "high",
+    liabilityOwner: ["owner"],
+    compensationModel: ["manual_repair"],
+  });
+  assert.equal(result.success, false);
+  if (!result.success) {
+    assert.deepEqual(result.error.issues[0]?.path, ["domainId"]);
+  }
 });

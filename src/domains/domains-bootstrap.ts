@@ -7,6 +7,7 @@ import {
 } from "./domain-baseline-catalog.js";
 
 export type { DomainBaseline, VerticalDomainPhase } from "./domain-baseline-catalog.js";
+export { listVerticalDomainBaselines, listVerticalDomainBaselinesByPhase } from "./domain-baseline-catalog.js";
 export type DomainReadinessRing = "ring1" | "ring2" | "ring3";
 
 export const DOMAINS_CATALOG_SERVICE_ID = "w5.domains.catalog";

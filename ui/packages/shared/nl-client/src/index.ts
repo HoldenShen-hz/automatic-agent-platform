@@ -13,7 +13,7 @@ export interface ConversationMessage {
   readonly content: string;
 }
 
-/接受
+//接受
 /**
  * In-memory conversation client for testing/development only.
  *

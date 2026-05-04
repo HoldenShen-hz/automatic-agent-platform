@@ -212,6 +212,10 @@ export interface CompactionRecord {
   id: string;
   sessionId: string;
   taskId: string;
+  /** Canonical HarnessRun ID (v4.3+) */
+  harnessRunId: string | null;
+  /** Canonical NodeRun ID (v4.3+) */
+  nodeRunId: string | null;
   stage: CompactionStage;
   sourceMessageIdsJson: string;
   /** §14.2: Message range covered by this compaction (start_index-end_index) */

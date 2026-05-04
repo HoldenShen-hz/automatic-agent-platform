@@ -200,6 +200,26 @@ export class CompositeHealthScoreService {
     }
 
     const indicators = Array.from(this.indicators.values());
+    if (indicators.length === 0) {
+      this.lastHealthScore = {
+        overallScore: 100,
+        status: "ok",
+        indicators,
+        dimensionScores: {
+          system: 100,
+          execution: 100,
+          queue: 100,
+          storage: 100,
+          network: 100,
+          compute: 100,
+          memory: 100,
+        },
+        computedAt: nowIso(),
+        isHealthy: true,
+        traceId: newId("htrace"),
+      };
+      return this.lastHealthScore;
+    }
     const dimensionScores = this.computeDimensionScores(indicators);
     const overallScore = this.computeOverallScore(indicators);
     const status = this.determineStatus(overallScore);

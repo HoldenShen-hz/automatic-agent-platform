@@ -108,13 +108,13 @@ test("WorkflowConfigSchema rejects empty name", () => {
 // StepTemplateConfigSchema Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StepTemplateConfigSchema accepts zero timeoutMs", () => {
-  const result = StepTemplateConfigSchema.parse({
-    stepName: "zero-timeout",
-    timeoutMs: 0,
+test("StepTemplateConfigSchema rejects zero timeoutMs", () => {
+  assert.throws(() => {
+    StepTemplateConfigSchema.parse({
+      stepName: "zero-timeout",
+      timeoutMs: 0,
+    });
   });
-
-  assert.equal(result.timeoutMs, 0);
 });
 
 test("StepTemplateConfigSchema accepts very large timeoutMs", () => {

@@ -9,6 +9,8 @@ import {
   DomainInteractionSpecSchema,
 } from "../domain-specs.js";
 
+const NonEmptyTrimmedStringSchema = z.string().trim().min(1);
+
 const DOMAIN_STATUS_ALIASES = {
   testing: "validated",
 } as const;
@@ -48,11 +50,11 @@ export type DomainDescriptorBundle = z.infer<typeof DomainDescriptorBundleSchema
 
 // §37 DomainManifest - required per §37 for capability matrix/risk classification/schema registry reference
 export const DomainManifestSchema = z.object({
-  domainId: z.string().min(1),
-  name: z.string().min(1),
-  version: z.string().min(1),
-  owner: z.string().min(1),
-  description: z.string().min(1),
+  domainId: NonEmptyTrimmedStringSchema,
+  name: NonEmptyTrimmedStringSchema,
+  version: NonEmptyTrimmedStringSchema,
+  owner: NonEmptyTrimmedStringSchema,
+  description: NonEmptyTrimmedStringSchema,
   // Capability matrix - lists all capabilities this domain provides
   capabilityMatrix: z.object({
     providedCapabilities: z.array(z.object({
@@ -91,13 +93,13 @@ export const DomainManifestSchema = z.object({
 export type DomainManifest = z.infer<typeof DomainManifestSchema>;
 
 export const StepTemplateConfigSchema = z.object({
-  stepName: z.string().min(1),
+  stepName: NonEmptyTrimmedStringSchema,
   toolHints: z.array(z.string()).default([]),
   modelHints: z.object({
     preferredModel: z.string().optional(),
     temperature: z.number().min(0).max(2).optional(),
   }).default({}),
-  outputSchema: z.record(z.string(), z.unknown()).nullable().default(null),
+  outputSchema: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]).nullable().default(null),
   retryPolicy: z.object({
     maxRetries: z.number().int().nonnegative(),
     backoffMs: z.number().int().nonnegative(),
@@ -110,8 +112,8 @@ export const StepTemplateConfigSchema = z.object({
 // §13 WorkflowConfigSchema supports non-linear steps (not just linear z.array(StepTemplateConfigSchema))
 // Support branching/conditional steps via when/condition fields
 export const WorkflowConfigSchema = z.object({
-  workflowId: z.string().min(1),
-  name: z.string().min(1),
+  workflowId: NonEmptyTrimmedStringSchema,
+  name: NonEmptyTrimmedStringSchema,
   triggerConditions: z.record(z.string(), z.unknown()).default({}),
   // Non-linear steps: steps can reference dependsOn for DAG execution
   // Supports branching via condition/when fields on each step
@@ -128,19 +130,22 @@ export const WorkflowConfigSchema = z.object({
 });
 
 export const ToolBundleEntrySchema = z.object({
-  toolName: z.string().min(1),
+  toolName: NonEmptyTrimmedStringSchema.refine(
+    (value) => !value.includes("/") && !value.includes("\\") && !value.includes(".."),
+    "toolName must not contain path separators or traversal markers",
+  ),
   enabled: z.boolean().default(true),
   configOverrides: z.record(z.string(), z.unknown()).default({}),
 });
 
 export const ToolBundleConfigSchema = z.object({
-  bundleId: z.string().min(1),
+  bundleId: NonEmptyTrimmedStringSchema,
   tools: z.array(ToolBundleEntrySchema).default([]),
 });
 
 export const OutputContractConfigSchema = z.object({
-  contractId: z.string().min(1),
-  name: z.string().min(1),
+  contractId: NonEmptyTrimmedStringSchema,
+  name: NonEmptyTrimmedStringSchema,
   schema: z.record(z.string(), z.unknown()).default({}),
   validationLevel: z.enum(["strict", "lenient", "none"]).default("strict"),
 });
@@ -151,15 +156,27 @@ export const DomainCapabilityProfileSchema = z.object({
   optionalTools: z.array(z.string()).default([]),
   modelPreferences: z.record(z.string(), z.string()).default({}),
   budgetLimits: z.object({
-    maxTokensPerTask: z.number().int().positive(),
-    maxCostPerTask: z.number().positive(),
+    maxTokensPerTask: z.number().int().nonnegative(),
+    maxCostPerTask: z.number().nonnegative(),
   }).default({ maxTokensPerTask: 4000, maxCostPerTask: 5 }),
   securityLevel: z.enum(["standard", "elevated", "restricted"]).default("standard"),
 });
 
-export const PluginBindingSchema = z.object({
-  bindingId: z.string().min(1),
-  domainId: z.string().min(1),
+export const PluginBindingSchema = z.preprocess((value) => {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const record = { ...(value as Record<string, unknown>) };
+  if (record.bindingRole == null && typeof record.pluginType === "string") {
+    const originalPluginType = record.pluginType;
+    if (DOMAIN_PLUGIN_ROLE_ALIASES[originalPluginType as keyof typeof DOMAIN_PLUGIN_ROLE_ALIASES] != null) {
+      record.bindingRole = originalPluginType;
+    }
+  }
+  return record;
+}, z.object({
+  bindingId: NonEmptyTrimmedStringSchema,
+  domainId: NonEmptyTrimmedStringSchema,
   pluginType: z.preprocess(
     (value) => typeof value === "string"
       ? DOMAIN_PLUGIN_TYPE_ALIASES[value as keyof typeof DOMAIN_PLUGIN_TYPE_ALIASES] ?? value
@@ -182,11 +199,11 @@ export const PluginBindingSchema = z.object({
     },
     z.enum(["tool", "adapter", "retriever", "evaluator", "planner", "presenter", "validator"]).optional(),
   ),
-  pluginId: z.string().min(1),
-  priority: z.number().int().default(0),
+  pluginId: NonEmptyTrimmedStringSchema,
+  priority: z.number().int().nonnegative().default(0),
   enabled: z.boolean().default(true),
   config: z.record(z.string(), z.unknown()).default({}),
-});
+}));
 
 /**
  * DomainDefinitionSchema - Legacy monolithic schema for backward compatibility.
@@ -194,9 +211,9 @@ export const PluginBindingSchema = z.object({
  * This schema is maintained for existing consumers and gradual migration.
  */
 export const DomainDefinitionSchema = z.object({
-  domainId: z.string().min(1),
-  name: z.string().min(1),
-  description: z.string().min(1),
+  domainId: NonEmptyTrimmedStringSchema,
+  name: NonEmptyTrimmedStringSchema,
+  description: NonEmptyTrimmedStringSchema,
   version: z.number().int().positive().default(1),
   // §37.2 v4.3: Descriptors bundle - contains the 7 independent descriptors
   descriptors: DomainDescriptorBundleSchema.optional(),

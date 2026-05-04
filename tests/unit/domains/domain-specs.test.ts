@@ -16,6 +16,13 @@ import {
   type DomainRiskSpec,
 } from "../../../src/domains/domain-specs.js";
 
+function assertZodFailurePath(result: { success: boolean; error?: { issues: Array<{ path: Array<string | number> }> } }, path: string[]): void {
+  assert.equal(result.success, false);
+  if (!result.success) {
+    assert.deepEqual(result.error.issues[0]?.path, path);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DomainRiskSpec Tests (R8-28: advisory_only, human_accountable, deterministic_hot_path_only)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,36 +106,33 @@ test("DomainRiskSpecSchema accepts all compensation models", () => {
 });
 
 test("DomainRiskSpecSchema rejects empty liabilityOwner", () => {
-  assert.throws(() => {
-    DomainRiskSpecSchema.parse({
-      domainId: "bad",
-      riskClass: "high",
-      liabilityOwner: [],
-      compensationModel: ["manual_repair"],
-    });
-  }, /liabilityOwner.*minimum/);
+  const result = DomainRiskSpecSchema.safeParse({
+    domainId: "bad",
+    riskClass: "high",
+    liabilityOwner: [],
+    compensationModel: ["manual_repair"],
+  });
+  assertZodFailurePath(result, ["liabilityOwner"]);
 });
 
 test("DomainRiskSpecSchema rejects empty compensationModel", () => {
-  assert.throws(() => {
-    DomainRiskSpecSchema.parse({
-      domainId: "bad",
-      riskClass: "high",
-      liabilityOwner: ["owner1"],
-      compensationModel: [],
-    });
-  }, /compensationModel.*minimum/);
+  const result = DomainRiskSpecSchema.safeParse({
+    domainId: "bad",
+    riskClass: "high",
+    liabilityOwner: ["owner1"],
+    compensationModel: [],
+  });
+  assertZodFailurePath(result, ["compensationModel"]);
 });
 
 test("DomainRiskSpecSchema rejects empty domainId", () => {
-  assert.throws(() => {
-    DomainRiskSpecSchema.parse({
-      domainId: "",
-      riskClass: "high",
-      liabilityOwner: ["owner1"],
-      compensationModel: ["manual_repair"],
-    });
-  }, /domainId.*minimum/);
+  const result = DomainRiskSpecSchema.safeParse({
+    domainId: "",
+    riskClass: "high",
+    liabilityOwner: ["owner1"],
+    compensationModel: ["manual_repair"],
+  });
+  assertZodFailurePath(result, ["domainId"]);
 });
 
 test("DomainRiskSpecSchema rejects invalid risk class", () => {

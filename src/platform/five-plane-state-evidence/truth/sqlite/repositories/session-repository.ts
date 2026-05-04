@@ -128,14 +128,16 @@ export class SessionRepository {
     this.conn
       .prepare(
         `INSERT INTO compaction_records (
-          id, session_id, task_id, stage, source_message_ids_json, summary_text, summary_ref,
+          id, session_id, task_id, harness_run_id, node_run_id, stage, source_message_ids_json, summary_text, summary_ref,
           compaction_reason, overflow_triggered, auto_triggered, token_reduction_estimate, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         record.id,
         record.sessionId,
         record.taskId,
+        record.harnessRunId,
+        record.nodeRunId,
         record.stage,
         record.sourceMessageIdsJson,
         record.summaryText,
@@ -442,6 +444,8 @@ export class SessionRepository {
           c.id,
           c.session_id AS sessionId,
           c.task_id AS taskId,
+          c.harness_run_id AS harnessRunId,
+          c.node_run_id AS nodeRunId,
           c.stage,
           c.source_message_ids_json AS sourceMessageIdsJson,
           c.summary_text AS summaryText,
@@ -466,6 +470,8 @@ export class SessionRepository {
         id,
         session_id AS sessionId,
         task_id AS taskId,
+        harness_run_id AS harnessRunId,
+        node_run_id AS nodeRunId,
         stage,
         source_message_ids_json AS sourceMessageIdsJson,
         summary_text AS summaryText,

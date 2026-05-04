@@ -14,6 +14,13 @@ import {
   type DomainDefinition,
 } from "../../../src/domains/registry/domain-model.js";
 
+function assertZodFailurePath(result: { success: boolean; error?: { issues: Array<{ path: Array<string | number> }> } }, path: string[]): void {
+  assert.equal(result.success, false);
+  if (!result.success) {
+    assert.deepEqual(result.error.issues[0]?.path, path);
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DomainManifestSchema Tests (R8-27)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,27 +144,25 @@ test("DomainManifestSchema accepts empty capabilityMatrix", () => {
 });
 
 test("DomainManifestSchema rejects empty domainId", () => {
-  assert.throws(() => {
-    DomainManifestSchema.parse({
-      domainId: "",
-      name: "Test",
-      version: "1.0",
-      owner: "owner",
-      description: "desc",
-    });
-  }, /domainId.*minimum/);
+  const result = DomainManifestSchema.safeParse({
+    domainId: "",
+    name: "Test",
+    version: "1.0",
+    owner: "owner",
+    description: "desc",
+  });
+  assertZodFailurePath(result, ["domainId"]);
 });
 
 test("DomainManifestSchema rejects empty name", () => {
-  assert.throws(() => {
-    DomainManifestSchema.parse({
-      domainId: "valid",
-      name: "",
-      version: "1.0",
-      owner: "owner",
-      description: "desc",
-    });
-  }, /name.*minimum/);
+  const result = DomainManifestSchema.safeParse({
+    domainId: "valid",
+    name: "",
+    version: "1.0",
+    owner: "owner",
+    description: "desc",
+  });
+  assertZodFailurePath(result, ["name"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -283,36 +288,32 @@ test("StepTemplateConfigSchema defaults optional fields", () => {
 });
 
 test("StepTemplateConfigSchema rejects empty stepName", () => {
-  assert.throws(() => {
-    StepTemplateConfigSchema.parse({ stepName: "" });
-  }, /stepName.*minimum/);
+  const result = StepTemplateConfigSchema.safeParse({ stepName: "" });
+  assertZodFailurePath(result, ["stepName"]);
 });
 
 test("StepTemplateConfigSchema rejects negative maxRetries", () => {
-  assert.throws(() => {
-    StepTemplateConfigSchema.parse({
-      stepName: "step",
-      retryPolicy: { maxRetries: -1, backoffMs: 0 },
-    });
-  }, /maxRetries.*nonnegative/);
+  const result = StepTemplateConfigSchema.safeParse({
+    stepName: "step",
+    retryPolicy: { maxRetries: -1, backoffMs: 0 },
+  });
+  assertZodFailurePath(result, ["retryPolicy", "maxRetries"]);
 });
 
 test("StepTemplateConfigSchema rejects negative backoffMs", () => {
-  assert.throws(() => {
-    StepTemplateConfigSchema.parse({
-      stepName: "step",
-      retryPolicy: { maxRetries: 0, backoffMs: -1 },
-    });
-  }, /backoffMs.*nonnegative/);
+  const result = StepTemplateConfigSchema.safeParse({
+    stepName: "step",
+    retryPolicy: { maxRetries: 0, backoffMs: -1 },
+  });
+  assertZodFailurePath(result, ["retryPolicy", "backoffMs"]);
 });
 
 test("StepTemplateConfigSchema rejects invalid temperature", () => {
-  assert.throws(() => {
-    StepTemplateConfigSchema.parse({
-      stepName: "step",
-      modelHints: { temperature: 3.0 },
-    });
-  }, /temperature.*max/);
+  const result = StepTemplateConfigSchema.safeParse({
+    stepName: "step",
+    modelHints: { temperature: 3.0 },
+  });
+  assertZodFailurePath(result, ["modelHints", "temperature"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -360,21 +361,19 @@ test("WorkflowConfigSchema defaults triggerConditions and steps", () => {
 });
 
 test("WorkflowConfigSchema rejects empty workflowId", () => {
-  assert.throws(() => {
-    WorkflowConfigSchema.parse({
-      workflowId: "",
-      name: "Test",
-    });
-  }, /workflowId.*minimum/);
+  const result = WorkflowConfigSchema.safeParse({
+    workflowId: "",
+    name: "Test",
+  });
+  assertZodFailurePath(result, ["workflowId"]);
 });
 
 test("WorkflowConfigSchema rejects empty name", () => {
-  assert.throws(() => {
-    WorkflowConfigSchema.parse({
-      workflowId: "valid",
-      name: "",
-    });
-  }, /name.*minimum/);
+  const result = WorkflowConfigSchema.safeParse({
+    workflowId: "valid",
+    name: "",
+  });
+  assertZodFailurePath(result, ["name"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -402,9 +401,8 @@ test("ToolBundleConfigSchema defaults tools to empty array", () => {
 });
 
 test("ToolBundleConfigSchema rejects empty bundleId", () => {
-  assert.throws(() => {
-    ToolBundleConfigSchema.parse({ bundleId: "" });
-  }, /bundleId.*minimum/);
+  const result = ToolBundleConfigSchema.safeParse({ bundleId: "" });
+  assertZodFailurePath(result, ["bundleId"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
