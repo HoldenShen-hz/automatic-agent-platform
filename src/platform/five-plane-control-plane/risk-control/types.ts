@@ -40,7 +40,7 @@ export type DataSensitivity = z.infer<typeof DataSensitivitySchema>;
 /**
  * Autonomy mode risk - automation amplification risk per ADR-026
  */
-export const AutonomyModeRiskSchema = z.enum(["full_auto", "semi_auto", "supervised", "manual"]);
+export const AutonomyModeRiskSchema = z.enum(["full_auto", "semi_auto", "supervised", "suggestion"]);
 export type AutonomyModeRisk = z.infer<typeof AutonomyModeRiskSchema>;
 
 /**

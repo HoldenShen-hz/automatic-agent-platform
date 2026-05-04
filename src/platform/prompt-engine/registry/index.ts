@@ -34,6 +34,10 @@ export interface PromptTemplateRecord {
    * Display version (semver) is stored separately in displayVersion field.
    */
   version: number;
+  /**
+   * §16.2 lifecycle status per PromptTemplateStatus.
+   * Controls promotion workflow: draft → review → staging → canary → stable → deprecated.
+   */
   status: PromptTemplateStatus;
   owner: string;
   channel: PromptTemplateChannel;

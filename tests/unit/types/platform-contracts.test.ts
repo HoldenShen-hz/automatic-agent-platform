@@ -12,7 +12,7 @@ import {
   createEvidenceRecord,
   createProjectionUpdate,
   type PlatformPrincipal,
-  type RequestEnvelope,
+  type RequestEnvelopeLegacy,
   type EvidenceRecord,
   type ProjectionUpdate,
 } from "../../../src/platform/contracts/types/platform-contracts.js";
@@ -93,7 +93,7 @@ test("createPlatformPrincipal excludes displayName when not provided", () => {
 test("createPlatformPrincipal handles null tenantId", () => {
   const principal = createPlatformPrincipal({
     actorId: "user123",
-    tenantId: null,
+    tenantId: null as string | null,
   });
 
   assert.strictEqual(principal.tenantId, null);

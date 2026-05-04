@@ -61,7 +61,11 @@ test("createMockCacheStore set does not throw", async () => {
     ttlMs: 1000,
     tags: [],
     createdAt: Date.now(),
-    updatedAt: Date.now(),
+    lastAccessedAt: Date.now(),
+    hitCount: 0,
+    sizeBytes: 100,
+    version: "1.0.0",
+    scope: "memory",
   });
 });
 

@@ -42,7 +42,7 @@
     "full_auto": 0.2,
     "semi_auto": 0.4,
     "supervised": 0.6,
-    "manual": 1.0
+    "suggestion": 1.0
   },
   "tenantImpactValues": {
     "single_task": 0.2,
@@ -125,7 +125,7 @@
     }
   },
   "autonomyRiskCaps": {
-    "critical": "manual",
+    "critical": "suggestion",
     "high": "semi_auto",
     "medium": "supervised",
     "low": "full_auto"
@@ -133,7 +133,7 @@
   "domainRiskDefaults": {
     "healthcare": {
       "riskLevel": "critical",
-      "maxAutonomy": "manual",
+      "maxAutonomy": "suggestion",
       "advisoryOnly": true,
       "humanAccountable": true,
       "deterministicHotPathOnly": true

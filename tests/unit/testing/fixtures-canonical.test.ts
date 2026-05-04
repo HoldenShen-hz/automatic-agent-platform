@@ -39,7 +39,7 @@ test("createMinimalHarnessRun accepts all optional fields", () => {
     constraintPackRef: "my-constraints",
     versionLockId: "my-vlock",
     budgetLedgerId: "my-bledger",
-    status: "executing",
+    status: "running",
     planGraphBundleId: "my-pgb",
     currentSeq: 5,
   });
@@ -61,7 +61,7 @@ test("createMinimalPlanNode creates tool node by default", () => {
 
 test("createMinimalPlanNode supports different node types", () => {
   const llmNode = createMinimalPlanNode({ nodeType: "llm" });
-  const hitlNode = createMinimalPlanNode({ nodeType: "hitl" });
+  const hitlNode = createMinimalPlanNode({ nodeType: "hitl_wait" });
   const routerNode = createMinimalPlanNode({ nodeType: "router" });
 
   assert.equal(llmNode.nodeType, "llm");
@@ -275,7 +275,7 @@ test("createMinimalBudgetReservation supports different resource kinds", () => {
   const memory = createMinimalBudgetReservation({
     budgetLedgerId: "bledger-1",
     harnessRunId: "hrun-1",
-    resourceKind: "memory",
+    resourceKind: "compute",
     amount: 256,
   });
   const compute = createMinimalBudgetReservation({
@@ -388,7 +388,7 @@ test("createTestArtifactRef creates artifact ref with defaults", () => {
 
   assert.equal(ref.artifactId, "artifact-test-001");
   assert.ok(ref.uri.startsWith("memory://"));
-  assert.ok(ref.hash.startsWith("sha256:"));
+  assert.ok(ref.hash?.startsWith("sha256:"));
   assert.equal(ref.version, "1.0.0");
 });
 

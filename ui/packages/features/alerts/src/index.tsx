@@ -6,7 +6,7 @@ const alertsFeature = createFeatureModule({
   title: "Alerts",
   group: "Mission Control",
   path: "/mission-control/alerts",
-  permission: "authenticated",
+  permission: "platform_sre",
   status: "Implemented/Internal",
   summary: "Incident 和高优先级告警流。",
   render: AlertsWebView,

@@ -70,9 +70,13 @@ export interface ErrorOptions {
   source?: AppErrorSource;
   /** Distributed trace identifier for request correlation */
   traceId?: string | null;
-  /** Associated task identifier if error is task-scoped */
+  /** Associated task identifier if error is task-scoped (legacy, for backward compat) */
   taskId?: string | null;
-  /** Associated execution identifier if error is execution-scoped */
+  /** Associated harness run identifier (canonical v4.3+) */
+  harnessRunId?: string | null;
+  /** Associated node run identifier (canonical v4.3+) */
+  nodeRunId?: string | null;
+  /** Associated execution identifier (legacy, use harnessRunId/nodeRunId instead) */
   executionId?: string | null;
   /** Name of the error class or component that caused this error */
   causedBy?: string | null;
@@ -103,9 +107,13 @@ export class AppError extends Error {
   public readonly source: AppErrorSource;
   /** Distributed trace identifier for request correlation */
   public readonly traceId: string | null;
-  /** Associated task identifier */
+  /** Associated task identifier (legacy) */
   public readonly taskId: string | null;
-  /** Associated execution identifier */
+  /** Associated harness run identifier (canonical v4.3+) */
+  public readonly harnessRunId: string | null;
+  /** Associated node run identifier (canonical v4.3+) */
+  public readonly nodeRunId: string | null;
+  /** Associated execution identifier (legacy) */
   public readonly executionId: string | null;
   /** Name of the error class that caused this error */
   public readonly causedBy: string | null;
@@ -131,6 +139,8 @@ export class AppError extends Error {
     this.source = options.source ?? "internal";
     this.traceId = options.traceId ?? null;
     this.taskId = options.taskId ?? null;
+    this.harnessRunId = options.harnessRunId ?? null;
+    this.nodeRunId = options.nodeRunId ?? null;
     this.executionId = options.executionId ?? null;
     this.causedBy = options.causedBy ?? null;
     this.occurredAt = options.occurredAt ?? new Date().toISOString();

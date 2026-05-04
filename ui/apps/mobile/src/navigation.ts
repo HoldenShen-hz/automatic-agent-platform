@@ -28,7 +28,7 @@ export const mobileNavigation = {
     { id: "workflows", title: "Workflows", path: "/mission-control/workflows", requiresAuth: true },
     { id: "workflow-cockpit", title: "Workflow Cockpit", path: "/mission-control/workflows/:id", requiresAuth: true }, // §210-2500: add workflow-cockpit entry
     { id: "approvals", title: "Approvals", path: "/mission-control/approvals", requiresAuth: true },
-    { id: "conversation", title: "Conversation", path: "/extended/conversation", requiresAuth: true },
+    { id: "conversation", title: "Conversation", path: "/mission-control/conversation", requiresAuth: true },
     { id: "settings", title: "Settings", path: "/shared/settings", requiresAuth: true }, // §210-2507: settings now has sub-routes
   ] satisfies readonly MobileScreenDefinition[],
   settingsSubRoutes: [ // §210-2507: settings sub-routes for 7 config sub-pages

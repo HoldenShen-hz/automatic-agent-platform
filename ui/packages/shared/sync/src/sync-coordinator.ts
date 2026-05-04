@@ -64,7 +64,7 @@ export class SyncCoordinator {
    * Returns replay result with succeeded, failed, and conflict mutations.
    */
   public async flush(): Promise<ReplayResult> {
-    const mutations = this.queue.drain();
+    const mutations = this.queue.peek();
     if (mutations.length === 0) {
       return { succeeded: [], failed: [], conflicts: [] };
     }
@@ -72,34 +72,33 @@ export class SyncCoordinator {
     const succeeded: OfflineMutation[] = [];
     const failed: { mutation: OfflineMutation; error: string }[] = [];
     const conflicts: { mutation: OfflineMutation; serverValue: unknown }[] = [];
+    const nextQueue: OfflineMutation[] = [];
 
     for (const mutation of mutations) {
       try {
         const response = await this.httpClient.request(mutation);
         if (response.conflict) {
           conflicts.push({ mutation, serverValue: response.serverValue });
-          // Re-queue with conflict status for manual resolution
-          this.queue.enqueue({ ...mutation, status: "conflict" });
+          nextQueue.push({ ...mutation, status: "conflict" });
         } else {
           succeeded.push(mutation);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (this.isRetryableError(errorMessage)) {
-          // Re-queue for retry with incremented retry count
-          this.queue.enqueue({ ...mutation, retryCount: mutation.retryCount + 1, status: "pending" });
+          nextQueue.push({ ...mutation, retryCount: mutation.retryCount + 1, status: "pending" });
           failed.push({ mutation, error: errorMessage });
         } else if (this.isConflictError(errorMessage)) {
           conflicts.push({ mutation, serverValue: undefined });
-          this.queue.enqueue({ ...mutation, status: "conflict" });
+          nextQueue.push({ ...mutation, status: "conflict" });
         } else {
-          // Non-retryable error - mark as failed
-          this.queue.enqueue({ ...mutation, status: "failed", lastError: errorMessage });
+          nextQueue.push({ ...mutation, status: "failed", lastError: errorMessage });
           failed.push({ mutation, error: errorMessage });
         }
       }
     }
 
+    await this.queue.replaceAll(nextQueue);
     return { succeeded, failed, conflicts };
   }
 

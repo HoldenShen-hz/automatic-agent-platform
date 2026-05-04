@@ -75,6 +75,23 @@ function decodeEventStreamCursor(cursor: string): { id: string; createdAt: strin
   };
 }
 
+function resolveTier1OutboxAggregate(input: {
+  taskId: string | null;
+  sessionId?: string | null;
+  executionId: string | null;
+}): { aggregateType: "task" | "session" | "execution"; aggregateId: string } {
+  if (input.taskId) {
+    return { aggregateType: "task", aggregateId: input.taskId };
+  }
+  if (input.sessionId) {
+    return { aggregateType: "session", aggregateId: input.sessionId };
+  }
+  if (input.executionId) {
+    return { aggregateType: "execution", aggregateId: input.executionId };
+  }
+  throw new Error("tier1_status_event.aggregate_id_required");
+}
+
 export class EventRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
@@ -909,6 +926,7 @@ export class EventRepository {
     traceId: string;
     payload: Record<string, unknown>;
   }): EventRecord {
+    const aggregate = resolveTier1OutboxAggregate(input);
     const eventRecord = this.insertEvent({
       id: newId("evt"),
       taskId: input.taskId,
@@ -942,8 +960,8 @@ export class EventRepository {
       )
       .run(
         outboxId,
-        "task",
-        input.taskId,
+        aggregate.aggregateType,
+        aggregate.aggregateId,
         input.eventType,
         JSON.stringify(outboxPayload),
         input.traceId,

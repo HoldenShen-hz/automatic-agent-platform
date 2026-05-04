@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useIncidentsQuery } from "@aa/shared-state";
+import { useAuthState, useIncidentsQuery } from "@aa/shared-state";
 import type { IncidentDTO } from "@aa/shared-types";
 
 export type IncidentSeverity = "critical" | "high" | "medium" | "low";
@@ -23,6 +23,7 @@ const SEVERITY_PRIORITY: Record<IncidentSeverity, number> = {
   medium: 2,
   low: 3,
 };
+const ALERTS_REQUIRED_PERMISSION = "platform_sre";
 
 function sortBySeverity(incidents: readonly IncidentDTO[]): IncidentDTO[] {
   return [...incidents].sort((a, b) => {
@@ -86,6 +87,8 @@ export function mapAlertsToVm(incidents: readonly IncidentDTO[]): AlertsVm {
 }
 
 export function useAlertsVm(): AlertsVm {
+  const auth = useAuthState();
   const { data: incidents = [] } = useIncidentsQuery();
-  return mapAlertsToVm(incidents);
+  const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
+  return mapAlertsToVm(scopedIncidents);
 }

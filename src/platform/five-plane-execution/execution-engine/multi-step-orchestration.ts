@@ -120,6 +120,18 @@ function isOapeflirPlanRequest(request: string): boolean {
   return request.startsWith(OAPEFLIR_PLAN_PREFIX);
 }
 
+function normalizeExecutionRequest(input: MultiStepToolExecutionInput): string {
+  const trimmedRequest = input.request.trim();
+  if (trimmedRequest.length > 0) {
+    return trimmedRequest;
+  }
+  const trimmedTitle = input.title.trim();
+  if (trimmedTitle.length > 0) {
+    return trimmedTitle;
+  }
+  return input.request;
+}
+
 // R19-09 fix: Changed return type from PlanStep[] to PlanNode[] to preserve rich metadata
 // Previously deserialized to PlanStep[] which lost riskClass, budgetIntent, sideEffectProfile, etc.
 function deserializeOapeflirPlan(request: string): import("../../contracts/executable-contracts/index.js").PlanNode[] {
@@ -226,6 +238,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   // All execution paths must pass through PlanGraphBundle validation before writing truth
   const entryGuard = new RuntimeEntryGuard();
   entryGuard.assertNoLegacyTruthWrite({ eventType: "platform.graph_scheduler.decision_recorded" });
+  input.request = normalizeExecutionRequest(input);
 
   // Reset the tool registry to ensure clean state for this orchestration run
   resetMultiStepToolRegistryForTests();
@@ -538,7 +551,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: [],
-          routing: buildSyntheticPipelineResult(routing),
+          routing,
           plannedWorkflow,
           compaction: null,
         };
@@ -605,7 +618,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: streamBridge.replayAfterSequence(streamId, 0),
-          routing: buildSyntheticPipelineResult(routing),
+          routing,
           plannedWorkflow,
           compaction: latestCompaction,
         };
@@ -667,7 +680,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       return {
         snapshot: store.operations.loadTaskSnapshot(taskId),
         streamFrames: streamBridge.replayAfterSequence(streamId, 0),
-        routing: buildSyntheticPipelineResult(routing),
+        routing,
         plannedWorkflow,
         compaction: latestCompaction,
       };

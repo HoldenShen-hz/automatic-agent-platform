@@ -100,9 +100,15 @@ test("RecoveryCadence can be used in arrays", () => {
   ];
 
   assert.strictEqual(cadences.length, 3);
-  assert.strictEqual(cadences[0].intervalMs, 1000);
-  assert.strictEqual(cadences[1].priority, "high");
-  assert.strictEqual(cadences[2].maxConcurrent, 5);
+  const first = cadences[0];
+  const second = cadences[1];
+  const third = cadences[2];
+  assert.ok(first);
+  assert.ok(second);
+  assert.ok(third);
+  assert.strictEqual(first.intervalMs, 1000);
+  assert.strictEqual(second.priority, "high");
+  assert.strictEqual(third.maxConcurrent, 5);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

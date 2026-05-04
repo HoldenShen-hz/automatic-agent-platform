@@ -9,7 +9,7 @@
   "latencyTier": "realtime",
   "riskProfile": {
     "defaultRiskLevel": "critical",
-    "maxAutonomyLevel": "manual"
+    "maxAutonomyLevel": "suggestion"
   },
   "riskSpec": {
     "advisoryOnly": true,

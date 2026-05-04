@@ -45,7 +45,7 @@ test("createMinimalExecution creates valid execution", () => {
 
   assert.equal(exec.id, "exec-test-001");
   assert.equal(exec.taskId, "task-123");
-  assert.equal(exec.status, "executing");
+  assert.equal(exec.status, "running");
   assert.strictEqual(exec.finishedAt, null);
 });
 
@@ -162,11 +162,11 @@ test("createMinimalNodeRun creates valid node run", () => {
 
 test("createMinimalNodeRun applies overrides", () => {
   const nrun = createMinimalNodeRun("hrun-1", "pgb-1", {
-    status: "executing",
+    status: "running",
     nodeId: "custom-node",
   });
 
-  assert.equal(nrun.status, "executing");
+  assert.equal(nrun.status, "running");
   assert.equal(nrun.nodeId, "custom-node");
 });
 

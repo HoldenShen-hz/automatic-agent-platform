@@ -57,6 +57,13 @@ export class OfflineQueue {
     return drained;
   }
 
+  public async replaceAll(mutations: readonly OfflineMutation[]): Promise<void> {
+    await this.readyPromise;
+    this.queue.length = 0;
+    this.queue.push(...mutations.slice(0, this.maxCapacity));
+    await this.persist();
+  }
+
   public peek(): readonly OfflineMutation[] {
     return [...this.queue];
   }

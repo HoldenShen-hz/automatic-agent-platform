@@ -21,6 +21,7 @@ import type {
   PromptBundleSegment,
   PromptBundleVersion,
 } from "../../contracts/prompt-bundle/index.js";
+import type * as PromptBundleContracts from "../../contracts/prompt-bundle/index.js";
 
 export interface HierarchicalPromptRegistryConfig {
   enableVersioning: boolean;
@@ -66,6 +67,7 @@ export class HierarchicalPromptRegistryService {
 
   /**
    * Registers a new prompt bundle at the specified level.
+   * §16.4: Validates compatibility matrix before registration.
    */
   public registerBundle(
     input: PromptBundleRegistrationInput,
@@ -74,6 +76,9 @@ export class HierarchicalPromptRegistryService {
     packId?: string,
   ): PromptBundle {
     this.validateRegistrationInput(input);
+
+    // §16.4 FIX: Validate compatibility matrix before registration
+    this.validateBundleCompatibilityMatrix(input.compatibilityMatrix);
 
     const bundleId = this.buildBundleId(input, level, domain, packId);
     const bundle: PromptBundle = {
@@ -319,6 +324,37 @@ export class HierarchicalPromptRegistryService {
     }
     if (!input.systemPrompt?.content?.trim()) {
       throw new ValidationError("prompt_bundle.invalid_system_prompt", "System prompt content must be non-empty");
+    }
+  }
+
+  /**
+   * §16.4 FIX: Validates compatibility matrix covers all required dimensions.
+   * Raises ValidationError if any required matrix dimension is missing or empty.
+   */
+  private validateBundleCompatibilityMatrix(matrix: PromptBundleContracts.PromptBundleCompatibilityMatrix): void {
+    if (!matrix.toolSchemaVersions || matrix.toolSchemaVersions.length === 0) {
+      throw new ValidationError(
+        "prompt_bundle.missing_compatibility_matrix",
+        "compatibilityMatrix.toolSchemaVersions is required per §16.4",
+      );
+    }
+    if (!matrix.evaluatorSchemaVersions || matrix.evaluatorSchemaVersions.length === 0) {
+      throw new ValidationError(
+        "prompt_bundle.missing_compatibility_matrix",
+        "compatibilityMatrix.evaluatorSchemaVersions is required per §16.4",
+      );
+    }
+    if (!matrix.domainDescriptorVersions || matrix.domainDescriptorVersions.length === 0) {
+      throw new ValidationError(
+        "prompt_bundle.missing_compatibility_matrix",
+        "compatibilityMatrix.domainDescriptorVersions is required per §16.4",
+      );
+    }
+    if (!matrix.modelRoutingProfiles || matrix.modelRoutingProfiles.length === 0) {
+      throw new ValidationError(
+        "prompt_bundle.missing_compatibility_matrix",
+        "compatibilityMatrix.modelRoutingProfiles is required per §16.4",
+      );
     }
   }
 

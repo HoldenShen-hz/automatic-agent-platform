@@ -185,7 +185,7 @@ export class ConversationHistoryService {
       updatedAt: nowIso(),
     };
 
-    if (this.memoryService && this.shouldPersistToLongTermMemory(options)) {
+    if (this.memoryService && this.shouldPersistToLongTermMemory(options) && (options.memoryLayer === "layer_3" || !options.memoryLayer)) {
       await this.persistSession(completedSession, options);
     }
 
@@ -205,7 +205,10 @@ export class ConversationHistoryService {
       updatedAt: nowIso(),
     };
 
-    if (this.memoryService && this.shouldPersistToLongTermMemory(options)) {
+    // R5-31 fix: Only persist to long-term memory when memoryLayer is "layer_3" or unset
+    // This prevents restricted/regulated dialog data from being written to long-term memory
+    // §39.6 requires only session memory for restricted/regulated data
+    if (this.memoryService && this.shouldPersistToLongTermMemory(options) && (options.memoryLayer === "layer_3" || !options.memoryLayer)) {
       await this.persistSession(abandonedSession, options);
     }
 
