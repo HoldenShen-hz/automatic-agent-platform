@@ -36,8 +36,8 @@ export class HarnessLoopController {
     overrides: Partial<HarnessLoopGuards> = {},
     initialState: Partial<Omit<HarnessLoopState, "startedAt">> & { startedAt?: number } = {},
   ) {
-    // Prefer budgetEnvelope (new) > budget_envelope (snake) > budget (deprecated)
-    const budget = constraintPack.budgetEnvelope ?? constraintPack.budget_envelope ?? constraintPack.budget ?? {
+    // Prefer budgetEnvelope (new) > budget (deprecated)
+    const budget = constraintPack.budgetEnvelope ?? constraintPack.budget ?? {
       maxSteps: 100,
       maxCost: 100000,
       maxDurationMs: 3600000,

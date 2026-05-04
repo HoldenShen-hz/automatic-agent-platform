@@ -6,6 +6,22 @@ import type {
 import { resolveTenantScope } from "../authoritative-task-store-types.js";
 import { execute, queryAll, queryOne, type SqliteConnection } from "../query-helper.js";
 
+/**
+ * Error thrown when a concurrent modification conflict is detected during worker snapshot update.
+ */
+export class WorkerSnapshotConflictError extends Error {
+  public constructor(
+    public readonly workerId: string,
+    public readonly expectedVersion: number,
+    public readonly actualVersion: number,
+  ) {
+    super(
+      `Worker snapshot conflict for worker ${workerId}: expected version ${expectedVersion}, found ${actualVersion}`,
+    );
+    this.name = "WorkerSnapshotConflictError";
+  }
+}
+
 const WORKER_SNAPSHOT_SELECT = `SELECT
   worker_id AS "workerId",
   status,
@@ -43,7 +59,8 @@ const WORKER_SNAPSHOT_SELECT = `SELECT
   current_step_id AS "currentStepId",
   last_progress_at AS "lastProgressAt",
   last_heartbeat_at AS "lastHeartbeatAt",
-  updated_at AS "updatedAt"
+  updated_at AS "updatedAt",
+  version AS "version"
  FROM worker_snapshots`;
 
 const COORDINATOR_SNAPSHOT_SELECT = `SELECT
@@ -99,8 +116,8 @@ export class WorkerSnapshotRepository {
     );
   }
 
-  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord): void {
-    execute(
+  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord, expectedVersion: number): void {
+    const result = execute(
       this.conn,
       `INSERT INTO worker_snapshots (
         worker_id, status, placement, isolation_level, repo_version, remote_session_status,
@@ -110,8 +127,8 @@ export class WorkerSnapshotRepository {
         sandbox_success_rate, repo_cache_hit_rate, registration_verified_at, registration_challenge_id,
         capabilities_json, running_executions_json, max_concurrency, queue_affinity, runtime_instance_id,
         restarted_from_runtime_instance_id, restart_generation, cpu_pct, memory_mb, tool_backlog_count,
-        current_step_id, last_progress_at, last_heartbeat_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        current_step_id, last_progress_at, last_heartbeat_at, updated_at, version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(worker_id) DO UPDATE SET
         status = excluded.status,
         placement = excluded.placement,
@@ -145,7 +162,9 @@ export class WorkerSnapshotRepository {
         current_step_id = excluded.current_step_id,
         last_progress_at = excluded.last_progress_at,
         last_heartbeat_at = excluded.last_heartbeat_at,
-        updated_at = excluded.updated_at`,
+        updated_at = excluded.updated_at,
+        version = excluded.version + 1
+      WHERE worker_snapshots.version = excluded.version`,
       snapshot.workerId,
       snapshot.status,
       snapshot.placement ?? "local",
@@ -180,7 +199,20 @@ export class WorkerSnapshotRepository {
       snapshot.lastProgressAt,
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
+      expectedVersion,
     );
+    if (result === 0) {
+      const current = queryOne<{ version: number }>(
+        this.conn,
+        `SELECT version FROM worker_snapshots WHERE worker_id = ?`,
+        snapshot.workerId,
+      );
+      throw new WorkerSnapshotConflictError(
+        snapshot.workerId,
+        expectedVersion,
+        current?.version ?? 0,
+      );
+    }
   }
 
   public upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): void {

@@ -469,7 +469,7 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     updatedAt: state.updatedAt,
     // R18-02 fix: Map traceId/riskLevel/ownership/auditRefs with defaults per §45.3
     traceId: state.traceId ?? `trace:${state.harnessRunId}`,
-    riskLevel: state.riskLevel ?? "medium",
+    riskLevel: (state.riskLevel as RiskClass) ?? "medium",
     ownership: state.ownership ?? { ownerId: state.tenantId, ownerType: "harness" },
     auditRefs: state.auditRefs ?? [],
   };
@@ -1626,6 +1626,11 @@ export class HarnessRuntimeService {
       currentSeq: run.currentSeq ?? 0,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt ?? run.createdAt,
+      // R18-02 fix: Map traceId/riskLevel/ownership/auditRefs with defaults per §45.3
+      traceId: run.traceId ?? `trace:${run.harnessRunId ?? run.runId}`,
+      riskLevel: (run.riskLevel as RiskClass) ?? "medium",
+      ownership: run.ownership ?? { ownerId: run.tenantId, ownerType: "harness" },
+      auditRefs: run.auditRefs ?? [],
     };
     if (run.completedAt != null) {
       (baseAggregate as { terminalAt?: string }).terminalAt = run.completedAt;

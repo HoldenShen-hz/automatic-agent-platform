@@ -125,7 +125,7 @@ export class WorkerServiceIdentityRegistry {
       updatedAt: new Date().toISOString() as Timestamp,
       version: (existing?.version ?? 0) + 1,
     };
-    this.store.worker.upsertWorkerSnapshot(snapshot);
+    this.store.worker.upsertWorkerSnapshot(snapshot, existing?.version ?? 0);
     this.identities.set(identity.workerId, identity);
     return identity;
   }

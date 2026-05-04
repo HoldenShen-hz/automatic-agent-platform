@@ -737,13 +737,16 @@ export class ExecutionDispatchService {
           // Issue #1905 P1: activeLeaseCount should be the actual count, not Math.max.
           // Using Math.max never decreases the count when executions complete.
           // Fixed to use runningExecutionIds.size which accurately reflects current load.
-          this.store.worker.upsertWorkerSnapshot({
-            ...workerSnapshot,
-            status: "busy",
-            activeLeaseCount: runningExecutionIds.size,
-            runningExecutionsJson: JSON.stringify([...runningExecutionIds].sort()),
-            updatedAt: occurredAt,
-          });
+          this.store.worker.upsertWorkerSnapshot(
+            {
+              ...workerSnapshot,
+              status: "busy",
+              activeLeaseCount: runningExecutionIds.size,
+              runningExecutionsJson: JSON.stringify([...runningExecutionIds].sort()),
+              updatedAt: occurredAt,
+            },
+            workerSnapshot.version,
+          );
         }
         const execution = this.store.dispatch.getExecution(ticket.executionId);
         this.store.event.insertEvent({

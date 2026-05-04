@@ -17,6 +17,22 @@ import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
 
+/**
+ * Error thrown when a concurrent modification conflict is detected during worker snapshot update.
+ */
+export class WorkerSnapshotConflictError extends Error {
+  public constructor(
+    public readonly workerId: string,
+    public readonly expectedVersion: number,
+    public readonly actualVersion: number,
+  ) {
+    super(
+      `Worker snapshot conflict for worker ${workerId}: expected version ${expectedVersion}, found ${actualVersion}`,
+    );
+    this.name = "WorkerSnapshotConflictError";
+  }
+}
+
 export class AsyncWorkerRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
@@ -114,23 +130,7 @@ export class AsyncWorkerRepository {
     );
   }
 
-  /**
- * Error thrown when a concurrent modification conflict is detected during worker snapshot update.
- */
-export class WorkerSnapshotConflictError extends Error {
-  public constructor(
-    public readonly workerId: string,
-    public readonly expectedVersion: number,
-    public readonly actualVersion: number,
-  ) {
-    super(
-      `Worker snapshot conflict for worker ${workerId}: expected version ${expectedVersion}, found ${actualVersion}`,
-    );
-    this.name = "WorkerSnapshotConflictError";
-  }
-}
-
-public async upsertWorkerSnapshot(
+  public async upsertWorkerSnapshot(
   snapshot: WorkerSnapshotRecord,
   expectedVersion: number,
 ): Promise<void> {
@@ -218,6 +218,21 @@ public async upsertWorkerSnapshot(
       snapshot.updatedAt,
       expectedVersion,
     );
+    // Check if the upsert was applied (result > 0 means version matched)
+    // If result is 0, it means the WHERE clause failed - version mismatch
+    if (result === 0) {
+      // Fetch current version to report accurate conflict info
+      const current = await asyncQueryOne<{ version: number }>(
+        this.conn,
+        `SELECT version FROM worker_snapshots WHERE worker_id = $1`,
+        snapshot.workerId,
+      );
+      throw new WorkerSnapshotConflictError(
+        snapshot.workerId,
+        expectedVersion,
+        current?.version ?? 0,
+      );
+    }
   }
 
   public async upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): Promise<void> {

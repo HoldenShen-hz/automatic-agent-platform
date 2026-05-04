@@ -512,7 +512,7 @@ export class WorkerRegistryService {
       version: (existing?.version ?? 0) + 1,
     };
 
-    this.store.worker.upsertWorkerSnapshot(record);
+    this.store.worker.upsertWorkerSnapshot(record, existing?.version ?? 0);
     return this.toView(record);
   }
 
