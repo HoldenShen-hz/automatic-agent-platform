@@ -251,8 +251,8 @@ export class CompensationManager {
       compensationId: plan.compensationId,
       finalStatus,
       evidenceRefs,
-      completedAt: finalStatus === "succeeded" ? new Date().toISOString() : undefined,
-    } as CompensationResult;
+      ...(finalStatus === "succeeded" ? { completedAt: new Date().toISOString() } : {}),
+    };
     return result;
   }
 

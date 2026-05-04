@@ -87,7 +87,7 @@ test("ProactiveAgentService disables triggers in feedback loop", async () => {
 });
 
 test("ProactiveAgentService handles self-referencing trigger", async () => {
-  const service = new ProactiveAgentService();
+  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
 
   // Register trigger that references itself
   const selfTrigger: TriggerDefinition = {
@@ -212,7 +212,7 @@ test("ProactiveAgentService evaluate does not call resolveTriggerActionMode dire
   // The function IS used internally within evaluate() for low-risk triggers
   // This test verifies the behavior works correctly
 
-  const service = new ProactiveAgentService();
+  const service = new ProactiveAgentService({ currentAutonomyLevel: "semi_auto" });
 
   const lowRiskTrigger: TriggerDefinition = {
     ...makeTrigger(),

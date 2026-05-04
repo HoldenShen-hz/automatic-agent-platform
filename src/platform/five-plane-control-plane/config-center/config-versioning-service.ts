@@ -352,9 +352,9 @@ export class ConfigVersioningService {
    * @param versionB - Second version ID
    * @returns Diff result or null if either version not found
    */
-  public diffVersions(versionA: string, versionB: string): ConfigVersionDiff | null {
-    const snapshotA = this.getVersion(versionA);
-    const snapshotB = this.getVersion(versionB);
+  public async diffVersions(versionA: string, versionB: string): Promise<ConfigVersionDiff | null> {
+    const snapshotA = await this.getVersion(versionA);
+    const snapshotB = await this.getVersion(versionB);
 
     if (!snapshotA || !snapshotB) {
       return null;
@@ -381,13 +381,13 @@ export class ConfigVersioningService {
    * @param createdBy - Actor creating the rollback point
    * @returns The created rollback point or null if no current version
    */
-  public createRollbackPoint(
+  public async createRollbackPoint(
     configPath: string,
     layer: string,
     sourceId: string | null,
     createdBy: string,
-  ): ConfigRollbackPoint | null {
-    const currentVersion = this.getCurrentVersion(configPath, layer, sourceId);
+  ): Promise<ConfigRollbackPoint | null> {
+    const currentVersion = await this.getCurrentVersion(configPath, layer, sourceId);
     if (!currentVersion) {
       return null;
     }
@@ -420,11 +420,12 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns Array of rollback points
    */
-  public getRollbackPoints(
+  public async getRollbackPoints(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): ConfigRollbackPoint[] {
+  ): Promise<ConfigRollbackPoint[]> {
+    await this.ensureInitialized();
     const key = this.buildKey(configPath, layer, sourceId);
     return this.rollbackPoints.get(key) ?? [];
   }
@@ -442,7 +443,7 @@ export class ConfigVersioningService {
     createdBy: string,
     reason: string | null = null,
   ): Promise<ConfigVersionSnapshot | null> {
-    const targetVersion = this.getVersion(versionId);
+    const targetVersion = await this.getVersion(versionId);
     if (!targetVersion) {
       return null;
     }
@@ -471,8 +472,8 @@ export class ConfigVersioningService {
    * @param versionId - Version ID to get content from
    * @returns The configuration content or null if version not found
    */
-  public getVersionContent(versionId: string): Record<string, unknown> | null {
-    const version = this.getVersion(versionId);
+  public async getVersionContent(versionId: string): Promise<Record<string, unknown> | null> {
+    const version = await this.getVersion(versionId);
     return version ? { ...version.content } : null;
   }
 
@@ -484,11 +485,12 @@ export class ConfigVersioningService {
    * @param sourceId - Source ID if applicable
    * @returns Number of versions pruned
    */
-  public pruneVersions(
+  public async pruneVersions(
     configPath: string,
     layer: string,
     sourceId: string | null,
-  ): number {
+  ): Promise<number> {
+    await this.ensureInitialized();
     const key = this.buildKey(configPath, layer, sourceId);
     return this.pruneVersionsInternal(key);
   }
@@ -498,7 +500,8 @@ export class ConfigVersioningService {
    *
    * @returns Number of versions pruned
    */
-  public pruneAllVersions(): number {
+  public async pruneAllVersions(): Promise<number> {
+    await this.ensureInitialized();
     let totalPruned = 0;
     for (const key of this.snapshots.keys()) {
       totalPruned += this.pruneVersionsInternal(key);

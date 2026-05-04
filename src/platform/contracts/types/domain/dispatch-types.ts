@@ -59,6 +59,14 @@ export interface ExecutionTicketRecord {
   requiredSandboxType?: string | null;
   // R6-3: Tenant quota reference for resource governance
   tenantQuotaRef?: string | null;
+  // R6-4: Critical path rank for deterministic graph scheduling per §14.9
+  // Higher value = more critical for overall execution time
+  // Used for critical-path-first ordering when selecting which ticket to dispatch next
+  criticalPathRank?: number | null;
+  // R6-4: Scheduler seed for deterministic dispatch ordering per §14.9
+  // Ensures same ticket ordering across scheduler restarts
+  // Combined with priority/risk_class/critical_path_rank for full determinism
+  schedulerSeed?: string | null;
 }
 
 export type ExecutionTicketStatus = "pending" | "claimed" | "consumed" | "cancelled" | "expired";

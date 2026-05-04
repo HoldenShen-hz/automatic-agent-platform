@@ -25,7 +25,10 @@ const EXECUTION_TICKET_SELECT = `SELECT
   consumed_at AS "consumedAt",
   invalidated_at AS "invalidatedAt",
   created_at AS "createdAt",
-  updated_at AS "updatedAt"
+  updated_at AS "updatedAt",
+  -- R6-4: critical_path_rank and scheduler_seed for deterministic graph scheduling
+  critical_path_rank AS "criticalPathRank",
+  scheduler_seed AS "schedulerSeed"
  FROM execution_tickets`;
 
 const EXECUTION_LEASE_SELECT = `SELECT
@@ -93,14 +96,16 @@ export class ExecutionTicketRepository {
   public insertExecutionTicket(ticket: ExecutionTicketRecord): void {
     this.ensureExecutionForLegacyTicket(ticket);
     const requiredCapabilitiesJson = ticket.requiredCapabilitiesJson ?? "[]";
+    // R6-4: critical_path_rank and scheduler_seed for deterministic graph scheduling
     execute(
       this.conn,
       `INSERT INTO execution_tickets (
         id, execution_id, task_id, priority, queue_name, dispatch_target,
         required_isolation_level, required_repo_version, required_capabilities_json,
         dispatch_after, attempt, status, assigned_worker_id, lease_id, claimed_at,
-        consumed_at, invalidated_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        consumed_at, invalidated_at, created_at, updated_at,
+        critical_path_rank, scheduler_seed
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ticket.id,
       ticket.executionId,
       ticket.taskId,
@@ -120,6 +125,8 @@ export class ExecutionTicketRepository {
       ticket.invalidatedAt ?? null,
       ticket.createdAt,
       ticket.updatedAt,
+      ticket.criticalPathRank ?? null,  // R6-4: critical path rank for graph scheduling
+      ticket.schedulerSeed ?? null,     // R6-4: scheduler seed for deterministic ordering
     );
   }
 
@@ -355,10 +362,7 @@ export class ExecutionTicketRepository {
   }
 
   // R6-4: Deterministic graph scheduler per §14.9
-  // Orders by priority/risk_class/critical_path_rank/created_order/scheduler_seed
-  // Note: critical_path_rank and scheduler_seed fields require schema migration
-  // For now, uses available fields: priority DESC, created_at ASC, id ASC (stable sort)
-  //
+  // Full ordering: priority/risk_class/critical_path_rank/created_order/scheduler_seed
   // R13-14 fix: Priority is lexicographically sorted but should be semantic (critical > high > normal > low).
   // SQLite's CASE expression maps priority strings to numeric values for correct ordering.
   public listDispatchableExecutionTickets(now: string, queueName: string | null = null): ExecutionTicketRecord[] {
@@ -370,10 +374,10 @@ export class ExecutionTicketRepository {
       sql += " AND queue_name = ?";
       params.push(queueName);
     }
-    // R6-4: Deterministic ordering - add id ASC for stable sort when priorities match
-    // Full §14.9 ordering (critical_path_rank, scheduler_seed) requires schema migration
+    // R6-4: Full §14.9 deterministic ordering using critical_path_rank, scheduler_seed
+    // Schema migration adds these columns; query uses COALESCE for backward compatibility
     // R13-14 fix: Use CASE expression for semantic priority ordering (critical=4, high=3, normal=2, low=1)
-    sql += " ORDER BY CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'normal' THEN 2 WHEN 'low' THEN 1 ELSE 0 END DESC, created_at ASC, id ASC";
+    sql += " ORDER BY CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'normal' THEN 2 WHEN 'low' THEN 1 ELSE 0 END DESC, critical_path_rank DESC, created_at ASC, scheduler_seed ASC, id ASC";
     return queryAll<ExecutionTicketRecord>(this.conn, sql, ...params);
   }
 

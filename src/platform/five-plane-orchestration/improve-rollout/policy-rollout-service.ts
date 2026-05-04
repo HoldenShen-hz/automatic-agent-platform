@@ -171,6 +171,21 @@ export class PolicyRolloutService {
     metrics: RolloutMetrics,
     approvedBy?: string,
   ): RolloutRecord {
+    // R14-19 FIX: Guard rollback to only progressive/active statuses per §13.14.
+    // Rollback from draft/rolled_back/rejected is not allowed - requires explicit
+    // re-approval through the standard promotion pipeline.
+    const ROLLBACKABLE_STATUSES: ReadonlySet<RolloutStatus> = new Set<RolloutStatus>([
+      "evaluation_enabled",
+      "canary_5",
+      "canary_20",
+      "canary_50",
+      "stable_100",
+      "released",
+    ]);
+    if (!ROLLBACKABLE_STATUSES.has(current.status)) {
+      const msg = "Rollback is only allowed from progressive rollout statuses (evaluation_enabled, canary_*, stable_100, released). Current status: " + current.status;
+      throw new Error(msg);
+    }
     const rollbackDecision = this.autoRollback.evaluate(current, metrics);
     return this.stateMachine.transition(candidate, "off", {
       currentStatus: current.status,
