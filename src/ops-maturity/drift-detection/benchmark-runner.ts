@@ -121,10 +121,13 @@ export class SimpleBenchmarkRunner implements BenchmarkRunner {
       avgCostBefore /= baselineCount;
       avgLatencyBefore /= baselineCount;
     } else {
-      // No baseline data - cannot compute regression
-      successRateBefore = successRateAfter;
-      avgCostBefore = results.reduce((sum, r) => sum + r.costUsd, 0) / results.length || 0;
-      avgLatencyBefore = results.reduce((sum, r) => sum + r.latencyMs, 0) / results.length || 0;
+      // R13-04 FIX: Cannot compute baseline regression without actual historical data.
+      // Require setBaseline() to be called before evaluate() to establish ground truth.
+      // Using successRateAfter as baseline is incorrect - it conflates pre/post behavior.
+      throw new Error(
+        "benchmark_runner.baseline_required: Cannot evaluate proposal without baseline data. " +
+        "Call setBaseline(testCaseId, baseline) with historical performance data before evaluate()."
+      );
     }
 
     const avgCostAfter = results.length > 0

@@ -153,12 +153,16 @@ export class EvolutionIntegrationService {
    * Creates an improvement proposal based on a reflection.
    */
   private async createProposalFromReflection(reflection: ReflectionRecord): Promise<void> {
+    // R13-11 FIX: Derive risk level from root cause analysis, not hardcoded 'low'.
+    // Auto-generated proposals from reflection should assess actual risk.
+    const risk = this.assessReflectionRisk(reflection);
+
     const proposal = await this.proposalEngine.create({
       title: `Auto-generated: ${reflection.rootCause.slice(0, 50)}`,
       description: reflection.recommendation,
       kind: this.inferProposalKind(reflection.taskType),
       target: reflection.taskType,
-      risk: 'low',
+      risk,
       agentId: 'evolution-system',
       evidenceIds: reflection.evidenceIds,
     });
@@ -228,5 +232,37 @@ export class EvolutionIntegrationService {
     if (taskType.includes('timeout')) return 'threshold_tuning';
     if (taskType.includes('test')) return 'prompt_patch';
     return 'skill_doc';
+  }
+
+  // R13-11 FIX: Assess risk level from reflection data, not hardcoded 'low'.
+  // Security-related root causes should be high risk; costliers failures medium.
+  private assessReflectionRisk(reflection: ReflectionRecord): 'low' | 'medium' | 'high' {
+    const rootCause = reflection.rootCause.toLowerCase();
+    const metadata = reflection.metadata as Record<string, unknown> | undefined;
+
+    // Security-related failures are high risk
+    if (rootCause.includes('security') || rootCause.includes('forbidden') || rootCause.includes('policy_violation')) {
+      return 'high';
+    }
+
+    // High repair rounds indicate complex failures that could have high impact
+    const avgRepairRounds = metadata?.avgRepairRounds as number | undefined;
+    if (avgRepairRounds !== undefined && avgRepairRounds >= 3) {
+      return 'high';
+    }
+
+    // High cost failures are medium-high risk
+    const avgCostUsd = metadata?.avgCostUsd as number | undefined;
+    if (avgCostUsd !== undefined && avgCostUsd > 1.0) {
+      return 'medium';
+    }
+
+    // Inconclusive root cause should default to medium for safety
+    if (rootCause.includes('inconclusive') || rootCause.includes('unknown')) {
+      return 'medium';
+    }
+
+    // Most other failures are low risk
+    return 'low';
   }
 }

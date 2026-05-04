@@ -18,6 +18,7 @@ const DomainRecipeArchetypeSchemaInternal = z.enum([
 export const DomainLifecycleStateSchema = z.enum([
   "draft",
   "validating",
+  "testing",
   "certified",
   "registered",
   "canary",

@@ -66,6 +66,7 @@ export interface ExecutionWriteValidationResult {
     | "worker_mismatch"
     | "lease_mismatch"
     | "lease_expired"
+    | "ttl_out_of_bounds"
     | null;
   authoritativeFencingToken: number;
   activeLeaseId: string | null;

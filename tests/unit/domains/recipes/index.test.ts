@@ -26,6 +26,9 @@ test("DomainRecipeSchema applies default values", () => {
   const result = DomainRecipeSchema.parse(recipe);
   assert.deepEqual(result.triggerPhrases, []);
   assert.deepEqual(result.defaultToolBundleIds, []);
+  assert.equal(result.riskLevel, "medium");
+  assert.equal(result.budgetHint, undefined);
+  assert.equal(result.requiredApproval, false);
 });
 
 test("DomainRecipeSchema requires recipeId to be non-empty", () => {

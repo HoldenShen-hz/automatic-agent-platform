@@ -63,6 +63,24 @@ test("AdminSdk.abortHarnessRun creates kill operational directive", () => {
   assert.deepEqual(directive.issuedBy.roles, ["operator"]);
 });
 
+test("AdminSdk.resumeHarnessRun creates resume operational directive", () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  });
+
+  const directive = sdk.resumeHarnessRun("harness_run_resume", {
+    principalId: "p_operator",
+    tenantId: "t_tenant",
+    roles: ["operator"],
+  });
+
+  assert.equal(directive.type, "resume");
+  assert.equal(directive.scope?.harnessRunId, "harness_run_resume");
+  assert.equal(directive.issuedBy.principalId, "p_operator");
+});
+
 test("AdminSdk.issueOperationalDirective creates custom operational directive", () => {
   const sdk = new AdminSdk({
     baseUrl: "https://api.example.com",
@@ -385,6 +403,62 @@ test("AdminSdk.publishPack calls client.publishPack", async () => {
     const result = await sdk.publishPack<{ packId: string; status: string }>("pack_1", {});
     assert.equal(result.data.packId, "pack_1");
     assert.equal(result.data.status, "published");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk.listWorkers and getConfig call operational endpoints", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  });
+  const seenUrls: string[] = [];
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    seenUrls.push(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await sdk.listWorkers("tenant-1");
+    await sdk.getConfig("runtime/default");
+    assert.deepEqual(seenUrls, [
+      "https://api.example.com/workers?tenantId=tenant-1",
+      "https://api.example.com/config/runtime/default",
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("AdminSdk sends X-Platform-Version and X-SDK-Version headers", async () => {
+  const sdk = new AdminSdk({
+    baseUrl: "https://api.example.com",
+    apiVersion: "v1",
+    bearerToken: "test-token",
+  });
+  const seenHeaders: Headers[] = [];
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => {
+    seenHeaders.push(new Headers(init?.headers));
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    await sdk.listWorkers();
+    assert.equal(seenHeaders.length, 1);
+    assert.equal(seenHeaders[0]?.get("X-Platform-Version"), "v4.3");
+    assert.equal(seenHeaders[0]?.get("X-SDK-Version"), "1.0.0");
   } finally {
     globalThis.fetch = originalFetch;
   }

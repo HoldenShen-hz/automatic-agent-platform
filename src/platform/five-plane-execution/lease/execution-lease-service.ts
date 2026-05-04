@@ -304,12 +304,36 @@ export class ExecutionLeaseService {
         };
       }
 
-      // Can only release active leases
-      if (lease.status !== "active") {
+      // R9-03 fix: Use CAS (compare-and-swap) to detect concurrent modifications.
+      // Re-check with the actual current status before writing (fencing).
+      const currentLease = this.store.worker.getExecutionLease(input.leaseId);
+      if (!currentLease) {
+        return {
+          outcome: "blocked",
+          reasonCode: "lease_not_found",
+          lease: null,
+        };
+      }
+      if (currentLease.status !== "active") {
         return {
           outcome: "blocked",
           reasonCode: "lease_not_active",
-          lease: lease ?? null,
+          lease: currentLease,
+        };
+      }
+      if (currentLease.workerId !== input.workerId) {
+        return {
+          outcome: "blocked",
+          reasonCode: "worker_mismatch",
+          lease: currentLease,
+        };
+      }
+      // Detect if lease was modified by another party between our read and this write
+      if (currentLease.status !== "active" || currentLease.workerId !== input.workerId) {
+        return {
+          outcome: "blocked",
+          reasonCode: "concurrent_modification",
+          lease: currentLease,
         };
       }
 
@@ -702,6 +726,30 @@ export class ExecutionLeaseService {
         return {
           allowed: false,
           reasonCode: "lease_expired",
+          authoritativeFencingToken,
+          activeLeaseId: activeLease.id,
+        };
+      }
+
+      // R9-01/R9-08 fix: Enforce TTL bounds on validateWriteAccess per §8.3
+      // This ensures TTL validation is consistent with acquireLease
+      const nowMs = Date.parse(occurredAt);
+      const expiresAtMs = Date.parse(activeLease.expiresAt);
+      const ttlMs = expiresAtMs - Date.parse(activeLease.leasedAt);
+      if (ttlMs < MIN_LEASE_TTL_MS || ttlMs > MAX_LEASE_TTL_MS) {
+        this.insertLeaseAudit({
+          executionId: activeLease.executionId,
+          leaseId: activeLease.id,
+          workerId: input.workerId,
+          fencingToken: input.fencingToken,
+          eventType: "stale_write_rejected",
+          reasonCode: "ttl_out_of_bounds",
+          recordedAt: occurredAt,
+        });
+
+        return {
+          allowed: false,
+          reasonCode: "ttl_out_of_bounds",
           authoritativeFencingToken,
           activeLeaseId: activeLease.id,
         };

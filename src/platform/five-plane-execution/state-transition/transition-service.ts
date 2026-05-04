@@ -204,7 +204,7 @@ const SESSION_TRANSITIONS: Record<SessionStatus, readonly SessionStatus[]> = {
  * succeeded, failed, cancelled, or superseded (by a newer execution).
  */
 const EXECUTION_TRANSITIONS: Record<ExecutionStatus, readonly ExecutionStatus[]> = {
-  created: ["queued", "prechecking", "executing", "dispatching", "cancelled", "failed"],
+  created: ["queued", "prechecking", "executing", "dispatching", "ready", "cancelled", "failed"],
   queued: ["dispatching", "prechecking", "executing", "cancelled", "failed"],
   dispatching: ["prechecking", "executing", "paused", "recovering", "cancelled", "failed"],
   prechecking: ["executing", "blocked", "paused", "recovering", "cancelled", "failed"],

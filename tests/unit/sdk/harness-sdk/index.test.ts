@@ -137,6 +137,7 @@ test("HarnessSdk.appendStep appends step to run", () => {
   const updatedRun = sdk.appendStep(run, stepInput);
   assert.ok(updatedRun !== undefined);
   assert.ok(updatedRun.harnessRunId === run.harnessRunId);
+  assert.ok(updatedRun.nodeRunIds.includes("node-1"));
 });
 
 test("HarnessSdk.appendStepWithReceipt returns run and receipt", () => {
@@ -223,6 +224,37 @@ test("HarnessSdk.appendStepWithReceipt with outputRef", () => {
   const result = sdk.appendStepWithReceipt(run, stepInput, { outputRef });
 
   assert.deepEqual(result.receipt.outputRef, outputRef);
+});
+
+test("HarnessSdk.reserveBudget delegates to budget checker", () => {
+  const sdk = new HarnessSdk(undefined, (budgetRef: string) => ({
+    allowed: budgetRef === "budget-ok",
+    remainingBudget: budgetRef === "budget-ok" ? 42 : 0,
+    ...(budgetRef === "budget-ok" ? {} : { error: "Budget exhausted" }),
+  }));
+
+  assert.deepEqual(sdk.reserveBudget("budget-ok", 10), {
+    allowed: true,
+    remainingBudget: 42,
+  });
+  assert.deepEqual(sdk.reserveBudget("budget-denied", 10), {
+    allowed: false,
+    remainingBudget: 0,
+    error: "Budget exhausted",
+  });
+});
+
+test("HarnessSdk.settleBudget persists an existing run", () => {
+  const sdk = new HarnessSdk();
+  const run = sdk.createRun({
+    taskId: "task-123",
+    domainId: "domain-1",
+    constraintPack: { phase: "execution" } as any,
+    tenantId: "tenant-1",
+  });
+
+  const settled = sdk.settleBudget(run);
+  assert.equal(settled.harnessRunId, run.harnessRunId);
 });
 
 // ============================================================================

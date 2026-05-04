@@ -46,7 +46,10 @@ export class ImprovementCandidateRegistry {
       changeScope: this.mapTargetToScope(input.target),
       description: input.description,
       expectedBenefit: input.expectedBenefit ?? "Reduce repeated failure modes and improve plan stability.",
-      status: "proposed",
+      // R13-03 FIX: Start in candidate_created status, NOT approved.
+      // An ImprovementCandidate must go through EvaluationGate/offline evaluation/
+      // regression set/risk scan/manual approval before being marked approved.
+      status: "candidate_created",
       createdAt: Date.now(),
     });
     this.evictIfNeeded();

@@ -85,6 +85,7 @@ export interface WorkerHandshakeDecision {
     | "lease_not_found"
     | "no_active_lease"
     | "stale_fencing_token"
+    | "ttl_out_of_bounds"
     | "execution_not_found"
     | "lease_not_active"
     | "lease_expired"
