@@ -87,6 +87,23 @@ export interface RuntimeMetricsSummary {
     pendingTier1AckCount: number;
     failedTier1AckCount: number;
   };
+  harnessRunMetrics: {
+    total: number;
+    completedCount: number;
+    failedCount: number;
+    abortedCount: number;
+    activeCount: number;
+    successRate: number;
+  };
+  nodeRunMetrics: {
+    total: number;
+    readyCount: number;
+    runningCount: number;
+    succeededCount: number;
+    failedCount: number;
+    retryCount: number;
+    blockedCount: number;
+  };
   runtimeMetrics: {
     status: HealthStatusReport["status"];
     degradationMode: HealthStatusReport["degradationMode"];
@@ -240,6 +257,44 @@ export class MetricsService {
        WHERE e.event_tier = 'tier_1'`,
     );
 
+    // Query harness_runs counts (R4-42: harness.* metrics gap fix)
+    const harnessRunCounts = this.selectRow<{
+      total: number;
+      completedCount: number;
+      failedCount: number;
+      abortedCount: number;
+      activeCount: number;
+    }>(
+      `SELECT
+         COUNT(*) AS total,
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
+         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedCount,
+         COALESCE(SUM(CASE WHEN status = 'aborted' THEN 1 ELSE 0 END), 0) AS abortedCount,
+         COALESCE(SUM(CASE WHEN status NOT IN ('completed', 'failed', 'aborted') THEN 1 ELSE 0 END), 0) AS activeCount
+       FROM harness_runs`,
+    );
+
+    // Query node_runs counts (R4-42: harness.* metrics gap fix)
+    const nodeRunCounts = this.selectRow<{
+      total: number;
+      readyCount: number;
+      runningCount: number;
+      succeededCount: number;
+      failedCount: number;
+      retryCount: number;
+      blockedCount: number;
+    }>(
+      `SELECT
+         COUNT(*) AS total,
+         COALESCE(SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END), 0) AS readyCount,
+         COALESCE(SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END), 0) AS runningCount,
+         COALESCE(SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END), 0) AS succeededCount,
+         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedCount,
+         COALESCE(SUM(CASE WHEN attempt_count > 0 THEN 1 ELSE 0 END), 0) AS retryCount,
+         COALESCE(SUM(CASE WHEN status IN ('awaiting_hitl', 'policy_blocked', 'dependency_failed') THEN 1 ELSE 0 END), 0) AS blockedCount
+       FROM node_runs`,
+    );
+
     // Query cost metrics
     const costCounts = this.selectRow<{
       totalActualCostUsd: number;
@@ -336,6 +391,23 @@ export class MetricsService {
         tier3Count: eventCounts.tier3Count,
         pendingTier1AckCount: ackCounts.pendingTier1AckCount,
         failedTier1AckCount: ackCounts.failedTier1AckCount,
+      },
+      harnessRunMetrics: {
+        total: harnessRunCounts.total,
+        completedCount: harnessRunCounts.completedCount,
+        failedCount: harnessRunCounts.failedCount,
+        abortedCount: harnessRunCounts.abortedCount,
+        activeCount: harnessRunCounts.activeCount,
+        successRate: ratio(harnessRunCounts.completedCount, harnessRunCounts.total),
+      },
+      nodeRunMetrics: {
+        total: nodeRunCounts.total,
+        readyCount: nodeRunCounts.readyCount,
+        runningCount: nodeRunCounts.runningCount,
+        succeededCount: nodeRunCounts.succeededCount,
+        failedCount: nodeRunCounts.failedCount,
+        retryCount: nodeRunCounts.retryCount,
+        blockedCount: nodeRunCounts.blockedCount,
       },
       runtimeMetrics: {
         status: health.status,

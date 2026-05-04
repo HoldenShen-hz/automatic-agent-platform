@@ -33,6 +33,8 @@ import { HarnessLoopController } from "./loop/index.js";
 import { mapHarnessStepToOapeflirPhase, type OapeflirSemanticPhase } from "./oapeflir-harness-mapping.js";
 import { RecoveryController, type HarnessFailureType } from "./recovery-controller.js";
 import { ToolbeltAssembler, type HarnessToolbelt } from "./toolbelt-assembler.js";
+import type { ControlPlaneDirectiveSink } from "../../../platform/five-plane-control-plane/control-plane-directive-sink.js";
+import { createOperationalDirective } from "../../../platform/contracts/control-directive/index.js";
 
 export * from "./harness-baseline.js";
 export * from "./harness-bootstrap.js";
@@ -620,6 +622,8 @@ export class HarnessRuntimeService {
   private readonly stateMachine: RuntimeStateMachine;
   /** R4-35: RuntimeTruthRepository for persisting decisions as immutable EvidenceRecords */
   private readonly runtimeTruthRepository: RuntimeRepository | undefined;
+  /** R4-47: Directive sink for emitting OperationalDirective during HITL pause/resume operations */
+  private readonly directiveSink: ControlPlaneDirectiveSink | null;
   /** Vibration state per-run, maintained across runLoop iterations per §45.20 */
   private vibrationState: GuardrailVibrationState = {
     guardrailActionCount: 0,
@@ -639,6 +643,8 @@ export class HarnessRuntimeService {
       contextAssembler?: ContextAssembler;
       /** R4-35: Optional RuntimeTruthRepository for persisting evidence records */
       runtimeTruthRepository?: RuntimeRepository;
+      /** R4-47: Optional directive sink for emitting OperationalDirective during HITL operations */
+      directiveSink?: ControlPlaneDirectiveSink | null;
     } = {},
   ) {
     this.toolbeltAssembler = options.toolbeltAssembler ?? new ToolbeltAssembler();
@@ -654,6 +660,7 @@ export class HarnessRuntimeService {
     this.contextAssembler = options.contextAssembler ?? new ContextAssembler();
     this.stateMachine = new RuntimeStateMachine();
     this.runtimeTruthRepository = options.runtimeTruthRepository;
+    this.directiveSink = options.directiveSink ?? null;
     this.recoveryController = new RecoveryController(this.durableService, this);
     // R18-05 fix: Reset vibration state for each new service instance
     this.vibrationState = {
@@ -879,6 +886,10 @@ export class HarnessRuntimeService {
 
   public openHitlReview(run: HarnessRunRuntimeState, reason: string, evidenceRefs: readonly string[]): HarnessRunRuntimeState {
     const paused = this.pauseRun(this.ensureRunning(run), "hitl");
+    // R4-47: Emit pause OperationalDirective when HITL review is opened
+    this.emitOperationalDirective("pause", "harness_runtime_service", `hitl_review:${reason}`, {
+      harnessRunId: run.harnessRunId,
+    });
     return {
       ...paused,
       pauseReason: "hitl",
@@ -907,6 +918,12 @@ export class HarnessRuntimeService {
     }
     this.hydrateHitlRuntime(run.hitlRequest);
     const resolved = this.hitlRuntime.resolve(run.hitlRequest.requestId, resolution, actorId);
+    // R4-47: Emit resume OperationalDirective when HITL review is approved
+    if (resolution === "approved") {
+      this.emitOperationalDirective("resume", "harness_runtime_service", "hitl_review_resolved:approved", {
+        harnessRunId: run.harnessRunId,
+      });
+    }
     const nextRun = resolution === "approved"
       ? this.transitionRunStatus(this.transitionRunStatus(run, "resuming", "harness.hitl_approved"), "running", "harness.hitl_resumed")
       : this.transitionRunStatus(run, "aborted", "harness.hitl_rejected");
@@ -1791,6 +1808,35 @@ export class HarnessRuntimeService {
       artifactId: ref,
       uri: `memory://${ref}`,
     }));
+  }
+
+  /**
+   * R4-47: Emit an OperationalDirective for pause/resume operations.
+   * Used by HITL and other pause/resume flows to notify downstream P3/P4 consumers.
+   */
+  private emitOperationalDirective(
+    type: "pause" | "resume",
+    principalId: string,
+    reason: string,
+    scope: { harnessRunId?: string },
+  ): void {
+    if (this.directiveSink == null) {
+      return;
+    }
+    this.directiveSink.emitOperationalDirective(
+      createOperationalDirective({
+        type,
+        scope: {
+          ...(scope.harnessRunId != null ? { harnessRunId: scope.harnessRunId } : {}),
+        },
+        issuedBy: {
+          principalId,
+          tenantId: "tenant:local",
+          roles: ["harness_runtime_service"],
+        },
+        reason,
+      }),
+    );
   }
 }
 

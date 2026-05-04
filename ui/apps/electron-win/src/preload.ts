@@ -1,4 +1,25 @@
+import { createRequire } from "node:module";
 import type { ElectronBridge } from "@aa/shared-platform";
+
+const require = createRequire(import.meta.url);
+
+interface ContextBridgeLike {
+  exposeInMainWorld(name: string, api: unknown): void;
+}
+
+function resolveContextBridge(): ContextBridgeLike | null {
+  const globals = globalThis as typeof globalThis & {
+    __AA_ELECTRON_CONTEXT_BRIDGE__?: ContextBridgeLike;
+  };
+  if (globals.__AA_ELECTRON_CONTEXT_BRIDGE__ != null) {
+    return globals.__AA_ELECTRON_CONTEXT_BRIDGE__;
+  }
+  try {
+    return (require("electron") as { contextBridge?: ContextBridgeLike }).contextBridge ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export const electronPreloadApi = {
   shell: {
@@ -31,8 +52,8 @@ export const electronPreloadApi = {
 } as const;
 
 export function installElectronBridge(target: Window, bridge: ElectronBridge): void {
-  // §210-2487: Root cause - direct Object.defineProperty bypasses contextBridge security model
-// when contextIsolation is enabled, exposing the full bridge object to renderer.
-// Fix: Use contextBridge.exposeInMainWorld for proper IPC channel isolation.
-  contextBridge.exposeInMainWorld("__AA_ELECTRON__", bridge);
+  void target;
+  // §210-2487: Electron bridge must be exposed through contextBridge instead of
+  // direct window mutation, otherwise renderer isolation is bypassed.
+  resolveContextBridge()?.exposeInMainWorld("__AA_ELECTRON__", bridge);
 }

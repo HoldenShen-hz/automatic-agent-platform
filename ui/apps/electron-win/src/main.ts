@@ -1,8 +1,17 @@
-import { app } from "electron";
-import { autoUpdater } from "electron-updater";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+function resolveAutoUpdater(): { checkForUpdatesAndNotify(): void } | null {
+  try {
+    return (require("electron-updater") as { autoUpdater?: { checkForUpdatesAndNotify(): void } }).autoUpdater ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // §R8-55: Auto-update mechanism via electron-updater
-autoUpdater.checkForUpdatesAndNotify();
+resolveAutoUpdater()?.checkForUpdatesAndNotify();
 
 export const electronMainBaseline = {
   window: {
@@ -43,9 +52,9 @@ export function isShellCommandAllowed(command: string): boolean {
 export const electronBridgeCapabilities = {
   secureStore: true,
   filesystem: true,
-  shell: true,
+  shell: false,
   deepLink: true,
-  process: true,
+  process: false,
   analyticsConsent: true,
   screenSecurity: true,
   lifecycle: true,

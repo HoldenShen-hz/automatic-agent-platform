@@ -568,22 +568,20 @@ export class ConfigVersioningService {
       },
     });
 
-    // Only emit config.changed for rollback events, not for new version creations
-    // to avoid duplicate event emission (config.version.created already covers this)
-    if (eventType === "config.version.rollback") {
-      this.eventBus.publish({
-        eventType: "config.changed",
-        payload: {
-          configPath: snapshot.configPath,
-          layer: snapshot.layer,
-          sourceId: snapshot.sourceId,
-          versionId: snapshot.versionId,
-          contentHash: snapshot.contentHash,
-          changedAt: snapshot.createdAt,
-          reason: snapshot.reason,
-        },
-      });
-    }
+    // Emit config.changed for all version creation events per §24.2
+    // This includes normal versions and rollbacks
+    this.eventBus.publish({
+      eventType: "config.changed",
+      payload: {
+        configPath: snapshot.configPath,
+        layer: snapshot.layer,
+        sourceId: snapshot.sourceId,
+        versionId: snapshot.versionId,
+        contentHash: snapshot.contentHash,
+        changedAt: snapshot.createdAt,
+        reason: snapshot.reason,
+      },
+    });
   }
 
   /**

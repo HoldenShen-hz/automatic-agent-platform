@@ -1,5 +1,6 @@
 import { ValidationError } from "../../../contracts/errors.js";
 import type { PlanGraphBundle } from "../../../contracts/executable-contracts/index.js";
+import { LEGACY_CONTRACT_NAMES } from "../../../contracts/executable-contracts/index.js";
 
 export interface RuntimeEntryGuardResult {
   readonly accepted: true;
@@ -29,9 +30,9 @@ export class RuntimeEntryGuard {
  * The console.warn message includes migration guidance per §4.3.
  */
 public assertNoLegacyTruthWrite(input: { readonly contractName?: string; readonly eventType?: string }): void {
-    const legacyContractNames = new Set(["ExecutionPlan", "ExecutionReceipt", "ControlDirective", "WorkflowStep", "StepOutput"]);
     // R6-24 FIX: Emit runtime warning for migration aid
-    if (input.contractName != null && legacyContractNames.has(input.contractName)) {
+    // Use LEGACY_CONTRACT_NAMES from executable-contracts for consistent enforcement
+    if (input.contractName != null && LEGACY_CONTRACT_NAMES.includes(input.contractName as any)) {
       console.warn(
         `[DEPRECATION] Legacy contract '${input.contractName}' used. ` +
         `Migrate to canonical contracts per §4.3. ` +

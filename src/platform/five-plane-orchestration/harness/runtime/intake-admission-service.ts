@@ -149,8 +149,29 @@ function evaluatePolicyGuard(input: {
     return { allowed: true, reasonCode: "policy.approved.high_risk_validated", proofRef: input.constraintPackRef };
   }
 
-  // Medium and low risk classes are allowed by default
-  return { allowed: true, reasonCode: "policy.approved.default", proofRef: input.constraintPackRef };
+  // Medium risk class requires constraint pack validation and valid principal
+  if (input.riskClass === "medium") {
+    if (!input.constraintPackRef || input.constraintPackRef.trim() === "") {
+      return { allowed: false, reasonCode: "policy.denied.missing_constraints", proofRef: null };
+    }
+    // Principal must have a defined authorization level (not anonymous)
+    if (input.principal.authorizationLevel == null) {
+      return { allowed: false, reasonCode: "policy.denied.no_authorization_level", proofRef: null };
+    }
+    return { allowed: true, reasonCode: "policy.approved.medium_risk_validated", proofRef: input.constraintPackRef };
+  }
+
+  // Low risk class - requires valid principal authorization
+  if (input.riskClass === "low") {
+    // Principal authorization level must be defined
+    if (input.principal.authorizationLevel == null) {
+      return { allowed: false, reasonCode: "policy.denied.no_authorization_level", proofRef: null };
+    }
+    return { allowed: true, reasonCode: "policy.approved.low_risk_validated", proofRef: input.constraintPackRef };
+  }
+
+  // Unknown risk class - deny by default
+  return { allowed: false, reasonCode: "policy.denied.unknown_risk_class", proofRef: null };
 }
 
 export class IntakeAdmissionService {

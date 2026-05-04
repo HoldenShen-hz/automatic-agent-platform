@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { FeatureScaffold, KeyValueTable } from "@aa/ui-core";
+import { FeatureScaffold, KeyValueTable, ListCard } from "@aa/ui-core";
 import { useWorkflowCockpitVm } from "../hooks";
 import { DAGViewer } from "./dag-viewer";
 
@@ -63,10 +63,28 @@ export function WorkflowCockpitWebView(): ReactElement {
                   { key: "Status", value: selectedWorkflow.status },
                   { key: "Stage", value: selectedWorkflow.currentStage },
                   { key: "Steps", value: String(selectedWorkflow.steps.length) },
+                  { key: "Approval Nodes", value: String(selectedWorkflow.approvalNodes?.length ?? 0) },
+                  { key: "Evidence Refs", value: String(selectedWorkflow.evidenceRefs?.length ?? 0) },
                 ]}
               />
               {/* §2497: DAGViewer replaces static ListCard for L2 OAPEFLIR stage rail */}
               <DAGViewer steps={selectedWorkflow.steps} currentStage={selectedWorkflow.currentStage} />
+              {selectedWorkflow.approvalNodes != null && selectedWorkflow.approvalNodes.length > 0 && (
+                <ListCard
+                  items={selectedWorkflow.approvalNodes.map((node) => ({
+                    title: node.title,
+                    description: `${node.status}${node.assignee ? ` · ${node.assignee}` : ""}`,
+                  }))}
+                />
+              )}
+              {selectedWorkflow.evidenceRefs != null && selectedWorkflow.evidenceRefs.length > 0 && (
+                <ListCard
+                  items={selectedWorkflow.evidenceRefs.map((ref) => ({
+                    title: ref.type,
+                    description: ref.description ?? ref.uri,
+                  }))}
+                />
+              )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={handlePause} type="button">Pause</button>
                 <button onClick={handleResume} type="button">Resume</button>
