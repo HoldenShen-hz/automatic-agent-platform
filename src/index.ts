@@ -139,6 +139,7 @@ export async function runPlatformRootDemo(): Promise<void> {
 
   // Ensure graceful shutdown is registered (may be called directly, not via main())
   const shutdown = getGlobalGracefulShutdown();
+  registerProcessErrorHandlers(shutdown);
   shutdown.addHandler({
     name: "runPlatformRootDemo",
     handler: async () => {

@@ -19,6 +19,14 @@ import type { GracefulShutdown } from "./graceful-shutdown.js";
 // Lazy-initialized logger to avoid module-load-time construction and test state leakage
 let _processLogger: StructuredLogger | null = null;
 
+interface ProcessErrorHandlerRegistration {
+  shutdown: GracefulShutdown;
+  uncaughtExceptionHandler: (err: Error) => void;
+  unhandledRejectionHandler: (reason: unknown, promise: Promise<unknown>) => void;
+}
+
+let activeProcessErrorHandlerRegistration: ProcessErrorHandlerRegistration | null = null;
+
 function getProcessLogger(): StructuredLogger {
   if (!_processLogger) {
     _processLogger = new StructuredLogger({ retentionLimit: 200 });
@@ -150,11 +158,35 @@ export function createUnhandledRejectionHandler(
  * @param shutdown - The GracefulShutdown instance to use for orderly shutdown
  */
 export function registerProcessErrorHandlers(shutdown: GracefulShutdown): void {
+  if (activeProcessErrorHandlerRegistration) {
+    const hasUncaught = process.listeners("uncaughtException")
+      .includes(activeProcessErrorHandlerRegistration.uncaughtExceptionHandler);
+    const hasUnhandled = process.listeners("unhandledRejection")
+      .includes(activeProcessErrorHandlerRegistration.unhandledRejectionHandler);
+    if (!hasUncaught || !hasUnhandled) {
+      activeProcessErrorHandlerRegistration = null;
+    }
+  }
+
+  if (activeProcessErrorHandlerRegistration?.shutdown === shutdown) {
+    return;
+  }
+
+  if (activeProcessErrorHandlerRegistration) {
+    process.removeListener("uncaughtException", activeProcessErrorHandlerRegistration.uncaughtExceptionHandler);
+    process.removeListener("unhandledRejection", activeProcessErrorHandlerRegistration.unhandledRejectionHandler);
+  }
+
   const uncaughtExceptionHandler = createUncaughtExceptionHandler(shutdown);
   const unhandledRejectionHandler = createUnhandledRejectionHandler(shutdown);
 
   process.on("uncaughtException", uncaughtExceptionHandler);
   process.on("unhandledRejection", unhandledRejectionHandler);
+  activeProcessErrorHandlerRegistration = {
+    shutdown,
+    uncaughtExceptionHandler,
+    unhandledRejectionHandler,
+  };
 
   getProcessLogger().info("Process error handlers registered", {
     data: { pid: process.pid },

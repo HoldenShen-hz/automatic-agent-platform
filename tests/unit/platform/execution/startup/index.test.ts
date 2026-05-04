@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import * as StartupModule from "../../../../../src/platform/execution/startup/index.js";
@@ -141,4 +142,17 @@ test("startup/index.ts - exports deriveProviderApiKeySecretRefEnvNameForStartup"
 test("startup/index.ts - exports deriveProviderApiKeySecretRefsJsonEnvNameForStartup", () => {
   assert.ok("deriveProviderApiKeySecretRefsJsonEnvNameForStartup" in StartupModule);
   assert.equal(typeof StartupModule.deriveProviderApiKeySecretRefsJsonEnvNameForStartup, "function");
+});
+
+test("startup/index.ts - package exports exposes ./platform/execution/startup subpath", () => {
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../../../../../package.json", import.meta.url), "utf8"),
+  ) as {
+    exports?: Record<string, string>;
+  };
+
+  assert.equal(
+    packageJson.exports?.["./platform/execution/startup"],
+    "./dist/src/platform/execution/startup/index.js",
+  );
 });

@@ -13,7 +13,20 @@ import {
   buildPlatformRootSummary,
 } from "../../src/index.js";
 
-import type { PlatformAppKind, PlatformStartupTargetKind, PlatformRootSummary } from "../../src/index.js";
+import type {
+  PlatformAppKind,
+  PlatformStartupTargetKind,
+  PlatformRootEntryMode,
+  PlatformRootSummary,
+} from "../../src/index.js";
+
+type RootEntrySummaryTypeExports = [
+  PlatformAppKind,
+  PlatformStartupTargetKind,
+  PlatformRootEntryMode,
+  PlatformRootSummary,
+];
+void (null as unknown as RootEntrySummaryTypeExports);
 
 // ============================================================================
 // Named export presence and type tests
