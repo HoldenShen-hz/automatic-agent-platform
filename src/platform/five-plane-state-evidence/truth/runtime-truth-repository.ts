@@ -19,6 +19,7 @@ import {
   type RuntimeTransitionCommand,
   type RuntimeTransitionResult,
 } from "../../execution/runtime-state-machine.js";
+import type { SqliteDatabase } from "./sqlite/sqlite-database.js";
 
 export interface RuntimeTruthRepositorySnapshot {
   readonly version: number;
@@ -46,6 +47,16 @@ export interface RuntimeRepository {
   snapshot(): RuntimeTruthRepositorySnapshot;
 }
 
+/**
+ * Options for constructing a RuntimeTruthRepository with optional database-backed durability.
+ */
+export interface RuntimeTruthRepositoryOptions {
+  /** Optional state machine instance */
+  readonly stateMachine?: RuntimeStateMachine;
+  /** Optional SQLite database for crash-safe transactional durability (R5-48) */
+  readonly sqliteDatabase?: SqliteDatabase;
+}
+
 interface RuntimeTruthRepositoryState {
   readonly harnessRuns: Map<string, HarnessRun>;
   readonly nodeRuns: Map<string, NodeRun>;
@@ -63,9 +74,12 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   private state: RuntimeTruthRepositoryState = createEmptyState();
   private readonly stateMachine: RuntimeStateMachine;
   private snapshotVersion = 0;
+  /** R5-48: Optional SQLite database for real crash-safe transactions */
+  private readonly db: SqliteDatabase | undefined;
 
-  public constructor(options: { readonly stateMachine?: RuntimeStateMachine } = {}) {
+  public constructor(options: RuntimeTruthRepositoryOptions = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
+    this.db = options.sqliteDatabase;
   }
 
   public seed(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): void {
