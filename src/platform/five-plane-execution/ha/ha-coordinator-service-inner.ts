@@ -66,7 +66,6 @@ export type {
 export class HaCoordinatorService {
   private readonly defaultTtlMs: number;
   private readonly strictLeaderAuthority: boolean;
-  private readonly fencingTokenCounter: { value: number };
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -74,7 +73,6 @@ export class HaCoordinatorService {
   ) {
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
-    this.fencingTokenCounter = { value: EPOCH_FENCING_TOKEN_START };
   }
 
   // ── Node Management ────────────────────────────────────────────────

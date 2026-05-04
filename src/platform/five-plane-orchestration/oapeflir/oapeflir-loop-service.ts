@@ -5,6 +5,7 @@ import { TaskSituationBuilder } from "../../shared/observability/task-situation-
 import type {
   DualChannelStepOutput,
   FeedbackSignal,
+  FeedbackCategory,
   Plan,
   RolloutRecord,
   TaskSituation,
@@ -566,7 +567,10 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
 
         // R5-13: Execute with subgraph/child-run support if parentContext provided
         const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => (
-          currentInput.stepOutputs ?? await this.executeViaBridge(planGraphBundle!, { taskId: currentInput.taskId })
+          currentInput.stepOutputs ?? await this.executeViaBridge(planGraphBundle!, {
+            taskId: currentInput.taskId,
+            ...(currentInput.parentContext != null ? { parentContext: currentInput.parentContext } : {}),
+          })
         ), {
           taskId: currentInput.taskId,
           planId: plan.planId,
@@ -1052,7 +1056,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
   private buildFeedbackSignals(taskId: string, stepOutputs: readonly DualChannelStepOutput[]): FeedbackSignal[] {
     return stepOutputs.map((output, index) => {
       // Map step status to feedback category
-      const category = output.status === "succeeded"
+      const category: FeedbackCategory = output.status === "succeeded"
         ? "success"
         : output.status === "failed"
           ? "failure"
@@ -1074,10 +1078,9 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         timestamp: Date.now() + index,
         trustScore: {
           overallScore: 0.95,
-          sourceReliability: 0.98,
+          sourceCredibility: 0.98,
           historicalAccuracy: 0.9,
-          adversarialRisk: "low",
-          passedSanityCheck: true,
+          attackSurface: 0.05,
         },
         evidenceRefs: [...(output.userFacingResult.artifacts ?? [])],
       };

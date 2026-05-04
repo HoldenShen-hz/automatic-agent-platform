@@ -106,18 +106,20 @@ export const EDGE_DEPLOYMENT_MODES: Record<EdgeDeploymentMode, EdgeDeploymentMod
 
 export interface EdgeRuntimeProfile {
   readonly edgeNodeId: string;
-  readonly deviceId?: string;
+  // R25-2 FIX: §62.2 requires deviceId/offlineMaxDuration/keyLease/risk_level≤medium
+  readonly deviceId: string;
   readonly capabilities: readonly string[];
   readonly connectivityMode: "offline" | "intermittent" | "online";
   readonly maxLocalRetentionHours: number;
-  readonly offlineMaxDuration?: number;
-  readonly keyLease?: string;
+  readonly offlineMaxDuration: number;
+  readonly keyLease: string;
   readonly allowedModels: readonly string[];
   readonly syncPolicy: {
     readonly allowRestrictedDataUpload: boolean;
     readonly requireOrdering: boolean;
   };
-  readonly riskLevel?: "low" | "medium";
+  // R25-2 FIX: §62.2 requires risk_level≤medium (high not allowed)
+  readonly riskLevel: "low" | "medium";
   /** §62.4: Deployment mode classification */
   readonly deploymentMode: EdgeDeploymentMode;
 }
@@ -129,15 +131,26 @@ export interface OfflineExecutionRequest {
   readonly createdAt?: string;
 }
 
+// R25-3 FIX: §62.3 requires device_id/sequence_no/prev_hash/side_effect_dependency_refs/signature/local_time_offset
 export interface SyncEnvelope {
   readonly envelopeId: string;
   readonly recordId: string;
   readonly edgeNodeId: string;
+  // §62.3: Device ID for attestation
+  readonly deviceId: string;
+  // §62.3: Sequence number for ordering
+  readonly sequenceNo: number;
   readonly priority: number;
   readonly dataClassification: "public" | "internal" | "restricted";
   readonly payloadDigest: string;
+  // §62.3: Previous hash for chain integrity
   readonly prevHash: string | null;
+  // §62.3: Signature for authenticity
   readonly signature: string;
+  // §62.3: Local time offset for clock skew correction
+  readonly localTimeOffset: number;
+  // §62.3: Side effect dependency references
+  readonly sideEffectDependencyRefs: readonly string[];
   readonly createdAt: string;
 }
 
@@ -261,20 +274,29 @@ export class EdgeRuntimeSyncService {
     dataClassification: SyncEnvelope["dataClassification"] = "internal",
     createdAt = nowIso(),
     prevHash: string | null = null,
+    sequenceNo = 1,
+    localTimeOffset = 0,
+    sideEffectDependencyRefs: readonly string[] = [],
   ): SyncEnvelope {
     const recordId = `${record.edgeNodeId}:${record.taskId}:${record.createdAt}`;
+    // R25-3 FIX: Include deviceId in signature for attestation
+    const signatureInput = `${profile.deviceId}:${profile.edgeNodeId}:${recordId}:${payloadDigest}:${prevHash ?? "root"}`;
     const signature = createHash("sha256")
-      .update(`${profile.edgeNodeId}:${recordId}:${payloadDigest}:${prevHash ?? "root"}`)
+      .update(signatureInput)
       .digest("hex");
     return {
       envelopeId: newId("sync"),
       recordId,
       edgeNodeId: profile.edgeNodeId,
+      deviceId: profile.deviceId,
+      sequenceNo,
       priority,
       dataClassification,
       payloadDigest,
       prevHash,
       signature,
+      localTimeOffset,
+      sideEffectDependencyRefs,
       createdAt,
     };
   }
@@ -284,16 +306,18 @@ export class EdgeRuntimeSyncService {
     envelopes: readonly SyncEnvelope[],
     cloudPayloadDigests: Readonly<Record<string, string>>,
   ): EdgeSyncReceipt {
+    // R25-3 FIX: orderEdgeSyncQueue expects snake_case EdgeSyncEnvelope format
+    // Convert from SyncEnvelope (camelCase) to EdgeSyncEnvelope (snake_case)
     const ordered = profile.syncPolicy.requireOrdering
-      ? orderEdgeSyncQueue(envelopes.map((item, index) => ({
+      ? orderEdgeSyncQueue(envelopes.map((item) => ({
         envelopeId: item.envelopeId,
-        device_id: profile.deviceId ?? profile.edgeNodeId,
-        sequence_no: index + 1,
+        device_id: item.deviceId,
+        sequence_no: item.sequenceNo,
         priority: item.priority,
         createdAt: item.createdAt,
-        local_time_offset: 0,
+        local_time_offset: item.localTimeOffset,
         prev_hash: item.prevHash,
-        side_effect_dependency_refs: [],
+        side_effect_dependency_refs: item.sideEffectDependencyRefs,
         signature: item.signature,
       })))
         .map((orderedItem) => envelopes.find((item) => item.envelopeId === orderedItem.envelopeId)!)
@@ -352,8 +376,9 @@ export class EdgeRuntimeSyncService {
   }
 
   private verifyEnvelopeSignature(envelope: SyncEnvelope): boolean {
+    // R25-3 FIX: Use same signature input as buildSyncEnvelope (includes deviceId)
     const expected = createHash("sha256")
-      .update(`${envelope.edgeNodeId}:${envelope.recordId}:${envelope.payloadDigest}:${envelope.prevHash ?? "root"}`)
+      .update(`${envelope.deviceId}:${envelope.edgeNodeId}:${envelope.recordId}:${envelope.payloadDigest}:${envelope.prevHash ?? "root"}`)
       .digest("hex");
     return expected === envelope.signature;
   }

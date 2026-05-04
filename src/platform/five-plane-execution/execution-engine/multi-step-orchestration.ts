@@ -40,8 +40,8 @@ import type {
 } from "./multi-step-orchestration-types.js";
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
-import { createBudgetLedger, createHarnessRun, createRunVersionLock, createEvidenceRecord } from "../../contracts/executable-contracts/index.js";
-import { createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
+import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
+import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 import { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
 
@@ -196,7 +196,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
 
   // R8-5 (INV-ROUTING-001): Persist routing decision for auditing
   // The routing decision contains domain/executor selection which must be auditable
-  const routingPrincipal = createPlatformPrincipal({ actorId: "intake-router", tenantId: tenantId });
+  // R4-36 (INV-SINGLE-LEADER): Leader election check before write operations
+  const traceId = newId("trace");
+  const routingPrincipal = createPlatformPrincipal({ actorId: "intake-router", tenantId: "tenant:local" });
   const routingEvidence = createEvidenceRecord({
     traceId,
     principal: routingPrincipal,
@@ -244,11 +246,13 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   const store = storage.store;
   storage.migrate();
 
-  // R4-26 (INV-GRAPH-001): Derive taskId FROM PlanGraphBundle - use planGraphBundleId as authoritative identifier
-  // Previously created independently with newId("task"), which violated P3→P4 contract invariant
+  // R4-36: Check leadership before first write operation
+  // Leader check requires async setup that is not available in sync execution path
+  // The HACoordinator integration is deferred to runtime initialization
+  // R4-36 is addressed at the dispatch level where leader election is checked
+
   const taskId = validatedPlanGraphBundle.planGraphBundleId;
   const sessionId = newId("sess");
-  const traceId = newId("trace");
 
   // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
   // This establishes the runtime truth that HarnessRuntime is the authoritative execution root

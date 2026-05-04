@@ -6,6 +6,26 @@ export const AssessmentRiskSchema = z.enum(["low", "medium", "high", "critical"]
 export const ApprovalLevelSchema = z.enum(["none", "user", "admin"]);
 export const ExecutionModeSchema = z.enum(["auto", "supervised", "manual"]);
 
+/**
+ * EffectivePolicySnapshot schema - policy state that Assess should also output per §13.1.1
+ */
+export const EffectivePolicySnapshotSchema = z.object({
+  snapshotId: z.string().min(1),
+  requiredApprovalLevel: ApprovalLevelSchema.optional(),
+  blockedTools: z.array(z.string()).default([]),
+  forcedExecutionMode: ExecutionModeSchema.optional(),
+});
+export type EffectivePolicySnapshot = z.infer<typeof EffectivePolicySnapshotSchema>;
+
+/**
+ * CanonicalRiskAssessment schema - risk factors that Assess should also output per §13.1.1
+ */
+export const CanonicalRiskAssessmentSchema = z.object({
+  level: AssessmentRiskSchema,
+  factors: z.array(z.string()).default([]),
+});
+export type CanonicalRiskAssessment = z.infer<typeof CanonicalRiskAssessmentSchema>;
+
 export const UnifiedAssessmentSchema = z.object({
   taskId: z.string().min(1),
   timestamp: z.number().int().nonnegative(),
@@ -13,10 +33,11 @@ export const UnifiedAssessmentSchema = z.object({
   phase: AssessmentPhaseSchema,
   complexity: AssessmentComplexitySchema,
   risk: AssessmentRiskSchema,
-  riskAssessment: z.object({
-    level: AssessmentRiskSchema,
-    factors: z.array(z.string()).default([]),
-  }),
+  riskAssessment: CanonicalRiskAssessmentSchema,
+  /** §13.1.1: ConstraintPack - use z.unknown() since ConstraintPack is defined in ../harness/index.ts */
+  constraintPack: z.unknown().optional(),
+  /** §13.1.1: EffectivePolicySnapshot produced by Assess stage */
+  effectivePolicySnapshot: EffectivePolicySnapshotSchema.optional(),
   routingDecision: z.object({
     division: z.string().min(1),
     workflow: z.string().min(1),

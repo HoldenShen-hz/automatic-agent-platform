@@ -29,6 +29,20 @@ import type { DualChannelStepOutput } from "./types/dual-channel-step-output.js"
 import type { PlanGraphBundle } from "../../../platform/contracts/executable-contracts/index.js";
 
 /**
+ * Parent context for subgraph/child-run execution per §13.7.
+ * When a plan is being executed as a subgraph of a larger plan,
+ * the parent context links the child run to its parent plan/node.
+ */
+export interface ParentContext {
+  /** ID of the parent PlanGraphBundle */
+  parentPlanGraphBundleId?: string;
+  /** ID of the parent node in the parent plan that spawned this subgraph */
+  parentNodeId?: string;
+  /** ID of this child run */
+  childRunId?: string;
+}
+
+/**
  * Execution context passed through the OAPEFLIR loop.
  * Carries runtime metadata needed by the bridge to talk to the execution engine.
  */
@@ -41,6 +55,8 @@ export interface ExecutionContext {
   modelId?: string;
   /** Abort signal for cancellation */
   abortSignal?: AbortSignal;
+  /** §13.7: Parent context for subgraph/child-run execution */
+  parentContext?: ParentContext;
 }
 
 /**
@@ -95,6 +111,8 @@ export interface RuntimePlanExecutionInput {
   readonly title: string;
   readonly request: string;
   readonly contextBudgetTokens?: number;
+  /** §13.7: Parent context for subgraph/child-run execution */
+  readonly parentContext?: ParentContext;
 }
 
 /**

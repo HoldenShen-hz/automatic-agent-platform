@@ -200,6 +200,7 @@ export class DisambiguationHandler {
    * Format an intent type for user display
    */
   private formatIntentOption(intentType: DetectedIntent["intentType"]): string {
+    // R26-3 FIX: Removed cancel_task per §6.3 - callers must use abort/pause/panic kill
     const labels: Record<"why" | DetectedIntent["intentType"], string> = {
       why: "解释原因/查询状态",
       task_create: "创建新任务",
@@ -207,7 +208,6 @@ export class DisambiguationHandler {
       task_modify: "修改/更新已有内容",
       status_inquiry: "状态查询",
       approval_action: "审批操作",
-      cancel_task: "取消任务",
       create_goal: "创建目标",
       decompress_goal: "分解目标",
     };
@@ -379,15 +379,16 @@ export class DisambiguationHandler {
   private suggestAlternativeIntents(
     currentIntent: DetectedIntent,
   ): readonly string[] {
+    // R26-3 FIX: Removed cancel_task per §6.3 - callers must use abort/pause/panic kill
     const allIntents: DetectedIntent["intentType"][] = [
       "task_create",
       "task_query",
       "task_modify",
       "status_inquiry",
       "approval_action",
-      "cancel_task",
       "create_goal",
       "decompress_goal",
+      "why",
     ];
 
     return allIntents.filter((i) => i !== currentIntent.intentType);

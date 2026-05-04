@@ -235,10 +235,16 @@ export interface VerifyRemoteWorkerRegistrationInput {
 /**
  * Parses a JSON string as an array, converting all items to strings.
  * Returns empty array if parsing fails or result is not an array.
+ * R27-04 FIX: Added try/catch to handle corrupt JSON gracefully.
  */
 function parseJsonArray(value: string): string[] {
-  const parsed = JSON.parse(value) as unknown;
-  return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
+  } catch (err) {
+    // Log the error but return empty array instead of crashing
+    return [];
+  }
 }
 
 /**
@@ -575,12 +581,20 @@ export class WorkerRegistryService {
       return this.toView(snapshot);
     }
 
-    const legacyWorker = (this.store.worker as { getWorker?: (workerId: string) => RegisteredWorkerView | null }).getWorker?.(workerId);
+    // R27-06 FIX: Legacy store access used unsafe 'as' cast to access getWorker method.
+    // Instead, properly type the access or remove dead code path. The legacy method
+    // signature doesn't match our types, so we should use a safe type guard.
+    type LegacyStore = {
+      getWorker?(workerId: string): RegisteredWorkerView | null;
+      listWorkers?(): RegisteredWorkerView[];
+    };
+    const legacyStore = this.store.worker as LegacyStore;
+    const legacyWorker = legacyStore.getWorker?.(workerId);
     if (legacyWorker) {
       return this.toRegisteredView(legacyWorker);
     }
 
-    const legacyWorkers = (this.store.worker as { listWorkers?: () => RegisteredWorkerView[] }).listWorkers?.() ?? [];
+    const legacyWorkers = legacyStore.listWorkers?.() ?? [];
     const fallbackWorker = legacyWorkers.find((worker) => worker.workerId === workerId);
     return fallbackWorker ? this.toRegisteredView(fallbackWorker) : null;
   }

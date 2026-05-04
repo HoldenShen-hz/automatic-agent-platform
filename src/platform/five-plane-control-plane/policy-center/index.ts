@@ -267,23 +267,6 @@ export class PolicyCenterService {
           matchedRuleRefs: ["mode.read_only"],
           explainSummary: "Read-only mode allows only non-mutating actions.",
         };
-      case "maintenance":
-        if (["advance_rollout", "org_change", "install_extension"].includes(input.action)) {
-          return {
-            constraints: { mode: input.mode, maintenanceWindow: true },
-            denyReason: "policy.maintenance_mode_denied",
-            requiresApproval: false,
-            matchedRuleRefs: ["mode.maintenance"],
-            explainSummary: "Maintenance mode freezes rollout and topology changes.",
-          };
-        }
-        return {
-          constraints: { mode: input.mode, maintenanceWindow: true },
-          denyReason: null,
-          requiresApproval: false,
-          matchedRuleRefs: ["mode.maintenance"],
-          explainSummary: "Maintenance mode constrains execution to repair-safe actions.",
-        };
       case "incident-mode":
         return {
           constraints: { mode: input.mode, changeFreeze: true, evidenceLevel: "full" },
@@ -291,22 +274,6 @@ export class PolicyCenterService {
           requiresApproval: input.riskCategory !== "cost_sensitive",
           matchedRuleRefs: ["mode.incident"],
           explainSummary: "Incident mode freezes change velocity and raises evidence requirements.",
-        };
-      case "degraded":
-        return {
-          constraints: { mode: input.mode, fallbackOnly: true, maxParallelism: 1 },
-          denyReason: null,
-          requiresApproval: false,
-          matchedRuleRefs: ["mode.degraded"],
-          explainSummary: "Degraded mode restricts execution to fallback capacity.",
-        };
-      case "emergency":
-        return {
-          constraints: { mode: input.mode, breakGlass: true, operatorAckRequired: true },
-          denyReason: null,
-          requiresApproval: input.subjectType !== "system",
-          matchedRuleRefs: ["mode.emergency"],
-          explainSummary: "Emergency mode requires operator acknowledgment for break-glass actions.",
         };
       default:
         return {
@@ -320,9 +287,6 @@ export class PolicyCenterService {
   }
 
   private mustEscalate(input: PolicyDecisionRequest, constraintRequiresApproval: boolean): boolean {
-    if (input.mode === "emergency") {
-      return constraintRequiresApproval || input.subjectType !== "system";
-    }
     if (input.mode === "incident-mode") {
       return constraintRequiresApproval;
     }

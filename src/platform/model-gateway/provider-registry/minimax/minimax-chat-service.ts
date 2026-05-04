@@ -391,6 +391,8 @@ export class MiniMaxChatService {
 
             try {
               const parsed = JSON.parse(data) as MiniMaxChatCompletionResponse;
+              // R27-02 FIX: Business errors from assertMiniMaxBusinessSuccess should not
+              // be caught and logged at debug level - they indicate actual API problems
               assertMiniMaxBusinessSuccess(parsed, response);
               if (parsed.choices && parsed.choices.length > 0) {
                 const choice = parsed.choices[0];
@@ -406,6 +408,12 @@ export class MiniMaxChatService {
                 }
               }
             } catch (err) {
+              // Only catch JSON parse errors, not business errors from assertMiniMaxBusinessSuccess
+              // Business errors thrown above will propagate up and terminate the stream
+              if (err instanceof MiniMaxAPIError) {
+                // This is a business error from assertMiniMaxBusinessSuccess - rethrow to propagate
+                throw err;
+              }
               logger.log({
                 level: "error",
                 message: "Skipped malformed JSON in stream",

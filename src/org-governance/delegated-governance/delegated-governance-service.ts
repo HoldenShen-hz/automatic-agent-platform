@@ -88,6 +88,18 @@ export class DelegatedGovernanceService {
       }
     }
 
+    // R21-1 FIX: If no attemptedValue is provided but guardrails exist,
+    // the operation must be denied since we cannot validate constraints without a value.
+    // Previously, undefined attemptedValue would pass through evaluateGuardrail which may
+    // return allowed:true for undefined values, bypassing all guardrail constraints.
+    if (attemptedValue === undefined && allGuardrails.length > 0) {
+      return {
+        allowed: false,
+        violatedGuardrails: allGuardrails.map((g) => g.guardrailId),
+        reasons: ["Operation requires a value to evaluate guardrail constraints"],
+      };
+    }
+
     // Evaluate each guardrail
     const violatedGuardrails: string[] = [];
     const reasons: string[] = [];
@@ -185,13 +197,10 @@ export class DelegatedGovernanceService {
         return { allowed: true, reason: "Appending constraints allowed" };
 
       case "delete":
-        // Only parent can delete its own constraints (not just any role)
-        // Check: child can only delete if parent is higher in hierarchy AND child has same or lower level
-        // Actually child CANNOT delete parent constraints - only own constraints
-        // For simplicity: only allow delete if child is the same role level (same grantor)
-        // The actual ownership check happens elsewhere; this just validates hierarchy rules
-        // Lower roles cannot delete higher roles' constraints
-        return { allowed: childIndex >= parentIndex, reason: childIndex >= parentIndex ? "Delete allowed at same/lower role level" : "Cannot delete parent role constraints" };
+        // R21-3 FIX: Lower roles cannot delete higher roles' constraints.
+        // Child can only delete constraints at the same or lower role level (not parent).
+        // Only parent can delete its own constraints.
+        return { allowed: childIndex > parentIndex, reason: childIndex > parentIndex ? "Delete allowed at lower role level" : "Cannot delete parent role constraints" };
 
       default:
         return { allowed: false, reason: "Unknown action" };

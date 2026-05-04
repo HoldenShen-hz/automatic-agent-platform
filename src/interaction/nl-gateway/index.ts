@@ -86,10 +86,10 @@ export interface DetectedIntent {
     | "task_modify"
     | "status_inquiry"
     | "approval_action"
-    | "cancel_task"
     | "create_goal"
     | "decompress_goal"
     | "why"; // §39: explanation query type
+  // R26-3 FIX: Removed cancel_task per §6.3 - callers must use abort/pause/panic kill
   readonly domainHint: string | null;
   readonly entities: readonly ExtractedEntity[];
   readonly urgency: "low" | "normal" | "high" | "critical";
@@ -439,8 +439,7 @@ function mapIntentType(intent: string): DetectedIntent["intentType"] {
     case "modify":
     case "correction":
       return "task_modify";
-    case "cancel":
-      return "cancel_task";
+    // R26-3 FIX: cancel_task removed per §6.3 - callers must use abort/pause/panic kill
     case "create_goal":
       return "create_goal";
     case "decompress_goal":
@@ -464,7 +463,6 @@ function mapIntentTypeToIntakeIntent(intent: DetectedIntent["intentType"]): "cre
     case "create_goal":
       return "create";
     case "task_modify":
-    case "cancel_task":
     case "decompress_goal":
       return "modify";
     case "approval_action":
@@ -1254,7 +1252,7 @@ export class NlEntryService implements NlEntryPort {
       ],
       summary: surfacedSummary,
       scope: confirmationScope,
-      timestamp: new Date().toISOString(),
+      time: new Date().toISOString(),
       riskPreviewVersion: this.buildRiskPreviewVersion(riskPreview),
       actor: request.userId,
     };
@@ -1264,7 +1262,7 @@ export class NlEntryService implements NlEntryPort {
           taskDraftId: canonicalTaskDraft.taskDraftId,
           stage: "pending_clarification",
           ambiguityFlags: clarificationState.reasonCodes,
-          createdAt: confirmationReceipt.timestamp ?? new Date().toISOString(),
+          createdAt: confirmationReceipt.time ?? new Date().toISOString(),
           expiresAt: canonicalTaskDraft.expiresAt ?? null,
           confirmationReceipt: null,
         }
@@ -1275,7 +1273,7 @@ export class NlEntryService implements NlEntryPort {
             receiptId: confirmationReceipt.confirmationId,
             confirmedBy: principalRef,
             riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-            confirmedAt: confirmationReceipt.timestamp ?? new Date().toISOString(),
+            confirmedAt: confirmationReceipt.time ?? new Date().toISOString(),
             ...(canonicalTaskDraft.expiresAt !== undefined ? { expiresAt: canonicalTaskDraft.expiresAt } : {}),
           }
         : undefined;

@@ -449,19 +449,15 @@ function normalizeThresholdCny(
     return rule.maxAmountCny;
   }
   if (rule.maxAmountUsd != null) {
-    // SECURITY FIX: Use the provided fxSnapshot rate consistently.
-    // Previously hardcoded 7.2 when no fxSnapshot, causing inconsistency.
-    // For legacy amounts without fxSnapshot, fall back to DEFAULT_LEGACY_FX_RATE.
-    if (fxSnapshot != null && fxSnapshot.baseCurrency.toUpperCase() === "USD") {
-      return rule.maxAmountUsd * fxSnapshot.rate;
+    // R21-7 FIX: When baseCurrency is CNY, no conversion needed - value is already in CNY.
+    if (fxSnapshot != null && fxSnapshot.baseCurrency.toUpperCase() === "CNY") {
+      return rule.maxAmountUsd;
     }
-    if (fxSnapshot != null && fxSnapshot.baseCurrency.toUpperCase() !== "CNY") {
-      return rule.maxAmountUsd * fxSnapshot.rate;
-    }
+    // For USD or other currencies, use the provided fxSnapshot rate.
     if (fxSnapshot != null) {
       return rule.maxAmountUsd * fxSnapshot.rate;
     }
-    // Use configured default for legacy amounts
+    // Use configured default for legacy amounts without fxSnapshot
     return rule.maxAmountUsd * DEFAULT_LEGACY_FX_RATE;
   }
   return Number.POSITIVE_INFINITY;
@@ -504,6 +500,9 @@ function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountS
     };
   }
   const legacyAmountUsd = request.amountUsd ?? 0;
+  // R21-6 FIX: Use current time as capturedAt instead of epoch 1970.
+  // Epoch 1970 makes audit timestamps meaningless.
+  const now = new Date().toISOString();
   return {
     originalValue: legacyAmountUsd,
     originalCurrency: "USD",
@@ -513,7 +512,7 @@ function normalizeApprovalAmount(request: ApprovalRouteRequest): ApprovalAmountS
       quoteCurrency: "CNY",
       rate: DEFAULT_LEGACY_FX_RATE,
       source: "legacy_amount_usd_default",
-      capturedAt: "1970-01-01T00:00:00.000Z",
+      capturedAt: now,
     },
   };
 }

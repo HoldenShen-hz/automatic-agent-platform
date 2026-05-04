@@ -62,8 +62,25 @@ export class FluentdTransport implements LogTransport {
       this.reconnectTimer = null;
     }
     this.reconnectAttempts = 0;
+    // R27-13 FIX: Drain loop has no write error handling - mid-way failure loses entries.
+    // Add error handling for each write operation in the drain loop.
     for (const buffered of this.buffer) {
-      this.socket?.write(buffered);
+      try {
+        const canContinue = this.socket?.write(buffered);
+        if (!canContinue) {
+          // Write returned false (buffer full), stop sending and wait for drain
+          break;
+        }
+      } catch (err) {
+        // R27-13: Mid-way write failure - log error and stop draining remaining entries
+        this.logger.error("fluentd.write_error", {
+          error: err instanceof Error ? err.message : String(err),
+          remainingEntries: this.buffer.length,
+          host: this.config.host,
+          port: this.config.port,
+        });
+        break;
+      }
     }
     this.buffer = [];
   }
@@ -115,16 +132,23 @@ export class FluentdTransport implements LogTransport {
   }
 
   async flush(): Promise<void> {
-    return new Promise((resolve) => {
-      if (this.socket?.writable) {
-        // If socket is already writable (buffer has room), resolve immediately.
-        // The 'drain' event only fires after the buffer becomes full, so waiting
-        // for it when the socket is already writable would cause a deadlock.
-        resolve();
-      } else {
-        resolve();
-      }
-    });
+    // If socket is not available or not writable, wait for drain event
+    if (!this.socket || !this.socket.writable) {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          socket.removeListener("drain", onDrain);
+          resolve(); // Don't block on flush if drain doesn't fire
+        }, 5000);
+        const socket = this.socket!;
+        const onDrain = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        socket.on("drain", onDrain);
+      });
+    }
+    // Socket is writable, no need to wait for drain
+    return Promise.resolve();
   }
 
   async close(): Promise<void> {

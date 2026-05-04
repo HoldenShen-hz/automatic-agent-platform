@@ -248,12 +248,12 @@ export class CapabilityDelegation {
       delegatedOrgId: params.delegatedOrgId,
       grantedBy: params.grantedBy,
       grantedAt: new Date(),
-      expiresAt: params.expiresAt,
       permissions: params.permissions,
       constraints: finalConstraints,
       status: "active",
       version: capability.version,
-      metadata: params.metadata,
+      ...(params.expiresAt !== undefined && { expiresAt: params.expiresAt }),
+      ...(params.metadata !== undefined && { metadata: params.metadata }),
     };
 
     this.grants.set(grant.id, grant);
@@ -432,14 +432,27 @@ export class CapabilityDelegation {
 
     request.status = "approved";
 
-    return this.createGrant({
+    const createGrantParams: {
+      capabilityId: string;
+      delegatingOrgId: string;
+      delegatedOrgId: string;
+      grantedBy: string;
+      permissions: CapabilityPermission[];
+      constraints?: AppliedConstraint[];
+      expiresAt?: Date;
+      metadata?: Record<string, unknown>;
+    } = {
       capabilityId: request.capabilityId,
       delegatingOrgId: request.delegatingOrgId,
       delegatedOrgId: request.delegatedOrgId,
       grantedBy: approver,
       permissions: request.requestedPermissions,
-      expiresAt: request.expiresAt,
-    });
+    };
+    if (request.expiresAt !== undefined) {
+      createGrantParams.expiresAt = request.expiresAt;
+    }
+
+    return this.createGrant(createGrantParams);
   }
 
   rejectRequest(requestId: string, rejectedBy: string, reason: string): void {
@@ -497,7 +510,7 @@ export class CapabilityDelegation {
         reason: `Access granted via ${grant.id}`,
         grantId: grant.id,
         constraints: grant.constraints,
-        quotaInfo: quotaCheck.quotaInfo,
+        ...(quotaCheck.quotaInfo !== undefined && { quotaInfo: quotaCheck.quotaInfo }),
       };
     }
 
@@ -516,7 +529,17 @@ export class CapabilityDelegation {
   }): void {
     const action = params.granted ? "access.invoked" : "access.denied";
 
-    this.recordAudit({
+    const auditEntry: {
+      id: string;
+      action: DelegationAction;
+      orgId: string;
+      capabilityId: string;
+      actor: string;
+      timestamp: Date;
+      details: Record<string, unknown>;
+      success: boolean;
+      errorMessage?: string;
+    } = {
       id: randomUUID(),
       action,
       orgId: params.orgId,
@@ -525,11 +548,15 @@ export class CapabilityDelegation {
       timestamp: new Date(),
       details: {
         permission: params.permission,
-        latencyMs: params.latencyMs,
+        ...(params.latencyMs !== undefined && { latencyMs: params.latencyMs }),
       },
       success: params.granted,
-      errorMessage: params.granted ? undefined : ("Access denied" as string | undefined),
-    });
+    };
+    if (!params.granted) {
+      auditEntry.errorMessage = "Access denied";
+    }
+
+    this.recordAudit(auditEntry);
 
     // Update quota if access was granted
     if (params.granted) {

@@ -64,7 +64,9 @@ export class DatadogTransport implements LogTransport {
       ddtags: `env:${process.env.NODE_ENV ?? "dev"}`,
     })));
 
-    return new Promise((resolve) => {
+    // R27-09 FIX: HTTP errors must be handled properly - resolve silently loses log entries.
+    // Instead, we track flush failures for metrics/backpressure.
+    return new Promise((resolve, reject) => {
       const req = this.requestFactory({
         hostname: `http-intake.logs.${this.site}`,
         path: "/api/v2/logs",
@@ -73,8 +75,18 @@ export class DatadogTransport implements LogTransport {
           "Content-Type": "application/json",
           "DD-API-KEY": this.config.apiKey,
         },
-      }, () => resolve());
-      req.on("error", () => resolve());
+      }, (res) => {
+        if (res.statusCode && res.statusCode >= 400) {
+          // Server error - reject so caller can retry
+          reject(new Error(`Datadog API error: ${res.statusCode}`));
+        } else {
+          resolve();
+        }
+      });
+      req.on("error", (err) => {
+        // Network error - reject for retry/metrics
+        reject(err);
+      });
       req.end(body);
     });
   }

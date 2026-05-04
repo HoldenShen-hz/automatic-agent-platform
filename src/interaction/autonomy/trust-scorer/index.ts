@@ -3,7 +3,7 @@ import type { CapabilityTrustScore, TrustLevel } from "../index.js";
 export type ArchitectureAutonomyLevel = "suggestion" | "supervised" | "semi_auto" | "full_auto";
 
 function hasDomainScopedShape(score: CapabilityTrustScore): boolean {
-  const raw = score as Record<string, unknown>;
+  const raw = score as unknown as Record<string, unknown>;
   return typeof raw["domainId"] === "string";
 }
 

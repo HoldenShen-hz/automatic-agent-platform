@@ -135,7 +135,7 @@ export class TrustRelationshipManager {
       metrics: this.createInitialMetrics(),
       policy,
       createdAt: new Date(),
-      expiresAt: params.expiresAt,
+      ...(params.expiresAt !== undefined && { expiresAt: params.expiresAt }),
       lastVerifiedAt: new Date(),
       status: "active",
     };
@@ -202,9 +202,9 @@ export class TrustRelationshipManager {
       trustId,
       type: newLevel > trust.level ? "trust.elevated" : "trust.degraded",
       timestamp: new Date(),
-      previousScore,
-      newScore: trust.metrics.trustScore,
-      actor: actor ?? undefined,
+      ...(previousScore !== undefined && { previousScore }),
+      ...(trust.metrics.trustScore !== undefined && { newScore: trust.metrics.trustScore }),
+      ...(actor !== undefined && { actor }),
       reason: `Trust level changed from ${trust.level} to ${newLevel}`,
     });
   }
@@ -216,14 +216,24 @@ export class TrustRelationshipManager {
     }
 
     trust.status = "suspended";
-    this.recordEvent({
+    const suspendEvent: {
+      id: string;
+      trustId: string;
+      type: "trust.suspended";
+      timestamp: Date;
+      actor?: string;
+      reason: string;
+    } = {
       id: randomUUID(),
       trustId,
       type: "trust.suspended",
       timestamp: new Date(),
-      actor: actor ?? undefined,
       reason,
-    });
+    };
+    if (actor !== undefined) {
+      suspendEvent.actor = actor;
+    }
+    this.recordEvent(suspendEvent);
   }
 
   async revokeTrust(trustId: string, reason: string, actor?: string): Promise<void> {
@@ -235,14 +245,24 @@ export class TrustRelationshipManager {
     trust.status = "revoked";
     trust.expiresAt = new Date(); // Expire immediately
 
-    this.recordEvent({
+    const revokeEvent: {
+      id: string;
+      trustId: string;
+      type: "trust.revoked";
+      timestamp: Date;
+      actor?: string;
+      reason: string;
+    } = {
       id: randomUUID(),
       trustId,
       type: "trust.revoked",
       timestamp: new Date(),
-      actor: actor ?? undefined,
       reason,
-    });
+    };
+    if (actor !== undefined) {
+      revokeEvent.actor = actor;
+    }
+    this.recordEvent(revokeEvent);
   }
 
   async renewTrust(trustId: string, newExpiry: Date, actor?: string): Promise<void> {
@@ -254,14 +274,24 @@ export class TrustRelationshipManager {
     trust.expiresAt = newExpiry;
     trust.lastVerifiedAt = new Date();
 
-    this.recordEvent({
+    const renewEvent: {
+      id: string;
+      trustId: string;
+      type: "trust.renewed";
+      timestamp: Date;
+      actor?: string;
+      reason: string;
+    } = {
       id: randomUUID(),
       trustId,
       type: "trust.renewed",
       timestamp: new Date(),
-      actor: actor ?? undefined,
       reason: `Trust renewed until ${newExpiry.toISOString()}`,
-    });
+    };
+    if (actor !== undefined) {
+      renewEvent.actor = actor;
+    }
+    this.recordEvent(renewEvent);
   }
 
   // Trust Evaluation

@@ -60,6 +60,19 @@ export interface AdapterExecutorOptions {
     descriptor: AdapterDescriptor,
     request: AdapterExecutionRequest,
   ) => Promise<unknown>;
+  /** R24-5 FIX: Optional DLQ event emitter for retry exhaustion events per §12.1 */
+  readonly emitDlqEvent?: (event: {
+    eventType: "adapter_retry_exhausted";
+    adapterId: string;
+    action: string;
+    taskId: string;
+    tenantId: string | null;
+    correlationId: string | null;
+    attempts: number;
+    errorCode: string;
+    lastError: string;
+    timestamp: string;
+  }) => void;
 }
 
 export class AdapterExecutor {
@@ -67,6 +80,8 @@ export class AdapterExecutor {
   private readonly fetchImpl: typeof fetch;
   private readonly grpcFactory: (descriptor: AdapterDescriptor) => GrpcAdapterService;
   private readonly mqDispatcher: AdapterExecutorOptions["mqDispatcher"];
+  /** R24-5 FIX: DLQ event emitter for retry exhaustion events per §12.1 */
+  private readonly emitDlqEvent: AdapterExecutorOptions["emitDlqEvent"];
 
   public constructor(options: AdapterExecutorOptions = {}) {
     this.fetchImpl = options.fetchImpl ?? fetch;
@@ -80,6 +95,7 @@ export class AdapterExecutor {
       });
     });
     this.mqDispatcher = options.mqDispatcher;
+    this.emitDlqEvent = options.emitDlqEvent;
   }
 
   public register(descriptor: AdapterDescriptor): void {
@@ -186,6 +202,34 @@ export class AdapterExecutor {
       },
     });
 
+    // R24-5 FIX: Retry exhaustion should emit incident/DLQ events per §12.1
+    const dlqEvent = {
+      eventType: "adapter_retry_exhausted" as const,
+      adapterId,
+      action: request.action,
+      taskId: request.context.taskId,
+      tenantId: request.context.tenantId ?? null,
+      correlationId: request.context.correlationId ?? null,
+      attempts: attempt,
+      errorCode,
+      lastError: lastError instanceof Error ? lastError.message : String(lastError),
+      timestamp: new Date().toISOString(),
+    };
+    // Emit to DLQ event bus if available
+    this.emitDlqEvent?.(dlqEvent);
+
+    // Emit incident event for monitoring/alerting
+    logger.log({
+      level: "error",
+      message: `adapter_executor:retry_exhausted:incident`,
+      crosscuttingFabric: "reliability",
+      data: {
+        ...dlqEvent,
+        severity: "high",
+        requiresInvestigation: true,
+      },
+    });
+
     return {
       adapterId,
       protocol: descriptor.protocol,
@@ -196,8 +240,10 @@ export class AdapterExecutor {
       output: {
         error: errorCode,
         error_code: "RETRY_EXHAUSTED",
+        error_detail: "Retry attempts exhausted. See incident logs for details.",
         attempts: attempt,
         lastError: lastError instanceof Error ? lastError.message : String(lastError),
+        _dlqEvent: dlqEvent, // Include DLQ event reference for traceability
       },
     };
   }

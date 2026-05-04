@@ -329,7 +329,7 @@ export const workerStatusProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return toSerializedState(newState) as unknown as Record<string, unknown>;
 };
 
 /**

@@ -701,24 +701,31 @@ async runAbTest(
     }
 
     // R16-16 FIX: §17.3 requires cost_regression ≤ 150%
-    // Fetch cost data if available (cost field in metadata)
+    // Fetch cost data from case result metadata for both current and previous runs
+    let currentCost = 0;
+    let previousCost = 0;
     let costRegression = false;
+
+    // Fetch average cost from current run's case results
     if (currentRuns.length > 0) {
       const costResult = this.db.connection
-        .prepare(`SELECT metadata FROM eval_case_results WHERE run_id = ? LIMIT 1`)
-        .get(String(currentRuns[0]!.id)) as { metadata: string } | undefined;
-      if (costResult?.metadata) {
-        try {
-          const meta = JSON.parse(costResult.metadata);
-          // If cost data available, compare against previous
-          // This is a placeholder - real implementation would track cost per run
-        } catch {
-          // ignore parse errors
-        }
-      }
+        .prepare(`SELECT AVG(CAST(json_extract(metadata, '$.cost') AS REAL)) as avg_cost FROM eval_case_results WHERE run_id = ? AND json_extract(metadata, '$.cost') IS NOT NULL`)
+        .get(String(currentRuns[0]!.id)) as { avg_cost: number } | undefined;
+      currentCost = costResult ? Number(costResult.avg_cost) : 0;
     }
-    // Simplified: flag if cost increased > 150% (placeholder for real cost tracking)
-    // costRegression = currentCost > previousCost * 1.5;
+
+    // Fetch average cost from previous run's case results
+    if (previousRuns.length > 0) {
+      const costResult = this.db.connection
+        .prepare(`SELECT AVG(CAST(json_extract(metadata, '$.cost') AS REAL)) as avg_cost FROM eval_case_results WHERE run_id = ? AND json_extract(metadata, '$.cost') IS NOT NULL`)
+        .get(String(previousRuns[0]!.id)) as { avg_cost: number } | undefined;
+      previousCost = costResult ? Number(costResult.avg_cost) : 0;
+    }
+
+    // Cost regression: current cost > 150% of previous cost
+    if (previousCost > 0 && currentCost > previousCost * 1.50) {
+      costRegression = true;
+    }
 
     return {
       hasRegression: delta < -0.05 || latencyRegression || costRegression,
@@ -870,6 +877,7 @@ function computeStringSimilarity(a: string, b: string): number {
 /**
  * Creates a deterministic evaluator that returns the expected output as actual output.
  * Used for CI gating where reproducibility is important.
+ * R2-10 FIX: Preserve riskLevel in metadata so completeRun can detect critical failures.
  */
 function createDeterministicCiEvaluator(): EvalCaseEvaluator {
   return ({ caseDefinition }) => {
@@ -880,6 +888,9 @@ function createDeterministicCiEvaluator(): EvalCaseEvaluator {
       score: passed ? 1 : 0,
       passed,
       latencyMs: deterministicLatency(caseDefinition.id),
+      metadata: {
+        riskLevel: caseDefinition.riskLevel ?? "standard",
+      },
     };
   };
 }

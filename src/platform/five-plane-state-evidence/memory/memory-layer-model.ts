@@ -81,7 +81,9 @@ export const DEFAULT_MEMORY_PROMOTION_RULES: readonly LayerPromotionRule[] = [
   // Working memory promotes to session after sufficient hits and quality
   { from: "runtime", to: "session", minHitCount: 2, minQualityScore: 0.5, minImportanceScore: 0.4 },
   { from: "session", to: "agent", minHitCount: 3, minQualityScore: 0.6, minImportanceScore: 0.5 },
-  { from: "agent", to: "project", minHitCount: 8, minQualityScore: 0.75, minImportanceScore: 0.65 },
+  // R27-20 FIX: ADR-020 specifies L3→L4 requires accessCount≥10, qualityScore≥0.8
+  // Updated from (8, 0.75) to (10, 0.8) to match ADR specification
+  { from: "agent", to: "project", minHitCount: 10, minQualityScore: 0.8, minImportanceScore: 0.65 },
   { from: "project", to: "user", minHitCount: 12, minQualityScore: 0.8, minImportanceScore: 0.75 },
   { from: "user", to: "evolution", minHitCount: 20, minQualityScore: 0.9, minImportanceScore: 0.85 },
 ];

@@ -212,11 +212,13 @@ export class HierarchicalPromptRegistryService {
 
     // §58: Do not directly mutate "immutable" snapshot objects (issue #1955).
     // Create a new object instead of mutating the existing bundle's metadata.
+    // R2-8 FIX: Set both deprecated flag AND lifecycleStatus per §20.6
     const updatedBundle: PromptBundle = {
       ...bundle,
       metadata: {
         ...bundle.metadata,
         deprecated: true,
+        lifecycleStatus: "deprecated",
       },
       updatedAt: nowIso(),
     };

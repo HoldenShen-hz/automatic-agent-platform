@@ -416,6 +416,86 @@ export interface IntakePipelineResult {
 }
 
 /**
+ * R6-11: AmbiguityResolver interface per §39.3
+ * Used to resolve ambiguous inputs by requesting clarification from the user
+ * when intent confidence falls below threshold (0.80).
+ */
+export interface AmbiguityResolver {
+  /**
+   * Determines if an input is ambiguous based on confidence and ambiguity flags.
+   * @param confidence - The classification confidence score (0-1)
+   * @param ambiguityFlags - Detected ambiguity flags from the input
+   * @returns true if the input should be routed to clarification
+   */
+  isAmbiguous(confidence: number, ambiguityFlags: readonly string[]): boolean;
+
+  /**
+   * Generates clarifying questions for ambiguous inputs.
+   * @param ambiguityFlags - Flags indicating the types of ambiguity detected
+   * @param request - The original request text
+   * @returns Array of clarifying questions to present to the user
+   */
+  generateClarifyingQuestions(ambiguityFlags: readonly string[], request: string): string[];
+}
+
+/**
+ * R6-11: Default implementation of AmbiguityResolver per §39.3
+ * Resolves ambiguity based on confidence threshold (0.80) and detected flags.
+ */
+export class DefaultAmbiguityResolver implements AmbiguityResolver {
+  private readonly confidenceThreshold: number;
+
+  constructor(confidenceThreshold: number = 0.80) {
+    this.confidenceThreshold = confidenceThreshold;
+  }
+
+  public isAmbiguous(confidence: number, ambiguityFlags: readonly string[]): boolean {
+    // Below confidence threshold = ambiguous
+    if (confidence < this.confidenceThreshold) {
+      return true;
+    }
+    // High number of ambiguity flags also indicates ambiguity
+    if (ambiguityFlags.length >= 3) {
+      return true;
+    }
+    // Specific critical ambiguity flags
+    const criticalFlags = ["vague_goal_language", "missing_constraints", "missing_budget"];
+    if (criticalFlags.some((flag) => ambiguityFlags.includes(flag))) {
+      return true;
+    }
+    return false;
+  }
+
+  public generateClarifyingQuestions(ambiguityFlags: readonly string[], request: string): string[] {
+    const questions: string[] = [];
+
+    for (const flag of ambiguityFlags) {
+      switch (flag) {
+        case "vague_goal_language":
+          questions.push("Could you please provide more specific details about what you'd like to accomplish?");
+          break;
+        case "missing_constraints":
+          questions.push("Are there any specific constraints or requirements I should be aware of?");
+          break;
+        case "high_complexity_goal":
+          questions.push("Would you like me to break this complex request down into smaller steps?");
+          break;
+        case "missing_budget":
+          questions.push("What budget or resource constraints should I consider for this task?");
+          break;
+      }
+    }
+
+    // Add a general question if we have multiple flags
+    if (ambiguityFlags.length > 1) {
+      questions.push("Could you clarify which aspect is most important to address first?");
+    }
+
+    return questions.length > 0 ? questions : ["Could you please provide more details about your request?"];
+  }
+}
+
+/**
  * Configuration options for the IntakeRouter.
  */
 export interface IntakeRouterOptions {
@@ -521,6 +601,8 @@ function normalize(text: string | null | undefined): string {
 export class IntakeRouter {
   private readonly divisionRegistry: DivisionRegistry | null;
   private readonly workerRegistry: WorkerRegistryService | null;
+  // R6-11: AmbiguityResolver for handling low-confidence classifications per §39.3
+  private readonly ambiguityResolver: AmbiguityResolver;
 
   /**
    * Creates a new intake router instance.
@@ -533,6 +615,8 @@ export class IntakeRouter {
         ? getDefaultDivisionRegistry()
         : options.divisionRegistry;
     this.workerRegistry = options.workerRegistry ?? null;
+    // R6-11: Use DefaultAmbiguityResolver if not provided in options
+    this.ambiguityResolver = new DefaultAmbiguityResolver(0.80);
   }
 
   /**
@@ -792,6 +876,24 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   routeTrace.push(`intent:${classification.intent}`);
   routeTrace.push(`continuation:${classification.continuation}`);
   routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
+
+  // R6-11: Apply AmbiguityResolver per §39.3 to detect low-confidence classifications
+  // If classification confidence is below threshold, flag for clarification
+  const isAmbiguous = this.ambiguityResolver.isAmbiguous(classification.confidence, ambiguityFlags);
+  if (isAmbiguous && clarificationSession == null) {
+    // Create a clarification session if not already present and input is ambiguous
+    clarificationSession = {
+      sessionId: newId("clarify"),
+      taskDraftId: taskDraft.taskDraftId,
+      stage: "pending_clarification",
+      ambiguityFlags,
+      createdAt: nowIso(),
+      expiresAt: null,
+      confirmationReceipt: null,
+    };
+    routeTrace.push(`stage2_ambiguity:clarification_session:${clarificationSession.sessionId}`);
+    routeTrace.push(`stage2_ambiguity:confidence=${classification.confidence.toFixed(2)}`);
+  }
 
   // Build the ConfirmedTaskSpec from pipeline artifacts
   const riskClass = input.riskPreview?.riskClass ?? determineRiskClass(classification, normalized);
@@ -1269,17 +1371,19 @@ function getClarifyingQuestion(flag: string, request: string): string {
 
 /**
  * Determines the priority based on intent classification and normalized input.
+ * Per §5.3 canonical taxonomy, elevated priorities are "high" and "critical" (not "urgent").
  */
 function determinePriority(
   classification: IntakeIntentClassification,
   normalizedInput: string,
-): "urgent" | "high" | "normal" | "low" {
+): "critical" | "high" | "normal" | "low" {
+  // Critical priority for high-impact cancel operations
+  if (classification.intent === "cancel") {
+    return "critical";
+  }
   // High priority for certain intents and patterns
   if (classification.intent === "approve" && /^(ship|merge|approve|confirm)/.test(normalizedInput)) {
     return "high";
-  }
-  if (classification.intent === "cancel") {
-    return "urgent";
   }
   if (classification.intent === "correction") {
     return "high";

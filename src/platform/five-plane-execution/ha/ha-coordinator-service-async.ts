@@ -42,8 +42,11 @@ export interface HaCoordinatorServiceAsyncOptions extends HaCoordinatorServiceOp
 export class HaCoordinatorServiceAsync {
   private readonly defaultTtlMs: number;
   private readonly strictLeaderAuthority: boolean;
-  private readonly fencingTokenCounter: { value: number };
   private readonly coordinatorId: string;
+  // R18-2 FIX: Cache fencing token to enable synchronous verifyWriteAuthority
+  // This is updated whenever leadership is acquired or renewed, avoiding the need
+  // for synchronous DB access in the hot path
+  private cachedFencingToken: number = EPOCH_FENCING_TOKEN_START;
 
   constructor(
     private readonly repo: HaRepository,
@@ -51,7 +54,6 @@ export class HaCoordinatorServiceAsync {
   ) {
     this.defaultTtlMs = options?.defaultTtlMs ?? DEFAULT_LEASE_TTL_MS;
     this.strictLeaderAuthority = options?.strictLeaderAuthority ?? true;
-    this.fencingTokenCounter = { value: EPOCH_FENCING_TOKEN_START };
     this.coordinatorId = options?.coordinatorId ?? newId("coord");
   }
 
@@ -173,6 +175,9 @@ export class HaCoordinatorServiceAsync {
     };
     await this.repo.insertEpoch(epochRecord);
 
+    // R18-2 FIX: Update cached fencing token for synchronous verification
+    this.cachedFencingToken = newFencingToken;
+
     if (currentLeader && currentLeader.nodeId !== nodeId) {
       const decision: FailoverDecision = {
         decisionId: newId("failover"),
@@ -220,6 +225,9 @@ export class HaCoordinatorServiceAsync {
     // §209-2465: Get latestEpoch and use its fencingToken for stale-write verification
     // Previous code referenced undefined `latestEpoch` variable
     const latestEpoch = await this.getLatestEpoch();
+
+    // R18-2 FIX: Update cached fencing token for synchronous verification
+    this.cachedFencingToken = latestEpoch.fencingToken;
 
     const updatedLease: LeaderLease = {
       ...currentLease,
@@ -490,12 +498,12 @@ export class HaCoordinatorServiceAsync {
   // ── Stale Write Rejection ──────────────────────────────────────────
 
   verifyWriteAuthority(presentedFencingToken: number): boolean {
-    // Note: This is synchronous because it only reads in-memory state
-    // For async validation, use queryLeadership() and check fencingToken
+    // R18-2 FIX: Use cached fencing token for synchronous verification
+    // The cache is updated whenever leadership is acquired or renewed
     // R16-16 FIX: Use > instead of >= to reject stale writes
     // An old leader with the current token must be rejected; only a token GREATER
     // than the current token indicates a newer epoch
-    return presentedFencingToken > this.fencingTokenCounter.value;
+    return presentedFencingToken > this.cachedFencingToken;
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────

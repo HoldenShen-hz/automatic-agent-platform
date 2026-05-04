@@ -246,10 +246,11 @@ export class CryptoShreddingService {
       const result = await this.dekManager.encryptForSubject(subjectId, value);
       this.writeField(encryptedRecord, fieldSpec.fieldPath, result.ciphertext);
 
+      // R23-1 FIX: originalValue should be the plaintext, not ciphertext
       encryptions.push({
         fieldPath: fieldSpec.fieldPath,
         dekId: result.dekId,
-        originalValue: result.ciphertext,
+        originalValue: value, // Store plaintext for audit trail
       });
     }
 

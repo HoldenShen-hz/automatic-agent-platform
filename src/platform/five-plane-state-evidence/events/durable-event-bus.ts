@@ -771,27 +771,35 @@ export class DurableEventBus {
       ? `failed_after_${TOTAL_DELIVERY_ATTEMPTS}_retries: ${lastError.message}`
       : `failed_after_${TOTAL_DELIVERY_ATTEMPTS}_retries: unknown_error`;
 
-    this.store.event.markEventDeadLettered({
-      eventId: item.event.id,
-      consumerId: item.ack.consumerId,
-      occurredAt: nowIso(),
-      errorCode: errorMessage,
-    });
+    // R7-2/R7-10 FIX: Both markEventDeadLettered and insertEventDeadLetter must be
+    // atomic to ensure consistency - if insertEventDeadLetter fails after marking,
+    // we have an inconsistent state (ack says dead-lettered but no DLQ record).
+    // Wrap both in a transaction to ensure atomicity.
+    const deadLetterRecord = this.db.transaction(() => {
+      this.store.event.markEventDeadLettered({
+        eventId: item.event.id,
+        consumerId: item.ack.consumerId,
+        occurredAt: nowIso(),
+        errorCode: errorMessage,
+      });
 
-    // §28.1: Persist to event_dead_letters table for independent DLQ tracking
-    // This satisfies the "Event不允许物理删除" requirement - dead-lettered events
-    // are preserved in the event_dead_letters table rather than being deleted.
-    this.store.event.insertEventDeadLetter({
-      id: newId("evt_dlq"),
-      originalEventId: item.event.id,
-      eventType: item.event.eventType,
-      payloadJson: item.event.payloadJson,
-      consumerId: item.ack.consumerId,
-      failureCount: MAX_DELIVERY_RETRIES,
-      lastError: errorMessage,
-      deadLetteredAt: nowIso(),
-      reprocessedAt: null,
-      reprocessResult: null,
+      // §28.1: Persist to event_dead_letters table for independent DLQ tracking
+      // This satisfies the "Event不允许物理删除" requirement - dead-lettered events
+      // are preserved in the event_dead_letters table rather than being deleted.
+      const dlqRecord = {
+        id: newId("evt_dlq"),
+        originalEventId: item.event.id,
+        eventType: item.event.eventType,
+        payloadJson: item.event.payloadJson,
+        consumerId: item.ack.consumerId,
+        failureCount: MAX_DELIVERY_RETRIES,
+        lastError: errorMessage,
+        deadLetteredAt: nowIso(),
+        reprocessedAt: null,
+        reprocessResult: null,
+      };
+      this.store.event.insertEventDeadLetter(dlqRecord);
+      return dlqRecord;
     });
 
     // REL-01: structured alert log on dead-letter. Persistence is handled

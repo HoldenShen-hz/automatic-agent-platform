@@ -320,7 +320,7 @@ export class FederationGateway extends EventEmitter {
       id: randomUUID(),
       orgId: request.sourceOrgId,
       targetOrgId: request.targetOrgId,
-      capability: request.capabilities[0],
+      capability: capability,
       permissions: request.requestedPermissions,
       constraints: request.constraints,
       grantedAt: new Date(),

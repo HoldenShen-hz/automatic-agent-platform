@@ -139,7 +139,11 @@ export interface DecaySummary {
  * Calculates the freshness score for a memory
  *
  * Uses exponential decay with access boosting:
- * freshness = max(minFreshness, initial * exp(-decayRate * age) * (1 + accessBoost)^hitCount)
+ * freshness = max(minFreshness, initial * exp(-decayRate * age * (1 + accessBoost)))
+ * where accessBoost = accessBoostFactor * log(1 + hitCount)
+ *
+ * Access boost slows decay multiplicatively rather than adding to freshness,
+ * ensuring high-frequency memories still decay over time per the 6-layer model.
  */
 export function calculateFreshness(
   memory: MemoryRecord,
@@ -153,25 +157,23 @@ export function calculateFreshness(
   // Base freshness starts at 1.0
   let freshness = 1.0;
 
-  // Apply exponential decay based on layer half-life
+  // Calculate access boost (each hit slows decay multiplicatively)
+  // R20-3 FIX: Previous additive approach (freshness + boost) caused freshness to saturate at 1.0
+  // for high hitCount, violating the 6-layer model where frequent memories should still decay.
+  // The fix applies boost to the decay rate itself: exp(-decayRate * age * (1 + boost))
+  // boost > 0 slows decay, boost = 0 means normal decay
+  const hitCount = memory.hitCount ?? 0;
+  const accessBoost = config.accessBoostFactor * Math.log(1 + hitCount);
+
+  // Apply exponential decay based on layer half-life, with access boost slowing decay
   if (config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {
     const decayRate = Math.LN2 / config.halfLifeSeconds;
-    const effectiveDecayRate = decayRate * config.decayRateMultiplier;
+    const effectiveDecayRate = decayRate * config.decayRateMultiplier * (1 + accessBoost);
     freshness = freshness * Math.exp(-effectiveDecayRate * ageSeconds);
   } else {
-    // Meta layer has no decay
+    // Meta layer has no decay - freshness stays at 1.0
     freshness = 1.0;
   }
-
-  // Apply access boost (each hit slows decay)
-  // R16-16 FIX: Additive access boost to prevent freshness saturation
-  // Multiplicative boost (freshness * accessBoost) with high hitCount drives freshness to 1.0
-  // regardless of age, violating the 6-layer model where frequent memories should still decay.
-  // Additive boost: boost = minFreshness + accessBoostFactor * log(1 + hitCount)
-  // This gives a modest increase that doesn't override the base freshness from decay.
-  const hitCount = memory.hitCount ?? 0;
-  const accessBoost = config.minFreshness + config.accessBoostFactor * Math.log(1 + hitCount);
-  freshness = freshness + accessBoost;
 
   // Clamp to minFreshness
   return Math.max(config.minFreshness, Math.min(1.0, freshness));

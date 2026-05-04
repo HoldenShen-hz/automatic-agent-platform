@@ -159,7 +159,9 @@ export class PromptModelPolicyGovernanceService {
       rolloutScope: input.rolloutScope ?? "canary",
       rollbackVersion: input.rollbackVersion ?? null,
       evaluationSuiteId: input.evaluationSuiteId ?? null,
-      status: input.reviewRequired === false ? "approved" : "review_required",
+      // R23-3 FIX: reviewRequired=false should not bypass staging eval gate.
+      // Staging eval must run regardless of review requirement.
+      status: "review_required",
       metadata: {
         lintEvidence: input.lintEvidence ?? [],
       } satisfies PromptReleaseMetadata,
@@ -195,7 +197,9 @@ export class PromptModelPolicyGovernanceService {
       rolloutScope: input.rolloutScope ?? "canary",
       rollbackVersion: rollbackProfileName,
       evaluationSuiteId: input.evaluationSuiteId ?? null,
-      status: input.reviewRequired === false ? "approved" : "review_required",
+      // R23-3 FIX: reviewRequired=false should not bypass staging eval gate.
+      // Staging eval must run regardless of review requirement.
+      status: "review_required",
       metadata: {
         profileName: input.profileName,
         frozenModelId: input.frozenModelId,
@@ -232,7 +236,9 @@ export class PromptModelPolicyGovernanceService {
       rolloutScope: input.rolloutScope ?? "canary",
       rollbackVersion: input.rollbackVersion ?? null,
       evaluationSuiteId: input.evaluationSuiteId ?? null,
-      status: input.reviewRequired === false ? "approved" : "review_required",
+      // R23-3 FIX: reviewRequired=false should not bypass staging eval gate.
+      // Staging eval must run regardless of review requirement.
+      status: "review_required",
       metadata: {
         changeTicket: input.changeTicket,
         effectiveScope: input.effectiveScope,

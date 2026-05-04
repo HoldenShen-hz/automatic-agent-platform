@@ -201,12 +201,21 @@ function trustLevelFromScore(score: number): TrustLevel {
   return mapTrustLevel(score);
 }
 
+/**
+ * Score a capability trust profile.
+ * §42.1 requires TrustScore range 0-1000 (not 0-100).
+ * This function returns 0-1000 for domain-scored trust profiles.
+ */
 function scoreCapability(score: CapabilityTrustScore): number {
   const success = successRate(score);
   const overridePenalty = overrideRate(score) * 20;
   const incidentPenalty = score.incidents * 15;
-  const volumeBonus = Math.min(10, Math.floor(score.totalExecutions / 50));
-  return Math.max(0, Math.min(100, Math.round(success * 100 - overridePenalty - incidentPenalty + volumeBonus)));
+  const volumeBonus = Math.min(100, Math.floor(score.totalExecutions / 50));
+  // R5-21 fix: Return 0-1000 per §42.1, not 0-100
+  // Use 1000 scaling factor and higher penalty scale to align with calculateTrustScore
+  const scaledPenalty = overridePenalty * 10; // Scale from 0-20 to 0-200
+  const scaledIncidentPenalty = incidentPenalty * 10; // Scale from 0-15 to 0-150
+  return Math.max(0, Math.min(1000, Math.round(success * 1000 - scaledPenalty - scaledIncidentPenalty + volumeBonus)));
 }
 
 /**

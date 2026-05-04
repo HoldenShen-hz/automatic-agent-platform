@@ -4,23 +4,13 @@ import {
   type AssessmentComplexity,
   type TaskSituation,
   type UnifiedAssessment,
+  type EffectivePolicySnapshot,
+  type CanonicalRiskAssessment,
 } from "./types/index.js";
 import type { ConstraintPack } from "../harness/index.js";
 
 export interface AssessmentServiceOptions {
   highRiskTools?: readonly string[];
-}
-
-export interface EffectivePolicySnapshot {
-  readonly snapshotId: string;
-  readonly requiredApprovalLevel?: "none" | "user" | "admin";
-  readonly blockedTools?: readonly string[];
-  readonly forcedExecutionMode?: UnifiedAssessment["executionMode"];
-}
-
-export interface CanonicalRiskAssessment {
-  readonly level: UnifiedAssessment["risk"];
-  readonly factors: readonly string[];
 }
 
 export interface AssessmentInput {
@@ -90,6 +80,20 @@ export class AssessmentService {
     const executionMode = assessmentInput.effectivePolicySnapshot?.forcedExecutionMode
       ?? (risk === "critical" ? "manual" : risk === "high" ? "supervised" : "auto");
 
+    // Build the effective policy snapshot from input and computed values
+    const effectivePolicySnapshot: EffectivePolicySnapshot | undefined = assessmentInput.effectivePolicySnapshot ?? {
+      snapshotId: `policy_snapshot:${situation.taskId}:${Date.now()}`,
+      requiredApprovalLevel: approvalRequired ? (risk === "critical" ? "admin" : "user") : "none",
+      blockedTools: [],
+      forcedExecutionMode: executionMode,
+    };
+
+    // Build the canonical risk assessment per §13.1.1
+    const riskAssessmentOutput: CanonicalRiskAssessment = {
+      level: risk,
+      factors: riskFactors,
+    };
+
     return {
       taskId: situation.taskId,
       timestamp: Date.now(),
@@ -97,10 +101,16 @@ export class AssessmentService {
       phase: "pre-execution",
       complexity,
       risk,
-      riskAssessment: {
-        level: risk,
-        factors: riskFactors,
+      riskAssessment: riskAssessmentOutput,
+      // §13.1.1: Output constraintPack consumed by Assess
+      constraintPack: assessmentInput.constraintPack ?? {
+        policyIds: [],
+        approvalMode: "none",
+        autonomyMode: "suggestion",
+        toolPolicy: { allowedTools: [] },
       },
+      // §13.1.1: Output effectivePolicySnapshot produced by Assess
+      effectivePolicySnapshot,
       routingDecision: {
         // R5-5 FIX: Division must come from actual domainId in parsed TaskSituation
         // Previously used assessmentInput.domainId which doesn't exist on AssessmentInput
@@ -172,7 +182,7 @@ export class AssessmentService {
     } else if (constraintPack.approvalMode === "supervised") {
       factors.push("approval_mode_supervised");
     }
-    const budgetEnvelope = constraintPack.budgetEnvelope ?? constraintPack.budget_envelope ?? constraintPack.budget;
+    const budgetEnvelope = constraintPack.budgetEnvelope ?? constraintPack.budget;
     if (budgetEnvelope != null && budgetEnvelope.maxSteps <= 2) {
       factors.push("tight_budget_envelope");
     }
