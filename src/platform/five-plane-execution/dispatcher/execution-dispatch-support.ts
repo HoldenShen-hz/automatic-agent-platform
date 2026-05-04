@@ -21,7 +21,48 @@ export interface DispatchExecutionOptions {
   leaseTtlMs: number;
   includeDegraded?: boolean;
   occurredAt?: string;
+  // R10-2: tenant isolation - filter dispatchable tickets by tenant
+  tenantId?: string | null;
+  // R10-4: lock acquisition strategy
+  lockAcquisitionStrategy?: LockAcquisitionStrategy;
+  // R10-5, R10-9: retry handling with backoff
+  maxRetryAttempts?: number;
+  retryBackoffMs?: number;
+  // R10-6: lock acquisition timeout
+  lockAcquisitionTimeoutMs?: number;
+  // R10-8: deadlock detection
+  deadlockDetectionEnabled?: boolean;
 }
+
+/**
+ * R10-4: Lock acquisition strategy determines how lease acquisition is attempted.
+ * - eager: Acquire lease before worker selection (fail fast if blocked)
+ * - lazy: Select worker first, then acquire lease (optimistic)
+ * - optimistic: Try quick acquire first, fall back to eager if blocked
+ */
+export type LockAcquisitionStrategy = "eager" | "lazy" | "optimistic";
+
+/**
+ * R10-4: Default lock acquisition strategy
+ */
+export const DEFAULT_LOCK_ACQUISITION_STRATEGY: LockAcquisitionStrategy = "optimistic";
+
+/**
+ * R10-5, R10-9: Default retry settings
+ */
+export const DEFAULT_MAX_RETRY_ATTEMPTS = 3;
+export const DEFAULT_RETRY_BACKOFF_MS = 100;
+export const DEFAULT_LOCK_ACQUISITION_TIMEOUT_MS = 5000;
+
+/**
+ * R10-8: Maximum time to wait for lock acquisition before considering it a deadlock
+ */
+export const DEADLOCK_DETECTION_THRESHOLD_MS = 30000;
+
+/**
+ * R10-8: Maximum number of concurrent lock acquisition attempts before suspecting deadlock
+ */
+export const MAX_CONCURRENT_LOCK_ATTEMPTS = 5;
 
 /**
  * R9-9: Routing decision record for capability-based routing.
@@ -100,12 +141,16 @@ export interface ExecutionTicketDecision {
 }
 
 export interface DispatchExecutionDecision {
-  outcome: "dispatched" | "no_ticket" | "no_worker" | "blocked";
+  outcome: "dispatched" | "no_ticket" | "no_worker" | "blocked" | "lock_timeout" | "max_retries_exceeded";
   reasonCode: string | null;
   ticket: ExecutionTicketRecord | null;
   worker: RegisteredWorkerView | null;
   leaseId: string | null;
   trace: DispatchDecisionTrace | null;
+  // R10-5: Retry information
+  retryCount?: number;
+  // R10-8: Deadlock detection result
+  deadlockDetected?: boolean;
 }
 
 export const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {

@@ -20,6 +20,7 @@ import type {
 } from "./types/index.js";
 import { ObservationAggregator, type UnifiedObservation } from "../../shared/observability/observation-aggregator.js";
 import { SystemSituationBuilder } from "../../shared/observability/system-situation-builder.js";
+import type { SituationAwarenessProvider, SituationAwareness } from "../../../interaction/proactive-agent/index.js";
 import { AssessmentService } from "./assessment-service.js";
 import { PlanBuilder } from "../planner/plan-builder.js";
 import { FeedbackCollector } from "../../../scale-ecosystem/feedback-loop/collector/feedback-collector.js";
@@ -37,6 +38,8 @@ import { AutonomyBoundaryPolicy } from "./improve-rollout/autonomy-boundary-poli
 import { ImprovementCandidateRegistry } from "./improve-rollout/improvement-candidate-registry.js";
 import { PolicyRolloutService } from "./improve-rollout/policy-rollout-service.js";
 import { createStrategyVersion } from "./improve-rollout/strategy-versioning.js";
+import { createOperationalDirective } from "../../contracts/control-directive/index.js";
+import type { ControlPlaneDirectiveSink } from "../../five-plane-control-plane/control-plane-directive-sink.js";
 import { OapeflirStageTimelineBuilder, type OapeflirStageRecord } from "./stage-timeline.js";
 import { buildFromStepResults } from "./handoff-builder.js";
 import { serializeHandoff } from "./handoff-serializer.js";
@@ -148,6 +151,8 @@ export interface OapeflirLoopResult {
     budgetEstimate: number;
     bottleneckNodes: readonly string[];
   };
+  /** R9-13: Health status report generated during assess stage */
+  healthStatusReport?: import("../../shared/observability/health-service.js").HealthStatusReport | null;
 }
 
 export interface OapeflirLoopServiceOptions {
@@ -171,6 +176,12 @@ export interface OapeflirLoopServiceOptions {
   autonomyBoundary?: AutonomyBoundaryPolicy;
   candidateRegistry?: ImprovementCandidateRegistry;
   rolloutService?: PolicyRolloutService;
+  /** R9-7: Situation awareness provider for runtime context in observe stage */
+  situationAwarenessProvider?: SituationAwarenessProvider | null;
+  /** R9-13: Health service for generating HealthStatusReport in assess stage */
+  healthService?: import("../../shared/observability/health-service.js").HealthService | null;
+  /** R9-9: Directive sink for emitting OperationalDirective during improve stage */
+  directiveSink?: ControlPlaneDirectiveSink | null;
 }
 
 /** R5-41 §14.3 OAPEFLIR event emission helper */
@@ -207,6 +218,14 @@ export class OapeflirLoopService {
   private currentFsmStage: "observe" | "assess" | "plan" | "execute" | "feedback" | "learn" | "improve" | "release" = "observe";
   /** R5-3 StageTransitionFSM for validating stage transitions per R5-3 */
   private readonly stageFsm = createStageTransitionFSM();
+  /** R9-7: Situation awareness provider for runtime context in observe stage */
+  private readonly situationAwarenessProvider: SituationAwarenessProvider | null = null;
+  /** R9-13: Health service for generating HealthStatusReport in assess stage */
+  private readonly healthService: import("../../shared/observability/health-service.js").HealthService | null = null;
+  /** R9-1: Stage instrumentation metrics captured per stage run */
+  private stageInstrumentation: Record<string, { entryTimestamp: number; exitTimestamp: number; durationMs: number; result: string }> = {};
+  /** R9-9: Directive sink for emitting OperationalDirective during improve stage */
+  private readonly directiveSink: ControlPlaneDirectiveSink | null = null;
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
@@ -236,6 +255,12 @@ export class OapeflirLoopService {
     this.autonomyBoundary = options.autonomyBoundary ?? new AutonomyBoundaryPolicy();
     this.candidateRegistry = options.candidateRegistry ?? new ImprovementCandidateRegistry();
     this.rollout = options.rolloutService ?? new PolicyRolloutService();
+    // R9-7: Initialize situation awareness provider from options
+    this.situationAwarenessProvider = options.situationAwarenessProvider ?? null;
+    // R9-13: Initialize health service from options
+    this.healthService = options.healthService ?? null;
+    // R9-9: Initialize directive sink from options
+    this.directiveSink = options.directiveSink ?? null;
   }
 
   /**
@@ -309,6 +334,8 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
       let validationReport: OapeflirLoopResult["validationReport"];
       let riskPropagation: OapeflirLoopResult["riskPropagation"];
       let worstPath: OapeflirLoopResult["worstPath"];
+      // R9-13: Will be produced by assess stage if healthService is available
+      let healthStatusReport: OapeflirLoopResult["healthStatusReport"] = null;
 
       // R5-3: Validate initial state machine transition to observe
       const observeTransition = this.stageFsm.canTransitionTo("observe");
@@ -346,7 +373,15 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           // downstream stages to consume. The SystemSituation model carries forward the
           // event flow refs and memory context from prior runs per §45.8.
           const systemObservation = this.systemSituationBuilder.build();
+          // R9-7: Integrate situation awareness into observation if provider is available
+          let situationAwareness: SituationAwareness | null = null;
+          if (this.situationAwarenessProvider != null) {
+            situationAwareness = this.situationAwarenessProvider.getSituationAwareness();
+          }
           const aggregatedForObserver = this.observationAggregator.aggregate(taskSituation, systemObservation);
+          // R9-7: Attach situation awareness to observation for downstream consumption
+          // This allows assess and plan stages to consider runtime health context
+          (aggregatedForObserver as UnifiedObservation & { situationAwareness?: SituationAwareness | null }).situationAwareness = situationAwareness;
           // R5-11: previousRunContext (eventFlowRefs, goalDecompositionRef, memoryRefs,
           // previousPlanId, previousGraphVersion) is maintained in currentInput and passed
           // to downstream stages including Assess, Plan, and subsequent replanning loops.
@@ -424,6 +459,10 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         }), {
           taskId: currentInput.taskId,
         });
+        // R9-13: Generate HealthStatusReport in assess stage if healthService is available
+        if (this.healthService != null) {
+          healthStatusReport = this.healthService.getReport();
+        }
         timeline.record("assess", "completed", assessment.situationRef, null, assessment.routingDecision.rationale);
         this.stageFsm.recordStageCompletion("assess");
 
@@ -799,6 +838,23 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
               taskId: currentInput.taskId,
               learningObjectCount: validatedLearningObjects.length,
             });
+            // R9-9: Emit OperationalDirective when improve stage makes a decision
+            if (this.directiveSink != null) {
+              this.directiveSink.emitOperationalDirective(
+                createOperationalDirective({
+                  type: boundary.allowed ? "strategy_improve_allowed" : "strategy_improve_blocked",
+                  scope: {
+                    scope: "planning_policy",
+                    targetId: currentInput.taskId,
+                  },
+                  reasonCode: boundary.reasonCode,
+                  metadata: {
+                    learningObjectCount: validatedLearningObjects.length,
+                    loopIteration: this.loopIteration,
+                  },
+                }),
+              );
+            }
             if (boundary.allowed) {
               // R5-8: Register candidate in "proposed" status - approval is handled by rollout.startWithGating per §13.14
               const candidate = this.candidateRegistry.register({
@@ -825,6 +881,21 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
                 candidateId: candidate.candidateId,
               });
               let rawRolloutRecord = releaseResult.record;
+              // R9-11: Promote improvement through rollout stages after initial release
+              if (rawRolloutRecord != null) {
+                try {
+                  // Promote to evaluation_enabled stage for shadow evaluation
+                  rawRolloutRecord = this.rollout.promote(candidate, rawRolloutRecord, "evaluation_enabled", undefined, "system");
+                  // If canary percent is set, also promote to canary_5 for initial traffic split
+                  if (10 > 0) {
+                    rawRolloutRecord = this.rollout.promote(candidate, rawRolloutRecord, "canary_5", undefined, "system");
+                  }
+                } catch (promoteError) {
+                  this.boundaryLogger.warn("[release:promote] Failed to promote improvement through stages", {
+                    data: { taskId: currentInput.taskId, error: promoteError instanceof Error ? promoteError.message : String(promoteError) },
+                  });
+                }
+              }
               // I→R boundary: validate rollout record — skip release on failure (per §L.14)
               const rolloutValidation = validateRolloutRecord(rawRolloutRecord);
               rolloutRecord = rolloutValidation.ok ? rolloutValidation.value : null;
@@ -1065,6 +1136,8 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           validationReport: validationReport!,
           riskPropagation: riskPropagation!,
           worstPath: worstPath!,
+          // R9-13: HealthStatusReport generated in assess stage
+          healthStatusReport,
         };
       }
 
@@ -1100,6 +1173,8 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         validationReport: validationReport!,
         riskPropagation: riskPropagation!,
         worstPath: worstPath!,
+        // R9-13: HealthStatusReport may be set if assess stage completed before abort
+        healthStatusReport,
       };
     });
   }
@@ -1206,6 +1281,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
     attributes: Record<string, unknown>,
   ): Promise<T> {
     const startedAt = Date.now();
+    const entryTimestamp = Date.now();
     const taskId = attributes["taskId"] as string ?? "unknown";
     runtimeMetricsRegistry.recordOapeflirStageEntry(stage);
     try {
@@ -1217,12 +1293,28 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           ...attributes,
         },
       }, async () => await operation());
-      const durationSeconds = (Date.now() - startedAt) / 1000;
-      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "completed", durationSeconds);
+      const durationMs = Date.now() - startedAt;
+      const exitTimestamp = Date.now();
+      // R9-1: Capture stage instrumentation for timeline record
+      this.stageInstrumentation[stage] = {
+        entryTimestamp,
+        exitTimestamp,
+        durationMs,
+        result: "completed",
+      };
+      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "completed", durationMs / 1000);
       return result;
     } catch (error) {
-      const durationSeconds = (Date.now() - startedAt) / 1000;
-      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "error", durationSeconds);
+      const durationMs = Date.now() - startedAt;
+      const exitTimestamp = Date.now();
+      // R9-1: Capture stage instrumentation for timeline record (error case)
+      this.stageInstrumentation[stage] = {
+        entryTimestamp,
+        exitTimestamp,
+        durationMs,
+        result: "error",
+      };
+      runtimeMetricsRegistry.recordOapeflirStageExit(stage, "error", durationMs / 1000);
       // R5-41: Preserve stage/task/span context in error for debugging
       const stageError = error instanceof Error
         ? new Error(`[stage:${stage}][task:${taskId}] ${error.message}`)

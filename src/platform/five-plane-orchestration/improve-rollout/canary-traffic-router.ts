@@ -12,6 +12,67 @@ export interface CanaryAllocation {
   stablePercentage: number;
 }
 
+/**
+ * Validation result for canary rollout percentages
+ */
+export interface CanaryValidationResult {
+  valid: boolean;
+  errors: readonly string[];
+  warnings: readonly string[];
+}
+
+/**
+ * Validates canary rollout progression and percentages.
+ * Ensures that canary stages progress monotonically and percentages are within valid ranges.
+ */
+export function validateCanaryRolloutPercentages(): CanaryValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Validate that canary percentages are monotonically increasing
+  const canaryStages: RolloutStatus[] = ["canary_5", "canary_20", "canary_50"];
+  const expectedPercentages = [5, 20, 50];
+
+  for (let i = 0; i < canaryStages.length; i++) {
+    const stage = canaryStages[i];
+    const actualPercentage = TRAFFIC_PERCENTAGES[stage];
+    const expected = expectedPercentages[i];
+
+    if (actualPercentage === undefined) {
+      errors.push(`Missing percentage for ${stage}`);
+    } else if (actualPercentage !== expected) {
+      errors.push(`Invalid percentage for ${stage}: expected ${expected}, got ${actualPercentage}`);
+    }
+  }
+
+  // Validate stable_100 is 100%
+  if (TRAFFIC_PERCENTAGES["stable_100"] !== 100) {
+    errors.push(`Invalid percentage for stable_100: expected 100, got ${TRAFFIC_PERCENTAGES["stable_100"]}`);
+  }
+
+  // Validate canary progression is monotonically increasing
+  if (TRAFFIC_PERCENTAGES["canary_5"] >= TRAFFIC_PERCENTAGES["canary_20"]) {
+    errors.push("canary_5 percentage must be less than canary_20");
+  }
+  if (TRAFFIC_PERCENTAGES["canary_20"] >= TRAFFIC_PERCENTAGES["canary_50"]) {
+    errors.push("canary_20 percentage must be less than canary_50");
+  }
+  if (TRAFFIC_PERCENTAGES["canary_50"] >= TRAFFIC_PERCENTAGES["stable_100"]) {
+    errors.push("canary_50 percentage must be less than stable_100");
+  }
+
+  // Warn if canary percentages seem unusual
+  if (TRAFFIC_PERCENTAGES["canary_5"] < 1 || TRAFFIC_PERCENTAGES["canary_5"] > 10) {
+    warnings.push(`canary_5 percentage ${TRAFFIC_PERCENTAGES["canary_5"]} is outside typical range (1-10%)`);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
 const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
   candidate_created: 0,
   under_review: 0,

@@ -85,8 +85,193 @@ export interface FederationEvent {
   data: Record<string, unknown>;
 }
 
+/**
+ * Federation region priority for multi-region routing and failover.
+ * Higher priority values indicate preferred regions for routing.
+ */
+export interface FederationRegionPriority {
+  readonly regionId: string;
+  readonly federationId: string;
+  readonly priority: number;
+  readonly isPreferred: boolean;
+  readonly failoverWeight: number;
+}
+
+/**
+ * Result of comparing two federation topologies for reconciliation.
+ */
+export interface FederationTopologyDiff {
+  readonly addedRegions: readonly string[];
+  readonly removedRegions: readonly string[];
+  readonly modifiedRegions: readonly { regionId: string; changes: readonly string[] }[];
+  readonly unchangedRegions: readonly string[];
+  readonly diffTimestamp: string;
+}
+
+/**
+ * Region descriptor for federation topology.
+ */
+export interface FederationTopologyRegion {
+  readonly regionId: string;
+  readonly endpoint: string;
+  readonly priority: number;
+  readonly status: "active" | "standby" | "draining";
+  readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * Federation topology representing all regions in a federation.
+ */
+export interface FederationTopology {
+  readonly federationId: string;
+  readonly regions: readonly FederationTopologyRegion[];
+  readonly version: string;
+  readonly lastUpdated: string;
+}
+
+/**
+ * Compares two federation topologies and returns the differences.
+ * Used for reconciliation when topologies diverge across regions.
+ */
+export function computeFederationTopologyDiff(
+  left: FederationTopology,
+  right: FederationTopology,
+): FederationTopologyDiff {
+  const leftRegionIds = new Set(left.regions.map((r) => r.regionId));
+  const rightRegionIds = new Set(right.regions.map((r) => r.regionId));
+
+  const addedRegions: string[] = [];
+  const removedRegions: string[] = [];
+  const modifiedRegions: { regionId: string; changes: string[] }[] = [];
+  const unchangedRegions: string[] = [];
+
+  // Find added and unchanged regions
+  for (const regionId of rightRegionIds) {
+    if (!leftRegionIds.has(regionId)) {
+      addedRegions.push(regionId);
+    }
+  }
+
+  // Find removed regions
+  for (const regionId of leftRegionIds) {
+    if (!rightRegionIds.has(regionId)) {
+      removedRegions.push(regionId);
+    }
+  }
+
+  // Find modified and unchanged regions
+  const rightRegionMap = new Map(right.regions.map((r) => [r.regionId, r]));
+  for (const leftRegion of left.regions) {
+    const rightRegion = rightRegionMap.get(leftRegion.regionId);
+    if (!rightRegion) continue; // Already handled as removed
+
+    if (leftRegionIds.has(leftRegion.regionId) && rightRegionIds.has(leftRegion.regionId)) {
+      const changes: string[] = [];
+
+      if (leftRegion.endpoint !== rightRegion.endpoint) {
+        changes.push(`endpoint: ${leftRegion.endpoint} -> ${rightRegion.endpoint}`);
+      }
+      if (leftRegion.priority !== rightRegion.priority) {
+        changes.push(`priority: ${leftRegion.priority} -> ${rightRegion.priority}`);
+      }
+      if (leftRegion.status !== rightRegion.status) {
+        changes.push(`status: ${leftRegion.status} -> ${rightRegion.status}`);
+      }
+
+      if (changes.length > 0) {
+        modifiedRegions.push({ regionId: leftRegion.regionId, changes });
+      } else {
+        unchangedRegions.push(leftRegion.regionId);
+      }
+    }
+  }
+
+  return {
+    addedRegions,
+    removedRegions,
+    modifiedRegions,
+    unchangedRegions,
+    diffTimestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Federation catalog entry describing a single federation.
+ */
+export interface FederationCatalogEntry {
+  readonly federationId: string;
+  readonly name: string;
+  readonly description: string;
+  readonly regionCount: number;
+  readonly orgCount: number;
+  readonly trustLevel: TrustLevel;
+  readonly capabilities: readonly string[];
+  readonly status: "active" | "inactive" | "suspended";
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/**
+ * Federation catalog containing all federations.
+ */
+export interface FederationCatalog {
+  readonly catalogId: string;
+  readonly entries: readonly FederationCatalogEntry[];
+  readonly totalCount: number;
+  readonly generatedAt: string;
+}
+
+/**
+ * Builds a catalog of all federations in the gateway.
+ */
+export function buildFederationCatalog(
+  gateway: FederationGateway,
+  options?: { status?: FederationCatalogEntry["status"] },
+): FederationCatalog {
+  const entries: FederationCatalogEntry[] = [];
+
+  // Get all organizations registered in the gateway
+  // Note: This is a simplified implementation; real implementation would
+  // iterate through registered organizations and build catalog entries
+  const orgs = Array.from((gateway as unknown as { organizations: Map<string, FederationOrg> }).organizations.values());
+
+  for (const org of orgs) {
+    if (options?.status && org.enabled !== (options.status === "active")) {
+      continue;
+    }
+
+    // Get trust relationships for this org
+    const trusts = Array.from((gateway as unknown as { trustRelationships: Map<string, TrustRelationship> }).trustRelationships.values())
+      .filter((t) => t.sourceOrgId === org.id || t.targetOrgId === org.id);
+
+    const entry: FederationCatalogEntry = {
+      federationId: (gateway as unknown as { config: FederationGatewayConfig }).config.federationId,
+      name: org.name,
+      description: `Federation for ${org.domain}`,
+      regionCount: 1, // Placeholder - would be derived from region tracking
+      orgCount: orgs.length,
+      trustLevel: trusts.length > 0 ? trusts[0].level : TrustLevel.NONE,
+      capabilities: Array.from(org.capabilities),
+      status: org.enabled ? "active" : "inactive",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    entries.push(entry);
+  }
+
+  return {
+    catalogId: `federation-catalog-${Date.now()}`,
+    entries,
+    totalCount: entries.length,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 // Gateway configuration
 export interface FederationGatewayConfig {
+  /** Unique identifier for this federation */
+  federationId: string;
   enableAudit: boolean;
   maxDelegationDepth: number;
   requireApproval: boolean;
@@ -94,6 +279,7 @@ export interface FederationGatewayConfig {
 }
 
 const DEFAULT_CONFIG: FederationGatewayConfig = {
+  federationId: "default-federation",
   enableAudit: true,
   maxDelegationDepth: 3,
   requireApproval: true,

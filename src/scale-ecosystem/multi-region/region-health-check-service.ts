@@ -399,6 +399,28 @@ export class RegionHealthCheckService {
 }
 
 /**
+ * Helper function to select the region with lowest latency.
+ * Used as fallback when election algorithm cannot determine a winner.
+ */
+function selectLowestLatencyRegion(
+  regionIds: readonly string[],
+  healthCheckService: RegionHealthCheckService,
+): string | null {
+  let bestRegion: string | null = null;
+  let lowestLatency = Infinity;
+
+  for (const regionId of regionIds) {
+    const summary = healthCheckService.getHealthSummary(regionId);
+    if (summary && summary.overallLatencyMs < lowestLatency) {
+      lowestLatency = summary.overallLatencyMs;
+      bestRegion = regionId;
+    }
+  }
+
+  return bestRegion;
+}
+
+/**
  * Region failover orchestrator
  *
  * Coordinates automatic failover based on health checks.
@@ -406,6 +428,7 @@ export class RegionHealthCheckService {
 export class RegionFailoverOrchestrator {
   private readonly healthCheckService: RegionHealthCheckService;
   private readonly failoverListeners = new Set<(regionId: string, targetRegionId: string) => void>();
+  private readonly regionPriorities = new Map<string, number>();
 
   public constructor(healthCheckService?: RegionHealthCheckService) {
     this.healthCheckService = healthCheckService ?? new RegionHealthCheckService();
@@ -423,6 +446,101 @@ export class RegionFailoverOrchestrator {
    */
   public registerRegion(config: RegionHealthCheckConfig): void {
     this.healthCheckService.registerRegion(config);
+  }
+
+  /**
+   * Set region priority for election (higher = more likely to be elected)
+   */
+  public setRegionPriority(regionId: string, priority: number): void {
+    this.regionPriorities.set(regionId, priority);
+  }
+
+  /**
+   * Get region priority
+   */
+  public getRegionPriority(regionId: string): number {
+    return this.regionPriorities.get(regionId) ?? 0;
+  }
+
+  /**
+   * Elect a region as leader using a multi-factor election algorithm.
+   * Factors: health status, latency, and configured priority.
+   *
+   * Returns the elected region ID or null if no suitable candidate.
+   */
+  public electRegion(candidateRegionIds: readonly string[]): string | null {
+    if (candidateRegionIds.length === 0) {
+      return null;
+    }
+
+    if (candidateRegionIds.length === 1) {
+      // Single candidate - elect if healthy
+      const summary = this.healthCheckService.getHealthSummary(candidateRegionIds[0]);
+      return summary?.isHealthyForFailover ?? false ? candidateRegionIds[0] : null;
+    }
+
+    // Score each candidate based on multiple factors
+    interface ScoredCandidate {
+      regionId: string;
+      score: number;
+      healthScore: number;
+      latencyScore: number;
+      priorityScore: number;
+    }
+
+    const scoredCandidates: ScoredCandidate[] = [];
+
+    for (const regionId of candidateRegionIds) {
+      const summary = this.healthCheckService.getHealthSummary(regionId);
+      const priority = this.getRegionPriority(regionId);
+
+      // Health score: 100 for healthy, 50 for degraded, 0 for unhealthy
+      let healthScore = 0;
+      if (summary) {
+        switch (summary.status) {
+          case "healthy":
+            healthScore = 100;
+            break;
+          case "degraded":
+            healthScore = 50;
+            break;
+          case "unhealthy":
+          case "unknown":
+            healthScore = 0;
+            break;
+        }
+      }
+
+      // Latency score: lower latency = higher score (inverse relationship)
+      // Max latency of 5000ms gets 0 score, 0ms gets 100 score
+      const latencyScore = summary ? Math.max(0, 100 - (summary.overallLatencyMs / 50)) : 0;
+
+      // Priority score: direct mapping of configured priority
+      const priorityScore = priority;
+
+      // Weighted total score
+      // Health is most important (50%), then latency (30%), then priority (20%)
+      const totalScore = (healthScore * 0.5) + (latencyScore * 0.3) + (priorityScore * 0.2);
+
+      scoredCandidates.push({
+        regionId,
+        score: totalScore,
+        healthScore,
+        latencyScore,
+        priorityScore,
+      });
+    }
+
+    // Sort by score descending
+    scoredCandidates.sort((a, b) => b.score - a.score);
+
+    // Only return the top candidate if they have a non-zero health score
+    const elected = scoredCandidates[0];
+    if (elected && elected.healthScore > 0) {
+      return elected.regionId;
+    }
+
+    return null;
   }
 
   /**
@@ -445,19 +563,8 @@ export class RegionFailoverOrchestrator {
       return null;
     }
 
-    // Select region with lowest latency
-    let bestRegion: string | null = null;
-    let lowestLatency = Infinity;
-
-    for (const regionId of healthyRegions) {
-      const summary = this.healthCheckService.getHealthSummary(regionId);
-      if (summary && summary.overallLatencyMs < lowestLatency) {
-        lowestLatency = summary.overallLatencyMs;
-        bestRegion = regionId;
-      }
-    }
-
-    return bestRegion;
+    // Use election algorithm to select the best target
+    return this.electRegion(healthyRegions) ?? selectLowestLatencyRegion(healthyRegions, this.healthCheckService);
   }
 
   /**

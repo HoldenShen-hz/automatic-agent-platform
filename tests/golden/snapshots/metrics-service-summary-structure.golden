@@ -11,5 +11,14 @@
   "hasCostMetrics": true,
   "hasApprovalMetrics": true,
   "hasEventMetrics": true,
-  "hasRuntimeMetrics": true
+  "hasRuntimeMetrics": true,
+  "hasHarnessRunMetrics": true,
+  "hasNodeRunMetrics": true,
+  "hasAttemptMetrics": true,
+  "hasOapeflirViewMetrics": true,
+  "hasStageViewMetrics": true,
+  "hasFeedbackMetrics": true,
+  "hasLearningMetrics": true,
+  "hasImprovementMetrics": true,
+  "hasReleaseMetrics": true
 }

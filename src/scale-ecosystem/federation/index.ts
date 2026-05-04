@@ -18,6 +18,14 @@ export {
   type DelegationRequest,
   type DelegationResult,
   type FederationEvent,
+  type FederationRegionPriority,
+  type FederationTopologyDiff,
+  type FederationTopologyRegion,
+  type FederationTopology,
+  computeFederationTopologyDiff,
+  type FederationCatalogEntry,
+  type FederationCatalog,
+  buildFederationCatalog,
 } from "./federation-gateway.js";
 
 export {

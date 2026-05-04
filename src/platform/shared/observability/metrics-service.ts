@@ -117,6 +117,65 @@ export interface RuntimeMetricsSummary {
     workerHealth: HealthStatusReport["workerHealth"];
     findings: string[];
   };
+  /** Per §4.1 contract: attempt-level metrics with duration percentiles */
+  attemptMetrics: {
+    total: number;
+    activeCount: number;
+    retryAttemptCount: number;
+    recoveryAttemptCount: number;
+    averageDurationMs: number | null;
+    p95DurationMs: number | null;
+  };
+  /** Per §4.1 contract: OAPEFLIR loop-level view metrics */
+  oapeflirViewMetrics: {
+    loopCount: number;
+    completedLoopCount: number;
+    failedLoopCount: number;
+    averageLoopDurationMs: number | null;
+    convergenceRate: number;
+  };
+  /** Per §4.1 contract: per-stage view metrics for OAPEFLIR 8 stages */
+  stageViewMetrics: {
+    observe: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    assess: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    plan: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    execute: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    feedback: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    learn: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    improve: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+    release: { count: number; durationMs: number | null; failureCount: number; timeoutCount: number };
+  };
+  /** Per §4.1 contract: feedback signal metrics */
+  feedbackMetrics: {
+    receivedCount: number;
+    classifiedCount: number;
+    consumedCount: number;
+    positiveCount: number;
+    negativeCount: number;
+    correctionCount: number;
+  };
+  /** Per §4.1 contract: learning object metrics */
+  learningMetrics: {
+    objectCreatedCount: number;
+    validatedCount: number;
+    promotedCount: number;
+    rejectedCount: number;
+  };
+  /** Per §4.1 contract: improvement candidate metrics */
+  improvementMetrics: {
+    candidateProposedCount: number;
+    acceptedCount: number;
+    rejectedCount: number;
+    guardrailBlockedCount: number;
+  };
+  /** Per §4.1 contract: release progression metrics */
+  releaseMetrics: {
+    startedCount: number;
+    advancedCount: number;
+    completedCount: number;
+    rolledBackCount: number;
+    currentLevel: number;
+  };
 }
 
 /**
@@ -317,6 +376,155 @@ export class MetricsService {
       .prepare(`SELECT duration_ms AS durationMs, token_cost AS tokenCost FROM workflow_step_outputs ORDER BY duration_ms ASC`)
       .all() as Array<{ durationMs: number; tokenCost: number }>;
 
+    // Query attempt metrics (R7-5: attemptMetrics per §4.1 contract)
+    const attemptCounts = this.selectRow<{
+      total: number;
+      activeCount: number;
+      retryAttemptCount: number;
+      recoveryAttemptCount: number;
+    }>(
+      `SELECT
+         COUNT(*) AS total,
+         COALESCE(SUM(CASE WHEN status IN ('created', 'prechecking', 'executing', 'blocked') THEN 1 ELSE 0 END), 0) AS activeCount,
+         COALESCE(SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END), 0) AS retryAttemptCount,
+         COALESCE(SUM(CASE WHEN event_type LIKE 'recovery:%' THEN 1 ELSE 0 END), 0) AS recoveryAttemptCount
+       FROM executions`,
+    );
+
+    // Query attempt durations for percentile calculation
+    const attemptDurationRows = this.db.connection
+      .prepare(`SELECT duration_ms AS durationMs FROM executions WHERE duration_ms IS NOT NULL ORDER BY duration_ms ASC`)
+      .all() as Array<{ durationMs: number }>;
+    const attemptDurations = attemptDurationRows.map((row) => Number(row.durationMs ?? 0));
+
+    // Query OAPEFLIR loop metrics (R7-5: oapeflirViewMetrics per §4.1 contract)
+    const loopCounts = this.selectRow<{
+      loopCount: number;
+      completedLoopCount: number;
+      failedLoopCount: number;
+      totalDurationMs: number;
+    }>(
+      `SELECT
+         COUNT(*) AS loopCount,
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedLoopCount,
+         COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedLoopCount,
+         COALESCE(SUM(duration_ms), 0) AS totalDurationMs
+       FROM harness_loops`,
+    );
+
+    // Query stage view metrics (R7-5: stageViewMetrics per §4.1 contract)
+    const stageCounts = this.selectRow<{
+      observeCount: number; observeDurationMs: number; observeFailureCount: number; observeTimeoutCount: number;
+      assessCount: number; assessDurationMs: number; assessFailureCount: number; assessTimeoutCount: number;
+      planCount: number; planDurationMs: number; planFailureCount: number; planTimeoutCount: number;
+      executeCount: number; executeDurationMs: number; executeFailureCount: number; executeTimeoutCount: number;
+      feedbackCount: number; feedbackDurationMs: number; feedbackFailureCount: number; feedbackTimeoutCount: number;
+      learnCount: number; learnDurationMs: number; learnFailureCount: number; learnTimeoutCount: number;
+      improveCount: number; improveDurationMs: number; improveFailureCount: number; improveTimeoutCount: number;
+      releaseCount: number; releaseDurationMs: number; releaseFailureCount: number; releaseTimeoutCount: number;
+    }>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN stage = 'observe' THEN 1 ELSE 0 END), 0) AS observeCount,
+         COALESCE(SUM(CASE WHEN stage = 'observe' THEN duration_ms END), 0) AS observeDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'observe' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS observeFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'observe' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS observeTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'assess' THEN 1 ELSE 0 END), 0) AS assessCount,
+         COALESCE(SUM(CASE WHEN stage = 'assess' THEN duration_ms END), 0) AS assessDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'assess' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS assessFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'assess' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS assessTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'plan' THEN 1 ELSE 0 END), 0) AS planCount,
+         COALESCE(SUM(CASE WHEN stage = 'plan' THEN duration_ms END), 0) AS planDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'plan' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS planFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'plan' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS planTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'execute' THEN 1 ELSE 0 END), 0) AS executeCount,
+         COALESCE(SUM(CASE WHEN stage = 'execute' THEN duration_ms END), 0) AS executeDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'execute' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS executeFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'execute' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS executeTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'feedback' THEN 1 ELSE 0 END), 0) AS feedbackCount,
+         COALESCE(SUM(CASE WHEN stage = 'feedback' THEN duration_ms END), 0) AS feedbackDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'feedback' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS feedbackFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'feedback' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS feedbackTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'learn' THEN 1 ELSE 0 END), 0) AS learnCount,
+         COALESCE(SUM(CASE WHEN stage = 'learn' THEN duration_ms END), 0) AS learnDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'learn' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS learnFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'learn' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS learnTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'improve' THEN 1 ELSE 0 END), 0) AS improveCount,
+         COALESCE(SUM(CASE WHEN stage = 'improve' THEN duration_ms END), 0) AS improveDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'improve' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS improveFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'improve' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS improveTimeoutCount,
+         COALESCE(SUM(CASE WHEN stage = 'release' THEN 1 ELSE 0 END), 0) AS releaseCount,
+         COALESCE(SUM(CASE WHEN stage = 'release' THEN duration_ms END), 0) AS releaseDurationMs,
+         COALESCE(SUM(CASE WHEN stage = 'release' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS releaseFailureCount,
+         COALESCE(SUM(CASE WHEN stage = 'release' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS releaseTimeoutCount
+       FROM stage_samples`,
+    );
+
+    // Query feedback metrics (R7-5: feedbackMetrics per §4.1 contract)
+    const feedbackCounts = this.selectRow<{
+      receivedCount: number;
+      classifiedCount: number;
+      consumedCount: number;
+      positiveCount: number;
+      negativeCount: number;
+      correctionCount: number;
+    }>(
+      `SELECT
+         COUNT(*) AS receivedCount,
+         COALESCE(SUM(CASE WHEN classification IS NOT NULL THEN 1 ELSE 0 END), 0) AS classifiedCount,
+         COALESCE(SUM(CASE WHEN consumed_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS consumedCount,
+         COALESCE(SUM(CASE WHEN sentiment = 'positive' THEN 1 ELSE 0 END), 0) AS positiveCount,
+         COALESCE(SUM(CASE WHEN sentiment = 'negative' THEN 1 ELSE 0 END), 0) AS negativeCount,
+         COALESCE(SUM(CASE WHEN kind = 'correction' THEN 1 ELSE 0 END), 0) AS correctionCount
+       FROM feedback_signals`,
+    );
+
+    // Query learning metrics (R7-5: learningMetrics per §4.1 contract)
+    const learningCounts = this.selectRow<{
+      objectCreatedCount: number;
+      validatedCount: number;
+      promotedCount: number;
+      rejectedCount: number;
+    }>(
+      `SELECT
+         COUNT(*) AS objectCreatedCount,
+         COALESCE(SUM(CASE WHEN validation_status = 'validated' THEN 1 ELSE 0 END), 0) AS validatedCount,
+         COALESCE(SUM(CASE WHEN promotion_status = 'promoted' THEN 1 ELSE 0 END), 0) AS promotedCount,
+         COALESCE(SUM(CASE WHEN promotion_status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejectedCount
+       FROM learning_objects`,
+    );
+
+    // Query improvement metrics (R7-5: improvementMetrics per §4.1 contract)
+    const improvementCounts = this.selectRow<{
+      candidateProposedCount: number;
+      acceptedCount: number;
+      rejectedCount: number;
+      guardrailBlockedCount: number;
+    }>(
+      `SELECT
+         COUNT(*) AS candidateProposedCount,
+         COALESCE(SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END), 0) AS acceptedCount,
+         COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejectedCount,
+         COALESCE(SUM(CASE WHEN blocked_by_guardrail = 1 THEN 1 ELSE 0 END), 0) AS guardrailBlockedCount
+       FROM improvement_candidates`,
+    );
+
+    // Query release metrics (R7-5: releaseMetrics per §4.1 contract)
+    const releaseCounts = this.selectRow<{
+      startedCount: number;
+      advancedCount: number;
+      completedCount: number;
+      rolledBackCount: number;
+      maxLevel: number;
+    }>(
+      `SELECT
+         COALESCE(SUM(CASE WHEN status IN ('started', 'in_progress') THEN 1 ELSE 0 END), 0) AS startedCount,
+         COALESCE(SUM(CASE WHEN status = 'advanced' THEN 1 ELSE 0 END), 0) AS advancedCount,
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completedCount,
+         COALESCE(SUM(CASE WHEN status = 'rolled_back' THEN 1 ELSE 0 END), 0) AS rolledBackCount,
+         COALESCE(MAX(level), 0) AS maxLevel
+       FROM release_records`,
+    );
+
     // Get current health status
     const health = this.healthService.getReport();
 
@@ -421,6 +629,99 @@ export class MetricsService {
         queueGovernance: health.queueGovernance,
         workerHealth: health.workerHealth,
         findings: health.findings,
+      },
+      // R7-5: New metrics per §4.1 contract
+      attemptMetrics: {
+        total: attemptCounts.total,
+        activeCount: attemptCounts.activeCount,
+        retryAttemptCount: attemptCounts.retryAttemptCount,
+        recoveryAttemptCount: attemptCounts.recoveryAttemptCount,
+        averageDurationMs: average(attemptDurations),
+        p95DurationMs: percentile(attemptDurations, 0.95),
+      },
+      oapeflirViewMetrics: {
+        loopCount: loopCounts.loopCount,
+        completedLoopCount: loopCounts.completedLoopCount,
+        failedLoopCount: loopCounts.failedLoopCount,
+        averageLoopDurationMs: loopCounts.loopCount > 0 ? roundMetric(loopCounts.totalDurationMs / loopCounts.loopCount) : null,
+        convergenceRate: ratio(loopCounts.completedLoopCount, loopCounts.loopCount),
+      },
+      stageViewMetrics: {
+        observe: {
+          count: stageCounts.observeCount,
+          durationMs: stageCounts.observeCount > 0 ? roundMetric(stageCounts.observeDurationMs / stageCounts.observeCount) : null,
+          failureCount: stageCounts.observeFailureCount,
+          timeoutCount: stageCounts.observeTimeoutCount,
+        },
+        assess: {
+          count: stageCounts.assessCount,
+          durationMs: stageCounts.assessCount > 0 ? roundMetric(stageCounts.assessDurationMs / stageCounts.assessCount) : null,
+          failureCount: stageCounts.assessFailureCount,
+          timeoutCount: stageCounts.assessTimeoutCount,
+        },
+        plan: {
+          count: stageCounts.planCount,
+          durationMs: stageCounts.planCount > 0 ? roundMetric(stageCounts.planDurationMs / stageCounts.planCount) : null,
+          failureCount: stageCounts.planFailureCount,
+          timeoutCount: stageCounts.planTimeoutCount,
+        },
+        execute: {
+          count: stageCounts.executeCount,
+          durationMs: stageCounts.executeCount > 0 ? roundMetric(stageCounts.executeDurationMs / stageCounts.executeCount) : null,
+          failureCount: stageCounts.executeFailureCount,
+          timeoutCount: stageCounts.executeTimeoutCount,
+        },
+        feedback: {
+          count: stageCounts.feedbackCount,
+          durationMs: stageCounts.feedbackCount > 0 ? roundMetric(stageCounts.feedbackDurationMs / stageCounts.feedbackCount) : null,
+          failureCount: stageCounts.feedbackFailureCount,
+          timeoutCount: stageCounts.feedbackTimeoutCount,
+        },
+        learn: {
+          count: stageCounts.learnCount,
+          durationMs: stageCounts.learnCount > 0 ? roundMetric(stageCounts.learnDurationMs / stageCounts.learnCount) : null,
+          failureCount: stageCounts.learnFailureCount,
+          timeoutCount: stageCounts.learnTimeoutCount,
+        },
+        improve: {
+          count: stageCounts.improveCount,
+          durationMs: stageCounts.improveCount > 0 ? roundMetric(stageCounts.improveDurationMs / stageCounts.improveCount) : null,
+          failureCount: stageCounts.improveFailureCount,
+          timeoutCount: stageCounts.improveTimeoutCount,
+        },
+        release: {
+          count: stageCounts.releaseCount,
+          durationMs: stageCounts.releaseCount > 0 ? roundMetric(stageCounts.releaseDurationMs / stageCounts.releaseCount) : null,
+          failureCount: stageCounts.releaseFailureCount,
+          timeoutCount: stageCounts.releaseTimeoutCount,
+        },
+      },
+      feedbackMetrics: {
+        receivedCount: feedbackCounts.receivedCount,
+        classifiedCount: feedbackCounts.classifiedCount,
+        consumedCount: feedbackCounts.consumedCount,
+        positiveCount: feedbackCounts.positiveCount,
+        negativeCount: feedbackCounts.negativeCount,
+        correctionCount: feedbackCounts.correctionCount,
+      },
+      learningMetrics: {
+        objectCreatedCount: learningCounts.objectCreatedCount,
+        validatedCount: learningCounts.validatedCount,
+        promotedCount: learningCounts.promotedCount,
+        rejectedCount: learningCounts.rejectedCount,
+      },
+      improvementMetrics: {
+        candidateProposedCount: improvementCounts.candidateProposedCount,
+        acceptedCount: improvementCounts.acceptedCount,
+        rejectedCount: improvementCounts.rejectedCount,
+        guardrailBlockedCount: improvementCounts.guardrailBlockedCount,
+      },
+      releaseMetrics: {
+        startedCount: releaseCounts.startedCount,
+        advancedCount: releaseCounts.advancedCount,
+        completedCount: releaseCounts.completedCount,
+        rolledBackCount: releaseCounts.rolledBackCount,
+        currentLevel: releaseCounts.maxLevel,
       },
     };
   }

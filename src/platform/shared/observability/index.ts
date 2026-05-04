@@ -22,3 +22,4 @@ export * from "./runtime-metrics-registry.js";
 export * from "./system-situation-model.js";
 export * from "./system-situation-builder.js";
 export * from "./task-board-service.js";
+export * from "./metrics-service.js";

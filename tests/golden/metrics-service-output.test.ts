@@ -70,6 +70,15 @@ test("golden: metrics service buildSummary has expected structure", () => {
     hasApprovalMetrics: summary.approvalMetrics !== undefined,
     hasEventMetrics: summary.eventMetrics !== undefined,
     hasRuntimeMetrics: summary.runtimeMetrics !== undefined,
+    hasHarnessRunMetrics: summary.harnessRunMetrics !== undefined,
+    hasNodeRunMetrics: summary.nodeRunMetrics !== undefined,
+    hasAttemptMetrics: summary.attemptMetrics !== undefined,
+    hasOapeflirViewMetrics: summary.oapeflirViewMetrics !== undefined,
+    hasStageViewMetrics: summary.stageViewMetrics !== undefined,
+    hasFeedbackMetrics: summary.feedbackMetrics !== undefined,
+    hasLearningMetrics: summary.learningMetrics !== undefined,
+    hasImprovementMetrics: summary.improvementMetrics !== undefined,
+    hasReleaseMetrics: summary.releaseMetrics !== undefined,
   });
 
   db.close();

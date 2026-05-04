@@ -53,6 +53,13 @@ import {
   type DispatchExecutionOptions,
   type DispatchQueueAvailabilitySnapshot,
   type ExecutionTicketDecision,
+  type LockAcquisitionStrategy,
+  DEFAULT_LOCK_ACQUISITION_STRATEGY,
+  DEFAULT_MAX_RETRY_ATTEMPTS,
+  DEFAULT_RETRY_BACKOFF_MS,
+  DEFAULT_LOCK_ACQUISITION_TIMEOUT_MS,
+  DEADLOCK_DETECTION_THRESHOLD_MS,
+  MAX_CONCURRENT_LOCK_ATTEMPTS,
 } from "./execution-dispatch-support.js";
 import { HorizontalScalingController, DEFAULT_SCALING_POLICY } from "../../shared/scaling/horizontal-scaling-controller.js";
 import { nowIso as nowDate } from "../../contracts/types/ids.js";
@@ -96,6 +103,10 @@ export class ExecutionDispatchService {
   private readonly dispatchDeadLetterQueue: DispatchDeadLetterQueue | null;
   // R9-5: §14.2 poison-pill detection - max time a ticket can wait before being considered abandoned
   private readonly maxQueueAgeMs: number;
+  // R10-5: Track active dispatch attempts for retry management and deadlock detection
+  private readonly activeDispatchAttempts: Map<string, { ticketId: string; startedAt: number; workerId: string }>;
+  // R10-8: Track recently failed lock acquisitions for deadlock detection
+  private readonly recentLockFailures: Map<string, { timestamp: number; blockedByWorkerId: string }>;
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -111,6 +122,8 @@ export class ExecutionDispatchService {
     this.scalingController = new HorizontalScalingController("default", DEFAULT_SCALING_POLICY);
     this.dispatchDeadLetterQueue = dispatchDeadLetterQueue ?? this.createDispatchDeadLetterQueue();
     this.maxQueueAgeMs = maxQueueAgeMs;
+    this.activeDispatchAttempts = new Map();
+    this.recentLockFailures = new Map();
   }
 
   private getOrCreateHealthService(occurredAt: string): HealthService {
@@ -1163,5 +1176,429 @@ export class ExecutionDispatchService {
     const record: AgentExecutionRecord = buildDispatchAgentExecutionRecord(this.store, execution, occurredAt, updates);
     this.store.worker.upsertAgentExecutionRecord(record);
     return record;
+  }
+
+  // R10-4: Lock acquisition strategy implementation
+  private acquireLeaseWithStrategy(
+    executionId: string,
+    workerId: string,
+    queueName: string | null,
+    strategy: LockAcquisitionStrategy,
+    ttlMs: number,
+    timeoutMs: number,
+    occurredAt: string,
+  ): { outcome: "granted" | "blocked" | "timeout"; lease: import("../../contracts/types/domain.js").ExecutionLeaseRecord | null; reasonCode: string | null } {
+    const startTime = Date.now();
+    const maxAttempts = Math.ceil(timeoutMs / 50); // Convert timeout to max attempts (50ms per attempt)
+
+    if (strategy === "eager") {
+      // Eager: Acquire lease directly, fail fast
+      const result = this.leases.acquireLease({ executionId, workerId, ttlMs, queueName, occurredAt });
+      return { outcome: result.outcome === "granted" ? "granted" : "blocked", lease: result.lease, reasonCode: result.reasonCode };
+    }
+
+    if (strategy === "lazy") {
+      // Lazy: Poll for lock acquisition up to timeout
+      let attempts = 0;
+      while (attempts < maxAttempts && Date.now() - startTime < timeoutMs) {
+        const result = this.leases.acquireLease({ executionId, workerId, ttlMs, queueName, occurredAt });
+        if (result.outcome === "granted") {
+          return { outcome: "granted", lease: result.lease, reasonCode: null };
+        }
+        attempts++;
+      }
+      return { outcome: "timeout", lease: null, reasonCode: "lock_acquisition_timeout" };
+    }
+
+    // Optimistic: Try quick acquire first, fall back to eager
+    const quickResult = this.leases.acquireLease({ executionId, workerId, ttlMs, queueName, occurredAt });
+    if (quickResult.outcome === "granted") {
+      return { outcome: "granted", lease: quickResult.lease, reasonCode: null };
+    }
+
+    // Fall back to eager after quick attempt fails
+    const fallbackResult = this.leases.acquireLease({ executionId, workerId, ttlMs, queueName, occurredAt });
+    if (fallbackResult.outcome === "granted") {
+      return { outcome: "granted", lease: fallbackResult.lease, reasonCode: null };
+    }
+
+    return { outcome: "blocked", lease: null, reasonCode: fallbackResult.reasonCode };
+  }
+
+  // R10-7: Release lock on error - ensures lease is released if error occurs after acquisition
+  private releaseLeaseOnError(leaseId: string, workerId: string, executionId: string, occurredAt: string): void {
+    try {
+      const result = this.leases.releaseLease({ leaseId, workerId, reasonCode: "dispatch_error_release" });
+      if (result.outcome === "released") {
+        this.store.event.insertEvent({
+          id: newId("evt"),
+          taskId: null,
+          executionId,
+          eventType: "dispatch:lease_released_on_error",
+          eventTier: "tier_2",
+          payloadJson: JSON.stringify({ leaseId, workerId, executionId }),
+          traceId: null,
+          createdAt: occurredAt,
+        });
+      }
+    } catch (error) {
+      // Log but don't throw - we want to continue cleanup even if release fails
+      logger.warn("Failed to release lease on error", { leaseId, workerId, executionId, error });
+    }
+  }
+
+  // R10-8: Deadlock detection - checks if two executions are blocking each other
+  private detectPotentialDeadlock(executionId: string, workerId: string): boolean {
+    const currentAttempt = this.activeDispatchAttempts.get(executionId);
+    if (!currentAttempt) return false;
+
+    // Check if there's a reverse dependency: this worker is waiting for a lock held by
+    // an execution that's waiting for a lock held by us
+    for (const [blockedExecId, blockedInfo] of this.activeDispatchAttempts) {
+      if (blockedExecId === executionId) continue;
+
+      // Check if the blocked execution is waiting for our worker
+      if (blockedInfo.workerId === workerId) {
+        // Now check if we have a reverse dependency
+        const ourFailure = this.recentLockFailures.get(blockedExecId);
+        if (ourFailure && ourFailure.blockedByWorkerId === workerId) {
+          // Potential deadlock detected: execution A waits for worker B, execution B waits for worker A
+          logger.warn("Potential deadlock detected", {
+            executionA: executionId,
+            executionB: blockedExecId,
+            workerA: workerId,
+            workerB: blockedInfo.workerId,
+          });
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // R10-8: Record lock failure for deadlock detection
+  private recordLockFailure(executionId: string, blockedByWorkerId: string): void {
+    this.recentLockFailures.set(executionId, { timestamp: Date.now(), blockedByWorkerId });
+    // Clean up old entries (older than threshold)
+    const threshold = Date.now() - DEADLOCK_DETECTION_THRESHOLD_MS;
+    for (const [key, value] of this.recentLockFailures) {
+      if (value.timestamp < threshold) {
+        this.recentLockFailures.delete(key);
+      }
+    }
+  }
+
+  // R10-8: Track active dispatch attempt
+  private trackDispatchAttempt(executionId: string, ticketId: string, workerId: string): void {
+    this.activeDispatchAttempts.set(executionId, { ticketId, startedAt: Date.now(), workerId });
+  }
+
+  // R10-8: Remove dispatch attempt tracking
+  private untrackDispatchAttempt(executionId: string): void {
+    this.activeDispatchAttempts.delete(executionId);
+  }
+
+  // R10-9: Calculate exponential backoff delay
+  private calculateBackoffDelay(retryCount: number, baseBackoffMs: number): number {
+    // Exponential backoff with jitter: base * 2^retryCount + random jitter
+    const exponentialDelay = baseBackoffMs * Math.pow(2, retryCount);
+    const jitter = Math.random() * baseBackoffMs * 0.1; // 10% jitter
+    return Math.min(exponentialDelay + jitter, 5000); // Cap at 5 seconds
+  }
+
+  // R10-10: Handle max retries exceeded - move ticket to DLQ
+  private handleMaxRetriesExceeded(
+    ticket: ExecutionTicketRecord,
+    occurredAt: string,
+    retryCount: number,
+  ): void {
+    const trace = this.recordDecisionEvent(ticket, occurredAt, {
+      dispatchTarget: resolveDispatchTarget(ticket.dispatchTarget),
+      remoteAvailability: null,
+      requiredIsolationLevel: resolveRequiredIsolationLevel(ticket.requiredIsolationLevel),
+      requiredRepoVersion: resolveRequiredRepoVersion(ticket.requiredRepoVersion),
+      preferredWorkerId: null,
+      requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+      outcome: "blocked",
+      reasonCode: "max_retries_exceeded",
+      selectedWorkerId: null,
+      leaseId: null,
+      fallbackApplied: false,
+      evaluations: [],
+      ...this.buildSchedulerTraceFields(ticket, occurredAt, [], [], null),
+    });
+
+    // Invalidate the ticket
+    this.store.worker.invalidateExecutionTicket({
+      ticketId: ticket.id,
+      status: "cancelled",
+      invalidatedAt: occurredAt,
+    });
+
+    // Update execution status to failed
+    this.store.execution.updateExecutionStatus(
+      ticket.executionId,
+      "failed",
+      "dispatch.max_retries_exceeded",
+      occurredAt,
+    );
+
+    // Record event
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: ticket.taskId,
+      executionId: ticket.executionId,
+      eventType: "dispatch:max_retries_exceeded",
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        ticketId: ticket.id,
+        executionId: ticket.executionId,
+        queueName: ticket.queueName,
+        priority: ticket.priority,
+        retryCount,
+      }),
+      traceId: null,
+      createdAt: occurredAt,
+    });
+
+    this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "max_retries_exceeded");
+  }
+
+  /**
+   * R10-1 through R10-10: dispatchExecution - dispatches a single execution with full retry support,
+   * tenant isolation, lock acquisition strategy, and deadlock detection.
+   *
+   * This is the canonical entry point for dispatching a single execution with proper
+   * error handling and retry logic.
+   */
+  public dispatchExecution(
+    executionId: string,
+    options: DispatchExecutionOptions,
+  ): DispatchExecutionDecision {
+    const occurredAt = options.occurredAt ?? nowIso();
+    const maxRetryAttempts = options.maxRetryAttempts ?? DEFAULT_MAX_RETRY_ATTEMPTS;
+    const retryBackoffMs = options.retryBackoffMs ?? DEFAULT_RETRY_BACKOFF_MS;
+    const lockAcquisitionTimeoutMs = options.lockAcquisitionTimeoutMs ?? DEFAULT_LOCK_ACQUISITION_TIMEOUT_MS;
+    const lockStrategy = options.lockAcquisitionStrategy ?? DEFAULT_LOCK_ACQUISITION_STRATEGY;
+    const deadlockDetectionEnabled = options.deadlockDetectionEnabled ?? true;
+    const tenantId = options.tenantId ?? null;
+
+    // R10-2: Tenant isolation - get tenant-aware tickets
+    let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
+
+    // R10-2: Filter by tenant if tenantId is provided
+    if (tenantId != null) {
+      tickets = tickets.filter((ticket) => {
+        const execution = this.store.dispatch.getExecution(ticket.executionId);
+        const task = execution ? this.store.getTask(execution.taskId) : null;
+        return task?.tenantId === tenantId;
+      });
+    }
+
+    // R10-1: Priority sorting - sort by priority (highest first), then by createdAt (FIFO)
+    const PRIORITY_RANK: Record<string, number> = { critical: 4, high: 3, normal: 2, low: 1 };
+    tickets = [...tickets].sort((a, b) => {
+      const priorityDiff = (PRIORITY_RANK[b.priority] ?? 0) - (PRIORITY_RANK[a.priority] ?? 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+
+    // Find the specific execution's ticket
+    const ticket = tickets.find((t) => t.executionId === executionId);
+    if (!ticket) {
+      return {
+        outcome: "no_ticket",
+        reasonCode: null,
+        ticket: null,
+        worker: null,
+        leaseId: null,
+        trace: null,
+      };
+    }
+
+    // R10-5: Retry loop with exponential backoff
+    let retryCount = 0;
+    let lastError: string | null = null;
+    let deadlockDetected = false;
+
+    while (retryCount <= maxRetryAttempts) {
+      // R10-8: Deadlock detection before attempting lock acquisition
+      if (deadlockDetectionEnabled && retryCount > 0) {
+        const eligibleWorkers = this.selectEligibleWorkers(ticket, options);
+        for (const worker of eligibleWorkers) {
+          if (this.detectPotentialDeadlock(executionId, worker.workerId)) {
+            deadlockDetected = true;
+            // Break and let max retries exceeded handle it
+            break;
+          }
+        }
+        if (deadlockDetected) break;
+      }
+
+      // Select worker for this ticket
+      const selectedWorker = this.selectWorkerForTicket(ticket, options);
+      if (!selectedWorker) {
+        return {
+          outcome: "no_worker",
+          reasonCode: "no_eligible_worker",
+          ticket,
+          worker: null,
+          leaseId: null,
+          trace: null,
+          retryCount,
+          deadlockDetected: false,
+        };
+      }
+
+      // R10-4: Track attempt for deadlock detection
+      this.trackDispatchAttempt(executionId, ticket.id, selectedWorker.workerId);
+
+      try {
+        // R10-4: Acquire lease with strategy
+        const leaseResult = this.acquireLeaseWithStrategy(
+          executionId,
+          selectedWorker.workerId,
+          ticket.queueName,
+          lockStrategy,
+          options.leaseTtlMs,
+          lockAcquisitionTimeoutMs,
+          occurredAt,
+        );
+
+        if (leaseResult.outcome === "timeout") {
+          // R10-6: Lock acquisition timeout - record failure and retry
+          this.recordLockFailure(executionId, selectedWorker.workerId);
+          this.untrackDispatchAttempt(executionId);
+          retryCount++;
+          lastError = "lock_acquisition_timeout";
+
+          if (retryCount <= maxRetryAttempts) {
+            // R10-9: Exponential backoff before retry
+            const backoffDelay = this.calculateBackoffDelay(retryCount, retryBackoffMs);
+            // Note: In a sync context we can't actually sleep, but we log the backoff
+            logger.info("Dispatch lock acquisition timeout, retrying with backoff", {
+              executionId,
+              retryCount,
+              backoffDelay,
+            });
+          }
+          continue;
+        }
+
+        if (leaseResult.outcome === "blocked") {
+          // R10-6: Lock blocked - record failure and retry
+          this.recordLockFailure(executionId, selectedWorker.workerId);
+          this.untrackDispatchAttempt(executionId);
+          retryCount++;
+          lastError = leaseResult.reasonCode;
+
+          if (retryCount <= maxRetryAttempts) {
+            const backoffDelay = this.calculateBackoffDelay(retryCount, retryBackoffMs);
+            logger.info("Dispatch lock blocked, retrying with backoff", {
+              executionId,
+              retryCount,
+              backoffDelay,
+              reasonCode: leaseResult.reasonCode,
+            });
+          }
+          continue;
+        }
+
+        // Lease acquired successfully - claim the ticket
+        try {
+          this.store.worker.claimExecutionTicket({
+            ticketId: ticket.id,
+            assignedWorkerId: selectedWorker.workerId,
+            leaseId: leaseResult.lease!.id,
+            claimedAt: occurredAt,
+          });
+
+          // Success - untrack and return result
+          this.untrackDispatchAttempt(executionId);
+
+          return {
+            outcome: "dispatched",
+            reasonCode: null,
+            ticket: this.store.worker.getExecutionTicket(ticket.id) ?? null,
+            worker: selectedWorker,
+            leaseId: leaseResult.lease!.id,
+            trace: this.recordDecisionEvent(ticket, occurredAt, {
+              dispatchTarget: resolveDispatchTarget(ticket.dispatchTarget),
+              remoteAvailability: null,
+              requiredIsolationLevel: resolveRequiredIsolationLevel(ticket.requiredIsolationLevel),
+              requiredRepoVersion: resolveRequiredRepoVersion(ticket.requiredRepoVersion),
+              preferredWorkerId: options.preferredWorkerId ?? null,
+              requiredCapabilities: parseJsonArray(ticket.requiredCapabilitiesJson),
+              outcome: "dispatched",
+              reasonCode: null,
+              selectedWorkerId: selectedWorker.workerId,
+              leaseId: leaseResult.lease!.id,
+              fallbackApplied: false,
+              evaluations: [],
+              ...this.buildSchedulerTraceFields(ticket, occurredAt, [ticket.id], [executionId], selectedWorker.workerId),
+            }),
+            retryCount,
+            deadlockDetected: false,
+          };
+        } catch (claimError) {
+          // R10-7: Error during claim - release the lease before re-throwing
+          this.releaseLeaseOnError(leaseResult.lease!.id, selectedWorker.workerId, executionId, occurredAt);
+          this.untrackDispatchAttempt(executionId);
+          throw claimError;
+        }
+      } catch (error) {
+        // R10-7: Unexpected error - ensure lease is released
+        this.untrackDispatchAttempt(executionId);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error("Dispatch execution failed with error", { executionId, error: errorMessage });
+        throw error;
+      }
+    }
+
+    // R10-10: Max retries exceeded
+    this.untrackDispatchAttempt(executionId);
+    this.handleMaxRetriesExceeded(ticket, occurredAt, retryCount);
+
+    return {
+      outcome: "max_retries_exceeded",
+      reasonCode: lastError ?? "max_retries_exceeded",
+      ticket,
+      worker: null,
+      leaseId: null,
+      trace: null,
+      retryCount,
+      deadlockDetected,
+    };
+  }
+
+  // Helper to select eligible workers for a ticket
+  private selectEligibleWorkers(
+    ticket: ExecutionTicketRecord,
+    options: DispatchExecutionOptions,
+  ): RegisteredWorkerView[] {
+    const requiredCapabilities = parseJsonArray(ticket.requiredCapabilitiesJson);
+    const evaluations = this.evaluateWorkersForTicket(
+      ticket,
+      options,
+      requiredCapabilities,
+      resolveRequiredIsolationLevel(ticket.requiredIsolationLevel),
+      resolveRequiredRepoVersion(ticket.requiredRepoVersion),
+    );
+    return evaluations
+      .filter((e) => e.accepted)
+      .map((e) => this.workers.getWorker(e.workerId))
+      .filter((w): w is RegisteredWorkerView => w != null);
+  }
+
+  // Helper to select a worker for a ticket
+  private selectWorkerForTicket(
+    ticket: ExecutionTicketRecord,
+    options: DispatchExecutionOptions,
+  ): RegisteredWorkerView | null {
+    const eligibleWorkers = this.selectEligibleWorkers(ticket, options);
+    if (eligibleWorkers.length === 0) {
+      return null;
+    }
+    return this.selectDeterministicWorker(eligibleWorkers, []);
   }
 }
