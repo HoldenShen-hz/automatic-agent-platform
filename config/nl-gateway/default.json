@@ -23,5 +23,11 @@
   "entityExtraction": {
     "requiredEntityCount": 1,
     "minMessageLength": 6
+  },
+  "confidenceThresholds": {
+    "llmAcceptThreshold": 0.75,
+    "fallbackThreshold": 0.50,
+    "minAcceptableConfidence": 0.65,
+    "enableConfidenceLogging": false
   }
 }

@@ -715,14 +715,25 @@ test("RuntimeRecoveryService findRecoveryCandidates uses unknown for unclassifie
 
 test("RuntimeRecoveryService findStaleExecuting uses staleness threshold", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", status: "executing" });
+  let receivedStaleBefore: string | undefined;
+  const beforeCall = Date.now();
   const store = createMockStore({
     operations: {
-      listStaleRuns: () => [record],
+      listStaleRuns: (staleBefore?: string) => {
+        receivedStaleBefore = staleBefore;
+        return [record];
+      },
     },
   });
   const service = new RuntimeRecoveryService(store);
   const results = service.findStaleExecuting({ stalenessThresholdMs: 60000 });
+  const afterCall = Date.now();
   assert.equal(results.length, 1);
+  assert.ok(receivedStaleBefore);
+  const parsed = Date.parse(receivedStaleBefore!);
+  assert.ok(Number.isFinite(parsed));
+  assert.ok(parsed >= beforeCall - 60_000);
+  assert.ok(parsed <= afterCall - 60_000);
 });
 
 test("LegacyRecoveryCandidate extends RuntimeRecoveryCandidate with errorClassification", () => {

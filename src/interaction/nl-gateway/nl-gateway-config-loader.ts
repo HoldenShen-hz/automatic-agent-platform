@@ -43,6 +43,16 @@ export interface EntityExtractionConfig {
 }
 
 /**
+ * R5-32: Confidence thresholds configuration
+ */
+export interface ConfidenceThresholdsConfig {
+  readonly llmAcceptThreshold: number;
+  readonly fallbackThreshold: number;
+  readonly minAcceptableConfidence: number;
+  readonly enableConfidenceLogging: boolean;
+}
+
+/**
  * NL Gateway configuration
  */
 export interface NlGatewayConfig {
@@ -50,6 +60,8 @@ export interface NlGatewayConfig {
   readonly disambiguation: DisambiguationConfig;
   readonly intent: IntentConfig;
   readonly entityExtraction: EntityExtractionConfig;
+  /** R5-32: Configurable confidence thresholds for intent parsing */
+  readonly confidenceThresholds: ConfidenceThresholdsConfig;
 }
 
 const DEFAULT_NL_CONFIG_PATH = "config/nl-gateway/default.json";
@@ -79,6 +91,13 @@ const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
   entityExtraction: {
     requiredEntityCount: 1,
     minMessageLength: 6,
+  },
+  // R5-32: Default confidence thresholds
+  confidenceThresholds: {
+    llmAcceptThreshold: 0.75,
+    fallbackThreshold: 0.50,
+    minAcceptableConfidence: 0.65,
+    enableConfidenceLogging: false,
   },
 };
 
@@ -111,6 +130,11 @@ export function loadNlGatewayConfig(configPath?: string): NlGatewayConfig {
       entityExtraction: {
         ...DEFAULT_NL_GATEWAY_CONFIG.entityExtraction,
         ...parsed.entityExtraction,
+      },
+      // R5-32: Merge confidence thresholds from config
+      confidenceThresholds: {
+        ...DEFAULT_NL_GATEWAY_CONFIG.confidenceThresholds,
+        ...parsed.confidenceThresholds,
       },
     };
   } catch {

@@ -158,6 +158,15 @@ function createMockRepo(initialState: Partial<MockRepoState> = {}): HaRepository
         .slice(0, limit);
     },
 
+    async purgeOldFailoverDecisions(olderThanDays: number): Promise<number> {
+      const cutoff = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+      const before = state.failoverDecisions.length;
+      state.failoverDecisions = state.failoverDecisions.filter(
+        (decision) => new Date(decision.decidedAt).getTime() >= cutoff,
+      );
+      return before - state.failoverDecisions.length;
+    },
+
     async recordActionAudit(entry: LeaderActionAuditEntry): Promise<void> {
       state.actionAudits.push(entry);
     },
@@ -823,14 +832,13 @@ test("HaCoordinatorServiceAsync - getFailoverHistory respects limit", async () =
 // Tests: Write Authority Verification
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - verifyWriteAuthority accepts valid token", () => {
+test("HaCoordinatorServiceAsync - verifyWriteAuthority only accepts tokens greater than current token", () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
+  (service as unknown as { cachedFencingToken: number }).cachedFencingToken = 100;
 
-  // Token should be valid if >= counter
-  const result = service.verifyWriteAuthority(100);
-
-  assert.equal(result, true);
+  assert.equal(service.verifyWriteAuthority(100), false);
+  assert.equal(service.verifyWriteAuthority(101), true);
 });
 
 test("HaCoordinatorServiceAsync - verifyWriteAuthority rejects stale token", () => {
@@ -887,12 +895,38 @@ test("HaCoordinatorServiceAsync - purgeExpiredLeases returns 0 when no expired l
   assert.equal(count, 0);
 });
 
-test("HaCoordinatorServiceAsync - purgeOldFailoverDecisions returns 0", async () => {
-  const repo = createMockRepo();
+test("HaCoordinatorServiceAsync - purgeOldFailoverDecisions removes aged decisions through the repo", async () => {
+  const repo = createMockRepo({
+    failoverDecisions: [
+      {
+        decisionId: "old-decision",
+        oldLeaderNodeId: "node-1",
+        newLeaderNodeId: null,
+        epoch: 1,
+        cause: "heartbeat_missing",
+        outcome: "no_candidate",
+        decidedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        fencingToken: 1,
+      },
+      {
+        decisionId: "recent-decision",
+        oldLeaderNodeId: "node-2",
+        newLeaderNodeId: "node-3",
+        epoch: 2,
+        cause: "heartbeat_missing",
+        outcome: "leader_changed",
+        decidedAt: nowIso(),
+        fencingToken: 2,
+      },
+    ],
+  });
   const service = new HaCoordinatorServiceAsync(repo);
 
-  const count = await service.purgeOldFailoverDecisions();
+  const count = await service.purgeOldFailoverDecisions(7);
 
-  // Not implemented yet
-  assert.equal(count, 0);
+  assert.equal(count, 1);
+  assert.deepEqual(
+    (repo as unknown as { _state: MockRepoState })._state.failoverDecisions.map((decision) => decision.decisionId),
+    ["recent-decision"],
+  );
 });

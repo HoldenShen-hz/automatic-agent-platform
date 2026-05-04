@@ -35,6 +35,7 @@ function createMockCoordinator(): HaCoordinatorService & {
   mockState: MockLeadershipState;
   registerNodeCalls: string[];
   heartbeatCalls: string[];
+  renewLeadershipCalls: string[];
   heartbeatIntervalHandles: ReturnType<typeof setInterval>[];
   renewalIntervalHandles: ReturnType<typeof setInterval>[];
 } {
@@ -51,6 +52,7 @@ function createMockCoordinator(): HaCoordinatorService & {
 
   const registerNodeCalls: string[] = [];
   const heartbeatCalls: string[] = [];
+  const renewLeadershipCalls: string[] = [];
   const heartbeatIntervalHandles: ReturnType<typeof setInterval>[] = [];
   const renewalIntervalHandles: ReturnType<typeof setInterval>[] = [];
 
@@ -126,6 +128,7 @@ function createMockCoordinator(): HaCoordinatorService & {
     },
 
     renewLeadership(input: { nodeId: string; ttlMs?: number }) {
+      renewLeadershipCalls.push(input.nodeId);
       const lease = mockState.leases.get(input.nodeId);
       if (!lease) {
         return { renewed: false, lease: null, fencingToken: 0 };
@@ -227,12 +230,14 @@ function createMockCoordinator(): HaCoordinatorService & {
     // Expose for testing
     registerNodeCalls,
     heartbeatCalls,
+    renewLeadershipCalls,
     heartbeatIntervalHandles,
     renewalIntervalHandles,
   } as unknown as HaCoordinatorService & {
     mockState: MockLeadershipState;
     registerNodeCalls: string[];
     heartbeatCalls: string[];
+    renewLeadershipCalls: string[];
     heartbeatIntervalHandles: ReturnType<typeof setInterval>[];
     renewalIntervalHandles: ReturnType<typeof setInterval>[];
   };
@@ -344,20 +349,20 @@ test("LeaderElectionService - heartbeat is cleared on dispose", async () => {
   assert.equal(service.getState(), "stopped");
 });
 
-test("LeaderElectionService - HA_1 skips heartbeat and renewal loop", async () => {
+test("LeaderElectionService - HA_1 starts renewal loop to keep the single-node lease fresh", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
     region: "us-east-1",
     haLevel: "HA_1",
+    renewalIntervalMs: 5,
   });
 
   await service.start();
   assert.equal(service.getState(), "leader");
   assert.equal(service.isLeader(), true);
-
-  // HA_1 should not register heartbeat calls
-  // (but may still have some from the startup sequence)
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.ok(coordinator.renewLeadershipCalls.length > 0);
 
   await service.stop();
   service.dispose();

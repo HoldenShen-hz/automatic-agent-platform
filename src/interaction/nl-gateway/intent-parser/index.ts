@@ -84,6 +84,240 @@ export interface IntentValidationResult {
 }
 
 /**
+ * R5-23: Entity extraction validation result
+ */
+export interface EntityValidationResult {
+  readonly valid: boolean;
+  readonly reasonCode: string | null;
+  readonly validatedEntities: readonly EntityReference[];
+  readonly suggestions: readonly string[];
+}
+
+/**
+ * R5-25: Entity reference for cross-referencing
+ */
+export interface EntityReference {
+  readonly type: string;
+  readonly value: string;
+  readonly normalized: string;
+  readonly confidence: number;
+}
+
+/**
+ * R5-23: Known entity patterns for validation
+ */
+const KNOWN_ENTITY_PATTERNS: Record<string, RegExp[]> = {
+  environment: [
+    /prod(?:uction)?|staging|dev(?:elopment)?|test|线上|生产|测试|开发/i,
+    /env(?:ironment)?[:\s]*[a-z0-9_-]+/i,
+  ],
+  user: [
+    /user[:\s]*[a-z0-9_-]+|账号|用户|account[:\s]*[a-z0-9_-]+/i,
+    /@[\w.-]+/,
+  ],
+  resource: [
+    /resource[:\s]*[a-z0-9_-]+|配置|config/i,
+    /[\w-]+-(?:id|uuid|name)[:\s]*[\w.-]+/i,
+  ],
+  action: [
+    /deploy|release|delete|create|update|modify|发布|删除|创建|修改/i,
+  ],
+};
+
+/**
+ * R5-23: Entity types for extraction validation
+ */
+type EntityType = keyof typeof KNOWN_ENTITY_PATTERNS;
+
+/**
+ * R5-23: Extract and validate entities from a message.
+ * Validates that extracted entities match known patterns.
+ */
+export function validateEntityExtraction(message: string): EntityValidationResult {
+  const suggestions: string[] = [];
+  const validatedEntities: EntityReference[] = [];
+
+  for (const [type, patterns] of Object.entries(KNOWN_ENTITY_PATTERNS)) {
+    for (const pattern of patterns) {
+      const matches = message.match(new RegExp(pattern, "gi"));
+      if (matches) {
+        for (const match of matches) {
+          validatedEntities.push({
+            type,
+            value: match,
+            normalized: match.toLowerCase().trim(),
+            confidence: 0.85,
+          });
+        }
+      }
+    }
+  }
+
+  // R5-23: Check for action verbs without entity context
+  const hasActionVerb = /(deploy|release|delete|create|update|修改|删除|创建)/i.test(message);
+  const hasEntity = validatedEntities.length > 0;
+
+  if (hasActionVerb && !hasEntity) {
+    suggestions.push("请提供具体的操作目标（如环境、账号或资源）");
+    return {
+      valid: false,
+      reasonCode: "nl_gateway.entity_extraction_validation_failed",
+      validatedEntities,
+      suggestions,
+    };
+  }
+
+  return {
+    valid: true,
+    reasonCode: null,
+    validatedEntities,
+    suggestions: [],
+  };
+}
+
+/**
+ * R5-24: Confidence scoring weights for different signal types
+ */
+const CONFIDENCE_WEIGHTS = {
+  EXACT_KEYWORD_MATCH: 0.95,
+  PARTIAL_KEYWORD_MATCH: 0.75,
+  CONTEXTUAL_MATCH: 0.60,
+  FUZZY_MATCH: 0.40,
+  NO_MATCH: 0.20,
+} as const;
+
+/**
+ * R5-24: Intent confidence scoring via regex patterns.
+ * Provides fallback confidence scoring when LLM is unavailable.
+ */
+export function calculateConfidenceScore(message: string, intentType: ParsedIntentToken["intentType"]): number {
+  const normalized = message.toLowerCase().trim();
+  let score = 0.5;
+
+  // R5-24: Pattern-based keyword scoring
+  const keywordPatterns: Record<ParsedIntentToken["intentType"], RegExp[]> = {
+    task_create: [
+      /(?:create|make|generate|build|新建|创建|生成|做一个)/i,
+      /(?:deploy|release|start|begin)/i,
+    ],
+    task_query: [
+      /(?:query|search|find|look\s+up|查询|搜索|查找|看看)/i,
+      /(?:status|progress|状态|进度)/i,
+    ],
+    task_modify: [
+      /(?:update|modify|change|edit|修改|更新|改变)/i,
+      /(?:delete|remove|取消|删除)/i,
+    ],
+    status_inquiry: [
+      /(?:status|summary|overview|sync|状态|摘要|同步)/i,
+      /(?:what.*is.*status|how.*going|进行.*如何)/i,
+    ],
+    approval_action: [
+      /(?:approve|reject|accept|审批|通过|拒绝)/i,
+      /(?:confirm|ok|yes|确认|同意)/i,
+    ],
+  };
+
+  const patterns = keywordPatterns[intentType] ?? [];
+  let matchedWeight: number = CONFIDENCE_WEIGHTS.NO_MATCH;
+
+  for (const pattern of patterns) {
+    if (pattern.test(normalized)) {
+      if (pattern.source.includes("^(?:") || pattern.source.startsWith("^")) {
+        matchedWeight = Math.max(matchedWeight, CONFIDENCE_WEIGHTS.EXACT_KEYWORD_MATCH);
+      } else {
+        matchedWeight = Math.max(matchedWeight, CONFIDENCE_WEIGHTS.PARTIAL_KEYWORD_MATCH);
+      }
+    }
+  }
+
+  // R5-24: Context scoring based on message structure
+  const hasEntity = /(?:prod|staging|dev|user|account|env|线上|生产|账号|环境)/i.test(normalized);
+  const hasAction = /(?:create|delete|deploy|modify|更新|删除|创建)/i.test(normalized);
+  const hasQualifier = /(?:please|帮我|请|can\s+you|could)/i.test(normalized);
+
+  if (hasEntity && hasAction) {
+    score = Math.max(score, 0.85);
+  }
+  if (hasQualifier) {
+    score = Math.min(score + 0.05, 0.95);
+  }
+  if (!hasEntity && hasAction) {
+    score = Math.min(score - 0.1, 0.75);
+  }
+
+  const rawConfidence = score * matchedWeight;
+  return Math.min(Math.max(rawConfidence, 0.2), 0.98) as number;
+}
+
+/**
+ * R5-25: Cross-reference validation result for entity resolution
+ */
+export interface CrossReferenceResult {
+  readonly consistent: boolean;
+  readonly conflicts: readonly string[];
+  readonly resolvedEntities: readonly EntityReference[];
+}
+
+/**
+ * R5-25: Cross-reference entities to validate consistency.
+ * Ensures entities referenced across different contexts are coherent.
+ */
+export function crossReferenceEntities(
+  entities: readonly EntityReference[],
+  intentType: ParsedIntentToken["intentType"],
+): CrossReferenceResult {
+  const conflicts: string[] = [];
+  const resolvedEntities: EntityReference[] = [];
+
+  // R5-25: Build entity index by type
+  const entityByType = new Map<string, EntityReference[]>();
+  for (const entity of entities) {
+    const existing = entityByType.get(entity.type) ?? [];
+    existing.push(entity);
+    entityByType.set(entity.type, existing);
+  }
+
+  // R5-25: Check for environment/action conflicts
+  const environments = entityByType.get("environment") ?? [];
+  const actions = entityByType.get("action") ?? [];
+  const users = entityByType.get("user") ?? [];
+
+  // R5-25: Validate high-risk actions have environment context
+  if (intentType === "task_create" && actions.length > 0 && environments.length === 0) {
+    conflicts.push("高风险操作缺少环境上下文 (high-risk action missing environment context)");
+  }
+
+  // R5-25: Validate approval actions have target entity
+  if (intentType === "approval_action" && (environments.length === 0 && users.length === 0)) {
+    conflicts.push("审批操作缺少目标实体 (approval action missing target entity)");
+  }
+
+  // R5-25: Detect conflicting environment references
+  if (environments.length > 1) {
+    const uniqueEnvs = new Set(environments.map(e => e.normalized));
+    if (uniqueEnvs.size > 1) {
+      conflicts.push(`多个冲突的环境引用 (multiple conflicting environment references): ${Array.from(uniqueEnvs).join(", ")}`);
+    }
+  }
+
+  // R5-25: Resolve entities by type, keeping highest confidence
+  const entityEntries = Array.from(entityByType.entries());
+  for (const [type, typeEntities] of entityEntries) {
+    const resolved = typeEntities.reduce((highest, current) =>
+      current.confidence > highest.confidence ? current : highest
+    );
+    resolvedEntities.push(resolved);
+  }
+
+  return {
+    consistent: conflicts.length === 0,
+    conflicts,
+    resolvedEntities,
+  };
+}
+
+/**
  * §39.3: Validates intent extraction results meet minimum quality thresholds.
  * Checks confidence score and entity extraction quality before accepting.
  */
@@ -95,7 +329,8 @@ export function validateIntentExtraction(
   const suggestions: string[] = [];
 
   // R9-20: Reject low-confidence intent without user confirmation
-  if (confidence < INTENT_CONFIDENCE_THRESHOLDS.MIN_ACCEPTABLE_CONFIDENCE) {
+  // R5-32: Use configurable threshold from DEFAULT_CONFIDENCE_THRESHOLDS
+  if (confidence < DEFAULT_CONFIDENCE_THRESHOLDS.minAcceptableConfidence) {
     suggestions.push("请提供更具体的描述以帮助我准确理解您的意图");
     return {
       valid: false,
@@ -194,6 +429,8 @@ export interface DelegationState {
  * §39.7: LLM-based intent parser for multilingual intent recognition.
  * Uses ModelGateway for cross-lingual classification with confidence scoring.
  * Falls back to regex-based parsing when LLM is unavailable.
+ * R5-32: Supports configurable confidence thresholds.
+ * R5-34: Supports confidence logging for debugging.
  */
 export class LlmIntentParser implements IntentParser {
   private readonly modelGateway: IntentParserModelGateway | null;
@@ -202,17 +439,52 @@ export class LlmIntentParser implements IntentParser {
   private readonly maxDelegationDepth: number;
   /** R5-19: Budget tracker for intent extraction */
   private readonly budgetTracker: IntentExtractionBudgetTracker;
+  /** R5-32: Configurable confidence thresholds */
+  private readonly confidenceThresholds: IntentConfidenceThresholds;
+  /** R5-34: Enable confidence logging for debugging */
+  private readonly enableConfidenceLogging: boolean;
 
+  /**
+   * R5-32: Constructor with options object.
+   * Supports backward-compatible signature: (modelGateway, fallbackEnabled, maxDelegationDepth, maxIntentTokens)
+   */
   public constructor(
-    modelGateway?: IntentParserModelGateway | null,
-    fallbackEnabled = true,
-    maxDelegationDepth = DEFAULT_MAX_DELEGATION_DEPTH,
-    maxIntentTokens = DEFAULT_MAX_INTENT_TOKENS,
+    modelGatewayOrOptions?: IntentParserModelGateway | null | IntentParserOptions,
+    fallbackEnabled?: boolean,
+    maxDelegationDepth?: number,
+    maxIntentTokens?: number,
   ) {
-    this.modelGateway = modelGateway ?? null;
-    this.fallbackEnabled = fallbackEnabled;
-    this.maxDelegationDepth = maxDelegationDepth;
-    this.budgetTracker = new IntentExtractionBudgetTracker(maxIntentTokens);
+    // R5-32: Support both old positional args and new options object
+    let normalizedOptions: IntentParserOptions;
+    if (modelGatewayOrOptions && typeof modelGatewayOrOptions === "object" && !("complete" in modelGatewayOrOptions)) {
+      // It's an options object
+      normalizedOptions = modelGatewayOrOptions as IntentParserOptions;
+    } else {
+      // Old positional args - convert to options object
+      normalizedOptions = {
+        ...(modelGatewayOrOptions !== undefined ? { modelGateway: modelGatewayOrOptions } : {}),
+        fallbackEnabled: fallbackEnabled ?? true,
+        maxDelegationDepth: maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH,
+        maxIntentTokens: maxIntentTokens ?? DEFAULT_MAX_INTENT_TOKENS,
+      };
+    }
+
+    this.modelGateway = normalizedOptions.modelGateway ?? null;
+    this.fallbackEnabled = normalizedOptions.fallbackEnabled ?? true;
+    this.maxDelegationDepth = normalizedOptions.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
+    this.budgetTracker = new IntentExtractionBudgetTracker(normalizedOptions.maxIntentTokens ?? DEFAULT_MAX_INTENT_TOKENS);
+    this.confidenceThresholds = {
+      ...DEFAULT_CONFIDENCE_THRESHOLDS,
+      ...normalizedOptions.confidenceThresholds,
+    };
+    this.enableConfidenceLogging = normalizedOptions.enableConfidenceLogging ?? false;
+  }
+
+  /**
+   * R5-32: Get current confidence thresholds.
+   */
+  public getConfidenceThresholds(): IntentConfidenceThresholds {
+    return { ...this.confidenceThresholds };
   }
 
   /**
@@ -238,6 +510,8 @@ export class LlmIntentParser implements IntentParser {
    * Falls back to regex-based parsing on LLM failure or low confidence.
    * R5-18: Enforces delegation depth limit.
    * R5-19: Enforces token budget for intent extraction.
+   * R5-32: Uses configurable confidence thresholds.
+   * R5-34: Logs confidence for debugging when enabled.
    */
   async parseWithLlm(message: string, locale?: string, delegationDepth = 0): Promise<LlmIntentParseResult> {
     // R5-18: Check delegation depth limit
@@ -257,12 +531,17 @@ export class LlmIntentParser implements IntentParser {
     if (this.modelGateway != null) {
       try {
         const llmResult = await this.invokeModelGateway(message, detectedLocale, estimatedTokens);
-        if (llmResult.confidence >= INTENT_CONFIDENCE_THRESHOLDS.LLM_ACCEPT_THRESHOLD) {
+        // R5-32: Use configurable threshold instead of hardcoded
+        if (llmResult.confidence >= this.confidenceThresholds.llmAcceptThreshold) {
+          // R5-34: Log confidence for debugging
+          this.logConfidence("LLM", llmResult.intentType, llmResult.confidence, message);
           return llmResult;
         }
         // Confidence below threshold - will fall through to fallback
-      } catch {
+        this.logConfidence("LLM_LOW", llmResult.intentType, llmResult.confidence, message);
+      } catch (err) {
         // LLM unavailable - fall through to regex fallback
+        this.logConfidence("LLM_ERROR", "unknown", 0, message);
       }
     }
 
@@ -274,10 +553,20 @@ export class LlmIntentParser implements IntentParser {
     // Return lowest confidence result if fallback is disabled
     return {
       intentType: "task_query",
-      confidence: INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD - 0.1,
+      confidence: this.confidenceThresholds.fallbackThreshold - 0.1,
       reasoning: "LLM unavailable and fallback disabled",
       language: detectedLocale,
     };
+  }
+
+  /**
+   * R5-34: Log confidence for debugging when enabled.
+   */
+  private logConfidence(source: string, intentType: string, confidence: number, message: string): void {
+    if (this.enableConfidenceLogging) {
+      const truncatedMsg = message.length > 50 ? `${message.slice(0, 47)}...` : message;
+      console.log(`[IntentParser] ${source} confidence=${confidence.toFixed(3)} intent=${intentType} msg="${truncatedMsg}"`);
+    }
   }
 
   /**
@@ -356,41 +645,89 @@ export class LlmIntentParser implements IntentParser {
    * R9-20: Applies intent validation after parsing to ensure extraction quality.
    * R5-18: Enforces delegation depth limit.
    * R5-20: Validates intent extraction result.
+   * R5-24: Uses calculateConfidenceScore for regex-based confidence scoring.
+   * R5-25: Applies crossReferenceEntities for entity resolution validation.
    */
   private fallbackToRegex(message: string, locale: string, delegationDepth = 0): LlmIntentParseResult {
     const tokens = parseIntentTokens(message);
     const primary = tokens[0];
-    const confidence = primary?.confidence ?? 0.5;
+    const baseIntentType = primary?.intentType ?? "task_query";
+
+    // R5-24: Calculate confidence score using regex fallback logic
+    const confidence = calculateConfidenceScore(message, baseIntentType);
 
     // R5-20: Apply intent validation
-    const validation = validateIntentExtraction(message, primary?.intentType ?? "task_query", confidence);
+    const validation = validateIntentExtraction(message, baseIntentType, confidence);
+
+    // R5-23: Validate entity extraction
+    const entityValidation = validateEntityExtraction(message);
+
+    // R5-25: Apply cross-reference validation for entity resolution
+    const crossRefResult = crossReferenceEntities(entityValidation.validatedEntities, baseIntentType);
+
+    // R5-25: Build reasoning including entity conflicts
+    let entityReasoning = "";
+    if (!crossRefResult.consistent) {
+      entityReasoning = `; entity_conflicts: ${crossRefResult.conflicts.join("; ")}`;
+    }
 
     // R5-18: Enforce delegation depth in reasoning
     const depthReason = delegationDepth >= this.maxDelegationDepth
       ? "; max delegation depth reached"
       : "";
 
+    const finalConfidence = (!validation.valid || !entityValidation.valid)
+      ? confidence * 0.8
+      : confidence;
+
     return {
-      intentType: primary?.intentType ?? "task_query",
-      confidence: validation.valid ? confidence : (validation.reasonCode != null ? confidence * 0.8 : confidence),
-      reasoning: validation.valid
-        ? `Regex fallback for ${locale} input${depthReason}`
-        : `Regex fallback for ${locale} input; ${validation.reasonCode}${depthReason}`,
+      intentType: baseIntentType,
+      confidence: finalConfidence,
+      reasoning: validation.valid && entityValidation.valid
+        ? `Regex fallback for ${locale} input${depthReason}${entityReasoning}`
+        : `Regex fallback for ${locale} input; ${validation.reasonCode ?? entityValidation.reasonCode}${depthReason}${entityReasoning}`,
       language: locale,
     };
   }
 }
 
 /**
- * §39.3: Confidence thresholds for LLM vs fallback parsing
+ * Intent configuration
  */
-export const INTENT_CONFIDENCE_THRESHOLDS = {
+export interface IntentConfidenceThresholds {
   /** Minimum confidence to accept LLM result */
-  LLM_ACCEPT_THRESHOLD: 0.75,
+  readonly llmAcceptThreshold: number;
   /** Confidence below which fallback is triggered */
-  FALLBACK_THRESHOLD: 0.50,
-  /** §39.3: Minimum acceptable confidence for intent to be considered valid */
-  MIN_ACCEPTABLE_CONFIDENCE: 0.65,
+  readonly fallbackThreshold: number;
+  /** Minimum acceptable confidence for intent to be considered valid */
+  readonly minAcceptableConfidence: number;
+}
+
+/**
+ * R5-32: Intent parser options for configuration
+ */
+export interface IntentParserOptions {
+  /** Model gateway for LLM-based parsing */
+  readonly modelGateway?: IntentParserModelGateway | null;
+  /** Whether fallback parsing is enabled */
+  readonly fallbackEnabled?: boolean;
+  /** Maximum delegation depth */
+  readonly maxDelegationDepth?: number;
+  /** Maximum tokens for intent extraction budget */
+  readonly maxIntentTokens?: number;
+  /** Configurable confidence thresholds (R5-32) */
+  readonly confidenceThresholds?: Partial<IntentConfidenceThresholds>;
+  /** Whether to enable confidence logging for debugging (R5-34) */
+  readonly enableConfidenceLogging?: boolean;
+}
+
+/**
+ * R5-32: Default intent confidence thresholds
+ */
+export const DEFAULT_CONFIDENCE_THRESHOLDS: IntentConfidenceThresholds = {
+  llmAcceptThreshold: 0.75,
+  fallbackThreshold: 0.50,
+  minAcceptableConfidence: 0.65,
 } as const;
 
 /**

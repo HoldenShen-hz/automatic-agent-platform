@@ -1055,7 +1055,13 @@ export class NlEntryService implements NlEntryPort {
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
     this.conversationContextManager = new ConversationContextManager(this.nlConfig, options.memoryService ?? undefined);
-    this.intentParser = options.intentParser ?? new LlmIntentParser(options.intentModelGateway ?? null);
+    // R5-32: Pass confidence thresholds from config to intent parser
+    const intentParserOptions = {
+      modelGateway: options.intentModelGateway ?? null,
+      confidenceThresholds: this.nlConfig.confidenceThresholds,
+      enableConfidenceLogging: this.nlConfig.confidenceThresholds.enableConfidenceLogging,
+    };
+    this.intentParser = options.intentParser ?? new LlmIntentParser(intentParserOptions);
   }
 
   /**
