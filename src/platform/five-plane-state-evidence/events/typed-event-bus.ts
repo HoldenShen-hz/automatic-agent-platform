@@ -4,6 +4,7 @@ import { DurableEventBus, type EventHandler } from "./durable-event-bus.js";
 import { getEventSchema, type KnownEventType } from "./event-registry.js";
 import { AuthoritativeTaskStore } from "../truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-database.js";
+import { DlqService } from "./dlq-service.js";
 
 /**
  * Circuit breaker state change event payload.
@@ -536,11 +537,13 @@ export interface TypedEventEnvelope<TType extends TypedEventType> {
 export class TypedEventBus {
   private readonly bus: DurableEventBus;
 
+  // R12-23 fix: Accept optional DlqService for dead-letter queue integration
   public constructor(
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
+    dlqService?: DlqService,
   ) {
-    this.bus = new DurableEventBus(db, store);
+    this.bus = new DurableEventBus(db, store, dlqService);
   }
 
   /**

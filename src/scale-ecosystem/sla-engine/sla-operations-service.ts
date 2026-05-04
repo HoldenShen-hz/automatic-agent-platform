@@ -383,7 +383,7 @@ export class SlaOperationsService {
         penaltyType: (record.severity === "critical" ? "contract_review" : "credit") as "credit" | "capacity_boost" | "contract_review",
         penaltyAmount,
         creditIssued,
-        creditRecordId: creditIssued > 0 ? `cr_${newId("credit")}` : undefined,
+        ...(creditIssued > 0 ? { creditRecordId: `cr_${newId("credit")}` } : {}),
         compensationNotes: `SLA breach: ${record.breachCodes.join(", ")} at ${record.observedAt} - ${record.severity} severity`,
         severity: record.severity,
       };

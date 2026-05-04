@@ -135,7 +135,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     lastHeartbeatAt: nowIso,
     updatedAt: nowIso,
     version: 0,
-  });
+  }, 0);
 
   let takeoverSessionId: string | null = null;
   if (executionId != null) {

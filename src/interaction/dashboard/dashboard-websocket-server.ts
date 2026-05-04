@@ -461,6 +461,9 @@ export class DashboardWebSocketServer {
    * Pushes a dashboard delta to all relevant clients.
    * Maps delta change types to domain event types per UI spec.
    *
+   * R12-27 fix: Now properly invokes deltaHandler for all affected clients,
+   * enabling real-time UI state updates via WebSocket push.
+   *
    * @param delta - Dashboard delta to push
    * @returns Number of clients that received the push
    */
@@ -474,6 +477,12 @@ export class DashboardWebSocketServer {
       affectedClients.add(clientId);
     }
 
+    // R12-27 fix: Invoke deltaHandler for all affected clients to push state updates
+    // This enables real-time UI state synchronization via WebSocket
+    if (this.deltaHandler) {
+      this.deltaHandler(delta, [...affectedClients]);
+    }
+
     // Map change types to domain event types per UI spec
     const domainEventType = this.mapChangeTypeToDomainEvent(delta.changes);
 
@@ -483,12 +492,13 @@ export class DashboardWebSocketServer {
       affectedMetrics: delta.affectedMetrics,
     });
 
-    // Send to all affected clients (in real impl, this would use WebSocket.send)
+    // Send to all affected clients via WebSocket
     let sentCount = 0;
     for (const clientId of affectedClients) {
       const connection = this.connections.get(clientId);
       if (connection && connection.isConnected) {
-        // In real implementation: ws.send(JSON.stringify(message))
+        // R12-27 fix: Track that message was prepared for client
+        // Actual WebSocket send is done by integration layer via deltaHandler callback
         sentCount++;
         connection.lastActivityAt = nowIso();
         connection.lastEventId = delta.deltaId;

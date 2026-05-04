@@ -167,6 +167,29 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("knowledge_query_total", { operation, result }, 1);
   }
 
+  // R12-30 fix: Event bus metrics instrumentation
+  public recordEventPublished(eventType: string, tier: string, aggregateId: string | null): void {
+    this.incrementCounter("event_bus_published_total", { eventType, tier, hasAggregate: String(aggregateId !== null) }, 1);
+  }
+
+  public recordEventDelivered(eventType: string, consumerId: string, success: boolean): void {
+    const result = success ? "success" : "failed";
+    this.incrementCounter("event_bus_delivered_total", { eventType, consumerId, result }, 1);
+  }
+
+  public recordEventDeadLettered(eventType: string, consumerId: string, errorCode: string): void {
+    this.incrementCounter("event_bus_dead_lettered_total", { eventType, consumerId, errorCode }, 1);
+  }
+
+  public recordEventDeliveryLatency(eventType: string, consumerId: string, latencyMs: number): void {
+    this.observeHistogram("event_bus_delivery_latency_ms", { eventType, consumerId }, latencyMs);
+  }
+
+  public recordEventBackpressure(consumerId: string, pendingCount: number, isHighWaterMark: boolean): void {
+    this.setGauge("event_bus_backpressure_pending", { consumerId }, pendingCount);
+    this.setGauge("event_bus_backpressure_high_water", { consumerId }, isHighWaterMark ? 1 : 0);
+  }
+
   public getCounters(name: string): CounterSeries[] {
     return [...this.counters.entries()]
       .filter(([key]) => key.startsWith(`${name}|`) || key === `${name}|`)

@@ -20,8 +20,18 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
   credentials: false,
 };
 
+// R12-29 fix: Enhanced CSP for API responses that also serves UI content
+// - default-src 'self' allows same-origin requests
+// - frame-ancestors 'none' prevents clickjacking
+// - base-uri 'self' restricts base element to same origin
+// - form-action 'self' restricts form submissions to same origin
+// - script-src 'self' allows scripts from same origin
+// - style-src 'self' allows styles from same origin
+// - img-src 'self' data: allows images from same origin and data URIs
+// - connect-src 'self' ws: wss: allows WebSocket connections
+// - object-src 'none' prevents plugin-based content
 const DEFAULT_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  "content-security-policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  "content-security-policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; object-src 'none'",
   "strict-transport-security": "max-age=31536000; includeSubDomains",
   "x-frame-options": "DENY",
   "x-content-type-options": "nosniff",

@@ -79,6 +79,7 @@ export interface TaskDependency {
 export interface GoalDecomposition {
   readonly goalId: string;
   readonly tasks: readonly PlannedTask[];
+  readonly planGraphBundle: PlanGraphBundle;
   readonly dependencyGraph: readonly TaskDependency[];
   readonly estimatedDuration: string;
   readonly estimatedCost: CostEstimate;
@@ -746,6 +747,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     return {
       goalId: goal.goalId,
       tasks,
+      planGraphBundle: harnessRouting.planGraphBundle,
       dependencyGraph,
       estimatedDuration: estimatedDurationStr,
       estimatedCost,

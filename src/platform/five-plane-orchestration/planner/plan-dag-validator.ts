@@ -93,6 +93,7 @@ export class PlanDagValidator {
 
     // §13.10 Extended validation: step-level validation
     for (const step of steps) {
+      const stepRecord = step as Record<string, unknown>;
       // Validate timeout is positive
       if (step.timeout <= 0) {
         issues.push(`planning.invalid_timeout:${step.stepId}`);
@@ -106,7 +107,8 @@ export class PlanDagValidator {
         issues.push(`planning.missing_title:${step.stepId}`);
       }
       // §13.10: Validate executor availability
-      if (step.executor == null || typeof step.executor !== "string" || step.executor.trim().length === 0) {
+      const executor = stepRecord["executor"];
+      if (executor == null || typeof executor !== "string" || (executor as string).trim().length === 0) {
         issues.push(`planning.missing_executor:${step.stepId}`);
       }
       // §13.10: Validate risk/budget completeness
@@ -118,16 +120,17 @@ export class PlanDagValidator {
         issues.push(`planning.missing_budget:${step.stepId}`);
       }
       // §13.10: Validate tool availability
-      if (step.tools != null && Array.isArray(step.tools)) {
-        for (const tool of step.tools) {
-          if (!tool || typeof tool !== "string" || tool.trim().length === 0) {
+      const tools = stepRecord["tools"];
+      if (tools != null && Array.isArray(tools)) {
+        for (const tool of tools) {
+          if (!tool || typeof tool !== "string" || (tool as string).trim().length === 0) {
             issues.push(`planning.invalid_tool:${step.stepId}`);
             break;
           }
         }
       }
       // §13.10: Validate sandbox mode
-      const sandboxMode = (step as Record<string, unknown>).sandboxMode as string | undefined;
+      const sandboxMode = stepRecord["sandboxMode"] as string | undefined;
       if (sandboxMode == null || sandboxMode.trim().length === 0) {
         issues.push(`planning.missing_sandbox_mode:${step.stepId}`);
       }

@@ -195,6 +195,8 @@ export class DomainEventFeedbackConsumer {
     const signalId = newId("signal");
     return {
       signalId,
+      harnessRunId: buildSyntheticTaskId(this.scopeFor(envelope)),
+      nodeRunId: stepOutputRef,
       taskId: buildSyntheticTaskId(this.scopeFor(envelope)),
       source: "system",
       category,

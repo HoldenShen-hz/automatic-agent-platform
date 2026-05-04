@@ -36,6 +36,7 @@ import type { ProviderHealthSummary } from "../../shared/observability/provider-
 import type { ModelGovernanceSnapshot } from "../../contracts/types/governance.js";
 import { AppError } from "../../contracts/errors.js";
 import type { RiskLevel } from "../../five-plane-control-plane/risk-control/types.js";
+import { newId } from "../../contracts/types/ids.js";
 
 /**
  * Classification of the type of work being performed.
@@ -390,10 +391,12 @@ function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
 export class ModelRoutingService {
   private readonly registry: ModelMetadataRegistry;
   private readonly providerHealth: Record<string, ProviderHealthSummary>;
+  private readonly persistence: ModelRoutingPersistence | null;
 
   public constructor(options: ModelRoutingServiceOptions) {
     this.registry = options.registry;
     this.providerHealth = options.providerHealth ?? {};
+    this.persistence = options.persistence ?? null;
   }
 
   /**
@@ -716,7 +719,7 @@ export class ModelRoutingService {
           fallbackProfileName: chosen.profileName,
           issuedAt: new Date().toISOString(),
           reason: routeReason,
-        } satisfies ModelRouteFallbackLease
+        } as ModelRouteFallbackLease
       : null;
 
     const decision = buildDecision(
@@ -755,4 +758,99 @@ export class ModelRoutingService {
 
     return decision;
   }
+}
+
+/**
+ * R8-04 FIX: Returns the latency SLO target in milliseconds based on route class and risk level.
+ * Higher risk tasks require lower latency targets.
+ */
+function getLatencySloTarget(routeClass: ModelRouteClass, riskLevel: ModelRouteRiskLevel): number {
+  // Base targets in milliseconds
+  const baseTargets: Record<ModelRouteClass, number> = {
+    default: 5000,
+    classification: 2000,
+    writing: 8000,
+    coding: 10000,
+    reasoning: 15000,
+  };
+
+  const baseTarget = baseTargets[routeClass] ?? 5000;
+
+  // High/critical risk requires 50% lower latency target
+  if (riskLevel === "critical") {
+    return Math.floor(baseTarget * 0.5);
+  }
+  if (riskLevel === "high") {
+    return Math.floor(baseTarget * 0.75);
+  }
+
+  return baseTarget;
+}
+
+/**
+ * R8-04 FIX: Returns the P99 latency from historical data for a profile.
+ * Falls back to provider-level P99 if profile-level data unavailable.
+ */
+function getLatencyP99(
+  profileName: string,
+  registry: ModelMetadataRegistry,
+): number {
+  const profile = registry.profiles[profileName];
+  if (!profile) {
+    return 0;
+  }
+
+  // Use latencyP99Ms from profile metadata if available
+  if ("latencyP99Ms" in profile && typeof profile.latencyP99Ms === "number") {
+    return profile.latencyP99Ms;
+  }
+
+  // Fall back to provider-level data
+  const provider = registry.providers[profile.provider];
+  if (provider && "latencyP99Ms" in provider && typeof provider.latencyP99Ms === "number") {
+    return provider.latencyP99Ms;
+  }
+
+  // Default fallback based on tier
+  const tierDefaults: Record<string, number> = {
+    fast: 1500,
+    balanced: 5000,
+    reasoning: 12000,
+    coding: 10000,
+  };
+
+  return tierDefaults[profile.tier] ?? 5000;
+}
+
+/**
+ * R8-04 FIX: Checks if a profile meets the data residency constraint.
+ * Returns true if no constraint is specified or if the profile's region matches.
+ */
+function checkDataResidency(
+  profileName: string,
+  dataResidencyConstraint: string | null | undefined,
+  registry: ModelMetadataRegistry,
+): boolean {
+  // No constraint means constraint is met
+  if (!dataResidencyConstraint) {
+    return true;
+  }
+
+  const profile = registry.profiles[profileName];
+  if (!profile) {
+    return false;
+  }
+
+  // Check if profile's region matches the constraint
+  if ("region" in profile && profile.region === dataResidencyConstraint) {
+    return true;
+  }
+
+  // Check provider's region as fallback
+  const provider = registry.providers[profile.provider];
+  if (provider && "region" in provider && provider.region === dataResidencyConstraint) {
+    return true;
+  }
+
+  return false;
 }

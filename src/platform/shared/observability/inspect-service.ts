@@ -374,7 +374,8 @@ export class InspectService {
     const executions = this.store.execution.listExecutionsByTask(task.id);
     const approvals = this.store.approval.listApprovalsByTask(task.id);
     const session = this.store.operations.loadTaskSnapshot(task.id).session;
-    const events = this.store.event.listEventsForTaskSnapshot(task.id);
+    const eventSnapshot = this.store.event.listEventsForTaskSnapshot(task.id);
+    const events = eventSnapshot.events;
 
     return {
       taskId: task.id,

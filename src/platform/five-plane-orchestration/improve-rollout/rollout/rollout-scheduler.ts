@@ -30,9 +30,9 @@ export interface RolloutSchedulerOptions {
 
 const NEXT_PROGRESSIVE_STATUS: Readonly<Partial<Record<RolloutStatus, RolloutStatus>>> = {
   evaluation_enabled: "canary_5",
-  canary_5: "partial_25",
-  partial_25: "stable_75",
-  stable_75: "stable_100",
+  canary_5: "canary_20",
+  canary_20: "canary_50",
+  canary_50: "stable_100",
   stable_100: "released",
 };
 

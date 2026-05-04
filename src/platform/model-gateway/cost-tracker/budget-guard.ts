@@ -493,7 +493,14 @@ export class BudgetExecutionSessionManager {
       ledger: session.ledger,
       reservation: session.reservation,
       actualAmount: Number(actualCostUsd.toFixed(4)),
-      ...(evidenceRefs != null ? { evidenceRefs: evidenceRefs as readonly ArtifactRef[] } : {}),
+      ...(evidenceRefs != null
+        ? {
+            evidenceRefs: evidenceRefs.map((evidenceRef) => ({
+              artifactId: evidenceRef.ref,
+              uri: evidenceRef.ref,
+            })) satisfies readonly ArtifactRef[],
+          }
+        : {}),
       context: {
         tenantId: session.ledger.tenantId,
         traceId: session.harnessRunId,

@@ -7,6 +7,7 @@ import { injectTraceContext } from "../../shared/observability/trace-context.js"
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { DlqService, type FailureCategory } from "./dlq-service.js";
+import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 // REL-01: dedicated logger for dead-letter visibility. The ack row already
 // persists the final status and error code, but there was previously no
@@ -428,6 +429,9 @@ export class DurableEventBus {
     }
     this.scheduleFanOut();
 
+    // R12-30 fix: Record event published metric
+    runtimeMetricsRegistry.recordEventPublished(eventRecord.eventType, eventRecord.eventTier, eventRecord.aggregateId ?? null);
+
     return eventRecord;
   }
 
@@ -729,6 +733,7 @@ export class DurableEventBus {
   ): Promise<{ delivered: boolean; deadLettered: boolean; errorMessage?: string }> {
     let lastError: Error | null = null;
     const attemptLimit = exhaustRetries ? TOTAL_DELIVERY_ATTEMPTS : 1;
+    const deliveryStartTime = Date.now();
 
     for (let attempt = 0; attempt < attemptLimit; attempt++) {
       try {
@@ -739,6 +744,10 @@ export class DurableEventBus {
           status: "acked",
           occurredAt: nowIso(),
         });
+        // R12-30 fix: Record successful event delivery metric
+        const latencyMs = Date.now() - deliveryStartTime;
+        runtimeMetricsRegistry.recordEventDelivered(item.event.eventType, consumerId, true);
+        runtimeMetricsRegistry.recordEventDeliveryLatency(item.event.eventType, consumerId, latencyMs);
         return { delivered: true, deadLettered: false };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -835,6 +844,10 @@ export class DurableEventBus {
         reason: `Delivery failed after ${TOTAL_DELIVERY_ATTEMPTS} attempts: ${lastError?.message ?? "unknown"}`,
       });
     }
+
+    // R12-30 fix: Record dead-lettered event metric
+    runtimeMetricsRegistry.recordEventDelivered(item.event.eventType, consumerId, false);
+    runtimeMetricsRegistry.recordEventDeadLettered(item.event.eventType, consumerId, errorMessage);
 
     return { delivered: false, deadLettered: true };
   }
@@ -975,6 +988,9 @@ export class DurableEventBus {
           // Calculate adaptive polling interval based on queue depth
           const pending = this.store.event.listPendingEventsForConsumer(consumerId);
           const queueDepth = pending.length;
+          const highWaterMark = 100;
+          // R12-30 fix: Record backpressure metrics for monitoring
+          runtimeMetricsRegistry.recordEventBackpressure(consumerId, queueDepth, queueDepth >= highWaterMark);
           const nextInterval = this.calculatePollingInterval(consumerId, queueDepth);
           this.schedulePollingTick(consumerId, nextInterval);
         }

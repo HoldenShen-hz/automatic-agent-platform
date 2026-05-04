@@ -1096,7 +1096,7 @@ export class AsyncWorkerRepository {
       `DELETE FROM worker_snapshots WHERE worker_id = $1`,
       workerId,
     );
-    return (result as { rowCount: number }).rowCount > 0;
+    return Number(result) > 0;
   }
 
   public async updateWorkerStatus(workerId: string, status: string, updatedAt: string): Promise<boolean> {
@@ -1107,6 +1107,6 @@ export class AsyncWorkerRepository {
       updatedAt,
       workerId,
     );
-    return (result as { rowCount: number }).rowCount > 0;
+    return Number(result) > 0;
   }
 }

@@ -340,7 +340,7 @@ export class WorkerSnapshotRepository {
       `DELETE FROM worker_snapshots WHERE worker_id = ?`,
       workerId,
     );
-    return (result as { changes: number }).changes > 0;
+    return Number(result) > 0;
   }
 
   public updateWorkerStatus(workerId: string, status: string, updatedAt: string): boolean {
@@ -351,6 +351,6 @@ export class WorkerSnapshotRepository {
       updatedAt,
       workerId,
     );
-    return (result as { changes: number }).changes > 0;
+    return Number(result) > 0;
   }
 }

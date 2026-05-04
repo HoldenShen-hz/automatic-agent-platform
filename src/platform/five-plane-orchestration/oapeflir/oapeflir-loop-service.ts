@@ -1,5 +1,12 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { createGraphPatch, type PlanGraphBundle, type GraphPatch, type ArtifactRef } from "../../contracts/executable-contracts/index.js";
+import {
+  createDecisionInputBundle as createCanonicalDecisionInputBundle,
+  createGraphPatch,
+  type ArtifactRef,
+  type DecisionInputBundle as CanonicalDecisionInputBundle,
+  type PlanGraphBundle,
+  type GraphPatch,
+} from "../../contracts/executable-contracts/index.js";
 import type { PlannedWorkflow } from "../routing/workflow-planner.js";
 import { TaskSituationBuilder } from "../../shared/observability/task-situation-builder.js";
 import type {
@@ -54,7 +61,7 @@ import {
 } from "./schemas/validators.js";
 import { createStageTransitionFSM, type StageTransitionFSM } from "./stage-transition-fsm.js";
 import { HarnessLoopController } from "../harness/loop/index.js";
-import type { HarnessDecision, ConstraintPack } from "../harness/index.js";
+import type { HarnessDecision, ConstraintPack, DecisionInputBundle as HarnessDecisionInputBundle } from "../harness/index.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -110,6 +117,8 @@ export interface OapeflirLoopResult {
   evaluationReport: EvaluationReport;
   qualityGate: PostExecutionQualityGateDecision;
   replanDecision: ReplanningDecision;
+  /** Canonicalized decision input assembled from feedback/quality-gate/replan state */
+  decisionInputBundle: HarnessDecisionInputBundle | null;
   /** GraphPatch produced during replan (R5-12) */
   graphPatch: GraphPatch | null;
   /** HarnessDecision from loop controller (R5-14) */
@@ -293,6 +302,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
       let planGraphBundle: PlanGraphBundle | null = null;
       let graphPatch: GraphPatch | null = null;
       let harnessDecision: HarnessDecision | null = null;
+      let decisionInputBundle: HarnessDecisionInputBundle | null = null;
       // R5-7: Will be produced by evaluator
       let evaluationReport: EvaluationReport = { passed: false, score: 0, issues: [], recommendation: "", confidence: 0 };
 
@@ -693,6 +703,18 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           recommendation: qualityGate.accepted ? "continue" : qualityGate.reasonCodes.join("; "),
           confidence: outcome.passed ? 0.9 : 0.5,
         };
+        decisionInputBundle = this.buildDecisionInputBundle({
+          taskId: currentInput.taskId,
+          harnessRunId: planGraphBundle.harnessRunId,
+          planGraphBundle,
+          assessment: validatedAssessment,
+          feedback,
+          qualityGate,
+          replanDecision,
+          evaluationReport,
+          ...(currentInput.constraintPack != null ? { constraintPack: currentInput.constraintPack } : {}),
+          stepOutputs: validatedStepOutputs,
+        });
 
         // R5-3: Validate transition learn→improve (may be skipped)
         const improveTransition = this.stageFsm.canTransitionTo("improve");
@@ -982,6 +1004,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           evaluationReport,
           qualityGate,
           replanDecision,
+          decisionInputBundle,
           graphPatch,
           harnessDecision,
         };
@@ -1011,6 +1034,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         evaluationReport,
         qualityGate: null as unknown as PostExecutionQualityGateDecision,
         replanDecision: null as unknown as ReplanningDecision,
+        decisionInputBundle,
         graphPatch,
         harnessDecision,
       };
@@ -1020,6 +1044,102 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
   private async executeViaBridge(plan: PlanGraphBundle, context: ExecutionContext): Promise<DualChannelStepOutput[]> {
     const executionResult = await this.executeBridge.executePlan(plan, context);
     return this.executeBridge.toDualChannelStepOutputs(executionResult);
+  }
+
+  private buildDecisionInputBundle(input: {
+    taskId: string;
+    harnessRunId: string;
+    planGraphBundle: PlanGraphBundle;
+    assessment: UnifiedAssessment;
+    feedback: FeedbackBatch;
+    qualityGate: PostExecutionQualityGateDecision;
+    replanDecision: ReplanningDecision;
+    evaluationReport: EvaluationReport;
+    constraintPack?: ConstraintPack;
+    stepOutputs: readonly DualChannelStepOutput[];
+  }): HarnessDecisionInputBundle {
+    const decisionKind: CanonicalDecisionInputBundle["decisionKind"] = input.replanDecision.shouldReplan
+      ? "replan"
+      : input.qualityGate.accepted
+        ? "approve"
+        : "retry";
+    const evidenceRefs = this.toArtifactRefs(
+      input.feedback.signals.flatMap((signal) => signal.stepOutputRefs ?? []),
+      "evidence",
+    );
+    const contextRefs: ArtifactRef[] = [
+      { artifactId: `${input.taskId}:feedback:${input.feedback.feedbackId}`, uri: `artifact://oapeflir/feedback/${encodeURIComponent(input.feedback.feedbackId)}` },
+      { artifactId: `${input.taskId}:quality_gate`, uri: `artifact://oapeflir/quality-gate/${encodeURIComponent(input.taskId)}` },
+      { artifactId: `${input.taskId}:replan_decision`, uri: `artifact://oapeflir/replan/${encodeURIComponent(input.taskId)}` },
+    ];
+    const budgetEnvelope = input.constraintPack?.budgetEnvelope ?? input.constraintPack?.budget;
+    const budgetSnapshotRef = budgetEnvelope == null
+      ? undefined
+      : {
+          artifactId: `${input.taskId}:budget_snapshot`,
+          uri: `artifact://oapeflir/budget/${encodeURIComponent(input.taskId)}`,
+        };
+    const canonicalBundle = createCanonicalDecisionInputBundle({
+      harnessRunId: input.harnessRunId,
+      decisionKind,
+      riskClass: input.assessment.risk,
+      contextRefs,
+      evidenceRefs,
+      policyFindings: input.qualityGate.reasonCodes.map((reasonCode) => ({
+        code: reasonCode,
+        severity: input.assessment.risk,
+        message: input.evaluationReport.recommendation || reasonCode,
+      })),
+      ...(budgetSnapshotRef != null ? { budgetSnapshotRef } : {}),
+      sideEffectRefs: input.stepOutputs.flatMap((step) => step.userFacingResult.artifacts),
+    });
+    const primaryNode = input.planGraphBundle.graph.nodes[0];
+    const totalCostEstimate = input.planGraphBundle.graph.nodes.reduce((sum, node) => sum + node.budgetIntent.amount, 0);
+
+    return {
+      ...canonicalBundle,
+      bundleId: canonicalBundle.decisionInputBundleId,
+      evaluator: {
+        score: input.evaluationReport.score,
+        reasoning: input.evaluationReport.recommendation,
+      },
+      policy: {
+        policyIds: input.constraintPack?.policyIds ?? [],
+        constraintPackRef: `${input.taskId}:constraint_pack`,
+      },
+      budget: {
+        remainingSteps: Math.max((budgetEnvelope?.maxSteps ?? input.stepOutputs.length) - input.stepOutputs.length, 0),
+        remainingCost: Math.max((budgetEnvelope?.maxCost ?? totalCostEstimate) - totalCostEstimate, 0),
+        remainingDurationMs: Math.max((budgetEnvelope?.maxDurationMs ?? 0) - input.stepOutputs.reduce((sum, step) => sum + step.systemTelemetry.durationMs, 0), 0),
+      },
+      risk: {
+        currentScore: Number(input.evaluationReport.confidence.toFixed(4)),
+        maxScore: 1,
+        escalationThreshold: input.constraintPack?.riskPolicy?.escalationThreshold ?? 0.8,
+      },
+      node: {
+        nodeId: primaryNode?.nodeId ?? `${input.taskId}:aggregate`,
+        nodeType: primaryNode?.nodeType ?? "aggregate",
+        status: input.qualityGate.accepted ? "accepted" : input.replanDecision.shouldReplan ? "replan" : "retry",
+      },
+      sideEffect: {
+        mayCommit: input.planGraphBundle.graph.nodes.some((node) => node.sideEffectProfile.mayCommitExternalEffect),
+        reversible: input.planGraphBundle.graph.nodes.every((node) => node.sideEffectProfile.reversible),
+      },
+      hitl: {
+        pending: false,
+        requestId: null,
+      },
+      guardrail: null,
+      capturedAt: canonicalBundle.createdAt,
+    };
+  }
+
+  private toArtifactRefs(refs: readonly string[], kind: "evidence" | "context"): ArtifactRef[] {
+    return refs.map((ref, index) => ({
+      artifactId: ref,
+      uri: `artifact://oapeflir/${kind}/${encodeURIComponent(ref || `ref-${index}`)}`,
+    }));
   }
 
   private async runStage<T>(
@@ -1069,6 +1189,8 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
 
       return {
         signalId: `signal_${index + 1}`,
+        harnessRunId: taskId,
+        nodeRunId: output.stepId,
         taskId,
         source: "execution",
         category,

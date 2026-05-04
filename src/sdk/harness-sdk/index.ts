@@ -549,7 +549,7 @@ export class HarnessSdk {
     if (restored == null) {
       throw new Error(`harness_sdk.run_not_found:${runOrId}`);
     }
-    return restored;
+    return toCanonicalHarnessRun(restored);
   }
 }
 

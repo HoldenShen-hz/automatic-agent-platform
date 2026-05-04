@@ -488,7 +488,7 @@ export class CheckpointVersionManager {
       targetVersionEntry = history.find((h) => h.version === targetVersion) ?? null;
     } else {
       // Default: recover to version N-1 (second newest)
-      targetVersionEntry = history.length >= 2 ? history[history.length - 2] : history[history.length - 1] ?? null;
+      targetVersionEntry = history.length >= 2 ? history[history.length - 2] ?? null : history[history.length - 1] ?? null;
     }
 
     if (!targetVersionEntry) {

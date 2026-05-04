@@ -21,8 +21,8 @@ export interface MetricsGateDecision {
 
 const PROGRESSIVE_STATUSES: ReadonlySet<RolloutStatus> = new Set([
   "canary_5",
-  "partial_25",
-  "stable_75",
+  "canary_20",
+  "canary_50",
   "stable_100",
 ]);
 
@@ -226,10 +226,10 @@ function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
       return "evaluate_0";
     case "canary_5":
       return "canary_5";
-    case "partial_25":
-      return "partial_25";
-    case "stable_75":
-      return "stable_75";
+    case "canary_20":
+      return "canary_20";
+    case "canary_50":
+      return "canary_50";
     case "stable_100":
     case "released":
       return "stable_100";
