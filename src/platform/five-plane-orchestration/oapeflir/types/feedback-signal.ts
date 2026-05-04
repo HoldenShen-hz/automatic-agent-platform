@@ -23,7 +23,11 @@ export type FeedbackTrustScore = z.output<typeof FeedbackTrustScoreSchema>;
 
 export const FeedbackSignalSchema = z.object({
   signalId: z.string().min(1),
-  taskId: z.string().min(1),
+  /** §56.2/R6-46 FIX: ADR-079 v4.3 requires harnessRunId/nodeRunId as canonical correlation keys.
+   *  taskId retained as optional for backward compatibility with legacy callers. */
+  harnessRunId: z.string().min(1),
+  nodeRunId: z.string().min(1),
+  taskId: z.string().min(1).optional(), // legacy backward compat
   source: FeedbackSourceSchema,
   category: FeedbackCategorySchema,
   severity: FeedbackSeveritySchema,
