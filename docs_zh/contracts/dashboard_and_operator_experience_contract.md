@@ -71,3 +71,11 @@
 - integration：console / dashboard 与 approval / incident / runtime 数据联动
 - contract：不同角色不可见越权视图
 
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- R16-86: 本 contract 定义看板与注意力队列，但未明确 dashboard 数据源必须锚定 v4.3 canonical entity。修复：正文现明确 `AttentionItem` 的 drill-down 引用必须能映射到 `HarnessRun` / `NodeRun`，看板展示不得直接拼装 `TaskRecord` / `WorkflowState` 作为 truth source；OAPEFLIR stage/iteration 视图只作为投影，不得作为运行时状态。
+
+强制规则：`OperatorDashboard` / `PlatformOpsDashboard` 的执行状态聚合必须使用 `HarnessRun.status` + `NodeRun[]`；`AttentionItem.action_options` 必须携带可解析的 `harness_run_id` / `node_run_id` 作用域；旧 `workflow_run` / `TaskRecord` 只作为 legacy projection 查询兼容，不得作为新 dashboard 实现入口。
+

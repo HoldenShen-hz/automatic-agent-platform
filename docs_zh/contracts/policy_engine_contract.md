@@ -35,10 +35,10 @@
 | `session_id` | `string?` | 当前会话 |
 | `subject_type` | `user \| agent \| system` | 请求主体 |
 | `subject_id` | `string` | 主体 ID |
-| `action` | `invoke_model \| invoke_tool \| write_file \| exec_command \| network_access \| install_extension \| org_change \| dispatch_execution \| set_isolation_level \| promote_improvement \| advance_rollout \| modify_knowledge_trust \| promote_memory_layer` | 目标动作 |
+| `action` | `invoke_model \| invoke_tool \| write_file \| exec_command \| network_access \| install_extension \| org_change \| dispatch_execution \| set_isolation_level \| promote_improvement \| advance_release \| modify_knowledge_trust \| promote_memory_layer` | 目标动作 |
 | `resource_ref` | `string?` | 资源引用 |
 | `risk_category` | `destructive \| irreversible \| prod_affecting \| cost_sensitive \| org_changing \| sensitive_data \| strategy_affecting \| governance_sensitive` | 风险分类 |
-| `mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-rollout \| manual_only \| incident-mode` | 当前运行模式 |
+| `mode` | `full_auto \| supervised_auto \| read_only \| no-write \| no-external-call \| no-release \| manual_only \| incident-mode` | 当前运行模式 |
 | `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 当前 OAPEFLIR 阶段视图引用；不得作为 truth 决策主键 |
 | `estimated_cost_usd` | `number?` | 估算成本 |
 | `metadata_json` | `json?` | 额外上下文 |
@@ -134,7 +134,7 @@ flowchart TD
 | `org_changing` | 修改组织、角色、租户配置 | 审批 |
 | `sensitive_data` | 访问密钥、凭据、隐私数据 | 路径/权限约束 + 审批 |
 | `strategy_affecting` | 接受 improvement candidate、变更 strategy version | guardrail + 审批 |
-| `governance_sensitive` | rollout 推进、knowledge trust 修改、memory promotion | gate + 审批或拒绝 |
+| `governance_sensitive` | release 推进、knowledge trust 修改、memory promotion | gate + 审批或拒绝 |
 
 ## 6. 与审批的边界
 
@@ -148,15 +148,15 @@ flowchart TD
 - Plugin / MCP 安装单元必须先通过 Policy Engine，不能直接绕过 ToolRegistry。
 - MCP 不得伪装成本地可信工具获得更宽权限。
 - 相同动作在不同 `resource_ref`、`path_scope`、`tenant scope` 下必须独立评估，不能错误复用旧放行结论。
-- 同一请求在不同 `mode` 下必须重新求值，不能把 `full_auto` 的旧 allow 复用于 `read_only`、`no-rollout` 或 `incident-mode`。
+- 同一请求在不同 `mode` 下必须重新求值，不能把 `full_auto` 的旧 allow 复用于 `read_only`、`no-release` 或 `incident-mode`。
 
 ## 7B. 与 OAPEFLIR Hub 的边界
 
 - Observe / Assess / Plan 阶段产生的是建议和上下文，不是 authoritative 放行结论。
 - FeedbackHub 可以提供负面信号、用户纠正和质量指标，但不得直接把候选改进标为 accepted。
-- LearnHub 只能生成 draft / validated learning object，不能直接修改 release 或 rollout 状态。
+- LearnHub 只能生成 draft / validated learning object，不能直接修改 release 或 release 状态。
 - ImproveHub 提案必须经 Policy Engine 裁决 `promote_improvement`，再进入 guardrail / approval 链。
-- ReleaseHub 推进 `advance_rollout` 时，Policy Engine 必须重新评估当前风险、预算、运行模式和 freeze 状态。
+- ReleaseHub 推进 `advance_release` 时，Policy Engine 必须重新评估当前风险、预算、运行模式和 freeze 状态。
 - `modify_knowledge_trust` 与 `promote_memory_layer` 属于 M2 扩展 action；未启用相关平面时必须 fail-closed，而不是静默 allow。
 
 ## 7A. 与 Dispatch 和 Isolation 的边界
