@@ -41,7 +41,8 @@ export class ProjectionRebuildWorker implements RecoveryWorker {
     const startedMs = Date.now();
 
     try {
-      const results = this.options.projectionRebuildService.rebuildAll(this.options.rebuildOptions);
+      // §R16-32: rebuildAll is now async and uses shadow-build pattern
+      const results = await this.options.projectionRebuildService.rebuildAll(this.options.rebuildOptions);
       const entries = [...results.entries()];
       const totals = entries.reduce((accumulator, [, result]) => ({
         eventsProcessed: accumulator.eventsProcessed + result.eventsProcessed,
