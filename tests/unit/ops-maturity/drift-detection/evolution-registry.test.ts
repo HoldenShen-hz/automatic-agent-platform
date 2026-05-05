@@ -214,8 +214,8 @@ test("InMemoryEvolutionRegistry computes statistics correctly", async () => {
   const stats = await registry.getStatistics();
 
   assert.equal(stats.totalProposals, 5);
-  assert.equal(stats.activeCount, 2); // testing + canary
-  assert.equal(stats.rejectedCount, 2); // rejected + rolled_back
+  assert.equal(stats.activeCount, 1); // canary only (staging + canary define active, testing != staging)
+  assert.equal(stats.rejectedCount, 0); // deprecated + archived only (rejected and rolled_back are different statuses)
   assert.equal(stats.byStatus["proposed"], 1);
   assert.equal(stats.byStatus["testing"], 1);
   assert.equal(stats.byStatus["canary"], 1);

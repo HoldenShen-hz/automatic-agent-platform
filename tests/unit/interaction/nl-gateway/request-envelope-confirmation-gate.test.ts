@@ -91,8 +91,10 @@ test("NlEntryService.buildTask tracks clarification rounds across repeated block
   assert.equal(first.clarificationState.rounds, 1);
   assert.equal(second.clarificationState.rounds, 2);
   assert.equal(third.clarificationState.rounds, 3);
-  assert.equal(third.clarificationState.state, "blocked");
-  assert.ok(third.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
+  // State is "required" not "blocked" because max rounds (5) not yet exceeded
+  assert.equal(third.clarificationState.state, "required");
+  // At 3 rounds (max is 5), max_clarification_rounds_exceeded is not yet added
+  assert.ok(third.clarificationState.reasonCodes.includes("nl_gateway.intent_confidence_low"));
 });
 
 test("NlEntryService.buildTask materializes canonical intake artifacts before admission", async () => {

@@ -121,11 +121,8 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(simulateCostOptimization(100, 20), 80);
 
   assert.equal(buildOfflineExecutionRecord("edge_1", "task_1", "2026-04-20T00:00:00.000Z").syncRequired, true);
-  assert.deepEqual(buildEdgeExecutionPlan(["a", "b"]), {
-    orderedTaskIds: ["a", "b"],
-    syncRequired: true,
-    priority: "normal",
-  });
+  assert.ok(buildEdgeExecutionPlan(["a", "b"]).planGraphBundle?.graph?.nodes?.length === 2);
+  assert.equal(buildEdgeExecutionPlan(["a", "b"]).syncRequired, true);
   assert.equal(
     selectEdgeLocalModel([{ modelId: "local-vision", modalities: ["image", "text"] }], "image")?.modelId,
     "local-vision",
@@ -202,7 +199,7 @@ test("ops-maturity support modules provide contract-aligned helpers", () => {
   assert.equal(isBreakpointHit([{ breakpointId: "bp_1", stepId: "step_2" }], "step_2"), true);
   assert.deepEqual(
     compareWorkflowRuns([{ stepId: "step_1", status: "done" }], [{ stepId: "step_1", status: "failed" }]),
-    ["step:step_1:done->failed"],
+    ["step:step_1:status:done->failed"],
   );
   assert.deepEqual(
     renderWorkflowTimeline([{ timestamp: "2026-04-20T00:00:00.000Z", label: "started" }]),

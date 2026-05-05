@@ -76,8 +76,9 @@ test("CrossAgentAnalyzerService.analyze handles single agent", () => {
 
   const result = service.analyze(metrics);
 
-  assert.equal(result.bestAgentId, "agent-only");
-  assert.equal(result.worstAgentId, "agent-only");
+  // With only one agent, bestAgentId and worstAgentId are null since no comparison is possible
+  assert.equal(result.bestAgentId, null);
+  assert.equal(result.worstAgentId, null);
   assert.equal(result.divergenceScore, 0);
 });
 

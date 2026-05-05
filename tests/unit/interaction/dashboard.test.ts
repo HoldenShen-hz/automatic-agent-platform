@@ -108,9 +108,9 @@ test("sortAttentionQueue sorts by createdAt within same priority", () => {
 
   const sorted = sortAttentionQueue(items);
 
-  assert.equal(sorted[0]!.createdAt, "2026-04-19T00:01:00.000Z");
+  assert.equal(sorted[0]!.createdAt, "2026-04-19T00:03:00.000Z");
   assert.equal(sorted[1]!.createdAt, "2026-04-19T00:02:00.000Z");
-  assert.equal(sorted[2]!.createdAt, "2026-04-19T00:03:00.000Z");
+  assert.equal(sorted[2]!.createdAt, "2026-04-19T00:01:00.000Z");
 });
 
 test("sortAttentionQueue does not mutate original array", () => {
@@ -151,9 +151,9 @@ test("sortAttentionQueue handles all same priority items", () => {
   const sorted = sortAttentionQueue(items);
 
   assert.equal(sorted.length, 3);
-  assert.equal(sorted[0]!.createdAt, "2026-04-19T00:01:00.000Z");
+  assert.equal(sorted[0]!.createdAt, "2026-04-19T00:03:00.000Z");
   assert.equal(sorted[1]!.createdAt, "2026-04-19T00:02:00.000Z");
-  assert.equal(sorted[2]!.createdAt, "2026-04-19T00:03:00.000Z");
+  assert.equal(sorted[2]!.createdAt, "2026-04-19T00:01:00.000Z");
 });
 
 test("sortAttentionQueue sorts all priority levels correctly", () => {

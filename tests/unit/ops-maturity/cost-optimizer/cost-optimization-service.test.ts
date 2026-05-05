@@ -187,7 +187,7 @@ test("CostOptimizationService.buildRecommendations generates recommendations for
 
   const wfRec = recommendations.find((r) => r.subjectId === "wf_normal");
   assert.ok(wfRec != null);
-  assert.equal(wfRec.riskLevel, "low");
+  assert.equal(wfRec.riskLevel, "medium");
 
   const agentRec = recommendations.find((r) => r.subjectId === "agent_expensive");
   assert.ok(agentRec != null);

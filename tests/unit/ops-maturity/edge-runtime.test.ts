@@ -41,7 +41,7 @@ test("edge: execute offline with valid low risk profile", () => {
   assert.strictEqual(receipt.record.taskId, "task-offline-001");
   assert.strictEqual(receipt.record.status, "queued");
   assert.strictEqual(receipt.selectedModelId, "model-v1");
-  assert.ok(receipt.planGraphNodeIds.includes("task-offline-001"));
+  assert.ok(receipt.planGraphNodeIds.includes("edge_node_task-offline-001"));
 });
 
 test("edge: execute offline selects model by modality and priority", () => {
@@ -315,7 +315,11 @@ test("edge: local model selection returns null when no match", () => {
 test("edge: execution plan builder", () => {
   const plan = buildEdgeExecutionPlan(["task-a", "task-b"]);
 
-  assert.deepStrictEqual(plan.orderedTaskIds, ["task-a", "task-b"]);
+  // R6-22 FIX: Edge execution plan now uses planGraphBundle.graph.nodes with edge_node_ prefix
+  assert.deepStrictEqual(
+    plan.planGraphBundle.graph.nodes.map((n) => n.nodeId),
+    ["edge_node_task-a", "edge_node_task-b"],
+  );
   assert.strictEqual(plan.syncRequired, true);
   assert.strictEqual(plan.priority, "normal");
 });

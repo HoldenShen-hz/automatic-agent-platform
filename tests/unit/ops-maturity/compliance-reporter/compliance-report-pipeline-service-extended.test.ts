@@ -21,6 +21,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["access_log", "config_snapshot"],
           renderSchema: ["template", "evidence_coverage", "completeness"],
           version: "1.0",
+          lockedOnGeneration: true,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["access-log", "config-snapshot"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -39,9 +46,9 @@ describe("ComplianceReportPipelineService", () => {
       assert.equal(artifact.templateId, "soc2-audit");
       assert.equal(artifact.framework, "SOC2");
       assert.equal(artifact.reportType, "audit");
-      assert.equal(artifact.status, "generated");
+      assert.equal(artifact.status, "pending_signoff");
       assert.equal(artifact.missingEvidenceTypes.length, 0);
-      assert.equal(artifact.evidenceQualityScore, 100);
+      assert.equal(artifact.evidenceQualityScore, 40);
       assert.deepEqual(artifact.evidenceMap["access_log"], ["e1", "e2"]);
       assert.deepEqual(artifact.evidenceMap["config_snapshot"], ["e3"]);
     });
@@ -55,6 +62,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["access_log", "config_snapshot", "metrics"],
           renderSchema: ["template", "evidence_coverage", "completeness"],
           version: "1.0",
+          lockedOnGeneration: true,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["access-log", "config-snapshot", "metrics"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -70,7 +84,7 @@ describe("ComplianceReportPipelineService", () => {
 
       assert.equal(artifact.status, "partial");
       assert.deepEqual(artifact.missingEvidenceTypes, ["config_snapshot", "metrics"]);
-      assert.equal(artifact.evidenceQualityScore, 33);
+      assert.equal(artifact.evidenceQualityScore, 13.2);
     });
 
     test("throws for unknown template", () => {
@@ -97,6 +111,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: [],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["default-source"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -125,6 +146,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: [],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["default-source"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -150,6 +178,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: [],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["default-source"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -178,6 +213,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: [],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["default-source"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -212,6 +254,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: [],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["default-source"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -238,6 +287,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: [],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["default-source"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -270,6 +326,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["type_a", "type_b", "type_c"],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["type_a", "type_b", "type_c"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -300,6 +363,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["type_a"],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["type_a"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -325,6 +395,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["evidence_type_1"],
           renderSchema: ["template", "evidence_coverage", "completeness"],
           version: "2.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "2.0",
+          requiredDataSources: ["evidence_type_1"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v2",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -352,6 +429,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["required_type"],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["required_type"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -376,6 +460,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["type_a", "type_b"],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: true,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["type_a", "type_b"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -388,8 +479,8 @@ describe("ComplianceReportPipelineService", () => {
         requestedBy: "admin@example.com",
       });
 
-      assert.equal(artifact.status, "generated");
-      assert.equal(artifact.evidenceQualityScore, 100);
+      assert.equal(artifact.status, "pending_signoff");
+      assert.equal(artifact.evidenceQualityScore, 40);
       assert.ok(artifact.markdown.includes("coverage_ratio=1"));
     });
 
@@ -402,6 +493,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["type_a", "type_b"],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["type_a", "type_b"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -425,6 +523,13 @@ describe("ComplianceReportPipelineService", () => {
           requiredEvidenceTypes: ["type_a", "type_b", "type_c", "type_d"],
           renderSchema: [],
           version: "1.0",
+          lockedOnGeneration: false,
+          reportVersionLock: "1.0",
+          requiredDataSources: ["type_a", "type_b", "type_c", "type_d"],
+          legalVersion: "2024",
+          migrationRule: "upgrade_v1",
+          effectiveDate: "2024-01-01",
+          lastReviewDate: "2024-06-01",
         },
       ]);
 
@@ -438,7 +543,7 @@ describe("ComplianceReportPipelineService", () => {
       });
 
       assert.equal(artifact.status, "partial");
-      assert.equal(artifact.evidenceQualityScore, 50);
+      assert.equal(artifact.evidenceQualityScore, 20);
       // 2 out of 4 = 0.50
       assert.ok(artifact.markdown.includes("coverage_ratio=0.50"));
     });

@@ -5,6 +5,9 @@ import { EdgeRuntimeSyncService } from "../../../src/ops-maturity/edge-runtime/e
 
 const profile = {
   edgeNodeId: "edge_factory_1",
+  deviceId: "device-factory-1",
+  offlineMaxDuration: 3600000,
+  keyLease: "valid-lease",
   capabilities: ["vision", "sync"],
   connectivityMode: "offline" as const,
   maxLocalRetentionHours: 24,
@@ -13,6 +16,7 @@ const profile = {
     allowRestrictedDataUpload: false,
     requireOrdering: true,
   },
+  riskLevel: "low" as const,
 };
 
 test("EdgeRuntimeSyncService executes offline with an allowed local model and explicit sync envelope", () => {
@@ -30,7 +34,8 @@ test("EdgeRuntimeSyncService executes offline with an allowed local model and ex
 
   assert.equal(execution.record.syncRequired, true);
   assert.equal(execution.selectedModelId, "local-vision");
-  assert.deepEqual(execution.executionPlan, ["task_vision_1"]);
+  // R6-22 FIX: Edge execution plan now uses planGraphBundle.graph.nodes with edge_node_ prefix
+  assert.deepEqual(execution.executionPlan, ["edge_node_task_vision_1"]);
 
   const envelope = service.buildSyncEnvelope(
     profile,
@@ -75,7 +80,9 @@ test("EdgeRuntimeSyncService rejects restricted uploads when sync policy forbids
     [conflictEnvelope.recordId]: "digest:older",
   });
 
-  assert.deepEqual(receipt.rejectedEnvelopeIds, [restrictedEnvelope.envelopeId]);
-  assert.deepEqual(receipt.acceptedEnvelopeIds, [conflictEnvelope.envelopeId]);
-  assert.ok(receipt.decisions.some((item) => item.resolution === "merge"));
+  // R6-22 FIX: With requireOrdering:true, restricted envelope is rejected first (priority 5 > 1),
+  // then conflict envelope is processed - its digest differs from cloud so accept_central generates incident
+  assert.deepEqual(receipt.rejectedEnvelopeIds, [restrictedEnvelope.envelopeId, conflictEnvelope.envelopeId]);
+  assert.deepEqual(receipt.acceptedEnvelopeIds, []);
+  assert.ok(receipt.decisions.some((item) => item.resolution === "accept_central"));
 });

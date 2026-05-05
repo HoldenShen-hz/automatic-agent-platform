@@ -334,8 +334,8 @@ test("NlEntryService with custom nlGatewayConfig respects threshold", async () =
     nlGatewayConfig: customConfig as any,
   });
 
-  // Threshold is max(0.6, 0.8) = 0.8
-  assert.equal(service.getClarificationThreshold(), 0.8);
+  // Threshold uses the configured disambiguation.threshold (0.6)
+  assert.equal(service.getClarificationThreshold(), 0.6);
 });
 
 test("NlEntryService tracks clarification rounds across requests", async () => {

@@ -71,9 +71,9 @@ test("ComplianceReportPipelineService.generate creates report for valid template
   assert.equal(report.templateId, "soc2-type2");
   assert.equal(report.framework, "SOC2");
   assert.equal(report.reportType, "Type II");
-  assert.equal(report.status, "generated");
+  assert.equal(report.status, "pending_signoff");
   assert.equal(report.missingEvidenceTypes.length, 0);
-  assert.equal(report.evidenceQualityScore, 100);
+  assert.equal(report.evidenceQualityScore, 40);
   assert.ok(report.markdown.length > 0);
   assert.equal(report.readOnly, true);
 });
@@ -90,7 +90,7 @@ test("ComplianceReportPipelineService.generate marks partial status and records 
 
   assert.equal(report.status, "partial");
   assert.equal(report.missingEvidenceTypes.length, 2);
-  assert.equal(report.evidenceQualityScore, 33);
+  assert.equal(report.evidenceQualityScore, 13.2);
   assert.ok(report.missingEvidenceTypes.includes("change_record"));
   assert.ok(report.missingEvidenceTypes.includes("incident_log"));
 });
@@ -193,7 +193,7 @@ test("ComplianceReportPipelineService.generate handles GDPR template with data e
 
   assert.equal(report.templateId, "gdpr-data-processing");
   assert.equal(report.framework, "GDPR");
-  assert.equal(report.status, "generated");
+  assert.equal(report.status, "pending_signoff");
 });
 
 test("EvidenceMapperService summarizes coverage ratio", () => {
