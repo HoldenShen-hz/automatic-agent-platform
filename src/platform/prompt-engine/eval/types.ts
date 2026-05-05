@@ -16,6 +16,8 @@ export interface RiskLevelThreshold {
   readonly passThreshold: number;
   readonly criticalThreshold: number;
   readonly enforcement: "blocking" | "warning";
+  /** Delta-based pass threshold: pass if (score - baseline) >= deltaThreshold */
+  readonly deltaThreshold?: number;
 }
 
 export interface DomainThresholdOverride {
@@ -28,6 +30,8 @@ export interface QualityGateConfig {
     readonly defaultPassThreshold: number;
     readonly criticalPassThreshold: number;
     readonly enforcement: "blocking" | "warning";
+    /** Delta-based pass threshold: pass if (score - baseline) >= deltaThreshold */
+    readonly deltaThreshold?: number;
   };
   readonly qualityScoreWeights: {
     readonly successSignal: number;

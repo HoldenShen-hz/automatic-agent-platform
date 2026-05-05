@@ -349,11 +349,18 @@ export class HarnessSdk {
 
     // §18: Budget validation - ensure budget is available
     if (input.budgetRef) {
-      const budgetResult = this.budgetChecker?.(input.budgetRef);
-      if (budgetResult && !budgetResult.allowed) {
+      if (!this.budgetChecker) {
+        throw new HarnessSdkError(
+          "harness_sdk.budget_checker_not_configured",
+          "budgetRef requires a budgetChecker to be configured on the SDK",
+          { budgetRef: input.budgetRef },
+        );
+      }
+      const budgetResult = this.budgetChecker(input.budgetRef);
+      if (!budgetResult.allowed) {
         throw new HarnessSdkError(
           "harness_sdk.budget_exceeded",
-          `Budget ${input.budgetRef} does not allow run creation`,
+          budgetResult.error ?? `Budget ${input.budgetRef} does not allow run creation`,
           { budgetRef: input.budgetRef, remaining: budgetResult.remainingBudget },
         );
       }

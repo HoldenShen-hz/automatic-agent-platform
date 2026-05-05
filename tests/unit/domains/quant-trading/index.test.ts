@@ -4,7 +4,10 @@ import test from "node:test";
 import {
   QuantTradingTaskTypeSchema,
   QUANT_TRADING_DOMAIN_PRESET,
+  QUANT_TRADING_RISK_GUARDRAILS,
   requiresQuantTradingReview,
+  validateQuantTradingRisk,
+  type QuantTradingRiskContext,
   type QuantTradingTaskType,
 } from "../../../../src/domains/quant-trading/index.js";
 
@@ -60,4 +63,47 @@ test("QUANT_TRADING_DOMAIN_PRESET is frozen and immutable", () => {
   assert.ok(Object.isFrozen(QUANT_TRADING_DOMAIN_PRESET));
   assert.ok(Object.isFrozen(QUANT_TRADING_DOMAIN_PRESET.requiredCapabilities));
   assert.ok(Object.isFrozen(QUANT_TRADING_DOMAIN_PRESET.reviewRequiredTaskTypes));
+});
+
+test("QUANT_TRADING_RISK_GUARDRAILS encodes loss, position, and market-hour gates", () => {
+  assert.equal(QUANT_TRADING_RISK_GUARDRAILS.maxLossLimit, 10_000);
+  assert.equal(QUANT_TRADING_RISK_GUARDRAILS.maxPositionSizeFraction, 0.05);
+  assert.equal(QUANT_TRADING_RISK_GUARDRAILS.marketHoursOnly, true);
+  assert.equal(QUANT_TRADING_RISK_GUARDRAILS.preTradeRiskValidation, true);
+});
+
+test("validateQuantTradingRisk returns true for an in-bounds trade context", () => {
+  const context: QuantTradingRiskContext = {
+    currentLoss: 1_000,
+    proposedPositionSize: 0.02,
+    tradingHoursActive: true,
+  };
+  assert.equal(validateQuantTradingRisk(context), true);
+});
+
+test("validateQuantTradingRisk rejects contexts above the loss limit", () => {
+  const context: QuantTradingRiskContext = {
+    currentLoss: 10_001,
+    proposedPositionSize: 0.02,
+    tradingHoursActive: true,
+  };
+  assert.equal(validateQuantTradingRisk(context), false);
+});
+
+test("validateQuantTradingRisk rejects contexts above the position-size limit", () => {
+  const context: QuantTradingRiskContext = {
+    currentLoss: 500,
+    proposedPositionSize: 0.051,
+    tradingHoursActive: true,
+  };
+  assert.equal(validateQuantTradingRisk(context), false);
+});
+
+test("validateQuantTradingRisk rejects off-hours trading when market-hours gate is enabled", () => {
+  const context: QuantTradingRiskContext = {
+    currentLoss: 500,
+    proposedPositionSize: 0.02,
+    tradingHoursActive: false,
+  };
+  assert.equal(validateQuantTradingRisk(context), false);
 });

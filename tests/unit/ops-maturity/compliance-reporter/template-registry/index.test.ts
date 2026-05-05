@@ -13,6 +13,14 @@ const makeTemplate = (id: string, framework: string, reportType: string) => ({
   requiredEvidenceTypes: [],
   renderSchema: [],
   version: "1.0",
+  // §66.1 required fields
+  lockedOnGeneration: false,
+  reportVersionLock: "1.0",
+  requiredDataSources: ["audit-log"],
+  legalVersion: "2024-01",
+  migrationRule: "Use latest version",
+  effectiveDate: "2024-01-01",
+  lastReviewDate: "2024-06-01",
 });
 
 test("findComplianceTemplate returns matching template", () => {

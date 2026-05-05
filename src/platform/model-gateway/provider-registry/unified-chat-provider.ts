@@ -14,7 +14,7 @@
 import { AnthropicChatService, type AnthropicTool, type AnthropicChatCompletionResult, type AnthropicChatCompletionRequest } from "./anthropic/anthropic-chat-service.js";
 import { OpenAIChatService, type OpenAIFunction, type OpenAIChatCompletionResult, type OpenAIChatCompletionRequest } from "./openai/openai-chat-service.js";
 import { MiniMaxChatService, type MiniMaxTool, type MiniMaxChatCompletionResult, type MiniMaxChatCompletionRequest } from "./minimax/minimax-chat-service.js";
-import { AppError } from "../../contracts/errors.js";
+import { AppError, ValidationError } from "../../contracts/errors.js";
 import { CircuitBreaker } from "./circuit-breaker.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
@@ -177,8 +177,12 @@ function detectProviderFromModel(modelId: string): ChatProviderType {
   }
 
   // R16-20 FIX: Unknown models should not silently default to openai.
-  // Throw error to alert operators of potential misconfiguration.
-  throw new Error(`Unknown model: "${modelId}". Cannot determine provider. Please use a known model or configure the provider explicitly.`);
+  // Throw ValidationError to fail fast and alert operators of potential misconfiguration.
+  throw new ValidationError(
+    `model_route.unknown_model:${modelId}`,
+    `Unknown model: "${modelId}". Cannot determine provider. Please use a known model or configure the provider explicitly.`,
+    { category: "validation", source: "provider", retryable: false },
+  );
 }
 
 export class UnifiedChatProvider {

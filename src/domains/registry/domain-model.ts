@@ -109,6 +109,43 @@ export const StepTemplateConfigSchema = z.object({
   dependsOn: z.array(z.string()).default([]),
 });
 
+const WorkflowPlanNodeSchema = z.object({
+  nodeId: NonEmptyTrimmedStringSchema,
+  nodeType: z.enum(["tool", "llm", "hitl_wait", "subgraph", "evaluator", "router", "compensation"]),
+  inputRefs: z.array(z.string()).default([]),
+  outputSchemaRef: NonEmptyTrimmedStringSchema,
+  riskClass: z.enum(["low", "medium", "high", "critical"]),
+  budgetIntent: z.object({
+    amount: z.number().nonnegative(),
+    currency: NonEmptyTrimmedStringSchema,
+    resourceKinds: z.array(z.string()).default([]),
+  }),
+  sideEffectProfile: z.object({
+    mayCommitExternalEffect: z.boolean(),
+    reversible: z.boolean(),
+  }),
+  retryPolicyRef: NonEmptyTrimmedStringSchema,
+  timeoutMs: z.number().int().positive(),
+});
+
+const WorkflowPlanEdgeSchema = z.object({
+  edgeId: NonEmptyTrimmedStringSchema,
+  sourceNodeId: NonEmptyTrimmedStringSchema,
+  targetNodeId: NonEmptyTrimmedStringSchema,
+  condition: z.unknown().default("always"),
+  dependencyType: z.enum(["hard", "soft", "compensation", "retry", "replan"]).default("hard"),
+});
+
+const WorkflowPlanGraphSchema = z.object({
+  graphId: NonEmptyTrimmedStringSchema,
+  nodes: z.array(WorkflowPlanNodeSchema).default([]),
+  edges: z.array(WorkflowPlanEdgeSchema).default([]),
+  entryNodeIds: z.array(z.string()).default([]),
+  terminalNodeIds: z.array(z.string()).default([]),
+  joinStrategy: z.enum(["all", "any", "first_success", "policy"]).default("all"),
+  graphHash: NonEmptyTrimmedStringSchema,
+});
+
 // §13 WorkflowConfigSchema supports non-linear steps (not just linear z.array(StepTemplateConfigSchema))
 // Support branching/conditional steps via when/condition fields
 export const WorkflowConfigSchema = z.object({
@@ -118,6 +155,9 @@ export const WorkflowConfigSchema = z.object({
   // Non-linear steps: steps can reference dependsOn for DAG execution
   // Supports branching via condition/when fields on each step
   steps: z.array(StepTemplateConfigSchema).default([]),
+  // Canonical DAG representation retained from domain config so loaders do not silently
+  // erase graph structure when parsing workflow definitions.
+  planGraph: WorkflowPlanGraphSchema.optional(),
   // Optional step graph for explicit non-linear control flow
   // When provided, steps[] provides node definitions and stepGraph provides edges
   stepGraph: z.object({

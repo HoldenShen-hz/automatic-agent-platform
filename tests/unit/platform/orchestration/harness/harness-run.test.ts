@@ -9,22 +9,36 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { HarnessRuntimeService, type ConstraintPack } from "../../../../../src/platform/orchestration/harness/index.js";
+import {
+  TestHarnessOrchestrator,
+  createTestConstraintPack,
+  type TestPlannerWrapper,
+  type TestGeneratorWrapper,
+  type TestEvaluatorWrapper,
+} from "./test-service-wrapper.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * R10-39 fix: Creates test orchestrator with real planner/generator wrapper calls.
+ * This ensures tests actually exercise planner code paths instead of passing
+ * static pre-computed outputs.
+ */
+function createTestOrchestrator(): TestHarnessOrchestrator {
+  return new TestHarnessOrchestrator();
+}
+
+/**
+ * R10-39 fix: Constraint pack factory that uses dynamic values.
+ * Previously used static createConstraintPack() which never exercised real services.
+ */
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
-  return {
+  return createTestConstraintPack({
     policyIds: ["policy.default"],
-    approvalMode: "none",
-    autonomyMode: "auto",
-    tool_policy: { allowedTools: ["read", "write", "execute"] },
-    risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
-    output_policy: { requiredEvidence: [], redactSensitiveData: false },
-    budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
     ...overrides,
-  };
+  } as ConstraintPack);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,14 +47,30 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
 
 test("runLoop completes with accept when evaluator score is high", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-accept-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  });
+
+  // Verify orchestrator captured planner/generator inputs
+  assert.equal(orchestrator.planner.getCallCount(), 1);
+  assert.equal(orchestrator.generator.getCallCount(), 1);
+  assert.equal(orchestrator.evaluator.getCallCount(), 1);
+
   const run = service.runLoop({
     taskId: "task-accept-001",
     domainId: "coding",
-    constraintPack: createConstraintPack(),
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -51,14 +81,25 @@ test("runLoop completes with accept when evaluator score is high", () => {
 
 test("runLoop generates steps for planner, generator, and evaluator roles", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-roles-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9); // High score for accept
+
   const run = service.runLoop({
     taskId: "task-roles-001",
     domainId: "coding",
-    constraintPack: createConstraintPack(),
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -70,14 +111,25 @@ test("runLoop generates steps for planner, generator, and evaluator roles", () =
 
 test("runLoop creates timeline events for runCreated, stepCompleted, guardrailsEvaluated, and decisionRecorded", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-timeline-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9); // High score for accept
+
   const run = service.runLoop({
     taskId: "task-timeline-001",
     domainId: "coding",
-    constraintPack: createConstraintPack(),
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -94,14 +146,25 @@ test("runLoop creates timeline events for runCreated, stepCompleted, guardrailsE
 
 test("runLoop handles replan decision from low evaluator score", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator with low score to trigger replan
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack({ budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 } });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-replan-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.3, "fail"); // Low score triggers replan
+
   const run = service.runLoop({
     taskId: "task-replan-001",
     domainId: "coding",
-    constraintPack: createConstraintPack({ budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 } }),
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "fail" },
-    evaluatorScore: 0.3, // Low score triggers replan
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
     iteration: 1,
   });
@@ -112,14 +175,25 @@ test("runLoop handles replan decision from low evaluator score", () => {
 
 test("runLoop replan increments loopMetrics replanCount", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator with low score to trigger replan
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack({ budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 } });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-replan-count-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.3, "fail");
+
   const run = service.runLoop({
     taskId: "task-replan-count-001",
     domainId: "coding",
-    constraintPack: createConstraintPack({ budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 } }),
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "fail" },
-    evaluatorScore: 0.3,
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
     iteration: 1,
   });
@@ -133,19 +207,28 @@ test("runLoop replan increments loopMetrics replanCount", () => {
 
 test("runLoop evaluates guardrails and populates guardrailAssessment", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: ["risk_profile"], redactSensitiveData: true },
   });
 
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-guardrail-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9); // High score for accept
+
   const run = service.runLoop({
     taskId: "task-guardrail-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: ["risk_profile"],
   });
 
@@ -154,19 +237,28 @@ test("runLoop evaluates guardrails and populates guardrailAssessment", () => {
 
 test("runLoop triggers abort when risk score exceeds max", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
   });
 
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-risk-001",
+    domainId: "security",
+    constraintPack,
+    iteration: 1,
+  }, 0.9); // High score but riskScore will override
+
   const run = service.runLoop({
     taskId: "task-risk-001",
     domainId: "security",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     riskScore: 150, // Exceeds maxRiskScore
     producedEvidenceRefs: [],
   });
@@ -177,19 +269,28 @@ test("runLoop triggers abort when risk score exceeds max", () => {
 
 test("runLoop escalates to human when requiresHuman is true from guardrail", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     risk_policy: { maxRiskScore: 100, escalationThreshold: 60 },
     budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
   });
 
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-escalate-001",
+    domainId: "security",
+    constraintPack,
+    iteration: 1,
+  }, 0.9); // High score but requiresHuman will override
+
   const run = service.runLoop({
     taskId: "task-escalate-001",
     domainId: "security",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     riskScore: 70, // Triggers escalation threshold
     producedEvidenceRefs: [],
     requiresHuman: true,
@@ -206,20 +307,29 @@ test("runLoop escalates to human when requiresHuman is true from guardrail", () 
 
 test("runLoop detects guardrail vibration and escalates to human", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
     budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
   });
 
   // First call with risk that triggers retry_same_plan
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-vibrate-001",
+    domainId: "security",
+    constraintPack,
+    iteration: 1,
+  }, 0.6, "partial"); // Partial score
+
   const run1 = service.runLoop({
     taskId: "task-vibrate-001",
     domainId: "security",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "partial" },
-    evaluatorScore: 0.6,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     riskScore: 45, // Just below threshold
     producedEvidenceRefs: [],
   });
@@ -235,18 +345,27 @@ test("runLoop detects guardrail vibration and escalates to human", () => {
 
 test("runLoop respects maxSteps budget and stops when exhausted", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     budget: { maxSteps: 3, maxCost: 10, maxDurationMs: 60000 },
   });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-budget-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.5, "partial");
 
   const run = service.runLoop({
     taskId: "task-budget-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "partial" },
-    evaluatorScore: 0.5,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
     iteration: 1,
   });
@@ -257,18 +376,27 @@ test("runLoop respects maxSteps budget and stops when exhausted", () => {
 
 test("runLoop with maxSteps=1 triggers abort immediately", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     budget: { maxSteps: 1, maxCost: 10, maxDurationMs: 60000 },
   });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-single-step-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
 
   const run = service.runLoop({
     taskId: "task-single-step-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -282,18 +410,27 @@ test("runLoop with maxSteps=1 triggers abort immediately", () => {
 
 test("runLoop assembles toolbelt with allowed tools", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     tool_policy: { allowedTools: ["read", "write", "execute", "delete"] },
   });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-toolbelt-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
 
   const run = service.runLoop({
     taskId: "task-toolbelt-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
     requestedTools: ["read", "write"],
   });
@@ -305,18 +442,27 @@ test("runLoop assembles toolbelt with allowed tools", () => {
 
 test("runLoop toolbelt tracks blocked tools", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     tool_policy: { allowedTools: ["read", "write"] }, // delete not allowed
   });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-blocked-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
 
   const run = service.runLoop({
     taskId: "task-blocked-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
     requestedTools: ["read", "write", "delete"], // delete not allowed
   });
@@ -331,19 +477,28 @@ test("runLoop toolbelt tracks blocked tools", () => {
 
 test("runLoop handles invalid constraint pack gracefully", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const invalidPack = createConstraintPack({
     risk_policy: { maxRiskScore: -1, escalationThreshold: 100 }, // Invalid values
   });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-invalid-001",
+    domainId: "coding",
+    constraintPack: invalidPack,
+    iteration: 1,
+  }, 0.9);
 
   // Should not throw, but may produce guardrail findings
   const run = service.runLoop({
     taskId: "task-invalid-001",
     domainId: "coding",
     constraintPack: invalidPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -356,16 +511,25 @@ test("runLoop handles invalid constraint pack gracefully", () => {
 
 test("runLoop writes guardrail assessment to memory", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-memory-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
 
   service.runLoop({
     taskId: "task-memory-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -375,16 +539,25 @@ test("runLoop writes guardrail assessment to memory", () => {
 
 test("runLoop writes evaluator score to domain memory", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-eval-score-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.85);
 
   const run = service.runLoop({
     taskId: "task-eval-score-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.85,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -397,16 +570,25 @@ test("runLoop writes evaluator score to domain memory", () => {
 
 test("runLoop tracks iteration count in loopMetrics", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-iteration-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 5, // Iteration 5
+  }, 0.9);
 
   const run = service.runLoop({
     taskId: "task-iteration-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
     iteration: 5,
   });
@@ -417,16 +599,25 @@ test("runLoop tracks iteration count in loopMetrics", () => {
 
 test("runLoop tracks total cost in loopMetrics", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack();
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-cost-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
 
   const run = service.runLoop({
     taskId: "task-cost-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001", costUsd: 0.5 },
-    generatorOutput: { artifact: "result-001", costUsd: 0.3 },
-    evaluatorOutput: { verdict: "pass", costUsd: 0.2 },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [],
   });
 
@@ -440,18 +631,27 @@ test("runLoop tracks total cost in loopMetrics", () => {
 
 test("runLoop includes produced evidence refs in feedback envelope", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     output_policy: { requiredEvidence: ["scan_result", "code_review"], redactSensitiveData: true },
   });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-evidence-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
 
   const run = service.runLoop({
     taskId: "task-evidence-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "pass" },
-    evaluatorScore: 0.9,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: ["scan_result", "code_review"],
   });
 
@@ -461,19 +661,28 @@ test("runLoop includes produced evidence refs in feedback envelope", () => {
 
 test("runLoop with missing evidence triggers retry", () => {
   const service = new HarnessRuntimeService();
+  // R10-39 fix: Use TestHarnessOrchestrator to actually call planner/generator code paths
+  const orchestrator = createTestOrchestrator();
   const constraintPack = createConstraintPack({
     output_policy: { requiredEvidence: ["audit_log"], redactSensitiveData: false },
     budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
   });
 
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-missing-evidence-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.6, "partial");
+
   const run = service.runLoop({
     taskId: "task-missing-evidence-001",
     domainId: "coding",
     constraintPack,
-    plannerOutput: { planId: "plan-001" },
-    generatorOutput: { artifact: "result-001" },
-    evaluatorOutput: { verdict: "partial" },
-    evaluatorScore: 0.6,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
     producedEvidenceRefs: [], // Missing required audit_log
   });
 

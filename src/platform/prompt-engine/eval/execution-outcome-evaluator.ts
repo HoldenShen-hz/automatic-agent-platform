@@ -31,6 +31,8 @@ export interface ExecutionOutcomeEvaluation {
   taskId: string;
   passed: boolean;
   qualityScore: number;
+  baselineScore?: number;
+  deltaScore?: number;
   nextAction: "complete" | "retry" | "replan" | "approve" | "escalate";
   reasons: string[];
   evaluatedAt: number;
@@ -61,9 +63,12 @@ export interface ExecutionOutcomeEvaluatorOptions {
  */
 const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
   qualityGate: {
+    // R16-18 FIX: delta-based threshold (score - baseline >= deltaThreshold)
+    // Fixed 0.5 was not delta-based; delta-based allows relative improvement tracking
     defaultPassThreshold: 0.5,
     criticalPassThreshold: 0.8,
     enforcement: "blocking",
+    deltaThreshold: 0.0, // pass if (score - baseline) >= 0.0 (i.e., score >= baseline)
   },
   qualityScoreWeights: {
     successSignal: 0.35,
@@ -140,6 +145,8 @@ export class ExecutionOutcomeEvaluator {
       actualDurationMs?: number;
       actualCost?: number;
       constraints?: readonly string[];
+      /** Baseline quality score for delta-based threshold evaluation */
+      baselineScore?: number;
     },
   ): ExecutionOutcomeEvaluation;
   public evaluate(params: {
@@ -148,6 +155,7 @@ export class ExecutionOutcomeEvaluator {
     actualDurationMs?: number;
     actualCost?: number;
     constraints?: readonly string[];
+    baselineScore?: number;
   }): ExecutionOutcomeEvaluation;
   public evaluate(
     planOrParams:
@@ -157,6 +165,7 @@ export class ExecutionOutcomeEvaluator {
           actualDurationMs?: number;
           actualCost?: number;
           constraints?: readonly string[];
+          baselineScore?: number;
         }
       | PlanGraphBundle
       | LegacyPlanLike,
@@ -165,6 +174,7 @@ export class ExecutionOutcomeEvaluator {
       actualDurationMs?: number;
       actualCost?: number;
       constraints?: readonly string[];
+      baselineScore?: number;
     },
   ): ExecutionOutcomeEvaluation {
     const normalized =
@@ -175,6 +185,7 @@ export class ExecutionOutcomeEvaluator {
             actualDurationMs?: number;
             actualCost?: number;
             constraints?: readonly string[];
+            baselineScore?: number;
           }
         : {
             planGraphBundle: planOrParams as PlanGraphBundle | LegacyPlanLike,
@@ -182,9 +193,10 @@ export class ExecutionOutcomeEvaluator {
             actualDurationMs: maybeOptions?.actualDurationMs,
             actualCost: maybeOptions?.actualCost,
             constraints: maybeOptions?.constraints,
+            baselineScore: maybeOptions?.baselineScore,
           };
     const planGraphBundle = toPlanGraphBundle(normalized.planGraphBundle);
-    const { feedback, actualDurationMs, actualCost, constraints } = normalized;
+    const { feedback, actualDurationMs, actualCost, constraints, baselineScore } = normalized;
 
     // Get thresholds based on risk level and domain (§17.3)
     const effectiveThreshold = this.getEffectiveThreshold(planGraphBundle.riskProfile.riskClass);
@@ -226,8 +238,17 @@ export class ExecutionOutcomeEvaluator {
       nextAction = "approve";
     }
 
-    // Use risk-level-specific threshold (§17.3)
-    const passed = nextAction === "complete" && qualityScore >= effectiveThreshold.passThreshold;
+    // R16-18 FIX: Use delta-based threshold when baselineScore and deltaThreshold are available
+    // Delta-based: pass if (score - baseline) >= deltaThreshold
+    const deltaScore = baselineScore !== undefined ? qualityScore - baselineScore : undefined;
+    const effectiveDeltaThreshold = effectiveThreshold.deltaThreshold ?? this.config.qualityGate.deltaThreshold;
+    let passed: boolean;
+    if (effectiveDeltaThreshold !== undefined && baselineScore !== undefined) {
+      passed = nextAction === "complete" && deltaScore !== undefined && deltaScore >= effectiveDeltaThreshold;
+    } else {
+      // Fall back to absolute threshold
+      passed = nextAction === "complete" && qualityScore >= effectiveThreshold.passThreshold;
+    }
 
     // Evaluate additional dimensions per §13.5
     const constraintCompliance = this.evaluateConstraintCompliance(constraints);
@@ -240,6 +261,8 @@ export class ExecutionOutcomeEvaluator {
       taskId: planGraphBundle.harnessRunId,
       passed,
       qualityScore: Number(qualityScore.toFixed(2)),
+      ...(baselineScore !== undefined && { baselineScore: Number(baselineScore.toFixed(2)) }),
+      ...(deltaScore !== undefined && { deltaScore: Number(deltaScore.toFixed(2)) }),
       nextAction,
       reasons: feedback.signals.map(
         (signal) =>
@@ -271,6 +294,7 @@ export class ExecutionOutcomeEvaluator {
     passThreshold: number;
     criticalThreshold: number;
     enforcement: "blocking" | "warning";
+    deltaThreshold?: number;
   } {
     // Check domain-specific override first
     if (this.domainId) {
@@ -286,6 +310,7 @@ export class ExecutionOutcomeEvaluator {
             passThreshold: riskThreshold.passThreshold,
             criticalThreshold: riskThreshold.criticalThreshold,
             enforcement: riskThreshold.enforcement,
+            ...(riskThreshold.deltaThreshold !== undefined && { deltaThreshold: riskThreshold.deltaThreshold }),
           };
         }
       }
@@ -300,6 +325,7 @@ export class ExecutionOutcomeEvaluator {
         passThreshold: riskThreshold.passThreshold,
         criticalThreshold: riskThreshold.criticalThreshold,
         enforcement: riskThreshold.enforcement,
+        ...(riskThreshold.deltaThreshold !== undefined && { deltaThreshold: riskThreshold.deltaThreshold }),
       };
     }
 
@@ -308,6 +334,7 @@ export class ExecutionOutcomeEvaluator {
       passThreshold: this.config.qualityGate.defaultPassThreshold,
       criticalThreshold: this.config.qualityGate.criticalPassThreshold,
       enforcement: this.config.qualityGate.enforcement,
+      ...(this.config.qualityGate.deltaThreshold !== undefined && { deltaThreshold: this.config.qualityGate.deltaThreshold }),
     };
   }
 

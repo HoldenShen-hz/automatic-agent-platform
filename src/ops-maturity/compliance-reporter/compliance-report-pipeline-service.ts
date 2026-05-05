@@ -192,15 +192,15 @@ export interface ComplianceReportTemplateDefinition {
   readonly requiredEvidenceTypes: readonly string[];
   readonly renderSchema: readonly string[];
   readonly version: string;
-  // §66.1: Template governance fields - required per ComplianceTemplateLike
+  // §66.1: Template governance fields - required per spec
   readonly lockedOnGeneration: boolean;
-  readonly reportVersionLock: string | null;
+  readonly reportVersionLock: string;
   readonly requiredDataSources: readonly string[];
-  readonly legalVersion: string | null;
-  readonly migrationRule: string | null;
+  readonly legalVersion: string;
+  readonly migrationRule: string;
   // §66.1: Effective and review dates for template lifecycle
-  readonly effectiveDate: string | null;
-  readonly lastReviewDate: string | null;
+  readonly effectiveDate: string;
+  readonly lastReviewDate: string;
   // §66.2: Human signoff enforcement
   readonly signoffRequired?: boolean;
   readonly signoffDueAtDays?: number;

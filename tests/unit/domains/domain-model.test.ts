@@ -342,11 +342,41 @@ test("WorkflowConfigSchema accepts valid workflow config", () => {
         { fromStep: "step1", toStep: "step2", condition: null },
       ],
     },
+    planGraph: {
+      graphId: "graph:wf1",
+      nodes: [
+        {
+          nodeId: "node:step1",
+          nodeType: "tool",
+          inputRefs: ["task:wf1"],
+          outputSchemaRef: "schema:wf1.step1",
+          riskClass: "medium",
+          budgetIntent: {
+            amount: 1,
+            currency: "USD",
+            resourceKinds: ["token"],
+          },
+          sideEffectProfile: {
+            mayCommitExternalEffect: false,
+            reversible: true,
+          },
+          retryPolicyRef: "retry:wf1.default",
+          timeoutMs: 1000,
+        },
+      ],
+      edges: [],
+      entryNodeIds: ["node:step1"],
+      terminalNodeIds: ["node:step1"],
+      joinStrategy: "all",
+      graphHash: "sha256:wf1",
+    },
   });
 
   assert.equal(workflow.workflowId, "wf1");
   assert.equal(workflow.name, "My Workflow");
   assert.ok(Array.isArray(workflow.steps));
+  assert.equal(workflow.planGraph?.graphId, "graph:wf1");
+  assert.equal(workflow.planGraph?.nodes[0]?.nodeId, "node:step1");
 });
 
 test("WorkflowConfigSchema defaults triggerConditions and steps", () => {

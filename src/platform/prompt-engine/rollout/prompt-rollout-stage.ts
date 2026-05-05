@@ -1,13 +1,13 @@
 /**
  * Execution stages in the order specified by §16.3 canonical pipeline.
- * canary(5%) → canary(20%) → stable → rolled_back
+ * canary_5 → canary_20 → stable → rolled_back
  *
  * Stage progression requires quality gates to pass at each stage.
  * rolled_back is a terminal state indicating rollback occurred.
  */
 export const PROMPT_ROLLOUT_STAGES = [
-  "canary(5%)",
-  "canary(20%)",
+  "canary_5",
+  "canary_20",
   "stable",
   "rolled_back",
 ] as const;
@@ -45,11 +45,11 @@ export function nextPromptRolloutStage(stage: PromptRolloutStage): PromptRollout
  * If error rate exceeds these thresholds at a canary stage, auto-rollback occurs.
  */
 export const QUALITY_GATE_THRESHOLDS: Partial<Record<PromptRolloutStage, { readonly maxErrorRate: number; readonly minPassthrough: number } | null>> = {
-  "canary(5%)": {
+  "canary_5": {
     maxErrorRate: 0.05,  // 5% error rate threshold for 5% canary
     minPassthrough: 0.95,
   },
-  "canary(20%)": {
+  "canary_20": {
     maxErrorRate: 0.03,  // 3% error rate threshold for 20% canary (stricter)
     minPassthrough: 0.97,
   },

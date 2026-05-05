@@ -263,6 +263,9 @@ test("DomainDefinitionSchema parses the quant-trading domain config", () => {
   assert.equal(result.status, "active");
   assert.equal(result.capabilities.securityLevel, "restricted");
   assert.equal(result.workflows[0]?.workflowId, "quant-trading.primary");
+  assert.equal(result.workflows[0]?.planGraph?.graphId, "graph:quant-trading:primary");
+  assert.equal(result.workflows[0]?.planGraph?.nodes.length, 2);
+  assert.equal(result.workflows[0]?.planGraph?.edges.length, 1);
 });
 
 test("DomainDefinitionSchema rejects empty domainId", () => {

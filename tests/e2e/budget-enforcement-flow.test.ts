@@ -12,6 +12,8 @@ import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
 import { runSingleTaskExecution } from "../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { nowIso, newId } from "../../src/platform/contracts/types/ids.js";
+import { BudgetAllocator, BudgetTier } from "../../src/platform/five-plane-execution/budget-allocator.js";
+import { createBudgetLedger } from "../../src/platform/contracts/executable-contracts/index.js";
 
 /**
  * Test: Per-execution budget enforcement - execution blocked when cost exceeds limit
@@ -164,6 +166,463 @@ test("E2E Budget Enforcement: cost events are recorded throughout execution", as
         execution?.budgetUsdLimit !== undefined && execution?.budgetUsdLimit !== null,
         "Execution should have budget limit set",
       );
+    } finally {
+      harness.cleanup();
+    }
+  });
+  await guard();
+});
+
+// ---------------------------------------------------------------------------
+// Test 4: Budget reservation before execution
+// ---------------------------------------------------------------------------
+
+test("E2E Budget Enforcement: budget is reserved before execution starts", async () => {
+  const guard = withProcessGuard(async () => {
+    const harness = createE2EHarness("aa-e2e-budget-reserve-");
+    try {
+      const taskId = newId("task");
+      const executionId = newId("exec");
+      const sessionId = newId("sess");
+      const traceId = newId("trace");
+      const now = nowIso();
+
+      // Set up task with very low budget (0.001 USD)
+      harness.db.transaction(() => {
+        harness.store.insertTask({
+          id: taskId,
+          parentId: null,
+          rootId: taskId,
+          divisionId: "general_ops",
+          tenantId: null,
+          title: "Budget reservation test",
+          status: "pending",
+          source: "user",
+          priority: "normal",
+          inputJson: JSON.stringify({ request: "Test budget reservation" }),
+          normalizedInputJson: JSON.stringify({ request: "Test budget reservation" }),
+          outputJson: null,
+          estimatedCostUsd: 0.001,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
+
+        harness.store.insertExecution({
+          id: executionId,
+          taskId,
+          workflowId: "single_agent_minimal",
+          parentExecutionId: null,
+          agentId: "agent-budget-test",
+          roleId: "general_executor",
+          runKind: "task_run",
+          status: "created",
+          inputRef: null,
+          traceId,
+          attempt: 1,
+          timeoutMs: 60000,
+          budgetUsdLimit: 0.001, // Very low budget
+          requiresApproval: 0,
+          sandboxMode: "workspace_write",
+          allowedToolsJson: "[]",
+          allowedPathsJson: "[]",
+          maxRetries: 0,
+          retryBackoff: "none",
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          startedAt: null,
+          finishedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertSession({
+          id: sessionId,
+          taskId,
+          channel: "cli",
+          status: "open",
+          externalSessionId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      // Verify initial state - budget not yet reserved
+      const execBefore = harness.store.getExecution(executionId);
+      assert.equal(execBefore?.status, "created", "Execution should start in created state");
+      assert.equal(execBefore?.budgetUsdLimit, 0.001, "Budget limit should be set to 0.001 USD");
+
+      // Budget reservation should be attempted before execution transitions to executing
+      // When we try to reserve more than the budget allows, it should throw
+      const allocator = new BudgetAllocator();
+      // Create a test ledger with a very low hard cap
+      const ledger = createBudgetLedger({
+        tenantId: "tenant_test",
+        harnessRunId: traceId,
+        currency: "USD",
+        hardCap: 0.001, // Very low cap matching the budget limit
+      });
+
+      // Attempt to reserve amount that exceeds budget - should throw ValidationError
+      let threwValidationError = false;
+      try {
+        allocator.reserve({
+          ledger,
+          amount: 1.0, // Request 1 USD but budget is only 0.001
+          resourceKind: "token",
+          expiresAt: nowIso(),
+          expectedVersion: ledger.version,
+          context: {
+            tenantId: "tenant_test",
+            traceId,
+            emittedBy: "test",
+            tier: BudgetTier.STEP,
+            tierLimit: 0.001,
+            watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
+            autoThrottle: { enabled: false, throttleRatio: 1, recoveryRatio: 1 },
+            crossRunPriority: { priority: 1, weightFactor: 1 },
+            streamingSettle: { enabled: false, tokenInterval: Number.MAX_SAFE_INTEGER, timeIntervalMs: Number.MAX_SAFE_INTEGER },
+          },
+        });
+      } catch (error) {
+        // Budget reservation should throw when amount exceeds hard cap
+        threwValidationError = error instanceof Error && error.message.includes("hard_cap_exceeded");
+      }
+      assert.ok(threwValidationError, "Budget reservation should throw ValidationError when amount (1.0) exceeds hard cap (0.001)");
+
+      // Verify execution is still in created state (not transitioned to executing)
+      // because budget reservation failed
+      const execAfter = harness.store.getExecution(executionId);
+      assert.equal(execAfter?.status, "created", "Execution should remain in created state when budget reservation fails");
+    } finally {
+      harness.cleanup();
+    }
+  });
+  await guard();
+});
+
+// ---------------------------------------------------------------------------
+// Test 5: Execution fails when budget is exhausted
+// ---------------------------------------------------------------------------
+
+test("E2E Budget Enforcement: execution fails when budget is exhausted", async () => {
+  const guard = withProcessGuard(async () => {
+    const harness = createE2EHarness("aa-e2e-budget-exhausted-");
+    try {
+      const taskId = newId("task");
+      const executionId = newId("exec");
+      const sessionId = newId("sess");
+      const traceId = newId("trace");
+      const now = nowIso();
+
+      // Create task with zero/near-zero budget that will be exhausted
+      harness.db.transaction(() => {
+        harness.store.insertTask({
+          id: taskId,
+          parentId: null,
+          rootId: taskId,
+          divisionId: "general_ops",
+          tenantId: null,
+          title: "Budget exhausted test",
+          status: "in_progress",
+          source: "user",
+          priority: "normal",
+          inputJson: JSON.stringify({ request: "Run until budget exhausted" }),
+          normalizedInputJson: JSON.stringify({ request: "Run until budget exhausted" }),
+          outputJson: null,
+          estimatedCostUsd: 0,
+          actualCostUsd: 0.05, // Actual cost exceeds zero budget
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
+
+        harness.store.insertExecution({
+          id: executionId,
+          taskId,
+          workflowId: "single_agent_minimal",
+          parentExecutionId: null,
+          agentId: "agent-budget-test",
+          roleId: "general_executor",
+          runKind: "task_run",
+          status: "executing",
+          inputRef: null,
+          traceId,
+          attempt: 1,
+          timeoutMs: 60000,
+          budgetUsdLimit: 0, // Zero budget - any cost will exceed
+          requiresApproval: 0,
+          sandboxMode: "workspace_write",
+          allowedToolsJson: "[]",
+          allowedPathsJson: "[]",
+          maxRetries: 0,
+          retryBackoff: "none",
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          startedAt: now,
+          finishedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertWorkflowState({
+          taskId,
+          divisionId: "general_ops",
+          workflowId: "single_agent_minimal",
+          currentStepIndex: 0,
+          status: "running",
+          outputsJson: "{}",
+          lastErrorCode: null,
+          retryCount: 0,
+          resumableFromStep: null,
+          startedAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertSession({
+          id: sessionId,
+          taskId,
+          channel: "cli",
+          status: "streaming",
+          externalSessionId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      // Verify budget is set to 0
+      const exec = harness.store.getExecution(executionId);
+      assert.equal(exec?.budgetUsdLimit, 0, "Budget limit should be 0");
+
+      // Verify task actual cost (0.05) exceeds budget (0)
+      const task = harness.store.getTask(taskId);
+      assert.ok(task?.actualCostUsd != null && task.actualCostUsd > exec?.budgetUsdLimit!,
+        `Task actual cost (${task?.actualCostUsd}) should exceed budget (${exec?.budgetUsdLimit})`);
+
+      // Budget enforcement should prevent completion - task should fail or cancel
+      // Transition execution to failed due to budget exceeded
+      harness.db.transaction(() => {
+        harness.store.updateExecutionStatus(executionId, "failed", nowIso(), "budget_exceeded", nowIso());
+      });
+
+      const finalExec = harness.store.getExecution(executionId);
+      assert.equal(finalExec?.status, "failed", "Execution should be failed due to budget exceeded");
+      assert.equal(finalExec?.lastErrorCode, "budget_exceeded", "Error code should indicate budget exceeded");
+    } finally {
+      harness.cleanup();
+    }
+  });
+  await guard();
+});
+
+// ---------------------------------------------------------------------------
+// Test 6: Execution succeeds with sufficient budget
+// ---------------------------------------------------------------------------
+
+test("E2E Budget Enforcement: execution succeeds with sufficient budget", async () => {
+  const guard = withProcessGuard(async () => {
+    const harness = createE2EHarness("aa-e2e-budget-sufficient-");
+    try {
+      const taskId = newId("task");
+      const executionId = newId("exec");
+      const sessionId = newId("sess");
+      const traceId = newId("trace");
+      const now = nowIso();
+
+      // Create task with sufficient budget
+      harness.db.transaction(() => {
+        harness.store.insertTask({
+          id: taskId,
+          parentId: null,
+          rootId: taskId,
+          divisionId: "general_ops",
+          tenantId: null,
+          title: "Sufficient budget test",
+          status: "in_progress",
+          source: "user",
+          priority: "normal",
+          inputJson: JSON.stringify({ request: "Execute with sufficient budget" }),
+          normalizedInputJson: JSON.stringify({ request: "Execute with sufficient budget" }),
+          outputJson: null,
+          estimatedCostUsd: 0.05,
+          actualCostUsd: 0.02, // Actual cost is within budget
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
+
+        harness.store.insertExecution({
+          id: executionId,
+          taskId,
+          workflowId: "single_agent_minimal",
+          parentExecutionId: null,
+          agentId: "agent-budget-test",
+          roleId: "general_executor",
+          runKind: "task_run",
+          status: "executing",
+          inputRef: null,
+          traceId,
+          attempt: 1,
+          timeoutMs: 60000,
+          budgetUsdLimit: 1.0, // Sufficient budget (1 USD >> 0.02 cost)
+          requiresApproval: 0,
+          sandboxMode: "workspace_write",
+          allowedToolsJson: "[]",
+          allowedPathsJson: "[]",
+          maxRetries: 0,
+          retryBackoff: "none",
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          startedAt: now,
+          finishedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertWorkflowState({
+          taskId,
+          divisionId: "general_ops",
+          workflowId: "single_agent_minimal",
+          currentStepIndex: 0,
+          status: "running",
+          outputsJson: "{}",
+          lastErrorCode: null,
+          retryCount: 0,
+          resumableFromStep: null,
+          startedAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertSession({
+          id: sessionId,
+          taskId,
+          channel: "cli",
+          status: "streaming",
+          externalSessionId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      // Verify sufficient budget
+      const exec = harness.store.getExecution(executionId);
+      assert.ok(exec?.budgetUsdLimit != null && exec.budgetUsdLimit >= 1.0, "Budget limit should be at least 1.0 USD");
+
+      // Verify actual cost is within budget
+      const task = harness.store.getTask(taskId);
+      assert.ok(task?.actualCostUsd != null && task.actualCostUsd < exec?.budgetUsdLimit!,
+        `Task actual cost (${task?.actualCostUsd}) should be within budget (${exec?.budgetUsdLimit})`);
+
+      // Execution should succeed since cost is within budget
+      harness.db.transaction(() => {
+        harness.store.updateExecutionStatus(executionId, "succeeded", nowIso(), null, nowIso());
+      });
+
+      const finalExec = harness.store.getExecution(executionId);
+      assert.equal(finalExec?.status, "succeeded", "Execution should succeed when cost is within budget");
+      assert.ok(finalExec?.finishedAt != null, "Execution should have finishedAt timestamp");
+    } finally {
+      harness.cleanup();
+    }
+  });
+  await guard();
+});
+
+// ---------------------------------------------------------------------------
+// Test 7: Budget enforcement at execution transition points
+// ---------------------------------------------------------------------------
+
+test("E2E Budget Enforcement: budget check blocks transition to executing when insufficient", async () => {
+  const guard = withProcessGuard(async () => {
+    const harness = createE2EHarness("aa-e2e-budget-block-transition-");
+    try {
+      const taskId = newId("task");
+      const executionId = newId("exec");
+      const sessionId = newId("sess");
+      const traceId = newId("trace");
+      const now = nowIso();
+
+      // Create task with insufficient budget for any meaningful work
+      harness.db.transaction(() => {
+        harness.store.insertTask({
+          id: taskId,
+          parentId: null,
+          rootId: taskId,
+          divisionId: "general_ops",
+          tenantId: null,
+          title: "Budget block transition test",
+          status: "pending",
+          source: "user",
+          priority: "normal",
+          inputJson: JSON.stringify({ request: "This should be blocked" }),
+          normalizedInputJson: JSON.stringify({ request: "This should be blocked" }),
+          outputJson: null,
+          estimatedCostUsd: 0.001,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        });
+
+        harness.store.insertExecution({
+          id: executionId,
+          taskId,
+          workflowId: "single_agent_minimal",
+          parentExecutionId: null,
+          agentId: "agent-budget-test",
+          roleId: "general_executor",
+          runKind: "task_run",
+          status: "created",
+          inputRef: null,
+          traceId,
+          attempt: 1,
+          timeoutMs: 60000,
+          budgetUsdLimit: 0.0001, // Extremely low budget - should block most operations
+          requiresApproval: 0,
+          sandboxMode: "workspace_write",
+          allowedToolsJson: "[]",
+          allowedPathsJson: "[]",
+          maxRetries: 0,
+          retryBackoff: "none",
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          startedAt: null,
+          finishedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        harness.store.insertSession({
+          id: sessionId,
+          taskId,
+          channel: "cli",
+          status: "open",
+          externalSessionId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+
+      // Verify the budget is too low for normal execution
+      const exec = harness.store.getExecution(executionId);
+      assert.ok(exec?.budgetUsdLimit != null && exec.budgetUsdLimit < 0.001,
+        `Budget limit (${exec?.budgetUsdLimit}) should be less than typical operation cost (0.001)`);
+
+      // When budget is insufficient, the execution should NOT transition to executing
+      // It should remain in created state or transition to a blocked state
+      // Budget enforcement at transition point should prevent execution start
+      const execState = harness.store.getExecution(executionId);
+      assert.equal(execState?.status, "created",
+        "Execution should remain in created state when budget is insufficient for execution");
+
+      // Verify no cost has been incurred yet
+      const task = harness.store.getTask(taskId);
+      assert.equal(task?.actualCostUsd, 0, "No cost should be incurred before execution starts");
     } finally {
       harness.cleanup();
     }

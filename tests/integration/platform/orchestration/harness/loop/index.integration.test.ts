@@ -148,7 +148,14 @@ describe("HarnessLoopController", () => {
       const violationBefore = controller.getGuardViolation();
       assert.strictEqual(violationBefore, null);
 
+      const startTime = Date.now();
       await new Promise((resolve) => setTimeout(resolve, 100));
+      const actualDuration = Date.now() - startTime;
+      const maxDurationMs = controller.getGuards().maxDurationMs;
+
+      // R10-38 fix: Verify actual duration exceeded threshold
+      assert.ok(actualDuration > maxDurationMs, `Expected actual duration ${actualDuration}ms to exceed threshold ${maxDurationMs}ms`);
+
       const violationAfter = controller.getGuardViolation();
       assert.strictEqual(violationAfter, "harness.guard.max_duration_exceeded");
     });
@@ -157,7 +164,14 @@ describe("HarnessLoopController", () => {
       const constraintPack = createMockConstraintPack({ maxDurationMs: 200 });
       const controller = new HarnessLoopController(constraintPack);
 
+      const startTime = Date.now();
       await new Promise((resolve) => setTimeout(resolve, 50));
+      const actualDuration = Date.now() - startTime;
+      const maxDurationMs = controller.getGuards().maxDurationMs;
+
+      // R10-38 fix: Verify actual duration is still below threshold
+      assert.ok(actualDuration < maxDurationMs, `Expected actual duration ${actualDuration}ms to be below threshold ${maxDurationMs}ms`);
+
       const violation = controller.getGuardViolation();
       assert.strictEqual(violation, null);
     });
@@ -290,7 +304,15 @@ describe("HarnessLoopController", () => {
       let violation = controller.getGuardViolation();
       assert.strictEqual(violation, "harness.guard.max_cost_exceeded");
 
+      const startTime = Date.now();
       await new Promise((resolve) => setTimeout(resolve, 100));
+      const actualDuration = Date.now() - startTime;
+      const maxDurationMs = controller.getGuards().maxDurationMs;
+
+      // R10-38 fix: Verify duration also actually exceeded threshold
+      assert.ok(actualDuration > maxDurationMs, `Expected actual duration ${actualDuration}ms to exceed threshold ${maxDurationMs}ms`);
+
+      // Cost guard should still take priority over duration guard
       violation = controller.getGuardViolation();
       assert.strictEqual(violation, "harness.guard.max_cost_exceeded");
     });
@@ -304,7 +326,14 @@ describe("HarnessLoopController", () => {
 
       controller.recordIteration(50);
 
+      const startTime = Date.now();
       await new Promise((resolve) => setTimeout(resolve, 100));
+      const actualDuration = Date.now() - startTime;
+      const maxDurationMs = controller.getGuards().maxDurationMs;
+
+      // R10-38 fix: Verify actual duration exceeded threshold
+      assert.ok(actualDuration > maxDurationMs, `Expected actual duration ${actualDuration}ms to exceed threshold ${maxDurationMs}ms`);
+
       const violation = controller.getGuardViolation();
       assert.strictEqual(violation, "harness.guard.max_duration_exceeded");
     });

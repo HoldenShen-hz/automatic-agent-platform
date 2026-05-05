@@ -15,6 +15,8 @@ const RiskLevelThresholdSchema = z.object({
   passThreshold: z.number().min(0).max(1),
   criticalThreshold: z.number().min(0).max(1),
   enforcement: z.enum(["blocking", "warning"]),
+  // R16-18 FIX: delta-based threshold per model/tier
+  deltaThreshold: z.number().min(-1).max(1).optional(),
 });
 
 const DomainThresholdOverrideSchema = z.object({
@@ -27,6 +29,8 @@ const QualityGateConfigSchema = z.object({
     defaultPassThreshold: z.number().min(0).max(1),
     criticalPassThreshold: z.number().min(0).max(1),
     enforcement: z.enum(["blocking", "warning"]),
+    // R16-18 FIX: delta-based threshold
+    deltaThreshold: z.number().min(-1).max(1).optional(),
   }),
   qualityScoreWeights: z.object({
     successSignal: z.number().min(0),
@@ -72,6 +76,7 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
         defaultPassThreshold: validated.qualityGate.defaultPassThreshold,
         criticalPassThreshold: validated.qualityGate.criticalPassThreshold,
         enforcement: validated.qualityGate.enforcement,
+        ...(validated.qualityGate.deltaThreshold !== undefined && { deltaThreshold: validated.qualityGate.deltaThreshold }),
       },
       qualityScoreWeights: {
         successSignal: validated.qualityScoreWeights.successSignal,
@@ -108,6 +113,7 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
         defaultPassThreshold: 0.8,
         criticalPassThreshold: 0.95,
         enforcement: "blocking" as const,
+        deltaThreshold: 0.0, // R16-18 FIX: delta-based, pass if (score - baseline) >= 0
       },
       qualityScoreWeights: {
         successSignal: 0.4,

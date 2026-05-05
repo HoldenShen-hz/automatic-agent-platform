@@ -19,14 +19,14 @@ export const ComplianceReportTemplateSchema = z.object({
   requiredEvidenceTypes: z.array(z.string()).default([]),
   renderSchema: z.array(z.string()).default([]),
   version: z.string().default("1.0"),
-  // §66.1 required fields
-  lockedOnGeneration: z.boolean().default(false),
-  reportVersionLock: z.string().nullable().default(null),
-  requiredDataSources: z.array(z.string()).default([]),
-  legalVersion: z.string().nullable().default(null),
-  migrationRule: z.string().nullable().default(null),
-  effectiveDate: z.string().nullable().default(null),
-  lastReviewDate: z.string().nullable().default(null),
+  // §66.1 required fields - all non-optional per spec
+  lockedOnGeneration: z.boolean(),
+  reportVersionLock: z.string(),
+  requiredDataSources: z.array(z.string()).min(1),
+  legalVersion: z.string(),
+  migrationRule: z.string(),
+  effectiveDate: z.string(),
+  lastReviewDate: z.string(),
 });
 
 export type ComplianceReportTemplate = z.infer<typeof ComplianceReportTemplateSchema>;
@@ -47,12 +47,12 @@ type ComplianceTemplateLike = {
   readonly version: string;
   // §66.1 template governance fields - all required per spec
   readonly lockedOnGeneration: boolean;
-  readonly reportVersionLock: string | null;
+  readonly reportVersionLock: string;
   readonly requiredDataSources: readonly string[];
-  readonly legalVersion: string | null;
-  readonly migrationRule: string | null;
-  readonly effectiveDate: string | null;
-  readonly lastReviewDate: string | null;
+  readonly legalVersion: string;
+  readonly migrationRule: string;
+  readonly effectiveDate: string;
+  readonly lastReviewDate: string;
 };
 
 export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike = ComplianceTemplateLike> {

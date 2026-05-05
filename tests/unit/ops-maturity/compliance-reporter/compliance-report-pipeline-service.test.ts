@@ -25,6 +25,14 @@ function createTestTemplates(): readonly ComplianceReportTemplateDefinition[] {
       requiredEvidenceTypes: ["access_log", "change_record", "incident_log"],
       renderSchema: ["template", "evidence_coverage", "completeness"],
       version: "1.0",
+      // §66.1 required fields
+      lockedOnGeneration: true,
+      reportVersionLock: "1.0",
+      requiredDataSources: ["access-log", "change-log", "incident-log"],
+      legalVersion: "2024-01",
+      migrationRule: "Use latest version",
+      effectiveDate: "2024-01-01",
+      lastReviewDate: "2024-06-01",
     },
     {
       templateId: "gdpr-data-processing",
@@ -33,6 +41,14 @@ function createTestTemplates(): readonly ComplianceReportTemplateDefinition[] {
       requiredEvidenceTypes: ["consent_record", "erasure_request", "data_mapping"],
       renderSchema: ["template", "evidence_coverage", "completeness"],
       version: "1.0",
+      // §66.1 required fields
+      lockedOnGeneration: true,
+      reportVersionLock: "1.0",
+      requiredDataSources: ["consent-records", "erasure-log", "data-map"],
+      legalVersion: "2024-01",
+      migrationRule: "Use latest version",
+      effectiveDate: "2024-01-01",
+      lastReviewDate: "2024-06-01",
     },
   ];
 }

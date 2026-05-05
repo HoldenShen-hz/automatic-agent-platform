@@ -5,6 +5,7 @@
  */
 
 import { normalizeSandboxMode, type SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
+import { ValidationError } from "../../platform/contracts/errors.js";
 
 export interface PluginContextConfig {
   pluginId: string;
@@ -159,7 +160,11 @@ export class PluginContext {
   set(key: string, value: unknown, source: ContextValue["source"] = "plugin"): void {
     // Enforce namespace isolation: plugins cannot override system.* keys
     if (source === "plugin" && key.startsWith("system.")) {
-      throw new Error("plugin_context.namespace_violation: Plugins cannot override system.* keys");
+      throw new ValidationError(
+        "plugin_context.namespace_violation",
+        "Plugins cannot override system.* keys",
+        { category: "security", statusCode: 403 }
+      );
     }
     this.setValue(key, value, source);
   }
