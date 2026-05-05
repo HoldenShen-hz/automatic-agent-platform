@@ -32,7 +32,7 @@
 - `cost_accounting_accuracy`
 - `oapeflir_loop_convergence_rate`
 - `feedback_positive_rate`
-- `rollout_success_rate`
+- `release_success_rate`
 
 规则：
 
@@ -69,7 +69,7 @@
 - `stale_lease_repair`
 - `secret_rotation_failure`
 - `oapeflir_loop_stalled`
-- `rollout_blocked_or_rollback`
+- `release_blocked_or_rollback`
 
 ## 7. 告警流程图
 

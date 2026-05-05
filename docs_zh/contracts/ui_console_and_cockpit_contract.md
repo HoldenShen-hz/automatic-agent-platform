@@ -323,3 +323,29 @@ Automatic Agent 的 UI 不应首先长成“另一个聊天应用”。
 - 一个能下钻 evidence 的 Task / Workflow Cockpit
 - 一个能处理审批与解释的 Approval Center
 - 一个能接管和止损的 Admin Console
+
+## v4.3 Architecture Remediation
+
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+
+- R16-86: 本 contract 原先未明确标注 UI 视角的 canonical entity 锚点和 legacy 映射关系，根因是 UI contract 在 v4.3 迁移期间未同步 re-baseline，仍引用旧架构的 task/execution 视图。修复：正文现明确 UI 层必须以 `HarnessRun` / `NodeRun` / `PlanGraphBundle` 为 authoritative entity，`task_id` 只作为 legacy projection 查询键，`execution` / `WorkflowState` / `TaskRecord` 仅保留兼容 alias。
+
+强制规则：UI 展示层不得反向定义 runtime truth；`TaskCockpit` / `WorkflowCockpit` 必须锚定 `harness_run_id` + `node_runs[]` 主链；`plan_graph` 展示必须使用 `PlanGraphBundle` 而非旧 `ExecutionPlan` / `WorkflowStep` 线性结构；`ApprovalCenter` 的 `task_id` 投影必须显式映射到 `harness_run_id`；所有 legacy 别名字段不得作为新实现入口。
+
+### Canonical Entity Mapping for UI Contracts
+
+| UI 旧称 | v4.3 Canonical | 备注 |
+| --- | --- | --- |
+| `task_id`（作为主键） | `harness_run_id` | UI Cockpit 锚点必须用 `harness_run_id`，`task_id` 仅作 legacy 查询兼容 |
+| `execution_id` | `harness_run_id` | `/executions/:id/inspect` 只保留兼容别名，映射到 harness_run |
+| `step_id` | `node_run_id` | Cockpit 展示 node 状态必须用 `NodeRun`，`step_id` 仅作 legacy alias |
+| `WorkflowState` | `HarnessRun` + `PlanGraphBundle` 投影 | WorkflowCockpit 状态源必须是 `HarnessRun.status` + `planGraphBundle.graph` |
+| `TaskRecord` | `HarnessRun` + `TaskInspectView` | TaskCockpit 顶层必须展示 `HarnessRun`，不得直接展示旧 TaskRecord |
+| `ExecutionPlan` | `PlanGraphBundle` | Plan graph 展示必须用 `PlanGraphBundle`，`ExecutionPlan` 仅作兼容 alias |
+
+### UI Contract 引用约束
+
+- UI contract 必须引用 v4.3 canonical contract（`harness-run-contract.md`、`plan-graph-patch-contract.md`、`node-run-attempt-receipt-contract.md`），不得引用旧 v3.x runtime 文档作为 authoritative 源。
+- OAPEFLIR 阶段视图（`current_stage_view` / `loop_iteration_view`）是投影字段，不得作为 runtime truth 使用。
+- UI 侧的 `blocked_reason` 展示必须可 drill-down 到 `NodeRun.status` + `HarnessRun` 状态机，而非只展示字符串。
+- `ApprovalCenter` 的 `task_id` 展示必须能映射到对应的 `harness_run_id`，供 operator 追溯完整执行链。
