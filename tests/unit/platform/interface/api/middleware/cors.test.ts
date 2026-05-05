@@ -30,15 +30,13 @@ describe("CorsMiddleware", () => {
       );
     });
 
-    it("should throw error when wildcard subdomain used with credentials", () => {
-      assert.throws(
-        () =>
-          new CorsMiddleware({
-            allowedOrigins: ["*.example.com"],
-            allowCredentials: true,
-          }),
-        /Wildcard origin/,
-      );
+    it("should allow wildcard subdomain pattern with credentials", () => {
+      const middleware = new CorsMiddleware({
+        allowedOrigins: ["*.example.com"],
+        allowCredentials: true,
+      });
+      ok(middleware.isOriginAllowed("app.example.com"));
+      ok(middleware.isOriginAllowed("api.example.com"));
     });
 
     it("should allow wildcard origin without credentials", () => {

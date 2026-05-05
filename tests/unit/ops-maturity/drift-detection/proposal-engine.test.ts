@@ -21,7 +21,7 @@ test("SimpleProposalEngine.create creates a proposal", async () => {
   assert.equal(proposal.kind, "tool_routing_rule");
   assert.equal(proposal.target, "test_target");
   assert.equal(proposal.risk, "low");
-  assert.equal(proposal.status, "proposed");
+  assert.equal(proposal.status, "draft");
   assert.ok(proposal.id.startsWith("prop_"));
 });
 
@@ -71,10 +71,10 @@ test("SimpleProposalEngine.submitForApproval changes status to testing", async (
 
   const active = await engine.listActive();
   assert.equal(active.length, 1); // Now in "testing" status which is included in active
-  assert.equal(active[0]!.status, "testing");
+  assert.equal(active[0]!.status, "staging");
 });
 
-test("SimpleProposalEngine.listPending returns only proposed proposals", async () => {
+test("SimpleProposalEngine.listPending returns only draft proposals", async () => {
   const engine = new SimpleProposalEngine();
   await engine.create({
     title: "Pending",
@@ -291,7 +291,7 @@ test("ImprovementProposal interface supports all status values", async () => {
   });
 
   // Verify all expected status values are possible
-  const validStatuses = ["proposed", "testing", "canary", "active", "rejected", "rolled_back"];
+  const validStatuses = ["draft", "review", "staging", "canary", "active", "paused", "deprecated", "archived", "retired"];
   assert.ok(validStatuses.includes(proposal.status));
 });
 

@@ -24,14 +24,14 @@ function createEvidence(overrides: Partial<EvidenceRecord> = {}): EvidenceRecord
   };
 }
 
-test("SimpleReflectionEngine: reflect requires minimum 2 records (issue #2110)", () => {
+test("SimpleReflectionEngine: reflect requires minimum 2 records (issue #2110)", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = [
     createEvidence({ id: "ev_1", failureMode: "security_forbidden" }),
   ];
 
   // Single security event is ignored because reflect() requires >= 2 records
-  const reflections = engine.reflectSync(evidence);
+  const reflections = await engine.reflect(evidence);
 
   // Bug: single failure is ignored
   assert.equal(reflections.length, 0, "Single security event is ignored - requires >= 2 records");
@@ -53,14 +53,14 @@ test("SimpleReflectionEngine: reflect handles single security event via reflectS
   // reflectSingle works even for single security events
 });
 
-test("SimpleReflectionEngine: reflectSync with multiple records works", () => {
+test("SimpleReflectionEngine: reflectSync with multiple records works", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = [
     createEvidence({ id: "ev_1", failureMode: "type_error" }),
     createEvidence({ id: "ev_2", failureMode: "type_error" }),
   ];
 
-  const reflections = engine.reflectSync(evidence);
+  const reflections = await engine.reflect(evidence);
 
   assert.equal(reflections.length, 1);
   assert.equal(reflections[0]!.evidenceIds.length, 2);
@@ -84,20 +84,20 @@ test("SimpleReflectionEngine: generateRecommendation for security issues", () =>
   assert.ok(reflection.recommendation.includes("security policy checks"));
 });
 
-test("SimpleReflectionEngine: reflect ignores successful records", () => {
+test("SimpleReflectionEngine: reflect ignores successful records", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = [
     createEvidence({ id: "ev_1", success: true, failureMode: "type_error" }),
     createEvidence({ id: "ev_2", success: false, failureMode: "type_error" }),
   ];
 
-  const reflections = engine.reflectSync(evidence);
+  const reflections = await engine.reflect(evidence);
 
   // Only 1 failed record - not enough
   assert.equal(reflections.length, 0);
 });
 
-test("SimpleReflectionEngine: reflect groups by taskType", () => {
+test("SimpleReflectionEngine: reflect groups by taskType", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = [
     createEvidence({ id: "ev_1", taskType: "task_a", failureMode: "type_error" }),
@@ -105,7 +105,7 @@ test("SimpleReflectionEngine: reflect groups by taskType", () => {
     createEvidence({ id: "ev_3", taskType: "task_b", failureMode: "test_failure" }),
   ];
 
-  const reflections = engine.reflectSync(evidence);
+  const reflections = await engine.reflect(evidence);
 
   // task_a has 2 records -> produces reflection
   // task_b has 1 record -> not enough
