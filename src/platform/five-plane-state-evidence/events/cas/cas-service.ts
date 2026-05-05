@@ -14,6 +14,7 @@
  * - **Fencing Token**: Unique token generated per execution to prevent split-brain
  *
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
+ * @see R16-35: CAS service now uses SQLite-backed SqliteCasRepository for durable storage
  */
 
 /**
@@ -35,21 +36,37 @@ interface CasRecord {
 }
 
 /**
+ * Interface for CAS record storage backends.
+ */
+export interface CasRepository {
+  get(key: string): CasRecord | undefined;
+  set(key: string, record: CasRecord): void;
+  delete(key: string): boolean;
+  has(key: string): boolean;
+}
+
+/**
  * CAS Service providing optimistic concurrency control via compare-and-swap operations.
  *
  * Implements:
  * - Value-based CAS: compareAndSwap(key, expectedValue, newValue)
  * - Version-based CAS: compareAndSet(key, expectedVersion, newValue)
  * - Read operations: getValue(key), getVersion(key)
+ *
+ * R16-35: Now uses SQLite-backed SqliteCasRepository for durable storage
+ * instead of in-memory Map which lost state on restart.
  */
 export class CasService {
-  // §174-2024: In-memory Map provides non-atomic read-check-write within compareAndSwap/compareAndSet.
-  // In single-threaded JS this is safe, but in multi-process/distributed scenarios the Map operations
-  // are NOT atomic across processes. Root cause: the store.get() check and store.set() update are two
-  // separate operations, creating a race window. For true distributed CAS, replace this in-memory Map
-  // with Redis/etcd using WATCH/MULTI/EXEC or Lua scripts, or use the database's transaction + CAS
-  // mechanism (e.g., SQLite's EXCLUSIVE transaction or PostgreSQL's FOR UPDATE).
-  private readonly store = new Map<string, CasRecord>();
+  private readonly store: CasRepository;
+
+  /**
+   * Creates a new CasService with the given repository.
+   *
+   * @param store - The storage backend for CAS records (e.g., SqliteCasRepository)
+   */
+  public constructor(store: CasRepository) {
+    this.store = store;
+  }
 
   /**
    * Performs an atomic compare-and-swap operation.
@@ -214,4 +231,38 @@ export class CasService {
   public has(key: string): boolean {
     return this.store.has(key);
   }
+}
+
+/**
+ * In-memory CAS repository for testing and development.
+ * This is NOT durable and should only be used in tests.
+ */
+class InMemoryCasRepository implements CasRepository {
+  private readonly store = new Map<string, CasRecord>();
+
+  public get(key: string): CasRecord | undefined {
+    return this.store.get(key);
+  }
+
+  public set(key: string, record: CasRecord): void {
+    this.store.set(key, record);
+  }
+
+  public delete(key: string): boolean {
+    return this.store.delete(key);
+  }
+
+  public has(key: string): boolean {
+    return this.store.has(key);
+  }
+}
+
+/**
+ * Creates an in-memory CAS service (non-durable, for testing only).
+ *
+ * @deprecated Use SqliteCasRepository in production. This function exists
+ * only for backward compatibility with tests.
+ */
+export function createInMemoryCasService(): CasService {
+  return new CasService(new InMemoryCasRepository());
 }

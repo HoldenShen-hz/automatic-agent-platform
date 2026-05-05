@@ -235,8 +235,8 @@ async function runCapableWorkerDispatch(outputDir: string): Promise<StableDispat
     });
     const lease = decision.leaseId ? store.worker.getExecutionLease(decision.leaseId) : null;
     const claimedTicket = store.worker.getExecutionTicket(ticket.ticket.id);
-    const decisionEvent = store
-      .listEventsForTask("task-dispatch-capable")
+    const eventsResult = store.listEventsForTask("task-dispatch-capable");
+    const decisionEvent = eventsResult.events
       .find((event) => event.eventType === "dispatch:decision_recorded");
     const decisionPayload = decisionEvent
       ? (JSON.parse(decisionEvent.payloadJson) as { selectedWorkerId: string | null; evaluations: Array<{ workerId: string; rejectionReason: string | null }> })
@@ -391,8 +391,8 @@ async function runDispatchAfterScenario(outputDir: string): Promise<StableDispat
       leaseTtlMs: 30_000,
       occurredAt: "2026-04-04T10:05:01.000Z",
     });
-    const decisionEvents = store
-      .listEventsForTask("task-dispatch-after")
+    const eventsResult = store.listEventsForTask("task-dispatch-after");
+    const decisionEvents = eventsResult.events
       .filter((event) => event.eventType === "dispatch:decision_recorded");
     db.close();
 
@@ -459,8 +459,8 @@ async function runCapabilityGapScenario(outputDir: string): Promise<StableDispat
       occurredAt: "2026-04-04T10:00:06.000Z",
     });
     const pendingTicket = store.worker.getExecutionTicket(ticket.ticket.id);
-    const decisionEvent = store
-      .listEventsForTask("task-dispatch-gap")
+    const eventsResult = store.listEventsForTask("task-dispatch-gap");
+    const decisionEvent = eventsResult.events
       .find((event) => event.eventType === "dispatch:decision_recorded");
     const decisionPayload = decisionEvent
       ? (JSON.parse(decisionEvent.payloadJson) as { outcome: string; evaluations: Array<{ workerId: string; rejectionReason: string | null }> })

@@ -457,7 +457,26 @@ export class EmailAlertChannel implements AlertChannel {
  */
 export interface SloAlertingServiceOptions {
   channels?: Partial<Record<AlertChannelKind, AlertChannel>>;
+  runbookStepExecutor?: RunbookStepExecutor;
 }
+
+export interface RunbookStepExecutionContext {
+  readonly executionId: string;
+  readonly runbook: RunbookDefinition;
+  readonly stepIndex: number;
+  readonly step: unknown;
+  readonly alertEventId: string | null;
+  readonly executedBy: string;
+}
+
+export interface RunbookStepExecutionResult {
+  readonly success: boolean;
+  readonly output?: string | null;
+}
+
+export type RunbookStepExecutor = (
+  context: RunbookStepExecutionContext,
+) => RunbookStepExecutionResult;
 
 function buildDefaultAlertChannels(
   channels: Partial<Record<AlertChannelKind, AlertChannel>> | undefined,
@@ -484,6 +503,7 @@ export class SloAlertingService {
   private readonly dispatcher: AlertDispatcher;
   private readonly alertRuleShadow = new Map<string, AlertRule>();
   private readonly alertEventShadow = new Map<string, AlertEvent>();
+  private readonly runbookStepExecutor: RunbookStepExecutor | null;
 
   constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -493,6 +513,7 @@ export class SloAlertingService {
     this.dispatcher = new AlertDispatcher(db, {
       channels: buildDefaultAlertChannels(options?.channels),
     });
+    this.runbookStepExecutor = options?.runbookStepExecutor ?? null;
   }
 
   // ── SLO Management ─────────────────────────────────────────────────
@@ -785,25 +806,26 @@ export class SloAlertingService {
 
   /**
    * Executes a runbook and records the execution.
-   * §203-2379: executeRunbook() previously returned status="failed" without attempting
-   * actual runbook step execution. Now signals that execution is pending - actual
-   * implementation requires runbook step executor per §61.3.
+   * Executes persisted runbook steps through the configured executor and stores
+   * the final outcome instead of fabricating a completed status.
    */
   executeRunbook(runbookId: string, alertEventId: string | null, executedBy: string): RunbookExecution {
     const now = nowIso();
+    const runbook = this.getRunbook(runbookId);
+    if (runbook == null) {
+      throw new Error(`slo_alerting.runbook_not_found:${runbookId}`);
+    }
     const execution: RunbookExecution = {
       id: newId("rbexec"),
       runbookId,
       alertEventId,
-      status: "pending",
+      status: "running",
       output: null,
       startedAt: now,
       completedAt: null,
       executedBy,
     };
 
-    // Insert execution record with pending status. Actual runbook step execution
-    // requires implementation of runbook step executor per §61.3 contract.
     this.db.connection
       .prepare(
         `INSERT INTO runbook_executions (id, runbook_id, alert_event_id, status, output, started_at, completed_at, executed_by)
@@ -811,7 +833,12 @@ export class SloAlertingService {
       )
       .run(execution.id, execution.runbookId, execution.alertEventId, execution.status, execution.output, execution.startedAt, execution.completedAt, execution.executedBy);
 
-    return execution;
+    const finalized = this.finalizeRunbookExecution(execution, runbook);
+    this.db.connection
+      .prepare(`UPDATE runbook_executions SET status = ?, output = ?, completed_at = ? WHERE id = ?`)
+      .run(finalized.status, finalized.output, finalized.completedAt, finalized.id);
+
+    return finalized;
   }
 
   /**
@@ -845,6 +872,69 @@ export class SloAlertingService {
       firingAlertCount: Number(firing.cnt),
       runbookExecutionCount: Number(execs.cnt),
     };
+  }
+
+  private finalizeRunbookExecution(
+    execution: RunbookExecution,
+    runbook: RunbookDefinition,
+  ): RunbookExecution {
+    let status: RunbookStatus = "completed";
+    let output: string | null = null;
+
+    try {
+      const steps = this.parseRunbookSteps(runbook);
+      if (steps.length > 0 && this.runbookStepExecutor == null) {
+        throw new Error("runbook_step_executor_not_configured");
+      }
+
+      const stepOutputs = steps.map((step, stepIndex) => {
+        const result = this.runbookStepExecutor?.({
+          executionId: execution.id,
+          runbook,
+          stepIndex,
+          step,
+          alertEventId: execution.alertEventId,
+          executedBy: execution.executedBy,
+        });
+        if (result == null) {
+          throw new Error(`runbook_step_executor_missing_result:${stepIndex}`);
+        }
+        if (!result.success) {
+          throw new Error(result.output?.trim() || `runbook_step_failed:${stepIndex}`);
+        }
+        return {
+          stepIndex,
+          success: true,
+          output: result.output ?? null,
+        };
+      });
+      output = JSON.stringify(stepOutputs);
+    } catch (error) {
+      status = "failed";
+      output = error instanceof Error ? error.message : String(error);
+    }
+
+    return {
+      ...execution,
+      status,
+      output,
+      completedAt: nowIso(),
+    };
+  }
+
+  private parseRunbookSteps(runbook: RunbookDefinition): unknown[] {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(runbook.steps);
+    } catch (error) {
+      throw new Error(
+        `runbook_steps_invalid_json:${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error("runbook_steps_not_array");
+    }
+    return parsed;
   }
 
   // ── Mappers ───────────────────────────────────────────────────────
@@ -922,6 +1012,25 @@ export class SloAlertingService {
       acknowledgedBy: row.acknowledged_by != null ? String(row.acknowledged_by) : null,
       resolvedAt: row.resolved_at != null ? String(row.resolved_at) : null,
       firedAt: String(row.fired_at ?? ""),
+    };
+  }
+
+  private getRunbook(runbookId: string): RunbookDefinition | null {
+    const row = this.db.connection
+      .prepare(`SELECT * FROM runbook_definitions WHERE id = ?`)
+      .get(runbookId) as RawRow | undefined;
+    return row ? this.mapRunbook(row) : null;
+  }
+
+  private mapRunbook(row: RawRow): RunbookDefinition {
+    return {
+      id: String(row.id ?? ""),
+      name: String(row.name ?? ""),
+      description: String(row.description ?? ""),
+      alertRuleId: row.alert_rule_id != null ? String(row.alert_rule_id) : null,
+      steps: String(row.steps ?? "[]"),
+      autoExecute: Number(row.auto_execute ?? 0) === 1,
+      createdAt: String(row.created_at ?? ""),
     };
   }
 

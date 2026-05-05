@@ -249,24 +249,41 @@ export function buildPlatformArchitectureBootstrapSummary(
 
 export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
   // §171/R19-92: Only register each service if not already registered (deduplication)
+  // R9-23: Each registration includes a healthCheck to verify the service is ready before get() returns
   if (!registry.has("architecture.layer-catalog")) {
     registry.register<readonly PlatformLayerManifest[]>("architecture.layer-catalog", {
       init: () => PLATFORM_LAYER_MANIFESTS,
+      healthCheck: () => {
+        const catalogs = PLATFORM_LAYER_MANIFESTS;
+        return catalogs.length > 0 && catalogs.every((c) => c.layerId !== undefined && c.entryModule !== undefined);
+      },
     });
   }
   if (!registry.has("architecture.plane-catalog")) {
     registry.register<readonly PlatformPlaneManifest[]>("architecture.plane-catalog", {
       init: () => PLATFORM_PLANE_MANIFESTS,
+      healthCheck: () => {
+        const planes = PLATFORM_PLANE_MANIFESTS;
+        return planes.length > 0 && planes.every((p) => p.planeId !== undefined);
+      },
     });
   }
   if (!registry.has("architecture.app-catalog")) {
     registry.register<readonly PlatformAppManifest[]>("architecture.app-catalog", {
       init: () => Object.freeze([...listPlatformApps()]),
+      healthCheck: () => {
+        const apps = listPlatformApps();
+        return apps.length > 0 && apps.every((a) => a.appId !== undefined && a.kind !== undefined);
+      },
     });
   }
   if (!registry.has("architecture.startup-targets")) {
     registry.register<readonly PlatformStartupTarget[]>("architecture.startup-targets", {
       init: () => Object.freeze([...buildPlatformStartupTargets()]),
+      healthCheck: () => {
+        const targets = buildPlatformStartupTargets();
+        return targets.length > 0 && targets.every((t) => t.targetKind !== undefined);
+      },
     });
   }
   if (!registry.has("architecture.bootstrap-summary")) {
@@ -278,6 +295,15 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
         startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
       }),
       dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
+      healthCheck: () => {
+        const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
+        return (
+          summary !== undefined &&
+          summary.layerCount > 0 &&
+          summary.planeCount > 0 &&
+          summary.appCount > 0
+        );
+      },
     });
   }
 

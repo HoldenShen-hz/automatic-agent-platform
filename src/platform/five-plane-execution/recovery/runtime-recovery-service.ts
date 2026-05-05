@@ -823,7 +823,7 @@ export class RuntimeRecoveryService {
    * @returns Complete recovery view including candidates, approvals, and events
    * @throws Error if task is not found
    */
-  public async buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): Promise<TaskRuntimeRecoveryView> {
+  public buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): TaskRuntimeRecoveryView {
     const task = this.store.task.getTask(taskId, tenantId);
     if (!task) {
       throw new StorageError("storage.task_not_found", `Task not found: ${taskId}`, {
@@ -832,9 +832,9 @@ export class RuntimeRecoveryService {
       });
     }
 
-    const taskEvents = this.store.event.listEventsForTask(taskId, tenantId);
+    const taskEventsResult = this.store.event.listEventsForTask(taskId, tenantId);
     // Get compensation records from events that indicate compensation was executed
-    const compensationRecords = this.findCompensationRecordsFromEvents(taskEvents);
+    const compensationRecords = this.findCompensationRecordsFromEvents(taskEventsResult.events);
 
     return {
       taskId,
@@ -843,8 +843,8 @@ export class RuntimeRecoveryService {
       requestedApprovals: this.store.approval.listApprovalsByTask(taskId, tenantId).filter((approval) => approval.status === "requested"),
       deadLetters: this.store.dispatch.listDeadLettersByTask(taskId, tenantId),
       compensationRecords,
-      latestCheckpoint: await findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
-      recentRecoveryEvents: taskEvents
+      latestCheckpoint: findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
+      recentRecoveryEvents: taskEventsResult.events
         .filter((event) => event.eventType.startsWith("recovery:"))
         .slice(-10)
         .map((event) => toRecoveryEvent(event)),
@@ -1172,9 +1172,9 @@ function toRecoveryEvent(event: EventRecord): TaskRuntimeRecoveryView["recentRec
   };
 }
 
-async function findLatestCheckpoint(artifacts: ArtifactRecord[]): Promise<WorkflowStepCheckpointSummary | null> {
+function findLatestCheckpoint(artifacts: ArtifactRecord[]): WorkflowStepCheckpointSummary | null {
   for (const artifact of [...artifacts].sort((left, right) => right.createdAt.localeCompare(left.createdAt))) {
-    const checkpoint = await readWorkflowStepCheckpoint(artifact);
+    const checkpoint = readWorkflowStepCheckpoint(artifact);
     if (checkpoint) {
       return summarizeWorkflowStepCheckpoint(artifact.artifactId, checkpoint);
     }

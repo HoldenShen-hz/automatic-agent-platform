@@ -53,6 +53,14 @@ interface ServiceRegistration<T> {
   teardown?: ServiceTeardownFn<T>;
   /** List of service IDs that this service depends on */
   dependsOn?: string[];
+  /**
+   * Optional health check function that verifies the service is ready.
+   * Called after init() and before the service instance is returned/cached.
+   * Should return true if healthy, false otherwise.
+   * Can return a Promise for async health checks.
+   * If not provided, service is considered healthy by default.
+   */
+  healthCheck?: () => boolean | Promise<boolean>;
 }
 
 /**
@@ -224,15 +232,42 @@ export class ServiceRegistry {
       }
     }
 
-    // Initialize this service and cache
+    // Initialize this service
     this.initializing.add(name);
+    let instance: T;
     try {
-      const instance = registration.init() as T;
-      this.instances.set(name, instance);
-      return instance;
+      instance = registration.init() as T;
     } finally {
       this.initializing.delete(name);
     }
+
+    // R9-23: Cache instance BEFORE health check so that if healthCheck() calls get()
+    // on the same service, it finds the cached instance and returns without recursion.
+    // The instance is only returned/usable if healthCheck passes.
+    this.instances.set(name, instance);
+
+    // Health gate - verify service is ready before returning
+    if (registration.healthCheck !== undefined) {
+      const healthy = registration.healthCheck();
+      if (healthy instanceof Promise) {
+        throw new InternalAppError(
+          "service_registry.async_health_check",
+          `service_registry.async_health_check: Async healthCheck not yet supported for "${name}"`,
+          { source: "internal", details: { serviceName: name } },
+        );
+      }
+      if (!healthy) {
+        // Remove from cache since health check failed
+        this.instances.delete(name);
+        throw new InternalAppError(
+          "service_registry.unhealthy",
+          `service_registry.unhealthy: Service "${name}" failed health check and is not ready`,
+          { source: "internal", details: { serviceName: name } },
+        );
+      }
+    }
+
+    return instance;
   }
 
   /**

@@ -442,7 +442,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       occurredAt: "2026-04-06T10:00:15.000Z",
     });
     const audits = store.lease.listLeaseAudits("exec-upgrade-handover");
-    const events = store.event.listEventsForTask("task-upgrade-handover");
+    const eventsResult = store.event.listEventsForTask("task-upgrade-handover");
     const previousWorker = store.worker.getWorkerSnapshot("worker-upgrade-source");
     const nextWorker = store.worker.getWorkerSnapshot("worker-upgrade-target");
     db.close();
@@ -458,7 +458,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
         && previousWorker?.runningExecutionsJson === "[]"
         && (nextWorker?.runningExecutionsJson.includes("exec-upgrade-handover") ?? false)
         && audits.some((audit) => audit.eventType === "lease_handover")
-        && events.some((event) => event.eventType === "lease:handover_recorded"),
+        && eventsResult.events.some((event) => event.eventType === "lease:handover_recorded"),
       summary: "step-boundary rolling upgrades can hand over active leases without losing lineage",
       details: {
         granted,
@@ -469,7 +469,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
           reasonCode: audit.reasonCode,
           fencingToken: audit.fencingToken,
         })),
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });

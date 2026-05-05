@@ -288,18 +288,18 @@ async function runDuplicateScenario(outputDir: string): Promise<StableWorkerWrit
       terminalStatus: "done",
       occurredAt: "2026-04-04T12:00:11.000Z",
     });
-    const events = store.event.listEventsForTask("task-worker-writeback");
+    const eventsResult = store.event.listEventsForTask("task-worker-writeback");
     db.close();
 
     return {
       passed:
         duplicate.accepted === false &&
         duplicate.reasonCode === "execution_not_executing" &&
-        events.some((event) => event.eventType === "worker:writeback_rejected"),
+        eventsResult.events.some((event) => event.eventType === "worker:writeback_rejected"),
       summary: "duplicate writeback is rejected once the execution has already reached a terminal state",
       details: {
         duplicate,
-        events,
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });

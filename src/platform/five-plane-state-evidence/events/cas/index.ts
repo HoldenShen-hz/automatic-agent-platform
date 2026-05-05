@@ -5,9 +5,11 @@
  * state consistency in execution layer.
  *
  * @see §25 Data Consistency in docs_zh/architecture/00-platform-architecture.md
+ * @see R16-35: SqliteCasRepository provides durable storage for CAS records
  */
 
-export { CasService, type CasResult } from "./cas-service.js";
+export { CasService, type CasResult, type CasRepository, createInMemoryCasService } from "./cas-service.js";
+export { SqliteCasRepository } from "./sqlite-cas-repository.js";
 export {
   FencingTokenService,
   type FenceMode,

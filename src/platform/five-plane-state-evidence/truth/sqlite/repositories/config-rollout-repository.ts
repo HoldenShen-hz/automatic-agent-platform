@@ -12,12 +12,12 @@
 
 import type { SqliteConnection } from "../query-helper.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
-import { stableStringify } from "../../../../five-plane-control-plane/config-center/config-governance-support.js";
+import { stableStringify } from "../../../../control-plane/config-center/config-governance-support.js";
 import type {
   ConfigRollout,
   ConfigRolloutStore,
   RolloutStage,
-} from "../../../../five-plane-control-plane/config-center/config-rollout-service.js";
+} from "../../../../control-plane/config-center/config-rollout-service.js";
 
 /**
  * Represents a config version snapshot stored in the database.

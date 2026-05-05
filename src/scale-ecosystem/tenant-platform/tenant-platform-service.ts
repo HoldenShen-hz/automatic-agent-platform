@@ -831,6 +831,7 @@ export class TenantPlatformService {
       budget_amount: 0,
       approval_capacity: 0,
       storage_io: 0,
+      promotion_budget: 0,
     };
 
     // Check tenant-scoped quota using the quota enforcer

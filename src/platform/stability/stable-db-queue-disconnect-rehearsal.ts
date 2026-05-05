@@ -249,7 +249,7 @@ async function runQueueDisconnectDegradeScenario(outputDir: string): Promise<Sta
       occurredAt: "2026-04-07T12:00:06.000Z",
     });
     const tickets = store.worker.listExecutionTicketsByExecution("exec-queue-disconnect-degrade");
-    const events = store.event.listEventsForTask("task-queue-disconnect-degrade");
+    const eventsResult = store.event.listEventsForTask("task-queue-disconnect-degrade");
     db.close();
 
     return {
@@ -260,13 +260,13 @@ async function runQueueDisconnectDegradeScenario(outputDir: string): Promise<Sta
         decision.ticket?.id === created.ticket.id &&
         tickets.length === 1 &&
         tickets[0]?.status === "pending" &&
-        events.some((event) => event.eventType === "dispatch:decision_recorded"),
+        eventsResult.events.some((event) => event.eventType === "dispatch:decision_recorded"),
       summary: "queue disconnect degrades dispatch to an explicit blocked state while preserving the authoritative ticket",
       details: {
         created,
         decision,
         tickets,
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });
@@ -319,7 +319,7 @@ async function runMissingTicketRepairScenario(outputDir: string): Promise<Stable
     const tickets = store.worker.listExecutionTicketsByExecution("exec-queue-disconnect-repair");
     const rebuiltTicket = tickets.find((ticket) => ticket.id !== created.ticket.id) ?? null;
     const rebuiltCapabilities = rebuiltTicket ? JSON.parse(rebuiltTicket.requiredCapabilitiesJson) as string[] : [];
-    const events = store.event.listEventsForTask("task-queue-disconnect-repair");
+    const eventsResult = store.event.listEventsForTask("task-queue-disconnect-repair");
     db.close();
 
     return {
@@ -333,7 +333,7 @@ async function runMissingTicketRepairScenario(outputDir: string): Promise<Stable
         rebuiltTicket?.dispatchAfter === "2026-04-07T12:10:30.000Z" &&
         rebuiltCapabilities.includes("bash") &&
         rebuiltCapabilities.includes("python") &&
-        events.some((event) => event.eventType === "dispatch:ticket_rebuilt"),
+        eventsResult.events.some((event) => event.eventType === "dispatch:ticket_rebuilt"),
       summary: "after queue reconnect, the repair job rebuilds a missing dispatch ticket from authoritative DB truth and plan metadata",
       details: {
         created,
@@ -341,7 +341,7 @@ async function runMissingTicketRepairScenario(outputDir: string): Promise<Stable
         repaired,
         tickets,
         rebuiltCapabilities,
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });
@@ -443,7 +443,7 @@ async function runAuthoritativeWritebackFailureScenario(
     // Verify final state
     const snapshot = store.operations.loadTaskSnapshot("task-queue-disconnect-writeback");
     const lease = store.worker.getExecutionLease(dispatched.leaseId ?? "");
-    const events = store.event.listEventsForTask("task-queue-disconnect-writeback");
+    const eventsResult = store.event.listEventsForTask("task-queue-disconnect-writeback");
     db.close();
 
     return {
@@ -455,11 +455,11 @@ async function runAuthoritativeWritebackFailureScenario(
         snapshot.execution?.status === "succeeded" &&
         snapshot.task.status === "done" &&
         lease?.status === "released" &&
-        events.filter((event) => event.eventType === "worker:writeback_rejected").some((event) => {
+        eventsResult.events.filter((event) => event.eventType === "worker:writeback_rejected").some((event) => {
           const payload = JSON.parse(event.payloadJson) as { reasonCode?: string | null };
           return payload.reasonCode === "authoritative_store_unavailable";
         }) &&
-        events.some((event) => event.eventType === "worker:writeback_recorded"),
+        eventsResult.events.some((event) => event.eventType === "worker:writeback_recorded"),
       summary: "authoritative writeback fails closed during DB outage and succeeds only after the store recovers",
       details: {
         created,
@@ -469,7 +469,7 @@ async function runAuthoritativeWritebackFailureScenario(
         recovered,
         snapshot,
         lease,
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });

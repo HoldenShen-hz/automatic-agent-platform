@@ -463,7 +463,13 @@ test("opsgenie alert channel maps severity to priority", async () => {
 test("runbook definition, execution, and listing", () => {
   const h = createHarness("aa-runbook-");
   try {
-    const service = new SloAlertingService(h.db);
+    const executedSteps: Array<{ stepIndex: number; step: unknown }> = [];
+    const service = new SloAlertingService(h.db, {
+      runbookStepExecutor: ({ stepIndex, step }) => {
+        executedSteps.push({ stepIndex, step });
+        return { success: true, output: `executed:${stepIndex}` };
+      },
+    });
     const rule = service.defineAlertRule({
       name: "db_slow",
       sloId: null,
@@ -489,9 +495,36 @@ test("runbook definition, execution, and listing", () => {
     const execution = service.executeRunbook(runbook.id, alert.id, "oncall");
     assert.equal(execution.status, "completed");
     assert.ok(execution.completedAt);
+    assert.equal(executedSteps.length, 3);
 
     const execs = service.listRunbookExecutions(runbook.id);
     assert.equal(execs.length, 1);
+    assert.equal(execs[0]?.status, "completed");
+  } finally {
+    h.db.close();
+    cleanupPath(h.workspace);
+  }
+});
+
+test("runbook execution fails closed when steps exist but no executor is configured", () => {
+  const h = createHarness("aa-runbook-no-executor-");
+  try {
+    const service = new SloAlertingService(h.db);
+    const runbook = service.defineRunbook({
+      name: "missing_executor",
+      description: "Should fail closed",
+      alertRuleId: null,
+      steps: JSON.stringify([{ action: "restart" }]),
+      autoExecute: false,
+    });
+
+    const execution = service.executeRunbook(runbook.id, null, "oncall");
+
+    assert.equal(execution.status, "failed");
+    assert.match(execution.output ?? "", /runbook_step_executor_not_configured/);
+
+    const [persisted] = service.listRunbookExecutions(runbook.id);
+    assert.equal(persisted?.status, "failed");
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

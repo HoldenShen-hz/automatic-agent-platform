@@ -490,7 +490,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
     const previousWorker = workers.getWorker("worker-maintenance-source");
     const nextWorker = workers.getWorker("worker-maintenance-target");
     const audits = store.lease.listLeaseAudits("exec-maintenance-handover");
-    const events = store.event.listEventsForTask("task-maintenance-handover");
+    const eventsResult = store.event.listEventsForTask("task-maintenance-handover");
     db.close();
 
     const passed =
@@ -509,7 +509,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
       && audits.some(
         (audit) => audit.eventType === "lease_handover" && audit.reasonCode === "maintenance_drain_handover",
       )
-      && events.some((event) => event.eventType === "lease:handover_recorded");
+      && eventsResult.events.some((event) => event.eventType === "lease:handover_recorded");
 
     return {
       passed,
@@ -528,7 +528,7 @@ async function runStepBoundaryHandoverScenario(outputDir: string): Promise<Stabl
           reasonCode: audit.reasonCode,
           fencingToken: audit.fencingToken,
         })),
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });

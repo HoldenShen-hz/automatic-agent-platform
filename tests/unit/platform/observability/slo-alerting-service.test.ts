@@ -441,7 +441,13 @@ test("SloAlertingService defines runbook", () => {
 test("SloAlertingService executes runbook", () => {
   const db = createTestDb();
   const mockDb = createMockDatabase(db);
-  const service = new SloAlertingService(mockDb);
+  const executedSteps: unknown[] = [];
+  const service = new SloAlertingService(mockDb, {
+    runbookStepExecutor: ({ step }) => {
+      executedSteps.push(step);
+      return { success: true, output: "executed" };
+    },
+  });
 
   const runbook = service.defineRunbook({
     name: "Test Runbook",
@@ -458,6 +464,7 @@ test("SloAlertingService executes runbook", () => {
   assert.equal(execution.status, "completed");
   assert.equal(execution.executedBy, "test-user");
   assert.ok(execution.completedAt != null, "Should have completedAt");
+  assert.equal(executedSteps.length, 1, "Should execute persisted runbook steps");
 });
 
 test("SloAlertingService lists runbook executions", () => {

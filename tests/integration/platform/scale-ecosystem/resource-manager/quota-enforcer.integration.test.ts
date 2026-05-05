@@ -84,6 +84,7 @@ test("evaluateMultiDimensionalQuota passes when all dimensions within limits", (
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
+    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);
@@ -114,6 +115,7 @@ test("evaluateMultiDimensionalQuota fails when dimension exceeds hard limit", ()
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
+    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);
@@ -144,6 +146,7 @@ test("evaluateMultiDimensionalQuota warns when dimension exceeds soft (80%) of h
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
+    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);
@@ -163,6 +166,7 @@ test("evaluateMultiDimensionalQuota falls back to single-dimension when no multi
     budget_amount: 0,
     approval_capacity: 0,
     storage_io: 0,
+    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);
@@ -227,6 +231,7 @@ test("evaluateMultiDimensionalQuota across all dimensions simultaneously", () =>
     budget_amount: 2500,
     approval_capacity: 50,
     storage_io: 500,
+    promotion_budget: 0,
   };
 
   const decision = evaluateMultiDimensionalQuota(policy, requested);

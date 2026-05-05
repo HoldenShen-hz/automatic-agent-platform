@@ -8,6 +8,8 @@ export const MultiResourceQuotaVectorSchema = z.object({
   budget_amount: z.number().nonnegative().default(0),
   approval_capacity: z.number().int().nonnegative().default(0),
   storage_io: z.number().int().nonnegative().default(0),
+  // R15-68: Promotion budget for fair scheduling - limits task promotions from queue to active
+  promotion_budget: z.number().int().nonnegative().default(0),
 });
 
 export type MultiResourceQuotaVector = z.infer<typeof MultiResourceQuotaVectorSchema>;
@@ -98,6 +100,7 @@ export function evaluateMultiDimensionalQuota(
     "budget_amount",
     "approval_capacity",
     "storage_io",
+    "promotion_budget",
   ];
 
   for (const dim of dimensionKeys) {

@@ -375,8 +375,8 @@ async function runDispatchReadOnlyScenario(outputDir: string): Promise<StableDbW
       occurredAt: "2026-04-07T13:10:06.000Z",
     });
     const ticket = store.worker.getExecutionTicket(created.ticket.id);
-    const events = store.event.listEventsForTask("task-db-writability-dispatch");
-    const decisionEvent = events.find((event) => event.eventType === "dispatch:decision_recorded");
+    const eventsResult = store.event.listEventsForTask("task-db-writability-dispatch");
+    const decisionEvent = eventsResult.events.find((event) => event.eventType === "dispatch:decision_recorded");
     const decisionPayload = decisionEvent
       ? (JSON.parse(decisionEvent.payloadJson) as { outcome: string; reasonCode: string | null })
       : null;
@@ -395,7 +395,7 @@ async function runDispatchReadOnlyScenario(outputDir: string): Promise<StableDbW
         created,
         decision,
         ticket,
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
         decisionPayload,
       },
     };

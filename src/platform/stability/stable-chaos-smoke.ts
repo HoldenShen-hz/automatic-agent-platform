@@ -399,16 +399,16 @@ async function runDuplicateApprovalIdempotencyScenario(outputDir: string): Promi
     approvals.applyDecision(decision);
 
     const approval = store.approval.getApproval(request.approvalId);
-    const events = store.event.listEventsForTask("task-approval-chaos");
+    const eventsResult = store.event.listEventsForTask("task-approval-chaos");
     db.close();
 
-    const respondedEvents = events.filter((event) => event.eventType === "decision:responded");
+    const respondedEvents = eventsResult.events.filter((event) => event.eventType === "decision:responded");
     return {
       passed: approval?.status === "approved" && respondedEvents.length === 1,
       summary: "duplicate approval responses do not double-advance the decision state",
       details: {
         approvalStatus: approval?.status ?? null,
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
         respondedEventCount: respondedEvents.length,
       },
     };

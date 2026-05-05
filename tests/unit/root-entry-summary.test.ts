@@ -12,6 +12,17 @@ import {
   getPlatformApplicationKernel,
   buildPlatformRootSummary,
 } from "../../src/index.js";
+import { ServiceRegistry } from "../../src/platform/shared/lifecycle/service-registry.js";
+import { DOMAINS_RUNTIME_CATALOG_SERVICE_ID } from "../../src/domains-runtime-catalog.js";
+import { DOMAINS_STARTUP_PLAN_SERVICE_ID } from "../../src/domains-startup-plan.js";
+import { FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID } from "../../src/platform/five-plane-runtime-bootstrap.js";
+import { FIVE_PLANE_STARTUP_PLAN_SERVICE_ID } from "../../src/platform/five-plane-startup-plan.js";
+import { AI_OPERATIONS_RUNTIME_CATALOG_SERVICE_ID } from "../../src/platform/ai-operations-runtime-catalog.js";
+import { AI_OPERATIONS_STARTUP_PLAN_SERVICE_ID } from "../../src/platform/ai-operations-startup-plan.js";
+import { INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID } from "../../src/interaction-governance-runtime-catalog.js";
+import { INTERACTION_GOVERNANCE_STARTUP_PLAN_SERVICE_ID } from "../../src/interaction-governance-startup-plan.js";
+import { SCALE_OPS_RUNTIME_CATALOG_SERVICE_ID } from "../../src/scale-ops-runtime-catalog.js";
+import { SCALE_OPS_STARTUP_PLAN_SERVICE_ID } from "../../src/scale-ops-startup-plan.js";
 
 import type {
   PlatformAppKind,
@@ -76,6 +87,23 @@ test("buildPlatformRootSummary returns an object with architecture property", ()
   const summary = buildPlatformRootSummary();
   assert.ok("architecture" in summary, "should have architecture property");
   assert.ok(summary.architecture != null, "architecture should not be null");
+});
+
+test("buildPlatformRootSummary initializes summary segments through ServiceRegistry-backed registrations", () => {
+  const registry = ServiceRegistry.createScoped();
+  const summary = buildPlatformRootSummary(registry);
+
+  assert.ok(summary.architecture != null, "architecture should not be null");
+  assert.equal(registry.isInitialized(DOMAINS_RUNTIME_CATALOG_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(FIVE_PLANE_STARTUP_PLAN_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(AI_OPERATIONS_RUNTIME_CATALOG_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(AI_OPERATIONS_STARTUP_PLAN_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(INTERACTION_GOVERNANCE_RUNTIME_CATALOG_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(INTERACTION_GOVERNANCE_STARTUP_PLAN_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(SCALE_OPS_RUNTIME_CATALOG_SERVICE_ID), true);
+  assert.equal(registry.isInitialized(SCALE_OPS_STARTUP_PLAN_SERVICE_ID), true);
 });
 
 test("buildPlatformRootSummary returns an object with domains property", () => {

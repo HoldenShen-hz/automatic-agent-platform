@@ -3,17 +3,25 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
+import { registerDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
 import { buildDomainsStartupPlan } from "./domains-startup-plan.js";
+import { registerDomainsStartupPlan } from "./domains-startup-plan.js";
 import { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
+import { registerInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
 import { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
+import { registerInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 import { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
+import { registerAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
 import { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
+import { registerAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
 import { getGlobalGracefulShutdown } from "./platform/execution/startup/graceful-shutdown.js";
 import { registerProcessErrorHandlers } from "./platform/execution/startup/process-error-handlers.js";
 import { requireValidStartupEnv } from "./platform/control-plane/config-center/startup-env-schema.js";
 import { runSingleTaskExecution } from "./platform/execution/execution-engine/single-task-execution.js";
 import { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
+import { registerFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
 import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
+import { registerFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
 import {
   buildPlatformArchitectureBootstrapSummary,
   assertStartupOrderEnforced,
@@ -24,7 +32,10 @@ import {
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind, PlatformRootEntryMode } from "./platform-architecture-types.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
+import { registerScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
+import { registerScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
+import { ServiceRegistry } from "./platform/shared/lifecycle/service-registry.js";
 
 export * as apps from "./apps/index.js";
 export * as domains from "./domains/index.js";
@@ -215,26 +226,27 @@ function safeBuild<T>(thunk: () => T, fallback: T): { success: true; value: T } 
   }
 }
 
-export function buildPlatformRootSummary(): PlatformRootSummary {
+export function buildPlatformRootSummary(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformRootSummary {
   // §9: Each build step has error boundary - single failure doesn't crash overall
-  // Use ServiceRegistry to get architecture data (single source of truth)
-  const architectureResult = safeBuild(() => getPlatformArchitectureServices().summary, null);
-  const domainsStartupPlanResult = safeBuild(buildDomainsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
-  const domainsRuntimeCatalogResult = safeBuild(buildDomainsRuntimeCatalog, { ring1: [], ring2: [], ring3: [] });
-  const startupPlanResult = safeBuild(buildFivePlaneStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
-  const aiOperationsStartupPlanResult = safeBuild(buildAiOperationsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
-  const interactionGovernanceStartupPlanResult = safeBuild(buildInteractionGovernanceStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
-  const runtimeCatalogResult = safeBuild(buildFivePlaneRuntimeCatalog, {
+  // Use ServiceRegistry-backed registration for every summary segment so root
+  // summary reads the same singleton snapshots the runtime bootstrap uses.
+  const architectureResult = safeBuild(() => getPlatformArchitectureServices(registry).summary, null);
+  const domainsStartupPlanResult = safeBuild(() => registerDomainsStartupPlan(registry), { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const domainsRuntimeCatalogResult = safeBuild(() => registerDomainsRuntimeCatalog(registry), { ring1: [], ring2: [], ring3: [] });
+  const startupPlanResult = safeBuild(() => registerFivePlaneStartupPlan(registry), { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const aiOperationsStartupPlanResult = safeBuild(() => registerAiOperationsStartupPlan(registry), { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const interactionGovernanceStartupPlanResult = safeBuild(() => registerInteractionGovernanceStartupPlan(registry), { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const runtimeCatalogResult = safeBuild(() => registerFivePlaneRuntimeCatalog(registry), {
     interfacePlane: [], controlPlane: [], orchestrationPlane: [], executionPlane: [], stateEvidencePlane: [],
   });
-  const aiOperationsRuntimeCatalogResult = safeBuild(buildAiOperationsRuntimeCatalog, {
+  const aiOperationsRuntimeCatalogResult = safeBuild(() => registerAiOperationsRuntimeCatalog(registry), {
     modelGateway: [], promptEngine: [], compliance: [], harness: [],
   });
-  const interactionGovernanceRuntimeCatalogResult = safeBuild(buildInteractionGovernanceRuntimeCatalog, {
+  const interactionGovernanceRuntimeCatalogResult = safeBuild(() => registerInteractionGovernanceRuntimeCatalog(registry), {
     interaction: [], governance: [],
   });
-  const scaleOpsStartupPlanResult = safeBuild(buildScaleOpsStartupPlan, { startupOrder: [], totalCapabilityCount: 0, steps: [] });
-  const scaleOpsRuntimeCatalogResult = safeBuild(buildScaleOpsRuntimeCatalog, { scaleEcosystem: [], opsMaturity: [] });
+  const scaleOpsStartupPlanResult = safeBuild(() => registerScaleOpsStartupPlan(registry), { startupOrder: [], totalCapabilityCount: 0, steps: [] });
+  const scaleOpsRuntimeCatalogResult = safeBuild(() => registerScaleOpsRuntimeCatalog(registry), { scaleEcosystem: [], opsMaturity: [] });
 
   const architecture = architectureResult.success ? architectureResult.value : null;
   const domainsStartupPlan = domainsStartupPlanResult.success ? domainsStartupPlanResult.value : { startupOrder: [], totalCapabilityCount: 0, steps: [] };

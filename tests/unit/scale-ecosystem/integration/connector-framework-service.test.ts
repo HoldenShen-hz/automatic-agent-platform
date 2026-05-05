@@ -219,6 +219,72 @@ test("ConnectorFrameworkService execute returns deferred for degraded connector"
   assert.equal(result.status, "deferred");
 });
 
+test("ConnectorFrameworkService execute invokes registered executor and records executor-backed result", () => {
+  const service = new ConnectorFrameworkService();
+  const manifest: ConnectorManifest = {
+    connectorId: "executor-connector",
+    provider: "TestProvider",
+    capabilities: ["cap1"],
+    lifecycleState: "enabled",
+  };
+  service.register(manifest);
+
+  const seenCapabilities: string[] = [];
+  service.registerExecutor("executor-connector", ({ request, executionKey }) => {
+    seenCapabilities.push(`${request.capability}:${executionKey}`);
+    return {
+      connectorId: request.connectorId,
+      success: true,
+      status: "succeeded",
+    };
+  });
+
+  const result = service.execute(
+    {
+      connectorId: "executor-connector",
+      capability: "cap1",
+      payload: {},
+      policyRef: "policy.connector.test",
+      secretBindings: [{ secretRef: "secret://executor-connector/token", purpose: "api_token" }],
+    },
+    { environment: "dev", executedAt: "2026-01-02T00:00:00.000Z" },
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(seenCapabilities.length, 1);
+
+  const records = service.listExecutionRecords("executor-connector");
+  assert.equal(records.length, 1);
+  assert.equal(records[0]?.mode, "executor");
+  assert.equal(records[0]?.executedAt, "2026-01-02T00:00:00.000Z");
+});
+
+test("ConnectorFrameworkService execute keeps synthesized fallback for connectors without executor", () => {
+  const service = new ConnectorFrameworkService();
+  const manifest: ConnectorManifest = {
+    connectorId: "synth-fallback-connector",
+    provider: "TestProvider",
+    capabilities: ["cap1"],
+    lifecycleState: "enabled",
+  };
+  service.register(manifest);
+
+  service.execute(
+    {
+      connectorId: "synth-fallback-connector",
+      capability: "cap1",
+      payload: {},
+      policyRef: "policy.connector.test",
+      secretBindings: [{ secretRef: "secret://synth-fallback-connector/token", purpose: "api_token" }],
+    },
+    { environment: "dev" },
+  );
+
+  const records = service.listExecutionRecords("synth-fallback-connector");
+  assert.equal(records.length, 1);
+  assert.equal(records[0]?.mode, "synthesized");
+});
+
 test("ConnectorFrameworkService execute throws for prod with non-verified connector", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {

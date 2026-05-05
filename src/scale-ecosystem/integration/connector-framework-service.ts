@@ -8,6 +8,7 @@ import {
 import {
   buildConnectorExecutionKey,
   ConnectorExecutionRequestSchema,
+  ConnectorExecutionResultSchema,
   type ConnectorExecutionRequest,
   type ConnectorExecutionResult,
 } from "./connector-runtime/index.js";
@@ -28,6 +29,32 @@ export interface ConnectorBinding {
 
 export type RegisteredConnectorManifest = NormalizedConnectorManifest;
 
+export interface ConnectorExecutionContext {
+  readonly request: ConnectorExecutionRequest;
+  readonly manifest: RegisteredConnectorManifest;
+  readonly executionKey: string;
+  readonly environment: "dev" | "staging" | "prod";
+  readonly eventType?: string;
+  readonly executedAt: string;
+}
+
+export type ConnectorExecutor = (
+  context: ConnectorExecutionContext,
+) => ConnectorExecutionResult;
+
+export interface ConnectorExecutionRecord {
+  readonly connectorId: string;
+  readonly executionKey: string;
+  readonly executedAt: string;
+  readonly status: ConnectorExecutionResult["status"];
+  readonly success: boolean;
+  readonly mode: "executor" | "synthesized";
+}
+
+export interface ConnectorFrameworkServiceOptions {
+  readonly executors?: Record<string, ConnectorExecutor>;
+}
+
 // R16-36 FIX #2124: Add circuit breaker state per connector to prevent cascading failures.
 // Without circuit breaker, a failing connector can exhaust resources waiting for retries.
 // Circuit breaker tracks consecutive failures and opens after threshold, failing fast.
@@ -41,6 +68,8 @@ export class ConnectorFrameworkService {
   private readonly manifests = new Map<string, RegisteredConnectorManifest>();
   private readonly bindings = new Map<string, ConnectorBinding[]>();
   private readonly health = new Map<string, ConnectorHealthReport[]>();
+  private readonly executors = new Map<string, ConnectorExecutor>();
+  private readonly executionRecords: ConnectorExecutionRecord[] = [];
   // P0 FIX: Add SideEffectManager per INV-SIDEEFFECT-001.
   // Connector execute() calls must be recorded to maintain audit trail and enable reconciliation.
   private readonly sideEffectManager = new SideEffectManager();
@@ -49,10 +78,20 @@ export class ConnectorFrameworkService {
   private static readonly CIRCUIT_FAILURE_THRESHOLD = 5;
   private static readonly CIRCUIT_RESET_TIMEOUT_MS = 30000;
 
+  public constructor(options: ConnectorFrameworkServiceOptions = {}) {
+    for (const [connectorId, executor] of Object.entries(options.executors ?? {})) {
+      this.executors.set(connectorId, executor);
+    }
+  }
+
   public register(manifest: ConnectorManifest): RegisteredConnectorManifest {
     const parsed = ConnectorManifestSchema.parse(manifest) as RegisteredConnectorManifest;
     this.manifests.set(parsed.connectorId, parsed);
     return parsed;
+  }
+
+  public registerExecutor(connectorId: string, executor: ConnectorExecutor): void {
+    this.executors.set(connectorId, executor);
   }
 
   public bind(connectorId: string, tenantId: string, environment: ConnectorBinding["environment"], boundAt = nowIso()): ConnectorBinding {
@@ -95,6 +134,7 @@ export class ConnectorFrameworkService {
     const normalizedRequest = ConnectorExecutionRequestSchema.parse(request);
     const manifest = this.requireManifest(normalizedRequest.connectorId);
     const executionKey = buildConnectorExecutionKey(normalizedRequest);
+    const executedAt = options.executedAt ?? nowIso();
     if (options.environment === "prod" && manifest.lifecycleState !== "verified" && manifest.lifecycleState !== "enabled") {
       throw new Error(`connector_framework.prod_requires_verified:${normalizedRequest.connectorId}`);
     }
@@ -104,7 +144,7 @@ export class ConnectorFrameworkService {
         success: false,
         status: "failed",
         executionKey,
-        executedAt: options.executedAt ?? nowIso(),
+        executedAt,
       };
     }
     if (options.eventType != null && !manifest.supportedEvents.includes(options.eventType)) {
@@ -113,7 +153,7 @@ export class ConnectorFrameworkService {
         success: false,
         status: "failed",
         executionKey,
-        executedAt: options.executedAt ?? nowIso(),
+        executedAt,
       };
     }
 
@@ -131,7 +171,7 @@ export class ConnectorFrameworkService {
           success: false,
           status: "failed",
           executionKey,
-          executedAt: options.executedAt ?? nowIso(),
+          executedAt,
         };
       }
     }
@@ -145,14 +185,57 @@ export class ConnectorFrameworkService {
         success: false,
         status: "failed",
         executionKey,
-        executedAt: options.executedAt ?? nowIso(),
+        executedAt,
       };
+    }
+
+    const executor = this.executors.get(normalizedRequest.connectorId);
+    if (executor != null) {
+      try {
+        const result = ConnectorExecutionResultSchema.parse(executor({
+          request: normalizedRequest,
+          manifest,
+          executionKey,
+          environment: options.environment,
+          eventType: options.eventType,
+          executedAt,
+        }));
+        const finalResult = {
+          ...result,
+          executionKey,
+          executedAt,
+        };
+        this.recordExecution(normalizedRequest, executionKey, finalResult.success, finalResult.status, "executor", executedAt);
+        if (finalResult.success) {
+          this.recordCircuitSuccess(normalizedRequest.connectorId);
+        } else {
+          this.recordCircuitFailure(normalizedRequest.connectorId);
+        }
+        return finalResult;
+      } catch {
+        this.recordCircuitFailure(normalizedRequest.connectorId);
+        this.recordExecution(normalizedRequest, executionKey, false, "failed", "executor", executedAt);
+        return {
+          connectorId: normalizedRequest.connectorId,
+          success: false,
+          status: "failed",
+          executionKey,
+          executedAt,
+        };
+      }
     }
 
     // §203-2382: Record execution via SideEffectManager per INV-SIDEEFFECT-001.
     // The connector's actual external call (API invoke, HTTP request, etc.) happens
     // out-of-process. Here we record the intent and outcome for audit/reconciliation.
-    this.recordExecution(normalizedRequest, executionKey, true);
+    this.recordExecution(
+      normalizedRequest,
+      executionKey,
+      true,
+      health === "degraded" ? "deferred" : "succeeded",
+      "synthesized",
+      executedAt,
+    );
     // R16-36 FIX #2124: On success, reset circuit failure count
     this.recordCircuitSuccess(normalizedRequest.connectorId);
 
@@ -161,7 +244,7 @@ export class ConnectorFrameworkService {
       success: true,
       status: health === "degraded" ? "deferred" : "succeeded",
       executionKey,
-      executedAt: options.executedAt ?? nowIso(),
+      executedAt,
     };
   }
 
@@ -192,7 +275,14 @@ export class ConnectorFrameworkService {
 
   // P0 FIX: Record connector execution via SideEffectManager per INV-SIDEEFFECT-001.
   // All connector execute() calls must be recorded to maintain audit trail and enable reconciliation.
-  private recordExecution(request: ConnectorExecutionRequest, executionKey: string, success: boolean): void {
+  private recordExecution(
+    request: ConnectorExecutionRequest,
+    executionKey: string,
+    success: boolean,
+    status: ConnectorExecutionResult["status"],
+    mode: "executor" | "synthesized",
+    executedAt: string,
+  ): void {
     // §INV-SIDEEFFECT-001: Record each connector execution as a SideEffectRecord.
     // The actual external API call happens elsewhere (out of process); this records
     // the intent and outcome for reconciliation and audit purposes.
@@ -202,12 +292,23 @@ export class ConnectorFrameworkService {
       tenantId: "system",
       traceId: executionKey,
       emittedBy: "ConnectorFrameworkService",
-      occurredAt: nowIso(),
+      occurredAt: executedAt,
     };
     // Connector execution is recorded by creating a side effect record and transitioning it.
     // The SideEffectManager coordinates reconciliation and compensation workflows.
     void context; // context used for future reconciliation tracking
-    void success;
+    void this.sideEffectManager;
+    this.executionRecords.push({
+      connectorId: request.connectorId,
+      executionKey,
+      executedAt,
+      status,
+      success,
+      mode,
+    });
+    if (this.executionRecords.length > 500) {
+      this.executionRecords.splice(0, this.executionRecords.length - 500);
+    }
   }
 
   public listEnabled(): RegisteredConnectorManifest[] {
@@ -217,6 +318,13 @@ export class ConnectorFrameworkService {
 
   public getManifest(connectorId: string): RegisteredConnectorManifest | null {
     return this.manifests.get(connectorId) ?? null;
+  }
+
+  public listExecutionRecords(connectorId?: string): ConnectorExecutionRecord[] {
+    const records = connectorId == null
+      ? this.executionRecords
+      : this.executionRecords.filter((record) => record.connectorId === connectorId);
+    return [...records];
   }
 
   public listBindings(options: {

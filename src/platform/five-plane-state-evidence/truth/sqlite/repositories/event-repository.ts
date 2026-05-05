@@ -57,6 +57,18 @@ export interface TaskEventStreamSnapshot {
   lastCreatedAt: string | null;
 }
 
+/**
+ * R9-12 FIX: Result type for listEventsForTask with projection versioning.
+ * Enables efficient incremental event rebuilding via snapshot cursor.
+ */
+export interface TaskEventListResult {
+  events: EventRecord[];
+  streamVersion: number;
+  snapshotCursor: string | null;
+  lastEventId: string | null;
+  lastCreatedAt: string | null;
+}
+
 function encodeEventStreamCursor(event: Pick<EventRecord, "id" | "createdAt">): string {
   return Buffer.from(JSON.stringify({ id: event.id, createdAt: event.createdAt }), "utf8").toString("base64url");
 }
@@ -532,11 +544,12 @@ export class EventRepository {
     return Number(result.changes ?? 0);
   }
 
-  public listEventsForTask(taskId: string, limit?: number): EventRecord[];
-  public listEventsForTask(taskId: string, tenantId?: string | null): EventRecord[];
-  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): EventRecord[] {
+  public listEventsForTask(taskId: string, limit?: number): TaskEventListResult;
+  public listEventsForTask(taskId: string, tenantId?: string | null): TaskEventListResult;
+  public listEventsForTask(taskId: string, tenantIdOrLimit?: string | number | null): TaskEventListResult {
+    let events: EventRecord[];
     if (typeof tenantIdOrLimit === "number") {
-      return queryAll<EventRecord>(
+      events = queryAll<EventRecord>(
         this.conn,
         `SELECT ${EVENT_COLS}
          FROM events
@@ -546,44 +559,51 @@ export class EventRepository {
         taskId,
         tenantIdOrLimit,
       );
+    } else {
+      const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
+      if (scopedTenantId !== undefined) {
+        events = queryAll<EventRecord>(
+          this.conn,
+          `SELECT ${EVENT_COLS_PREFIXED}
+           FROM events e
+           INNER JOIN tasks t ON t.id = e.task_id
+           WHERE e.task_id = ?
+             AND t.tenant_id = ?
+           ORDER BY e.created_at ASC, e.id ASC`,
+          taskId,
+          scopedTenantId,
+        );
+      } else {
+        events = queryAll<EventRecord>(
+          this.conn,
+          `SELECT ${EVENT_COLS}
+           FROM events
+           WHERE task_id = ?
+           ORDER BY created_at ASC, id ASC`,
+          taskId,
+        );
+      }
     }
-
-    const scopedTenantId = resolveTenantScope(tenantIdOrLimit);
-    if (scopedTenantId !== undefined) {
-      return queryAll<EventRecord>(
-        this.conn,
-        `SELECT ${EVENT_COLS_PREFIXED}
-         FROM events e
-         INNER JOIN tasks t ON t.id = e.task_id
-         WHERE e.task_id = ?
-           AND t.tenant_id = ?
-         ORDER BY e.created_at ASC, e.id ASC`,
-        taskId,
-        scopedTenantId,
-      );
-    }
-
-    return queryAll<EventRecord>(
-      this.conn,
-      `SELECT ${EVENT_COLS}
-       FROM events
-       WHERE task_id = ?
-       ORDER BY created_at ASC, id ASC`,
-      taskId,
-    );
-  }
-
-  public listEventsForTaskSnapshot(taskId: string, tenantId?: string | null): TaskEventStreamSnapshot {
-    const events = this.listEventsForTask(taskId, tenantId);
     const lastEvent = events.at(-1) ?? null;
     return {
-      taskId,
-      tenantId: resolveTenantScope(tenantId) ?? null,
       events,
       streamVersion: events.length,
       snapshotCursor: lastEvent ? encodeEventStreamCursor(lastEvent) : null,
       lastEventId: lastEvent?.id ?? null,
       lastCreatedAt: lastEvent?.createdAt ?? null,
+    };
+  }
+
+  public listEventsForTaskSnapshot(taskId: string, tenantId?: string | null): TaskEventStreamSnapshot {
+    const result = this.listEventsForTask(taskId, tenantId);
+    return {
+      taskId,
+      tenantId: resolveTenantScope(tenantId) ?? null,
+      events: result.events,
+      streamVersion: result.streamVersion,
+      snapshotCursor: result.snapshotCursor,
+      lastEventId: result.lastEventId,
+      lastCreatedAt: result.lastCreatedAt,
     };
   }
 
@@ -695,7 +715,7 @@ export class EventRepository {
   }
 
   public listDispatchDecisionTracesByTask(taskId: string, tenantId?: string | null): DispatchDecisionTrace[] {
-    return this.listEventsForTask(taskId, tenantId)
+    return this.listEventsForTask(taskId, tenantId).events
       .filter((event) => event.eventType === "dispatch:decision_recorded")
       .flatMap((event) => {
         const parsed = parseDispatchDecisionTrace(event.payloadJson);

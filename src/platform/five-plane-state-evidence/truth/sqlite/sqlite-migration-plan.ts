@@ -57,12 +57,14 @@ import {
   DLQ_RECORDS_SQL,
   BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL,
   CONFIG_VERSIONING_AND_ROLLOUT_SQL,
+  EXTENDED_DLQ_RECORDS_SQL,
 } from "./sqlite-migration-runtime-part3.js";
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
 import { AUTHORITATIVE_SCHEMA_SQL } from "../sql/authoritative-schema.js";
 import { OUTBOX_SCHEMA_SQL } from "../sql/outbox-schema.js";
 import { RUNTIME_PHYSICAL_SCHEMA_SQL } from "../../../five-plane-state-evidence/truth/runtime-physical-schema.js";
+import { CAS_RECORDS_SQL } from "./sqlite-migration-runtime-part4.js";
 
 /**
  * Defines a SQLite database migration with version, name, SQL, and checksum.
@@ -361,6 +363,10 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(49, "0049_execution_ticket_graph_scheduling", EXECUTION_TICKET_GRAPH_SCHEDULING_SQL),
   // R15-78/R15-79: Persist config version snapshots and active rollouts to SQLite
   defineMigration(50, "0050_config_versioning_and_rollout", CONFIG_VERSIONING_AND_ROLLOUT_SQL),
+  // R16-35: Persist CAS records to SQLite instead of in-memory Map
+  defineMigration(51, "0051_cas_records_persistence", CAS_RECORDS_SQL),
+  // R16-37: Add extended DLQ columns for DlqService persistence
+  defineMigration(52, "0052_extended_dlq_records", EXTENDED_DLQ_RECORDS_SQL),
 ] as const;
 
 /**

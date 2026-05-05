@@ -365,6 +365,12 @@ export interface IntakeRouteInput {
     language?: string;
     source?: string;
   };
+  /** R9-09: Required capabilities for this task.
+   * If provided, the router will match against workers with these capabilities
+   * instead of deriving capabilities from the division's roles.
+   * Examples: "code_generation", "image_processing", "data_analysis"
+   */
+  requiredCapabilities?: string[];
 }
 
 /**
@@ -684,23 +690,55 @@ export class IntakeRouter {
   /**
    * R9-09: Performs capability matching for a target division.
    *
-   * Verifies that at least one worker with the division's required capabilities
+   * Verifies that at least one worker with the required capabilities
    * is available and has capacity. If no capable worker is found, the request
    * will be routed to a fallback queue.
    *
+   * Capability resolution order (first non-empty wins):
+   * 1. Task-level requiredCapabilities (explicit task declaration)
+   * 2. Inferred capabilities from task content (request/title analysis)
+   * 3. Division-derived capabilities (from roles' tools)
+   *
    * @param division - The target division
    * @param routeTrace - Trace array for logging
+   * @param taskRequiredCapabilities - Optional task-level required capabilities
+   * @param taskRequest - The task request text for capability inference
+   * @param taskTitle - Optional task title for capability inference
    * @returns CapabilityMatchResult indicating whether a capable worker was found
    */
   private matchCapabilities(
     division: LoadedDivisionDefinition | null,
     routeTrace: string[],
+    taskRequiredCapabilities?: string[],
+    taskRequest?: string,
+    taskTitle?: string,
   ): CapabilityMatchResult {
     const targetDivisionId = division?.id ?? "general_ops";
-    const requiredCapabilities = this.extractDivisionCapabilities(division);
+
+    // R9-09: Capability resolution in priority order
+    let requiredCapabilities: string[] = [];
+
+    if (taskRequiredCapabilities && taskRequiredCapabilities.length > 0) {
+      // Priority 1: Use explicit task-level capabilities
+      requiredCapabilities = taskRequiredCapabilities;
+      routeTrace.push(`capability_source:explicit_task_level`);
+    } else {
+      // Priority 2: Infer capabilities from task content
+      const inferredCapabilities = taskRequest
+        ? this.inferCapabilitiesFromContent(taskRequest, taskTitle, routeTrace)
+        : [];
+      if (inferredCapabilities.length > 0) {
+        requiredCapabilities = inferredCapabilities;
+        routeTrace.push(`capability_source:inferred_from_content`);
+      } else {
+        // Priority 3: Fall back to division-derived capabilities
+        requiredCapabilities = this.extractDivisionCapabilities(division);
+        routeTrace.push(`capability_source:derived_from_division`);
+      }
+    }
 
     if (requiredCapabilities.length === 0) {
-      routeTrace.push(`capability_match:no_capabilities_for_division=${targetDivisionId}`);
+      routeTrace.push(`capability_match:no_capabilities_required`);
       return {
         capableWorkerFound: true,
         targetDivisionId,
@@ -709,6 +747,7 @@ export class IntakeRouter {
       };
     }
 
+    routeTrace.push(`capability_match:required=[${requiredCapabilities.join(",")}]`);
     const eligibleWorkerCount = this.checkCapableWorkerAvailability(requiredCapabilities, routeTrace);
 
     if (eligibleWorkerCount === 0) {
@@ -730,6 +769,90 @@ export class IntakeRouter {
       requiredCapabilities,
       eligibleWorkerCount,
     };
+  }
+
+  /**
+   * R9-09: Infers required capabilities from task content when not explicitly declared.
+   *
+   * Uses keyword matching to detect capability requirements from request text and title.
+   * This enables capability-based routing even when tasks don't explicitly declare capabilities.
+   *
+   * Examples:
+   * - "image", "photo", "picture", "screenshot" → image_processing
+   * - "code", "programming", "function", "class" → code_generation
+   * - "data", "analysis", "analytics", "metrics" → data_analysis
+   * - "document", "pdf", "write", "report" → document_generation
+   * - "test", "testing", "unit test" → test_generation
+   *
+   * @param request - The task request text
+   * @param title - Optional task title
+   * @param routeTrace - Trace array for logging
+   * @returns Inferred capabilities or empty array if no match
+   */
+  private inferCapabilitiesFromContent(
+    request: string,
+    title?: string,
+    routeTrace?: string[],
+  ): string[] {
+    const combined = [title, request].filter((s): s is string => s != null && s.length > 0).join(" ").toLowerCase();
+
+    const capabilityIndicators: Array<{ capability: string; keywords: readonly string[] }> = [
+      {
+        capability: "image_processing",
+        keywords: ["image", "photo", "picture", "screenshot", "thumbnail", "resize", "crop", "filter", "图像", "图片", "照片"],
+      },
+      {
+        capability: "code_generation",
+        keywords: ["code", "programming", "function", "class", "algorithm", "implement", "开发", "编程", "代码", "程序"],
+      },
+      {
+        capability: "data_analysis",
+        keywords: ["data", "analysis", "analytics", "metrics", "statistics", "analyze", "数据分析", "分析", "统计"],
+      },
+      {
+        capability: "document_generation",
+        keywords: ["document", "pdf", "report", "write", "draft", "summary", "文档", "报告", "生成", "写作"],
+      },
+      {
+        capability: "test_generation",
+        keywords: ["test", "testing", "unit test", "spec", "测试", "单元测试", "测试用例"],
+      },
+      {
+        capability: "web_scraping",
+        keywords: ["scrape", "crawl", "fetch", "web", "html", "website", "网页", "爬取", "抓取"],
+      },
+      {
+        capability: "api_integration",
+        keywords: ["api", "rest", "graphql", "endpoint", "http", "request", "接口", "调用"],
+      },
+      {
+        capability: "database_query",
+        keywords: ["database", "sql", "query", "db", "table", "record", "数据库", "查询", "SQL"],
+      },
+      {
+        capability: "shell_execution",
+        keywords: ["bash", "shell", "command", "script", "terminal", "console", "终端", "命令行", "脚本"],
+      },
+      {
+        capability: "file_operation",
+        keywords: ["file", "read", "write", "delete", "upload", "download", "文件", "读写", "上传下载"],
+      },
+    ];
+
+    const inferredCapabilities = new Set<string>();
+
+    for (const { capability, keywords } of capabilityIndicators) {
+      if (keywords.some((keyword) => combined.includes(keyword))) {
+        inferredCapabilities.add(capability);
+        routeTrace?.push(`capability_infer:matched=${capability}`);
+      }
+    }
+
+    if (inferredCapabilities.size > 0) {
+      routeTrace?.push(`capability_infer:total_inferred=${inferredCapabilities.size}`);
+    }
+
+    return Array.from(inferredCapabilities);
   }
 
   /**
@@ -947,8 +1070,15 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
 
   // R9-09: Perform capability matching to verify a capable worker is available
   // This is done BEFORE selecting the final route, to ensure we route to a
-  // division where the required capabilities can actually be fulfilled
-  const capabilityMatch = this.matchCapabilities(division, routeTrace);
+  // division where the required capabilities can actually be fulfilled.
+  // Capability resolution: explicit → inferred from content → derived from division.
+  const capabilityMatch = this.matchCapabilities(
+    division,
+    routeTrace,
+    input.requiredCapabilities,
+    input.request,
+    input.title,
+  );
 
   // Determine if orchestration is required based on complexity signals
   if (riskDrivenOrchestration || shouldRequireOrchestration(normalized, matchedHints, classification)) {

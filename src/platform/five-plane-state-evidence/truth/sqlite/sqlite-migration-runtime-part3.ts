@@ -16,6 +16,7 @@ export {
   TASK_TENANT_SCOPE_SQL,
   BILLING_COLLECTION_FOUNDATION_SQL,
   PRODUCT_GOVERNANCE_TENANT_SCOPE_SQL,
+  CONFIG_VERSIONING_AND_ROLLOUT_SQL,
 };
 
 const TENANT_DATA_NAMESPACE_FOUNDATION_SQL = `
@@ -602,7 +603,7 @@ CREATE INDEX IF NOT EXISTS idx_usage_events_node_run_captured_at
  * R15-78: ConfigVersioningService now persists version snapshots to SQLite.
  * R15-79: ConfigRolloutService now persists active rollouts to SQLite.
  */
-export const CONFIG_VERSIONING_AND_ROLLOUT_SQL = `
+const CONFIG_VERSIONING_AND_ROLLOUT_SQL = `
 -- Config version snapshots table for durable version history
 CREATE TABLE IF NOT EXISTS config_version_snapshots (
   version_id TEXT PRIMARY KEY,
@@ -656,4 +657,17 @@ CREATE INDEX IF NOT EXISTS idx_config_rollouts_path
   ON config_rollouts(config_path, layer, source_id);
 CREATE INDEX IF NOT EXISTS idx_config_rollouts_stage
   ON config_rollouts(stage_phase, updated_at DESC);
+`;
+
+/**
+ * R16-37: Migration 52 - Add extended DLQ columns for DlqService persistence.
+ * Adds columns needed for ExtendedDeadLetterRecord to survive process restarts.
+ */
+export const EXTENDED_DLQ_RECORDS_SQL = `
+ALTER TABLE dlq_records ADD COLUMN event_type TEXT NULL;
+ALTER TABLE dlq_records ADD COLUMN error_message TEXT NULL;
+ALTER TABLE dlq_records ADD COLUMN max_retries INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE dlq_records ADD COLUMN reason TEXT NULL;
+ALTER TABLE dlq_records ADD COLUMN last_attempt_at TEXT NULL;
+ALTER TABLE dlq_records ADD COLUMN operator_action_log_json TEXT NULL;
 `;

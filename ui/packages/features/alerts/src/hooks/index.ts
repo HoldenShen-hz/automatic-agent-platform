@@ -1,6 +1,8 @@
-import { useState, useCallback } from "react";
-import { useAuthState, useIncidentsQuery } from "@aa/shared-state";
+import { useState, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuthState, useIncidentsQuery, useWsClient } from "@aa/shared-state";
 import type { IncidentDTO } from "@aa/shared-types";
+import type { WSEventEnvelope } from "@aa/shared-api-client";
 
 export type IncidentSeverity = "critical" | "high" | "medium" | "low";
 
@@ -89,6 +91,20 @@ export function mapAlertsToVm(incidents: readonly IncidentDTO[]): AlertsVm {
 export function useAlertsVm(): AlertsVm {
   const auth = useAuthState();
   const { data: incidents = [] } = useIncidentsQuery();
+  const wsClient = useWsClient();
+  const queryClient = useQueryClient();
+
+  // §R14-27: Subscribe to WebSocket events for real-time incident updates
+  useEffect(() => {
+    const unsubscribe = wsClient.subscribe("incidents", (event: WSEventEnvelope) => {
+      if (event.type === "incident.created" || event.type === "incident.updated") {
+        // Invalidate the incidents query to trigger a re-fetch with fresh data
+        void queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      }
+    });
+    return unsubscribe;
+  }, [wsClient, queryClient]);
+
   const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
   return mapAlertsToVm(scopedIncidents);
 }

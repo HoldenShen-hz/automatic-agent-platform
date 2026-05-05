@@ -318,7 +318,7 @@ async function runLeaseHandoverScenario(outputDir: string): Promise<StableLeaseS
       occurredAt: "2026-04-03T10:00:10.000Z",
     });
     const audits = store.lease.listLeaseAudits("exec-lease-handover");
-    const events = store.event.listEventsForTask("task-lease-handover");
+    const eventsResult = store.event.listEventsForTask("task-lease-handover");
     db.close();
 
     return {
@@ -328,7 +328,7 @@ async function runLeaseHandoverScenario(outputDir: string): Promise<StableLeaseS
         handover.previousLease?.status === "released" &&
         handover.lease?.fencingToken === 2 &&
         audits.some((audit) => audit.eventType === "lease_handover") &&
-        events.some((event) => event.eventType === "lease:handover_recorded"),
+        eventsResult.events.some((event) => event.eventType === "lease:handover_recorded"),
       summary: "controlled handover transfers execution rights with explicit lease lineage",
       details: {
         first,
@@ -338,7 +338,7 @@ async function runLeaseHandoverScenario(outputDir: string): Promise<StableLeaseS
           workerId: audit.workerId,
           reasonCode: audit.reasonCode,
         })),
-        eventTypes: events.map((event) => event.eventType),
+        eventTypes: eventsResult.events.map((event) => event.eventType),
       },
     };
   });

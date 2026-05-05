@@ -7,6 +7,7 @@ import { injectTraceContext } from "../../shared/observability/trace-context.js"
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { DlqService, type FailureCategory } from "./dlq-service.js";
+import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 
 // REL-01: dedicated logger for dead-letter visibility. The ack row already
@@ -291,11 +292,20 @@ export class DurableEventBus {
   /** §14.3: Tracks monotonic sequence per runId for ordered event replay */
   private readonly runSequences = new Map<string, number>();
 
+  // R16-37 fix: Store the DLQ service for use in deliverPending and other methods
+  private readonly dlqService: DlqService;
+  private readonly db: AuthoritativeSqlDatabase;
+  private readonly store: AuthoritativeTaskStore;
+
   public constructor(
-    private readonly db: AuthoritativeSqlDatabase,
-    private readonly store: AuthoritativeTaskStore,
-    private readonly dlqService?: DlqService,
+    db: AuthoritativeSqlDatabase,
+    store: AuthoritativeTaskStore,
+    dlqService?: DlqService,
   ) {
+    this.db = db;
+    this.store = store;
+    // R16-37 fix: Use SqliteDlqRepository for persistent DLQ storage
+    this.dlqService = dlqService ?? new DlqService(new SqliteDlqRepository(db.connection));
     this.activeConsumerRefCounts = getActiveConsumerRefCounts(db);
   }
 
