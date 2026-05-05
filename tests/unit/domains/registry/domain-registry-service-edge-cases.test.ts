@@ -8,16 +8,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ValidationError } from "../../../../src/platform/contracts/errors.js";
-import { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
+import { DomainRegistryService as BaseDomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 import type { DomainDefinition, PluginBinding } from "../../../../src/domains/registry/domain-model.js";
+
+class DomainRegistryService extends BaseDomainRegistryService {
+  public constructor(options: ConstructorParameters<typeof BaseDomainRegistryService>[0] = {}) {
+    super({
+      installedPluginIds: ["plugin-retriever-1", "plugin-adapter-1", "plugin-tool-1"],
+      healthyPluginIds: ["plugin-retriever-1", "plugin-adapter-1", "plugin-tool-1"],
+      ...options,
+    });
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
 // ─────────────────────────────────────────────────────────────────────────────
 
 function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefinition {
+  const domainId = overrides.domainId ?? "test-domain";
   return {
-    domainId: "test-domain",
+    domainId,
     name: "Test Domain",
     description: "A test domain for registry service testing",
     version: 1,
@@ -72,7 +83,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
     pluginBindings: [
       {
         bindingId: "binding-1",
-        domainId: "test-domain",
+        domainId,
         pluginType: "retriever",
         pluginId: "plugin-retriever-1",
         priority: 10,
@@ -81,7 +92,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       },
       {
         bindingId: "binding-2",
-        domainId: "test-domain",
+        domainId,
         pluginType: "adapter",
         pluginId: "plugin-adapter-1",
         priority: 5,
@@ -90,7 +101,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       },
       {
         bindingId: "binding-3",
-        domainId: "test-domain",
+        domainId,
         pluginType: "tool",
         pluginId: "plugin-tool-1",
         priority: 1,
@@ -176,7 +187,16 @@ test("filterAllowedTools returns enabled tools from bundles", () => {
 
 test("filterAllowedTools includes required tools even if not in bundle", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain());
+  service.register(createTestDomain({
+    capabilities: {
+      supportedTaskTypes: ["test", "coding"],
+      requiredTools: ["bash", "custom-tool"],
+      optionalTools: ["read"],
+      modelPreferences: { default: "claude-3" },
+      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+      securityLevel: "standard",
+    },
+  }));
 
   const allowedTools = service.filterAllowedTools("test-domain", ["bash", "custom-tool"]);
 
@@ -553,6 +573,7 @@ test("activate publishes domain:activated event", () => {
   });
   service.register(createTestDomain({ status: "registered" }));
 
+  service.activate("test-domain", true);
   service.activate("test-domain", false);
 
   assert.ok(events.some((e) => e.eventType === "domain:activated"));

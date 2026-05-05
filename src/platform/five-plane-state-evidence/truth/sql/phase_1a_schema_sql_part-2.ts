@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS execution_tickets (
   task_id TEXT NOT NULL,
   priority TEXT NOT NULL,
   queue_name TEXT NULL,
+  dispatch_target TEXT NOT NULL DEFAULT 'any',
+  required_isolation_level TEXT NOT NULL DEFAULT 'standard',
   required_repo_version TEXT NULL,
   required_capabilities_json TEXT NOT NULL,
   dispatch_after TEXT NULL,
@@ -17,6 +19,8 @@ CREATE TABLE IF NOT EXISTS execution_tickets (
   invalidated_at TEXT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
+  critical_path_rank INTEGER NULL,
+  scheduler_seed TEXT NULL,
   FOREIGN KEY(execution_id) REFERENCES executions(id) ON DELETE CASCADE,
   FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );

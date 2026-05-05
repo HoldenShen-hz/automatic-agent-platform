@@ -132,6 +132,17 @@ test("generateNonce creates unique nonces", () => {
   }
 });
 
+test("generateNonce keeps full 256-bit entropy by default", () => {
+  const h = createService();
+  try {
+    const nonce = h.service.generateNonce();
+    assert.equal(nonce.length, 64);
+    assert.match(nonce, /^[0-9a-f]+$/);
+  } finally {
+    cleanupPath(h.workspace);
+  }
+});
+
 test("createDeliveryMessage creates message record", () => {
   const h = createService();
   try {

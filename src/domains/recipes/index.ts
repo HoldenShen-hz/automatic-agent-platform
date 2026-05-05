@@ -16,8 +16,8 @@ export const DomainRecipeArchetypeSchema = z.enum([
 ]);
 
 export const DomainRecipeSchema = z.object({
-  recipeId: z.string(),
-  domainId: z.string(),
+  recipeId: z.string().trim().min(1),
+  domainId: z.string().trim().min(1),
   archetype: DomainRecipeArchetypeSchema.default("crud_heavy"),
   name: z.string().default(""),
   description: z.string().optional(),
@@ -27,7 +27,7 @@ export const DomainRecipeSchema = z.object({
   recommended_workflow_ids: z.array(z.string()).default([]),
   default_prompt_bundle_ref: z.string().default(""),
   acceptance_checklist_ref: z.string().default(""),
-  defaultWorkflowId: z.string(),
+  defaultWorkflowId: z.string().trim().min(1),
   defaultToolBundleIds: z.array(z.string()).default([]),
   riskLevel: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   budgetHint: z.string().optional(),

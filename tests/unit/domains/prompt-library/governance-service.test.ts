@@ -103,7 +103,7 @@ test("proposeRelease creates approved release when all conditions met", () => {
 
   const result = service.proposeRelease(library, draft);
 
-  assert.ok(result.releaseId.startsWith("pr_"));
+  assert.ok(result.releaseId.startsWith("prompt_release_"));
   assert.equal(result.promptId, "prompt_execute");
   assert.equal(result.domainId, "coding");
   assert.equal(result.owner, "user_1");
@@ -241,7 +241,7 @@ test("rollback sets status to rolled_back", () => {
   const release = service.proposeRelease(library, draft);
   service.activate(release.releaseId);
 
-  const rolledBack = service.rollback(library, release.releaseId, "2.0");
+  const rolledBack = service.rollback(library, release.releaseId, "1.0");
 
   assert.equal(rolledBack.status, "rolled_back");
 });
@@ -253,7 +253,7 @@ test("rollback clears active release for prompt", () => {
   const release = service.proposeRelease(library, draft);
   service.activate(release.releaseId);
 
-  service.rollback(library, release.releaseId, "2.0");
+  service.rollback(library, release.releaseId, "1.0");
 
   const active = service.getActiveRelease("prompt_execute");
   assert.equal(active, null);

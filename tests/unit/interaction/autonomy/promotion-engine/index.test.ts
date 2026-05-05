@@ -194,6 +194,7 @@ test("assessPromotion blocks suggestion promotion without 30 incident-free days"
     failedExecutions: 1,
     incidents: 0,
     lastIncidentAgeDays: 29,
+    lastIncidentTimestamp: new Date(Date.now() - 29 * 24 * 3600 * 1000).toISOString(),
   });
 
   const result = assessPromotion(score);
@@ -224,6 +225,7 @@ test("assessPromotion blocks supervised promotion without 60 incident-free days"
     humanOverrides: 1,
     incidents: 0,
     lastIncidentAgeDays: 59,
+    lastIncidentTimestamp: new Date(Date.now() - 59 * 24 * 3600 * 1000).toISOString(),
   });
 
   const result = assessPromotion(score);
@@ -254,6 +256,7 @@ test("assessPromotion blocks semi_auto governance escalation without 90 incident
     humanOverrides: 0,
     incidents: 0,
     lastIncidentAgeDays: 89,
+    lastIncidentTimestamp: new Date(Date.now() - 89 * 24 * 3600 * 1000).toISOString(),
   });
 
   const result = assessPromotion(score);

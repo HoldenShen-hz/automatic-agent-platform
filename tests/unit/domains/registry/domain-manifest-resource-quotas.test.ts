@@ -356,7 +356,8 @@ test("DomainDescriptorBundleSchema parses minimal bundle", () => {
       domainId: "test-domain",
       riskLevel: "medium" as const,
       dataClassification: "internal" as const,
-      Mitigation: [],
+      liabilityOwner: [],
+      compensationModel: [],
     },
     knowledge: {
       domainId: "test-domain",
@@ -397,7 +398,8 @@ test("DomainDescriptorBundleSchema accepts executionProfile", () => {
       domainId: "test-domain",
       riskLevel: "medium" as const,
       dataClassification: "internal" as const,
-      Mitigation: [],
+      liabilityOwner: [],
+      compensationModel: [],
     },
     knowledge: {
       domainId: "test-domain",

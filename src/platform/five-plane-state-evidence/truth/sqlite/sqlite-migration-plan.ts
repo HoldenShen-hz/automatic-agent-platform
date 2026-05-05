@@ -21,6 +21,7 @@ import {
   SIDE_EFFECT_LEASE_FENCING_MIGRATION_SQL,
   BUDGET_LEDGER_LEASE_FENCING_MIGRATION_SQL,
   WORKER_IDENTITY_AND_CAPACITY_SQL,
+  EXECUTION_TICKET_GRAPH_SCHEDULING_SQL,
 } from "./sqlite-migration-runtime-part1.js";
 import {
   REMOTE_WORKSPACE_SYNC_TELEMETRY_SQL,
@@ -356,6 +357,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   // Bridge legacy authoritative storage with the canonical five-plane runtime schema.
   defineMigration(47, "0047_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_SQL),
   defineMigration(48, "0048_worker_identity_and_capacity", WORKER_IDENTITY_AND_CAPACITY_SQL),
+  defineMigration(49, "0049_execution_ticket_graph_scheduling", EXECUTION_TICKET_GRAPH_SCHEDULING_SQL),
 ] as const;
 
 /**

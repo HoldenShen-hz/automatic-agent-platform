@@ -133,16 +133,17 @@ test("compareAutonomyLevels returns zero when levels are equal", () => {
   assert.equal(result, 0);
 });
 
-test("compareAutonomyLevels ordering: frozen > full_auto > semi_auto > supervised > suggestion", () => {
-  assert.ok(compareAutonomyLevels("frozen", "full_auto") > 0);
+test("compareAutonomyLevels ordering: full_auto > semi_auto > supervised > suggestion > frozen", () => {
+  assert.ok(compareAutonomyLevels("full_auto", "frozen") > 0);
   assert.ok(compareAutonomyLevels("full_auto", "semi_auto") > 0);
   assert.ok(compareAutonomyLevels("semi_auto", "supervised") > 0);
   assert.ok(compareAutonomyLevels("supervised", "suggestion") > 0);
+  assert.ok(compareAutonomyLevels("suggestion", "frozen") > 0);
 });
 
-test("nextAutonomyLevel returns frozen for frozen input", () => {
+test("nextAutonomyLevel returns suggestion for frozen input", () => {
   const result = nextAutonomyLevel("frozen");
-  assert.equal(result, "frozen");
+  assert.equal(result, "suggestion");
 });
 
 test("nextAutonomyLevel returns supervised for suggestion input", () => {
@@ -235,7 +236,7 @@ test("AutonomyGovernanceService evaluateCapability handles promotion with incide
 });
 
 test("compareAutonomyLevels handles all autonomy levels", () => {
-  const levels: AutonomyLevel[] = ["suggestion", "supervised", "semi_auto", "full_auto", "frozen"];
+  const levels: AutonomyLevel[] = ["frozen", "suggestion", "supervised", "semi_auto", "full_auto"];
   for (let i = 0; i < levels.length; i++) {
     for (let j = 0; j < levels.length; j++) {
       const left = levels[i]!;

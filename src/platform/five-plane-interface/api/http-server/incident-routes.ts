@@ -53,6 +53,15 @@ export interface IncidentRouteDeps {
   incidentService: IncidentFacadeService;
 }
 
+function readRequiredIdempotencyKey(headers: Record<string, string | undefined>): string {
+  const raw = headers["x-idempotency-key"];
+  const idempotencyKey = typeof raw === "string" ? raw.trim() : "";
+  if (idempotencyKey.length === 0) {
+    throw new ApiError(400, "api.idempotency_key_required", "Incident creation requires x-idempotency-key.");
+  }
+  return idempotencyKey;
+}
+
 // ─── Route Factory ─────────────────────────────────────────────────────────
 
 export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[] {
@@ -110,13 +119,10 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
 
-        // #2362: Check idempotency key to prevent duplicate incident creation
-        const idempotencyKey = ctx.request.headers["x-idempotency-key"] as string | undefined;
-        if (idempotencyKey) {
-          const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
-          if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
-            return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
-          }
+        const idempotencyKey = readRequiredIdempotencyKey(ctx.request.headers);
+        const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
+        if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
+          return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
         }
 
         const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
@@ -129,10 +135,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
         });
 
-        // Record idempotency key result if key was provided
-        if (idempotencyKey) {
-          globalIdempotencyMiddleware.complete(idempotencyKey, incident);
-        }
+        globalIdempotencyMiddleware.complete(idempotencyKey, incident);
 
         return buildJsonResponse(ctx.requestId, 201, incident);
       },

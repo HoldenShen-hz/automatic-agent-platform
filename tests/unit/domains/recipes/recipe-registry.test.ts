@@ -132,7 +132,7 @@ test("RecipeRegistry.list returns a copy (immutability)", async () => {
 // Registration Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RecipeRegistry.registerAll overwrites existing recipe with same id", async () => {
+test("RecipeRegistry.registerAll rejects duplicate recipe ids", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();
   const recipe1 = makeRecipe({
@@ -147,10 +147,10 @@ test("RecipeRegistry.registerAll overwrites existing recipe with same id", async
   });
 
   registry.register(recipe1);
-  registry.register(recipe2);
+  assert.throws(() => registry.register(recipe2), /Recipe uniqueness conflict/);
 
   const result = registry.get("recipe_dup");
-  assert.equal(result!.defaultWorkflowId, "wf_replacement");
+  assert.equal(result!.defaultWorkflowId, "wf_original");
   assert.equal(registry.list().length, 1);
 });
 

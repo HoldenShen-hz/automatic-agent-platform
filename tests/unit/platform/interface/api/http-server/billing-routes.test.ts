@@ -14,89 +14,30 @@ function createMockBillingService(result: Record<string, unknown> = { sessionRef
 function createMockContext(headers: Record<string, string | undefined> = {}, body: string | null = null): RouteContext {
   return {
     requestId: "req-123",
-    request: { method: "POST", url: "/billing/webhooks/reconcile", headers, body } as never,
-    route: { pathname: "/billing/webhooks/reconcile", segments: [] },
+    request: { method: "POST", url: "/v1/billing/webhooks/reconcile", headers, body } as never,
+    route: { pathname: "/v1/billing/webhooks/reconcile", segments: [] },
     principal: null,
   };
 }
 
-test("createBillingRoutes returns 2 routes", () => {
+test("createBillingRoutes exposes only the versioned reconcile route", () => {
   const deps = {
     billingService: createMockBillingService(),
     webhookSecret: "secret123",
   };
   const routes = createBillingRoutes(deps);
-  assert.equal(routes.length, 2);
-});
-
-test("POST /billing/webhooks/reconcile returns result when billing service available", async () => {
-  const deps = {
-    billingService: createMockBillingService({ sessionRef: "sess-abc", status: "paid", amount: 100 }),
-    webhookSecret: null,
-  };
-  const routes = createBillingRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/billing/webhooks/reconcile")!;
-  const ctx = createMockContext({ authorization: "Bearer token123" }, JSON.stringify({
-    gatewayKind: "stripe",
-    gatewaySessionRef: "sess-abc",
-    status: "paid",
-  }));
-  const response = await route.handler(ctx);
-  if (!response) throw new Error("Handler returned null");
-  assert.equal(response.statusCode, 200);
-  assert.ok(response.body.includes("sess-abc"));
-});
-
-test("POST /billing/webhooks/reconcile throws 503 when billing service not configured", async () => {
-  const deps = {
-    billingService: null,
-    webhookSecret: null,
-  };
-  const routes = createBillingRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/billing/webhooks/reconcile")!;
-  const ctx = createMockContext({ authorization: "Bearer token123" }, JSON.stringify({
-    gatewayKind: "stripe",
-    gatewaySessionRef: "sess-abc",
-    status: "paid",
-  }));
-  try {
-    await route.handler(ctx);
-    assert.fail("Expected handler to throw");
-  } catch (err) {
-    assert.ok(err instanceof Error);
-    assert.match(err.message, /Billing service is not configured/);
-  }
-});
-
-test("POST /billing/webhooks/reconcile validates payload", async () => {
-  const deps = {
-    billingService: createMockBillingService(),
-    webhookSecret: null,
-  };
-  const routes = createBillingRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/billing/webhooks/reconcile")!;
-  const ctx = createMockContext({ authorization: "Bearer token123" }, JSON.stringify({
-    gatewayKind: "invalid-gateway",
-    gatewaySessionRef: "sess-abc",
-    status: "paid",
-  }));
-  try {
-    await route.handler(ctx);
-    assert.fail("Expected handler to throw");
-  } catch (err) {
-    assert.ok(err instanceof Error);
-    assert.match(err.message, /invalid/i);
-  }
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0]?.pathname, "/v1/billing/webhooks/reconcile");
 });
 
 test("POST /v1/billing/webhooks/reconcile returns result when billing service available", async () => {
   const deps = {
     billingService: createMockBillingService({ sessionRef: "v1-sess", status: "pending" }),
-    webhookSecret: null,
+    webhookSecret: "secret123",
   };
   const routes = createBillingRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/billing/webhooks/reconcile")!;
-  const ctx = createMockContext({ "x-api-key": "key123" }, JSON.stringify({
+  const ctx = createMockContext({ "x-api-key": "key123", "x-webhook-signature": "secret123" }, JSON.stringify({
     gatewayKind: "paddle",
     gatewaySessionRef: "v1-sess",
     status: "pending",
@@ -110,11 +51,11 @@ test("POST /v1/billing/webhooks/reconcile returns result when billing service av
 test("POST /v1/billing/webhooks/reconcile throws 503 when billing service not configured", async () => {
   const deps = {
     billingService: null,
-    webhookSecret: null,
+    webhookSecret: "secret123",
   };
   const routes = createBillingRoutes(deps);
   const route = routes.find((r) => r.pathname === "/v1/billing/webhooks/reconcile")!;
-  const ctx = createMockContext({ "x-api-key": "key123" }, JSON.stringify({
+  const ctx = createMockContext({ "x-api-key": "key123", "x-webhook-signature": "secret123" }, JSON.stringify({
     gatewayKind: "stripe",
     gatewaySessionRef: "sess-abc",
     status: "paid",
@@ -128,14 +69,35 @@ test("POST /v1/billing/webhooks/reconcile throws 503 when billing service not co
   }
 });
 
-test("POST /billing/webhooks/reconcile throws 401 when no auth and invalid signature", async () => {
+test("POST /v1/billing/webhooks/reconcile validates payload", async () => {
+  const deps = {
+    billingService: createMockBillingService(),
+    webhookSecret: "secret123",
+  };
+  const routes = createBillingRoutes(deps);
+  const route = routes.find((r) => r.pathname === "/v1/billing/webhooks/reconcile")!;
+  const ctx = createMockContext({ "x-api-key": "key123", "x-webhook-signature": "secret123" }, JSON.stringify({
+    gatewayKind: "invalid-gateway",
+    gatewaySessionRef: "sess-abc",
+    status: "paid",
+  }));
+  try {
+    await route.handler(ctx);
+    assert.fail("Expected handler to throw");
+  } catch (err) {
+    assert.ok(err instanceof Error);
+    assert.match(err.message, /invalid/i);
+  }
+});
+
+test("POST /v1/billing/webhooks/reconcile rejects missing webhook signature", async () => {
   const deps = {
     billingService: createMockBillingService(),
     webhookSecret: "expected-secret",
   };
   const routes = createBillingRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/billing/webhooks/reconcile")!;
-  const ctx = createMockContext({}, JSON.stringify({
+  const route = routes.find((r) => r.pathname === "/v1/billing/webhooks/reconcile")!;
+  const ctx = createMockContext({ "x-api-key": "key123" }, JSON.stringify({
     gatewayKind: "stripe",
     gatewaySessionRef: "sess-abc",
     status: "paid",
@@ -149,15 +111,15 @@ test("POST /billing/webhooks/reconcile throws 401 when no auth and invalid signa
   }
 });
 
-test("POST /billing/webhooks/reconcile rejects dangerous JSON keys", async () => {
+test("POST /v1/billing/webhooks/reconcile rejects dangerous JSON keys", async () => {
   const deps = {
     billingService: createMockBillingService(),
-    webhookSecret: null,
+    webhookSecret: "secret123",
   };
   const routes = createBillingRoutes(deps);
-  const route = routes.find((r) => r.pathname === "/billing/webhooks/reconcile")!;
+  const route = routes.find((r) => r.pathname === "/v1/billing/webhooks/reconcile")!;
   const ctx = createMockContext(
-    { authorization: "Bearer token123" },
+    { authorization: "Bearer token123", "x-webhook-signature": "secret123" },
     "{\"gatewayKind\":\"stripe\",\"gatewaySessionRef\":\"sess-abc\",\"status\":\"paid\",\"__proto__\":{\"polluted\":true}}",
   );
   await assert.rejects(

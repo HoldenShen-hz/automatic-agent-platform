@@ -141,7 +141,7 @@ test("mapTrustLevelToAutonomyLevel handles fully_trusted with null options", () 
   assert.equal(result, "full_auto");
 });
 
-// --- calculateTrustScore at 0-1000 range tests ---
+// --- calculateTrustScore base 0-100 range tests ---
 
 test("calculateTrustScore returns 0 for no executions", () => {
   const score = makeScore({ totalExecutions: 0, successfulExecutions: 0 });
@@ -158,8 +158,7 @@ test("calculateTrustScore returns 0 when totalExecutions is 0 even with other fi
   assert.equal(calculateTrustScore(score), 0);
 });
 
-test("calculateTrustScore applies success points at 0-1000 scale", () => {
-  // 50% success = 500 points out of 1000
+test("calculateTrustScore applies success points on the 0-100 scale", () => {
   const score = makeScore({
     totalExecutions: 100,
     successfulExecutions: 50,
@@ -167,12 +166,11 @@ test("calculateTrustScore applies success points at 0-1000 scale", () => {
     incidents: 0,
   });
   const result = calculateTrustScore(score);
-  // 500 success points + 2 volume bonus = 502
-  assert.equal(result, 502);
+  // 50 success points + 2 volume bonus = 52
+  assert.equal(result, 52);
 });
 
-test("calculateTrustScore applies override penalty at 0-1000 scale", () => {
-  // 100% success = 1000 points, override penalty = (5/100) * 200 = 10
+test("calculateTrustScore applies override penalty on the 0-100 scale", () => {
   const score = makeScore({
     totalExecutions: 100,
     successfulExecutions: 100,
@@ -180,12 +178,11 @@ test("calculateTrustScore applies override penalty at 0-1000 scale", () => {
     incidents: 0,
   });
   const result = calculateTrustScore(score);
-  // 1000 - 10 + 2 (volume bonus) = 992
-  assert.equal(result, 992);
+  // 100 - 1 + 2 = 100 after clamping
+  assert.equal(result, 100);
 });
 
-test("calculateTrustScore applies incident penalty at 0-1000 scale", () => {
-  // 100% success = 1000 points, 2 incidents * 150 = 300 penalty
+test("calculateTrustScore applies incident penalty on the 0-100 scale", () => {
   const score = makeScore({
     totalExecutions: 100,
     successfulExecutions: 100,
@@ -193,12 +190,11 @@ test("calculateTrustScore applies incident penalty at 0-1000 scale", () => {
     incidents: 2,
   });
   const result = calculateTrustScore(score);
-  // 1000 - 0 - 300 + 2 = 702
-  assert.equal(result, 702);
+  // 100 - 30 + 2 = 72
+  assert.equal(result, 72);
 });
 
-test("calculateTrustScore applies volume bonus up to 100 points", () => {
-  // 500 executions = min(100, 500/50) = 10 volume bonus
+test("calculateTrustScore applies volume bonus up to 10 points", () => {
   const score = makeScore({
     totalExecutions: 500,
     successfulExecutions: 500,
@@ -206,8 +202,8 @@ test("calculateTrustScore applies volume bonus up to 100 points", () => {
     incidents: 0,
   });
   const result = calculateTrustScore(score);
-  // 1000 + 10 = 1010, capped at 1000
-  assert.equal(result, 1000);
+  // 100 + 10 = 110, capped at 100
+  assert.equal(result, 100);
 });
 
 test("calculateTrustScore never returns negative", () => {
@@ -229,10 +225,6 @@ test("calculateTrustScore handles large volumes correctly", () => {
     incidents: 3,
   });
   const result = calculateTrustScore(score);
-  // (950/1000) * 1000 = 950 success points
-  // (10/1000) * 200 = 2 override penalty
-  // 3 * 150 = 450 incident penalty
-  // volume bonus = min(100, 20) = 20
-  // 950 - 2 - 450 + 20 = 518
-  assert.equal(result, 518);
+  // 95 - 0.2 - 45 + 10 = 59.8 => 60
+  assert.equal(result, 60);
 });

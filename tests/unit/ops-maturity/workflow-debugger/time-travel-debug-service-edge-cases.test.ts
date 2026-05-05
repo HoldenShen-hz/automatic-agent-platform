@@ -83,6 +83,24 @@ describe("TimeTravelDebugService - Edge Cases", () => {
       assert.ok(state !== null);
       assert.equal(state!.reachedBreakpoint, true);
     });
+
+    test("setBreakpoints defensively copies caller arrays", () => {
+      const service = createService();
+      const session = service.createSession("t", "e");
+      const breakpoints = ["step-1"];
+
+      service.loadEventStore("e", [
+        { stepId: "step-1", timestamp: "t1", variables: {} },
+        { stepId: "step-2", timestamp: "t2", variables: {} },
+      ]);
+      service.setBreakpoints(session.sessionId, breakpoints);
+      breakpoints[0] = "step-2";
+
+      const state = service.replayToCursor(session.sessionId, 10);
+      assert.ok(state !== null);
+      assert.equal(state!.reachedBreakpoint, true);
+      assert.equal(state!.currentEventIndex, 1);
+    });
   });
 
   describe("loadEventStore", () => {
@@ -116,6 +134,26 @@ describe("TimeTravelDebugService - Edge Cases", () => {
   });
 
   describe("replayStep", () => {
+    test("replay is blocked when sandbox policy allows side effects", () => {
+      const service = new TimeTravelDebugService({
+        replaySandboxPolicy: {
+          isolationMode: "full",
+          allowNetwork: false,
+          allowFileSystem: false,
+          allowSideEffects: true,
+          maxReplaySpeed: 0,
+          timeoutPerEventMs: 1000,
+        },
+      });
+      service.loadEventStore("e", [{ stepId: "step-1", timestamp: "t", variables: {} }]);
+      const session = service.createSession("t", "e");
+
+      assert.throws(
+        () => service.replayStep(session.sessionId),
+        /replay_blocked/i,
+      );
+    });
+
     test("returns null for unknown session", () => {
       const service = createService();
       const result = service.replayStep("nonexistent");

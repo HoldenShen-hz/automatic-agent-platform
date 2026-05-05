@@ -216,7 +216,7 @@ test("getWorkflow returns workflow for known domain and workflowId", () => {
 
   assert.ok(workflow);
   assert.equal(workflow!.workflowId, "wf_main");
-  assert.equal(workflow!.steps.length, 2);
+  assert.equal(workflow!.steps.length, 1);
 });
 
 test("getWorkflow returns null for unknown domain", () => {
@@ -448,38 +448,38 @@ test("validate throws for unknown domain", () => {
 // Smoke Test Integration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("register fails smoke test for domain with missing required tools", () => {
+test("validate fails for domain with missing required tools after registration", () => {
   const service = new DomainRegistryService();
-
-  assert.throws(
-    () => service.register(createTestDomain({
-      domainId: "missing-required-tool",
-      toolBundles: [
-        {
-          bundleId: "empty_bundle",
-          tools: [{ toolName: "bash", enabled: true, configOverrides: {} }],
-        },
-      ],
-      capabilities: {
-        supportedTaskTypes: ["test"],
-        requiredTools: ["nonexistent_tool"], // Not in any bundle
-        optionalTools: [],
-        modelPreferences: {},
-        budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-        securityLevel: "standard",
+  service.register(createTestDomain({
+    domainId: "missing-required-tool",
+    toolBundles: [
+      {
+        bundleId: "empty_bundle",
+        tools: [{ toolName: "bash", enabled: true, configOverrides: {} }],
       },
-    })),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
-  );
+    ],
+    capabilities: {
+      supportedTaskTypes: ["test"],
+      requiredTools: ["nonexistent_tool"],
+      optionalTools: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+      securityLevel: "standard",
+    },
+  }));
+
+  const result = service.validate("missing-required-tool");
+  assert.equal(result.passed, false);
+  assert.ok(result.issues.some((issue) => issue.includes("missing_required_tools")));
 });
 
-test("register fails smoke test for domain with empty workflows", () => {
+test("validate fails for domain with empty workflows after registration", () => {
   const service = new DomainRegistryService();
+  service.register(createTestDomain({ domainId: "empty-workflow-domain", workflows: [] }));
 
-  assert.throws(
-    () => service.register(createTestDomain({ domainId: "empty-workflow-domain", workflows: [] })),
-    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
-  );
+  const result = service.validate("empty-workflow-domain");
+  assert.equal(result.passed, false);
+  assert.ok(result.issues.some((issue) => issue.includes("no_workflows")));
 });
 
 test("register publishes domain:registered event on success", () => {

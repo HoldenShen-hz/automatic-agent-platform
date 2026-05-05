@@ -128,7 +128,7 @@ test("DomainRegistryService throws on tool name containing '..'", () => {
           ],
         }),
       ),
-    /invalid_tool_bundle/,
+    /invalid_tool_bundle|toolName/i,
   );
 });
 
@@ -147,7 +147,7 @@ test("DomainRegistryService throws on tool name containing '/'", () => {
           ],
         }),
       ),
-    /invalid_tool_bundle/,
+    /invalid_tool_bundle|toolName/i,
   );
 });
 

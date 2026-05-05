@@ -25,10 +25,11 @@ function createMockContext(
   method = "GET",
   segments: string[] = [],
   body: string | null = null,
+  headers: Record<string, string | undefined> = {},
 ): RouteContext {
   return {
     requestId: "req-incident-123",
-    request: { method, url: pathname, headers: {}, body } as never,
+    request: { method, url: pathname, headers, body } as never,
     route: { pathname, segments },
     principal: null,
   };
@@ -186,6 +187,7 @@ test("POST /v1/incidents creates a tenant-scoped incident", async () => {
       "POST",
       ["v1", "incidents"],
       JSON.stringify({ severity: "critical", title: "Provider outage" }),
+      { "x-idempotency-key": "incident-create-1" },
     ),
   );
   if (!response) {
@@ -196,4 +198,26 @@ test("POST /v1/incidents creates a tenant-scoped incident", async () => {
   assert.match(response.body, /Provider outage/);
   assert.equal(incidentService.listIncidents("tenant-a").length, 1);
   assert.equal(incidentService.listIncidents("tenant-b").length, 0);
+});
+
+test("POST /v1/incidents rejects missing idempotency key", async () => {
+  const incidentService = new IncidentCaseService();
+  const routes = createIncidentRoutes({
+    authService: createMockAuthService(["operator"], "tenant-a"),
+    incidentService,
+  });
+
+  await assert.rejects(
+    async () =>
+      callRoute(
+        routes,
+        createMockContext(
+          "/v1/incidents",
+          "POST",
+          ["v1", "incidents"],
+          JSON.stringify({ severity: "critical", title: "Provider outage" }),
+        ),
+      ),
+    /idempotency/i,
+  );
 });

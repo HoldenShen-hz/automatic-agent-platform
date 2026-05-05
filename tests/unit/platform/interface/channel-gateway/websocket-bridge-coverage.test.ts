@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { EventEmitter } from "node:events";
+import { createServer } from "node:http";
+import { WebSocket } from "ws";
 import { WebSocketBridge, type TaskWebSocketEvent, type WebSocketMessageType } from "../../../../../src/platform/interface/channel-gateway/websocket-bridge.js";
 
 class MockApiAuthService {
@@ -9,15 +10,8 @@ class MockApiAuthService {
   }
 }
 
-function createMockWebSocket(): import("ws").WebSocket {
-  const { WebSocketServer, WebSocket } = require("ws");
-  const mockWs = new WebSocket();
-  return mockWs;
-}
-
 function createMockServer() {
-  const http = require("node:http");
-  return http.createServer();
+  return createServer();
 }
 
 test("WebSocketBridge registers client on connection", (t) => {
@@ -27,7 +21,7 @@ test("WebSocketBridge registers client on connection", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -54,7 +48,7 @@ test("WebSocketBridge rejects connection without token", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`);
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`);
 
       ws.on("close", (code: number) => {
         assert.equal(code, 4001);
@@ -71,6 +65,30 @@ test("WebSocketBridge rejects connection without token", (t) => {
   });
 });
 
+test("WebSocketBridge ignores JWT passed via query string and still rejects the connection", (t) => {
+  return new Promise((resolve, reject) => {
+    const server = createMockServer();
+    const bridge = new WebSocketBridge(server, new MockApiAuthService() as any);
+
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address() as { port: number };
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream?token=query-token`);
+
+      ws.on("close", (code: number) => {
+        assert.equal(code, 4001);
+        bridge.close().then(() => {
+          server.close();
+          resolve();
+        });
+      });
+
+      ws.on("error", () => {
+        // Expected close due to missing Sec-WebSocket-Protocol token.
+      });
+    });
+  });
+});
+
 test("WebSocketBridge handles ping/pong", (t) => {
   return new Promise((resolve, reject) => {
     const server = createMockServer();
@@ -78,7 +96,7 @@ test("WebSocketBridge handles ping/pong", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -110,7 +128,7 @@ test("WebSocketBridge handles subscribe/unsubscribe", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -118,7 +136,7 @@ test("WebSocketBridge handles subscribe/unsubscribe", (t) => {
 
       ws.on("open", () => {
         ws.send(JSON.stringify({ type: "subscribe", taskId: "task-123" }));
-      };
+      });
 
       let foundSubscribed = false;
       let foundUnsubscribed = false;
@@ -153,7 +171,7 @@ test("WebSocketBridge broadcasts to task subscribers", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -161,7 +179,7 @@ test("WebSocketBridge broadcasts to task subscribers", (t) => {
 
       ws.on("open", () => {
         ws.send(JSON.stringify({ type: "subscribe", taskId: "task-broadcast" }));
-      };
+      });
 
       ws.on("message", (data: Buffer) => {
         const msg = JSON.parse(data.toString());
@@ -196,7 +214,7 @@ test("WebSocketBridge tracks slow consumers", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -204,7 +222,7 @@ test("WebSocketBridge tracks slow consumers", (t) => {
 
       ws.on("open", () => {
         ws.send(JSON.stringify({ type: "subscribe", taskId: "task-slow" }));
-      };
+      });
 
       ws.on("message", (data: Buffer) => {
         const msg = JSON.parse(data.toString());
@@ -241,7 +259,7 @@ test("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -249,7 +267,7 @@ test("WebSocketBridge getTaskSubscriberCount returns correct count", (t) => {
 
       ws.on("open", () => {
         ws.send(JSON.stringify({ type: "subscribe", taskId: "task-count" }));
-      };
+      });
 
       ws.on("message", (data: Buffer) => {
         const msg = JSON.parse(data.toString());
@@ -275,7 +293,7 @@ test("WebSocketBridge broadcasts to all connected clients", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -311,7 +329,7 @@ test("WebSocketBridge handles ack messages for delivery guarantee", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },
@@ -319,7 +337,7 @@ test("WebSocketBridge handles ack messages for delivery guarantee", (t) => {
 
       ws.on("open", () => {
         ws.send(JSON.stringify({ type: "subscribe", taskId: "task-ack" }));
-      };
+      });
 
       ws.on("message", (data: Buffer) => {
         const msg = JSON.parse(data.toString());
@@ -385,7 +403,7 @@ test("WebSocketBridge handles invalid JSON gracefully", (t) => {
 
     server.listen(0, "127.0.0.1", () => {
       const address = server.address() as { port: number };
-      const ws = new (require("ws").WebSocket)(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
+      const ws = new WebSocket(`http://127.0.0.1:${address.port}/ws/v1/stream`, {
         headers: {
           "sec-websocket-protocol": "test-token",
         },

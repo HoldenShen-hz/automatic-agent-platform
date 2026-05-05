@@ -32,12 +32,6 @@ export interface BillingRouteDeps {
   webhookSecret: string | null;
 }
 
-const DEPRECATION_HEADERS = Object.freeze({
-  Deprecation: "true",
-  Sunset: "Sat, 01 Jan 2028 00:00:00 GMT",
-  "Content-Type": "application/json",
-});
-
 function buildReconcileResponse(ctx: { requestId: string; request: { headers: Record<string, string | undefined> } }, deps: BillingRouteDeps, payload: ReturnType<typeof parseBillingReconcilePayload>) {
   const billingService = deps.billingService;
   if (billingService == null) {
@@ -77,31 +71,6 @@ function buildReconcileResponse(ctx: { requestId: string; request: { headers: Re
 
 export function createBillingRoutes(deps: BillingRouteDeps): RouteDefinition[] {
   return [
-    // Legacy unversioned route - deprecated with sunset headers
-    // #2356: This shadow route should reject requests without proper auth to prevent attack surface
-    {
-      method: "POST",
-      pathname: "/billing/webhooks/reconcile",
-      handler: (ctx) => {
-        // Enforce authentication on the shadow route to prevent unauthorized access
-        const hasAuthCredential =
-          (typeof ctx.request.headers.authorization === "string" && ctx.request.headers.authorization.trim().length > 0)
-          || (typeof ctx.request.headers["x-api-key"] === "string" && ctx.request.headers["x-api-key"]!.trim().length > 0);
-        if (!hasAuthCredential) {
-          throw new ApiError(401, "api.authentication_required", "Unversioned billing endpoint requires authentication.");
-        }
-        const payload = parseBillingReconcilePayload(readValidatedJsonBody(ctx.request.body, (body) => body));
-        const result = buildReconcileResponse(ctx, deps, payload);
-        const response = buildJsonResponse(ctx.requestId, 200, result);
-        return {
-          ...response,
-          headers: {
-            ...response.headers,
-            ...DEPRECATION_HEADERS,
-          },
-        };
-      },
-    },
     // Versioned current route
     {
       method: "POST",

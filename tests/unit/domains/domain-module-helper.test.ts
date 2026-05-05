@@ -93,8 +93,10 @@ test("createDomainModulePreset works with empty arrays", () => {
 
 test("createDomainModulePreset preserves readonly modifier on domainId", () => {
   const preset = createDomainModulePreset("coding", [], []);
-  // @ts-expect-error - domainId is readonly
-  preset.domainId = "data-engineering";
+  assert.throws(() => {
+    // @ts-expect-error - domainId is readonly
+    preset.domainId = "data-engineering";
+  }, /read only/i);
 });
 
 // =============================================================================
@@ -135,6 +137,8 @@ test("requiresPresetReview works with different domain presets", () => {
 test("preset can be used to register domain with registry service", () => {
   const registry = new DomainRegistryService();
   const preset = createDomainModulePreset("coding", ["analyze", "implement"], []);
+  const baseline = getVerticalDomainBaseline("coding");
+  registry.register(baseline.definition);
 
   const registered = registry.get(preset.domainId);
   assert.ok(registered !== null, "domain should be registered");
@@ -144,6 +148,8 @@ test("preset can be used to register domain with registry service", () => {
 test("preset workflow IDs match registered domain workflows", () => {
   const registry = new DomainRegistryService();
   const preset = createDomainModulePreset("coding", [], []);
+  const baseline = getVerticalDomainBaseline("coding");
+  registry.register(baseline.definition);
 
   for (const workflowId of preset.defaultWorkflowIds) {
     const workflow = registry.getWorkflow(preset.domainId, workflowId);
@@ -154,6 +160,8 @@ test("preset workflow IDs match registered domain workflows", () => {
 test("preset tool bundle IDs match registered domain tool bundles", () => {
   const registry = new DomainRegistryService();
   const preset = createDomainModulePreset("coding", [], []);
+  const baseline = getVerticalDomainBaseline("coding");
+  registry.register(baseline.definition);
 
   for (const bundleId of preset.defaultToolBundleIds) {
     const bundle = registry.getToolBundle(preset.domainId, bundleId);
@@ -164,8 +172,11 @@ test("preset tool bundle IDs match registered domain tool bundles", () => {
 test("preset enables domain activation in registry", () => {
   const registry = new DomainRegistryService();
   const preset = createDomainModulePreset("coding", [], []);
+  const baseline = getVerticalDomainBaseline("coding");
+  registry.register(baseline.definition);
 
-  const activated = registry.activate(preset.domainId);
+  registry.activate(preset.domainId, true);
+  const activated = registry.activate(preset.domainId, false);
   assert.equal(activated.status, "active");
 });
 
@@ -174,9 +185,13 @@ test("multiple domain presets can coexist in registry", () => {
 
   const codingPreset = createDomainModulePreset("coding", ["analyze"], []);
   const dataPreset = createDomainModulePreset("data-engineering", ["ingest"], []);
+  registry.register(getVerticalDomainBaseline("coding").definition);
+  registry.register(getVerticalDomainBaseline("data-engineering").definition);
 
-  registry.activate(codingPreset.domainId);
-  registry.activate(dataPreset.domainId);
+  registry.activate(codingPreset.domainId, true);
+  registry.activate(codingPreset.domainId, false);
+  registry.activate(dataPreset.domainId, true);
+  registry.activate(dataPreset.domainId, false);
 
   const domains = registry.listActive();
   assert.ok(domains.length >= 2);

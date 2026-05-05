@@ -24,18 +24,25 @@ test("DomainDescriptorBundleSchema parses valid bundle", () => {
   const result = DomainDescriptorBundleSchema.parse({
     core: {
       domainId: "test-domain",
-      name: "Test Domain",
-      description: "A test domain",
-      domainType: "operational",
-      version: "1.0.0",
+      ownerOrgNodeId: "org-001",
+      primaryEntities: [],
+      recipeArchetype: "analytics",
     },
     risk: {
+      domainId: "test-domain",
       riskClass: "medium",
+      liabilityOwner: [],
+      compensationModel: [],
     },
-    knowledge: {},
-    eval: {},
-    governance: {},
-    interaction: {},
+    knowledge: { domainId: "test-domain", namespace: "test", entityTypes: [] },
+    eval: { domainId: "test-domain", qualityDimensions: [] },
+    governance: {
+      domainId: "test-domain",
+      ownerRoles: ["owner"],
+      operatorRoles: ["operator"],
+      approvalRoles: ["approver"],
+    },
+    interaction: { domainId: "test-domain", interactionModes: [] },
     executionProfile: {},
   });
 
@@ -47,16 +54,24 @@ test("DomainDescriptorBundleSchema allows optional executionProfile", () => {
   const result = DomainDescriptorBundleSchema.parse({
     core: {
       domainId: "test-domain",
-      name: "Test Domain",
-      description: "A test domain",
-      domainType: "operational",
-      version: "1.0.0",
+      ownerOrgNodeId: "org-001",
+      primaryEntities: [],
+      recipeArchetype: "analytics",
     },
-    risk: {},
-    knowledge: {},
-    eval: {},
-    governance: {},
-    interaction: {},
+    risk: {
+      domainId: "test-domain",
+      liabilityOwner: [],
+      compensationModel: [],
+    },
+    knowledge: { domainId: "test-domain", namespace: "test", entityTypes: [] },
+    eval: { domainId: "test-domain", qualityDimensions: [] },
+    governance: {
+      domainId: "test-domain",
+      ownerRoles: ["owner"],
+      operatorRoles: ["operator"],
+      approvalRoles: ["approver"],
+    },
+    interaction: { domainId: "test-domain", interactionModes: [] },
   });
 
   assert.equal(result.executionProfile, undefined);

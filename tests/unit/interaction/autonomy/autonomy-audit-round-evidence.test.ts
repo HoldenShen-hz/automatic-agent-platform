@@ -35,7 +35,8 @@ test("ProgressiveAutonomyService scores trust on the 0-1000 scale", () => {
   const evaluation = service.evaluateProfile(makeProfile());
 
   assert.equal(evaluation.decision.trustScore, 1000);
-  assert.equal(evaluation.decision.level, "full_auto");
+  assert.equal(evaluation.decision.level, "semi_auto");
+  assert.equal(evaluation.changeEvents[0]?.toLevel, "full_auto");
 });
 
 test("ProgressiveAutonomyService demotes to supervised when any execution exceeded the 200% budget guardrail", () => {

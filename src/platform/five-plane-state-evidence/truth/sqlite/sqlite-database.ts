@@ -746,6 +746,18 @@ CREATE INDEX IF NOT EXISTS idx_events_idempotency_key ON events(idempotency_key)
           "ALTER TABLE worker_snapshots ADD COLUMN version INTEGER NOT NULL DEFAULT 0;",
         );
         return true;
+      case 49:
+        this.ensureColumn(
+          "execution_tickets",
+          "critical_path_rank",
+          "ALTER TABLE execution_tickets ADD COLUMN critical_path_rank INTEGER NULL;",
+        );
+        this.ensureColumn(
+          "execution_tickets",
+          "scheduler_seed",
+          "ALTER TABLE execution_tickets ADD COLUMN scheduler_seed TEXT NULL;",
+        );
+        return true;
       case 15:
         this.ensureColumn(
           "memories",

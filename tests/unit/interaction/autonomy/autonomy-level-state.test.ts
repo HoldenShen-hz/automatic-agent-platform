@@ -214,6 +214,7 @@ test("P1 incident demotes one level when severityBasedDemotion is enabled", () =
         successfulExecutions: 495,
         incidents: 1,
         lastIncidentSeverity: "P1",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -234,6 +235,7 @@ test("P1 incident demotes from semi_auto to supervised", () => {
         successfulExecutions: 196,
         incidents: 1,
         lastIncidentSeverity: "P1",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -254,6 +256,7 @@ test("P1 incident demotes from supervised to suggestion", () => {
         successfulExecutions: 48,
         incidents: 1,
         lastIncidentSeverity: "P1",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -274,6 +277,7 @@ test("P1 incident at suggestion level stays at suggestion", () => {
         successfulExecutions: 48,
         incidents: 1,
         lastIncidentSeverity: "P1",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -306,6 +310,7 @@ test("all incident severities are handled correctly", () => {
           successfulExecutions: 196,
           incidents: 1,
           lastIncidentSeverity: severity,
+          lastIncidentAgeDays: 0,
         }),
       ],
     });
@@ -351,6 +356,7 @@ test("demotion generates agent.autonomy.demoted event", () => {
         failedExecutions: 8,
         incidents: 2,
         lastIncidentSeverity: "P2",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -369,6 +375,7 @@ test("P2 incident with freezeOnIncident generates agent.autonomy.frozen event", 
         successfulExecutions: 495,
         incidents: 1,
         lastIncidentSeverity: "P2",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -387,6 +394,7 @@ test("change event contains correct trigger for incident_response", () => {
         successfulExecutions: 95,
         incidents: 1,
         lastIncidentSeverity: "P0",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
@@ -608,6 +616,7 @@ test("frozen level generates immediate_pause businessOwnerAction", () => {
         successfulExecutions: 495,
         incidents: 1,
         lastIncidentSeverity: "P2",
+        lastIncidentAgeDays: 0,
       }),
     ],
   });
