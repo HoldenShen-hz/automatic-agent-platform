@@ -1320,9 +1320,11 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
     const startedAt = Date.now();
     const entryTimestamp = Date.now();
     const taskId = attributes["taskId"] as string ?? "unknown";
-    let stageContext:
-      | { traceId: string; spanId: string; parentSpanId: string | null }
-      | null = null;
+    let stageContext: {
+      traceId: string;
+      spanId: string;
+      parentSpanId: string | null;
+    } | null = null as { traceId: string; spanId: string; parentSpanId: string | null } | null;
     runtimeMetricsRegistry.recordOapeflirStageEntry(stage);
     try {
       const result = await startActiveSpan(`oapeflir.${stage}`, {
@@ -1333,7 +1335,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           ...attributes,
         },
       }, async (_span, activeContext) => {
-        stageContext = activeContext;
+        stageContext = activeContext as typeof stageContext;
         return await operation();
       });
       const durationMs = Date.now() - startedAt;

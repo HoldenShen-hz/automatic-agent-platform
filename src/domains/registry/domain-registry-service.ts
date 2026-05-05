@@ -70,6 +70,16 @@ export class DomainRegistryService {
       ...(normalized.executionProfile !== undefined ? { executionProfile: normalized.executionProfile } : {}),
     } as DomainDefinition;
     this.validateDefinition(normalizedDefinition);
+    if (isAutoPromoted) {
+      const smoke = this.smokeTests.run(normalizedDefinition);
+      if (!smoke.passed) {
+        throw new ValidationError("domain_registry.smoke_test_failed", "Domain smoke test failed during registration.", {
+          category: "validation",
+          source: "internal",
+          details: { issues: smoke.issues },
+        });
+      }
+    }
 
     this.registry.set(normalizedDefinition.domainId, normalizedDefinition);
     this.workflowRegistry.registerAll(normalizedDefinition.workflows);

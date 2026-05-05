@@ -63,7 +63,17 @@ function makeMinimalDefinition(overrides: Partial<DomainDefinition> = {}): Domai
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
+    },
+    executionProfile: {
+      executionMode: {
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
+      },
+      latencyTier: "interactive",
+      compiledArtifactRef: null,
     },
     status: "draft",
     externalAdapters: [],
@@ -89,6 +99,20 @@ test("register emits domain:registered event", () => {
   assert.equal(events[0]!.eventType, "domain:registered");
   assert.equal(events[0]!.payload.domainId, "evt_test");
   assert.equal(events[0]!.payload.status, "registered");
+});
+
+test("register rejects validated domains that fail smoke tests before auto-promotion", () => {
+  const service = new DomainRegistryService();
+
+  assert.throws(
+    () =>
+      service.register(makeMinimalDefinition({
+        domainId: "invalid_validated_domain",
+        status: "validated",
+        workflows: [],
+      })),
+    (err: unknown) => err instanceof ValidationError && err.code === "domain_registry.smoke_test_failed",
+  );
 });
 
 // --- duplicate workflow IDs ---

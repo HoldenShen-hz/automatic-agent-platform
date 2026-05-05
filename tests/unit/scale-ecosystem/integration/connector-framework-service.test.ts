@@ -333,17 +333,6 @@ test("ConnectorFrameworkService execute fails closed for connectors without exec
   };
   service.register(manifest);
 
-  service.execute(
-    {
-      connectorId: "synth-fallback-connector",
-      capability: "cap1",
-      payload: {},
-      policyRef: "policy.connector.test",
-      secretBindings: [{ secretRef: "secret://synth-fallback-connector/token", purpose: "api_token" }],
-    },
-    { environment: "dev" },
-  );
-
   const result = service.execute(
     {
       connectorId: "synth-fallback-connector",
