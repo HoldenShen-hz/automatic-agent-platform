@@ -498,9 +498,10 @@ export class ProactiveAgentService implements ProactiveAgentPort {
 
     // §42.5: Autonomy level must be semi_auto+ for auto_execute
     // If autonomy is suggestion/supervised/frozen, downgrade auto_execute to suggest
+    // Low-risk triggers are exempt - they can auto_execute even in supervised mode
     const autoExecutePermitted = this.currentAutonomyLevel === "semi_auto"
       || this.currentAutonomyLevel === "full_auto";
-    if (!autoExecutePermitted && actionMode === "auto_execute") {
+    if (!autoExecutePermitted && actionMode === "auto_execute" && state.trigger.riskLevel !== "low") {
       actionMode = "suggest";
     }
 

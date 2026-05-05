@@ -464,6 +464,7 @@ test("OapeflirLoopService completes learn improve and release stages when failur
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_release")],
   });
 
   assert.equal(result.learningObjects.length > 0, true);
@@ -518,6 +519,7 @@ test("OapeflirLoopService preserves successful quality gate when only success fe
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_success")],
   });
 
   assert.equal(result.outcome.nextAction, "complete");
@@ -554,6 +556,7 @@ test("OapeflirLoopService.buildSerializedHandoff creates handoff from loop resul
       planReason: "workflow.single_step_execution",
       dependencyEdges: [],
     },
+    stepOutputs: [makeStepOutput("step_handoff")],
   });
 
   const handoff = service.buildSerializedHandoff(result, "agent_a", "agent_b", 4096);
@@ -596,6 +599,7 @@ test("OapeflirLoopService handles empty feedback signals for buildSerializedHand
       dependencyEdges: [],
     },
     feedbackSignals: [],
+    stepOutputs: [makeStepOutput("step_empty")],
   });
 
   // Should not throw even with empty feedback
@@ -648,6 +652,7 @@ test("OapeflirLoopService records quality gate replan trigger correctly", async 
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_replan")],
   });
 
   // Verify replan was triggered due to quality gate rejection

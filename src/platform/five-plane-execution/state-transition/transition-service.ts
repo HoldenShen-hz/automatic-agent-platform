@@ -620,6 +620,13 @@ export class SessionTransitionService {
       // Session already in target status - treat as noop success
       return;
     }
+    // R9-02: Check fromStatus mismatch BEFORE validating the transition itself.
+    // This ensures CAS failures are reported correctly rather than as invalid transitions.
+    if (current != null && current.status !== command.fromStatus) {
+      throw new Error(
+        `session.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
+      );
+    }
     sessionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
 
@@ -707,6 +714,13 @@ export class ExecutionTransitionService {
     if (current != null && current.status === command.toStatus) {
       // Execution already in target status - treat as noop success
       return;
+    }
+    // R9-02: Check fromStatus mismatch BEFORE validating the transition itself.
+    // This ensures CAS failures are reported correctly rather than as invalid transitions.
+    if (current != null && current.status !== command.fromStatus) {
+      throw new Error(
+        `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
+      );
     }
     executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const startedAt =

@@ -13,7 +13,26 @@ import test from "node:test";
 import { OapeflirLoopService } from "../../../../../src/platform/orchestration/oapeflir/oapeflir-loop-service.js";
 import type { ExecuteBridge, ExecutionContext, ExecutionResult, StepResult } from "../../../../../src/platform/orchestration/oapeflir/execute-bridge.js";
 import type { Plan, PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
+import type { DualChannelStepOutput } from "../../../../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
+
+function makeStepOutput(stepId: string): DualChannelStepOutput {
+  return {
+    stepId,
+    planRef: `plan_${stepId}`,
+    userFacingResult: {
+      summary: `Executed ${stepId}`,
+      artifacts: [`artifact:${stepId}`],
+    },
+    systemTelemetry: {
+      durationMs: 25,
+      tokensUsed: 10,
+      modelId: "test-bridge",
+      retryCount: 0,
+      validationPassed: true,
+    },
+  };
+}
 
 class DeterministicExecuteBridge implements ExecuteBridge {
   async executeStep(step: PlanStep, _context: ExecutionContext): Promise<StepResult> {
@@ -120,6 +139,7 @@ test("GraphPatch is produced when replan occurs (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_graph_patch")],
   });
 
   // R5-12: GraphPatch must be produced during replan
@@ -148,6 +168,7 @@ test("GraphPatch has harnessRunId referencing the loop run (R5-12)", async () =>
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_run_id")],
   });
 
   if (result.graphPatch != null) {
@@ -179,6 +200,7 @@ test("GraphPatch baseGraphVersion and newGraphVersion are properly sequenced (R5
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_version")],
   });
 
   if (result.graphPatch != null) {
@@ -215,6 +237,7 @@ test("GraphPatch has operations array (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_ops")],
   });
 
   if (result.graphPatch != null) {

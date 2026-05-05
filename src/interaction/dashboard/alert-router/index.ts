@@ -57,7 +57,7 @@ export function sortAttentionQueue(items: readonly AttentionItem[]): AttentionIt
     if (priorityDiff !== 0) {
       return priorityDiff;
     }
-    return left.createdAt.localeCompare(right.createdAt);
+    return right.createdAt.localeCompare(left.createdAt);
   });
 }
 
