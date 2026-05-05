@@ -52,7 +52,7 @@
 | `queued_tasks` | `number` | 排队任务数 |
 | `oapeflir_loop_health` | `healthy \| drifting \| stalled \| failed?` | 闭环聚合健康 |
 | `knowledge_plane_health` | `healthy \| degraded \| not_enabled?` | Knowledge Plane 健康或未启用 |
-| `active_rollouts` | `number` | 当前活跃 rollout 数 |
+| `active_releases` | `number` | 当前活跃 release 数 |
 | `event_loop_lag_ms` | `number?` | 事件循环延迟 |
 | `memory_rss_mb` | `number?` | RSS 内存 |
 | `tier1_ack_backlog` | `number` | Tier 1 未确认积压 |
@@ -74,7 +74,7 @@
 - `feedback_signals[]?`
 - `learning_objects[]?`
 - `improvement_candidates[]?`
-- `rollout_records[]?`
+- `release_records[]?`
 
 规则：
 
@@ -159,7 +159,7 @@ Phase 1b 增强：
 - `GET /node-runs/:nodeRunId/inspect`
 - `GET /executions/:executionId/inspect` (legacy compat alias, deprecated)
 - `GET /approvals/:approvalId/inspect`
-- `GET /rollouts/:rolloutId/inspect`
+- `GET /releases/:releaseId/inspect`
 - `GET /knowledge/:namespace/inspect`
 - `GET /tasks/:taskId/oapeflir-timeline`
 

@@ -91,7 +91,7 @@ authoritative schema 至少包含以下核心表：
 - `learning_objects`
 - `improvement_candidates`
 - `strategy_versions`
-- `rollout_records`
+- `release_records`
 - `knowledge_entries`
 - `knowledge_semantic_vectors`
 
@@ -108,7 +108,7 @@ authoritative schema 至少包含以下核心表：
 | `learning_objects` | `id`、`source_refs_json`、`promotion_status`、`quality_score?`、`created_at` |
 | `improvement_candidates` | `id`、`change_scope`、`strategy_version?`、`status`、`created_at` |
 | `strategy_versions` | `id`、`version`、`diff_ref?`、`status`、`created_at` |
-| `rollout_records` | `id`、`strategy_version`、`stage`、`status`、`metrics_json?`、`created_at` |
+| `release_records` | `id`、`strategy_version`、`stage`、`status`、`metrics_json?`、`created_at` |
 | `knowledge_entries` | `id`、`namespace`、`trust_tier`、`freshness_state`、`source_ref?`、`created_at` |
 | `knowledge_semantic_vectors` | `knowledge_ref`、`chunk_id`、`document_id`、`namespace`、`embedding_id?`、`embedding_model`、`embedding`、`updated_at` |
 
