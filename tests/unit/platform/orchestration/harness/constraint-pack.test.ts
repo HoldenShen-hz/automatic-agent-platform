@@ -422,28 +422,40 @@ test("normalizeConstraintPack handles empty requiredEvidence", () => {
   assert.deepEqual(normalized.output_policy.requiredEvidence, []);
 });
 
-test("normalizeConstraintPack does not add sandboxRequirement when not present", () => {
+test("normalizeConstraintPack normalizes legacy snake_case sandbox_requirement to camelCase", () => {
   const pack: ConstraintPack = {
     ...createMinimalPack(),
-    sandbox_requirement: undefined,
+    sandbox_requirement: {
+      sandboxMode: "network_isolated",
+      timeoutMs: 30000,
+      allowedHosts: ["api.example.com"],
+    },
     sandboxRequirement: undefined,
-  };
+  } as unknown as ConstraintPack;
 
-  const normalized = normalizeConstraintPack(pack);
+  const normalized = normalizeConstraintPack(pack as ConstraintPack);
 
-  assert.equal(normalized.sandboxRequirement, undefined);
+  assert.ok(normalized.sandboxRequirement != null);
+  assert.equal(normalized.sandboxRequirement.sandboxMode, "network_isolated");
+  assert.deepEqual(normalized.sandboxRequirement.allowedHosts, ["api.example.com"]);
 });
 
-test("normalizeConstraintPack does not add approvalRequirement when not present", () => {
+test("normalizeConstraintPack normalizes legacy snake_case approval_requirement to camelCase", () => {
   const pack: ConstraintPack = {
     ...createMinimalPack(),
-    approval_requirement: undefined,
+    approval_requirement: {
+      requiredForRiskClass: ["high", "critical"],
+      approverRoles: ["security_admin", "manager"],
+      escalationTimeoutMs: 3600000,
+    },
     approvalRequirement: undefined,
-  };
+  } as unknown as ConstraintPack;
 
-  const normalized = normalizeConstraintPack(pack);
+  const normalized = normalizeConstraintPack(pack as ConstraintPack);
 
-  assert.equal(normalized.approvalRequirement, undefined);
+  assert.ok(normalized.approvalRequirement != null);
+  assert.deepEqual(normalized.approvalRequirement.requiredForRiskClass, ["high", "critical"]);
+  assert.deepEqual(normalized.approvalRequirement.approverRoles, ["security_admin", "manager"]);
 });
 
 test("normalizeConstraintPack handles budget without maxTokens", () => {
