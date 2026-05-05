@@ -49,9 +49,9 @@
 - `GET /executions/:executionId/inspect` (legacy compat alias)
 - `GET /approvals/:approvalId/inspect`
 - `POST /approvals/:approvalId/decision`
-- `GET /rollouts/:rolloutId/inspect`
-- `POST /rollouts/:rolloutId/advance`
-- `POST /rollouts/:rolloutId/rollback`
+- `GET /releases/:releaseId/inspect`
+- `POST /releases/:releaseId/advance`
+- `POST /releases/:releaseId/rollback`
 - `GET /feedback/:taskId`
 - `GET /divisions`
 - `GET /knowledge/namespaces`

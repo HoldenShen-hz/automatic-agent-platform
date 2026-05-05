@@ -54,8 +54,8 @@
 | `platform.approval.requested` | `tier1` | transition service / policy engine | gateway, approval inbox | 是 | 是 |
 | `platform.approval.resolved` | `tier1` | approval service | runtime, gateway | 是 | 是 |
 | `platform.improve.candidate_accepted` | `tier1` | improve hub / guardrail evaluator | release hub, observability, audit lineage | 是 | 是 |
-| `platform.release.rollout_started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
-| `platform.release.rollout_completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `platform.release.started` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
+| `platform.release.completed` | `tier1` | release hub | observability, audit lineage, inspect projection | 是 | 是 |
 | `platform.release.rollback_triggered` | `tier1` | release hub / supervisor | observability, audit lineage, inspect projection | 是 | 是 |
 | `oapeflir.view.observe.signals_collected` | `tier2` | observe hub | observability, inspect projection | 否 | 建议 |
 | `oapeflir.view.assess.evaluation_completed` | `tier2` | assess hub | observability, inspect projection | 否 | 建议 |
