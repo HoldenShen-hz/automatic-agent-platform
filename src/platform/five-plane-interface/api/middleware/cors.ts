@@ -49,7 +49,9 @@ export class CorsMiddleware {
    * Validate CORS configuration for security.
    */
   private validateConfig(): void {
-    const hasWildcard = this.config.allowedOrigins.some((origin) => origin === "*" || origin === "*.*");
+    const hasWildcard = this.config.allowedOrigins.some(
+      (origin) => origin === "*" || origin === "*.*",
+    );
     if (hasWildcard && this.config.allowCredentials) {
       throw new Error("cors.security: Wildcard origin '*' is not allowed when credentials are enabled. Specify explicit origins.");
     }
@@ -72,7 +74,18 @@ export class CorsMiddleware {
       return false;
     }
     const domain = pattern.slice(2);
-    return origin.endsWith(domain) && origin.slice(0, -domain.length).indexOf(".") === -1;
+    if (origin === domain || !origin.endsWith(domain)) {
+      return false;
+    }
+    // Verify there's a dot separator before the domain (not just a string ending with domain)
+    const separatorIndex = origin.length - domain.length - 1;
+    if (separatorIndex < 0 || origin[separatorIndex] !== ".") {
+      return false;
+    }
+    // Verify the prefix (before the dot) has no dots - so "app.example.com" matches *.example.com
+    // but "deep.app.example.com" does not
+    const prefix = origin.slice(0, separatorIndex);
+    return prefix.indexOf(".") === -1;
   }
 
   /**
