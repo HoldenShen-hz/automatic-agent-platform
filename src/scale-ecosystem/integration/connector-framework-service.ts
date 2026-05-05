@@ -252,24 +252,22 @@ export class ConnectorFrameworkService {
       }
     }
 
-    // §203-2382: Record execution via SideEffectManager per INV-SIDEEFFECT-001.
-    // The connector's actual external call (API invoke, HTTP request, etc.) happens
-    // out-of-process. Here we record the intent and outcome for audit/reconciliation.
+    // §203-2382: Unknown/custom connectors without an executor must fail closed.
+    // Returning synthesized success masked the fact that no real connector implementation ran.
     this.recordExecution(
       normalizedRequest,
       executionKey,
-      true,
-      health === "degraded" ? "deferred" : "succeeded",
+      false,
+      "failed",
       "synthesized",
       executedAt,
     );
-    // R16-36 FIX #2124: On success, reset circuit failure count
-    this.recordCircuitSuccess(normalizedRequest.connectorId);
+    this.recordCircuitFailure(normalizedRequest.connectorId);
 
     return {
       connectorId: normalizedRequest.connectorId,
-      success: true,
-      status: health === "degraded" ? "deferred" : "succeeded",
+      success: false,
+      status: "failed",
       executionKey,
       executedAt,
     };
