@@ -1090,12 +1090,12 @@ export class NlEntryService implements NlEntryPort {
   public constructor(options: NlEntryServiceOptions = {}) {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
     this.costEstimator = options.costEstimator ?? null;
+    this.nlConfig = mergeNlGatewayConfig(options.nlGatewayConfig);
     const configuredThreshold = options.clarificationThreshold
       ?? options.nlGatewayConfig?.disambiguation.threshold
       ?? INTENT_CONFIDENCE_THRESHOLD;
     this.clarificationThreshold = Math.min(1, Math.max(0, configuredThreshold));
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;
-    this.nlConfig = mergeNlGatewayConfig(options.nlGatewayConfig);
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
     this.conversationContextManager = new ConversationContextManager(this.nlConfig, options.memoryService ?? undefined);
