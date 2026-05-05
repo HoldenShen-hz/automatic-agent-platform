@@ -56,6 +56,7 @@ import {
   SESSION_EVENTS_SQL,
   DLQ_RECORDS_SQL,
   BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL,
+  CONFIG_VERSIONING_AND_ROLLOUT_SQL,
 } from "./sqlite-migration-runtime-part3.js";
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
@@ -358,6 +359,8 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(47, "0047_runtime_physical_schema_foundation", RUNTIME_PHYSICAL_SCHEMA_SQL),
   defineMigration(48, "0048_worker_identity_and_capacity", WORKER_IDENTITY_AND_CAPACITY_SQL),
   defineMigration(49, "0049_execution_ticket_graph_scheduling", EXECUTION_TICKET_GRAPH_SCHEDULING_SQL),
+  // R15-78/R15-79: Persist config version snapshots and active rollouts to SQLite
+  defineMigration(50, "0050_config_versioning_and_rollout", CONFIG_VERSIONING_AND_ROLLOUT_SQL),
 ] as const;
 
 /**

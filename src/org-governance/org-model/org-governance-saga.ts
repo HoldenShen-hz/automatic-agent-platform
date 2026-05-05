@@ -1,4 +1,5 @@
 import { newId } from "../../platform/contracts/types/ids.js";
+import { sha256, stableStringify } from "../../platform/five-plane-control-plane/config-center/config-governance-support.js";
 
 export interface OrgGovernanceSagaStep {
   readonly stepId: string;
@@ -724,13 +725,7 @@ export class OrgGovernanceSaga {
   private computeVersionHash(orgNodeIds: readonly string[]): string {
     const sorted = [...orgNodeIds].sort();
     const fingerprint = sorted.join("|");
-    let hash = 0;
-    for (let i = 0; i < fingerprint.length; i++) {
-      const char = fingerprint.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return `v_${Math.abs(hash).toString(16)}`;
+    return `v_${sha256(stableStringify(fingerprint)).substring(0, 12)}`;
   }
 }
 

@@ -200,28 +200,17 @@ export class TransactionalEventAppender {
 
   /**
    * Insert event without transaction wrapper (internal use)
+   *
+   * R16-27 FIX: Uses eventRepository.insertEvent instead of raw SQL to ensure:
+   * 1. Event insert + ack creation happen in the SAME transaction
+   * 2. Required consumer acks are created atomically with the event
+   * This satisfies §25.2 "Truth Table + Event Log dual model" atomicity requirement.
    */
   private insertEventInternal(event: EventRecord): EventRecord {
-    this.db.connection
-      .prepare(
-        `INSERT INTO events (
-          id, task_id, session_id, execution_id, event_type, event_tier,
-          payload_json, trace_id, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        event.id,
-        event.taskId,
-        event.sessionId,
-        event.executionId,
-        event.eventType,
-        event.eventTier,
-        event.payloadJson,
-        event.traceId,
-        event.createdAt,
-      );
-
-    return event;
+    // R16-27: Use eventRepository.insertEvent which creates consumer ack records
+    // atomically in the same transaction, ensuring event sourcing guarantee that
+    // truth and events are never out of sync.
+    return this.eventRepository.insertEvent(event);
   }
 
   /**

@@ -74,7 +74,7 @@ test("ChaosExperimentScheduler: recordSteadyStateResult deduplicates by hypothes
   assert.equal(retrieved!.results.length, 1, "Should have only one result per hypothesis");
 });
 
-test("ChaosExperimentScheduler: autoTerminate does not rollback faults (issue #2104)", () => {
+test("ChaosExperimentScheduler: autoTerminate rolls back faults on termination", () => {
   const scheduler = new ChaosExperimentScheduler();
   const experiment = scheduler.scheduleExperiment({
     name: "Auto Terminate Test",
@@ -86,17 +86,18 @@ test("ChaosExperimentScheduler: autoTerminate does not rollback faults (issue #2
     maxDurationMs: 1, // Will expire immediately
   });
   scheduler.startExperiment(experiment.experimentId);
+  scheduler.injectFault(experiment.experimentId);
+  const running = scheduler.getExperiment(experiment.experimentId);
+  assert.ok(running);
+  running!.startedAt = new Date(Date.now() - 10).toISOString();
 
   // Auto terminate
   const terminated = scheduler.autoTerminateIfNeeded(experiment.experimentId);
   assert.equal(terminated, true);
 
   const retrieved = scheduler.getExperiment(experiment.experimentId);
-  // The experiment is cancelled but injected fault is NOT rolled back
-  // This is the bug - autoTerminate should rollback but doesn't
   assert.equal(retrieved!.status, "cancelled");
-  // Note: autoRollbackTriggered should be true if rollback was implemented
-  assert.equal(retrieved!.autoRollbackTriggered, false, "Bug: autoTerminate doesn't trigger rollback");
+  assert.equal(retrieved!.autoRollbackTriggered, true);
 });
 
 test("ChaosExperimentScheduler: steadyStateCache declared but never used (issue #2111)", () => {

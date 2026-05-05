@@ -156,7 +156,7 @@ test("UserPortalService resolveMode enterprise via department count", () => {
   assert.equal(mode.mode, "enterprise");
 });
 
-test("UserPortalService buildOnboardingPlan returns plan with recommended domains", () => {
+test("UserPortalService buildOnboardingPlan returns plan with recommended domains", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -164,7 +164,7 @@ test("UserPortalService buildOnboardingPlan returns plan with recommended domain
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("部署代码到生产环境", context);
+  const plan = await service.buildOnboardingPlan("部署代码到生产环境", context);
 
   assert.ok(plan.mode != null);
   assert.ok(Array.isArray(plan.recommendedDomains));
@@ -172,7 +172,7 @@ test("UserPortalService buildOnboardingPlan returns plan with recommended domain
   assert.ok(plan.welcomePrompt.includes("solo"));
 });
 
-test("UserPortalService buildOnboardingPlan recommends advertising domain", () => {
+test("UserPortalService buildOnboardingPlan recommends advertising domain", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -180,12 +180,12 @@ test("UserPortalService buildOnboardingPlan recommends advertising domain", () =
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("市场推广和广告投放", context);
+  const plan = await service.buildOnboardingPlan("市场推广和广告投放", context);
 
   assert.ok(plan.recommendedDomains.includes("advertising"));
 });
 
-test("UserPortalService buildOnboardingPlan recommends finance domain", () => {
+test("UserPortalService buildOnboardingPlan recommends finance domain", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -193,12 +193,12 @@ test("UserPortalService buildOnboardingPlan recommends finance domain", () => {
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("财务预算和发票审批", context);
+  const plan = await service.buildOnboardingPlan("财务预算和发票审批", context);
 
   assert.ok(plan.recommendedDomains.includes("finance"));
 });
 
-test("UserPortalService buildOnboardingPlan recommends hr domain", () => {
+test("UserPortalService buildOnboardingPlan recommends hr domain", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -206,12 +206,12 @@ test("UserPortalService buildOnboardingPlan recommends hr domain", () => {
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("招聘新员工入职", context);
+  const plan = await service.buildOnboardingPlan("招聘新员工入职", context);
 
   assert.ok(plan.recommendedDomains.includes("hr"));
 });
 
-test("UserPortalService buildOnboardingPlan recommends customer_support domain", () => {
+test("UserPortalService buildOnboardingPlan recommends customer_support domain", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -219,12 +219,12 @@ test("UserPortalService buildOnboardingPlan recommends customer_support domain",
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("客服工单处理", context);
+  const plan = await service.buildOnboardingPlan("客服工单处理", context);
 
   assert.ok(plan.recommendedDomains.includes("customer_support"));
 });
 
-test("UserPortalService buildOnboardingPlan recommends engineering_ops domain", () => {
+test("UserPortalService buildOnboardingPlan recommends engineering_ops domain", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -232,12 +232,12 @@ test("UserPortalService buildOnboardingPlan recommends engineering_ops domain", 
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("代码发布到生产环境", context);
+  const plan = await service.buildOnboardingPlan("代码发布到生产环境", context);
 
   assert.ok(plan.recommendedDomains.includes("engineering_ops"));
 });
 
-test("UserPortalService buildOnboardingPlan defaults to general_ops", () => {
+test("UserPortalService buildOnboardingPlan defaults to general_ops", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -245,12 +245,12 @@ test("UserPortalService buildOnboardingPlan defaults to general_ops", () => {
     requiresSso: false,
   };
 
-  const plan = service.buildOnboardingPlan("做一些任务", context);
+  const plan = await service.buildOnboardingPlan("做一些任务", context);
 
   assert.ok(plan.recommendedDomains.includes("general_ops"));
 });
 
-test("UserPortalService buildDomainOnboardingWizard returns wizard with 4 steps", () => {
+test("UserPortalService buildDomainOnboardingWizard returns wizard with solo-mode steps", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -258,16 +258,14 @@ test("UserPortalService buildDomainOnboardingWizard returns wizard with 4 steps"
     requiresSso: false,
   };
 
-  const wizard = service.buildDomainOnboardingWizard("测试描述", context);
+  const wizard = await service.buildDomainOnboardingWizard("测试描述", context);
 
-  assert.equal(wizard.steps.length, 4);
+  assert.equal(wizard.steps.length, 2);
   assert.equal(wizard.steps[0]!.stepId, "business_type");
-  assert.equal(wizard.steps[1]!.stepId, "capability_setup");
-  assert.equal(wizard.steps[2]!.stepId, "risk_setup");
-  assert.equal(wizard.steps[3]!.stepId, "activation");
+  assert.equal(wizard.steps[1]!.stepId, "activation");
 });
 
-test("UserPortalService buildDomainOnboardingWizard recommends domains", () => {
+test("UserPortalService buildDomainOnboardingWizard recommends domains", async () => {
   const service = new UserPortalService();
   const context: UserPortalContext = {
     memberCount: 1,
@@ -275,16 +273,16 @@ test("UserPortalService buildDomainOnboardingWizard recommends domains", () => {
     requiresSso: false,
   };
 
-  const wizard = service.buildDomainOnboardingWizard("财务和代码发布", context);
+  const wizard = await service.buildDomainOnboardingWizard("财务和代码发布", context);
 
   assert.ok(wizard.recommendedDomains.includes("finance"));
   assert.ok(wizard.recommendedDomains.includes("engineering_ops"));
 });
 
-test("UserPortalService buildVisualWorkflowBuilder returns builder structure", () => {
+test("UserPortalService buildVisualWorkflowBuilder returns builder structure", async () => {
   const service = new UserPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("测试工作流");
+  const builder = await service.buildVisualWorkflowBuilder("测试工作流");
 
   assert.ok(Array.isArray(builder.canvas.nodes));
   assert.ok(Array.isArray(builder.canvas.edges));
@@ -293,28 +291,28 @@ test("UserPortalService buildVisualWorkflowBuilder returns builder structure", (
   assert.ok(builder.validation != null);
 });
 
-test("UserPortalService buildVisualWorkflowBuilder creates nodes and edges", () => {
+test("UserPortalService buildVisualWorkflowBuilder creates nodes and edges", async () => {
   const service = new UserPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("测试工作流");
+  const builder = await service.buildVisualWorkflowBuilder("测试工作流");
 
   assert.equal(builder.canvas.nodes.length, 3);
   assert.equal(builder.canvas.edges.length, 2);
 });
 
-test("UserPortalService buildVisualWorkflowBuilder uses selected domains when provided", () => {
+test("UserPortalService buildVisualWorkflowBuilder uses selected domains when provided", async () => {
   const service = new UserPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("测试", ["custom_domain"]);
+  const builder = await service.buildVisualWorkflowBuilder("测试", ["custom_domain"]);
 
   // The label uses primaryDomain, not componentId
   assert.ok(builder.canvas.nodes[1]!.label.includes("custom_domain"));
 });
 
-test("UserPortalService buildVisualWorkflowBuilder sets finance risk to high by default", () => {
+test("UserPortalService buildVisualWorkflowBuilder sets finance risk to high by default", async () => {
   const service = new UserPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("财务工作流");
+  const builder = await service.buildVisualWorkflowBuilder("财务工作流");
 
   const financeComponents = builder.componentPalette
     .flatMap(cat => cat.components)
@@ -324,11 +322,11 @@ test("UserPortalService buildVisualWorkflowBuilder sets finance risk to high by 
   assert.equal(financeComponents[0]!.riskLevel, "high");
 });
 
-test("UserPortalService buildVisualWorkflowBuilder sets finance payment risk to critical", () => {
+test("UserPortalService buildVisualWorkflowBuilder sets finance payment risk to critical", async () => {
   const service = new UserPortalService();
 
   // Must include "finance" or "payment" to get finance domain and critical risk
-  const builder = service.buildVisualWorkflowBuilder("财务付款和转账");
+  const builder = await service.buildVisualWorkflowBuilder("财务付款和转账");
 
   const financeComponents = builder.componentPalette
     .flatMap(cat => cat.components)
@@ -338,10 +336,10 @@ test("UserPortalService buildVisualWorkflowBuilder sets finance payment risk to 
   assert.equal(financeComponents[0]!.riskLevel, "critical");
 });
 
-test("UserPortalService buildVisualWorkflowBuilder sets production deploy risk to high", () => {
+test("UserPortalService buildVisualWorkflowBuilder sets production deploy risk to high", async () => {
   const service = new UserPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("发布到生产环境");
+  const builder = await service.buildVisualWorkflowBuilder("发布到生产环境");
 
   const engComponents = builder.componentPalette
     .flatMap(cat => cat.components)

@@ -120,6 +120,8 @@ export interface CutoverDecision {
   readonly reason: string;
   /** R16-32: The actual rebuilt shadow state for promotion */
   readonly shadowState: Record<string, unknown> | null;
+  /** R16-32: Last event ID processed during shadow build */
+  readonly lastEventId: string;
 }
 
 /**
@@ -297,6 +299,7 @@ export class ProjectionRebuildService {
         confidence: 0,
         reason: `Unknown projection: ${projectionName}`,
         shadowState: null,
+        lastEventId: "",
       };
     }
 
@@ -352,6 +355,7 @@ export class ProjectionRebuildService {
         confidence: 1.0,
         reason: "Shadow and existing hashes match - safe promotion",
         shadowState,
+        lastEventId,
       };
     }
 
@@ -369,6 +373,7 @@ export class ProjectionRebuildService {
         confidence,
         reason: "High confidence semantic difference - promoting shadow",
         shadowState,
+        lastEventId,
       };
     } else if (confidence >= 0.5) {
       // Medium confidence - keep existing, need review
@@ -381,6 +386,7 @@ export class ProjectionRebuildService {
         confidence,
         reason: "Medium confidence difference - needs manual review",
         shadowState,
+        lastEventId,
       };
     } else {
       // Low confidence - keep existing
@@ -393,6 +399,7 @@ export class ProjectionRebuildService {
         confidence,
         reason: "Low confidence - keeping existing projection",
         shadowState,
+        lastEventId,
       };
     }
   }
@@ -467,7 +474,7 @@ export class ProjectionRebuildService {
               entityRef: decision.entityRef,
               shadowState: decision.shadowState ?? {},
               shadowHash: decision.shadowHash,
-              builtFromEventId: lastEventId,
+              builtFromEventId: decision.lastEventId,
               builtAt: new Date().toISOString(),
               isStale: false,
             });
@@ -641,7 +648,12 @@ export class ProjectionRebuildService {
 
     // Step 3: For each promoted shadow, validate and commit
     for (const [key, shadow] of this.shadowProjections.entries()) {
-      const [projectionName, entityRef] = key.split(":");
+      const parts = key.split(":");
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        projectionLogger.error(`Invalid shadow key format: ${key}`);
+        continue;
+      }
+      const [projectionName, entityRef] = parts;
       try {
         // Validate shadow state before committing
         const isValid = this.validateShadowState(shadow.shadowState);

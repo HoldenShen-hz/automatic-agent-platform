@@ -99,13 +99,14 @@ test("isValidLifecycleTransition allows paused to active or deprecated", () => {
   assert.equal(isValidLifecycleTransition("paused", "deprecated"), true);
 });
 
-test("isValidLifecycleTransition allows deprecated to archived or active", () => {
+test("isValidLifecycleTransition allows deprecated to archived or paused", () => {
   assert.equal(isValidLifecycleTransition("deprecated", "archived"), true);
-  assert.equal(isValidLifecycleTransition("deprecated", "active"), true);
+  assert.equal(isValidLifecycleTransition("deprecated", "paused"), true);
+  assert.equal(isValidLifecycleTransition("deprecated", "active"), false);
 });
 
-test("isValidLifecycleTransition allows archived to removed or active", () => {
-  assert.equal(isValidLifecycleTransition("archived", "active"), true);
+test("isValidLifecycleTransition allows archived to removed only", () => {
+  assert.equal(isValidLifecycleTransition("archived", "active"), false);
   assert.equal(isValidLifecycleTransition("archived", "removed"), true);
   assert.equal(isValidLifecycleTransition("archived", "draft"), false);
 });
@@ -136,7 +137,8 @@ test("isTerminalState returns true only for removed state", () => {
 test("VALID_LIFECYCLE_TRANSITIONS has correct structure", () => {
   assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, 9);
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("draft"), ["testing"]);
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed", "active"]);
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("deprecated"), ["archived", "paused"]);
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed"]);
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("removed"), []);
 });
 

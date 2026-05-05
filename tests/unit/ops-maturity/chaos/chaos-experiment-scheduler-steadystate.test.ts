@@ -124,8 +124,8 @@ test("ChaosExperimentScheduler.validateSteadyState: negative values", () => {
   };
 
   assert.equal(scheduler.validateSteadyState("error_rate", 0, hypothesis), true);
-  assert.equal(scheduler.validateSteadyState("error_rate", -1, hypothesis), true);
-  assert.equal(scheduler.validateSteadyState("error_rate", 1, hypothesis), false);
+  assert.equal(scheduler.validateSteadyState("error_rate", -1, hypothesis), false);
+  assert.equal(scheduler.validateSteadyState("error_rate", 1, hypothesis), true);
 });
 
 test("ChaosExperimentScheduler.validateSteadyState: zero tolerance", () => {

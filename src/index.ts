@@ -192,8 +192,15 @@ export async function runPlatformRootDemo(): Promise<void> {
 }
 
 export async function runPlatformRootSummary(): Promise<void> {
-  const summary = buildPlatformRootSummary();
-  console.log(JSON.stringify(summary, null, 2));
+  // §9 R15-86: Error boundary prevents summary failure from crashing service
+  try {
+    const summary = buildPlatformRootSummary();
+    console.log(JSON.stringify(summary, null, 2));
+  } catch (error) {
+    // Return partial summary with error field instead of crashing
+    const normalizedError = error instanceof Error ? { name: error.name, message: error.message } : { message: String(error) };
+    console.log(JSON.stringify({ partial: true, error: normalizedError }, null, 2));
+  }
 }
 
 /**

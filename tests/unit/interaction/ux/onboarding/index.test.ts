@@ -221,10 +221,10 @@ test("UserPortalService.resolveMode returns enterprise for large org", () => {
   assert.equal(mode.features.governance, "hierarchical");
 });
 
-test("UserPortalService.buildOnboardingPlan generates plan with recommended domains", () => {
+test("UserPortalService.buildOnboardingPlan generates plan with recommended domains", async () => {
   const service = createTestPortalService();
 
-  const plan = service.buildOnboardingPlan("帮我做一个营销活动", {
+  const plan = await service.buildOnboardingPlan("帮我做一个营销活动", {
     memberCount: 5,
     departmentCount: 1,
     requiresSso: false,
@@ -235,10 +235,10 @@ test("UserPortalService.buildOnboardingPlan generates plan with recommended doma
   assert.ok(plan.welcomePrompt.length > 0);
 });
 
-test("UserPortalService.buildOnboardingPlan recommends finance for finance keywords", () => {
+test("UserPortalService.buildOnboardingPlan recommends finance for finance keywords", async () => {
   const service = createTestPortalService();
 
-  const plan = service.buildOnboardingPlan("处理财务预算和发票", {
+  const plan = await service.buildOnboardingPlan("处理财务预算和发票", {
     memberCount: 10,
     departmentCount: 2,
     requiresSso: false,
@@ -247,10 +247,10 @@ test("UserPortalService.buildOnboardingPlan recommends finance for finance keywo
   assert.ok(plan.recommendedDomains.includes("finance"));
 });
 
-test("UserPortalService.buildOnboardingPlan recommends engineering_ops for code keywords", () => {
+test("UserPortalService.buildOnboardingPlan recommends engineering_ops for code keywords", async () => {
   const service = createTestPortalService();
 
-  const plan = service.buildOnboardingPlan("帮我deploy到production环境", {
+  const plan = await service.buildOnboardingPlan("帮我deploy到production环境", {
     memberCount: 10,
     departmentCount: 1,
     requiresSso: false,
@@ -259,10 +259,10 @@ test("UserPortalService.buildOnboardingPlan recommends engineering_ops for code 
   assert.ok(plan.recommendedDomains.includes("engineering_ops"));
 });
 
-test("UserPortalService.buildOnboardingPlan defaults to general_ops for unknown domain", () => {
+test("UserPortalService.buildOnboardingPlan defaults to general_ops for unknown domain", async () => {
   const service = createTestPortalService();
 
-  const plan = service.buildOnboardingPlan("do something generic", {
+  const plan = await service.buildOnboardingPlan("do something generic", {
     memberCount: 1,
     departmentCount: 1,
     requiresSso: false,
@@ -271,45 +271,44 @@ test("UserPortalService.buildOnboardingPlan defaults to general_ops for unknown 
   assert.ok(plan.recommendedDomains.includes("general_ops"));
 });
 
-test("UserPortalService.buildDomainOnboardingWizard returns wizard with 4 steps", () => {
+test("UserPortalService.buildDomainOnboardingWizard returns team-mode wizard steps", async () => {
   const service = createTestPortalService();
 
-  const wizard = service.buildDomainOnboardingWizard("创建一个营销活动", {
+  const wizard = await service.buildDomainOnboardingWizard("创建一个营销活动", {
     memberCount: 5,
     departmentCount: 1,
     requiresSso: false,
   });
 
-  assert.equal(wizard.steps.length, 4);
+  assert.equal(wizard.steps.length, 3);
   assert.equal(wizard.steps[0]!.stepId, "business_type");
   assert.equal(wizard.steps[1]!.stepId, "capability_setup");
-  assert.equal(wizard.steps[2]!.stepId, "risk_setup");
-  assert.equal(wizard.steps[3]!.stepId, "activation");
+  assert.equal(wizard.steps[2]!.stepId, "activation");
 });
 
-test("UserPortalService.buildVisualWorkflowBuilder returns builder with canvas", () => {
+test("UserPortalService.buildVisualWorkflowBuilder returns builder with canvas", async () => {
   const service = createTestPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("创建任务");
+  const builder = await service.buildVisualWorkflowBuilder("创建任务");
 
   assert.ok(builder.canvas.nodes.length >= 2);
   assert.ok(builder.canvas.edges.length >= 1);
   assert.ok(builder.livePreview.estimatedDuration.length > 0);
 });
 
-test("UserPortalService.buildVisualWorkflowBuilder includes component palette", () => {
+test("UserPortalService.buildVisualWorkflowBuilder includes component palette", async () => {
   const service = createTestPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("创建任务");
+  const builder = await service.buildVisualWorkflowBuilder("创建任务");
 
   assert.ok(builder.componentPalette.length > 0);
   assert.ok(builder.componentPalette[0]!.components.length > 0);
 });
 
-test("UserPortalService.buildVisualWorkflowBuilder identifies high risk for finance domain", () => {
+test("UserPortalService.buildVisualWorkflowBuilder identifies high risk for finance domain", async () => {
   const service = createTestPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("处理付款和工资单", ["finance"]);
+  const builder = await service.buildVisualWorkflowBuilder("处理付款和工资单", ["finance"]);
 
   const actionComponent = builder.componentPalette.find((p) => p.category === "action");
   const financeComponent = actionComponent?.components.find((c) => c.domainId === "finance");
@@ -317,10 +316,10 @@ test("UserPortalService.buildVisualWorkflowBuilder identifies high risk for fina
   assert.equal(financeComponent!.riskLevel, "critical");
 });
 
-test("UserPortalService.buildVisualWorkflowBuilder validates workflow structure", () => {
+test("UserPortalService.buildVisualWorkflowBuilder validates workflow structure", async () => {
   const service = createTestPortalService();
 
-  const builder = service.buildVisualWorkflowBuilder("创建任务");
+  const builder = await service.buildVisualWorkflowBuilder("创建任务");
 
   assert.equal(builder.validation.valid, true);
   assert.ok(builder.validation.messages.length > 0);
@@ -347,10 +346,10 @@ test("UserPortalService handles multiple sessions independently", async () => {
   assert.equal(stored2!.session.userId, "user_2");
 });
 
-test("UserPortalService recommends hr domain for recruit keywords", () => {
+test("UserPortalService recommends hr domain for recruit keywords", async () => {
   const service = createTestPortalService();
 
-  const plan = service.buildOnboardingPlan("招聘新员工和入职培训", {
+  const plan = await service.buildOnboardingPlan("招聘新员工和入职培训", {
     memberCount: 50,
     departmentCount: 2,
     requiresSso: false,
@@ -359,10 +358,10 @@ test("UserPortalService recommends hr domain for recruit keywords", () => {
   assert.ok(plan.recommendedDomains.includes("hr"));
 });
 
-test("UserPortalService recommends customer_support domain for support keywords", () => {
+test("UserPortalService recommends customer_support domain for support keywords", async () => {
   const service = createTestPortalService();
 
-  const plan = service.buildOnboardingPlan("处理客服工单和客户问题", {
+  const plan = await service.buildOnboardingPlan("处理客服工单和客户问题", {
     memberCount: 20,
     departmentCount: 1,
     requiresSso: false,

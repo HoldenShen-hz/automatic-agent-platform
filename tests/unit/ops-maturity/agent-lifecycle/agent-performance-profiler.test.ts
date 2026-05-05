@@ -143,7 +143,7 @@ test("AgentPerformanceProfiler: p95DurationMs calculated correctly", () => {
 
   // p95 index = Math.floor(20 * 0.95) = 19, duration at index 19 = 2000
   assert.equal(metrics!.p95DurationMs, 2000);
-  assert.equal(metrics!.avgDurationMs, 1100); // (100+200+...+2000)/20 = 1100
+  assert.equal(metrics!.avgDurationMs, 1050); // (100+200+...+2000)/20 = 1050
 });
 
 test("AgentPerformanceProfiler: strengths and weaknesses sorted by success rate", () => {

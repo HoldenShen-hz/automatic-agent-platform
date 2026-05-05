@@ -22,6 +22,44 @@ import { StructuredLogger } from "../../platform/shared/observability/structured
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
+const DEFAULT_BLAST_RADIUS_LIMITS: BlastRadiusLimits = {
+  maxAffectedServices: 1,
+  maxAffectedNodes: 1,
+  maxAffectedPercentage: 100,
+  containedToLabels: null,
+};
+
+const DEFAULT_ROLLBACK_STRATEGY: RollbackStrategy = {
+  enabled: false,
+  rollbackOnViolation: false,
+  autoRestoreDurationMs: null,
+  notificationsEnabled: false,
+};
+
+function normalizeBlastRadiusLimits(limits?: Partial<BlastRadiusLimits> | null): BlastRadiusLimits {
+  return {
+    ...DEFAULT_BLAST_RADIUS_LIMITS,
+    ...(limits ?? {}),
+    containedToLabels: limits?.containedToLabels ?? DEFAULT_BLAST_RADIUS_LIMITS.containedToLabels,
+  };
+}
+
+function normalizeRollbackStrategy(strategy?: Partial<RollbackStrategy> | null): RollbackStrategy {
+  return {
+    ...DEFAULT_ROLLBACK_STRATEGY,
+    ...(strategy ?? {}),
+  };
+}
+
+function normalizeExperimentTarget(target: ExperimentTarget): ExperimentTarget {
+  return {
+    ...target,
+    labels: target.labels ?? {},
+    blastRadius: normalizeBlastRadiusLimits(target.blastRadius),
+    rollbackStrategy: normalizeRollbackStrategy(target.rollbackStrategy),
+  };
+}
+
 /**
  * Active fault record for tracking and rollback.
  */
@@ -176,11 +214,18 @@ export class ChaosExperimentScheduler {
   private readonly experimentFaults = new Map<string, Set<string>>();
 
   public scheduleExperiment(input: ExperimentScheduleInput): ChaosExperiment {
+    const normalizedTarget = normalizeExperimentTarget(input.target);
+    const normalizedBlastRadius = normalizeBlastRadiusLimits(
+      input.blastRadius ?? normalizedTarget.blastRadius,
+    );
+    const normalizedRollbackStrategy = normalizeRollbackStrategy(
+      input.rollbackStrategy ?? normalizedTarget.rollbackStrategy,
+    );
     const experiment: ChaosExperiment = {
       experimentId: newId("chaos"),
       name: input.name,
       description: input.description,
-      target: input.target,
+      target: normalizedTarget,
       fault: input.fault,
       steadyStateHypotheses: input.steadyStateHypotheses,
       status: "scheduled",
@@ -189,8 +234,8 @@ export class ChaosExperimentScheduler {
       completedAt: null,
       maxDurationMs: input.maxDurationMs,
       results: [],
-      blastRadius: input.blastRadius,
-      rollbackStrategy: input.rollbackStrategy,
+      blastRadius: normalizedBlastRadius,
+      rollbackStrategy: normalizedRollbackStrategy,
       autoRollbackTriggered: false,
       violationDetectedAt: null,
     };
@@ -242,9 +287,10 @@ export class ChaosExperimentScheduler {
     // Check if hypothesis passed
     if (!passed) {
       experiment.violationDetectedAt = nowIso();
+      const rollbackStrategy = normalizeRollbackStrategy(experiment.rollbackStrategy);
 
       // §61: Auto-rollback when hypothesis violation is detected
-      if (experiment.rollbackStrategy.rollbackOnViolation && experiment.rollbackStrategy.enabled) {
+      if (rollbackStrategy.rollbackOnViolation && rollbackStrategy.enabled) {
         experiment.autoRollbackTriggered = true;
         experiment.status = "violated";
         experiment.completedAt = nowIso();
@@ -310,9 +356,11 @@ export class ChaosExperimentScheduler {
    */
   private applyFaultToTarget(experiment: ChaosExperiment): FaultApplicationResult {
     const { target, fault, blastRadius } = experiment;
+    const effectiveTarget = normalizeExperimentTarget(target);
+    const effectiveBlastRadius = normalizeBlastRadiusLimits(blastRadius);
 
     // Check blast radius limits before injection
-    const blastRadiusCheck = this.validateBlastRadius(target, blastRadius);
+    const blastRadiusCheck = this.validateBlastRadius(effectiveTarget, effectiveBlastRadius);
     if (!blastRadiusCheck.withinLimits) {
       return {
         success: false,
@@ -389,12 +437,12 @@ export class ChaosExperimentScheduler {
     // Check contained-to-labels constraint
     if (limits.containedToLabels !== null) {
       for (const [labelKey, labelValue] of Object.entries(limits.containedToLabels)) {
-        if (target.labels[labelKey] !== labelValue) {
-          return {
-            withinLimits: false,
-            violation: `Target label ${labelKey}=${target.labels[labelKey]} does not match required ${labelKey}=${labelValue}`,
-          };
-        }
+      if ((target.labels ?? {})[labelKey] !== labelValue) {
+        return {
+          withinLimits: false,
+          violation: `Target label ${labelKey}=${(target.labels ?? {})[labelKey]} does not match required ${labelKey}=${labelValue}`,
+        };
+      }
       }
     }
 

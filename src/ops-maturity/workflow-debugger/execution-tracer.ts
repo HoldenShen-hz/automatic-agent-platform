@@ -111,10 +111,20 @@ export class ExecutionTracer {
     }
 
     const now = Date.now();
-    const traceStartTime = this.traceStartTimes.get(traceId) ?? now;
-    // §203-2378: durationMs measures event processing time, not wall-clock elapsed.
-    // Use traceStart as base to measure event execution duration within the trace.
-    const durationMs = this.measurePerformance ? now - traceStartTime : null;
+    const eventKey = `${traceId}:${nodeRunId}`;
+    let durationMs: number | null = null;
+
+    if (this.measurePerformance) {
+      if (eventType === "enter") {
+        this.eventStartTimes.set(eventKey, now);
+      } else if (eventType === "exit" || eventType === "error") {
+        const eventStartTime = this.eventStartTimes.get(eventKey);
+        if (eventStartTime != null) {
+          durationMs = Math.max(0, now - eventStartTime);
+          this.eventStartTimes.delete(eventKey);
+        }
+      }
+    }
 
     const event: TraceEvent = {
       eventId: newId("evt"),

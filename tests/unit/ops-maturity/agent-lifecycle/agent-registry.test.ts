@@ -13,18 +13,9 @@ import {
 /**
  * Issue #2103: deprecated→active transition bypasses all stage gates
  */
-test("AgentRegistry: deprecated→active transition is invalid (issue #2103)", () => {
-  // The bug is that deprecated->active bypasses the proper stage gates
-  // Valid transition should be deprecated -> archived -> active
+test("AgentRegistry: deprecated→active transition is blocked (issue #2103)", () => {
   const isValid = isValidLifecycleTransition("deprecated", "active");
-
-  // According to VALID_LIFECYCLE_TRANSITIONS, deprecated can go to archived or active
-  // But the issue says this bypasses stage gates - so active should NOT be allowed directly
-  // The issue is that this transition exists and bypasses proper promotion gates
-  assert.equal(isValid, true, "deprecated->active is allowed per current state machine");
-
-  // The issue is that this bypasses the canary->active promotion path
-  // A proper flow should go: deprecated -> archived -> testing -> staging -> canary -> active
+  assert.equal(isValid, false);
 });
 
 test("AgentRegistry: valid transitions for all states", () => {
@@ -55,13 +46,14 @@ test("AgentRegistry: valid transitions for all states", () => {
   assert.equal(isValidLifecycleTransition("paused", "deprecated"), true);
   assert.equal(isValidLifecycleTransition("paused", "canary"), true);
 
-  // deprecated can go to archived or active
+  // deprecated can go to archived or paused
   assert.equal(isValidLifecycleTransition("deprecated", "archived"), true);
-  assert.equal(isValidLifecycleTransition("deprecated", "active"), true); // This is the bug!
+  assert.equal(isValidLifecycleTransition("deprecated", "paused"), true);
+  assert.equal(isValidLifecycleTransition("deprecated", "active"), false);
 
-  // archived can go to removed or active
+  // archived can go to removed only
   assert.equal(isValidLifecycleTransition("archived", "removed"), true);
-  assert.equal(isValidLifecycleTransition("archived", "active"), true);
+  assert.equal(isValidLifecycleTransition("archived", "active"), false);
 
   // removed is terminal
   assert.equal(isValidLifecycleTransition("removed", "active"), false);
@@ -108,19 +100,11 @@ test("AgentRegistry: isTerminalState only true for removed", () => {
 });
 
 test("AgentRegistry: deprecated->active transition bypass issue", () => {
-  // The issue is that deprecated->active skips proper promotion gates
-  // The correct path should be: deprecated -> archived -> testing -> staging -> canary -> active
-
-  // Check that deprecated -> archived is valid
   assert.equal(isValidLifecycleTransition("deprecated", "archived"), true);
-
-  // Check that archived -> testing is valid
   assert.equal(isValidLifecycleTransition("archived", "testing"), false, "archived cannot go directly to testing");
-  assert.equal(isValidLifecycleTransition("archived", "active"), true);
-
-  // The problem: deprecated can skip to active directly, bypassing canary promotion gates
+  assert.equal(isValidLifecycleTransition("archived", "active"), false);
   const deprecatedToActive = isValidLifecycleTransition("deprecated", "active");
-  assert.equal(deprecatedToActive, true, "This is the bug - should not allow deprecated->active directly");
+  assert.equal(deprecatedToActive, false);
 });
 
 test("AgentRegistry: full lifecycle promotion path", () => {

@@ -13,6 +13,13 @@ export interface TelemetryExporter {
   export(events: readonly TelemetryEvent[]): Promise<void>;
 }
 
+export interface TelemetryDeadLetter {
+  readonly event: TelemetryEvent;
+  readonly exporterNames: readonly string[];
+  readonly failedAt: string;
+  readonly reason: string;
+}
+
 /**
  * Core Web Vitals metric names per §7.3.
  * - LCP: Largest Contentful Paint (target < 2.5s)
@@ -103,11 +110,24 @@ export function startWebVitalsCollection(
 const DEFAULT_FLUSH_INTERVAL_MS = 5000;
 /** Maximum buffer size before forced flush */
 const DEFAULT_MAX_BUFFER_SIZE = 100;
+/** Maximum retry attempts per exporter before dead-lettering */
+const DEFAULT_MAX_RETRY_ATTEMPTS = 3;
+/** Maximum dead letters retained in memory */
+const DEFAULT_MAX_DEAD_LETTERS = 500;
+
+interface QueuedTelemetryEvent {
+  readonly event: TelemetryEvent;
+  readonly retryCounts: number[];
+  pendingExporterIndexes: number[];
+}
 
 export class TelemetrySink {
-  private readonly events: TelemetryEvent[] = [];
+  private readonly events: QueuedTelemetryEvent[] = [];
+  private readonly deadLetters: TelemetryDeadLetter[] = [];
   private readonly flushIntervalMs: number;
   private readonly maxBufferSize: number;
+  private readonly maxRetryAttempts: number;
+  private readonly maxDeadLetters: number;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private readonly exporters: readonly TelemetryExporter[];
   private readonly consentChecker: (() => boolean) | null;
@@ -117,12 +137,16 @@ export class TelemetrySink {
     options: {
       flushIntervalMs?: number;
       maxBufferSize?: number;
+      maxRetryAttempts?: number;
+      maxDeadLetters?: number;
       consentChecker?: () => boolean;
     } = {},
   ) {
     this.exporters = exporters;
     this.flushIntervalMs = options.flushIntervalMs ?? DEFAULT_FLUSH_INTERVAL_MS;
     this.maxBufferSize = options.maxBufferSize ?? DEFAULT_MAX_BUFFER_SIZE;
+    this.maxRetryAttempts = options.maxRetryAttempts ?? DEFAULT_MAX_RETRY_ATTEMPTS;
+    this.maxDeadLetters = options.maxDeadLetters ?? DEFAULT_MAX_DEAD_LETTERS;
     this.consentChecker = options.consentChecker ?? null;
     this.startFlushTimer();
   }
@@ -152,7 +176,11 @@ export class TelemetrySink {
       attributes,
       recordedAt: new Date().toISOString(),
     };
-    this.events.push(event);
+    this.events.push({
+      event,
+      retryCounts: this.exporters.map(() => 0),
+      pendingExporterIndexes: this.exporters.map((_, index) => index),
+    });
 
     // Force flush if buffer is full
     if (this.events.length >= this.maxBufferSize) {
@@ -161,7 +189,11 @@ export class TelemetrySink {
   }
 
   public list(): readonly TelemetryEvent[] {
-    return this.events;
+    return this.events.map((entry) => entry.event);
+  }
+
+  public listDeadLetters(): readonly TelemetryDeadLetter[] {
+    return [...this.deadLetters];
   }
 
   public scoped(scope: TelemetryScope) {
@@ -186,15 +218,35 @@ export class TelemetrySink {
     const toExport = [...this.events];
     this.events.length = 0;
 
-    await Promise.all(this.exporters.map(async (exporter) => {
+    await Promise.all(this.exporters.map(async (exporter, exporterIndex) => {
+      const exporterBatch = toExport.filter((entry) => entry.pendingExporterIndexes.includes(exporterIndex));
+      if (exporterBatch.length === 0) {
+        return;
+      }
+
       try {
-        await exporter.export(toExport);
+        await exporter.export(exporterBatch.map((entry) => entry.event));
+        for (const entry of exporterBatch) {
+          entry.pendingExporterIndexes = entry.pendingExporterIndexes.filter((index) => index !== exporterIndex);
+        }
       } catch (error) {
-        // Re-queue events on export failure
-        this.events.unshift(...toExport);
-        console.error("[TelemetrySink] Export failed, events re-queued:", error);
+        const message = error instanceof Error ? error.message : String(error);
+        for (const entry of exporterBatch) {
+          entry.retryCounts[exporterIndex] = (entry.retryCounts[exporterIndex] ?? 0) + 1;
+          if (entry.retryCounts[exporterIndex] > this.maxRetryAttempts) {
+            this.pushDeadLetter(entry.event, [this.getExporterName(exporterIndex)], message);
+            entry.pendingExporterIndexes = entry.pendingExporterIndexes.filter((index) => index !== exporterIndex);
+          }
+        }
+        console.error("[TelemetrySink] Export failed, events retained for retry:", error);
       }
     }));
+
+    for (const entry of toExport) {
+      if (entry.pendingExporterIndexes.length > 0) {
+        this.events.push(entry);
+      }
+    }
   }
 
   private startFlushTimer(): void {
@@ -212,6 +264,23 @@ export class TelemetrySink {
       this.flushTimer = null;
     }
     void this.flush();
+  }
+
+  private getExporterName(exporterIndex: number): string {
+    const exporter = this.exporters[exporterIndex];
+    return exporter?.constructor?.name || `exporter_${exporterIndex}`;
+  }
+
+  private pushDeadLetter(event: TelemetryEvent, exporterNames: readonly string[], reason: string): void {
+    this.deadLetters.push({
+      event,
+      exporterNames,
+      failedAt: new Date().toISOString(),
+      reason,
+    });
+    if (this.deadLetters.length > this.maxDeadLetters) {
+      this.deadLetters.splice(0, this.deadLetters.length - this.maxDeadLetters);
+    }
   }
 }
 
@@ -302,6 +371,8 @@ export function createTelemetrySink(
   options: {
     flushIntervalMs?: number;
     maxBufferSize?: number;
+    maxRetryAttempts?: number;
+    maxDeadLetters?: number;
     consentChecker?: () => boolean;
   } = {},
 ): TelemetrySink {

@@ -113,12 +113,12 @@ test("VALID_LIFECYCLE_TRANSITIONS: paused transitions", () => {
 
 test("VALID_LIFECYCLE_TRANSITIONS: deprecated transitions", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS.get("deprecated");
-  assert.deepEqual(transitions, ["archived", "active"]);
+  assert.deepEqual(transitions, ["archived", "paused"]);
 });
 
 test("VALID_LIFECYCLE_TRANSITIONS: archived transitions", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS.get("archived");
-  assert.deepEqual(transitions, ["removed", "active"]);
+  assert.deepEqual(transitions, ["removed"]);
 });
 
 test("VALID_LIFECYCLE_TRANSITIONS: removed has no transitions", () => {
@@ -288,6 +288,6 @@ test("isValidLifecycleTransition: paused can go back to canary", () => {
   assert.equal(isValidLifecycleTransition("paused", "canary"), true);
 });
 
-test("isValidLifecycleTransition: archived can reactivate", () => {
-  assert.equal(isValidLifecycleTransition("archived", "active"), true);
+test("isValidLifecycleTransition: archived cannot reactivate directly", () => {
+  assert.equal(isValidLifecycleTransition("archived", "active"), false);
 });

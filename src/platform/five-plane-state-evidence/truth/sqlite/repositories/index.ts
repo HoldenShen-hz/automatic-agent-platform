@@ -44,3 +44,10 @@ export {
   QuotaRepository,
   TenantRepository,
 } from "./tenant-repository.js";
+export {
+  ConfigVersionSnapshotRepository,
+  ConfigRollbackPointRepository,
+  ConfigRolloutRepository,
+  SqliteConfigRolloutStore,
+  SqliteConfigVersionStore,
+} from "./config-rollout-repository.js";

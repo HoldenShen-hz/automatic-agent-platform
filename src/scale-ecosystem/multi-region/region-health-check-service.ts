@@ -9,6 +9,7 @@
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import type { DurableEventBusAsync } from "../runtime-services/durable-event-bus-async.js";
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
 
@@ -83,6 +84,35 @@ export const HEALTH_CHECK_EVENTS = [
   "region:health_degraded",
   "region:health_restored",
 ] as const;
+
+/**
+ * Failover event types
+ */
+export const FAILOVER_EVENTS = [
+  "failover:start",
+  "failover:progress",
+  "failover:complete",
+  "failover:failed",
+] as const;
+
+/**
+ * Failover status values
+ */
+export type FailoverStatus = "started" | "in_progress" | "completed" | "failed";
+
+/**
+ * FailoverRecord event payload
+ * Structured event emitted during failover orchestration.
+ */
+export interface FailoverRecord {
+  readonly failoverId: string;
+  readonly region: string;
+  readonly timestamp: string;
+  readonly status: FailoverStatus;
+  readonly involvedResources: readonly string[];
+  readonly targetRegion?: string;
+  readonly errorMessage?: string;
+}
 
 /**
  * Region Health Check Service
@@ -429,9 +459,11 @@ export class RegionFailoverOrchestrator {
   private readonly healthCheckService: RegionHealthCheckService;
   private readonly failoverListeners = new Set<(regionId: string, targetRegionId: string) => void>();
   private readonly regionPriorities = new Map<string, number>();
+  private readonly eventBus: DurableEventBusAsync | undefined;
 
-  public constructor(healthCheckService?: RegionHealthCheckService) {
+  public constructor(healthCheckService?: RegionHealthCheckService, eventBus?: DurableEventBusAsync) {
     this.healthCheckService = healthCheckService ?? new RegionHealthCheckService();
+    this.eventBus = eventBus ?? undefined;
   }
 
   /**
@@ -570,20 +602,51 @@ export class RegionFailoverOrchestrator {
 
   /**
    * Orchestrate failover from source to target region
+   * Emits structured FailoverRecord events to the event bus at start, progress, and completion.
    */
   public async orchestrateFailover(
     sourceRegionId: string,
     availableRegions: readonly string[],
   ): Promise<{ success: boolean; targetRegionId: string | null; reason?: string }> {
+    const failoverId = newId("failover");
+
+    // Emit failover start event
+    await this.emitFailoverEvent({
+      failoverId,
+      region: sourceRegionId,
+      timestamp: nowIso(),
+      status: "started",
+      involvedResources: [sourceRegionId],
+    });
+
     const targetRegionId = this.selectFailoverTarget(sourceRegionId, availableRegions);
 
     if (!targetRegionId) {
+      // Emit failover failure event
+      await this.emitFailoverEvent({
+        failoverId,
+        region: sourceRegionId,
+        timestamp: nowIso(),
+        status: "failed",
+        involvedResources: [sourceRegionId],
+        errorMessage: "No healthy failover target available",
+      });
       return {
         success: false,
         targetRegionId: null,
         reason: "No healthy failover target available",
       };
     }
+
+    // Emit failover progress event (transferring to target)
+    await this.emitFailoverEvent({
+      failoverId,
+      region: sourceRegionId,
+      timestamp: nowIso(),
+      status: "in_progress",
+      involvedResources: [sourceRegionId, targetRegionId],
+      targetRegion: targetRegionId,
+    });
 
     // Notify listeners
     for (const listener of this.failoverListeners) {
@@ -594,10 +657,38 @@ export class RegionFailoverOrchestrator {
       }
     }
 
+    // Emit failover completion event
+    await this.emitFailoverEvent({
+      failoverId,
+      region: sourceRegionId,
+      timestamp: nowIso(),
+      status: "completed",
+      involvedResources: [sourceRegionId, targetRegionId],
+      targetRegion: targetRegionId,
+    });
+
     return {
       success: true,
       targetRegionId,
     };
+  }
+
+  /**
+   * Emit a FailoverRecord event to the event bus
+   */
+  private async emitFailoverEvent(record: FailoverRecord): Promise<void> {
+    if (!this.eventBus) {
+      return;
+    }
+
+    try {
+      await this.eventBus.publish({
+        eventType: `failover:${record.status}`,
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } catch (error) {
+      logger.error(`Failed to emit failover event`, { error: String(error), record });
+    }
   }
 
   /**

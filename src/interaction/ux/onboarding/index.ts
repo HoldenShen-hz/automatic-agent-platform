@@ -392,7 +392,7 @@ export class UserPortalService implements UserPortalPort {
 
     // §44.5: Progressive disclosure - get components filtered by mode
     const mode = this.resolveMode({ memberCount: 1, departmentCount: 1, requiresSso: false });
-    const componentPalette = this.buildComponentPaletteForMode(domains, mode.mode);
+    const componentPalette = this.buildComponentPaletteForMode(domains, mode.mode, description);
 
     return {
       canvas: {
@@ -428,7 +428,11 @@ export class UserPortalService implements UserPortalPort {
    * §44.5: Builds component palette filtered by platform mode for progressive disclosure.
    * Higher-risk or more complex components are hidden from lower modes.
    */
-  private buildComponentPaletteForMode(domains: string[], mode: PlatformMode["mode"]): readonly ComponentCategory[] {
+  private buildComponentPaletteForMode(
+    domains: string[],
+    mode: PlatformMode["mode"],
+    description: string,
+  ): readonly ComponentCategory[] {
     const baseCategories: ComponentCategory[] = [
       {
         category: "trigger",
@@ -451,7 +455,7 @@ export class UserPortalService implements UserPortalPort {
           name: `${domainId} 动作`,
           icon: "bolt",
           domainId,
-          riskLevel: this.resolveDomainRiskLevel(domainId, ""),
+          riskLevel: this.resolveDomainRiskLevel(domainId, description),
           configSchema: { type: "object", properties: { target: { type: "string" } } },
           previewDescription: `在 ${domainId} 域中执行核心动作。`,
         })),

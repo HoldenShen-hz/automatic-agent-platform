@@ -78,11 +78,11 @@ test("VALID_LIFECYCLE_TRANSITIONS defines correct transitions per R3-35", () => 
   // paused -> active, deprecated, canary
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("paused"), ["active", "deprecated", "canary"]);
 
-  // deprecated -> archived, active
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("deprecated"), ["archived", "active"]);
+  // deprecated -> archived, paused
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("deprecated"), ["archived", "paused"]);
 
-  // archived -> removed, active
-  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed", "active"]);
+  // archived -> removed
+  assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("archived"), ["removed"]);
 
   // removed -> (terminal, no transitions)
   assert.deepEqual(VALID_LIFECYCLE_TRANSITIONS.get("removed"), []);

@@ -117,6 +117,61 @@ describe("TelemetrySink", () => {
       await sink.flush();
       expect(sink.list().length).toBe(0);
     });
+
+    it("flush retries only failed exporters and avoids duplicate delivery to successful exporters", async () => {
+      const exporter1Batches: string[][] = [];
+      const exporter2Batches: string[][] = [];
+      let failFirst = true;
+
+      const exporter1 = {
+        async export(events: any[]) {
+          exporter1Batches.push(events.map((event) => event.name));
+        },
+      };
+      const exporter2 = {
+        async export(events: any[]) {
+          exporter2Batches.push(events.map((event) => event.name));
+          if (failFirst) {
+            failFirst = false;
+            throw new Error("temporary exporter failure");
+          }
+        },
+      };
+
+      const sink = new TelemetrySink([exporter1 as any, exporter2 as any], { maxRetryAttempts: 2 });
+      sink.record("event.1", {});
+
+      await sink.flush();
+      expect(exporter1Batches).toEqual([["event.1"]]);
+      expect(exporter2Batches).toEqual([["event.1"]]);
+      expect(sink.list().length).toBe(1);
+
+      await sink.flush();
+      expect(exporter1Batches).toEqual([["event.1"]]);
+      expect(exporter2Batches).toEqual([["event.1"], ["event.1"]]);
+      expect(sink.list().length).toBe(0);
+    });
+
+    it("moves events to dead letters after retry budget is exhausted", async () => {
+      const failingExporter = {
+        async export(_events: any[]) {
+          throw new Error("permanent exporter failure");
+        },
+      };
+
+      const sink = new TelemetrySink([failingExporter as any], { maxRetryAttempts: 1 });
+      sink.record("event.1", { important: true });
+
+      await sink.flush();
+      expect(sink.list().length).toBe(1);
+      expect(sink.listDeadLetters().length).toBe(0);
+
+      await sink.flush();
+      expect(sink.list().length).toBe(0);
+      expect(sink.listDeadLetters()).toHaveLength(1);
+      expect(sink.listDeadLetters()[0]!.event.name).toBe("event.1");
+      expect(sink.listDeadLetters()[0]!.reason).toContain("permanent exporter failure");
+    });
   });
 
   describe("Unbounded Events Array (Issue #2076)", () => {
@@ -194,7 +249,11 @@ describe("OtlpHttpTelemetryExporter", () => {
       return new Response("{}", { status: 200 });
     };
 
-    const exporter = new OtlpHttpTelemetryExporter("https://otel.example.com/v1/logs", mockFetch);
+    const exporter = new OtlpHttpTelemetryExporter(
+      "https://otel.example.com/v1/logs",
+      mockFetch,
+      { authorization: "Bearer test-token" },
+    );
 
     await exporter.export([
       {
@@ -217,11 +276,19 @@ describe("OtlpHttpTelemetryExporter", () => {
       return new Response("{}", { status: 200 });
     };
 
-    const exporter = new OtlpHttpTelemetryExporter("https://otel.example.com", mockFetch);
+    const exporter = new OtlpHttpTelemetryExporter(
+      "https://otel.example.com",
+      mockFetch,
+      { authorization: "Bearer test-token" },
+    );
 
     await exporter.export([]);
 
     expect(fetchCalled).toBe(false);
+  });
+
+  it("requires authorization for multi-tenant export", () => {
+    expect(() => new OtlpHttpTelemetryExporter("https://otel.example.com")).toThrow(/authorization/i);
   });
 });
 

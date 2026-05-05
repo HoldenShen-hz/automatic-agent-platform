@@ -10,8 +10,18 @@ import type { AgentVersion } from "../../../../src/ops-maturity/agent-lifecycle/
 function makeAgent(overrides: Partial<AgentDefinition> = {}): AgentDefinition {
   return {
     agentId: "test-agent-" + Math.random().toString(36).slice(2),
-    agentType: "test",
-    packId: "test-pack",
+    name: "Test Agent",
+    domainId: "test-domain",
+    owner: { orgNodeId: "org1", path: "/org1" },
+    components: {
+      pack: { packId: "pack1", version: "1.0.0" },
+      promptBundle: { bundleId: "bundle1", version: "1.0.0" },
+      modelBinding: { provider: "openai", model: "gpt-4", fallbackChain: [] },
+      trustProfile: { initialLevel: "suggestion", scoringConfig: {} },
+      triggerSet: [],
+      connectorBindings: [],
+      autonomyConfig: {},
+    },
     lifecycleState: "staging",
     currentVersionId: "v1.0.0",
     createdAt: new Date().toISOString(),
@@ -25,9 +35,17 @@ function makeVersion(overrides: Partial<AgentVersion> = {}): AgentVersion {
     versionId: "v1.0.0",
     agentId: "test-agent",
     semver: "1.0.0",
+    componentSnapshot: {
+      packVersion: "1.0.0",
+      promptBundleVersion: "1.0.0",
+      modelBindingHash: "hash1",
+      trustProfileHash: "hash2",
+      triggerSetHash: "hash3",
+      autonomyConfigHash: "hash4",
+    },
     createdAt: new Date().toISOString(),
-    changelog: "Initial version",
-    stability: "stable",
+    createdBy: "tester",
+    releaseNote: "Initial version",
     ...overrides,
   };
 }

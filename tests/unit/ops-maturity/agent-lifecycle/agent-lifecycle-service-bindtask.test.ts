@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { AgentLifecycleService } from "../../../../src/ops-maturity/agent-lifecycle/agent-lifecycle-service.js";
 import type { AgentDefinition, AgentLifecycleState } from "../../../../src/ops-maturity/agent-lifecycle/agent-registry/index.js";
+import type { AgentVersion } from "../../../../src/ops-maturity/agent-lifecycle/version-manager/index.js";
 
 function createMinimalAgent(overrides: Partial<AgentDefinition> = {}): AgentDefinition {
   return {
@@ -26,30 +27,14 @@ function createMinimalAgent(overrides: Partial<AgentDefinition> = {}): AgentDefi
   };
 }
 
-// Version type to match the version-manager schema
-interface AgentVersion {
-  versionId: string;
-  agentId: string;
-  semver: string;
-  createdAt: string;
-  createdBy?: string;
-  releaseNote?: string;
-  componentSnapshot?: {
-    packVersion: string;
-    promptBundleVersion: string;
-    modelBindingHash: string;
-    trustProfileHash: string;
-    triggerSetHash: string;
-    autonomyConfigHash: string;
-  };
-}
-
 function createAgentVersion(overrides: Partial<AgentVersion> = {}): AgentVersion {
   return {
     versionId: "v1.0.0",
     agentId: "test-agent",
     semver: "1.0.0",
     createdAt: new Date().toISOString(),
+    createdBy: "tester",
+    releaseNote: "",
     componentSnapshot: {
       packVersion: "1.0.0",
       promptBundleVersion: "1.0.0",
@@ -129,7 +114,7 @@ test("AgentLifecycleService.bindTask: succeeds for canary agent with version", (
   assert.equal(result.versionId, "v1.0.0");
 });
 
-test("AgentLifecycleService.bindTask: succeeds for draft agent with version", () => {
+test("AgentLifecycleService.bindTask: throws for draft agent with version", () => {
   const service = new AgentLifecycleService();
   const agent = createMinimalAgent({
     agentId: "agent-1",
@@ -139,13 +124,13 @@ test("AgentLifecycleService.bindTask: succeeds for draft agent with version", ()
   service.registerAgent(agent);
   service.addVersion(createAgentVersion({ agentId: "agent-1", versionId: "v1.0.0", semver: "1.0.0" }));
 
-  const result = service.bindTask("agent-1", "task-789");
-
-  assert.equal(result.agentId, "agent-1");
-  assert.equal(result.taskId, "task-789");
+  assert.throws(
+    () => service.bindTask("agent-1", "task-789"),
+    (err: unknown) => err instanceof Error && err.message.includes("binding_forbidden_non_production")
+  );
 });
 
-test("AgentLifecycleService.bindTask: succeeds for testing agent with version", () => {
+test("AgentLifecycleService.bindTask: throws for testing agent with version", () => {
   const service = new AgentLifecycleService();
   const agent = createMinimalAgent({
     agentId: "agent-1",
@@ -155,13 +140,13 @@ test("AgentLifecycleService.bindTask: succeeds for testing agent with version", 
   service.registerAgent(agent);
   service.addVersion(createAgentVersion({ agentId: "agent-1", versionId: "v1.0.0", semver: "1.0.0" }));
 
-  const result = service.bindTask("agent-1", "task-testing");
-
-  assert.equal(result.agentId, "agent-1");
-  assert.equal(result.taskId, "task-testing");
+  assert.throws(
+    () => service.bindTask("agent-1", "task-testing"),
+    (err: unknown) => err instanceof Error && err.message.includes("binding_forbidden_non_production")
+  );
 });
 
-test("AgentLifecycleService.bindTask: succeeds for staging agent with version", () => {
+test("AgentLifecycleService.bindTask: throws for staging agent with version", () => {
   const service = new AgentLifecycleService();
   const agent = createMinimalAgent({
     agentId: "agent-1",
@@ -171,10 +156,10 @@ test("AgentLifecycleService.bindTask: succeeds for staging agent with version", 
   service.registerAgent(agent);
   service.addVersion(createAgentVersion({ agentId: "agent-1", versionId: "v1.0.0", semver: "1.0.0" }));
 
-  const result = service.bindTask("agent-1", "task-staging");
-
-  assert.equal(result.agentId, "agent-1");
-  assert.equal(result.taskId, "task-staging");
+  assert.throws(
+    () => service.bindTask("agent-1", "task-staging"),
+    (err: unknown) => err instanceof Error && err.message.includes("binding_forbidden_non_production")
+  );
 });
 
 test("AgentLifecycleService.bindTask: succeeds for paused agent with version", () => {
@@ -301,9 +286,6 @@ test("AgentLifecycleService.bindTask: does NOT throw for removed agent - binding
 test("AgentLifecycleService.bindTask: all lifecycle states that allow binding", () => {
   const service = new AgentLifecycleService();
   const bindingAllowedStates: AgentLifecycleState[] = [
-    "draft",
-    "testing",
-    "staging",
     "canary",
     "active",
     "paused",
@@ -326,6 +308,9 @@ test("AgentLifecycleService.bindTask: all lifecycle states that allow binding", 
 
 test("AgentLifecycleService.bindTask: all lifecycle states that forbid binding", () => {
   const bindingForbiddenStates: AgentLifecycleState[] = [
+    "draft",
+    "testing",
+    "staging",
     "deprecated",
     "archived",
   ];
@@ -346,6 +331,9 @@ test("AgentLifecycleService.bindTask: all lifecycle states that forbid binding",
       (err: unknown) => {
         const hasError = err instanceof Error;
         const hasCorrectMessage =
+          ((state === "draft" || state === "testing" || state === "staging")
+            && err instanceof Error
+            && err.message.includes("binding_forbidden_non_production")) ||
           (state === "deprecated" && err instanceof Error && err.message.includes("binding_forbidden_retired")) ||
           (state === "archived" && err instanceof Error && err.message.includes("binding_forbidden_archived"));
         return hasError && hasCorrectMessage;

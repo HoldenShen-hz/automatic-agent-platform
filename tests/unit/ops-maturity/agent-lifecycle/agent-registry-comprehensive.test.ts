@@ -65,9 +65,9 @@ test("isValidLifecycleTransition - all valid transitions", () => {
   assert.equal(isValidLifecycleTransition("paused", "active"), true);
   assert.equal(isValidLifecycleTransition("paused", "deprecated"), true);
 
-  // deprecated -> archived, deprecated -> active
+  // deprecated -> archived, deprecated -> paused
   assert.equal(isValidLifecycleTransition("deprecated", "archived"), true);
-  assert.equal(isValidLifecycleTransition("deprecated", "active"), true);
+  assert.equal(isValidLifecycleTransition("deprecated", "paused"), true);
 });
 
 test("isValidLifecycleTransition - invalid transitions return false", () => {
@@ -81,9 +81,9 @@ test("isValidLifecycleTransition - invalid transitions return false", () => {
   assert.equal(isValidLifecycleTransition("draft", "canary"), false);
   assert.equal(isValidLifecycleTransition("testing", "canary"), false);
 
-  // Archived is resumable only to active or removable to removed
+  // Archived is removable only to removed
   assert.equal(isValidLifecycleTransition("archived", "draft"), false);
-  assert.equal(isValidLifecycleTransition("archived", "active"), true);
+  assert.equal(isValidLifecycleTransition("archived", "active"), false);
 
   // Cannot transition to archived except from deprecated
   assert.equal(isValidLifecycleTransition("active", "archived"), false);
@@ -257,10 +257,10 @@ test("VALID_LIFECYCLE_TRANSITIONS contains all states", () => {
   assert.equal(VALID_LIFECYCLE_TRANSITIONS.size, allStates.length);
 });
 
-test("archived state can transition to removed or active", () => {
+test("archived state can transition only to removed", () => {
   const archivedTransitions = VALID_LIFECYCLE_TRANSITIONS.get("archived");
   assert.ok(archivedTransitions !== undefined);
-  assert.deepEqual(archivedTransitions, ["removed", "active"]);
+  assert.deepEqual(archivedTransitions, ["removed"]);
 });
 
 test("draft state only allows transition to testing", () => {

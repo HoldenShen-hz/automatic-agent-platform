@@ -127,13 +127,15 @@ export class AgentVersionManager {
     const latestForSlot = newestFirst(allVersions).find((v) => v.deploymentSlot === null && v.stage !== "alpha");
 
     if (latestForSlot) {
-      // R27-08 FIX: blue-green semantics - "keep both alive" means we should NOT revoke
-      // the opposite slot, but we need to update the slotAssignments map correctly.
-      // The comment "without revoking the opposite slot" indicates we should just
-      // add the new assignment without clearing the other slot (both slots can have versions).
-      // However, the current comment says "blue-green keeps both slots active" which is
-      // the correct intent - so the code below is actually correct, just needs clarity.
+      // Keep the opposite slot assignment intact, but persist the promoted
+      // version's own deploymentSlot so slot queries and listVersions stay consistent.
       this.slotAssignments.set(`${agentId}:${targetSlot}` as const, latestForSlot.versionId);
+      this.versions.set(
+        agentId,
+        allVersions.map((version) => version.versionId === latestForSlot.versionId
+          ? { ...version, deploymentSlot: targetSlot }
+          : version),
+      );
       return this.getActiveSlot(agentId, targetSlot);
     }
 

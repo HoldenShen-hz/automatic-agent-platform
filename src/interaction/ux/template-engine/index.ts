@@ -22,20 +22,24 @@ export const WorkflowStepBindingSchema = z.object({
   outputMappings: z.record(z.string(), z.string()).default({}),
 });
 
+const LegacyWorkflowStepSchema = z.string().min(1);
+
 export const InteractionTemplateSchema = z.object({
   templateId: z.string().min(1),
   title: z.string().min(1),
   description: z.string().optional(),
   /** Domain this template belongs to */
-  domainId: z.string().min(1),
+  domainId: z.string().min(1).default("general_ops"),
   /** Risk profile of tasks created from this template */
   riskProfile: z.enum(["low", "medium", "high", "critical"]).default("low"),
   /** Template version for marketplace compatibility */
   version: z.string().default("1.0.0"),
   /** Parameters for parametric workflow instantiation */
   parameters: z.array(WorkflowParameterSchema).default([]),
-  /** Step definitions with bindings for parameter injection */
-  steps: z.array(WorkflowStepBindingSchema).default([]),
+  /** Step definitions with bindings for parameter injection.
+   * Legacy callers may still pass string step IDs; keep that contract compatible.
+   */
+  steps: z.array(z.union([LegacyWorkflowStepSchema, WorkflowStepBindingSchema])).default([]),
   /** Estimated cost range for template execution */
   estimatedCostUsd: z.number().optional(),
   /** Required capabilities for executing this template */
@@ -82,7 +86,7 @@ export function instantiateTemplate(
         defaultValue: resolvedParams[p.name],
       })),
     },
-    boundSteps: template.steps.map((s) => s.stepId),
+    boundSteps: template.steps.map((step) => typeof step === "string" ? step : step.stepId),
   };
 }
 

@@ -74,7 +74,8 @@ test("UserExperienceOrchestrationService.bootstrap builds guided session, wizard
   assert.ok(result.guidedSession.recommendedTemplates.length <= 4);
   assert.equal(result.draft.ownerUserId, "user_1");
   assert.ok(result.draft.workflowId);
-  assert.deepEqual(result.draft.steps, ["Plan", "Execute", "Review"]);
+  assert.equal(result.draft.planGraph.nodes.length, 3);
+  assert.equal(result.draft.planGraph.edges.length, 2);
   assert.ok(result.recommendedDomains.includes("engineering_ops"));
   assert.ok(result.wizard.recommendedDomains.includes("engineering_ops"));
   assert.match(result.welcomePrompt, /team 模式/);
@@ -114,14 +115,21 @@ test("WorkflowBuilderDraft interface structure", () => {
   const draft: WorkflowBuilderDraft = {
     draftId: "draft_1",
     workflowId: "wf_1",
-    steps: ["step_1", "step_2"],
+    planGraph: {
+      nodes: [
+        { nodeId: "step_1", label: "Step 1", inputBindings: [], outputKey: "output_1" },
+        { nodeId: "step_2", label: "Step 2", inputBindings: [], outputKey: "output_2" },
+      ],
+      edges: [{ fromNodeId: "step_1", toNodeId: "step_2", dependencyType: "hard" }],
+    },
     validationFindings: ["finding_1"],
     ownerUserId: "user_1",
   };
 
   assert.equal(draft.draftId, "draft_1");
   assert.equal(draft.workflowId, "wf_1");
-  assert.deepEqual(draft.steps, ["step_1", "step_2"]);
+  assert.equal(draft.planGraph.nodes.length, 2);
+  assert.equal(draft.planGraph.edges.length, 1);
   assert.deepEqual(draft.validationFindings, ["finding_1"]);
   assert.equal(draft.ownerUserId, "user_1");
 });
@@ -129,7 +137,10 @@ test("WorkflowBuilderDraft interface structure", () => {
 test("WorkflowBuilderDraft allows optional workflowId", () => {
   const draft: WorkflowBuilderDraft = {
     draftId: "draft_1",
-    steps: [],
+    planGraph: {
+      nodes: [],
+      edges: [],
+    },
     validationFindings: [],
     ownerUserId: "user_1",
   };
