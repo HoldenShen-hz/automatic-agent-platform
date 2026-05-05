@@ -22,7 +22,7 @@
 
 ## 背景
 
-v2.7 `§41-§42` 要求平台支持主动式 Agent 与渐进式自主权。当前仓库已有：
+v4.3 `§41-§42` 要求平台支持主动式 Agent 与渐进式自主权。当前仓库已有：
 
 - `src/interaction/proactive-agent`
 - `src/interaction/autonomy`

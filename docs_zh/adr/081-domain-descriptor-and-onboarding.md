@@ -22,7 +22,7 @@
 
 ## 背景
 
-v2.7 `§37-§38` 要求平台不再把业务域视为不透明业务包，而是以 `DomainDescriptor` 作为结构化治理单元，统一风险画像、知识结构、评估框架、Prompt 库、Recipe 和跨域交互策略。
+v4.3 `§37-§38` 要求平台不再把业务域视为不透明业务包，而是以 `DomainDescriptor` 作为结构化治理单元，统一风险画像、知识结构、评估框架、Prompt 库、Recipe 和跨域交互策略。
 
 当前仓库已有 `src/domains/*` 目录和 `src/domains/registry/*` 的初始实现，但 authoritative 决策仍缺失，导致：
 
