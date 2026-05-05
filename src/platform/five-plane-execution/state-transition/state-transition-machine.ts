@@ -38,10 +38,24 @@ export class StateTransitionMachine<TState extends string> {
 
   /**
    * Asserts that a transition is valid, throwing WorkflowStateError if not.
-   * Rejects no-op transitions (current === next).
+   *
+   * Allows no-op transitions (current === next) when either:
+   * - The state explicitly allows self-transition (e.g., running: ["running", "completed"])
+   * - The state is terminal (has no outbound transitions)
+   *
+   * For non-terminal states without explicit self-transition, noop transitions
+   * are denied since they may indicate a logic error in the caller.
    */
   public assertTransition(current: TState, next: TState): void {
     if (current === next) {
+      // Allow noop transitions when:
+      // 1. The state explicitly allows self-transition (self in allowed list)
+      // 2. The state is terminal (no outbound transitions at all)
+      const allowed = this.transitions[current];
+      const isTerminalState = !allowed || allowed.length === 0;
+      if (isTerminalState || (allowed && allowed.includes(next))) {
+        return;
+      }
       throw new WorkflowStateError(`${this.entityKind}.noop_transition_denied`, `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`, {
         details: { entityKind: this.entityKind, current, next },
       });

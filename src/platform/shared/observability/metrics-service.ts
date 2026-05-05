@@ -398,7 +398,7 @@ export class MetricsService {
     const attemptDurations = attemptDurationRows.map((row) => Number(row.durationMs ?? 0));
 
     // Query OAPEFLIR loop metrics (R7-5: oapeflirViewMetrics per §4.1 contract)
-    const loopCounts = this.selectRow<{
+    const loopCounts = this.safeSelectRow<{
       loopCount: number;
       completedLoopCount: number;
       failedLoopCount: number;
@@ -410,10 +410,11 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failedLoopCount,
          COALESCE(SUM(duration_ms), 0) AS totalDurationMs
        FROM harness_loops`,
+      { loopCount: 0, completedLoopCount: 0, failedLoopCount: 0, totalDurationMs: 0 },
     );
 
     // Query stage view metrics (R7-5: stageViewMetrics per §4.1 contract)
-    const stageCounts = this.selectRow<{
+    const stageCounts = this.safeSelectRow<{
       observeCount: number; observeDurationMs: number; observeFailureCount: number; observeTimeoutCount: number;
       assessCount: number; assessDurationMs: number; assessFailureCount: number; assessTimeoutCount: number;
       planCount: number; planDurationMs: number; planFailureCount: number; planTimeoutCount: number;
@@ -457,10 +458,11 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN stage = 'release' AND status = 'failed' THEN 1 ELSE 0 END), 0) AS releaseFailureCount,
          COALESCE(SUM(CASE WHEN stage = 'release' AND status = 'timed_out' THEN 1 ELSE 0 END), 0) AS releaseTimeoutCount
        FROM stage_samples`,
+      { observeCount: 0, observeDurationMs: 0, observeFailureCount: 0, observeTimeoutCount: 0, assessCount: 0, assessDurationMs: 0, assessFailureCount: 0, assessTimeoutCount: 0, planCount: 0, planDurationMs: 0, planFailureCount: 0, planTimeoutCount: 0, executeCount: 0, executeDurationMs: 0, executeFailureCount: 0, executeTimeoutCount: 0, feedbackCount: 0, feedbackDurationMs: 0, feedbackFailureCount: 0, feedbackTimeoutCount: 0, learnCount: 0, learnDurationMs: 0, learnFailureCount: 0, learnTimeoutCount: 0, improveCount: 0, improveDurationMs: 0, improveFailureCount: 0, improveTimeoutCount: 0, releaseCount: 0, releaseDurationMs: 0, releaseFailureCount: 0, releaseTimeoutCount: 0 },
     );
 
     // Query feedback metrics (R7-5: feedbackMetrics per §4.1 contract)
-    const feedbackCounts = this.selectRow<{
+    const feedbackCounts = this.safeSelectRow<{
       receivedCount: number;
       classifiedCount: number;
       consumedCount: number;
@@ -476,10 +478,11 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN sentiment = 'negative' THEN 1 ELSE 0 END), 0) AS negativeCount,
          COALESCE(SUM(CASE WHEN kind = 'correction' THEN 1 ELSE 0 END), 0) AS correctionCount
        FROM feedback_signals`,
+      { receivedCount: 0, classifiedCount: 0, consumedCount: 0, positiveCount: 0, negativeCount: 0, correctionCount: 0 },
     );
 
     // Query learning metrics (R7-5: learningMetrics per §4.1 contract)
-    const learningCounts = this.selectRow<{
+    const learningCounts = this.safeSelectRow<{
       objectCreatedCount: number;
       validatedCount: number;
       promotedCount: number;
@@ -491,10 +494,11 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN promotion_status = 'promoted' THEN 1 ELSE 0 END), 0) AS promotedCount,
          COALESCE(SUM(CASE WHEN promotion_status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejectedCount
        FROM learning_objects`,
+      { objectCreatedCount: 0, validatedCount: 0, promotedCount: 0, rejectedCount: 0 },
     );
 
     // Query improvement metrics (R7-5: improvementMetrics per §4.1 contract)
-    const improvementCounts = this.selectRow<{
+    const improvementCounts = this.safeSelectRow<{
       candidateProposedCount: number;
       acceptedCount: number;
       rejectedCount: number;
@@ -506,10 +510,11 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejectedCount,
          COALESCE(SUM(CASE WHEN blocked_by_guardrail = 1 THEN 1 ELSE 0 END), 0) AS guardrailBlockedCount
        FROM improvement_candidates`,
+      { candidateProposedCount: 0, acceptedCount: 0, rejectedCount: 0, guardrailBlockedCount: 0 },
     );
 
     // Query release metrics (R7-5: releaseMetrics per §4.1 contract)
-    const releaseCounts = this.selectRow<{
+    const releaseCounts = this.safeSelectRow<{
       startedCount: number;
       advancedCount: number;
       completedCount: number;
@@ -523,6 +528,7 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'rolled_back' THEN 1 ELSE 0 END), 0) AS rolledBackCount,
          COALESCE(MAX(level), 0) AS maxLevel
        FROM release_records`,
+      { startedCount: 0, advancedCount: 0, completedCount: 0, rolledBackCount: 0, maxLevel: 0 },
     );
 
     // Get current health status
@@ -744,6 +750,22 @@ export class MetricsService {
     }
 
     return normalized as T;
+  }
+
+  /**
+   * Safely executes a SQL query that may reference a table that doesn't exist.
+   * Returns a zero-filled result when the table is missing.
+   */
+  private safeSelectRow<T extends Record<string, unknown>>(sql: string, fallback: T): T {
+    try {
+      return this.selectRow<T>(sql);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("no such table") || message.includes("no such column")) {
+        return fallback;
+      }
+      throw error;
+    }
   }
 }
 

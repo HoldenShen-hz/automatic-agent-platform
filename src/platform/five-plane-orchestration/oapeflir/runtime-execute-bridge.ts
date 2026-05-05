@@ -291,6 +291,13 @@ function createSyntheticPlanGraphBundle(
   };
 }
 
+function roleToNodeType(roleId?: string): import("../../contracts/executable-contracts/index.js").PlanNodeType {
+  if (roleId === "generator") return "tool";
+  // evaluator maps to llm since evaluation is performed by an LLM judge
+  if (roleId === "evaluator") return "llm";
+  return "llm";
+}
+
 /**
  * R4-26 (INV-GRAPH-001): Convert MinimalWorkflowDefinition to PlanGraphBundle.
  * This enforces the invariant that PlanGraphBundle is the only P3→P4 contract.
@@ -301,7 +308,7 @@ export function minimalWorkflowToPlanGraphBundle(
 ): PlanGraphBundle {
   const nodes: import("../../contracts/executable-contracts/index.js").PlanNode[] = workflow.steps.map((step) => ({
     nodeId: step.stepId,
-    nodeType: "llm" as import("../../contracts/executable-contracts/index.js").PlanNodeType,
+    nodeType: roleToNodeType(step.roleId),
     inputRefs: step.inputKeys ?? [],
     outputSchemaRef: step.outputSchemaPath ?? "schema:step.output",
     riskClass: "medium",
@@ -333,8 +340,11 @@ export function minimalWorkflowToPlanGraphBundle(
 
   // Determine entry and terminal nodes
   const allStepIds = new Set(workflow.steps.map((s) => s.stepId));
-  const dependentSteps = new Set(workflow.steps.flatMap((s) => s.dependsOnStepIds ?? []));
-  const entryNodeIds = workflow.steps.filter((s) => !dependentSteps.has(s.stepId)).map((s) => s.stepId);
+  // Entry nodes: steps with no dependencies (empty dependsOnStepIds)
+  const entryNodeIds = workflow.steps
+    .filter((s) => (s.dependsOnStepIds?.length ?? 0) === 0)
+    .map((s) => s.stepId);
+  // Terminal nodes: steps that nothing else depends on
   const terminalNodeIds = workflow.steps
     .filter((s) => !allStepIds.has(s.stepId) || (s.dependsOnStepIds?.length ?? 0) === 0)
     .map((s) => s.stepId);
