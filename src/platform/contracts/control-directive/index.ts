@@ -36,7 +36,7 @@ export function createControlDirective(input: Omit<ControlDirective, "directiveI
   void newId;
   void nowIso;
   throw new ValidationError(
-    "control_directive.legacy_contract_forbidden",
+    "platform_contracts.legacy_control_directive_forbidden",
     "ControlDirective is deprecated. Use OperationalDirective or DecisionDirective from executable-contracts instead.",
   );
 }

@@ -266,6 +266,7 @@ test("GraphPatch operation has operationType (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_op_type")],
   });
 
   if (result.graphPatch != null && result.graphPatch.operations.length > 0) {
@@ -295,6 +296,7 @@ test("GraphPatch operation has targetRef (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_target")],
   });
 
   if (result.graphPatch != null && result.graphPatch.operations.length > 0) {
@@ -324,6 +326,7 @@ test("GraphPatch has affectedExecutedNodes array (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_nodes")],
   });
 
   if (result.graphPatch != null) {
@@ -351,6 +354,7 @@ test("GraphPatch has compatibilityClass (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_compat")],
   });
 
   if (result.graphPatch != null) {
@@ -379,6 +383,7 @@ test("GraphPatch is null when no replan required (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_no_replan")],
   });
 
   // When quality gate accepts and no replan needed, graphPatch may be null
@@ -407,6 +412,7 @@ test("GraphPatch policyProofRef exists (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_proof")],
   });
 
   if (result.graphPatch != null) {
@@ -436,6 +442,7 @@ test("GraphPatch auditRef exists (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_audit")],
   });
 
   if (result.graphPatch != null) {
@@ -465,6 +472,7 @@ test("GraphPatch operations contain planId in payload (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_payload")],
   });
 
   if (result.graphPatch != null && result.graphPatch.operations.length > 0) {
@@ -494,6 +502,7 @@ test("GraphPatch operations contain strategy in payload (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_strategy")],
   });
 
   if (result.graphPatch != null && result.graphPatch.operations.length > 0) {
@@ -523,6 +532,7 @@ test("GraphPatch follows safe_append compatibility class (R5-12)", async () => {
         timestamp: Date.now(),
       },
     ],
+    stepOutputs: [makeStepOutput("step_task_patch_safe")],
   });
 
   if (result.graphPatch != null) {

@@ -74,7 +74,7 @@ export class ReplicationEventBuffer {
   private lastFlushAt: number = Date.now();
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  public constructor(maxSize = 1000, flushIntervalMs = 5000) {
+  public constructor(maxSize = 1000, flushIntervalMs: number = 5000) {
     this.maxSize = maxSize;
     this.flushIntervalMs = flushIntervalMs;
   }

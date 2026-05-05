@@ -91,6 +91,17 @@ test("StreamBridge emits from EventRecord", () => {
   assert.equal(frame.taskId, "task-1");
 });
 
+test("StreamBridge drops non-object event payloads at the inter-plane boundary", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task-1", "updates");
+  const event = createMockEventRecord("task-1", "workflow:step_completed", JSON.stringify(["unexpected"]));
+
+  const frame = bridge.emitFromEvent({ streamId, channel: "updates", event });
+
+  assert.deepEqual(frame.payload, {});
+  assert.equal(frame.eventType, "progress");
+});
+
 test("StreamBridge gets replay window metadata", () => {
   const bridge = new StreamBridge();
   const streamId = bridge.createStreamId("task-1", "updates");

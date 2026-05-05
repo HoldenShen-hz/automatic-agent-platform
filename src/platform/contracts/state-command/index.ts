@@ -50,7 +50,7 @@ export function createStateCommand<TPayload>(input: Omit<StateCommand<TPayload>,
   void input.commandId;
   void input.createdAt;
   throw new ValidationError(
-    "state_command.legacy_contract_forbidden",
+    "platform_contracts.legacy_state_command_forbidden",
     "StateCommand is deprecated. Use canonical contracts from executable-contracts instead.",
   );
 }

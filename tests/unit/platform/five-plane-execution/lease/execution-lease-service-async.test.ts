@@ -181,7 +181,7 @@ function createService(
 
 // ─── Tests: acquireLeaseSync TTL Bounds ───────────────────────────────────────
 
-test("acquireLeaseSync does not enforce minimum TTL bound", async () => {
+test("acquireLeaseSync rejects TTL below minimum bound", async () => {
   const store = createMockStore();
   const service = createService(store);
 
@@ -192,15 +192,12 @@ test("acquireLeaseSync does not enforce minimum TTL bound", async () => {
     occurredAt: new Date().toISOString(),
   });
 
-  assert.equal(result.outcome, "granted", "Lease should be granted even with TTL below minimum");
-  assert.notEqual(result.lease, null, "Lease should be returned");
-  if (result.lease) {
-    const expectedExpiresAt = new Date(Date.parse(result.lease.leasedAt) + (MIN_LEASE_TTL_MS - 1)).toISOString();
-    assert.equal(result.lease.expiresAt, expectedExpiresAt, "ExpiresAt should reflect the sub-minimum TTL");
-  }
+  assert.equal(result.outcome, "blocked", "Lease should be blocked when TTL is below minimum");
+  assert.equal(result.reasonCode, "ttl_out_of_bounds");
+  assert.equal(result.lease, null);
 });
 
-test("acquireLeaseSync does not enforce maximum TTL bound", async () => {
+test("acquireLeaseSync rejects TTL above maximum bound", async () => {
   const store = createMockStore();
   const service = createService(store);
 
@@ -211,12 +208,9 @@ test("acquireLeaseSync does not enforce maximum TTL bound", async () => {
     occurredAt: new Date().toISOString(),
   });
 
-  assert.equal(result.outcome, "granted", "Lease should be granted even with TTL above maximum");
-  assert.notEqual(result.lease, null, "Lease should be returned");
-  if (result.lease) {
-    const expectedExpiresAt = new Date(Date.parse(result.lease.leasedAt) + (MAX_LEASE_TTL_MS + 1)).toISOString();
-    assert.equal(result.lease.expiresAt, expectedExpiresAt, "ExpiresAt should reflect the super-maximum TTL");
-  }
+  assert.equal(result.outcome, "blocked", "Lease should be blocked when TTL is above maximum");
+  assert.equal(result.reasonCode, "ttl_out_of_bounds");
+  assert.equal(result.lease, null);
 });
 
 test("acquireLeaseSync accepts valid TTL within bounds", async () => {
@@ -395,27 +389,25 @@ test("renewLeaseSync fails when lease is not active (already released)", async (
 test("renewLeaseSync fails when lease is expired", async () => {
   const store = createMockStore();
   const service = createService(store);
+  const leasedAt = "2026-05-06T00:00:00.000Z";
 
-  // Acquire a lease with very short TTL
+  // Acquire a lease at a fixed point in time, then renew well past its TTL.
   const acquireResult = await service.acquireLease({
     executionId: "exec-001",
     workerId: "worker-001",
-    ttlMs: 1, // 1ms TTL - expires immediately
-    occurredAt: new Date().toISOString(),
+    ttlMs: MIN_LEASE_TTL_MS,
+    occurredAt: leasedAt,
   });
   assert.equal(acquireResult.outcome, "granted");
 
   const leaseId = acquireResult.lease!.id;
-
-  // Wait for lease to expire
-  await new Promise((resolve) => setTimeout(resolve, 10));
 
   // Try to renew the expired lease
   const renewResult = await service.renewLease({
     leaseId,
     workerId: "worker-001",
     ttlMs: 10_000,
-    occurredAt: new Date().toISOString(),
+    occurredAt: new Date(Date.parse(leasedAt) + MIN_LEASE_TTL_MS + 1).toISOString(),
   });
 
   assert.equal(renewResult.outcome, "blocked", "Renew should be blocked for expired lease");

@@ -60,13 +60,11 @@ export function createExecutionPlan(input: Omit<ExecutionPlan, "planId" | "creat
   planId?: string;
   createdAt?: string;
 }): ExecutionPlan {
-  // R16-93 fix: Enforce deprecation guard at factory call time
-  assertNotDeprecated("ExecutionPlan");
   void input;
   void newId;
   void nowIso;
   throw new ValidationError(
-    "execution_plan.legacy_contract_forbidden",
+    "platform_contracts.legacy_execution_plan_forbidden",
     "ExecutionPlan is deprecated. Use PlanGraphBundle from executable-contracts instead.",
   );
 }

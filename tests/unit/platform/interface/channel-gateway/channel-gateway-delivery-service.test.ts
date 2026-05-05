@@ -227,6 +227,33 @@ test("getPendingDeliveries returns queued messages", () => {
   }
 });
 
+test("getPendingDeliveries rejects non-object payload_json at the DB boundary", () => {
+  const h = createService();
+  try {
+    h.db.connection
+      .prepare(
+        `INSERT INTO delivery_messages
+         (message_id, channel, target_id, payload_json, status, attempts, max_retries, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'pending', 0, 3, ?, ?)`,
+      )
+      .run(
+        "dlvmsg_invalid",
+        "webhook",
+        "target-invalid",
+        JSON.stringify(["unexpected"]),
+        "2026-05-06T00:00:00.000Z",
+        "2026-05-06T00:00:00.000Z",
+      );
+
+    const pending = h.service.getPendingDeliveries();
+
+    assert.equal(pending.length, 1);
+    assert.deepEqual(pending[0]?.payload, {});
+  } finally {
+    cleanupPath(h.workspace);
+  }
+});
+
 test("getDeliveryReceipt returns delivery status", () => {
   const h = createService();
   try {

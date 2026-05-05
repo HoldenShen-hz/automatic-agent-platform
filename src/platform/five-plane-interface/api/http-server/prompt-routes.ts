@@ -3,7 +3,7 @@ import type { HierarchicalPromptRegistryService } from "../../../prompt-engine/r
 import type { ApiAuthService } from "../api-auth-service.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import type { RouteDefinition } from "./types.js";
-import { buildJsonResponse, readJsonBody, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
+import { buildJsonResponse, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
 import { z } from "zod";
 
 const promptBundleRequestSchema = z.object({
@@ -40,6 +40,13 @@ const promptBundleRegistrationSchema = z.object({
     check: z.string(),
     description: z.string(),
   })),
+}).strict();
+
+const promptBundleDeprecationSchema = z.object({
+  level: z.enum(["global", "domain", "pack", "task-type"]).optional(),
+  domain: z.string().min(1).optional(),
+  packId: z.string().min(1).optional(),
+  version: z.number().int().positive(),
 }).strict();
 
 function toPromptBundleRegistrationInput(
@@ -175,14 +182,11 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         }
         requirePrincipal(ctx.request, deps.authService, "operator");
         const name = decodeURIComponent(ctx.route.segments[2] ?? "");
-        const payload = readJsonBody(ctx.request.body) as Record<string, unknown>;
-        const level = (payload.level as "global" | "domain" | "pack" | "task-type" | undefined) ?? "global";
-        const domain = payload.domain as string | undefined;
-        const packId = payload.packId as string | undefined;
-        const version = Number(payload.version);
-        if (!Number.isInteger(version) || version <= 0) {
-          return buildJsonResponse(ctx.requestId, 400, { error: { code: "prompt.invalid_version", message: "version must be a positive integer." } });
-        }
+        const payload = readValidatedJsonBody(ctx.request.body, promptBundleDeprecationSchema.parse);
+        const level = payload.level ?? "global";
+        const domain = payload.domain;
+        const packId = payload.packId;
+        const version = payload.version;
         try {
           deps.promptRegistryService.deprecateBundle(name, version, level, domain, packId);
         } catch {

@@ -616,16 +616,18 @@ export class SessionTransitionService {
     assertNotCanonicalEntity(command.entityId, "session");
     // Read current state to check if already in target status (noop case)
     const current = this.repository.getSession(command.entityId);
-    if (current != null && current.status === command.toStatus) {
-      // Session already in target status - treat as noop success
-      return;
-    }
     // R9-02: Check fromStatus mismatch BEFORE validating the transition itself.
     // This ensures CAS failures are reported correctly rather than as invalid transitions.
+    // CAS check must come BEFORE noop check so we detect concurrent modifications
+    // even when the target status happens to match the current status.
     if (current != null && current.status !== command.fromStatus) {
       throw new Error(
         `session.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
       );
+    }
+    if (current != null && current.status === command.toStatus) {
+      // Session already in target status - treat as noop success
+      return;
     }
     sessionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
@@ -711,16 +713,18 @@ export class ExecutionTransitionService {
     assertNotCanonicalEntity(command.entityId, "execution");
     // Read current state to check if already in target status (noop case)
     const current = this.repository.getExecution(command.entityId);
-    if (current != null && current.status === command.toStatus) {
-      // Execution already in target status - treat as noop success
-      return;
-    }
     // R9-02: Check fromStatus mismatch BEFORE validating the transition itself.
     // This ensures CAS failures are reported correctly rather than as invalid transitions.
+    // CAS check must come BEFORE noop check so we detect concurrent modifications
+    // even when the target status happens to match the current status.
     if (current != null && current.status !== command.fromStatus) {
       throw new Error(
         `execution.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
       );
+    }
+    if (current != null && current.status === command.toStatus) {
+      // Execution already in target status - treat as noop success
+      return;
     }
     executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const startedAt =

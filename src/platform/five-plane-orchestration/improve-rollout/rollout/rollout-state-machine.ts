@@ -173,7 +173,7 @@ function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
     case "paused":
       return "off";
     case "evaluation_enabled":
-      return "evaluate_0";
+      return "suggest";
     case "suggest":
       return "suggest";
     case "shadow":

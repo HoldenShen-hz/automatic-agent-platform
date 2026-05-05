@@ -45,14 +45,12 @@ export function createExecutionReceipt(input: Omit<ExecutionReceipt, "receiptId"
   receiptId?: string;
   createdAt?: string;
 }): ExecutionReceipt {
-  // R16-93 fix: Enforce deprecation guard at factory call time
-  assertNotDeprecated("ExecutionReceipt");
   void input;
   void normalizeNullable;
   void newId;
   void nowIso;
   throw new ValidationError(
-    "execution_receipt.legacy_contract_forbidden",
+    "platform_contracts.legacy_execution_receipt_forbidden",
     "ExecutionReceipt is deprecated. Use NodeAttemptReceipt from executable-contracts instead.",
   );
 }
