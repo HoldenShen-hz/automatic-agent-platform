@@ -387,13 +387,13 @@ export class MetricsService {
          COUNT(*) AS total,
          COALESCE(SUM(CASE WHEN status IN ('created', 'prechecking', 'executing', 'blocked') THEN 1 ELSE 0 END), 0) AS activeCount,
          COALESCE(SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END), 0) AS retryAttemptCount,
-         COALESCE(SUM(CASE WHEN event_type LIKE 'recovery:%' THEN 1 ELSE 0 END), 0) AS recoveryAttemptCount
+         COALESCE((SELECT COUNT(*) FROM events ev WHERE ev.execution_id = executions.id AND ev.event_type LIKE 'recovery:%'), 0) AS recoveryAttemptCount
        FROM executions`,
     );
 
     // Query attempt durations for percentile calculation
     const attemptDurationRows = this.db.connection
-      .prepare(`SELECT duration_ms AS durationMs FROM executions WHERE duration_ms IS NOT NULL ORDER BY duration_ms ASC`)
+      .prepare(`SELECT (julianday(finished_at) - julianday(started_at)) * 86400000 AS durationMs FROM executions WHERE finished_at IS NOT NULL AND started_at IS NOT NULL ORDER BY durationMs ASC`)
       .all() as Array<{ durationMs: number }>;
     const attemptDurations = attemptDurationRows.map((row) => Number(row.durationMs ?? 0));
 

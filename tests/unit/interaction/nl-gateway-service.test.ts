@@ -67,10 +67,10 @@ test("getClarificationThreshold respects custom threshold from nlGatewayConfig",
     nlGatewayConfig: customConfig as any,
   });
 
-  // When clarificationThreshold is not explicitly set, it uses max(configValue, INTENT_CONFIDENCE_THRESHOLD(0.8))
+  // Custom threshold of 0.6 is used directly (clamped to [0, 1])
   const threshold = service.getClarificationThreshold();
 
-  assert.equal(threshold, 0.8); // max(0.6, 0.8) = 0.8
+  assert.equal(threshold, 0.6);
 });
 
 test("shouldRequestClarification returns true when confidence below threshold", async () => {

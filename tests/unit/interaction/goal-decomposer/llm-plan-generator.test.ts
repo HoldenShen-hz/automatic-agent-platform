@@ -329,12 +329,13 @@ test("UnifiedChatPlanGenerator.generate rounds estimated cost to 4 decimal place
   assert.equal(result.tasks[0]!.estimatedCost.estimatedCostUsd, 0.0123);
 });
 
-test("UnifiedChatPlanGenerator.generate uses low confidence for cost estimates", async () => {
+test("UnifiedChatPlanGenerator.generate uses low confidence for small cost proportion estimates", async () => {
   const mockResponse = JSON.stringify({
     tasks: [
-      { domainId: "a", description: "Task", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 0.05 },
+      { domainId: "a", description: "Small Task", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "1h", estimatedCostUsd: 0.005 },
+      { domainId: "b", description: "Large Task", expectedOutputs: [], delegationMode: "auto", estimatedDuration: "2h", estimatedCostUsd: 0.2 },
     ],
-    dependencyGraph: [],
+    dependencyGraph: [{ fromTask: "1", toTask: "2", type: "blocks" }],
   });
 
   const provider = createMockProvider(mockResponse);
@@ -344,7 +345,7 @@ test("UnifiedChatPlanGenerator.generate uses low confidence for cost estimates",
   const result = await generator.generate(goal);
 
   assert.equal(result.tasks[0]!.estimatedCost.confidence, "low");
-  assert.equal(result.tasks[0]!.estimatedCost.sampleCount, 0);
+  assert.equal(result.tasks[0]!.estimatedCost.sampleCount, 1);
   assert.equal(result.tasks[0]!.estimatedCost.divisionId, null);
   assert.equal(result.tasks[0]!.estimatedCost.basedOn, "default");
 });

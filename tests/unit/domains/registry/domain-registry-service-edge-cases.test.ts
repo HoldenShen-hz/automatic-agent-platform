@@ -76,7 +76,17 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: ["read"],
       modelPreferences: { default: "claude-3" },
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
+    },
+    executionProfile: {
+      executionMode: {
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
+      },
+      latencyTier: "interactive",
+      compiledArtifactRef: null,
     },
     status: "validated",
     externalAdapters: [],
@@ -188,13 +198,14 @@ test("filterAllowedTools returns enabled tools from bundles", () => {
 test("filterAllowedTools includes required tools even if not in bundle", () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({
+    status: "registered",
     capabilities: {
       supportedTaskTypes: ["test", "coding"],
       requiredTools: ["bash", "custom-tool"],
       optionalTools: ["read"],
       modelPreferences: { default: "claude-3" },
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
   }));
 
@@ -268,7 +279,7 @@ test("getWorkflow returns null for unknown domain", () => {
 
 test("getWorkflow returns null for domain with no workflows", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({ workflows: [] }));
+  service.register(createTestDomain({ status: "registered", workflows: [] }));
 
   const workflow = service.getWorkflow("test-domain", "wf_main");
 
@@ -343,7 +354,7 @@ test("getOutputContract returns null for unknown domain", () => {
 
 test("getOutputContract returns null for domain with no contracts", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({ outputContracts: [] }));
+  service.register(createTestDomain({ status: "registered", outputContracts: [] }));
 
   const contract = service.getOutputContract("test-domain", "output-contract-1");
 
@@ -378,7 +389,7 @@ test("buildCapabilityEntry includes bundleId from first tool bundle", () => {
 
 test("buildCapabilityEntry returns default bundleId when no bundles", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({ toolBundles: [] }));
+  service.register(createTestDomain({ status: "registered", toolBundles: [] }));
 
   const entry = service.buildCapabilityEntry("test-domain");
 

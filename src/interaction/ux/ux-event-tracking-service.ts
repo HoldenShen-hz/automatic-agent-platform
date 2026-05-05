@@ -71,6 +71,18 @@ export type InteractionType =
   | "wizard_back"
   | "wizard_cancel";
 
+/**
+ * Type guard to check if a value is a valid InteractionType.
+ * R11-41 FIX: Used instead of 'as any' cast for type safety.
+ */
+function isValidInteractionType(value: string): value is InteractionType {
+  const validTypes: readonly string[] = [
+    "click", "submit", "navigate", "search", "filter",
+    "export", "share", "feedback", "wizard_next", "wizard_back", "wizard_cancel",
+  ];
+  return validTypes.includes(value);
+}
+
 export interface ABTestAssignment {
   readonly testId: string;
   readonly variantId: string;

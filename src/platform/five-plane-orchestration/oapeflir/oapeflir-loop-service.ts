@@ -437,6 +437,11 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           throw new Error(`boundary.validation_failed: TaskSituation validation failed at O→A boundary for task ${currentInput.taskId}`);
         })();
 
+        const validatedObservation: UnifiedObservation = {
+          ...taskObservation,
+          task: observedTask,
+        };
+
         const assessment = await this.runStage<UnifiedAssessment>("assess", () => this.assessment.assess({
           taskSituation: observedTask,
           ...(currentInput.constraintPack == null
@@ -1143,7 +1148,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         }, input.taskId);
 
         return {
-          observation: taskObservation,
+          observation: validatedObservation,
           assessment: validatedAssessment,
           plan,
           planGraphBundle: planGraphBundle!,

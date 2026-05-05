@@ -87,7 +87,17 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: ["read", "file_glob"],
       modelPreferences: { default: "claude-3" },
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
+    },
+    executionProfile: {
+      executionMode: {
+        planningMode: "llm_assisted",
+        hotPathMode: "llm_allowed",
+        llmInHotPathAllowed: true,
+        maxHotPathLatencyMs: 1000,
+      },
+      latencyTier: "interactive",
+      compiledArtifactRef: null,
     },
     status: "validated",
     externalAdapters: [],
@@ -168,13 +178,14 @@ test("filterAllowedTools returns enabled tools from toolBundles", () => {
 test("filterAllowedTools includes requiredTools regardless of bundle status", () => {
   const service = new DomainRegistryService();
   service.register(createTestDomain({
+    status: "registered",
     capabilities: {
       supportedTaskTypes: ["test"],
       requiredTools: ["critical_tool"],
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
   }));
 
@@ -417,7 +428,7 @@ test("validate returns passed result for valid domain", () => {
 
 test("validate returns failed result for domain with no workflows", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "no-workflow-domain", workflows: [] }));
+  service.register(createTestDomain({ domainId: "no-workflow-domain", status: "registered", workflows: [] }));
 
   const result = service.validate("no-workflow-domain");
 
@@ -427,7 +438,7 @@ test("validate returns failed result for domain with no workflows", () => {
 
 test("validate returns failed result for domain with no tool bundles", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "no-tools-domain", toolBundles: [] }));
+  service.register(createTestDomain({ domainId: "no-tools-domain", status: "registered", toolBundles: [] }));
 
   const result = service.validate("no-tools-domain");
 
@@ -452,6 +463,7 @@ test("validate fails for domain with missing required tools after registration",
   const service = new DomainRegistryService();
   service.register(createTestDomain({
     domainId: "missing-required-tool",
+    status: "registered",
     toolBundles: [
       {
         bundleId: "empty_bundle",
@@ -464,7 +476,7 @@ test("validate fails for domain with missing required tools after registration",
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
   }));
 
@@ -475,7 +487,7 @@ test("validate fails for domain with missing required tools after registration",
 
 test("validate fails for domain with empty workflows after registration", () => {
   const service = new DomainRegistryService();
-  service.register(createTestDomain({ domainId: "empty-workflow-domain", workflows: [] }));
+  service.register(createTestDomain({ domainId: "empty-workflow-domain", status: "registered", workflows: [] }));
 
   const result = service.validate("empty-workflow-domain");
   assert.equal(result.passed, false);

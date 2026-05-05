@@ -241,9 +241,12 @@ export class DelegationGovernanceService {
     // Fix: check if child depth would exceed threshold, but don't short-circuit - continue evaluating
     // all conditions with AND semantics (all must pass)
     const childDepth = request.parentContext.delegationDepth + 1;
-    if (condition.delegationDepth !== undefined && childDepth > condition.delegationDepth) {
-      // Depth exceeded - this is a hard deny, return true to trigger deny effect
-      return true;
+    if (condition.delegationDepth !== undefined) {
+      // Depth condition: match only when childDepth exceeds threshold
+      if (childDepth > condition.delegationDepth) {
+        return true; // Depth exceeded - condition matches, deny effect applies
+      }
+      return false; // Depth not exceeded - condition does not match
     }
     if (condition.permissionActions && condition.permissionActions.length > 0) {
       const hasPermission = condition.permissionActions.some(

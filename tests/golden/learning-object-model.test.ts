@@ -64,12 +64,12 @@ test("golden: LearningObjectSchema produces correct structure", () => {
 });
 
 test("golden: LearningType enum values are valid", () => {
+  // Phase 1 only supports 3 learning types per ADR-080 §R4-TYPES constraint
+  // model_retraining and dataset_gap are mapped to Phase 1 types via normalizeLearningType
   const validTypes: LearningObject["learningType"][] = [
     "failure_pattern",
     "user_correction",
     "recovery_playbook",
-    "model_retraining",
-    "dataset_gap",
   ];
 
   for (const learningType of validTypes) {

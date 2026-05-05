@@ -27,7 +27,7 @@ test("golden: transition service task status transition validation", () => {
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  const lifecycleRepo = createRuntimeLifecycleRepository(db);
+  const lifecycleRepo = createRuntimeLifecycleRepository(store);
   const service = new TransitionService(db, store, lifecycleRepo);
 
   const taskId = "trans_task_001";
@@ -60,7 +60,7 @@ test("golden: transition service execution status transitions", () => {
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  const lifecycleRepo = createRuntimeLifecycleRepository(db);
+  const lifecycleRepo = createRuntimeLifecycleRepository(store);
   const service = new TransitionService(db, store, lifecycleRepo);
 
   const taskId = "trans_exec_task_001";
@@ -92,7 +92,7 @@ test("golden: transition service approval status transitions", () => {
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  const lifecycleRepo = createRuntimeLifecycleRepository(db);
+  const lifecycleRepo = createRuntimeLifecycleRepository(store);
   const service = new TransitionService(db, store, lifecycleRepo);
 
   const taskId = "trans_approval_task_001";
@@ -141,7 +141,7 @@ test("golden: transition service workflow status transitions", () => {
   const db = new SqliteDatabase(dbPath);
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
-  const lifecycleRepo = createRuntimeLifecycleRepository(db);
+  const lifecycleRepo = createRuntimeLifecycleRepository(store);
   const service = new TransitionService(db, store, lifecycleRepo);
 
   const taskId = "trans_wf_task_001";

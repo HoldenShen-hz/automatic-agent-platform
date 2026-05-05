@@ -730,6 +730,12 @@ export const DEFAULT_CONFIDENCE_THRESHOLDS: IntentConfidenceThresholds = {
   minAcceptableConfidence: 0.65,
 } as const;
 
+// Backward-compatible export retained for older tests and callers.
+export const INTENT_CONFIDENCE_THRESHOLDS = {
+  LLM_ACCEPT_THRESHOLD: DEFAULT_CONFIDENCE_THRESHOLDS.llmAcceptThreshold,
+  FALLBACK_THRESHOLD: DEFAULT_CONFIDENCE_THRESHOLDS.fallbackThreshold,
+} as const;
+
 /**
  * §39.3: Detect input language for multilingual support
  */

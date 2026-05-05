@@ -22,6 +22,7 @@ import { DomainRegistryService } from "../../src/domains/registry/domain-registr
 import { PluginSpiRegistry } from "../../src/domains/registry/plugin-spi-registry.js";
 import type { RetrieverKnowledgeResult } from "../../src/domains/registry/plugin-spi.js";
 import { KnowledgePlaneService } from "../../src/platform/state-evidence/knowledge/knowledge-plane-service.js";
+import { IntakeAdmissionService } from "../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
 import { seedBillingDataset } from "./billing.js";
 import { seedPerceptionDataset } from "./perception.js";
 
@@ -157,6 +158,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     domainRegistry: domainRegistryService,
     pluginRegistry,
   });
+  const intakeAdmissionService = new IntakeAdmissionService();
   const artifactPlaneService = new ArtifactPlaneService();
   const authService = new ApiAuthService({
     apiKeys: [
@@ -367,6 +369,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
         artifactPlaneService,
         domainRegistryService,
         pluginRegistry,
+        taskStore: store,
+        intakeAdmissionService,
       });
     },
   };

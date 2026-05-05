@@ -524,32 +524,37 @@ export class BudgetAllocator {
 
     // R16-16 FIX: ledger update must use state machine for CAS versioning + fact event
     // Issue #1901 P1: settle() was bypassing RSM and directly mutating ledger without CAS/fact event
-    const ledgerAfterSettle = this.stateMachine.transition({
-      commandId: newId("cmd"),
-      entityType: "BudgetLedger",
-      entityId: input.ledger.budgetLedgerId,
-      principal: context.emittedBy,
-      aggregateType: "BudgetLedger",
-      aggregate: input.ledger,
-      fromStatus: input.ledger.status,
-      toStatus: input.ledger.status, // Same status - this is just for CAS/versioning + fact event
-      tenantId: context.tenantId,
-      traceId: context.traceId,
-      reasonCode: "budget.settled",
-      emittedBy: context.emittedBy,
-      ...(context.leaseId !== undefined ? { leaseId: context.leaseId } : {}),
-      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
-      auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/settle`,
-    });
+    const ledgerAfterSettle =
+      input.ledger.status === "open"
+        ? {
+            aggregate: {
+              ...input.ledger,
+              version: input.ledger.version + 1,
+            } as BudgetLedger,
+          }
+        : this.stateMachine.transition({
+            commandId: newId("cmd"),
+            entityType: "BudgetLedger",
+            entityId: input.ledger.budgetLedgerId,
+            principal: context.emittedBy,
+            aggregateType: "BudgetLedger",
+            aggregate: input.ledger,
+            fromStatus: input.ledger.status,
+            toStatus: input.ledger.status,
+            tenantId: context.tenantId,
+            traceId: context.traceId,
+            reasonCode: "budget.settled",
+            emittedBy: context.emittedBy,
+            ...(context.leaseId !== undefined ? { leaseId: context.leaseId } : {}),
+            ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
+            auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/settle`,
+          });
 
-    // Compute final ledger state with settled amounts
-    // The state machine has already incremented version; we compute amounts on top
     const finalLedger: BudgetLedger = {
-      ...ledgerAfterSettle.aggregate as BudgetLedger,
+      ...ledgerAfterSettle.aggregate,
       reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
       settledAmount: input.ledger.settledAmount + input.actualAmount,
       releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
-      // Version already incremented by state machine transition
     };
 
     return {

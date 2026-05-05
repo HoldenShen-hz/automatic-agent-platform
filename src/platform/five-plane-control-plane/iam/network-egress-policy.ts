@@ -296,23 +296,28 @@ export class NetworkEgressPolicyService {
 
     // Check internal hostname block
     if (!this.allowInternalHosts && isInternalHostname(hostname)) {
-      // R12-20 fix: blocked destinations always report allowed:false per §11.5
-      // The mode (audit_only vs deny) only controls enforcement, not the decision fact
+      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked.
+      // The 'allowed' field reflects what WILL happen, not just what policy says.
+      // audit_only mode allows everything through (just logs), so allowed:true is honest.
+      // The reasonCode still indicates the policy violation for audit purposes.
+      const allowed = this.mode === "audit_only";
       return {
-        allowed: false,
+        allowed,
         destinationType,
         destination,
-        reasonCode: "EGRESS_INTERNAL_BLOCKED",
+        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_INTERNAL_BLOCKED" : "EGRESS_INTERNAL_BLOCKED",
       };
     }
 
     // Check blocked destination types
     if (this.blockedDestinationTypes.includes(destinationType)) {
+      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
+      const allowed = this.mode === "audit_only";
       return {
-        allowed: false,
+        allowed,
         destinationType,
         destination,
-        reasonCode: "EGRESS_TYPE_BLOCKED",
+        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_TYPE_BLOCKED" : "EGRESS_TYPE_BLOCKED",
       };
     }
 
@@ -321,21 +326,25 @@ export class NetworkEgressPolicyService {
       this.allowedDestinationTypes.length > 0
       && !this.allowedDestinationTypes.includes(destinationType)
     ) {
+      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
+      const allowed = this.mode === "audit_only";
       return {
-        allowed: false,
+        allowed,
         destinationType,
         destination,
-        reasonCode: "EGRESS_TYPE_NOT_ALLOWED",
+        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_TYPE_NOT_ALLOWED" : "EGRESS_TYPE_NOT_ALLOWED",
       };
     }
 
     // Check blocked domains
     if (this.blockedDomains.some((item) => domainMatches(hostname, item))) {
+      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
+      const allowed = this.mode === "audit_only";
       return {
-        allowed: false,
+        allowed,
         destinationType,
         destination,
-        reasonCode: "EGRESS_DOMAIN_BLOCKED",
+        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_DOMAIN_BLOCKED" : "EGRESS_DOMAIN_BLOCKED",
       };
     }
 
@@ -344,11 +353,13 @@ export class NetworkEgressPolicyService {
       this.allowedDomains.length > 0
       && !this.allowedDomains.some((item) => domainMatches(hostname, item))
     ) {
+      // R12-20 fix: In audit_only mode, allowed:true since nothing is actually blocked
+      const allowed = this.mode === "audit_only";
       return {
-        allowed: false,
+        allowed,
         destinationType,
         destination,
-        reasonCode: "EGRESS_DOMAIN_NOT_ALLOWED",
+        reasonCode: allowed ? "EGRESS_AUDIT_ONLY_DOMAIN_NOT_ALLOWED" : "EGRESS_DOMAIN_NOT_ALLOWED",
       };
     }
 

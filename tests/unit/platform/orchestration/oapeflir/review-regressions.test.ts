@@ -118,6 +118,34 @@ function createSingleStepWorkflow(taskId: string) {
   };
 }
 
+function createDeterministicPlanBundle(taskId: string) {
+  return createPlanGraphBundle({
+    harnessRunId: `hrun_${taskId}`,
+    graph: {
+      graphId: `graph_${taskId}`,
+      nodes: [{
+        nodeId: `node_${taskId}`,
+        nodeType: "tool",
+        inputRefs: [],
+        outputSchemaRef: "schema://output",
+        riskClass: "medium",
+        budgetIntent: { amount: 2, currency: "USD", resourceKinds: ["compute"] },
+        sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+        retryPolicyRef: "retry://default",
+        timeoutMs: 1000,
+      }],
+      edges: [],
+      entryNodeIds: [`node_${taskId}`],
+      terminalNodeIds: [`node_${taskId}`],
+      joinStrategy: "all",
+      graphHash: `graph-hash-${taskId}`,
+    },
+    schedulerPolicy: { policyId: `scheduler_${taskId}`, strategy: "deterministic_fifo" },
+    budgetPlanRef: `budget://${taskId}`,
+    riskProfile: { riskClass: "medium", reasons: ["unit-test"] },
+  });
+}
+
 test("OapeflirLoopService packages feedback-stage decision input with budget and risk state", async () => {
   const service = new OapeflirLoopService({
     executeBridge: new DeterministicExecuteBridge(),
@@ -298,4 +326,157 @@ test("OapeflirLoopService exposes plan diagnostics on the loop result", async ()
   assert.equal(result.worstPath?.pathLength, 1);
   assert.equal(result.worstPath?.estimatedDurationMs, 1500);
   assert.equal(result.worstPath?.budgetEstimate, 7);
+});
+
+test("OapeflirLoopService waits for knowledge promotion before returning", async () => {
+  let releasePromotion: (() => void) | null = null;
+  let promotionStarted = false;
+  let runSettled = false;
+  const promotionGate = new Promise<void>((resolve) => {
+    releasePromotion = resolve;
+  });
+
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+    planBuilder: {
+      buildGraphBundle: () => createDeterministicPlanBundle("task_review_knowledge_promotion"),
+    } as any,
+    autonomyBoundary: {
+      decide() {
+        return {
+          allowed: false,
+          reasonCode: "test.improvement_blocked",
+        };
+      },
+    } as any,
+    feedbackCollector: {
+      collect() {
+        return {
+          feedbackId: "feedback-await-promotion",
+          taskId: "task_review_knowledge_promotion",
+          planId: "plan-await-promotion",
+          signals: [],
+        };
+      },
+      toLearningSignals() {
+        return [{
+          learningSignalId: "learning-signal-await-promotion",
+          taskId: "task_review_knowledge_promotion",
+          sourceFeedbackId: "feedback-await-promotion",
+          learningType: "recovery_playbook",
+          confidence: 0.9,
+          valueSummary: "Reuse the validated recovery path.",
+          evidenceRefs: ["artifact:await-promotion"],
+          sourceSignalIds: ["signal:await-promotion"],
+          relatedSignalIds: [],
+          evidence: { source: "unit-test" },
+          generatedAt: Date.now(),
+        }];
+      },
+    } as any,
+    learningService: {
+      learn() {
+        return [{
+          learningObjectId: "learning-object-await-promotion",
+          learningType: "recovery_playbook",
+          title: "Await promotion before returning",
+          summary: "Promotion must complete before the rationale result is emitted.",
+          confidence: 0.92,
+          evidenceRefs: ["artifact:await-promotion"],
+          sourceSignalIds: ["signal:await-promotion"],
+          recommendation: "Await promotion promise",
+          validatedBy: "evidence",
+          promotionStatus: "validated",
+          createdAt: "2026-05-05T00:00:00.000Z",
+        }];
+      },
+    } as any,
+    knowledgePromotionService: {
+      async promote() {
+        promotionStarted = true;
+        await promotionGate;
+      },
+    } as any,
+  });
+
+  const runPromise = service.produceStageRationale({
+    taskId: "task_review_knowledge_promotion",
+    objective: "Verify knowledge promotion is awaited before return.",
+    workflow: createSingleStepWorkflow("task_review_knowledge_promotion"),
+    stepOutputs: [{
+      stepId: "step_task_review_knowledge_promotion",
+      planRef: "plan-await-promotion",
+      status: "succeeded",
+      userFacingResult: {
+        summary: "step succeeded",
+        artifacts: ["artifact:await-promotion"],
+      },
+      systemTelemetry: {
+        durationMs: 20,
+        tokensUsed: 5,
+        modelId: "test-bridge",
+        retryCount: 0,
+        validationPassed: true,
+      },
+    }],
+  }).then((result) => {
+    runSettled = true;
+    return result;
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(promotionStarted, true);
+  assert.equal(runSettled, false);
+
+  releasePromotion?.();
+  const result = await runPromise;
+
+  assert.equal(runSettled, true);
+  assert.equal(result.learningObjects.length, 1);
+});
+
+test("OapeflirLoopService returns the validated observation task payload", async () => {
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+    planBuilder: {
+      buildGraphBundle: () => createDeterministicPlanBundle("task_review_validated_observation"),
+    } as any,
+    observationAggregator: {
+      aggregate(task, system) {
+        const { blockers: _blockers, relevantMemory: _relevantMemory, fileRefs: _fileRefs, metrics: _metrics, ...restTask } = task;
+        return {
+          task: restTask,
+          system,
+          observedAt: Date.now(),
+        };
+      },
+    } as any,
+  });
+
+  const result = await service.produceStageRationale({
+    taskId: "task_review_validated_observation",
+    objective: "Verify returned observation matches the validated task payload.",
+    workflow: createSingleStepWorkflow("task_review_validated_observation"),
+    stepOutputs: [{
+      stepId: "step_task_review_validated_observation",
+      planRef: "plan-validated-observation",
+      status: "succeeded",
+      userFacingResult: {
+        summary: "step succeeded",
+        artifacts: ["artifact:validated-observation"],
+      },
+      systemTelemetry: {
+        durationMs: 20,
+        tokensUsed: 5,
+        modelId: "test-bridge",
+        retryCount: 0,
+        validationPassed: true,
+      },
+    }],
+  });
+
+  assert.deepEqual(result.observation.task.blockers, []);
+  assert.deepEqual(result.observation.task.relevantMemory, []);
+  assert.deepEqual(result.observation.task.fileRefs, []);
+  assert.deepEqual(result.observation.task.metrics, {});
 });

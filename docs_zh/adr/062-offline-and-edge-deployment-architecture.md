@@ -58,7 +58,7 @@ interface EdgeRuntime {
 **约束**：
 - truth / budget / side effect 对象必须使用 `server_wins`（单 leader 写入 + fencing），不允许 `last_write_wins`
 - projection / 非关键统计对象可使用 `last_write_wins` 或 `merge`
-- §25.11/§52.3 要求单 leader 写入时不使用 fencing token 保护
+- §25.11/§52.3 要求单 leader 写入时必须使用 fencing token 保护，防止脑裂
 
 ## 后果
 

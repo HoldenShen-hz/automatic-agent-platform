@@ -247,6 +247,7 @@ export interface UserConfirmationReceipt {
   // §39: Required fields when state is "confirmed"
   readonly scope?: string;
   readonly time?: string;
+  readonly timestamp?: string;
   readonly riskPreviewVersion?: string;
   readonly actor?: string;
   readonly confirmedAt?: string;
@@ -855,7 +856,17 @@ function buildRiskPreview(
 ): RiskPreview {
   const normalized = message.toLowerCase();
   const critical = CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
-  const high = HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const isObservationalIntent =
+    intentType === "task_query" || intentType === "status_inquiry" || intentType === "why";
+  const isObservationMessage =
+    /(status|health|summary|what changed|show|list|查看|查询|状态|健康|摘要|同步)/i.test(message);
+  const suppressActionRiskForObservation =
+    isObservationalIntent
+    && isObservationMessage
+    && !/(approve|审批|budget|cost|费用|预算|price|价格)/i.test(message);
+  const high = suppressActionRiskForObservation
+    ? false
+    : HIGH_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
   const irreversible = IRREVERSIBLE_KEYWORDS.some((keyword) => normalized.includes(keyword));
   const riskFactors: string[] = [];
   const sideEffects: string[] = [];
@@ -1082,7 +1093,7 @@ export class NlEntryService implements NlEntryPort {
     const configuredThreshold = options.clarificationThreshold
       ?? options.nlGatewayConfig?.disambiguation.threshold
       ?? INTENT_CONFIDENCE_THRESHOLD;
-    this.clarificationThreshold = Math.max(INTENT_CONFIDENCE_THRESHOLD, configuredThreshold);
+    this.clarificationThreshold = Math.min(1, Math.max(0, configuredThreshold));
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;
     this.nlConfig = mergeNlGatewayConfig(options.nlGatewayConfig);
     this.conversationWindowSize = options.conversationWindowSize
@@ -1101,6 +1112,9 @@ export class NlEntryService implements NlEntryPort {
    * Get the configured conversation window size for a given task type
    */
   public getConversationWindowSize(taskType?: string): number {
+    if (taskType == null) {
+      return this.conversationWindowSize;
+    }
     return getConversationWindowSize(this.nlConfig, taskType);
   }
 
@@ -1137,6 +1151,39 @@ export class NlEntryService implements NlEntryPort {
       request.userId,
     );
     const locale = this.resolveLocale(request);
+    if (request.message.trim().length === 0) {
+      const emptyIntent: DetectedIntent = {
+        intentType: "task_query",
+        domainHint: "general_ops",
+        entities: [],
+        urgency: "low",
+        confidence: 0,
+      };
+      const clarificationState: ClarificationState = {
+        state: "required",
+        reasonCodes: ["nl_gateway.empty_message"],
+        questions: ["请补充你的请求内容，例如目标对象、环境或希望执行的操作。"],
+        rounds: this.getClarificationRounds(request.tenantId, request.userId),
+        maxRounds: DEFAULT_MAX_CLARIFICATION_ROUNDS,
+      };
+      return {
+        rawInput: request.message,
+        detectedIntents: [emptyIntent],
+        confidence: 0,
+        requiresClarification: true,
+        clarificationQuestions: clarificationState.questions,
+        locale,
+        continuation: "new_task",
+        suggestedDivisionId: "general_ops",
+        suggestedWorkflowId: "single_agent_minimal",
+        conversationState: "Clarifying",
+        clarificationState,
+        context: this.contextEnricher.enrich(request.message, "general_ops", []),
+        securityFindings: [],
+        blockedByPolicy: false,
+        priorConversationTurns: priorContext.turns,
+      };
+    }
     const riskPreview = classifyRisk(request.message);
     const draftId = taskDraftIdFromMessage(request.message);
     const securityFindings = assessInputGuardrails(request.message);
@@ -1166,10 +1213,6 @@ export class NlEntryService implements NlEntryPort {
       idempotencyKey: buildIntakeIdempotencyKey(request, draftId),
       principal: principalRef,
       confirmedTaskSpecId: `intent-draft:${draftId}`,
-      riskPreview: {
-        riskClass: toCanonicalRiskClass(riskPreview.overallRisk),
-        reasons: riskPreview.riskFactors,
-      },
       ...(blockedByPolicy ? {} : {
         preferredIntent: {
           intent: mapIntentTypeToIntakeIntent(parsedIntent.intentType),
@@ -1380,6 +1423,7 @@ export class NlEntryService implements NlEntryPort {
       summary: surfacedSummary,
       scope: confirmationScope,
       time: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       riskPreviewVersion: this.buildRiskPreviewVersion(riskPreview),
       actor: request.userId,
     };

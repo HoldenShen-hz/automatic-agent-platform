@@ -19,10 +19,14 @@ import {
 } from "./recommendation-engine/index.js";
 import { simulateCostOptimization } from "./simulator/index.js";
 
+export type CostSubjectType = "task" | "workflow" | "agent" | "model" | "domain" | "run";
+
 export interface CostAttributionRecord {
-  readonly harness_run_id: string;
-  readonly node_run_id: string;
-  readonly costType: "llm" | "tool" | "compute" | "storage" | "egress" | "humanReview" | "total";
+  readonly harness_run_id?: string;
+  readonly node_run_id?: string;
+  readonly subjectType?: CostSubjectType;
+  readonly subjectId?: string;
+  readonly costType: "llm" | "tool" | "compute" | "storage" | "egress" | "humanReview" | "total" | "model" | "runtime";
   readonly amountUsd: number;
   readonly llmCostUsd: number;
   readonly toolCostUsd: number;
@@ -65,24 +69,26 @@ export class CostOptimizationService {
   public recordCost(record: CostAttributionRecord): CostAttributionRecord {
     if (record.decisionRef.trim().length === 0) {
       this.unsourcedRecordCount += 1;
-      throw new Error(`cost_optimizer.unsourced_record:${record.harness_run_id}`);
+      throw new Error(`cost_optimizer.unsourced_record:${this.resolveSubjectId(record)}`);
     }
     this.records.push(record);
     return record;
   }
 
-  public aggregate(harnessRunId?: string): Record<string, number> {
-    const filtered = harnessRunId == null
+  public aggregate(subjectTypeOrHarnessRunId?: string): Record<string, number> {
+    const filtered = subjectTypeOrHarnessRunId == null
       ? this.records
-      : this.records.filter((item) => item.harness_run_id === harnessRunId);
+      : this.isSubjectType(subjectTypeOrHarnessRunId)
+        ? this.records.filter((item) => this.resolveSubjectType(item) === subjectTypeOrHarnessRunId)
+        : this.records.filter((item) => this.resolveSubjectId(item) === subjectTypeOrHarnessRunId);
     return aggregateCostAttribution(filtered.map((item) => ({
-      subjectId: item.harness_run_id,
+      subjectId: this.resolveSubjectId(item),
       amountUsd: item.amountUsd,
     })));
   }
 
-  public buildRecommendations(harnessRunId?: string): CostOptimizationRecommendation[] {
-    return Object.entries(this.aggregate(harnessRunId))
+  public buildRecommendations(subjectTypeOrHarnessRunId?: string): CostOptimizationRecommendation[] {
+    return Object.entries(this.aggregate(subjectTypeOrHarnessRunId))
       .map(([subjectId, cost]) => {
         const modelRef = this.resolveRepresentativeModelRef(subjectId);
         return buildCostOptimizationRecommendation(subjectId, cost, modelRef != null ? { modelRef } : {});
@@ -126,18 +132,30 @@ export class CostOptimizationService {
   }
 
   private riskLevelForSubject(
-    harnessRunId: string,
+    subjectId: string,
     baseRisk: CostOptimizationRecommendation["riskLevel"],
   ): CostOptimizationRecommendation["riskLevel"] {
-    const records = this.records.filter((item) => item.harness_run_id === harnessRunId);
-    if (records.some((item) => item.costType === "llm")) {
+    const records = this.records.filter((item) => this.resolveSubjectId(item) === subjectId);
+    if (records.some((item) => item.costType === "llm" || item.costType === "model")) {
       return baseRisk === "low" ? "medium" : baseRisk;
     }
     return baseRisk;
   }
 
-  private resolveRepresentativeModelRef(harnessRunId: string): string | undefined {
-    const modelRecord = this.records.find((item) => item.harness_run_id === harnessRunId && typeof item.modelRef === "string" && item.modelRef.length > 0);
+  private resolveRepresentativeModelRef(subjectId: string): string | undefined {
+    const modelRecord = this.records.find((item) => this.resolveSubjectId(item) === subjectId && typeof item.modelRef === "string" && item.modelRef.length > 0);
     return modelRecord?.modelRef;
+  }
+
+  private resolveSubjectId(record: CostAttributionRecord): string {
+    return record.subjectId ?? record.harness_run_id ?? "unknown_subject";
+  }
+
+  private resolveSubjectType(record: CostAttributionRecord): CostSubjectType {
+    return record.subjectType ?? "run";
+  }
+
+  private isSubjectType(value: string): value is CostSubjectType {
+    return value === "task" || value === "workflow" || value === "agent" || value === "model" || value === "domain" || value === "run";
   }
 }

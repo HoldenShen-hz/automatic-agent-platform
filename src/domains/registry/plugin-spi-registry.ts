@@ -520,8 +520,9 @@ export class PluginSpiRegistry {
             details: { pluginId: record.manifest.pluginId, phase, timeoutMs },
           }));
         }, timeoutMs);
-        promise.finally(() => clearTimeout(timer)).catch(() => {
-        // Suppress unhandled rejection warning; error is re-thrown via ValidationError above
+        promise.finally(() => clearTimeout(timer)).catch((error) => {
+        // R11-42/43 fix: Re-throw for visibility instead of silent suppression
+        throw error;
       });
       });
       try {

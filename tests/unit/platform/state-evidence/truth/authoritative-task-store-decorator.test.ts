@@ -11,14 +11,8 @@ import { StructuredLogger } from "../../../../../src/platform/shared/observabili
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import {
   decorateAuthoritativeTaskStore,
-  getAuthoritativeTaskStoreDecoratorMetricsSnapshot,
-  resetAuthoritativeTaskStoreDecoratorMetrics,
   type DecoratedAuthoritativeTaskStoreOptions,
 } from "../../../../../src/platform/state-evidence/truth/repositories/authoritative-task-store-decorator.js";
-
-test.beforeEach(() => {
-  resetAuthoritativeTaskStoreDecoratorMetrics();
-});
 
 test("decorateAuthoritativeTaskStore retries on SQLITE_BUSY and succeeds", () => {
   let attempts = 0;
@@ -44,6 +38,7 @@ test("decorateAuthoritativeTaskStore retries on SQLITE_BUSY and succeeds", () =>
   const result = (decorated as unknown as { listTasks(): string[] }).listTasks();
   assert.deepEqual(result, ["task-1", "task-2"]);
   assert.equal(attempts, 3);
+  assert.equal(decorated.getMetricsSnapshot().listTasks?.retries, 2);
 });
 
 test("decorateAuthoritativeTaskStore exhausts retries and throws original error", () => {
@@ -105,7 +100,7 @@ test("decorateAuthoritativeTaskStore records metrics correctly on success", () =
 
   (decorated as unknown as { listTasks(): string[] }).listTasks();
 
-  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  const metrics = decorated.getMetricsSnapshot();
   assert.equal(metrics.listTasks?.calls, 1);
   assert.equal(metrics.listTasks?.successes, 1);
   assert.equal(metrics.listTasks?.failures, 0);
@@ -129,7 +124,7 @@ test("decorateAuthoritativeTaskStore records metrics correctly on failure", () =
 
   assert.throws(() => (decorated as unknown as { listTasks(): string[] }).listTasks());
 
-  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  const metrics = decorated.getMetricsSnapshot();
   assert.equal(metrics.listTasks?.calls, 1);
   assert.equal(metrics.listTasks?.successes, 0);
   assert.equal(metrics.listTasks?.failures, 1);
@@ -169,7 +164,7 @@ test("decorateAuthoritativeTaskStore handles multiple methods independently", ()
   assert.equal(taskAttempts, 2);
   assert.equal(workflowAttempts, 1);
 
-  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  const metrics = decorated.getMetricsSnapshot();
   assert.ok(metrics.listTasks);
   assert.ok(metrics.listWorkflows);
   assert.equal(metrics.listTasks?.calls, 1);
@@ -177,7 +172,6 @@ test("decorateAuthoritativeTaskStore handles multiple methods independently", ()
 });
 
 test("decorateAuthoritativeTaskStore uses default options when not provided", () => {
-  resetAuthoritativeTaskStoreDecoratorMetrics();
   const store = {
     listTasks(): string[] {
       return ["default-opts"];
@@ -208,7 +202,7 @@ test("decorateAuthoritativeTaskStore computes retry backoff correctly", () => {
 
   (decorated as unknown as { getTask(): string }).getTask();
 
-  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  const metrics = decorated.getMetricsSnapshot();
   assert.ok(metrics.getTask);
   assert.ok((metrics.getTask?.totalBackoffMs ?? 0) >= 0, "totalBackoffMs should be >= 0");
 });
@@ -253,4 +247,94 @@ test("decorateAuthoritativeTaskStore logs retry attempts", () => {
   assert.ok(retryLog, "Should have logged a retry");
   assert.equal(retryLog?.data?.operation, "listTasks");
   assert.equal(retryLog?.data?.attempt, 1);
+});
+
+test("decorateAuthoritativeTaskStore isolates metrics per decorated store instance", () => {
+  const storeA = decorateAuthoritativeTaskStore(
+    {
+      listTasks(): string[] {
+        return ["a"];
+      },
+    } as unknown as AuthoritativeTaskStore,
+  );
+  const storeB = decorateAuthoritativeTaskStore(
+    {
+      listTasks(): string[] {
+        return ["b"];
+      },
+    } as unknown as AuthoritativeTaskStore,
+  );
+
+  (storeA as unknown as { listTasks(): string[] }).listTasks();
+  (storeA as unknown as { listTasks(): string[] }).listTasks();
+  (storeB as unknown as { listTasks(): string[] }).listTasks();
+
+  assert.equal(storeA.getMetricsSnapshot().listTasks?.calls, 2);
+  assert.equal(storeB.getMetricsSnapshot().listTasks?.calls, 1);
+
+  storeA.resetMetrics();
+  assert.deepEqual(storeA.getMetricsSnapshot(), {});
+  assert.equal(storeB.getMetricsSnapshot().listTasks?.calls, 1);
+});
+
+test("decorateAuthoritativeTaskStore retries async SQLITE_BUSY failures with non-blocking backoff", async () => {
+  let attempts = 0;
+  const decorated = decorateAuthoritativeTaskStore(
+    {
+      async listTasks(): Promise<string[]> {
+        attempts += 1;
+        if (attempts === 1) {
+          throw Object.assign(new Error("SQLITE_BUSY: async database is locked"), { code: "SQLITE_BUSY" });
+        }
+        return ["async-task"];
+      },
+    } as unknown as AuthoritativeTaskStore,
+    {
+      maxRetryAttempts: 2,
+      baseRetryDelayMs: 5,
+      maxRetryDelayMs: 5,
+      retryJitterRatio: 0,
+      logger: new StructuredLogger({ retentionLimit: 10 }),
+    },
+  );
+
+  const startedAt = Date.now();
+  const result = await (decorated as unknown as { listTasks(): Promise<string[]> }).listTasks();
+  const elapsedMs = Date.now() - startedAt;
+
+  assert.deepEqual(result, ["async-task"]);
+  assert.equal(attempts, 2);
+  assert.ok(elapsedMs >= 5, `expected async retry backoff to yield for at least 5ms, got ${elapsedMs}ms`);
+  assert.equal(decorated.getMetricsSnapshot().listTasks?.totalBackoffMs, 5);
+});
+
+test("decorateAuthoritativeTaskStore does not apply blocking backoff to synchronous retries", () => {
+  let attempts = 0;
+  const decorated = decorateAuthoritativeTaskStore(
+    {
+      listTasks(): string[] {
+        attempts += 1;
+        if (attempts === 1) {
+          throw Object.assign(new Error("SQLITE_BUSY: database is locked"), { code: "SQLITE_BUSY" });
+        }
+        return ["task-1"];
+      },
+    } as unknown as AuthoritativeTaskStore,
+    {
+      maxRetryAttempts: 2,
+      baseRetryDelayMs: 25,
+      maxRetryDelayMs: 25,
+      retryJitterRatio: 0,
+      logger: new StructuredLogger({ retentionLimit: 10 }),
+    },
+  );
+
+  const startedAt = Date.now();
+  const result = (decorated as unknown as { listTasks(): string[] }).listTasks();
+  const elapsedMs = Date.now() - startedAt;
+
+  assert.deepEqual(result, ["task-1"]);
+  assert.equal(attempts, 2);
+  assert.ok(elapsedMs < 25, `expected sync retry to avoid blocking sleep, got ${elapsedMs}ms`);
+  assert.equal(decorated.getMetricsSnapshot().listTasks?.totalBackoffMs, 0);
 });

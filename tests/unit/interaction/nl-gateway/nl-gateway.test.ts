@@ -31,7 +31,19 @@ const mockCostEstimator = {
 };
 
 test("NlEntryService.parseDetailed detects task_create intent", async () => {
-  const service = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
+  const createRouter = {
+    route: () => ({
+      classification: {
+        intent: "create" as const,
+        continuation: "new_task" as const,
+        confidence: 0.9,
+        matchedRules: ["create"],
+      },
+      divisionId: "devops",
+      workflowId: "single_agent_minimal",
+    }),
+  };
+  const service = new NlEntryService({ intakeRouter: createRouter as any });
 
   const result = await service.parseDetailed({
     tenantId: "tenant_1",
@@ -268,7 +280,7 @@ test("NlEntryService.buildTask returns non-null requestEnvelope only when confir
   const task = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "show current deployment status",
+    message: "show current deployment status for staging",
   });
 
   // Only after confirmation (per R5-15/R9-32) should requestEnvelope be populated
@@ -355,17 +367,32 @@ test("NlEntryService.buildTask marks low confidence requests for clarification",
 });
 
 test("NlEntryService.buildTask derives correct conversationState", async () => {
-  const service = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
+  const lowRiskService = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
 
-  const lowRiskTask = await service.buildTask({
+  const lowRiskTask = await lowRiskService.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "list current tasks",
+    message: "show current deployment status for staging",
   });
 
   assert.equal(lowRiskTask.conversationState, "Executing");
 
-  const highRiskTask = await service.buildTask({
+  const highRiskService = new NlEntryService({
+    intakeRouter: {
+      route: () => ({
+        classification: {
+          intent: "modify" as const,
+          continuation: "new_task" as const,
+          confidence: 0.95,
+          matchedRules: ["delete"],
+        },
+        divisionId: "devops",
+        workflowId: "single_agent_minimal",
+      }),
+    } as any,
+  });
+
+  const highRiskTask = await highRiskService.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
     message: "delete all production data",
@@ -440,27 +467,26 @@ test("NlEntryService.parse detects locale from Chinese characters in message", a
   const result = await service.parseDetailed({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "帮我查看生产环境状态",
+    message: "帮我查看 staging 环境状态",
   });
 
   assert.equal(result.locale, "zh-CN");
 });
 
 test("NlEntryService.parseDetailed applies risk classification independently (R5-16)", async () => {
-  // R5-16: Risk classification should be independent stage, before intent processing
-  const routerWithQuery = {
+  const modifyRouter = {
     route: () => ({
       classification: {
-        intent: "query" as const,
+        intent: "modify" as const,
         continuation: "new_task" as const,
         confidence: 0.9,
-        matchedRules: ["show"],
+        matchedRules: ["delete"],
       },
       divisionId: "devops",
       workflowId: "single_agent_minimal",
     }),
   };
-  const service = new NlEntryService({ intakeRouter: routerWithQuery as any });
+  const service = new NlEntryService({ intakeRouter: modifyRouter as any });
 
   // Even though intent is "query", the high-risk content should still be classified correctly
   const result = await service.parseDetailed({
@@ -493,7 +519,7 @@ test("NlEntryService.buildTask populates requestEnvelope metadata correctly", as
   const task = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "list active deployments",
+    message: "list active deployments for staging",
   });
 
   assert.ok(task.requestEnvelope !== null);
@@ -508,7 +534,7 @@ test("NlEntryService.buildTask populates requestEnvelope payload correctly", asy
   const task = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "create new task",
+    message: "show current deployment status for staging",
   });
 
   assert.ok(task.requestEnvelope !== null);
@@ -733,7 +759,7 @@ test("NlEntryService.parseDetailed does not set clarificationQuestions when not 
   const result = await service.parseDetailed({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "show deployment status",
+    message: "show deployment status for staging",
   });
 
   assert.strictEqual(result.clarificationQuestions, undefined);

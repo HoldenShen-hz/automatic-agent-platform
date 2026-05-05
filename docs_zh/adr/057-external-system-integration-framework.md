@@ -29,10 +29,19 @@ interface ExternalAdapter {
   transform_rules: TransformRule[];
   error_handling: ErrorStrategy;
   side_effect_policy: SideEffectPolicy; // 必须关联 SideEffectRecord，见 §14.5
+  // X1 Reliability Fabric 集成（不得本地重实现）
+  retryable?: boolean;                  // 由 X1 RetryMiddleware 执行
+  circuit_breaker_config?: CircuitBreakerConfig; // 由 X1 CBMiddleware 执行
 }
 ```
 
 所有外部系统调用必须通过 SideEffectRecord（§14.5 / §25）记录外部副作用生命周期。Adapter 的 `side_effect_policy` 声明 `proposed→confirmed` 状态机转换条件，由 RuntimeStateMachine 统一推进，不得由 Adapter 自行提交。
+
+**X1 Reliability Fabric 强制集成**：
+- `retry` 逻辑由 X1 RetryMiddleware（library interceptor）统一执行，Adapter 不得本地重实现
+- `circuit_break` 由 X1 CircuitBreakerMiddleware 统一执行，Adapter 只需声明 `circuit_breaker_config`
+- Adapter 层面禁止自行调用 `setTimeout`、`setInterval` 或任何重试循环
+- SideEffectRecord 的 `compensation` 字段须关联对应 X1 Reliability Fabric 的 fallback 策略
 
 ### 认证类型
 

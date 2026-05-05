@@ -25,7 +25,7 @@ class ApiError extends AppError {
 }
 
 export function readRequestId(request: ApiRequestLike): string {
-  const candidate = request.headers["x-request-id"];
+  const candidate = request.headers["x-correlation-id"] ?? request.headers["x-request-id"];
   if (typeof candidate === "string" && candidate.trim().length > 0) {
     return candidate.trim();
   }

@@ -52,14 +52,18 @@ interface OrgNode {
 
 OrgTree 变更（部门合并、团队拆分、人员转岗）须遵循四段 Saga 语义：
 
-| 阶段 | 说明 |
-|------|------|
-| prepare | 验证变更可行性，生成影响分析，锁定受影响的子节点 |
-| commit | 执行组织结构变更，更新所有关联的审批链路和权限 |
-| compensate | 若变更失败则回滚至原组织结构，恢复受影响节点的原始状态 |
-| audit | 记录变更事件，生成变更报告，通知相关干系人 |
+| 阶段 | 说明 | 补偿触发 |
+|------|------|----------|
+| prepare | 验证变更可行性，生成影响分析，锁定受影响的子节点 | N/A |
+| commit | 执行组织结构变更，更新所有关联的审批链路和权限 | compensate |
+| compensate | 若变更失败则回滚至原组织结构，恢复受影响节点的原始状态 | 递归补偿直至成功或人工介入 |
+| audit | 记录变更事件，生成变更报告，通知相关干系人 | N/A |
 
-注：Saga 确保 OrgTree 级联变更具备幂等性和补偿能力，防止中间状态导致组织结构与权限系统不一致。
+补偿事务要求：
+- 每一步 commit 操作须记录反向操作（inverse operation）到 compensation_log
+- compensate 阶段须保证幂等性（idempotent），可安全重试
+- audit 阶段须记录完整的 prepare/commit/compensate 链路时间戳和操作者身份
+- 若 compensate 失败，系统进入 `saga_in_flight` 状态并告警，需人工确认后继续
 
 ## 后果
 

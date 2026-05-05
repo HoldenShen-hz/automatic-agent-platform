@@ -38,7 +38,6 @@ import type { TaskStatus } from "../../../contracts/types/status.js";
 import type { IntakeAdmissionService } from "../../../orchestration/harness/runtime/intake-admission-service.js";
 import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource } from "../../../contracts/executable-contracts/index.js";
 import { createPrincipalRef } from "../../../contracts/executable-contracts/index.js";
-import { RuntimeStateMachine } from "../../../execution/runtime-state-machine.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -234,22 +233,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           throw new ApiError(400, "api.missing_required_field", "divisionId is required for routing.");
         }
 
-        // Extract correlationId from request headers for event/RSM/span correlation
-        function extractCorrelationId(req: ApiRequestLike): string {
-          const getHeader = (name: string): string | undefined => {
-            const value = req.headers[name];
-            if (Array.isArray(value)) return value[0];
-            return value;
-          };
-          return (
-            getHeader("x-correlation-id") ??
-            getHeader("x-request-id") ??
-            getHeader("request-id") ??
-            newId("corr")
-          );
-        }
-
-        const correlationId = extractCorrelationId(ctx.request);
+        const correlationId = ctx.requestId;
         // R7-13: Extract Idempotency-Key from request headers for safe retries
         const requestIdempotencyKey = extractIdempotencyKeyFromRequest(ctx.request);
         const taskId = newId("task");
@@ -268,22 +252,15 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const idempotencyKey = requestIdempotencyKey
           ?? `${principal.actorId ?? "unknown"}:${payload.title}:${divisionId}:${now.split("T")[0]}`;
 
-        if (deps.taskStore) {
-          const existing = deps.taskStore.task.listTasks(1, missionControlTenantId, undefined);
-          const titleMatch = existing.some((t) => t.title === payload.title && t.divisionId === divisionId);
-          if (titleMatch) {
-            const existingTask = existing[0];
-            if (existingTask) {
-              const cockpit = deps.missionControlService.getTaskCockpit(existingTask.id, missionControlTenantId);
-              return buildJsonResponse(ctx.requestId, 200, cockpit);
-            }
-          }
-        }
-
         const principalRef: PrincipalRef = createPrincipalRef({
           principalId: principal.actorId ?? "unknown",
           tenantId: tenantId ?? "global",
           roles: principal.roles,
+          authorizationLevel: principal.roles.includes("admin")
+            ? "admin"
+            : principal.roles.includes("operator")
+              ? "operator"
+              : "viewer",
         });
 
         if (!deps.intakeAdmissionService) {
@@ -313,60 +290,47 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           traceId: correlationId,
         });
 
-        const rsm = new RuntimeStateMachine();
-        rsm.transition({
-          commandId: newId("cmd"),
-          entityType: "HarnessRun",
-          entityId: admissionResult.harnessRun.harnessRunId,
-          principal: principalRef.principalId,
-          aggregateType: "HarnessRun",
-          aggregate: admissionResult.harnessRun,
-          fromStatus: "created",
-          toStatus: "admitted",
-          expectedSeq: 0,
-          traceId: correlationId,
-          tenantId: tenantId ?? "global",
-          reasonCode: "task.created",
-          emittedBy: "api.task-routes",
-          runVersionLockId: admissionResult.runVersionLock.runVersionLockId,
-          leaseId: `lease:task:${taskId}:create`,
-          fencingToken: `fencing:task:${taskId}:create:0`,
-          policyGuard: {
-            allowed: true,
-            policyProofRef: `constraints:${divisionId}`,
-          },
-          budgetPrecondition: {
-            reservationId: admissionResult.harnessRun.budgetLedgerId,
-            hardCapSatisfied: true,
-          },
-          auditRef: `audit://tasks/${taskId}/creation`,
-        });
-
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
         }
         const taskStore = deps.taskStore;
-        taskStore.withConnection((_conn) => {
+        const newTask = {
+          id: taskId,
+          parentId: payload.parentId ?? null,
+          rootId: taskId,
+          divisionId,
+          tenantId,
+          title: payload.title,
+          status: "pending" as TaskStatus,
+          source: payload.source ?? "user",
+          priority: payload.priority ?? "normal",
+          inputJson: payload.inputJson ?? "{}",
+          normalizedInputJson: null,
+          outputJson: null,
+          estimatedCostUsd: null,
+          actualCostUsd: 0,
+          errorCode: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+        };
+
+        taskStore.db.transaction(() => {
           taskStore.task.insertTask({
-            id: taskId,
-            parentId: payload.parentId ?? null,
-            rootId: taskId,
-            divisionId,
-            tenantId,
-            title: payload.title,
-            status: "pending" as TaskStatus,
-            source: payload.source ?? "user",
-            priority: payload.priority ?? "normal",
-            inputJson: payload.inputJson ?? "{}",
-            normalizedInputJson: null,
-            outputJson: null,
-            estimatedCostUsd: null,
-            actualCostUsd: 0,
-            errorCode: null,
-            createdAt: now,
-            updatedAt: now,
-            completedAt: null,
+            ...newTask,
           });
+          for (const event of admissionResult.events) {
+            taskStore.event.insertEvent({
+              id: event.eventId,
+              taskId,
+              executionId: null,
+              eventType: event.eventType,
+              eventTier: "tier_1",
+              payloadJson: JSON.stringify(event),
+              traceId: event.traceId,
+              createdAt: event.occurredAt,
+            });
+          }
         });
 
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, missionControlTenantId);

@@ -70,6 +70,10 @@ CREATE TABLE IF NOT EXISTS node_runs (
   lease_id TEXT,
   fencing_token TEXT,
   current_seq INTEGER NOT NULL,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  graph_version TEXT NOT NULL DEFAULT '1.0',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  terminal_reason TEXT,
   updated_at TEXT NOT NULL
 );
 
@@ -194,6 +198,28 @@ CREATE TABLE IF NOT EXISTS runtime_outbox (
   payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL,
   dispatched_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS usage_events (
+  usage_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  subject_id TEXT NOT NULL,
+  workspace_id TEXT NULL,
+  tenant_id TEXT NULL,
+  task_id TEXT NULL,
+  harness_run_id TEXT NULL,
+  node_run_id TEXT NULL,
+  attempt_id TEXT NULL,
+  execution_id TEXT NULL,
+  step_id TEXT NULL,
+  metric_type TEXT NOT NULL,
+  quantity REAL NOT NULL,
+  source TEXT NOT NULL,
+  unit_price_usd REAL NOT NULL,
+  captured_at TEXT NOT NULL,
+  FOREIGN KEY(account_id) REFERENCES billing_accounts(account_id) ON DELETE CASCADE,
+  FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL,
+  FOREIGN KEY(execution_id) REFERENCES executions(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS runtime_audit_refs (

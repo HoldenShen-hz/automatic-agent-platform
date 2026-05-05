@@ -67,6 +67,8 @@ export interface IdempotencyDecision {
     statusCode: number;
     body: unknown;
   };
+  /** Whether the original request with this key is still in flight */
+  requestInFlight?: boolean;
 }
 
 /**
@@ -91,7 +93,7 @@ export class IdempotencyKeyMiddleware {
   /**
    * Generate a unique key for storing idempotency entries.
    */
-  private generateStorageKey(idempotencyKey: string, tenantId?: string): string {
+  private generateStorageKey(idempotencyKey: string, tenantId?: string | null): string {
     if (this.config.perTenant && tenantId) {
       return `tenant:${tenantId}:${idempotencyKey}`;
     }
@@ -113,8 +115,8 @@ export class IdempotencyKeyMiddleware {
    */
   public async check(options: {
     method: string;
-    idempotencyKey?: string;
-    tenantId?: string;
+    idempotencyKey?: string | null;
+    tenantId?: string | null;
     body?: unknown;
   }): Promise<IdempotencyDecision> {
     const { method, idempotencyKey, tenantId } = options;
@@ -145,6 +147,19 @@ export class IdempotencyKeyMiddleware {
       const existing = await this.storage.get(storageKey);
 
       if (existing && Date.now() < existing.expiresAt) {
+        if (existing.statusCode === 0) {
+          return {
+            allowed: false,
+            isDuplicate: true,
+            requestInFlight: true,
+            error: {
+              statusCode: 409,
+              code: "api.idempotency_request_in_flight",
+              message: `Idempotency-Key '${idempotencyKey}' is already processing another ${existing.method} request.`,
+            },
+          };
+        }
+
         // Check if the method matches (same key with different method = conflict)
         if (existing.method !== method) {
           return {
@@ -200,19 +215,21 @@ export class IdempotencyKeyMiddleware {
    * Should be called after the request completes to cache the response.
    */
   public async record(options: {
+    method?: string;
     idempotencyKey: string;
-    tenantId?: string;
+    tenantId?: string | null;
     statusCode: number;
     responseBody: unknown;
   }): Promise<void> {
-    const { idempotencyKey, tenantId, statusCode, responseBody } = options;
+    const { method, idempotencyKey, tenantId, statusCode, responseBody } = options;
     const storageKey = this.generateStorageKey(idempotencyKey, tenantId);
+    const existing = await this.storage.get(storageKey);
     let bodyStr: string | null = null;
     if (responseBody != null) {
       bodyStr = JSON.stringify(responseBody);
     }
     await this.storage.set(storageKey, {
-      method: "", // Method already stored
+      method: method ?? existing?.method ?? "POST",
       statusCode,
       responseBody: bodyStr,
       requestHash: null,

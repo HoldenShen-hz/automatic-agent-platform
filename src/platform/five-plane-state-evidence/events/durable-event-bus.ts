@@ -922,9 +922,10 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
-    this.enqueueDelivery(consumerId, true).catch(() => {
-      // Error already logged in enqueueDelivery; propagate to ensure unhandled rejection
-      // visibility rather than silently discarding via void
+    this.enqueueDelivery(consumerId, true).catch((error) => {
+      // R11-42/43 fix: Error already logged in enqueueDelivery; re-throw for visibility
+      // rather than silently discarding via void
+      throw error;
     });
   }
 
@@ -1047,7 +1048,15 @@ export class DurableEventBus {
           throw error;
         }
       });
-      const chain = next.then(() => undefined, () => undefined);
+      const chain = next.then(
+        (value) => value,
+        (error) => {
+          eventBusLogger.warn("event_bus.volatile_delivery_chain_error", {
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
+          throw error; // R11-42/43 fix: propagate error for visibility
+        },
+      );
       this.deliveryChains.set(consumerId, chain);
       void chain.finally(() => {
         if (this.deliveryChains.get(consumerId) === chain) {
@@ -1076,7 +1085,18 @@ export class DurableEventBus {
         throw error;
       }
     });
-    const chain = next.then(() => undefined, () => undefined);
+    const chain: Promise<void> = next.then(
+      () => undefined,
+      (error) => {
+        // R11-42/43 fix: Log error for visibility instead of silent suppression
+        eventBusLogger.warn("event_bus.delivery_chain_error", {
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        // Return undefined to keep chain as Promise<void>, but the error
+        // has been logged for visibility. Error propagation is via next (not chain).
+        return undefined;
+      },
+    );
 
     this.deliveryChains.set(consumerId, chain);
     void chain.finally(() => {

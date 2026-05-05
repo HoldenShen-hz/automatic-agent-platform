@@ -26,7 +26,7 @@ test("golden: RolloutRecord schema produces correct structure", () => {
     recordId: "rollout_001",
     candidateId: "candidate_test_001",
     fromLevel: "canary_5",
-    toLevel: "partial_25",
+    toLevel: "canary_20",
     previousLevel: "canary_5",
     strategyVersionId: "v1.2.3",
     status: "evaluation_enabled",
@@ -55,7 +55,7 @@ test("golden: RolloutRecord schema produces correct structure", () => {
   assert.equal(parsed.recordId, "rollout_001");
   assert.equal(parsed.candidateId, "candidate_test_001");
   assert.equal(parsed.fromLevel, "canary_5");
-  assert.equal(parsed.toLevel, "partial_25");
+  assert.equal(parsed.toLevel, "canary_20");
   assert.equal(parsed.previousLevel, "canary_5");
   assert.equal(parsed.strategyVersionId, "v1.2.3");
   assert.equal(parsed.status, "evaluation_enabled");
@@ -81,12 +81,13 @@ test("golden: RolloutRecord schema produces correct structure", () => {
 });
 
 test("golden: RolloutLevel enum values are valid", () => {
+  // Phase 1 rollout levels using canary progression
   const validLevels: RolloutLevel[] = [
     "off",
     "evaluate_0",
     "canary_5",
-    "partial_25",
-    "stable_75",
+    "canary_20",
+    "canary_50",
     "stable_100",
   ];
 
@@ -105,6 +106,7 @@ test("golden: RolloutLevel enum values are valid", () => {
 });
 
 test("golden: RolloutStatus enum values are valid", () => {
+  // Phase 1 rollout statuses using canary progression
   const validStatuses: RolloutStatus[] = [
     "candidate_created",
     "under_review",
@@ -113,8 +115,8 @@ test("golden: RolloutStatus enum values are valid", () => {
     "rejected",
     "evaluation_enabled",
     "canary_5",
-    "partial_25",
-    "stable_75",
+    "canary_20",
+    "canary_50",
     "stable_100",
     "released",
     "rolled_back",
@@ -216,9 +218,9 @@ test("golden: parseRolloutRecord produces valid output", () => {
   const input = {
     recordId: "rollout_parse_test",
     candidateId: "candidate_abc",
-    fromLevel: "partial_25",
-    toLevel: "stable_75",
-    status: "stable_75",
+    fromLevel: "canary_20",
+    toLevel: "canary_50",
+    status: "canary_50",
     triggeredBy: "human",
     transitionedAt: 1714600000,
   };
@@ -227,9 +229,9 @@ test("golden: parseRolloutRecord produces valid output", () => {
 
   assert.ok(parsed.recordId);
   assert.ok(parsed.candidateId);
-  assert.equal(parsed.fromLevel, "partial_25");
-  assert.equal(parsed.toLevel, "stable_75");
-  assert.equal(parsed.status, "stable_75");
+  assert.equal(parsed.fromLevel, "canary_20");
+  assert.equal(parsed.toLevel, "canary_50");
+  assert.equal(parsed.status, "canary_50");
   assert.equal(parsed.triggeredBy, "human");
 
   assertGolden("parse-rollout-record-v1", {
@@ -246,7 +248,7 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
   const missingRecordId = {
     candidateId: "candidate_test",
     fromLevel: "canary_5",
-    toLevel: "partial_25",
+    toLevel: "canary_20",
   };
 
   const result1 = RolloutRecordSchema.safeParse(missingRecordId);
@@ -257,7 +259,7 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
     recordId: "rollout_001",
     candidateId: "candidate_test",
     fromLevel: "invalid_level",
-    toLevel: "partial_25",
+    toLevel: "canary_20",
   };
 
   const result2 = RolloutRecordSchema.safeParse(invalidLevel);
@@ -268,7 +270,7 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
     recordId: "rollout_002",
     candidateId: "candidate_test",
     fromLevel: "canary_5",
-    toLevel: "partial_25",
+    toLevel: "canary_20",
     status: "invalid_status",
   };
 
@@ -315,13 +317,13 @@ test("golden: RolloutRecord with minimal required fields", () => {
 });
 
 test("golden: RolloutRecord full lifecycle progression", () => {
-  // Simulate a full rollout lifecycle
+  // Simulate a full rollout lifecycle with Phase 1 canary progression
   const stages = [
     { status: "candidate_created", fromLevel: "off", toLevel: "evaluate_0" },
     { status: "evaluation_enabled", fromLevel: "evaluate_0", toLevel: "canary_5" },
-    { status: "canary_5", fromLevel: "canary_5", toLevel: "partial_25" },
-    { status: "partial_25", fromLevel: "partial_25", toLevel: "stable_75" },
-    { status: "stable_75", fromLevel: "stable_75", toLevel: "stable_100" },
+    { status: "canary_5", fromLevel: "canary_5", toLevel: "canary_20" },
+    { status: "canary_20", fromLevel: "canary_20", toLevel: "canary_50" },
+    { status: "canary_50", fromLevel: "canary_50", toLevel: "stable_100" },
     { status: "released", fromLevel: "stable_100", toLevel: "stable_100" },
   ];
 

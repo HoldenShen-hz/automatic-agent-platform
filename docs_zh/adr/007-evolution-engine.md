@@ -101,7 +101,7 @@ HarnessRuntime / observability 应对以下事件给出告警或通知：
 
 ## 交叉引用
 
-- [ADR-003 六层记忆与 KV Cache 固定前缀](./003-memory-seven-layers.md)
+- [ADR-003 六层记忆与 KV Cache 固定前缀](./003-memory-six-layers.md)
 - [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
 - [ADR-008 成本模型](./008-cost-model.md)
 

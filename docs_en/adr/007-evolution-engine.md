@@ -101,7 +101,7 @@ As of current phase1-4 delivery, aligned parts include:
 
 ## Cross-References
 
-- [ADR-003 Six-Layer Memory and KV Cache Fixed Prefix](./003-memory-seven-layers.md)
+- [ADR-003 Six-Layer Memory and KV Cache Fixed Prefix](./003-memory-six-layers.md)
 - [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 

@@ -373,7 +373,7 @@ test("RetryableApiClient.performVersionHandshake succeeds when version is compat
     );
 
   try {
-    const result = await client.initialize();
+    const result = await client.performVersionHandshake();
     assert.equal(result.platformVersion, "v4.3");
     assert.equal(result.contractVersion, "v4.3");
     assert.equal(result.minClientVersion, "2.0.0");
@@ -382,7 +382,7 @@ test("RetryableApiClient.performVersionHandshake succeeds when version is compat
   }
 });
 
-test("versionsCompatible returns true when client version equals minimum", () => {
+test("versionsCompatible returns true when client version equals minimum", async () => {
   // Test that SDK version 2.0.0 satisfies min version 2.0.0
   const config: ApiClientConfig = {
     baseUrl: "https://api.example.com",
@@ -411,9 +411,8 @@ test("versionsCompatible returns true when client version equals minimum", () =>
     );
 
   try {
-    const result = client.initialize();
-    // Should not reject since 2.0.0 >= 2.0.0
-    assert.ok(result);
+    const result = await client.performVersionHandshake();
+    assert.equal(result.minClientVersion, "2.0.0");
   } finally {
     globalThis.fetch = originalFetch;
   }

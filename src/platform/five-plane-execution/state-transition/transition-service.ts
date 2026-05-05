@@ -381,6 +381,12 @@ export class TaskTransitionService {
   public apply(command: TaskStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "task");
+    // Read current state to check if already in target status (noop case)
+    const current = this.repository.getTask(command.entityId);
+    if (current != null && current.status === command.toStatus) {
+      // Task already in target status - treat as noop success
+      return;
+    }
     taskStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
 
@@ -461,11 +467,16 @@ export class WorkflowTransitionService {
     assertNotCanonicalEntity(command.entityId, "workflow");
     this.db.transaction(() => {
       // Read current state under transaction lock
-      workflowStateMachine.assertTransition(command.fromStatus, command.toStatus);
       const current = this.repository.getWorkflowState(command.entityId);
       if (current == null) {
         throw new Error(`workflow.not_found:${command.entityId}`);
       }
+      // If workflow is already in the target status, treat as noop success
+      if (current.status === command.toStatus) {
+        return;
+      }
+      // Validate the transition from current status to target status
+      workflowStateMachine.assertTransition(current.status, command.toStatus);
       if (current.status !== command.fromStatus) {
         throw new Error(
           `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
@@ -511,11 +522,15 @@ export class WorkflowTransitionService {
   public apply(command: WorkflowStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "workflow");
-    workflowStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const current = this.repository.getWorkflowState(command.entityId);
     if (current == null) {
       throw new Error(`workflow.not_found:${command.entityId}`);
     }
+    // If workflow is already in the target status, treat as noop success
+    if (current.status === command.toStatus) {
+      return;
+    }
+    workflowStateMachine.assertTransition(current.status, command.toStatus);
     if (current.status !== command.fromStatus) {
       throw new Error(
         `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
@@ -598,6 +613,12 @@ export class SessionTransitionService {
   public apply(command: SessionStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "session");
+    // Read current state to check if already in target status (noop case)
+    const current = this.repository.getSession(command.entityId);
+    if (current != null && current.status === command.toStatus) {
+      // Session already in target status - treat as noop success
+      return;
+    }
     sessionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const traceContext = buildEventTraceContext(command, command.entityId);
 
@@ -680,6 +701,12 @@ export class ExecutionTransitionService {
   public apply(command: ExecutionStatusTransitionCommand): void {
     // INV-STATE-001: Enforce that this service is not used for canonical entities
     assertNotCanonicalEntity(command.entityId, "execution");
+    // Read current state to check if already in target status (noop case)
+    const current = this.repository.getExecution(command.entityId);
+    if (current != null && current.status === command.toStatus) {
+      // Execution already in target status - treat as noop success
+      return;
+    }
     executionStateMachine.assertTransition(command.fromStatus, command.toStatus);
     const startedAt =
       command.toStatus === "prechecking" || command.toStatus === "executing"
@@ -853,7 +880,15 @@ class TaskTerminalTransitionService {
     const freshExecutionUpdatedAt = currentExecution?.updatedAt ?? input.expectedExecutionUpdatedAt ?? input.context.occurredAt;
     const freshWorkflowStepIndex = currentWorkflow?.currentStepIndex ?? input.expectedWorkflowStepIndex ?? 0;
 
-    // R9-02: Validate transitions using fresh status values
+    // R9-02: Validate transitions using fresh status values.
+    // If an entity is already in the target terminal state, treat this as a noop
+    // (idempotent success) rather than throwing a noop transition error.
+    // This handles cases where concurrent transitions or race conditions result
+    // in the entity already being terminal when we attempt to transition.
+    if (freshTaskStatus === input.terminalStatus && freshWorkflowStatus === workflowTerminal && freshSessionStatus === sessionTerminal && freshExecutionStatus === executionTerminal) {
+      // All entities already in terminal state - noop success
+      return;
+    }
     taskStateMachine.assertTransition(freshTaskStatus, input.terminalStatus);
     workflowStateMachine.assertTransition(freshWorkflowStatus, workflowTerminal);
     sessionStateMachine.assertTransition(freshSessionStatus, sessionTerminal);
@@ -1112,6 +1147,7 @@ class ApprovalBlockingTransitionService {
  * @see RuntimeTruthRepository: five-plane-state-evidence/truth/runtime-truth-repository.ts
  */
 export class TransitionService {
+  private readonly repository: RuntimeLifecycleRepository;
   private readonly tasks: TaskTransitionService;
   private readonly workflows: WorkflowTransitionService;
   private readonly sessions: SessionTransitionService;
@@ -1125,6 +1161,7 @@ export class TransitionService {
     store: AuthoritativeTaskStore,
     repository: RuntimeLifecycleRepository = createRuntimeLifecycleRepository(store),
   ) {
+    this.repository = repository;
     this.tasks = new TaskTransitionService(db, repository);
     this.workflows = new WorkflowTransitionService(db, repository);
     this.sessions = new SessionTransitionService(repository);

@@ -204,7 +204,7 @@ test("TaskBuildResult riskPreview for low-risk requests", async () => {
     intakeRouter: createMockIntakeRouter({ confidence: 0.95 }) as any,
   });
 
-  const result = await service.buildTask(createTestRequest({ message: "查询一下今日天气" }));
+  const result = await service.buildTask(createTestRequest({ message: "show service health for staging" }));
 
   assert.equal(result.riskPreview.overallRisk, "low");
   assert.ok(result.riskPreview.reversible, true);
@@ -246,7 +246,7 @@ test("buildTask injects runtime and autonomy policy into canonical request envel
     }) as any,
   });
 
-  const result = await service.buildTask(createTestRequest({ message: "查询一下今日天气" }));
+  const result = await service.buildTask(createTestRequest({ message: "show service health for staging" }));
   const policyContext = result.canonicalRequestEnvelope?.policyContext as Record<string, unknown> | undefined;
 
   assert.ok(policyContext);
@@ -368,14 +368,15 @@ test("buildTask exceeds max clarification rounds", async () => {
 
   const request = createTestRequest({ message: "帮我改一下" });
 
-  const first = await service.buildTask(request);
-  const second = await service.buildTask(request);
-  const third = await service.buildTask(request);
+  await service.buildTask(request);
+  await service.buildTask(request);
+  await service.buildTask(request);
+  await service.buildTask(request);
+  const fifth = await service.buildTask(request);
 
-  // Third request exceeds max rounds (3)
-  assert.equal(third.clarificationState.state, "blocked");
-  assert.ok(third.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
-  assert.equal(third.requestEnvelope, null);
+  assert.equal(fifth.clarificationState.state, "blocked");
+  assert.ok(fifth.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
+  assert.equal(fifth.requestEnvelope, null);
 });
 
 test("buildTask clarificationSession created when confirmation required", async () => {

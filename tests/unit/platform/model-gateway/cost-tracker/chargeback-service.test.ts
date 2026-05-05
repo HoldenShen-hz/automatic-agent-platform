@@ -484,6 +484,53 @@ test("ChargebackService buildReport aggregates same resource across reports", ()
   assert.equal(allocation?.reportCount, 2);
 });
 
+test("ChargebackService buildReport keeps same resource split by original currency", () => {
+  const reports: MockReportRecord[] = [
+    {
+      reportId: "r1",
+      tenantId: "tenant-1",
+      periodStart: "2026-04-01T00:00:00.000Z",
+      periodEnd: "2026-04-01T23:59:59.000Z",
+      totalCostUsd: 10,
+      currency: "USD",
+      resourceCosts: [{ resourceId: "api:openai", resourceType: "api", costUsd: 10, currency: "USD" }],
+      resourceCount: 1,
+      submittedBy: "test",
+      submittedAt: "2026-04-01T12:00:00.000Z",
+      createdAt: "2026-04-01T12:00:00.000Z",
+    },
+    {
+      reportId: "r2",
+      tenantId: "tenant-1",
+      periodStart: "2026-04-02T00:00:00.000Z",
+      periodEnd: "2026-04-02T23:59:59.000Z",
+      totalCostUsd: 10,
+      currency: "EUR",
+      resourceCosts: [{ resourceId: "api:openai", resourceType: "api", costUsd: 10, currency: "EUR" }],
+      resourceCount: 1,
+      submittedBy: "test",
+      submittedAt: "2026-04-02T12:00:00.000Z",
+      createdAt: "2026-04-02T12:00:00.000Z",
+    },
+  ];
+
+  const service = new ChargebackService(createMockReportSource(reports));
+  const report = service.buildReport({ tenantId: "tenant-1", baseCurrency: "USD" });
+
+  assert.equal(report.allocations.length, 2);
+  assert.equal(report.totalCostUsd, 20.8);
+
+  const usdAllocation = report.allocations.find((allocation) => allocation.originalCurrency === "USD");
+  const eurAllocation = report.allocations.find((allocation) => allocation.originalCurrency === "EUR");
+
+  assert.ok(usdAllocation);
+  assert.ok(eurAllocation);
+  assert.equal(usdAllocation?.resourceId, "api:openai");
+  assert.equal(usdAllocation?.costUsd, 10);
+  assert.equal(eurAllocation?.resourceId, "api:openai");
+  assert.equal(eurAllocation?.costUsd, 10.8);
+});
+
 test("ChargebackService buildReport tracks first and latest period correctly", () => {
   const reports: MockReportRecord[] = [
     {

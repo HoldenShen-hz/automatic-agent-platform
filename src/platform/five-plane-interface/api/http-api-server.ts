@@ -37,6 +37,12 @@ import { PackCatalogService } from "./pack-catalog-service.js";
 import { CostReportService } from "./cost-report-service.js";
 import { AdminConfigService } from "./admin-config-service.js";
 import { HierarchicalPromptRegistryService } from "../../prompt-engine/registry/hierarchical-registry-service.js";
+import type { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
+import {
+  getGlobalIdempotencyKeyMiddleware,
+  type IdempotencyKeyMiddleware,
+} from "./middleware/idempotency-key.js";
+import { globalVersionRoutingMiddleware } from "./middleware/version-routing.js";
 import { readRequestId } from "./http-server/utils.js";
 import {
   MAX_BODY_BYTES,
@@ -101,6 +107,7 @@ export interface HttpApiServerOptions {
   artifactPlaneService?: ArtifactPlaneService | null;
   domainRegistryService?: DomainRegistryService | null;
   pluginRegistry?: PluginSpiRegistry | null;
+  taskStore?: AuthoritativeTaskStore | null;
   /** Intake admission service for task creation pipeline validation */
   intakeAdmissionService?: IntakeAdmissionService | null;
   /** Distributed rate limiter for API endpoint protection */
@@ -157,6 +164,7 @@ export class HttpApiServer {
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
+  private readonly idempotencyKeyMiddleware: IdempotencyKeyMiddleware;
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -170,6 +178,7 @@ export class HttpApiServer {
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
+    this.idempotencyKeyMiddleware = getGlobalIdempotencyKeyMiddleware();
     const corsConfigInput: Partial<CorsConfig> = {
       allowedOrigins: options.cors?.allowedOrigins ?? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"]),
     };
@@ -419,6 +428,9 @@ export class HttpApiServer {
     rateLimitHeaders: Record<string, string>,
   ): Promise<ApiResponsePayload> {
     const requestId = readRequestId(request);
+    const versionDecision = globalVersionRoutingMiddleware.selectVersion(
+      globalVersionRoutingMiddleware.parseAcceptVersion(request.headers["accept-version"] ?? null),
+    );
 
     return provideContext({
       traceId: requestId,
@@ -431,29 +443,79 @@ export class HttpApiServer {
         if (bodyBytes > MAX_BODY_BYTES) {
           throw new ApiError(413, "api.payload_too_large", "Request body exceeds 1 MB limit.");
         }
+        if (!versionDecision.acceptable) {
+          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, versionDecision.statusCode, {
+            code: versionDecision.reasonCode,
+            message: "Requested API version is not supported.",
+            details: { warnings: versionDecision.warnings },
+          }, requestId), versionDecision.version);
+        }
+
+        const requestMethod = request.method ?? "GET";
+        const tenantId = principal?.tenantId ?? undefined;
+        const idempotencyKey: string | undefined = request.headers["idempotency-key"] ?? request.headers["Idempotency-Key"];
+        const requestBody = request.body;
+        const idempotencyDecision = await this.idempotencyKeyMiddleware.check({
+          method: requestMethod,
+          idempotencyKey: idempotencyKey ?? null,
+          tenantId: tenantId ?? null,
+          body: requestBody,
+        });
+        if (!idempotencyDecision.allowed) {
+          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, idempotencyDecision.error?.statusCode ?? 400, {
+            code: idempotencyDecision.error?.code ?? "api.idempotency_denied",
+            message: idempotencyDecision.error?.message ?? "Idempotency check failed.",
+          }, requestId), versionDecision.version);
+        }
+        if (idempotencyDecision.isDuplicate && idempotencyDecision.cachedResponse) {
+          return this.withApiVersionHeader({
+            statusCode: idempotencyDecision.cachedResponse.statusCode,
+            headers: {
+              "content-type": "application/json; charset=utf-8",
+              "x-request-id": requestId,
+              "x-idempotent-replay": "true",
+            },
+            body: JSON.stringify(idempotencyDecision.cachedResponse.body, null, 2),
+          }, versionDecision.version);
+        }
+
         const route = matchRoute(request);
         if (!route) {
-          return this.buildJsonErrorResponse(requestId, 404, {
+          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
             message: "Route not found.",
-          });
+          }, requestId), versionDecision.version);
         }
 
         const ctx: RouteContext = { request, route, requestId, principal };
-        const resolved = await this.withRequestTimeout(
+        let resolved = await this.withRequestTimeout(
           request,
           this.resolveRouteResponse(route, request, ctx),
         );
         if (resolved == null) {
-          return this.buildJsonErrorResponse(requestId, 404, {
+          return this.withApiVersionHeader(this.buildJsonErrorResponse(requestId, 404, {
             code: "api.not_found",
             message: "Route not found.",
-          });
+          }, requestId), versionDecision.version);
+        }
+        resolved = this.withApiVersionHeader(resolved, versionDecision.version);
+        if (typeof idempotencyKey === "string" && idempotencyKey.trim().length > 0) {
+          if (resolved.statusCode >= 500) {
+            await this.idempotencyKeyMiddleware.clear(idempotencyKey, tenantId);
+          } else {
+            await this.idempotencyKeyMiddleware.record({
+              method: requestMethod,
+              idempotencyKey,
+              tenantId: tenantId ?? null,
+              statusCode: resolved.statusCode,
+              responseBody: tryParseJsonBody(resolved.body),
+            });
+          }
         }
         // Attach rate limit headers to successful responses
         return this.addRateLimitHeaders(resolved, rateLimitHeaders);
       } catch (error) {
-        return this.handleError(error, requestId, request);
+        return this.withApiVersionHeader(this.handleError(error, requestId, request), versionDecision.version);
       }
     });
   }
@@ -567,6 +629,7 @@ export class HttpApiServer {
         authService: this.options.authService ?? null,
         inspectService: this.options.inspectService,
         missionControlService: this.options.missionControlService,
+        ...(this.options.taskStore != null ? { taskStore: this.options.taskStore } : {}),
         ...(this.options.intakeAdmissionService != null ? { intakeAdmissionService: this.options.intakeAdmissionService } : {}),
       }),
       ...(this.options.webhookIngressService != null
@@ -658,6 +721,19 @@ export class HttpApiServer {
     return decorateResponseHeaders(payload, origin, this.corsConfig, requestId);
   }
 
+  private withApiVersionHeader(payload: ApiResponsePayload, apiVersion: string): ApiResponsePayload {
+    const normalizedApiVersion = apiVersion.trim().length > 0
+      ? apiVersion
+      : globalVersionRoutingMiddleware.getSupportedVersions()[0] ?? "v1";
+    return {
+      ...payload,
+      headers: {
+        ...payload.headers,
+        "x-api-version": normalizedApiVersion,
+      },
+    };
+  }
+
   /**
    * Builds rate limit headers from a rate limit check result.
    * Returns headers conforming to IETF Rate Limit draft spec.
@@ -736,4 +812,12 @@ function normalizeApiTimeout(value: number | undefined, fallback: number, max: n
     return fallback;
   }
   return Math.min(Math.trunc(value), max);
+}
+
+function tryParseJsonBody(body: string): unknown {
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return body;
+  }
 }

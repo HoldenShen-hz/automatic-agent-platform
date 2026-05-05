@@ -151,6 +151,7 @@ test("Domain has correct tool bundle after registration", () => {
   const service = new DomainRegistryService();
   const domain = createMinimalDomain({
     domainId: "bundle-domain",
+    status: "registered",
     toolBundles: [
       {
         bundleId: "bundle_primary",
@@ -248,6 +249,7 @@ test("domain registration with multiple tool bundles", () => {
   const service = new DomainRegistryService();
   const domain = createMinimalDomain({
     domainId: "multi-bundle-domain",
+    status: "registered",
     toolBundles: [
       {
         bundleId: "bundle_a",

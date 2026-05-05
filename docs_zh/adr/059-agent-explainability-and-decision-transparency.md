@@ -15,9 +15,9 @@ EU AI Act 等法规要求 AI 决策可解释，平台需要提供决策透明度
 interface DecisionRecord {
   decision_id: string;
   agent_id: string;
-  harness_run_id?: string;   // §5.5 所有决策须链接到 HarnessRun
-  node_run_id?: string;      // §5.5 决策上下文节点
-  plan_graph_id?: string;    // §5.5 决策关联的计划图
+  harness_run_id: string;     // §5.5 所有决策须链接到 HarnessRun
+  node_run_id: string;        // §5.5 决策上下文节点
+  plan_graph_id: string;     // §5.5 决策关联的计划图
   context: DecisionContext;
   reasoning: string;
   evidence: Evidence[];

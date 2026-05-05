@@ -128,14 +128,14 @@ test("NlEntryService.parseDetailed extracts environment entities", async () => {
   const result = await service.parseDetailed({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "部署到 production 环境",
+    message: "查看 staging 环境状态",
   });
 
   const envEntity = result.detectedIntents[0]?.entities.find(
     (e) => e.entityType === "environment",
   );
   assert.ok(envEntity, "should extract environment entity");
-  assert.equal(envEntity?.normalized, "production");
+  assert.equal(envEntity?.normalized, "staging");
 });
 
 test("NlEntryService.parseDetailed extracts channel entities", async () => {
@@ -249,18 +249,32 @@ test("NlEntryService.buildTask sets confirmationRequired for high risk", async (
 });
 
 test("NlEntryService.buildTask builds correct request envelope", async () => {
-  const service = new NlEntryService();
+  const service = new NlEntryService({
+    intakeRouter: {
+      route: async () => ({
+        classification: {
+          intent: "query",
+          continuation: "new_task" as const,
+          confidence: 0.95,
+          matchedRules: ["status"],
+        },
+        divisionId: "support_ops",
+        workflowId: "status_lookup",
+      }),
+    } as any,
+  });
 
   const result = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "创建一个工单",
+    message: "show service health for staging via slack",
     channel: "slack",
   });
 
+  assert.ok(result.requestEnvelope !== null);
   assert.equal(result.requestEnvelope.tenantId, "tenant_1");
   assert.equal(result.requestEnvelope.payload.userId, "user_1");
-  assert.equal(result.requestEnvelope.payload.title, "创建一个工单");
+  assert.equal(result.requestEnvelope.payload.title, "show service health for staging via slack");
   assert.equal(result.requestEnvelope.payload.channel, "slack");
   assert.equal(result.requestEnvelope.metadata.source, "nl_entry");
 });
@@ -271,7 +285,7 @@ test("NlEntryService.buildTask generates human-readable summary", async () => {
   const result = await service.buildTask({
     tenantId: "tenant_1",
     userId: "user_1",
-    message: "部署应用到生产环境",
+    message: "show service health for staging",
   });
 
   assert.ok(result.humanSummary.includes("路由到"));

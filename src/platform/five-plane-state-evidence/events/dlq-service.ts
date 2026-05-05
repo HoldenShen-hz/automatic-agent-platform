@@ -13,6 +13,8 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
 import type { DurableEventBus } from "./durable-event-bus.js";
+import type { SqliteConnection } from "../truth/sqlite/query-helper.js";
+import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
 
 /**
  * Failure categories for DLQ entries
@@ -180,26 +182,32 @@ export class DlqService {
   private static IN_MEMORY_WARNING_EMITTED = false;
 
   /**
-   * Create a DLQ service with an optional repository.
-   * @param repo - Optional repository for persistence. Defaults to in-memory storage.
+   * Create a DLQ service with an optional repository or database connection.
+   * @param repo - Optional repository for persistence. If not provided, the dbConnection is used
+   *               to create a SqliteDlqRepository. If neither is provided, defaults to in-memory storage.
+   * @param dbConnection - Optional SQLite database connection for persistent DLQ storage.
+   *                       When provided and repo is not provided, creates a SqliteDlqRepository.
    *             WARNING: In-memory storage loses all entries on process restart.
-   *             Production deployments must provide a persistent repository.
+   *             Production deployments must provide a persistent repository or dbConnection.
    */
-  public constructor(repo?: DlqRepository) {
-    if (repo == null) {
+  public constructor(repo?: DlqRepository, dbConnection?: SqliteConnection) {
+    if (repo != null) {
+      this.repo = repo;
+    } else if (dbConnection != null) {
+      // R12-06 FIX: Use SqliteDlqRepository when dbConnection is provided
+      this.repo = new SqliteDlqRepository(dbConnection);
+    } else {
       this.repo = new InMemoryDlqRepository();
       // R12-06 FIX: Emit warning once when using in-memory storage in non-test environments
       if (!DlqService.IN_MEMORY_WARNING_EMITTED && process.env["NODE_ENV"] !== "test") {
         console.warn(
           "[DlqService] WARNING: Using in-memory DLQ repository. " +
           "DLQ entries will be lost on process restart. " +
-          "For production, provide a persistent DlqRepository implementation. " +
+          "For production, provide a persistent DlqRepository or dbConnection. " +
           "See §28.8 for persistent DLQ requirements.",
         );
         DlqService.IN_MEMORY_WARNING_EMITTED = true;
       }
-    } else {
-      this.repo = repo;
     }
   }
 

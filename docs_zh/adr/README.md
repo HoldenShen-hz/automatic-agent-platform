@@ -8,7 +8,7 @@
 |------|------|------|----------|
 | [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
-| [003](./003-memory-seven-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
+| [003](./003-memory-six-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
 | [004](./004-workflow-routing.md) | 工作流与路由 | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | 安全模型 | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider 策略 | Accepted | 2026-04-02 |
@@ -74,7 +74,7 @@
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Accepted | 2026-04-20 |
-| [070](./070-conclusion.md) | 结论 | Accepted | 2026-04-20 |
+| [070](./070-conclusion.md) | 结论 | Superseded | 2026-04-20 |
 | [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Accepted | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted |  |

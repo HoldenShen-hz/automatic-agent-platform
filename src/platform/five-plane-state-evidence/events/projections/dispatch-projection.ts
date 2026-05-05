@@ -62,6 +62,18 @@ export interface DispatchTicketState {
   lastEventAt: string | null;
   /** Timestamp when projection was last updated */
   lastProjectedAt: string | null;
+  /**
+   * Lag in milliseconds between event time and projection update.
+   * Computed as: now - lastProjectedAt.
+   * Used for freshness monitoring per §28.6.
+   */
+  lagMs: number | null;
+  /**
+   * Whether this projection is considered stale.
+   * A projection is stale if lagMs exceeds the stale threshold (default: 5 minutes).
+   * Used for freshness monitoring per §28.6/§25.5.
+   */
+  stale: boolean;
 }
 
 /**
@@ -159,6 +171,8 @@ export function createInitialDispatchTicketState(): DispatchTicketState {
     firstEventAt: null,
     lastProjectedAt: null,
     lastEventAt: null,
+    lagMs: null,
+    stale: false,
   };
 }
 
@@ -215,6 +229,16 @@ export const dispatchProjectionHandler: ProjectionHandler = (
     occurredAt,
   };
 
+  // Compute lagMs and stale flag per §28.6/§25.5
+  let lagMs: number | null = null;
+  let stale = false;
+  if (occurredAt) {
+    const eventTime = new Date(occurredAt).getTime();
+    const now = Date.now();
+    lagMs = now - eventTime;
+    stale = lagMs > 300000;
+  }
+
   // Mark event as processed using O(1) Set add
   internalState._processedEventIdSet.add(event.eventId);
   internalState.eventCount = internalState.eventCount + 1;
@@ -237,6 +261,8 @@ export const dispatchProjectionHandler: ProjectionHandler = (
         firstEventAt: internalState.firstEventAt ?? occurredAt,
         lastEventAt: occurredAt,
         lastProjectedAt: occurredAt,
+        lagMs,
+        stale,
       }) as unknown as Record<string, unknown>;
     }
 
@@ -252,6 +278,8 @@ export const dispatchProjectionHandler: ProjectionHandler = (
         timeline: newTimeline,
         lastEventAt: occurredAt,
         lastProjectedAt: occurredAt,
+        lagMs,
+        stale,
       }) as unknown as Record<string, unknown>;
     }
 
@@ -268,6 +296,8 @@ export const dispatchProjectionHandler: ProjectionHandler = (
         timeline: newTimeline,
         lastEventAt: occurredAt,
         lastProjectedAt: occurredAt,
+        lagMs,
+        stale,
       }) as unknown as Record<string, unknown>;
     }
 

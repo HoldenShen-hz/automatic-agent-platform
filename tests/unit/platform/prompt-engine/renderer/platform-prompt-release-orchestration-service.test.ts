@@ -137,7 +137,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease throws when datase
   );
 });
 
-test("PlatformPromptReleaseOrchestrationService createRelease returns rollout in ready status when guardrail passes", () => {
+test("PlatformPromptReleaseOrchestrationService createRelease aligns rollout status with gate decision", () => {
   const templates = new PromptTemplateRegistryService();
   const datasets = new EvalDatasetJudgeService();
   const rollouts = new PromptRolloutService();
@@ -149,7 +149,7 @@ test("PlatformPromptReleaseOrchestrationService createRelease returns rollout in
   const releaseResult = service.createRelease({
     template: {
       templateKey: "ready_test",
-      version: "v1",
+      version: 1,
       owner: "test@example.com",
       fixedPrefix: "You are a helpful assistant",
       domainBlock: "Customer support domain",
@@ -163,8 +163,10 @@ test("PlatformPromptReleaseOrchestrationService createRelease returns rollout in
     results,
   });
 
-  // Status should be 'ready' when guardrail passes (regressionPassed is based on gateDecision)
-  assert.ok(releaseResult.rollout.status === "ready" || releaseResult.rollout.status === "blocked");
+  assert.equal(
+    releaseResult.rollout.status,
+    releaseResult.evaluationReport.gateDecision === "promote" ? "canary_5" : "blocked",
+  );
 });
 
 test("PlatformPromptReleaseOrchestrationService createRelease with llm_judge resolves judge", () => {

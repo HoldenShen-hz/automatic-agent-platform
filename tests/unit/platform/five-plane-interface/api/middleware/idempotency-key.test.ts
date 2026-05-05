@@ -37,88 +37,85 @@ test("IdempotencyKeyMiddleware.isWriteOperation returns false for read methods",
   assert.equal(middleware.isWriteOperation("OPTIONS"), false);
 });
 
-test("IdempotencyKeyMiddleware returns error when key required but missing for write", () => {
+test("IdempotencyKeyMiddleware returns error when key required but missing for write", async () => {
   const middleware = new IdempotencyKeyMiddleware({ required: true });
-  const result = middleware.check({ method: "POST" });
+  const result = await middleware.check({ method: "POST" });
   assert.equal(result.allowed, false);
   assert.equal(result.error?.statusCode, 400);
   assert.ok(result.error?.code.includes("idempotency_key_required"));
 });
 
-test("IdempotencyKeyMiddleware allows read operations without key", () => {
+test("IdempotencyKeyMiddleware allows read operations without key", async () => {
   const middleware = new IdempotencyKeyMiddleware({ required: true });
-  const result = middleware.check({ method: "GET" });
+  const result = await middleware.check({ method: "GET" });
   assert.equal(result.allowed, true);
   assert.equal(result.isDuplicate, false);
 });
 
-test("IdempotencyKeyMiddleware allows write when key not required", () => {
+test("IdempotencyKeyMiddleware allows write when key not required", async () => {
   const middleware = new IdempotencyKeyMiddleware({ required: false });
-  const result = middleware.check({ method: "POST" });
+  const result = await middleware.check({ method: "POST" });
   assert.equal(result.allowed, true);
   assert.equal(result.isDuplicate, false);
 });
 
-test("IdempotencyKeyMiddleware returns cached response for duplicate", () => {
+test("IdempotencyKeyMiddleware returns cached response for duplicate", async () => {
   const middleware = new IdempotencyKeyMiddleware();
-  middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
-  middleware.record({ idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: { id: 1 } });
+  await middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  await middleware.record({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: { id: 1 } });
 
-  const result = middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  const result = await middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
   assert.equal(result.allowed, true);
   assert.equal(result.isDuplicate, true);
   assert.deepEqual(result.cachedResponse?.body, { id: 1 });
 });
 
-test("IdempotencyKeyMiddleware detects method conflict with same key", () => {
+test("IdempotencyKeyMiddleware detects method conflict with same key", async () => {
   const middleware = new IdempotencyKeyMiddleware();
-  middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
-  middleware.record({ idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: {} });
+  await middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  await middleware.record({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: {} });
 
-  const result = middleware.check({ method: "PUT", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  const result = await middleware.check({ method: "PUT", idempotencyKey: "key-123", tenantId: "tenant-1" });
   assert.equal(result.allowed, false);
   assert.equal(result.error?.statusCode, 409);
 });
 
-test("IdempotencyKeyMiddleware generates per-tenant storage key", () => {
+test("IdempotencyKeyMiddleware generates per-tenant storage key", async () => {
   const middleware = new IdempotencyKeyMiddleware({ perTenant: true });
-  middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
-  middleware.record({ idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: {} });
+  await middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
+  await middleware.record({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1", statusCode: 201, responseBody: {} });
 
   // Same key with different tenant should be allowed
-  const result = middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-2" });
+  const result = await middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-2" });
   assert.equal(result.isDuplicate, false);
 });
 
-test("IdempotencyKeyMiddleware.cleanup removes expired entries", () => {
+test("IdempotencyKeyMiddleware.cleanup removes expired entries", async () => {
   const middleware = new IdempotencyKeyMiddleware({ ttlMs: 1 }); // 1ms TTL
-  middleware.check({ method: "POST", idempotencyKey: "key-123" });
-
-  // Wait for entry to expire
-  setTimeout(() => {
-    middleware.cleanup();
-    assert.equal(middleware.size(), 0);
-  }, 10);
+  await middleware.check({ method: "POST", idempotencyKey: "key-123" });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  await middleware.cleanup();
+  assert.equal(middleware.size(), 0);
 });
 
-test("IdempotencyKeyMiddleware.clearAll removes all entries", () => {
+test("IdempotencyKeyMiddleware.clearAll removes all entries", async () => {
   const middleware = new IdempotencyKeyMiddleware();
-  middleware.check({ method: "POST", idempotencyKey: "key-1" });
-  middleware.check({ method: "POST", idempotencyKey: "key-2" });
+  await middleware.check({ method: "POST", idempotencyKey: "key-1" });
+  await middleware.check({ method: "POST", idempotencyKey: "key-2" });
   assert.equal(middleware.size(), 2);
 
   middleware.clearAll();
   assert.equal(middleware.size(), 0);
 });
 
-test("IdempotencyKeyMiddleware.size returns entry count", () => {
+test("IdempotencyKeyMiddleware.size returns entry count", async () => {
   const middleware = new IdempotencyKeyMiddleware();
   assert.equal(middleware.size(), 0);
 
-  middleware.check({ method: "POST", idempotencyKey: "key-1" });
+  await middleware.check({ method: "POST", idempotencyKey: "key-1" });
   assert.equal(middleware.size(), 1);
 
-  middleware.check({ method: "POST", idempotencyKey: "key-2" });
+  await middleware.check({ method: "POST", idempotencyKey: "key-2" });
   assert.equal(middleware.size(), 2);
 });
 
