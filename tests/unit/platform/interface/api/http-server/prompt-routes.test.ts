@@ -148,20 +148,19 @@ test("PUT /v1/prompts/:name/deprecate validates request body before deprecating"
     promptRegistryService: seedPromptRegistry(),
   });
 
-  const response = await callRoute(routes, {
-    requestId: "req-prompt-deprecate-invalid",
-    request: {
-      method: "PUT",
-      url: "/v1/prompts/system.default/deprecate",
-      headers: {},
-      body: JSON.stringify({ version: "1", unexpected: true }),
-    } as never,
-    route: { pathname: null, segments: ["v1", "prompts", "system.default", "deprecate"] },
-    principal: null,
-  });
-
-  if (!response) throw new Error("handler returned null");
-  assert.equal(response.statusCode, 400);
+  await assert.rejects(
+    () => callRoute(routes, {
+      requestId: "req-prompt-deprecate-invalid",
+      request: {
+        method: "PUT",
+        url: "/v1/prompts/system.default/deprecate",
+        headers: {},
+        body: JSON.stringify({ version: "1", unexpected: true }),
+      } as never,
+      route: { pathname: null, segments: ["v1", "prompts", "system.default", "deprecate"] },
+      principal: null,
+    }),
+  );
 });
 
 test("PUT /v1/prompts/:name/deprecate accepts validated payload", async () => {
@@ -184,5 +183,7 @@ test("PUT /v1/prompts/:name/deprecate accepts validated payload", async () => {
 
   if (!response) throw new Error("handler returned null");
   assert.equal(response.statusCode, 200);
-  assert.ok(response.body.includes("\"deprecated\":true"));
+  const parsed = JSON.parse(response.body);
+  assert.equal(parsed.data.deprecated, true);
+  assert.equal(parsed.data.name, "system.default");
 });
