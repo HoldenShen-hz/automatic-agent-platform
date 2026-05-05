@@ -9,7 +9,7 @@ import {
   createRestrictedExecPolicy,
   createConfigReadPolicy,
   normalizeSandboxMode,
-} from "../../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+} from "../../../../src/platform/control-plane/iam/sandbox-policy.js";
 
 test("sandbox-policy normalizeSandboxMode maps aliases correctly", () => {
   assert.equal(normalizeSandboxMode("process"), "read_only");
@@ -18,9 +18,19 @@ test("sandbox-policy normalizeSandboxMode maps aliases correctly", () => {
   assert.equal(normalizeSandboxMode("read_only"), "read_only");
   assert.equal(normalizeSandboxMode("workspace_write"), "workspace_write");
   assert.equal(normalizeSandboxMode("restricted_exec"), "restricted_exec");
-  assert.equal(normalizeSandboxMode("unknown_alias"), "read_only");
   assert.equal(normalizeSandboxMode(null), "read_only");
   assert.equal(normalizeSandboxMode(undefined), "read_only");
+});
+
+test("sandbox-policy normalizeSandboxMode rejects unsupported or unsandboxed tiers", () => {
+  assert.throws(
+    () => normalizeSandboxMode("none"),
+    (error: unknown) => error instanceof Error && error.message.includes("sandboxTier 'none'"),
+  );
+  assert.throws(
+    () => normalizeSandboxMode("unknown_alias"),
+    (error: unknown) => error instanceof Error && error.message.includes("Unknown sandboxTier 'unknown_alias'"),
+  );
 });
 
 test("sandbox-policy createWorkspaceWritePolicy creates valid policy", () => {
@@ -100,11 +110,13 @@ test("sandbox-policy checkSandboxPath denies invalid encoding", () => {
 test("sandbox-policy checkSandboxPath handles relative paths", () => {
   const policy = createWorkspaceWritePolicy("/workspace");
   const result = checkSandboxPath(policy, "src/index.ts");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });
 
-test("sandbox-policy checkSandboxPath restricted_exec mode bypasses root check", () => {
+test("sandbox-policy checkSandboxPath restricted_exec mode still enforces path boundary", () => {
   const policy = createRestrictedExecPolicy("/workspace");
   const result = checkSandboxPath(policy, "/etc/passwd");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 });

@@ -15,8 +15,8 @@ describe("shared auth/sync/state split modules", () => {
   it("hydrates auth session and validates guard", () => {
     const tokenManager = new TokenManager();
     const authService = new AuthService(tokenManager);
-    const session = authService.handleSsoCallback(new URLSearchParams("access_token=a1&refresh_token=r1&locale=en-US"));
     const guard = new SessionGuard(tokenManager);
+    const session = authService.login("a1", "r1", 3600);
 
     expect(session.accessToken).toBe("a1");
     expect(authService.isAuthenticated()).toBe(true);

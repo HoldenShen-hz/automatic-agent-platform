@@ -16,7 +16,9 @@ export class AuthService {
   private codeFlowState: AuthCodeFlowState | null = null;
   private readonly codeVerifierChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
-  public constructor(private readonly tokenManager: TokenManager = new TokenManager()) {}
+  public constructor(private readonly tokenManager: TokenManager = new TokenManager()) {
+    this.tokenManager.setUnauthorizedHandler(() => this.redirectToAuthorizationFlow());
+  }
 
   public login(accessToken: string, refreshToken: string, ttlSeconds = 3600): AuthSession {
     const session: AuthSession = {
@@ -115,10 +117,7 @@ export class AuthService {
    * Does NOT accept tokens directly from URL query (prevents token leakage).
    */
   public async handleSsoCallback(_params: URLSearchParams): Promise<never> {
-    // Redirect to authorization server with PKCE
-    const redirectUri = `${window.location.origin}/auth/callback`;
-    const authUrl = await this.initiateCodeFlow(redirectUri);
-    window.location.href = authUrl;
+    await this.redirectToAuthorizationFlow();
     // This function should not return - we navigate away
     throw new Error("auth.redirecting:Redirecting to authorization server");
   }
@@ -129,6 +128,15 @@ export class AuthService {
     // For mock purposes, we return a simulated session
     void code; // Will be used in real implementation
     return this.login(`mock-access-token-${Date.now()}`, `mock-refresh-token-${Date.now()}`, 3600);
+  }
+
+  private async redirectToAuthorizationFlow(): Promise<void> {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const authUrl = await this.initiateCodeFlow(redirectUri);
+    window.location.href = authUrl;
   }
 
   private generateCodeVerifier(): string {

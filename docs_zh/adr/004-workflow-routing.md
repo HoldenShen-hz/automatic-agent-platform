@@ -68,6 +68,71 @@ v4.3 §5.5 废弃了 WorkflowState/StepOutput，数据传递改用 NodeRun/Harne
 - partial success 应被显式记录，交由 precondition 决定是否继续。
 - 废弃 WorkflowState/StepOutput，仅在兼容投影视图中保留。
 
+## 迁移指南：WorkflowState/StepOutput → NodeRun/HarnessRun
+
+> 详细迁移步骤见 [e2e-workflow-state-migration.md](../migrations/e2e-workflow-state-migration.md)
+
+### 字段映射表
+
+| 旧字段 (WorkflowState/StepOutput) | 新字段 (NodeRun/HarnessRun) | 说明 |
+|----------------------------------|---------------------------|------|
+| `WorkflowStateRecord.taskId` | `HarnessRun.taskId` (via PlanGraphBundle) | 任务引用通过 bundle 传递 |
+| `WorkflowStateRecord.workflowId` | `NodeRun.nodeId` / `PlanGraphBundle.workflowId` | 工作流 ID 对应图节点 |
+| `WorkflowStateRecord.currentStepIndex` | `NodeRun.status` + 执行顺序 | 步骤进度由节点状态表示 |
+| `WorkflowStateRecord.outputsJson` | `NodeAttemptReceipt.output` | 输出通过 receipt 传递 |
+| `StepOutput.stepName` | `NodeRun.nodeId` | 步骤名对应节点 ID |
+| `StepOutput.outputValue` | `NodeAttemptReceipt.output[key]` | 输出值在 receipt 中可直接访问 |
+
+### 代码示例
+
+**旧模式 (已废弃)**：
+```typescript
+// 直接操作 WorkflowStateRecord
+store.insertWorkflowState({
+  taskId,
+  workflowId: "multi_step",
+  currentStepIndex: 0,
+  outputsJson: JSON.stringify({ step0_output: "result" }),
+});
+
+store.updateWorkflowState(taskId, "running", 1, JSON.stringify({ step0_output: "result" }), now, null);
+```
+
+**新模式 (NodeRun/HarnessRun)**：
+```typescript
+import { runMultiStepOrchestration } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+
+const result = await runMultiStepOrchestration({
+  dbPath,
+  title: "Multi-step workflow",
+  request: "Run multi-step test with steps",
+  stepOutputOverrides: {
+    "step_0": { step0_output: "result_from_step_0" },
+  },
+});
+
+// 通过 result.snapshot 访问状态
+const { task, workflow, execution } = result.snapshot;
+```
+
+### 常用模式对照
+
+| 旧模式 | 新模式 |
+|--------|--------|
+| 手动插入 `WorkflowStateRecord` | `runMultiStepOrchestration()` 自动创建 |
+| `store.updateWorkflowState()` | 内置于 orchestrator 执行流程 |
+| `TransitionService` 驱动状态机 | `RuntimeStateMachine.transition()` |
+| 手动管理 `StepOutput` 数组 | `NodeAttemptReceipt.output` 单点访问 |
+
+### 迁移检查清单
+
+- [ ] 替换 `store.insertWorkflowState()` 为 `runMultiStepOrchestration()`
+- [ ] 替换 `store.updateWorkflowState()` 为 orchestrator 自动管理
+- [ ] 移除 `WorkflowStateRecord` 类型引用，改用 `HarnessRun` / `NodeRun`
+- [ ] 将 `StepOutput` 访问改为 `NodeAttemptReceipt.output[key]`
+- [ ] 更新测试用例使用 Option A/B/C 中对应模式
+- [ ] 运行 `npm run build && node --test dist/tests/e2e/multi-step-workflow.test.js` 验证
+
 ## 路由原则
 
 P2 控制面路由规则：

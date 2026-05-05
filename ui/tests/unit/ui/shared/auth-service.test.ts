@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AuthService, TokenManager } from "@aa/shared-auth";
 import type { AuthIdentity } from "@aa/shared-auth";
 
@@ -163,5 +163,47 @@ describe("AuthService", () => {
     const params = new URLSearchParams("error=access_denied&error_description=User+denied+access");
 
     await expect(authService.handleAuthorizationCallback(params)).rejects.toThrow(/auth.authorization_failed/);
+  });
+
+  it("refreshes only once for concurrent callers when token is inside the 60s window", async () => {
+    const refreshFn = vi.fn(async (refreshToken: string) => ({
+      accessToken: `${refreshToken}-next`,
+      refreshToken: `${refreshToken}-rotated`,
+      expiresIn: 3600,
+    }));
+    const tokenManager = new TokenManager({ refreshFn });
+    tokenManager.setSession({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      expiresAt: Date.now() + 30_000,
+    });
+
+    const [first, second] = await Promise.all([
+      tokenManager.getAccessTokenWithRefresh(),
+      tokenManager.getAccessTokenWithRefresh(),
+    ]);
+
+    expect(first).toBe("refresh-token-next");
+    expect(second).toBe("refresh-token-next");
+    expect(refreshFn).toHaveBeenCalledTimes(1);
+    expect(tokenManager.getSession()?.refreshToken).toBe("refresh-token-rotated");
+  });
+
+  it("clears the session and invokes the unauthorized handler when expired refresh fails", async () => {
+    const onUnauthorized = vi.fn(async () => undefined);
+    const refreshFn = vi.fn(async () => {
+      throw new Error("refresh failed");
+    });
+    const tokenManager = new TokenManager({ refreshFn, onUnauthorized });
+    tokenManager.setSession({
+      accessToken: "expired-token",
+      refreshToken: "expired-refresh",
+      expiresAt: Date.now() - 1000,
+    });
+
+    await expect(tokenManager.getAccessTokenWithRefresh()).resolves.toBeNull();
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    expect(tokenManager.getSession()).toBeNull();
   });
 });

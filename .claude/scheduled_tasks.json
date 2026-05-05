@@ -1,3 +1,15 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "2b5276d8",
+      "cron": "*/20 * * * *",
+      "prompt": "提交所有的改动",
+      "createdAt": 1777909464902,
+      "lastFiredAt": 1777957302498,
+      "recurring": true,
+      "createdBySessionId": "aa403ff2-a65f-4faf-921d-264c71b5065a",
+      "createdByPid": 63161,
+      "createdByProcStart": "Mon May  4 15:27:43 2026"
+    }
+  ]
 }

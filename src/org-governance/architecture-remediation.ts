@@ -1,4 +1,4 @@
-export type OrgNodeType = "company" | "division" | "department" | "team";
+export type OrgNodeType = "tenant" | "division" | "department" | "team" | "seat";
 export type ApprovalPermissionLevel = "view" | "operate" | "admin" | "super_admin";
 export type ComplianceFrameworkType = "GDPR" | "SOC2" | "PIPL" | "HIPAA" | "SOX" | "PCI_DSS";
 export type KnowledgeAccessPolicy = "strict" | "controlled";

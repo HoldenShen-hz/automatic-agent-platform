@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createTraceInterceptor,
   createContractVersionInterceptor,
@@ -23,6 +23,18 @@ function createMockRequest(method: "GET" | "POST" = "GET", extraHeaders: Record<
 
 function createMockResponse<T>(status = 200, data: T = {} as T): RestClientResponse<T> {
   return { status, data };
+}
+
+async function withCsrfMetaToken(token: string, run: () => Promise<void> | void): Promise<void> {
+  const meta = document.createElement("meta");
+  meta.setAttribute("name", "aa-csrf-token");
+  meta.setAttribute("content", token);
+  document.head.appendChild(meta);
+  try {
+    await run();
+  } finally {
+    meta.remove();
+  }
 }
 
 describe("createTraceInterceptor", () => {
@@ -115,6 +127,24 @@ describe("createAuthInterceptor - Token Refresh (Issue #2071)", () => {
     expect(result.headers.get("authorization")).toBe("Bearer sync-token");
   });
 
+  it("refreshes before request when the resolver reports refresh due", async () => {
+    const resolver = {
+      getAccessToken() {
+        return "stale-token";
+      },
+      shouldRefresh() {
+        return true;
+      },
+      getAccessTokenWithRefresh: async () => "fresh-token",
+    };
+    const interceptor = createAuthInterceptor(resolver);
+    const request = createMockRequest();
+
+    const result = await interceptor.onRequest!(request);
+
+    expect(result.headers.get("authorization")).toBe("Bearer fresh-token");
+  });
+
   it("does not add header when token is null", async () => {
     const interceptor = createAuthInterceptor(null);
     const request = createMockRequest();
@@ -136,6 +166,23 @@ describe("createAuthInterceptor - Token Refresh (Issue #2071)", () => {
     const result = await interceptor.onRequest!(request);
 
     expect(result.headers.get("authorization")).toBe("Bearer direct-token");
+  });
+
+  it("delegates 401 responses to the resolver unauthorized handler", async () => {
+    const handleUnauthorized = vi.fn(async () => undefined);
+    const resolver = {
+      getAccessToken() {
+        return "direct-token";
+      },
+      handleUnauthorized,
+    };
+    const interceptor = createAuthInterceptor(resolver);
+    const response = createMockResponse(401);
+
+    const result = await interceptor.onResponse!(response);
+
+    expect(result.status).toBe(401);
+    expect(handleUnauthorized).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -161,12 +208,14 @@ describe("createTenantInterceptor", () => {
 
 describe("createCsrfInterceptor (Issue #2072)", () => {
   it("adds token for non-GET requests", async () => {
-    const interceptor = createCsrfInterceptor("csrf-token-789");
-    const request = createMockRequest("POST");
+    await withCsrfMetaToken("csrf-token-789", async () => {
+      const interceptor = createCsrfInterceptor("csrf-token-789");
+      const request = createMockRequest("POST");
 
-    const result = await interceptor.onRequest!(request);
+      const result = await interceptor.onRequest!(request);
 
-    expect(result.headers.get("x-csrf-token")).toBe("csrf-token-789");
+      expect(result.headers.get("x-csrf-token")).toBe("csrf-token-789");
+    });
   });
 
   it("does NOT add token for GET requests", async () => {
@@ -188,14 +237,16 @@ describe("createCsrfInterceptor (Issue #2072)", () => {
   });
 
   it("is applied to all non-GET methods (PUT, PATCH, DELETE)", async () => {
-    const interceptor = createCsrfInterceptor("token-for-write");
-    const methods: Array<"POST" | "PUT" | "PATCH" | "DELETE"> = ["POST", "PUT", "PATCH", "DELETE"];
+    await withCsrfMetaToken("token-for-write", async () => {
+      const interceptor = createCsrfInterceptor("token-for-write");
+      const methods: Array<"POST" | "PUT" | "PATCH" | "DELETE"> = ["POST", "PUT", "PATCH", "DELETE"];
 
-    for (const method of methods) {
-      const request = createMockRequest(method);
-      const result = await interceptor.onRequest!(request);
-      expect(result.headers.get("x-csrf-token")).toBe("token-for-write");
-    }
+      for (const method of methods) {
+        const request = createMockRequest(method);
+        const result = await interceptor.onRequest!(request);
+        expect(result.headers.get("x-csrf-token")).toBe("token-for-write");
+      }
+    });
   });
 });
 

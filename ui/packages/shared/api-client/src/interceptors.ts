@@ -54,23 +54,19 @@ export function createAuthInterceptor(
   tokenOrResolver: string | TokenResolver | null,
 ): RestClientInterceptor {
   return {
-    onRequest(request) {
+    async onRequest(request) {
       // P1 FIX: Resolve token fresh on each request - not captured in closure.
       // This ensures token refresh is respected even when interceptor is reused.
-      const token = resolveToken(tokenOrResolver);
+      const token = await resolveToken(tokenOrResolver);
       if (token !== null) {
         request.headers.set("authorization", `Bearer ${token}`);
       }
       return request;
     },
-    onResponse<T>(response: RestClientResponse<T>): RestClientResponse<T> | Promise<RestClientResponse<T>> {
+    async onResponse<T>(response: RestClientResponse<T>): Promise<RestClientResponse<T>> {
       if (response.status === 401 && tokenOrResolver !== null && typeof tokenOrResolver !== "string") {
-        if (typeof tokenOrResolver.getAccessTokenWithRefresh === "function") {
-          void tokenOrResolver.getAccessTokenWithRefresh().then(() => {
-            // Token refreshed in background, next request will use new token
-          }).catch(() => {
-            // Refresh failed, token remains expired
-          });
+        if (typeof tokenOrResolver.handleUnauthorized === "function") {
+          await tokenOrResolver.handleUnauthorized();
         }
       }
       return response;
@@ -81,9 +77,11 @@ export function createAuthInterceptor(
 type TokenResolver = {
   getAccessToken(): string | null;
   getAccessTokenWithRefresh?(refreshFn?: () => Promise<{ accessToken: string; refreshToken: string; expiresIn: number }>): Promise<string | null>;
+  shouldRefresh?(now?: number): boolean;
+  handleUnauthorized?(): Promise<void> | void;
 };
 
-function resolveToken(tokenOrResolver: string | TokenResolver | null): string | null {
+async function resolveToken(tokenOrResolver: string | TokenResolver | null): Promise<string | null> {
   if (tokenOrResolver === null) {
     return null;
   }
@@ -94,11 +92,11 @@ function resolveToken(tokenOrResolver: string | TokenResolver | null): string | 
     }
     return tokenOrResolver;
   }
-  // TokenManager-like object with optional auto-refresh
-  if (typeof tokenOrResolver.getAccessTokenWithRefresh === "function") {
-    // For synchronous onRequest, we use the current token
-    // Auto-refresh will be handled via background refresh
-    return tokenOrResolver.getAccessToken();
+  if (
+    typeof tokenOrResolver.getAccessTokenWithRefresh === "function"
+    && tokenOrResolver.shouldRefresh?.() === true
+  ) {
+    return tokenOrResolver.getAccessTokenWithRefresh();
   }
   return tokenOrResolver.getAccessToken();
 }

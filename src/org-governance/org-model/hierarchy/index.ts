@@ -60,12 +60,12 @@ export function validateOrgHierarchy(nodes: readonly OrgNode[]): string[] {
       findings.push(`org_hierarchy.self_cycle:${node.orgNodeId}`);
     }
     // R19-5: Validate node type is valid
-    const validTypes = ["company", "division", "department", "team"];
+    const validTypes = ["tenant", "division", "department", "team", "seat"];
     if (!validTypes.includes(node.nodeType)) {
       findings.push(`org_hierarchy.invalid_node_type:${node.orgNodeId}:${node.nodeType}`);
     }
-    // R19-5: Validate ownerUserIds is not empty for non-company nodes
-    if (node.nodeType !== "company" && node.ownerUserIds.length === 0) {
+    // R19-5: Validate ownerUserIds is not empty for non-tenant nodes
+    if (node.nodeType !== "tenant" && node.ownerUserIds.length === 0) {
       findings.push(`org_hierarchy.missing_owner:${node.orgNodeId}`);
     }
     // R19-5: Validate costCenter format

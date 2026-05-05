@@ -103,6 +103,26 @@ test("TenantPlatformService.createWorkspace with organizationId links to organiz
   assert.equal(workspace.organizationId, "org_001");
 });
 
+test("TenantPlatformService.assertNoCrossTenantDataMovement allows same-tenant and null-target access", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+
+  assert.doesNotThrow(() => service.assertNoCrossTenantDataMovement("tenant_same", "tenant_same"));
+  assert.doesNotThrow(() => service.assertNoCrossTenantDataMovement("tenant_same", null));
+});
+
+test("TenantPlatformService.assertNoCrossTenantDataMovement blocks cross-tenant movement", () => {
+  const store = createMockStore();
+  const db = createMockDb();
+  const service = new TenantPlatformService(db, store);
+
+  assert.throws(
+    () => service.assertNoCrossTenantDataMovement("tenant_a", "tenant_b"),
+    /tenant\.cross_tenant_data_movement/,
+  );
+});
+
 test("TenantPlatformService.addWorkspaceMembership adds member to workspace", () => {
   const store = createMockStore();
   const db = createMockDb();

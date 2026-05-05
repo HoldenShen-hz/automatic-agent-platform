@@ -252,7 +252,7 @@ test("WorkflowDebuggerService builds comparison report with differences", () => 
 
   const report = service.buildComparisonReport("graph_a", leftFrames, rightFrames);
   assert.equal(report.planGraphId, "graph_a");
-  assert.deepEqual(report.differences, ["step:node_deploy:completed->failed"]);
+  assert.deepEqual(report.differences, ["step:node_deploy:status:completed->failed"]);
   assert.equal(report.leftFrames.length, 2);
   assert.equal(report.rightFrames.length, 2);
 });
@@ -543,7 +543,9 @@ test("TimeTravelDebugService getVariableState returns variables up to event inde
 
   const variables = service.getVariableState(session.sessionId, 1);
   assert.ok(variables.length >= 1);
-  assert.ok(variables.some((v: VariableState) => v.name === "count" && v.value === 1));
+  assert.ok(variables.some((v: VariableState) => v.name === "count" && v.value === 2));
+  assert.ok(variables.some((v: VariableState) => v.name === "name" && v.value === "first"));
+  assert.ok(variables.some((v: VariableState) => v.name === "extra" && v.value === "data"));
 });
 
 test("TimeTravelDebugService getVariableState returns empty for unknown session", () => {
@@ -770,7 +772,7 @@ test("compareWorkflowRuns detects status changes", () => {
   ];
 
   const differences = compareWorkflowRuns(left, right);
-  assert.deepEqual(differences, ["step:node_2:completed->failed"]);
+  assert.deepEqual(differences, ["step:node_2:status:completed->failed"]);
 });
 
 test("compareWorkflowRuns reports missing steps in right run", () => {
@@ -783,7 +785,7 @@ test("compareWorkflowRuns reports missing steps in right run", () => {
   ];
 
   const differences = compareWorkflowRuns(left, right);
-  assert.deepEqual(differences, ["step:node_2:completed->missing"]);
+  assert.deepEqual(differences, ["step:node_2:missing_in_right"]);
 });
 
 test("compareWorkflowRuns uses deprecated stepId when nodeRunId is absent", () => {
@@ -795,7 +797,7 @@ test("compareWorkflowRuns uses deprecated stepId when nodeRunId is absent", () =
   ];
 
   const differences = compareWorkflowRuns(left, right);
-  assert.deepEqual(differences, ["step:legacy_step:done->error"]);
+  assert.deepEqual(differences, ["step:legacy_step:status:done->error"]);
 });
 
 // =============================================================================

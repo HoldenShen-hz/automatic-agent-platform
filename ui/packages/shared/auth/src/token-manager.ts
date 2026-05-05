@@ -1,7 +1,20 @@
 import type { AuthSession } from "./types";
 
-const DEFAULT_REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before expiry
+const DEFAULT_REFRESH_THRESHOLD_MS = 60 * 1000; // 60 seconds before expiry per §5.4.4
 const SESSION_STORAGE_KEY = "aa.auth.session";
+
+export interface RefreshTokenResult {
+  readonly accessToken: string;
+  readonly refreshToken: string;
+  readonly expiresIn: number;
+}
+
+export interface TokenManagerOptions {
+  readonly storage?: SecureTokenStorage;
+  readonly refreshThresholdMs?: number;
+  readonly refreshFn?: (refreshToken: string) => Promise<RefreshTokenResult>;
+  readonly onUnauthorized?: () => void | Promise<void>;
+}
 
 /**
  * Secure storage interface for token persistence.
@@ -67,16 +80,32 @@ class SessionStorageTokenStorage implements SecureTokenStorage {
   }
 }
 
+function isSecureTokenStorage(value: unknown): value is SecureTokenStorage {
+  return typeof value === "object"
+    && value !== null
+    && typeof (value as SecureTokenStorage).readSession === "function"
+    && typeof (value as SecureTokenStorage).writeSession === "function"
+    && typeof (value as SecureTokenStorage).clearSession === "function";
+}
+
 export class TokenManager {
   private session: AuthSession | null = null;
   private refreshPromise: Promise<AuthSession | null> | null = null;
   private readonly storage: SecureTokenStorage;
+  private readonly refreshThresholdMs: number;
+  private refreshFn: ((refreshToken: string) => Promise<RefreshTokenResult>) | null;
+  private onUnauthorized: (() => void | Promise<void>) | null;
+  private unauthorizedPromise: Promise<void> | null = null;
 
-  public constructor(storage?: SecureTokenStorage) {
-    // R22-01 FIX: Use provided storage or default to sessionStorage for persistence.
-    // SessionStorage persists across page refreshes (unlike pure in-memory).
-    // Production deployments should provide platform-native secure storage via PlatformAdapter.
-    this.storage = storage ?? new SessionStorageTokenStorage();
+  public constructor(optionsOrStorage?: TokenManagerOptions | SecureTokenStorage) {
+    const options = isSecureTokenStorage(optionsOrStorage)
+      ? { storage: optionsOrStorage }
+      : (optionsOrStorage ?? {});
+
+    this.storage = options.storage ?? new SessionStorageTokenStorage();
+    this.refreshThresholdMs = options.refreshThresholdMs ?? DEFAULT_REFRESH_THRESHOLD_MS;
+    this.refreshFn = options.refreshFn ?? null;
+    this.onUnauthorized = options.onUnauthorized ?? null;
     // Load any existing session from persistent storage
     this.session = this.storage.readSession();
   }
@@ -103,29 +132,63 @@ export class TokenManager {
     return this.session?.accessToken ?? null;
   }
 
+  public shouldRefresh(now = Date.now()): boolean {
+    return this.session !== null && this.session.expiresAt - now <= this.refreshThresholdMs;
+  }
+
+  public setRefreshHandler(refreshFn: ((refreshToken: string) => Promise<RefreshTokenResult>) | null): void {
+    this.refreshFn = refreshFn;
+  }
+
+  public setUnauthorizedHandler(handler: (() => void | Promise<void>) | null): void {
+    this.onUnauthorized = handler;
+  }
+
   /**
    * Returns access token, refreshing if needed per §5.4.4.
    * Uses refresh lock to prevent concurrent refresh requests.
    */
-  public async getAccessTokenWithRefresh(refreshFn?: () => Promise<{ accessToken: string; refreshToken: string; expiresIn: number }>): Promise<string | null> {
+  public async getAccessTokenWithRefresh(
+    refreshFn?: () => Promise<RefreshTokenResult>,
+  ): Promise<string | null> {
     if (this.session === null) {
       return null;
     }
 
-    // Check if token needs refresh (within 5 minute threshold)
-    if (this.session.expiresAt - Date.now() < DEFAULT_REFRESH_THRESHOLD_MS) {
-      if (this.refreshPromise === null && refreshFn !== undefined) {
-        this.refreshPromise = this.refreshSession(refreshFn);
+    if (this.shouldRefresh()) {
+      const effectiveRefresh = refreshFn ?? this.buildRefreshRequest();
+      if (effectiveRefresh === undefined) {
+        return this.isExpired() ? null : this.session.accessToken;
       }
-
-      if (this.refreshPromise !== null) {
-        const newSession = await this.refreshPromise;
-        this.refreshPromise = null;
+      const pendingRefresh = this.refreshPromise ?? this.refreshSession(effectiveRefresh);
+      this.refreshPromise = pendingRefresh;
+      try {
+        const newSession = await pendingRefresh;
         return newSession?.accessToken ?? null;
+      } finally {
+        if (this.refreshPromise === pendingRefresh) {
+          this.refreshPromise = null;
+        }
       }
     }
 
     return this.session.accessToken;
+  }
+
+  public async handleUnauthorized(): Promise<void> {
+    this.clear();
+    if (this.onUnauthorized == null) {
+      return;
+    }
+    const pending = this.unauthorizedPromise ?? Promise.resolve(this.onUnauthorized());
+    this.unauthorizedPromise = pending;
+    try {
+      await pending;
+    } finally {
+      if (this.unauthorizedPromise === pending) {
+        this.unauthorizedPromise = null;
+      }
+    }
   }
 
   public clear(): void {
@@ -135,7 +198,14 @@ export class TokenManager {
     this.storage.clearSession();
   }
 
-  private async refreshSession(refreshFn: () => Promise<{ accessToken: string; refreshToken: string; expiresIn: number }>): Promise<AuthSession | null> {
+  private buildRefreshRequest(): (() => Promise<RefreshTokenResult>) | undefined {
+    if (this.refreshFn == null || this.session == null) {
+      return undefined;
+    }
+    return () => this.refreshFn!(this.session!.refreshToken);
+  }
+
+  private async refreshSession(refreshFn: () => Promise<RefreshTokenResult>): Promise<AuthSession | null> {
     if (this.session === null) {
       return null;
     }
@@ -152,8 +222,11 @@ export class TokenManager {
       this.storage.writeSession(newSession);
       return newSession;
     } catch {
-      // Refresh failed - keep existing session
-      return this.session;
+      if (this.session !== null && this.session.expiresAt > Date.now()) {
+        return this.session;
+      }
+      await this.handleUnauthorized();
+      return null;
     }
   }
 }

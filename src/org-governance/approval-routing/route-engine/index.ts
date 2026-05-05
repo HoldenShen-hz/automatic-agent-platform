@@ -249,7 +249,7 @@ export function resolveAmountRoute(
   // With <, exact threshold amounts fall through to the next rule/default.
   const matchedRule = rules.find((item) => normalizedAmount.amountCny <= normalizeThresholdCny(item, normalizedAmount.fxSnapshot ?? undefined)) ?? null;
   if (!matchedRule) {
-    return nodes.find((item) => item.nodeType === "company") ?? null;
+    return nodes.find((item) => item.nodeType === "tenant") ?? null;
   }
 
   return nodes.find((item) =>
