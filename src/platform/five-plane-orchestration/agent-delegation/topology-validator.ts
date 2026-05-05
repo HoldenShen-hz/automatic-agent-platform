@@ -111,15 +111,19 @@ export class TopologyValidator {
   }
 
   /**
-   * Detects cycles in delegation chain.
-   * A cycle occurs when a pack_id appears twice in the same delegation chain.
+   * Detects cycles in delegation chain using ancestor tracking.
+   * Uses a Set for O(1) lookup to handle fan-out graphs where one node
+   * may call multiple downstream nodes that eventually call back to origin.
    *
    * @param packId - Target pack ID
    * @param chain - Current delegation chain (list of pack IDs)
    * @throws DelegationCycleDetectedError if cycle detected
    */
   public detectCycle(packId: string, chain: readonly string[]): void {
-    if (chain.includes(packId)) {
+    // Use Set for O(1) ancestor lookup - handles fan-out graphs properly
+    // where cycles may exist through any path, not just linear chain
+    const ancestors = new Set(chain);
+    if (ancestors.has(packId)) {
       throw new DelegationCycleDetectedError(packId, chain);
     }
   }

@@ -296,6 +296,7 @@ export class ProjectionRebuildService {
         existingHash: existingProjection ? this.computeStateHash(existingProjection.state) : "",
         confidence: 0,
         reason: `Unknown projection: ${projectionName}`,
+        shadowState: null,
       };
     }
 
