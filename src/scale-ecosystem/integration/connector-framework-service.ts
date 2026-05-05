@@ -224,7 +224,7 @@ export class ConnectorFrameworkService {
           manifest,
           executionKey,
           environment: options.environment,
-          eventType: options.eventType,
+          ...(options.eventType != null && { eventType: options.eventType }),
           executedAt,
         }));
         const finalResult = {

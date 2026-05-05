@@ -8,6 +8,7 @@
  * @see R16-35: CAS service needs persistent backend
  */
 
+import type { CasResult } from "./cas-service.js";
 import type { SqliteConnection } from "../../truth/sqlite/query-helper.js";
 import { queryOne, execute } from "../../truth/sqlite/query-helper.js";
 
@@ -118,43 +119,49 @@ export class SqliteCasRepository {
     key: string,
     expectedValue: string,
     newValue: string,
-  ): { success: boolean; currentValue?: string; currentVersion?: number } {
-    const current = this.get(key);
+  ): CasResult {
+    const updatedAt = new Date().toISOString();
 
-    if (current === undefined) {
-      // Key doesn't exist
-      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
-        // Can set if expected is empty/null
-        this.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
+    if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+      const inserted = execute(
+        this.conn,
+        `INSERT INTO cas_records (cas_key, value, version, updated_at)
+         SELECT ?, ?, 1, ?
+         WHERE NOT EXISTS (SELECT 1 FROM cas_records WHERE cas_key = ?)`,
+        key,
+        newValue,
+        updatedAt,
+        key,
+      );
+      if (inserted > 0) {
         return { success: true, currentValue: newValue, currentVersion: 1 };
       }
-      return { success: false };
     }
 
-    if (current.value !== expectedValue) {
+    const updated = execute(
+      this.conn,
+      `UPDATE cas_records
+       SET value = ?, version = version + 1, updated_at = ?
+       WHERE cas_key = ? AND value = ?`,
+      newValue,
+      updatedAt,
+      key,
+      expectedValue,
+    );
+    if (updated > 0) {
+      const current = this.get(key);
       return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
+        success: true,
+        currentValue: current?.value ?? newValue,
+        currentVersion: current?.version ?? 1,
       };
     }
 
-    // Value matches - perform swap atomically
-    const newVersion = current.version + 1;
-    this.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
+    const current = this.get(key);
     return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
+      success: false,
+      currentValue: current?.value,
+      currentVersion: current?.version,
     };
   }
 
@@ -170,40 +177,49 @@ export class SqliteCasRepository {
     key: string,
     expectedVersion: number,
     newValue: string,
-  ): { success: boolean; currentValue?: string; currentVersion?: number } {
-    const current = this.get(key);
+  ): CasResult {
+    const updatedAt = new Date().toISOString();
 
-    if (current === undefined) {
-      if (expectedVersion === 0) {
-        this.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
+    if (expectedVersion === 0) {
+      const inserted = execute(
+        this.conn,
+        `INSERT INTO cas_records (cas_key, value, version, updated_at)
+         SELECT ?, ?, 1, ?
+         WHERE NOT EXISTS (SELECT 1 FROM cas_records WHERE cas_key = ?)`,
+        key,
+        newValue,
+        updatedAt,
+        key,
+      );
+      if (inserted > 0) {
         return { success: true, currentValue: newValue, currentVersion: 1 };
       }
-      return { success: false };
     }
 
-    if (current.version !== expectedVersion) {
+    const updated = execute(
+      this.conn,
+      `UPDATE cas_records
+       SET value = ?, version = version + 1, updated_at = ?
+       WHERE cas_key = ? AND version = ?`,
+      newValue,
+      updatedAt,
+      key,
+      expectedVersion,
+    );
+    if (updated > 0) {
+      const current = this.get(key);
       return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
+        success: true,
+        currentValue: current?.value ?? newValue,
+        currentVersion: current?.version ?? 1,
       };
     }
 
-    const newVersion = current.version + 1;
-    this.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
+    const current = this.get(key);
     return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
+      success: false,
+      currentValue: current?.value,
+      currentVersion: current?.version,
     };
   }
 }

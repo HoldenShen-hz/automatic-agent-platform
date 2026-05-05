@@ -192,19 +192,19 @@ Phase 1-4 闭环事件必须提供类型化 payload，对应 ADR-079 和 ADR-080
 
 ### 3A.8 Release Hub 事件
 
-`ReleaseRolloutStartedPayload`
+`ReleaseStartedPayload`
 
 - `harnessRunId` — canonical 运行链锚点
-- `rolloutId` — rollout ID
+- `releaseId` — release ID
 - `loopIteration` — 循环轮次
 - `strategyVersion` — 策略版本
 - `level` (`L0` | `L1` | `L2` | `L3` | `L4` | `L5`) — 发布级别
 - `triggeredBy` — 触发者
 - `tier?` — SLA tier（如有）
 
-`ReleaseRolloutCompletedPayload`
+`ReleaseCompletedPayload`
 
-- `rolloutId` — rollout ID
+- `releaseId` — release ID
 - `candidateId` — 候选 ID
 - `finalLevel` — 最终级别
 - `totalDurationMinutes` — 总持续时间（分钟）

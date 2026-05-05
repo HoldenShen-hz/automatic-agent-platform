@@ -5,7 +5,7 @@
 
 ## 1. Scope
 
-This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Rollout pipeline.
+This contract defines industrial-grade release, canary, rollback, and schema compatibility strategies for the OAPEFLIR Improve/Release pipeline.
 
 Related documents:
 
@@ -74,7 +74,7 @@ Related documents:
 - `ReleaseChannel` 表达发布目标与治理门，不等同于 `ReleaseDecisionView`。
 - decision view 可以推荐 channel；只有 release truth path 才能真正推进 channel 状态。
 
-## 4. Release Levels and RolloutStatus
+## 4. Release Levels and ReleaseStatus
 
 ### 4.1 六级受控发布（L0-L5）
 
@@ -89,7 +89,7 @@ Related documents:
 | L4 | `stable_75` | 75% | 执行配置变更 | 全部必须审批 |
 | L5 | `stable_100` | 100% | 完全自主（受 guardrail 约束） | 仅异常升级 |
 
-### 4.2 Rollout 状态机
+### 4.2 Release 状态机
 
 完整状态机（见 ADR-018 和 ADR-075 §2）：
 
@@ -168,14 +168,14 @@ interface ImprovementCandidate {
   targetScope: 'task' | 'workflow' | 'domain' | 'platform';
   priority: 'critical' | 'high' | 'medium' | 'low';
   status: ImprovementCandidateStatus;
-  rolloutLevel: RolloutLevel;
-  metrics: RolloutMetrics;
+  releaseLevel: ReleaseLevel;
+  metrics: ReleaseMetrics;
   guardrails: ImprovementGuardrail[];
   createdAt: string;
   updatedAt: string;
 }
 
-type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
+type ReleaseLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 ```
 
 ## 7. ReleaseRecord 接口
@@ -184,16 +184,16 @@ type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 interface ReleaseRecord {
   recordId: string;
   candidateId: string;
-  fromLevel: RolloutLevel;
-  toLevel: RolloutLevel;
+  fromLevel: ReleaseLevel;
+  toLevel: ReleaseLevel;
   triggeredBy: 'scheduler' | 'human' | 'auto_rollback';
   triggerReason?: string;
-  metrics: RolloutMetrics;
+  metrics: ReleaseMetrics;
   auditContext: AuditContext;
   createdAt: string;
 }
 
-interface RolloutMetrics {
+interface ReleaseMetrics {
   errorRate: number;
   latencyP99: number;
   successRate: number;

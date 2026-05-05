@@ -22,8 +22,8 @@
  */
 export interface CasResult {
   success: boolean;
-  currentValue?: string;
-  currentVersion?: number;
+  currentValue?: string | undefined;
+  currentVersion?: number | undefined;
 }
 
 /**
@@ -43,6 +43,8 @@ export interface CasRepository {
   set(key: string, record: CasRecord): void;
   delete(key: string): boolean;
   has(key: string): boolean;
+  compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult;
+  compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult;
 }
 
 /**
@@ -79,50 +81,7 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
-    const current = this.store.get(key);
-
-    if (current === undefined) {
-      // Key doesn't exist - if expected value is empty/null, we can set it
-      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
-        this.store.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
-        return {
-          success: true,
-          currentValue: newValue,
-          currentVersion: 1,
-        };
-      }
-      // Key doesn't exist and expected value doesn't match
-      return {
-        success: false,
-      };
-    }
-
-    if (current.value !== expectedValue) {
-      // Value doesn't match - CAS fails
-      return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
-      };
-    }
-
-    // Value matches - perform swap
-    const newVersion = current.version + 1;
-    this.store.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
-    };
+    return this.store.compareAndSwap(key, expectedValue, newValue);
   }
 
   /**
@@ -136,43 +95,7 @@ export class CasService {
    * @returns CasResult indicating success and current state
    */
   public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
-    const current = this.store.get(key);
-
-    if (current === undefined) {
-      // Key doesn't exist - only succeeds if expected version is 0
-      if (expectedVersion === 0) {
-        this.store.set(key, {
-          value: newValue,
-          version: 1,
-          updatedAt: new Date(),
-        });
-        return { success: true, currentValue: newValue, currentVersion: 1 };
-      }
-      return { success: false };
-    }
-
-    if (current.version !== expectedVersion) {
-      // Version doesn't match - CAS fails
-      return {
-        success: false,
-        currentValue: current.value,
-        currentVersion: current.version,
-      };
-    }
-
-    // Version matches - perform update
-    const newVersion = current.version + 1;
-    this.store.set(key, {
-      value: newValue,
-      version: newVersion,
-      updatedAt: new Date(),
-    });
-
-    return {
-      success: true,
-      currentValue: newValue,
-      currentVersion: newVersion,
-    };
+    return this.store.compareAndSet(key, expectedVersion, newValue);
   }
 
   /**
@@ -254,6 +177,86 @@ class InMemoryCasRepository implements CasRepository {
 
   public has(key: string): boolean {
     return this.store.has(key);
+  }
+
+  public compareAndSwap(key: string, expectedValue: string, newValue: string): CasResult {
+    const current = this.store.get(key);
+
+    if (current === undefined) {
+      if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+        this.set(key, {
+          value: newValue,
+          version: 1,
+          updatedAt: new Date(),
+        });
+        return {
+          success: true,
+          currentValue: newValue,
+          currentVersion: 1,
+        };
+      }
+      return { success: false };
+    }
+
+    if (current.value !== expectedValue) {
+      return {
+        success: false,
+        currentValue: current.value,
+        currentVersion: current.version,
+      };
+    }
+
+    const nextVersion = current.version + 1;
+    this.set(key, {
+      value: newValue,
+      version: nextVersion,
+      updatedAt: new Date(),
+    });
+    return {
+      success: true,
+      currentValue: newValue,
+      currentVersion: nextVersion,
+    };
+  }
+
+  public compareAndSet(key: string, expectedVersion: number, newValue: string): CasResult {
+    const current = this.store.get(key);
+
+    if (current === undefined) {
+      if (expectedVersion === 0) {
+        this.set(key, {
+          value: newValue,
+          version: 1,
+          updatedAt: new Date(),
+        });
+        return {
+          success: true,
+          currentValue: newValue,
+          currentVersion: 1,
+        };
+      }
+      return { success: false };
+    }
+
+    if (current.version !== expectedVersion) {
+      return {
+        success: false,
+        currentValue: current.value,
+        currentVersion: current.version,
+      };
+    }
+
+    const nextVersion = current.version + 1;
+    this.set(key, {
+      value: newValue,
+      version: nextVersion,
+      updatedAt: new Date(),
+    });
+    return {
+      success: true,
+      currentValue: newValue,
+      currentVersion: nextVersion,
+    };
   }
 }
 

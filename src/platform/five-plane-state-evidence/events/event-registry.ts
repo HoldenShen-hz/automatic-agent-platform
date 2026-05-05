@@ -71,7 +71,7 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
   "workflow:step_completed": {
     type: "workflow:step_completed",
     tier: "tier_1",
-    producer: "harness_runtime_legacy_projection",
+    producer: "multi_step_orchestration",
     consumers: getRequiredConsumers("workflow:step_completed"),
   },
   "decision:requested": {
@@ -89,25 +89,25 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
   "division:completed": {
     type: "division:completed",
     tier: "tier_1",
-    producer: "harness_runtime_legacy_projection",
+    producer: "multi_step_orchestration",
     consumers: getRequiredConsumers("division:completed"),
   },
   "division:failed": {
     type: "division:failed",
     tier: "tier_1",
-    producer: "harness_runtime_legacy_projection",
+    producer: "multi_step_orchestration",
     consumers: getRequiredConsumers("division:failed"),
   },
   "subtask:completed": {
     type: "subtask:completed",
     tier: "tier_1",
-    producer: "harness_runtime_legacy_projection",
+    producer: "multi_step_orchestration",
     consumers: getRequiredConsumers("subtask:completed"),
   },
   "subtask:failed": {
     type: "subtask:failed",
     tier: "tier_1",
-    producer: "harness_runtime_legacy_projection",
+    producer: "multi_step_orchestration",
     consumers: getRequiredConsumers("subtask:failed"),
   },
   "cost:limit_reached": {
@@ -383,12 +383,71 @@ const LEGACY_EVENT_SCHEMA_REGISTRY = {
   },
 } as const satisfies Record<string, RawEventSchemaDefinition>;
 
+// R16-29 FIX: All Tier-1 platform/oapeflir events from event-types.ts TIER_1_EVENT_TYPES
+// are now registered here with proper getRequiredConsumers() calls.
+// This ensures EVENT_SCHEMA_REGISTRY has entries for all platform.* and oapeflir.* events.
 const CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY = {
+  // §28 Platform request envelope events
   "platform.request_envelope.admitted": {
     type: "platform.request_envelope.admitted",
     tier: "tier_1",
     producer: "intake-admission-service",
-    consumers: ["truth_projector", "audit_projection"],
+    consumers: getRequiredConsumers("platform.request_envelope.admitted"),
+  },
+  // §28 Platform harness run lifecycle events (R5-38)
+  "platform.harness_run.created": {
+    type: "platform.harness_run.created",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.created"),
+  },
+  "platform.harness_run.admitted": {
+    type: "platform.harness_run.admitted",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.admitted"),
+  },
+  "platform.harness_run.planning": {
+    type: "platform.harness_run.planning",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.planning"),
+  },
+  "platform.harness_run.ready": {
+    type: "platform.harness_run.ready",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.ready"),
+  },
+  "platform.harness_run.pausing": {
+    type: "platform.harness_run.pausing",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.pausing"),
+  },
+  "platform.harness_run.replanning": {
+    type: "platform.harness_run.replanning",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.replanning"),
+  },
+  "platform.harness_run.compensating": {
+    type: "platform.harness_run.compensating",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.compensating"),
+  },
+  "platform.harness_run.aborted": {
+    type: "platform.harness_run.aborted",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.aborted"),
+  },
+  "platform.harness_run.completed": {
+    type: "platform.harness_run.completed",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.harness_run.completed"),
   },
   "platform.harness_run.status_changed": {
     type: "platform.harness_run.status_changed",
@@ -396,11 +455,91 @@ const CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY = {
     producer: "runtime-state-machine",
     consumers: getRequiredConsumers("platform.harness_run.status_changed"),
   },
+  // §28 Platform node run lifecycle events (R5-38)
+  "platform.node_run.created": {
+    type: "platform.node_run.created",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.created"),
+  },
+  "platform.node_run.admitted": {
+    type: "platform.node_run.admitted",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.admitted"),
+  },
+  "platform.node_run.planning": {
+    type: "platform.node_run.planning",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.planning"),
+  },
+  "platform.node_run.ready": {
+    type: "platform.node_run.ready",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.ready"),
+  },
+  "platform.node_run.pausing": {
+    type: "platform.node_run.pausing",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.pausing"),
+  },
+  "platform.node_run.replanning": {
+    type: "platform.node_run.replanning",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.replanning"),
+  },
+  "platform.node_run.completed": {
+    type: "platform.node_run.completed",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.completed"),
+  },
+  "platform.node_run.failed": {
+    type: "platform.node_run.failed",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.failed"),
+  },
+  "platform.node_run.compensating": {
+    type: "platform.node_run.compensating",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.compensating"),
+  },
+  "platform.node_run.skipped": {
+    type: "platform.node_run.skipped",
+    tier: "tier_1",
+    producer: "runtime-state-machine",
+    consumers: getRequiredConsumers("platform.node_run.skipped"),
+  },
   "platform.node_run.status_changed": {
     type: "platform.node_run.status_changed",
     tier: "tier_1",
     producer: "runtime-state-machine",
     consumers: getRequiredConsumers("platform.node_run.status_changed"),
+  },
+  // §28 Platform side effect lifecycle events (R5-38)
+  "platform.side_effect.triggered": {
+    type: "platform.side_effect.triggered",
+    tier: "tier_1",
+    producer: "side-effect-manager",
+    consumers: getRequiredConsumers("platform.side_effect.triggered"),
+  },
+  "platform.side_effect.completed": {
+    type: "platform.side_effect.completed",
+    tier: "tier_1",
+    producer: "side-effect-manager",
+    consumers: getRequiredConsumers("platform.side_effect.completed"),
+  },
+  "platform.side_effect.failed": {
+    type: "platform.side_effect.failed",
+    tier: "tier_1",
+    producer: "side-effect-manager",
+    consumers: getRequiredConsumers("platform.side_effect.failed"),
   },
   "platform.side_effect.status_changed": {
     type: "platform.side_effect.status_changed",
@@ -408,29 +547,61 @@ const CANONICAL_RUNTIME_EVENT_SCHEMA_REGISTRY = {
     producer: "side-effect-manager",
     consumers: getRequiredConsumers("platform.side_effect.status_changed"),
   },
-  "platform.budget_ledger.status_changed": {
-    type: "platform.budget_ledger.status_changed",
+  // §28 Platform budget lifecycle events (R5-38)
+  "platform.budget.status_changed": {
+    type: "platform.budget.status_changed",
     tier: "tier_1",
     producer: "budget-allocator",
-    consumers: ["truth_projector", "audit_projection"],
+    consumers: getRequiredConsumers("platform.budget.status_changed"),
   },
-  "platform.budget_reservation.status_changed": {
-    type: "platform.budget_reservation.status_changed",
+  "platform.budget.reserved": {
+    type: "platform.budget.reserved",
     tier: "tier_1",
     producer: "budget-allocator",
-    consumers: ["truth_projector", "audit_projection"],
+    consumers: getRequiredConsumers("platform.budget.reserved"),
+  },
+  "platform.budget.actualized": {
+    type: "platform.budget.actualized",
+    tier: "tier_1",
+    producer: "budget-allocator",
+    consumers: getRequiredConsumers("platform.budget.actualized"),
+  },
+  "platform.budget.exceeded": {
+    type: "platform.budget.exceeded",
+    tier: "tier_1",
+    producer: "budget-allocator",
+    consumers: getRequiredConsumers("platform.budget.exceeded"),
+  },
+  "platform.budget_reconciliation.status_changed": {
+    type: "platform.budget_reconciliation.status_changed",
+    tier: "tier_1",
+    producer: "budget-allocator",
+    consumers: getRequiredConsumers("platform.budget_reconciliation.status_changed"),
   },
   "platform.graph_scheduler.decision_recorded": {
     type: "platform.graph_scheduler.decision_recorded",
     tier: "tier_1",
     producer: "graph-scheduler",
-    consumers: ["truth_projector", "audit_projection"],
+    consumers: getRequiredConsumers("platform.graph_scheduler.decision_recorded"),
   },
+  // §28 OAPEFLIR events (R5-38)
   "oapeflir.view.run_lifecycle": {
     type: "oapeflir.view.run_lifecycle",
     tier: "tier_1",
     producer: "oapeflir-projection",
     consumers: getRequiredConsumers("oapeflir.view.run_lifecycle"),
+  },
+  "oapeflir.decision.recorded": {
+    type: "oapeflir.decision.recorded",
+    tier: "tier_1",
+    producer: "oapeflir-projection",
+    consumers: getRequiredConsumers("oapeflir.decision.recorded"),
+  },
+  "oapeflir.phase.transition": {
+    type: "oapeflir.phase.transition",
+    tier: "tier_1",
+    producer: "oapeflir-projection",
+    consumers: getRequiredConsumers("oapeflir.phase.transition"),
   },
 } as const satisfies Record<string, RawEventSchemaDefinition>;
 
@@ -687,8 +858,10 @@ const EVENT_PAYLOAD_VALIDATORS: Partial<Record<KnownEventType, z.ZodType<Record<
   "platform.harness_run.status_changed": runtimeStatusChangedPayloadSchema,
   "platform.node_run.status_changed": runtimeStatusChangedPayloadSchema,
   "platform.side_effect.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.budget_ledger.status_changed": runtimeStatusChangedPayloadSchema,
-  "platform.budget_reservation.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.budget.status_changed": runtimeStatusChangedPayloadSchema,
+  "platform.budget.reserved": runtimeStatusChangedPayloadSchema,
+  "platform.budget.actualized": runtimeStatusChangedPayloadSchema,
+  "platform.budget.exceeded": runtimeStatusChangedPayloadSchema,
   "platform.graph_scheduler.decision_recorded": graphSchedulerDecisionPayloadSchema,
   "oapeflir.view.run_lifecycle": oapeflirRunLifecyclePayloadSchema,
 };

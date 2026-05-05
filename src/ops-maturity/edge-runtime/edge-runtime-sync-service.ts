@@ -120,8 +120,10 @@ export interface EdgeRuntimeProfile {
   };
   // R25-2 FIX: §62.2 requires risk_level≤medium (high not allowed)
   readonly riskLevel: "low" | "medium";
-  /** §62.4: Deployment mode classification */
+  /** @deprecated compatibility alias; use planGraphNodeIds */
   readonly deploymentMode: EdgeDeploymentMode;
+  /** §62: Version lock reference for offline nodes with active NodeRun (ensures reproducibility) */
+  readonly runVersionLock?: string;
 }
 
 export interface OfflineExecutionRequest {

@@ -18,10 +18,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CasService } from "../../../../../../src/platform/state-evidence/events/cas/cas-service.js";
+import { createInMemoryCasService } from "../../../../../../src/platform/state-evidence/events/cas/cas-service.js";
+
+function createService() {
+  return createInMemoryCasService();
+}
 
 test("CasService compareAndSwap succeeds when expected value matches", () => {
-  const service = new CasService();
+  const service = createService();
 
   // Initialize a key
   service.setValue("key1", "initialValue");
@@ -40,7 +44,7 @@ test("CasService compareAndSwap succeeds when expected value matches", () => {
 });
 
 test("CasService compareAndSwap fails when expected value does not match", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "currentValue");
 
@@ -56,7 +60,7 @@ test("CasService compareAndSwap fails when expected value does not match", () =>
 });
 
 test("CasService compareAndSwap for new key with empty expected value", () => {
-  const service = new CasService();
+  const service = createService();
 
   // New key with empty expected should succeed (key doesn't exist)
   const result = service.compareAndSwap("newKey", "", "firstValue");
@@ -66,7 +70,7 @@ test("CasService compareAndSwap for new key with empty expected value", () => {
 });
 
 test("CasService compareAndSwap for new key with non-empty expected fails", () => {
-  const service = new CasService();
+  const service = createService();
 
   // New key with non-empty expected should fail (key doesn't exist but expected is not empty/null)
   const result = service.compareAndSwap("newKey", "something", "value");
@@ -75,7 +79,7 @@ test("CasService compareAndSwap for new key with non-empty expected fails", () =
 });
 
 test("CasService compareAndSet version-based CAS succeeds when version matches", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "v1");
   assert.equal(service.getVersion("key1"), 1);
@@ -88,7 +92,7 @@ test("CasService compareAndSet version-based CAS succeeds when version matches",
 });
 
 test("CasService compareAndSet version-based CAS fails when version does not match", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "v1");
 
@@ -100,7 +104,7 @@ test("CasService compareAndSet version-based CAS fails when version does not mat
 });
 
 test("CasService compareAndSet for new key with version 0 succeeds", () => {
-  const service = new CasService();
+  const service = createService();
 
   // New key with expectedVersion 0 should succeed
   const result = service.compareAndSet("newKey", 0, "firstValue");
@@ -110,7 +114,7 @@ test("CasService compareAndSet for new key with version 0 succeeds", () => {
 });
 
 test("CasService compareAndSet for new key with non-zero version fails", () => {
-  const service = new CasService();
+  const service = createService();
 
   // New key with expectedVersion != 0 should fail
   const result = service.compareAndSet("newKey", 1, "value");
@@ -118,7 +122,7 @@ test("CasService compareAndSet for new key with non-zero version fails", () => {
 });
 
 test("CasService sequential CAS operations maintain consistency", () => {
-  const service = new CasService();
+  const service = createService();
   service.setValue("counter", "0");
 
   // Simulate increment via CAS
@@ -135,7 +139,7 @@ test("CasService sequential CAS operations maintain consistency", () => {
 });
 
 test("CasService concurrent-style operations in sequence", () => {
-  const service = new CasService();
+  const service = createService();
 
   // Simulate what would be a race condition if truly concurrent
   service.setValue("shared", "initial");
@@ -153,7 +157,7 @@ test("CasService concurrent-style operations in sequence", () => {
 });
 
 test("CasService multiple keys operate independently", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "value1");
   service.setValue("key2", "value2");
@@ -166,7 +170,7 @@ test("CasService multiple keys operate independently", () => {
 });
 
 test("CasService delete removes key", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "value1");
   assert.equal(service.has("key1"), true);
@@ -178,39 +182,39 @@ test("CasService delete removes key", () => {
 });
 
 test("CasService delete returns false for nonexistent key", () => {
-  const service = new CasService();
+  const service = createService();
 
   const deleted = service.delete("nonexistent");
   assert.equal(deleted, false);
 });
 
 test("CasService has returns true for existing key", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "value1");
   assert.equal(service.has("key1"), true);
 });
 
 test("CasService has returns false for nonexistent key", () => {
-  const service = new CasService();
+  const service = createService();
 
   assert.equal(service.has("nonexistent"), false);
 });
 
 test("CasService getValue returns undefined for nonexistent key", () => {
-  const service = new CasService();
+  const service = createService();
 
   assert.equal(service.getValue("nonexistent"), undefined);
 });
 
 test("CasService getVersion returns undefined for nonexistent key", () => {
-  const service = new CasService();
+  const service = createService();
 
   assert.equal(service.getVersion("nonexistent"), undefined);
 });
 
 test("CasService setValue overwrites existing value and increments version", () => {
-  const service = new CasService();
+  const service = createService();
 
   service.setValue("key1", "value1");
   service.setValue("key1", "value2");
@@ -220,7 +224,7 @@ test("CasService setValue overwrites existing value and increments version", () 
 });
 
 test("CasService compareAndSwap handles empty string as expected value", () => {
-  const service = new CasService();
+  const service = createService();
 
   // Set empty string value
   service.setValue("key1", "");
@@ -232,7 +236,7 @@ test("CasService compareAndSwap handles empty string as expected value", () => {
 });
 
 test("CasService compareAndSwap handles null as expected value", () => {
-  const service = new CasService();
+  const service = createService();
 
   // New key - null expected should succeed (key doesn't exist)
   const result = service.compareAndSwap("newKey", null as unknown as string, "value");
@@ -240,7 +244,7 @@ test("CasService compareAndSwap handles null as expected value", () => {
 });
 
 test("CasService compareAndSwap handles undefined as expected value", () => {
-  const service = new CasService();
+  const service = createService();
 
   // New key - undefined expected should succeed (key doesn't exist)
   const result = service.compareAndSwap("newKey", undefined as unknown as string, "value");

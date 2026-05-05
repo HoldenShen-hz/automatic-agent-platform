@@ -85,13 +85,13 @@ Reduce lateral proliferation of result objects through unified result envelope:
 - Aggregate positive/negative, correction, quality metrics into `structured_data / metrics`
 - If no consumable feedback, should return explicit empty set instead of omitting fields
 
-### 4A.5 Rollout Result Builder
+### 4A.5 Release Result Builder
 
-`buildRolloutResultEnvelope(rolloutRecord, artifacts)` at minimum should:
+`buildReleaseResultEnvelope(releaseRecord, artifacts)` at minimum should:
 
 - Use `stage=release`
-- Expose rollout / strategy / approval references in `ref_ids`
-- Project current rollout level, status, metrics to `structured_data`
+- Expose release / strategy / approval references in `ref_ids`
+- Project current release level, status, metrics to `structured_data`
 - Current phase1-4 authoritative scope only allows `off / suggest / shadow`
 
 ### 4A.3 Artifact Merging

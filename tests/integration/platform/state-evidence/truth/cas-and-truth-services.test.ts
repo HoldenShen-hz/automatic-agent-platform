@@ -9,14 +9,18 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 
-import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { CasService } from "../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
-import { FencingTokenService } from "../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
-import { RuntimeTruthRepository } from "../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
+import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { CasService, createInMemoryCasService } from "../../../../../src/platform/five-plane-state-evidence/events/cas/cas-service.js";
+import { FencingTokenService } from "../../../../../src/platform/five-plane-state-evidence/events/cas/fencing-token-service.js";
+import { SqliteCasRepository } from "../../../../../src/platform/five-plane-state-evidence/events/cas/sqlite-cas-repository.js";
+import { RuntimeTruthRepository } from "../../../../../src/platform/state-evidence/truth/runtime-truth-repository.js";
 import {
   createHarnessRun,
   createNodeRun,
@@ -24,8 +28,8 @@ import {
   createBudgetReservation,
   createNodeAttemptReceipt,
   createRunVersionLock,
-} from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { nowIso } from "../../../../src/platform/contracts/types/ids.js";
+} from "../../../../../src/platform/contracts/executable-contracts/index.js";
+import { nowIso } from "../../../../../src/platform/contracts/types/ids.js";
 
 // ---------------------------------------------------------------------------
 // In-memory SQLite test context
@@ -57,7 +61,7 @@ function createInMemoryContext(prefix: string = "aa-test-"): InMemoryTestContext
 // ---------------------------------------------------------------------------
 
 test("CAS service: compareAndSwap succeeds when expected value matches", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // Initial set
   cas.setValue("key1", "initial");
@@ -70,7 +74,7 @@ test("CAS service: compareAndSwap succeeds when expected value matches", () => {
 });
 
 test("CAS service: compareAndSwap fails when expected value does not match", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // Initial set
   cas.setValue("key1", "initial");
@@ -83,7 +87,7 @@ test("CAS service: compareAndSwap fails when expected value does not match", () 
 });
 
 test("CAS service: compareAndSwap creates key if it does not exist and expected is empty", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // CAS on non-existent key with empty expected value should succeed
   const result = cas.compareAndSwap("new-key", "", "new-value");
@@ -93,7 +97,7 @@ test("CAS service: compareAndSwap creates key if it does not exist and expected 
 });
 
 test("CAS service: compareAndSwap fails for non-existent key with non-empty expected", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // CAS on non-existent key with non-empty expected should fail
   const result = cas.compareAndSwap("new-key", "some-value", "new-value");
@@ -101,7 +105,7 @@ test("CAS service: compareAndSwap fails for non-existent key with non-empty expe
 });
 
 test("CAS service: compareAndSet succeeds when expected version matches", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // Initial set
   cas.setValue("key1", "initial");
@@ -114,7 +118,7 @@ test("CAS service: compareAndSet succeeds when expected version matches", () => 
 });
 
 test("CAS service: compareAndSet fails when expected version does not match", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // Initial set
   cas.setValue("key1", "initial");
@@ -127,7 +131,7 @@ test("CAS service: compareAndSet fails when expected version does not match", ()
 });
 
 test("CAS service: compareAndSet creates key if version 0 and key does not exist", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   // Version 0 should create new key
   const result = cas.compareAndSet("new-key", 0, "new-value");
@@ -137,7 +141,7 @@ test("CAS service: compareAndSet creates key if version 0 and key does not exist
 });
 
 test("CAS service: atomic read-check-write pattern with multiple iterations", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
   cas.setValue("counter", "0");
 
   // Simulate atomic read-check-write: increment counter
@@ -155,14 +159,14 @@ test("CAS service: atomic read-check-write pattern with multiple iterations", ()
 });
 
 test("CAS service: getValue and getVersion return undefined for non-existent key", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
 
   assert.equal(cas.getValue("non-existent"), undefined, "getValue should return undefined");
   assert.equal(cas.getVersion("non-existent"), undefined, "getVersion should return undefined");
 });
 
 test("CAS service: has returns correct existence status", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
   cas.setValue("key1", "value1");
 
   assert.equal(cas.has("key1"), true, "has should return true for existing key");
@@ -170,7 +174,7 @@ test("CAS service: has returns correct existence status", () => {
 });
 
 test("CAS service: delete removes key and returns true", () => {
-  const cas = new CasService();
+  const cas = createInMemoryCasService();
   cas.setValue("key1", "value1");
 
   assert.equal(cas.delete("key1"), true, "delete should return true");
@@ -1071,4 +1075,33 @@ test("RuntimeTruthRepository: manages multiple aggregate types simultaneously", 
   assert.equal(snapshot.budgetLedgers.length, 1, "Should have 1 BudgetLedger");
   assert.equal(snapshot.budgetReservations.length, 1, "Should have 1 BudgetReservation");
   assert.equal(snapshot.nodeRuns.length, 1, "Should have 1 NodeRun");
+});
+test("CAS service: SQLite-backed instances share durable state and reject stale compare-and-set", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "cas-shared-"));
+  const dbPath = join(tempDir, "cas.sqlite");
+  const db1 = new SqliteDatabase(dbPath);
+  const db2 = new SqliteDatabase(dbPath);
+
+  try {
+    db1.migrate();
+    db2.migrate();
+
+    const cas1 = new CasService(new SqliteCasRepository(db1.connection));
+    const cas2 = new CasService(new SqliteCasRepository(db2.connection));
+
+    assert.equal(cas1.compareAndSet("shared-key", 0, "v1").success, true);
+    assert.equal(cas2.getValue("shared-key"), "v1");
+    assert.equal(cas2.getVersion("shared-key"), 1);
+
+    assert.equal(cas2.compareAndSet("shared-key", 1, "v2").success, true);
+
+    const stale = cas1.compareAndSet("shared-key", 1, "v3");
+    assert.equal(stale.success, false);
+    assert.equal(stale.currentValue, "v2");
+    assert.equal(stale.currentVersion, 2);
+  } finally {
+    db1.close();
+    db2.close();
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });

@@ -29,3 +29,7 @@ export * from './evolution-registry.js';
 export * from './changepoint-detector/index.js';
 export * from './cross-agent-analyzer/index.js';
 export * from './fingerprint-builder/index.js';
+
+// §63: DriftDetector/DriftAlert interface and implementation (ADR-063)
+export * from './drift-detector.js';
+export * from './drift-detector-service.js';
