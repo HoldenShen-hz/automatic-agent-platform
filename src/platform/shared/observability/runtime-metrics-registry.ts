@@ -119,6 +119,10 @@ export class RuntimeMetricsRegistry {
     this.incrementCounter("oapeflir_stage_outcome_total", { stage, result }, 1);
   }
 
+  public recordOapeflirBoundaryViolation(boundary: string, taskId: string, reasonCode: string): void {
+    this.incrementCounter("oapeflir_boundary_violation_total", { boundary, taskId, reasonCode }, 1);
+  }
+
   public recordLlmLatency(ttfbSeconds: number, totalSeconds: number, model: string, provider: string): void {
     this.observeHistogram("llm_ttfb_seconds", { model, provider }, ttfbSeconds);
     this.observeHistogram("llm_total_seconds", { model, provider }, totalSeconds);

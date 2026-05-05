@@ -162,6 +162,133 @@ test("OapeflirLoopService records execute errors when execute bridge fails", asy
   );
 });
 
+test("OapeflirLoopService preserves trace and span context on stage failures", async () => {
+  runtimeMetricsRegistry.reset();
+  class FailingExecuteBridge extends DeterministicExecuteBridge {
+    override async executePlan(_plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
+      throw new Error("execute bridge exploded");
+    }
+  }
+
+  const service = new OapeflirLoopService({
+    executeBridge: new FailingExecuteBridge(),
+  });
+
+  await assert.rejects(
+    async () => {
+      await service.run({
+        taskId: "task_stage_context",
+        objective: "Exercise stage error context",
+        workflow: {
+          workflow: { workflowId: "wf_stage_context", divisionId: "coding", steps: [] },
+          executionSteps: [
+            {
+              stepId: "step_execute",
+              divisionId: "coding",
+              roleId: "writer",
+              inputKeys: [],
+              agentId: "agent_writer",
+              outputKey: "result",
+              outputSchemaPath: null,
+              dependsOnStepIds: [],
+              dependencyTypes: {},
+              timeoutMs: 1000,
+              maxAttempts: 1,
+            },
+          ],
+          planReason: "workflow.single_step_execution",
+          dependencyEdges: [],
+        },
+      });
+    },
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.name, "OapeflirStageError:plan");
+      assert.match(error.message, /\[stage:plan\]\[task:task_stage_context\]\[trace:[0-9a-f]{32}\]\[span:[0-9a-f]{16}\]/i);
+      const stageError = error as Error & {
+        stage?: string;
+        taskId?: string;
+        traceId?: string;
+        spanId?: string;
+        parentSpanId?: string | null;
+      };
+      assert.equal(stageError.stage, "plan");
+      assert.equal(stageError.taskId, "task_stage_context");
+      assert.match(stageError.traceId ?? "", /^[0-9a-f]{32}$/i);
+      assert.match(stageError.spanId ?? "", /^[0-9a-f]{16}$/i);
+      return true;
+    },
+  );
+});
+
+test("OapeflirLoopService emits boundary violation signal and metric on O→A validation failure", async () => {
+  runtimeMetricsRegistry.reset();
+  const publishedEvents: Array<{ eventType: string; payload: Record<string, unknown>; taskId?: string }> = [];
+  const service = new OapeflirLoopService({
+    executeBridge: new DeterministicExecuteBridge(),
+    observationAggregator: {
+      aggregate() {
+        return {
+          task: {} as never,
+          system: {} as never,
+          observedAt: Date.now(),
+        };
+      },
+    } as never,
+    eventPublisher: {
+      publish(input) {
+        publishedEvents.push(input as { eventType: string; payload: Record<string, unknown>; taskId?: string });
+      },
+    } as never,
+  });
+
+  await assert.rejects(
+    async () => {
+      await service.run({
+        taskId: "task_boundary_violation",
+        objective: "Trigger boundary validation failure",
+        workflow: {
+          workflow: { workflowId: "wf_boundary_violation", divisionId: "coding", steps: [] },
+          executionSteps: [
+            {
+              stepId: "step_observe",
+              divisionId: "coding",
+              roleId: "observer",
+              inputKeys: [],
+              agentId: "agent_observer",
+              outputKey: "result",
+              outputSchemaPath: null,
+              dependsOnStepIds: [],
+              dependencyTypes: {},
+              timeoutMs: 1000,
+              maxAttempts: 1,
+            },
+          ],
+          planReason: "workflow.single_step_execution",
+          dependencyEdges: [],
+        },
+      });
+    },
+    /boundary\.validation_failed: TaskSituation validation failed at O→A boundary/,
+  );
+
+  assert.ok(
+    runtimeMetricsRegistry
+      .getCounters("oapeflir_boundary_violation_total")
+      .some((series) =>
+        series.labels.boundary === "O→A"
+        && series.labels.taskId === "task_boundary_violation"
+        && series.labels.reasonCode === "boundary:O→A:validation_failed"
+        && series.value >= 1),
+  );
+  assert.ok(
+    publishedEvents.some((event) =>
+      event.eventType === "platform.harness_run.status_changed"
+      && event.taskId === "task_boundary_violation"
+      && event.payload.status === "decision:boundary_violation:abort"),
+  );
+});
+
 test("OapeflirLoopService skips learn-driven stages when no feedback signals are provided", async () => {
   runtimeMetricsRegistry.reset();
   const service = new OapeflirLoopService({

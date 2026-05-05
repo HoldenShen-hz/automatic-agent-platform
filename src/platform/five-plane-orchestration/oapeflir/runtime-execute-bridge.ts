@@ -49,6 +49,49 @@ import type { MultiStepOrchestrationResult } from "../../five-plane-execution/ex
 import type { StepOutputRecord } from "../../contracts/types/domain/task-types.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 
+/**
+ * R16-76: RuntimeExecuteBridge must only accept PlanGraphBundle (canonical per ADR-060/ADR-109).
+ * Legacy Plan type is rejected at runtime to enforce P3→P4 contract purity.
+ *
+ * @throws Error if the input is a legacy Plan object (has planId but no planGraphBundleId)
+ */
+function assertIsPlanGraphBundle(plan: unknown, methodName: string): asserts plan is PlanGraphBundle {
+  if (plan == null || typeof plan !== "object") {
+    throw new Error(
+      `R16-76: ${methodName}() requires PlanGraphBundle, got ${plan == null ? "null/undefined" : typeof plan}`,
+    );
+  }
+  const obj = plan as Record<string, unknown>;
+  // PlanGraphBundle has planGraphBundleId; legacy Plan has planId but not planGraphBundleId
+  if (typeof obj.planGraphBundleId !== "string" || obj.planGraphBundleId.length === 0) {
+    // Check if this is a legacy Plan by detecting planId without planGraphBundleId
+    if (typeof obj.planId === "string" && obj.planId.length > 0) {
+      throw new Error(
+        `R16-76: ${methodName}() received legacy Plan type (planId=${obj.planId}). ` +
+        `PlanGraphBundle (planGraphBundleId) is required per ADR-060/ADR-109. ` +
+        `Use PlanBuilder.buildGraphBundle() to produce canonical PlanGraphBundle.`,
+      );
+    }
+    throw new Error(
+      `R16-76: ${methodName}() requires PlanGraphBundle with valid planGraphBundleId, ` +
+      `but got object without planGraphBundleId field.`,
+    );
+  }
+  // Structural validation: graph.nodes must be an array
+  const graph = obj.graph;
+  if (graph == null || typeof graph !== "object") {
+    throw new Error(
+      `R16-76: ${methodName}() PlanGraphBundle is missing required graph field.`,
+    );
+  }
+  const graphObj = graph as Record<string, unknown>;
+  if (!Array.isArray(graphObj.nodes)) {
+    throw new Error(
+      `R16-76: ${methodName}() PlanGraphBundle graph.nodes must be an array, got ${typeof graphObj.nodes}.`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Minimal workflow representation for the orchestrator
 // ---------------------------------------------------------------------------
@@ -388,6 +431,8 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
    * and mapped to `DualChannelStepOutput[]`.
    */
   async executePlan(plan: PlanGraphBundle, context: ExecutionContext): Promise<ExecutionResult> {
+    // R16-76: Reject legacy Plan type at runtime - only PlanGraphBundle is accepted
+    assertIsPlanGraphBundle(plan, "RuntimeExecuteBridge.executePlan");
     const request = serialiseOapeflirPlan(plan.graph.nodes);
 
     const orchInput: RuntimePlanExecutionInput = {
@@ -460,6 +505,8 @@ export class MockExecuteBridge implements ExecuteBridge {
   }
 
   async executePlan(plan: PlanGraphBundle, _context: ExecutionContext): Promise<ExecutionResult> {
+    // R16-76: Reject legacy Plan type at runtime - only PlanGraphBundle is accepted
+    assertIsPlanGraphBundle(plan, "MockExecuteBridge.executePlan");
     const results = plan.graph.nodes.map((node, index) => ({
       stepId: node.nodeId,
       status: "succeeded" as const,

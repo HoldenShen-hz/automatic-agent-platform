@@ -419,6 +419,11 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           this.boundaryLogger.error("[boundary:O→A] TaskSituation validation failed — systemic drift detected", {
             data: { taskId: currentInput.taskId, boundary: "O→A", error: result.error },
           });
+          runtimeMetricsRegistry.recordOapeflirBoundaryViolation(
+            "O→A",
+            currentInput.taskId,
+            "boundary:O→A:validation_failed",
+          );
           // Emit incident signal for monitoring/alerting
           this.emitOapeflirEvent("oapeflir.decision.recorded", {
             decisionKind: "boundary_violation",
@@ -490,6 +495,11 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           this.boundaryLogger.error("[boundary:A→P] UnifiedAssessment validation failed — systemic drift detected", {
             data: { taskId: currentInput.taskId, boundary: "A→P", error: result.error },
           });
+          runtimeMetricsRegistry.recordOapeflirBoundaryViolation(
+            "A→P",
+            currentInput.taskId,
+            "boundary:A→P:validation_failed",
+          );
           // Emit incident signal for monitoring/alerting
           this.emitOapeflirEvent("oapeflir.decision.recorded", {
             decisionKind: "boundary_violation",
@@ -1198,6 +1208,14 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
     });
   }
 
+  /**
+   * Backward-compatible entrypoint retained for existing callers and tests.
+   * Produces the same single-pass rationale output as produceStageRationale().
+   */
+  public async run(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
+    return await this.produceStageRationale(input);
+  }
+
   private buildDecisionInputBundle(input: {
     taskId: string;
     harnessRunId: string;
@@ -1302,6 +1320,9 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
     const startedAt = Date.now();
     const entryTimestamp = Date.now();
     const taskId = attributes["taskId"] as string ?? "unknown";
+    let stageContext:
+      | { traceId: string; spanId: string; parentSpanId: string | null }
+      | null = null;
     runtimeMetricsRegistry.recordOapeflirStageEntry(stage);
     try {
       const result = await startActiveSpan(`oapeflir.${stage}`, {
@@ -1311,7 +1332,10 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           "aa.task.id": taskId,
           ...attributes,
         },
-      }, async () => await operation());
+      }, async (_span, activeContext) => {
+        stageContext = activeContext;
+        return await operation();
+      });
       const durationMs = Date.now() - startedAt;
       const exitTimestamp = Date.now();
       // R9-1: Capture stage instrumentation for timeline record
@@ -1335,11 +1359,25 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
       };
       runtimeMetricsRegistry.recordOapeflirStageExit(stage, "error", durationMs / 1000);
       // R5-41: Preserve stage/task/span context in error for debugging
+      const stagePrefix = [
+        `[stage:${stage}]`,
+        `[task:${taskId}]`,
+        ...(stageContext?.traceId ? [`[trace:${stageContext.traceId}]`] : []),
+        ...(stageContext?.spanId ? [`[span:${stageContext.spanId}]`] : []),
+        ...(stageContext?.parentSpanId ? [`[parentSpan:${stageContext.parentSpanId}]`] : []),
+      ].join("");
       const stageError = error instanceof Error
-        ? new Error(`[stage:${stage}][task:${taskId}] ${error.message}`)
+        ? new Error(`${stagePrefix} ${error.message}`)
         : error;
       if (stageError instanceof Error) {
         stageError.name = `OapeflirStageError:${stage}`;
+        Object.assign(stageError, {
+          stage,
+          taskId,
+          traceId: stageContext?.traceId,
+          spanId: stageContext?.spanId,
+          parentSpanId: stageContext?.parentSpanId ?? null,
+        });
       }
       throw stageError;
     }

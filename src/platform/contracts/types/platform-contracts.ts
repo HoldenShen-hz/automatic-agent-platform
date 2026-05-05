@@ -7,8 +7,8 @@
  *
  * ARCHITECTURAL R4-4 FIX:
  * This file now contains ONLY platform-specific types (PlatformPrincipal, EvidenceRecord,
- * ProjectionUpdate, ContractEnvelope). All canonical types (PlanGraphBundle, NodeAttemptReceipt,
- * SideEffectRecord, RequestEnvelope, EventEnvelope, etc.) are exported from
+ * ProjectionUpdate). All canonical types (PlanGraphBundle, NodeAttemptReceipt,
+ * ContractEnvelope, SideEffectRecord, RequestEnvelope, EventEnvelope, etc.) are exported from
  * executable-contracts/ directly or via the contracts/index.ts barrel.
  *
  * Legacy type stubs (RequestEnvelopeLegacy, SideEffectExpectation) are retained here

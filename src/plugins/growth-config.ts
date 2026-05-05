@@ -202,7 +202,7 @@ export const growthDomainDefinition: DomainDefinition = {
   pluginBindings: [
     { bindingId: "growth.retriever", domainId: "growth", pluginType: "retriever", bindingRole: "retriever", pluginId: "plugin.growth.retriever", priority: 10, enabled: true, config: {} },
     { bindingId: "growth.presenter", domainId: "growth", pluginType: "tool", bindingRole: "presenter", pluginId: "plugin.growth.presenter", priority: 10, enabled: true, config: {} },
-    { bindingId: "growth.validator", domainId: "growth", pluginType: "evaluator", bindingRole: "validator", pluginId: "plugin.core.basic-evaluator", priority: 5, enabled: true, config: {} },
+    { bindingId: "growth.validator", domainId: "growth", pluginType: "validator", bindingRole: "validator", pluginId: "plugin.core.basic-validator", priority: 5, enabled: true, config: {} },
     { bindingId: "growth.planner", domainId: "growth", pluginType: "tool", bindingRole: "planner", pluginId: "plugin.core.basic-planner", priority: 1, enabled: true, config: {} },
   ] as unknown as DomainDefinition["pluginBindings"],
 };

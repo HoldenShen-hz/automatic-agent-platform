@@ -33,25 +33,89 @@ export interface HumanResponsibilityRecord {
   readonly recordedAt: string;
 }
 
-export class HitlRuntime {
-  private readonly requests = new Map<string, HitlRequest>();
-  private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord>();
+/**
+ * R9-21 fix: Persistence store interface for HITL requests.
+ * Allows HitlRuntime to persist requests to durable storage so they survive process restart.
+ */
+export interface HitlPersistenceStore {
+  saveRequest(request: HitlRequest): void;
+  loadRequests(): HitlRequest[];
+  deleteRequest(requestId: string): void;
+}
 
-  /** Persist a request to durable storage. Called by HarnessRuntimeService after open(). */
-  public persistRequest(request: HitlRequest): void {
-    // No-op: actual persistence is handled by HarnessRuntimeService which owns DurableHarnessService.
-    // This method exists as a signal point so callers can hook durable persistence.
+/**
+ * In-memory fallback store used when no persistent store is provided or when persistence fails.
+ * R9-21 fix: This is now a fallback, not the primary store.
+ */
+export class InMemoryHitlStore implements HitlPersistenceStore {
+  private readonly requests = new Map<string, HitlRequest>();
+
+  public saveRequest(request: HitlRequest): void {
+    this.requests.set(request.requestId, request);
   }
 
-  /** Load previously persisted requests after process restart. Called on initialization. */
+  public loadRequests(): HitlRequest[] {
+    return Array.from(this.requests.values());
+  }
+
+  public deleteRequest(requestId: string): void {
+    this.requests.delete(requestId);
+  }
+}
+
+export class HitlRuntime {
+  private readonly store: HitlPersistenceStore;
+  private readonly memoryFallback = new Map<string, HitlRequest>();
+  private readonly responsibilityRecords = new Map<string, HumanResponsibilityRecord>();
+
+  /**
+   * R9-21 fix: Constructor accepts optional persistence store.
+   * If no store provided, uses in-memory fallback (requests won't survive restart).
+   * All mutating operations persist to the store immediately.
+   */
+  public constructor(options: { store?: HitlPersistenceStore } = {}) {
+    this.store = options.store ?? new InMemoryHitlStore();
+    // R9-21 fix: Load any previously persisted requests on startup
+    for (const request of this.store.loadRequests()) {
+      this.memoryFallback.set(request.requestId, request);
+    }
+  }
+
+  /**
+   * R9-21 fix: Persist request to durable storage.
+   * Also updates in-memory Map as fallback for current process.
+   * If persistence fails, in-memory Map still retains the request.
+   */
+  public persistRequest(request: HitlRequest): void {
+    // Always update in-memory Map first (fallback)
+    this.memoryFallback.set(request.requestId, request);
+    // Then persist to durable store (primary)
+    try {
+      this.store.saveRequest(request);
+    } catch {
+      // R9-21 fix: Map is fallback - if persistence fails, we still have the in-memory copy
+    }
+  }
+
+  /** R9-21 fix: Load previously persisted requests from store. Called on initialization. */
   public loadRequests(requests: readonly HitlRequest[]): void {
     for (const request of requests) {
-      this.requests.set(request.requestId, request);
+      this.memoryFallback.set(request.requestId, request);
+      try {
+        this.store.saveRequest(request);
+      } catch {
+        // R9-21 fix: Continue loading even if persistence fails
+      }
     }
   }
 
   public hydrate(request: HitlRequest, record?: HumanResponsibilityRecord | null): void {
-    this.requests.set(request.requestId, request);
+    this.memoryFallback.set(request.requestId, request);
+    try {
+      this.store.saveRequest(request);
+    } catch {
+      // R9-21 fix: Map is fallback
+    }
     if (record != null) {
       this.responsibilityRecords.set(request.requestId, record);
     }
@@ -76,13 +140,12 @@ export class HitlRuntime {
       resolvedAt: null,
       resolvedBy: null,
     };
-    this.requests.set(request.requestId, request);
     this.persistRequest(request);
     return request;
   }
 
   public inspect(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -92,7 +155,7 @@ export class HitlRuntime {
       resolvedAt: nowIso(),
       resolvedBy: actorId,
     };
-    this.requests.set(requestId, inspected);
+    this.persistRequest(inspected);
     const record = this.createResponsibilityRecord(inspected, actorId, "inspect", "observation");
     return { request: inspected, record };
   }
@@ -103,7 +166,7 @@ export class HitlRuntime {
     patchContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -116,7 +179,7 @@ export class HitlRuntime {
       patchContent,
       beforeRef,
     };
-    this.requests.set(requestId, patched);
+    this.persistRequest(patched);
     const record = this.createResponsibilityRecord(patched, actorId, "patch", rationale, beforeRef);
     return { request: patched, record };
   }
@@ -127,7 +190,7 @@ export class HitlRuntime {
     overrideContent: Readonly<Record<string, unknown>>,
     rationale: string,
   ): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -142,13 +205,13 @@ export class HitlRuntime {
       beforeRef,
       afterRef,
     };
-    this.requests.set(requestId, overridden);
+    this.persistRequest(overridden);
     const record = this.createResponsibilityRecord(overridden, actorId, "override", rationale, beforeRef, afterRef);
     return { request: overridden, record };
   }
 
   public takeover(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -160,13 +223,13 @@ export class HitlRuntime {
       resolvedBy: actorId,
       beforeRef,
     };
-    this.requests.set(requestId, takenOver);
+    this.persistRequest(takenOver);
     const record = this.createResponsibilityRecord(takenOver, actorId, "takeover", rationale, beforeRef);
     return { request: takenOver, record };
   }
 
   public resolve(requestId: string, resolution: "approved" | "rejected", actorId: string): HitlRequest {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -180,7 +243,7 @@ export class HitlRuntime {
       resolvedAt: nowIso(),
       resolvedBy: actorId,
     };
-    this.requests.set(requestId, resolved);
+    this.persistRequest(resolved);
     return resolved;
   }
 
@@ -189,7 +252,7 @@ export class HitlRuntime {
    * §45.18 requires 5 HITL states including paused for workflow suspension.
    */
   public pause(requestId: string, actorId: string, rationale: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -205,13 +268,13 @@ export class HitlRuntime {
       resolvedBy: actorId,
       beforeRef,
     };
-    this.requests.set(requestId, paused);
+    this.persistRequest(paused);
     const record = this.createResponsibilityRecord(paused, actorId, "override", rationale, beforeRef);
     return { request: paused, record };
   }
 
   public resume(requestId: string, actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
-    const request = this.requests.get(requestId);
+    const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
     }
@@ -221,13 +284,13 @@ export class HitlRuntime {
       resolvedAt: nowIso(),
       resolvedBy: actorId,
     };
-    this.requests.set(requestId, resumed);
+    this.persistRequest(resumed);
     const record = this.createResponsibilityRecord(resumed, actorId, "resume", "resume_execution");
     return { request: resumed, record };
   }
 
   public get(requestId: string): HitlRequest | null {
-    return this.requests.get(requestId) ?? null;
+    return this.memoryFallback.get(requestId) ?? null;
   }
 
   public getResponsibilityRecord(requestId: string): HumanResponsibilityRecord | null {

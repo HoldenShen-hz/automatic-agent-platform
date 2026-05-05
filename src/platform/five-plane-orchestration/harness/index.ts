@@ -26,7 +26,7 @@ import {
   type GuardrailVibrationState,
   type GuardrailVibrationDecision,
 } from "./guardrails/guardrail-vibration-breaker.js";
-import { HitlRuntime, type HitlRequest } from "./hitl-runtime.js";
+import { HitlRuntime, type HitlRequest, type HitlPersistenceStore, type InMemoryHitlStore } from "./hitl-runtime.js";
 import { EvalRunService } from "./evaluation/eval-run-service.js";
 import { HarnessMemoryManager } from "./memory-manager.js";
 import { HarnessLoopController } from "./loop/index.js";

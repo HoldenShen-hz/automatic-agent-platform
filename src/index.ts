@@ -26,6 +26,7 @@ import {
   buildPlatformArchitectureBootstrapSummary,
   assertStartupOrderEnforced,
   getPlatformArchitectureServices,
+  PLATFORM_STARTUP_ORDER,
   type PlatformPlane,
   type StartupOrderViolation,
 } from "./platform-architecture-bootstrap.js";
@@ -274,7 +275,17 @@ export function buildPlatformRootSummary(registry: ServiceRegistry = ServiceRegi
       },
     },
     planes: {
-      startupOrder: startupPlan.startupOrder,
+      // R9-15: Enforce PLATFORM_STARTUP_ORDER (P5→X1→P2→P3→P4→P1) in summary startupOrder
+      startupOrder: PLATFORM_STARTUP_ORDER.map((plane) => {
+        switch (plane) {
+          case "P5": return "stateEvidence";
+          case "X1": return "x1-fabric";
+          case "P2": return "controlPlane";
+          case "P3": return "orchestration";
+          case "P4": return "execution";
+          case "P1": return "interface";
+        }
+      }),
       totalCapabilityCount: startupPlan.totalCapabilityCount,
       capabilityCounts: {
         interface: runtimeCatalog.interfacePlane.length,

@@ -136,19 +136,19 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
   });
 
   // §G2: Core plugins
-  map.set("plugin.core.basic-evaluator", {
+  map.set("plugin.core.basic-validator", {
     factory: createBasicEvaluatorPlugin,
     manifest: {
-      pluginId: "plugin.core.basic-evaluator",
-      name: "Basic Evaluator",
+      pluginId: "plugin.core.basic-validator",
+      name: "Basic Validator",
       version: "1.0.0",
       owner: "platform-team",
       domainIds: [],
-      capabilityIds: ["evaluator.core"],
-      spiTypes: ["evaluator"],
+      capabilityIds: ["output.validate", "output.harness-decision"],
+      spiTypes: ["validator"],
       extensionKind: "domain_plugin",
       trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-basic-evaluator",
+      publicSdkSurface: "@automatic-agent/plugin-basic-validator",
       dependencies: [],
       settingsSchema: {},
       sandbox: {

@@ -295,3 +295,22 @@ test("normalizeCorsConfig merges partial config with defaults", () => {
   assert.equal(result.credentials, false);
   assert.deepEqual(result.allowedMethods, DEFAULT_CORS_CONFIG.allowedMethods);
 });
+
+test("response hardening exposes Accept-Version for API version negotiation", () => {
+  assert.ok(DEFAULT_CORS_CONFIG.allowedHeaders.includes("accept-version"));
+});
+
+test("decorateResponseHeaders adds API deprecation and version support headers", () => {
+  const payload: ApiResponsePayload = {
+    statusCode: 200,
+    headers: {},
+    body: "test",
+  };
+
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+
+  assert.equal(result.headers["x-api-version"], "v1");
+  assert.equal(result.headers["deprecation"], "true");
+  assert.equal(result.headers["sunset"], "Thu, 31 Dec 2025 23:59:59 GMT");
+  assert.equal(result.headers["api-version-support"], "v1;v2");
+});
