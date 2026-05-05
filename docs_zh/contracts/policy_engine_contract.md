@@ -154,7 +154,7 @@ flowchart TD
 
 - Observe / Assess / Plan 阶段产生的是建议和上下文，不是 authoritative 放行结论。
 - FeedbackHub 可以提供负面信号、用户纠正和质量指标，但不得直接把候选改进标为 accepted。
-- LearnHub 只能生成 draft / validated learning object，不能直接修改 release 或 release 状态。
+- LearnHub 只能生成 draft / validated learning object，不能直接修改 candidate 或 release 状态。
 - ImproveHub 提案必须经 Policy Engine 裁决 `promote_improvement`，再进入 guardrail / approval 链。
 - ReleaseHub 推进 `advance_release` 时，Policy Engine 必须重新评估当前风险、预算、运行模式和 freeze 状态。
 - `modify_knowledge_trust` 与 `promote_memory_layer` 属于 M2 扩展 action；未启用相关平面时必须 fail-closed，而不是静默 allow。
