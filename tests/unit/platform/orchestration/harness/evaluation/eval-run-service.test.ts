@@ -62,6 +62,43 @@ test("EvalRunService evaluates run with passing grade", () => {
   assert.equal(report.grade.score, 0.85);
 });
 
+test("EvalRunService prefers step evidence refs over legacy feedback signals", () => {
+  const service = new EvalRunService();
+  const run = createMockRun({
+    steps: [
+      {
+        stepId: "step-1",
+        role: "generator",
+        stage: "execute",
+        iteration: 1,
+        semanticPhase: "execute",
+        inputs: {},
+        outputs: {},
+        startedAt: "2026-04-23T00:00:00Z",
+        completedAt: "2026-04-23T00:00:01Z",
+        evidenceRefs: ["evidence-1"],
+      },
+    ],
+    decision: {
+      decisionId: "decision-1",
+      action: "accept",
+      reasonCodes: ["harness.accepted"],
+      confidence: 0.85,
+      createdAt: "2026-04-23T00:00:30Z",
+    },
+    feedbackEnvelope: {
+      feedbackId: "feedback-1",
+      signals: ["harness.retry_same_plan"],
+      learnedActions: [],
+      createdAt: "2026-04-23T00:00:30Z",
+    },
+  });
+
+  const report = service.evaluate(run);
+  assert.equal(report.overallPassed, true);
+  assert.equal(report.grade.findingCodes.includes("harness.eval.missing_evidence:evidence-1"), false);
+});
+
 test("EvalRunService evaluates run with failing grade due to missing evidence", () => {
   const service = new EvalRunService();
   const run = createMockRun({

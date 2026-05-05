@@ -422,6 +422,21 @@ function validateTaskDomainCapabilities(tasks: readonly PlannedTask[]): readonly
   return findings;
 }
 
+function narrowTaskConstraintEnvelope(task: PlannedTask): GoalConstraintEnvelope | undefined {
+  if (task.constraintEnvelope == null) {
+    return undefined;
+  }
+  const policy = resolveTaskDomainPolicy(task.domainId);
+  if (policy == null) {
+    return task.constraintEnvelope;
+  }
+  const allowedPermissions = new Set(policy.allowedPermissions);
+  return {
+    ...task.constraintEnvelope,
+    requiredPermissions: task.constraintEnvelope.requiredPermissions.filter((permission) => allowedPermissions.has(permission)),
+  };
+}
+
 function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPreview {
   const normalized = goal.description.toLowerCase();
   const critical = goal.priority === "critical" || CRITICAL_RISK_KEYWORDS.some((keyword) => normalized.includes(keyword));
@@ -706,6 +721,10 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         || message.includes(".unauthorized_permission:")
         || message.includes(".domain_not_found:");
     });
+    const narrowedTasks = tasks.map((task) => ({
+      ...task,
+      ...(task.constraintEnvelope != null ? { constraintEnvelope: narrowTaskConstraintEnvelope(task) } : {}),
+    }));
     const lifecycleState: GoalLifecycleState = graphAnalysis.hasCycle ? "decomposing" : "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
       goalId: goal.goalId,
@@ -717,7 +736,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     const taskGraphDraft: TaskGraphDraft = {
       graphId: `${goal.goalId}:task_graph_draft`,
       goalId: goal.goalId,
-      tasks,
+      tasks: narrowedTasks,
       dependencyGraph,
       normalized: !graphAnalysis.hasCycle,
       validationMessages,
@@ -730,7 +749,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };
-    const harnessRouting = this.routeToHarness(goal, tasks, dependencyGraph, riskSummary, graphAnalysis.hasCycle);
+    const harnessRouting = this.routeToHarness(goal, narrowedTasks, dependencyGraph, riskSummary, graphAnalysis.hasCycle);
     const routedPlannerHandoff: PlannerHandoffReceipt = {
       ...plannerHandoff,
       harnessRunId: harnessRouting.harnessRun.harnessRunId,
@@ -757,7 +776,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     return {
       goalId: goal.goalId,
-      tasks,
+      tasks: narrowedTasks,
       planGraphBundle: harnessRouting.planGraphBundle,
       dependencyGraph,
       estimatedDuration: estimatedDurationStr,

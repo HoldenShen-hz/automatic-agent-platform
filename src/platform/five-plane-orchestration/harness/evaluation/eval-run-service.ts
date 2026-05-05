@@ -20,7 +20,7 @@ export class EvalRunService {
     const grade = this.grader.grade({
       evaluatorScore: run.decision?.confidence ?? 0,
       expectedEvidenceRefs: getConstraintOutputPolicy(run.constraintPack).requiredEvidence,
-      actualEvidenceRefs: run.feedbackEnvelope?.signals ?? [],
+      actualEvidenceRefs: this.collectActualEvidenceRefs(run),
       decisionAction: run.decision?.action ?? null,
     });
 
@@ -31,5 +31,17 @@ export class EvalRunService {
       stepCount: run.steps.length,
       timelineEventCount: run.timeline.length,
     };
+  }
+
+  private collectActualEvidenceRefs(run: HarnessRunRuntimeState): readonly string[] {
+    const stepEvidenceRefs = Array.from(
+      new Set(
+        run.steps.flatMap((step) => step.evidenceRefs ?? []),
+      ),
+    );
+    if (stepEvidenceRefs.length > 0) {
+      return stepEvidenceRefs;
+    }
+    return Array.from(new Set(run.feedbackEnvelope?.signals ?? []));
   }
 }

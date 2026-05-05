@@ -46,7 +46,7 @@ test("GoalDecompositionService preserves requested capabilities and surfaces dom
   assert.ok(result.taskGraphDraft.validationMessages.some((message) => message.includes("missing_capability")));
 });
 
-test("GoalDecompositionService preserves requested permissions and reports unauthorized task domains", async () => {
+test("GoalDecompositionService narrows task permissions while still surfacing unauthorized task domains", async () => {
   const service = createService();
   const goal: Goal = {
     goalId: "goal-task-domain-permission",
@@ -65,8 +65,8 @@ test("GoalDecompositionService preserves requested permissions and reports unaut
 
   assert.deepEqual(engineeringTask?.constraintEnvelope?.requiredPermissions ?? [], ["deployment:write"]);
   assert.deepEqual(operationsTask?.constraintEnvelope?.requiredPermissions ?? [], ["deployment:write"]);
-  assert.deepEqual(analyticsTask?.constraintEnvelope?.requiredPermissions ?? [], ["deployment:write"]);
-  assert.deepEqual(qaTask?.constraintEnvelope?.requiredPermissions ?? [], ["deployment:write"]);
+  assert.deepEqual(analyticsTask?.constraintEnvelope?.requiredPermissions ?? [], []);
+  assert.deepEqual(qaTask?.constraintEnvelope?.requiredPermissions ?? [], []);
   assert.equal(result.requiresHumanReview, true);
   assert.ok(result.taskGraphDraft.validationMessages.some((message) => message.includes("unauthorized_permission")));
 });

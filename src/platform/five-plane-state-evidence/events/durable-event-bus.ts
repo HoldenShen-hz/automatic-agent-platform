@@ -1102,11 +1102,18 @@ export class DurableEventBus {
     if (event.eventTier !== "tier_1") {
       return;
     }
-    const consumerIds = new Set<string>([
-      ...getRegisteredConsumers(event.eventType),
-      ...this.activeConsumerRefCounts.keys(),
-      ...this.subscriberRegistry.getAllConsumerIds(),
-    ]);
+    const registeredConsumers = new Set<string>(getRegisteredConsumers(event.eventType));
+    const consumerIds = new Set<string>(registeredConsumers);
+    for (const consumerId of this.activeConsumerRefCounts.keys()) {
+      if (registeredConsumers.has(consumerId)) {
+        consumerIds.add(consumerId);
+      }
+    }
+    for (const consumerId of this.subscriberRegistry.getAllConsumerIds()) {
+      if (registeredConsumers.has(consumerId)) {
+        consumerIds.add(consumerId);
+      }
+    }
     for (const consumerId of consumerIds) {
       this.store.event.ensureEventConsumerAckPending(event.id, consumerId);
     }
