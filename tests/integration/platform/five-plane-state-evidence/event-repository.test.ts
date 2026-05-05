@@ -121,11 +121,11 @@ test("integration: listEventsForTask returns all events for a task", () => {
       createdAt: now,
     });
 
-    const events = eventRepo.listEventsForTask("task-list-001");
+    const eventsResult = eventRepo.listEventsForTask("task-list-001");
 
-    assert.equal(events.length, 2, "Should return 2 events for task");
-    assert.ok(events.some((e) => e.id === "evt-task-001"), "Should include first event");
-    assert.ok(events.some((e) => e.id === "evt-task-002"), "Should include second event");
+    assert.equal(eventsResult.events.length, 2, "Should return 2 events for task");
+    assert.ok(eventsResult.events.some((e) => e.id === "evt-task-001"), "Should include first event");
+    assert.ok(eventsResult.events.some((e) => e.id === "evt-task-002"), "Should include second event");
   } finally {
     ctx.cleanup();
   }
@@ -136,9 +136,9 @@ test("integration: listEventsForTask returns empty array for non-existent task",
   try {
     const eventRepo = new EventRepository(ctx.db.connection);
 
-    const events = eventRepo.listEventsForTask("non-existent-task");
+    const eventsResult = eventRepo.listEventsForTask("non-existent-task");
 
-    assert.equal(events.length, 0, "Should return empty array for non-existent task");
+    assert.equal(eventsResult.events.length, 0, "Should return empty array for non-existent task");
   } finally {
     ctx.cleanup();
   }
