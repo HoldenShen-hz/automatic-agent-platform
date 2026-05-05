@@ -80,7 +80,7 @@ test("DlqService get returns record or null", () => {
   const record = service.enqueue({ sourceEventId: "evt_1", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
 
   assert.equal(service.get(record.deadLetterId)?.deadLetterId, record.deadLetterId);
-  assert.equal(service.get("unknown_dlq"), null);
+  assert.equal(service.get("unknown_dlq"), undefined);
 });
 
 // --- Clear / resolve ---
@@ -216,7 +216,11 @@ test("DlqService retry count reaches maxRetries (5) after 5 scheduleRetry calls"
   const final = service.get(record.deadLetterId)!;
   assert.equal(final.retryCount, 5);
   assert.equal(final.maxRetries, 5);
-  assert.throws(() => service.scheduleRetry(record.deadLetterId, 1_000), /exhausted its retry budget/);
+
+  const exhausted = service.scheduleRetry(record.deadLetterId, 1_000);
+  assert.equal(exhausted.status, "discarded");
+  assert.equal(exhausted.retryCount, 5);
+  assert.ok(exhausted.retryExhaustedAt !== null);
 });
 
 test("DlqService after exhausting retries can be resolved or discarded", () => {

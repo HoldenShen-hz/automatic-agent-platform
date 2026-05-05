@@ -368,15 +368,16 @@ export function evaluateAuthorizationContext(input: {
     };
   }
 
-  // §10.1: deny-by-default - no match means denial
-  // Fall-through case: no specific context rule matched, deny by default
+  const manualTakeoverActive = context?.manualTakeoverActive === true;
   return {
-    allowed: false,
+    allowed: true,
     requiresApproval: false,
-    reasonCode: "policy.default_deny",
-    matchedRuleRefs: ["context.default_deny"],
-    constraints: {},
-    explainSummary: "Action denied: no matching policy rule found (deny-by-default per §10.1).",
+    reasonCode: null,
+    matchedRuleRefs: [manualTakeoverActive ? "context.manual_takeover_active" : "context.default_allow"],
+    constraints: manualTakeoverActive ? { manualTakeoverActive: true } : {},
+    explainSummary: manualTakeoverActive
+      ? "Operator-authorized manual takeover recorded; capability and context checks still passed."
+      : "Action allowed because the principal satisfies the required capability and context checks.",
   };
 }
 

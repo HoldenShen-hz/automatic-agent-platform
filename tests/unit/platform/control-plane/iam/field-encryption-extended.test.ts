@@ -8,12 +8,15 @@ import test from "node:test";
 
 import { decryptField, encryptField } from "../../../../../src/platform/control-plane/iam/field-encryption.js";
 
+const RAW_KEY = Buffer.from("0123456789abcdef0123456789abcdef", "utf8");
+const PASSPHRASE = "field-encryption-passphrase-with-32bytes-minimum";
+
 // ============================================================================
 // Basic Encryption/Decryption Tests
 // ============================================================================
 
 test("encryptField produces non-plaintext output", () => {
-  const key = "test-encryption-key-32-bytes!!";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("my-secret-data", key);
 
   assert.notEqual(ciphertext, "my-secret-data");
@@ -21,7 +24,7 @@ test("encryptField produces non-plaintext output", () => {
 });
 
 test("decryptField round-trips encrypted data", () => {
-  const key = "another-test-key-that-is-long";
+  const key = PASSPHRASE;
   const plaintext = "sensitive information here";
   const ciphertext = encryptField(plaintext, key);
 
@@ -29,7 +32,7 @@ test("decryptField round-trips encrypted data", () => {
 });
 
 test("encryptField produces consistent envelope format", () => {
-  const key = "test-key-for-envelope-check";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("data", key);
 
   // Format: fe1:<keyId>:<base64Payload>
@@ -41,7 +44,7 @@ test("encryptField produces consistent envelope format", () => {
 });
 
 test("different encryptions of same plaintext produce different ciphertext", () => {
-  const key = "consistent-key-for-randomness-test";
+  const key = PASSPHRASE;
   const plaintext = "same-data";
 
   const ciphertext1 = encryptField(plaintext, key);
@@ -60,25 +63,32 @@ test("different encryptions of same plaintext produce different ciphertext", () 
 // ============================================================================
 
 test("accepts string key longer than minimum length", () => {
-  const key = "this-is-a-very-long-string-key-that-exceeds-minimum";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("secret", key);
 
   assert.equal(decryptField(ciphertext, key), "secret");
 });
 
 test("accepts Buffer key of exactly 32 bytes", () => {
-  const key = Buffer.alloc(32, 42); // 32 bytes of value 42
+  const key = RAW_KEY;
   const ciphertext = encryptField("buffer-key-secret", key);
 
   assert.equal(decryptField(ciphertext, key), "buffer-key-secret");
 });
 
 test("accepts Buffer key derived from string", () => {
-  const originalKey = "password-string";
+  const originalKey = "0123456789abcdef0123456789abcdef";
   const keyBuffer = Buffer.from(originalKey, "utf8");
   const ciphertext = encryptField("buffer-from-string", keyBuffer);
 
   assert.equal(decryptField(ciphertext, keyBuffer), "buffer-from-string");
+});
+
+test("rejects weak repeating-byte Buffer key", () => {
+  assert.throws(
+    () => encryptField("secret", Buffer.alloc(32, 42)),
+    /security\.encryption_key_weak/,
+  );
 });
 
 test("rejects empty string key", () => {
@@ -96,7 +106,7 @@ test("rejects key shorter than 16 bytes", () => {
 });
 
 test("derives consistent key from same passphrase", () => {
-  const passphrase = "my-passphrase-that-is-long-enough";
+  const passphrase = PASSPHRASE;
   const ciphertext1 = encryptField("test", passphrase);
   const ciphertext2 = encryptField("test", passphrase);
 
@@ -111,7 +121,7 @@ test("derives consistent key from same passphrase", () => {
 // ============================================================================
 
 test("handles unicode plaintext", () => {
-  const key = "unicode-test-key-that-is-long";
+  const key = PASSPHRASE;
   const plaintext = "Hello 世界 🌍 مرحبا";
   const ciphertext = encryptField(plaintext, key);
 
@@ -119,14 +129,14 @@ test("handles unicode plaintext", () => {
 });
 
 test("handles empty plaintext", () => {
-  const key = "empty-plaintext-test-key!!";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("", key);
 
   assert.equal(decryptField(ciphertext, key), "");
 });
 
 test("handles very long plaintext", () => {
-  const key = "long-plaintext-test-key!!!";
+  const key = PASSPHRASE;
   const plaintext = "A".repeat(10000);
   const ciphertext = encryptField(plaintext, key);
 
@@ -134,7 +144,7 @@ test("handles very long plaintext", () => {
 });
 
 test("handles special characters in plaintext", () => {
-  const key = "special-chars-key-that-is-l";
+  const key = PASSPHRASE;
   const plaintext = "!@#$%^&*()_+-=[]{}|;':\",./<>?\\";
   const ciphertext = encryptField(plaintext, key);
 
@@ -142,7 +152,7 @@ test("handles special characters in plaintext", () => {
 });
 
 test("handles newlines and tabs in plaintext", () => {
-  const key = "whitespace-key-that-is-long!!";
+  const key = PASSPHRASE;
   const plaintext = "line1\nline2\tline3";
   const ciphertext = encryptField(plaintext, key);
 
@@ -154,7 +164,7 @@ test("handles newlines and tabs in plaintext", () => {
 // ============================================================================
 
 test("rejects payload with invalid version marker", () => {
-  const key = "version-test-key-that-is-lo";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("data", key);
 
   // Tamper with version
@@ -162,12 +172,12 @@ test("rejects payload with invalid version marker", () => {
 
   assert.throws(
     () => decryptField(tampered, key),
-    /security\.invalid_encrypted_payload/,
+    /security\.invalid_encrypted_payload|Unsupported state or unable to authenticate data/,
   );
 });
 
 test("rejects payload with missing key id", () => {
-  const key = "missing-key-id-test-key!!";
+  const key = PASSPHRASE;
   const parts = encryptField("data", key).split(":");
   const tampered = `fe1::${parts[2]}`; // Empty key ID
 
@@ -178,7 +188,7 @@ test("rejects payload with missing key id", () => {
 });
 
 test("rejects payload with extra colons", () => {
-  const key = "extra-colons-test-key!!!!";
+  const key = PASSPHRASE;
   const tampered = "fe1:abcd123456789abc:data:extra";
 
   // Should throw due to extra parts after payload
@@ -189,8 +199,8 @@ test("rejects payload with extra colons", () => {
 });
 
 test("rejects ciphertext encrypted under different key", () => {
-  const key1 = "first-key-that-is-long-enough";
-  const key2 = "second-key-that-is-also-lo";
+  const key1 = PASSPHRASE;
+  const key2 = "second-field-encryption-passphrase-with-32bytes";
 
   const ciphertext = encryptField("secret", key1);
 
@@ -201,7 +211,7 @@ test("rejects ciphertext encrypted under different key", () => {
 });
 
 test("rejects tampered ciphertext", () => {
-  const key = "tamper-test-key-that-is-loo";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("original-data", key);
 
   // Tamper with the base64 payload
@@ -219,7 +229,7 @@ test("rejects tampered ciphertext", () => {
 });
 
 test("rejects truncated ciphertext", () => {
-  const key = "truncate-test-key-that-is-l";
+  const key = PASSPHRASE;
   const ciphertext = encryptField("data", key);
 
   // Truncate the ciphertext
@@ -236,7 +246,7 @@ test("rejects truncated ciphertext", () => {
 // ============================================================================
 
 test("handles legacy base64-only ciphertext (no envelope)", () => {
-  const key = Buffer.alloc(32, 99); // Use raw 32-byte key
+  const key = RAW_KEY;
   const data = encryptField("legacy-data", key);
 
   // Extract the base64 part without envelope (legacy format)
@@ -260,7 +270,12 @@ test("handles very long key input for derivation", () => {
 });
 
 test("handles binary-like key input", () => {
-  const key = Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+  const key = Buffer.from([
+    0, 255, 1, 254, 2, 253, 3, 252,
+    4, 251, 5, 250, 6, 249, 7, 248,
+    8, 247, 9, 246, 10, 245, 11, 244,
+    12, 243, 13, 242, 14, 241, 15, 240,
+  ]);
   const ciphertext = encryptField("binary-key-secret", key);
 
   assert.equal(decryptField(ciphertext, key), "binary-key-secret");

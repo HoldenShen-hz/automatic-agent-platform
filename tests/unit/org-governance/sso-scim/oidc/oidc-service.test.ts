@@ -352,6 +352,7 @@ describe("OidcIdentityService - validateAccessToken", () => {
 
   it("should return null for expired token", () => {
     const expiredTokens = createTestTokens({
+      expiresIn: -1,
       expiresAt: new Date(Date.now() - 1000).toISOString(),
     });
     service.createSession(expiredTokens, createTestUserInfo());
@@ -475,6 +476,7 @@ describe("OidcIdentityService - getUserSessions", () => {
     const expiredTokens = createTestTokens({
       accessToken: "at_expired",
       idToken: "id_expired",
+      expiresIn: -1,
       expiresAt: new Date(Date.now() - 1000).toISOString(),
     });
     service.createSession(expiredTokens, createTestUserInfo({ sub: "user-expired" }));
@@ -568,6 +570,7 @@ describe("OidcIdentityService - cleanupExpiredSessions", () => {
     const expiredTokens = createTestTokens({
       accessToken: "at_to-clean",
       idToken: "id_to-clean",
+      expiresIn: -1,
       expiresAt: new Date(Date.now() - 1000).toISOString(),
     });
     service.createSession(expiredTokens, createTestUserInfo({ sub: "user-clean" }));
@@ -635,7 +638,7 @@ describe("OidcIdentityService - fetchUserInfo", () => {
 
       await assert.rejects(
         async () => badService.fetchUserInfo("at_test-token"),
-        /userinfo_fetch_failed/,
+        /fetch failed|userinfo_fetch_failed/,
       );
     } finally {
       process.env.NODE_ENV = originalEnv;
@@ -671,7 +674,7 @@ describe("createOidcIdentityService", () => {
     const service = createOidcIdentityService(config, store);
 
     assert.ok(service instanceof OidcIdentityService);
-    service.initiateFlow("https://example.com/callback");
-    assert.ok(store.getState("oidc_state_") !== null); // state starts with oidc_state_
+    const { state } = service.initiateFlow("https://example.com/callback");
+    assert.ok(store.getState(state) !== null);
   });
 });

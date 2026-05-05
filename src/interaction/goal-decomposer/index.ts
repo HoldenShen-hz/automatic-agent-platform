@@ -721,10 +721,13 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         || message.includes(".unauthorized_permission:")
         || message.includes(".domain_not_found:");
     });
-    const narrowedTasks = tasks.map((task) => ({
-      ...task,
-      ...(task.constraintEnvelope != null ? { constraintEnvelope: narrowTaskConstraintEnvelope(task) } : {}),
-    }));
+    const narrowedTasks = tasks.map((task) => {
+      const narrowed = narrowTaskConstraintEnvelope(task);
+      return {
+        ...task,
+        ...(narrowed !== undefined ? { constraintEnvelope: narrowed } : {}),
+      };
+    });
     const lifecycleState: GoalLifecycleState = graphAnalysis.hasCycle ? "decomposing" : "decomposed";
     const goalGraphDraft: GoalGraphDraft = {
       goalId: goal.goalId,

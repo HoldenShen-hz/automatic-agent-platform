@@ -35,6 +35,9 @@
 - `R5-28`：`GoalDecompositionService` 此前只会暴露 capability/permission 越界，但任务 envelope 不会产出按域收窄后的最终权限集；本轮已补上真实的 task-level permission narrowing，并保留失配告警。
 - `2237`：`DurableEventBus.ensurePendingAcksForActiveConsumers()` 之前会给未注册到该 eventType 的活跃 consumer 也创建 pending ack，导致虚假积压计数；本轮已按事件注册表过滤。
 - `2246`：`EvalRunService` 之前把 `feedbackEnvelope.signals` 直接当 `actualEvidenceRefs`，会把 legacy reason/signal 与 evidence 混算；本轮改为优先读取 step `evidenceRefs`，仅在 legacy run 无 step evidence 时回退到 flat signals。
+- `2247`：`governance-projection` 已去掉未知 `decision*` 事件到 `approval_granted` 的错误推断；本轮复验时还发现 projection handler 把内部 `_processedEventIdSet` 直接返回、没有序列化回 `processedEventIds`，导致去重状态无法持久化，这个真实实现问题也一并修复。
+- `2249/2250`：`access-model` 现已只信任角色继承得到的 capability，并把 `manualTakeoverActive` 收敛为“仅记录且仅限 operator-grade principal 可用”的上下文标记；本轮同时修复了验证中暴露的 default-allow 回归，恢复“能力和上下文检查通过后允许”的正常路径。
+- `2251/2254/2255/2256`：OIDC 路径现已禁止在 `allowMockFallback=false` 时回退 mock user、改用 `timingSafeEqual` 校验 access token、限制单用户并发 session 数并实现 `touchSession()` 滑动过期；本轮补齐了对应定向验证，并顺手修掉了 PKCE helper 的 ESM `require()` 运行时错误。
 
 定向验证：
 
@@ -44,6 +47,8 @@
 - 结果：`62 passed / 0 failed / 0 skipped`
 - `node --test --import tsx tests/unit/interaction/goal-decomposer/task-domain-capability-policy.test.ts tests/unit/platform/orchestration/harness/evaluation/eval-run-service.test.ts tests/unit/platform/state-evidence/events/durable-event-bus-consumer-filter.test.ts`
 - 结果：`10 passed / 0 failed / 0 skipped`
+- `node --test --import tsx tests/unit/interaction/goal-decomposer/task-domain-capability-policy.test.ts tests/unit/platform/orchestration/harness/evaluation/eval-run-service.test.ts tests/unit/platform/state-evidence/events/durable-event-bus-consumer-filter.test.ts tests/unit/platform/state-evidence/events/dlq-service.test.ts tests/unit/platform/state-evidence/events/durable-event-bus-no-handler.test.ts tests/unit/platform/state-evidence/events/layered-event-inbox-compaction.test.ts tests/unit/platform/orchestration/oapeflir/assessment-service-extended.test.ts tests/unit/platform/state-evidence/events/projections/governance-projection.test.ts tests/unit/platform/control-plane/iam/access-model-authorization.test.ts tests/unit/platform/control-plane/iam/iam-access-model-extended.test.ts tests/unit/platform/control-plane/iam/field-encryption-extended.test.ts tests/unit/platform/control-plane/iam/secret-management-service.test.ts tests/unit/platform/control-plane/iam/audit-integrity-repository.test.ts tests/unit/org-governance/sso-scim/oidc/oidc-service.test.ts tests/unit/org-governance/sso-scim/scim-sync/scim-service.test.ts tests/unit/org-governance/sso-scim/group-role-mapping-service.test.ts`
+- 结果：`395 passed / 0 failed / 0 skipped`
 
 ## 逐编号结论表（按唯一编号）
 

@@ -8,7 +8,7 @@
  * @see docs_zh/architecture/00-platform-architecture.md §48
  */
 
-import { timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import type { OidcProviderConfig } from "./index.js";
 
@@ -557,7 +557,6 @@ export class OidcIdentityService {
    * §48 P0: PKCE prevents authorization code interception attacks.
    */
   private generateCodeVerifier(): string {
-    const { randomBytes } = require("node:crypto");
     return randomBytes(32).toString("base64url");
   }
 
@@ -566,7 +565,6 @@ export class OidcIdentityService {
    * §48 P0: PKCE prevents authorization code interception attacks.
    */
   private generateCodeChallenge(verifier: string): string {
-    const { createHash } = require("node:crypto");
     return createHash("sha256").update(verifier).digest("base64url");
   }
 

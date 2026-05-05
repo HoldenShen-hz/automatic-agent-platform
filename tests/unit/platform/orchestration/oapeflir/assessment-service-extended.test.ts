@@ -406,13 +406,13 @@ test("AssessmentService routing decision includes file count", () => {
   assert.ok(result.routingDecision.rationale.includes("files=3"));
 });
 
-test("AssessmentService preserves explicit domain routing instead of hardcoding coding", () => {
+test("AssessmentService derives a non-coding routing division for operations domains", () => {
   const service = new AssessmentService();
   const result = service.assess(createMinimalSituation({
     domainId: "general_ops",
   }));
 
-  assert.equal(result.routingDecision.division, "general_ops");
+  assert.equal(result.routingDecision.division, "ops");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

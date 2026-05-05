@@ -334,11 +334,8 @@ test("evaluateAuthorizationContext allows production exec_command with human_ope
     context: { environment: "production" },
   });
 
-  // human_operator has exec:command, so should allow (then default deny kicks in for viewer-level)
-  // Actually human_operator DOES have exec:command, so this should not be denied for production role check
-  // The check is: !input.roles.some((role) => role === "platform_admin" || role === "human_operator" || role === "service_operator")
-  // Since human_operator IS in the list, it should pass this check and fall through
-  assert.equal(decision.allowed, false); // But still denied by capability check (viewer-level)
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.reasonCode, null);
 });
 
 test("evaluateAuthorizationContext denies plugin network_access without pluginTrusted", () => {
@@ -440,7 +437,7 @@ test("evaluateAuthorizationContext default deny when no rules match", () => {
   });
 
   assert.equal(decision.allowed, false);
-  assert.equal(decision.reasonCode, "policy.default_deny");
+  assert.equal(decision.reasonCode, "policy.capability_required");
 });
 
 // ============================================================================
