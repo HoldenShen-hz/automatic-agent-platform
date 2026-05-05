@@ -219,6 +219,23 @@ test("workflowRunProjectionHandler deduplicates event_ids", () => {
   assert.deepEqual(state3.completedSteps, ["step_1"]);
 });
 
+test("workflowRunProjectionHandler bounds processedEventIds with watermark eviction", () => {
+  let state: Record<string, unknown> | null = null;
+
+  for (let i = 0; i < 10_050; i += 1) {
+    state = workflowRunProjectionHandler(
+      state,
+      makeEvent(`evt_watermark_${i}`, "workflow:step_completed", "task_1", `{"stepId":"step_${i}"}`),
+    );
+  }
+
+  const finalState = state as unknown as WorkflowRunState;
+  assert.equal(finalState.eventCount, 10_050);
+  assert.ok(finalState.processedEventIds.length <= 10_000);
+  assert.ok(finalState.processedEventIds.includes("evt_watermark_10049"));
+  assert.ok(finalState.completedSteps.includes("step_10049"));
+});
+
 test("workflowRunProjectionHandler accumulates timeline in order", () => {
   const events: ProjectionInputEvent[] = [
     makeEvent("evt_a", "workflow:step_completed", "task_1", '{"stepId":"step_a"}', "2026-04-19T10:00:00.000Z"),

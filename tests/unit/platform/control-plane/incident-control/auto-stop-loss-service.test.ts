@@ -5,6 +5,7 @@
  */
 
 import assert from "node:assert/strict";
+import { setImmediate as setImmediatePromise } from "node:timers/promises";
 import test from "node:test";
 import {
   AutoStopLossService,
@@ -154,6 +155,48 @@ test.describe("AutoStopLossService", () => {
     // Verify last health check was recorded
     const lastCheck = service.getLastHealthCheck();
     assert.deepEqual(lastCheck, snapshot);
+  });
+
+  test("updateHealthCheck records failed execution event when async playbook action fails", async () => {
+    const service = new AutoStopLossService();
+
+    service.registerActionHandler("circuit_break", async () => {
+      throw new Error("circuit handler failed");
+    });
+
+    const playbook: StopLossPlaybook = {
+      id: "failing-health-playbook",
+      name: "Failing Health Playbook",
+      description: "Tests health-triggered error recording",
+      enabled: true,
+      triggerCondition: { type: "health_status", healthStatusThreshold: "overloaded" },
+      actions: ["circuit_break"],
+      cooldownMs: 0,
+      maxExecutionsPerHour: 10,
+      requireHumanApproval: false,
+    };
+
+    service.registerPlaybook(playbook);
+
+    service.updateHealthCheck({
+      status: "overloaded",
+      anomalySeverity: "warning",
+      activeExecutions: 5,
+      queuedTasks: 42,
+      memoryUsageMb: 512,
+      eventLoopLagMs: 25,
+      providerHealth: "degraded",
+    });
+
+    await setImmediatePromise();
+    await setImmediatePromise();
+
+    const matchingEvents = service
+      .getExecutionHistory()
+      .filter((event) => event.playbookId === "failing-health-playbook");
+    assert.equal(matchingEvents.length, 1);
+    assert.equal(matchingEvents[0]?.success, false);
+    assert.equal(matchingEvents[0]?.errorMessage, "circuit handler failed");
   });
 
   test("getExecutionStats returns accurate statistics", async () => {

@@ -149,8 +149,8 @@ Phase 1a 规则：
 规则：
 
 - Supervisor 只能建议 `skip_stage`、`force_loop_exit`、`rollback_improvement`，是否执行仍需走 control-plane / policy 边界。
-- `feedback.negative_spike` 只能作为治理和恢复信号，不能直接等同于候选拒绝或 rollout 回滚。
-- 若 loop 已进入 `release`，Supervisor 的恢复动作必须优先保护 rollout audit 和 evidence 完整性。
+- `feedback.negative_spike` 只能作为治理和恢复信号，不能直接等同于候选拒绝或 release 回滚。
+- 若 loop 已进入 `release`，Supervisor 的恢复动作必须优先保护 release audit 和 evidence 完整性。
 
 
 ## v4.3 Architecture Remediation

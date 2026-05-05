@@ -44,7 +44,7 @@
 - prompt version
 - owner
 - review requirement
-- rollout scope
+- release scope
 - rollback version
 - lint / test evidence
 - KV cache fixed prefix strategy
@@ -100,7 +100,7 @@ flowchart TD
 - 模型失效或质量异常时，应支持切换到 fallback model。
 - prompt 发布导致失败率或风险率上升时，应支持快速回滚。
 - policy 发布造成误拒或误放时，应支持 bundle rollback。
-- rollout 是否允许进入 `shadow` 必须经过 deterministic guardrail；guardrail 不通过时，系统只能保留建议态，不得由模型直接放行。
+- release 是否允许进入 `shadow` 必须经过 deterministic guardrail；guardrail 不通过时，系统只能保留建议态，不得由模型直接放行。
 
 ## 9. 收口结论
 

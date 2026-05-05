@@ -35,7 +35,7 @@
 
 ## 5. 规则
 
-- 自运维 Agent 不能绕过 panic、budget、policy 和 rollout。
+- 自运维 Agent 不能绕过 panic、budget、policy 和 release。
 - 所有运维动作必须先形成 `OpsActionProposal`。
 - 高影响运维动作默认需要人工批准。
 

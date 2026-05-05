@@ -82,8 +82,8 @@ Ring 1 之后仍保留的稳定 canonical 事件类型至少包括：
 - `platform.budget.reservation_created`
 - `platform.budget.reservation_released`
 - `platform.budget.exhausted`
-- `platform.release.rollout_started`
-- `platform.release.rollout_completed`
+- `platform.release.started`
+- `platform.release.completed`
 - `platform.release.rollback_triggered`
 - `platform.approval.requested`
 - `platform.approval.resolved`
@@ -130,8 +130,8 @@ legacy / compatibility 映射：
 
 - `platform.harness_run.status_changed`
 - `platform.node_run.status_changed`
-- `platform.release.rollout_started`
-- `platform.release.rollout_completed`
+- `platform.release.started`
+- `platform.release.completed`
 - `platform.release.rollback_triggered`
 - `platform.feedback.signal_received`
 - `platform.learn.object_created`

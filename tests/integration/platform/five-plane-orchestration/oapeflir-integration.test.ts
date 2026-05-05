@@ -15,6 +15,12 @@ function makeConstraintPack(): ConstraintPack {
     tool_policy: { allowedTools: ["read_file", "write_file"] },
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    sandboxRequirement: { sandboxMode: "none", timeoutMs: 60000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["low", "medium", "high", "critical"],
+      approverRoles: ["admin"],
+      escalationTimeoutMs: 60000,
+    },
     budget: { maxSteps: 3, maxCost: 0.25, maxDurationMs: 15000 },
   };
 }

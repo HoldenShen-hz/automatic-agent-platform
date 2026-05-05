@@ -14,7 +14,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 rollout
+- **Improve**：改进候选评估与 release
 - **Release**：受控发布与回滚
 
 ---
@@ -41,7 +41,7 @@
 | `max_node_runs` | `number` | 允许完成的 node 数上限 |
 | `max_duration_ms` | `number` | 总运行时长上限 |
 | `warn_at_ratio` | `number` | 预警阈值 |
-| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no_write \| no_external_call \| no_rollout \| manual_only \| incident_mode` | 预算生效时的运行模式（4 states 对齐 sandbox_and_auth_contract §3） |
+| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no_write \| no_external_call \| no_release \| manual_only \| incident_mode` | 预算生效时的运行模式（4 states 对齐 sandbox_and_auth_contract §3） |
 
 兼容说明：
 

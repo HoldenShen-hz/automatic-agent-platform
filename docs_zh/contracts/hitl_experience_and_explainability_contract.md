@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 rollout
+- **Improve**：改进候选评估与 release
 - **Release**：受控发布与回滚
 
 ---
@@ -89,7 +89,7 @@ Decision 呈现最小结构：
 - 为什么批准、拒绝或要求双审批
 - 为什么某个 feedback signal 被采纳或忽略
 - 为什么某个 improvement candidate 被接受或拒绝
-- 为什么 rollout 被推进、暂停或回滚
+- 为什么 release 被推进、暂停或回滚
 
 权限 / 策略解释最少应包含：
 

@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 rollout
+- **Improve**：改进候选评估与 release
 - **Release**：受控发布与回滚
 
 ---
@@ -177,8 +177,8 @@ Phase 1b 增强：
 - inspect 输出必须优先读 authoritative store，而不是只依赖内存状态
 - inspect 查询不得改变业务状态
 - 若存在恢复或接管历史，inspect 应展示最近一次恢复决定、触发原因和当前活跃 node_runs 所有权
-- `oapeflir-timeline` 应能按时间顺序返回每轮 stage 状态、关键 evidence ref、审批 gate 和 rollout 动作
-- rollout inspect 必须可还原 rollout level、status、metrics、approval、rollback lineage
+- `oapeflir-timeline` 应能按时间顺序返回每轮 stage 状态、关键 evidence ref、审批 gate 和 release 动作
+- release inspect 必须可还原 release level、status、metrics、approval、rollback lineage
 - knowledge inspect 属于扩展入口；未启用 Knowledge Plane 时应返回明确的 `not_enabled`，而不是 404 伪装资源不存在
 
 ```mermaid

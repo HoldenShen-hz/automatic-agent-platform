@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 rollout
+- **Improve**：改进候选评估与 release
 - **Release**：受控发布与回滚
 
 ---

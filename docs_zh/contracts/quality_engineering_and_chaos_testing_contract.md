@@ -27,7 +27,7 @@
 - 单租户 / 多租户
 - 本地工具 / MCP 工具 / 远程 worker
 - 小上下文 / 超长上下文 / 恶意输入
-- OAPEFLIR 闭环阶段 / rollout / feedback / learning
+- OAPEFLIR 闭环阶段 / release / feedback / learning
 
 ## 4. 回归基准库
 
@@ -41,7 +41,7 @@
 - 高风险审批类
 - 崩溃恢复类
 - OAPEFLIR 闭环类
-- rollout / rollback 类
+- release / rollback 类
 - Observe-compatible 产品链路类
 
 每个基准任务至少记录：
@@ -82,7 +82,7 @@
 - 随机事件重复 / 丢失
 - 随机 MCP 超时
 - 随机 OAPEFLIR stage 中断
-- 随机 rollout gate 阻断
+- 随机 release gate 阻断
 
 ## 7. 发布门禁
 
@@ -94,7 +94,7 @@
 - migration compatibility pass
 - chaos smoke scenario pass
 - OAPEFLIR loop regression pass
-- rollout / rollback regression pass
+- release / rollback regression pass
 
 ## 8. 测试工件
 

@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 rollout
+- **Improve**：改进候选评估与 release
 - **Release**：受控发布与回滚
 
 ---
@@ -44,7 +44,7 @@
 | `transaction store` | PostgreSQL | task、workflow、execution、approval、lease、audit、quota authoritative truth |
 | `queue / dispatch` | Redis + BullMQ | execution ticket、delayed queue、retry queue、dead-letter routing |
 | `artifact store` | object storage / file store | 大文件、报表、附件、导出包 |
-| `knowledge / rollout store` | PostgreSQL + pgvector | knowledge namespace 元数据、semantic vector index、rollout record、strategy lineage |
+| `knowledge / release store` | PostgreSQL + pgvector | knowledge namespace 元数据、semantic vector index、release record、strategy lineage |
 | `analytics / replay` | PG 副表或后续分析存储 | usage、cost、evaluation、ops aggregation |
 
 ## 4. 关键不变量
@@ -53,7 +53,7 @@
 - queue 消息丢失后，必须能从 transaction store 重建。
 - dispatch queue 负责“投递与重试”，不负责“最终真相状态”。
 - PG schema 设计优先于 SQLite 便捷特性。
-- rollout / strategy / knowledge namespace 元数据不得只保留在缓存或 artifact 中。
+- release / strategy / knowledge namespace 元数据不得只保留在缓存或 artifact 中。
 - knowledge semantic embedding 若启用外部向量检索，authoritative vector index 必须可由 PG/pgvector 重建，不得只存在于进程内缓存。
 
 ## 5. 生产推荐拓扑
@@ -131,7 +131,7 @@ Knowledge semantic infra 迁移路线：
 - PG migration compatibility test
 - queue replay / duplicate delivery drill
 - DB/queue 断连故障演练
-- rollout / strategy lineage consistency drill
+- release / strategy lineage consistency drill
 
 ## 12. 收口结论
 

@@ -26,7 +26,7 @@
 - feature flag management
 - incident timeline
 - oapeflir loop management
-- rollout management
+- release management
 - feedback / learning management
 
 ## 4. Human Takeover 最小动作
@@ -40,10 +40,10 @@
 - 手动补充 artifact
 - 手动注入 feedback signal
 - 手动创建 improvement candidate
-- 手动推进或回滚 rollout
+- 手动推进或回滚 release
 - 结束任务并记录原因
 
-**约束**：所有改变运行态的动作（跳过节点、重试尝试、结束任务、推进 rollout 等）必须：
+**约束**：所有改变运行态的动作（跳过节点、重试尝试、结束任务、推进 release 等）必须：
 1. 通过 `RuntimeStateMachine.transition(command)` 执行，不得直接覆写状态字段
 2. 执行前须通过 BudgetLedger 进行预算预留检查（`budget_reservation_id`）
 3. 操作必须携带 `harness_run_id` / `node_run_id` 作用域，不得使用全局模糊操作

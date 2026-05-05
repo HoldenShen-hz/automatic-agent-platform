@@ -279,6 +279,15 @@ test("integration: ai operations mainline composes prompt governance, model roll
         requiredEvidence: ["risk_profile", "eval_framework"],
         redactSensitiveData: true,
       },
+      sandboxRequirement: {
+        sandboxMode: "none",
+        timeoutMs: 60000,
+      },
+      approvalRequirement: {
+        requiredForRiskClass: ["low", "medium", "high", "critical"],
+        approverRoles: ["admin"],
+        escalationTimeoutMs: 60000,
+      },
       budget: {
         maxSteps: 6,
         maxCost: Number((budget.remainingBudgetUsd + 1.2).toFixed(2)),

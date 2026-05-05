@@ -36,12 +36,12 @@
 ## 5. 规则
 
 - 反馈信号进入改进前必须经过归一化与去重。
-- 自动改进不得绕过 rollout / approval / policy gate。
+- 自动改进不得绕过 release / approval / policy gate。
 - 所有改进候选都必须可追溯到源信号。
 
 ## 6. 测试要求
 
 - unit：signal normalization、candidate generation、dedup
-- integration：feedback -> candidate -> rollout review
+- integration：feedback -> candidate -> release review
 - contract：无来源信号的 candidate 不得进入发布链
 

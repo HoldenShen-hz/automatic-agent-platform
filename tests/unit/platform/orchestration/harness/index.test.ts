@@ -26,6 +26,15 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
       requiredEvidence: ["risk_profile"],
       redactSensitiveData: true,
     },
+    sandboxRequirement: {
+      sandboxMode: "none",
+      timeoutMs: 60000,
+    },
+    approvalRequirement: {
+      requiredForRiskClass: ["low", "medium", "high", "critical"],
+      approverRoles: ["admin"],
+      escalationTimeoutMs: 60000,
+    },
     budget: {
       maxSteps: 8,
       maxCost: 5,

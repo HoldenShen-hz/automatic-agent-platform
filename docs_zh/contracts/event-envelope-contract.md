@@ -72,7 +72,7 @@ canonical 兼容映射：
 
 补充 truth namespace（truth projector、recovery scanner、budget projector、side-effect projector 只能消费 `platform.*`）：
 
-- `platform.release.*` — release/rollout 状态变更属于 truth fact，必须使用 `platform.release.*`
+- `platform.release.*` — release 状态变更属于 truth fact，必须使用 `platform.release.*`
 - `platform.approval.*` — approval 状态变更属于 truth fact
 - `platform.feedback.*` — feedback signal 属于 truth fact
 - `platform.learn.*` — learning 对象创建/晋升属于 truth fact

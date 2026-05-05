@@ -223,6 +223,18 @@ test("PluginBindingSchema applies defaults", () => {
   assert.deepEqual(result.config, {});
 });
 
+test("PluginBindingSchema rejects invalid bindingRole aliases instead of erasing them", () => {
+  assert.throws(() => {
+    PluginBindingSchema.parse({
+      bindingId: "b1",
+      domainId: "d1",
+      pluginType: "retriever",
+      bindingRole: "invalid_role",
+      pluginId: "p1",
+    });
+  });
+});
+
 test("DomainDefinitionSchema parses valid definition", () => {
   const result = DomainDefinitionSchema.parse({
     domainId: "domain-001",

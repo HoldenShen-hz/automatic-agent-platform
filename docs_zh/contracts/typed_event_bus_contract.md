@@ -215,7 +215,7 @@ Phase 1-4 闭环事件必须提供类型化 payload，对应 ADR-079 和 ADR-080
 规则：
 
 - payload schema 的破坏性变更必须通过新 type name 或显式版本升级处理。
-- Tier 1 的 improvement / rollout 事件不得退化为无类型 `json` blob。
+- Tier 1 的 improvement / release 事件不得退化为无类型 `json` blob。
 - 未启用的 M2 事件类型可以保留 schema 预留位，但不得在生产流量中伪造发布。
 - OAPEFLIR 视图 / 理由事件类型统一使用 `oapeflir.view.<stage>.<event>` 或 `oapeflir.rationale.<stage>.<event>`；若消费的是 truth fact，则必须使用 `platform.*` namespace。
 

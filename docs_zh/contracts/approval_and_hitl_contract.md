@@ -81,7 +81,7 @@
 - PlanHub 产出高风险计划或不可逆执行路径。
 - FeedbackHub 收到持续负面信号、用户纠正或质量异常，需要人工确认处置。
 - ImproveHub 尝试接受策略升级、prompt/policy 变更或候选改进。
-- ReleaseHub 尝试推进 rollout level、完成发布或触发 rollback。
+- ReleaseHub 尝试推进 release level、完成发布或触发 rollback。
 
 ## 6. 运行模式差异
 
@@ -108,7 +108,7 @@
 - 审批结果落地后，最终动作执行前必须再次经过 Policy Engine 复核，防止环境变化后仍沿用旧批准。
 - `critical` 风险动作应支持双审批或 break-glass 流程，不能只靠单次普通确认。
 - 带 `stage_view_ref` 的审批必须能回写到对应 OAPEFLIR timeline，不能只存在于审批表或消息渠道中。
-- 与 Improve / Release 相关的审批结果只能改变候选或 rollout 的受控状态，不得直接改写已发布策略内容。
+- 与 Improve / Release 相关的审批结果只能改变候选或 release 的受控状态，不得直接改写已发布策略内容。
 - 用户文本输入型审批若表达纠正、偏好或负面反馈，应转成 `FeedbackSignal`，供 FeedbackHub / LearnHub 消费。
 
 ## 8. 补充规则
@@ -179,14 +179,14 @@
 | `loop_iteration` | `integer?` | 触发轮次 |
 | `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | 关联对象 |
 | `feedback_signal_id` | `string?` | 审批产生或消费的反馈信号 |
-| `decision_effect` | `continue \| revise_plan \| block_candidate \| approve_candidate \| advance_rollout \| rollback_rollout` | 对闭环的影响 |
+| `decision_effect` | `continue \| revise_plan \| block_candidate \| approve_candidate \| advance_release \| rollback_release` | 对闭环的影响 |
 
 规则：
 
 - PlanHub 审批通过后只能允许计划进入 execute；仍需 runtime precheck 和 Policy Engine 复核。
 - FeedbackHub 审批不是对用户情绪的覆盖，而是对后续 learn/improve 是否采纳的人工治理信号。
 - ImproveHub 的 `approve_candidate` 只能推进候选状态，不能跳过 guardrail 或直接发布。
-- ReleaseHub 的 `advance_rollout` / `rollback_rollout` 必须引用 rollout record，并写入 release audit。
+- ReleaseHub 的 `advance_release` / `rollback_release` 必须引用 release record，并写入 release audit。
 - OAPEFLIR 审批超时必须进入 stage timeline，且按 `timeout_policy` 转换成明确的 stage blocked / failed / remain_pending 语义。
 
 

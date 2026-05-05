@@ -249,9 +249,9 @@ flowchart TD
 规则：
 
 - `Observe / Assess / Plan` 可提交建议，但不得越过治理 gate 直接接受改进或推进 release。
-- `release_transition_gate` 的语义是评估生命周期推进请求，例如 `testing -> canary -> active -> paused/deprecated/archived/removed`，不得与 rollout ring 名称混用。
-- `off / suggest / shadow` 若存在，只能作为 rollout / evaluate 兼容投影视图，不得冒充生命周期真值。
-- `canary_promote / full_release / rollback automation` 可作为 release gate 的动作结果，但必须映射到 canonical lifecycle / rollout authority。
+- `release_transition_gate` 的语义是评估生命周期推进请求，例如 `testing -> canary -> active -> paused/deprecated/archived/removed`，不得与 release ring 名称混用。
+- `off / suggest / shadow` 若存在，只能作为 release / evaluate 兼容投影视图，不得冒充生命周期真值。
+- `canary_promote / full_release / rollback automation` 可作为 release gate 的动作结果，但必须映射到 canonical lifecycle / release authority。
 - 低风险只读动作可按配置降级。
 - emergency control 始终优先。
 

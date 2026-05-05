@@ -482,7 +482,7 @@ Phase 1a 明确采用以下策略：
 
 - `Current`：`harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` 为 runtime truth；`tasks / workflow / approvals / events / artifacts / memories` 等为混合 projection/evidence 表。
 - `Transition`：扩展表族可先以 append-only、shadow write、reporting-only 或 evidence-only 方式接入。
-- `Target`：`feedback / learning / improvement / rollout / knowledge / high-order memory` 成为稳定治理对象并与 typed ref / lineage 全面对齐。
+- `Target`：`feedback / learning / improvement / release / knowledge / high-order memory` 成为稳定治理对象并与 typed ref / lineage 全面对齐。
 
 因此：
 

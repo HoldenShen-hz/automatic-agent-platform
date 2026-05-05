@@ -311,6 +311,30 @@ test("RecipeRegistry.findByTriggerPhrase returns first matching recipe", async (
   assert.equal(result!.recipeId, "recipe_first_1");
 });
 
+test("RecipeRegistry.findByTriggerPhrase prefers the longest matching trigger phrase", async () => {
+  const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
+  const registry = new RecipeRegistry();
+  registry.registerAll([
+    makeRecipe({
+      recipeId: "recipe_trade_short",
+      domainId: "trading",
+      defaultWorkflowId: "wf_short",
+      triggerPhrases: ["trade"],
+    }),
+    makeRecipe({
+      recipeId: "recipe_trade_long",
+      domainId: "options",
+      defaultWorkflowId: "wf_long",
+      triggerPhrases: ["buy", "trade options"],
+    }),
+  ]);
+
+  const result = registry.findByTriggerPhrase("help me trade options today");
+
+  assert.ok(result !== null);
+  assert.equal(result!.recipeId, "recipe_trade_long");
+});
+
 test("RecipeRegistry.findByTriggerPhrase delegates to matchDomainRecipe", async () => {
   const { RecipeRegistry } = await import("../../../../src/domains/recipes/recipe-registry.js");
   const registry = new RecipeRegistry();

@@ -29,7 +29,7 @@
 | `platform.harness.failed` | `tier1` | 恢复与失败归因 |
 | `approval.requested` | `tier1` | HITL 主链 |
 | `approval.resolved` | `tier1` | 恢复执行前提 |
-| `improve.candidate_accepted` | `tier1` | 候选接受会改变后续策略和 rollout 轨迹 |
+| `improve.candidate_accepted` | `tier1` | 候选接受会改变后续策略和 release 轨迹 |
 | `platform.release.started` | `tier1` | 发布链起点，需要审计和恢复 |
 | `platform.release.completed` | `tier1` | 发布链终态，需要稳定留痕 |
 | `release.rollback_triggered` | `tier1` | 回滚会改写 release 轨迹，必须可恢复 |

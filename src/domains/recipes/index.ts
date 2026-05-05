@@ -45,25 +45,42 @@ export type DomainRecipeArchetype = z.infer<typeof DomainRecipeArchetypeSchema>;
 
 export function matchDomainRecipe(recipes: readonly DomainRecipe[], input: string): DomainRecipe | null {
   const normalized = input.toLowerCase();
-  // §2313: Sort by trigger phrase length descending so longer phrases take priority.
-  // This prevents short phrases from matching as substrings inside longer ones.
-  const sorted = [...recipes].sort((a, b) => {
-    const aLen = a.triggerPhrases[0]?.length ?? 0;
-    const bLen = b.triggerPhrases[0]?.length ?? 0;
-    return bLen - aLen;
-  });
-  for (const item of sorted) {
-    for (const phrase of item.triggerPhrases) {
-      const lowerPhrase = phrase.toLowerCase();
-      // Word-boundary matching: phrase must appear at word boundary to prevent substring matches
-      // that would cause "an" to match inside "plan"
+  let bestMatch: {
+    recipe: DomainRecipe;
+    phraseLength: number;
+    recipeIndex: number;
+    phraseIndex: number;
+  } | null = null;
+  for (const [recipeIndex, item] of recipes.entries()) {
+    for (const [phraseIndex, phrase] of item.triggerPhrases.entries()) {
+      const lowerPhrase = phrase.toLowerCase().trim();
+      if (lowerPhrase.length === 0) {
+        continue;
+      }
+      // Match on token boundaries so short words do not spuriously match inside larger tokens.
       const regex = new RegExp(`(?:^|\\s|\\W)${lowerPhrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\s|$|\\W)`, "i");
-      if (regex.test(normalized)) {
-        return item;
+      if (!regex.test(normalized)) {
+        continue;
+      }
+      const shouldReplace = bestMatch == null
+        || lowerPhrase.length > bestMatch.phraseLength
+        || (lowerPhrase.length === bestMatch.phraseLength && recipeIndex < bestMatch.recipeIndex)
+        || (
+          lowerPhrase.length === bestMatch.phraseLength
+          && recipeIndex === bestMatch.recipeIndex
+          && phraseIndex < bestMatch.phraseIndex
+        );
+      if (shouldReplace) {
+        bestMatch = {
+          recipe: item,
+          phraseLength: lowerPhrase.length,
+          recipeIndex,
+          phraseIndex,
+        };
       }
     }
   }
-  return null;
+  return bestMatch?.recipe ?? null;
 }
 
 export { RecipeRegistry } from "./recipe-registry.js";

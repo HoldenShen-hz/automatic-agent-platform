@@ -165,25 +165,27 @@ export async function runPlatformRootDemo(): Promise<void> {
     request: "Create the minimal stable single-agent execution baseline.",
   });
 
-  // Output canonical TaskSnapshot structure
+  // Output canonical runtime view structure per v4.3 model
+  // R4-63 fix: Use harnessRun/nodeRuns canonical fields instead of legacy workflow.currentStepIndex
   console.log(
     JSON.stringify(
       {
-        task: snapshot.task
+        harnessRun: snapshot.workflow
           ? {
-              id: snapshot.task.id,
-              status: snapshot.task.status,
-              tenantId: snapshot.task.tenantId,
-              title: snapshot.task.title,
-            }
-          : null,
-        workflow: snapshot.workflow
-          ? {
-              taskId: snapshot.workflow.taskId,
+              harnessRunId: snapshot.workflow.taskId, // taskId serves as harnessRunId in canonical model
               status: snapshot.workflow.status,
-              currentStepIndex: snapshot.workflow.currentStepIndex,
+              tenantId: snapshot.task?.tenantId ?? null,
+              planGraphBundleId: snapshot.workflow.workflowId, // workflowId serves as planGraphBundleId
             }
           : null,
+        nodeRuns: snapshot.stepOutputs
+          ? snapshot.stepOutputs.map((step) => ({
+              nodeRunId: step.stepId,
+              nodeId: step.stepId,
+              status: step.status,
+              attemptCount: 1,
+            }))
+          : [],
         execution: snapshot.execution
           ? {
               id: snapshot.execution.id,

@@ -25,10 +25,16 @@ function createMinimalPack(): ConstraintPack {
   return {
     policyIds: [],
     approvalMode: "none",
-    autonomyMode: "auto",
+    autonomyMode: "semi_auto",
     tool_policy: { allowedTools: ["read", "write"] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
+    sandboxRequirement: { sandboxMode: "none", timeoutMs: 60000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["low", "medium", "high", "critical"],
+      approverRoles: ["admin"],
+      escalationTimeoutMs: 60000,
+    },
     budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
   };
 }
@@ -338,17 +344,23 @@ test("normalizeConstraintPack handles pack with only legacy fields", () => {
   const pack: ConstraintPack = {
     policyIds: ["legacy-policy"],
     approvalMode: "supervised",
-    autonomyMode: "manual",
+    autonomyMode: "full_auto",
     tool_policy: { allowedTools: ["bash"] },
     risk_policy: { maxRiskScore: 85, escalationThreshold: 65 },
     output_policy: { requiredEvidence: ["log"], redactSensitiveData: true },
+    sandboxRequirement: { sandboxMode: "none", timeoutMs: 60000 },
+    approvalRequirement: {
+      requiredForRiskClass: ["low", "medium", "high", "critical"],
+      approverRoles: ["admin"],
+      escalationTimeoutMs: 60000,
+    },
     budget: { maxSteps: 40, maxCost: 400, maxDurationMs: 80000 },
   };
 
   const normalized = normalizeConstraintPack(pack);
 
   assert.equal(normalized.approvalMode, "supervised");
-  assert.equal(normalized.autonomyMode, "manual");
+  assert.equal(normalized.autonomyMode, "full_auto");
   assert.ok(normalized.risk_policy != null);
   assert.ok(normalized.output_policy != null);
   assert.ok(normalized.budgetEnvelope != null);
@@ -358,7 +370,7 @@ test("normalizeConstraintPack handles pack with mixed canonical and legacy field
   const pack: ConstraintPack = {
     policyIds: ["policy-mixed"],
     approvalMode: "required",
-    autonomyMode: "auto",
+    autonomyMode: "semi_auto",
     tool_policy: { allowedTools: ["read"] },
     riskPolicy: { maxRiskScore: 80, escalationThreshold: 60 }, // Canonical
     // risk_policy missing - legacy fallback

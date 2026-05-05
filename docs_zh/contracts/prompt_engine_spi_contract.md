@@ -2,7 +2,7 @@
 
 ## 1. 范围
 
-本 contract 定义 `src/platform/prompt-engine/` 的 registry、renderer、version、rollout 与评测侧边界。
+本 contract 定义 `src/platform/prompt-engine/` 的 registry、renderer、version、release 与评测侧边界。
 
 相关文档：
 
@@ -39,7 +39,7 @@ interface PromptRegistry {
 规则：
 
 - `promptId + version` 组成稳定主键。
-- `fixedPrefix`、`domainBlock`、`variableTemplate` 任一变化都必须走新版本或明确 rollout。
+- `fixedPrefix`、`domainBlock`、`variableTemplate` 任一变化都必须走新版本或明确 release。
 - `reviewStatus !== approved` 的版本不得进入生产 `stable` 路由。
 
 ## 4. Renderer SPI
@@ -66,7 +66,7 @@ interface PromptRenderResult {
 
 - renderer 必须返回 `resolvedVersion`，禁止只返回最终字符串。
 - `fixedPrefixHash` 变化必须触发 cache invalidation 与 regression 评估。
-- `preview` 不得写入生产 rollout 或 evidence 状态。
+- `preview` 不得写入生产 release 或 evidence 状态。
 
 ## 5. Rollout 与评测
 
@@ -83,12 +83,12 @@ interface PromptReleaseDecision {
 
 规则：
 
-- prompt rollout 必须附带评测证据或显式豁免原因。
+- prompt release 必须附带评测证据或显式豁免原因。
 - domain 专属 prompt 必须与 `domain descriptor` 的兼容版本对齐。
 - 回滚必须引用上一个稳定版本，而不是临时字符串 patch。
 
 ## 6. 测试要求
 
 - unit：prompt 注册、版本解析、render 输出与 hash 稳定性。
-- integration：prompt rollout 驱动缓存失效、eval 证据、domain 兼容检查。
-- contract：registry / renderer / rollout 输出对象字段稳定，不因调用端不同而漂移。
+- integration：prompt release 驱动缓存失效、eval 证据、domain 兼容检查。
+- contract：registry / renderer / release 输出对象字段稳定，不因调用端不同而漂移。

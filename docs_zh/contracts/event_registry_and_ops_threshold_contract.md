@@ -122,7 +122,7 @@ Tier 1 的标准消费者至少包括：
 
 按领域分组：
 
-- **OAPEFLIR / release 事件**（`oapeflir.view.*`、`platform.feedback.*`、`platform.learn.*`、`platform.improve.*`、`platform.release.*`、`platform.loop.*`）：由各 hub 或 truth path 生产，投射到闭环时间线、反馈链和 rollout 诊断视图。
+- **OAPEFLIR / release 事件**（`oapeflir.view.*`、`platform.feedback.*`、`platform.learn.*`、`platform.improve.*`、`platform.release.*`、`platform.loop.*`）：由各 hub 或 truth path 生产，投射到闭环时间线、反馈链和 release 诊断视图。
 - **dispatch 事件**（`dispatch:*`）：由 `execution_dispatch_service` 或 `execution_dispatch_reconciliation_service` 生产，投射到 dispatch decision trace 与 ticket 状态。
 - **worker 事件**（`worker:*`）：由 `execution_worker_handshake_service` 和 `execution_worker_writeback_service` 生产，投射到 worker lease 状态与 fencing audit。
 - **takeover 事件**（`takeover:*`）：由 `human_takeover_service` 生产，投射到人工接管审计链。

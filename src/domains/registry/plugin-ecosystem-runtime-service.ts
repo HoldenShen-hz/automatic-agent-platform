@@ -157,9 +157,8 @@ function toPluginTarget(
     pluginId,
     pluginType,
     lifecycleState: record?.lifecycleState ?? "missing",
-    // §198-2309: Plugin is only healthy if lifecycleState is "active" or "enabled"
-    // Root cause: registered/loaded plugins were considered healthy, causing ready to be true
-    // when plugins aren't actually ready for execution
+    // §198-2309: Only fully active plugins count as runtime-ready.
+    // registered/loading/inactive/unloaded/suspended all fail the readiness gate.
     healthy: record != null && record.lifecycleState === "active",
     runtimeIsolation: record?.manifest.sandbox.runtimeIsolation ?? "unknown",
     domainId,

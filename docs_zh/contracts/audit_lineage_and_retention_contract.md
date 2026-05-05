@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与容错
 - **Feedback**：信号收集与预处理
 - **Learn**：模式检测与知识提取
-- **Improve**：改进候选评估与 rollout
+- **Improve**：改进候选评估与 release
 - **Release**：受控发布与回滚
 
 ---
@@ -42,7 +42,7 @@
 - `data_lineage_evidence`
 - `release_bundle_evidence`
 - `strategy_version_evidence`
-- `rollout_evidence`
+- `release_evidence`
 - `feedback_lineage_evidence`
 - `knowledge_provenance_evidence`
 - `memory_promotion_evidence`
@@ -151,7 +151,7 @@ flowchart LR
 - 指定租户审计包
 - 指定时间窗安全事件
 - prompt/model/policy 版本对应关系
-- feedback -> learning -> improvement -> rollout 的完整 lineage
+- `release` 的完整 lineage
 
 ## 10. 收口结论
 

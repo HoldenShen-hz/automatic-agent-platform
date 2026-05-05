@@ -236,6 +236,48 @@ test("matchDomainRecipe matches partial phrase (substring)", () => {
   assert.equal(result.recipeId, "recipe_1");
 });
 
+test("matchDomainRecipe prefers the longest matching trigger phrase across recipes", () => {
+  const recipes: DomainRecipe[] = [
+    {
+      recipeId: "recipe_short",
+      domainId: "trading",
+      triggerPhrases: ["trade"],
+      defaultWorkflowId: "workflow_short",
+      defaultToolBundleIds: [],
+      name: "Recipe Short",
+      archetype: "trading",
+      riskLevel: "medium",
+      risk_profile_ref: "trading.risk",
+      guardrail_overlay: "trading.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "trading.prompts",
+      acceptance_checklist_ref: "trading.acceptance",
+      requiredApproval: false,
+    },
+    {
+      recipeId: "recipe_long",
+      domainId: "trading",
+      triggerPhrases: ["buy", "trade options"],
+      defaultWorkflowId: "workflow_long",
+      defaultToolBundleIds: [],
+      name: "Recipe Long",
+      archetype: "trading",
+      riskLevel: "medium",
+      risk_profile_ref: "trading.risk",
+      guardrail_overlay: "trading.guardrails",
+      recommended_workflow_ids: [],
+      default_prompt_bundle_ref: "trading.prompts",
+      acceptance_checklist_ref: "trading.acceptance",
+      requiredApproval: false,
+    },
+  ];
+
+  const result = matchDomainRecipe(recipes, "please trade options on this account");
+
+  assert.ok(result);
+  assert.equal(result.recipeId, "recipe_long");
+});
+
 test("matchDomainRecipe handles empty trigger phrases array", () => {
   const recipes: DomainRecipe[] = [
     {
