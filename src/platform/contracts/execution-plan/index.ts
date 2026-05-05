@@ -1,6 +1,7 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 import type { PlanGraphBundle } from "../executable-contracts/index.js";
+import { assertNotDeprecated } from "../index.js";
 
 // Re-export canonical PlanGraphBundle from executable-contracts for backward compatibility
 export {
@@ -17,6 +18,13 @@ export {
   createPlanGraphBundle,
   createGraphPatch,
 } from "../executable-contracts/index.js";
+
+// Runtime warning for imports from legacy contract path
+console.warn(
+  "[DEPRECATED] execution-plan/ is deprecated. " +
+  "Use PlanGraphBundle from src/platform/contracts/executable-contracts instead. " +
+  "See: https://docs.example.com/platform/contracts#execution-plan-migration",
+);
 
 /**
  * @deprecated ExecutionPlanStep is deprecated per §4.4. Use PlanGraphBundle/PlanNode from executable-contracts instead.
@@ -45,13 +53,15 @@ export interface ExecutionPlanStep {
 export type ExecutionPlan = PlanGraphBundle;
 
 /**
- * @deprecated ExecutionPlan factory is deprecated per §4.4.
- * Use PlanGraphBundle from executable-contracts instead.
+ * @deprecated createExecutionPlan is deprecated per §4.4.
+ * Use createPlanGraphBundle from executable-contracts instead.
  */
 export function createExecutionPlan(input: Omit<ExecutionPlan, "planId" | "createdAt"> & {
   planId?: string;
   createdAt?: string;
 }): ExecutionPlan {
+  // R16-93 fix: Enforce deprecation guard at factory call time
+  assertNotDeprecated("ExecutionPlan");
   void input;
   void newId;
   void nowIso;

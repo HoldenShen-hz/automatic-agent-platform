@@ -4,6 +4,9 @@ import { matchDomainRecipe, type DomainRecipe } from "../../domains/recipes/inde
 import { nowIso } from "../../platform/contracts/types/ids.js";
 import {
   createHarnessRun,
+  createNodeAttempt,
+  createNodeAttemptReceipt,
+  createNodeRun,
   createPlanGraphBundle,
   normalizeDomainBindingId,
   type BudgetLedger,
@@ -727,7 +730,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       graphId: taskGraphDraft.graphId,
       constraintEnvelope,
     };
-    const harnessRouting = this.routeToHarness(goal, tasks, dependencyGraph, riskSummary);
+    const harnessRouting = this.routeToHarness(goal, tasks, dependencyGraph, riskSummary, graphAnalysis.hasCycle);
     const routedPlannerHandoff: PlannerHandoffReceipt = {
       ...plannerHandoff,
       harnessRunId: harnessRouting.harnessRun.harnessRunId,
@@ -788,6 +791,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         promise,
         new Promise<T>((_, reject) => {
           timeoutHandle = setTimeout(() => reject(new Error("goal_decomposer.llm_plan_timeout")), timeoutMs);
+          timeoutHandle.unref?.();
         }),
       ]);
     } finally {
@@ -993,6 +997,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     tasks: readonly PlannedTask[],
     dependencyGraph: readonly TaskDependency[],
     riskSummary: RiskPreview,
+    hasCycle: boolean,
   ): GoalHarnessRoutingReceipt {
     const harnessContext = this.buildHarnessRuntimeContext(goal);
     const harnessDomainId = this.resolveHarnessDomainId(tasks);
@@ -1012,6 +1017,15 @@ export class GoalDecompositionService implements GoalDecompositionPort {
     });
     const graphNodes = this.buildPlanNodes(tasks, riskSummary);
     const graphEdges = this.buildPlanEdges(dependencyGraph);
+    const entryNodeIds = graphNodes
+      .filter((node) => graphEdges.every((edge) => edge.toNodeId !== node.nodeId))
+      .map((node) => node.nodeId);
+    const terminalNodeIds = graphNodes
+      .filter((node) => graphEdges.every((edge) => edge.fromNodeId !== node.nodeId))
+      .map((node) => node.nodeId);
+    const effectiveEntryNodeIds = entryNodeIds.length > 0 ? entryNodeIds : graphNodes.slice(0, 1).map((node) => node.nodeId);
+    const effectiveTerminalNodeIds =
+      terminalNodeIds.length > 0 ? terminalNodeIds : graphNodes.slice(-1).map((node) => node.nodeId);
     const planGraphBundle = (this.options.planGraphAnalyzer ?? new PlanGraphAnalyzer()).normalize(createPlanGraphBundle({
       planGraphBundleId: `${goal.goalId}:plan_graph_bundle`,
       harnessRunId: bootstrapRun.harnessRunId,
@@ -1019,12 +1033,10 @@ export class GoalDecompositionService implements GoalDecompositionPort {
         graphId: `${goal.goalId}:plan_graph`,
         nodes: graphNodes,
         edges: graphEdges,
-        entryNodeIds: graphNodes
-          .filter((node) => graphEdges.every((edge) => edge.toNodeId !== node.nodeId))
-          .map((node) => node.nodeId),
-        terminalNodeIds: graphNodes
-          .filter((node) => graphEdges.every((edge) => edge.fromNodeId !== node.nodeId))
-          .map((node) => node.nodeId),
+        // Cyclic drafts are routed for operator review, so we still synthesize a stable
+        // entry/terminal pair to keep the receipt/audit path inspectable.
+        entryNodeIds: effectiveEntryNodeIds,
+        terminalNodeIds: effectiveTerminalNodeIds,
         joinStrategy: "all",
         graphHash: [
           goal.goalId,
@@ -1056,17 +1068,72 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       createdAt: bootstrapRun.createdAt,
       updatedAt: bootstrapRun.updatedAt,
     });
-    const initialStep = (this.options.planGraphHarnessRuntime ?? new PlanGraphHarnessRuntime()).executeNext({
-      harnessRun,
-      planGraphBundle,
-      context: harnessContext,
-    });
+    const initialStep = hasCycle
+      ? this.createBlockedInitialStep(goal, harnessRun, planGraphBundle, harnessContext.executorRef)
+      : (this.options.planGraphHarnessRuntime ?? new PlanGraphHarnessRuntime()).executeNext({
+          harnessRun,
+          planGraphBundle,
+          context: harnessContext,
+        });
 
     return {
       harnessRun,
       planGraphBundle,
       initialStep,
       routedAt: nowIso(),
+    };
+  }
+
+  private createBlockedInitialStep(
+    goal: Goal,
+    harnessRun: HarnessRun,
+    planGraphBundle: PlanGraphBundle,
+    executorRef: string,
+  ): PlanGraphHarnessRuntimeStepResult {
+    const reviewNodeId = planGraphBundle.graph.entryNodeIds[0] ?? planGraphBundle.graph.nodes[0]?.nodeId ?? `${goal.goalId}:review`;
+    const nodeRun = createNodeRun({
+      harnessRunId: harnessRun.harnessRunId,
+      planGraphBundleId: planGraphBundle.planGraphBundleId,
+      graphVersion: planGraphBundle.graphVersion,
+      nodeId: reviewNodeId,
+      status: "created",
+      currentSeq: 0,
+    });
+    const nodeAttempt = createNodeAttempt({
+      nodeRunId: nodeRun.nodeRunId,
+      attemptNo: 1,
+      attemptKind: "initial",
+      executorRef,
+      inputSnapshotRef: {
+        artifactId: `${goal.goalId}:cycle_review_snapshot`,
+        uri: `memory://${goal.goalId}/cycle-review`,
+        kind: "goal_cycle_review",
+      },
+      completedAt: nowIso(),
+    });
+    const receipt = createNodeAttemptReceipt({
+      nodeAttemptId: nodeAttempt.nodeAttemptId,
+      nodeRunId: nodeRun.nodeRunId,
+      harnessRunId: harnessRun.harnessRunId,
+      planGraphId: planGraphBundle.graph.graphId,
+      graphVersion: planGraphBundle.graphVersion,
+      receiptKind: "router",
+      status: "blocked",
+      duration: 0,
+      errorDetail: "goal_decomposer.cyclic_dependency_requires_human_review",
+      evidenceRefs: [{
+        artifactId: `${goal.goalId}:cycle_validation`,
+        uri: `memory://${goal.goalId}/cycle-validation`,
+        kind: "graph_validation",
+      }],
+      producedAt: nowIso(),
+    });
+
+    return {
+      nodeRun,
+      nodeAttempt,
+      receipt,
+      events: [],
     };
   }
 
@@ -1237,10 +1304,16 @@ export class GoalDecompositionService implements GoalDecompositionPort {
 
     const criticalTail = [...longestDistance.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
     const criticalPath: string[] = [];
-    let cursor = criticalTail;
-    while (cursor != null) {
-      criticalPath.unshift(cursor);
-      cursor = predecessor.get(cursor) ?? null;
+    if (hasCycle) {
+      criticalPath.push(...taskIds);
+    } else {
+      const visited = new Set<string>();
+      let cursor = criticalTail;
+      while (cursor != null && !visited.has(cursor)) {
+        visited.add(cursor);
+        criticalPath.unshift(cursor);
+        cursor = predecessor.get(cursor) ?? null;
+      }
     }
 
     return {

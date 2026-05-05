@@ -281,7 +281,7 @@ test("GoalDecompositionService handles goal without budget constraint", async ()
   const result = await service.decompose(goal);
   const envelope = result.plannerHandoff.constraintEnvelope;
   assert.equal(envelope.budgetLimitUsd, null);
-  assert.deepEqual(envelope.budgetAllocations, []);
+  assert.equal(envelope.budgetAllocations, undefined);
 });
 
 // R5-42: Risk propagation - tests for riskPropagation to subtasks

@@ -39,6 +39,8 @@ function createTestContext() {
     tenantId: "test_tenant",
     traceId: newId("trace"),
     emittedBy: "test_operator",
+    leaseId: "lease-test-side-effect",
+    fencingToken: "fence-test-side-effect",
   };
 }
 

@@ -81,12 +81,8 @@ function computeExecutionLoop(
   if (riskLevel === "low") {
     return ["plan", "build", "release"];
   }
-  // Medium-risk: standard pipeline with validation
-  if (riskLevel === "medium") {
-    return ["plan", "build", "review", "validate", "release"];
-  }
-  // High-risk: full review loop with mandatory repair cycle
-  // §19.5: high-risk needs stricter review loop - more validation and repair iterations
+  // Medium-risk: full review loop (same adaptive logic as high-risk)
+  // R9-13 fix: medium risk also uses adaptive stage count based on workflow step count
   const baseLoop: AgentTeamStage[] = ["plan", "build"];
   // Add review-validate cycles based on step count (more steps = more checks)
   const reviewCycles = Math.min(Math.ceil(workflowStepsCount / 2), 3);
@@ -223,7 +219,7 @@ export class AgentTeamService {
       };
     });
 
-    // Compute budget for standard lanes
+    // Compute budget for standard lanes (5 fixed lanes: planner, review, validator, repair, release + 1 extra buffer)
     const standardLaneBudget = Math.floor(parentBudget / (buildLanes.length + 6));
 
     const lanes: AgentTeamLane[] = [

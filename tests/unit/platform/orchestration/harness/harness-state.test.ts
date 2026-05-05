@@ -12,7 +12,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.default"],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["read", "write"] },
+    tool_policy: { allowedTools: ["read", "write"] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },

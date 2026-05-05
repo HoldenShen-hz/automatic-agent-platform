@@ -20,7 +20,7 @@ function createMockConstraintPack(overrides: Partial<ConstraintPack> = {}): Cons
     policyIds: ["policy_1", "policy_2"],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: {
+    tool_policy: {
       allowedTools: ["tool_a", "tool_b"],
     },
     risk_policy: {

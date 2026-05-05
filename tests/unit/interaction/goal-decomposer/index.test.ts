@@ -22,6 +22,9 @@ import {
   type DependencyEdge,
 } from "../../../../src/interaction/goal-decomposer/dependency-graph/index.js";
 
+const LONG_LLM_TRIGGER_DESCRIPTION =
+  "这是一个需要跨多个阶段持续协作、涉及复杂依赖关系和多步编排的长描述，用于稳定触发 LLM 规划分支并验证循环检测与拓扑排序逻辑。";
+
 // ─── Test Factories ───────────────────────────────────────────────────────────
 
 function createTestGoal(overrides?: Partial<Goal>): Goal {
@@ -171,7 +174,7 @@ function createValidDagGenerator(): LlmPlanGenerator {
  */
 test("ISSUE #2041: Cycle detected should NOT set plannerHandoff.state to ready_for_planner", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createCyclicPlanGenerator() });
-  const result = await service.decompose("测试循环依赖检测");
+  const result = await service.decompose(LONG_LLM_TRIGGER_DESCRIPTION);
 
   // When cycle is detected, plannerHandoff.state should NOT be ready_for_planner
   // Currently this FAILS because the bug sets ready_for_planner even with cycles
@@ -184,7 +187,7 @@ test("ISSUE #2041: Cycle detected should NOT set plannerHandoff.state to ready_f
 
 test("ISSUE #2041: Mutual cycle detected should NOT set ready_for_planner", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createMutualCycleGenerator() });
-  const result = await service.decompose("测试互循环检测");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} 互相依赖`);
 
   assert.notEqual(
     result.plannerHandoff.state,
@@ -195,7 +198,7 @@ test("ISSUE #2041: Mutual cycle detected should NOT set ready_for_planner", asyn
 
 test("ISSUE #2041: Cycle detection validation message should be present", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createCyclicPlanGenerator() });
-  const result = await service.decompose("测试循环检测消息");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} 循环检测消息`);
 
   // The cycle_detected message should be in validation messages
   assert.ok(
@@ -206,7 +209,7 @@ test("ISSUE #2041: Cycle detection validation message should be present", async 
 
 test("ISSUE #2041: requiresHumanReview should be true when cycle detected", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createCyclicPlanGenerator() });
-  const result = await service.decompose("测试循环需要审核");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} 需要人工审核`);
 
   // When cycle is detected, human review should be required
   assert.equal(result.requiresHumanReview, true, "requiresHumanReview should be true when cycle detected");
@@ -214,7 +217,7 @@ test("ISSUE #2041: requiresHumanReview should be true when cycle detected", asyn
 
 test("ISSUE #2041: taskGraphDraft.normalized should be false when cycle detected", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createCyclicPlanGenerator() });
-  const result = await service.decompose("测试循环归一化");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} 归一化检查`);
 
   // When cycle is detected, graph should not be normalized
   assert.equal(result.taskGraphDraft.normalized, false, "taskGraphDraft.normalized should be false when cycle detected");
@@ -464,7 +467,7 @@ test("GoalDecompositionService decompose detects hiring pipeline template", asyn
 
 test("GoalDecompositionService decompose calculates topologically sorted task ids", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createValidDagGenerator() });
-  const result = await service.decompose("测试拓扑排序");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} 拓扑排序`);
 
   const sorted = result.topologicallySortedTaskIds ?? [];
   const startIdx = sorted.indexOf(`${result.goalId}:start`);
@@ -603,7 +606,7 @@ test("GoalDecompositionService decompose handles budget control without LLM", as
 
 test("GoalDecompositionService decompose adds cycle_detected to validation messages", async () => {
   const service = new GoalDecompositionService({ llmPlanGenerator: createMutualCycleGenerator() });
-  const result = await service.decompose("测试循环消息");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} 循环消息`);
 
   assert.ok(result.taskGraphDraft.validationMessages.includes("goal_decomposer.cycle_detected"));
 });

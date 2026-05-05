@@ -30,6 +30,10 @@ export interface FairQueueSnapshot {
   readonly promotionRejected: boolean;
 }
 
+/**
+ * R15-57: Extended scheduling request with optional dedicated pool routing.
+ * When isIsolatedTenant is true, scheduling should use dedicated pool instead of shared.
+ */
 export interface FairSchedulingRequest {
   readonly quotaPolicy: QuotaPolicy;
   readonly claim: ResourceClaim;
@@ -37,11 +41,17 @@ export interface FairSchedulingRequest {
   readonly preemptionCandidates: readonly PreemptionCandidate[];
   /** R15-68: Requested promotion budget units (when promoting from queue to active) */
   readonly requestedPromotionBudget?: number;
+  /** R15-57: Whether this tenant requires dedicated pool routing */
+  readonly isIsolatedTenant?: boolean;
+  /** R15-57: Dedicated pool ID for isolated tenants */
+  readonly dedicatedPoolId?: string | null;
 }
 
 export interface FairSchedulingDecision {
   readonly queue: FairQueueSnapshot;
   readonly preemption: PreemptionDecision;
+  /** R15-57: Pool to use for this scheduling decision - dedicated pool for isolated tenants, shared pool otherwise */
+  readonly poolId: string | null;
 }
 
 /**
@@ -113,6 +123,9 @@ export class FairSchedulingService {
       }
     }
 
+    // R15-57: Determine which pool to use - dedicated for isolated tenants, shared otherwise
+    const poolId = request.isIsolatedTenant ? (request.dedicatedPoolId ?? null) : null;
+
     return {
       queue: {
         orderedItemIds: ordered.map((item) => item.itemId),
@@ -129,6 +142,7 @@ export class FairSchedulingService {
             : "resource_manager.quota_exceeded_preempt_low_priority"
           : null,
       },
+      poolId,
     };
   }
 

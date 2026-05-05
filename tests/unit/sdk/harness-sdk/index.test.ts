@@ -22,7 +22,7 @@ function makeConstraintPack(overrides: Partial<ConstraintPack> = {}): Constraint
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "semi_auto",
-    toolPolicy: { allowedTools: ["read_file", "write_file"] },
+    tool_policy: { allowedTools: ["read_file", "write_file"] },
     riskPolicy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
     outputPolicy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },

@@ -21,7 +21,7 @@ function createMinimalHarnessRun(overrides: Partial<HarnessRun> = {}): HarnessRu
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      toolPolicy: { allowedTools: [] },
+      tool_policy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },

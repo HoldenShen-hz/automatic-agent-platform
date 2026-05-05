@@ -35,7 +35,7 @@ function makeRuntimeState(overrides: Partial<HarnessRunRuntimeState> = {}): Harn
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "suggestion",
-      toolPolicy: { allowedTools: ["read_file", "write_file"] },
+      tool_policy: { allowedTools: ["read_file", "write_file"] },
       risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },

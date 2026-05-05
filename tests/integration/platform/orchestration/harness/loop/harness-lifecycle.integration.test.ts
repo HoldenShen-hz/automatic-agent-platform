@@ -27,7 +27,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.lifecycle.test"],
     approvalMode: "required",
     autonomyMode: "supervised",
-    toolPolicy: {
+    tool_policy: {
       allowedTools: ["read", "write", "bash"],
     },
     risk_policy: {

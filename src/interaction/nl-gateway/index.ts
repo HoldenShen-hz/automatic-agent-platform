@@ -322,6 +322,39 @@ export interface NlEntryServiceOptions {
   readonly intentModelGateway?: IntentParserModelGateway | null;
 }
 
+function mergeNlGatewayConfig(overrides?: Partial<NlGatewayConfig> | null): NlGatewayConfig {
+  const base = loadNlGatewayConfig();
+  if (overrides == null) {
+    return base;
+  }
+  return {
+    conversationWindow: {
+      ...base.conversationWindow,
+      ...overrides.conversationWindow,
+      byTaskType: {
+        ...base.conversationWindow.byTaskType,
+        ...overrides.conversationWindow?.byTaskType,
+      },
+    },
+    disambiguation: {
+      ...base.disambiguation,
+      ...overrides.disambiguation,
+    },
+    intent: {
+      ...base.intent,
+      ...overrides.intent,
+    },
+    entityExtraction: {
+      ...base.entityExtraction,
+      ...overrides.entityExtraction,
+    },
+    confidenceThresholds: {
+      ...base.confidenceThresholds,
+      ...overrides.confidenceThresholds,
+    },
+  };
+}
+
 const INTENT_CONFIDENCE_THRESHOLD = 0.8;
 const SLOT_CONFIDENCE_THRESHOLD = 0.85;
 const PROMPT_INJECTION_PATTERNS = [
@@ -1051,7 +1084,7 @@ export class NlEntryService implements NlEntryPort {
       ?? INTENT_CONFIDENCE_THRESHOLD;
     this.clarificationThreshold = Math.max(INTENT_CONFIDENCE_THRESHOLD, configuredThreshold);
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;
-    this.nlConfig = options.nlGatewayConfig ?? loadNlGatewayConfig();
+    this.nlConfig = mergeNlGatewayConfig(options.nlGatewayConfig);
     this.conversationWindowSize = options.conversationWindowSize
       ?? this.nlConfig.conversationWindow.defaultSize;
     this.conversationContextManager = new ConversationContextManager(this.nlConfig, options.memoryService ?? undefined);

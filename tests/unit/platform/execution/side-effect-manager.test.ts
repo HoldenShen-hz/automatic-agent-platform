@@ -32,6 +32,8 @@ const context = {
   traceId: "trace-1",
   emittedBy: "side-effect-manager",
   occurredAt: "2026-04-27T00:00:00.000Z",
+  leaseId: "lease-side-effect-manager",
+  fencingToken: "fence-side-effect-manager",
 };
 
 function createContext(): SideEffectManagerContext {
@@ -40,6 +42,8 @@ function createContext(): SideEffectManagerContext {
     traceId: "trace-1",
     emittedBy: "test",
     occurredAt: "2026-04-27T00:00:00.000Z",
+    leaseId: "lease-side-effect-manager",
+    fencingToken: "fence-side-effect-manager",
   };
 }
 

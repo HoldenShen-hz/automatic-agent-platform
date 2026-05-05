@@ -212,7 +212,7 @@ test("OapeflirLoopService harnessDecision reflects guard state after replan", as
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "full_auto",
-      toolPolicy: { allowedTools: ["read", "write"] },
+      tool_policy: { allowedTools: ["read", "write"] },
       risk_policy: { maxRiskScore: 50, escalationThreshold: 75 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 1, maxCost: 0.01, maxDurationMs: 1 },

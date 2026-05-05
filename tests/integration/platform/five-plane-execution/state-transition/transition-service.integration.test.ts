@@ -108,8 +108,8 @@ test("state-transition: TransitionService updates task status with real store", 
     assert.equal(execAfterFirst?.status, "prechecking", "Execution should be in prechecking");
 
     // Verify events were created
-    const events = ctx.store.listEventsForTask(taskId);
-    const statusEvents = events.filter((e) => e.eventType === "task:status_changed");
+    const eventsResult = ctx.store.listEventsForTask(taskId);
+    const statusEvents = eventsResult.events.filter((e) => e.eventType === "task:status_changed");
     assert.ok(statusEvents.length >= 1, "Should have at least one task status changed event");
   } finally {
     ctx.cleanup();
@@ -742,10 +742,10 @@ test("state-transition: TransitionService creates events during state changes", 
     });
 
     // Verify events were created
-    const events = ctx.store.listEventsForTask(taskId);
-    assert.ok(events.length >= 2, "Should have at least 2 events (task + execution status changes)");
+    const eventsResult = ctx.store.listEventsForTask(taskId);
+    assert.ok(eventsResult.events.length >= 2, "Should have at least 2 events (task + execution status changes)");
 
-    const eventTypes = events.map((e) => e.eventType);
+    const eventTypes = eventsResult.events.map((e) => e.eventType);
     assert.ok(eventTypes.includes("task:status_changed"), "Should have task status changed event");
   } finally {
     ctx.cleanup();

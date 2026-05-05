@@ -257,6 +257,65 @@ test("ConnectorFrameworkService execute invokes registered executor and records 
   assert.equal(records.length, 1);
   assert.equal(records[0]?.mode, "executor");
   assert.equal(records[0]?.executedAt, "2026-01-02T00:00:00.000Z");
+  assert.equal(records[0]?.sideEffectStatus, "confirmed");
+});
+
+test("ConnectorFrameworkService auto-wires builtin providers to concrete connector executors", () => {
+  const service = new ConnectorFrameworkService();
+  service.register({
+    connectorId: "slack-primary",
+    provider: "slack",
+    capabilities: ["send_message"],
+    supportedEvents: ["incident.opened"],
+    lifecycleState: "enabled",
+  });
+
+  const result = service.execute(
+    {
+      connectorId: "slack-primary",
+      capability: "send_message",
+      payload: { channel: "#ops", message: "hello" },
+      policyRef: "policy.connector.slack-primary",
+      secretBindings: [{ secretRef: "secret://slack-primary/token", purpose: "bot_token" }],
+    },
+    { environment: "prod", eventType: "incident.opened" },
+  );
+
+  assert.equal(result.success, true);
+
+  const [record] = service.listExecutionRecords("slack-primary");
+  assert.equal(record?.mode, "executor");
+});
+
+test("ConnectorFrameworkService records reconciled side effects for connector executions", () => {
+  const service = new ConnectorFrameworkService();
+  service.register({
+    connectorId: "side-effect-connector",
+    provider: "TestProvider",
+    capabilities: ["cap1"],
+    lifecycleState: "enabled",
+  });
+  service.registerExecutor("side-effect-connector", ({ request }) => ({
+    connectorId: request.connectorId,
+    success: true,
+    status: "succeeded",
+  }));
+
+  service.execute(
+    {
+      connectorId: "side-effect-connector",
+      capability: "cap1",
+      payload: {},
+      policyRef: "policy.connector.side-effect-connector",
+      secretBindings: [{ secretRef: "secret://side-effect-connector/token", purpose: "api_token" }],
+    },
+    { environment: "dev", executedAt: "2026-01-03T00:00:00.000Z" },
+  );
+
+  const [sideEffectRecord] = service.listSideEffectRecords("side-effect-connector");
+  assert.equal(sideEffectRecord?.sideEffect.status, "confirmed");
+  assert.equal(sideEffectRecord?.reconciliation.nextAction, "mark_confirmed");
+  assert.ok(sideEffectRecord?.transitionEventType.length);
 });
 
 test("ConnectorFrameworkService execute keeps synthesized fallback for connectors without executor", () => {

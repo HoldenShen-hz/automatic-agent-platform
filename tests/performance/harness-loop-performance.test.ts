@@ -7,7 +7,7 @@ const createMockConstraintPack = (): ConstraintPack => ({
   policyIds: [],
   approvalMode: "none",
   autonomyMode: "manual",
-  toolPolicy: { allowedTools: ["tool_a", "tool_b", "tool_c"] },
+  tool_policy: { allowedTools: ["tool_a", "tool_b", "tool_c"] },
   risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
   output_policy: { requiredEvidence: [], redactSensitiveData: false },
   budget: {

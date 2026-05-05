@@ -110,9 +110,9 @@ export interface ConstraintPack {
   readonly policyIds: readonly string[];
   readonly approvalMode: "none" | "required" | "supervised";
   readonly autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
-  readonly toolPolicy: ConstraintToolPolicy;
-  readonly riskPolicy?: ConstraintRiskPolicy;
-  readonly outputPolicy?: ConstraintOutputPolicy;
+  readonly tool_policy: ConstraintToolPolicy;
+  readonly risk_policy?: ConstraintRiskPolicy;
+  readonly output_policy?: ConstraintOutputPolicy;
   readonly budgetEnvelope?: ConstraintBudgetEnvelope;
   readonly sandboxRequirement?: ConstraintSandboxRequirement;
   readonly approvalRequirement?: ConstraintApprovalRequirement;
@@ -128,7 +128,7 @@ export interface ConstraintPack {
 }
 
 export function getConstraintRiskPolicy(constraintPack: ConstraintPack): ConstraintRiskPolicy {
-  const riskPolicy = constraintPack.riskPolicy;
+  const riskPolicy = constraintPack.risk_policy;
   if (riskPolicy == null) {
     throw new Error("harness.constraint_pack.missing_risk_policy");
   }
@@ -136,7 +136,7 @@ export function getConstraintRiskPolicy(constraintPack: ConstraintPack): Constra
 }
 
 export function getConstraintOutputPolicy(constraintPack: ConstraintPack): ConstraintOutputPolicy {
-  const outputPolicy = constraintPack.outputPolicy;
+  const outputPolicy = constraintPack.output_policy;
   if (outputPolicy == null) {
     throw new Error("harness.constraint_pack.missing_output_policy");
   }
@@ -144,11 +144,11 @@ export function getConstraintOutputPolicy(constraintPack: ConstraintPack): Const
 }
 
 export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
-  const riskPolicy = input.riskPolicy;
+  const riskPolicy = input.risk_policy;
   if (riskPolicy == null) {
     throw new Error("harness.constraint_pack.missing_risk_policy");
   }
-  const outputPolicy = input.outputPolicy;
+  const outputPolicy = input.output_policy;
   if (outputPolicy == null) {
     throw new Error("harness.constraint_pack.missing_output_policy");
   }
@@ -158,9 +158,9 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     policyIds: readonly string[];
     approvalMode: "none" | "required" | "supervised";
     autonomyMode: "suggestion" | "supervised" | "semi_auto" | "full_auto";
-    toolPolicy: { allowedTools: readonly string[] };
-    riskPolicy: { maxRiskScore: number; escalationThreshold: number };
-    outputPolicy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
+    tool_policy: { allowedTools: readonly string[] };
+    risk_policy: { maxRiskScore: number; escalationThreshold: number };
+    output_policy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
     sandboxRequirement?: ConstraintSandboxRequirement;
     approvalRequirement?: ConstraintApprovalRequirement;
     budgetEnvelope?: ConstraintBudgetEnvelope;
@@ -176,14 +176,14 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     policyIds: [...input.policyIds],
     approvalMode: input.approvalMode,
     autonomyMode: input.autonomyMode,
-    toolPolicy: {
-      allowedTools: [...input.toolPolicy.allowedTools],
+    tool_policy: {
+      allowedTools: [...input.tool_policy.allowedTools],
     },
-    riskPolicy: {
+    risk_policy: {
       maxRiskScore: riskPolicy.maxRiskScore,
       escalationThreshold: riskPolicy.escalationThreshold,
     },
-    outputPolicy: {
+    output_policy: {
       requiredEvidence: [...outputPolicy.requiredEvidence],
       redactSensitiveData: outputPolicy.redactSensitiveData,
     },
@@ -1382,7 +1382,7 @@ export class HarnessRuntimeService {
       const outputPolicy = getConstraintOutputPolicy(input.constraintPack);
       const riskPolicy = getConstraintRiskPolicy(input.constraintPack);
       const toolbelt = this.toolbeltAssembler.assemble({
-        allowedTools: input.constraintPack.toolPolicy.allowedTools,
+        allowedTools: input.constraintPack.tool_policy.allowedTools,
         requestedTools: [...(input.requestedTools ?? [])],
         requiredEvidence: outputPolicy.requiredEvidence,
       });
@@ -1901,7 +1901,7 @@ function createInitialPlanGraphBundle(input: {
             resourceKinds: ["compute"],
           },
           sideEffectProfile: {
-            mayCommitExternalEffect: input.constraintPack.toolPolicy.allowedTools.length > 0,
+            mayCommitExternalEffect: input.constraintPack.tool_policy.allowedTools.length > 0,
             reversible: true,
           },
           retryPolicyRef: "retry:harness.default",

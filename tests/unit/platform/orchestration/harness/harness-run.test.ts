@@ -19,7 +19,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.default"],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["read", "write", "execute"] },
+    tool_policy: { allowedTools: ["read", "write", "execute"] },
     risk_policy: { maxRiskScore: 100, escalationThreshold: 80 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 30, maxCost: 100, maxDurationMs: 60000 },
@@ -283,7 +283,7 @@ test("runLoop with maxSteps=1 triggers abort immediately", () => {
 test("runLoop assembles toolbelt with allowed tools", () => {
   const service = new HarnessRuntimeService();
   const constraintPack = createConstraintPack({
-    toolPolicy: { allowedTools: ["read", "write", "execute", "delete"] },
+    tool_policy: { allowedTools: ["read", "write", "execute", "delete"] },
   });
 
   const run = service.runLoop({
@@ -306,7 +306,7 @@ test("runLoop assembles toolbelt with allowed tools", () => {
 test("runLoop toolbelt tracks blocked tools", () => {
   const service = new HarnessRuntimeService();
   const constraintPack = createConstraintPack({
-    toolPolicy: { allowedTools: ["read", "write"] }, // delete not allowed
+    tool_policy: { allowedTools: ["read", "write"] }, // delete not allowed
   });
 
   const run = service.runLoop({

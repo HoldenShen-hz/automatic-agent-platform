@@ -197,7 +197,7 @@ test("OapeflirLoopService harnessDecision is present when guard triggers (R5-14)
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "full_auto",
-      toolPolicy: { allowedTools: ["read", "write"] },
+      tool_policy: { allowedTools: ["read", "write"] },
       risk_policy: { maxRiskScore: 50, escalationThreshold: 75 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 1, maxCost: 0.01, maxDurationMs: 1 }, // Very tight budget to trigger guard

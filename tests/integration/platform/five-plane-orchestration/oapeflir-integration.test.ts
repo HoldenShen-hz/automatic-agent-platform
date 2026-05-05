@@ -12,7 +12,7 @@ function makeConstraintPack(): ConstraintPack {
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "semi_auto",
-    toolPolicy: { allowedTools: ["read_file", "write_file"] },
+    tool_policy: { allowedTools: ["read_file", "write_file"] },
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 3, maxCost: 0.25, maxDurationMs: 15000 },
@@ -154,7 +154,7 @@ test("integration: ConstraintPack can be created with all required fields", () =
 
   assert.equal(pack.approvalMode, "none");
   assert.equal(pack.autonomyMode, "semi_auto");
-  assert.ok(Array.isArray(pack.toolPolicy.allowedTools));
+  assert.ok(Array.isArray(pack.tool_policy.allowedTools));
   assert.equal(typeof pack.risk_policy?.maxRiskScore, "number");
   assert.equal(typeof pack.budget?.maxSteps, "number");
 });

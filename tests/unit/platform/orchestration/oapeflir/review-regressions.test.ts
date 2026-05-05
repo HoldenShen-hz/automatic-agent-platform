@@ -196,7 +196,7 @@ test("OapeflirLoopService packages feedback-stage decision input with budget and
       policyIds: ["policy.review"],
       approvalMode: "supervised",
       autonomyMode: "semi_auto",
-      toolPolicy: { allowedTools: ["read"] },
+      tool_policy: { allowedTools: ["read"] },
       riskPolicy: { maxRiskScore: 1, escalationThreshold: 0.7 },
       outputPolicy: { requiredEvidence: [], redactSensitiveData: false },
       budgetEnvelope: { maxSteps: 5, maxCost: 20, maxDurationMs: 60000 },

@@ -26,7 +26,7 @@ function createMinimalPack(): ConstraintPack {
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["read", "write"] },
+    tool_policy: { allowedTools: ["read", "write"] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
@@ -176,7 +176,7 @@ test("normalizeConstraintPack preserves canonical fields", () => {
     policyIds: ["policy-1", "policy-2"],
     approvalMode: "required",
     autonomyMode: "supervised",
-    toolPolicy: { allowedTools: ["read", "write", "execute"] },
+    tool_policy: { allowedTools: ["read", "write", "execute"] },
     riskPolicy: { maxRiskScore: 90, escalationThreshold: 70 },
     outputPolicy: { requiredEvidence: ["audit"], redactSensitiveData: true },
     budget: { maxSteps: 50, maxCost: 500, maxDurationMs: 120000 },
@@ -187,9 +187,9 @@ test("normalizeConstraintPack preserves canonical fields", () => {
   assert.deepEqual(normalized.policyIds, ["policy-1", "policy-2"]);
   assert.equal(normalized.approvalMode, "required");
   assert.equal(normalized.autonomyMode, "supervised");
-  assert.deepEqual(normalized.toolPolicy.allowedTools, ["read", "write", "execute"]);
-  assert.deepEqual(normalized.riskPolicy, { maxRiskScore: 90, escalationThreshold: 70 });
-  assert.deepEqual(normalized.outputPolicy, { requiredEvidence: ["audit"], redactSensitiveData: true });
+  assert.deepEqual(normalized.tool_policy.allowedTools, ["read", "write", "execute"]);
+  assert.deepEqual(normalized.risk_policy, { maxRiskScore: 90, escalationThreshold: 70 });
+  assert.deepEqual(normalized.output_policy, { requiredEvidence: ["audit"], redactSensitiveData: true });
 });
 
 test("normalizeConstraintPack removes risk_policy field", () => {
@@ -225,8 +225,8 @@ test("normalizeConstraintPack preserves riskPolicy when using legacy fields", ()
   const normalized = normalizeConstraintPack(pack);
 
   // Should have riskPolicy with normalized values
-  assert.ok(normalized.riskPolicy != null);
-  assert.equal(normalized.riskPolicy.maxRiskScore, 75);
+  assert.ok(normalized.risk_policy != null);
+  assert.equal(normalized.risk_policy.maxRiskScore, 75);
   assert.equal("risk_policy" in normalized, false);
 });
 
@@ -304,17 +304,17 @@ test("normalizeConstraintPack handles approval_requirement", () => {
   assert.deepEqual(normalized.approvalRequirement.approverRoles, ["security_admin", "manager"]);
 });
 
-test("normalizeConstraintPack preserves toolPolicy allowedTools as new array", () => {
+test("normalizeConstraintPack preserves tool_policy allowedTools as new array", () => {
   const pack: ConstraintPack = {
     ...createMinimalPack(),
-    toolPolicy: { allowedTools: ["read", "write"] },
+    tool_policy: { allowedTools: ["read", "write"] },
   };
 
   const normalized = normalizeConstraintPack(pack);
 
   // Should be a new array, not same reference
-  assert.notEqual(normalized.toolPolicy.allowedTools, pack.toolPolicy.allowedTools);
-  assert.deepEqual(normalized.toolPolicy.allowedTools, ["read", "write"]);
+  assert.notEqual(normalized.tool_policy.allowedTools, pack.tool_policy.allowedTools);
+  assert.deepEqual(normalized.tool_policy.allowedTools, ["read", "write"]);
 });
 
 test("normalizeConstraintPack preserves requiredEvidence as new array", () => {
@@ -326,8 +326,8 @@ test("normalizeConstraintPack preserves requiredEvidence as new array", () => {
   const normalized = normalizeConstraintPack(pack);
 
   // Should be a new array
-  assert.notEqual(normalized.outputPolicy.requiredEvidence, pack.outputPolicy.requiredEvidence);
-  assert.deepEqual(normalized.outputPolicy.requiredEvidence, ["audit", "review"]);
+  assert.notEqual(normalized.output_policy.requiredEvidence, pack.output_policy.requiredEvidence);
+  assert.deepEqual(normalized.output_policy.requiredEvidence, ["audit", "review"]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -339,7 +339,7 @@ test("normalizeConstraintPack handles pack with only legacy fields", () => {
     policyIds: ["legacy-policy"],
     approvalMode: "supervised",
     autonomyMode: "manual",
-    toolPolicy: { allowedTools: ["bash"] },
+    tool_policy: { allowedTools: ["bash"] },
     risk_policy: { maxRiskScore: 85, escalationThreshold: 65 },
     output_policy: { requiredEvidence: ["log"], redactSensitiveData: true },
     budget: { maxSteps: 40, maxCost: 400, maxDurationMs: 80000 },
@@ -349,8 +349,8 @@ test("normalizeConstraintPack handles pack with only legacy fields", () => {
 
   assert.equal(normalized.approvalMode, "supervised");
   assert.equal(normalized.autonomyMode, "manual");
-  assert.ok(normalized.riskPolicy != null);
-  assert.ok(normalized.outputPolicy != null);
+  assert.ok(normalized.risk_policy != null);
+  assert.ok(normalized.output_policy != null);
   assert.ok(normalized.budgetEnvelope != null);
 });
 
@@ -359,7 +359,7 @@ test("normalizeConstraintPack handles pack with mixed canonical and legacy field
     policyIds: ["policy-mixed"],
     approvalMode: "required",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["read"] },
+    tool_policy: { allowedTools: ["read"] },
     riskPolicy: { maxRiskScore: 80, escalationThreshold: 60 }, // Canonical
     // risk_policy missing - legacy fallback
     output_policy: { requiredEvidence: ["scan"], redactSensitiveData: false }, // Legacy
@@ -368,8 +368,8 @@ test("normalizeConstraintPack handles pack with mixed canonical and legacy field
 
   const normalized = normalizeConstraintPack(pack);
 
-  assert.equal(normalized.riskPolicy.maxRiskScore, 80);
-  assert.equal(normalized.outputPolicy.requiredEvidence[0], "scan");
+  assert.equal(normalized.risk_policy.maxRiskScore, 80);
+  assert.equal(normalized.output_policy.requiredEvidence[0], "scan");
   assert.equal(normalized.budgetEnvelope.maxSteps, 30);
 });
 
@@ -391,12 +391,12 @@ test("normalizeConstraintPack handles empty policyIds", () => {
 test("normalizeConstraintPack handles empty allowedTools", () => {
   const pack: ConstraintPack = {
     ...createMinimalPack(),
-    toolPolicy: { allowedTools: [] },
+    tool_policy: { allowedTools: [] },
   };
 
   const normalized = normalizeConstraintPack(pack);
 
-  assert.deepEqual(normalized.toolPolicy.allowedTools, []);
+  assert.deepEqual(normalized.tool_policy.allowedTools, []);
 });
 
 test("normalizeConstraintPack handles empty requiredEvidence", () => {
@@ -407,7 +407,7 @@ test("normalizeConstraintPack handles empty requiredEvidence", () => {
 
   const normalized = normalizeConstraintPack(pack);
 
-  assert.deepEqual(normalized.outputPolicy.requiredEvidence, []);
+  assert.deepEqual(normalized.output_policy.requiredEvidence, []);
 });
 
 test("normalizeConstraintPack does not add sandboxRequirement when not present", () => {
@@ -463,7 +463,7 @@ test("ConstraintPack type allows riskPolicy and risk_policy as alternatives", ()
     risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
   };
 
-  assert.ok(packWithRiskPolicy.riskPolicy != null);
+  assert.ok(packWithRiskPolicy.risk_policy != null);
   assert.ok(packWithRiskPolicyLegacy.risk_policy != null);
 });
 
@@ -478,7 +478,7 @@ test("ConstraintPack type allows outputPolicy and output_policy as alternatives"
     output_policy: { requiredEvidence: ["scan"], redactSensitiveData: true },
   };
 
-  assert.ok(packWithOutputPolicy.outputPolicy != null);
+  assert.ok(packWithOutputPolicy.output_policy != null);
   assert.ok(packWithOutputPolicyLegacy.output_policy != null);
 });
 

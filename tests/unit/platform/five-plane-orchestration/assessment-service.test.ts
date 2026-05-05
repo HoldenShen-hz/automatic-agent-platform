@@ -83,7 +83,7 @@ test("assess with ConstraintPack approval mode required", () => {
   const situation = makeTaskSituation();
   const result = service.assess({
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "required", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } },
+    constraintPack: { policyIds: ["p1"], approvalMode: "required", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", tool_policy: { allowedTools: [] } },
   });
   assert.ok(result.riskAssessment.factors.includes("approval_mode_required"));
 });
@@ -93,7 +93,7 @@ test("assess with ConstraintPack supervised mode", () => {
   const situation = makeTaskSituation();
   const result = service.assess({
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "supervised", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } },
+    constraintPack: { policyIds: ["p1"], approvalMode: "supervised", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", tool_policy: { allowedTools: [] } },
   });
   assert.ok(result.riskAssessment.factors.includes("approval_mode_supervised"));
 });
@@ -103,7 +103,7 @@ test("assess with tight budget envelope", () => {
   const situation = makeTaskSituation();
   const result = service.assess({
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 1, maxCost: 0.1, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } },
+    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 1, maxCost: 0.1, maxDurationMs: 60000 }, autonomyMode: "semi_auto", tool_policy: { allowedTools: [] } },
   });
   assert.ok(result.riskAssessment.factors.includes("tight_budget_envelope"));
 });
@@ -248,7 +248,7 @@ test("assess works with AssessmentInput wrapper", () => {
   const situation = makeTaskSituation();
   const input = {
     taskSituation: situation,
-    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", toolPolicy: { allowedTools: [] } as const },
+    constraintPack: { policyIds: ["p1"], approvalMode: "none", budgetEnvelope: { maxSteps: 5, maxCost: 10, maxDurationMs: 60000 }, autonomyMode: "semi_auto", tool_policy: { allowedTools: [] } as const },
   };
   const result = service.assess(input);
   assert.equal(result.taskId, "test-task-001");

@@ -19,6 +19,8 @@ export interface SideEffectManagerContext {
   readonly traceId: string;
   readonly emittedBy: string;
   readonly occurredAt?: string;
+  readonly leaseId?: string;
+  readonly fencingToken?: string;
 }
 
 export class SideEffectManager {
@@ -33,9 +35,20 @@ export class SideEffectManager {
     reconciliation: ReconciliationRecord,
     context: SideEffectManagerContext,
   ): RuntimeTransitionResult<SideEffectRecord> {
+    const reasonCode = `reconciliation.${reconciliation.result}.${reconciliation.nextAction}`;
+    if (reconciliation.nextAction === "mark_confirmed" && sideEffect.status === "ambiguous") {
+      const reconciling = this.transitionSideEffect(sideEffect, "reconciling", {
+        ...context,
+        reasonCode: `${reasonCode}.reconciling`,
+      });
+      return this.transitionSideEffect(reconciling.aggregate, "confirmed", {
+        ...context,
+        reasonCode,
+      });
+    }
     return this.transitionSideEffect(sideEffect, targetStatusForReconciliation(reconciliation), {
       ...context,
-      reasonCode: `reconciliation.${reconciliation.result}.${reconciliation.nextAction}`,
+      reasonCode,
     });
   }
 
@@ -86,6 +99,8 @@ export class SideEffectManager {
         ...(sideEffect.approvalRef != null ? { humanApprovalRef: sideEffect.approvalRef } : {}),
       },
       auditRef: `audit://side-effects/${sideEffect.sideEffectId}/${context.reasonCode}`,
+      ...(context.leaseId != null ? { leaseId: context.leaseId } : {}),
+      ...(context.fencingToken != null ? { fencingToken: context.fencingToken } : {}),
       ...(context.occurredAt != null ? { occurredAt: context.occurredAt } : {}),
     });
   }
@@ -98,7 +113,7 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
     case "retry_probe":
       return "reconciling";
     case "compensate":
-      return "compensating";
+      return "compensation_required";
     case "escalate_hitl":
       return "ambiguous";
     case "mark_failed":

@@ -12,7 +12,7 @@ test("ConstraintPack type is exported and can be constructed", () => {
     policyIds: ["policy-1"],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: {
+    tool_policy: {
       allowedTools: ["tool-a", "tool-b"],
     },
     risk_policy: {
@@ -33,7 +33,7 @@ test("ConstraintPack type is exported and can be constructed", () => {
   assert.equal(pack.policyIds.length, 1);
   assert.equal(pack.approvalMode, "none");
   assert.equal(pack.autonomyMode, "auto");
-  assert.equal(pack.toolPolicy.allowedTools.length, 2);
+  assert.equal(pack.tool_policy.allowedTools.length, 2);
   assert.equal(pack.risk_policy.maxRiskScore, 10);
   assert.equal(pack.output_policy.requiredEvidence.length, 1);
   assert.equal(pack.budget.maxSteps, 100);
@@ -44,7 +44,7 @@ test("ConstraintPack allows different approval modes", () => {
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: [] },
+    tool_policy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
@@ -55,7 +55,7 @@ test("ConstraintPack allows different approval modes", () => {
     policyIds: [],
     approvalMode: "required",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: [] },
+    tool_policy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
@@ -66,7 +66,7 @@ test("ConstraintPack allows different approval modes", () => {
     policyIds: [],
     approvalMode: "supervised",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: [] },
+    tool_policy: { allowedTools: [] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
@@ -81,7 +81,7 @@ test("ConstraintPack allows different autonomy modes", () => {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: mode,
-      toolPolicy: { allowedTools: [] },
+      tool_policy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },
@@ -95,7 +95,7 @@ test("normalizeConstraintPack canonicalizes legacy snake_case policy fields", ()
     policyIds: ["policy-1"],
     approvalMode: "required",
     autonomyMode: "supervised",
-    toolPolicy: { allowedTools: ["read"] },
+    tool_policy: { allowedTools: ["read"] },
     risk_policy: { maxRiskScore: 9, escalationThreshold: 7 },
     output_policy: { requiredEvidence: ["evidence-1"], redactSensitiveData: true },
     budget: { maxSteps: 12, maxCost: 3, maxDurationMs: 30_000 },
@@ -103,8 +103,8 @@ test("normalizeConstraintPack canonicalizes legacy snake_case policy fields", ()
 
   const normalized = normalizeConstraintPack(pack);
 
-  assert.deepEqual(normalized.riskPolicy, { maxRiskScore: 9, escalationThreshold: 7 });
-  assert.deepEqual(normalized.outputPolicy, {
+  assert.deepEqual(normalized.risk_policy, { maxRiskScore: 9, escalationThreshold: 7 });
+  assert.deepEqual(normalized.output_policy, {
     requiredEvidence: ["evidence-1"],
     redactSensitiveData: true,
   });
@@ -117,7 +117,7 @@ test("ConstraintPack helpers accept both canonical and legacy policy fields", ()
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "full_auto",
-    toolPolicy: { allowedTools: [] },
+    tool_policy: { allowedTools: [] },
     riskPolicy: { maxRiskScore: 5, escalationThreshold: 4 },
     outputPolicy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 5, maxCost: 1, maxDurationMs: 1_000 },

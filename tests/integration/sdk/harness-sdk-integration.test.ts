@@ -19,7 +19,7 @@ function makeConstraintPack(): {
     policyIds: readonly string[];
     approvalMode: "none" | "required" | "supervised";
     autonomyMode: "manual" | "supervised" | "auto" | "full_auto";
-    toolPolicy: { allowedTools: readonly string[] };
+    tool_policy: { allowedTools: readonly string[] };
     risk_policy: { maxRiskScore: number; escalationThreshold: number };
     output_policy: { requiredEvidence: readonly string[]; redactSensitiveData: boolean };
     budget: { maxSteps: number; maxCost: number; maxDurationMs: number };
@@ -30,7 +30,7 @@ function makeConstraintPack(): {
       policyIds: ["default_policy"],
       approvalMode: "none",
       autonomyMode: "auto",
-      toolPolicy: { allowedTools: ["bash", "read", "write"] },
+      tool_policy: { allowedTools: ["bash", "read", "write"] },
       risk_policy: { maxRiskScore: 8, escalationThreshold: 7 },
       output_policy: { requiredEvidence: [], redactSensitiveData: false },
       budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 300000 },

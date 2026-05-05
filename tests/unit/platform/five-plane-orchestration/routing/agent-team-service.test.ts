@@ -148,13 +148,13 @@ test("buildPlan defaults to medium risk when riskLevel is omitted", () => {
     // riskLevel omitted - should default to "medium"
   });
 
-  // Medium risk should use the full 7-stage pipeline (same as high)
+  // Medium risk uses adaptive pipeline (same as high-risk for single-step workflow)
+  // With 1 step: reviewCycles = ceil(1/2) = 1, no repair (steps <= 3)
+  // Result: ["plan", "build", "review", "validate", "release"] - 5 stages
   const expectedExecutionLoop: AgentTeamStage[] = [
     "plan",
     "build",
     "review",
-    "validate",
-    "repair",
     "validate",
     "release",
   ];
@@ -162,7 +162,12 @@ test("buildPlan defaults to medium risk when riskLevel is omitted", () => {
   assert.deepEqual(
     plan.executionLoop,
     expectedExecutionLoop,
-    "Default (medium) risk should use full 7-stage pipeline",
+    "Default (medium) risk should use adaptive 5-stage pipeline for single-step workflow",
+  );
+  assert.equal(
+    plan.executionLoop.length,
+    5,
+    "Medium risk executionLoop should have 5 stages for single-step workflow",
   );
 });
 

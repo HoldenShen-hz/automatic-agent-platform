@@ -14,7 +14,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.default"],
     approvalMode: "supervised",
     autonomyMode: "supervised",
-    toolPolicy: { allowedTools: ["read", "summarize"] },
+    tool_policy: { allowedTools: ["read", "summarize"] },
     risk_policy: { maxRiskScore: 70, escalationThreshold: 55 },
     output_policy: { requiredEvidence: ["risk_profile"], redactSensitiveData: true },
     budget: { maxSteps: 8, maxCost: 5, maxDurationMs: 60_000 },

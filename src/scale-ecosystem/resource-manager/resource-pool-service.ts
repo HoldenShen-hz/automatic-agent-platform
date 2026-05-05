@@ -59,10 +59,52 @@ export class ResourcePoolService {
   // R24-5 FIX: Noisy neighbor detection threshold (50% of pool capacity)
   private static readonly NOISY_NEIGHBOR_THRESHOLD = 0.5;
 
+  // R15-57 FIX: Dedicated pool prefix for isolated tenants
+  private static readonly DEDICATED_POOL_PREFIX = "dedicated:";
+
   public registerPool(pool: ResourcePool): ResourcePool {
     const parsed = ResourcePoolSchema.parse(pool);
     this.pools.set(parsed.poolId, parsed);
     return parsed;
+  }
+
+  /**
+   * R15-57: Creates a dedicated resource pool for an isolated tenant.
+   * Returns the created pool.
+   */
+  public createDedicatedPool(tenantId: string, capacityUnits: number, resourceType: string = "worker_concurrency"): ResourcePool {
+    const poolId = `${ResourcePoolService.DEDICATED_POOL_PREFIX}${tenantId}`;
+    const pool: ResourcePool = {
+      poolId,
+      resourceType,
+      tenantId,
+      capacityUnits,
+      allocatedUnits: 0,
+      burstUnits: Math.floor(capacityUnits * 0.2), // 20% burst
+      capacityWeight: 1.0,
+      failureRate: 0,
+      isolatedAt: null,
+      consumerAllocations: {},
+    };
+    this.registerPool(pool);
+    return pool;
+  }
+
+  /**
+   * R15-57: Gets a dedicated pool for a tenant if it exists.
+   */
+  public getDedicatedPool(tenantId: string): ResourcePool | null {
+    const poolId = `${ResourcePoolService.DEDICATED_POOL_PREFIX}${tenantId}`;
+    return this.getPool(poolId);
+  }
+
+  /**
+   * R15-57: Gets all dedicated pools for isolated tenants.
+   */
+  public listDedicatedPools(): ResourcePool[] {
+    return Array.from(this.pools.values()).filter(
+      (pool) => pool.poolId.startsWith(ResourcePoolService.DEDICATED_POOL_PREFIX),
+    );
   }
 
   /**

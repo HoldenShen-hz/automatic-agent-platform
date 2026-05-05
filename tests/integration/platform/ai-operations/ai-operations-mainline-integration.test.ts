@@ -270,7 +270,7 @@ test("integration: ai operations mainline composes prompt governance, model roll
       policyIds: ["prompt_release", "model_governance", "compliance_transfer"],
       approvalMode: budget.requiresApproval ? "required" : "supervised",
       autonomyMode: "semi_auto",
-      toolPolicy: { allowedTools: ["knowledge.query", "artifact.publish"] },
+      tool_policy: { allowedTools: ["knowledge.query", "artifact.publish"] },
       risk_policy: {
         maxRiskScore: 70,
         escalationThreshold: 55,

@@ -25,7 +25,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.hitl.test"],
     approvalMode: "required",
     autonomyMode: "supervised",
-    toolPolicy: {
+    tool_policy: {
       allowedTools: ["read", "write", "bash", "delete"],
     },
     risk_policy: {
@@ -307,7 +307,7 @@ test("HITL with blocked tools returns abort instead of paused hitl", () => {
         taskId: "task-hitl-blocked-001",
         domainId: "security",
         constraintPack: createConstraintPack({
-          toolPolicy: {
+          tool_policy: {
             allowedTools: ["read"],
           },
         }),

@@ -22,13 +22,22 @@ export interface BoundedDispatchEvent {
 }
 
 export class BoundedDispatchQueueEventFactory {
-  public create(snapshot: BoundedDispatchQueueSnapshot, nodeRunId: string, tenantId: string, traceId: string): BoundedDispatchEvent {
+  public create(
+    snapshot: BoundedDispatchQueueSnapshot,
+    nodeRunId: string,
+    tenantId: string,
+    traceId: string,
+    harnessRunId?: string,
+    executionId?: string,
+  ): BoundedDispatchEvent {
     const rejected = snapshot.queueDepthBefore >= snapshot.maxQueueDepth;
     return {
       eventType: rejected ? "platform.dispatch.queue.rejected" : "platform.dispatch.queue.accepted",
       nodeRunId,
       tenantId,
       traceId,
+      ...(harnessRunId != null ? { harnessRunId } : {}),
+      ...(executionId != null ? { executionId } : {}),
       queueName: snapshot.queueName,
       queueDepthBefore: snapshot.queueDepthBefore,
       maxQueueDepth: snapshot.maxQueueDepth,

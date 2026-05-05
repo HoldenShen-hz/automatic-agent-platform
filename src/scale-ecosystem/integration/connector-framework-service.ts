@@ -1,5 +1,11 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import {
+  createReconciliationRecord,
+  createSideEffectRecord,
+  type ReconciliationRecord,
+  type SideEffectRecord,
+} from "../../platform/contracts/executable-contracts/index.js";
+import {
   ConnectorManifestSchema,
   listEnabledConnectors,
   type ConnectorManifest,
@@ -16,6 +22,10 @@ import {
   summarizeConnectorHealth,
   type ConnectorHealthReport,
 } from "./health-monitor/index.js";
+import { GitHubConnector } from "./connectors/github-connector.js";
+import { JiraConnector } from "./connectors/jira-connector.js";
+import { ServiceNowConnector } from "./connectors/servicenow-connector.js";
+import { SlackConnector } from "./connectors/slack-connector.js";
 import { SideEffectManager } from "../../platform/five-plane-execution/side-effect-manager.js";
 import type { SideEffectManagerContext } from "../../platform/five-plane-execution/side-effect-manager.js";
 
@@ -49,10 +59,20 @@ export interface ConnectorExecutionRecord {
   readonly status: ConnectorExecutionResult["status"];
   readonly success: boolean;
   readonly mode: "executor" | "synthesized";
+  readonly sideEffectId?: string;
+  readonly sideEffectStatus?: SideEffectRecord["status"];
 }
 
 export interface ConnectorFrameworkServiceOptions {
   readonly executors?: Record<string, ConnectorExecutor>;
+}
+
+export interface ConnectorSideEffectRecord {
+  readonly connectorId: string;
+  readonly executionKey: string;
+  readonly sideEffect: SideEffectRecord;
+  readonly reconciliation: ReconciliationRecord;
+  readonly transitionEventType: string;
 }
 
 // R16-36 FIX #2124: Add circuit breaker state per connector to prevent cascading failures.
@@ -70,6 +90,7 @@ export class ConnectorFrameworkService {
   private readonly health = new Map<string, ConnectorHealthReport[]>();
   private readonly executors = new Map<string, ConnectorExecutor>();
   private readonly executionRecords: ConnectorExecutionRecord[] = [];
+  private readonly sideEffectRecords: ConnectorSideEffectRecord[] = [];
   // P0 FIX: Add SideEffectManager per INV-SIDEEFFECT-001.
   // Connector execute() calls must be recorded to maintain audit trail and enable reconciliation.
   private readonly sideEffectManager = new SideEffectManager();
@@ -87,6 +108,12 @@ export class ConnectorFrameworkService {
   public register(manifest: ConnectorManifest): RegisteredConnectorManifest {
     const parsed = ConnectorManifestSchema.parse(manifest) as RegisteredConnectorManifest;
     this.manifests.set(parsed.connectorId, parsed);
+    if (!this.executors.has(parsed.connectorId)) {
+      const builtinExecutor = buildBuiltinConnectorExecutor(parsed.provider);
+      if (builtinExecutor != null) {
+        this.executors.set(parsed.connectorId, builtinExecutor);
+      }
+    }
     return parsed;
   }
 
@@ -293,11 +320,44 @@ export class ConnectorFrameworkService {
       traceId: executionKey,
       emittedBy: "ConnectorFrameworkService",
       occurredAt: executedAt,
+      leaseId: `lease:${executionKey}`,
+      fencingToken: `fence:${executionKey}`,
     };
-    // Connector execution is recorded by creating a side effect record and transitioning it.
-    // The SideEffectManager coordinates reconciliation and compensation workflows.
-    void context; // context used for future reconciliation tracking
-    void this.sideEffectManager;
+    const sideEffect = createSideEffectRecord({
+      harnessRunId: "connector_framework",
+      nodeRunId: request.connectorId,
+      nodeAttemptId: executionKey,
+      effectKind: "external_api",
+      idempotencyKey: executionKey,
+      status: "reconciling",
+      riskClass: "medium",
+      preCommitPolicyProofRef: {
+        artifactId: `connector-policy:${request.connectorId}`,
+        uri: `policy://connector/${request.connectorId}`,
+      },
+      externalRef: `${request.connectorId}:${request.capability}`,
+      deadline: new Date(new Date(executedAt).getTime() + 5 * 60_000).toISOString(),
+      createdAt: executedAt,
+      updatedAt: executedAt,
+    });
+    const reconciliation = createReconciliationRecord({
+      sideEffectId: sideEffect.sideEffectId,
+      probeKind: "connector_execution",
+      externalObservedState: {
+        connectorId: request.connectorId,
+        executionKey,
+        status,
+        mode,
+      },
+      result: success ? "confirmed" : "failed",
+      nextAction: success ? "mark_confirmed" : "mark_failed",
+      createdAt: executedAt,
+    });
+    const transition = this.sideEffectManager.applyReconciliation(
+      sideEffect,
+      reconciliation,
+      context,
+    );
     this.executionRecords.push({
       connectorId: request.connectorId,
       executionKey,
@@ -305,9 +365,21 @@ export class ConnectorFrameworkService {
       status,
       success,
       mode,
+      sideEffectId: transition.aggregate.sideEffectId,
+      sideEffectStatus: transition.aggregate.status,
+    });
+    this.sideEffectRecords.push({
+      connectorId: request.connectorId,
+      executionKey,
+      sideEffect: transition.aggregate,
+      reconciliation,
+      transitionEventType: transition.event.eventType,
     });
     if (this.executionRecords.length > 500) {
       this.executionRecords.splice(0, this.executionRecords.length - 500);
+    }
+    if (this.sideEffectRecords.length > 500) {
+      this.sideEffectRecords.splice(0, this.sideEffectRecords.length - 500);
     }
   }
 
@@ -324,6 +396,13 @@ export class ConnectorFrameworkService {
     const records = connectorId == null
       ? this.executionRecords
       : this.executionRecords.filter((record) => record.connectorId === connectorId);
+    return [...records];
+  }
+
+  public listSideEffectRecords(connectorId?: string): ConnectorSideEffectRecord[] {
+    const records = connectorId == null
+      ? this.sideEffectRecords
+      : this.sideEffectRecords.filter((record) => record.connectorId === connectorId);
     return [...records];
   }
 
@@ -353,5 +432,28 @@ export class ConnectorFrameworkService {
       throw new Error(`connector_framework.connector_not_found:${connectorId}`);
     }
     return manifest;
+  }
+}
+
+function buildBuiltinConnectorExecutor(provider: string): ConnectorExecutor | null {
+  switch (provider.trim().toLowerCase()) {
+    case "github": {
+      const connector = new GitHubConnector();
+      return ({ request }) => connector.execute(request);
+    }
+    case "slack": {
+      const connector = new SlackConnector();
+      return ({ request }) => connector.execute(request);
+    }
+    case "jira": {
+      const connector = new JiraConnector();
+      return ({ request }) => connector.execute(request);
+    }
+    case "servicenow": {
+      const connector = new ServiceNowConnector();
+      return ({ request }) => connector.execute(request);
+    }
+    default:
+      return null;
   }
 }

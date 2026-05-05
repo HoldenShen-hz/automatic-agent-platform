@@ -36,6 +36,7 @@ import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { QuotaEnforcerService, type QuotaPolicy, type MultiResourceQuotaVector, type MultiDimensionalQuotaDecision } from "../../scale-ecosystem/resource-manager/quota-enforcer/index.js";
 import { orderFairQueue, type FairQueueItem } from "../../scale-ecosystem/resource-manager/fair-queue/index.js";
 import { FairSchedulingService, type ResourceClaim } from "../../scale-ecosystem/resource-manager/fair-scheduling-service.js";
+import { ResourcePoolService, type ResourcePool } from "../../scale-ecosystem/resource-manager/resource-pool-service.js";
 import { choosePreemptionVictim, type PreemptionCandidate, type PreemptionDecision } from "../../scale-ecosystem/resource-manager/preemption/index.js";
 
 // R13-25: Tenant lifecycle state for tracking suspension, deactivation, and decommission
@@ -277,6 +278,8 @@ export interface TenantSchedulingInput {
   tenantId: string;
   requestedUnits: number;
   preemptionCandidates?: readonly PreemptionCandidate[];
+  /** R15-57: Optional dedicated pool ID for isolated tenants */
+  dedicatedPoolId?: string | null;
 }
 
 /**
@@ -289,6 +292,7 @@ export interface TenantSchedulingInput {
 export class TenantPlatformService {
   private readonly quotaEnforcer = new QuotaEnforcerService();
   private readonly fairScheduler = new FairSchedulingService();
+  private readonly resourcePools = new ResourcePoolService();
 
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
@@ -526,6 +530,10 @@ export class TenantPlatformService {
           createdAt,
           updatedAt: createdAt,
         });
+
+        // R15-57 FIX: Create a dedicated resource pool for this isolated tenant
+        // The pool is tagged with tenantId for FairSchedulingService to route tasks
+        this.resourcePools.createDedicatedPool(tenantId, 100); // Default 100 capacity units
 
         // Set as organization default if requested or if no default exists
         if (input.setAsOrganizationDefault === true || organization.defaultTenantId == null) {
@@ -860,6 +868,10 @@ export class TenantPlatformService {
     };
 
     // Use fair scheduler for queue management and preemption
+    // R15-57: Check if this tenant has a dedicated pool for isolated routing
+    const dedicatedPool = this.resourcePools.getDedicatedPool(input.tenantId);
+    const isIsolatedTenant = dedicatedPool != null;
+    const dedicatedPoolId: string | null = dedicatedPool?.poolId ?? input.dedicatedPoolId ?? null;
     const fairDecision = this.fairScheduler.schedule({
       quotaPolicy: {
         scope: "tenant",
@@ -871,6 +883,8 @@ export class TenantPlatformService {
       claim,
       queueItems: [],
       preemptionCandidates: input.preemptionCandidates ?? [],
+      isIsolatedTenant,
+      dedicatedPoolId,
     });
 
     return {

@@ -13,7 +13,7 @@ function createMockRun(overrides: Partial<HarnessRun> = {}): HarnessRun {
       policyIds: [],
       approvalMode: "none",
       autonomyMode: "auto",
-      toolPolicy: { allowedTools: [] },
+      tool_policy: { allowedTools: [] },
       risk_policy: { maxRiskScore: 10, escalationThreshold: 8 },
       output_policy: { requiredEvidence: ["evidence-1"], redactSensitiveData: false },
       budget: { maxSteps: 100, maxCost: 1000, maxDurationMs: 60000 },

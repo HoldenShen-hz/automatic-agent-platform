@@ -301,7 +301,7 @@ test("integration: ai operations coverage tests harness runtime with constraint 
       policyIds: ["prompt_release", "model_governance", "compliance_transfer"],
       approvalMode: "supervised",
       autonomyMode: "semi_auto",
-      toolPolicy: { allowedTools: ["knowledge.query", "artifact.publish"] },
+      tool_policy: { allowedTools: ["knowledge.query", "artifact.publish"] },
       risk_policy: {
         maxRiskScore: 70,
         escalationThreshold: 55,

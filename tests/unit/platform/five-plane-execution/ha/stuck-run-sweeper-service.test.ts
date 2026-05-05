@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 
 import { StuckRunSweeperService } from "../../../../../src/platform/five-plane-execution/ha/stuck-run-sweeper-service.js";
 
@@ -161,10 +162,13 @@ test("StuckRunSweeperService custom config overrides", () => {
   assert.equal(config.maxRunsPerSweep, 50);
 });
 
-test("StuckRunSweeperService onStuckRunDetected callback is called", () => {
+test("StuckRunSweeperService onStuckRunDetected callback is called", async () => {
   let callbackCalled = false;
   const service = new StuckRunSweeperService({
-    config: { stuckThresholdMs: 0 },
+    config: {
+      sweepIntervalMs: 10,
+      stuckThresholdMs: 0,
+    },
     onStuckRunDetected: () => {
       callbackCalled = true;
     },
@@ -172,12 +176,12 @@ test("StuckRunSweeperService onStuckRunDetected callback is called", () => {
 
   service.trackRun("exec-1", "task-1", null);
   service.start();
-
-  // Wait for sweep to detect stuck run
-  setTimeout(() => {
+  try {
+    await delay(50);
     assert.ok(callbackCalled, "onStuckRunDetected should be called");
+  } finally {
     service.dispose();
-  }, 100);
+  }
 });
 
 test("StuckRunSweeperService runRecoveryCycle returns RecoveryReport", async () => {

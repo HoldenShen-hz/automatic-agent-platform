@@ -15,7 +15,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.default"],
     approvalMode: "supervised",
     autonomyMode: "supervised",
-    toolPolicy: {
+    tool_policy: {
       allowedTools: ["read", "summarize"],
     },
     risk_policy: {

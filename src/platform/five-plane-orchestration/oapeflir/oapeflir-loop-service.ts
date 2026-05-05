@@ -1267,7 +1267,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
       risk: {
         currentScore: Number(input.evaluationReport.confidence.toFixed(4)),
         maxScore: 1,
-        escalationThreshold: input.constraintPack?.riskPolicy?.escalationThreshold ?? 0.8,
+        escalationThreshold: input.constraintPack?.risk_policy?.escalationThreshold ?? 0.8,
       },
       node: {
         nodeId: primaryNode?.nodeId ?? `${input.taskId}:aggregate`,

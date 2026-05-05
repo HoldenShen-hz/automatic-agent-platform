@@ -10,7 +10,7 @@ function createTestConstraintPack(overrides: Partial<ConstraintPack["budget"]> =
     policyIds: ["policy-1"],
     approvalMode: "required",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["tool-a", "tool-b"] },
+    tool_policy: { allowedTools: ["tool-a", "tool-b"] },
     risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.6 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: {

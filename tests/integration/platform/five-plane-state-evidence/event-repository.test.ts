@@ -169,13 +169,13 @@ test("integration: listEventsForTask returns only events for that specific task"
       createdAt: new Date().toISOString(),
     });
 
-    const eventsForTask1 = eventRepo.listEventsForTask("task-spec-1");
-    const eventsForTask2 = eventRepo.listEventsForTask("task-spec-2");
+    const eventsResult1 = eventRepo.listEventsForTask("task-spec-1");
+    const eventsResult2 = eventRepo.listEventsForTask("task-spec-2");
 
-    assert.equal(eventsForTask1.length, 1, "task-spec-1 should have 1 event");
-    assert.equal(eventsForTask1[0]!.id, "evt-spec-task-001");
-    assert.equal(eventsForTask2.length, 1, "task-spec-2 should have 1 event");
-    assert.equal(eventsForTask2[0]!.id, "evt-spec-task-002");
+    assert.equal(eventsResult1.events.length, 1, "task-spec-1 should have 1 event");
+    assert.equal(eventsResult1.events[0]!.id, "evt-spec-task-001");
+    assert.equal(eventsResult2.events.length, 1, "task-spec-2 should have 1 event");
+    assert.equal(eventsResult2.events[0]!.id, "evt-spec-task-002");
   } finally {
     ctx.cleanup();
   }
@@ -199,9 +199,9 @@ test("integration: listEventsForTask with limit returns specified number of even
       });
     }
 
-    const limitedEvents = eventRepo.listEventsForTask("task-limit-1", 3);
+    const limitedEventsResult = eventRepo.listEventsForTask("task-limit-1", 3);
 
-    assert.equal(limitedEvents.length, 3, "Should return at most 3 events");
+    assert.equal(limitedEventsResult.events.length, 3, "Should return at most 3 events");
   } finally {
     ctx.cleanup();
   }
@@ -279,12 +279,12 @@ test("integration: listEventsForTask returns events ordered by createdAt ascendi
       createdAt: new Date("2024-01-01T10:00:02.000Z").toISOString(),
     });
 
-    const events = eventRepo.listEventsForTask("task-order-1");
+    const eventsResult = eventRepo.listEventsForTask("task-order-1");
 
-    assert.equal(events.length, 3);
-    assert.equal(events[0]!.id, "evt-order-001", "First event should be earliest");
-    assert.equal(events[1]!.id, "evt-order-002", "Second event should be middle");
-    assert.equal(events[2]!.id, "evt-order-003", "Third event should be latest");
+    assert.equal(eventsResult.events.length, 3);
+    assert.equal(eventsResult.events[0]!.id, "evt-order-001", "First event should be earliest");
+    assert.equal(eventsResult.events[1]!.id, "evt-order-002", "Second event should be middle");
+    assert.equal(eventsResult.events[2]!.id, "evt-order-003", "Third event should be latest");
   } finally {
     ctx.cleanup();
   }

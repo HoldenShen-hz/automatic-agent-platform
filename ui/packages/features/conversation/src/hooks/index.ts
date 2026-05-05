@@ -1,6 +1,11 @@
-import type { WSClient, WSEventEnvelope } from "@aa/shared-api-client";
-import { ConversationClient, type ConversationStatus, type ConversationMessage } from "@aa/shared-nl-client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { WSClient } from "@aa/shared-api-client";
+import {
+  ConversationClient,
+  type ConversationStatus,
+  type ConversationMessage,
+  type ConversationSnapshot,
+} from "@aa/shared-nl-client";
+import { useEffect, useRef, useState } from "react";
 
 export interface ConversationVm {
   readonly messages: readonly { role: string; content: string }[];
@@ -23,8 +28,6 @@ export interface ConversationVmOptions {
 }
 
 const STORAGE_KEY = "aa-conversation-messages";
-
-type WsMessagePayload = { role: "user" | "assistant" | "system"; content: string };
 
 // §2276: Persist messages to sessionStorage so remount restores history
 function loadPersistedMessages(): ConversationMessage[] {
@@ -50,7 +53,7 @@ function persistMessages(messages: readonly ConversationMessage[]): void {
  */
 export function useConversationVm(options: ConversationVmOptions = {}): ConversationVm {
   const { wsClient, userId } = options;
-  const clientRef = useRef(new ConversationClient());
+  const clientRef = useRef<ConversationClient | null>(null);
   // §2276: Initialize from persisted storage to survive remount
   const [messages, setMessages] = useState<readonly ConversationMessage[]>(loadPersistedMessages);
   const [status, setStatus] = useState<ConversationStatus>("idle");
@@ -59,70 +62,31 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
   const [executionReady, setExecutionReady] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
 
-  // §4.6.1: Real-time event subscription for nl.session.updated / nl.plan.created
+  function applySnapshot(snapshot: ConversationSnapshot): void {
+    setMessages(snapshot.messages);
+    persistMessages(snapshot.messages);
+    setStatus(snapshot.status);
+    setPlanReady(snapshot.planReady);
+    setExecutionReady(snapshot.executionReady);
+    setIsStreaming(snapshot.isStreaming);
+  }
+
   useEffect(() => {
-    if (wsClient == null || userId == null) {
-      // Fallback: initialize from in-memory client when no WS available
-      setMessages(clientRef.current.listMessages());
-      setStatus(clientRef.current.getStatus());
-      return;
-    }
-
-    setIsStreaming(true);
-    const sessionChannel = `nl.session.${userId}`;
-    const planChannel = "nl.plan.created";
-
-    const unsubSession = wsClient.subscribe(sessionChannel, (event: WSEventEnvelope) => {
-      if (event.type === "nl.session.updated") {
-        const payload = event.payload as {
-          status?: ConversationStatus;
-          messages?: WsMessagePayload[];
-        };
-        if (payload.status) setStatus(payload.status);
-        if (payload.messages) {
-          // §4.6.1: Reconcile WS messages - WS is authoritative for real-time updates
-          const wsMessages: ConversationMessage[] = payload.messages.map((m, i) => ({
-            id: `ws-${i}`,
-            role: m.role,
-            content: m.content,
-          }));
-          setMessages(wsMessages);
-          persistMessages(wsMessages);
-        }
-      }
+    clientRef.current?.dispose();
+    const client = new ConversationClient({
+      ...(wsClient != null && userId != null ? { transport: wsClient, userId } : {}),
+      initialMessages: loadPersistedMessages(),
+      onStateChange: applySnapshot,
     });
-
-    const unsubPlan = wsClient.subscribe(planChannel, (event: WSEventEnvelope) => {
-      if (event.type === "nl.plan.created") {
-        const payload = event.payload as { planBundle?: unknown; planReady?: boolean };
-        // §4.6.1: Live PlanBundle received via WS - update UI to reflect plan ready
-        if (payload.planBundle) {
-          setPlanReady(payload.planReady ?? true);
-        }
-      }
-    });
+    clientRef.current = client;
+    applySnapshot(client.getSnapshot());
 
     return () => {
-      setIsStreaming(false);
-      unsubSession();
-      unsubPlan();
+      client.dispose();
+      if (clientRef.current === client) {
+        clientRef.current = null;
+      }
     };
-  }, [wsClient, userId]);
-
-  // §4.6.1: Sync state from in-memory client only when WS is not active
-  // §2276: Persist messages to sessionStorage so remount restores history
-  const syncInMemoryState = useCallback((
-    nextPlanReady: boolean,
-    nextExecutionReady: boolean,
-  ) => {
-    if (wsClient == null || userId == null) {
-      const msgs = [...clientRef.current.listMessages()];
-      setMessages(msgs);
-      persistMessages(msgs);
-      setStatus(clientRef.current.getStatus());
-    }
-    setPlanReady(nextPlanReady);
-    setExecutionReady(nextExecutionReady);
   }, [wsClient, userId]);
 
   return {
@@ -136,78 +100,26 @@ export function useConversationVm(options: ConversationVmOptions = {}): Conversa
       setDraftState(value);
     },
     sendPrompt() {
-      // §4.6.1: When WS is active, send via WS; otherwise fallback to in-memory
-      if (wsClient != null && userId != null) {
-        wsClient.publish({
-          channel: `nl.session.${userId}`,
-          type: "nl.prompt.sent",
-          payload: { content: draft, userId },
-        });
-        setStatus("parsing");
-      } else {
-        clientRef.current.send(draft);
-        // §2272: Do not auto-request clarification - allow direct execution
-        // User can still call requestClarification() manually if needed
-        syncInMemoryState(false, false);
-      }
+      clientRef.current?.send(draft);
     },
     buildPlan() {
-      if (wsClient != null && userId != null) {
-        wsClient.publish({
-          channel: `nl.session.${userId}`,
-          type: "nl.plan.requested",
-          payload: { userId },
-        });
-        setStatus("building");
-      } else {
-        clientRef.current.buildPlan("已生成执行计划：创建活动、拉取素材、等待审批、投放并回收指标。");
-        clientRef.current.confirm("计划已生成，是否确认进入执行？");
-        syncInMemoryState(true, false);
-      }
+      clientRef.current?.buildPlan("已生成执行计划：创建活动、拉取素材、等待审批、投放并回收指标。");
     },
     confirmPlan() {
-      if (wsClient != null && userId != null) {
-        wsClient.publish({
-          channel: `nl.session.${userId}`,
-          type: "nl.plan.confirmed",
-          payload: { userId },
-        });
-        setStatus("confirming");
-        syncInMemoryState(planReady, true);
-      } else {
-        clientRef.current.confirm("用户已确认计划，系统进入执行前检查。");
-        syncInMemoryState(planReady, true);
-      }
+      clientRef.current?.confirm("用户已确认计划，系统进入执行前检查。");
     },
     executePlan() {
       if (wsClient != null && userId != null) {
-        wsClient.publish({
-          channel: `nl.session.${userId}`,
-          type: "nl.execution.started",
-          payload: { userId },
-        });
-        setStatus("executing");
+        clientRef.current?.execute("系统开始执行计划。");
       } else {
         // P0 FIX: Execution requires a valid WS connection to the control plane.
         // Local in-memory simulation bypasses the intake pipeline (P1→P2 invariant).
         // User must establish a backend connection before executing.
-        setStatus("clarifying");
-        clientRef.current.requestClarification("执行需要与后端建立连接。当前离线状态下无法执行任务，请检查网络连接后重试。");
-        syncInMemoryState(planReady, false);
+        clientRef.current?.requestClarification("执行需要与后端建立连接。当前离线状态下无法执行任务，请检查网络连接后重试。");
       }
     },
     requestClarification() {
-      if (wsClient != null && userId != null) {
-        wsClient.publish({
-          channel: `nl.session.${userId}`,
-          type: "nl.clarification.requested",
-          payload: { userId, question: "预算上限和投放时区还不清楚，请确认。" },
-        });
-        setStatus("clarifying");
-      } else {
-        clientRef.current.requestClarification("预算上限和投放时区还不清楚，请确认。");
-        syncInMemoryState(planReady, executionReady);
-      }
+      clientRef.current?.requestClarification("预算上限和投放时区还不清楚，请确认。");
     },
   };
 }

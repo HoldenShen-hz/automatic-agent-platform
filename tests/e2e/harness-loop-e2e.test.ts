@@ -33,7 +33,7 @@ function createConstraintPack(overrides: Partial<ConstraintPack> = {}): Constrai
     policyIds: ["policy.e2e.default"],
     approvalMode: "none",
     autonomyMode: "semi_auto",
-    toolPolicy: { allowedTools: ["read", "write", "bash"] },
+    tool_policy: { allowedTools: ["read", "write", "bash"] },
     risk_policy: {
       maxRiskScore: 80,
       escalationThreshold: 60,

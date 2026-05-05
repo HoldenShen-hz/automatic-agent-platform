@@ -232,7 +232,7 @@ export class AssessmentService {
         policyIds: [],
         approvalMode: "none",
         autonomyMode: "suggestion",
-        toolPolicy: { allowedTools: [] },
+        tool_policy: { allowedTools: [] },
       },
       // §13.1.1: Output effectivePolicySnapshot produced by Assess
       effectivePolicySnapshot,

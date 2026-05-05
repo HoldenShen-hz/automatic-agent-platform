@@ -21,7 +21,7 @@ function createConstraintPack(overrides = {}): ConstraintPack {
     policyIds: [],
     approvalMode: "none",
     autonomyMode: "auto",
-    toolPolicy: { allowedTools: ["bash", "read", "write"] },
+    tool_policy: { allowedTools: ["bash", "read", "write"] },
     risk_policy: { maxRiskScore: 10, escalationThreshold: 7 },
     output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 100, maxDurationMs: 60000 },
