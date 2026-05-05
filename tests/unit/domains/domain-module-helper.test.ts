@@ -175,7 +175,6 @@ test("preset enables domain activation in registry", () => {
   const baseline = getVerticalDomainBaseline("coding");
   registry.register(baseline.definition);
 
-  registry.activate(preset.domainId, true);
   const activated = registry.activate(preset.domainId, false);
   assert.equal(activated.status, "active");
 });
@@ -188,9 +187,7 @@ test("multiple domain presets can coexist in registry", () => {
   registry.register(getVerticalDomainBaseline("coding").definition);
   registry.register(getVerticalDomainBaseline("data-engineering").definition);
 
-  registry.activate(codingPreset.domainId, true);
   registry.activate(codingPreset.domainId, false);
-  registry.activate(dataPreset.domainId, true);
   registry.activate(dataPreset.domainId, false);
 
   const domains = registry.listActive();

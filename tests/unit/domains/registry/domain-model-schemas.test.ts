@@ -31,8 +31,8 @@ test("DomainDescriptorBundleSchema parses valid bundle", () => {
     risk: {
       domainId: "test-domain",
       riskClass: "medium",
-      liabilityOwner: [],
-      compensationModel: [],
+      liabilityOwner: ["domain_owner"],
+      compensationModel: ["no_compensation"],
     },
     knowledge: { domainId: "test-domain", namespace: "test", entityTypes: [] },
     eval: { domainId: "test-domain", qualityDimensions: [] },
@@ -60,8 +60,8 @@ test("DomainDescriptorBundleSchema allows optional executionProfile", () => {
     },
     risk: {
       domainId: "test-domain",
-      liabilityOwner: [],
-      compensationModel: [],
+      liabilityOwner: ["domain_owner"],
+      compensationModel: ["no_compensation"],
     },
     knowledge: { domainId: "test-domain", namespace: "test", entityTypes: [] },
     eval: { domainId: "test-domain", qualityDimensions: [] },
@@ -287,7 +287,7 @@ test("DomainDefinitionSchema preserves other statuses", () => {
       outputContracts: [],
       promptOverrides: {},
       capabilities: {},
-      status,
+      status: state,
       externalAdapters: [],
       pluginBindings: [],
     });

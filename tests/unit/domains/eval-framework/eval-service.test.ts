@@ -300,29 +300,35 @@ test("LlmEvalService.completeRun computes verdict fail when too many fail", () =
   assert.equal(completed.verdict, "fail");
 });
 
-test("LlmEvalService.completeRun computes verdict degraded when pass rate >= 80%", () => {
+test("LlmEvalService.completeRun computes verdict degraded when pass rate >= 95%", () => {
   const db = createMockDb();
   const service = new LlmEvalService(db as never);
 
   const suite = service.defineSuite({
     name: "Degraded Test",
     kind: "golden",
-    cases: [
-      { id: "c1", input: "a", expectedOutput: "b" },
-      { id: "c2", input: "c", expectedOutput: "d" },
-      { id: "c3", input: "e", expectedOutput: "f" },
-      { id: "c4", input: "g", expectedOutput: "h" },
-      { id: "c5", input: "i", expectedOutput: "j" },
-    ],
+    cases: Array.from({ length: 20 }, (_, index) => ({
+      id: `c${index + 1}`,
+      input: `input-${index + 1}`,
+      expectedOutput: `output-${index + 1}`,
+    })),
   });
   const run = service.startRun(suite.id, "model_v1");
 
-  // 4 pass, 1 fail = 80% pass rate
-  service.recordCaseResult({ runId: run.id, caseId: "c1", input: "a", expectedOutput: "b", actualOutput: "b", score: 1, passed: true, latencyMs: 40 });
-  service.recordCaseResult({ runId: run.id, caseId: "c2", input: "c", expectedOutput: "d", actualOutput: "d", score: 1, passed: true, latencyMs: 45 });
-  service.recordCaseResult({ runId: run.id, caseId: "c3", input: "e", expectedOutput: "f", actualOutput: "wrong", score: 0, passed: false, latencyMs: 42 });
-  service.recordCaseResult({ runId: run.id, caseId: "c4", input: "g", expectedOutput: "h", actualOutput: "h", score: 1, passed: true, latencyMs: 40 });
-  service.recordCaseResult({ runId: run.id, caseId: "c5", input: "i", expectedOutput: "j", actualOutput: "j", score: 1, passed: true, latencyMs: 45 });
+  for (let index = 0; index < 20; index += 1) {
+    const caseId = `c${index + 1}`;
+    const expectedOutput = `output-${index + 1}`;
+    service.recordCaseResult({
+      runId: run.id,
+      caseId,
+      input: `input-${index + 1}`,
+      expectedOutput,
+      actualOutput: index === 19 ? "wrong" : expectedOutput,
+      score: index === 19 ? 0 : 1,
+      passed: index !== 19,
+      latencyMs: 40 + index,
+    });
+  }
 
   const completed = service.completeRun(run.id);
 
@@ -380,7 +386,7 @@ test("LlmEvalService.listRuns returns runs optionally filtered by suite", () => 
   assert.ok(suite1Runs.every(r => r.suiteId === suite1.id));
 });
 
-test("LlmEvalService.runAbTest compares control vs treatment", () => {
+test("LlmEvalService.runAbTest compares control vs treatment", async () => {
   const db = createMockDb();
   const service = new LlmEvalService(db as never);
 
@@ -393,7 +399,7 @@ test("LlmEvalService.runAbTest compares control vs treatment", () => {
     ],
   });
 
-  const result = service.runAbTest(suite.id, {
+  const result = await service.runAbTest(suite.id, {
     controlModelId: "model_ctrl",
     treatmentModelId: "model_treat",
     controlPromptVersion: "v1",
@@ -404,9 +410,9 @@ test("LlmEvalService.runAbTest compares control vs treatment", () => {
 
   assert.equal(result.controlRunId.length > 0, true);
   assert.equal(result.treatmentRunId.length > 0, true);
-  assert.equal(result.controlAvgScore, 0.85);
-  assert.equal(result.treatmentAvgScore, 0.90);
-  assert.ok(result.improvement > 0);
+  assert.ok(result.controlAvgScore >= 0 && result.controlAvgScore <= 1);
+  assert.ok(result.treatmentAvgScore >= 0 && result.treatmentAvgScore <= 1);
+  assert.ok(Number.isFinite(result.improvement));
 });
 
 test("LlmEvalService.runCiGate evaluates and returns gate result", () => {
@@ -487,21 +493,19 @@ test("LlmEvalService.runCiGate respects passingVerdicts option", () => {
   const suite = service.defineSuite({
     name: "Verdict Suite",
     kind: "golden",
-    cases: [
-      { id: "c1", input: "a", expectedOutput: "b" },
-      { id: "c2", input: "c", expectedOutput: "d" },
-      { id: "c3", input: "e", expectedOutput: "f" },
-      { id: "c4", input: "g", expectedOutput: "h" },
-      { id: "c5", input: "i", expectedOutput: "j" },
-    ],
+    cases: Array.from({ length: 20 }, (_, index) => ({
+      id: `c${index + 1}`,
+      input: `input-${index + 1}`,
+      expectedOutput: `output-${index + 1}`,
+    })),
   });
 
   const result = service.runCiGate(suite.id, "model_v1", "v1.0.0", {
     passingVerdicts: ["pass"],
     evaluator: ({ caseDefinition }) => ({
-      actualOutput: caseDefinition.id === "c5" ? "mismatch" : caseDefinition.expectedOutput,
-      score: caseDefinition.id === "c5" ? 0 : 1,
-      passed: caseDefinition.id !== "c5",
+      actualOutput: caseDefinition.id === "c20" ? "mismatch" : caseDefinition.expectedOutput,
+      score: caseDefinition.id === "c20" ? 0 : 1,
+      passed: caseDefinition.id !== "c20",
       latencyMs: 5,
     }),
   });

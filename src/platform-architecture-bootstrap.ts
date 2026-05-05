@@ -105,6 +105,13 @@ export interface PlatformArchitectureServices {
   summary: PlatformArchitectureBootstrapSummary;
 }
 
+export interface PlatformArchitectureBootstrapSummarySources {
+  layers?: readonly PlatformLayerManifest[];
+  planes?: readonly PlatformPlaneManifest[];
+  apps?: readonly PlatformAppManifest[];
+  startupTargets?: readonly PlatformStartupTarget[];
+}
+
 export const PLATFORM_LAYER_MANIFESTS: readonly PlatformLayerManifest[] = Object.freeze([
   {
     layerId: "platform",
@@ -218,11 +225,13 @@ export function listPlatformAppsByKind(kind: PlatformAppKind): readonly Platform
   return listPlatformApps().filter((app) => app.kind === kind);
 }
 
-export function buildPlatformArchitectureBootstrapSummary(): PlatformArchitectureBootstrapSummary {
-  const layers = [...listPlatformLayerManifests()];
-  const planes = [...PLATFORM_PLANE_MANIFESTS];
-  const apps = [...listPlatformApps()];
-  const startupTargets = [...buildPlatformStartupTargets()];
+export function buildPlatformArchitectureBootstrapSummary(
+  sources: PlatformArchitectureBootstrapSummarySources = {},
+): PlatformArchitectureBootstrapSummary {
+  const layers = [...(sources.layers ?? listPlatformLayerManifests())];
+  const planes = [...(sources.planes ?? PLATFORM_PLANE_MANIFESTS)];
+  const apps = [...(sources.apps ?? listPlatformApps())];
+  const startupTargets = [...(sources.startupTargets ?? buildPlatformStartupTargets())];
   return {
     generatedAt: new Date().toISOString(),
     startupEntryModule: "src/index.ts",
@@ -262,17 +271,22 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   }
   if (!registry.has("architecture.bootstrap-summary")) {
     registry.register<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary", {
-      init: () => buildPlatformArchitectureBootstrapSummary(),
+      init: () => buildPlatformArchitectureBootstrapSummary({
+        layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
+        planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
+        apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
+        startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
+      }),
       dependsOn: ["architecture.layer-catalog", "architecture.plane-catalog", "architecture.app-catalog", "architecture.startup-targets"],
     });
   }
 
   // §171/R19-93: Wait for services to be initialized before returning lazy references.
   // Verify all registered services are ready by querying them (acts as readiness gate).
-  registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
-  registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
-  registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
-  registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
+  const layers = registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
+  const planes = registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
+  const apps = registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
+  const startupTargets = registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
   const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
 
   // R9-23 fix: Add health/ready gate - validate all services are initialized before returning.
@@ -291,10 +305,10 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   }
 
   return {
-    layers: PLATFORM_LAYER_MANIFESTS,
-    planes: PLATFORM_PLANE_MANIFESTS,
-    apps: Object.freeze([...listPlatformApps()]),
-    startupTargets: Object.freeze([...buildPlatformStartupTargets()]),
+    layers,
+    planes,
+    apps,
+    startupTargets,
     summary,
   };
 }

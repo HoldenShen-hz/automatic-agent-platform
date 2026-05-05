@@ -194,6 +194,9 @@ export class DomainRecipeService {
   public register(recipe: DomainRecipe): void {
     this.recipes.set(recipe.recipeId, recipe);
     this.initializeVersionHistory(recipe.recipeId);
+    if ((this.versions.get(recipe.recipeId) ?? []).length === 0) {
+      this.recordVersion(recipe.recipeId, "1.0.0", "Initial registration");
+    }
   }
 
   public getRecipe(recipeId: string): DomainRecipe | null {
@@ -367,6 +370,6 @@ export class DomainRecipeService {
     const parts = version.split(".");
     const major = Number.parseInt(parts[0] ?? "1", 10);
     const minor = Number.parseInt(parts[1] ?? "0", 10);
-    return `${major}.${minor + 1}`;
+    return `${major}.${minor + 1}.0`;
   }
 }

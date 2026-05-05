@@ -538,7 +538,7 @@ test("validateBusinessPackManifest errors for critical risk with no sandbox", ()
   const manifest = {
     ...baseManifest,
     riskMatrix: [{ riskId: "r1", level: "critical" as const, triggers: [] as string[], mitigation: "", escalationPolicy: "" }],
-    sandboxTier: "none" as const,
+    sandboxTier: "process" as const,
   };
   const result = validateBusinessPackManifest(manifest);
 

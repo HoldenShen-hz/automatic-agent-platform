@@ -1,8 +1,16 @@
-import { DefaultPlatformAdapter } from "./base-platform-adapter";
+import { DefaultPlatformAdapter, type PlatformAdapterFactoryOptions } from "./base-platform-adapter";
 
 export class WebPlatformAdapter extends DefaultPlatformAdapter {
-  public constructor() {
-    super("web");
+  public constructor(options: Omit<PlatformAdapterFactoryOptions, "platform"> = {}) {
+    const screenSecurityDefault = options.screenSecurityDefault ?? true;
+    super("web", {
+      ...options,
+      screenSecurityDefault,
+    });
+
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.aaScreenSecurity = screenSecurityDefault ? "enabled" : "disabled";
+    }
   }
 
   // NOTE: Secure storage delegates to DefaultPlatformAdapter's in-memory store.

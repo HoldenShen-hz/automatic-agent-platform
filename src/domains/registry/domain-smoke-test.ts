@@ -88,8 +88,8 @@ export class DomainSmokeTestRunner {
     if (!profile) {
       return {
         checkId: "execution_profile",
-        passed: true,
-        details: "executionProfile not provided; skipped for legacy compatibility",
+        passed: false,
+        details: "executionProfile not provided",
       };
     }
 
@@ -215,7 +215,7 @@ export class DomainSmokeTestRunner {
   }
 
   private validateSandboxCompatibility(capabilities: DomainCapabilityProfile): SmokTestRuntimeCheck {
-    const restrictedTools = ["file_write", "exec", "sql_execute"];
+    const restrictedTools = ["bash", "command_exec", "exec", "file_write", "sql_execute"];
     const hasRestricted = capabilities.requiredTools.some((tool) =>
       restrictedTools.includes(tool)
     );

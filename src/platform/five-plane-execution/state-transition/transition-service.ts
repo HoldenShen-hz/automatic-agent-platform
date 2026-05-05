@@ -341,8 +341,8 @@ type TaskTerminalTransitionInput = {
  * Applies task status changes within a database transaction, validates the
  * transition against the task state machine, and emits a tier-1 status change event.
  *
- * §205-2420: transition() accepts TaskStatusTransitionCommand per domain-specific model.
- * For unified RuntimeTransitionCommand path, use transitionRuntime() instead.
+ * §205-2420: transition() accepts TaskStatusTransitionCommand per legacy domain model.
+ * For unified RuntimeTransitionCommand handling, use RuntimeStateMachine instead.
  */
 export class TaskTransitionService {
   public constructor(
@@ -354,9 +354,9 @@ export class TaskTransitionService {
    * Transitions task status within a database transaction.
    * Ensures atomic update and event emission.
    *
-   * @deprecated Use transitionRuntime() with RuntimeTransitionCommand instead.
-   * This method exists for backward compatibility; new code should use the unified
-   * RuntimeTransitionCommand approach.
+   * @deprecated Use RuntimeStateMachine with RuntimeTransitionCommand instead.
+   * This method exists for backward compatibility; new code should use the
+   * canonical runtime transition path.
    */
   public transition(command: TaskStatusTransitionCommand): void {
     // INV-STATE-001: Validate this is not a canonical five-plane entity

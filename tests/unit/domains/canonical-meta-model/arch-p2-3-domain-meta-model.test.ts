@@ -203,7 +203,7 @@ test("[ARCH-P2-3] computeMetaModelCompleteness returns correct percentage", () =
   };
 
   const partialCompleteness = computeMetaModelCompleteness(partialModel);
-  const expectedPartial = Math.round((5 / META_MODEL_QUESTION_IDS.length) * 100);
+  const expectedPartial = Number(((5 / META_MODEL_QUESTION_IDS.length) * 100).toFixed(2));
   assert.equal(
     partialCompleteness,
     expectedPartial,
