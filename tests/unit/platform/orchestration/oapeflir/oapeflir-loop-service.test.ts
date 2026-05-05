@@ -7,6 +7,30 @@ import type { Plan, PlanStep } from "../../../../../src/platform/orchestration/o
 import type { DualChannelStepOutput } from "../../../../../src/platform/orchestration/oapeflir/types/dual-channel-step-output.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
 
+/**
+ * Creates a minimal DualChannelStepOutput suitable for tests that need to
+ * exercise the observe, assess, plan, and feedback/learn stages without
+ * hitting the execute bridge directly (since OAPEFLIR is a projection/view
+ * that consumes stepOutputs from the caller per R9-14).
+ */
+function makeStepOutput(stepId: string): DualChannelStepOutput {
+  return {
+    stepId,
+    planRef: `plan_${stepId}`,
+    userFacingResult: {
+      summary: `Executed ${stepId}`,
+      artifacts: [`artifact:${stepId}`],
+    },
+    systemTelemetry: {
+      durationMs: 25,
+      tokensUsed: 10,
+      modelId: "test-bridge",
+      retryCount: 0,
+      validationPassed: true,
+    },
+  };
+}
+
 class DeterministicExecuteBridge implements ExecuteBridge {
   public executionCount = 0;
 
@@ -103,6 +127,7 @@ test("OapeflirLoopService aggregates task and system observation", async () => {
     taskId: "task_observe",
     objective: "Inspect observation aggregation",
     workflow,
+    stepOutputs: [makeStepOutput("step_read")],
   });
 
   assert.equal(result.observation.task.taskId, "task_observe");

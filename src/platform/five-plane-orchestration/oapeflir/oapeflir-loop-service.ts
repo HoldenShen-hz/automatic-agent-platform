@@ -1062,7 +1062,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
               occurredAt: nowIso(),
             }, currentInput.taskId);
 
-            const newGraphVersion = (this.currentPlanGraphBundle?.graphVersion ?? 0) + 1;
+            const newGraphVersion = (this.currentPlanGraphBundle?.graphVersion ?? 1) + 1;
             graphPatch = createGraphPatch({
               harnessRunId: `oapeflir_run_${currentInput.taskId}`,
               baseGraphVersion: this.currentPlanGraphBundle?.graphVersion ?? 1,
