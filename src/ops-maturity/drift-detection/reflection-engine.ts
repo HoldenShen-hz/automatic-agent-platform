@@ -57,7 +57,7 @@ export class SimpleReflectionEngine implements ReflectionEngine {
   }
 
   async reflectSingle(failure: EvidenceRecord): Promise<ReflectionRecord> {
-    return this.generateReflection(failure.failureMode ?? 'unknown', [failure]);
+    return this.generateReflection(failure.taskType, [failure]);
   }
 
   private async generateReflection(
