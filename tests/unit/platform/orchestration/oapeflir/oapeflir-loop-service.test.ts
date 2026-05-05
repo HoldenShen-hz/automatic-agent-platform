@@ -138,65 +138,76 @@ test("OapeflirLoopService aggregates task and system observation", async () => {
   assert.ok(runtimeMetricsRegistry.getCounters("oapeflir_stage_outcome_total").some((series) => series.labels.stage === "execute"));
 });
 
-test("OapeflirLoopService records execute errors when execute bridge fails", async () => {
+test("OapeflirLoopService records execute stage completion when stepOutputs are provided", async () => {
   runtimeMetricsRegistry.reset();
-  class FailingExecuteBridge extends DeterministicExecuteBridge {
-    override async executePlan(_plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
-      throw new Error("execute bridge exploded");
-    }
-  }
-
+  // R9-14: OAPEFLIR is a projection/view that consumes stepOutputs provided by the caller.
+  // The run() method no longer calls executeBridge.executePlan() directly.
+  // This test verifies that when stepOutputs are provided, the execute stage completes.
   const service = new OapeflirLoopService({
-    executeBridge: new FailingExecuteBridge(),
+    executeBridge: new DeterministicExecuteBridge(),
   });
 
-  await assert.rejects(
-    async () => {
-      await service.run({
-        taskId: "task_execute_error",
-        objective: "Exercise execute failure path",
-        workflow: {
-          workflow: { workflowId: "wf_execute_error", divisionId: "coding", steps: [] },
-          executionSteps: [
-            {
-              stepId: "step_execute",
-              divisionId: "coding",
-              roleId: "writer",
-              inputKeys: [],
-              agentId: "agent_writer",
-              outputKey: "result",
-              outputSchemaPath: null,
-              dependsOnStepIds: [],
-              dependencyTypes: {},
-              timeoutMs: 1000,
-              maxAttempts: 1,
-            },
-          ],
-          planReason: "workflow.single_step_execution",
-          dependencyEdges: [],
+  const result = await service.run({
+    taskId: "task_execute_error",
+    objective: "Exercise execute stage with caller-provided outputs",
+    workflow: {
+      workflow: { workflowId: "wf_execute_error", divisionId: "coding", steps: [] },
+      executionSteps: [
+        {
+          stepId: "step_execute",
+          divisionId: "coding",
+          roleId: "writer",
+          inputKeys: [],
+          agentId: "agent_writer",
+          outputKey: "result",
+          outputSchemaPath: null,
+          dependsOnStepIds: [],
+          dependencyTypes: {},
+          timeoutMs: 1000,
+          maxAttempts: 1,
         },
-      });
+      ],
+      planReason: "workflow.single_step_execution",
+      dependencyEdges: [],
     },
-    /execute bridge exploded/,
-  );
+    // Provide stepOutputs so the execute stage can complete
+    stepOutputs: [makeStepOutput("step_execute")],
+  });
 
+  // Verify execute stage was recorded as completed (not error, since stepOutputs were valid)
   assert.ok(
     runtimeMetricsRegistry
       .getCounters("oapeflir_stage_outcome_total")
-      .some((series) => series.labels.stage === "execute" && series.labels.result === "error" && series.value >= 1),
+      .some((series) => series.labels.stage === "execute" && series.labels.result === "completed"),
   );
+  // Verify we got step outputs back
+  assert.equal(result.stepOutputs.length, 1);
+  assert.equal(result.stepOutputs[0].stepId, "step_execute");
 });
 
 test("OapeflirLoopService preserves trace and span context on stage failures", async () => {
   runtimeMetricsRegistry.reset();
-  class FailingExecuteBridge extends DeterministicExecuteBridge {
-    override async executePlan(_plan: Plan, _context: ExecutionContext): Promise<ExecutionResult> {
-      throw new Error("execute bridge exploded");
-    }
-  }
-
+  // R9-14: OAPEFLIR is a projection/view. The execute stage consumes stepOutputs
+  // provided by the caller. To test stage error context preservation, we trigger
+  // an O→A boundary validation failure by injecting a custom observationAggregator
+  // that returns an invalid task situation.
+  const publishedEvents: Array<{ eventType: string; payload: Record<string, unknown>; taskId?: string }> = [];
   const service = new OapeflirLoopService({
-    executeBridge: new FailingExecuteBridge(),
+    executeBridge: new DeterministicExecuteBridge(),
+    observationAggregator: {
+      aggregate() {
+        return {
+          task: {} as never, // Invalid empty task will fail O→A validation
+          system: {} as never,
+          observedAt: Date.now(),
+        };
+      },
+    } as never,
+    eventPublisher: {
+      publish(input) {
+        publishedEvents.push(input as { eventType: string; payload: Record<string, unknown>; taskId?: string });
+      },
+    } as never,
   });
 
   await assert.rejects(
@@ -224,12 +235,14 @@ test("OapeflirLoopService preserves trace and span context on stage failures", a
           planReason: "workflow.single_step_execution",
           dependencyEdges: [],
         },
+        // Provide stepOutputs so we can reach the O→A boundary where the error occurs
+        stepOutputs: [makeStepOutput("step_execute")],
       });
     },
     (error: unknown) => {
       assert.ok(error instanceof Error);
-      assert.equal(error.name, "OapeflirStageError:plan");
-      assert.match(error.message, /\[stage:plan\]\[task:task_stage_context\]\[trace:[0-9a-f]{32}\]\[span:[0-9a-f]{16}\]/i);
+      assert.equal(error.name, "OapeflirStageError:assess");
+      assert.match(error.message, /\[stage:assess\]\[task:task_stage_context\]\[trace:[0-9a-f]{32}\]\[span:[0-9a-f]{16}\]/i);
       const stageError = error as Error & {
         stage?: string;
         taskId?: string;
@@ -237,7 +250,7 @@ test("OapeflirLoopService preserves trace and span context on stage failures", a
         spanId?: string;
         parentSpanId?: string | null;
       };
-      assert.equal(stageError.stage, "plan");
+      assert.equal(stageError.stage, "assess");
       assert.equal(stageError.taskId, "task_stage_context");
       assert.match(stageError.traceId ?? "", /^[0-9a-f]{32}$/i);
       assert.match(stageError.spanId ?? "", /^[0-9a-f]{16}$/i);
@@ -344,6 +357,7 @@ test("OapeflirLoopService skips learn-driven stages when no feedback signals are
       dependencyEdges: [],
     },
     feedbackSignals: [],
+    stepOutputs: [makeStepOutput("step_skip")],
   });
 
   assert.equal(result.learningSignals.length, 0);
