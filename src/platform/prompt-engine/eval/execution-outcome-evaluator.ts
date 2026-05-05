@@ -260,14 +260,12 @@ export class ExecutionOutcomeEvaluator {
     const riskBoundary = this.evaluateRiskBoundary(planGraphBundle);
     const timingSlo = this.evaluateTimingSLO(planGraphBundle, actualDurationMs);
 
-    return {
+    const result: ExecutionOutcomeEvaluation = {
       evaluationId: newId("outcome_eval"),
       taskId: planGraphBundle.harnessRunId,
       passed,
       qualityScore: Number(qualityScore.toFixed(2)),
       score: Number(qualityScore.toFixed(2)),
-      baselineScore: baselineScore !== undefined ? Number(baselineScore.toFixed(2)) : undefined,
-      deltaScore: deltaScore !== undefined ? Number(deltaScore.toFixed(2)) : undefined,
       nextAction,
       reasons: feedback.signals.map(
         (signal) =>
@@ -291,6 +289,16 @@ export class ExecutionOutcomeEvaluator {
       riskBoundary,
       timingSlo,
     };
+
+    // With exactOptionalPropertyTypes: true, omit optional properties instead of setting them to undefined
+    if (baselineScore !== undefined) {
+      result.baselineScore = Number(baselineScore.toFixed(2));
+    }
+    if (deltaScore !== undefined) {
+      result.deltaScore = Number(deltaScore.toFixed(2));
+    }
+
+    return result;
   }
 
   /**

@@ -35,12 +35,12 @@ export interface DlqAction {
 }
 
 interface DlqArgumentValues {
-  action?: string;
-  queue?: string;
-  limit?: string;
-  channel?: string;
-  "retry-limit"?: string;
-  yes?: boolean;
+  action: string | undefined;
+  queue: string | undefined;
+  limit: string | undefined;
+  channel: string | undefined;
+  "retry-limit": string | undefined;
+  yes: boolean | undefined;
 }
 
 interface DlqOperationAuditRecord {
@@ -95,7 +95,7 @@ function readArgumentValues(input?: DlqArgumentValues): DlqArgumentValues {
     limit: values.limit,
     channel: values.channel,
     "retry-limit": values["retry-limit"],
-    yes: values.yes === true,
+    yes: values.yes,
   };
 }
 
@@ -300,12 +300,12 @@ export function retryDeadLetters(
     const retried = db.sql.transaction(() => {
       const changes =
         options.limit == null
-          ? sql.prepare(`
+          ? Number(sql.prepare(`
             UPDATE queue_jobs
             SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
             WHERE status = 'dead_letter'
-          `).run().changes
-          : sql.prepare(`
+          `).run().changes)
+          : Number(sql.prepare(`
             UPDATE queue_jobs
             SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
             WHERE id IN (
@@ -315,7 +315,7 @@ export function retryDeadLetters(
               ORDER BY updated_at DESC, id ASC
               LIMIT ?
             )
-          `).run(options.limit).changes;
+          `).run(options.limit).changes);
       recordDlqAudit(sql, {
         operationId,
         action: "retry",
@@ -358,12 +358,12 @@ export function purgeDeadLetters(
   if (queue === "gateway") {
     const result = db.sql.transaction(() => {
       ensureArchiveTable(sql, "gateway_dead_letters_archive", "gateway_dead_letters");
-      const archived = sql.prepare(`
+      const archived = Number(sql.prepare(`
         INSERT INTO gateway_dead_letters_archive
         SELECT *, ?, ?
         FROM gateway_dead_letters
-      `).run(archivedAt, operationId).changes;
-      const deleted = sql.prepare(`DELETE FROM gateway_dead_letters`).run().changes;
+      `).run(archivedAt, operationId).changes);
+      const deleted = Number(sql.prepare(`DELETE FROM gateway_dead_letters`).run().changes);
       recordDlqAudit(sql, {
         operationId,
         action: "purge",
@@ -381,13 +381,13 @@ export function purgeDeadLetters(
   } else if (queue === "jobs") {
     const result = db.sql.transaction(() => {
       ensureArchiveTable(sql, "queue_jobs_dead_letters_archive", "queue_jobs");
-      const archived = sql.prepare(`
+      const archived = Number(sql.prepare(`
         INSERT INTO queue_jobs_dead_letters_archive
         SELECT *, ?, ?
         FROM queue_jobs
         WHERE status = 'dead_letter'
-      `).run(archivedAt, operationId).changes;
-      const deleted = sql.prepare(`DELETE FROM queue_jobs WHERE status = 'dead_letter'`).run().changes;
+      `).run(archivedAt, operationId).changes);
+      const deleted = Number(sql.prepare(`DELETE FROM queue_jobs WHERE status = 'dead_letter'`).run().changes);
       recordDlqAudit(sql, {
         operationId,
         action: "purge",
@@ -405,12 +405,12 @@ export function purgeDeadLetters(
   } else if (queue === "events") {
     const result = db.sql.transaction(() => {
       ensureArchiveTable(sql, "event_dead_letters_archive", "event_dead_letters");
-      const archived = sql.prepare(`
+      const archived = Number(sql.prepare(`
         INSERT INTO event_dead_letters_archive
         SELECT *, ?, ?
         FROM event_dead_letters
-      `).run(archivedAt, operationId).changes;
-      const deleted = sql.prepare(`DELETE FROM event_dead_letters`).run().changes;
+      `).run(archivedAt, operationId).changes);
+      const deleted = Number(sql.prepare(`DELETE FROM event_dead_letters`).run().changes);
       recordDlqAudit(sql, {
         operationId,
         action: "purge",

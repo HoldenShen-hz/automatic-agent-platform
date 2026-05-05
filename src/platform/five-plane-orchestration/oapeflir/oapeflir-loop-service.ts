@@ -44,7 +44,7 @@ import { OapeflirStageTimelineBuilder, type OapeflirStageRecord } from "./stage-
 import { buildFromStepResults } from "./handoff-builder.js";
 import { serializeHandoff } from "./handoff-serializer.js";
 import type { AgentHandoff } from "./handoff-model.js";
-import type { ExecuteBridge } from "./execute-bridge.js";
+import type { ExecuteBridge, ExecutionContext } from "./execute-bridge.js";
 import { RuntimeExecuteBridge, MockExecuteBridge } from "./runtime-execute-bridge.js";
 import { executeOapeflirRuntimePlan } from "../../execution/oapeflir/runtime-plan-executor.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
