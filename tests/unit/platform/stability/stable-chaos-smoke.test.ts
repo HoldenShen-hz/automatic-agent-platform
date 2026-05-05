@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -117,7 +117,6 @@ test("writeStableChaosSmokeReport writes report to file", () => {
   // Verify file was written
   assert.ok(existsSync(outputFile), "Report file should be written");
   // Verify content was actually written to disk by reading it back
-  const { readFileSync } = require("node:fs");
   const content = readFileSync(outputFile, "utf8");
   assert.ok(content.includes("startedAt"), "Report file should contain startedAt");
 });

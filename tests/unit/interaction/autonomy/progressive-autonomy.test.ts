@@ -266,7 +266,7 @@ test("ProgressiveAutonomyService evaluateProfile incident_response trigger when 
   const service = new ProgressiveAutonomyService();
   const profile = makeProfile({
     capabilityScores: [
-      makeScore({ capabilityId: "cap-1", currentAutonomy: "supervised", totalExecutions: 100, successfulExecutions: 95, incidents: 1, lastIncidentSeverity: "P1" }),
+      makeScore({ capabilityId: "cap-1", currentAutonomy: "supervised", totalExecutions: 100, successfulExecutions: 95, incidents: 1, lastIncidentSeverity: "P1", lastIncidentAgeDays: 0 }),
     ],
   });
   const result = service.evaluateProfile(profile, { freezeOnIncident: true, severityBasedDemotion: true });

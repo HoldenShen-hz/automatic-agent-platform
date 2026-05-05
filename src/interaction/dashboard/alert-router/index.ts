@@ -51,6 +51,16 @@ const DEFAULT_CONFIG: AlertRouterConfig = {
   enableHaptic: true,
 };
 
+export function sortAttentionQueue(items: readonly AttentionItem[]): AttentionItem[] {
+  return [...items].sort((left, right) => {
+    const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+    return left.createdAt.localeCompare(right.createdAt);
+  });
+}
+
 /**
  * Alert Router Service
  *

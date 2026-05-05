@@ -75,6 +75,56 @@ export type {
   SloStatus,
 } from "./slo-alerting/types.js";
 
+// ── Multi-Window Burn Rate Configuration ───────────────────────────────
+
+/**
+ * Burn rate window configuration.
+ * Each window has a threshold that triggers an alert when exceeded.
+ */
+export interface BurnRateWindow {
+  /** Window duration in milliseconds */
+  windowMs: number;
+  /** Human-readable name for the window */
+  name: string;
+  /** Burn rate threshold - alert fires when burn rate exceeds this value */
+  threshold: number;
+  /** Alert severity when threshold is exceeded */
+  severity: AlertSeverity;
+}
+
+/**
+ * Multi-window burn rate alerting strategy per architecture spec §R14-08.
+ * Uses multiple time windows to reduce false positives while detecting sustained degradation.
+ */
+export const MULTI_WINDOW_BURN_RATE_CONFIG: BurnRateWindow[] = [
+  { windowMs: 60 * 60 * 1_000, name: "1h", threshold: 14.4, severity: "critical" },   // SEV2: 1h > 14.4x
+  { windowMs: 6 * 60 * 60 * 1_000, name: "6h", threshold: 6, severity: "warning" }, // SEV3: 6h > 6x
+  { windowMs: 24 * 60 * 60 * 1_000, name: "24h", threshold: 3, severity: "warning" },
+  { windowMs: 7 * 24 * 60 * 60 * 1_000, name: "7d", threshold: 1.5, severity: "warning" },
+];
+
+/**
+ * Result of burn rate evaluation for a single window.
+ */
+export interface BurnRateResult {
+  windowName: string;
+  windowMs: number;
+  burnRate: number;
+  threshold: number;
+  exceeded: boolean;
+}
+
+/**
+ * Result of multi-window burn rate evaluation.
+ */
+export interface MultiWindowBurnRateResult {
+  sloId: string;
+  results: BurnRateResult[];
+  highestSeverity: AlertSeverity | null;
+  shouldAlert: boolean;
+  alertWindow: BurnRateResult | null;
+}
+
 // ── Alert Delivery Channels ────────────────────────────────────────────
 
 /**
@@ -961,6 +1011,107 @@ export class SloAlertingService {
     }
 
     return Math.max(0, avgValue) / slo.targetValue;
+  }
+
+  /**
+   * Computes burn rates for multiple time windows.
+   *
+   * Implements the multi-window burn rate alerting strategy per architecture spec:
+   * - 1h window > 14.4x burn rate → SEV2 (critical) alert
+   * - 6h window > 6x burn rate → SEV3 (warning) alert
+   *
+   * @param sloId - The SLO ID to compute burn rates for
+   * @param windows - Array of burn rate window configurations (defaults to MULTI_WINDOW_BURN_RATE_CONFIG)
+   * @returns Multi-window burn rate result with per-window analysis and highest severity
+   */
+  public computeMultiWindowBurnRate(
+    sloId: string,
+    windows: BurnRateWindow[] = MULTI_WINDOW_BURN_RATE_CONFIG,
+  ): MultiWindowBurnRateResult {
+    const results: BurnRateResult[] = [];
+    let highestSeverity: AlertSeverity | null = null;
+    let shouldAlert = false;
+    let alertWindow: BurnRateResult | null = null;
+
+    for (const config of windows) {
+      const burnRate = this.computeBurnRate(sloId, config.windowMs);
+      const exceeded = burnRate > config.threshold;
+
+      const result: BurnRateResult = {
+        windowName: config.name,
+        windowMs: config.windowMs,
+        burnRate,
+        threshold: config.threshold,
+        exceeded,
+      };
+      results.push(result);
+
+      // Track highest severity alert window
+      if (exceeded) {
+        shouldAlert = true;
+        if (highestSeverity === null || this.compareSeverity(config.severity, highestSeverity) > 0) {
+          highestSeverity = config.severity;
+          alertWindow = result;
+        }
+      }
+    }
+
+    return {
+      sloId,
+      results,
+      highestSeverity,
+      shouldAlert,
+      alertWindow,
+    };
+  }
+
+  /**
+   * Evaluates burn rate and fires alert if thresholds are exceeded.
+   * Returns the alert event if fired, null otherwise.
+   *
+   * @param sloId - The SLO ID to evaluate
+   * @param windows - Burn rate window configuration
+   * @param ruleId - Alert rule ID for the alert event
+   */
+  public evaluateBurnRateAndAlert(
+    sloId: string,
+    windows: BurnRateWindow[] = MULTI_WINDOW_BURN_RATE_CONFIG,
+    ruleId: string = "slo_burn_rate",
+  ): AlertEvent | null {
+    const burnRateResult = this.computeMultiWindowBurnRate(sloId, windows);
+
+    if (!burnRateResult.shouldAlert || !burnRateResult.alertWindow) {
+      return null;
+    }
+
+    const slo = this.getSlo(sloId);
+    const sloName = slo?.name ?? sloId;
+    const window = burnRateResult.alertWindow;
+
+    const title = `SLO Burn Rate Alert: ${sloName}`;
+    const detail =
+      `SLO "${sloName}" (${sloId}) burn rate exceeds threshold.\n` +
+      `Window: ${window.windowName}, Burn Rate: ${window.burnRate.toFixed(2)}x, ` +
+      `Threshold: ${window.threshold}x.\n` +
+      `All windows evaluated: ${burnRateResult.results.map(r =>
+        `${r.windowName}: ${r.burnRate.toFixed(2)}x ${r.exceeded ? "(EXCEEDED)" : "(ok)"}`
+      ).join(" | ")}`;
+
+    return this.fireAlert(ruleId, title, detail);
+  }
+
+  /**
+   * Compares two alert severities for ordering.
+   * Returns positive if left is higher severity (worse), negative if lower.
+   */
+  private compareSeverity(left: AlertSeverity, right: AlertSeverity): number {
+    const severityOrder: Record<AlertSeverity, number> = {
+      "info": 0,
+      "warning": 1,
+      "critical": 2,
+      "page": 3,
+    };
+    return (severityOrder[left] ?? 0) - (severityOrder[right] ?? 0);
   }
 
   /**

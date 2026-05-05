@@ -39,6 +39,7 @@ export interface CDCReplicationCheckpoint {
   readonly targetRegionId: string;
   readonly lastEventId: string | null;
   readonly lastEventSequence: number;
+  readonly lastEventTime: string; // ISO timestamp of last replicated event for time-based lag
   readonly processedAt: string;
 }
 
@@ -784,6 +785,7 @@ export class CDCReplicationService {
         targetRegionId: config.targetRegionId,
         lastEventId: null,
         lastEventSequence: 0,
+        lastEventTime: nowIso(),
         processedAt: nowIso(),
       });
     }
@@ -874,12 +876,15 @@ export class CDCReplicationService {
     const key = this.getConfigKey(sourceRegionId, targetRegionId);
 
     const lastEvent = batch.events[batch.events.length - 1];
+    // Capture the last event's timestamp for time-based lag calculation
+    const lastEventTime = lastEvent?.createdAt ?? nowIso();
     const checkpoint: CDCReplicationCheckpoint = {
       checkpointId: this.checkpoints.get(key)?.checkpointId ?? newId("cdc_checkpoint"),
       sourceRegionId,
       targetRegionId,
       lastEventId: lastEvent?.id ?? null,
       lastEventSequence: batch.endSequence,
+      lastEventTime,
       processedAt: nowIso(),
     };
 
@@ -961,18 +966,26 @@ export class CDCReplicationService {
   }
 
   /**
-   * Calculate replication lag (events behind)
+   * Calculate replication lag in milliseconds based on time since last replicated event.
+   * This replaces the previous event-count based calculation with true time-based lag.
    */
   public getReplicationLag(
     sourceRegionId: string,
     targetRegionId: string,
-    totalSourceEvents: number,
+    _totalSourceEvents?: number,
   ): number {
     const checkpoint = this.getCheckpoint(sourceRegionId, targetRegionId);
-    if (!checkpoint) {
-      return totalSourceEvents;
+    if (!checkpoint || !checkpoint.lastEventTime) {
+      // No checkpoint or no event timestamp yet - return 0 (no lag measurable)
+      return 0;
     }
-    return Math.max(0, totalSourceEvents - checkpoint.lastEventSequence);
+
+    const lastEventMs = new Date(checkpoint.lastEventTime).getTime();
+    const nowMs = Date.now();
+    const lagMs = nowMs - lastEventMs;
+
+    // Lag should never be negative - if clock skew causes negative, return 0
+    return Math.max(0, lagMs);
   }
 
   /**

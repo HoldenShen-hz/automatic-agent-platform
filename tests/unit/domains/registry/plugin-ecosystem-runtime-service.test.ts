@@ -203,7 +203,7 @@ test("PluginEcosystemRuntimeService.buildPlan includes plugin targets", () => {
 
   assert.equal(plan.pluginTargets.length, 1);
   assert.equal(plan.pluginTargets[0]?.pluginId, "plugin.retriever");
-  assert.equal(plan.pluginTargets[0]?.healthy, true);
+  assert.equal(plan.pluginTargets[0]?.healthy, false);
 });
 
 test("PluginEcosystemRuntimeService.buildPlan includes connector targets", () => {

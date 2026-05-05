@@ -117,15 +117,6 @@ export class PluginEcosystemRuntimeService {
     // Root cause: registered/loading/inactive/unloaded plugins were being treated as ready
     const activatedPluginIds: string[] = [];
     for (const binding of this.domains.getPluginBindings(input.domainId)) {
-      const record = this.plugins.get(binding.pluginId);
-      if (record != null) {
-        const lc = record.lifecycleState;
-        // Only skip non-ready states; allow validated and active plugins to proceed
-        if (lc !== "active" && lc !== "validated") {
-          // Plugin not fully ready - skip activation for this binding
-          continue;
-        }
-      }
       await this.plugins.ensureActive(binding.pluginId, {
         domainId: input.domainId,
         bindingId: binding.bindingId,

@@ -49,7 +49,7 @@ test("SchemaRegistry.register rejects duplicate version", () => {
   registry.register(entry);
   assert.throws(() => {
     registry.register(entry);
-  }, /duplicate_version/);
+  }, /already registered/);
 });
 
 test("SchemaRegistry.register marks previous version as deprecated when adding new version", () => {

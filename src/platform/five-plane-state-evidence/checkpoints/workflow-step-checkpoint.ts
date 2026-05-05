@@ -18,8 +18,8 @@
  * @see Workflow Contract: docs_zh/contracts/task_and_workflow_contract.md
  */
 
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { ArtifactRecord, ArtifactRef, StepOutputRecord } from "../../contracts/types/domain.js";
@@ -199,13 +199,14 @@ export function createWorkflowStepCheckpoint(
  * Validates that the artifact is a workflow_step_snapshot type and that
  * the file exists, then parses and validates the JSON content.
  */
-export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStepCheckpoint | null {
+export async function readWorkflowStepCheckpoint(record: ArtifactRecord): Promise<WorkflowStepCheckpoint | null> {
   if (record.kind !== "workflow_step_snapshot" || !existsSync(record.storagePath)) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(readFileSync(record.storagePath, "utf8")) as unknown;
+    const content = await readFile(record.storagePath, "utf8");
+    const parsed = JSON.parse(content) as unknown;
     return isWorkflowStepCheckpoint(parsed) ? parsed : null;
   } catch (err) {
     logger.log({

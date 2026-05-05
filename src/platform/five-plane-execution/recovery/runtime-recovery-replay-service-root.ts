@@ -230,7 +230,7 @@ export class RuntimeRecoveryReplayService {
    * @returns Complete task recovery replay report
    * @throws Error if task is not found
    */
-  public buildTaskReplayReport(taskId: string, generatedAt: string = nowIso()): TaskRecoveryReplayReport {
+  public async buildTaskReplayReport(taskId: string, generatedAt: string = nowIso()): Promise<TaskRecoveryReplayReport> {
     const task = this.store.task.getTask(taskId);
     if (!task) {
       throw new StorageError("storage.task_not_found", `Task not found: ${taskId}`, {
@@ -240,7 +240,7 @@ export class RuntimeRecoveryReplayService {
     }
 
     // Get comprehensive recovery view from the recovery service
-    const view = this.recoveryService.buildRuntimeRecoveryView(taskId);
+    const view = await this.recoveryService.buildRuntimeRecoveryView(taskId);
 
     // Get all recovery events for this task, sorted chronologically
     const recoveryEvents = this.store
@@ -291,7 +291,7 @@ export class RuntimeRecoveryReplayService {
    * @returns Execution recovery replay report
    * @throws Error if execution is not found
    */
-  public buildExecutionReplayReport(executionId: string, generatedAt: string = nowIso()): ExecutionRecoveryReplayReport {
+  public async buildExecutionReplayReport(executionId: string, generatedAt: string = nowIso()): Promise<ExecutionRecoveryReplayReport> {
     const execution = this.store.dispatch.getExecution(executionId);
     if (!execution) {
       throw new StorageError("storage.execution_not_found", `Execution not found: ${executionId}`, {
@@ -301,7 +301,8 @@ export class RuntimeRecoveryReplayService {
     }
 
     // Build task report and find the specific execution's report
-    return this.buildTaskReplayReport(execution.taskId, generatedAt).executions.find((report) => report.executionId === executionId)!;
+    const report = await this.buildTaskReplayReport(execution.taskId, generatedAt);
+    return report.executions.find((r) => r.executionId === executionId)!;
   }
 
   /**

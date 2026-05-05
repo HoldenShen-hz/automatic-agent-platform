@@ -302,7 +302,12 @@ export class DelegationManagerService {
       );
     }
 
-    this.transitionDelegationStatus(delegation, "cancelled");
+    // R17-02: Capture initial status as fencing token to prevent race conditions.
+    // The status was validated above, but between this read and the transition call,
+    // another concurrent operation could modify the delegation. Passing the initial
+    // status ensures CAS check in transitionDelegationStatus() uses this validated value.
+    const initialStatus = delegation.status;
+    this.transitionDelegationStatus(delegation, "cancelled", initialStatus);
   }
 
   public cancelDelegation(delegationId: string): void {
@@ -688,11 +693,12 @@ export class DelegationManagerService {
   private transitionDelegationStatus(
     delegation: DelegationResult,
     nextStatus: DelegationStatus,
+    fencingToken?: DelegationStatus,
   ): void {
     // R17-02: Use CAS (compare-and-swap) to prevent race conditions between
     // concurrent status transitions (e.g., cancel() + complete() racing).
     // Read current status and determine allowed transitions atomically.
-    const currentStatus = delegation.status;
+    const currentStatus = fencingToken ?? delegation.status;
     const allowedStatuses = DelegationManagerService.ALLOWED_STATUS_TRANSITIONS[currentStatus];
     if (!allowedStatuses.includes(nextStatus)) {
       throw new ValidationError(

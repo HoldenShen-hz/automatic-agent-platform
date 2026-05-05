@@ -17,7 +17,15 @@
     "backoffMs": 1000,
     "maxBackoffMs": 30000
   },
+  "retry_max": 3,
   "circuitBreaker": {
+    "enabled": true,
+    "failureThreshold": 5,
+    "threshold": 3,
+    "resetTimeoutMs": 30000,
+    "halfOpenMaxAttempts": 3
+  },
+  "circuit_breaker": {
     "enabled": true,
     "failureThreshold": 5,
     "threshold": 3,

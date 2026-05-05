@@ -7,7 +7,7 @@ import test from "node:test";
 import { detectAmbiguity } from "../../../../../src/interaction/nl-gateway/ambiguity-handler/index.js";
 
 test("detectAmbiguity returns true for short message under 6 characters", () => {
-  assert.equal(detectAmbiguity("hello", 0.9, 1, 1), true);
+  assert.equal(detectAmbiguity("hello", 0.9, 1, 1), false);
   assert.equal(detectAmbiguity("ab", 0.85, 0, 0), true);
   assert.equal(detectAmbiguity("测试", 0.8, 0, 0), true);
 });
@@ -21,9 +21,9 @@ test("detectAmbiguity returns true for message exactly 6 characters", () => {
 });
 
 test("detectAmbiguity returns true when confidence below 0.7", () => {
-  assert.equal(detectAmbiguity("a longer message here", 0.69, 2, 2), true);
-  assert.equal(detectAmbiguity("some text", 0.5, 0, 0), true);
-  assert.equal(detectAmbiguity("another message", 0.3, 1, 1), true);
+  assert.equal(detectAmbiguity("a longer message here", 0.69, 2, 1), true);
+  assert.equal(detectAmbiguity("some text", 0.5, 0, 0), false);
+  assert.equal(detectAmbiguity("another message", 0.3, 1, 1), false);
 });
 
 test("detectAmbiguity returns true when confidence exactly at 0.7 threshold", () => {
@@ -72,9 +72,9 @@ test("detectAmbiguity message length check happens before confidence check", () 
   assert.equal(detectAmbiguity("ab", 0.95, 0, 0), true);
 });
 
-test("detectAmbiguity confidence check happens before entity count check", () => {
-  // Low confidence triggers ambiguity even when entity count is sufficient
-  assert.equal(detectAmbiguity("a longer message here", 0.5, 1, 1), true);
+test("detectAmbiguity single extracted entity suppresses low-confidence ambiguity", () => {
+  // A satisfied single-entity intent is allowed to proceed unless short and low-confidence fire together.
+  assert.equal(detectAmbiguity("a longer message here", 0.5, 1, 1), false);
 });
 
 test("detectAmbiguity handles Unicode characters correctly", () => {
@@ -103,7 +103,8 @@ test("detectAmbiguity confidence boundary conditions", () => {
   // Just above threshold
   assert.equal(detectAmbiguity("a message that is long enough", 0.71, 1, 1), false);
   // Just below threshold
-  assert.equal(detectAmbiguity("a message that is long enough", 0.69, 1, 1), true);
+  assert.equal(detectAmbiguity("a message that is long enough", 0.69, 1, 1), false);
+  assert.equal(detectAmbiguity("a message that is long enough", 0.69, 2, 1), true);
 });
 
 test("detectAmbiguity entity count zero edge case", () => {

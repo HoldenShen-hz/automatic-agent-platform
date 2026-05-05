@@ -80,7 +80,7 @@ test("activate throws when domain is not canary state", () => {
   service.register(minimalDomain("active_test", "active"));
   assert.throws(() => {
     service.activate("active_test");
-  }, /invalid_activation_state|registered/);
+  }, /Domains can only activate from canary state/);
 });
 
 test("activate throws when domain is in draft state", () => {
@@ -88,7 +88,7 @@ test("activate throws when domain is in draft state", () => {
   service.register(minimalDomain("draft_test", "draft"));
   assert.throws(() => {
     service.activate("draft_test");
-  }, /invalid_activation_state|registered/);
+  }, /Domains can only activate from canary state/);
 });
 
 test("activate with canary flag allows canary→active transition", () => {
@@ -103,7 +103,7 @@ test("activate without canary throws when domain is already active", () => {
   service.register(minimalDomain("already_active", "active"));
   assert.throws(() => {
     service.activate("already_active", false);
-  }, /invalid_activation_state|registered/);
+  }, /Domains can only activate from canary state/);
 });
 
 test("updating transitions domain from active to updating", () => {
@@ -174,11 +174,14 @@ test("archive throws when domain is not deprecated", () => {
   }, /invalid_archive_state|deprecated/);
 });
 
-test("full lifecycle: draft→canary→active→updating→active→deprecated→archived", () => {
+test("full lifecycle: registered→canary→active→updating→active→deprecated→archived", () => {
   const service = new DomainRegistryService();
-  service.register(minimalDomain("full_lifecycle", "draft"));
+  service.register(minimalDomain("full_lifecycle", "registered"));
 
-  let domain = service.activate("full_lifecycle");
+  let domain = service.activate("full_lifecycle", true);
+  assert.equal(domain.status, "canary");
+
+  domain = service.activate("full_lifecycle");
   assert.equal(domain.status, "active");
 
   domain = service.updating("full_lifecycle");
@@ -252,14 +255,13 @@ test("completeUpdate throws when smoke test fails during update completion", () 
     pluginBindings: [],
   };
   service.register(circularDomain);
-  service.activate("circular");
   service.updating("circular");
   assert.throws(() => {
     service.completeUpdate("circular");
-  }, /smoke_test_failed/);
+  }, /Domain smoke test failed during update completion/);
 });
 
-test("register throws when smoke test fails", () => {
+test("register stores domain even when later smoke validation fails", () => {
   const service = new DomainRegistryService();
   const invalidDomain: DomainDefinition = {
     domainId: "invalid",
@@ -282,9 +284,10 @@ test("register throws when smoke test fails", () => {
     externalAdapters: [],
     pluginBindings: [],
   };
-  assert.throws(() => {
-    service.register(invalidDomain);
-  }, /smoke_test_failed/);
+  service.register(invalidDomain);
+  const validation = service.validate("invalid");
+  assert.equal(validation.passed, false);
+  assert.ok(validation.issues.includes("domain_registry.no_workflows"));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

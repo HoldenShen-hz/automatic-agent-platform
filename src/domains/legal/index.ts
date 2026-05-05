@@ -11,7 +11,7 @@ export type LegalTaskType = z.infer<typeof LegalTaskTypeSchema>;
  */
 export const LEGAL_COMPLIANCE_GUARDRAILS = Object.freeze({
   /** Required jurisdiction codes for legally binding operations */
-  requiredJurisdictions: Object.freeze(["US", "EU", "UK"] as const),
+  requiredJurisdictions: Object.freeze(["US", "EU", "UK"]) as readonly string[],
   /** Require privilege check before processing attorney-client communications */
   privilegeCheckRequired: true,
   /** Require confidentiality classification before handling documents */

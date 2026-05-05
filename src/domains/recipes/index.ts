@@ -19,7 +19,7 @@ export const DomainRecipeSchema = z.object({
   recipeId: z.string().trim().min(1),
   domainId: z.string().trim().min(1),
   archetype: DomainRecipeArchetypeSchema.default("crud_heavy"),
-  name: z.string().default(""),
+  name: z.string().trim().optional(),
   description: z.string().optional(),
   triggerPhrases: z.array(z.string()).default([]),
   risk_profile_ref: z.string().default(""),
@@ -34,7 +34,11 @@ export const DomainRecipeSchema = z.object({
   requiredApproval: z.boolean().default(false),
   // R17-8: Recipe version field
   version: z.string().optional(),
-});
+}).transform((recipe) => ({
+  ...recipe,
+  // Normalize missing or blank labels to recipeId so persisted recipes remain debuggable.
+  name: recipe.name && recipe.name.length > 0 ? recipe.name : recipe.recipeId,
+}));
 
 export type DomainRecipe = z.infer<typeof DomainRecipeSchema>;
 export type DomainRecipeArchetype = z.infer<typeof DomainRecipeArchetypeSchema>;

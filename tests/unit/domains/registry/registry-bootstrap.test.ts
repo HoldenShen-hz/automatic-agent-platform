@@ -80,7 +80,7 @@ test("bootstrapConfiguredRegistries loads domain, plugin, and knowledge config l
           refreshStrategy: "manual",
           refreshIntervalHours: null,
         },
-        trustLevel: "verified",
+        trustLevel: "official",
         maxDocuments: 100,
         maxTotalSizeBytes: 1000,
       }],

@@ -24,11 +24,25 @@ test("DomainRecipeSchema applies default values", () => {
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.parse(recipe);
+  assert.equal(result.name, "recipe_minimal");
   assert.deepEqual(result.triggerPhrases, []);
   assert.deepEqual(result.defaultToolBundleIds, []);
   assert.equal(result.riskLevel, "medium");
   assert.equal(result.budgetHint, undefined);
   assert.equal(result.requiredApproval, false);
+});
+
+test("DomainRecipeSchema normalizes blank recipe name to recipeId", () => {
+  const recipe = {
+    recipeId: "recipe_blank_name",
+    domainId: "coding",
+    name: "   ",
+    defaultWorkflowId: "workflow_1",
+  };
+
+  const result = DomainRecipeSchema.parse(recipe);
+
+  assert.equal(result.name, "recipe_blank_name");
 });
 
 test("DomainRecipeSchema requires recipeId to be non-empty", () => {

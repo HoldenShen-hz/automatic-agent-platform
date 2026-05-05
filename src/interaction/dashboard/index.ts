@@ -1,8 +1,10 @@
 export * from "./dashboard-projection-service.js";
 export * from "./dashboard-websocket-server.js";
+export { sortAttentionQueue } from "./alert-router/index.js";
 
 import type { TaskBoardItem } from "../../platform/state-evidence/truth/authoritative-task-store.js";
 import type { SystemSituation } from "../../platform/shared/observability/system-situation-model.js";
+import { sortAttentionQueue } from "./alert-router/index.js";
 
 export interface DashboardSnapshot {
   readonly generatedAt: string;
@@ -465,20 +467,7 @@ export class DashboardAggregationService implements DashboardPort {
       });
     }
 
-    const PRIORITY_ORDER: Record<AttentionItem["priority"], number> = {
-      critical: 0,
-      high: 1,
-      normal: 2,
-      low: 3,
-    };
-
-    return [...queue, ...this.suggestions].sort((left, right) => {
-      // §43: Sort by priority first (critical=0 highest, low=3 lowest), then by recency
-      const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
-      if (priorityDiff !== 0) return priorityDiff;
-      // Within same priority, newer items first
-      return right.createdAt.localeCompare(left.createdAt);
-    });
+    return sortAttentionQueue([...queue, ...this.suggestions]);
   }
 
   private buildActionControls(
@@ -593,19 +582,6 @@ export class DashboardAggregationService implements DashboardPort {
       }
     }
 
-    const PRIORITY_ORDER: Record<AttentionItem["priority"], number> = {
-      critical: 0,
-      high: 1,
-      normal: 2,
-      low: 3,
-    };
-
-    return updatedQueue.sort((left, right) => {
-      // §43: Sort by priority first (critical=0 highest, low=3 lowest), then by recency
-      const priorityDiff = PRIORITY_ORDER[left.priority] - PRIORITY_ORDER[right.priority];
-      if (priorityDiff !== 0) return priorityDiff;
-      // Within same priority, newer items first
-      return right.createdAt.localeCompare(left.createdAt);
-    });
+    return sortAttentionQueue(updatedQueue);
   }
 }

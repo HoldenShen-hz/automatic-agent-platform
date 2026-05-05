@@ -3,16 +3,18 @@ import assert from "node:assert/strict";
 import { detectAmbiguity } from "../../../../src/interaction/nl-gateway/ambiguity-handler/index.js";
 
 test("detectAmbiguity returns true for short messages under 6 characters", () => {
-  assert.equal(detectAmbiguity("hi", 0.9, 1, 1), true);
-  assert.equal(detectAmbiguity("abc", 0.9, 1, 1), true);
-  assert.equal(detectAmbiguity("a", 0.9, 1, 1), true);
-  assert.equal(detectAmbiguity("", 0.9, 1, 1), true);
+  assert.equal(detectAmbiguity("hi", 0.9, 1, 0), true);
+  assert.equal(detectAmbiguity("abc", 0.9, 1, 0), true);
+  assert.equal(detectAmbiguity("a", 0.9, 1, 0), true);
+  assert.equal(detectAmbiguity("", 0.9, 1, 0), true);
+  assert.equal(detectAmbiguity("hi", 0.9, 1, 1), false);
 });
 
 test("detectAmbiguity returns true for low confidence below 0.7", () => {
-  assert.equal(detectAmbiguity("create a task for user", 0.5, 1, 1), true);
-  assert.equal(detectAmbiguity("create a task for user", 0.69, 1, 1), true);
-  assert.equal(detectAmbiguity("create a task for user", 0.0, 1, 1), true);
+  assert.equal(detectAmbiguity("create a task for user", 0.5, 2, 1), true);
+  assert.equal(detectAmbiguity("create a task for user", 0.69, 2, 1), true);
+  assert.equal(detectAmbiguity("create a task for user", 0.0, 2, 0), true);
+  assert.equal(detectAmbiguity("create a task for user", 0.5, 1, 1), false);
 });
 
 test("detectAmbiguity returns true when extracted entities are fewer than required", () => {
@@ -33,7 +35,8 @@ test("detectAmbiguity edge case at boundary conditions", () => {
   // Exactly 0.7 confidence should not trigger low confidence ambiguity
   assert.equal(detectAmbiguity("create a task", 0.7, 1, 1), false);
   // Just below boundary
-  assert.equal(detectAmbiguity("create", 0.69, 1, 1), true);
+  assert.equal(detectAmbiguity("create", 0.69, 1, 1), false);
+  assert.equal(detectAmbiguity("create", 0.69, 2, 1), true);
 });
 
 test("detectAmbiguity with default entity parameters", () => {
@@ -46,7 +49,7 @@ test("detectAmbiguity with default entity parameters", () => {
 test("detectAmbiguity trims whitespace before checking length", () => {
   // Whitespace-padded message should be evaluated after trim
   assert.equal(detectAmbiguity("  create", 0.9, 1, 1), false);
-  assert.equal(detectAmbiguity("     ", 0.9, 1, 1), true);
+  assert.equal(detectAmbiguity("     ", 0.9, 1, 0), true);
 });
 
 test("detectAmbiguity handles various message types", () => {

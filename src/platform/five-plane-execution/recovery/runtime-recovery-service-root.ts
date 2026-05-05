@@ -254,7 +254,7 @@ export class RuntimeRecoveryService {
    * @returns Complete recovery view including candidates, approvals, and events
    * @throws Error if task is not found
    */
-  public buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): TaskRuntimeRecoveryView {
+  public async buildRuntimeRecoveryView(taskId: string, tenantId?: string | null): Promise<TaskRuntimeRecoveryView> {
     const task = this.store.task.getTask(taskId, tenantId);
     if (!task) {
       throw new StorageError("storage.task_not_found", `Task not found: ${taskId}`, {
@@ -270,7 +270,7 @@ export class RuntimeRecoveryService {
       candidates: this.store.operations.buildRuntimeRecoveryView(taskId, tenantId).map((record) => toCandidate(record, inferReason(record))),
       requestedApprovals: this.store.approval.listApprovalsByTask(taskId, tenantId).filter((approval) => approval.status === "requested"),
       deadLetters: this.store.dispatch.listDeadLettersByTask(taskId, tenantId),
-      latestCheckpoint: findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
+      latestCheckpoint: await findLatestCheckpoint(this.store.artifact.listArtifactsByTask(taskId, tenantId)),
       recentRecoveryEvents: taskEvents
         .filter((event) => event.eventType.startsWith("recovery:"))
         .slice(-10)
@@ -466,9 +466,9 @@ function toRecoveryEvent(event: EventRecord): TaskRuntimeRecoveryView["recentRec
   };
 }
 
-function findLatestCheckpoint(artifacts: ArtifactRecord[]): WorkflowStepCheckpointSummary | null {
+async function findLatestCheckpoint(artifacts: ArtifactRecord[]): Promise<WorkflowStepCheckpointSummary | null> {
   for (const artifact of [...artifacts].sort((left, right) => right.createdAt.localeCompare(left.createdAt))) {
-    const checkpoint = readWorkflowStepCheckpoint(artifact);
+    const checkpoint = await readWorkflowStepCheckpoint(artifact);
     if (checkpoint) {
       return summarizeWorkflowStepCheckpoint(artifact.artifactId, checkpoint);
     }

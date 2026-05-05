@@ -66,6 +66,12 @@ test("WebPlatformAdapter uses localStorage only for analytics consent persistenc
   }
 });
 
+test("WebPlatformAdapter enables screen security by default to match desktop shells", () => {
+  const adapter = new WebPlatformAdapter();
+
+  assert.equal(adapter.getDebugState().screenSecurityEnabled, true);
+});
+
 test("MobilePlatformAdapter defaults analytics consent to opt-in false", async () => {
   const adapter = new MobilePlatformAdapter("ios");
 

@@ -14,12 +14,13 @@ import {
   type PromptPartitionInput,
 } from "../../src/platform/execution/execution-engine/prompt-partition-cache.js";
 
-// §206-2440: Golden test uses hardcoded model identifier - extract to constant for maintainability
-const TEST_MODEL_ID = "claude-sonnet-4-6";
+const PRIMARY_TEST_MODEL_ID = "test-model-primary";
+const SECONDARY_TEST_MODEL_ID = "test-model-secondary";
+const TERTIARY_TEST_MODEL_ID = "test-model-tertiary";
 
 test("golden: partitionPromptForCache produces correct structure", () => {
   const input: PromptPartitionInput = {
-    model: TEST_MODEL_ID,
+    model: PRIMARY_TEST_MODEL_ID,
     profileId: "default",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
@@ -31,7 +32,7 @@ test("golden: partitionPromptForCache produces correct structure", () => {
   const result = partitionPromptForCache(input);
 
   // Verify structure
-  assert.equal(result.model, TEST_MODEL_ID);
+  assert.equal(result.model, PRIMARY_TEST_MODEL_ID);
   assert.equal(result.profileId, "default");
   assert.equal(result.staticMessageCount, 1, "Should have 1 static (system) message");
   assert.equal(result.dynamicMessageCount, 2, "Should have 2 dynamic (user/assistant) messages");
@@ -45,7 +46,7 @@ test("golden: partitionPromptForCache produces correct structure", () => {
 
 test("golden: partitionPromptForCache is deterministic", () => {
   const input: PromptPartitionInput = {
-    model: TEST_MODEL_ID,
+    model: PRIMARY_TEST_MODEL_ID,
     profileId: "test-profile",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
@@ -64,7 +65,7 @@ test("golden: partitionPromptForCache is deterministic", () => {
 
 test("golden: partitionPromptForCache separates system from user messages", () => {
   const input: PromptPartitionInput = {
-    model: "claude-haiku-4-5-20251001",
+    model: SECONDARY_TEST_MODEL_ID,
     profileId: "division-executor",
     messages: [
       { role: "system", content: "You are a coding assistant." },
@@ -100,7 +101,7 @@ test("golden: partitionPromptForCache handles empty messages", () => {
 
 test("golden: partitionPromptForCache handles null/undefined fields in messages", () => {
   const input: PromptPartitionInput = {
-    model: "claude-opus-4-6",
+    model: TERTIARY_TEST_MODEL_ID,
     profileId: "test",
     messages: [
       { role: null, content: undefined },

@@ -81,8 +81,9 @@ test("NlEntryService.buildTask creates request envelope with cost estimate", asy
   });
 
   assert.equal(result.confirmationRequired, true);
-  assert.equal(result.requestEnvelope.payload.confirmationRequired, true);
-  assert.equal(result.requestEnvelope.metadata.confirmationRequired, "true");
+  assert.equal(result.requestEnvelope, null);
+  assert.equal(result.confirmationReceipt.state, "pending_user_confirmation");
+  assert.equal(result.clarificationState.state, "required");
   assert.equal(result.costEstimate.estimatedCostUsd, 0.1);
   assert.ok(result.humanSummary.length > 0);
 });
@@ -101,7 +102,8 @@ test("NlEntryService.buildTask marks critical-risk requests for confirmation", a
 
   assert.equal(result.riskPreview.overallRisk, "critical");
   assert.equal(result.confirmationRequired, true);
-  assert.equal(result.requestEnvelope.payload.confirmationRequired, true);
+  assert.equal(result.requestEnvelope, null);
+  assert.equal(result.confirmationReceipt.state, "pending_user_confirmation");
 });
 
 test("NlEntryService.buildTask marks high-risk deploy requests for confirmation", async () => {
@@ -135,6 +137,7 @@ test("NlEntryService.shouldRequestClarification uses threshold", () => {
 
 test("NlEntryService.resolveLocale prefers user_profile locale", async () => {
   const service = new NlEntryService({
+    intakeRouter: new MockIntakeRouter() as never,
     localeConfig: {
       supportedLocales: ["zh-CN", "en-US"],
       defaultLocale: "zh-CN",
@@ -156,6 +159,7 @@ test("NlEntryService.resolveLocale prefers user_profile locale", async () => {
 
 test("NlEntryService.resolveLocale falls back to Accept-Language", async () => {
   const service = new NlEntryService({
+    intakeRouter: new MockIntakeRouter() as never,
     localeConfig: {
       supportedLocales: ["zh-CN", "en-US"],
       defaultLocale: "zh-CN",

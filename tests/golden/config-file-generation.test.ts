@@ -19,6 +19,35 @@ function writeLayerConfig(configRoot: string, layerName: string, value: Record<s
   writeFileSync(join(layerRoot, "default.json"), JSON.stringify(value));
 }
 
+function writeModelRegistry(configRoot: string): void {
+  const providersRoot = join(configRoot, "providers");
+  mkdirSync(providersRoot, { recursive: true });
+  writeFileSync(join(providersRoot, "models.json"), JSON.stringify({
+    version: "test.local",
+    providers: {
+      minimax: {
+        status: "active",
+        authMethods: ["api_key"],
+      },
+    },
+    profiles: {
+      balanced: {
+        provider: "minimax",
+        modelId: "MiniMax-M1",
+        tier: "balanced",
+        capabilities: ["reasoning", "tool_use"],
+        contextWindowTokens: 204800,
+        maxOutputTokens: 65536,
+        pricing: {
+          inputPer1kUsd: 0.003,
+          outputPer1kUsd: 0.015,
+        },
+        metadataSource: "local_override",
+      },
+    },
+  }));
+}
+
 function createValidConfigRoot(workspace: string): string {
   const configRoot = join(workspace, "config");
   mkdirSync(configRoot, { recursive: true });
@@ -27,6 +56,14 @@ function createValidConfigRoot(workspace: string): string {
     appName: "automatic-agent",
     phase: "stable",
     stableCoreEnabled: true,
+    dependencyOrder: ["config", "providers", "runtime"],
+    healthCheckTimeoutMs: 30000,
+    degradationPolicy: {
+      onRegistryLookupFailure: "fail_closed",
+      onOptionalServiceFailure: "degrade",
+      onCriticalServiceFailure: "halt",
+    },
+    readinessGates: ["config_loaded", "providers_ready"],
   });
   writeLayerConfig(configRoot, "gateways", {
     defaultGateway: "primary",
@@ -56,6 +93,7 @@ function createValidConfigRoot(workspace: string): string {
     defaultWorkflowId: "single_agent_minimal",
     allowCrossDivisionDag: false,
   });
+  writeModelRegistry(configRoot);
 
   return configRoot;
 }
