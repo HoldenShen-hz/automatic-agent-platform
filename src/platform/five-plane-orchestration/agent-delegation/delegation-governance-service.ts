@@ -242,8 +242,8 @@ export class DelegationGovernanceService {
     // all conditions with AND semantics (all must pass)
     const childDepth = request.parentContext.delegationDepth + 1;
     if (condition.delegationDepth !== undefined && childDepth > condition.delegationDepth) {
-      // Depth exceeded - this is a hard deny, return false immediately
-      return false;
+      // Depth exceeded - this is a hard deny, return true to trigger deny effect
+      return true;
     }
     if (condition.permissionActions && condition.permissionActions.length > 0) {
       const hasPermission = condition.permissionActions.some(

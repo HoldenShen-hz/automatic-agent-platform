@@ -164,7 +164,7 @@ export class ConversationHistoryService {
     };
 
     // Persist to memory store if available
-    // §45: Persist when memoryLayer is "layer_3" (long-term persistent) or when explicitly set
+    // §45: Persist when memoryLayer is "layer_3" (long-term persistent) or when not set (defaults to layer_3)
     if (this.memoryService && this.shouldPersistToLongTermMemory(options) && (options.memoryLayer === "layer_3" || !options.memoryLayer)) {
       await this.persistSession(updatedSession, options);
     }
@@ -273,7 +273,17 @@ export class ConversationHistoryService {
       return null;
     }
 
-    return this.deserializeSession(sessionMemory.contentJson);
+    const session = this.deserializeSession(sessionMemory.contentJson);
+
+    // R26-09 / R29-26 FIX: Validate tenantId before returning session data.
+    // This prevents IDOR vulnerability where any tenant could access any session
+    // by providing a valid sessionId. Without this check, cross-tenant data
+    // access is possible if the memory service query doesn't perfectly isolate.
+    if (session.tenantId !== tenantId) {
+      return null;
+    }
+
+    return session;
   }
 
   /**

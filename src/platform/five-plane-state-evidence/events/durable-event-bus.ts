@@ -304,7 +304,8 @@ export class DurableEventBus {
   ) {
     this.db = db;
     this.store = store;
-    // R16-37 fix: Use SqliteDlqRepository for persistent DLQ storage
+    // R16-37/R20-37 fix: Use SqliteDlqRepository for persistent DLQ storage
+    // Previously used in-memory Map which was lost on crash. Now persists to SQLite.
     this.dlqService = dlqService ?? new DlqService(new SqliteDlqRepository(db.connection));
     this.activeConsumerRefCounts = getActiveConsumerRefCounts(db);
   }
@@ -402,6 +403,10 @@ export class DurableEventBus {
     // §14.3: Maintain monotonic sequence for events within the same run
     // If runId is provided but sequence is not, auto-assign a monotonically increasing sequence
     const effectiveSequence = input.sequence ?? (input.runId ? this.getNextRunSequence(input.runId) : null);
+    // R20-39 fix: Event insert and truth update (ensurePendingAcksForActiveConsumers)
+    // are wrapped in a transaction to ensure atomicity. If either fails, both rollback.
+    // This satisfies the requirement that event append and truth update must be
+    // transactionally coupled.
     const eventRecord = this.db.transaction(() =>
       {
         this.ensureReferencedTask(input.taskId ?? null);

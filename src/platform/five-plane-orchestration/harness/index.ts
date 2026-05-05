@@ -759,6 +759,10 @@ export class HarnessRuntimeService {
       nextAction?: string;
     },
   ): HarnessRunRuntimeState {
+    if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
+      throw new Error("harness.feedback.required_for_non_accept_decision");
+    }
+
     const startedAt = nowIso();
     const completedAt = nowIso();
     const iteration = input.iteration ?? Math.max(run.currentIteration, 1);
@@ -1018,7 +1022,13 @@ export class HarnessRuntimeService {
     }
 
     // INV-10: Terminal state must not have open execution blockers
-    const hasOpenExecutionBlockers = run.status === "completed" || run.status === "aborted";
+    const hasOpenExecutionBlockers =
+      run.status === "running"
+      || run.status === "paused"
+      || run.status === "replanning"
+      || run.status === "resuming"
+      || run.status === "completed"
+      || run.status === "aborted";
     if (hasOpenExecutionBlockers && (run.toolbelt?.blockedTools.length ?? 0) > 0) {
       violations.push("INV-10:harness.invariant.blocked_tool_requested");
     }

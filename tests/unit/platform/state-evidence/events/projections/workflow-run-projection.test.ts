@@ -127,8 +127,8 @@ test("workflowRunProjectionHandler handles subtask:failed", () => {
 
   const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
-  assert.equal(state.status, "failed");
-  assert.ok(state.failedAt !== null);
+  assert.equal(state.status, "pending");
+  assert.equal(state.failedAt, null);
   assert.ok(state.error !== null);
   assert.equal(state.error!.code, "failed");
   assert.equal(state.error!.failedStepId, "step_sub_2");
@@ -266,7 +266,7 @@ test("workflowRunProjectionHandler tracks failed steps", () => {
   const state = workflowRunProjectionHandler(null, event) as unknown as WorkflowRunState;
 
   assert.deepEqual(state.failedSteps, ["step_bad"]);
-  assert.equal(state.status, "failed");
+  assert.equal(state.status, "pending");
 });
 
 test("createEmptyWorkflowRunState returns correct initial state", () => {

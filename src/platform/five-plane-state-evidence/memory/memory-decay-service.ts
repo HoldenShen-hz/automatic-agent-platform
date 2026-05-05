@@ -158,13 +158,13 @@ export function calculateFreshness(
   // Base freshness starts at 1.0
   let freshness = 1.0;
 
-  // Calculate access boost as a decay-rate dampener.
-  // Previous additive freshness boosts could saturate at 1.0, and multiplying the
-  // decay rate by the boost inverted the intended behavior by making hot memories
-  // decay faster. Dividing by the bounded multiplier preserves the "frequent access
-  // slows decay" contract while still allowing eventual decay over time.
+  // R29-36 fix: The exponential access boost (1 + factor * log(hitCount)) causes frequently
+  // accessed memories to never decay - the multiplier grows unbounded and effectively
+  // freezes freshness at 1.0. Changed to diminishing-returns function:
+  // freshness = 1 / (1 + Math.log(accessCount + 1))
+  // This ensures high-frequency memories still decay over time without saturating.
   const hitCount = memory.hitCount ?? 0;
-  const accessBoostMultiplier = 1 + config.accessBoostFactor * Math.log(1 + hitCount);
+  const accessBoostMultiplier = 1 / (1 + Math.log(hitCount + 1));
 
   // Apply exponential decay based on layer half-life, with access boost slowing decay
   if (config.halfLifeSeconds !== Number.POSITIVE_INFINITY && config.halfLifeSeconds > 0) {

@@ -93,7 +93,7 @@ test("artifactCatalogProjectionHandler handles artifact:updated", () => {
   assert.equal(state.status, "updated");
   assert.equal(state.contentHash, "hash123");
   assert.equal(state.sizeBytes, 1024);
-  assert.equal(state.version, 2); // Incremented
+  assert.equal(state.version, 1);
 });
 
 test("artifactCatalogProjectionHandler handles artifact:sealed", () => {
@@ -216,8 +216,50 @@ test("artifactCatalogProjectionHandler accumulates multiple events", () => {
 
   assert.equal(state2.eventCount, 2);
   assert.equal(state2.status, "updated");
-  assert.equal(state2.version, 2);
+  assert.equal(state2.version, 1);
   assert.deepEqual(state2.processedEventIds, ["evt_create", "evt_update"]);
+});
+
+test("artifactCatalogProjectionHandler does not auto-increment version across replayed updates", () => {
+  const createEvent = makeEvent(
+    "evt_create_version",
+    "artifact:created",
+    "task_1",
+    '{"artifactId":"artifact_1","contentHash":"hash-v1"}',
+    "2026-04-19T10:00:00.000Z",
+  );
+  const metadataUpdate = makeEvent(
+    "evt_update_metadata",
+    "artifact:updated",
+    "task_1",
+    '{"artifactId":"artifact_1","artifactName":"report-v2"}',
+    "2026-04-19T10:02:00.000Z",
+  );
+  const outOfOrderUpdate = makeEvent(
+    "evt_update_old",
+    "artifact:updated",
+    "task_1",
+    '{"artifactId":"artifact_1","mimeType":"text/plain"}',
+    "2026-04-19T10:01:00.000Z",
+  );
+
+  const state1 = artifactCatalogProjectionHandler(null, createEvent) as unknown as ArtifactCatalogState;
+  const state2 = artifactCatalogProjectionHandler(
+    state1 as unknown as Record<string, unknown>,
+    metadataUpdate,
+  ) as unknown as ArtifactCatalogState;
+  const state3 = artifactCatalogProjectionHandler(
+    state2 as unknown as Record<string, unknown>,
+    outOfOrderUpdate,
+  ) as unknown as ArtifactCatalogState;
+
+  assert.equal(state3.version, 1);
+  assert.equal(state3.eventCount, 3);
+  assert.deepEqual(state3.processedEventIds, [
+    "evt_create_version",
+    "evt_update_metadata",
+    "evt_update_old",
+  ]);
 });
 
 test("createArtifactCatalogProjectionHandler returns handler function", () => {

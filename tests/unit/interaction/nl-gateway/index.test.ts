@@ -141,18 +141,19 @@ test("NlEntryService handles blocked by policy state transition", async () => {
     intakeRouter: createMockIntakeRouter({ confidence: 0.3 }) as any,
   });
 
-  // Build task multiple times to exceed max clarification rounds
+  // Build task multiple times to exceed the configured max clarification rounds.
+  // The default is 5, so the 6th attempt should move into blocked state.
   const request = createTestRequest({ message: "帮我改一下" });
 
-  const first = await service.buildTask(request);
-  const second = await service.buildTask(request);
-  const third = await service.buildTask(request);
+  for (let i = 0; i < 5; i++) {
+    await service.buildTask(request);
+  }
+  const blocked = await service.buildTask(request);
 
-  // After 3 rounds, should be blocked
-  assert.equal(third.clarificationState.state, "blocked");
-  assert.ok(third.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
-  assert.equal(third.requestEnvelope, null);
-  assert.equal(third.conversationState, "Clarifying");
+  assert.equal(blocked.clarificationState.state, "blocked");
+  assert.ok(blocked.clarificationState.reasonCodes.includes("nl_gateway.max_clarification_rounds_exceeded"));
+  assert.equal(blocked.requestEnvelope, null);
+  assert.equal(blocked.conversationState, "Clarifying");
 });
 
 test("NlEntryService.buildTask canonical task draft structure", async () => {
@@ -180,7 +181,7 @@ test("NlEntryService.buildTask confirmation receipt structure", async () => {
   const result = await service.buildTask(createTestRequest({ message: "删除生产环境全部数据" }));
 
   assert.ok(result.confirmationReceipt.confirmationId);
-  assert.ok(result.confirmationReceipt.timestamp);
+  assert.ok(result.confirmationReceipt.time);
   assert.equal(result.confirmationReceipt.state, "pending_user_confirmation");
   assert.ok(result.confirmationReceipt.riskPreviewVersion?.startsWith("risk-preview-v1:"));
 });

@@ -464,15 +464,19 @@ export function validateXmlSignature(
 
     sig.loadSignature(signature);
 
-    // SECURITY FIX: Clear keyInfo so xml-crypto will call our keyProviderFn
-    // instead of using the key it extracted from KeyInfo in the signature XML.
-    // Without this, xml-crypto auto-extracts keys from KeyInfo, allowing
-    // attackers to embed self-signed keys that bypass our fingerprint validation.
-    (sig as any).keyInfo = null;
-
-    // Set up key resolution if provider function is provided
+    // SECURITY FIX: Install an explicit keyInfoProvider so xml-crypto resolves
+    // verification keys only through our trusted callback instead of accepting
+    // whatever certificate is embedded in the XML.
     if (options.keyProviderFn) {
-      (sig as any).keyProviderFn = options.keyProviderFn;
+      (sig as unknown as {
+        keyInfoProvider?: {
+          getKeyInfo: () => string | null;
+          getKey: (keyInfo: string | object) => string | null;
+        };
+      }).keyInfoProvider = {
+        getKeyInfo: () => null,
+        getKey: (keyInfo: string | object) => options.keyProviderFn?.(keyInfo) ?? null,
+      };
     }
 
     const isValid = sig.checkSignature(xml);
@@ -569,6 +573,10 @@ function isAssertionTimeValid(assertion: SamlAssertionInput, now: Date): boolean
   return true;
 }
 
+function normalizeCertificateFingerprint(value: string): string {
+  return value.replace(/[^a-fA-F0-9]/g, "").toLowerCase();
+}
+
 export class SamlService {
   private readonly providers = new Map<string, NormalizedSamlProviderConfig>();
   // SECURITY FIX: Add TTL-based cleanup for consumed assertion IDs to prevent memory leak
@@ -635,7 +643,7 @@ export class SamlService {
     if (assertion.issuer !== provider.issuer) {
       throw new Error(`saml.invalid_issuer:${providerId}`);
     }
-    if (assertion.fingerprint !== provider.certificateFingerprint) {
+    if (normalizeCertificateFingerprint(assertion.fingerprint) !== normalizeCertificateFingerprint(provider.certificateFingerprint)) {
       throw new Error(`saml.invalid_fingerprint:${providerId}`);
     }
     const allowedAudiences = provider.allowedAudiences ?? [buildSamlAudience(provider)];
@@ -663,7 +671,7 @@ export class SamlService {
       // The xml-crypto library by default auto-extracts keys from KeyInfo in the XML,
       // which allows attackers to embed self-signed keys. We must validate against
       // the known-good certificate fingerprint configured for this IdP.
-      const trustedFingerprint = provider.certificateFingerprint;
+      const trustedFingerprint = normalizeCertificateFingerprint(provider.certificateFingerprint);
       const keyProviderFn = (_keyInfo: string | object): string | null => {
         // Extract X509 certificate from KeyInfo for fingerprint validation
         let x509Cert: string | null = null;
@@ -677,7 +685,7 @@ export class SamlService {
         if (x509Cert) {
           // Compute SHA-256 fingerprint of the DER-encoded certificate
           const der = Buffer.from(x509Cert, "base64");
-          const fingerprint = createHash("sha256").update(der).digest("hex");
+          const fingerprint = normalizeCertificateFingerprint(createHash("sha256").update(der).digest("hex"));
           // Validate against trusted IdP certificate fingerprint
           if (fingerprint !== trustedFingerprint) {
             return null; // Reject untrusted key

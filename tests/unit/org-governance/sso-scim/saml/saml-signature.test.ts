@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
+import { SignedXml } from "xml-crypto";
 
 import {
   SamlService,
@@ -9,6 +11,100 @@ import {
   type SamlProviderConfig,
   type SamlAssertionInput,
 } from "../../../../../src/org-governance/sso-scim/saml/index.js";
+
+const TEST_SIGNING_PRIVATE_KEY_PEM = `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDFcJW+VDpDNLMy
+JFM6zA925p6V2hQX4l0KZdHcee1g9giB0mUcKrrmEGZLyfS9hnFJ5K2kR9IzPGsD
+MR7ADQ3q3TXdNsydtCxieUZQZnxpv05k6Iu084ihTiBXyTcPtX0YcL/tRZgqtQEb
+FycZqswzCl39123pmEWUacjdYLcl89OBwENQYEFg017XubC5jJmiLRig0Ia1Q7hH
+cZRSuS+gcbFGlVRQucMtir5ZT7lK5bagE4Q9iPPLgOj353JdxyW5GOyMRp3qj/AU
+sPQimeJyUq3bBjOQwj/JdW2L7Redoo9m/J/9HpA3xV7RQuK4l+OKlvFuW5Wimn/V
+si3iFkdLAgMBAAECggEAHZ3HGIcR5kWKy8QJ0rwMEHiE4/2TyLFlO3YNMNapS5jH
+AJJK0HAocPJCJgQ5Tg9TVxOSaHN4OG9Lrhg5gJ10r6esY252QFcSgVhSZSUPwd0M
+frPTS7rBjVC8JpmW732jMiis4YPwUMJYqXOjoy9Xn3W3+6fLuPU6cAoeM0xFV3p5
+NqRSmVBCtzg/n7wYwrLAljuKRd7nYNkVqhIpFSemIyUaC5TT7aIQpUPwOTeuMGJO
+/5OPvTKtwmTAb2Z/pO1h9PvpOJdkxRa58QGY5IJcAMPWw2ePopHKW/6MYq4yXidW
+SaJMVTaRMRkOFpaDIZHIY/llYfidYDxttfAiJxsrwQKBgQD5wFylCpT/L3kTWRHI
+UPE9mXgblCHnWayOjjWHH/MAZSBxhxCEQbUCfaYS2qeAWMoeWxT8qOvTgZ4rCq1/
++rSu+2SUJreBY8uf3iBncVP+bIoD/r8kfDxVOqUa6VhNKYUCDB+LRqiJkLKpSjIm
+I7Tk/S0Ti1sZAjx+YsCzBnfISQKBgQDKYSvS1TAWoZBrt261gP5wHKsdTbgahUdX
+wFKA6FAL4dNjWrexMmHioJDiJpJdDd8yI82x0QkIRK57bnO2k8JkEZykhwOrh+Qb
+yn1DuRHvMOCHgY9N3sWsz8nR7Q+A1diecn5YQiOAFOhNBp2gJIogUz5cQQKEhU6b
+sFE0QS3a8wKBgEKGo+buf6vNyHGH6z2xmeDvrVejSLioYVeDt+xrbT4wscir0pF4
+MzAbqg4hojaE8CnP1zJKCK9JOol6iaaqcFCf9DWmboEPxSCreXQ0csw1uzm/NMkS
+Mrv9KBeYCoZbReu6sPhXdPNX0M9ZTSxtnHTWn5gyKazqtJRx16SYV3XJAoGBAJ2n
+4SnXJiUbK5SeS0JeANh5nNuxJdCTLyavDhaZ43G+NJzbmOoTY6nWh8eFYNPY8Jzw
+w1bYjv6/8mT5gG8k4HRwO+T3wOYpcIwtzDOrwsrg+qjVRzvUZY3gOUquMDufW6bj
+boV20I0AvI70rmqIzImuD5BynHF8H+atDjV06TH9AoGAKxXJQjSZlaZOnuk3gk5X
+XYg2lKn5ijiqJkyAXZ+wikpgi/nvOQEgytg56POZ7c0JaKNWVou0OMNSaUTx/C8K
+o79uVPsvqVH0uQTM5zhnhOBI+zVZuJnKrVdxqlV5Xv7iuyzYAf98IDsW7cHO2Aip
+OiYuGK1edm8HmNS5FfQwpCo=
+-----END PRIVATE KEY-----`;
+
+const TEST_SIGNING_CERTIFICATE_PEM = `-----BEGIN CERTIFICATE-----
+MIIDVzCCAj+gAwIBAgIUAWN4JSDug0We/kbe8JqfgUcO/wowDQYJKoZIhvcNAQEL
+BQAwOzEdMBsGA1UEAwwUY29ycC1pZHAuZXhhbXBsZS5jb20xDTALBgNVBAoMBFRl
+c3QxCzAJBgNVBAYTAlVTMB4XDTI2MDUwNTA2MDcyNloXDTI3MDUwNTA2MDcyNlow
+OzEdMBsGA1UEAwwUY29ycC1pZHAuZXhhbXBsZS5jb20xDTALBgNVBAoMBFRlc3Qx
+CzAJBgNVBAYTAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxXCV
+vlQ6QzSzMiRTOswPduaeldoUF+JdCmXR3HntYPYIgdJlHCq65hBmS8n0vYZxSeSt
+pEfSMzxrAzEewA0N6t013TbMnbQsYnlGUGZ8ab9OZOiLtPOIoU4gV8k3D7V9GHC/
+7UWYKrUBGxcnGarMMwpd/ddt6ZhFlGnI3WC3JfPTgcBDUGBBYNNe17mwuYyZoi0Y
+oNCGtUO4R3GUUrkvoHGxRpVUULnDLYq+WU+5SuW2oBOEPYjzy4Do9+dyXccluRjs
+jEad6o/wFLD0IpniclKt2wYzkMI/yXVti+0XnaKPZvyf/R6QN8Ve0ULiuJfjipbx
+bluVopp/1bIt4hZHSwIDAQABo1MwUTAdBgNVHQ4EFgQU8+NwlWyyJpKai7V3rC6g
+TgrcMIEwHwYDVR0jBBgwFoAU8+NwlWyyJpKai7V3rC6gTgrcMIEwDwYDVR0TAQH/
+BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAcegTsAMMlTlSw2xwRHmtcTb4q87j
+HUcpOhKraDv3sT5NIyq32j1+itCMKNwIs694ceXgw/5MZFAyW7oXlvGgg8WM0Lfb
+xm9GCowksHeYpad19XDdgMWXPjkep+QvAen+HGrYbzuHRwD103GjC+vbGC6q9jTz
+BHsXBnPLUDlYGeMIaywR3/Q/e+3EFx0byzUkiKYyR+o+CmzW42orteV5JXbfOTCq
+4f96bITtUxf8Iu7MIYeb2T2oUrTMOffABuELJOzRMyu7Uzn/B/2i47Cp9oOvsD/3
+fe8gKoUCYpcXrPMCFeHzRJcf+ZvIsdP9daGvOC8VjojXV2itt7YEfNfnpw==
+-----END CERTIFICATE-----`;
+
+function certificateBase64(certificatePem: string): string {
+  return certificatePem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/g, "");
+}
+
+function certificateFingerprintHex(certificatePem: string): string {
+  return createHash("sha256").update(Buffer.from(certificateBase64(certificatePem), "base64")).digest("hex");
+}
+
+function toColonSeparatedFingerprint(fingerprintHex: string): string {
+  return fingerprintHex.match(/.{1,2}/g)?.join(":").toUpperCase() ?? fingerprintHex.toUpperCase();
+}
+
+function createSignedAssertionXml(): {
+  signatureXml: string;
+  rawXml: string;
+  fingerprintHex: string;
+  fingerprintColon: string;
+} {
+  const certBase64 = certificateBase64(TEST_SIGNING_CERTIFICATE_PEM);
+  const signature = new SignedXml();
+  signature.signatureAlgorithm = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
+  signature.addReference(
+    "//*[local-name(.)='Assertion']",
+    ["http://www.w3.org/2000/09/xmldsig#enveloped-signature"],
+    "http://www.w3.org/2001/04/xmlenc#sha256",
+  );
+  signature.signingKey = TEST_SIGNING_PRIVATE_KEY_PEM;
+  signature.keyInfoProvider = {
+    getKeyInfo: () => `<X509Data><X509Certificate>${certBase64}</X509Certificate></X509Data>`,
+    getKey: () => TEST_SIGNING_PRIVATE_KEY_PEM,
+  };
+
+  const rawAssertionXml = "<Response><Assertion Id=\"assertion-1\"><Subject>user-123</Subject></Assertion></Response>";
+  signature.computeSignature(rawAssertionXml);
+
+  const fingerprintHex = certificateFingerprintHex(TEST_SIGNING_CERTIFICATE_PEM);
+  return {
+    signatureXml: signature.getSignatureXml(),
+    rawXml: signature.getSignedXml(),
+    fingerprintHex,
+    fingerprintColon: toColonSeparatedFingerprint(fingerprintHex),
+  };
+}
 
 /**
  * §48 SAML XML Signature
@@ -445,6 +541,58 @@ test("SamlService consumeAssertion validates signature when provided with rawXml
   // The mock signature should fail validation since it's not a real signature
   assert.throws(
     () => service.consumeAssertion("corp-idp", assertion),
+    /saml\.invalid_signature:corp-idp/,
+  );
+});
+
+test("SamlService consumeAssertion accepts a valid signed assertion with colon-formatted fingerprint", () => {
+  const service = new SamlService();
+  const signedAssertion = createSignedAssertionXml();
+  const provider: SamlProviderConfig = {
+    providerId: "corp-idp",
+    entryPoint: "https://idp.example.com/saml/login",
+    issuer: "https://idp.example.com",
+    certificateFingerprint: signedAssertion.fingerprintColon,
+    allowUnsignedAssertions: false,
+  };
+  service.registerProvider(provider);
+
+  const session = service.consumeAssertion("corp-idp", {
+    assertionId: "assertion-real-signed",
+    issuer: provider.issuer,
+    audience: buildSamlAudience(provider),
+    nameId: "user-123",
+    fingerprint: signedAssertion.fingerprintColon,
+    xmlSignature: signedAssertion.signatureXml,
+    rawXml: signedAssertion.rawXml,
+  });
+
+  assert.equal(session.subjectId, "user-123");
+});
+
+test("SamlService consumeAssertion rejects an embedded certificate that does not match provider fingerprint", () => {
+  const service = new SamlService();
+  const signedAssertion = createSignedAssertionXml();
+  const provider: SamlProviderConfig = {
+    providerId: "corp-idp",
+    entryPoint: "https://idp.example.com/saml/login",
+    issuer: "https://idp.example.com",
+    certificateFingerprint: "DE:AD:BE:EF",
+    allowUnsignedAssertions: false,
+  };
+  service.registerProvider(provider);
+
+  assert.throws(
+    () =>
+      service.consumeAssertion("corp-idp", {
+        assertionId: "assertion-untrusted-cert",
+        issuer: provider.issuer,
+        audience: buildSamlAudience(provider),
+        nameId: "user-123",
+        fingerprint: provider.certificateFingerprint,
+        xmlSignature: signedAssertion.signatureXml,
+        rawXml: signedAssertion.rawXml,
+      }),
     /saml\.invalid_signature:corp-idp/,
   );
 });

@@ -113,7 +113,7 @@ test("E2E: access governance bridges principal context decisions into approval f
     assert.equal(approvalRecord?.status, "approved");
     assert.equal(approvalResponse.selectedOptionId, "approve");
 
-    const eventTypes = harness.store.listEventsForTask("task-access-governance").map((event) => event.eventType);
+    const eventTypes = harness.store.listEventsForTask("task-access-governance").events.map((event) => event.eventType);
     assert.ok(eventTypes.includes("decision:requested"));
     assert.ok(eventTypes.includes("decision:responded"));
   } finally {

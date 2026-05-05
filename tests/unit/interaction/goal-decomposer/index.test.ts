@@ -615,7 +615,7 @@ test("GoalDecompositionService decompose with LLM plan uses llm_plan strategy", 
   const service = new GoalDecompositionService({
     llmPlanGenerator: createValidDagGenerator(),
   });
-  const result = await service.decompose("测试LLM计划策略需要描述足够长以触发LLM规划生成器");
+  const result = await service.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} LLM计划策略`);
 
   assert.equal(result.decompositionStrategy, "llm_plan");
 });
@@ -631,7 +631,7 @@ test("GoalDecompositionService decompose confidence for LLM plan", async () => {
   const llmService = new GoalDecompositionService({
     llmPlanGenerator: createValidDagGenerator(),
   });
-  const llmResult = await llmService.decompose("测试LLM计划置信度需要描述足够长以触发LLM规划生成器");
+  const llmResult = await llmService.decompose(`${LONG_LLM_TRIGGER_DESCRIPTION} LLM计划置信度`);
 
   assert.equal(llmResult.decompositionConfidence, 0.83);
 });

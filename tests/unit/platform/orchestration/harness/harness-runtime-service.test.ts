@@ -140,6 +140,35 @@ test("HarnessRuntimeService.appendStep adds timeline event", () => {
   assert.ok(stepEvent != null);
 });
 
+test("HarnessRuntimeService.appendStep rejects non-accept decisions without feedback envelope", () => {
+  const service = new HarnessRuntimeService();
+  const constraintPack = createConstraintPack();
+
+  const run = service.createRun({
+    taskId: "task-006b",
+    domainId: "coding",
+    constraintPack,
+  });
+
+  assert.throws(
+    () =>
+      service.appendStep({
+        ...run,
+        decision: {
+          decisionId: "decision-1",
+          action: "replan",
+        } as any,
+        feedbackEnvelope: null,
+      }, {
+        role: "planner",
+        stage: "plan",
+        inputs: {},
+        outputs: {},
+      }),
+    /harness\.feedback\.required_for_non_accept_decision/,
+  );
+});
+
 test("HarnessRuntimeService.captureContextSnapshot creates snapshot with correct fields", () => {
   const service = new HarnessRuntimeService();
   const constraintPack = createConstraintPack();
@@ -361,6 +390,30 @@ test("HarnessRuntimeService.assertInvariants returns violations", () => {
   // Set completed status without completedAt - should trigger invariant violation
   const result = service.assertInvariants({ ...run, status: "completed", completedAt: null });
   assert.ok(result.violations.includes("INV-5:harness.invariant.final_state_requires_completed_at"));
+});
+
+test("HarnessRuntimeService.assertInvariants flags blocked tools for active runs", () => {
+  const service = new HarnessRuntimeService();
+  const constraintPack = createConstraintPack();
+
+  const run = service.createRun({
+    taskId: "task-017b",
+    domainId: "coding",
+    constraintPack,
+  });
+
+  const result = service.assertInvariants({
+    ...run,
+    status: "running",
+    toolbelt: {
+      allowedTools: ["read"],
+      grantedTools: ["read"],
+      blockedTools: ["delete"],
+      requiredEvidence: [],
+    },
+  });
+
+  assert.ok(result.violations.includes("INV-10:harness.invariant.blocked_tool_requested"));
 });
 
 test("HarnessRuntimeService.persistRun persists run to durable service", () => {

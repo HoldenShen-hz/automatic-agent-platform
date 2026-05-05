@@ -399,7 +399,33 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
 
         const now = nowIso();
         if (payload.title != null) {
+          // R29-27: When updating task title, merge with existing inputJson before calling updateTaskInput
+          let mergedInputJson = existing.inputJson;
+          if (payload.inputJson != null) {
+            try {
+              const existingInput = JSON.parse(existing.inputJson || "{}");
+              const newInput = JSON.parse(payload.inputJson);
+              mergedInputJson = JSON.stringify({ ...existingInput, ...newInput });
+            } catch {
+              throw new ApiError(400, "api.invalid_input_json", "inputJson must be valid JSON.");
+            }
+          }
+          // R29-27: Also update inputJson title field to keep it in sync
+          let titleSyncInputJson = mergedInputJson;
+          try {
+            const parsed = JSON.parse(mergedInputJson || "{}");
+            parsed.title = payload.title;
+            titleSyncInputJson = JSON.stringify(parsed);
+          } catch {
+            // If merging fails, use the original merged input
+          }
           deps.taskStore.task.updateTaskTitle(taskId, payload.title, now);
+          deps.taskStore.task.updateTaskInput(
+            taskId,
+            titleSyncInputJson,
+            titleSyncInputJson,
+            now,
+          );
         }
         if (payload.status != null) {
           deps.taskStore.task.updateTaskStatus(taskId, payload.status, now, null, null);
@@ -408,13 +434,16 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           deps.taskStore.task.updateTaskOutput(taskId, existing.status, payload.outputJson, now);
         }
         // R14-13: inputJson partial update — must parse and persist like CREATE does
-        if (payload.inputJson != null) {
+        // R29-27: Only process inputJson here if title was not also being updated (title path handles merging above)
+        if (payload.inputJson != null && payload.title == null) {
           try {
-            const parsedInput = JSON.parse(payload.inputJson);
+            const existingInput = JSON.parse(existing.inputJson || "{}");
+            const newInput = JSON.parse(payload.inputJson);
+            const mergedInput = { ...existingInput, ...newInput };
             deps.taskStore.task.updateTaskInput(
               taskId,
-              payload.inputJson,
-              JSON.stringify(parsedInput),
+              JSON.stringify(mergedInput),
+              JSON.stringify(mergedInput),
               now,
             );
           } catch {

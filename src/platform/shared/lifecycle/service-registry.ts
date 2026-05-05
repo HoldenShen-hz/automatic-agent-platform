@@ -125,29 +125,31 @@ export class ServiceRegistry {
    * then resets the singleton so the next getInstance() returns a fresh registry.
    */
   public async reset(): Promise<void> {
-    // Teardown services first (they may need access to other services during teardown)
-    const teardownEntries = [...this.instances].map(([name, instance]) => ({
-      name,
-      instance,
-      registration: this.services.get(name),
-    }));
+    // R20-31 FIX: Use sequential teardown to respect service dependencies.
+    // Previously used Promise.all(parallel) which could cause issues when a service
+    // being torn down depends on another service that hasn't been torn down yet.
+    // Teardown in reverse topological order (dependents first), like teardownAll().
+    const sorted = this.topologicalSort();
+    const reversed = [...sorted].reverse();
 
-    const pending: Promise<void>[] = [];
-    for (const { name, instance, registration } of teardownEntries) {
-      if (registration?.teardown) {
-        try {
-          const result = registration.teardown(instance);
-          if (result instanceof Promise) {
-            pending.push(result.catch((err: unknown) => {
-              logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
-            }));
+    for (const name of reversed) {
+      const instance = this.instances.get(name);
+      if (instance !== undefined) {
+        const registration = this.services.get(name);
+        if (registration?.teardown) {
+          try {
+            const result = registration.teardown(instance);
+            if (result instanceof Promise) {
+              await result.catch((err: unknown) => {
+                logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
+              });
+            }
+          } catch (err) {
+            logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
           }
-        } catch (err) {
-          logger.log({ level: "warn", message: `ServiceRegistry: teardown failed for ${name}`, data: { serviceName: name, error: err instanceof Error ? err.message : String(err) } });
         }
       }
     }
-    await Promise.all(pending);
 
     // Only clear after teardown completes
     this.instances.clear();

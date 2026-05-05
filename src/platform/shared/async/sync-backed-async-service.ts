@@ -6,15 +6,20 @@ export abstract class SyncBackedAsyncService<TSync> {
   }
 
   protected asPromise<TResult>(operation: (sync: TSync) => TResult): Promise<TResult> {
-    // R30-29 FIX: Wrap synchronous operation in try-catch before Promise.resolve().
-    // Root cause: Previously, if operation() threw synchronously, the exception would
-    // propagate as an uncaught exception rather than being converted to a rejected Promise.
-    // This violates the contract that asPromise() always returns a Promise.
-    try {
-      return Promise.resolve(operation(this.sync));
-    } catch (err) {
-      return Promise.reject(err);
-    }
+    // R30-29 FIX: Wrap operation in a Promise executor so it runs asynchronously
+    // rather than executing synchronously before Promise.resolve() wraps it.
+    // Root cause: Previously, operation(this.sync) was called first synchronously,
+    // then its result was passed to Promise.resolve(). If operation() threw synchronously,
+    // the exception could propagate as uncaught. The Promise executor always runs
+    // asynchronously, properly converting sync errors to rejections.
+    return new Promise((resolve, reject) => {
+      try {
+        const result = operation(this.sync);
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 
   public getSyncService(): TSync {

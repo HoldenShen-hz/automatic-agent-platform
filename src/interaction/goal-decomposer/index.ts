@@ -725,7 +725,7 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       const narrowed = narrowTaskConstraintEnvelope(task);
       return {
         ...task,
-        ...(narrowed !== undefined ? { constraintEnvelope: narrowed } : {}),
+        ...(narrowed != null ? { constraintEnvelope: narrowed } : {}),
       };
     });
     const lifecycleState: GoalLifecycleState = graphAnalysis.hasCycle ? "decomposing" : "decomposed";

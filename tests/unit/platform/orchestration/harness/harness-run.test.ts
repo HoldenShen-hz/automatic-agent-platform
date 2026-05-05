@@ -404,6 +404,64 @@ test("runLoop with maxSteps=1 triggers abort immediately", () => {
   assert.ok(["aborted", "paused"].includes(run.status));
 });
 
+test("runLoop checks budget before generator and stops after planner when maxSteps=1", () => {
+  const service = new HarnessRuntimeService();
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack({
+    budget: { maxSteps: 1, maxCost: 10, maxDurationMs: 60000 },
+  });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-budget-planner-only-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
+
+  const run = service.runLoop({
+    taskId: "task-budget-planner-only-001",
+    domainId: "coding",
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
+    producedEvidenceRefs: [],
+  });
+
+  assert.deepEqual(run.steps.map((step) => step.role), ["planner"]);
+  assert.equal(run.decision?.reasonCode, "harness.guard.max_steps_exceeded");
+});
+
+test("runLoop checks budget before evaluator and stops after generator when maxSteps=2", () => {
+  const service = new HarnessRuntimeService();
+  const orchestrator = createTestOrchestrator();
+  const constraintPack = createConstraintPack({
+    budget: { maxSteps: 2, maxCost: 10, maxDurationMs: 60000 },
+  });
+
+  const loopResult = orchestrator.executeLoop({
+    taskId: "task-budget-no-evaluator-001",
+    domainId: "coding",
+    constraintPack,
+    iteration: 1,
+  }, 0.9);
+
+  const run = service.runLoop({
+    taskId: "task-budget-no-evaluator-001",
+    domainId: "coding",
+    constraintPack,
+    plannerOutput: loopResult.plannerOutput,
+    generatorOutput: loopResult.generatorOutput,
+    evaluatorOutput: loopResult.evaluatorOutput,
+    evaluatorScore: loopResult.evaluatorScore,
+    producedEvidenceRefs: [],
+  });
+
+  assert.deepEqual(run.steps.map((step) => step.role), ["planner", "generator"]);
+  assert.equal(run.decision?.reasonCode, "harness.guard.max_steps_exceeded");
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // runLoop with Toolbelt Assembly
 // ─────────────────────────────────────────────────────────────────────────────

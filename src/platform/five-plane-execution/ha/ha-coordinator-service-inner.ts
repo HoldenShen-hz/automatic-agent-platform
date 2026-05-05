@@ -529,8 +529,24 @@ export class HaCoordinatorService {
         };
       }
 
+      // R29-16 FIX: Add explicit null check for activeLease.
+      // Root cause: When activeLease is null, the condition `activeLease && ...` short-circuits
+      // to false, causing the code to fall through and grant authorization at line 545.
+      // This is wrong - if there's no active lease, authorization must be DENIED.
+      if (!activeLease) {
+        this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, "no_active_lease");
+        return {
+          authorized: false,
+          authority: requiredAuthority,
+          reasonCode: "no_active_lease",
+          leaderNodeId: leader.nodeId,
+          epoch: latestEpoch.epoch,
+          fencingToken: latestEpoch.fencingToken,
+        };
+      }
+
       // Check if lease is still valid
-      if (activeLease && new Date(activeLease.expiresAt) <= new Date(now)) {
+      if (new Date(activeLease.expiresAt) <= new Date(now)) {
         this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, false, "leadership_lease_expired");
         return {
           authorized: false,

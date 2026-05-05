@@ -159,6 +159,11 @@ export class CasService {
 /**
  * In-memory CAS repository for testing and development.
  * This is NOT durable and should only be used in tests.
+ *
+ * R29-37 fix: NOTE - This in-memory Map will NOT work across multiple nodes in a
+ * distributed deployment. The CAS operations are not atomic across processes.
+ * For production distributed environments, this needs a Redis or PostgreSQL backend
+ * that supports atomic compare-and-swap operations with proper fencing tokens.
  */
 class InMemoryCasRepository implements CasRepository {
   private readonly store = new Map<string, CasRecord>();
@@ -184,6 +189,11 @@ class InMemoryCasRepository implements CasRepository {
 
     if (current === undefined) {
       if (expectedValue === "" || expectedValue === null || expectedValue === undefined) {
+        // R30-05 FIX: When creating a new record, ensure version starts at 1.
+        // Note: When current is undefined (new record), version should be 1.
+        // The previous bug was that version=1 was used everywhere, even when
+        // incrementing existing records. Here we simply start at version 1
+        // for genuinely new records.
         this.set(key, {
           value: newValue,
           version: 1,

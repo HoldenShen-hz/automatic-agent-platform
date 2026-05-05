@@ -416,6 +416,61 @@ test("VaultHttpSecretProvider.requireSecret uses cached token on subsequent call
   }
 });
 
+test("VaultHttpSecretProvider.requireSecret re-authenticates quickly when AppRole login omits lease_duration", async () => {
+  let loginCallCount = 0;
+  const mockFetch = async (url: string, _init?: any) => {
+    if (url.includes("/approle/login")) {
+      loginCallCount++;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          auth: {
+            client_token: `token-${loginCallCount}`,
+            renewable: true,
+          },
+        }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: {
+          data: { mykey: "secret-value" },
+          metadata: { created_time: "2024-01-01T00:00:00Z", destroyed: false, version: 1 },
+        },
+      }),
+    };
+  };
+
+  const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  let now = 1_700_000_000_000;
+  globalThis.fetch = mockFetch as any;
+  Date.now = () => now;
+
+  try {
+    const provider = createProvider(createMockEnv({
+      AA_VAULT_ADDR: "https://vault.internal:8200",
+      AA_VAULT_APPROLE_ROLE: "test-role",
+      AA_VAULT_APPROLE_SECRET: "test-secret",
+    }));
+
+    const first = await provider.requireSecret("secret://mykey");
+    assert.equal(first.value, "secret-value");
+
+    now += 31_000;
+
+    const second = await provider.requireSecret("secret://mykey");
+    assert.equal(second.value, "secret-value");
+    assert.equal(loginCallCount, 2, "provider should not assume a 1h TTL when Vault omits lease_duration");
+  } finally {
+    globalThis.fetch = originalFetch;
+    Date.now = originalNow;
+  }
+});
+
 test("VaultHttpSecretProvider.requireSecret handles Vault KV v2 response with destroyed key", async () => {
   const mockFetch = async (_url: string, _init?: any) => {
     return {

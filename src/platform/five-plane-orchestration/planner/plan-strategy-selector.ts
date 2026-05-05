@@ -20,11 +20,12 @@ export class PlanStrategySelector {
     if (input.assessment.complexity === "trivial" || (stepCount <= 2 && input.assessment.risk === "low")) {
       return "linear";
     }
-    if (divisionCount > 1 && timeoutMs >= 30_000) {
-      return "hierarchical";
-    }
+    // R29-02: Critical-risk evaluation must happen BEFORE hierarchical strategy check
     if (input.assessment.risk === "critical" || destructiveTools) {
       return "reflexive";
+    }
+    if (divisionCount > 1 && timeoutMs >= 30_000) {
+      return "hierarchical";
     }
     if (objective.includes("goal") || objective.includes("target")) {
       return "goal_driven";

@@ -1220,6 +1220,62 @@ export class TransitionService {
   public applyTaskTerminalState(input: TaskTerminalTransitionInput): void {
     this.terminalTasks.apply(input);
   }
+
+  /**
+   * Returns the allowed status transitions for a task based on its current status.
+   *
+   * @param taskId - The task ID to look up
+   * @returns The list of allowed target statuses, or empty array if task not found
+   */
+  public getAllowedTaskTransitions(taskId: string): readonly TaskStatus[] {
+    const task = this.repository.getTask(taskId);
+    if (task == null) {
+      return [];
+    }
+    return TASK_TRANSITIONS[task.status] ?? [];
+  }
+
+  /**
+   * Returns the allowed status transitions for an execution based on its current status.
+   *
+   * @param executionId - The execution ID to look up
+   * @returns The list of allowed target statuses, or empty array if execution not found
+   */
+  public getAllowedExecutionTransitions(executionId: string): readonly ExecutionStatus[] {
+    const execution = this.repository.getExecution(executionId);
+    if (execution == null) {
+      return [];
+    }
+    return EXECUTION_TRANSITIONS[execution.status] ?? [];
+  }
+
+  /**
+   * Returns the allowed status transitions for an approval based on its current status.
+   *
+   * @param approvalId - The approval ID to look up
+   * @returns The list of allowed target statuses, or empty array if approval not found
+   */
+  public getAllowedApprovalTransitions(approvalId: string): readonly ApprovalStatus[] {
+    const approval = this.repository.getApproval(approvalId);
+    if (approval == null) {
+      return [];
+    }
+    return APPROVAL_TRANSITIONS[approval.status] ?? [];
+  }
+
+  /**
+   * Returns the allowed status transitions for a workflow based on its current status.
+   *
+   * @param taskId - The task ID (workflows are keyed by taskId)
+   * @returns The list of allowed target statuses, or empty array if workflow not found
+   */
+  public getAllowedWorkflowTransitions(taskId: string): readonly WorkflowStatus[] {
+    const workflow = this.repository.getWorkflowState(taskId);
+    if (workflow == null) {
+      return [];
+    }
+    return WORKFLOW_TRANSITIONS[workflow.status] ?? [];
+  }
 }
 
 /**
