@@ -46,10 +46,10 @@ test("SimpleProposalEngine.create increments ID counter", async () => {
     evidenceIds: [],
   });
 
-  // Parse IDs to compare
-  const id1 = parseInt(p1.id.replace("prop_", ""));
-  const id2 = parseInt(p2.id.replace("prop_", ""));
-  assert.ok(id2 > id1);
+  // Verify IDs are unique (newId() generates random IDs, not counters)
+  assert.ok(p1.id.startsWith("prop_"));
+  assert.ok(p2.id.startsWith("prop_"));
+  assert.notEqual(p1.id, p2.id);
 });
 
 test("SimpleProposalEngine.submitForApproval changes status to testing", async () => {
@@ -195,7 +195,8 @@ test("SimpleProposalEngine.proposeFromReflection handles complex root cause", as
   const proposals = await engine.proposeFromReflection(reflection);
   const workflowProposal = proposals.find(p => p.kind === "workflow_template");
   assert.ok(workflowProposal !== undefined);
-  assert.equal(workflowProposal!.risk, "medium");
+  // workflow_template is in MANUAL_ONLY_KINDS, so risk is 'high' (requires manual approval)
+  assert.equal(workflowProposal!.risk, "high");
 });
 
 test("SimpleProposalEngine.proposeFromReflection handles security root cause", async () => {

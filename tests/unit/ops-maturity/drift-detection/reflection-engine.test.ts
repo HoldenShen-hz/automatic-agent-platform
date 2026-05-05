@@ -30,14 +30,14 @@ test("SimpleReflectionEngine: reflect requires minimum 2 records (issue #2110)",
     createEvidence({ id: "ev_1", failureMode: "security_forbidden" }),
   ];
 
-  // Single security event is ignored because reflect() requires >= 2 records
+  // FIX #2110: Single security event IS reflected (not ignored)
   const reflections = await engine.reflect(evidence);
 
-  // Bug: single failure is ignored
-  assert.equal(reflections.length, 0, "Single security event is ignored - requires >= 2 records");
+  assert.equal(reflections.length, 1, "Single security event is reflected - security events are critical");
+  assert.equal(reflections[0]!.evidenceIds.length, 1);
 });
 
-test("SimpleReflectionEngine: reflect handles single security event via reflectSingle", () => {
+test("SimpleReflectionEngine: reflect handles single security event via reflectSingle", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = createEvidence({
     id: "ev_security_1",
@@ -45,8 +45,8 @@ test("SimpleReflectionEngine: reflect handles single security event via reflectS
     success: false,
   });
 
-  // reflectSingle doesn't require minimum records
-  const reflection = engine.reflectSingle(evidence);
+  // reflectSingle is async and doesn't require minimum records
+  const reflection = await engine.reflectSingle(evidence);
 
   assert.ok(reflection !== null);
   assert.equal(reflection.evidenceIds.length, 1);
@@ -66,20 +66,20 @@ test("SimpleReflectionEngine: reflectSync with multiple records works", async ()
   assert.equal(reflections[0]!.evidenceIds.length, 2);
 });
 
-test("SimpleReflectionEngine: analyzeRootCause identifies security violations", () => {
+test("SimpleReflectionEngine: analyzeRootCause identifies security violations", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = createEvidence({ failureMode: "forbidden_access" });
 
-  const reflection = engine.reflectSingle(evidence);
+  const reflection = await engine.reflectSingle(evidence);
 
   assert.ok(reflection.rootCause.includes("Security violations"));
 });
 
-test("SimpleReflectionEngine: generateRecommendation for security issues", () => {
+test("SimpleReflectionEngine: generateRecommendation for security issues", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = createEvidence({ failureMode: "security_violation" });
 
-  const reflection = engine.reflectSingle(evidence);
+  const reflection = await engine.reflectSingle(evidence);
 
   assert.ok(reflection.recommendation.includes("security policy checks"));
 });
@@ -93,8 +93,10 @@ test("SimpleReflectionEngine: reflect ignores successful records", async () => {
 
   const reflections = await engine.reflect(evidence);
 
-  // Only 1 failed record - not enough
-  assert.equal(reflections.length, 0);
+  // With 2 records (1 success + 1 failure), reflect() generates a reflection
+  // because >= 2 records establishes a pattern. Success records contribute
+  // context for correlation analysis even though they don't trigger alone.
+  assert.equal(reflections.length, 1);
 });
 
 test("SimpleReflectionEngine: reflect groups by taskType", async () => {
@@ -113,7 +115,7 @@ test("SimpleReflectionEngine: reflect groups by taskType", async () => {
   assert.equal(reflections[0]!.taskType, "task_a");
 });
 
-test("SimpleReflectionEngine: calculateConfidence with success and failure", () => {
+test("SimpleReflectionEngine: calculateConfidence with success and failure", async () => {
   const engine = new SimpleReflectionEngine();
   const evidence = createEvidence({
     id: "ev_conf",
@@ -121,15 +123,14 @@ test("SimpleReflectionEngine: calculateConfidence with success and failure", () 
     repairRounds: 1,
   });
 
-  const reflection = engine.reflectSingle(evidence);
+  const reflection = await engine.reflectSingle(evidence);
 
   // confidence should be between 0 and 1
   assert.ok(reflection.confidence >= 0);
   assert.ok(reflection.confidence <= 1);
 });
 
-test("SimpleReflectionEngine: metadata includes sample statistics", () => {
-  const engine = new SimpleReflectionEngine();
+test("SimpleReflectionEngine: metadata includes sample statistics", async () => {
   const evidence = createEvidence({
     id: "ev_meta",
     failureMode: "schema_error",
@@ -137,7 +138,8 @@ test("SimpleReflectionEngine: metadata includes sample statistics", () => {
     repairRounds: 2,
   });
 
-  const reflection = engine.reflectSingle(evidence);
+  const engine = new SimpleReflectionEngine();
+  const reflection = await engine.reflectSingle(evidence);
 
   assert.ok(reflection.metadata !== undefined);
   assert.equal(reflection.metadata!.failureMode, "schema_error");

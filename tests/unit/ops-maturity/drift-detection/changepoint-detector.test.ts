@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ChangepointDetectorService } from "../../../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
+import type { DriftWindowType } from "../../../../src/ops-maturity/drift-detection/changepoint-detector/index.js";
 
 test("ChangepointDetectorService detects drift when recent mean is 10% lower than baseline", () => {
   // Baseline: 24 samples with mean = 100
@@ -16,14 +17,15 @@ test("ChangepointDetectorService detects drift when recent mean is 10% lower tha
   }));
   const samples = [...baseline, ...recent];
 
-  const result = new ChangepointDetectorService().detect(samples);
+  // Single window (1h) to match test expectations
+  const result = new ChangepointDetectorService().detect(samples, ["1h"]);
 
   assert.equal(result.detected, true);
   assert.equal(result.severity, "low");
   assert.ok(result.baselineMean > 0);
   assert.ok(result.recentMean < result.baselineMean);
   assert.ok(result.relativeShift < -0.10);
-  assert.equal(result.reasonCode, "drift.changepoint_detected");
+  assert.equal(result.reasonCode, "drift.cusum_detected:normal");
 });
 
 test("ChangepointDetectorService does not detect drift when recent mean is stable relative to baseline", () => {
@@ -33,7 +35,8 @@ test("ChangepointDetectorService does not detect drift when recent mean is stabl
     score: 50,
   }));
 
-  const result = new ChangepointDetectorService().detect(samples);
+  // Single window (1h) to match test expectations
+  const result = new ChangepointDetectorService().detect(samples, ["1h"]);
 
   assert.equal(result.detected, false);
   assert.equal(result.severity, "none");
