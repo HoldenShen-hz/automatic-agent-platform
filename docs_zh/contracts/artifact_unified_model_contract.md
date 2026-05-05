@@ -50,7 +50,7 @@ interface ArtifactRecord {
 
 interface ArtifactRef {
   refId: string;
-  targetType: 'feedback' | 'learning' | 'improvement' | 'rollout' | 'execution';
+  targetType: 'feedback' | 'learning' | 'improvement' | 'release' | 'execution';
   targetId: string;
 }
 ```
@@ -71,7 +71,7 @@ interface ArtifactRef {
 - `feedback_snapshot`
 - `learning_object_bundle`         // OAPEFLIR Learn Hub
 - `improvement_candidate_bundle`  // OAPEFLIR Improve Hub
-- `rollout_evidence`             // OAPEFLIR Rollout
+- `release_evidence`             // OAPEFLIR Release
 - `policy_explain_export`
 - `plan_dag_export`              // OAPEFLIR Plan Hub
 - `execution_output`             // OAPEFLIR Execute Hub

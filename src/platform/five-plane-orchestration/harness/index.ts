@@ -114,8 +114,10 @@ export interface ConstraintPack {
   readonly risk_policy?: ConstraintRiskPolicy;
   readonly output_policy?: ConstraintOutputPolicy;
   readonly budgetEnvelope?: ConstraintBudgetEnvelope;
-  readonly sandboxRequirement?: ConstraintSandboxRequirement;
-  readonly approvalRequirement?: ConstraintApprovalRequirement;
+  // ADR-093 §v4.3: sandbox_requirement is required minimum field
+  readonly sandboxRequirement: ConstraintSandboxRequirement;
+  // ADR-093 §v4.3: approval_requirement is required minimum field
+  readonly approvalRequirement: ConstraintApprovalRequirement;
   /** @deprecated Use budgetEnvelope or budget_envelope */
   readonly budget?: {
     readonly maxSteps: number;
