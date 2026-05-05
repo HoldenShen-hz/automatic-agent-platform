@@ -24,7 +24,7 @@ export function buildPromptEngineBootstrap(): PromptEngineBootstrap {
 }
 
 export function registerPromptEngineBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): PromptEngineBootstrap {
   registry.register<readonly PromptEngineCapabilityBaseline[]>(PROMPT_ENGINE_CATALOG_SERVICE_ID, {
     init: () => listPromptEngineCapabilityBaselines(),

@@ -33,23 +33,30 @@ export class PlanBuilder {
     const decomposed = this.decomposition.decompose(input.workflow);
 
     // R8-03 FIX: Build PlanStep[] for validation, then convert to PlanNode[] with node_run_id
-    const steps: PlanStep[] = decomposed.map((item, index) => ({
-      stepId: input.workflow.executionSteps[index]?.stepId ?? `step_${index + 1}`,
-      action: item.toolNames[0] ?? (index === 0 ? "read" : "execute"),
-      title: item.title,
-      inputs: {
-        ownerRoleId: item.ownerRoleId,
-        inputKeys: [...(input.workflow.executionSteps[index]?.inputKeys ?? [])],
-      },
-      outputs: input.workflow.executionSteps[index]?.outputKey != null ? [input.workflow.executionSteps[index].outputKey] : [],
-      dependencies: item.dependsOn,
-      status: "pending",
-      timeout: input.workflow.executionSteps[index]?.timeoutMs ?? 60000,
-      retryPolicy: {
-        maxRetries: Math.max(0, (input.workflow.executionSteps[index]?.maxAttempts ?? 1) - 1),
-        backoffMs: 250 * (index + 1),
-      },
-    }));
+    const steps: PlanStep[] = decomposed.map((item, index) => {
+      const execStep = input.workflow.executionSteps[index];
+      return {
+        stepId: execStep?.stepId ?? `step_${index + 1}`,
+        action: item.toolNames[0] ?? (index === 0 ? "read" : "execute"),
+        title: item.title,
+        inputs: {
+          ownerRoleId: item.ownerRoleId,
+          inputKeys: [...(execStep?.inputKeys ?? [])],
+          riskClass: "medium", // §13.10: Required field for DAG validation
+          budget: 1000, // §13.10: Required field for DAG validation
+        },
+        outputs: execStep?.outputKey != null ? [execStep.outputKey] : [],
+        dependencies: item.dependsOn,
+        status: "pending" as const,
+        timeout: execStep?.timeoutMs ?? 60000,
+        retryPolicy: {
+          maxRetries: Math.max(0, (execStep?.maxAttempts ?? 1) - 1),
+          backoffMs: 250 * (index + 1),
+        },
+        executor: execStep?.agentId ?? `agent_${item.ownerRoleId}`, // §13.10: Required field for DAG validation
+        sandboxMode: "unsandboxed" as const, // §13.10: Required field for DAG validation
+      };
+    });
 
     const dagValidation = this.dagValidator.validate(steps);
     // R20-01: Enforce DAG validation results - fail invalid plans with cycles/missing deps

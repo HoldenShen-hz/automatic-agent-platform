@@ -89,6 +89,7 @@ export type CliEntrypoint = typeof CLI_ENTRYPOINTS[number];
 // --- OAuth PKCE Login Command ---
 
 import { randomBytes, createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export interface OAuthPkceConfig {
@@ -208,9 +209,11 @@ export function saveOAuthTokens(tokens: {
   tokenType: string;
   expiresIn: number;
   refreshToken?: string;
-}): void {
+}, env: NodeJS.ProcessEnv = process.env): string {
   // Store in platform credentials file with proper permissions
-  const credentialsPath = join(process.env.HOME ?? "/tmp", ".automatic-agent", "credentials.json");
+  const homeDir = env.HOME ?? "/tmp";
+  const credentialsDir = join(homeDir, ".automatic-agent");
+  const credentialsPath = join(credentialsDir, "credentials.json");
   const credentials = {
     accessToken: tokens.accessToken,
     tokenType: tokens.tokenType,
@@ -219,9 +222,9 @@ export function saveOAuthTokens(tokens: {
   };
 
   // Ensure directory exists
-  const { mkdirSync } = require("node:fs");
-  mkdirSync(require("node:path").dirname(credentialsPath), { recursive: true });
+  mkdirSync(credentialsDir, { recursive: true, mode: 0o700 });
 
-  require("node:fs").writeFileSync(credentialsPath, JSON.stringify(credentials, null, 2));
+  writeFileSync(credentialsPath, JSON.stringify(credentials, null, 2), { encoding: "utf8", mode: 0o600 });
   console.log(`Tokens saved to ${credentialsPath}`);
+  return credentialsPath;
 }

@@ -23,7 +23,7 @@ export function buildStateEvidencePlaneBootstrap(): StateEvidencePlaneBootstrap 
 }
 
 export function registerStateEvidencePlaneBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): StateEvidencePlaneBootstrap {
   registry.register<readonly StateEvidenceCapabilityBaseline[]>(STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID, {
     init: () => listStateEvidenceCapabilityBaselines(),

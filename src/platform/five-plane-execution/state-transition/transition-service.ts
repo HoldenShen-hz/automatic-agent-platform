@@ -475,13 +475,14 @@ export class WorkflowTransitionService {
       if (current.status === command.toStatus) {
         return;
       }
-      // Validate the transition from current status to target status
-      workflowStateMachine.assertTransition(current.status, command.toStatus);
+      // R9-02: Check fromStatus mismatch BEFORE validating the transition itself.
+      // This ensures CAS failures are reported correctly rather than as invalid transitions.
       if (current.status !== command.fromStatus) {
         throw new Error(
           `workflow.transition_fromStatus_mismatch:${command.entityId}:${command.fromStatus}->${current.status}`,
         );
       }
+      workflowStateMachine.assertTransition(current.status, command.toStatus);
       // Write with CAS under transaction lock
       const affected = this.repository.updateWorkflowStateCas(
         command.entityId,
@@ -943,13 +944,12 @@ class TaskTerminalTransitionService {
     }
 
     // R9-02: updateWorkflowStateCas uses current_step_index as fencing token (§25.3)
-    const terminalStepIndex = currentWorkflow?.currentStepIndex ?? 0;
     const workflowAffected = this.repository.updateWorkflowStateCas(
       input.taskId,
       freshWorkflowStepIndex,
       freshWorkflowStatus,
       workflowTerminal,
-      terminalStepIndex,
+      input.expectedWorkflowStepIndex ?? freshWorkflowStepIndex,
       input.outputsJson,
       input.context.occurredAt,
     );

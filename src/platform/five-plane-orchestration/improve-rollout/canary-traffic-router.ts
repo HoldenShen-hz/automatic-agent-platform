@@ -84,15 +84,21 @@ const TRAFFIC_PERCENTAGES: Readonly<Record<RolloutStatus, number>> = {
   draft: 0,
   pending_approval: 0,
   evaluation_enabled: 0,
+  suggest: 0,
+  shadow: 1,
   canary_5: 5,
   canary_20: 20,
   canary_50: 50,
+  partial_25: 25,
+  partial_50: 50,
+  partial_75: 75,
+  stable: 90,
   stable_100: 100,
   released: 100,
   rejected: 0,
   rolled_back: 0,
   paused: 0,
-};
+} as const;
 
 function hashToBucket(value: string): number {
   // R16-16 FIX: Short IDs had bias with simple djb2 hash (31-based).

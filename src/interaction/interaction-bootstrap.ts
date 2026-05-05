@@ -24,7 +24,7 @@ export function buildInteractionBootstrap(): InteractionBootstrap {
 }
 
 export function registerInteractionBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): InteractionBootstrap {
   registry.register<readonly InteractionCapabilityBaseline[]>(INTERACTION_CATALOG_SERVICE_ID, {
     init: () => listInteractionCapabilityBaselines(),

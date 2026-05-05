@@ -56,6 +56,7 @@
     "skill-creator": "npm run build && node --enable-source-maps dist/src/sdk/cli/skill-creator.js",
     "inspect": "npm run build && node --enable-source-maps dist/src/sdk/cli/inspect.js",
     "knowledge-semantic-readiness": "npm run build && node --enable-source-maps dist/src/sdk/cli/knowledge-semantic-readiness.js",
+    "login": "npm run build && node --enable-source-maps dist/src/sdk/cli/login.js",
     "memory": "npm run build && node --enable-source-maps dist/src/sdk/cli/memory.js",
     "model-routing": "npm run build && node --enable-source-maps dist/src/sdk/cli/model-routing.js",
     "shadow-snapshot": "npm run build && node --enable-source-maps dist/src/sdk/cli/shadow-snapshot.js",

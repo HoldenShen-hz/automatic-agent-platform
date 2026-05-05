@@ -31,6 +31,10 @@ export interface ExecutionOutcomeEvaluation {
   taskId: string;
   passed: boolean;
   qualityScore: number;
+  /** Score alias for R5-7 EvaluationReport compatibility */
+  score: number;
+  /** Confidence derived from signal quality and factor breakdown (R5-7) */
+  confidence: number;
   baselineScore?: number;
   deltaScore?: number;
   nextAction: "complete" | "retry" | "replan" | "approve" | "escalate";
@@ -261,8 +265,9 @@ export class ExecutionOutcomeEvaluator {
       taskId: planGraphBundle.harnessRunId,
       passed,
       qualityScore: Number(qualityScore.toFixed(2)),
-      ...(baselineScore !== undefined && { baselineScore: Number(baselineScore.toFixed(2)) }),
-      ...(deltaScore !== undefined && { deltaScore: Number(deltaScore.toFixed(2)) }),
+      score: Number(qualityScore.toFixed(2)),
+      baselineScore: baselineScore !== undefined ? Number(baselineScore.toFixed(2)) : undefined,
+      deltaScore: deltaScore !== undefined ? Number(deltaScore.toFixed(2)) : undefined,
       nextAction,
       reasons: feedback.signals.map(
         (signal) =>
@@ -271,6 +276,7 @@ export class ExecutionOutcomeEvaluator {
           )}`
       ),
       evaluatedAt: Date.now(),
+      confidence: this.computeConfidence(successSignals.length, failureSignals.length, partialSignals.length, qualityScore),
       factorBreakdown: {
         successSignals: successSignals.length,
         failureSignals: failureSignals.length,
@@ -443,5 +449,27 @@ export class ExecutionOutcomeEvaluator {
    */
   public getConfig(): QualityGateConfig {
     return this.config;
+  }
+
+  /**
+   * Compute confidence score based on signal counts and quality score.
+   * Returns a value between 0 and 1.
+   */
+  private computeConfidence(
+    successCount: number,
+    failureCount: number,
+    partialCount: number,
+    qualityScore: number,
+  ): number {
+    const totalSignals = successCount + failureCount + partialCount;
+    if (totalSignals === 0) {
+      return 0.5; // No signals, moderate confidence
+    }
+    // Weight by signal composition and quality score
+    const successRatio = successCount / totalSignals;
+    const failureRatio = failureCount / totalSignals;
+    // Confidence is higher when success ratio is high and failure ratio is low
+    const baseConfidence = successRatio * qualityScore - failureRatio * 0.5;
+    return Math.max(0, Math.min(1, Number(baseConfidence.toFixed(2))));
   }
 }

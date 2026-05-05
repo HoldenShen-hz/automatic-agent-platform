@@ -134,7 +134,7 @@ export function buildFivePlaneStartupPlan(): FivePlaneStartupPlan {
 }
 
 export function registerFivePlaneStartupPlan(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): FivePlaneStartupPlan {
   registry.register<FivePlaneStartupPlan>(FIVE_PLANE_STARTUP_PLAN_SERVICE_ID, {
     init: () => buildFivePlaneStartupPlan(),

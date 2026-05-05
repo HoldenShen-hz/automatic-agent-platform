@@ -25,7 +25,7 @@ export function buildInteractionGovernanceRuntimeCatalog(): InteractionGovernanc
 }
 
 export function registerInteractionGovernanceRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): InteractionGovernanceRuntimeCatalog {
   const interaction = registerInteractionBootstrap(registry).catalog;
   const governance = registerGovernanceBootstrap(registry).catalog;

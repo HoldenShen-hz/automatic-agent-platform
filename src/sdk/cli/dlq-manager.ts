@@ -18,9 +18,14 @@
  */
 
 import { parseArgs } from "node:util";
+
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { openCliAuthoritativeStorageContext } from "./authoritative-storage.js";
 
-interface DlqAction {
+const MAX_LIST_LIMIT = 500;
+const MAX_RETRY_LIMIT = 500;
+
+export interface DlqAction {
   action: "list" | "count" | "retry" | "purge";
   queue: "gateway" | "jobs" | "events";
   limit: number;
@@ -29,7 +34,51 @@ interface DlqAction {
   confirmed: boolean;
 }
 
-function parseArguments(): DlqAction {
+interface DlqArgumentValues {
+  action?: string;
+  queue?: string;
+  limit?: string;
+  channel?: string;
+  "retry-limit"?: string;
+  yes?: boolean;
+}
+
+interface DlqOperationAuditRecord {
+  operationId: string;
+  action: DlqAction["action"];
+  queue: DlqAction["queue"];
+  affectedCount: number;
+  archivedCount: number;
+  confirmed: boolean;
+  limitApplied: number | null;
+  createdAt: string;
+}
+
+export interface DlqPurgeResult {
+  operationId: string;
+  deleted: number;
+  archived: number;
+}
+
+function parseBoundedInteger(
+  raw: string | undefined,
+  fieldName: string,
+  options: { defaultValue?: number; min: number; max: number },
+): number | undefined {
+  if (raw == null) {
+    return options.defaultValue;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`Invalid ${fieldName}. Must be an integer between ${options.min} and ${options.max}`);
+  }
+  return Math.max(options.min, Math.min(options.max, parsed));
+}
+
+function readArgumentValues(input?: DlqArgumentValues): DlqArgumentValues {
+  if (input != null) {
+    return input;
+  }
   const { values } = parseArgs({
     options: {
       action: { type: "string", short: "a" },
@@ -40,7 +89,18 @@ function parseArguments(): DlqAction {
       yes: { type: "boolean", short: "y", default: false },
     },
   });
+  return {
+    action: values.action,
+    queue: values.queue,
+    limit: values.limit,
+    channel: values.channel,
+    "retry-limit": values["retry-limit"],
+    yes: values.yes === true,
+  };
+}
 
+export function parseArguments(input?: DlqArgumentValues): DlqAction {
+  const values = readArgumentValues(input);
   const action = values.action as DlqAction["action"];
   const queue = values.queue as DlqAction["queue"];
 
@@ -54,14 +114,95 @@ function parseArguments(): DlqAction {
   return {
     action,
     queue,
-    limit: Math.max(1, Math.min(500, parseInt(values.limit ?? "50", 10))),
+    limit: parseBoundedInteger(values.limit, "limit", {
+      defaultValue: 50,
+      min: 1,
+      max: MAX_LIST_LIMIT,
+    }) ?? 50,
     channel: values.channel ?? undefined,
-    retryLimit: values["retry-limit"] != null ? Math.max(1, parseInt(values["retry-limit"], 10)) : undefined,
+    retryLimit: parseBoundedInteger(values["retry-limit"], "retry-limit", {
+      min: 1,
+      max: MAX_RETRY_LIMIT,
+    }),
     confirmed: values.yes === true,
   };
 }
 
-function listGatewayDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, limit: number, channel?: string): void {
+function ensureArchiveTable(
+  sql: ReturnType<typeof openCliAuthoritativeStorageContext>["sql"]["connection"],
+  archiveTable: string,
+  sourceTable: string,
+): void {
+  sql.exec(`
+    CREATE TABLE IF NOT EXISTS ${archiveTable} AS
+    SELECT *, '' AS archived_at, '' AS operation_id
+    FROM ${sourceTable}
+    WHERE 0;
+  `);
+  try {
+    sql.exec(`ALTER TABLE ${archiveTable} ADD COLUMN archived_at TEXT NOT NULL DEFAULT '';`);
+  } catch (error) {
+    if (!(error instanceof Error) || !/duplicate column name/i.test(error.message)) {
+      throw error;
+    }
+  }
+  try {
+    sql.exec(`ALTER TABLE ${archiveTable} ADD COLUMN operation_id TEXT NOT NULL DEFAULT '';`);
+  } catch (error) {
+    if (!(error instanceof Error) || !/duplicate column name/i.test(error.message)) {
+      throw error;
+    }
+  }
+}
+
+function ensureDlqAuditTable(sql: ReturnType<typeof openCliAuthoritativeStorageContext>["sql"]["connection"]): void {
+  sql.exec(`
+    CREATE TABLE IF NOT EXISTS dlq_operation_audits (
+      operation_id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      queue TEXT NOT NULL,
+      affected_count INTEGER NOT NULL,
+      archived_count INTEGER NOT NULL,
+      confirmed INTEGER NOT NULL,
+      limit_applied INTEGER,
+      created_at TEXT NOT NULL
+    );
+  `);
+}
+
+function recordDlqAudit(
+  sql: ReturnType<typeof openCliAuthoritativeStorageContext>["sql"]["connection"],
+  record: DlqOperationAuditRecord,
+): void {
+  ensureDlqAuditTable(sql);
+  sql.prepare(`
+    INSERT INTO dlq_operation_audits (
+      operation_id,
+      action,
+      queue,
+      affected_count,
+      archived_count,
+      confirmed,
+      limit_applied,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    record.operationId,
+    record.action,
+    record.queue,
+    record.affectedCount,
+    record.archivedCount,
+    record.confirmed ? 1 : 0,
+    record.limitApplied,
+    record.createdAt,
+  );
+}
+
+export function listGatewayDeadLetters(
+  db: ReturnType<typeof openCliAuthoritativeStorageContext>,
+  limit: number,
+  channel?: string,
+): Array<Record<string, unknown>> {
   const sql = db.sql.connection;
   let query = `
     SELECT message_id, channel, target_id, failure_reason, last_error_message,
@@ -78,15 +219,19 @@ function listGatewayDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorag
   query += ` ORDER BY moved_to_dead_letter_at DESC LIMIT ?`;
   params.push(limit);
 
-  const rows = sql.prepare(query).all(...params);
+  const rows = sql.prepare(query).all(...params) as Array<Record<string, unknown>>;
   if (rows.length === 0) {
     console.log("No gateway dead letters found.");
-    return;
+    return [];
   }
   console.table(rows);
+  return rows;
 }
 
-function listJobDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, limit: number): void {
+export function listJobDeadLetters(
+  db: ReturnType<typeof openCliAuthoritativeStorageContext>,
+  limit: number,
+): Array<Record<string, unknown>> {
   const sql = db.sql.connection;
   const rows = sql.prepare(`
     SELECT id, queue_name, status, priority, attempts, max_attempts,
@@ -95,104 +240,196 @@ function listJobDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageCon
     WHERE status = 'dead_letter'
     ORDER BY updated_at DESC
     LIMIT ?
-  `).all(limit);
+  `).all(limit) as Array<Record<string, unknown>>;
   if (rows.length === 0) {
     console.log("No job dead letters found.");
-    return;
+    return [];
   }
   console.table(rows);
+  return rows;
 }
 
-function listEventDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, limit: number): void {
+export function listEventDeadLetters(
+  db: ReturnType<typeof openCliAuthoritativeStorageContext>,
+  limit: number,
+): Array<Record<string, unknown>> {
   const sql = db.sql.connection;
   const rows = sql.prepare(`
-    SELECT id, event_type, consumer_id, error_code, error_message,
-           dead_lettered_at, payload_json
+    SELECT id, original_event_id, event_type, payload_json,
+           consumer_id, failure_count, last_error,
+           dead_lettered_at, reprocessed_at, reprocess_result
     FROM event_dead_letters
     ORDER BY dead_lettered_at DESC
     LIMIT ?
-  `).all(limit);
+  `).all(limit) as Array<Record<string, unknown>>;
   if (rows.length === 0) {
     console.log("No event dead letters found.");
-    return;
+    return [];
   }
   console.table(rows);
+  return rows;
 }
 
-function countDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>): void {
+export function countDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>): Record<string, number> {
   const sql = db.sql.connection;
 
   const gatewayCount = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;
   const jobsCount = (sql.prepare(`SELECT COUNT(*) as c FROM queue_jobs WHERE status = 'dead_letter'`).get() as { c: number })?.c ?? 0;
   const eventsCount = (sql.prepare(`SELECT COUNT(*) as c FROM event_dead_letters`).get() as { c: number })?.c ?? 0;
-
-  console.table({
+  const counts = {
     gateway: gatewayCount,
     jobs: jobsCount,
     events: eventsCount,
     total: gatewayCount + jobsCount + eventsCount,
-  });
+  };
+
+  console.table(counts);
+  return counts;
 }
 
-function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events", limit?: number): void {
+export function retryDeadLetters(
+  db: ReturnType<typeof openCliAuthoritativeStorageContext>,
+  queue: "gateway" | "jobs" | "events",
+  options: { limit?: number; confirmed?: boolean } = {},
+): number {
   const sql = db.sql.connection;
+  const operationId = newId("dlqop");
+  const createdAt = nowIso();
 
   if (queue === "jobs") {
-    // Apply a reasonable default limit to prevent unbounded state changes
-    // unless explicitly confirmed by user with --yes flag
-    const effectiveLimit = limit ?? 100; // Default to 100 if no limit specified
-    const result = sql.prepare(`
-      UPDATE queue_jobs
-      SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
-      WHERE status = 'dead_letter'
-      LIMIT ${effectiveLimit}
-    `).run();
-    console.log(`Retried ${result.changes} dead-lettered jobs (limit: ${effectiveLimit}).`);
+    const retried = db.sql.transaction(() => {
+      const changes =
+        options.limit == null
+          ? sql.prepare(`
+            UPDATE queue_jobs
+            SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
+            WHERE status = 'dead_letter'
+          `).run().changes
+          : sql.prepare(`
+            UPDATE queue_jobs
+            SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
+            WHERE id IN (
+              SELECT id
+              FROM queue_jobs
+              WHERE status = 'dead_letter'
+              ORDER BY updated_at DESC, id ASC
+              LIMIT ?
+            )
+          `).run(options.limit).changes;
+      recordDlqAudit(sql, {
+        operationId,
+        action: "retry",
+        queue,
+        affectedCount: changes,
+        archivedCount: 0,
+        confirmed: options.confirmed === true,
+        limitApplied: options.limit ?? null,
+        createdAt,
+      });
+      return changes;
+    });
+    console.log(
+      options.limit == null
+        ? `Retried ${retried} dead-lettered jobs.`
+        : `Retried ${retried} dead-lettered jobs (limit: ${options.limit}).`,
+    );
+    return retried;
   } else if (queue === "gateway") {
-    // Gateway DLQ doesn't have a simple retry - messages need to be re-enqueued
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;
     console.log(`Gateway dead letters (${count}) cannot be directly retried. Consider re-processing or purging.`);
+    return 0;
   } else if (queue === "events") {
-    // Event DLQ retry would require re-publishing events
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM event_dead_letters`).get() as { c: number })?.c ?? 0;
     console.log(`Event dead letters (${count}) cannot be directly retried. Consider re-publishing or purging.`);
+    return 0;
   }
+  return 0;
 }
 
-function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events"): void {
+export function purgeDeadLetters(
+  db: ReturnType<typeof openCliAuthoritativeStorageContext>,
+  queue: "gateway" | "jobs" | "events",
+  options: { confirmed?: boolean } = {},
+): DlqPurgeResult {
   const sql = db.sql.connection;
-
-  // Archive dead letters before deletion for audit/recovery purposes
-  const archivedAt = new Date().toISOString();
+  const operationId = newId("dlqop");
+  const archivedAt = nowIso();
 
   if (queue === "gateway") {
-    // Archive gateway dead letters to audit table
-    sql.prepare(`
-      CREATE TABLE IF NOT EXISTS gateway_dead_letters_archive AS
-      SELECT *, '${archivedAt}' as archived_at FROM gateway_dead_letters
-    `).run();
-    const result = sql.prepare(`DELETE FROM gateway_dead_letters`).run();
-    console.log(`Archived and purged ${result.changes} gateway dead letter entries.`);
+    const result = db.sql.transaction(() => {
+      ensureArchiveTable(sql, "gateway_dead_letters_archive", "gateway_dead_letters");
+      const archived = sql.prepare(`
+        INSERT INTO gateway_dead_letters_archive
+        SELECT *, ?, ?
+        FROM gateway_dead_letters
+      `).run(archivedAt, operationId).changes;
+      const deleted = sql.prepare(`DELETE FROM gateway_dead_letters`).run().changes;
+      recordDlqAudit(sql, {
+        operationId,
+        action: "purge",
+        queue,
+        affectedCount: deleted,
+        archivedCount: archived,
+        confirmed: options.confirmed === true,
+        limitApplied: null,
+        createdAt: archivedAt,
+      });
+      return { operationId, deleted, archived };
+    });
+    console.log(`Archived and purged ${result.deleted} gateway dead letter entries.`);
+    return result;
   } else if (queue === "jobs") {
-    // Archive job dead letters to audit table
-    sql.prepare(`
-      CREATE TABLE IF NOT EXISTS queue_jobs_dead_letters_archive AS
-      SELECT *, '${archivedAt}' as archived_at FROM queue_jobs WHERE status = 'dead_letter'
-    `).run();
-    const result = sql.prepare(`DELETE FROM queue_jobs WHERE status = 'dead_letter'`).run();
-    console.log(`Archived and purged ${result.changes} dead-lettered job entries.`);
+    const result = db.sql.transaction(() => {
+      ensureArchiveTable(sql, "queue_jobs_dead_letters_archive", "queue_jobs");
+      const archived = sql.prepare(`
+        INSERT INTO queue_jobs_dead_letters_archive
+        SELECT *, ?, ?
+        FROM queue_jobs
+        WHERE status = 'dead_letter'
+      `).run(archivedAt, operationId).changes;
+      const deleted = sql.prepare(`DELETE FROM queue_jobs WHERE status = 'dead_letter'`).run().changes;
+      recordDlqAudit(sql, {
+        operationId,
+        action: "purge",
+        queue,
+        affectedCount: deleted,
+        archivedCount: archived,
+        confirmed: options.confirmed === true,
+        limitApplied: null,
+        createdAt: archivedAt,
+      });
+      return { operationId, deleted, archived };
+    });
+    console.log(`Archived and purged ${result.deleted} dead-lettered job entries.`);
+    return result;
   } else if (queue === "events") {
-    // Archive event dead letters to audit table
-    sql.prepare(`
-      CREATE TABLE IF NOT EXISTS event_dead_letters_archive AS
-      SELECT *, '${archivedAt}' as archived_at FROM event_dead_letters
-    `).run();
-    const result = sql.prepare(`DELETE FROM event_dead_letters`).run();
-    console.log(`Archived and purged ${result.changes} event dead letter entries.`);
+    const result = db.sql.transaction(() => {
+      ensureArchiveTable(sql, "event_dead_letters_archive", "event_dead_letters");
+      const archived = sql.prepare(`
+        INSERT INTO event_dead_letters_archive
+        SELECT *, ?, ?
+        FROM event_dead_letters
+      `).run(archivedAt, operationId).changes;
+      const deleted = sql.prepare(`DELETE FROM event_dead_letters`).run().changes;
+      recordDlqAudit(sql, {
+        operationId,
+        action: "purge",
+        queue,
+        affectedCount: deleted,
+        archivedCount: archived,
+        confirmed: options.confirmed === true,
+        limitApplied: null,
+        createdAt: archivedAt,
+      });
+      return { operationId, deleted, archived };
+    });
+    console.log(`Archived and purged ${result.deleted} event dead letter entries.`);
+    return result;
   }
+  return { operationId, deleted: 0, archived: 0 };
 }
 
-function main(): void {
+export function main(): void {
   const args = parseArguments();
 
   const storage = openCliAuthoritativeStorageContext();
@@ -220,7 +457,10 @@ function main(): void {
           console.error("Aborting for safety. Run with --yes or --retry-limit N to proceed.");
           process.exit(1);
         }
-        retryDeadLetters(storage, args.queue, args.retryLimit);
+        retryDeadLetters(storage, args.queue, {
+          ...(args.retryLimit != null ? { limit: args.retryLimit } : {}),
+          confirmed: args.confirmed,
+        });
         break;
       case "purge":
         // Require explicit confirmation for purge operations
@@ -230,7 +470,7 @@ function main(): void {
           console.error("Aborting for safety. Run with --yes to proceed.");
           process.exit(1);
         }
-        purgeDeadLetters(storage, args.queue);
+        purgeDeadLetters(storage, args.queue, { confirmed: args.confirmed });
         break;
     }
   } finally {
@@ -238,4 +478,6 @@ function main(): void {
   }
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

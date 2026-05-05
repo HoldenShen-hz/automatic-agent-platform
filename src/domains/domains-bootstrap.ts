@@ -88,7 +88,7 @@ export function buildDomainsBootstrap(): DomainsBootstrap {
 }
 
 export function registerDomainsBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): DomainsBootstrap {
   registry.register<readonly DomainBaseline[]>(DOMAINS_CATALOG_SERVICE_ID, {
     init: () => listVerticalDomainBaselines(),

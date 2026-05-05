@@ -247,7 +247,7 @@ export function buildPlatformArchitectureBootstrapSummary(
   };
 }
 
-export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
+export function registerPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformArchitectureServices {
   // §171/R19-92: Only register each service if not already registered (deduplication)
   // R9-23: Each registration includes a healthCheck to verify the service is ready before get() returns
   if (!registry.has("architecture.layer-catalog")) {
@@ -339,7 +339,7 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   };
 }
 
-export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformArchitectureServices {
+export function getPlatformArchitectureServices(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformArchitectureServices {
   // §213-1992: Only call register if the bootstrap summary is missing
   // This prevents unconditional duplicate registration when service is already initialized
   if (!registry.has("architecture.bootstrap-summary")) {

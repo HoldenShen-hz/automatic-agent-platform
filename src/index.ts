@@ -229,10 +229,10 @@ function safeBuild<T>(thunk: () => T, fallback: T): { success: true; value: T } 
   }
 }
 
-export function buildPlatformRootSummary(registry: ServiceRegistry = ServiceRegistry.getInstance()): PlatformRootSummary {
+export function buildPlatformRootSummary(registry: ServiceRegistry = ServiceRegistry.createScoped()): PlatformRootSummary {
   // §9: Each build step has error boundary - single failure doesn't crash overall
-  // Use ServiceRegistry-backed registration for every summary segment so root
-  // summary reads the same singleton snapshots the runtime bootstrap uses.
+  // Use a scoped ServiceRegistry by default so root summaries do not leak
+  // singleton state across tenants, workers, or repeated bootstrap calls.
   const architectureResult = safeBuild(() => getPlatformArchitectureServices(registry).summary, null);
   const domainsStartupPlanResult = safeBuild(() => registerDomainsStartupPlan(registry), { startupOrder: [], totalCapabilityCount: 0, steps: [] });
   const domainsRuntimeCatalogResult = safeBuild(() => registerDomainsRuntimeCatalog(registry), { ring1: [], ring2: [], ring3: [] });

@@ -510,24 +510,27 @@ export class PluginSpiRegistry {
   ): Promise<T> {
     return this.withInvocationPermit(record, phase, context, async () => {
       const timeoutMs = record.manifest.sandbox.timeoutMs;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       const promise = Promise.resolve().then(runner);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
           clearTimeout(timer);
+          timer = undefined;
           reject(new ValidationError("plugin_spi.timeout", `Plugin ${record.manifest.pluginId} timed out during ${phase}.`, {
             category: "validation",
             source: "internal",
             details: { pluginId: record.manifest.pluginId, phase, timeoutMs },
           }));
         }, timeoutMs);
-        promise.finally(() => clearTimeout(timer)).catch((error) => {
-        // R11-42/43 fix: Re-throw for visibility instead of silent suppression
-        throw error;
-      });
       });
       try {
         return await Promise.race([promise, timeoutPromise]);
       } catch (error) {
+        // Clean up timer if still active (runner completed before timeout)
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
         if (error instanceof ValidationError) {
           throw error;
         }

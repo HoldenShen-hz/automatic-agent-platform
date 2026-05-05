@@ -2,7 +2,7 @@
  * Remote Session State Unit Tests
  *
  * Tests for remote-session-state.ts - Issue #2203:
- * failed→connected has no transition
+ * failed sessions must not jump directly back to connected
  */
 
 import assert from "node:assert/strict";
@@ -11,15 +11,14 @@ import test from "node:test";
 import {
   transitionRemoteSessionState,
   type RemoteSessionState,
-} from "../../../../../src/scale-ecosystem/multi-region/remote-session-state.js";
+} from "../../../../src/scale-ecosystem/multi-region/remote-session-state.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Remote Session State Transition Tests - Issue #2203
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Issue #2203: failed→connected transition is missing
-// The signal "connected" should allow transition from "failed" back to "connected"
-// This is needed for recovery scenarios where a failed session reconnects
+// Issue #2203: a failed session must not silently jump back to connected.
+// Recovery has to go through connecting first so the session performs a new handshake.
 
 test("remote-session-state: connected signal returns connected from any state except failed", () => {
   // From connecting -> connected
@@ -47,15 +46,14 @@ test("remote-session-state: connected signal returns connected from any state ex
   );
 });
 
-test("remote-session-state: ISSUE #2203 - connected signal should transition from failed to connected", () => {
-  // This is the bug - failed -> connected transition is missing
-  // Currently it returns "failed" because there's no case for "connected" when current is "failed"
+test("remote-session-state: failed + connected signal re-enters connecting instead of silently clearing failure", () => {
   const result = transitionRemoteSessionState("failed", "connected");
 
-  // The expected behavior should be "connected" to allow recovery
-  // But the bug causes it to return "failed"
-  // This test documents the bug:
-  assert.equal(result, "failed", "BUG: should return 'connected' but returns 'failed'");
+  assert.equal(
+    result,
+    "connecting",
+    "failed sessions should re-enter connecting before they can become connected again",
+  );
 });
 
 test("remote-session-state: connection_lost transitions correctly from non-failed states", () => {
@@ -225,19 +223,10 @@ test("remote-session-state: all valid state values are covered", () => {
 });
 
 test("remote-session-state: recovery path from failed to connected", () => {
-  // This demonstrates the desired recovery path
-  // A failed session should be able to recover to connected state
-
-  // Initial state: failed
+  // Recovery is a two-step handshake: failed -> connecting -> connected.
   let state: RemoteSessionState = "failed";
-
-  // Simulate reconnection
   state = transitionRemoteSessionState(state, "connected");
-
-  // BUG: Currently this stays "failed" instead of transitioning to "connected"
-  // The issue is that "failed" state doesn't handle "connected" signal
-  assert.equal(state, "failed", "BUG: Recovery path is broken - failed cannot transition to connected");
-
-  // Expected behavior after fix:
-  // state.should.equal("connected", "After fix: failed should transition to connected on connected signal");
+  assert.equal(state, "connecting");
+  state = transitionRemoteSessionState(state, "connected");
+  assert.equal(state, "connected");
 });

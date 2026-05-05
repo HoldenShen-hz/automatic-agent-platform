@@ -236,6 +236,8 @@ function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
     case "rejected":
     case "rolled_back":
     case "paused":
+    case "suggest":
+    case "shadow":
       return "off";
     case "evaluation_enabled":
       return "evaluate_0";
@@ -245,8 +247,18 @@ function inferLevelFromStatus(status: RolloutStatus): StrategyReleaseLevel {
       return "canary_20";
     case "canary_50":
       return "canary_50";
+    case "partial_25":
+      return "partial_25";
+    case "partial_50":
+      return "partial_50";
+    case "partial_75":
+      return "partial_75";
+    case "stable":
+      return "stable";
     case "stable_100":
     case "released":
       return "stable_100";
+    default:
+      return "off";
   }
 }

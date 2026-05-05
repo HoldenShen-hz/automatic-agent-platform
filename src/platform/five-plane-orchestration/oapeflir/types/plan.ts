@@ -27,6 +27,8 @@ export const PlanStepSchema = z.object({
     maxRetries: 0,
     backoffMs: 0,
   }),
+  executor: z.string().optional(),
+  sandboxMode: z.string().optional(),
 });
 
 export const PlanSchema = z.object({

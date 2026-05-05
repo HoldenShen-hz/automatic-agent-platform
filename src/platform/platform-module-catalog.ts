@@ -211,7 +211,7 @@ export function resolvePlatformSurfaceManifest(surfaceId: PlatformSurfaceId): Pl
   return manifest;
 }
 
-export function registerPlatformSurfaceCatalog(registry: ServiceRegistry = ServiceRegistry.getInstance()): readonly PlatformSurfaceManifest[] {
+export function registerPlatformSurfaceCatalog(registry: ServiceRegistry = ServiceRegistry.createScoped()): readonly PlatformSurfaceManifest[] {
   registry.register<readonly PlatformSurfaceManifest[]>("platform.surface-catalog", {
     init: () => PLATFORM_SURFACE_MANIFESTS,
   });

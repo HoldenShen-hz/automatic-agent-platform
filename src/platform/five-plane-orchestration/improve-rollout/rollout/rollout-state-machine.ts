@@ -16,19 +16,25 @@ export interface RolloutTransitionOptions {
 }
 
 const ROLLOUT_TRANSITIONS: Readonly<Record<RolloutStatus, readonly RolloutStatus[]>> = {
-  candidate_created: ["under_review", "draft", "rejected"],
-  under_review: ["draft", "rejected", "paused"],
-  draft: ["pending_approval", "rejected", "paused"],
-  pending_approval: ["evaluation_enabled", "rejected", "paused"],
-  rejected: [],
-  evaluation_enabled: ["canary_5", "rolled_back", "paused"],
-  canary_5: ["canary_20", "rolled_back", "paused"],
-  canary_20: ["canary_50", "rolled_back", "paused"],
-  canary_50: ["stable_100", "rolled_back", "paused"],
-  stable_100: ["released", "rolled_back", "paused"],
-  released: ["rolled_back", "paused"],
-  rolled_back: [],
-  paused: ["pending_approval", "evaluation_enabled", "canary_5", "canary_20", "canary_50", "rolled_back"],
+  candidate_created: ["under_review", "draft", "rejected", "candidate_created"],
+  under_review: ["draft", "rejected", "paused", "under_review"],
+  draft: ["pending_approval", "rejected", "paused", "draft", "shadow", "rolled_back"],
+  pending_approval: ["evaluation_enabled", "rejected", "paused", "pending_approval", "shadow", "suggest"],
+  rejected: ["rejected"],
+  evaluation_enabled: ["suggest", "shadow", "canary_5", "canary_20", "canary_50", "partial_25", "partial_50", "partial_75", "stable", "stable_100", "rolled_back", "paused", "evaluation_enabled"],
+  suggest: ["pending_approval", "rejected", "paused", "suggest", "shadow"],
+  shadow: ["canary_5", "rolled_back", "paused", "shadow"],
+  canary_5: ["canary_20", "partial_25", "rolled_back", "paused", "canary_5"],
+  canary_20: ["canary_50", "rolled_back", "paused", "canary_20"],
+  canary_50: ["stable_100", "rolled_back", "paused", "canary_50"],
+  partial_25: ["partial_50", "rolled_back", "paused", "partial_25"],
+  partial_50: ["partial_75", "rolled_back", "paused", "partial_50"],
+  partial_75: ["stable", "rolled_back", "paused", "partial_75"],
+  stable: ["stable_100", "rolled_back", "paused", "stable"],
+  stable_100: ["released", "rolled_back", "paused", "stable_100"],
+  released: ["rolled_back", "paused", "released"],
+  rolled_back: ["rolled_back"],
+  paused: ["pending_approval", "evaluation_enabled", "suggest", "shadow", "canary_5", "canary_20", "canary_50", "partial_25", "partial_50", "partial_75", "stable", "rolled_back", "paused"],
 };
 
 export class RolloutStateMachine {
@@ -45,7 +51,7 @@ export class RolloutStateMachine {
     }
 
     const fromLevel = inferLevelFromStatus(currentStatus);
-    return parseRolloutRecord({
+    const record = parseRolloutRecord({
       recordId: newId("rollout"),
       candidateId: candidate.candidateId,
       fromLevel,
@@ -58,6 +64,9 @@ export class RolloutStateMachine {
       guardrailReasonCodes: options.guardrailReasonCodes ?? [],
       evidence: [...candidate.sourceSignalRefs],
     });
+    // level is a legacy alias for toLevel maintained for backwards compatibility
+    (record as Record<string, unknown>)["level"] = nextLevel;
+    return record;
   }
 }
 
@@ -79,6 +88,8 @@ function inferCurrentStatus(candidate: ImprovementCandidate, nextLevel: RolloutL
       return "rejected";
     case "rolled_back":
       return "rolled_back";
+    default:
+      return "candidate_created";
   }
 }
 
@@ -93,14 +104,30 @@ function inferStatusFromLevel(level: RolloutLevel, currentStatus: RolloutStatus)
         : "rolled_back";
     case "evaluate_0":
       return "evaluation_enabled";
+    case "suggest":
+      return "pending_approval";
+    case "shadow":
+      return "shadow";
     case "canary_5":
       return "canary_5";
     case "canary_20":
       return "canary_20";
     case "canary_50":
       return "canary_50";
+    case "partial_25":
+      return "partial_25";
+    case "partial_50":
+      return "partial_50";
+    case "partial_75":
+      return "partial_75";
+    case "stable":
+      return "stable";
     case "stable_100":
       return "stable_100";
+    default:
+      return currentStatus === "candidate_created" || currentStatus === "under_review" || currentStatus === "draft" || currentStatus === "pending_approval"
+        ? "rejected"
+        : "rolled_back";
   }
 }
 
@@ -110,14 +137,28 @@ function inferPreviousStatusFromLevel(level: RolloutLevel, fallback: RolloutStat
       return fallback;
     case "evaluate_0":
       return fallback;
-    case "canary_5":
+    case "suggest":
+      return fallback;
+    case "shadow":
       return "evaluation_enabled";
+    case "canary_5":
+      return "shadow";
     case "canary_20":
       return "canary_5";
     case "canary_50":
       return "canary_20";
+    case "partial_25":
+      return "canary_5";
+    case "partial_50":
+      return "partial_25";
+    case "partial_75":
+      return "partial_50";
+    case "stable":
+      return "partial_75";
     case "stable_100":
-      return "canary_50";
+      return "stable";
+    default:
+      return fallback;
   }
 }
 
@@ -133,14 +174,27 @@ function inferLevelFromStatus(status: RolloutStatus): RolloutLevel {
       return "off";
     case "evaluation_enabled":
       return "evaluate_0";
+    case "suggest":
+      return "suggest";
+    case "shadow":
+      return "shadow";
     case "canary_5":
       return "canary_5";
     case "canary_20":
       return "canary_20";
     case "canary_50":
       return "canary_50";
+    case "partial_25":
+      return "partial_25";
+    case "partial_50":
+      return "partial_50";
+    case "partial_75":
+      return "partial_75";
+    case "stable":
     case "stable_100":
     case "released":
       return "stable_100";
+    default:
+      return "off";
   }
 }

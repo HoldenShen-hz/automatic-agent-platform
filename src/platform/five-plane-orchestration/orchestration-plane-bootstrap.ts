@@ -23,7 +23,7 @@ export function buildOrchestrationPlaneBootstrap(): OrchestrationPlaneBootstrap 
 }
 
 export function registerOrchestrationPlaneBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): OrchestrationPlaneBootstrap {
   registry.register<readonly OrchestrationCapabilityBaseline[]>(ORCHESTRATION_PLANE_CATALOG_SERVICE_ID, {
     init: () => listOrchestrationCapabilityBaselines(),

@@ -24,7 +24,7 @@ export function buildComplianceBootstrap(): ComplianceBootstrap {
 }
 
 export function registerComplianceBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): ComplianceBootstrap {
   registry.register<readonly ComplianceCapabilityBaseline[]>(COMPLIANCE_CATALOG_SERVICE_ID, {
     init: () => listComplianceCapabilityBaselines(),

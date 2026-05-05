@@ -57,7 +57,7 @@ function buildDependencyServiceIds(
 }
 
 export class FivePlaneRuntimeOrchestrator {
-  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
+  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
 
   public prepare(): { readonly startupPlan: FivePlaneStartupPlan; readonly runtimeCatalog: FivePlaneRuntimeCatalog } {
     const runtimeCatalog = registerFivePlaneRuntimeCatalog(this.registry);
@@ -109,7 +109,7 @@ export class FivePlaneRuntimeOrchestrator {
 }
 
 export function registerFivePlaneRuntimeOrchestrator(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): FivePlaneRuntimeOrchestrator {
   registerFivePlaneRuntimeCatalog(registry);
   registerFivePlaneStartupPlan(registry);

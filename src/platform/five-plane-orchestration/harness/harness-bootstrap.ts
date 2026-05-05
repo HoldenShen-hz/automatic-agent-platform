@@ -44,7 +44,7 @@ export function buildHarnessBootstrap(): HarnessBootstrap {
 }
 
 export function registerHarnessBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): HarnessBootstrap {
   registry.register<readonly HarnessCapabilityBaseline[]>(HARNESS_CATALOG_SERVICE_ID, {
     init: () => listHarnessCapabilityBaselines(),

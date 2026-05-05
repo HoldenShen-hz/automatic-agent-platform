@@ -157,7 +157,7 @@ export function buildX1FabricBootstrap(): X1FabricBootstrap {
 }
 
 export function registerX1FabricBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
 ): X1FabricBootstrap {
   registerModelGatewayBootstrap(registry);
   registerPromptEngineBootstrap(registry);
@@ -190,7 +190,7 @@ export function registerX1FabricBootstrap(
   }
 }
 
-export function registerFivePlaneRuntimeCatalog(registry: ServiceRegistry = ServiceRegistry.getInstance()): FivePlaneRuntimeCatalog {
+export function registerFivePlaneRuntimeCatalog(registry: ServiceRegistry = ServiceRegistry.createScoped()): FivePlaneRuntimeCatalog {
   registerInterfacePlaneBootstrap(registry);
   registerX1FabricBootstrap(registry);
   registerControlPlaneBootstrap(registry);
