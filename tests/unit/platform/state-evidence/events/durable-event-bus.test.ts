@@ -1,19 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { join } from "node:path";
 
 import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../../helpers/seed.js";
+import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
 
 test("durable event bus publishes tier1 event and acks after delivery", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     const seen: string[] = [];
@@ -56,18 +52,15 @@ test("durable event bus publishes tier1 event and acks after delivery", async ()
     assert.equal(traceContext?.correlationId, "task-1");
 
     bus.dispose();
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publish auto-fans out to active subscribers", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-fanout-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     const seen: string[] = [];
@@ -95,18 +88,15 @@ test("durable event bus publish auto-fans out to active subscribers", async () =
     assert.equal(bus.pendingForConsumer("inspect_projection").length, 0);
 
     bus.dispose();
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus continues delivering later pending events after an earlier one dead-letters", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-retry-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-retry", executionId: "exec-retry", traceId: "trace-retry" });
@@ -151,18 +141,15 @@ test("durable event bus continues delivering later pending events after an earli
     assert.equal(firstAck?.status, "dead_lettered");
 
     bus.dispose();
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus dispose clears subscribers and rejects new operations", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-dispose-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-dispose", executionId: "exec-dispose", traceId: "trace-dispose" });
@@ -185,19 +172,15 @@ test("durable event bus dispose clears subscribers and rejects new operations", 
       /event_bus\.disposed/,
     );
     await assert.rejects(() => bus.deliverPending("inspect_projection"), /event_bus\.disposed/);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-lettering", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-retry-exhaust-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-retry-exhaust", executionId: "exec-retry-exhaust", traceId: "trace-retry-exhaust" });
@@ -241,18 +224,15 @@ test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-
     assert.ok(ack?.errorCode?.includes("failed_after_3_retries"), `Expected error code with retry info, got: ${ack?.errorCode}`);
 
     bus.dispose();
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus invalid payload rejects at publish time", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-invalid-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-invalid", executionId: "exec-invalid", traceId: "trace-invalid" });
@@ -272,19 +252,15 @@ test("durable event bus invalid payload rejects at publish time", async () => {
         && "code" in error
         && error.code === "event.payload_invalid",
     );
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus rejects payload larger than 1MB", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-payload-large-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-large", executionId: "exec-large", traceId: "trace-large" });
@@ -313,19 +289,15 @@ test("durable event bus rejects payload larger than 1MB", async () => {
         && "code" in error
         && error.code === "event.payload_too_large",
     );
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus volatile subscriber error does not propagate", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-volatile-error-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-volatile", executionId: "exec-volatile", traceId: "trace-volatile" });
@@ -354,18 +326,15 @@ test("durable event bus volatile subscriber error does not propagate", async () 
     assert.equal(event.eventType, "stream:chunk_emitted");
 
     bus.dispose();
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus unsubscribe removes subscriber", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-unsubscribe-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-unsub", executionId: "exec-unsub", traceId: "trace-unsub" });
@@ -418,19 +387,15 @@ test("durable event bus unsubscribe removes subscriber", async () => {
 
     // Should still only have 1 event since we unsubscribed
     assert.equal(seen.length, 1);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus dispose clears subscribers", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-dispose-2-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-dispose2", executionId: "exec-dispose2", traceId: "trace-dispose2" });
@@ -461,19 +426,15 @@ test("durable event bus dispose clears subscribers", async () => {
 
     // Should not have received any events since bus is disposed
     assert.equal(seen.length, 0);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publishBatch inserts multiple events in transaction", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-batch", executionId: "exec-batch", traceId: "trace-batch" });
@@ -508,19 +469,15 @@ test("durable event bus publishBatch inserts multiple events in transaction", as
 
     const allEvents = store.listEventsForTask("task-batch");
     assert.equal(allEvents.length, 3);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publishBatch validates all payloads before inserting", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-validate-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-batch-validate", executionId: "exec-batch-validate", traceId: "trace-batch-validate" });
@@ -546,19 +503,15 @@ test("durable event bus publishBatch validates all payloads before inserting", a
         ]),
       /Invalid payload for event type/,
     );
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publishBatch rejects oversized payload", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-size-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-batch-size", executionId: "exec-batch-size", traceId: "trace-batch-size" });
@@ -584,19 +537,15 @@ test("durable event bus publishBatch rejects oversized payload", async () => {
         && "code" in error
         && error.code === "event.payload_too_large",
     );
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publishBatch fanning out to subscribers", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-fanout-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-batch-fanout", executionId: "exec-batch-fanout", traceId: "trace-batch-fanout" });
@@ -631,18 +580,15 @@ test("durable event bus publishBatch fanning out to subscribers", async () => {
     assert.ok(seen.includes(events[1]!.id));
 
     bus.dispose();
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publishBatch creates ack records for tier1 events", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-ack-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-batch-ack", executionId: "exec-batch-ack", traceId: "trace-batch-ack" });
@@ -659,19 +605,15 @@ test("durable event bus publishBatch creates ack records for tier1 events", asyn
 
     const pending = bus.pendingForConsumer("inspect_projection");
     assert.equal(pending.length, 1);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publishBatch dispose rejects new batch publish", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-dispose-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-batch-dispose", executionId: "exec-batch-dispose", traceId: "trace-batch-dispose" });
@@ -691,19 +633,15 @@ test("durable event bus publishBatch dispose rejects new batch publish", async (
         ]),
       /event_bus\.disposed/,
     );
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus multiple subscribers each receive events", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-multi-sub-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-multi-sub", executionId: "exec-multi-sub", traceId: "trace-multi-sub" });
@@ -729,19 +667,15 @@ test("durable event bus multiple subscribers each receive events", async () => {
 
     assert.equal(seen1.length, 1);
     assert.equal(seen2.length, 1);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus deliverPending returns count of delivered events", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-deliver-count-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-deliver-count", executionId: "exec-deliver-count", traceId: "trace-deliver-count" });
@@ -758,37 +692,29 @@ test("durable event bus deliverPending returns count of delivered events", async
 
     const delivered = await bus.deliverPending("inspect_projection");
     assert.equal(delivered, 1);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus pendingForConsumer returns empty for unknown consumer", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-pending-unknown-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
 
     const pending = bus.pendingForConsumer("unknown_consumer");
     assert.equal(pending.length, 0);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus publish with traceContext injects trace fields into payload", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-trace-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
     seedTaskAndExecution(db, store, { taskId: "task-trace", executionId: "exec-trace", traceId: "trace-trace" });
@@ -816,27 +742,21 @@ test("durable event bus publish with traceContext injects trace fields into payl
       parentSpanId: "span-root",
       correlationId: "corr-123",
     });
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });
 
 test("durable event bus empty batch returns empty array", async () => {
-  const workspace = createTempWorkspace("aa-event-bus-batch-empty-");
+  const { db, cleanup } = initHaCoordinatorForTests();
 
   try {
-    const db = new SqliteDatabase(join(workspace, "events.db"));
-    db.migrate();
     const store = new AuthoritativeTaskStore(db);
     const bus = new DurableEventBus(db, store);
 
     const events = bus.publishBatch([]);
     assert.deepEqual(events, []);
-
-    db.close();
   } finally {
-    cleanupPath(workspace);
+    cleanup();
   }
 });

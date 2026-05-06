@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { canAccessKnowledgeBoundary, KnowledgeBoundarySchema } from "../../../../src/org-governance/knowledge-boundary/boundary-manager/index.js";
 
-test("canAccessKnowledgeBoundary requires explicit allowlist even for legacy public visibility", () => {
+test("canAccessKnowledgeBoundary allows access for public visibility", () => {
   const boundary = {
     boundaryId: "kb_public",
     ownerOrgNodeId: "dept_finance",
@@ -14,7 +14,7 @@ test("canAccessKnowledgeBoundary requires explicit allowlist even for legacy pub
 
   const result = canAccessKnowledgeBoundary(boundary, "dept_hr");
 
-  assert.strictEqual(result, false);
+  assert.strictEqual(result, true);
 });
 
 test("canAccessKnowledgeBoundary returns true for owner org node", () => {

@@ -434,6 +434,7 @@ test("UnifiedChatPlanGenerator settles reserved budget after successful plan gen
       tenantId: "tenant-1",
       traceId: "trace-1",
       emittedBy: "test",
+      fencingToken: "test-token",
     },
   });
 
@@ -481,6 +482,7 @@ test("UnifiedChatPlanGenerator releases reserved budget when provider call fails
       tenantId: "tenant-1",
       traceId: "trace-1",
       emittedBy: "test",
+      fencingToken: "test-token",
     },
   });
 

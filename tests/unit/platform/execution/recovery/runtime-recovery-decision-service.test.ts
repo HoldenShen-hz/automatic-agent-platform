@@ -143,7 +143,7 @@ test("RuntimeRecoveryDecisionService can be instantiated", () => {
   assert.ok(service != null);
 });
 
-test("RuntimeRecoveryDecisionService.decide throws when execution not found", () => {
+test("RuntimeRecoveryDecisionService.decide throws when execution not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [],
@@ -151,13 +151,13 @@ test("RuntimeRecoveryDecisionService.decide throws when execution not found", ()
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.decide("nonexistent-exec"),
+  await assert.rejects(
+    async () => await service.decide("nonexistent-exec"),
     (err: unknown) => (err as Error).message.includes("Execution not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService.apply throws when execution not found", () => {
+test("RuntimeRecoveryDecisionService.apply throws when execution not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [],
@@ -165,13 +165,13 @@ test("RuntimeRecoveryDecisionService.apply throws when execution not found", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.apply("nonexistent-exec"),
+  await assert.rejects(
+    async () => await service.apply("nonexistent-exec"),
     (err: unknown) => (err as Error).message.includes("Execution not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService.decide throws when candidate not found", () => {
+test("RuntimeRecoveryDecisionService.decide throws when candidate not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -183,13 +183,13 @@ test("RuntimeRecoveryDecisionService.decide throws when candidate not found", ()
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.decide("exec-1"),
+  await assert.rejects(
+    async () => await service.decide("exec-1"),
     (err: unknown) => (err as Error).message.includes("Recovery candidate not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
+test("RuntimeRecoveryDecisionService.decide returns decision record", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -214,7 +214,7 @@ test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await service.decide("exec-1");
 
   assert.ok(decision.decisionId.length > 0);
   assert.equal(decision.executionId, "exec-1");
@@ -225,7 +225,7 @@ test("RuntimeRecoveryDecisionService.decide returns decision record", () => {
   assert.equal(decision.decidedBy, "runtime_recovery_decision_service");
 });
 
-test("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
+test("RuntimeRecoveryDecisionService.decide uses custom decidedBy", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -250,13 +250,13 @@ test("RuntimeRecoveryDecisionService.decide uses custom decidedBy", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1", "custom_service");
+  const decision = await service.decide("exec-1", "custom_service");
 
   assert.equal(decision.decidedBy, "custom_service");
   assert.equal(decision.action, "cancel");
 });
 
-test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
+test("RuntimeRecoveryDecisionService.apply handles cancel action", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   let eventInserted = false;
@@ -292,7 +292,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.deadLetter, null);
@@ -301,7 +301,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
   assert.equal(eventInserted, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_denied reason", () => {
+test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_denied reason", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   const candidate = createMockCandidate({
@@ -337,14 +337,14 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_d
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "cancel");
   assert.equal(failureUpdated, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () => {
+test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", async () => {
   const db = createMockDb();
   let deadLetterInserted = false;
   const candidate = createMockCandidate({
@@ -373,7 +373,7 @@ test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.ok(result.deadLetter != null);
@@ -425,7 +425,7 @@ test("RecoveryDecisionApplyResult has correct structure", () => {
   assert.ok("applied" in result);
 });
 
-test("RuntimeRecoveryDecisionService.decide records decision event", () => {
+test("RuntimeRecoveryDecisionService.decide records decision event", async () => {
   const db = createMockDb();
   let eventInserted = false;
   const candidate = createMockCandidate({
@@ -455,12 +455,12 @@ test("RuntimeRecoveryDecisionService.decide records decision event", () => {
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.decide("exec-1");
+  await service.decide("exec-1");
 
   assert.equal(eventInserted, true);
 });
 
-test("RuntimeRecoveryDecisionService.apply records decision and action events", () => {
+test("RuntimeRecoveryDecisionService.apply records decision and action events", async () => {
   const db = createMockDb();
   const events: string[] = [];
   const candidate = createMockCandidate({
@@ -495,13 +495,13 @@ test("RuntimeRecoveryDecisionService.apply records decision and action events", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.apply("exec-1");
+  await service.apply("exec-1");
 
   // Should have at least 2 events: decision_recorded and recovery:cancelled
   assert.ok(events.length >= 2);
 });
 
-test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", () => {
+test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -540,14 +540,14 @@ test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.deadLetter, null);
   assert.equal(result.decision.action, "cancel");
 });
 
-test("RuntimeRecoveryDecisionService leaves active execution unapplied when no terminal recovery action is inferred", () => {
+test("RuntimeRecoveryDecisionService leaves active execution unapplied when no terminal recovery action is inferred", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -575,14 +575,14 @@ test("RuntimeRecoveryDecisionService leaves active execution unapplied when no t
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, false);
   assert.equal(result.deadLetter, null);
   assert.equal(result.decision.action, "resume_same_worker");
 });
 
-test("RuntimeRecoveryDecisionService.apply throws when candidate not found", () => {
+test("RuntimeRecoveryDecisionService.apply throws when candidate not found", async () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [{ id: "exec-1", taskId: "task-1", status: "executing" }],
@@ -593,13 +593,13 @@ test("RuntimeRecoveryDecisionService.apply throws when candidate not found", () 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  assert.throws(
-    () => service.apply("exec-1"),
+  await assert.rejects(
+    async () => await service.apply("exec-1"),
     (err: unknown) => (err as Error).message.includes("Recovery candidate not found"),
   );
 });
 
-test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_error reason using lastErrorMessage", () => {
+test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_error reason using lastErrorMessage", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   let lastErrorCode = "";
@@ -632,7 +632,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(failureUpdated, true);
@@ -641,7 +641,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
   assert.equal(result.decision.action, "move_dead_letter");
 });
 
-test("RuntimeRecoveryDecisionService deadLetter contains retry count from execution", () => {
+test("RuntimeRecoveryDecisionService deadLetter contains retry count from execution", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -669,13 +669,13 @@ test("RuntimeRecoveryDecisionService deadLetter contains retry count from execut
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.equal(result.deadLetter!.retryCount, 5);
 });
 
-test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", () => {
+test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", async () => {
   const db = createMockDb();
   let failureUpdated = false;
   let lastErrorMessage = "";
@@ -717,7 +717,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", 
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "cancel");
@@ -726,7 +726,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", 
   assert.ok(lastErrorMessage.includes("security_policy_violation"));
 });
 
-test("RuntimeRecoveryDecisionService preserves null execution error message when dead-lettering", () => {
+test("RuntimeRecoveryDecisionService preserves null execution error message when dead-lettering", async () => {
   const db = createMockDb();
   let lastErrorMessage = "";
   const candidate = createMockCandidate({
@@ -758,14 +758,14 @@ test("RuntimeRecoveryDecisionService preserves null execution error message when
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "move_dead_letter");
   assert.equal(lastErrorMessage, "");
 });
 
-test("RuntimeRecoveryDecisionService.decide uses default decidedBy when not specified", () => {
+test("RuntimeRecoveryDecisionService.decide uses default decidedBy when not specified", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -783,12 +783,12 @@ test("RuntimeRecoveryDecisionService.decide uses default decidedBy when not spec
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await service.decide("exec-1");
 
   assert.equal(decision.decidedBy, "runtime_recovery_decision_service");
 });
 
-test("RuntimeRecoveryDecisionService.apply uses default decidedBy when not specified", () => {
+test("RuntimeRecoveryDecisionService.apply uses default decidedBy when not specified", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -822,12 +822,12 @@ test("RuntimeRecoveryDecisionService.apply uses default decidedBy when not speci
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.decision.decidedBy, "runtime_recovery_decision_service");
 });
 
-test("RuntimeRecoveryDecisionService.apply records dead letter event with correct payload", () => {
+test("RuntimeRecoveryDecisionService.apply records dead letter event with correct payload", async () => {
   const db = createMockDb();
   let eventPayload: Record<string, unknown> | null = null;
   const candidate = createMockCandidate({
@@ -858,7 +858,7 @@ test("RuntimeRecoveryDecisionService.apply records dead letter event with correc
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.ok(eventPayload != null);
@@ -867,7 +867,7 @@ test("RuntimeRecoveryDecisionService.apply records dead letter event with correc
   assert.equal(eventPayload!["retryCount"], 3);
 });
 
-test("RuntimeRecoveryDecisionService.apply records cancellation event with correct payload", () => {
+test("RuntimeRecoveryDecisionService.apply records cancellation event with correct payload", async () => {
   const db = createMockDb();
   let eventPayload: Record<string, unknown> | null = null;
   const candidate = createMockCandidate({
@@ -906,14 +906,14 @@ test("RuntimeRecoveryDecisionService.apply records cancellation event with corre
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.apply("exec-1");
+  await service.apply("exec-1");
 
   assert.ok(eventPayload != null);
   assert.equal(eventPayload!["action"], "cancel");
   assert.equal(eventPayload!["reason"], "precheck_denied:timeout");
 });
 
-test("RuntimeRecoveryDecisionService handles cancel action with existing lastErrorCode", () => {
+test("RuntimeRecoveryDecisionService handles cancel action with existing lastErrorCode", async () => {
   const db = createMockDb();
   let capturedErrorCode: string | null = null;
   const candidate = createMockCandidate({
@@ -950,14 +950,14 @@ test("RuntimeRecoveryDecisionService handles cancel action with existing lastErr
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
   // Precheck denial reasonCode takes precedence over existing lastErrorCode
   assert.equal(capturedErrorCode, "resource_exhausted");
 });
 
-test("RuntimeRecoveryDecisionService.decide records decision event before returning", () => {
+test("RuntimeRecoveryDecisionService.decide records decision event before returning", async () => {
   const db = createMockDb();
   let eventTypes: string[] = [];
   const candidate = createMockCandidate({
@@ -977,12 +977,12 @@ test("RuntimeRecoveryDecisionService.decide records decision event before return
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  service.decide("exec-1");
+  await service.decide("exec-1");
 
   assert.ok(eventTypes.includes("recovery:decision_recorded"));
 });
 
-test("RuntimeRecoveryDecisionService handles execution with traceId null in event recording", () => {
+test("RuntimeRecoveryDecisionService handles execution with traceId null in event recording", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -1017,12 +1017,12 @@ test("RuntimeRecoveryDecisionService handles execution with traceId null in even
   const service = new RuntimeRecoveryDecisionService(db, store);
 
   // Should not throw even with undefined traceId
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.equal(result.applied, true);
 });
 
-test("RuntimeRecoveryDecisionService handles decision for move_dead_letter preserving candidate reason", () => {
+test("RuntimeRecoveryDecisionService handles decision for move_dead_letter preserving candidate reason", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -1052,13 +1052,13 @@ test("RuntimeRecoveryDecisionService handles decision for move_dead_letter prese
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await service.decide("exec-1");
 
   assert.equal(decision.reason, "execution_error:E_DEADLINE_EXCEEDED");
   assert.equal(decision.action, "move_dead_letter");
 });
 
-test("RuntimeRecoveryDecisionService handles apply when execution traceId differs from candidate", () => {
+test("RuntimeRecoveryDecisionService handles apply when execution traceId differs from candidate", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -1086,14 +1086,14 @@ test("RuntimeRecoveryDecisionService handles apply when execution traceId differ
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   // Should still apply successfully
   assert.equal(result.applied, true);
   assert.equal(result.decision.action, "move_dead_letter");
 });
 
-test("RuntimeRecoveryDecisionService handles dead letter with null lastErrorMessage", () => {
+test("RuntimeRecoveryDecisionService handles dead letter with null lastErrorMessage", async () => {
   const db = createMockDb();
   let deadLetterRecord: { finalReasonCode: string; lastErrorMessage: string } | null = null;
   const candidate = createMockCandidate({
@@ -1124,14 +1124,14 @@ test("RuntimeRecoveryDecisionService handles dead letter with null lastErrorMess
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.equal(deadLetterRecord!.finalReasonCode, "E_NULL_MSG");
   assert.equal(deadLetterRecord!.lastErrorMessage, null);
 });
 
-test("RuntimeRecoveryDecisionService handles dead letter memory recording", () => {
+test("RuntimeRecoveryDecisionService handles dead letter memory recording", async () => {
   const db = createMockDb();
   let insertedMemory: { taskId: string | null; executionId: string | null; agentId: string | null; createdAt: string; contentJson: string } | null = null;
   const candidate = createMockCandidate({
@@ -1161,7 +1161,7 @@ test("RuntimeRecoveryDecisionService handles dead letter memory recording", () =
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   assert.ok(result.deadLetter != null);
   assert.ok(insertedMemory != null);
@@ -1171,7 +1171,7 @@ test("RuntimeRecoveryDecisionService handles dead letter memory recording", () =
   assert.match(insertedMemory!.contentJson, /E_MEMORY_TEST/);
 });
 
-test("RuntimeRecoveryDecisionService handles decision for resume_same_worker action", () => {
+test("RuntimeRecoveryDecisionService handles decision for resume_same_worker action", async () => {
   const db = createMockDb();
   const candidate = createMockCandidate({
     executionId: "exec-1",
@@ -1197,13 +1197,13 @@ test("RuntimeRecoveryDecisionService handles decision for resume_same_worker act
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const decision = service.decide("exec-1");
+  const decision = await service.decide("exec-1");
 
   assert.equal(decision.action, "resume_same_worker");
   assert.equal(decision.reason, "active_execution");
 });
 
-test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op action)", () => {
+test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op action)", async () => {
   const db = createMockDb();
   let updateFailureCalled = false;
   let insertDeadLetterCalled = false;
@@ -1231,7 +1231,7 @@ test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op act
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
 
-  const result = service.apply("exec-1");
+  const result = await service.apply("exec-1");
 
   // resume_same_worker is not handled, so applied stays false
   assert.equal(result.applied, false);

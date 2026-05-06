@@ -10,24 +10,21 @@ import {
   resetMultiStepToolRegistryForTests,
   type MultiStepToolExecutionInput,
 } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 test("runMultiStepOrchestration basic execution", async () => {
-  const dbPath = join(__dirname, "test-multi-step.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
-
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "Test Multi-Step",
-    request: "Run multi-step test",
-  };
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
+    const input: MultiStepToolExecutionInput = {
+      dbPath,
+      title: "Test Multi-Step",
+      request: "Run multi-step test",
+    };
+
     const result = await runMultiStepOrchestration(input);
 
     assert.ok(result, "runMultiStepOrchestration should return a result");
@@ -35,9 +32,7 @@ test("runMultiStepOrchestration basic execution", async () => {
     assert.ok("routing" in result, "result should have routing property");
     assert.ok("plannedWorkflow" in result, "result should have plannedWorkflow property");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
