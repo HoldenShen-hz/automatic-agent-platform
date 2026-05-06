@@ -106,18 +106,48 @@ export class SqliteLeaseRepository implements LeaseRepository {
   }
 
   async updateLeaseStatus(leaseId: string, status: ExecutionLeaseRecord["status"]): Promise<void> {
+    const lease = this.db.connection
+      .prepare(`SELECT status FROM execution_leases WHERE id = ?`)
+      .get(leaseId) as { status: LeaseStatus } | undefined;
+    if (!lease) {
+      throw new Error(`Lease not found: ${leaseId}`);
+    }
+    if (!isValidLeaseTransition(lease.status, status)) {
+      throw new Error(
+        `Invalid lease state transition: ${lease.status} -> ${status}`,
+      );
+    }
     this.db.connection
       .prepare(`UPDATE execution_leases SET status = ? WHERE id = ?`)
       .run(status, leaseId);
   }
 
-  async updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string): Promise<void> {
+  async updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string, ttlMs: number): Promise<void> {
+    const lease = this.db.connection
+      .prepare(`SELECT status, expires_at FROM execution_leases WHERE id = ?`)
+      .get(leaseId) as { status: LeaseStatus; expires_at: string } | undefined;
+    if (!lease) {
+      throw new Error(`Lease not found: ${leaseId}`);
+    }
+    if (lease.status !== "active") {
+      throw new Error(`Cannot heartbeat lease in status: ${lease.status}`);
+    }
+    const newExpiresAt = new Date(Date.parse(lastHeartbeatAt) + ttlMs).toISOString();
     this.db.connection
-      .prepare(`UPDATE execution_leases SET last_heartbeat_at = ? WHERE id = ?`)
-      .run(lastHeartbeatAt, leaseId);
+      .prepare(`UPDATE execution_leases SET last_heartbeat_at = ?, expires_at = ? WHERE id = ?`)
+      .run(lastHeartbeatAt, newExpiresAt, leaseId);
   }
 
   async updateLeaseRelease(leaseId: string, releasedAt: string, reasonCode: string | null): Promise<void> {
+    const lease = this.db.connection
+      .prepare(`SELECT status FROM execution_leases WHERE id = ?`)
+      .get(leaseId) as { status: LeaseStatus } | undefined;
+    if (!lease) {
+      throw new Error(`Lease not found: ${leaseId}`);
+    }
+    if (lease.status !== "active") {
+      throw new Error(`Cannot release lease in status: ${lease.status}`);
+    }
     this.db.connection
       .prepare(
         `UPDATE execution_leases
