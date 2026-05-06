@@ -278,36 +278,43 @@ export class PluginTestHarness {
     // Compute input hash for record/replay lookup
     const inputHash = hashInput(input);
 
-    // Create a timeout race
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         reject(new Error(`PluginTestHarness: execution timed out after ${this.timeoutMs}ms`));
       }, this.timeoutMs);
+      timeoutId.unref?.();
     });
 
-    // In replay mode, try to use pre-recorded response
-    if (this.mode === "replay" && this.mockGateway) {
-      const recorded = this.mockGateway.replay(inputHash);
-      if (recorded !== null) {
-        return recorded;
+    try {
+      // In replay mode, try to use pre-recorded response
+      if (this.mode === "replay" && this.mockGateway) {
+        const recorded = this.mockGateway.replay(inputHash);
+        if (recorded !== null) {
+          return recorded;
+        }
+        // Fall through to mock if no recording found
       }
-      // Fall through to mock if no recording found
-    }
 
-    // In mock or replay (no recording found) mode, use mock behavior
-    if (this.mode === "mock" || this.mode === "replay") {
-      // Use Promise.race to enforce timeout
-      const executionPromise = this.executeMock(input, inputHash);
-      return await Promise.race([executionPromise, timeoutPromise]);
-    }
+      // In mock or replay (no recording found) mode, use mock behavior
+      if (this.mode === "mock" || this.mode === "replay") {
+        // Use Promise.race to enforce timeout
+        const executionPromise = this.executeMock(input, inputHash);
+        return await Promise.race([executionPromise, timeoutPromise]);
+      }
 
-    // In live mode, execute the actual plugin with timeout enforcement
-    if (this.mode === "live") {
-      const executionPromise = this.executeLive(input);
-      return await Promise.race([executionPromise, timeoutPromise]);
-    }
+      // In live mode, execute the actual plugin with timeout enforcement
+      if (this.mode === "live") {
+        const executionPromise = this.executeLive(input);
+        return await Promise.race([executionPromise, timeoutPromise]);
+      }
 
-    throw new Error(`PluginTestHarness: unknown mode ${this.mode}`);
+      throw new Error(`PluginTestHarness: unknown mode ${this.mode}`);
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 
   /**

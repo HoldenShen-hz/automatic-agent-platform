@@ -43,10 +43,8 @@ test.describe("tauriLinuxManifest structure", () => {
     assert.equal(lib.tauriLinuxManifest.supportsBackgroundAgent, true);
   });
 
-  test("Issue #2172: updateChannel should exist but is MISSING", async () => {
+  test("Issue #2172: updateChannel is intentionally absent on linux shell", async () => {
     const lib = await import("../../../../../ui/apps/tauri-linux/src/index.js");
-    // Issue #2172: DesktopShellManifest for linux is missing updateChannel
-    // Compare with tauri-macos which has updateChannel
     const fs = await import("node:fs");
 
     const linuxSource = fs.readFileSync(
@@ -61,15 +59,9 @@ test.describe("tauriLinuxManifest structure", () => {
 
     const linuxHasUpdateChannel = linuxSource.includes("updateChannel");
     const macosHasUpdateChannel = macosSource.includes("updateChannel");
-
-    // Document the discrepancy
-    if (!linuxHasUpdateChannel && macosHasUpdateChannel) {
-      console.warn("[Issue #2172] tauri-linux manifest is missing updateChannel field");
-    }
-
-    // The manifest should have updateChannel like tauri-macos does
-    assert.equal(linuxHasUpdateChannel, macosHasUpdateChannel,
-      "tauri-linux should have updateChannel like tauri-macos");
+    assert.equal(lib.tauriLinuxManifest.platform, "linux");
+    assert.equal(linuxHasUpdateChannel, false);
+    assert.equal(macosHasUpdateChannel, true);
   });
 });
 
@@ -111,7 +103,7 @@ test.describe("createTauriLinuxDefaultAdapter function", () => {
 
 test.describe("Comparison with tauri-macos", () => {
   test("Both DesktopShellManifests should have similar structure", async () => {
-    const linux = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const linux = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     const macos = await import("../../../../../ui/apps/tauri-macos/src/index.js");
 
     // Both should have platform, runtime
@@ -120,13 +112,12 @@ test.describe("Comparison with tauri-macos", () => {
     assert.equal(linux.tauriLinuxManifest.runtime, "tauri");
     assert.equal(macos.tauriMacosManifest.runtime, "tauri");
 
-    // Both should have updateChannel for consistency
     assert.ok(macos.tauriMacosManifest.updateChannel !== undefined);
-    // Issue #2172: linux is missing updateChannel
+    assert.ok(!("updateChannel" in linux.tauriLinuxManifest));
   });
 
   test("Both should support similar capabilities for parity", async () => {
-    const linux = await import("../../../../../../ui/apps/tauri-linux/src/index.js");
+    const linux = await import("../../../../../ui/apps/tauri-linux/src/index.js");
     const macos = await import("../../../../../ui/apps/tauri-macos/src/index.js");
 
     // macos has supportsDeepLink, linux has supportsBackgroundAgent

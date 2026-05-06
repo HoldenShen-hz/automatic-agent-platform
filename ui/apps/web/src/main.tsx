@@ -10,7 +10,12 @@ if (rootElement != null) {
   void registerWebServiceWorker();
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <App client={runtime.client} wsClient={runtime.wsClient} />
+      <App
+        client={runtime.client}
+        tokenManager={runtime.tokenManager}
+        wsClient={runtime.wsClient}
+        wsUrl={runtime.wsUrl}
+      />
     </React.StrictMode>,
   );
 }

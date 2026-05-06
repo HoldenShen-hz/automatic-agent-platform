@@ -35,6 +35,10 @@ describe("electronPreloadApi", () => {
     expect("spawn" in electronPreloadApi.shell).toBe(false);
   });
 
+  it("does not advertise unrestricted file channels", () => {
+    expect("files" in electronPreloadApi).toBe(false);
+  });
+
   it("keeps the window and privacy channel mappings", () => {
     expect(electronPreloadApi.window.minimize).toBe("window:minimize");
     expect(electronPreloadApi.window.maximize).toBe("window:maximize");
@@ -61,7 +65,7 @@ describe("installElectronBridge", () => {
 
     installElectronBridge(targetWindow, bridge);
 
-    expect(exposeInMainWorld).toHaveBeenCalledWith("__AA_ELECTRON__", bridge);
+    expect(exposeInMainWorld).toHaveBeenCalledWith("AA_ELECTRON", bridge);
     expect(Object.prototype.hasOwnProperty.call(targetWindow, "__AA_ELECTRON__")).toBe(false);
   });
 });

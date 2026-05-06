@@ -476,15 +476,24 @@ export class UnifiedChatProvider {
           const minimaxService = service as MiniMaxChatService;
           const minimaxRequest = this.toMiniMaxRequest(request);
           minimaxRequest.signal = activeSignal;
+          let lastChunk: ChatCompletionResult | null = null;
+          let emittedFinal = false;
           await minimaxService.createStreamingChatCompletion(
             minimaxRequest,
             (chunk) => {
               const normalized = this.normalizeMiniMaxResult(chunk, provider);
+              const inferredFinal = normalized.finishReason.trim().length > 0 && normalized.finishReason !== "streaming";
+              lastChunk = normalized;
               trackStreamingBudget(normalized);
-              validatePartialChunk(normalized, false);
-              onChunk(normalized, false);
+              validatePartialChunk(normalized, inferredFinal);
+              onChunk(normalized, inferredFinal);
+              emittedFinal ||= inferredFinal;
             },
           );
+          if (!emittedFinal && lastChunk !== null) {
+            validatePartialChunk(lastChunk, true);
+            onChunk(lastChunk, true);
+          }
           return;
         }
       }

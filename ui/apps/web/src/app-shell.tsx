@@ -5,11 +5,14 @@ import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
+import type { TokenManager } from "@aa/shared-auth";
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
   readonly client?: RESTClient;
+  readonly tokenManager?: TokenManager;
   readonly wsClient?: WSClient;
+  readonly wsUrl?: string;
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
   /** Auth context for RBAC - should come from auth store per §5.1.1 */
@@ -178,10 +181,13 @@ class AppErrorBoundary extends React.Component<
   }
 }
 
-export function WebAppShell({ features, client, wsClient, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
+export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
   const runtimeProps = {
     ...(client == null ? {} : { client }),
+    ...(tokenManager == null ? {} : { tokenManager }),
     ...(wsClient == null ? {} : { wsClient }),
+    ...(wsUrl == null ? {} : { wsUrl }),
+    ...(authContext == null ? {} : { authContext }),
   };
 
   return (

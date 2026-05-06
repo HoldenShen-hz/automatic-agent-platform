@@ -16,7 +16,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 
 export type QuotaKind = "executions_per_minute" | "concurrent_executions" | "total_compute_minutes" | "storage_bytes";
 export type EnforcementAction = "reject" | "throttle" | "log_only";
-export type IsolationStatus = "active" | "quota_exceeded" | "noisy_neighbor_detected" | "disabled";
+export type IsolationStatus = "active" | "quota_critical" | "quota_exceeded" | "noisy_neighbor_detected" | "disabled";
 
 export interface TenantQuota {
   id: string;
@@ -320,7 +320,7 @@ export class TenantExecutionIsolationService {
       if (usage) {
         quotaUsages.push(usage);
         if (usage.status === "exceeded") overallStatus = "quota_exceeded";
-        else if (overallStatus !== "quota_exceeded" && usage.status === "critical") overallStatus = "active";
+        else if (overallStatus === "active" && usage.status === "critical") overallStatus = "quota_critical";
       }
     }
 

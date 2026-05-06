@@ -3,25 +3,20 @@ import { init, use } from "echarts/core";
 import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { designTokens } from "../design-tokens";
+import { designTokens, type CoreDesignTokens } from "../design-tokens";
 
 use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 export interface EChartSurfaceRuntimeProps {
   readonly title: string;
   readonly values: readonly number[];
+  readonly theme?: CoreDesignTokens;
 }
 
-export function EChartSurfaceRuntime({ title, values }: EChartSurfaceRuntimeProps): ReactElement {
+export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EChartSurfaceRuntimeProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fallbackLabel = useMemo(() => `${title}: ${values.join(", ")}`, [title, values]);
-  // P2 FIX: Store designTokens.color in a ref so useEffect dependency is stable.
-  // Root cause: Passing designTokens.color directly in deps caused useEffect to
-  // re-run on every render even when colors hadn't changed, or worse, miss theme
-  // changes if designTokens object reference changed but deps didn't include it.
-  // Using a ref captures the current color values without causing re-renders.
-  const colorRef = useRef(designTokens.color);
-  colorRef.current = designTokens.color;
+  const chartTheme = theme.color;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -37,11 +32,11 @@ export function EChartSurfaceRuntime({ title, values }: EChartSurfaceRuntimeProp
       xAxis: {
         type: "category",
         data: values.map((_, index) => `${index + 1}`),
-        axisLine: { lineStyle: { color: colorRef.current.border } },
+        axisLine: { lineStyle: { color: chartTheme.border } },
       },
       yAxis: {
         type: "value",
-        axisLine: { lineStyle: { color: colorRef.current.border } },
+        axisLine: { lineStyle: { color: chartTheme.border } },
         splitLine: { lineStyle: { color: "rgba(148,163,184,0.18)" } },
       },
       series: [
@@ -49,7 +44,7 @@ export function EChartSurfaceRuntime({ title, values }: EChartSurfaceRuntimeProp
           type: "line",
           smooth: true,
           data: values,
-          lineStyle: { color: colorRef.current.accent, width: 3 },
+          lineStyle: { color: chartTheme.accent, width: 3 },
           areaStyle: { color: "rgba(34,197,94,0.18)" },
         },
       ],
@@ -62,19 +57,19 @@ export function EChartSurfaceRuntime({ title, values }: EChartSurfaceRuntimeProp
       container.ownerDocument.defaultView?.removeEventListener("resize", resize);
       chart.dispose();
     };
-  }, [values]);
+  }, [values, chartTheme.accent, chartTheme.border]);
 
   return (
     <div>
-      <div style={{ color: designTokens.color.subtle, marginBottom: 8 }}>{title}</div>
+      <div style={{ color: theme.color.subtle, marginBottom: 8 }}>{title}</div>
       <div
         aria-label={fallbackLabel}
         ref={containerRef}
         style={{
           height: 220,
-          border: `1px solid ${designTokens.color.border}`,
-          borderRadius: designTokens.radius.md,
-          background: designTokens.color.surfaceElevated,
+          border: `1px solid ${theme.color.border}`,
+          borderRadius: theme.radius.md,
+          background: theme.color.surfaceElevated,
         }}
       />
     </div>

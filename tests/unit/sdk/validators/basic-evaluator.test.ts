@@ -276,6 +276,7 @@ test("BasicEvaluator validate provides suggestions for type mismatches", async (
 
 test("BasicEvaluator healthCheck returns true", async () => {
   const evaluator = createBasicEvaluatorPlugin();
+  await evaluator.initialize();
   const healthy = await evaluator.healthCheck();
   assert.equal(healthy, true);
 });

@@ -184,6 +184,45 @@ test("WalCheckpointService stop clears interval handle", () => {
   assert.equal(service.isRunning(), false);
 });
 
+test("WalCheckpointService startCheckpointLoop calls unref() on its interval", () => {
+  const db = createMockDatabase();
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  let unrefCalled = false;
+
+  (globalThis as typeof globalThis & {
+    setInterval: typeof setInterval;
+    clearInterval: typeof clearInterval;
+  }).setInterval = ((handler: TimerHandler, _timeout?: number, ...args: unknown[]) => {
+    void handler;
+    void args;
+    return {
+      unref() {
+        unrefCalled = true;
+      },
+    } as unknown as ReturnType<typeof setInterval>;
+  }) as typeof setInterval;
+  (globalThis as typeof globalThis & {
+    clearInterval: typeof clearInterval;
+  }).clearInterval = ((_handle?: ReturnType<typeof setInterval>) => undefined) as typeof clearInterval;
+
+  try {
+    const service = new WalCheckpointService({
+      db,
+      haLevel: "HA_2",
+      checkpointIntervalMs: 100,
+    });
+
+    service.start();
+    assert.equal(unrefCalled, true);
+    service.stop();
+    service.dispose();
+  } finally {
+    (globalThis as typeof globalThis & { setInterval: typeof setInterval }).setInterval = originalSetInterval;
+    (globalThis as typeof globalThis & { clearInterval: typeof clearInterval }).clearInterval = originalClearInterval;
+  }
+});
+
 test("WalCheckpointService dispose stops and marks as disposed", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({

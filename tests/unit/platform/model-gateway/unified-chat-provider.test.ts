@@ -10,7 +10,6 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mock } from "node:test";
 
 import {
   UnifiedChatProvider,

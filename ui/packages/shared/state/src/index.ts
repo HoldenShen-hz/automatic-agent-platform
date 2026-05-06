@@ -19,7 +19,7 @@ import {
   type WSClient,
 } from "@aa/shared-api-client";
 import type { SystemStatusVM } from "@aa/shared-types";
-import { AuthService } from "@aa/shared-auth";
+import { AuthService, TokenManager } from "@aa/shared-auth";
 import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
 import { createApprovalsQuery } from "./queries/approval-queries";
 import {
@@ -56,6 +56,13 @@ export type { ThemeStoreState, ThemeMode, ColorScheme } from "./stores/theme-sto
 export { createThemeStore } from "./stores/theme-store";
 export { createQueryClientFactory } from "./query-client";
 
+interface UiRuntimeAuthContext {
+  readonly userId: string;
+  readonly tenantId: string;
+  readonly roles: readonly string[];
+  readonly permissions: readonly string[];
+}
+
 const ApiClientContext = createContext<RESTClient | null>(null);
 const WsClientContext = createContext<WSClient | null>(null);
 const AuthStoreContext = createContext<ReturnType<typeof createAuthStore> | null>(null);
@@ -74,7 +81,22 @@ const fallbackNotificationStore = createNotificationStore();
 const fallbackThemeStore = createThemeStore();
 
 export function UiRuntimeProvider(
-  { children, client, queryClient, wsClient }: PropsWithChildren<{ client?: RESTClient; queryClient?: QueryClient; wsClient?: WSClient }>,
+  {
+    children,
+    client,
+    queryClient,
+    tokenManager,
+    wsClient,
+    wsUrl,
+    authContext,
+  }: PropsWithChildren<{
+    client?: RESTClient;
+    queryClient?: QueryClient;
+    tokenManager?: TokenManager;
+    wsClient?: WSClient;
+    wsUrl?: string;
+    authContext?: UiRuntimeAuthContext;
+  }>,
 ): ReactElement {
   const resolvedClient = client ?? new DefaultRESTClient();
   const resolvedQueryClient = queryClient ?? createQueryClientFactory();
@@ -85,52 +107,12 @@ export function UiRuntimeProvider(
   const syncStore = useMemo(() => createSyncStore(), []);
   const notificationStore = useMemo(() => createNotificationStore(), []);
   const themeStore = useMemo(() => createThemeStore(), []);
-  const authService = useMemo(() => new AuthService(), []);
+  const resolvedTokenManager = useMemo(() => tokenManager ?? new TokenManager(), [tokenManager]);
+  const authService = useMemo(() => new AuthService(resolvedTokenManager), [resolvedTokenManager]);
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
   useEffect(() => {
-    // §5.4.4: Use authorization code flow, not hardcoded tokens
-    const params = new URLSearchParams(window.location.search);
-    const identity = authService.resolveIdentity(params);
-    // Initialize with default session for now - real auth would use handleAuthorizationCallback
-    authStore.getState().login({
-      accessToken: "ui-runtime-access",
-      refreshToken: "ui-runtime-refresh",
-      expiresAt: Date.now() + 3600 * 1000,
-      userId: "demo-user",
-      tenantId: "tenant-default",
-      roles: ["operator"],
-      permissions: ["authenticated"],
-    });
-    authStore.getState().setLocale(identity.locale);
-    uiStore.getState().setActiveRoute("/mission-control/dashboard");
-    uiStore.getState().setActiveFeature("dashboard");
-
-    const bootstrapMutations: OfflineMutation[] = [
-      {
-        id: "bootstrap-dashboard-prefetch",
-        endpoint: "/api/v1/dashboard/prefetch",
-        method: "POST",
-        body: { scope: "mission-control" },
-        createdAt: "2026-04-23T00:00:00.000Z",
-        idempotencyKey: "bootstrap-dashboard-prefetch-key",
-        retryCount: 0,
-        status: "pending",
-      },
-      {
-        id: "bootstrap-approvals-prefetch",
-        endpoint: "/api/v1/approvals/prefetch",
-        method: "POST",
-        body: { queue: "primary" },
-        createdAt: "2026-04-23T00:00:01.000Z",
-        idempotencyKey: "bootstrap-approvals-prefetch-key",
-        retryCount: 0,
-        status: "pending",
-      },
-    ];
-    syncCoordinator.queueMutations(bootstrapMutations);
-    syncStore.getState().setPendingMutations(syncCoordinator.pendingCount());
-
+    let disposed = false;
     const router = new WSEventRouter(
       resolvedWsClient,
       resolvedQueryClient,
@@ -140,22 +122,84 @@ export function UiRuntimeProvider(
       realtimeStore.getState().setWsStatus(status);
     });
 
-    router.connect("ws://local/ui", "demo-token");
-    router.subscribe("global");
-    router.subscribe("dashboard");
-    router.subscribe("approvals");
-    router.subscribe("incidents");
-    router.subscribe("agents");
-    resolvedWsClient.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: { source: "bootstrap" } });
-    resolvedWsClient.useSseFallback();
-    realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
-    realtimeStore.getState().setSyncStatus("queued");
+    const bootstrap = async (): Promise<void> => {
+      const params = new URLSearchParams(window.location.search);
+      const identity = authService.resolveIdentity(params);
+      if (params.has("code") && !authService.isAuthenticated()) {
+        try {
+          await authService.handleAuthorizationCallback(params);
+        } catch {
+          // Fail closed: do not synthesize demo credentials into the runtime.
+        }
+      }
+      if (disposed) {
+        return;
+      }
+
+      const session = authService.getSession();
+      if (session !== null && authContext != null) {
+        authStore.getState().login({
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+          expiresAt: session.expiresAt,
+          userId: authContext.userId,
+          tenantId: authContext.tenantId,
+          roles: authContext.roles,
+          permissions: authContext.permissions,
+        });
+      }
+      authStore.getState().setLocale(identity.locale);
+      uiStore.getState().setActiveRoute("/mission-control/dashboard");
+      uiStore.getState().setActiveFeature("dashboard");
+
+      const bootstrapMutations: OfflineMutation[] = [
+        {
+          id: "bootstrap-dashboard-prefetch",
+          endpoint: "/api/v1/dashboard/prefetch",
+          method: "POST",
+          body: { scope: "mission-control" },
+          createdAt: "2026-04-23T00:00:00.000Z",
+          idempotencyKey: "bootstrap-dashboard-prefetch-key",
+          retryCount: 0,
+          status: "pending",
+        },
+        {
+          id: "bootstrap-approvals-prefetch",
+          endpoint: "/api/v1/approvals/prefetch",
+          method: "POST",
+          body: { queue: "primary" },
+          createdAt: "2026-04-23T00:00:01.000Z",
+          idempotencyKey: "bootstrap-approvals-prefetch-key",
+          retryCount: 0,
+          status: "pending",
+        },
+      ];
+      syncCoordinator.queueMutations(bootstrapMutations);
+      syncStore.getState().setPendingMutations(syncCoordinator.pendingCount());
+
+      const wsToken = session?.accessToken ?? null;
+      if (wsUrl != null && wsToken != null && wsToken.length > 0) {
+        router.connect(wsUrl, wsToken);
+        router.subscribe("global");
+        router.subscribe("dashboard");
+        router.subscribe("approvals");
+        router.subscribe("incidents");
+        router.subscribe("agents");
+      }
+      resolvedWsClient.publish({ channel: "dashboard", type: "dashboard.metric_updated", payload: { source: "bootstrap" } });
+      resolvedWsClient.useSseFallback();
+      realtimeStore.getState().setOfflineQueueSize(syncCoordinator.pendingCount());
+      realtimeStore.getState().setSyncStatus("queued");
+    };
+
+    void bootstrap();
 
     return () => {
+      disposed = true;
       disposeStatus();
       router.disconnect();
     };
-  }, [authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore]);
+  }, [authContext, authService, authStore, realtimeStore, resolvedQueryClient, resolvedWsClient, syncCoordinator, syncStore, uiStore, wsUrl]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },

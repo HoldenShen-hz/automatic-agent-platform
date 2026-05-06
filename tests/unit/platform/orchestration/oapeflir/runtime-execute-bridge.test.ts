@@ -286,6 +286,26 @@ test("RuntimeExecuteBridge delegates through injected runtime executor and maps 
   assert.equal(result.allSucceeded, true);
 });
 
+test("RuntimeExecuteBridge rejects legacy Plan objects and enforces PlanGraphBundle-only contract", async () => {
+  const bridge = new RuntimeExecuteBridge(
+    "/tmp/runtime-execute-bridge.db",
+    "MiniMax-M2.7",
+    async () => {
+      throw new Error("runtime executor should not be reached for legacy plan input");
+    },
+  );
+
+  const legacyPlan = {
+    planId: "legacy-plan-1",
+    steps: [],
+  };
+
+  await assert.rejects(
+    () => bridge.executePlan(legacyPlan as unknown as PlanGraphBundle, { taskId: "task_legacy" }),
+    /legacy Plan type/i,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // Helper function tests
 // ---------------------------------------------------------------------------
@@ -1136,6 +1156,27 @@ test("mapStepOutputRecord handles validationJson present", () => {
   const result = mapStepOutputRecord(record);
 
   assert.equal(result.validationPassed, true);
+});
+
+test("mapStepOutputRecord treats malformed validationJson as failed validation", () => {
+  const record: StepOutputRecord = {
+    id: "sor_invalid_validation",
+    stepId: "step_invalid_validation",
+    taskId: "task_1",
+    roleId: "agent",
+    status: "succeeded",
+    dataJson: "{}",
+    artifactsJson: null,
+    summary: "Invalid validation payload",
+    durationMs: 100,
+    tokenCost: 200,
+    validationJson: '{"valid": tru',
+    producedAt: "2026-04-01T00:00:00.000Z",
+  };
+
+  const result = mapStepOutputRecord(record);
+
+  assert.equal(result.validationPassed, false);
 });
 
 test("mapStepOutputRecord uses fallback summary for succeeded status", () => {

@@ -194,7 +194,7 @@ test("PackLifecycleOrchestrationService rejects publish before certification", (
   );
 });
 
-test("PackLifecycleOrchestrationService enforces minimum deprecation support window", () => {
+test("PackLifecycleOrchestrationService enforces 90-day minimum deprecation support window", () => {
   const service = new PackLifecycleOrchestrationService();
   service.registerPack({
     manifest: createManifest(),
@@ -229,7 +229,7 @@ test("PackLifecycleOrchestrationService enforces minimum deprecation support win
         owner: "ops@example.com",
         migrationGuideRef: "docs://migration/ops-pack-v1",
         effectiveAt: "2026-04-21T00:00:00.000Z",
-        supportWindowDays: 90,
+        supportWindowDays: 89,
       }),
     (error: unknown) =>
       error instanceof ValidationError && error.code === "pack_lifecycle.support_window_too_short:ops-pack@1.0.0",

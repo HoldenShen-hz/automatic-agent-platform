@@ -1,9 +1,9 @@
 /**
  * Unit tests for electron-win/main.ts
  *
- * Tests the following security fixes:
- * - Issue #2162: IPC shell:run/shell:spawn exposed
- * - Issue #2165: IPC files:read/files:write no path whitelist
+ * Tests the current hardened bridge baseline:
+ * - shell execution channels remain removed
+ * - unrestricted file IO channels remain removed
  *
  * @see ui/apps/electron-win/src/main.ts
  */
@@ -54,30 +54,26 @@ test.describe("IPC channels configuration", () => {
     assert.ok(main.electronMainBaseline.channels.includes("shell:openExternal"));
   });
 
-  test("Issue #2162: shell:run is in channels list - IPC exposure verified", async () => {
+  test("Issue #2162: shell:run and shell:spawn remain removed", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    // Issue #2162: shell:run and shell:spawn are exposed IPC channels
-    // These are intentionally exposed for legitimate use cases
-    assert.ok(main.electronMainBaseline.channels.includes("shell:run"));
-    assert.ok(main.electronMainBaseline.channels.includes("shell:spawn"));
+    assert.ok(!main.electronMainBaseline.channels.includes("shell:run"));
+    assert.ok(!main.electronMainBaseline.channels.includes("shell:spawn"));
   });
 
-  test("files:read is in channels list", async () => {
+  test("files:read remains removed", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("files:read"));
+    assert.ok(!main.electronMainBaseline.channels.includes("files:read"));
   });
 
-  test("files:write is in channels list", async () => {
+  test("files:write remains removed", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.ok(main.electronMainBaseline.channels.includes("files:write"));
+    assert.ok(!main.electronMainBaseline.channels.includes("files:write"));
   });
 
-  test("Issue #2165: files:read and files:write exist - path whitelist issue documented", async () => {
+  test("Issue #2165: unrestricted file channels stay disabled", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    // Issue #2165: These IPC channels exist but path whitelist validation
-    // should be implemented at the handler level
-    assert.ok(main.electronMainBaseline.channels.includes("files:read"));
-    assert.ok(main.electronMainBaseline.channels.includes("files:write"));
+    assert.ok(!main.electronMainBaseline.channels.includes("files:read"));
+    assert.ok(!main.electronMainBaseline.channels.includes("files:write"));
   });
 
   test("window control channels are present", async () => {
@@ -118,9 +114,9 @@ test.describe("electronBridgeCapabilities", () => {
     assert.equal(main.electronBridgeCapabilities.filesystem, true);
   });
 
-  test("has shell capability", async () => {
+  test("shell capability remains disabled", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.equal(main.electronBridgeCapabilities.shell, true);
+    assert.equal(main.electronBridgeCapabilities.shell, false);
   });
 
   test("has deepLink capability", async () => {
@@ -128,9 +124,9 @@ test.describe("electronBridgeCapabilities", () => {
     assert.equal(main.electronBridgeCapabilities.deepLink, true);
   });
 
-  test("has process capability", async () => {
+  test("process capability remains disabled", async () => {
     const main = await import("../../../../../ui/apps/electron-win/src/main.js");
-    assert.equal(main.electronBridgeCapabilities.process, true);
+    assert.equal(main.electronBridgeCapabilities.process, false);
   });
 
   test("has analyticsConsent capability", async () => {
@@ -155,13 +151,13 @@ test.describe("Security verification", () => {
     const baseline = main.electronMainBaseline;
     const capabilities = main.electronBridgeCapabilities;
 
-    // Verify shell channels are documented
+    // Only openExternal remains available from the shell surface.
     const shellChannels = baseline.channels.filter((ch: string) => ch.startsWith("shell:"));
-    assert.ok(shellChannels.length >= 3); // openExternal, run, spawn
+    assert.deepEqual(shellChannels, ["shell:openExternal"]);
 
-    // Verify files channels are documented
+    // Direct file read/write channels remain removed until scoped allowlists exist.
     const filesChannels = baseline.channels.filter((ch: string) => ch.startsWith("files:"));
-    assert.ok(filesChannels.length >= 2); // read, write
+    assert.equal(filesChannels.length, 0);
   });
 
   test("Security defaults are safe (contextIsolation on, nodeIntegration off)", async () => {

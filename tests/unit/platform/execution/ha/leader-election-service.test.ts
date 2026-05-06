@@ -285,6 +285,46 @@ test("LeaderElectionService - startHeartbeat creates setInterval handle", async 
   service.dispose();
 });
 
+test("LeaderElectionService - renewal and heartbeat timers call unref()", async () => {
+  const coordinator = createMockCoordinator();
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  const unrefCalls: string[] = [];
+
+  (globalThis as typeof globalThis & {
+    setInterval: typeof setInterval;
+    clearInterval: typeof clearInterval;
+  }).setInterval = ((handler: TimerHandler, _timeout?: number, ...args: unknown[]) => {
+    void handler;
+    void args;
+    return {
+      unref() {
+        unrefCalls.push("called");
+      },
+    } as unknown as ReturnType<typeof setInterval>;
+  }) as typeof setInterval;
+  (globalThis as typeof globalThis & {
+    clearInterval: typeof clearInterval;
+  }).clearInterval = ((_handle?: ReturnType<typeof setInterval>) => undefined) as typeof clearInterval;
+
+  try {
+    const service = new LeaderElectionService(coordinator, {
+      nodeId: "node-1",
+      region: "us-east-1",
+      haLevel: "HA_2",
+      renewalIntervalMs: 1000,
+    });
+
+    await service.start();
+    assert.equal(unrefCalls.length >= 2, true);
+    await service.stop();
+    service.dispose();
+  } finally {
+    (globalThis as typeof globalThis & { setInterval: typeof setInterval }).setInterval = originalSetInterval;
+    (globalThis as typeof globalThis & { clearInterval: typeof clearInterval }).clearInterval = originalClearInterval;
+  }
+});
+
 test("LeaderElectionService - renewal interval is cleared on stop", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {

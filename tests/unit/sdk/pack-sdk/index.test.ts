@@ -264,7 +264,7 @@ test("PackScaffoldService.scaffold accepts valid pack ID starting with number", 
     () =>
       service.scaffold({
         packId: "123-pack",
-        name: "Test Pack",
+        name: "Test-Pack",
         template: "minimal",
         domain: "testing",
         owner: "test@example.com",
@@ -279,7 +279,7 @@ test("PackScaffoldService.scaffold accepts underscore in pack ID", () => {
     () =>
       service.scaffold({
         packId: "test_pack",
-        name: "Test Pack",
+        name: "Test-Pack",
         template: "minimal",
         domain: "testing",
         owner: "test@example.com",
@@ -294,7 +294,7 @@ test("PackScaffoldService.scaffold accepts dot in pack ID", () => {
     () =>
       service.scaffold({
         packId: "test.pack",
-        name: "Test Pack",
+        name: "Test-Pack",
         template: "minimal",
         domain: "testing",
         owner: "test@example.com",
@@ -312,7 +312,7 @@ test("PackScaffoldService.scaffold creates full template with all files", () => 
     process.chdir(tmpDir);
     const config = {
       packId: "full-pack",
-      name: "Full Pack",
+      name: "Full-Pack",
       template: "full" as const,
       domain: "testing",
       owner: "test@example.com",
@@ -1076,7 +1076,7 @@ test("PackLifecycleOrchestrationService.publishPack sets lifecycleStage to runni
   assert.equal(record.lifecycleStage, "running");
 });
 
-test("PackLifecycleOrchestrationService.deprecatePack rejects support window under 180 days", () => {
+test("PackLifecycleOrchestrationService.deprecatePack rejects support window under 90 days", () => {
   const service = new PackLifecycleOrchestrationService();
   const manifest = createOpsLifecycleManifest({
     packId: "short-window-pack",
@@ -1112,7 +1112,7 @@ test("PackLifecycleOrchestrationService.deprecatePack rejects support window und
         owner: "test@example.com",
         migrationGuideRef: "docs://migration",
         effectiveAt: "2026-04-20T00:00:00.000Z",
-        supportWindowDays: 90,
+        supportWindowDays: 89,
       }),
     (error: unknown) =>
       error instanceof ValidationError && error.code === "pack_lifecycle.support_window_too_short:short-window-pack@1.0.0",

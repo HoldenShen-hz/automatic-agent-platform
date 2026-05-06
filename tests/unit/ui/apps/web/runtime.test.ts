@@ -196,6 +196,47 @@ test.describe("createWebRuntimeClients", () => {
     // The wsClient should be created - actual behavior depends on BrowserWSClient implementation
     assert.ok(result.wsClient !== undefined);
   });
+
+  test("wsClient returned for wsUrl can establish a real BrowserWSClient connection", async () => {
+    const runtime = await import("../../../../../ui/apps/web/src/runtime.js");
+    const originalWebSocket = globalThis.WebSocket;
+    let capturedUrl = "";
+    let capturedProtocols: string | string[] | undefined;
+    let connectedClient: { disconnect(): void } | null = null;
+
+    class FakeSocket {
+      public static readonly OPEN = 1;
+      public readyState = FakeSocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: (() => void) | null = null;
+      public onerror: (() => void) | null = null;
+
+      public constructor(url: string, protocols?: string | string[]) {
+        capturedUrl = url;
+        capturedProtocols = protocols;
+      }
+
+      public send(): void {}
+
+      public close(): void {}
+    }
+
+    (globalThis as typeof globalThis & { WebSocket?: typeof WebSocket }).WebSocket = FakeSocket as unknown as typeof WebSocket;
+
+    try {
+      const result = runtime.createWebRuntimeClients({
+        wsUrl: "wss://custom-ws.example.com/socket",
+      });
+      connectedClient = result.wsClient;
+      result.wsClient.connect("wss://custom-ws.example.com/socket", "token-123");
+      assert.equal(capturedUrl, "wss://custom-ws.example.com/socket");
+      assert.equal(String(capturedProtocols).includes("v1.auth.token"), true);
+    } finally {
+      connectedClient?.disconnect();
+      (globalThis as typeof globalThis & { WebSocket?: typeof WebSocket }).WebSocket = originalWebSocket;
+    }
+  });
 });
 
 test.describe("registerWebServiceWorker", () => {

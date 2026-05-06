@@ -189,7 +189,8 @@ test("VaultHttpSecretProvider.requireSecret throws ValidationError when key not 
 });
 
 test("VaultHttpSecretProvider.requireSecret returns secret value when found", async () => {
-  const mockFetch = async (_url: string, _init?: any) => {
+  const mockFetch = async (url: string, _init?: any) => {
+    assert.ok(url.includes("/v1/secret/data/mykey"), `Expected single-segment ref to map to /secret/data/mykey, got: ${url}`);
     return {
       ok: true,
       status: 200,
@@ -550,8 +551,7 @@ test("VaultHttpSecretProvider.requireSecret returns correct scope for nested sec
 
 test("VaultHttpSecretProvider handles custom Vault mount point", async () => {
   const mockFetch = async (url: string, _init?: any) => {
-    // Should request from custom mount point
-    assert.ok(url.includes("/v1/secrets/data/"), `Expected custom mount path, got: ${url}`);
+    assert.ok(url.includes("/v1/secrets/data/api-key"), `Expected custom mount path with key segment, got: ${url}`);
     return {
       ok: true,
       status: 200,
@@ -639,8 +639,7 @@ test("VaultHttpSecretProvider.addr removes trailing slash from URL", async () =>
 
 test("VaultHttpSecretProvider.requireSecret with nested secret path and default mount", async () => {
   const mockFetch = async (url: string, _init?: any) => {
-    // With default mount "secret", secret://myapp/prod/db password should map to secret/data/myapp/prod
-    assert.ok(url.includes("/v1/secret/data/"), `Expected default mount path, got: ${url}`);
+    assert.ok(url.includes("/v1/secret/data/myapp/prod"), `Expected nested ref to map to /secret/data/myapp/prod, got: ${url}`);
     return {
       ok: true,
       status: 200,

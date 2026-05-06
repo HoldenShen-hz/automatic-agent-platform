@@ -60,6 +60,20 @@ test("AgentLifecycleService.registerAgent stores and returns the agent", () => {
   assert.equal(service.getAgent("agent-1")?.agentId, "agent-1");
 });
 
+test("AgentLifecycleService.registerAgent rejects invalid agent definition shapes", () => {
+  const service = new AgentLifecycleService();
+  const invalidAgent = {
+    agentId: "agent-invalid",
+    name: "Broken Agent",
+    // missing domainId/owner/components/currentVersionId timestamps etc.
+    lifecycleState: "active",
+  } as unknown as AgentDefinition;
+
+  assert.throws(
+    () => service.registerAgent(invalidAgent),
+  );
+});
+
 test("AgentLifecycleService.addVersion stores version for registered agent", () => {
   const service = new AgentLifecycleService();
   const agent = makeAgent({ agentId: "agent-1" });

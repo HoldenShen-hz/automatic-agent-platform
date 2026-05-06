@@ -272,7 +272,11 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
    * @returns Vault KV v2 path
    */
   private extractSecretPath(secretRef: string): string {
-    const parts = secretRef.replace(/^secret:\/\//, "").split("/");
+    const parts = secretRef
+      .replace(/^secret:\/\//, "")
+      .split("/")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
     if (parts.length === 0) {
       throw new ValidationError(`vault.invalid_ref:${secretRef}`, `vault.invalid_ref:${secretRef}`, {
         source: "provider",
@@ -281,9 +285,16 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
     }
     const mountPart = parts[0] === this.mount ? parts[0] : this.mount;
     const pathParts = parts[0] === this.mount ? parts.slice(1) : parts;
-    const key = pathParts[pathParts.length - 1] ?? "";
-    const path = pathParts.slice(0, -1).join("/");
-    return `${mountPart}/data/${path}`;
+    if (pathParts.length === 0) {
+      throw new ValidationError(`vault.invalid_ref:${secretRef}`, `vault.invalid_ref:${secretRef}`, {
+        source: "provider",
+        details: { secretRef },
+      });
+    }
+    if (pathParts.length === 1) {
+      return `${mountPart}/data/${pathParts[0]}`;
+    }
+    return `${mountPart}/data/${pathParts.slice(0, -1).join("/")}`;
   }
 
   /**
@@ -293,7 +304,11 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
    * @returns The key name
    */
   private extractSecretKey(secretRef: string): string {
-    const parts = secretRef.replace(/^secret:\/\//, "").split("/");
+    const parts = secretRef
+      .replace(/^secret:\/\//, "")
+      .split("/")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
     return parts[parts.length - 1] ?? "";
   }
 

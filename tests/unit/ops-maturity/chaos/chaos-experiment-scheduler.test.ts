@@ -415,6 +415,36 @@ test("ChaosExperimentScheduler handles multiple steady state hypotheses with mix
   assert.equal(retrieved!.results.filter((r) => !r.passed).length, 1);
 });
 
+test("ChaosExperimentScheduler does not complete early when the same hypothesis is reported repeatedly", () => {
+  const scheduler = new ChaosExperimentScheduler();
+  const experiment = scheduler.scheduleExperiment({
+    name: "Duplicate Hypothesis Reports",
+    description: "dedupe by steadyStateName before completion",
+    target: { targetKind: "service", targetId: "svc", labels: {} },
+    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
+    steadyStateHypotheses: [
+      { name: "latency_ok", metricName: "latency_p99", tolerance: 200, operator: "lt" },
+      { name: "error_ok", metricName: "error_rate", tolerance: 0.01, operator: "lt" },
+    ],
+    scheduledAt: "2026-04-20T00:00:00.000Z",
+    maxDurationMs: 5000,
+  });
+  scheduler.startExperiment(experiment.experimentId);
+
+  scheduler.recordSteadyStateResult(experiment.experimentId, "latency_ok", 150, true, "initial pass");
+  scheduler.recordSteadyStateResult(experiment.experimentId, "latency_ok", 140, true, "duplicate pass");
+
+  const mid = scheduler.getExperiment(experiment.experimentId)!;
+  assert.equal(mid.status, "running");
+  assert.equal(mid.results.length, 1);
+
+  scheduler.recordSteadyStateResult(experiment.experimentId, "error_ok", 0.005, true, "second unique hypothesis");
+
+  const completed = scheduler.getExperiment(experiment.experimentId)!;
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.results.length, 2);
+});
+
 test("ChaosExperimentScheduler autoTerminateIfNeeded does not terminate within duration", () => {
   const scheduler = new ChaosExperimentScheduler();
   const experiment = scheduler.scheduleExperiment({

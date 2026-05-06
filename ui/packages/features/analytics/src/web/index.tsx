@@ -1,9 +1,12 @@
-import { EChartSurface, FeatureScaffold, MetricGrid, MiniTrendBars } from "@aa/ui-core";
+import { useThemeState } from "@aa/shared-state";
+import { EChartSurface, FeatureScaffold, MetricGrid, MiniTrendBars, resolveTheme } from "@aa/ui-core";
 import type { ReactElement } from "react";
 import { useAnalyticsVm } from "../hooks";
 
 export function AnalyticsWebView(): ReactElement {
   const vm = useAnalyticsVm();
+  const { resolvedColorScheme } = useThemeState();
+  const theme = resolveTheme(resolvedColorScheme);
   return (
     <FeatureScaffold title="Analytics" summary="多层级 KPI 看板与图表渲染架构" status="Planned">
       <MetricGrid metrics={vm.metrics} />
@@ -12,7 +15,7 @@ export function AnalyticsWebView(): ReactElement {
       </div>
       <div style={{ marginTop: 16 }}>
         {/* §2267: Use timeSeriesData for proper time-based chart instead of integer mapping */}
-        <EChartSurface title="Analytics Trend" values={vm.timeSeriesData.map((p) => p.value)} />
+        <EChartSurface title="Analytics Trend" values={vm.timeSeriesData.map((p) => p.value)} theme={theme} />
       </div>
       {/* §2267: Date range filter and export controls */}
       <div style={{ marginTop: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>

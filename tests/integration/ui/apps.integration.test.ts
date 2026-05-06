@@ -74,7 +74,7 @@ test.describe("IPC channel consistency between electron-win and preload", () => 
     // All main channels should be represented in preload API
     for (const channel of mainChannels) {
       // Convert channel string to API path
-      // e.g., "shell:run" -> preloadApi.shell.run
+      // e.g., "shell:openExternal" -> preloadApi.shell.openExternal
       const [namespace, method] = channel.split(":");
       const namespaceKey = namespace.replace(/-/g, "_"); // kebab-case to camelCase
 
@@ -187,10 +187,10 @@ test.describe("Security configuration alignment", () => {
 
     const channels = main.electronMainBaseline.channels;
 
-    // Verify key security-sensitive channels are present
+    // Verify the remaining security-sensitive channels are present
     assert.ok(channels.includes("shell:openExternal"));
-    assert.ok(channels.includes("files:read"));
-    assert.ok(channels.includes("files:write"));
+    assert.ok(!channels.includes("files:read"));
+    assert.ok(!channels.includes("files:write"));
     assert.ok(channels.includes("secure-store:read"));
     assert.ok(channels.includes("secure-store:write"));
     assert.ok(channels.includes("privacy:getAnalyticsConsent"));

@@ -95,6 +95,7 @@ Phase 1-4 闭环事件必须提供类型化 payload，对应 ADR-079 和 ADR-080
 - `planGraphId` — 计划图 ID（原 plan_id）
 - `baseGraphVersion` — 基准图版本（原 old_version）
 - `newGraphVersion` — 新图版本（原 new_version）
+- `derivedFromEventId` — 触发重规划的事实事件 ID（用于审计链追溯）
 - `triggerType` — 触发类型
 - `traceId` — 链路追踪 ID
 - `nodeRunId?` — 可选节点标识

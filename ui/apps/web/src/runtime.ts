@@ -24,13 +24,21 @@ export interface WebRuntimeConfig {
   readonly tenantId?: string;
 }
 
+export interface WebRuntimeClients {
+  readonly client: RESTClient;
+  readonly wsClient: WSClient;
+  readonly offlineQueue: OfflineQueue;
+  readonly tokenManager: TokenManager;
+  readonly wsUrl?: string;
+}
+
 /**
  * Creates web runtime configuration from environment variables per §5.1.2.
  * All sensitive values come from auth context, not hardcoded.
  */
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
-  const apiBaseUrl = typeof env.VITE_API_BASE_URL === "string" && env.VITE_API_BASE_URL.length > 0 ? env.VITE_API_BASE_URL : undefined;
-  const wsUrl = typeof env.VITE_WS_URL === "string" && env.VITE_WS_URL.length > 0 ? env.VITE_WS_URL : undefined;
+  const apiBaseUrl = typeof env.VITE_API_BASE_URL === "string" && env.VITE_API_BASE_URL.trim().length > 0 ? env.VITE_API_BASE_URL.trim() : undefined;
+  const wsUrl = typeof env.VITE_WS_URL === "string" && env.VITE_WS_URL.trim().length > 0 ? env.VITE_WS_URL.trim() : undefined;
 
   return {
     ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
@@ -44,7 +52,7 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
  * - Tenant ID comes from auth context (not hardcoded)
  * - All interceptors properly configured
  */
-export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RESTClient; wsClient: WSClient; offlineQueue: OfflineQueue } {
+export function createWebRuntimeClients(config: WebRuntimeConfig): WebRuntimeClients {
   const offlineQueue = createPersistentOfflineQueue();
   const tokenManager = config.tokenManager ?? new TokenManager();
 
@@ -68,15 +76,21 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): { client: RES
     createOfflineQueueInterceptor(offlineQueue),
   ]);
 
-  // §185-2169 FIX: wsUrl was being ignored - both branches used InMemoryWSClient.
-    // Root cause: ternary condition evaluated correctly but both branches used
-    // the same fallback InMemoryWSClient, ignoring the provided wsUrl.
-    // Fix: When wsUrl is provided, use it to establish real WebSocket connection.
-    const wsClient = config.wsUrl == null
+  // #2167: create a BrowserWSClient in both cases, but keep the configured URL
+  // for the shell/runtime layer instead of smuggling it into the constructor.
+  // The previous "fix" passed `new WebSocket(config.wsUrl)` as the factory, which
+  // breaks `connect()` because BrowserWSClient expects a WebSocket constructor.
+  const wsClient = config.wsUrl == null
     ? new BrowserWSClient(WebSocket, new InMemoryWSClient())
-    : new BrowserWSClient(new WebSocket(config.wsUrl));
+    : new BrowserWSClient(WebSocket, new InMemoryWSClient());
 
-  return { client, wsClient, offlineQueue };
+  return {
+    client,
+    wsClient,
+    offlineQueue,
+    tokenManager,
+    ...(config.wsUrl == null ? {} : { wsUrl: config.wsUrl }),
+  };
 }
 
 /**

@@ -376,7 +376,7 @@ function compareProfiles(a: EligibleProfile, b: EligibleProfile): number {
     return a.profile.pricing.inputPer1kUsd - b.profile.pricing.inputPer1kUsd;
   }
   if (a.profile.maxOutputTokens !== b.profile.maxOutputTokens) {
-    return a.profile.maxOutputTokens - b.profile.maxOutputTokens;
+    return b.profile.maxOutputTokens - a.profile.maxOutputTokens;
   }
   return a.profileName.localeCompare(b.profileName);
 }
