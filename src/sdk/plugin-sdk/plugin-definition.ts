@@ -4,7 +4,7 @@
  * Implements §22.4 Plugin lifecycle: definePlugin() for plugin definition.
  */
 
-import { createHmac, createVerify, createPublicKey, timingSafeEqual } from "node:crypto";
+import { createHmac, createVerify, createPublicKey, timingSafeEqual, verify as verifySignature } from "node:crypto";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
 
@@ -242,7 +242,7 @@ export class DefaultSbomScanner implements SbomScanner {
 }
 
 // Global SBOM scanner instance
-const globalSbomScanner = new DefaultSbomScanner();
+let globalSbomScanner: SbomScanner = new DefaultSbomScanner();
 
 /**
  * Get the global SBOM scanner instance.
@@ -255,7 +255,7 @@ export function getSbomScanner(): SbomScanner {
  * Set a custom SBOM scanner (for testing or alternative implementations).
  */
 export function setSbomScanner(scanner: SbomScanner): void {
-  (globalSbomScanner as unknown as { scanner: SbomScanner }).scanner = scanner;
+  globalSbomScanner = scanner;
 }
 
 /**
@@ -302,14 +302,8 @@ export function verifyPluginSignature(
 
   try {
     const publicKey = createPublicKey({ key: publicKeyPem, format: "pem" });
-
-    // Map algorithm name to Node.js verify algorithm
-    const nodeAlg = algorithmToNodeAlg(algorithm);
-
-    const verify = createVerify(nodeAlg);
-    verify.update(canonicalString);
     const sigBuffer = Buffer.from(signature, "base64url");
-    const isValid = verify.verify(publicKey, sigBuffer);
+    const isValid = verifySignatureBuffer(algorithm, canonicalString, publicKey, sigBuffer);
 
     return isValid ? { valid: true } : { valid: false, error: "plugin_sdk.signature_invalid" };
   } catch (err) {
@@ -318,6 +312,24 @@ export function verifyPluginSignature(
       error: `plugin_sdk.verification_failed: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
+}
+
+function verifySignatureBuffer(
+  algorithm: string,
+  canonicalString: string,
+  publicKey: ReturnType<typeof createPublicKey>,
+  signature: Buffer,
+): boolean {
+  const normalizedAlgorithm = algorithm.trim().toLowerCase();
+  if (normalizedAlgorithm === "ed25519" || normalizedAlgorithm === "ed448") {
+    return verifySignature(null, Buffer.from(canonicalString), publicKey, signature);
+  }
+
+  const nodeAlg = algorithmToNodeAlg(algorithm);
+  const verifier = createVerify(nodeAlg);
+  verifier.update(canonicalString);
+  verifier.end();
+  return verifier.verify(publicKey, signature);
 }
 
 /**

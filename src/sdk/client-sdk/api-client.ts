@@ -394,6 +394,14 @@ export class RetryableApiClient {
         headers: responseHeaders,
       };
     } catch (error) {
+      if (
+        error instanceof AuthError ||
+        error instanceof BusinessError ||
+        error instanceof ValidationError ||
+        error instanceof NetworkError
+      ) {
+        throw error;
+      }
       // §22: Network errors (fetch throws) - only retry for truly idempotent methods.
       // POST/PUT/DELETE/PATCH/OPTIONS network errors may have caused partial side effects
       // and MUST NOT be retried blindly. Only GET/HEAD can be safely retried on network errors.

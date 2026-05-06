@@ -393,7 +393,9 @@ export class SqliteConfigRolloutStore implements ConfigRolloutStore {
   }
 
   private recordToRollout(record: ConfigRolloutRecord): ConfigRollout {
-    return {
+    // NOTE: lastObserved* fields are not persisted in ConfigRolloutRecord
+    // and are set to null since they are computed at runtime during health checks.
+    const result: ConfigRollout = {
       rolloutId: record.rolloutId,
       configPath: record.configPath,
       layer: record.layer,
@@ -412,7 +414,13 @@ export class SqliteConfigRolloutStore implements ConfigRolloutStore {
       healthGates: JSON.parse(record.healthGatesJson),
       lastHealthCheckAt: record.lastHealthCheckAt,
       lastHealthCheckPassed: record.lastHealthCheckPassed,
+      // These fields are not persisted and are populated at runtime
+      lastObservedErrorRate: null as number | null,
+      lastObservedLatencyRegression: null as number | null,
+      lastObservedIncidentRate: null as number | null,
+      lastHealthCheckReasons: [] as string[],
     };
+    return result;
   }
 }
 

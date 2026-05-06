@@ -56,8 +56,9 @@ export class InMemoryEvidenceStore implements EvidenceStore {
 
   private evictIfNeeded(): void {
     // R28-07 fix: Evict oldest records first (LRU eviction) when limit is reached
+    // Evicts 2 records per cycle when length >= max to maintain buffer and avoid frequent eviction
     if (this.records.length >= this.maxRecords) {
-      const removeCount = this.records.length - this.maxRecords + 1;
+      const removeCount = this.records.length - this.maxRecords + 2;
       this.records = this.records.slice(removeCount);
     }
   }

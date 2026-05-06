@@ -9,8 +9,8 @@ test("resolveTriggerActionMode returns suggest when requireConfirmation is true"
   assert.strictEqual(resolveTriggerActionMode(true, "critical"), "suggest");
 });
 
-test("resolveTriggerActionMode returns silent_record for critical risk when no confirmation required", () => {
-  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "silent_record");
+test("resolveTriggerActionMode returns suggest for critical risk when no confirmation required", () => {
+  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "suggest");
 });
 
 test("resolveTriggerActionMode returns auto_execute only for low risk when no confirmation required", () => {
@@ -27,7 +27,7 @@ test("resolveTriggerActionMode returns correct modes for all risk levels without
   assert.strictEqual(resolveTriggerActionMode(false, "low"), "auto_execute");
   assert.strictEqual(resolveTriggerActionMode(false, "medium"), "suggest");
   assert.strictEqual(resolveTriggerActionMode(false, "high"), "suggest");
-  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "silent_record");
+  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "suggest");
 });
 
 test("resolveTriggerActionMode with confirmation overrides risk level", () => {
@@ -80,8 +80,8 @@ test("resolveTriggerActionMode priority order: confirmation > critical > high-ri
   // With confirmation, always suggest
   assert.strictEqual(resolveTriggerActionMode(true, "low"), "suggest");
 
-  // Without confirmation, critical is silent_record
-  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "silent_record");
+  // Without confirmation, critical is suggest (R16-04: critical always requires human confirmation)
+  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "suggest");
 
   // Without confirmation, high risk is still operator-visible
   assert.strictEqual(resolveTriggerActionMode(false, "high"), "suggest");
@@ -91,7 +91,7 @@ test("resolveTriggerActionMode priority order: confirmation > critical > high-ri
 });
 
 test("resolveTriggerActionMode exact critical threshold", () => {
-  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "silent_record");
+  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "suggest");
 });
 
 test("resolveTriggerActionMode medium risk is treated as operator-visible suggestion", () => {
@@ -110,6 +110,6 @@ test("resolveTriggerActionMode boolean confirmation flags work correctly", () =>
   assert.strictEqual(resolveTriggerActionMode(false, "low"), "auto_execute");
   assert.strictEqual(resolveTriggerActionMode(true, "low"), "suggest");
 
-  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "silent_record");
+  assert.strictEqual(resolveTriggerActionMode(false, "critical"), "suggest");
   assert.strictEqual(resolveTriggerActionMode(true, "critical"), "suggest");
 });
