@@ -319,6 +319,15 @@ export class WebSocketBridge {
       this.handleDisconnection(ws);
     });
 
+    // R25-08: Handle pong response to our server-initiated ping
+    ws.on("pong", () => {
+      const pongClient = this.clients.get(ws);
+      if (pongClient) {
+        pongClient.lastActivityAt = Date.now();
+        pongClient.isAlive = true;
+      }
+    });
+
     // Handle errors
     ws.on("error", (error) => {
       logger.error("WebSocket client error", {

@@ -333,12 +333,12 @@ test("ConfigVersioningService.rollback deep-clones nested content", async () => 
   assert.deepStrictEqual(originalContent, { limits: { retries: 3, flags: ["a"] } });
 });
 
-test("ConfigVersioningService emits rollback point event when creating rollback point", () => {
+test("ConfigVersioningService emits rollback point event when creating rollback point", async () => {
   const mockBus = new MockEventBus();
   const service = new ConfigVersioningService({ eventBus: mockBus as any });
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1");
-  service.createRollbackPoint("runtime.timeout", "platform", null, "user1");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1");
+  await service.createRollbackPoint("runtime.timeout", "platform", null, "user1");
 
   assert.strictEqual(mockBus.publishedEvents.length, 2);
   assert.strictEqual(mockBus.publishedEvents[1]!.eventType, "config.rollback_point.created");

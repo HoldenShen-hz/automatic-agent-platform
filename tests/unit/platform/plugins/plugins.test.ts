@@ -67,7 +67,7 @@ test("BasicEvaluator detects type mismatches", async () => {
   assert.equal(result.valid, false);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0]!.field, "count");
-  assert.ok(result.errors[0].message.includes("Expected number"));
+  assert.ok(result.errors[0]!.message.includes("Expected number"));
 });
 
 test("BasicEvaluator handles empty contract", async () => {
@@ -174,7 +174,7 @@ test("BasicPlanner returns direct-execute for trivial complexity", async () => {
   assert.ok(result != null);
   assert.equal(result.workflowId, "workflow.core.trivial");
   assert.equal(result.overrides.length, 1);
-  assert.equal(result.overrides[0].stepName, "direct-execute");
+  assert.equal(result.overrides[0]!.stepName, "direct-execute");
 });
 
 test("BasicPlanner returns direct-execute for simple complexity", async () => {
