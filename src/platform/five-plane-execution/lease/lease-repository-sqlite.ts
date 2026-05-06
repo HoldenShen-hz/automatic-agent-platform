@@ -17,6 +17,24 @@ const LEASE_AUDIT_COLS = `
   id, execution_id, lease_id, worker_id, fencing_token, event_type, reason_code, recorded_at
 `;
 
+type LeaseStatus = "active" | "expired" | "released" | "reclaimed" | "handed_over";
+
+/** Valid state transitions for execution leases */
+const VALID_LEASE_TRANSITIONS: Record<LeaseStatus, LeaseStatus[]> = {
+  active: ["expired", "released", "reclaimed", "handed_over"],
+  expired: [],
+  released: [],
+  reclaimed: [],
+  handed_over: [],
+};
+
+/**
+ * Checks if a state transition is valid for a lease.
+ */
+function isValidLeaseTransition(from: LeaseStatus, to: LeaseStatus): boolean {
+  return VALID_LEASE_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
 export class SqliteLeaseRepository implements LeaseRepository {
   constructor(private readonly db: AuthoritativeSqlDatabase) {}
 
