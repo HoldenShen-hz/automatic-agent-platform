@@ -252,6 +252,7 @@ export class WebSocketBridge {
 
     // Register the client
     // §6.7/R15-80: Initialize sequence tracking for at-least-once delivery
+    // R25-08: Initialize heartbeat tracking for server-initiated liveness detection
     const client: ClientConnection = {
       webSocket: ws,
       principal,
@@ -261,6 +262,8 @@ export class WebSocketBridge {
       lastAcknowledgedSequenceNum: -1,
       pendingAcks: new Map(),
       bufferedEventCount: 0,
+      lastActivityAt: Date.now(),
+      isAlive: true,
     };
     this.clients.set(ws, client);
 

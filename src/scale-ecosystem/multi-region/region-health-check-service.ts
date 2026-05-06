@@ -405,6 +405,7 @@ export class RegionHealthCheckService {
 
   /**
    * Check if a region should failover
+   * §21-04: Circuit breaker open state is treated as unhealthy and triggers failover.
    */
   public shouldFailover(regionId: string): boolean {
     const summary = this.getHealthSummary(regionId);
@@ -414,6 +415,12 @@ export class RegionHealthCheckService {
 
     // Failover if unhealthy or consecutive failures exceed threshold
     if (summary.status === "unhealthy") {
+      return true;
+    }
+
+    // §21-04: Also failover if circuit breaker is open (indicates persistent failures)
+    const breakerState = this.getCircuitBreakerState(regionId);
+    if (breakerState === "open") {
       return true;
     }
 

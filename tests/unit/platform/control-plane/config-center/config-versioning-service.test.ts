@@ -241,26 +241,26 @@ test("ConfigVersioningService handles different layers and sourceIds separately"
   assert.deepStrictEqual(tenant2!.content, { value: 300 });
 });
 
-test("ConfigVersioningService.getCurrentVersion works with sourceId", () => {
+test("ConfigVersioningService.getCurrentVersion works with sourceId", async () => {
   const service = new ConfigVersioningService();
 
-  service.createVersion("runtime.timeout", "tenant", "tenant-1", { value: 100 }, "user", "v1");
-  const v2 = service.createVersion("runtime.timeout", "tenant", "tenant-1", { value: 200 }, "user", "v2");
+  await service.createVersion("runtime.timeout", "tenant", "tenant-1", { value: 100 }, "user", "v1");
+  const v2 = await service.createVersion("runtime.timeout", "tenant", "tenant-1", { value: 200 }, "user", "v2");
 
-  const current = service.getCurrentVersion("runtime.timeout", "tenant", "tenant-1");
+  const current = await service.getCurrentVersion("runtime.timeout", "tenant", "tenant-1");
 
   assert.ok(current);
   assert.strictEqual(current!.versionId, v2.versionId);
   assert.deepStrictEqual(current!.content, { value: 200 });
 });
 
-test("ConfigVersioningService.diffVersions detects additions", () => {
+test("ConfigVersioningService.diffVersions detects additions", async () => {
   const service = new ConfigVersioningService();
 
-  const v1 = service.createVersion("config", "platform", null, { existing: true }, "user", "v1");
-  const v2 = service.createVersion("config", "platform", null, { existing: true, added: true }, "user", "v2");
+  const v1 = await service.createVersion("config", "platform", null, { existing: true }, "user", "v1");
+  const v2 = await service.createVersion("config", "platform", null, { existing: true, added: true }, "user", "v2");
 
-  const diff = service.diffVersions(v1.versionId, v2.versionId);
+  const diff = await service.diffVersions(v1.versionId, v2.versionId);
 
   assert.ok(diff);
   assert.ok(diff!.additions > 0 || diff!.modifications > 0);
