@@ -10,7 +10,7 @@ import {
   resetMultiStepToolRegistryForTests,
   type MultiStepToolExecutionInput,
 } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
-import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
+import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,11 +37,7 @@ test("runMultiStepOrchestration basic execution", async () => {
 });
 
 test("runMultiStepOrchestration with oapeflir plan request", async () => {
-  const dbPath = join(__dirname, "test-oapeflir.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     {
@@ -65,18 +61,12 @@ test("runMultiStepOrchestration with oapeflir plan request", async () => {
     assert.ok(result, "runMultiStepOrchestration should handle oapeflir plan");
     assert.ok(result.plannedWorkflow.workflow.workflowId.startsWith("oapeflir_"), "workflowId should have oapeflir prefix");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration preserves preplanned OAPEFLIR node metadata instead of replanning raw text", async () => {
-  const dbPath = join(__dirname, "test-oapeflir-rich-plan.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planNodes = [
     {
@@ -121,18 +111,12 @@ test("runMultiStepOrchestration preserves preplanned OAPEFLIR node metadata inst
     assert.equal(result.plannedWorkflow.workflow.steps[0]?.retryPolicyRef, "retry:guarded");
     assert.deepEqual(result.plannedWorkflow.executionSteps[1]?.dependsOnStepIds, ["node_prepare"]);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration creates task snapshot", async () => {
-  const dbPath = join(__dirname, "test-snapshot.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -147,18 +131,12 @@ test("runMultiStepOrchestration creates task snapshot", async () => {
     assert.ok(result.snapshot.task, "snapshot should have task");
     assert.ok(result.snapshot.task.id, "task should have id");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration workflow planning", async () => {
-  const dbPath = join(__dirname, "test-planning.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -174,18 +152,12 @@ test("runMultiStepOrchestration workflow planning", async () => {
     assert.ok(result.plannedWorkflow.executionSteps, "plannedWorkflow should have executionSteps");
     assert.ok(Array.isArray(result.plannedWorkflow.executionSteps), "executionSteps should be array");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration routing", async () => {
-  const dbPath = join(__dirname, "test-routing.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -200,9 +172,7 @@ test("runMultiStepOrchestration routing", async () => {
     assert.ok("workflowId" in result.routing, "routing should have workflowId");
     assert.ok("divisionId" in result.routing, "routing should have divisionId");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -215,11 +185,7 @@ test("resetMultiStepToolRegistryForTests is exported", () => {
 });
 
 test("runMultiStepOrchestration streamFrames property", async () => {
-  const dbPath = join(__dirname, "test-frames.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -233,18 +199,12 @@ test("runMultiStepOrchestration streamFrames property", async () => {
     assert.ok("streamFrames" in result, "result should have streamFrames property");
     assert.ok(Array.isArray(result.streamFrames), "streamFrames should be an array");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with admission backpressure snapshot", async () => {
-  const dbPath = join(__dirname, "test-backpressure.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -270,18 +230,12 @@ test("runMultiStepOrchestration with admission backpressure snapshot", async () 
     const result = await runMultiStepOrchestration(input);
     assert.ok(result, "runMultiStepOrchestration should handle custom backpressure snapshot");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration task status transitions", async () => {
-  const dbPath = join(__dirname, "test-transitions.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -300,18 +254,12 @@ test("runMultiStepOrchestration task status transitions", async () => {
       `task status should be terminal, got ${task.status}`
     );
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration compaction result", async () => {
-  const dbPath = join(__dirname, "test-compaction.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -326,18 +274,12 @@ test("runMultiStepOrchestration compaction result", async () => {
     // compaction can be null or an object depending on context compaction
     assert.ok(result.compaction === null || typeof result.compaction === "object", "compaction should be null or object");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration handles workflowId in result", async () => {
-  const dbPath = join(__dirname, "test-workflow-id.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -351,18 +293,12 @@ test("runMultiStepOrchestration handles workflowId in result", async () => {
     assert.ok(result.plannedWorkflow.workflow.workflowId, "workflow should have workflowId");
     assert.equal(typeof result.plannedWorkflow.workflow.workflowId, "string", "workflowId should be string");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with custom admission policy", async () => {
-  const dbPath = join(__dirname, "test-custom-policy.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -380,18 +316,12 @@ test("runMultiStepOrchestration with custom admission policy", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result, "runMultiStepOrchestration should handle custom admission policy");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration dependency edges in planned workflow", async () => {
-  const dbPath = join(__dirname, "test-edges.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -405,9 +335,7 @@ test("runMultiStepOrchestration dependency edges in planned workflow", async () 
     assert.ok("dependencyEdges" in result.plannedWorkflow, "plannedWorkflow should have dependencyEdges");
     assert.ok(Array.isArray(result.plannedWorkflow.dependencyEdges), "dependencyEdges should be array");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -416,11 +344,7 @@ test("runMultiStepOrchestration dependency edges in planned workflow", async () 
 // =============================================================================
 
 test("runMultiStepOrchestration with empty oapeflir plan steps", async () => {
-  const dbPath = join(__dirname, "test-empty-plan.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -433,18 +357,12 @@ test("runMultiStepOrchestration with empty oapeflir plan steps", async () => {
     assert.ok(result, "Empty oapeflir plan should return result");
     assert.ok(result.plannedWorkflow.workflow.workflowId.startsWith("oapeflir_"));
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration oapeflir plan with multiple steps and dependencies", async () => {
-  const dbPath = join(__dirname, "test-multi-step-plan.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "step_1", dependencies: [], outputs: ["out_1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -463,18 +381,12 @@ test("runMultiStepOrchestration oapeflir plan with multiple steps and dependenci
     assert.ok(result);
     assert.equal(result.plannedWorkflow.executionSteps.length, 3);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration oapeflir plan preserves retryPolicyRef from preplanned nodes", async () => {
-  const dbPath = join(__dirname, "test-retry-plan.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planNodes = [
     {
@@ -502,9 +414,7 @@ test("runMultiStepOrchestration oapeflir plan preserves retryPolicyRef from prep
     const step = result.plannedWorkflow.workflow.steps[0];
     assert.equal(step?.retryPolicyRef, "retry:max-3", "Should preserve retryPolicyRef on the preplanned workflow step");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -513,11 +423,7 @@ test("runMultiStepOrchestration oapeflir plan preserves retryPolicyRef from prep
 // =============================================================================
 
 test("runMultiStepOrchestration with queuing admission decision", async () => {
-  const dbPath = join(__dirname, "test-queue-admission.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -545,18 +451,12 @@ test("runMultiStepOrchestration with queuing admission decision", async () => {
     // Should still return a result even when queued
     assert.ok("snapshot" in result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with read-only mode rejection", async () => {
-  const dbPath = join(__dirname, "test-readonly-admission.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -584,18 +484,12 @@ test("runMultiStepOrchestration with read-only mode rejection", async () => {
     // Result should still be returned even with rejection
     assert.ok("snapshot" in result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with high priority task", async () => {
-  const dbPath = join(__dirname, "test-high-priority.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -609,18 +503,12 @@ test("runMultiStepOrchestration with high priority task", async () => {
     // Task priority should be stored in the task record
     assert.ok(result.snapshot.task);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with low priority task", async () => {
-  const dbPath = join(__dirname, "test-low-priority.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -633,9 +521,7 @@ test("runMultiStepOrchestration with low priority task", async () => {
     assert.ok(result);
     assert.ok(result.snapshot.task);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -644,11 +530,7 @@ test("runMultiStepOrchestration with low priority task", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration with stepOutputOverrides", async () => {
-  const dbPath = join(__dirname, "test-output-overrides.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "override_test", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -667,18 +549,12 @@ test("runMultiStepOrchestration with stepOutputOverrides", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with multiple stepOutputOverrides", async () => {
-  const dbPath = join(__dirname, "test-multi-overrides.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "step_a", dependencies: [], outputs: ["out_a"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -699,9 +575,7 @@ test("runMultiStepOrchestration with multiple stepOutputOverrides", async () => 
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -710,11 +584,7 @@ test("runMultiStepOrchestration with multiple stepOutputOverrides", async () => 
 // =============================================================================
 
 test("runMultiStepOrchestration with custom contextBudgetTokens", async () => {
-  const dbPath = join(__dirname, "test-context-budget.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -728,18 +598,12 @@ test("runMultiStepOrchestration with custom contextBudgetTokens", async () => {
     assert.ok(result);
     assert.ok("compaction" in result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with high contextBudgetTokens", async () => {
-  const dbPath = join(__dirname, "test-high-context.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -752,18 +616,12 @@ test("runMultiStepOrchestration with high contextBudgetTokens", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with low contextBudgetTokens", async () => {
-  const dbPath = join(__dirname, "test-low-context.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -776,9 +634,7 @@ test("runMultiStepOrchestration with low contextBudgetTokens", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -787,11 +643,7 @@ test("runMultiStepOrchestration with low contextBudgetTokens", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration with stepFailureInjection", async () => {
-  const dbPath = join(__dirname, "test-failure-injection.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -804,9 +656,7 @@ test("runMultiStepOrchestration with stepFailureInjection", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -815,11 +665,7 @@ test("runMultiStepOrchestration with stepFailureInjection", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration with stepFailurePlans - single failure", async () => {
-  const dbPath = join(__dirname, "test-failure-plan-single.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "planned_fail", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -838,18 +684,12 @@ test("runMultiStepOrchestration with stepFailurePlans - single failure", async (
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with stepFailurePlans - multiple attempts", async () => {
-  const dbPath = join(__dirname, "test-failure-plan-multi.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "multi_fail", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 2 } },
@@ -872,18 +712,12 @@ test("runMultiStepOrchestration with stepFailurePlans - multiple attempts", asyn
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration with stepFailurePlans - string error codes", async () => {
-  const dbPath = join(__dirname, "test-failure-plan-string.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "string_fail", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -902,9 +736,7 @@ test("runMultiStepOrchestration with stepFailurePlans - string error codes", asy
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -913,11 +745,7 @@ test("runMultiStepOrchestration with stepFailurePlans - string error codes", asy
 // =============================================================================
 
 test("runMultiStepOrchestration workflow output contains taskId", async () => {
-  const dbPath = join(__dirname, "test-output-taskid.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -931,18 +759,12 @@ test("runMultiStepOrchestration workflow output contains taskId", async () => {
     assert.ok(result.snapshot.task.id);
     assert.equal(typeof result.snapshot.task.id, "string");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration workflow output contains createdAt timestamp", async () => {
-  const dbPath = join(__dirname, "test-output-timestamp.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -956,18 +778,12 @@ test("runMultiStepOrchestration workflow output contains createdAt timestamp", a
     assert.ok(result.snapshot.task.createdAt);
     assert.equal(typeof result.snapshot.task.createdAt, "string");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration workflow has divisionId", async () => {
-  const dbPath = join(__dirname, "test-division-id.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -980,18 +796,12 @@ test("runMultiStepOrchestration workflow has divisionId", async () => {
     assert.ok(result.plannedWorkflow.workflow.divisionId);
     assert.equal(typeof result.plannedWorkflow.workflow.divisionId, "string");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration planned workflow has steps array", async () => {
-  const dbPath = join(__dirname, "test-steps-array.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1003,18 +813,12 @@ test("runMultiStepOrchestration planned workflow has steps array", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(Array.isArray(result.plannedWorkflow.executionSteps));
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration execution steps have required fields", async () => {
-  const dbPath = join(__dirname, "test-step-fields.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1034,9 +838,7 @@ test("runMultiStepOrchestration execution steps have required fields", async () 
       assert.ok(typeof step.maxAttempts === "number");
     }
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -1045,11 +847,7 @@ test("runMultiStepOrchestration execution steps have required fields", async () 
 // =============================================================================
 
 test("runMultiStepOrchestration handles long request text", async () => {
-  const dbPath = join(__dirname, "test-long-request.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const longRequest = "A".repeat(500);
 
@@ -1063,18 +861,12 @@ test("runMultiStepOrchestration handles long request text", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration handles special characters in request", async () => {
-  const dbPath = join(__dirname, "test-special-chars.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1086,18 +878,12 @@ test("runMultiStepOrchestration handles special characters in request", async ()
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration handles unicode in request", async () => {
-  const dbPath = join(__dirname, "test-unicode.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1109,18 +895,12 @@ test("runMultiStepOrchestration handles unicode in request", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration handles empty title", async () => {
-  const dbPath = join(__dirname, "test-empty-title.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1132,9 +912,7 @@ test("runMultiStepOrchestration handles empty title", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -1143,11 +921,7 @@ test("runMultiStepOrchestration handles empty title", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration handles empty request string", async () => {
-  const dbPath = join(__dirname, "test-empty-request.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1159,18 +933,12 @@ test("runMultiStepOrchestration handles empty request string", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration cleans up database on error", async () => {
-  const dbPath = join(__dirname, "test-db-cleanup.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1185,9 +953,7 @@ test("runMultiStepOrchestration cleans up database on error", async () => {
     // Database should exist after successful run
     assert.ok(existsSync(dbPath), "Database file should exist after run");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -1196,11 +962,7 @@ test("runMultiStepOrchestration cleans up database on error", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration routing contains classification", async () => {
-  const dbPath = join(__dirname, "test-classification.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1216,18 +978,12 @@ test("runMultiStepOrchestration routing contains classification", async () => {
     assert.ok("continuation" in result.routing.classification);
     assert.ok("matchedRules" in result.routing.classification);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration routing requires orchestration flag", async () => {
-  const dbPath = join(__dirname, "test-requires-orchestration.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1239,18 +995,12 @@ test("runMultiStepOrchestration routing requires orchestration flag", async () =
     const result = await runMultiStepOrchestration(input);
     assert.ok(typeof result.routing.requiresOrchestration === "boolean");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration routing has route reason", async () => {
-  const dbPath = join(__dirname, "test-route-reason.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1263,18 +1013,12 @@ test("runMultiStepOrchestration routing has route reason", async () => {
     assert.ok(result.routing.routeReason);
     assert.equal(typeof result.routing.routeReason, "string");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration routing has route trace", async () => {
-  const dbPath = join(__dirname, "test-route-trace.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1286,9 +1030,7 @@ test("runMultiStepOrchestration routing has route trace", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(Array.isArray(result.routing.routeTrace));
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -1297,11 +1039,7 @@ test("runMultiStepOrchestration routing has route trace", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration oapeflir plan without outputs uses default outputKey", async () => {
-  const dbPath = join(__dirname, "test-default-output.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planSteps = [
     { stepId: "no_output_step", dependencies: [], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -1319,18 +1057,12 @@ test("runMultiStepOrchestration oapeflir plan without outputs uses default outpu
     const step = result.plannedWorkflow.executionSteps[0];
     assert.ok(step.outputKey.startsWith("output_"), "Default outputKey should start with 'output_'");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration oapeflir plan synthesizes outputKey from nodeId", async () => {
-  const dbPath = join(__dirname, "test-first-output.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const planNodes = [
     {
@@ -1358,9 +1090,7 @@ test("runMultiStepOrchestration oapeflir plan synthesizes outputKey from nodeId"
     const step = result.plannedWorkflow.executionSteps[0];
     assert.equal(step.outputKey, "output_multi_output_step", "Should derive outputKey from the preplanned nodeId");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -1369,11 +1099,7 @@ test("runMultiStepOrchestration oapeflir plan synthesizes outputKey from nodeId"
 // =============================================================================
 
 test("runMultiStepOrchestration creates session in result snapshot", async () => {
-  const dbPath = join(__dirname, "test-session-snapshot.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1385,18 +1111,12 @@ test("runMultiStepOrchestration creates session in result snapshot", async () =>
     const result = await runMultiStepOrchestration(input);
     assert.ok(result.snapshot.session);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration creates workflow state in result snapshot", async () => {
-  const dbPath = join(__dirname, "test-workflow-snapshot.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1408,18 +1128,12 @@ test("runMultiStepOrchestration creates workflow state in result snapshot", asyn
     const result = await runMultiStepOrchestration(input);
     assert.ok(result.snapshot.workflow);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration task has correct source field", async () => {
-  const dbPath = join(__dirname, "test-task-source.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1432,18 +1146,12 @@ test("runMultiStepOrchestration task has correct source field", async () => {
     assert.ok(result.snapshot.task.source);
     assert.equal(result.snapshot.task.source, "user");
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
 test("runMultiStepOrchestration task has estimated cost", async () => {
-  const dbPath = join(__dirname, "test-task-cost.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1456,9 +1164,7 @@ test("runMultiStepOrchestration task has estimated cost", async () => {
     assert.equal(typeof result.snapshot.task.estimatedCostUsd, "number");
     assert.ok(result.snapshot.task.estimatedCostUsd >= 0);
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });
 
@@ -1467,11 +1173,7 @@ test("runMultiStepOrchestration task has estimated cost", async () => {
 // =============================================================================
 
 test("runMultiStepOrchestration returns streamFrames array", async () => {
-  const dbPath = join(__dirname, "test-stream-frames-result.db");
-
-  if (existsSync(dbPath)) {
-    unlinkSync(dbPath);
-  }
+  const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
@@ -1483,8 +1185,6 @@ test("runMultiStepOrchestration returns streamFrames array", async () => {
     const result = await runMultiStepOrchestration(input);
     assert.ok(Array.isArray(result.streamFrames));
   } finally {
-    if (existsSync(dbPath)) {
-      unlinkSync(dbPath);
-    }
+    cleanup();
   }
 });

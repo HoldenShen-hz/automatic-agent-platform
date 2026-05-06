@@ -13,10 +13,11 @@ import assert from "node:assert/strict";
 import { HierarchicalPromptRegistryService } from "../../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
 import type { PromptBundleRegistrationInput } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
 
-function createTestBundle(name: string, version: string, domain = "test-domain"): PromptBundleRegistrationInput {
+function createTestBundle(name: string, version: number, domain = "test-domain"): PromptBundleRegistrationInput {
   return {
     name,
     version,
+    displayVersion: `v${version}.0`,
     domain,
     taskType: "classification",
     packId: undefined,
@@ -28,6 +29,12 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test-tool", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test-evaluator", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test-domain", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test-model", profileVersion: 1 }],
+    },
     metadata: {
       owner: "test-owner",
       deprecated: false,
@@ -45,14 +52,14 @@ function createTestBundle(name: string, version: string, domain = "test-domain")
 
 test("HierarchicalPromptRegistryService.deprecateBundle does not mutate original bundle reference", () => {
   const registry = new HierarchicalPromptRegistryService();
-  const bundle = registry.registerBundle(createTestBundle("immutable-test", "v1.0"), "global");
+  const bundle = registry.registerBundle(createTestBundle("immutable-test", 1), "global");
 
   // Store original metadata to check for mutation
   const originalDeprecated = bundle.metadata.deprecated;
   const originalUpdatedAt = bundle.updatedAt;
 
   // Deprecate the bundle
-  registry.deprecateBundle("immutable-test", "v1.0", "global");
+  registry.deprecateBundle("immutable-test", 1, "global");
 
   // Issue #1955: Original bundle reference should not be mutated
   // The deprecateBundle should create a new copy, not mutate the original
@@ -61,8 +68,8 @@ test("HierarchicalPromptRegistryService.deprecateBundle does not mutate original
 
 test("HierarchicalPromptRegistryService.getBundle respects specific version", () => {
   const registry = new HierarchicalPromptRegistryService();
-  registry.registerBundle(createTestBundle("version-test", "v1.0"), "global");
-  registry.registerBundle(createTestBundle("version-test", "v2.0"), "global");
+  registry.registerBundle(createTestBundle("version-test", 1), "global");
+  registry.registerBundle(createTestBundle("version-test", 2), "global");
 
   // Issue #1962: findBundle should respect version, not always pick default
   const v1Bundle = registry.getBundle("version-test", "classification", undefined, undefined);
@@ -76,7 +83,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes traf
 
   // Register two bundles with equal weights (50/50)
   registry.registerBundle({
-    ...createTestBundle("traffic-fair", "v1.0"),
+    ...createTestBundle("traffic-fair", 1),
     metadata: {
       owner: "test",
       deprecated: false,
@@ -87,7 +94,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes traf
   }, "global");
 
   registry.registerBundle({
-    ...createTestBundle("traffic-fair", "v2.0"),
+    ...createTestBundle("traffic-fair", 2),
     metadata: {
       owner: "test",
       deprecated: false,
@@ -98,7 +105,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes traf
   }, "global");
 
   // Issue #1966: Test traffic slot normalization
-  const results: string[] = [];
+  const results: number[] = [];
   for (let i = 0; i < 100; i++) {
     const bundle = registry.resolveBundleForTraffic(
       "traffic-fair",
@@ -113,13 +120,13 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic distributes traf
   }
 
   // Count distribution
-  const v1Count = results.filter(v => v === "v1.0").length;
-  const v2Count = results.filter(v => v === "v2.0").length;
+  const v1Count = results.filter(v => v === 1).length;
+  const v2Count = results.filter(v => v === 2).length;
 
   // With 50/50 weights and 100 samples, distribution should be roughly equal
   // Allow for some variance but not extreme (e.g., at least 20% each)
-  assert.ok(v1Count >= 20, `v1.0 should have at least 20%, got ${v1Count}%`);
-  assert.ok(v2Count >= 20, `v2.0 should have at least 20%, got ${v2Count}%`);
+  assert.ok(v1Count >= 20, `v1 should have at least 20%, got ${v1Count}%`);
+  assert.ok(v2Count >= 20, `v2 should have at least 20%, got ${v2Count}%`);
 });
 
 test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal weights", () => {
@@ -127,7 +134,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal wei
 
   // Register with 80/20 weight split
   registry.registerBundle({
-    ...createTestBundle("traffic-unequal", "v1.0"),
+    ...createTestBundle("traffic-unequal", 1),
     metadata: {
       owner: "test",
       deprecated: false,
@@ -138,7 +145,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal wei
   }, "global");
 
   registry.registerBundle({
-    ...createTestBundle("traffic-unequal", "v2.0"),
+    ...createTestBundle("traffic-unequal", 2),
     metadata: {
       owner: "test",
       deprecated: false,
@@ -148,7 +155,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal wei
     },
   }, "global");
 
-  const results: string[] = [];
+  const results: number[] = [];
   for (let i = 0; i < 100; i++) {
     const bundle = registry.resolveBundleForTraffic(
       "traffic-unequal",
@@ -162,8 +169,8 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with unequal wei
     }
   }
 
-  const v1Count = results.filter(v => v === "v1.0").length;
-  const v2Count = results.filter(v => v === "v2.0").length;
+  const v1Count = results.filter(v => v === 1).length;
+  const v2Count = results.filter(v => v === 2).length;
 
   // v1 should dominate with 80% weight
   assert.ok(v1Count > v2Count, "80% weighted version should dominate");
@@ -174,7 +181,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with zero weight
 
   // One with weight, one with zero
   registry.registerBundle({
-    ...createTestBundle("traffic-zero", "v1.0"),
+    ...createTestBundle("traffic-zero", 1),
     metadata: {
       owner: "test",
       deprecated: false,
@@ -185,7 +192,7 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with zero weight
   }, "global");
 
   registry.registerBundle({
-    ...createTestBundle("traffic-zero", "v2.0"),
+    ...createTestBundle("traffic-zero", 2),
     metadata: {
       owner: "test",
       deprecated: false,
@@ -204,14 +211,14 @@ test("HierarchicalPromptRegistryService.resolveBundleForTraffic with zero weight
   );
 
   // Zero weight bundle should be skipped
-  assert.equal(bundle?.version, "v1.0");
+  assert.equal(bundle?.version, 1);
 });
 
 test("HierarchicalPromptRegistryService.findBundle with different versions at same level", () => {
   const registry = new HierarchicalPromptRegistryService();
-  registry.registerBundle(createTestBundle("multi-version", "v1.0"), "global");
-  registry.registerBundle(createTestBundle("multi-version", "v2.0"), "global");
-  registry.registerBundle(createTestBundle("multi-version", "v3.0"), "global");
+  registry.registerBundle(createTestBundle("multi-version", 1), "global");
+  registry.registerBundle(createTestBundle("multi-version", 2), "global");
+  registry.registerBundle(createTestBundle("multi-version", 3), "global");
 
   const bundles = registry.listBundleVersions("multi-version");
 
@@ -223,12 +230,12 @@ test("HierarchicalPromptRegistryService.registerBundle stores all fields correct
   const registry = new HierarchicalPromptRegistryService();
 
   const bundle = registry.registerBundle({
-    ...createTestBundle("full-bundle", "v1.0"),
+    ...createTestBundle("full-bundle", 1),
     packId: "test-pack",
   }, "global");
 
   assert.equal(bundle.name, "full-bundle");
-  assert.equal(bundle.version, "v1.0");
+  assert.equal(bundle.version, 1);
   assert.equal(bundle.domain, "test-domain");
   assert.equal(bundle.taskType, "classification");
   assert.equal(bundle.packId, "test-pack");
@@ -238,8 +245,8 @@ test("HierarchicalPromptRegistryService.registerBundle stores all fields correct
 test("HierarchicalPromptRegistryService.listBundles filters by level", () => {
   const registry = new HierarchicalPromptRegistryService();
 
-  registry.registerBundle(createTestBundle("global-bundle", "v1.0"), "global");
-  registry.registerBundle(createTestBundle("domain-bundle", "v1.0", "domain-a"), "domain", "domain-a");
+  registry.registerBundle(createTestBundle("global-bundle", 1), "global");
+  registry.registerBundle(createTestBundle("domain-bundle", 1, "domain-a"), "domain", "domain-a");
 
   const globalBundles = registry.listBundles("global");
   const domainBundles = registry.listBundles("domain", "domain-a");
@@ -250,9 +257,9 @@ test("HierarchicalPromptRegistryService.listBundles filters by level", () => {
 
 test("HierarchicalPromptRegistryService.removeBundle returns boolean", () => {
   const registry = new HierarchicalPromptRegistryService();
-  registry.registerBundle(createTestBundle("remove-test", "v1.0"), "global");
+  registry.registerBundle(createTestBundle("remove-test", 1), "global");
 
-  const removed = registry.removeBundle("remove-test", "v1.0", "global");
+  const removed = registry.removeBundle("remove-test", 1, "global");
 
   // Should return boolean indicating success
   assert.equal(typeof removed, "boolean");
@@ -261,7 +268,7 @@ test("HierarchicalPromptRegistryService.removeBundle returns boolean", () => {
 test("HierarchicalPromptRegistryService traffic slot computation uses hash", () => {
   const registry = new HierarchicalPromptRegistryService();
 
-  registry.registerBundle(createTestBundle("hash-test", "v1.0"), "global");
+  registry.registerBundle(createTestBundle("hash-test", 1), "global");
 
   // Same key should return same bundle
   const bundle1 = registry.resolveBundleForTraffic("hash-test", "classification", undefined, undefined, "fixed-key");
@@ -274,7 +281,7 @@ test("HierarchicalPromptRegistryService traffic slot computation uses hash", () 
 test("HierarchicalPromptRegistryService runVersionLock produces consistent selection", () => {
   const registry = new HierarchicalPromptRegistryService();
 
-  registry.registerBundle(createTestBundle("lock-test", "v1.0"), "global");
+  registry.registerBundle(createTestBundle("lock-test", 1), "global");
 
   // With runVersionLock, same run should always select same bundle
   const runLock = { runVersionLockId: "run-123" };

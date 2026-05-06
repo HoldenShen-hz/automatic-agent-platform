@@ -133,7 +133,10 @@ export class HierarchicalPromptRegistryService {
     // Try domain level
     if (domain) {
       const domainEntry = this.domainBundles.get(domain)?.get(name);
-      if (domainEntry && !domainEntry.metadata.deprecated) {
+      if (domainEntry) {
+        if (domainEntry.metadata.deprecated) {
+          return null;
+        }
         return domainEntry;
       }
     }
@@ -175,6 +178,7 @@ export class HierarchicalPromptRegistryService {
     const addFromMap = (map: Map<string, PromptBundle>) => {
       for (const bundle of map.values()) {
         if (seen.has(bundle.bundleId)) continue;
+        if (bundle.metadata.deprecated) continue;
         seen.add(bundle.bundleId);
         results.push(this.buildListResult(bundle));
       }

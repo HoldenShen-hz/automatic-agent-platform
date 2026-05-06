@@ -65,6 +65,7 @@ import {
 import { createStageTransitionFSM, type StageTransitionFSM } from "./stage-transition-fsm.js";
 import { HarnessLoopController } from "../harness/loop/index.js";
 import type { HarnessDecision, ConstraintPack, DecisionInputBundle as HarnessDecisionInputBundle } from "../harness/index.js";
+import type { RuntimeRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 
 export interface OapeflirLoopInput {
   taskId: string;
@@ -182,6 +183,8 @@ export interface OapeflirLoopServiceOptions {
   healthService?: import("../../shared/observability/health-service.js").HealthService | null;
   /** R9-9: Directive sink for emitting OperationalDirective during improve stage */
   directiveSink?: ControlPlaneDirectiveSink | null;
+  /** R4-35 (INV-EVIDENCE-001): RuntimeTruthRepository for persisting DecisionInputBundle and HarnessDecision */
+  runtimeTruthRepository?: RuntimeRepository | null;
 }
 
 /** R5-41 §14.3 OAPEFLIR event emission helper */
@@ -226,6 +229,8 @@ export class OapeflirLoopService {
   private stageInstrumentation: Record<string, { entryTimestamp: number; exitTimestamp: number; durationMs: number; result: string }> = {};
   /** R9-9: Directive sink for emitting OperationalDirective during improve stage */
   private readonly directiveSink: ControlPlaneDirectiveSink | null = null;
+  /** R4-35 (INV-EVIDENCE-001): RuntimeTruthRepository for persisting DecisionInputBundle and HarnessDecision */
+  private readonly runtimeTruthRepository: RuntimeRepository | null = null;
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     if (options.executeBridge) {
@@ -261,6 +266,8 @@ export class OapeflirLoopService {
     this.healthService = options.healthService ?? null;
     // R9-9: Initialize directive sink from options
     this.directiveSink = options.directiveSink ?? null;
+    // R4-35 (INV-EVIDENCE-001): Initialize RuntimeTruthRepository for persisting decision evidence
+    this.runtimeTruthRepository = options.runtimeTruthRepository ?? null;
   }
 
   /**
@@ -328,6 +335,56 @@ export class OapeflirLoopService {
           occurredAt: typeof payload["occurredAt"] === "string" ? payload["occurredAt"] : nowIso(),
         },
       });
+    }
+  }
+
+  /**
+   * R4-35 (INV-EVIDENCE-001): Persist DecisionInputBundle and HarnessDecision to RuntimeTruthRepository.
+   * This ensures all OAPEFLIR loop decisions produce immutable evidence that can be audited.
+   */
+  private persistDecisionArtifacts(
+    decisionInputBundle: HarnessDecisionInputBundle | null,
+    harnessDecision: HarnessDecision | null,
+  ): void {
+    if (this.runtimeTruthRepository == null) {
+      return;
+    }
+
+    // Persist DecisionInputBundle if present
+    if (decisionInputBundle != null) {
+      try {
+        // The decisionInputBundle from buildDecisionInputBundle has a different shape than
+        // the canonical DecisionInputBundle - we need to use the canonical form for persistence
+        // Cast through unknown since the types are structurally compatible but have different aliases
+        this.runtimeTruthRepository.appendDecisionInputBundle(decisionInputBundle as unknown as import("../../contracts/executable-contracts/index.js").DecisionInputBundle);
+        this.boundaryLogger.log({
+          level: "debug",
+          message: "R4-35 (INV-EVIDENCE-001): Persisted OAPEFLIR DecisionInputBundle",
+          data: { bundleId: decisionInputBundle.bundleId ?? (decisionInputBundle as unknown as { decisionInputBundleId?: string }).decisionInputBundleId },
+        });
+      } catch (error) {
+        this.boundaryLogger.warn("[R4-35] Failed to persist DecisionInputBundle", {
+          data: { error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
+
+    // Persist HarnessDecision if present
+    if (harnessDecision != null) {
+      try {
+        // The harnessDecision from HarnessLoopController has harnessDecisionId as optional,
+        // but the canonical HarnessDecision requires it. Cast through unknown for compatibility.
+        this.runtimeTruthRepository.appendHarnessDecision(harnessDecision as unknown as import("../../contracts/executable-contracts/index.js").HarnessDecision);
+        this.boundaryLogger.log({
+          level: "debug",
+          message: "R4-35 (INV-EVIDENCE-001): Persisted OAPEFLIR HarnessDecision",
+          data: { decisionId: harnessDecision.decisionId },
+        });
+      } catch (error) {
+        this.boundaryLogger.warn("[R4-35] Failed to persist HarnessDecision", {
+          data: { error: error instanceof Error ? error.message : String(error) },
+        });
+      }
     }
   }
 
@@ -1223,6 +1280,10 @@ export class OapeflirLoopService {
           occurredAt: nowIso(),
         }, input.taskId);
 
+        // R4-35 (INV-EVIDENCE-001): Persist DecisionInputBundle and HarnessDecision to RuntimeTruthRepository
+        // This ensures all OAPEFLIR loop decisions produce immutable evidence that can be audited
+        this.persistDecisionArtifacts(decisionInputBundle, harnessDecision);
+
         return {
           observation: validatedObservation,
           assessment: validatedAssessment,
@@ -1259,6 +1320,10 @@ export class OapeflirLoopService {
         taskId: input.taskId,
         occurredAt: nowIso(),
       }, input.taskId);
+
+      // R4-35 (INV-EVIDENCE-001): Persist DecisionInputBundle and HarnessDecision to RuntimeTruthRepository
+      // This ensures all OAPEFLIR loop decisions produce immutable evidence that can be audited
+      this.persistDecisionArtifacts(decisionInputBundle, harnessDecision);
 
       return {
         observation: null as unknown as UnifiedObservation,

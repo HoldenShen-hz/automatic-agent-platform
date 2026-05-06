@@ -157,6 +157,51 @@ async function persistLlmDecisionEvidence(input: PersistLlmDecisionEvidenceInput
   });
 
   try {
+    // R4-35 (INV-EVIDENCE-001): Persist DecisionInputBundle first (before HarnessDecision)
+    // DecisionInputBundle captures the full decision context for audit replay
+    try {
+      runtimeTruthRepository.appendDecisionInputBundle(decisionInputBundle);
+      logger.log({
+        level: "debug",
+        message: "R4-35 (INV-EVIDENCE-001): Persisted LLM decision DecisionInputBundle",
+        data: {
+          bundleId: decisionInputBundle.decisionInputBundleId,
+          decisionKind,
+          stepId,
+        },
+      });
+    } catch (error) {
+      // R4-35: If append fails, log but don't fail the LLM call
+      logger.log({
+        level: "warn",
+        message: "R4-35 (INV-EVIDENCE-001): Failed to persist DecisionInputBundle",
+        data: { bundleId: decisionInputBundle.decisionInputBundleId, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+
+    // R4-35 (INV-EVIDENCE-001): Persist HarnessDecision (linked to DecisionInputBundle by bundleId)
+    try {
+      runtimeTruthRepository.appendHarnessDecision(canonicalDecision);
+      logger.log({
+        level: "debug",
+        message: "R4-35 (INV-EVIDENCE-001): Persisted LLM decision HarnessDecision",
+        data: {
+          decisionId: harnessDecisionId,
+          decisionInputBundleId: decisionInputBundle.decisionInputBundleId,
+          decisionKind,
+          stepId,
+        },
+      });
+    } catch (error) {
+      // R4-35: If append fails, log but don't fail the LLM call
+      logger.log({
+        level: "warn",
+        message: "R4-35 (INV-EVIDENCE-001): Failed to persist HarnessDecision",
+        data: { decisionId: harnessDecisionId, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+
+    // R4-35 (INV-EVIDENCE-001): Persist EvidenceRecord with full decision metadata
     runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
     logger.log({
       level: "debug",
@@ -173,7 +218,7 @@ async function persistLlmDecisionEvidence(input: PersistLlmDecisionEvidenceInput
     // R4-35: If append fails, log but don't fail the LLM call
     logger.log({
       level: "warn",
-      message: "R4-35 (INV-EVIDENCE-001): Failed to persist LLM decision EvidenceRecord",
+      message: "R4-35 (INV-EVIDENCE-001): Failed to persist LLM decision evidence",
       data: { recordId: evidenceRecord.recordId, error: error instanceof Error ? error.message : String(error) },
     });
   }

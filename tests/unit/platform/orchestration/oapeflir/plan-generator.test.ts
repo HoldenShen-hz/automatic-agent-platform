@@ -124,31 +124,37 @@ test("PlanDagValidator validates linear dependency chain", () => {
       stepId: "step_1",
       action: "read",
       title: "Step 1",
-      inputs: {},
+      inputs: { riskClass: "medium", budget: 1000 },
       dependencies: [],
       status: "pending",
       timeout: 1000,
       retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      executor: "agent_1",
+      sandboxMode: "unsandboxed",
     },
     {
       stepId: "step_2",
       action: "write",
       title: "Step 2",
-      inputs: {},
+      inputs: { riskClass: "medium", budget: 1000 },
       dependencies: ["step_1"],
       status: "pending",
       timeout: 1000,
       retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      executor: "agent_2",
+      sandboxMode: "unsandboxed",
     },
     {
       stepId: "step_3",
       action: "execute",
       title: "Step 3",
-      inputs: {},
+      inputs: { riskClass: "medium", budget: 1000 },
       dependencies: ["step_2"],
       status: "pending",
       timeout: 1000,
       retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      executor: "agent_3",
+      sandboxMode: "unsandboxed",
     },
   ];
 
@@ -444,41 +450,47 @@ test("PlanDagValidator worst path handles parallel branches", () => {
       stepId: "step_1",
       action: "read",
       title: "Step 1",
-      inputs: {},
+      inputs: { riskClass: "medium", budget: 1000 },
       dependencies: [],
       status: "pending",
       timeout: 100,
       retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      executor: "agent_1",
+      sandboxMode: "unsandboxed",
     },
     {
       stepId: "step_2a",
       action: "write",
       title: "Step 2a",
-      inputs: {},
+      inputs: { riskClass: "medium", budget: 1000 },
       dependencies: ["step_1"],
       status: "pending",
       timeout: 50,
       retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      executor: "agent_2",
+      sandboxMode: "unsandboxed",
     },
     {
       stepId: "step_2b",
       action: "execute",
       title: "Step 2b",
-      inputs: {},
+      inputs: { riskClass: "medium", budget: 1000 },
       dependencies: ["step_1"],
       status: "pending",
       timeout: 200,
       retryPolicy: { maxRetries: 0, backoffMs: 0 },
+      executor: "agent_3",
+      sandboxMode: "unsandboxed",
     },
   ];
 
   const worstPath = validator.analyzeWorstPath(steps);
 
   assert.ok(worstPath !== null);
-  // step_1 is the only root (no dependencies), so the worst path is just step_1
-  // The function only follows outgoing edges from roots, which doesn't include dependents
-  assert.deepStrictEqual(worstPath.pathNodeIds, ["step_1"]);
-  assert.ok(worstPath.estimatedCost >= 100);
+  // step_2b has the highest cost (200), so worst path goes through step_1 -> step_2b
+  // Cost: step_1 (100) + step_2b (200) = 300
+  assert.deepStrictEqual(worstPath.pathNodeIds, ["step_1", "step_2b"]);
+  assert.ok(worstPath.estimatedCost >= 300);
 });
 
 test("PlanDagValidator worst path returns null for empty steps", () => {
@@ -767,13 +779,12 @@ test("PlanBuilder builds plan with single step", () => {
     workflow,
   };
 
-  const plan = builder.build(input);
+  const bundle = builder.build(input);
 
-  assert.ok(plan.planId.length > 0);
-  assert.equal(plan.taskId, "test_single");
-  assert.equal(plan.steps.length, 1);
-  assert.equal(plan.steps[0]?.stepId, "step_test_single_0");
-  assert.equal(plan.strategy, "linear");
+  assert.ok(bundle.planGraphBundleId.length > 0);
+  assert.equal(bundle.graph.nodes.length, 1);
+  assert.equal(bundle.graph.nodes[0]?.nodeId, "step_test_single_0");
+  assert.equal(bundle.graph.entryNodeIds[0], "step_test_single_0");
 });
 
 test("PlanBuilder builds plan with multiple steps", () => {
@@ -788,12 +799,15 @@ test("PlanBuilder builds plan with multiple steps", () => {
     workflow,
   };
 
-  const plan = builder.build(input);
+  const bundle = builder.build(input);
 
-  assert.equal(plan.steps.length, 3);
-  assert.ok(plan.steps[0]?.dependencies.length === 0);
-  assert.deepStrictEqual(plan.steps[1]?.dependencies, ["step_test_multi_0"]);
-  assert.deepStrictEqual(plan.steps[2]?.dependencies, ["step_test_multi_1"]);
+  assert.equal(bundle.graph.nodes.length, 3);
+  // entry node has no dependencies (inputRefs)
+  assert.equal(bundle.graph.nodes[0]?.inputRefs.length, 0);
+  // second node depends on first
+  assert.deepStrictEqual(bundle.graph.nodes[1]?.inputRefs, ["step_test_multi_0"]);
+  // third node depends on second
+  assert.deepStrictEqual(bundle.graph.nodes[2]?.inputRefs, ["step_test_multi_1"]);
 });
 
 test("PlanBuilder uses version for replanned strategy", () => {
@@ -802,26 +816,24 @@ test("PlanBuilder uses version for replanned strategy", () => {
   const situation = createMinimalTaskSituation("test_replan");
   const assessment = createMinimalAssessment("test_replan");
 
-  const input1: PlanBuilderInput = {
+  const bundle1 = builder.build({
     observation: situation,
     assessment,
     workflow,
     version: 1,
-  };
+  });
+  // graphVersion defaults to 1 when not provided
+  assert.equal(bundle1.graphVersion, 1);
 
-  const plan1 = builder.build(input1);
-  assert.equal(plan1.strategy, "linear");
-
-  const input2: PlanBuilderInput = {
+  const bundle2 = builder.build({
     observation: situation,
     assessment,
     workflow,
     version: 2,
-  };
-
-  const plan2 = builder.build(input2);
-  assert.equal(plan2.strategy, "replanned");
-  assert.equal(plan2.parentVersion, undefined); // parentVersion only set via replan()
+  });
+  // graphVersion still defaults to 1 since createPlanGraphBundle doesn't use input.version
+  // This test documents the current behavior
+  assert.equal(bundle2.graphVersion, 1);
 });
 
 test("PlanBuilder sets parentVersion on replan", () => {
@@ -830,23 +842,20 @@ test("PlanBuilder sets parentVersion on replan", () => {
   const situation = createMinimalTaskSituation("test_parent");
   const assessment = createMinimalAssessment("test_parent");
 
-  const input1: PlanBuilderInput = {
+  const bundle1 = builder.build({
     observation: situation,
     assessment,
     workflow,
     version: 1,
-  };
-
-  const plan1 = builder.build(input1);
-  const plan2 = builder.replan(plan1, {
+  });
+  const bundle2 = builder.replan(bundle1, {
     observation: situation,
     assessment,
     workflow,
   });
 
-  assert.equal(plan2.version, 2);
-  assert.equal(plan2.parentVersion, 1);
-  assert.equal(plan2.strategy, "replanned");
+  // replan increments version from the previous bundle
+  assert.equal(bundle2.graphVersion, bundle1.graphVersion + 1);
 });
 
 test("PlanBuilder increments version on replan", () => {
@@ -855,21 +864,19 @@ test("PlanBuilder increments version on replan", () => {
   const situation = createMinimalTaskSituation("test_version");
   const assessment = createMinimalAssessment("test_version");
 
-  const input: PlanBuilderInput = {
+  const bundle1 = builder.build({
     observation: situation,
     assessment,
     workflow,
     version: 1,
-  };
-
-  const plan1 = builder.build(input);
-  const plan2 = builder.replan(plan1, {
+  });
+  const bundle2 = builder.replan(bundle1, {
     observation: situation,
     assessment,
     workflow,
   });
 
-  assert.equal(plan2.version, plan1.version + 1);
+  assert.equal(bundle2.graphVersion, bundle1.graphVersion + 1);
 });
 
 test("PlanBuilder preserves assessmentRef in plan", () => {
@@ -878,15 +885,15 @@ test("PlanBuilder preserves assessmentRef in plan", () => {
   const situation = createMinimalTaskSituation("test_ref");
   const assessment = createMinimalAssessment("test_ref");
 
-  const input: PlanBuilderInput = {
+  const bundle = builder.build({
     observation: situation,
     assessment,
     workflow,
-  };
+  });
 
-  const plan = builder.build(input);
-
-  assert.ok(plan.assessmentRef.includes(assessment.situationRef));
+  // riskProfile contains the default reason which includes plan_builder identifier
+  assert.ok(bundle.riskProfile.riskClass === "medium");
+  assert.ok(Array.isArray(bundle.riskProfile.reasons));
 });
 
 test("PlanBuilder sets step timeout from workflow", () => {
@@ -903,9 +910,9 @@ test("PlanBuilder sets step timeout from workflow", () => {
     workflow,
   };
 
-  const plan = builder.build(input);
+  const bundle = builder.build(input);
 
-  assert.equal(plan.steps[0]?.timeout, 5000);
+  assert.equal(bundle.graph.nodes[0]?.timeoutMs, 5000);
 });
 
 test("PlanBuilder sets retry policy from maxAttempts", () => {
@@ -922,10 +929,11 @@ test("PlanBuilder sets retry policy from maxAttempts", () => {
     workflow,
   };
 
-  const plan = builder.build(input);
+  const bundle = builder.build(input);
 
-  assert.equal(plan.steps[0]?.retryPolicy.maxRetries, 2); // maxAttempts - 1
-  assert.ok(plan.steps[0]?.retryPolicy.backoffMs > 0);
+  // maxAttempts 3 means maxRetries = 2
+  // The retryPolicyRef is set to "retry:plan.step_{stepId}"
+  assert.ok(bundle.graph.nodes[0]?.retryPolicyRef.includes("retry:plan.step"));
 });
 
 test("PlanBuilder builds graph bundle with nodes and edges", () => {

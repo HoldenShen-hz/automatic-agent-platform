@@ -480,6 +480,22 @@ export class HaCoordinatorService {
     const latestEpoch = this.getLatestEpoch();
     const activeLease = this.getActiveLease();
 
+    // R4-36 fix: When strictLeaderAuthority is disabled and the requesting node
+    // is not found (e.g., "system" default), fall back to checking if there's a
+    // valid leader. This allows operations from any node when not in strict mode,
+    // as long as a leader exists to provide authoritative ordering.
+    if (!node && requiredAuthority === "leader_only" && !this.strictLeaderAuthority && leader) {
+      this.recordActionAudit(actionType, requestingNodeId, leader.nodeId, latestEpoch.epoch, latestEpoch.fencingToken, true, "fallback_to_leader");
+      return {
+        authorized: true,
+        authority: requiredAuthority,
+        reasonCode: "fallback_to_leader",
+        leaderNodeId: leader.nodeId,
+        epoch: latestEpoch.epoch,
+        fencingToken: latestEpoch.fencingToken,
+      };
+    }
+
     if (!node) {
       return {
         authorized: false,
