@@ -12,7 +12,7 @@
 - **Execute**：步骤执行与 Dual-Channel 输出
 - **Feedback**：信号收集、预处理与 7 类反馈源（ADR-079）
 - **Learn**：模式检测与知识提取（ADR-080）
-- **Improve**：改进候选评估与 Rollout 状态机（ADR-075）
+- **Improve**：改进候选评估与 Release 状态机（ADR-075）
 - **Release**：六级受控发布与自动回滚
 
 ---

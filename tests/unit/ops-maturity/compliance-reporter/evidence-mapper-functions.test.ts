@@ -34,7 +34,7 @@ test("mapEvidenceByControl maps evidence to control points with status", () => {
 
   const results = mapEvidenceByControl(items);
 
-  assert.equal(results.length, 3); // CC1, CC2, and _not_applicable
+  assert.equal(results.length, 2); // CC1 and CC2 only - no _not_applicable since all items have controlIds
   const cc1Result = results.find(r => r.controlId === "CC1");
   assert.ok(cc1Result !== undefined);
   assert.deepEqual(cc1Result!.evidenceIds, ["e1", "e2"]);

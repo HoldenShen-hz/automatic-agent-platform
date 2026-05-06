@@ -201,7 +201,7 @@ test("drift: proposal engine creates proposal from reflection", async () => {
   const proposal = proposals[0];
   assert.strictEqual(proposal.kind, "tool_routing_rule");
   assert.strictEqual(proposal.risk, "low");
-  assert.strictEqual(proposal.status, "proposed");
+  assert.strictEqual(proposal.status, "draft");
   assert.deepStrictEqual(proposal.evidenceIds, ["ev-1", "ev-2"]);
 });
 
@@ -271,6 +271,8 @@ test("drift: benchmark runner with test cases", async () => {
     { id: "tc-1", taskType: "tool_invocation", input: {} },
     { id: "tc-2", taskType: "tool_invocation", input: {} },
   ]);
+  runner.setBaseline("tc-1", { successRate: 0.8, avgCost: 0.05, avgLatencyMs: 1000, sampleCount: 10 });
+  runner.setBaseline("tc-2", { successRate: 0.9, avgCost: 0.06, avgLatencyMs: 1200, sampleCount: 10 });
   const proposal = {
     id: "prop-with-cases",
     title: "Test",

@@ -1,3 +1,5 @@
+import type { CapacitySignal as CanonicalCapacitySignal } from "../ops-maturity/capacity-planner/capacity-planning-service.js";
+
 export type MarketplaceLifecycleState = "active" | "deprecated" | "sunset" | "removed";
 export type RemoteSessionState = "connecting" | "connected" | "reconnecting" | "degraded" | "failed" | "viewer_only";
 export type SlaBreachType = "latency" | "success_rate" | "queue_wait" | "execution_timeout" | "dependency_unavailability";
@@ -50,15 +52,8 @@ export interface BillingAdjustment {
   readonly preservesUsageLedger: true;
 }
 
-export interface CapacitySignal {
-  readonly signalId: string;
-  readonly slaTier: string;
-  readonly queueDelayMs: number;
-  readonly budgetPressure: number;
-  readonly approvalCapacity: number;
-  readonly providerQuotaRemaining: number;
-  readonly regionFailoverReserve: number;
-}
+// Re-export the canonical ops-maturity type instead of maintaining a stale shim copy.
+export type CapacitySignal = CanonicalCapacitySignal;
 
 export interface CostAttributionRecord {
   readonly recordId: string;

@@ -58,3 +58,8 @@
 - integration：审批请求跨组织路由与升级
 - contract：无组织归属的高风险请求不得自动路由为通过
 
+## v4.3 Contract Remediation
+
+- T-45B: 本文早期版本仅冻结组织树和审批路由最小对象，没有补 v4.3 remediation，也没有把动态审批与 canonical runtime 对象链对齐。修复：本文保留 `OrgNode / ApprovalRouteDecision` 最小字段，并补齐 remediation 段，要求高风险审批路由结果必须能回链到 `harness_run_id` / `node_run_id` 对应的运行时上下文或关联请求。
+
+强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger / BudgetReservation / BudgetSettlement`。

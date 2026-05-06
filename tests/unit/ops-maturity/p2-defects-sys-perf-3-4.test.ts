@@ -32,11 +32,7 @@ test("[SYS-PERF-3.4] anomaly detection metricBuffer has size limit", async () =>
 
   // Ingest 100,000 unique metrics
   for (let i = 0; i < 100_000; i++) {
-    service.ingestMetric({
-      name: `metric-${i}`,
-      value: Math.random(),
-      timestamp: Date.now(),
-    });
+    service.ingestMetric(`metric-${i}`, Math.random(), Date.now());
   }
 
   // Wait for cleanup interval (30s) to pass so evictExpired can run
@@ -70,11 +66,7 @@ test("[SYS-PERF-3.4] metricBuffer eviction triggers after size exceeds maxBuffer
   // Ingest enough unique metrics to exceed maxBufferEntries (500)
   // Use unique names to create many entries
   for (let i = 0; i < 600; i++) {
-    service.ingestMetric({
-      name: `eviction-test-${i}`,
-      value: i * 0.01,
-      timestamp: Date.now(),
-    });
+    service.ingestMetric(`eviction-test-${i}`, i * 0.01, Date.now());
   }
 
   // Trigger eviction by waiting for cleanup interval
@@ -82,11 +74,7 @@ test("[SYS-PERF-3.4] metricBuffer eviction triggers after size exceeds maxBuffer
 
   // After eviction, ingest more metrics with new names
   for (let i = 0; i < 100; i++) {
-    service.ingestMetric({
-      name: `post-eviction-${i}`,
-      value: i * 0.01,
-      timestamp: Date.now(),
-    });
+    service.ingestMetric(`post-eviction-${i}`, i * 0.01, Date.now());
   }
 
   // Service should remain functional after eviction cycle
@@ -104,11 +92,7 @@ test("[SYS-PERF-3.4] rapid ingestion with many unique keys does not cause memory
   // Simulate rapid ingestion of many unique metrics
   const metricCount = 10_000;
   for (let i = 0; i < metricCount; i++) {
-    service.ingestMetric({
-      name: `rapid-${i}`,
-      value: Math.random(),
-      timestamp: Date.now(),
-    });
+    service.ingestMetric(`rapid-${i}`, Math.random(), Date.now());
   }
 
   // Service should still be responsive

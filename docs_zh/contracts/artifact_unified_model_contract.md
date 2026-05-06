@@ -83,7 +83,7 @@ interface ArtifactRef {
 - `promotion_evidence`
 - `release_evidence`
 - `learning_pattern_bundle`     // OAPEFLIR Learn Hub
-- `canary_metrics`              // OAPEFLIR Rollout
+- `canary_metrics`              // OAPEFLIR Release canary metrics
 
 `publishStatus` 生命周期：
 
@@ -105,7 +105,7 @@ interface ArtifactRef {
 - Plan artifact 必须能追踪到原始 assessment 和 strategy。
 - Execute artifact 必须包含 DualChannelStepOutput 引用。
 - Learning artifact 必须包含 evidence 链接（R4-EVIDENCE 约束）。
-- Rollout artifact 必须包含 metrics 快照。
+- Release artifact 必须包含 metrics 快照。
 - Artifact 10MB bundle 限制和 7 天自动归档规则（§D.7）。
 
 ## 6. 收口结论
