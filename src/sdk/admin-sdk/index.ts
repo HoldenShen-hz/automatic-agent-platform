@@ -5,12 +5,15 @@ import {
   createDecisionDirective,
   type OperationalDirectiveType,
   type DecisionDirectiveType,
+  type OperationalDirective,
+  type DecisionDirective,
 } from "../../platform/contracts/control-directive/index.js";
 
 export interface AdminSdkConfig extends ApiClientConfig {}
 
 /**
  * Directive input for pauseHarnessRun
+ * @deprecated Use createPauseDirective + pauseHarnessRun(harnessRunId, directive) pattern instead
  */
 export interface PauseHarnessRunDirectiveInput {
   readonly harnessRunId: string;
@@ -24,6 +27,7 @@ export interface PauseHarnessRunDirectiveInput {
 
 /**
  * Directive input for abortHarnessRun
+ * @deprecated Use createAbortDirective + abortHarnessRun(harnessRunId, directive) pattern instead
  */
 export interface AbortHarnessRunDirectiveInput {
   readonly harnessRunId: string;
@@ -97,6 +101,66 @@ export class AdminSdk {
   // --- Harness Run Management ---
 
   /**
+   * Create an OperationalDirective to pause a harness run.
+   * Per §4.3, uses the directive envelope model for state transitions.
+   * Note: This only creates the directive locally. Use pauseHarnessRun to emit it.
+   */
+  public createPauseDirective(harnessRunId: string, issuedBy: {
+    readonly principalId: string;
+    readonly tenantId: string;
+    readonly roles: readonly string[];
+  }, reason: string): ReturnType<typeof createOperationalDirective> {
+    return createOperationalDirective({
+      type: "pause",
+      scope: { harnessRunId },
+      issuedBy,
+      reason,
+    });
+  }
+
+  /**
+   * Create an OperationalDirective to abort a harness run.
+   * Per §4.3, uses the directive envelope model for state transitions.
+   * Note: This only creates the directive locally. Use abortHarnessRun to emit it.
+   */
+  public createAbortDirective(harnessRunId: string, issuedBy: {
+    readonly principalId: string;
+    readonly tenantId: string;
+    readonly roles: readonly string[];
+  }, reason: string): ReturnType<typeof createOperationalDirective> {
+    return createOperationalDirective({
+      type: "kill",
+      scope: { harnessRunId },
+      issuedBy,
+      reason,
+    });
+  }
+
+  /**
+   * Emit an OperationalDirective to pause a harness run via the HTTP API.
+   * This actually sends the directive to the platform.
+   */
+  public pauseHarnessRun(harnessRunId: string, directive: OperationalDirective): Promise<void> {
+    return this.client.post<void>(`/harness-runs/${encodeURIComponent(harnessRunId)}/pause`, directive).then((r) => r.data);
+  }
+
+  /**
+   * Emit an OperationalDirective to abort a harness run via the HTTP API.
+   * This actually sends the directive to the platform.
+   */
+  public abortHarnessRun(harnessRunId: string, directive: OperationalDirective): Promise<void> {
+    return this.client.post<void>(`/harness-runs/${encodeURIComponent(harnessRunId)}/abort`, directive).then((r) => r.data);
+  }
+
+  /**
+   * Emit a DecisionDirective via the HTTP API.
+   * This actually sends the directive to the platform for approval decisions.
+   */
+  public emitDecisionDirective(directive: DecisionDirective): Promise<void> {
+    return this.client.post<void>("/decision-directives", directive).then((r) => r.data);
+  }
+
+  /**
    * Resume a paused harness run.
    * Per §4.3, uses the directive envelope model for state transitions.
    */
@@ -139,32 +203,6 @@ export class AdminSdk {
 
   public publishPack<T>(packId: string, body: unknown) {
     return this.client.publishPack<T>(packId, body);
-  }
-
-  /**
-   * Issue an OperationalDirective to pause a harness run.
-   * Per §4.3, uses the directive envelope model instead of direct API call.
-   */
-  public pauseHarnessRun(directive: PauseHarnessRunDirectiveInput): ReturnType<typeof createOperationalDirective> {
-    return createOperationalDirective({
-      type: "pause",
-      scope: { harnessRunId: directive.harnessRunId },
-      issuedBy: directive.issuedBy,
-      reason: directive.reason,
-    });
-  }
-
-  /**
-   * Issue an OperationalDirective to abort a harness run.
-   * Per §4.3, uses the directive envelope model instead of direct API call.
-   */
-  public abortHarnessRun(directive: AbortHarnessRunDirectiveInput): ReturnType<typeof createOperationalDirective> {
-    return createOperationalDirective({
-      type: "kill",
-      scope: { harnessRunId: directive.harnessRunId },
-      issuedBy: directive.issuedBy,
-      reason: directive.reason,
-    });
   }
 
   /**
