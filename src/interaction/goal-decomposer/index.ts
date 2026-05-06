@@ -28,6 +28,7 @@ import {
   type PlanGraphHarnessRuntimeContext,
   type PlanGraphHarnessRuntimeStepResult,
 } from "../../platform/orchestration/harness/runtime/plan-graph-harness-runtime.js";
+import { RuntimeEntryGuard } from "../../platform/five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
 import type { RiskPreview } from "../nl-gateway/index.js";
 import type { LlmPlanGenerator } from "./llm-plan-generator.js";
 export * from "./llm-plan-generator.js";
@@ -1073,6 +1074,11 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       budgetPlanRef: `${goal.goalId}:budget_plan`,
       riskProfile: this.toExecutableRiskProfile(riskSummary),
     }));
+    // R4-26 (INV-GRAPH-001): Validate PlanGraphBundle with RuntimeEntryGuard before use
+    // This enforces that PlanGraphBundle is the only P3→P4 contract at all dispatch entry points
+    const entryGuard = new RuntimeEntryGuard();
+    const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
+    const validatedPlanGraphBundle = guardResult.planGraphBundle;
     const harnessRun = createHarnessRun({
       harnessRunId: bootstrapRun.harnessRunId,
       tenantId: bootstrapRun.tenantId,
@@ -1086,21 +1092,21 @@ export class GoalDecompositionService implements GoalDecompositionPort {
       constraintPackRef: bootstrapRun.constraintPackRef,
       versionLockId: bootstrapRun.versionLockId,
       budgetLedgerId: bootstrapRun.budgetLedgerId,
-      planGraphBundleId: planGraphBundle.planGraphBundleId,
+      planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
       createdAt: bootstrapRun.createdAt,
       updatedAt: bootstrapRun.updatedAt,
     });
     const initialStep = hasCycle
-      ? this.createBlockedInitialStep(goal, harnessRun, planGraphBundle, harnessContext.executorRef)
+      ? this.createBlockedInitialStep(goal, harnessRun, validatedPlanGraphBundle, harnessContext.executorRef)
       : (this.options.planGraphHarnessRuntime ?? new PlanGraphHarnessRuntime()).executeNext({
           harnessRun,
-          planGraphBundle,
+          planGraphBundle: validatedPlanGraphBundle,
           context: harnessContext,
         });
 
     return {
       harnessRun,
-      planGraphBundle,
+      planGraphBundle: validatedPlanGraphBundle,
       initialStep,
       routedAt: nowIso(),
     };

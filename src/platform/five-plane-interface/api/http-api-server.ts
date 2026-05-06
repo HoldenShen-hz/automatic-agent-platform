@@ -453,7 +453,12 @@ export class HttpApiServer {
         message: `Request body exceeds ${MAX_BODY_BYTES} bytes.`,
       });
     }
-    const body = await readIncomingBody(request);
+    // R25-13 FIX: Wrap body read with timeout to prevent slow-drip bypass.
+    // IncomingMessage has method/url/headers; body is not yet read (that's what we're reading here).
+    const body = await this.withRequestTimeout(
+      request as unknown as ApiRequestLike,
+      readIncomingBody(request),
+    );
     return this.dispatchRequest({
       method: request.method,
       url: request.url,

@@ -20,7 +20,7 @@ export interface LeaseRepository {
   getLatestFencingToken(executionId: string): Promise<number>;
   listExecutionLeases(executionId: string): Promise<ExecutionLeaseRecord[]>;
   updateLeaseStatus(leaseId: string, status: ExecutionLeaseRecord["status"]): Promise<void>;
-  updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string): Promise<void>;
+  updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string, ttlMs: number): Promise<void>;
   updateLeaseRelease(leaseId: string, releasedAt: string, reasonCode: string | null): Promise<void>;
 
   // Audit Operations

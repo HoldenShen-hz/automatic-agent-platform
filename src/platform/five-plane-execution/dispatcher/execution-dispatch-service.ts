@@ -12,7 +12,6 @@ import type {
 } from "../../contracts/types/domain.js";
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import { HealthService } from "../../shared/observability/health-service.js";
 import { DeadLetterQueueService } from "../../state-evidence/dlq/index.js";
 import { AuthoritativeTaskStore } from "../../state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../state-evidence/truth/authoritative-sql-database.js";
@@ -98,7 +97,6 @@ export class ExecutionDispatchService {
   private readonly leases: ExecutionLeaseService;
   private readonly preemption: ExecutionPriorityPreemptionService;
   private readonly workers: WorkerRegistryService;
-  private cachedHealthService: HealthService | null = null;
   private readonly scalingController: HorizontalScalingController;
   private readonly dispatchDeadLetterQueue: DispatchDeadLetterQueue | null;
   // R9-5: §14.2 poison-pill detection - max time a ticket can wait before being considered abandoned
@@ -126,16 +124,6 @@ export class ExecutionDispatchService {
     this.maxQueueAgeMs = maxQueueAgeMs;
     this.activeDispatchAttempts = new Map();
     this.recentLockFailures = new Map();
-  }
-
-  private getOrCreateHealthService(occurredAt: string): HealthService {
-    if (this.cachedHealthService === null) {
-      this.cachedHealthService = new HealthService(this.db, this.store, {
-        ...DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS,
-        nowMsSupplier: () => Date.parse(occurredAt),
-      });
-    }
-    return this.cachedHealthService;
   }
 
   /**

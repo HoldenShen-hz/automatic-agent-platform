@@ -9,6 +9,24 @@ import type { AsyncSqlDatabase } from "../../state-evidence/truth/async-sql-data
 import type { LeaseRepository } from "./lease-repository.js";
 import type { ExecutionLeaseRecord, LeaseAuditRecord } from "../../contracts/types/domain.js";
 
+type LeaseStatus = "active" | "expired" | "released" | "reclaimed" | "handed_over";
+
+/** Valid state transitions for execution leases */
+const VALID_LEASE_TRANSITIONS: Record<LeaseStatus, LeaseStatus[]> = {
+  active: ["expired", "released", "reclaimed", "handed_over"],
+  expired: [],
+  released: [],
+  reclaimed: [],
+  handed_over: [],
+};
+
+/**
+ * Checks if a state transition is valid for a lease.
+ */
+function isValidLeaseTransition(from: LeaseStatus, to: LeaseStatus): boolean {
+  return VALID_LEASE_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
 export class PostgresLeaseRepository implements LeaseRepository {
   constructor(private readonly db: AsyncSqlDatabase) {}
 
@@ -79,6 +97,17 @@ export class PostgresLeaseRepository implements LeaseRepository {
   }
 
   async updateLeaseStatus(leaseId: string, status: ExecutionLeaseRecord["status"]): Promise<void> {
+    const result = await this.db.asyncConnection.query<{ status: LeaseStatus }>(
+      `SELECT status FROM execution_leases WHERE id = $1`,
+      leaseId,
+    );
+    const lease = result.rows[0];
+    if (!lease) {
+      throw new Error(`Lease not found: ${leaseId}`);
+    }
+    if (!isValidLeaseTransition(lease.status, status)) {
+      throw new Error(`Invalid lease state transition: ${lease.status} -> ${status}`);
+    }
     await this.db.asyncConnection.execute(
       `UPDATE execution_leases SET status = $1 WHERE id = $2`,
       status,
@@ -86,15 +115,39 @@ export class PostgresLeaseRepository implements LeaseRepository {
     );
   }
 
-  async updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string): Promise<void> {
+  async updateLeaseHeartbeat(leaseId: string, lastHeartbeatAt: string, ttlMs: number): Promise<void> {
+    const result = await this.db.asyncConnection.query<{ status: LeaseStatus; expires_at: string }>(
+      `SELECT status, expires_at FROM execution_leases WHERE id = $1`,
+      leaseId,
+    );
+    const lease = result.rows[0];
+    if (!lease) {
+      throw new Error(`Lease not found: ${leaseId}`);
+    }
+    if (lease.status !== "active") {
+      throw new Error(`Cannot heartbeat lease in status: ${lease.status}`);
+    }
+    const newExpiresAt = new Date(Date.parse(lastHeartbeatAt) + ttlMs).toISOString();
     await this.db.asyncConnection.execute(
-      `UPDATE execution_leases SET last_heartbeat_at = $1 WHERE id = $2`,
+      `UPDATE execution_leases SET last_heartbeat_at = $1, expires_at = $2 WHERE id = $3`,
       lastHeartbeatAt,
+      newExpiresAt,
       leaseId,
     );
   }
 
   async updateLeaseRelease(leaseId: string, releasedAt: string, reasonCode: string | null): Promise<void> {
+    const result = await this.db.asyncConnection.query<{ status: LeaseStatus }>(
+      `SELECT status FROM execution_leases WHERE id = $1`,
+      leaseId,
+    );
+    const lease = result.rows[0];
+    if (!lease) {
+      throw new Error(`Lease not found: ${leaseId}`);
+    }
+    if (lease.status !== "active") {
+      throw new Error(`Cannot release lease in status: ${lease.status}`);
+    }
     await this.db.asyncConnection.execute(
       `UPDATE execution_leases
        SET status = 'released', released_at = $1, reason_code = $2
