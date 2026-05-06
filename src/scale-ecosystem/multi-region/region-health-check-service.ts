@@ -225,6 +225,18 @@ class RegionCircuitBreaker {
       consecutiveSuccesses: this.consecutiveSuccesses,
     };
   }
+
+  /**
+   * Reset the circuit breaker to closed state.
+   * Used when health state is manually reset or region is re-registered.
+   */
+  public reset(): void {
+    this.state = "closed";
+    this.consecutiveFailures = 0;
+    this.consecutiveSuccesses = 0;
+    this.nextAttemptAt = null;
+    this.halfOpenInFlight = 0;
+  }
 }
 
 /**
@@ -455,10 +467,12 @@ export class RegionHealthCheckService {
 
   /**
    * Reset health state for a region
+   * §21-04: Also resets the circuit breaker to allow fresh health probing.
    */
   public resetHealthState(regionId: string): void {
     this.consecutiveFailures.set(regionId, 0);
     this.healthResults.delete(regionId);
+    this.circuitBreakers.get(regionId)?.reset();
   }
 
   /**

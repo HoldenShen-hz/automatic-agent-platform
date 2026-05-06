@@ -152,7 +152,68 @@ export class WebSocketBridge {
     this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
     this.wss = new WebSocketServer({ server, path: "/ws/v1/stream" });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
+    // R25-08: Start server-initiated heartbeat timer to detect dead connections
+    this.startHeartbeatTimer();
     logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
+  }
+
+  /**
+   * R25-08: Starts the server-initiated heartbeat timer.
+   * Proactively pings all clients to detect dead connections and clean up the clients map.
+   */
+  private startHeartbeatTimer(): void {
+    setInterval(() => {
+      this.performHeartbeat();
+    }, WebSocketBridge.HEARTBEAT_INTERVAL_MS);
+  }
+
+  /**
+   * R25-08: Performs heartbeat check on all connected clients.
+   * - Marks unresponsive clients as dead
+   * - Removes dead clients from the clients map and task subscriptions
+   * - Sends ping to all alive clients to check liveness
+   */
+  private performHeartbeat(): void {
+    const now = Date.now();
+    const deadClients: WebSocket[] = [];
+
+    for (const [ws, client] of this.clients.entries()) {
+      // Check if client has exceeded connection timeout
+      if (now - client.lastActivityAt > WebSocketBridge.CONNECTION_TIMEOUT_MS) {
+        logger.warn("WebSocket client connection timeout, marking as dead", {
+          actorId: client.principal.actorId,
+          tenantId: client.principal.tenantId,
+          lastActivityAgoMs: now - client.lastActivityAt,
+          timeoutMs: WebSocketBridge.CONNECTION_TIMEOUT_MS,
+        });
+        deadClients.push(ws);
+        continue;
+      }
+
+      // R25-08: Send server-initiated ping to check client liveness
+      // Only send if socket is open
+      if (ws.readyState === ws.OPEN) {
+        try {
+          ws.ping();
+          // Mark as potentially dead until pong is received
+          client.isAlive = false;
+        } catch (error) {
+          logger.warn("Failed to send ping to WebSocket client", {
+            actorId: client.principal.actorId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          deadClients.push(ws);
+        }
+      } else {
+        // Socket is not open, mark as dead
+        deadClients.push(ws);
+      }
+    }
+
+    // Remove dead clients
+    for (const ws of deadClients) {
+      this.removeClient(ws);
+    }
   }
 
   /**

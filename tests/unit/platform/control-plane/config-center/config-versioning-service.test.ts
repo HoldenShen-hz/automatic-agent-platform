@@ -225,16 +225,16 @@ test("ConfigVersioningService.pruneVersions removes old versions", async () => {
   assert.deepStrictEqual(history[2]!.content, { value: 5 });
 });
 
-test("ConfigVersioningService handles different layers and sourceIds separately", () => {
+test("ConfigVersioningService handles different layers and sourceIds separately", async () => {
   const service = new ConfigVersioningService();
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 100 }, "user", "platform");
-  service.createVersion("runtime.timeout", "tenant", "tenant-1", { value: 200 }, "user", "tenant");
-  service.createVersion("runtime.timeout", "tenant", "tenant-2", { value: 300 }, "user", "tenant-2");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 100 }, "user", "platform");
+  await service.createVersion("runtime.timeout", "tenant", "tenant-1", { value: 200 }, "user", "tenant");
+  await service.createVersion("runtime.timeout", "tenant", "tenant-2", { value: 300 }, "user", "tenant-2");
 
-  const platform = service.getCurrentVersion("runtime.timeout", "platform", null);
-  const tenant1 = service.getCurrentVersion("runtime.timeout", "tenant", "tenant-1");
-  const tenant2 = service.getCurrentVersion("runtime.timeout", "tenant", "tenant-2");
+  const platform = await service.getCurrentVersion("runtime.timeout", "platform", null);
+  const tenant1 = await service.getCurrentVersion("runtime.timeout", "tenant", "tenant-1");
+  const tenant2 = await service.getCurrentVersion("runtime.timeout", "tenant", "tenant-2");
 
   assert.deepStrictEqual(platform!.content, { value: 100 });
   assert.deepStrictEqual(tenant1!.content, { value: 200 });
