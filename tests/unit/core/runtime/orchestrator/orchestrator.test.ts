@@ -60,6 +60,8 @@ test("runMultiStepOrchestration basic execution", async () => {
 });
 
 test("runMultiStepOrchestration with oapeflir plan request", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-oapeflir.db");
 
   cleanupDb(dbPath);
@@ -106,6 +108,8 @@ test("runMultiStepOrchestration with oapeflir plan request", async () => {
 });
 
 test("runMultiStepOrchestration creates task snapshot", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-snapshot.db");
 
   cleanupDb(dbPath);
@@ -130,6 +134,8 @@ test("runMultiStepOrchestration creates task snapshot", async () => {
 });
 
 test("runMultiStepOrchestration workflow planning", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-planning.db");
 
   cleanupDb(dbPath);
@@ -155,6 +161,8 @@ test("runMultiStepOrchestration workflow planning", async () => {
 });
 
 test("runMultiStepOrchestration routing", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-routing.db");
 
   cleanupDb(dbPath);
@@ -180,6 +188,8 @@ test("runMultiStepOrchestration routing", async () => {
 });
 
 test("runMultiStepOrchestration streamFrames is array", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-frames.db");
 
   cleanupDb(dbPath);
@@ -202,6 +212,8 @@ test("runMultiStepOrchestration streamFrames is array", async () => {
 });
 
 test("runMultiStepOrchestration with admission backpressure snapshot", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-backpressure.db");
 
   cleanupDb(dbPath);
@@ -236,6 +248,8 @@ test("runMultiStepOrchestration with admission backpressure snapshot", async () 
 });
 
 test("runMultiStepOrchestration task status transitions to terminal state", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-transitions.db");
 
   cleanupDb(dbPath);
@@ -263,6 +277,8 @@ test("runMultiStepOrchestration task status transitions to terminal state", asyn
 });
 
 test("runMultiStepOrchestration compaction result property", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-compaction.db");
 
   cleanupDb(dbPath);
@@ -289,6 +305,8 @@ test("runMultiStepOrchestration compaction result property", async () => {
 });
 
 test("runMultiStepOrchestration with custom admission policy", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-custom-policy.db");
 
   cleanupDb(dbPath);
@@ -321,6 +339,8 @@ test("runMultiStepOrchestration with custom admission policy", async () => {
 });
 
 test("runMultiStepOrchestration dependency edges in planned workflow", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-edges.db");
 
   cleanupDb(dbPath);
@@ -343,6 +363,8 @@ test("runMultiStepOrchestration dependency edges in planned workflow", async () 
 });
 
 test("runMultiStepOrchestration with contextBudgetTokens", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-context-budget.db");
 
   cleanupDb(dbPath);
@@ -550,6 +572,8 @@ test("StepFailurePlan minimal with only errorCode", () => {
 });
 
 test("oapeflir plan with compensation model", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-compensation.db");
 
   cleanupDb(dbPath);
@@ -586,6 +610,8 @@ test("oapeflir plan with compensation model", async () => {
 });
 
 test("oapeflir plan with multiple dependencies", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-multi-deps.db");
 
   cleanupDb(dbPath);
@@ -632,6 +658,8 @@ test("oapeflir plan with multiple dependencies", async () => {
 });
 
 test("oapeflir plan with outputSchemaPath", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-schema-path.db");
 
   cleanupDb(dbPath);
@@ -664,6 +692,8 @@ test("oapeflir plan with outputSchemaPath", async () => {
 });
 
 test("runMultiStepOrchestration with empty request triggers workflow planning", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-empty-request.db");
 
   cleanupDb(dbPath);
@@ -686,6 +716,8 @@ test("runMultiStepOrchestration with empty request triggers workflow planning", 
 });
 
 test("runMultiStepOrchestration normalizes input request", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-normalize.db");
 
   cleanupDb(dbPath);
@@ -709,6 +741,8 @@ test("runMultiStepOrchestration normalizes input request", async () => {
 });
 
 test("runMultiStepOrchestration with high priority task", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-priority.db");
 
   cleanupDb(dbPath);
@@ -731,6 +765,8 @@ test("runMultiStepOrchestration with high priority task", async () => {
 });
 
 test("runMultiStepOrchestration workflow execution produces events", async () => {
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-events.db");
 
   cleanupDb(dbPath);

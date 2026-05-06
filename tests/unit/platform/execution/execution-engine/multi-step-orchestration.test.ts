@@ -39,20 +39,24 @@ test("runMultiStepOrchestration basic execution", async () => {
 test("runMultiStepOrchestration with oapeflir plan request", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
+  const planNodes = [
     {
-      stepId: "step_1",
-      dependencies: [],
-      outputs: ["output_1"],
-      timeout: 30000,
-      retryPolicy: { maxRetries: 0 },
+      nodeId: "step_1",
+      nodeType: "tool_call",
+      inputRefs: [],
+      outputSchemaRef: "schema:step_1.output",
+      riskClass: "medium",
+      budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: "retry:default",
+      timeoutMs: 30000,
     },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Test Oapeflir Plan",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
   };
 
   try {
@@ -364,16 +368,16 @@ test("runMultiStepOrchestration with empty oapeflir plan steps", async () => {
 test("runMultiStepOrchestration oapeflir plan with multiple steps and dependencies", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "step_1", dependencies: [], outputs: ["out_1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
-    { stepId: "step_2", dependencies: ["step_1"], outputs: ["out_2"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
-    { stepId: "step_3", dependencies: ["step_1", "step_2"], outputs: ["out_3"], timeout: 30000, retryPolicy: { maxRetries: 1 } },
+  const planNodes = [
+    { nodeId: "step_1", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:step_1.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
+    { nodeId: "step_2", nodeType: "tool_call", inputRefs: ["step_1"], outputSchemaRef: "schema:step_2.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
+    { nodeId: "step_3", nodeType: "tool_call", inputRefs: ["step_1", "step_2"], outputSchemaRef: "schema:step_3.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:max-1", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Multi-Step Plan Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
   };
 
   try {
@@ -532,14 +536,14 @@ test("runMultiStepOrchestration with low priority task", async () => {
 test("runMultiStepOrchestration with stepOutputOverrides", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "override_test", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+  const planNodes = [
+    { nodeId: "override_test", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:override_test.output", riskClass: "low", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Output Override Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
     stepOutputOverrides: {
       override_test: { summary: "Custom override summary", result: "Custom result data" },
     },
@@ -556,15 +560,15 @@ test("runMultiStepOrchestration with stepOutputOverrides", async () => {
 test("runMultiStepOrchestration with multiple stepOutputOverrides", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "step_a", dependencies: [], outputs: ["out_a"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
-    { stepId: "step_b", dependencies: ["step_a"], outputs: ["out_b"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+  const planNodes = [
+    { nodeId: "step_a", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:step_a.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
+    { nodeId: "step_b", nodeType: "tool_call", inputRefs: ["step_a"], outputSchemaRef: "schema:step_b.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Multi Override Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
     stepOutputOverrides: {
       step_a: { summary: "Override A" },
       step_b: { summary: "Override B" },
@@ -667,14 +671,14 @@ test("runMultiStepOrchestration with stepFailureInjection", async () => {
 test("runMultiStepOrchestration with stepFailurePlans - single failure", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "planned_fail", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+  const planNodes = [
+    { nodeId: "planned_fail", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:planned_fail.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Planned Failure Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
     stepFailurePlans: {
       planned_fail: [{ errorCode: "test.planned_failure", summary: "Test planned failure" }],
     },
@@ -691,14 +695,14 @@ test("runMultiStepOrchestration with stepFailurePlans - single failure", async (
 test("runMultiStepOrchestration with stepFailurePlans - multiple attempts", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "multi_fail", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 2 } },
+  const planNodes = [
+    { nodeId: "multi_fail", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:multi_fail.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:max-3", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Multi Attempt Failure Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
     stepFailurePlans: {
       multi_fail: [
         { errorCode: "attempt_1_fail" },
@@ -719,14 +723,14 @@ test("runMultiStepOrchestration with stepFailurePlans - multiple attempts", asyn
 test("runMultiStepOrchestration with stepFailurePlans - string error codes", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "string_fail", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+  const planNodes = [
+    { nodeId: "string_fail", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:string_fail.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "String Failure Plan Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
     stepFailurePlans: {
       string_fail: ["tool.execution_failed", "validation.schema_mismatch"],
     },
@@ -1041,14 +1045,14 @@ test("runMultiStepOrchestration routing has route trace", async () => {
 test("runMultiStepOrchestration oapeflir plan without outputs uses default outputKey", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
-  const planSteps = [
-    { stepId: "no_output_step", dependencies: [], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+  const planNodes = [
+    { nodeId: "no_output_step", nodeType: "tool_call", inputRefs: [], outputSchemaRef: "schema:no_output_step.output", riskClass: "medium", budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Default Output Key Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
   };
 
   try {
