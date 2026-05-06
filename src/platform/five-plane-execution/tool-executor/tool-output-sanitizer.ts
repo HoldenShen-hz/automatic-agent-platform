@@ -28,7 +28,8 @@ const toolOutputSanitizerLogger = new StructuredLogger({ retentionLimit: 100 });
 // Matches control characters in the C0 range (except newline and tab which are preserved)
 // Includes: NUL, SOH, STX, ETX, EOT, ENQ, ACK, BEL, BS, VT, FF, CR, SO, SI, DLE, DC1, DC2, DC3, DC4, NAK, SYN, ETB, CAN, EM, SUB, ESC, FS, GS, RS, US
 // eslint-disable-next-line no-control-regex
-const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B-\u001A\u007F\u001C-\u001F]/g;
+// R30-27 fix: Added ESC (\u001B) - bare ESC bytes could bypass sanitization
+const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B-\u001B\u007F\u001C-\u001F]/g;
 
 // Unicode Tags block characters (U+E0000 to U+E007F) used for invisible steganographic tagging
 const UNICODE_TAGS_REGEX = /[\u{E0000}-\u{E007F}]/gu;

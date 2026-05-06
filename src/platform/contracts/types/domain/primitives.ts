@@ -52,7 +52,7 @@ export type MessagePartType =
 // Worker and execution primitives
 // ---------------------------------------------------------------------------
 
-export type RunKind = "task_run" | "tool_call" | "approval_resume" | "replay";
+export type RunKind = "task_run" | "node_run" | "tool_call" | "approval_resume" | "replay";
 export type WorkerStatus = "idle" | "busy" | "draining" | "degraded" | "unavailable" | "quarantined" | "offline";
 export type WorkerSchedulingStatus = "healthy" | "degraded" | "draining" | "quarantined" | "offline" | "unavailable";
 export type CoordinatorInstanceStatus = "active" | "draining" | "offline";

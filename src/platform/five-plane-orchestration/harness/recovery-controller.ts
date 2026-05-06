@@ -273,9 +273,11 @@ export class RecoveryController {
           delayMs,
         });
 
+        // R30-28 fix: worker_crash must call resume() after recover() to transition run to running state.
+        // Using sleep() would leave the recovered run in non-running state.
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
         this.durableService.persist(recovering);
-        return this.runtime.sleep(recovering, `worker_crash_retry`, resumeAt, currentAttempt + 1);
+        return this.runtime.resume(recovering);
       }
     }
   }

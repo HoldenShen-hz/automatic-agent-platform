@@ -268,6 +268,8 @@ export interface HarnessRun {
   readonly updatedAt: string;
   readonly terminalAt?: string;
   readonly terminalReason?: string;
+  readonly leaseId?: string;
+  readonly fencingToken?: string;
 }
 
 export type PlanNodeType =

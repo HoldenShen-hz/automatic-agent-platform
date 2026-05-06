@@ -88,4 +88,23 @@ describe("TaskCockpitWebView", () => {
     expect(mockResumeTask).toHaveBeenCalledWith("supervised");
     expect(mockEscalateTask).toHaveBeenCalled();
   });
+
+  it("sanitizes operator and escalation target inputs before invoking actions", () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
+    render(<TaskCockpitWebView />);
+
+    fireEvent.change(screen.getByPlaceholderText("e.g. platform-sre"), {
+      target: { value: "ops<script>" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("e.g. domain-admin"), {
+      target: { value: "domain-admin!!" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Take Over" }));
+    fireEvent.click(screen.getByRole("button", { name: "Escalate" }));
+
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(mockClaimTask).toHaveBeenCalledWith("opsscript");
+    expect(mockEscalateTask).toHaveBeenCalledWith("domain-admin");
+  });
 });

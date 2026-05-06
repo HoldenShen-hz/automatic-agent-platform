@@ -39,6 +39,8 @@ import type {
   MultiStepToolExecutionInput,
 } from "./multi-step-orchestration-types.js";
 import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-entry-guard.js";
+import { HarnessRuntimeService } from "../../orchestration/harness/runtime/index.js";
+import { PlanGraphHarnessRuntime, PlanGraphScheduler } from "../../orchestration/harness/runtime/plan-graph-harness-runtime.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";

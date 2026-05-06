@@ -11,6 +11,7 @@ import { createDecisionInputBundle as createCanonicalDecisionInputBundle, create
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { getToolRegistry } from "../dispatcher/index.js";
+import { HarnessRuntimeService } from "../../orchestration/harness/index.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 

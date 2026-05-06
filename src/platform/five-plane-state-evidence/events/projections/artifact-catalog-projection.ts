@@ -165,10 +165,14 @@ function toInternalState(state: ArtifactCatalogState): ArtifactCatalogStateInter
  * Converts internal state (with Set) back to serialized state (with array for JSON).
  */
 function toSerializedState(state: ArtifactCatalogStateInternal): ArtifactCatalogState {
-  return {
-    ...state,
-    processedEventIds: Array.from(state._processedEventIdSet),
-  };
+  const {
+    _processedEventIdSet,
+    processedEventIds: _staleProcessedEventIds,
+    ...rest
+  } = state as ArtifactCatalogStateInternal & { processedEventIds?: string[] };
+  const serialized = { ...rest } as ArtifactCatalogState;
+  serialized.processedEventIds = [..._processedEventIdSet];
+  return serialized;
 }
 
 /**
@@ -362,7 +366,7 @@ export const artifactCatalogProjectionHandler: ProjectionHandler = (
       break;
   }
 
-  return newState as unknown as Record<string, unknown>;
+  return toSerializedState(newState) as unknown as Record<string, unknown>;
 };
 
 /**

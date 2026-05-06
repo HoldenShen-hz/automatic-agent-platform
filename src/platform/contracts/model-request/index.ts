@@ -14,12 +14,16 @@ export interface ModelRequest {
   maxTokens: number | null;
   tenantId: string | null;
   taskId: string | null;
+  // R25-19 fix: budgetReservationId references the budget reservation for this LLM call
+  // Required for ADR-026 8-factor budget tracking (budget is the 6th factor)
+  budgetReservationId: string | null;
   createdAt: string;
 }
 
-export function createModelRequest(input: Omit<ModelRequest, "requestId" | "createdAt"> & {
+export function createModelRequest(input: Omit<ModelRequest, "requestId" | "createdAt" | "budgetReservationId"> & {
   requestId?: string;
   createdAt?: string;
+  budgetReservationId?: string | null;
 }): ModelRequest {
   if (input.model.trim().length === 0) {
     throw new ValidationError("model_request.model_required", "Model request requires a model id.");
@@ -40,6 +44,7 @@ export function createModelRequest(input: Omit<ModelRequest, "requestId" | "crea
     maxTokens: input.maxTokens ?? null,
     tenantId: input.tenantId ?? null,
     taskId: input.taskId ?? null,
+    budgetReservationId: input.budgetReservationId ?? null,
     createdAt: input.createdAt ?? nowIso(),
   };
 }

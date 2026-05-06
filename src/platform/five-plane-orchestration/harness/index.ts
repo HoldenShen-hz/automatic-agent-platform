@@ -400,6 +400,8 @@ export interface HarnessRunRuntimeState {
   readonly harnessRunId: string;
   readonly runId: string;
   readonly tenantId: string;
+  readonly leaseId?: string;
+  readonly fencingToken?: string;
   readonly goal?: string;
   readonly mode?: string;
   readonly riskLevel?: string;
@@ -476,6 +478,8 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     riskLevel: (state.riskLevel as RiskClass) ?? "medium",
     ownership: state.ownership ?? { ownerId: state.tenantId, ownerType: "harness" },
     auditRefs: state.auditRefs ?? [],
+    ...(state.leaseId != null ? { leaseId: state.leaseId } : {}),
+    ...(state.fencingToken != null ? { fencingToken: state.fencingToken } : {}),
   };
   if (state.completedAt != null) {
     return { ...base, terminalAt: state.completedAt };
@@ -765,7 +769,15 @@ export class HarnessRuntimeService {
     }
 
     const startedAt = nowIso();
-    const completedAt = nowIso();
+    // R18-07 fix: Capture completedAt after actual work, not same as startedAt
+    // This ensures step duration reflects actual work time per §58.1
+    let completedAt: string;
+    if (input.latency != null) {
+      // If latency is provided, use it to compute completedAt (duration-based completion)
+      completedAt = new Date(Date.now() + input.latency).toISOString();
+    } else {
+      completedAt = startedAt;
+    }
     const iteration = input.iteration ?? Math.max(run.currentIteration, 1);
     const step: HarnessStep = {
       stepId: newId("harness_step"),
@@ -1410,6 +1422,9 @@ export class HarnessRuntimeService {
         // R3-1 fix: Pass inputPrompt and memoryAccessPattern for Input/Memory guardrail checks
         ...(typeof input.generatorOutput?.input === "string" ? { inputPrompt: input.generatorOutput.input as string } : {}),
         ...(input.producedEvidenceRefs ? { memoryAccessPattern: input.producedEvidenceRefs } : {}),
+        // R26-37 fix: Pass planningOutput and generatedOutput for Planning/Output layer guardrail checks
+        ...(typeof input.plannerOutput?.output === "string" ? { planningOutput: input.plannerOutput.output as string } : {}),
+        ...(typeof input.generatorOutput?.output === "string" ? { generatedOutput: input.generatorOutput.output as string } : {}),
       });
       this.memoryManager.write("run", run.runId, "last_guardrail_assessment", guardrailAssessment);
       this.memoryManager.write("domain", run.domainId, "last_evaluator_score", input.evaluatorScore);
@@ -1664,6 +1679,8 @@ export class HarnessRuntimeService {
       riskLevel: (run.riskLevel as RiskClass) ?? "medium",
       ownership: run.ownership ?? { ownerId: run.tenantId, ownerType: "harness" },
       auditRefs: run.auditRefs ?? [],
+      ...(run.leaseId != null ? { leaseId: run.leaseId } : {}),
+      ...(run.fencingToken != null ? { fencingToken: run.fencingToken } : {}),
     };
     if (run.completedAt != null) {
       (baseAggregate as { terminalAt?: string }).terminalAt = run.completedAt;
@@ -1679,6 +1696,8 @@ export class HarnessRuntimeService {
       reasonCode: string;
       emittedBy: string;
       auditRef: string;
+      leaseId?: string;
+      fencingToken?: string;
       runVersionLockId?: string;
       policyGuard?: { allowed: true; policyProofRef: string };
       budgetPrecondition?: { reservationId: string; hardCapSatisfied: true };
@@ -1694,6 +1713,8 @@ export class HarnessRuntimeService {
       emittedBy: "harness-runtime-service",
       auditRef: `audit://harness-runs/${run.harnessRunId ?? run.runId}/${reasonCode}`,
     };
+    transitionParams.leaseId = run.leaseId ?? `lease:${run.harnessRunId ?? run.runId}`;
+    transitionParams.fencingToken = run.fencingToken ?? `fence:${run.harnessRunId ?? run.runId}:1`;
     if (toStatus === "admitted") {
       transitionParams.runVersionLockId = run.versionLockId ?? `${run.runId}:version_lock`;
       transitionParams.policyGuard = {
@@ -1713,6 +1734,8 @@ export class HarnessRuntimeService {
       currentSeq: transitioned.aggregate.currentSeq,
       updatedAt: transitioned.aggregate.updatedAt,
       completedAt: transitioned.aggregate.terminalAt ?? run.completedAt,
+      leaseId: transitioned.aggregate.leaseId ?? transitionParams.leaseId ?? run.leaseId,
+      fencingToken: transitioned.aggregate.fencingToken ?? transitionParams.fencingToken ?? run.fencingToken,
     };
   }
 

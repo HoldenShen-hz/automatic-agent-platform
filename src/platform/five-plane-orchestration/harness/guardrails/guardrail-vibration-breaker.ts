@@ -65,7 +65,7 @@ export class GuardrailVibrationBreaker {
     const repeated = state.lastGuardrailSignature === signal.signature;
     const nextCount = state.guardrailActionCount + 1;
 
-    const cooldown = nextCount >= this.maxRepeatedActions;
+    const cooldown = nextCount > this.maxRepeatedActions;
 
     const nextState: GuardrailVibrationState = {
       guardrailActionCount: cooldown ? 0 : nextCount,

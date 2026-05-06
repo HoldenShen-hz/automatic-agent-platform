@@ -33,6 +33,7 @@ import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.j
 import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
 import type { IntakeRouteDecision } from "../../orchestration/routing/intake-router.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
+import { PlanGraphHarnessRuntime, PlanGraphScheduler } from "../../orchestration/harness/runtime/plan-graph-harness-runtime.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 

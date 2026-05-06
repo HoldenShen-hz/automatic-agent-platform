@@ -22,6 +22,8 @@ import {
   createAsyncRepositoryRegistry,
   type AsyncRepositoryRegistry,
 } from "./async-repository-registry.js";
+import type { CasService } from "../events/cas/cas-service.js";
+import { createSqliteCasService } from "../events/cas/cas-service.js";
 
 const require = createRequire(import.meta.url);
 
@@ -80,6 +82,8 @@ export interface SqliteAuthoritativeStorageBackendHandle {
   asyncRepos: AsyncRepositoryRegistry;
   /** The SQLite database instance */
   sqlite: SqliteDatabase;
+  /** CAS service for optimistic concurrency control */
+  casService: CasService;
   /** Runs pending migrations */
   migrate(): void | Promise<void>;
   /** Closes the database connection */
@@ -366,6 +370,7 @@ export function openAuthoritativeStorageBackend(
     asyncSql: asyncAdapter,
     asyncRepos: createAsyncRepositoryRegistry(asyncAdapter),
     sqlite: db,
+    casService: createSqliteCasService(db),
     migrate() {
       db.migrate();
     },

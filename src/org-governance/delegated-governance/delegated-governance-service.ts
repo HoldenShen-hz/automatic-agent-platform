@@ -175,6 +175,11 @@ export class DelegatedGovernanceService {
     const parentIndex = hierarchy.indexOf(parentRole);
     const childIndex = hierarchy.indexOf(childRole);
 
+    // R34-36 FIX #1982: Unrecognized roles (index -1) cannot perform any inheritance action
+    if (parentIndex < 0 || childIndex < 0) {
+      return { allowed: false, reason: "Unrecognized role in hierarchy" };
+    }
+
     // Child cannot perform actions reserved for parent
     if (childIndex < parentIndex) {
       return { allowed: false, reason: "Insufficient role level" };

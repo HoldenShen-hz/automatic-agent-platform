@@ -26,6 +26,7 @@ export interface TakeoverVm {
 }
 
 const STORAGE_KEY = "aa-takeover-snapshots";
+const HISTORY_STORAGE_KEY = "aa-takeover-history";
 
 function loadSnapshots(): TakeoverSnapshot[] {
   try {
@@ -45,6 +46,137 @@ function persistSnapshot(snapshot: TakeoverSnapshot): void {
   } catch {
     // Storage unavailable
   }
+}
+
+function loadOwnershipHistory(): Array<{ operator: string; timestamp: string; action: string }> {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistOwnershipHistory(history: readonly { operator: string; timestamp: string; action: string }[]): void {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.slice(0, 100)));
+  } catch {
+    // Storage unavailable
+  }
+}
+
+function createTakeoverItems(
+  snapshot: TakeoverSnapshot | null,
+  history: readonly { operator: string; timestamp: string; action: string }[],
+): readonly { title: string; description: string }[] {
+  if (snapshot == null) {
+    return [
+      { title: "Execution Snapshot", description: "尚未创建接管快照。请先接管任务或从已有快照恢复。" },
+      { title: "Ownership Transfer", description: "接管后会持久化上下文、步骤快照和所有权变更记录。" },
+      { title: "Recovery Context", description: "恢复时会回放最近的执行上下文，避免人工接管后丢失状态。" },
+    ];
+  }
+
+  const latestHistory = history[0];
+  return [
+    {
+      title: `Snapshot · ${snapshot.context.title}`,
+      description: `${snapshot.context.status} · owner ${snapshot.context.owner ?? "unassigned"} · step ${snapshot.context.currentStep}`,
+    },
+    {
+      title: "Step Context",
+      description: `${snapshot.steps.length} steps captured at ${snapshot.timestamp}.`,
+    },
+    {
+      title: "Ownership Trail",
+      description: latestHistory == null
+        ? "尚未记录所有权变更。"
+        : `${latestHistory.operator} · ${latestHistory.action} · ${latestHistory.timestamp}`,
+    },
+  ];
+}
+
+export function useTakeoverVm(): TakeoverVm {
+  const client = useRestClient();
+  const tasks = useTasksQuery().data ?? [];
+  const [snapshots, setSnapshots] = useState<readonly TakeoverSnapshot[]>(() => loadSnapshots());
+  const [ownershipHistory, setOwnershipHistory] = useState<readonly { operator: string; timestamp: string; action: string }[]>(
+    () => loadOwnershipHistory(),
+  );
+  const [currentSnapshot, setCurrentSnapshot] = useState<TakeoverSnapshot | null>(() => loadSnapshots()[0] ?? null);
+
+  useEffect(() => {
+    if (currentSnapshot != null) {
+      return;
+    }
+    setCurrentSnapshot(snapshots[0] ?? null);
+  }, [currentSnapshot, snapshots]);
+
+  const items = useMemo(
+    () => createTakeoverItems(currentSnapshot, ownershipHistory),
+    [currentSnapshot, ownershipHistory],
+  );
+
+  const captureSnapshot = useCallback(async (taskId: string): Promise<TakeoverSnapshot> => {
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (task == null) {
+      throw new Error(`takeover.task_not_found:${taskId}`);
+    }
+
+    const steps = task.currentStep
+      ? await fetchWorkflowRunSteps(client, task.currentStep)
+      : [];
+    const snapshot: TakeoverSnapshot = {
+      taskId,
+      timestamp: new Date().toISOString(),
+      context: {
+        title: task.title,
+        status: task.status,
+        owner: task.owner ?? null,
+        currentStep: task.currentStep,
+        domainId: task.domainId,
+      },
+      steps,
+    };
+    persistSnapshot(snapshot);
+    setSnapshots(loadSnapshots());
+    setCurrentSnapshot(snapshot);
+    return snapshot;
+  }, [client, tasks]);
+
+  function recordOwnershipEvent(operator: string, action: string): void {
+    const nextHistory = [
+      { operator, timestamp: new Date().toISOString(), action },
+      ...ownershipHistory,
+    ].slice(0, 100);
+    persistOwnershipHistory(nextHistory);
+    setOwnershipHistory(nextHistory);
+  }
+
+  const claimOwnership = useCallback(async (taskId: string, operator: string): Promise<void> => {
+    await updateTask(client, taskId, { owner: operator, status: "running" });
+    await captureSnapshot(taskId);
+    recordOwnershipEvent(operator, "claim");
+  }, [captureSnapshot, client, ownershipHistory]);
+
+  const transferOwnership = useCallback(async (taskId: string, toOperator: string, reason: string): Promise<void> => {
+    await updateTask(client, taskId, { owner: toOperator, status: "running", currentStep: `takeover-transfer:${reason}` });
+    await captureSnapshot(taskId);
+    recordOwnershipEvent(toOperator, `transfer:${reason}`);
+  }, [captureSnapshot, client, ownershipHistory]);
+
+  const restoreFromSnapshot = useCallback((snapshot: TakeoverSnapshot): void => {
+    setCurrentSnapshot(snapshot);
+  }, []);
+
+  return {
+    items,
+    currentSnapshot,
+    ownershipHistory,
+    claimOwnership,
+    transferOwnership,
+    restoreFromSnapshot,
+  };
 }
 
 // L3: StepOutputViewer - displays execution step outputs

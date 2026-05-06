@@ -293,6 +293,90 @@ test("HarnessRuntimeService assertInvariants collects the full named invariant s
   assert.ok(violations.includes("harness.invariant.max_risk_exceeded"));
 });
 
+test("HarnessRuntimeService.appendStep rejects non-accept decisions without feedback envelope", () => {
+  const service = new HarnessRuntimeService();
+  const run = {
+    ...service.createRun({
+      taskId: "task-feedback-guard",
+      domainId: "coding",
+      constraintPack: createConstraintPack(),
+    }),
+    decision: {
+      decisionId: "decision-feedback",
+      action: "replan" as const,
+      reasonCodes: ["retry"],
+      confidence: 0.3,
+      createdAt: "2026-05-06T00:00:00.000Z",
+    },
+    feedbackEnvelope: null,
+  };
+
+  assert.throws(
+    () => service.appendStep(run, {
+      role: "planner",
+      inputs: {},
+      outputs: {},
+    }),
+    /harness\.feedback\.required_for_non_accept_decision/,
+  );
+});
+
+test("HarnessRuntimeService assertInvariants flags blocked tools for active runs", () => {
+  const service = new HarnessRuntimeService();
+  const run = {
+    ...service.createRun({
+      taskId: "task-active-blocker",
+      domainId: "coding",
+      constraintPack: createConstraintPack(),
+    }),
+    status: "running" as const,
+    toolbelt: {
+      allowedTools: ["read"],
+      grantedTools: [],
+      blockedTools: ["write"],
+      requiredEvidence: [],
+    },
+  };
+
+  const { violations } = service.assertInvariants(run);
+
+  assert.ok(violations.includes("INV-10:harness.invariant.blocked_tool_requested"));
+});
+
+test("HarnessRuntimeService enforces budget gate before generator and evaluator stages", () => {
+  const service = new HarnessRuntimeService();
+
+  const plannerOnly = service.runLoop({
+    taskId: "task-budget-planner",
+    domainId: "coding",
+    constraintPack: createConstraintPack({
+      output_policy: { requiredEvidence: [], redactSensitiveData: true },
+      budget: { maxSteps: 1, maxCost: 5, maxDurationMs: 60_000 },
+    }),
+    plannerOutput: { planId: "plan-budget-planner" },
+    generatorOutput: { artifact: "planner-only" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.9,
+  });
+  assert.equal(plannerOnly.status, "aborted");
+  assert.equal(plannerOnly.steps.length, 1, "generator should not run once planner consumed the only step");
+
+  const plannerAndGenerator = service.runLoop({
+    taskId: "task-budget-generator",
+    domainId: "coding",
+    constraintPack: createConstraintPack({
+      output_policy: { requiredEvidence: [], redactSensitiveData: true },
+      budget: { maxSteps: 2, maxCost: 5, maxDurationMs: 60_000 },
+    }),
+    plannerOutput: { planId: "plan-budget-generator" },
+    generatorOutput: { artifact: "generator-only" },
+    evaluatorOutput: { verdict: "pass" },
+    evaluatorScore: 0.9,
+  });
+  assert.equal(plannerAndGenerator.status, "aborted");
+  assert.equal(plannerAndGenerator.steps.length, 2, "evaluator should not run once generator consumed the last budgeted step");
+});
+
 test("HarnessRuntimeService evaluates runs and AsyncHarnessService executes queued work", async () => {
   const service = new HarnessRuntimeService();
   const asyncHarness = service.createAsyncService();

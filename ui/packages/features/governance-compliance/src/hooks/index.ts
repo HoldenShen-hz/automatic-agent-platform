@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRestClient } from "@aa/shared-state";
 import type { CompliancePolicy, AuditLogEntry, ApprovalQueueItem } from "@aa/shared-types";
-import { fetchCompliancePolicies, updateCompliancePolicy, fetchAuditLogs, submitException, approveException, rejectException } from "@aa/shared-api-client";
+import {
+  fetchCompliancePolicies,
+  updateCompliancePolicy,
+  fetchAuditLogs,
+  submitException,
+  approveException as approveExceptionRequest,
+  rejectException as rejectExceptionRequest,
+} from "@aa/shared-api-client";
 
 export interface ComplianceScore {
   readonly overall: number;
@@ -107,7 +114,7 @@ export function useGovernanceComplianceVm(): GovernanceComplianceVm {
 
   const approveException = useCallback(async (exceptionId: string) => {
     if (client == null) return;
-    await approveException(client, exceptionId);
+    await approveExceptionRequest(client, exceptionId);
     setExceptionQueue((prev) =>
       prev.map((e) =>
         e.id === exceptionId
@@ -119,7 +126,7 @@ export function useGovernanceComplianceVm(): GovernanceComplianceVm {
 
   const rejectException = useCallback(async (exceptionId: string, reason: string) => {
     if (client == null) return;
-    await rejectException(client, exceptionId, reason);
+    await rejectExceptionRequest(client, exceptionId, reason);
     setExceptionQueue((prev) =>
       prev.map((e) =>
         e.id === exceptionId

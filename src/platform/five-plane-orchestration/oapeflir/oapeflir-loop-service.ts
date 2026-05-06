@@ -332,18 +332,18 @@ export class OapeflirLoopService {
   }
 
   /**
- * Produces StageRationale records for a single pass through OAPEFLIR stages.
- *
- * ARCHITECTURE NOTE (R5-56): This method is NOT the active orchestration loop.
- * Per architecture §13/§45, OAPEFLIR is only a StageRationale/Audit View framework.
- * The active orchestration loop is HarnessRuntimeService.runLoop().
- * This method produces rationale records only - it does NOT control iteration or replanning.
- *
- * @deprecated This method produces a single-pass rationale view only.
- *             The active loop controller is HarnessRuntimeService, not OapeflirLoopService.
- *             Do NOT use this as the main orchestration loop.
- */
-public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
+   * Main OAPEFLIR orchestration loop — runs observe→assess→plan→execute→feedback→learn→improve stages
+   * with re-entrant replanning capability.
+   *
+   * This is the canonical OAPEFLIR orchestration loop. It uses HarnessLoopController for guardrails
+   * (iteration limit, cost limit, duration limit) and produces the full OapeflirLoopResult including
+   * planGraphBundle, decisionInputBundle for Harness, graphPatch for replanning, and harnessDecision
+   * for pass-through authority.
+   *
+   * @param input OapeflirLoopInput containing task context, workflow, and optional constraintPack
+   * @returns OapeflirLoopResult with observation, assessment, plan, execution results, and learning outputs
+   */
+	public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLoopResult> {
     return await startActiveSpan("oapeflir.loop", {
       tracerName: "automatic-agent-platform.oapeflir",
       attributes: {
@@ -392,10 +392,8 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         occurredAt: nowIso(),
       }, input.taskId);
 
-      // NOTE: This loop produces StageRationale records for multiple passes (for replanning analysis).
-      // It is NOT the active orchestration loop - that is HarnessRuntimeService.runLoop().
-      // This loop exists to generate audit/rationale views for each replanning iteration,
-      // but the actual orchestration control (whether to replan, continue, abort) belongs to HarnessRuntime.
+      // R5-2: Re-entrant orchestration loop - runs O→A→P→E→F→L→I→R stages
+      // with full replanning support. Uses HarnessLoopController for guardrails.
       while (shouldContinue) {
         const timeline = new OapeflirStageTimelineBuilder();
         const taskObservation = await this.runStage<UnifiedObservation>("observe", async () => {
@@ -696,6 +694,38 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         const planValidation = validatePlan(plan);
         if (!planValidation.ok) {
           throw planValidation.error;
+        }
+
+        // R31-16 fix: Validate pre-provided stepOutputs before Execute stage
+        // Pre-provided outputs bypass execution guardrails, so they MUST be validated
+        // against the plan to ensure they correspond to planned steps and have valid structure
+        if (currentInput.stepOutputs != null) {
+          const stepOutputsValidation = validateStepOutputs(currentInput.stepOutputs);
+          if (!stepOutputsValidation.ok && !stepOutputsValidation.skipped) {
+            this.boundaryLogger.error("[boundary:P→E] Pre-provided stepOutputs validation failed — blocking execution with supplied outputs", {
+              data: { taskId: currentInput.taskId, error: stepOutputsValidation.error.message },
+            });
+            runtimeMetricsRegistry.recordOapeflirBoundaryViolation(
+              "P→E",
+              currentInput.taskId,
+              "boundary:P→E:stepOutputs_validation_failed",
+            );
+            throw new Error(`boundary.validation_failed: Pre-provided stepOutputs validation failed at P→E boundary for task ${currentInput.taskId}: ${stepOutputsValidation.error.message}`);
+          }
+          // R31-16: Additionally verify stepOutputs count matches plan steps count
+          // to prevent supplying outputs for steps that weren't planned
+          if (stepOutputsValidation.ok && stepOutputsValidation.value && plan.steps.length !== stepOutputsValidation.value.length) {
+            const errorMsg = `stepOutputs count (${stepOutputsValidation.value.length}) does not match plan steps count (${plan.steps.length})`;
+            this.boundaryLogger.error("[boundary:P→E] Pre-provided stepOutputs count mismatch", {
+              data: { taskId: currentInput.taskId, stepOutputsCount: stepOutputsValidation.value.length, planStepsCount: plan.steps.length },
+            });
+            runtimeMetricsRegistry.recordOapeflirBoundaryViolation(
+              "P→E",
+              currentInput.taskId,
+              "boundary:P→E:stepOutputs_count_mismatch",
+            );
+            throw new Error(`boundary.validation_failed: ${errorMsg}`);
+          }
         }
 
         // R5-4: Check guardrails before execution
@@ -1007,12 +1037,9 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
           this.stageFsm.recordStageCompletion("release");
         }
 
-        // R5-2: Re-entrant loop check - if replanDecision says replan, loop back to plan stage
-        // R5-2: Set shouldContinue based on requiresReplan and finalPlan flags
-        // NOTE: This produces rationale views for audit purposes. The actual orchestration authority
-        // is HarnessRuntimeService.runLoop(), not this service. This loop is for audit trail only.
+        // R5-2: Re-entrant loop check - determine if we should replan based on quality gate and replan decision
         shouldContinue = replanDecision.requiresReplan && !replanDecision.finalPlan;
-        // R19-03: replanDecision rationale is recorded — actual loop control is HarnessRuntime authority
+        // R19-03: replanDecision is recorded in the result for traceability
         if (replanDecision.shouldReplan && shouldContinue) {
           // R5-4: Record iteration and check guards if loopController exists
           if (this.loopController) {

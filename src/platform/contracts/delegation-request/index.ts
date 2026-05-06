@@ -13,12 +13,24 @@ export interface DelegationRequest {
   reason: string;
   contextRef: string | null;
   tenantId: string | null;
+  // R25-20 fix: budgetEnvelope and budgetReservationId for ADR-026 8-factor budget tracking
+  // Budget tracking is the 6th factor in the 8-factor risk model
+  budgetReservationId: string | null;
+  budgetEnvelope: BudgetEnvelope | null;
   createdAt: string;
 }
 
-export function createDelegationRequest(input: Omit<DelegationRequest, "requestId" | "createdAt"> & {
+export interface BudgetEnvelope {
+  amount: number;
+  currency: string;
+  resourceKinds: readonly string[];
+}
+
+export function createDelegationRequest(input: Omit<DelegationRequest, "requestId" | "createdAt" | "budgetReservationId" | "budgetEnvelope"> & {
   requestId?: string;
   createdAt?: string;
+  budgetReservationId?: string | null;
+  budgetEnvelope?: BudgetEnvelope | null;
 }): DelegationRequest {
   assertRequired(input.taskId, "delegation.task_id_required");
   assertRequired(input.fromAgentId, "delegation.from_agent_required");
@@ -35,6 +47,8 @@ export function createDelegationRequest(input: Omit<DelegationRequest, "requestI
     reason: input.reason,
     contextRef: normalizeNullable(input.contextRef),
     tenantId: normalizeNullable(input.tenantId),
+    budgetReservationId: input.budgetReservationId ?? null,
+    budgetEnvelope: input.budgetEnvelope ?? null,
     createdAt: input.createdAt ?? nowIso(),
   };
 }

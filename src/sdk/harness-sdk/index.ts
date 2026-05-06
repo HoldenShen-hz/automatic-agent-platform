@@ -32,6 +32,8 @@ import {
   createEventSubscriber,
 } from "../client-sdk/api-client.js";
 
+import type { RuntimeRepository } from "../../platform/state-evidence/truth/runtime-truth-repository.js";
+
 export interface HarnessSdkCreateRunInput {
   readonly taskId: string;
   readonly domainId: string;
@@ -124,12 +126,21 @@ export function getLifecycleHookRegistry(): LifecycleHookRegistry {
 export class HarnessSdk {
   private eventSubscriber: TypedEventSubscriber | null = null;
   private eventBusAdapter: EventBusAdapter | null = null;
+  private readonly runtime: HarnessRuntimeService;
+  private readonly budgetChecker: ((budgetRef: string) => BudgetValidationResult) | undefined;
+  private readonly interPlaneTransport: InterPlaneTransport | undefined;
 
   public constructor(
-    private readonly runtime: HarnessRuntimeService = new HarnessRuntimeService(),
-    private readonly budgetChecker?: (budgetRef: string) => BudgetValidationResult,
-    private readonly interPlaneTransport?: InterPlaneTransport,
-  ) {}
+    runtimeTruthRepository?: RuntimeRepository,
+    budgetChecker?: (budgetRef: string) => BudgetValidationResult,
+    interPlaneTransport?: InterPlaneTransport,
+  ) {
+    this.runtime = new HarnessRuntimeService(
+      runtimeTruthRepository ? { runtimeTruthRepository } : {},
+    );
+    this.budgetChecker = budgetChecker;
+    this.interPlaneTransport = interPlaneTransport;
+  }
 
   // =============================================================================
   // R8-19: Inter-plane messaging with ContractEnvelope wrapper

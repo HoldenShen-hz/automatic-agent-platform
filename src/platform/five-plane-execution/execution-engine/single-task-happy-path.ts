@@ -515,6 +515,24 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       createdAt: now,
     };
 
+    // R4-27/R4-28 (INV-STATE-001): Emit harness_run.status_changed event to pair with HarnessRun INSERT
+    const harnessRunCreatedEvent = {
+      id: newId("evt"),
+      taskId,
+      executionId: null as string | null,
+      eventType: "platform.harness_run.status_changed",
+      eventTier: "tier_1" as const,
+      payloadJson: JSON.stringify({
+        harnessRunId: harnessRunIdFromBundle,
+        status: "created",
+        tenantId: input.tenantId ?? "tenant:local",
+        domainId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
+        occurredAt: now,
+      }),
+      traceId,
+      createdAt: now,
+    };
+
     db.transaction(() => {
       store.task.insertTask(task);
       store.workflow.insertWorkflowState(workflow);
@@ -525,6 +543,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       store.event.insertEvent(workflowCreatedEvent);
       store.event.insertEvent(executionCreatedEvent);
       store.event.insertEvent(sessionCreatedEvent);
+      store.event.insertEvent(harnessRunCreatedEvent);
     });
 
     // Root cause: the original approval gate tried to transition task/workflow/

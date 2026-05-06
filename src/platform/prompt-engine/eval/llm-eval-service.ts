@@ -437,8 +437,10 @@ async runAbTest(
         });
       }
     };
-    // Run synchronously for now (in production would be async)
-    void runPromises();
+    // R16-03 FIX: Properly await the async evaluation to ensure case results are recorded
+    // before calling completeRun. Previously used void runPromises() which caused
+    // the function to return before async evaluation completed.
+    await runPromises();
   } else {
     // Fallback: use scoring based on string similarity when no LLM evaluator provided
     // Fair scoring: both control and treatment get the same base offset

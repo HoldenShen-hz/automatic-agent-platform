@@ -6,6 +6,9 @@ const mockUpdateTask = vi.fn(async () => ({ ok: true }));
 const mockFetchWorkflowRunSteps = vi.fn(async () => [
   { id: "step-1", title: "Collect inputs", status: "completed", executor: "agent-1", startedAt: "2026-05-04T00:00:00Z", completedAt: "2026-05-04T00:01:00Z" },
 ]);
+const mockUseTasksQuery = vi.fn(() => ({
+  data: taskData,
+}));
 const taskData = [
   {
     id: "task-1",
@@ -21,9 +24,7 @@ const taskData = [
 
 vi.mock("@aa/shared-state", () => ({
   useRestClient: () => mockClient,
-  useTasksQuery: () => ({
-    data: taskData,
-  }),
+  useTasksQuery: (...args: unknown[]) => mockUseTasksQuery(...args),
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
@@ -36,6 +37,14 @@ import { useTaskCockpitVm } from "../../../../../../packages/features/task-cockp
 describe("useTaskCockpitVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("keeps selection empty until the operator explicitly picks a task and enables polling", () => {
+    const { result } = renderHook(() => useTaskCockpitVm());
+
+    expect(mockUseTasksQuery).toHaveBeenCalledWith(undefined, { refetchInterval: 5000 });
+    expect(result.current.selectedId).toBeNull();
+    expect(result.current.selectedTask).toBeNull();
   });
 
   it("calls backend mutations for claim, resume, and escalate", async () => {
