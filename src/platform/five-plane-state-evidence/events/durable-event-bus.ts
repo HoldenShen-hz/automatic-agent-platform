@@ -10,6 +10,7 @@ import { DlqService, type FailureCategory } from "./dlq-service.js";
 import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
 import { createHash } from "node:crypto";
+import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 // REL-01: dedicated logger for dead-letter visibility. The ack row already
 // persists the final status and error code, but there was previously no
@@ -400,6 +401,11 @@ export class DurableEventBus {
     evidenceRefs?: readonly string[];
   }): EventRecord {
     this.assertNotDisposed();
+    // R4-36: Verify leader authority before any write operation.
+    // Use principal as nodeId if available, otherwise fall back to "system".
+    // In HA mode, only the leader node can publish events to ensure consistency.
+    const nodeId = input.principal ?? "system";
+    assertLeaderAuthoritative(nodeId, "durable_event_bus_publish");
     const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
     this.validatePayloadSize(payloadWithTraceContext);
     const validatedPayload = validateEventPayload(

@@ -19,6 +19,7 @@ import type { AuthoritativeSqlDatabase } from "../truth/authoritative-sql-databa
 import type { EventRepository } from "../truth/sqlite/repositories/event-repository.js";
 import type { OutboxRepository } from "../../shared/outbox/outbox-repository.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 /**
  * Options for transactional event append
@@ -87,6 +88,11 @@ export class TransactionalEventAppender {
     },
     options: TransactionalAppendOptions = {},
   ): TransactionalAppendResult {
+    // R4-36: Verify leader authority before any write operation.
+    // In HA mode, only the leader node can append events to ensure consistency.
+    // This uses "system" as the nodeId since TransactionalEventAppender doesn't
+    // carry explicit node identity - callers should ensure proper node context.
+    assertLeaderAuthoritative("system", "transactional_event_appender_append");
     const eventId = eventData.id ?? newId("evt");
     const now = nowIso();
 
@@ -150,6 +156,9 @@ export class TransactionalEventAppender {
     }>,
     options: TransactionalAppendOptions = {},
   ): TransactionalAppendResult[] {
+    // R4-36: Verify leader authority before any write operation.
+    // In HA mode, only the leader node can append events to ensure consistency.
+    assertLeaderAuthoritative("system", "transactional_event_appender_append_batch");
     // Use a transaction to ensure atomicity - uses the db.transaction() wrapper
     // which properly handles BEGIN/COMMIT/ROLLBACK and provides nested transaction safety
     return this.db.transaction(() => {

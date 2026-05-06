@@ -88,6 +88,7 @@ import type {
   RuntimeStateAggregateType,
 } from "../../five-plane-execution/runtime-state-machine.js";
 import { createPlatformFactEvent, type JsonValue } from "../../contracts/executable-contracts/index.js";
+import { assertLeaderAuthoritative } from "../ha/ha-coordinator-service-inner.js";
 
 /**
  * Canonical entity type prefixes used by RuntimeStateMachine.
@@ -1202,8 +1203,12 @@ export class TransitionService {
    * @deprecated For canonical five-plane entities (HarnessRun), use RuntimeStateMachine.
    * This method is for legacy Task entities only.
    * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionTaskStatus(command: TaskStatusTransitionCommand): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = command.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_task_status");
     this.tasks.transition(command);
   }
 
@@ -1212,8 +1217,12 @@ export class TransitionService {
    * @deprecated For canonical five-plane entities, use RuntimeStateMachine.
    * This method is for legacy Workflow entities only.
    * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionWorkflowStatus(command: WorkflowStatusTransitionCommand): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = command.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_workflow_status");
     this.workflows.transition(command);
   }
 
@@ -1222,8 +1231,12 @@ export class TransitionService {
    * @deprecated For canonical five-plane entities, use RuntimeStateMachine.
    * This method is for legacy Session entities only.
    * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionSessionStatus(command: SessionStatusTransitionCommand): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = command.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_session_status");
     this.sessions.transition(command);
   }
 
@@ -1232,8 +1245,12 @@ export class TransitionService {
    * @deprecated For canonical five-plane entities (NodeRun), use RuntimeStateMachine.
    * This method is for legacy Execution entities only.
    * @throws InvState001BypassError if command.entityId appears to be a canonical entity
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionExecutionStatus(command: ExecutionStatusTransitionCommand): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = command.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_execution_status");
     this.executions.transition(command);
   }
 
@@ -1241,8 +1258,12 @@ export class TransitionService {
    *
    * @deprecated For canonical five-plane entities, use RuntimeStateMachine.
    * This method is for legacy Approval entities only.
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionApprovalStatus(command: ApprovalStatusTransitionCommand): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = command.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_approval_status");
     this.approvals.transition(command);
   }
 
@@ -1251,10 +1272,14 @@ export class TransitionService {
    *
    * Transitions task, workflow, session, and execution to their blocked/paused
    * states, creates an approval record, and emits a decision:requested event.
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionBlockedForApproval(
     input: BlockedForApprovalTransitionCommand,
   ): BlockedForApprovalTransitionResult {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = input.context.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_blocked_for_approval");
     return this.approvalBlocks.transition(input);
   }
 
@@ -1263,16 +1288,24 @@ export class TransitionService {
    *
    * Called when a task completes, fails, or is cancelled. All related entities
    * must reach their terminal states atomically.
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public transitionTaskTerminalState(input: TaskTerminalTransitionInput): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = input.context.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "transition_task_terminal_state");
     this.terminalTasks.transition(input);
   }
 
   /**
    * Applies terminal state transitions without wrapping in a transaction.
    * Use this when the caller handles transaction management.
+   * @throws LeaderAuthorityError if caller is not the current leader (R4-36)
    */
   public applyTaskTerminalState(input: TaskTerminalTransitionInput): void {
+    // R4-36: Verify leader authority before any write operation
+    const nodeId = input.context.actorId ?? "unknown";
+    assertLeaderAuthoritative(nodeId, "apply_task_terminal_state");
     this.terminalTasks.apply(input);
   }
 

@@ -559,8 +559,6 @@ export class LeaderAuthorityError extends AppError {
  * Legacy locking error with E7-prefixed error code.
  * Indicates distributed lock acquisition failures or lock conflicts.
  */
- * Indicates distributed lock acquisition failures or lock conflicts.
- */
 export class LockingError extends StorageError {
   public constructor(code: string, message: string, details?: Record<string, unknown>) {
     super(`E7${code}`, message, { statusCode: 409, details, retryable: true });
