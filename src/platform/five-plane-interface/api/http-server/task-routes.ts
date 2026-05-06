@@ -38,6 +38,9 @@ import type { TaskStatus } from "../../../contracts/types/status.js";
 import type { IntakeAdmissionService } from "../../../orchestration/harness/runtime/intake-admission-service.js";
 import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource, JsonValue } from "../../../contracts/executable-contracts/index.js";
 import { createPrincipalRef } from "../../../contracts/executable-contracts/index.js";
+import { RuntimeEntryGuard } from "../../../five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
+import { minimalWorkflowToPlanGraphBundle } from "../../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
+import { execute as executeQuery } from "../../../state-evidence/truth/sqlite/query-helper.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {

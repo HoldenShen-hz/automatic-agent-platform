@@ -366,36 +366,6 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     harnessRunId: harnessRunIdFromBundle,
     runtimeProfileVersion: "runtime-profile:default",
   });
-  // Insert harness_run record into the database
-  executeQuery(
-    db.connection,
-    `INSERT INTO harness_runs (
-      harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
-      status, version_lock_id, budget_ledger_id, current_seq, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    harnessRun.harnessRunId,
-    harnessRun.tenantId,
-    harnessRun.confirmedTaskSpecId,
-    harnessRun.requestEnvelopeId,
-    harnessRun.status,
-    runVersionLock.runVersionLockId,
-    harnessRun.budgetLedgerId,
-    harnessRun.currentSeq,
-    harnessRun.updatedAt,
-  );
-  // Insert plan_graph_bundle record
-  executeQuery(
-    db.connection,
-    `INSERT INTO plan_graph_bundles (
-      plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?)`,
-    validatedPlanGraphBundle.planGraphBundleId,
-    harnessRunIdFromBundle,
-    validatedPlanGraphBundle.graphVersion,
-    JSON.stringify(validatedPlanGraphBundle.graph),
-    JSON.stringify(validatedPlanGraphBundle.validationReport),
-    validatedPlanGraphBundle.createdAt,
-  );
 
   try {
     const artifactStore = new ArtifactStore({
@@ -477,6 +447,36 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       };
 
       db.transaction(() => {
+        // R4-27 (INV-RUN-001): Insert harness_run record inside transaction for atomicity
+        executeQuery(
+          db.connection,
+          `INSERT INTO harness_runs (
+            harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
+            status, version_lock_id, budget_ledger_id, current_seq, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          harnessRun.harnessRunId,
+          harnessRun.tenantId,
+          harnessRun.confirmedTaskSpecId,
+          harnessRun.requestEnvelopeId,
+          harnessRun.status,
+          runVersionLock.runVersionLockId,
+          harnessRun.budgetLedgerId,
+          harnessRun.currentSeq,
+          harnessRun.updatedAt,
+        );
+        // Insert plan_graph_bundle record inside transaction for atomicity
+        executeQuery(
+          db.connection,
+          `INSERT INTO plan_graph_bundles (
+            plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?)`,
+          validatedPlanGraphBundle.planGraphBundleId,
+          harnessRunIdFromBundle,
+          validatedPlanGraphBundle.graphVersion,
+          JSON.stringify(validatedPlanGraphBundle.graph),
+          JSON.stringify(validatedPlanGraphBundle.validationReport),
+          validatedPlanGraphBundle.createdAt,
+        );
         store.task.insertTask(task);
         store.workflow.insertWorkflowState(workflow);
         store.session.insertSession(session);
@@ -504,7 +504,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         store.session.insertMessage({ ...planMessage, partsJson: ensureMessagePartsJson(planMessage) });
 
         // R4-27 (INV-RUN-001): Emit harness_run.status_changed event when HarnessRun is created
-        // This pairs with the harness_runs INSERT at line 362-379 to ensure truth mutation is
+        // This pairs with the harness_runs INSERT to ensure truth mutation is
         // paired with the corresponding platform.* event within the same transaction
         store.event.insertEvent({
           id: newId("evt"),

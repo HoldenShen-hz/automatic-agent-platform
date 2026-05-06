@@ -206,36 +206,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       harnessRunId: harnessRunIdFromBundle,
       runtimeProfileVersion: "runtime-profile:default",
     });
-    // Insert harness_run record into the database
-    executeQuery(
-      db.connection,
-      `INSERT INTO harness_runs (
-        harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
-        status, version_lock_id, budget_ledger_id, current_seq, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      harnessRun.harnessRunId,
-      harnessRun.tenantId,
-      harnessRun.confirmedTaskSpecId,
-      harnessRun.requestEnvelopeId,
-      harnessRun.status,
-      runVersionLock.runVersionLockId,
-      harnessRun.budgetLedgerId,
-      harnessRun.currentSeq,
-      harnessRun.updatedAt,
-    );
-    // Insert plan_graph_bundle record
-    executeQuery(
-      db.connection,
-      `INSERT INTO plan_graph_bundles (
-        plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
-      validatedPlanGraphBundle.planGraphBundleId,
-      harnessRunIdFromBundle,
-      validatedPlanGraphBundle.graphVersion,
-      JSON.stringify(validatedPlanGraphBundle.graph),
-      JSON.stringify(validatedPlanGraphBundle.validationReport),
-      validatedPlanGraphBundle.createdAt,
-    );
 
   try {
     const artifactStore = new ArtifactStore({
@@ -545,6 +515,36 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     };
 
     db.transaction(() => {
+      // R4-27 (INV-RUN-001): Insert harness_run record inside transaction for atomicity
+      executeQuery(
+        db.connection,
+        `INSERT INTO harness_runs (
+          harness_run_id, tenant_id, confirmed_task_spec_id, request_envelope_id,
+          status, version_lock_id, budget_ledger_id, current_seq, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        harnessRun.harnessRunId,
+        harnessRun.tenantId,
+        harnessRun.confirmedTaskSpecId,
+        harnessRun.requestEnvelopeId,
+        harnessRun.status,
+        runVersionLock.runVersionLockId,
+        harnessRun.budgetLedgerId,
+        harnessRun.currentSeq,
+        harnessRun.updatedAt,
+      );
+      // Insert plan_graph_bundle record inside transaction for atomicity
+      executeQuery(
+        db.connection,
+        `INSERT INTO plan_graph_bundles (
+          plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        validatedPlanGraphBundle.planGraphBundleId,
+        harnessRunIdFromBundle,
+        validatedPlanGraphBundle.graphVersion,
+        JSON.stringify(validatedPlanGraphBundle.graph),
+        JSON.stringify(validatedPlanGraphBundle.validationReport),
+        validatedPlanGraphBundle.createdAt,
+      );
       store.task.insertTask(task);
       store.workflow.insertWorkflowState(workflow);
       store.execution.insertExecution(execution);

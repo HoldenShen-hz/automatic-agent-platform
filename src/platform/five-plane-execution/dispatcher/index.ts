@@ -103,6 +103,9 @@ class MultiStepToolRegistry {
   private runtimeTruthRepository: RuntimeRepository | null = null;
   // R4-33: Current harnessRunId for correlating side effect records with the execution context
   private currentHarnessRunId: string | null = null;
+  // R4-33: Current node context for correlating side effect records with specific node execution
+  private currentNodeRunId: string | null = null;
+  private currentNodeAttemptId: string | null = null;
   // R4-25 (INV-BUDGET-001): Budget ledger for reserve→execute→settle pattern
   private currentBudgetLedger: BudgetLedger | null = null;
   // R4-25 (INV-BUDGET-001): Session manager for atomic budget reservation lifecycle
@@ -162,6 +165,29 @@ class MultiStepToolRegistry {
    */
   public getCurrentHarnessRunId(): string | null {
     return this.currentHarnessRunId;
+  }
+
+  /**
+   * R4-33: Set the current node context for correlating side effect records.
+   * This should be called before tool execution with the nodeRunId and nodeAttemptId from the execution context.
+   */
+  public setCurrentNodeContext(nodeRunId: string, nodeAttemptId: string): void {
+    this.currentNodeRunId = nodeRunId;
+    this.currentNodeAttemptId = nodeAttemptId;
+  }
+
+  /**
+   * R4-33: Get the current nodeRunId.
+   */
+  public getCurrentNodeRunId(): string | null {
+    return this.currentNodeRunId;
+  }
+
+  /**
+   * R4-33: Get the current nodeAttemptId.
+   */
+  public getCurrentNodeAttemptId(): string | null {
+    return this.currentNodeAttemptId;
   }
 
   /**
@@ -477,14 +503,18 @@ class MultiStepToolRegistry {
     // R4-33: Use the currentHarnessRunId from the execution context if available
     const effectiveHarnessRunId = this.currentHarnessRunId ?? _harnessRunId;
 
+    // R4-33 (INV-SIDEEFFECT-001): Try to get real node context from dispatcher state, fall back to derived IDs
+    const nodeRunId = this.currentNodeRunId ?? `node:${effectiveHarnessRunId}:step:${Date.now()}`;
+    const nodeAttemptId = this.currentNodeAttemptId ?? `attempt:${effectiveHarnessRunId}:${Date.now()}`;
+
     const sideEffectRecord = createSideEffectRecord({
       harnessRunId: effectiveHarnessRunId,
-      nodeRunId: "pending:node_run",
-      nodeAttemptId: "pending:attempt",
+      nodeRunId,
+      nodeAttemptId,
       effectKind,
       idempotencyKey: `tool_call:${toolName}:${Date.now()}`,
       riskClass: toolName === "git" || toolName === "spawn_agent" ? "high" : "medium",
-      preCommitPolicyProofRef: { artifactId: "pending:policy_proof", uri: "pending://", hash: "pending" },
+      preCommitPolicyProofRef: { artifactId: `policy_proof:${nodeRunId}:${Date.now()}`, uri: `pending://${nodeRunId}`, hash: `hash:${nodeRunId}:${Date.now()}` },
       ...(toolName === "web_fetch" ? { externalRef: args.url as string } : toolName === "web_search" ? { externalRef: args.query as string } : {}),
       deadline: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     });
@@ -1032,6 +1062,15 @@ export function initializeToolRegistryWithRepository(repository: RuntimeReposito
 export function setToolRegistryHarnessRunId(harnessRunId: string): void {
   const registry = getToolRegistry();
   registry.setCurrentHarnessRunId(harnessRunId);
+}
+
+/**
+ * Sets the current node context on the tool registry singleton.
+ * R4-33: This enables correlating SideEffectRecords with the actual node execution context.
+ */
+export function setToolRegistryNodeContext(nodeRunId: string, nodeAttemptId: string): void {
+  const registry = getToolRegistry();
+  registry.setCurrentNodeContext(nodeRunId, nodeAttemptId);
 }
 
 /**
