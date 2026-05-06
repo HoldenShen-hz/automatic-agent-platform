@@ -427,10 +427,13 @@ test("AuditExportService.verifyIntegrity with multiple chain breaks", () => {
     { id: "evt-3", event_type: "task:completed", event_tier: "tier_1", created_at: "2026-04-20T00:00:00.000Z" },
   ]);
 
-  // Insert integrity records with multiple chain breaks
-  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "checksum-1", null, "hash-1");
-  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", "checksum-2", "wrong-hash", "hash-2");
-  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", "checksum-3", "wrong-hash-2", "hash-3");
+  // Insert integrity records with chain breaks.
+  // Records are inserted with correct previousChainHash to pass insertion validation,
+  // but verifyIntegrity will detect chain breaks because the chainHash values
+  // don't form a proper continuous chain.
+  integrityRepo.insertIntegrityRecord("evt-1", 1, "task:created", "2026-04-10T00:00:00.000Z", "c1", null, "h1");
+  integrityRepo.insertIntegrityRecord("evt-2", 2, "task:started", "2026-04-15T00:00:00.000Z", "c2", "h1", "h2-broken");
+  integrityRepo.insertIntegrityRecord("evt-3", 3, "task:completed", "2026-04-20T00:00:00.000Z", "c3", "h3", "h3");
 
   const result = service.verifyIntegrity("2026-04-01T00:00:00.000Z", "2026-04-30T23:59:59.999Z");
 
