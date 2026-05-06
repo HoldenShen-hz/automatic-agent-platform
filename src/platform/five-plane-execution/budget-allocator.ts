@@ -651,15 +651,19 @@ export class BudgetAllocator {
     });
 
     const results: BudgetReleaseResult[] = [];
+    let currentLedger = input.ledger;
     for (const expired of expiredReservations.slice(0, this.sweeperConfig.maxReservationsToScan)) {
       try {
         const result = this.release({
-          ledger: input.ledger,
+          ledger: currentLedger,
           reservation: expired,
           reasonCode: "budget.sweeper_expired",
+          expectedVersion: currentLedger.version,
           context: input.context,
         });
         results.push(result);
+        // Update ledger for next iteration since version changes on each release
+        currentLedger = result.ledger;
       } catch {
         // Skip failed releases - sweeper should not throw, just log
       }
