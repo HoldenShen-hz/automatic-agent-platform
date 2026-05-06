@@ -258,7 +258,8 @@ test("delegation keeps actions but not resources when no specific resources are 
   const delegation = service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
-  assert.deepEqual(delegation.permissions.resources, []);
+  // R17-01 fix: When requiredPermissions is empty, child inherits parent's full set
+  assert.deepEqual(delegation.permissions.resources, ["resource-a", "resource-b", "resource-c"]);
   assert.deepEqual(delegation.permissions.actions, ["action-read", "action-write", "action-delete"]);
 });
 

@@ -255,6 +255,30 @@ test("ServiceRegistry reset handles async teardown functions", async () => {
   assert.ok(asyncTeardownCalled);
 });
 
+test("ServiceRegistry reset keeps registrations available until teardown finishes", async () => {
+  const registry = ServiceRegistry.getInstance();
+  await registry.reset();
+
+  let dependencyVisibleDuringTeardown = false;
+
+  registry.register("base", {
+    init: () => ({ name: "base" }),
+    teardown: () => undefined,
+  });
+  registry.register("dependent", {
+    init: () => ({ name: "dependent" }),
+    dependsOn: ["base"],
+    teardown: () => {
+      dependencyVisibleDuringTeardown = registry.has("base") && registry.isInitialized("base");
+    },
+  });
+
+  registry.get("dependent");
+  await registry.reset();
+
+  assert.equal(dependencyVisibleDuringTeardown, true);
+});
+
 test("ServiceRegistry teardownAll handles async teardown functions", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();

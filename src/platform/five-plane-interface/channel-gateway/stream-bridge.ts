@@ -312,13 +312,17 @@ export class StreamBridge {
    * @param streamId - The stream to close
    */
   public closeStream(streamId: string): void {
+    for (const [clientId, subscribedStreamId] of this.clientStreamSubscription.entries()) {
+      if (subscribedStreamId === streamId) {
+        this.clientStreamSubscription.delete(clientId);
+        this.clientLastSequence.delete(clientId);
+      }
+    }
     this.nextSequenceByStream.delete(streamId);
     this.replayBuffer.delete(streamId);
     this.droppedBeforeSequenceByStream.delete(streamId);
     this.connectedClientsByStream.delete(streamId);
     this.transportStateByStream.delete(streamId);
-    // Note: clientLastSequence and clientStreamSubscription are cleaned up
-    // when individual clients are unregistered via unregisterClient
   }
 
   /**
@@ -330,6 +334,8 @@ export class StreamBridge {
     this.replayBuffer.clear();
     this.droppedBeforeSequenceByStream.clear();
     this.connectedClientsByStream.clear();
+    this.clientLastSequence.clear();
+    this.clientStreamSubscription.clear();
     this.transportStateByStream.clear();
   }
 

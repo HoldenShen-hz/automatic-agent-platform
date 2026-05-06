@@ -135,3 +135,31 @@ test("StreamBridge reuses streamId for multiple frames", () => {
   const frame2 = bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "status_changed", payload: {} });
   assert.equal(frame2.sequence, frame1.sequence + 1);
 });
+
+test("StreamBridge closeStream cleans up stream-scoped client cursors", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task-1", "updates");
+  bridge.registerClient("client-1", streamId, 3);
+  bridge.registerClient("client-2", streamId, 5);
+
+  bridge.closeStream(streamId);
+
+  assert.equal((bridge as any).clientStreamSubscription.has("client-1"), false);
+  assert.equal((bridge as any).clientStreamSubscription.has("client-2"), false);
+  assert.equal((bridge as any).clientLastSequence.has("client-1"), false);
+  assert.equal((bridge as any).clientLastSequence.has("client-2"), false);
+});
+
+test("StreamBridge dispose clears client and stream maps", () => {
+  const bridge = new StreamBridge();
+  const streamId = bridge.createStreamId("task-1", "updates");
+  bridge.registerClient("client-1", streamId, 2);
+  bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "progress", payload: {} });
+
+  bridge.dispose();
+
+  assert.equal((bridge as any).connectedClientsByStream.size, 0);
+  assert.equal((bridge as any).clientStreamSubscription.size, 0);
+  assert.equal((bridge as any).clientLastSequence.size, 0);
+  assert.equal((bridge as any).replayBuffer.size, 0);
+});
