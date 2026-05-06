@@ -484,7 +484,7 @@ test("GithubAdapter uses default ref for get_file when not provided", async () =
 
 test("GithubAdapter healthCheck returns policy evaluation", async () => {
   const plugin = createGithubAdapterPlugin();
-  const health = await plugin.healthCheck();
+  const health = await plugin.healthCheck!();
 
   assert.equal(typeof health, "boolean");
 });
@@ -492,13 +492,13 @@ test("GithubAdapter healthCheck returns policy evaluation", async () => {
 test("GithubAdapter lifecycle methods work", async () => {
   const plugin = createGithubAdapterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(typeof healthResult, "boolean");
 
-  await plugin.shutdown();
+  await plugin.shutdown!();
   // After shutdown, credentialFingerprint should be null
 });
 
@@ -506,7 +506,7 @@ test("GithubAdapter clears credentials on shutdown", async () => {
   const plugin = createGithubAdapterPlugin();
   await plugin.authenticate({ token: "test" });
 
-  await plugin.shutdown();
+  await plugin.shutdown!();
 
   await assert.rejects(
     async () => plugin.execute("create_issue", { repository: "r", title: "t", body: "b" }),
@@ -585,7 +585,7 @@ test("CrmAdapter returns structured response with action", async () => {
 
 test("CrmAdapter healthCheck returns boolean", async () => {
   const plugin = createCrmAdapterPlugin();
-  const health = await plugin.healthCheck();
+  const health = await plugin.healthCheck!();
 
   assert.equal(typeof health, "boolean");
 });
@@ -593,18 +593,18 @@ test("CrmAdapter healthCheck returns boolean", async () => {
 test("CrmAdapter lifecycle methods work", async () => {
   const plugin = createCrmAdapterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
   await plugin.authenticate({ token: "test" });
-  await plugin.shutdown();
+  await plugin.shutdown!();
 });
 
 test("CrmAdapter clears credentials on shutdown", async () => {
   const plugin = createCrmAdapterPlugin();
   await plugin.authenticate({ token: "test" });
 
-  await plugin.shutdown();
+  await plugin.shutdown!();
 
   // After shutdown credential fingerprint is cleared, next execute should still work
   // but will have cleared fingerprint
@@ -641,7 +641,7 @@ test("GameDevAdapter handles null parameters", async () => {
 
 test("GameDevAdapter healthCheck returns true", async () => {
   const plugin = createGameDevAdapterPlugin();
-  const health = await plugin.healthCheck();
+  const health = await plugin.healthCheck!();
 
   assert.equal(health, true);
 });
@@ -649,13 +649,13 @@ test("GameDevAdapter healthCheck returns true", async () => {
 test("GameDevAdapter lifecycle methods work", async () => {
   const plugin = createGameDevAdapterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -688,7 +688,7 @@ test("AssetProductionAdapter handles null parameters", async () => {
 
 test("AssetProductionAdapter healthCheck returns true", async () => {
   const plugin = createAssetProductionAdapterPlugin();
-  const health = await plugin.healthCheck();
+  const health = await plugin.healthCheck!();
 
   assert.equal(health, true);
 });
@@ -696,13 +696,13 @@ test("AssetProductionAdapter healthCheck returns true", async () => {
 test("AssetProductionAdapter lifecycle methods work", async () => {
   const plugin = createAssetProductionAdapterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -732,7 +732,7 @@ test("LivestreamAdapter handles null parameters", async () => {
 
 test("LivestreamAdapter healthCheck returns true", async () => {
   const plugin = createLivestreamAdapterPlugin();
-  const health = await plugin.healthCheck();
+  const health = await plugin.healthCheck!();
 
   assert.equal(health, true);
 });
@@ -740,13 +740,13 @@ test("LivestreamAdapter healthCheck returns true", async () => {
 test("LivestreamAdapter lifecycle methods work", async () => {
   const plugin = createLivestreamAdapterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -767,7 +767,7 @@ test("CodingPresenter formats output with multiple steps", async () => {
 
   assert.ok(result.summary.includes("2 coding step(s)"));
   assert.equal(result.sections.length, 2);
-  assert.ok(result.sections[0].includes("step1"));
+  assert.ok(result.sections[0]!.includes("step1"));
 });
 
 test("CodingPresenter handles empty outputs", async () => {
@@ -806,19 +806,19 @@ test("CodingPresenter includes outputRef in section", async () => {
     audience: "developer",
   });
 
-  assert.ok(result.sections[0].includes("outputRef: output-123"));
+  assert.ok(result.sections[0]!.includes("outputRef: output-123"));
 });
 
 test("CodingPresenter lifecycle methods work", async () => {
   const plugin = createCodingPresenterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -934,13 +934,13 @@ test("GrowthPresenter includes artifacts", async () => {
 test("GrowthPresenter lifecycle methods work", async () => {
   const plugin = createGrowthPresenterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1073,13 +1073,13 @@ test("OperationsPresenter handles empty outputs", async () => {
 test("OperationsPresenter lifecycle methods work", async () => {
   const plugin = createOperationsPresenterPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1089,7 +1089,7 @@ test("OperationsPresenter lifecycle methods work", async () => {
 
 test("CodingRetriever returns structured results", async () => {
   const plugin = createCodingRetrieverPlugin({ rootPath: "/tmp" });
-  await plugin.initialize();
+  await plugin.initialize!();
 
   const result = await plugin.retrieve({
     taskId: "task-1",
@@ -1108,7 +1108,7 @@ test("CodingRetriever returns structured results", async () => {
 
 test("CodingRetriever respects token budget", async () => {
   const plugin = createCodingRetrieverPlugin({ rootPath: "/tmp" });
-  await plugin.initialize();
+  await plugin.initialize!();
 
   const smallBudget = await plugin.retrieve({
     taskId: "task-1",
@@ -1130,7 +1130,7 @@ test("CodingRetriever respects token budget", async () => {
 
 test("CodingRetriever uses context.currentFile", async () => {
   const plugin = createCodingRetrieverPlugin({ rootPath: "/tmp" });
-  await plugin.initialize();
+  await plugin.initialize!();
 
   const result = await plugin.retrieve({
     taskId: "task-1",
@@ -1144,22 +1144,22 @@ test("CodingRetriever uses context.currentFile", async () => {
 
 test("CodingRetriever healthCheck returns boolean", async () => {
   const plugin = createCodingRetrieverPlugin({ rootPath: "/tmp" });
-  await plugin.initialize();
+  await plugin.initialize!();
 
-  const health = await plugin.healthCheck();
+  const health = await plugin.healthCheck!();
   assert.equal(typeof health, "boolean");
 });
 
 test("CodingRetriever lifecycle methods work", async () => {
   const plugin = createCodingRetrieverPlugin({ rootPath: "/tmp" });
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(typeof healthResult, "boolean");
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1235,7 +1235,7 @@ test("GrowthRetriever returns results with proper structure", async () => {
   for (const item of result) {
     assert.ok(item.knowledgeRef.startsWith("knowledge:growth/"));
     assert.ok(typeof item.score === "number");
-    assert.ok(typeof item.snippet === "string");
+    assert.ok(typeof (item as { snippet?: string }).snippet === "string");
     assert.ok(typeof item.namespace === "string");
   }
 });
@@ -1243,13 +1243,13 @@ test("GrowthRetriever returns results with proper structure", async () => {
 test("GrowthRetriever lifecycle methods work", async () => {
   const plugin = createGrowthRetrieverPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1308,13 +1308,13 @@ test("OperationsRetriever returns different match types", async () => {
 test("OperationsRetriever lifecycle methods work", async () => {
   const plugin = createOperationsRetrieverPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1373,13 +1373,13 @@ test("GameDevRetriever returns results with various match types", async () => {
 test("GameDevRetriever lifecycle methods work", async () => {
   const plugin = createGameDevRetrieverPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1448,13 +1448,13 @@ test("AssetProductionRetriever respects token budget", async () => {
 test("AssetProductionRetriever lifecycle methods work", async () => {
   const plugin = createAssetProductionRetrieverPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 
@@ -1511,7 +1511,7 @@ test("LivestreamRetriever returns results with correct structure", async () => {
 
   for (const item of result) {
     assert.ok(typeof item.score === "number");
-    assert.ok(typeof item.snippet === "string");
+    assert.ok(typeof (item as { snippet?: string }).snippet === "string");
     assert.ok(typeof item.namespace === "string");
     assert.ok(typeof item.chunkId === "string");
     assert.ok(typeof item.documentId === "string");
@@ -1521,12 +1521,12 @@ test("LivestreamRetriever returns results with correct structure", async () => {
 test("LivestreamRetriever lifecycle methods work", async () => {
   const plugin = createLivestreamRetrieverPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });

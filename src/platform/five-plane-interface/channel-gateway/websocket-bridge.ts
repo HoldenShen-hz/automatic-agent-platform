@@ -125,7 +125,7 @@ interface ClientConnection {
  * - §11/R11-09: JWT via query param is NOT used - it would leak to logs/Referer/proxies
  * - Allows clients to subscribe to specific task updates
  * - Broadcasts task events to subscribed clients
- * - Maintains connection health via ping/pong
+ * - Maintains connection health via server-initiated ping/pong heartbeat (R25-08)
  * - Implements server-side backpressure via bufferedAmount checking per §7.1
  */
 export class WebSocketBridge {

@@ -468,9 +468,20 @@ export class BudgetAllocator {
     readonly reservation: BudgetReservation;
     readonly actualAmount: number;
     readonly evidenceRefs?: readonly ArtifactRef[];
+    readonly expectedVersion: number;
     readonly context: BudgetAllocatorContext;
   }): BudgetSettlementResult {
     const context = this.normalizeContext(input.context);
+
+    // Validate CAS against expected version before proceeding
+    if (input.ledger.version !== input.expectedVersion) {
+      throw new ValidationError(
+        "budget_settlement.version_cas_failed",
+        "Budget settlement requires the current ledger version.",
+        { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
+      );
+    }
+
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: input.actualAmount,
@@ -560,9 +571,20 @@ export class BudgetAllocator {
     readonly ledger: BudgetLedger;
     readonly reservation: BudgetReservation;
     readonly reasonCode?: string;
+    readonly expectedVersion: number;
     readonly context: BudgetAllocatorContext;
   }): BudgetReleaseResult {
     const context = this.normalizeContext(input.context);
+
+    // Validate CAS against expected version before proceeding
+    if (input.ledger.version !== input.expectedVersion) {
+      throw new ValidationError(
+        "budget_release.version_cas_failed",
+        "Budget release requires the current ledger version.",
+        { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
+      );
+    }
+
     const settlement = createBudgetSettlement({
       budgetReservationId: input.reservation.budgetReservationId,
       actualAmount: 0,

@@ -46,6 +46,8 @@ export interface ExecutionRecord {
   attempt: number;
   timeoutMs: number;
   budgetUsdLimit: number | null;
+  budgetReservationId: string | null;
+  budgetLedgerId: string | null;
   requiresApproval: 0 | 1;
   sandboxMode: string | null;
   allowedToolsJson: string | null;

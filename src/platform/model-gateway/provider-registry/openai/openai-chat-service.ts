@@ -473,7 +473,7 @@ export class OpenAIChatService {
                     accumulatedContent += choice.delta.content;
                   }
                   if (choice.delta.refusal) {
-                    accumulatedRefusal = choice.delta.refusal;
+                    accumulatedRefusal = (accumulatedRefusal ?? "") + choice.delta.refusal;
                   }
                   if (choice.delta.tool_calls) {
                     for (const tc of choice.delta.tool_calls) {

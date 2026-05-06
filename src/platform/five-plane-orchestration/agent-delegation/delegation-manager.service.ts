@@ -113,6 +113,13 @@ export class DelegationManagerService {
     // R17-13: Initialize persistence layer if provided
     this.delegationRepository = delegationRepository ?? null;
     this.eventRepository = eventRepository ?? null;
+    // R9-06: Hydrate active delegations from repository to survive process restarts
+    if (this.delegationRepository) {
+      this.hydrateFromRepository().catch((err) => {
+        // Log but don't fail startup - in-memory mode still works
+        console.error("Failed to hydrate delegations from repository:", err);
+      });
+    }
   }
 
   /**
@@ -165,6 +172,84 @@ export class DelegationManagerService {
             this.delegationStore.delete(key);
           }
         }
+      }
+    }
+  }
+
+  /**
+   * R9-06: Hydrates in-memory stores from repository on startup.
+   * This ensures active delegation chains survive process restarts.
+   */
+  private async hydrateFromRepository(): Promise<void> {
+    if (!this.delegationRepository) {
+      return;
+    }
+
+    // Load all non-terminal delegations from repository
+    const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
+    let hydratedCount = 0;
+
+    for (const status of activeStatuses) {
+      const delegations = await this.delegationRepository.findByStatus(status);
+      for (const record of delegations) {
+        // R9-06: Reconstruct partial DelegationResult from repository record
+        // Note: Full permissions and other runtime fields are not persisted,
+        // so we create a minimal reconstruction sufficient for chain tracking.
+        const delegationResult: DelegationResult = {
+          delegationId: record.delegationId,
+          parentAgentId: record.parentAgentId,
+          childAgentId: record.childAgentId,
+          depth: record.depth,
+          status: record.status,
+          createdAt: record.createdAt,
+          expiresAt: record.expiresAt ?? nowIso(), // Fallback if expiresAt was null
+          permissions: { resources: [], actions: [], constraints: {} }, // Reconstructed
+          grantedPermissions: { resources: [], actions: [], constraints: {} }, // Reconstructed
+          correlationId: record.delegationId, // Use delegationId as correlationId fallback
+          artifact_refs: [],
+          trust_level: 0,
+          taint_labels: [],
+          evidence_refs: [],
+          policy_outcome: "delegation.hydrated_from_repository",
+          data_class: "delegation",
+          summary: `Hydrated delegation from repository: ${record.delegationId}`,
+        };
+
+        this.delegationStore.set(record.delegationId, delegationResult);
+
+        // R9-06: Reconstruct chain tracking
+        const rootAgentId = record.delegationChain[0] ?? record.parentAgentId;
+        this.delegationRootStore.set(record.delegationId, rootAgentId);
+
+        // R9-06: Rebuild chain nodes for active delegations
+        let chain = this.chainStore.get(rootAgentId);
+        if (!chain) {
+          chain = {
+            rootAgentId,
+            nodes: [],
+            maxDepthReached: 0,
+            totalDelegations: 0,
+          };
+          this.chainStore.set(rootAgentId, chain);
+        }
+
+        const existingNode = chain.nodes.find((n) => n.delegationId === record.delegationId);
+        if (!existingNode) {
+          const node: DelegationChainNode = {
+            delegationId: record.delegationId,
+            agentId: record.childAgentId,
+            packId: record.childAgentId, // Use childAgentId as packId fallback
+            agentType: "worker",
+            depth: record.depth,
+            createdAt: record.createdAt,
+            parentDelegationId: null,
+          };
+          chain.nodes = [...chain.nodes, node];
+          chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
+          chain.totalDelegations++;
+        }
+
+        hydratedCount++;
       }
     }
   }
@@ -468,11 +553,49 @@ export class DelegationManagerService {
 
   /**
    * Gets a delegation by ID.
+   * R9-06: Falls back to repository if not found in memory (handles post-restart case).
    *
    * @param delegationId - Delegation ID
    */
-  public getDelegation(delegationId: string): DelegationResult | null {
-    return this.delegationStore.get(delegationId) ?? null;
+  public async getDelegation(delegationId: string): Promise<DelegationResult | null> {
+    // First check in-memory store
+    const cached = this.delegationStore.get(delegationId);
+    if (cached) {
+      return cached;
+    }
+
+    // R9-06: Fall back to repository for delegations that survived restart
+    if (this.delegationRepository) {
+      const record = await this.delegationRepository.findById(delegationId);
+      if (record) {
+        // Reconstruct partial result from repository record
+        const delegationResult: DelegationResult = {
+          delegationId: record.delegationId,
+          parentAgentId: record.parentAgentId,
+          childAgentId: record.childAgentId,
+          depth: record.depth,
+          status: record.status,
+          createdAt: record.createdAt,
+          expiresAt: record.expiresAt ?? nowIso(),
+          permissions: { resources: [], actions: [], constraints: {} },
+          grantedPermissions: { resources: [], actions: [], constraints: {} },
+          correlationId: record.delegationId,
+          artifact_refs: [],
+          trust_level: 0,
+          taint_labels: [],
+          evidence_refs: [],
+          policy_outcome: "delegation.from_repository",
+          data_class: "delegation",
+          summary: `Retrieved from repository: ${record.delegationId}`,
+        };
+
+        // Cache in memory for subsequent lookups
+        this.delegationStore.set(delegationId, delegationResult);
+        return delegationResult;
+      }
+    }
+
+    return null;
   }
 
   /**
