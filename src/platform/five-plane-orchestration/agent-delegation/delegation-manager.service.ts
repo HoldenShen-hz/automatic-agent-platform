@@ -600,15 +600,56 @@ export class DelegationManagerService {
 
   /**
    * Gets all active delegations for an agent.
+   * R9-06: Includes delegations from repository that may have survived restart.
    *
    * @param agentId - Agent ID
    */
-  public getActiveDelegations(agentId: string): DelegationResult[] {
-    return [...this.delegationStore.values()].filter(
+  public async getActiveDelegations(agentId: string): Promise<DelegationResult[]> {
+    const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active"];
+
+    // Get from in-memory store
+    const inMemoryResults = [...this.delegationStore.values()].filter(
       (d) =>
         (d.parentAgentId === agentId || d.childAgentId === agentId) &&
-        (d.status === "pending" || d.status === "pending_approval" || d.status === "active"),
+        activeStatuses.includes(d.status),
     );
+
+    // R9-06: Also fetch from repository and merge
+    if (this.delegationRepository) {
+      const repoDelegations = await this.delegationRepository.findByParentAgentId(agentId);
+      for (const record of repoDelegations) {
+        if (activeStatuses.includes(record.status)) {
+          // Skip if already in memory
+          if (this.delegationStore.has(record.delegationId)) {
+            continue;
+          }
+          // Reconstruct and cache
+          const delegationResult: DelegationResult = {
+            delegationId: record.delegationId,
+            parentAgentId: record.parentAgentId,
+            childAgentId: record.childAgentId,
+            depth: record.depth,
+            status: record.status,
+            createdAt: record.createdAt,
+            expiresAt: record.expiresAt ?? nowIso(),
+            permissions: { resources: [], actions: [], constraints: {} },
+            grantedPermissions: { resources: [], actions: [], constraints: {} },
+            correlationId: record.delegationId,
+            artifact_refs: [],
+            trust_level: 0,
+            taint_labels: [],
+            evidence_refs: [],
+            policy_outcome: "delegation.from_repository",
+            data_class: "delegation",
+            summary: `Retrieved from repository: ${record.delegationId}`,
+          };
+          this.delegationStore.set(record.delegationId, delegationResult);
+          inMemoryResults.push(delegationResult);
+        }
+      }
+    }
+
+    return inMemoryResults;
   }
 
   /**
