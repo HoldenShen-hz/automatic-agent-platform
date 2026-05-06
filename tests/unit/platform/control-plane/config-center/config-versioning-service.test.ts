@@ -90,14 +90,14 @@ test("ConfigVersioningService.getVersion returns null for non-existent ID", asyn
   assert.strictEqual(found, null);
 });
 
-test("ConfigVersioningService.getVersionHistory returns all versions in order", () => {
+test("ConfigVersioningService.getVersionHistory returns all versions in order", async () => {
   const service = new ConfigVersioningService();
 
-  const v1 = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
-  const v2 = service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
-  const v3 = service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
+  const v1 = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
+  const v2 = await service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
+  const v3 = await service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
 
-  const history = service.getVersionHistory("runtime.timeout", "platform", null);
+  const history = await service.getVersionHistory("runtime.timeout", "platform", null);
 
   assert.strictEqual(history.length, 3);
   assert.strictEqual(history[0]!.versionId, v1.versionId);

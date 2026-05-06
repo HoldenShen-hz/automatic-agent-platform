@@ -66,7 +66,7 @@ test("BasicEvaluator detects type mismatches", async () => {
 
   assert.equal(result.valid, false);
   assert.equal(result.errors.length, 1);
-  assert.equal(result.errors[0].field, "count");
+  assert.equal(result.errors[0]!.field, "count");
   assert.ok(result.errors[0].message.includes("Expected number"));
 });
 
@@ -103,7 +103,7 @@ test("BasicEvaluator handles null payload values", async () => {
   });
 
   assert.equal(result.valid, false);
-  assert.equal(result.errors[0].field, "data");
+  assert.equal(result.errors[0]!.field, "data");
 });
 
 test("BasicEvaluator handles array type detection", async () => {
