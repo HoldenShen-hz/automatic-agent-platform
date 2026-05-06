@@ -137,7 +137,7 @@ export class EscalationService {
       issuedBy: input.tenantId ?? "system",
       issuedAt: nowIso(),
       freezeModes: ["deploy", "approval", "write", "automation"],
-      requiredApprovers: [],
+      requiredApprovers: this.buildRequiredApprovers(input),
       severity: "full",
       triggerSignals: [input.stage, input.riskLevel],
     };
@@ -170,5 +170,11 @@ export class EscalationService {
       return `tenant/${input.tenantId}`;
     }
     return "platform";
+  }
+
+  private buildRequiredApprovers(input: EscalationRequest): readonly [string, string] {
+    const primary = input.tenantId?.trim() || "system";
+    const secondary = primary === "platform_admin" ? "security_admin" : "platform_admin";
+    return [primary, secondary];
   }
 }

@@ -5,6 +5,8 @@
  */
 
 import { createHmac, createVerify, createPublicKey, timingSafeEqual, verify as verifySignature } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode } from "../../platform/control-plane/iam/sandbox-policy.js";
 
@@ -137,14 +139,15 @@ export class DefaultSbomScanner implements SbomScanner {
       };
     }
 
-    // Parse SBOM from reference
-    const sbom = await this.fetchSbom(sbomRef);
-    if (!sbom) {
+    let sbom: { packages: Array<{ name: string; version: string }> };
+    try {
+      sbom = await this.fetchSbom(sbomRef);
+    } catch (error) {
       return {
         valid: false,
         scannedAt: new Date().toISOString(),
         vulnerabilities: [],
-        scanErrors: [`Failed to fetch SBOM from ${sbomRef}`],
+        scanErrors: [error instanceof Error ? error.message : `Failed to fetch SBOM from ${sbomRef}`],
       };
     }
 
@@ -181,22 +184,92 @@ export class DefaultSbomScanner implements SbomScanner {
 
   /**
    * Fetch SBOM content from reference.
-   * In production this would parse SPDX/CycloneDX formats.
+   * Supports SPDX and CycloneDX JSON documents from file:// and http(s):// sources.
    */
-  private async fetchSbom(sbomRef: string): Promise<{ packages: Array<{ name: string; version: string }> } | null> {
+  private async fetchSbom(sbomRef: string): Promise<{ packages: Array<{ name: string; version: string }> }> {
+    const url = new URL(sbomRef);
+    let rawSbom = "";
+
+    if (url.protocol === "file:") {
+      rawSbom = await readFile(fileURLToPath(url), "utf8");
+    } else if (url.protocol === "http:" || url.protocol === "https:") {
+      const response = await fetch(url, {
+        headers: {
+          accept: "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch SBOM from ${sbomRef}: HTTP ${response.status}`);
+      }
+      rawSbom = await response.text();
+    } else {
+      throw new Error(`Unsupported SBOM protocol: ${url.protocol}`);
+    }
+
+    return this.parseSbom(rawSbom, sbomRef);
+  }
+
+  private parseSbom(
+    rawSbom: string,
+    sbomRef: string,
+  ): { packages: Array<{ name: string; version: string }> } {
+    let parsed: unknown;
     try {
-      if (sbomRef.startsWith("file://")) {
-        // Local file reference - would read from filesystem in production
-        return null;
-      }
-      if (sbomRef.startsWith("http://") || sbomRef.startsWith("https://")) {
-        // Remote URL - would fetch in production
-        return null;
-      }
-      return null;
+      parsed = JSON.parse(rawSbom);
     } catch {
+      throw new Error(`Failed to parse SBOM from ${sbomRef}: content is not valid JSON`);
+    }
+
+    const packages = this.extractPackages(parsed);
+    if (packages == null) {
+      throw new Error(`Failed to parse SBOM from ${sbomRef}: unsupported SBOM shape`);
+    }
+
+    return { packages };
+  }
+
+  private extractPackages(value: unknown): Array<{ name: string; version: string }> | null {
+    if (!isRecord(value)) {
       return null;
     }
+
+    if (Array.isArray(value.packages)) {
+      return value.packages.flatMap((pkg) => this.normalizePackageRecord(pkg, ["name", "packageName"], ["version", "versionInfo"]));
+    }
+
+    if (Array.isArray(value.components)) {
+      return value.components.flatMap((component) => this.normalizePackageRecord(component, ["name"], ["version"]));
+    }
+
+    return null;
+  }
+
+  private normalizePackageRecord(
+    candidate: unknown,
+    nameKeys: readonly string[],
+    versionKeys: readonly string[],
+  ): Array<{ name: string; version: string }> {
+    if (!isRecord(candidate)) {
+      return [];
+    }
+
+    const name = this.readFirstString(candidate, nameKeys);
+    const version = this.readFirstString(candidate, versionKeys);
+    if (name == null || version == null) {
+      return [];
+    }
+
+    return [{ name, version }];
+  }
+
+  private readFirstString(record: Record<string, unknown>, keys: readonly string[]): string | null {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+    return null;
   }
 
   /**
@@ -363,6 +436,10 @@ function algorithmToNodeAlg(alg: string): string {
       // Default to ed25519 for unknown algorithms (common for plugin signatures)
       return "ed25519";
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 export type PluginType = "tool" | "adapter" | "retriever" | "evaluator";
@@ -561,7 +638,7 @@ export async function definePlugin(options: DefinePluginOptions): Promise<Plugin
   // If sbomRef is present but scan fails or reveals critical/high vulnerabilities, reject.
   if (result.sbomRef != null) {
     const sbomVerification = await verifySbomRef(result.sbomRef);
-    if (!sbomVerification.valid) {
+    if (sbomVerification.scanErrors.length > 0) {
       throw new ValidationError(
         "plugin_sdk.sbom_verification_failed",
         `SBOM verification failed: ${sbomVerification.scanErrors.join("; ")}`,
@@ -574,6 +651,13 @@ export async function definePlugin(options: DefinePluginOptions): Promise<Plugin
         "plugin_sdk.sbom_critical_vulnerabilities",
         `SBOM contains critical/high vulnerabilities: ${criticalVulns.map((v) => v.id).join(", ")}`,
         { details: { pluginId: result.pluginId, sbomRef: result.sbomRef, vulnerabilities: criticalVulns } },
+      );
+    }
+    if (!sbomVerification.valid) {
+      throw new ValidationError(
+        "plugin_sdk.sbom_verification_failed",
+        "SBOM verification failed without detailed scan errors",
+        { details: { pluginId: result.pluginId, sbomRef: result.sbomRef } },
       );
     }
   }

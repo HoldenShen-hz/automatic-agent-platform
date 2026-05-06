@@ -327,6 +327,7 @@ test("validateExecutableContract accepts valid NodeAttemptReceipt", () => {
     receiptKind: "tool",
     status: "succeeded",
     duration: 500,
+    errorDetail: "",
   });
 
   const validated = validateExecutableContract("NodeAttemptReceipt", receipt);

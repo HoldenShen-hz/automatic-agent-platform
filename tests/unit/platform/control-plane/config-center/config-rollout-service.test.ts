@@ -71,7 +71,7 @@ test.describe("ConfigRolloutService", () => {
     assert.equal(promoted!.currentPercentage, 5);
   });
 
-  test("canary progression through 5% then 25% then 50% before FULL", () => {
+  test("canary progression through 5% then 10% then FULL", () => {
     const service = new ConfigRolloutService();
 
     const rollout = service.startRollout("test.config", "platform", null, 100);
@@ -82,23 +82,17 @@ test.describe("ConfigRolloutService", () => {
     assert.equal(stage1.stage.phase, RolloutPhase.CANARY);
     assert.equal(stage1.currentPercentage, 5);
 
-    // Promote 2: CANARY (5%) -> CANARY_25 (25%)
+    // Promote 2: CANARY (5%) -> CANARY_10 (10%)
     const stage2 = service.promoteRollout(rollout.rolloutId);
     assert.ok(stage2);
-    assert.equal(stage2.stage.phase, RolloutPhase.CANARY_25);
-    assert.equal(stage2.currentPercentage, 25);
+    assert.equal(stage2.stage.phase, RolloutPhase.CANARY_10);
+    assert.equal(stage2.currentPercentage, 10);
 
-    // Promote 3: CANARY_25 (25%) -> HALF (50%)
+    // Promote 3: CANARY_10 (10%) -> FULL (100%)
     const stage3 = service.promoteRollout(rollout.rolloutId);
     assert.ok(stage3);
-    assert.equal(stage3.stage.phase, RolloutPhase.HALF);
-    assert.equal(stage3.currentPercentage, 50);
-
-    // Promote 4: HALF (50%) -> FULL (100%)
-    const stage4 = service.promoteRollout(rollout.rolloutId);
-    assert.ok(stage4);
-    assert.equal(stage4.stage.phase, RolloutPhase.FULL);
-    assert.equal(stage4.currentPercentage, 100);
+    assert.equal(stage3.stage.phase, RolloutPhase.FULL);
+    assert.equal(stage3.currentPercentage, 100);
   });
 
   test("autoProgressRollouts respects health gates before progression", () => {
@@ -119,7 +113,15 @@ test.describe("ConfigRolloutService", () => {
   });
 
   test("autoProgressRollouts advances when health gates pass", async () => {
-    const service = new ConfigRolloutService();
+    // Use custom stages with minDurationMs: 0 to test autoProgress without waiting
+    const service = new ConfigRolloutService({
+      stages: [
+        { phase: RolloutPhase.PENDING, percentage: 0, minDurationMs: 0, autoProgress: false },
+        { phase: RolloutPhase.CANARY, percentage: 5, minDurationMs: 0, autoProgress: true },
+        { phase: RolloutPhase.CANARY_10, percentage: 10, minDurationMs: 0, autoProgress: false },
+        { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },
+      ],
+    });
 
     const rollout = service.startRollout("test.config", "platform", null, 100);
 
@@ -138,12 +140,8 @@ test.describe("ConfigRolloutService", () => {
 
     const currentRollout = service.getActiveRollout("test.config", "platform", null);
     assert.ok(currentRollout);
-    // Should auto-progress to next stage
-    assert.ok(
-      currentRollout!.stage.phase === RolloutPhase.CANARY_25 ||
-      currentRollout!.stage.phase === RolloutPhase.HALF ||
-      currentRollout!.stage.phase === RolloutPhase.FULL
-    );
+    // Should auto-progress to CANARY_10 since health gates passed
+    assert.equal(currentRollout!.stage.phase, RolloutPhase.CANARY_10);
   });
 
   test("recordHealthCheck correctly evaluates gates", () => {

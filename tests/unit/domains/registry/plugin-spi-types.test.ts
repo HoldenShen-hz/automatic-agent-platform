@@ -10,7 +10,7 @@ import {
 } from "../../../../src/domains/registry/plugin-spi.js";
 
 test("PluginSpiTypeSchema accepts valid types", () => {
-  const types = ["retriever", "validator", "planner", "presenter", "adapter"] as const;
+  const types = ["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"] as const;
   for (const type of types) {
     const result = PluginSpiTypeSchema.parse(type);
     assert.equal(result, type);

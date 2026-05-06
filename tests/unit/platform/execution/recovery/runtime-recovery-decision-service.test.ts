@@ -56,7 +56,7 @@ function createMockStore(overrides: {
   };
   event?: {
     insertEvent?: () => void;
-    listEventsForTask?: () => Array<{ id: string; eventType: string; eventTier?: string; payloadJson?: string; traceId?: string | null }>;
+    listEventsForTask?: () => { events: Array<{ id: string; eventType: string; eventTier?: string; payloadJson?: string; traceId?: string | null }> };
   };
   operations?: {
     buildRuntimeRecoveryView?: () => RuntimeRecoveryCandidate[];
@@ -89,7 +89,7 @@ function createMockStore(overrides: {
     },
     event: {
       insertEvent: overrides.event?.insertEvent ?? (() => {}),
-      listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
+      listEventsForTask: overrides.event?.listEventsForTask ?? (() => ({ events: [] })),
     },
     execution: {
       updateExecutionFailure: overrides.execution?.updateExecutionFailure ?? (() => {}),
@@ -287,7 +287,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action", () => {
     },
     event: {
       insertEvent: () => { eventInserted = true; },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -332,7 +332,7 @@ test("RuntimeRecoveryDecisionService.apply handles cancel action with precheck_d
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -365,7 +365,7 @@ test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action", () 
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -450,7 +450,7 @@ test("RuntimeRecoveryDecisionService.decide records decision event", () => {
     },
     event: {
       insertEvent: () => { eventInserted = true; },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -490,7 +490,7 @@ test("RuntimeRecoveryDecisionService.apply records decision and action events", 
     },
     event: {
       insertEvent: () => { events.push("event"); },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -532,7 +532,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial as cancel action", 
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -567,7 +567,7 @@ test("RuntimeRecoveryDecisionService leaves active execution unapplied when no t
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -627,7 +627,7 @@ test("RuntimeRecoveryDecisionService handles move_dead_letter with execution_err
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -661,7 +661,7 @@ test("RuntimeRecoveryDecisionService deadLetter contains retry count from execut
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -709,7 +709,7 @@ test("RuntimeRecoveryDecisionService handles precheck denial reason as cancel", 
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -750,7 +750,7 @@ test("RuntimeRecoveryDecisionService preserves null execution error message when
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -778,7 +778,7 @@ test("RuntimeRecoveryDecisionService.decide uses default decidedBy when not spec
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -817,7 +817,7 @@ test("RuntimeRecoveryDecisionService.apply uses default decidedBy when not speci
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -850,7 +850,7 @@ test("RuntimeRecoveryDecisionService.apply records dead letter event with correc
       insertEvent: (event: { payloadJson: string }) => {
         eventPayload = JSON.parse(event.payloadJson);
       },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -901,7 +901,7 @@ test("RuntimeRecoveryDecisionService.apply records cancellation event with corre
           eventPayload = JSON.parse(event.payloadJson);
         }
       },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -945,7 +945,7 @@ test("RuntimeRecoveryDecisionService handles cancel action with existing lastErr
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -972,7 +972,7 @@ test("RuntimeRecoveryDecisionService.decide records decision event before return
     },
     event: {
       insertEvent: (event: { eventType: string }) => { eventTypes.push(event.eventType); },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -1011,7 +1011,7 @@ test("RuntimeRecoveryDecisionService handles execution with traceId null in even
     },
     event: {
       insertEvent: () => { /* Should not throw */ },
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -1044,7 +1044,7 @@ test("RuntimeRecoveryDecisionService handles decision for move_dead_letter prese
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -1078,7 +1078,7 @@ test("RuntimeRecoveryDecisionService handles apply when execution traceId differ
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -1116,7 +1116,7 @@ test("RuntimeRecoveryDecisionService handles dead letter with null lastErrorMess
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       recordFailureMemory: () => {},
@@ -1151,7 +1151,7 @@ test("RuntimeRecoveryDecisionService handles dead letter memory recording", () =
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     memory: {
       insertMemory: (record: { taskId: string | null; executionId: string | null; agentId: string | null; createdAt: string; contentJson: string }) => {
@@ -1192,7 +1192,7 @@ test("RuntimeRecoveryDecisionService handles decision for resume_same_worker act
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);
@@ -1226,7 +1226,7 @@ test("RuntimeRecoveryDecisionService.apply handles resume_same_worker (no-op act
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
   });
   const service = new RuntimeRecoveryDecisionService(db, store);

@@ -12,6 +12,7 @@ import {
   type ConfigDriftReport,
   type ConfigDriftFinding,
 } from "../../../../../src/platform/control-plane/config-center/config-drift-reconciler.js";
+import type { DurableEventBus } from "../../../../../src/platform/five-plane-state-evidence/events/durable-event-bus.js";
 
 test("ConfigDriftReconciler.reconcile detects drift between baseline and observed", () => {
   const reconciler = new ConfigDriftReconciler();
@@ -351,4 +352,76 @@ test("ConfigDriftReconciler sets blocking flag when any finding is blocking", ()
   assert.ok(report.blocking);
   assert.ok(report.findings.some(f => f.severity === "warning"));
   assert.ok(report.findings.some(f => f.severity === "blocking"));
+});
+
+test("ConfigDriftReconciler.reconcile emits fail-closed directive for blocking drift", () => {
+  const directives: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
+  const reconciler = new ConfigDriftReconciler({
+    directiveSink: {
+      emitOperationalDirective(directive) {
+        directives.push(directive as unknown as Record<string, unknown>);
+      },
+      emitDecisionDirective() {
+        assert.fail("blocking drift should not emit decision directives");
+      },
+    },
+    eventBus: {
+      publish(event) {
+        events.push(event as unknown as Record<string, unknown>);
+      },
+    } as unknown as DurableEventBus,
+    incidentSeverityThreshold: "blocking",
+  });
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { "sandbox.mode": "workspace" },
+  };
+  const observed: ConfigDriftSource = {
+    sourceName: "runtime",
+    values: { "sandbox.mode": "none" },
+  };
+
+  const report = reconciler.reconcile({
+    baseline,
+    observed: [observed],
+    generatedAt: new Date().toISOString(),
+  });
+
+  assert.strictEqual(report.enforcementActions.length, 1);
+  assert.strictEqual(report.enforcementActions[0]?.status, "issued");
+  assert.strictEqual(report.enforcementActions[0]?.directiveType, "pause");
+  assert.deepStrictEqual(report.enforcementActions[0]?.findingKeys, ["sandbox.mode"]);
+  assert.strictEqual(directives.length, 1);
+  assert.strictEqual(directives[0]?.type, "pause");
+  assert.strictEqual(directives[0]?.reason, "config_drift.fail_closed");
+  assert.strictEqual(events.length, 1);
+  assert.strictEqual(events[0]?.eventType, "config.drift_detected");
+  assert.deepStrictEqual(
+    (events[0]?.payload as { enforcementActions?: unknown[] }).enforcementActions,
+    report.enforcementActions,
+  );
+});
+
+test("ConfigDriftReconciler.reconcile reports skipped fail-closed enforcement when directive sink is missing", () => {
+  const reconciler = new ConfigDriftReconciler();
+  const baseline: ConfigDriftSource = {
+    sourceName: "defaults",
+    values: { "egress.restrictions": "strict" },
+  };
+  const observed: ConfigDriftSource = {
+    sourceName: "runtime",
+    values: { "egress.restrictions": "open" },
+  };
+
+  const report = reconciler.reconcile({
+    baseline,
+    observed: [observed],
+    generatedAt: new Date().toISOString(),
+  });
+
+  assert.strictEqual(report.enforcementActions.length, 1);
+  assert.strictEqual(report.enforcementActions[0]?.status, "skipped_no_sink");
+  assert.strictEqual(report.enforcementActions[0]?.directiveType, "pause");
+  assert.deepStrictEqual(report.enforcementActions[0]?.findingKeys, ["egress.restrictions"]);
 });

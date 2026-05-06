@@ -132,13 +132,13 @@ test("SESSION_STATUSES is readonly tuple", () => {
 
 // EXECUTION_STATUSES tests
 test("EXECUTION_STATUSES contains all expected states", () => {
-  const expected = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+  const expected = ["created", "queued", "dispatching", "prechecking", "executing", "paused", "recovering", "timed_out", "blocked", "succeeded", "failed", "cancelled", "superseded"];
   assert.deepEqual(EXECUTION_STATUSES, expected);
 });
 
 test("EXECUTION_STATUSES is readonly tuple", () => {
   assert.ok(Array.isArray(EXECUTION_STATUSES));
-  assert.equal(EXECUTION_STATUSES.length, 8);
+  assert.equal(EXECUTION_STATUSES.length, 13);
 });
 
 // APPROVAL_STATUSES tests

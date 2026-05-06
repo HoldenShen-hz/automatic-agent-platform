@@ -91,8 +91,10 @@ test("EscalationService triggers panic_stop for critical production", () => {
   }));
 
   assert.equal(decision.decision, "panic_stop");
-  assert.equal(decision.reasonCode, "escalation.critical_prod_stop");
+  assert.equal(decision.reasonCode, "panic.cascade_halt:test.reason");
   assert.equal(decision.requiresOperatorAction, true);
+  assert.match(decision.panicDirectiveId ?? "", /^panic_/);
+  assert.equal(service.getActivePanic("tenant/tenant_test")?.directive.requiredApprovers.length, 2);
 });
 
 test("EscalationService priority: panic_stop > takeover > approval > none", () => {
@@ -175,7 +177,47 @@ test("EscalationService reasonCode is set correctly for each decision type", () 
     riskLevel: "critical",
     affectsProduction: true,
   }));
-  assert.equal(panicDecision.reasonCode, "escalation.critical_prod_stop");
+  assert.equal(panicDecision.reasonCode, "panic.cascade_halt:test.reason");
+});
+
+test("EscalationService creates approval requests with fail-closed timeout policy", () => {
+  const createRequestCalls: Array<Record<string, unknown>> = [];
+  const approvalService = {
+    createRequest(input: Record<string, unknown>) {
+      createRequestCalls.push(input);
+      return { approvalId: "approval_123" };
+    },
+  };
+  const service = new EscalationService(undefined, approvalService as never);
+
+  const decision = service.decide(createEscalationRequest({
+    riskLevel: "high",
+    stage: "plan",
+    estimatedCostUsd: 12,
+  }));
+
+  assert.equal(decision.decision, "approval");
+  assert.equal(decision.approvalRequestId, "approval_123");
+  assert.equal(createRequestCalls.length, 1);
+  assert.equal(createRequestCalls[0]?.timeoutPolicy, "reject");
+});
+
+test("EscalationService honors request-specific cost threshold overrides", () => {
+  const service = new EscalationService();
+
+  const belowCustomThreshold = service.decide(createEscalationRequest({
+    estimatedCostUsd: 10,
+    costThresholdUsd: 50,
+    riskLevel: "low",
+  }));
+  assert.equal(belowCustomThreshold.decision, "none");
+
+  const aboveCustomThreshold = service.decide(createEscalationRequest({
+    estimatedCostUsd: 50,
+    costThresholdUsd: 50,
+    riskLevel: "low",
+  }));
+  assert.equal(aboveCustomThreshold.decision, "approval");
 });
 
 test("EscalationService requiresOperatorAction matches decision severity", () => {

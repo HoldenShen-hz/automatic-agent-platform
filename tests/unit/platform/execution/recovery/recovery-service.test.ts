@@ -24,13 +24,15 @@ function createMockStore(overrides: {
   };
   listBlockedRunsAwaitingApproval?: () => RuntimeRecoveryRecord[];
   event?: {
-    listEventsForTask?: () => Array<{
-      id: string;
-      eventType: string;
-      payloadJson: string;
-      createdAt: string;
-      traceId?: string | null;
-    }>;
+    listEventsForTask?: () => {
+      events: Array<{
+        id: string;
+        eventType: string;
+        payloadJson: string;
+        createdAt: string;
+        traceId?: string | null;
+      }>;
+    };
   };
   artifact?: {
     listArtifactsByTask?: () => Array<{
@@ -56,7 +58,7 @@ function createMockStore(overrides: {
     },
     listBlockedRunsAwaitingApproval: overrides.listBlockedRunsAwaitingApproval ?? (() => []),
     event: {
-      listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
+      listEventsForTask: overrides.event?.listEventsForTask ?? (() => ({ events: [] })),
     },
     artifact: {
       listArtifactsByTask: overrides.artifact?.listArtifactsByTask ?? (() => []),
@@ -441,15 +443,17 @@ test("RuntimeRecoveryService includes recovery events in view", () => {
       buildRuntimeRecoveryView: () => [record],
     },
     event: {
-      listEventsForTask: () => [
-        {
-          id: "event-1",
-          eventType: "recovery:retry_attempted",
-          payloadJson: JSON.stringify({ action: "retry_new_ticket", targetId: "exec-1" }),
-          createdAt: "2025-01-01T12:00:00.000Z",
-          traceId: "trace-1",
-        },
-      ],
+      listEventsForTask: () => ({
+        events: [
+          {
+            id: "event-1",
+            eventType: "recovery:retry_attempted",
+            payloadJson: JSON.stringify({ action: "retry_new_ticket", targetId: "exec-1" }),
+            createdAt: "2025-01-01T12:00:00.000Z",
+            traceId: "trace-1",
+          },
+        ],
+      }),
     },
   });
   const service = new RuntimeRecoveryService(store);
@@ -480,7 +484,7 @@ test("RuntimeRecoveryService limits recovery events to 10 most recent", () => {
       buildRuntimeRecoveryView: () => [record],
     },
     event: {
-      listEventsForTask: () => events,
+      listEventsForTask: () => ({ events }),
     },
   });
   const service = new RuntimeRecoveryService(store);
@@ -501,22 +505,24 @@ test("RuntimeRecoveryService filters non-recovery events", () => {
       buildRuntimeRecoveryView: () => [record],
     },
     event: {
-      listEventsForTask: () => [
-        {
-          id: "event-1",
-          eventType: "execution:started", // Not a recovery event
-          payloadJson: JSON.stringify({}),
-          createdAt: "2025-01-01T12:00:00.000Z",
-          traceId: null,
-        },
-        {
-          id: "event-2",
-          eventType: "recovery:dead_letter_moved", // Recovery event
-          payloadJson: JSON.stringify({ deadLetterId: "dlq-1" }),
-          createdAt: "2025-01-01T13:00:00.000Z",
-          traceId: null,
-        },
-      ],
+      listEventsForTask: () => ({
+        events: [
+          {
+            id: "event-1",
+            eventType: "execution:started", // Not a recovery event
+            payloadJson: JSON.stringify({}),
+            createdAt: "2025-01-01T12:00:00.000Z",
+            traceId: null,
+          },
+          {
+            id: "event-2",
+            eventType: "recovery:dead_letter_moved", // Recovery event
+            payloadJson: JSON.stringify({ deadLetterId: "dlq-1" }),
+            createdAt: "2025-01-01T13:00:00.000Z",
+            traceId: null,
+          },
+        ],
+      }),
     },
   });
   const service = new RuntimeRecoveryService(store);

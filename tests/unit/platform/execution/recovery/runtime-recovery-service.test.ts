@@ -20,13 +20,15 @@ function createMockStore(overrides: {
     listRuntimeRecoveryRecords?: () => RuntimeRecoveryRecord[];
   };
   event?: {
-    listEventsForTask?: () => Array<{
-      id: string;
-      eventType: string;
-      payloadJson: string;
-      createdAt: string;
-      traceId?: string | null;
-    }>;
+    listEventsForTask?: () => {
+      events: Array<{
+        id: string;
+        eventType: string;
+        payloadJson: string;
+        createdAt: string;
+        traceId?: string | null;
+      }>;
+    };
   };
   artifact?: {
     listArtifactsByTask?: () => Array<{
@@ -60,7 +62,7 @@ function createMockStore(overrides: {
     },
     listBlockedRunsAwaitingApproval: () => overrides.operations?.listBlockedRunsAwaitingApproval?.() ?? [],
     event: {
-      listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
+      listEventsForTask: overrides.event?.listEventsForTask ?? (() => ({ events: [] })),
     },
     artifact: {
       listArtifactsByTask: overrides.artifact?.listArtifactsByTask ?? (() => []),
@@ -522,6 +524,7 @@ test("RuntimeRecoveryService infers execution_error reason from error code", () 
     latestErrorCode: "E8-OutOfMemory",
   });
   const store = createMockStore({
+    tasks: [{ id: "task-1", divisionId: null, status: "pending" }],
     operations: {
       buildRuntimeRecoveryView: () => [record],
     },
@@ -555,15 +558,17 @@ test("TaskRuntimeRecoveryView includes recentRecoveryEvents", () => {
       buildRuntimeRecoveryView: () => [record],
     },
     event: {
-      listEventsForTask: () => [
-        {
-          id: "event-1",
-          eventType: "recovery:started",
-          payloadJson: '{"action":"resume_same_worker","targetId":"exec-1"}',
-          createdAt: "2026-04-27T00:00:00.000Z",
-          traceId: "trace-1",
-        },
-      ],
+      listEventsForTask: () => ({
+        events: [
+          {
+            id: "event-1",
+            eventType: "recovery:started",
+            payloadJson: '{"action":"resume_same_worker","targetId":"exec-1"}',
+            createdAt: "2026-04-27T00:00:00.000Z",
+            traceId: "trace-1",
+          },
+        ],
+      }),
     },
   });
   const service = new RuntimeRecoveryService(store);
@@ -580,22 +585,24 @@ test("TaskRuntimeRecoveryView filters non-recovery events", () => {
       buildRuntimeRecoveryView: () => [record],
     },
     event: {
-      listEventsForTask: () => [
-        {
-          id: "event-1",
-          eventType: "platform.execution.started",
-          payloadJson: "{}",
-          createdAt: "2026-04-27T00:00:00.000Z",
-          traceId: null,
-        },
-        {
-          id: "event-2",
-          eventType: "recovery:started",
-          payloadJson: "{}",
-          createdAt: "2026-04-27T00:01:00.000Z",
-          traceId: null,
-        },
-      ],
+      listEventsForTask: () => ({
+        events: [
+          {
+            id: "event-1",
+            eventType: "platform.execution.started",
+            payloadJson: "{}",
+            createdAt: "2026-04-27T00:00:00.000Z",
+            traceId: null,
+          },
+          {
+            id: "event-2",
+            eventType: "recovery:started",
+            payloadJson: "{}",
+            createdAt: "2026-04-27T00:01:00.000Z",
+            traceId: null,
+          },
+        ],
+      }),
     },
   });
   const service = new RuntimeRecoveryService(store);

@@ -1,5 +1,8 @@
-import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { createHash } from "crypto";
+import { dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+
+import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 export interface ComplianceEvidenceRecord {
   readonly evidenceId: string;
@@ -84,11 +87,28 @@ export interface EvidenceCollectionJob {
   readonly results: readonly ComplianceEvidenceRecord[];
 }
 
+export interface ComplianceEvidenceCollectorOptions {
+  readonly storagePath?: string;
+}
+
+interface ComplianceEvidenceCollectorSnapshot {
+  readonly schemaVersion: 1;
+  readonly records: readonly ComplianceEvidenceRecord[];
+  readonly scheduledCollections: readonly ScheduledEvidenceCollection[];
+  readonly lastHashByFramework: Readonly<Record<string, string>>;
+}
+
 export class ComplianceEvidenceCollector {
   private readonly records = new Map<string, ComplianceEvidenceRecord[]>();
   private readonly scheduledCollections = new Map<string, ScheduledEvidenceCollection>();
   /** §R21-32: Last hash per framework for hash chain continuity */
   private readonly lastHashByFramework = new Map<string, string>();
+  private readonly storagePath: string | null;
+
+  public constructor(options: ComplianceEvidenceCollectorOptions = {}) {
+    this.storagePath = options.storagePath ?? null;
+    this.loadSnapshot();
+  }
 
   public collect(
     input: ComplianceEvidenceCollectInput,
@@ -108,6 +128,7 @@ export class ComplianceEvidenceCollector {
     };
     this.lastHashByFramework.set(record.frameworkId, hash);
     this.records.set(record.frameworkId, [...(this.records.get(record.frameworkId) ?? []), record]);
+    this.persistSnapshot();
     return record;
   }
 
@@ -141,6 +162,7 @@ export class ComplianceEvidenceCollector {
       active: true,
     };
     this.scheduledCollections.set(scheduleId, scheduled);
+    this.persistSnapshot();
     return scheduled;
   }
 
@@ -178,6 +200,7 @@ export class ComplianceEvidenceCollector {
       nextRunAt: computeNextRunTime(newLastCollectedAt, schedule.schedule),
     };
     this.scheduledCollections.set(scheduleId, updatedSchedule);
+    this.persistSnapshot();
     return {
       frameworkId: schedule.frameworkId,
       controlIds: [schedule.controlId],
@@ -204,6 +227,7 @@ export class ComplianceEvidenceCollector {
       return false;
     }
     this.scheduledCollections.set(scheduleId, { ...schedule, active: false });
+    this.persistSnapshot();
     return true;
   }
 
@@ -239,6 +263,49 @@ export class ComplianceEvidenceCollector {
     }
     return tampered;
   }
+
+  private loadSnapshot(): void {
+    if (this.storagePath == null || !existsSync(this.storagePath)) {
+      return;
+    }
+    const snapshot = parseSnapshot(readFileSync(this.storagePath, "utf8"));
+    for (const record of snapshot.records) {
+      this.records.set(record.frameworkId, [...(this.records.get(record.frameworkId) ?? []), record]);
+    }
+    for (const scheduled of snapshot.scheduledCollections) {
+      this.scheduledCollections.set(scheduled.scheduleId, scheduled);
+    }
+    for (const [frameworkId, hash] of Object.entries(snapshot.lastHashByFramework)) {
+      this.lastHashByFramework.set(frameworkId, hash);
+    }
+  }
+
+  private persistSnapshot(): void {
+    if (this.storagePath == null) {
+      return;
+    }
+    mkdirSync(dirname(this.storagePath), { recursive: true });
+    const snapshot: ComplianceEvidenceCollectorSnapshot = {
+      schemaVersion: 1,
+      records: [...this.records.values()].flatMap((items) => items),
+      scheduledCollections: [...this.scheduledCollections.values()],
+      lastHashByFramework: Object.fromEntries(this.lastHashByFramework.entries()),
+    };
+    writeFileSync(this.storagePath, JSON.stringify(snapshot, null, 2));
+  }
+}
+
+function parseSnapshot(raw: string): ComplianceEvidenceCollectorSnapshot {
+  const parsed = JSON.parse(raw) as Partial<ComplianceEvidenceCollectorSnapshot> | null;
+  if (parsed == null || parsed.schemaVersion !== 1 || !Array.isArray(parsed.records) || !Array.isArray(parsed.scheduledCollections)) {
+    throw new Error("compliance_evidence.invalid_snapshot");
+  }
+  return {
+    schemaVersion: 1,
+    records: parsed.records,
+    scheduledCollections: parsed.scheduledCollections,
+    lastHashByFramework: parsed.lastHashByFramework ?? {},
+  };
 }
 
 function computeNextRunTime(fromIso: string, schedule: EvidenceCollectionSchedule): string {

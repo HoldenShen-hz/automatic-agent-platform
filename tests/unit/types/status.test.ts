@@ -44,7 +44,7 @@ test("SESSION_STATUSES contains expected values", () => {
 });
 
 test("EXECUTION_STATUSES contains expected values", () => {
-  const expected = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+  const expected = ["created", "queued", "dispatching", "prechecking", "executing", "paused", "recovering", "timed_out", "blocked", "succeeded", "failed", "cancelled", "superseded"];
   assert.deepStrictEqual(EXECUTION_STATUSES, expected);
 });
 

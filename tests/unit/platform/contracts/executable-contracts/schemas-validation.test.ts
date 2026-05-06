@@ -622,6 +622,7 @@ test("TaskDraftSchema accepts valid task draft", () => {
     missingFields: [],
     riskPreview: createValidRiskPreview(),
     ambiguityPolicy: "require_confirmation",
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
   };
   const result = TaskDraftSchema.safeParse(valid);
@@ -639,6 +640,7 @@ test("TaskDraftSchema accepts all valid sources", () => {
       missingFields: [],
       riskPreview: createValidRiskPreview(),
       ambiguityPolicy: "safe_default",
+      domainId: "coding",
       createdAt: "2026-04-01T00:00:00.000Z",
     };
     const result = TaskDraftSchema.safeParse(valid);
@@ -657,6 +659,7 @@ test("TaskDraftSchema accepts all valid ambiguity policies", () => {
       missingFields: [],
       riskPreview: createValidRiskPreview(),
       ambiguityPolicy: policy,
+      domainId: "coding",
       createdAt: "2026-04-01T00:00:00.000Z",
     };
     const result = TaskDraftSchema.safeParse(valid);
@@ -674,6 +677,7 @@ test("TaskDraftSchema allows optional rawInputRef", () => {
     missingFields: [],
     riskPreview: createValidRiskPreview(),
     ambiguityPolicy: "safe_default",
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     rawInputRef: createValidArtifactRef(),
   };
@@ -691,6 +695,7 @@ test("TaskDraftSchema allows optional expiresAt", () => {
     missingFields: [],
     riskPreview: createValidRiskPreview(),
     ambiguityPolicy: "safe_default",
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     expiresAt: "2026-04-02T00:00:00.000Z",
   };
@@ -708,6 +713,7 @@ test("TaskDraftSchema rejects empty taskDraftId", () => {
     missingFields: [],
     riskPreview: createValidRiskPreview(),
     ambiguityPolicy: "safe_default",
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
   };
   const result = TaskDraftSchema.safeParse(invalid);
@@ -724,6 +730,7 @@ test("TaskDraftSchema rejects invalid risk class in riskPreview", () => {
     missingFields: [],
     riskPreview: { riskClass: "invalid", reasons: [] },
     ambiguityPolicy: "safe_default",
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
   };
   const result = TaskDraftSchema.safeParse(invalid);
@@ -744,6 +751,7 @@ test("ConfirmedTaskSpecSchema accepts valid spec", () => {
     inputs: { format: "pdf", includeCharts: true },
     constraintPackRef: "constraint-pack-1",
     riskClass: "medium",
+    domainId: "coding",
     idempotencyKey: "idem_123",
     traceId: "trace_456",
     createdAt: "2026-04-01T00:00:00.000Z",
@@ -762,6 +770,7 @@ test("ConfirmedTaskSpecSchema allows optional confirmationReceipt", () => {
     inputs: {},
     constraintPackRef: "constraint-pack-1",
     riskClass: "low",
+    domainId: "coding",
     confirmationReceipt: {
       receiptId: "receipt_123",
       confirmedBy: createValidPrincipalRef(),
@@ -786,6 +795,7 @@ test("ConfirmedTaskSpecSchema rejects empty goal", () => {
     inputs: {},
     constraintPackRef: "constraint-pack-1",
     riskClass: "low",
+    domainId: "coding",
     idempotencyKey: "idem_123",
     traceId: "trace_456",
     createdAt: "2026-04-01T00:00:00.000Z",
@@ -811,6 +821,8 @@ test("RequestEnvelopeSchema accepts valid envelope", () => {
     budgetIntent: createValidBudgetIntent(),
     policyContext: { version: 1 },
     artifactRefs: [createValidArtifactRef()],
+    domainId: "coding",
+    priority: 0,
     submittedAt: "2026-04-01T00:00:00.000Z",
   };
   const result = RequestEnvelopeSchema.safeParse(valid);
@@ -830,6 +842,8 @@ test("RequestEnvelopeSchema allows empty artifactRefs", () => {
     budgetIntent: createValidBudgetIntent(),
     policyContext: {},
     artifactRefs: [],
+    domainId: "coding",
+    priority: 0,
     submittedAt: "2026-04-01T00:00:00.000Z",
   };
   const result = RequestEnvelopeSchema.safeParse(valid);
@@ -849,6 +863,8 @@ test("RequestEnvelopeSchema rejects empty requestId", () => {
     budgetIntent: createValidBudgetIntent(),
     policyContext: {},
     artifactRefs: [],
+    domainId: "coding",
+    priority: 0,
     submittedAt: "2026-04-01T00:00:00.000Z",
   };
   const result = RequestEnvelopeSchema.safeParse(invalid);
@@ -871,6 +887,7 @@ test("HarnessRunSchema accepts valid harness run", () => {
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
     currentSeq: 0,
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
   };
@@ -906,6 +923,7 @@ test("HarnessRunSchema accepts all valid statuses", () => {
       versionLockId: "vlock_xyz",
       budgetLedgerId: "bledger_uvw",
       currentSeq: 0,
+      domainId: "coding",
       createdAt: "2026-04-01T00:00:00.000Z",
       updatedAt: "2026-04-01T00:00:00.000Z",
     };
@@ -926,6 +944,7 @@ test("HarnessRunSchema allows optional terminal fields", () => {
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
     currentSeq: 42,
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T01:00:00.000Z",
     terminalAt: "2026-04-01T01:30:00.000Z",
@@ -947,6 +966,7 @@ test("HarnessRunSchema rejects negative currentSeq", () => {
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
     currentSeq: -1,
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
   };
@@ -2379,6 +2399,7 @@ test("CONTRACT_ZOD_SCHEMAS schemas can parse their corresponding factory-created
     missingFields: [],
     riskPreview,
     ambiguityPolicy: "safe_default" as const,
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
   };
   const taskDraftResult = CONTRACT_ZOD_SCHEMAS.TaskDraft.safeParse(taskDraftData);
@@ -2396,6 +2417,7 @@ test("CONTRACT_ZOD_SCHEMAS schemas can parse their corresponding factory-created
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
     currentSeq: 0,
+    domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
   };

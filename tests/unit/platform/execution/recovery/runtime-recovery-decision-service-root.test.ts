@@ -30,7 +30,7 @@ function createMinimalMockStore() {
     },
     event: {
       insertEvent: () => {},
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     execution: {
       updateExecutionFailure: () => {},
@@ -91,7 +91,7 @@ function createFullMockStore(overrides: {
     },
     event: {
       insertEvent: overrides.insertEvent ?? (() => {}),
-      listEventsForTask: () => [],
+      listEventsForTask: () => ({ events: [] }),
     },
     execution: {
       updateExecutionFailure: overrides.updateExecutionFailure ?? (() => {}),

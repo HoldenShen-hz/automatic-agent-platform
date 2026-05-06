@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHmac } from "node:crypto";
 
 import {
   registerServiceIdentity,
@@ -22,7 +23,6 @@ import {
 
 // Helper to sign a token for validation
 function signToken(token: { tokenId: string; serviceId: string; expiresAt: number; audience: string }, signingKey: Buffer): string {
-  const { createHmac } = require("node:crypto");
   const payload = `${token.tokenId}.${token.serviceId}.${token.expiresAt}.${token.audience}`;
   return createHmac("sha256", signingKey).update(payload).digest("base64url");
 }

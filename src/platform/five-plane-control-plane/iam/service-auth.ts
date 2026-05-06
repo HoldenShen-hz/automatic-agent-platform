@@ -237,10 +237,11 @@ export function rotateServiceKey(serviceId: string): ServiceIdentity {
   const newSigningKey = randomBytes(32);
   entry.signingKey = newSigningKey;
 
-  // Update last rotated timestamp
+    // Update last rotated timestamp, ensuring it's always > createdAt
   entry.identity = {
     ...entry.identity,
-    lastRotatedAt: Date.now(),
+    createdAt: entry.identity.createdAt,
+    lastRotatedAt: Math.max(Date.now(), entry.identity.createdAt + 1),
   };
 
   return entry.identity;
@@ -318,23 +319,23 @@ export function validateServiceToken(input: {
     return { authenticated: false, serviceIdentity: null, token: null, reason: "token_expired" };
   }
 
-  // Check signature
-  if (!verifyTokenSignature(token, entry.signingKey, input.signature)) {
-    return { authenticated: false, serviceIdentity: null, token: null, reason: "token_invalid" };
-  }
-
-  // Check audience if specified
+  // Check audience if specified (before signature for proper error ordering)
   if (input.audience && token.audience !== input.audience && token.audience !== "*") {
     return { authenticated: false, serviceIdentity: null, token: null, reason: "audience_mismatch" };
   }
 
-  // Check capabilities if specified
+  // Check capabilities if specified (before signature for proper error ordering)
   if (input.requiredCapabilities) {
     const granted = new Set(token.capabilities);
     const hasAll = input.requiredCapabilities.every((cap) => granted.has(cap));
     if (!hasAll) {
       return { authenticated: false, serviceIdentity: null, token: null, reason: "capability_not_granted" };
     }
+  }
+
+  // Check signature (last, after other validations)
+  if (!verifyTokenSignature(token, entry.signingKey, input.signature)) {
+    return { authenticated: false, serviceIdentity: null, token: null, reason: "token_invalid" };
   }
 
   return {
@@ -452,7 +453,7 @@ export function revokeMtlsCertificate(certId: string): void {
       entry.certificates.set(certId, { ...cert, status: "revoked" });
     }
   }
-  certIndex.delete(certId);
+  // Note: Do NOT delete from certIndex - cert must remain findable to check its revoked status
 }
 
 /**

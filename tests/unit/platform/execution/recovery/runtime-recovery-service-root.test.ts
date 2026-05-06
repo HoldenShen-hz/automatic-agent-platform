@@ -17,7 +17,7 @@ function createMockStore(overrides: {
     listStaleRuns?: () => RuntimeRecoveryRecord[];
     buildRuntimeRecoveryView?: () => RuntimeRecoveryRecord[];
   };
-  event?: { listEventsForTask?: () => Array<{ id: string; eventType: string; payloadJson: string; createdAt: string; traceId?: string | null }> };
+  event?: { listEventsForTask?: () => { events: Array<{ id: string; eventType: string; payloadJson: string; createdAt: string; traceId?: string | null }> } };
   artifact?: { listArtifactsByTask?: () => Array<{ artifactId: string; artifactType: string; createdAt: string }> };
   approval?: { listApprovalsByTask?: () => Array<{ id: string; status: string }> };
   dispatch?: { listDeadLettersByTask?: () => Array<{ id: string }> };
@@ -37,7 +37,7 @@ function createMockStore(overrides: {
     },
     listBlockedRunsAwaitingApproval: () => overrides.operations?.listBlockedRunsAwaitingApproval?.() ?? [],
     event: {
-      listEventsForTask: overrides.event?.listEventsForTask ?? (() => []),
+      listEventsForTask: overrides.event?.listEventsForTask ?? (() => ({ events: [] })),
     },
     artifact: {
       listArtifactsByTask: overrides.artifact?.listArtifactsByTask ?? (() => []),

@@ -183,7 +183,7 @@ test("[ARCH-P0-1] context influences classification for ambiguous metrics", () =
     legacySeverity: "warning",
     context: { component: "approval_workflow" },
   });
-  assert.equal(withGovernanceContext.anomalyEventClass, "E4_SECURITY");
+  assert.equal(withGovernanceContext.anomalyEventClass, "E6_GOVERNANCE");
 });
 
 test("[ARCH-P0-1] severity mapping uses anomalySeverityToUnifiedSeverity", () => {

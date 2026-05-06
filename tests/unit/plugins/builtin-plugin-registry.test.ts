@@ -37,7 +37,7 @@ test("builtin plugin registry exposes builtin factories and presence checks", ()
   const pluginIds = listBuiltinPluginIds();
   assert.ok(pluginIds.includes("plugin.coding.retriever"));
   assert.ok(pluginIds.includes("plugin.coding.presenter"));
-  assert.ok(pluginIds.includes("plugin.core.basic-evaluator"));
+  assert.ok(pluginIds.includes("plugin.core.basic-validator"));
   assert.ok(pluginIds.includes("plugin.core.basic-planner"));
   assert.ok(pluginIds.includes("plugin.shared.github_adapter"));
 
@@ -47,7 +47,7 @@ test("builtin plugin registry exposes builtin factories and presence checks", ()
   const presenter = createBuiltinPlugin("plugin.coding.presenter");
   assert.ok(presenter);
   assert.equal(presenter?.spiType, "presenter");
-  assert.equal(createBuiltinPlugin("plugin.core.basic-evaluator")?.spiType, "validator");
+  assert.equal(createBuiltinPlugin("plugin.core.basic-validator")?.spiType, "validator");
   assert.equal(createBuiltinPlugin("plugin.core.basic-planner")?.spiType, "planner");
   assert.equal(createBuiltinPlugin("plugin.missing"), null);
 });
@@ -66,7 +66,7 @@ test("builtin plugin registry has multiple plugin categories", () => {
 });
 
 test("builtin validator and planner plugins provide useful default behavior", async () => {
-  const validator = createBuiltinPlugin("plugin.core.basic-evaluator");
+  const validator = createBuiltinPlugin("plugin.core.basic-validator");
   const planner = createBuiltinPlugin("plugin.core.basic-planner");
   assert.equal(validator?.spiType, "validator");
   assert.equal(planner?.spiType, "planner");

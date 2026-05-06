@@ -1,4 +1,6 @@
+import { createOperationalDirective, type OperationalDirective } from "../../contracts/control-directive/index.js";
 import type { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
+import type { ControlPlaneDirectiveSink } from "../control-plane-directive-sink.js";
 
 export interface ConfigDriftSource {
   readonly sourceName: "defaults" | "environment" | "runtime" | "run_version_lock";
@@ -13,11 +15,20 @@ export interface ConfigDriftFinding {
   readonly severity: "warning" | "blocking";
 }
 
+export interface ConfigDriftEnforcementAction {
+  readonly action: "emit_operational_directive";
+  readonly status: "issued" | "skipped_no_sink";
+  readonly directiveType: OperationalDirective["type"];
+  readonly reasonCode: "config_drift.fail_closed";
+  readonly findingKeys: readonly string[];
+}
+
 export interface ConfigDriftReport {
   readonly generatedAt: string;
   readonly baselineSource: ConfigDriftSource["sourceName"];
   readonly findings: readonly ConfigDriftFinding[];
   readonly blocking: boolean;
+  readonly enforcementActions: readonly ConfigDriftEnforcementAction[];
 }
 
 /**
@@ -26,6 +37,8 @@ export interface ConfigDriftReport {
 export interface ConfigDriftReconcilerOptions {
   /** Event bus for emitting drift incidents */
   eventBus?: DurableEventBus | null;
+  /** Directive sink for fail-closed enforcement */
+  directiveSink?: ControlPlaneDirectiveSink | null;
   /** Minimum severity to trigger incident */
   incidentSeverityThreshold?: "warning" | "blocking";
 }
@@ -40,6 +53,7 @@ interface ConfigDriftDetectedPayload extends Record<string, unknown> {
   readonly findingCount: number;
   readonly blockingCount: number;
   readonly findings: readonly ConfigDriftFinding[];
+  readonly enforcementActions: readonly ConfigDriftEnforcementAction[];
 }
 
 /**
@@ -133,10 +147,12 @@ function determineFindingSeverity(
  */
 export class ConfigDriftReconciler {
   private readonly eventBus: DurableEventBus | null;
+  private readonly directiveSink: ControlPlaneDirectiveSink | null;
   private readonly incidentSeverityThreshold: "warning" | "blocking";
 
   public constructor(options: ConfigDriftReconcilerOptions = {}) {
     this.eventBus = options.eventBus ?? null;
+    this.directiveSink = options.directiveSink ?? null;
     this.incidentSeverityThreshold = options.incidentSeverityThreshold ?? "warning";
   }
 
@@ -165,11 +181,13 @@ export class ConfigDriftReconciler {
       }
     }
 
+    const blockingFindings = findings.filter((finding) => finding.severity === "blocking");
     const report: ConfigDriftReport = {
       generatedAt: input.generatedAt,
       baselineSource: input.baseline.sourceName,
       findings,
-      blocking: findings.some((finding) => finding.severity === "blocking"),
+      blocking: blockingFindings.length > 0,
+      enforcementActions: this.enforceFailClosed(blockingFindings),
     };
 
     // §24.2/R15-77: Emit config.drift_detected incident when drift is detected
@@ -203,11 +221,53 @@ export class ConfigDriftReconciler {
       findingCount: report.findings.length,
       blockingCount: report.findings.filter((f) => f.severity === "blocking").length,
       findings: report.findings,
+      enforcementActions: report.enforcementActions,
     };
 
     this.eventBus.publish({
       eventType: "config.drift_detected",
       payload,
     });
+  }
+
+  private enforceFailClosed(
+    blockingFindings: readonly ConfigDriftFinding[],
+  ): readonly ConfigDriftEnforcementAction[] {
+    if (blockingFindings.length === 0) {
+      return [];
+    }
+
+    if (this.directiveSink == null) {
+      return [{
+        action: "emit_operational_directive",
+        status: "skipped_no_sink",
+        directiveType: "pause",
+        reasonCode: "config_drift.fail_closed",
+        findingKeys: blockingFindings.map((finding) => finding.key),
+      }];
+    }
+
+    this.directiveSink.emitOperationalDirective(createOperationalDirective({
+      type: "pause",
+      issuedBy: {
+        principalId: "config-drift-reconciler",
+        tenantId: "system",
+        roles: ["system", "control_plane"],
+      },
+      reason: "config_drift.fail_closed",
+      params: {
+        blocking: true,
+        findingKeys: blockingFindings.map((finding) => finding.key),
+        findings: blockingFindings,
+      },
+    }));
+
+    return [{
+      action: "emit_operational_directive",
+      status: "issued",
+      directiveType: "pause",
+      reasonCode: "config_drift.fail_closed",
+      findingKeys: blockingFindings.map((finding) => finding.key),
+    }];
   }
 }
