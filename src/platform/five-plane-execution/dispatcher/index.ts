@@ -301,6 +301,27 @@ class MultiStepToolRegistry {
     }
   }
 
+  private checkEgressAllowed(toolName: string, args: Record<string, unknown>): { allowed: boolean; reasonCode: string | null } {
+    // R4-31 (INV-SANDBOX): Check network egress policy for web tools
+    // These tools make external network calls and need egress validation
+    const policyService = getGlobalNetworkEgressPolicyService();
+    let url = "";
+
+    if (toolName === "web_fetch") {
+      url = args.url as string;
+    } else if (toolName === "web_search") {
+      // For web_search, use the query as the target for egress check
+      // The actual search will be performed on the configured search engine
+      url = `search:${args.query as string}`;
+    }
+
+    const decision = policyService.evaluate(url);
+    return {
+      allowed: decision.allowed,
+      reasonCode: decision.reasonCode,
+    };
+  }
+
   private assertSandboxAllowed(toolName: string, args: Record<string, unknown>): void {
     // R4-31 (INV-SANDBOX): Enforce sandbox policy before tool execution
     // R4-31: The hardcoded empty policy for todo_write was incorrect.

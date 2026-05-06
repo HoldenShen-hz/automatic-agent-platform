@@ -398,7 +398,16 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       subjectType: "agent",
       subjectId: "agent_general_executor",
       action: "invoke_tool",
-      riskCategory: "cost_sensitive",
+      riskCategory: (() => {
+          // R4-32 (INV-APPROVAL): Derive actual risk category from tool metadata
+          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.stepId ?? "todo_write";
+          const riskLevels: Record<string, "low" | "medium" | "high" | "critical"> = {
+            web_fetch: "medium", web_search: "medium", git: "high", spawn_agent: "high",
+            batch_tool: "medium", todo_write: "low", repo_map: "low", question: "low",
+          };
+          const riskLevel = riskLevels[toolName] ?? "medium";
+          return mapToolRiskToPolicyCategory(riskLevel);
+        })(),
       mode: "auto",
       stage: "execute",
       estimatedCostUsd: 1,

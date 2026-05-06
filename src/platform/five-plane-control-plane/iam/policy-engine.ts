@@ -124,6 +124,13 @@ export interface PolicyDecisionRequest {
   /** Optional reference to the resource being accessed */
   resourceRef?: string;
 
+  /**
+   * Name of the tool being invoked (for invoke_tool action).
+   * INV-POLICY-001: Used to identify unknown tools for deny-by-default enforcement.
+   * If toolName is provided but not in the known risk registry, the tool is denied.
+   */
+  toolName?: string;
+
   /** Risk category of the action */
   riskCategory:
     | "destructive"
@@ -439,6 +446,20 @@ export class PolicyEngine {
         } else if (input.mode === "auto" && isHighRisk) {
           // In auto mode, high-risk actions require approval
           result = this.escalate(input, budget, "policy.high_risk_requires_approval");
+        } else if (input.mode === "auto" && input.toolName !== undefined && this.getToolRiskLevel(input.toolName) === null) {
+          // INV-POLICY-001: Deny-by-default for unknown tools in auto mode.
+          // If a toolName is provided but not in our risk registry, it is denied.
+          // This prevents unknown/misconfigured tools from silently passing through.
+          result = {
+            decision: "deny",
+            reasonCode: "policy.unknown_tool_denied",
+            requiresApproval: false,
+            enforcedConstraints: {},
+            killSwitchApplied: false,
+            auditPayload: { action: input.action, toolName: input.toolName },
+            evaluatedPolicyVersion: "authoritative.v1",
+            explainSummary: `Tool '${input.toolName}' is not in the allowed tool registry and is denied by default.`,
+          };
         } else if (input.mode === "full-auto" && (isHighRisk || budget.requiresApproval)) {
           // SECURITY FIX R12-13: full-auto must still escalate for high-risk categories.
           // Deny-by-default for destructive/irreversible/prod_affecting even in full-auto.
@@ -526,6 +547,34 @@ export class PolicyEngine {
       evaluatedPolicyVersion: "authoritative.v1",
       explainSummary: "Action requires approval under current risk or budget policy.",
     };
+  }
+
+  /**
+   * Maps a tool name to its risk level.
+   *
+   * INV-POLICY-001 (deny-by-default): Returns null for unknown tools that are not
+   * explicitly mapped. This ensures unknown tools are denied rather than falling
+   * through to "allow_with_constraints".
+   *
+   * @param toolName - Name of the tool to look up
+   * @returns The risk level if known, null if the tool is not in the registry
+   */
+  private getToolRiskLevel(toolName: string): ToolRiskLevel | null {
+    const riskLevels: Record<string, ToolRiskLevel> = {
+      // Explicit high-risk tools
+      git: "high",
+      spawn_agent: "high",
+      // Explicit medium-risk tools
+      web_fetch: "medium",
+      web_search: "medium",
+      batch_tool: "medium",
+      // Explicit low-risk tools
+      todo_write: "low",
+      repo_map: "low",
+      question: "low",
+      read: "low",
+    };
+    return riskLevels[toolName] ?? null;
   }
 }
 

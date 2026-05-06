@@ -460,7 +460,8 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
 
   // R4-30 (INV-FENCING): BudgetReservation requires fencing token for write operations
   // Check via aggregateType or entityId prefix (bdr_)
-  if (command.aggregateType === "BudgetReservation" || command.entityId.startsWith("bdr_")) {
+  const entityIdStr = command.entityId ?? "";
+  if (command.aggregateType === "BudgetReservation" || entityIdStr.startsWith("bdr_")) {
     assertBudgetReservationFencing(command);
   }
 }
@@ -468,7 +469,8 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
 function assertBudgetReservationFencing<TAggregate extends RuntimeStateAggregate>(
   command: RuntimeTransitionCommand<TAggregate>,
 ): void {
-  if (command.aggregateType !== "BudgetReservation" && !command.entityId.startsWith("bdr_")) {
+  const entityIdStr = command.entityId ?? "";
+  if (command.aggregateType !== "BudgetReservation" && !entityIdStr.startsWith("bdr_")) {
     return;
   }
   // BudgetReservation requires fencing token for write operations

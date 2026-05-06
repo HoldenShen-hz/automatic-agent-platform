@@ -31,6 +31,7 @@ import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
 import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { ApprovalPolicyEngine, DEFAULT_APPROVAL_POLICY_BUNDLE, type ApprovalPolicyContext } from "../../five-plane-control-plane/approval-center/approval-policy-engine/index.js";
+import { mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
 import type { IntakeRouteDecision } from "../../orchestration/routing/intake-router.js";
 import type { PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 import { PlanGraphHarnessRuntime, PlanGraphScheduler } from "../../orchestration/harness/runtime/plan-graph-harness-runtime.js";
@@ -229,7 +230,16 @@ export async function executeStepLoop(
         subjectType: "agent",
         subjectId: step.agentId,
         action: "invoke_tool",
-        riskCategory: "cost_sensitive", // Default risk category
+        riskCategory: (() => {
+          // R4-32 (INV-APPROVAL): Derive actual risk category from tool metadata
+          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.stepId ?? "todo_write";
+          const riskLevels: Record<string, "low" | "medium" | "high" | "critical"> = {
+            web_fetch: "medium", web_search: "medium", git: "high", spawn_agent: "high",
+            batch_tool: "medium", todo_write: "low", repo_map: "low", question: "low",
+          };
+          const riskLevel = riskLevels[toolName] ?? "medium";
+          return mapToolRiskToPolicyCategory(riskLevel);
+        })(),
         mode: "auto", // Default mode for multi-step
         stage: "execute",
         estimatedCostUsd: stepBudgetUsd,
