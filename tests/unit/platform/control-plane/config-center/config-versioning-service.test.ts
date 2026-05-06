@@ -72,20 +72,20 @@ test("ConfigVersioningService.getCurrentVersion returns null for non-existent pa
   assert.strictEqual(current, null);
 });
 
-test("ConfigVersioningService.getVersion finds version by ID", () => {
+test("ConfigVersioningService.getVersion finds version by ID", async () => {
   const service = new ConfigVersioningService();
 
-  const created = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
-  const found = service.getVersion(created.versionId);
+  const created = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
+  const found = await service.getVersion(created.versionId);
 
   assert.ok(found);
   assert.strictEqual(found!.versionId, created.versionId);
 });
 
-test("ConfigVersioningService.getVersion returns null for non-existent ID", () => {
+test("ConfigVersioningService.getVersion returns null for non-existent ID", async () => {
   const service = new ConfigVersioningService();
 
-  const found = service.getVersion("non-existent-id");
+  const found = await service.getVersion("non-existent-id");
 
   assert.strictEqual(found, null);
 });
