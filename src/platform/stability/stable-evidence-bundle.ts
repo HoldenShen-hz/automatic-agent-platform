@@ -292,41 +292,54 @@ export async function createStableEvidenceBundle(
     { store },
   );
 
-  // Run doctor, repair, and diagnostics
-  const doctorReport = doctor.run();
-  const repairBefore = checker.run();
-  const repairApplied = await repairService.apply(repairBefore);
-  const repairAfter = checker.run();
-  const repairReport: StableEvidenceRepairReport = {
-    before: repairBefore,
-    applied: repairApplied,
-    after: repairAfter,
-  };
-  const diagnosticSnapshot = diagnostics.buildTaskSnapshot(happyPathSnapshot.task.id);
-  const debugDump = diagnostics.buildDebugDump(happyPathSnapshot.task.id);
-  const takeoverSample = buildTakeoverEvidenceSample(db, store, logger);
-  const drainReport = await eventOps.drainDefaultConsumers();
-  const pendingAckBacklogAfterDrain = store.event.countPendingTier1Acks();
+  let doctorReport!: DoctorReport;
+  let repairReport!: StableEvidenceRepairReport;
+  let diagnosticSnapshot!: ReturnType<DiagnosticsService["buildTaskSnapshot"]>;
+  let debugDump!: ReturnType<DiagnosticsService["buildDebugDump"]>;
+  let takeoverSample!: ReturnType<typeof buildTakeoverEvidenceSample>;
+  let drainReport!: Awaited<ReturnType<EventOpsService["drainDefaultConsumers"]>>;
+  let pendingAckBacklogAfterDrain!: number;
+  let acceptanceLine!: StableAcceptanceLineReport;
 
-  // Write all reports
-  writeJson(artifacts.doctorReportPath, doctorReport);
-  writeJson(artifacts.repairReportPath, repairReport);
-  writeJson(artifacts.diagnosticSnapshotPath, diagnosticSnapshot);
-  writeJson(artifacts.debugDumpPath, debugDump);
-  writeJson(artifacts.takeoverSamplePath, takeoverSample);
-  writeJson(artifacts.drainEventsReportPath, drainReport);
+  try {
+    // Run doctor, repair, and diagnostics
+    doctorReport = doctor.run();
+    const repairBefore = checker.run();
+    const repairApplied = await repairService.apply(repairBefore);
+    const repairAfter = checker.run();
+    repairReport = {
+      before: repairBefore,
+      applied: repairApplied,
+      after: repairAfter,
+    };
+    diagnosticSnapshot = diagnostics.buildTaskSnapshot(happyPathSnapshot.task.id);
+    debugDump = diagnostics.buildDebugDump(happyPathSnapshot.task.id);
+    takeoverSample = buildTakeoverEvidenceSample(db, store, logger);
+    drainReport = await eventOps.drainDefaultConsumers();
+    pendingAckBacklogAfterDrain = store.event.countPendingTier1Acks();
 
-  // Build and write acceptance line report
-  const acceptanceLine = buildStableAcceptanceLineReport({
-    profileName: profile.name,
-    validationReport,
-    soakReport,
-    doctorReport,
-    repairReport,
-  });
-  writeJson(artifacts.acceptanceReportPath, acceptanceLine);
+    // Write all reports
+    writeJson(artifacts.doctorReportPath, doctorReport);
+    writeJson(artifacts.repairReportPath, repairReport);
+    writeJson(artifacts.diagnosticSnapshotPath, diagnosticSnapshot);
+    writeJson(artifacts.debugDumpPath, debugDump);
+    writeJson(artifacts.takeoverSamplePath, takeoverSample);
+    writeJson(artifacts.drainEventsReportPath, drainReport);
 
-  db.close();
+    // Build and write acceptance line report
+    acceptanceLine = buildStableAcceptanceLineReport({
+      profileName: profile.name,
+      validationReport,
+      soakReport,
+      doctorReport,
+      repairReport,
+    });
+    writeJson(artifacts.acceptanceReportPath, acceptanceLine);
+  } finally {
+    eventOps.dispose();
+    repairService.dispose();
+    db.close();
+  }
 
   // Compute validation and soak pass/fail status
   const validationPassed =

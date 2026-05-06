@@ -93,12 +93,15 @@ test("StateTransitionMachine: uses entity kind in error messages", () => {
 
   const machine = new StateTransitionMachine("workflow", transitions);
 
-  const error = assert.throws(
-    () => machine.assertTransition("closed", "open"),
-    WorkflowStateError
-  );
+  let error: unknown;
+  try {
+    machine.assertTransition("closed", "open");
+    assert.fail("Expected error was not thrown");
+  } catch (e) {
+    error = e;
+  }
 
-  assert.ok(error instanceof WorkflowStateError);
+  assert.ok(error instanceof WorkflowStateError, "Expected WorkflowStateError to be thrown");
   assert.ok(error.message.includes("workflow"));
   assert.ok(error.code.includes("workflow"));
 });

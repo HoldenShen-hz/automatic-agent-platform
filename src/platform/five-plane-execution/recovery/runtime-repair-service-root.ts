@@ -116,6 +116,14 @@ export class RuntimeRepairService {
   }
 
   /**
+   * Releases internal event bus resources so short-lived callers can close the
+   * backing database without leaving polling timers behind.
+   */
+  public dispose(): void {
+    this.eventOps.dispose();
+  }
+
+  /**
    * Routes an action to the appropriate handler method based on action type.
    * Each action type has a dedicated private method for execution.
    *

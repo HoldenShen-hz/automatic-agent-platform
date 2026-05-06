@@ -105,7 +105,7 @@ export class ExecutionTicketRepository {
         dispatch_after, attempt, status, assigned_worker_id, lease_id, claimed_at,
         consumed_at, invalidated_at, created_at, updated_at,
         critical_path_rank, scheduler_seed
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ticket.id,
       ticket.executionId,
       ticket.taskId,

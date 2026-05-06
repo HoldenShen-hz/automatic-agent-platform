@@ -116,7 +116,7 @@ export class WorkerSnapshotRepository {
     );
   }
 
-  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord, expectedVersion: number): void {
+  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord, expectedVersion: number = snapshot.version ?? 0): void {
     const result = execute(
       this.conn,
       `INSERT INTO worker_snapshots (
@@ -192,18 +192,18 @@ export class WorkerSnapshotRepository {
       snapshot.serviceIdentity ?? null,
       snapshot.mtlsPeerFingerprint ?? null,
       snapshot.allowedNodeRunTenants != null ? JSON.stringify(snapshot.allowedNodeRunTenants) : null,
-      snapshot.capabilitiesJson,
-      snapshot.runningExecutionsJson,
-      snapshot.maxConcurrency,
-      snapshot.queueAffinity,
-      snapshot.runtimeInstanceId,
-      snapshot.restartedFromRuntimeInstanceId,
-      snapshot.restartGeneration,
-      snapshot.cpuPct,
-      snapshot.memoryMb,
-      snapshot.toolBacklogCount,
-      snapshot.currentStepId,
-      snapshot.lastProgressAt,
+      snapshot.capabilitiesJson ?? "[]",
+      snapshot.runningExecutionsJson ?? "[]",
+      snapshot.maxConcurrency ?? 1,
+      snapshot.queueAffinity ?? null,
+      snapshot.runtimeInstanceId ?? null,
+      snapshot.restartedFromRuntimeInstanceId ?? null,
+      snapshot.restartGeneration ?? 0,
+      snapshot.cpuPct ?? null,
+      snapshot.memoryMb ?? null,
+      snapshot.toolBacklogCount ?? 0,
+      snapshot.currentStepId ?? null,
+      snapshot.lastProgressAt ?? null,
       snapshot.lastHeartbeatAt,
       snapshot.updatedAt,
       expectedVersion,

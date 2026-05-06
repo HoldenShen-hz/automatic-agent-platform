@@ -671,3 +671,15 @@ ALTER TABLE dlq_records ADD COLUMN reason TEXT NULL;
 ALTER TABLE dlq_records ADD COLUMN last_attempt_at TEXT NULL;
 ALTER TABLE dlq_records ADD COLUMN operator_action_log_json TEXT NULL;
 `;
+
+/**
+ * R16-37/R31-22: Migration 53 - Add explicit first/last failure timestamps and
+ * incident linkage so persisted DLQ entries satisfy the full §28.8 operator contract.
+ */
+export const DLQ_INCIDENT_LINKING_SQL = `
+ALTER TABLE dlq_records ADD COLUMN first_failed_at TEXT NULL;
+ALTER TABLE dlq_records ADD COLUMN last_failed_at TEXT NULL;
+ALTER TABLE dlq_records ADD COLUMN linked_incident_id TEXT NULL;
+CREATE INDEX IF NOT EXISTS idx_dlq_records_linked_incident
+  ON dlq_records(linked_incident_id);
+`;

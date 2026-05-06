@@ -6,10 +6,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SdkWorkbenchService } from "../../../../../src/sdk/workbench/index.js";
-import type { ApiClientConfig } from "../../../../../src/sdk/client-sdk/index.js";
-import type { BusinessPackManifest } from "../../../../../src/sdk/pack-sdk/index.js";
-import type { PluginManifest } from "../../../../../src/domains/registry/plugin-spi.js";
+import { SdkWorkbenchService } from "../../../../src/sdk/workbench/index.js";
+import type { ApiClientConfig } from "../../../../src/sdk/client-sdk/index.js";
+import type { BusinessPackManifest } from "../../../../src/sdk/pack-sdk/index.js";
+import type { PluginManifest } from "../../../../src/domains/registry/plugin-spi.js";
 
 const testClientConfig: ApiClientConfig = {
   baseUrl: "https://api.example.com",
@@ -23,9 +23,10 @@ function createTestPlugin(overrides: Partial<PluginManifest> = {}): PluginManife
     pluginId: "test-plugin-1",
     name: "Test Plugin",
     version: "1.0.0",
-    type: "tool",
+    owner: "test-owner",
+    spiTypes: ["tool"],
     capabilityIds: ["test.capability"],
-    lifecycleHooks: [],
+    publicSdkSurface: "test-plugin",
     ...overrides,
   } as PluginManifest;
 }
@@ -34,11 +35,15 @@ function createTestPack(overrides: Partial<BusinessPackManifest> = {}): Business
   return {
     packId: "test-pack",
     version: "1.0.0",
-    domain: "testing",
+    domainId: "testing",
     owner: "test@example.com",
     capabilities: [
       { capabilityKey: "test.cap", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
     ],
+    signing: {
+      keyId: "test-key-id",
+      signature: "test-signature",
+    },
     ...overrides,
   };
 }

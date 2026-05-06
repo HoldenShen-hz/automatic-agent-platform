@@ -444,7 +444,7 @@ test("buildAuthHeaders throws when bearerToken is whitespace only", () => {
 
   assert.throws(
     () => buildAuthHeaders(config),
-    /missing_bearer_token/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_bearer_token",
   );
 });
 
@@ -545,7 +545,7 @@ test("createApiClient throws when baseUrl is missing", () => {
       apiVersion: "v1",
       principal: mockPrincipal,
     }),
-    /missing_base_url/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_base_url",
   );
 });
 
@@ -556,7 +556,7 @@ test("createApiClient throws when baseUrl is whitespace", () => {
       apiVersion: "v1",
       principal: mockPrincipal,
     }),
-    /missing_base_url/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_base_url",
   );
 });
 
@@ -567,7 +567,7 @@ test("createApiClient throws when apiVersion is missing", () => {
       apiVersion: "",
       principal: mockPrincipal,
     }),
-    /missing_api_version/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_api_version",
   );
 });
 
@@ -578,7 +578,7 @@ test("createApiClient throws when principal is missing", () => {
       apiVersion: "v1",
       principal: null as unknown as typeof mockPrincipal,
     }),
-    /missing_principal/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_principal",
   );
 });
 

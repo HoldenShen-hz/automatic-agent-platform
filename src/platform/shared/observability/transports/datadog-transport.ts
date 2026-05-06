@@ -76,7 +76,7 @@ export class DatadogTransport implements LogTransport {
           "DD-API-KEY": this.config.apiKey,
         },
       }, (res) => {
-        if (res.statusCode && res.statusCode >= 400) {
+        if (res?.statusCode != null && res.statusCode >= 400) {
           // Server error - reject so caller can retry
           reject(new Error(`Datadog API error: ${res.statusCode}`));
         } else {

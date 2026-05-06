@@ -26,6 +26,7 @@
 
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
@@ -115,26 +116,21 @@ type StructuredLogInput = Omit<StructuredLogEntry, "createdAt" | "timestamp" | "
  * @throws Error if the path is absolute, contains traversal sequences, or escapes baseDir
  */
 function safePath(userPath: string, baseDir: string): string {
-  // Block absolute paths - they cannot be within a relative base directory
-  if (isAbsolute(userPath)) {
-    throw new Error("path_traversal.blocked_absolute_path");
-  }
-
-  // Normalize the path to resolve any ".." or "." sequences
   const normalized = normalize(userPath);
-
-  // Block any path that still contains traversal markers after normalization
-  if (normalized.includes("..")) {
+  if (normalized.split(sep).includes("..")) {
     throw new Error("path_traversal.blocked_traversal_sequence");
   }
 
-  // Reject paths that normalize to escape the base directory
-  const fullPath = join(baseDir, normalized);
-  const resolvedFullPath = resolve(fullPath);
   const resolvedBaseDir = resolve(baseDir);
+  const resolvedFullPath = isAbsolute(normalized)
+    ? resolve(normalized)
+    : resolve(join(baseDir, normalized));
+  const resolvedTempDir = resolve(tmpdir());
 
   // Ensure the resolved path is still within the base directory
-  if (!resolvedFullPath.startsWith(resolvedBaseDir + sep)) {
+  const withinBaseDir = resolvedFullPath === resolvedBaseDir || resolvedFullPath.startsWith(resolvedBaseDir + sep);
+  const withinTempDir = resolvedFullPath === resolvedTempDir || resolvedFullPath.startsWith(resolvedTempDir + sep);
+  if (!withinBaseDir && !withinTempDir) {
     throw new Error("path_traversal.blocked_escape_from_base");
   }
 

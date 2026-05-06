@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DomainOnboardingService } from "../../../../dist/src/domains/operations/domain-onboarding-service.js";
-import { ValidationError } from "../../../../dist/src/platform/contracts/errors.js";
-import type { DomainRegistryService } from "../../../../dist/src/domains/registry/domain-registry-service.js";
+import { DomainOnboardingService } from "../../../../src/domains/operations/domain-onboarding-service.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
+import type { DomainRegistryService } from "../../../../src/domains/registry/domain-registry-service.js";
 
 // ============================================================================
 // Test helpers and mocks

@@ -7,6 +7,7 @@
 import type { PluginDefinition } from "./plugin-definition.js";
 import type { PluginContextConfig } from "./plugin-context.js";
 import { PluginContext } from "./plugin-context.js";
+import type { PluginLifecycleContext, RegisteredPlugin } from "../../domains/registry/plugin-spi.js";
 
 // Local type definitions to avoid cross-module import issues
 export interface MockLlmConfig {
@@ -57,6 +58,14 @@ export interface MockModelGateway {
 /** Test harness mode - controls execution behavior */
 export type HarnessMode = "live" | "mock" | "replay";
 
+export interface PluginLiveExecutionRequest {
+  input: Record<string, unknown>;
+  context: PluginContext;
+  plugin: PluginDefinition;
+}
+
+export type PluginLiveRunner = (request: PluginLiveExecutionRequest) => Promise<unknown>;
+
 export interface TestHarnessConfig {
   plugin: PluginDefinition;
   mockLlm?: MockLlmConfig;
@@ -65,6 +74,10 @@ export interface TestHarnessConfig {
   mode?: HarnessMode;
   /** Mock model gateway for record/replay testing */
   mockGateway?: MockModelGateway;
+  /** Optional executable runtime binding for live mode. */
+  livePlugin?: RegisteredPlugin;
+  /** Optional live runner for custom plugin host integration. */
+  liveRunner?: PluginLiveRunner;
   timeoutMs?: number;
 }
 
@@ -111,6 +124,10 @@ export class PluginTestHarness {
   private timeoutMs: number;
   private mode: HarnessMode;
   private mockGateway: MockModelGateway | null;
+  private livePlugin: RegisteredPlugin | null;
+  private liveRunner: PluginLiveRunner | null;
+  private livePluginLoaded = false;
+  private livePluginActivated = false;
 
   constructor(config: TestHarnessConfig) {
     this.plugin = config.plugin;
@@ -120,6 +137,8 @@ export class PluginTestHarness {
     // making the test harness ineffective for integration testing.
     this.mode = config.mode ?? "live";
     this.mockGateway = config.mockGateway ?? null;
+    this.livePlugin = config.livePlugin ?? null;
+    this.liveRunner = config.liveRunner ?? null;
     this.timeoutMs = config.timeoutMs ?? 30000;
 
     if (config.mockTools) {
@@ -344,27 +363,133 @@ export class PluginTestHarness {
    * This implementation loads and executes the actual plugin's capabilities.
    */
   private async executeLive(input: Record<string, unknown>): Promise<unknown> {
-    // For live execution, we need a plugin host runtime to load and run plugins.
-    // The PluginDefinition describes the plugin but doesn't contain execution logic.
-    // In a proper test environment, the harness would:
-    // 1. Load the plugin module (via import or dynamic require)
-    // 2. Create a plugin instance via the plugin's factory function
-    // 3. Initialize and execute the plugin with proper context
-    // For now, we attempt to simulate live execution based on plugin type
-    if (this.plugin.type === "tool") {
-      // Tools typically have a execute method via their capabilities
-      // Without a plugin host, we cannot truly execute in live mode
-      throw new Error(
-        `PluginTestHarness: live execution for tool plugins requires a plugin host runtime. ` +
-        `The test harness currently supports mock/replay modes for deterministic testing. ` +
-        `For live execution, deploy the plugin to a running platform or use an integration test environment.`
-      );
+    const context = this.createContext({
+      resourceLimits: {
+        maxMemoryMb: this.plugin.resourceLimits?.maxMemoryMb,
+        maxCpuMs: this.plugin.resourceLimits?.maxCpuMs,
+        maxDurationMs: this.plugin.resourceLimits?.maxDurationMs,
+      },
+    });
+
+    if (this.liveRunner) {
+      return this.liveRunner({ input, context, plugin: this.plugin });
     }
-    // For other plugin types, fall back to a descriptive error
+
+    if (this.livePlugin) {
+      return this.executeLivePlugin(input, context);
+    }
+
     throw new Error(
-      `PluginTestHarness: live execution mode is not yet implemented for ${this.plugin.type} plugins. ` +
-      `Use mock or replay mode for testing.`
+      `PluginTestHarness: live mode requires a bound liveRunner or livePlugin runtime for ${this.plugin.pluginId}.`
     );
+  }
+
+  private async executeLivePlugin(input: Record<string, unknown>, context: PluginContext): Promise<unknown> {
+    const livePlugin = this.livePlugin;
+    if (livePlugin == null) {
+      throw new Error(`PluginTestHarness: no live plugin runtime is configured for ${this.plugin.pluginId}.`);
+    }
+
+    await this.ensureLivePluginReady(livePlugin, context, livePlugin.spiType === "adapter");
+
+    switch (livePlugin.spiType) {
+      case "tool":
+        return livePlugin.execute({
+          taskId: readString(input["taskId"], "plugin-test-task"),
+          toolName: readString(input["toolName"], this.plugin.name),
+          arguments: asRecord(input["arguments"]) ?? input,
+          context: asRecord(input["context"]) ?? context.toRecord(),
+        });
+      case "retriever":
+        return livePlugin.retrieve({
+          taskId: readString(input["taskId"], "plugin-test-task"),
+          intent: readString(input["intent"] ?? input["query"], "plugin-test"),
+          context: asRecord(input["context"]) ?? input,
+          tokenBudget: readNumber(input["tokenBudget"], 1024),
+        });
+      case "validator":
+        {
+          const nodeIdOpt = readOptionalString(input["nodeId"] ?? input["stepId"]);
+          const stepIdOpt = readOptionalString(input["stepId"]);
+          return livePlugin.validate({
+            ...(nodeIdOpt !== undefined && { nodeId: nodeIdOpt }),
+            ...(stepIdOpt !== undefined && { stepId: stepIdOpt }),
+            machineOutput: buildMachineOutput(input),
+            contract: asRecord(input["contract"]) ?? {},
+          });
+        }
+      case "planner":
+        return livePlugin.suggestWorkflow({
+          taskId: readString(input["taskId"], "plugin-test-task"),
+          intent: readString(input["intent"], "plugin-test"),
+          assessment: (input["assessment"] ?? {}) as never,
+        });
+      case "presenter":
+        return livePlugin.formatOutput({
+          machineOutputs: Array.isArray(input["machineOutputs"]) ? input["machineOutputs"] as never[] : [buildMachineOutput(input)],
+          artifacts: Array.isArray(input["artifacts"]) ? input["artifacts"] as never[] : [],
+          audience: readAudience(input["audience"]),
+        });
+      case "evaluator":
+        {
+          const nodeIdOpt = readOptionalString(input["nodeId"] ?? input["stepId"]);
+          const stepIdOpt = readOptionalString(input["stepId"]);
+          return livePlugin.evaluate({
+            taskId: readString(input["taskId"], "plugin-test-task"),
+            ...(nodeIdOpt !== undefined && { nodeId: nodeIdOpt }),
+            ...(stepIdOpt !== undefined && { stepId: stepIdOpt }),
+            machineOutput: buildMachineOutput(input),
+            criteria: asRecord(input["criteria"]) ?? {},
+            context: asRecord(input["context"]) ?? context.toRecord(),
+          });
+        }
+      case "adapter": {
+        if (asRecord(input["credentials"])) {
+          await livePlugin.authenticate(asRecord(input["credentials"]) ?? {});
+        }
+        await this.ensureLivePluginReady(livePlugin, context, false);
+        return livePlugin.execute(
+          readString(input["action"], "execute"),
+          asRecord(input["params"]) ?? input,
+        );
+      }
+      default: {
+        throw new Error(`PluginTestHarness: unsupported live plugin spi type ${(livePlugin as { spiType: string }).spiType}`);
+      }
+    }
+  }
+
+  private async ensureLivePluginReady(
+    livePlugin: RegisteredPlugin,
+    context: PluginContext,
+    deferActivation: boolean,
+  ): Promise<void> {
+    const lifecycleContext = buildLifecycleContext(livePlugin, context);
+
+    if (!this.livePluginLoaded) {
+      if (livePlugin.initialize) {
+        await livePlugin.initialize();
+      }
+      if (livePlugin.onLoad) {
+        await livePlugin.onLoad(lifecycleContext);
+      }
+      this.livePluginLoaded = true;
+    }
+
+    if (deferActivation || this.livePluginActivated) {
+      return;
+    }
+
+    if (livePlugin.onActivate) {
+      await livePlugin.onActivate(lifecycleContext);
+    }
+    if (livePlugin.healthCheck) {
+      const healthy = await livePlugin.healthCheck();
+      if (!healthy) {
+        throw new Error(`PluginTestHarness: live plugin ${livePlugin.pluginId} failed health check.`);
+      }
+    }
+    this.livePluginActivated = true;
   }
 }
 
@@ -385,4 +510,56 @@ function hashInput(input: Record<string, unknown>): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildLifecycleContext(plugin: RegisteredPlugin, context: PluginContext): PluginLifecycleContext {
+  return {
+    pluginId: plugin.pluginId,
+    domainId: "domainId" in plugin ? plugin.domainId : null,
+    capabilityIds: [...(plugin.capabilityIds ?? [])],
+    bindingId: null,
+    config: context.toRecord(),
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readString(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function readAudience(value: unknown): "end_user" | "developer" | "reviewer" | "operator" {
+  return value === "developer" || value === "reviewer" || value === "operator"
+    ? value
+    : "end_user";
+}
+
+function buildMachineOutput(input: Record<string, unknown>): {
+  nodeId?: string | null;
+  nodeRunId?: string | null;
+  attemptId?: string | null;
+  stepId?: string | null;
+  outputRef: string | null;
+  payload: Record<string, unknown>;
+} {
+  return {
+    nodeId: readOptionalString(input["nodeId"]) ?? null,
+    nodeRunId: readOptionalString(input["nodeRunId"]) ?? null,
+    attemptId: readOptionalString(input["attemptId"]) ?? null,
+    stepId: readOptionalString(input["stepId"]) ?? null,
+    outputRef: readOptionalString(input["outputRef"]) ?? null,
+    payload: asRecord(input["payload"]) ?? input,
+  };
 }

@@ -132,23 +132,28 @@ export class FluentdTransport implements LogTransport {
   }
 
   async flush(): Promise<void> {
-    // If socket is not available or not writable, wait for drain event
-    if (!this.socket || !this.socket.writable) {
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          socket.removeListener("drain", onDrain);
-          resolve(); // Don't block on flush if drain doesn't fire
-        }, 5000);
-        const socket = this.socket!;
-        const onDrain = () => {
-          clearTimeout(timeout);
-          resolve();
-        };
-        socket.on("drain", onDrain);
-      });
+    const socket = this.socket;
+    if (!socket) {
+      return Promise.resolve();
     }
-    // Socket is writable, no need to wait for drain
-    return Promise.resolve();
+    if (!socket.writable) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const onDrain = () => {
+        clearTimeout(timeout);
+        socket.removeListener?.("drain", onDrain);
+        resolve();
+      };
+      const timeout = setTimeout(() => {
+        socket.removeListener?.("drain", onDrain);
+        resolve();
+      }, 5000);
+      if (typeof timeout.unref === "function") {
+        timeout.unref();
+      }
+      socket.once?.("drain", onDrain);
+    });
   }
 
   async close(): Promise<void> {

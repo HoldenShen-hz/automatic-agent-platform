@@ -106,6 +106,11 @@ export interface StreamBridgeOptions {
    * @defaultValue 100
    */
   maxReplayFrames?: number;
+  /**
+   * Maximum allowed lag before a client is considered a slow consumer.
+   * @defaultValue 10
+   */
+  slowConsumerLagThreshold?: number;
 }
 
 /**
@@ -231,7 +236,7 @@ export class StreamBridge {
   /** Map of clientId -> streamId they are subscribed to */
   private readonly clientStreamSubscription = new Map<string, string>();
   /** Threshold for slow consumer detection - max sequence lag before marking as slow */
-  private readonly slowConsumerLagThreshold = 10;
+  private readonly slowConsumerLagThreshold: number;
 
   // §10: Transport state tracking for gateway_streaming contract compliance
   /** Transport connection state per stream */
@@ -263,7 +268,9 @@ export class StreamBridge {
   public constructor(options: StreamBridgeOptions = {}) {
     this.options = {
       maxReplayFrames: options.maxReplayFrames ?? 100,
+      slowConsumerLagThreshold: options.slowConsumerLagThreshold ?? 10,
     };
+    this.slowConsumerLagThreshold = this.options.slowConsumerLagThreshold;
   }
 
   // §7.1: Per-connection client management
@@ -623,8 +630,13 @@ export class StreamBridge {
           this.droppedBeforeSequenceByStream.set(frame.streamId, Math.max(previousDropped, removed.sequence));
         }
       } else {
-        // All frames are critical - drop the NEW frame (the one we just appended)
-        // This preserves historical critical events at the cost of losing the new one
+        // When the buffer contains only critical events, keep the full critical
+        // history even if it temporarily exceeds maxReplayFrames.
+        if (CRITICAL_EVENT_TYPES.has(frame.eventType)) {
+          break;
+        }
+        // If the newest frame is droppable and all retained frames are critical,
+        // discard the new frame instead of evicting critical history.
         next.pop();
         break;
       }

@@ -132,13 +132,13 @@ test("SESSION_STATUSES is readonly tuple", () => {
 
 // EXECUTION_STATUSES tests
 test("EXECUTION_STATUSES contains all expected states", () => {
-  const expected = ["created", "queued", "dispatching", "prechecking", "executing", "paused", "recovering", "timed_out", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+  const expected = ["created", "prechecking", "ready", "queued", "dispatching", "executing", "blocked", "paused", "resuming", "recovering", "timed_out", "succeeded", "failed", "cancelled", "superseded"];
   assert.deepEqual(EXECUTION_STATUSES, expected);
 });
 
 test("EXECUTION_STATUSES is readonly tuple", () => {
   assert.ok(Array.isArray(EXECUTION_STATUSES));
-  assert.equal(EXECUTION_STATUSES.length, 13);
+  assert.equal(EXECUTION_STATUSES.length, 15);
 });
 
 // APPROVAL_STATUSES tests
@@ -396,7 +396,7 @@ test("createControlDirective creates directive with minimal input", () => {
       }),
     (error: unknown) =>
       error instanceof ValidationError
-      && error.code === "control_directive.legacy_contract_forbidden",
+      && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -416,7 +416,7 @@ test("createControlDirective accepts all directive types", () => {
         }),
       (error: unknown) =>
         error instanceof ValidationError
-        && error.code === "control_directive.legacy_contract_forbidden",
+        && error.code === "platform_contracts.legacy_control_directive_forbidden",
     );
   }
 });
@@ -435,7 +435,7 @@ test("createControlDirective accepts target scope", () => {
       }),
       (error: unknown) =>
       error instanceof ValidationError
-      && error.code === "control_directive.legacy_contract_forbidden",
+      && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 

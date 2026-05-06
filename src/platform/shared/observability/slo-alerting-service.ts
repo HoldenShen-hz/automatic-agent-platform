@@ -525,10 +525,13 @@ export class SloAlertingService {
     const now = nowIso();
     const slo: SloDefinition = {
       id: newId("slo"),
+      ...input,
+      domainId: input.domainId ?? "default",
+      tenantId: input.tenantId ?? "default",
+      description: input.description ?? "",
       status: "unknown",
       createdAt: now,
       updatedAt: now,
-      ...input,
     };
 
     this.db.connection
@@ -536,7 +539,20 @@ export class SloAlertingService {
         `INSERT INTO slo_definitions (id, domain_id, tenant_id, name, description, sli_kind, target_value, operator, window_minutes, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(slo.id, slo.domainId, slo.tenantId, slo.name, slo.description, slo.sliKind, slo.targetValue, slo.operator, slo.windowMinutes, slo.status, slo.createdAt, slo.updatedAt);
+      .run(
+        slo.id,
+        slo.domainId,
+        slo.tenantId,
+        slo.name,
+        slo.description,
+        slo.sliKind,
+        slo.targetValue,
+        slo.operator,
+        slo.windowMinutes,
+        slo.status,
+        slo.createdAt,
+        slo.updatedAt,
+      );
 
     return slo;
   }

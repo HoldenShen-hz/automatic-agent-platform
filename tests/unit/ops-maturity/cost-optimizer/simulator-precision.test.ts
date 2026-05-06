@@ -5,7 +5,7 @@ import {
   simulateCostOptimization,
   simulateScenarioSavings,
   type CostSimulationScenario,
-} from "../../../../dist/src/ops-maturity/cost-optimizer/simulator/index.js";
+} from "../../../../src/ops-maturity/cost-optimizer/simulator/index.js";
 
 test("simulateScenarioSavings handles very small baseline costs", () => {
   // Edge case: tiny baseline costs that could cause floating-point issues

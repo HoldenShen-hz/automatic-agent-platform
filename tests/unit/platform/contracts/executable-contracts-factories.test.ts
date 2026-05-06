@@ -362,6 +362,7 @@ test("executable-contracts: createConfirmedTaskSpec accepts confirmation receipt
       receiptId: "receipt-1",
       confirmedBy: principal,
       riskClass: "high",
+      state: "confirmed" as const,
       confirmedAt: "2026-04-29T00:00:00.000Z",
     },
   });

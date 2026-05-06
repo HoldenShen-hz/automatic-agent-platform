@@ -22,7 +22,7 @@ test("integration: runSingleTaskExecution completes happy path", async () => {
       dbPath,
       title: "Test Task",
       request: "Say hello",
-      stepOutputOverride: { greeting: "hello" },
+      stepOutputOverride: { result: "hello" },
     });
 
     assert.ok(snapshot);
@@ -31,7 +31,7 @@ test("integration: runSingleTaskExecution completes happy path", async () => {
     assert.equal(snapshot.task.status, "done");
     assert.ok(snapshot.task.outputJson);
     const output = JSON.parse(snapshot.task.outputJson);
-    assert.equal(output.greeting, "hello");
+    assert.equal(output.result, "hello");
   } finally {
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);
@@ -64,8 +64,8 @@ test("integration: runSingleTaskExecution creates task and workflow records", as
     assert.ok(snapshot.task.rootId);
     assert.ok(snapshot.workflow);
     assert.equal(snapshot.workflow.taskId, snapshot.task.id);
-    assert.ok(snapshot.executions);
-    assert.ok(snapshot.executions.length > 0);
+    assert.ok(snapshot.execution);
+    assert.equal(snapshot.execution.taskId, snapshot.task.id);
     assert.ok(snapshot.session);
     assert.equal(snapshot.session.taskId, snapshot.task.id);
   } finally {
@@ -101,9 +101,9 @@ test("integration: runSingleTaskExecution handles admission queue decision", asy
       stepOutputOverride: { result: "queued" },
     });
 
-    // With policy causing queue, task should be paused or queued
+    // Queue path keeps task queued while pausing workflow; reject path cancels task.
     assert.ok(snapshot.task);
-    assert.ok(["paused", "queued", "done"].includes(snapshot.task.status));
+    assert.ok(["queued", "cancelled", "done"].includes(snapshot.task.status));
   } finally {
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);
@@ -127,13 +127,13 @@ test("integration: runSingleTaskExecution persists step output", async () => {
       dbPath,
       title: "Step Output Test",
       request: "Test step output",
-      stepOutputOverride: { summary: "Step summary", data: { key: "value" } },
+      stepOutputOverride: { summary: "Step summary", result: "value" },
     });
 
     assert.ok(snapshot.task);
     const output = JSON.parse(snapshot.task.outputJson);
     assert.equal(output.summary, "Step summary");
-    assert.deepEqual(output.data, { key: "value" });
+    assert.equal(output.result, "value");
   } finally {
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);

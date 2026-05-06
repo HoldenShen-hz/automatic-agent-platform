@@ -44,7 +44,7 @@ test("SESSION_STATUSES contains expected values", () => {
 });
 
 test("EXECUTION_STATUSES contains expected values", () => {
-  const expected = ["created", "queued", "dispatching", "prechecking", "executing", "paused", "recovering", "timed_out", "blocked", "succeeded", "failed", "cancelled", "superseded"];
+  const expected = ["created", "prechecking", "ready", "queued", "dispatching", "executing", "blocked", "paused", "resuming", "recovering", "timed_out", "succeeded", "failed", "cancelled", "superseded"];
   assert.deepStrictEqual(EXECUTION_STATUSES, expected);
 });
 
@@ -121,7 +121,7 @@ test("isExecutionStatus returns true for valid execution statuses", () => {
 });
 
 test("isExecutionStatus returns false for invalid execution statuses", () => {
-  const invalidStatuses = ["running", "queued", "invalid", "", "Created", null, undefined];
+  const invalidStatuses = ["running", "invalid", "", "Created", null, undefined];
   for (const status of invalidStatuses) {
     assert.strictEqual(isExecutionStatus(status as string), false, `"${status}" should not be a valid execution status`);
   }

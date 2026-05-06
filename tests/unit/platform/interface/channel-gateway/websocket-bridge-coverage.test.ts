@@ -390,13 +390,25 @@ test("WebSocketBridge handles ack messages for delivery guarantee", (t) => {
       ws.on("message", (data: Buffer) => {
         const msg = JSON.parse(data.toString());
         if (msg.type === "subscribed") {
-          ws.send(JSON.stringify({ type: "ack", sequenceNum: 0, delivered: true }));
+          bridge.broadcastToTask("task-ack", {
+            eventType: "status_changed",
+            taskId: "task-ack",
+            status: "in_progress",
+            timestamp: new Date().toISOString(),
+          }, "evt-ack-1");
         } else if (msg.type === "task_update") {
-          ws.close();
-          bridge.close().then(() => {
-            server.close();
-            resolve();
-          });
+          ws.send(JSON.stringify({ type: "ack", sequenceNum: msg.sequenceNum, delivered: true }));
+          setTimeout(() => {
+            const serverSideSocket = Array.from((bridge as any).clients.keys())[0];
+            const client = (bridge as any).clients.get(serverSideSocket);
+            assert.equal(client?.lastAcknowledgedSequenceNum, msg.sequenceNum);
+            assert.equal(client?.pendingAcks.has(msg.sequenceNum), false);
+            ws.close();
+            bridge.close().then(() => {
+              server.close();
+              resolve();
+            });
+          }, 20);
         }
       });
 

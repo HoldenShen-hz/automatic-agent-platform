@@ -449,7 +449,7 @@ test("ForkedPluginRuntimeHost.stop handles already stopped child", async () => {
   await host.stop();
 });
 
-test("ForkedPluginRuntimeHost.invoke throws when child is unavailable", async () => {
+test("ForkedPluginRuntimeHost.invoke restarts the child after an explicit stop", async () => {
   const host = new ForkedPluginRuntimeHost({
     pluginId: "plugin.coding.presenter",
     isolation: "forked_process",
@@ -461,11 +461,16 @@ test("ForkedPluginRuntimeHost.invoke throws when child is unavailable", async ()
   await host.start();
   await host.stop();
 
-  // Invoke should throw since child is stopped
-  await assert.rejects(
-    async () => host.invoke("present", createLifecycleContext(), {}),
-    /unavailable/i,
-  );
+  // Current runtime contract allows invoke() to cold-start a fresh child after stop().
+  const output = await host.invoke<{ summary: string }>("present", createLifecycleContext(), {
+    domainId: "coding",
+    machineOutputs: [{ stepId: "step_restart", outputRef: null, payload: { restarted: true } }],
+    artifacts: [],
+    audience: "developer",
+  });
+
+  assert.equal(output.summary, "Completed 1 coding step(s): step_restart");
+  await host.stop();
 });
 
 // =============================================================================

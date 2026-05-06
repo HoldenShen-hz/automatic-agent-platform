@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CostOptimizationService } from "../../../../dist/src/ops-maturity/cost-optimizer/cost-optimization-service.js";
+import { CostOptimizationService } from "../../../../src/ops-maturity/cost-optimizer/cost-optimization-service.js";
 
 test("CostOptimizationService.recordCost increments unsourcedRecordCount for blank decisionRef", () => {
   const service = new CostOptimizationService();

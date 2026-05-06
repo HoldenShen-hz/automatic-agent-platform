@@ -7,7 +7,7 @@ import {
   CostOptimizationService,
   type CostAttributionRecord,
   type CostSubjectType,
-} from "../../../../dist/src/ops-maturity/cost-optimizer/index.js";
+} from "../../../../src/ops-maturity/cost-optimizer/index.js";
 
 function makeCostRecord(overrides: Partial<CostAttributionRecord> & {
   subjectType: CostSubjectType;

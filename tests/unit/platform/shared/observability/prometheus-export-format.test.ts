@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { PrometheusMetricsExporter } from "../../../../../src/platform/shared/observability/prometheus-metrics-exporter.js";
 import { runtimeMetricsRegistry } from "../../../../../src/platform/shared/observability/runtime-metrics-registry.js";
+import { renderMetricsPayload } from "../../../../../src/platform/shared/observability/metrics-server.js";
 
 function createMockMetricsService() {
   return {
@@ -121,7 +122,7 @@ test("PrometheusMetricsExporter - http_request_duration_ms histogram format", ()
   const output = exporter.export();
 
   // Histogram should have bucket, sum, and count
-  assert.match(output, /http_request_duration_ms_bucket\{[^}]*le="[^"]+"\}/);
+  assert.match(output, /http_request_duration_ms_bucket\{le="[^"]+",method="GET",path="\/test",status="200"\}/);
   assert.match(output, /http_request_duration_ms_sum/);
   assert.match(output, /http_request_duration_ms_count/);
 });
@@ -138,7 +139,7 @@ test("PrometheusMetricsExporter - histogram buckets are cumulative", () => {
   const output = exporter.export();
 
   // +Inf bucket should equal total count
-  const infMatch = output.match(/http_request_duration_ms_bucket\{[^}]*le="\+Inf"\} (\d+)/);
+  const infMatch = output.match(/http_request_duration_ms_bucket\{le="\+Inf",method="GET",path="\/test",status="200"\} (\d+)/);
   assert.ok(infMatch, "Should have +Inf bucket");
   assert.equal(parseInt(infMatch[1]), 3, "+Inf bucket should be cumulative count");
 });
@@ -309,7 +310,7 @@ test("PrometheusMetricsExporter - OAPEFLIR stage metrics format", () => {
   const output = exporter.export();
 
   assert.match(output, /oapeflir_loop_duration_ms_bucket/);
-  assert.match(output, /oapeflir_stage_outcome_total\{stage="execute",result="completed"\}/);
+  assert.match(output, /oapeflir_stage_outcome_total\{result="completed",stage="execute"\}/);
   assert.match(output, /oapeflir_stage_entry_total\{stage="execute"\}/);
 });
 
@@ -358,10 +359,9 @@ test("PrometheusMetricsExporter - resetHttpRequestCounts clears counters", () =>
 
   const output = exporter.export();
 
-  // After reset, GET /test counter should be 0
+  // After reset, the previous series should no longer be exported.
   const match = output.match(/http_requests_total\{method="GET",path="\/test",status="200"\} (\d+)/);
-  assert.ok(match, "Should have GET /test metric");
-  assert.equal(parseInt(match[1]), 0);
+  assert.equal(match, null);
 });
 
 test("PrometheusMetricsExporter - sanitizeLabelValue escapes backslash", () => {
@@ -425,8 +425,6 @@ test("PrometheusMetricsExporter - formatPrometheusLabels sorts label keys", () =
 });
 
 test("PrometheusMetricsExporter - content-type header format", () => {
-  const { renderMetricsPayload } = require("../../../../../src/platform/shared/observability/metrics-server.js");
-
   const exporter = new PrometheusMetricsExporter(createMockDb() as any, createMockMetricsService() as any);
 
   const payload = renderMetricsPayload(exporter, "GET", "/metrics");
@@ -436,8 +434,6 @@ test("PrometheusMetricsExporter - content-type header format", () => {
 });
 
 test("PrometheusMetricsExporter - 405 for non-GET methods", () => {
-  const { renderMetricsPayload } = require("../../../../../src/platform/shared/observability/metrics-server.js");
-
   const exporter = new PrometheusMetricsExporter(createMockDb() as any, createMockMetricsService() as any);
 
   const payload = renderMetricsPayload(exporter, "POST", "/metrics");
@@ -448,8 +444,6 @@ test("PrometheusMetricsExporter - 405 for non-GET methods", () => {
 });
 
 test("PrometheusMetricsExporter - 404 for non-metrics paths", () => {
-  const { renderMetricsPayload } = require("../../../../../src/platform/shared/observability/metrics-server.js");
-
   const exporter = new PrometheusMetricsExporter(createMockDb() as any, createMockMetricsService() as any);
 
   const payload = renderMetricsPayload(exporter, "GET", "/other");
@@ -459,8 +453,6 @@ test("PrometheusMetricsExporter - 404 for non-metrics paths", () => {
 });
 
 test("PrometheusMetricsExporter - 503 when exporter is null", () => {
-  const { renderMetricsPayload } = require("../../../../../src/platform/shared/observability/metrics-server.js");
-
   const payload = renderMetricsPayload(null, "GET", "/metrics");
 
   assert.equal(payload.statusCode, 503);

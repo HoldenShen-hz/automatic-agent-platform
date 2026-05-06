@@ -100,14 +100,14 @@ describe("VersionRoutingMiddleware", () => {
 
     it("should use fallback version when no match", () => {
       const middleware = new VersionRoutingMiddleware();
-      const decision = middleware.selectVersion(["2025-12-01"]);
+      const decision = middleware.selectVersion(["2026-03-01"]);
       strictEqual(decision.acceptable, true);
       strictEqual(decision.reasonCode, "version.fallback");
     });
 
     it("should include warning for unsupported versions", () => {
       const middleware = new VersionRoutingMiddleware();
-      const decision = middleware.selectVersion(["2025-12-01"]);
+      const decision = middleware.selectVersion(["2026-03-01"]);
       ok(decision.warnings.length > 0);
       ok(decision.warnings.some((w) => w.includes("version_not_supported")));
     });

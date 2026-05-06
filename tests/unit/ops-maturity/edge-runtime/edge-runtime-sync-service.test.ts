@@ -342,13 +342,8 @@ describe("EdgeRuntimeSyncService", () => {
         }),
       ];
 
-      // When requireOrdering is true, ordering is reversed before processing
       const receipt = service.sync(orderedProfile, envelopes, {});
-
-      // Both should be accepted regardless of order
-      assert.equal(receipt.acceptedEnvelopeIds.length, 2);
-      assert.ok(receipt.acceptedEnvelopeIds.includes("env-low"));
-      assert.ok(receipt.acceptedEnvelopeIds.includes("env-high"));
+      assert.deepEqual(receipt.acceptedEnvelopeIds, ["env-high", "env-low"]);
     });
   });
 });

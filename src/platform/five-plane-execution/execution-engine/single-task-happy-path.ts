@@ -69,6 +69,8 @@ import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-e
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
+import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard } from "../../model-gateway/cost-tracker/budget-guard.js";
+import { BudgetTier } from "../budget-allocator.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -242,10 +244,14 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
     const healthService = new HealthService(db, store, DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS);
     const transitions = new TransitionService(db, store);
+    // R8-01 FIX: Initialize BudgetExecutionSessionManager for atomic reserve→execute→settle
+    // This must be created before admission evaluation to support budget reservation verification
+    const budgetSessionManager = new BudgetExecutionSessionManager();
     const admission = new AdmissionController(
       store,
       input.admissionPolicy,
       input.admissionBackpressureSnapshot ?? (() => healthService.getReport()),
+      budgetSessionManager,
     );
     // R4-32 (INV-APPROVAL): Initialize approval policy engine for risk-proportional approval
     const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
@@ -394,71 +400,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     };
     const approvalResult = approvalEngine.evaluate(approvalContext);
 
-    // R4-32 (INV-APPROVAL): Block execution if risk-proportional approval is required
-    // The approval result must actually block the execution chain, not just be recorded
-    if (approvalResult.requiresApproval) {
-      // R4-32: Transition entities to blocked/awaiting_decision state
-      transitions.transitionTaskStatus({
-        entityKind: "task",
-        entityId: taskId,
-        fromStatus: "queued",
-        toStatus: "awaiting_decision",
-        executionId,
-        ...createContext(traceContext, "approval.required"),
-      });
-      transitions.transitionWorkflowStatus({
-        entityKind: "workflow",
-        entityId: taskId,
-        fromStatus: "running",
-        toStatus: "paused",
-        currentStepIndex: 0,
-        outputsJson: workflow.outputsJson,
-        ...createContext(traceContext, "approval.required"),
-      });
-      transitions.transitionSessionStatus({
-        entityKind: "session",
-        entityId: sessionId,
-        fromStatus: "open",
-        toStatus: "awaiting_user",
-        ...createContext(traceContext, "approval.required"),
-      });
-      transitions.transitionExecutionStatus({
-        entityKind: "execution",
-        entityId: executionId,
-        fromStatus: "created",
-        toStatus: "blocked",
-        ...createContext(traceContext, "approval.required"),
-      });
-
-      // Emit tier-1 event for approval request
-      const approvalTrace = createChildTraceContext(traceContext);
-      store.event.insertEvent({
-        id: newId("evt"),
-        taskId,
-        executionId,
-        eventType: "decision:requested",
-        eventTier: "tier_1",
-        payloadJson: JSON.stringify({
-          approvalId: newId("approval"),
-          decisionId: approvalContext.decisionId,
-          taskId,
-          executionId,
-          subjectType: approvalContext.subjectType,
-          subjectId: approvalContext.subjectId,
-          action: approvalContext.action,
-          riskCategory: approvalContext.riskCategory,
-          reasonCode: approvalResult.reasonCode ?? "approval.risk_proportional_required",
-          stage: approvalContext.stage,
-          estimatedCostUsd: approvalContext.estimatedCostUsd,
-          traceContext: approvalTrace,
-        }),
-        traceId,
-        createdAt: nowIso(),
-      });
-
-      return store.operations.loadTaskSnapshot(taskId);
-    }
-
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,
@@ -580,10 +521,143 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       store.event.insertEvent(sessionCreatedEvent);
     });
 
+    // Root cause: the original approval gate tried to transition task/workflow/
+    // session/execution before their baseline truth rows existed. Persist the
+    // created records first, then block on approval if required.
+    if (approvalResult.requiresApproval) {
+      transitions.transitionTaskStatus({
+        entityKind: "task",
+        entityId: taskId,
+        fromStatus: "queued",
+        toStatus: "awaiting_decision",
+        executionId,
+        ...createContext(traceContext, "approval.required"),
+      });
+      transitions.transitionWorkflowStatus({
+        entityKind: "workflow",
+        entityId: taskId,
+        fromStatus: "running",
+        toStatus: "paused",
+        currentStepIndex: 0,
+        outputsJson: workflow.outputsJson,
+        ...createContext(traceContext, "approval.required"),
+      });
+      transitions.transitionSessionStatus({
+        entityKind: "session",
+        entityId: sessionId,
+        fromStatus: "open",
+        toStatus: "awaiting_user",
+        ...createContext(traceContext, "approval.required"),
+      });
+      transitions.transitionExecutionStatus({
+        entityKind: "execution",
+        entityId: executionId,
+        fromStatus: "created",
+        toStatus: "blocked",
+        ...createContext(traceContext, "approval.required"),
+      });
+
+      const approvalTrace = createChildTraceContext(traceContext);
+      store.event.insertEvent({
+        id: newId("evt"),
+        taskId,
+        executionId,
+        eventType: "decision:requested",
+        eventTier: "tier_1",
+        payloadJson: JSON.stringify({
+          approvalId: newId("approval"),
+          decisionId: approvalContext.decisionId,
+          taskId,
+          executionId,
+          subjectType: approvalContext.subjectType,
+          subjectId: approvalContext.subjectId,
+          action: approvalContext.action,
+          riskCategory: approvalContext.riskCategory,
+          reasonCode: approvalResult.reasonCode ?? "approval.risk_proportional_required",
+          stage: approvalContext.stage,
+          estimatedCostUsd: approvalContext.estimatedCostUsd,
+          traceContext: approvalTrace,
+        }),
+        traceId,
+        createdAt: nowIso(),
+      });
+
+      return store.operations.loadTaskSnapshot(taskId);
+    }
+
+    // R8-01 FIX: Create budget reservation BEFORE admission evaluation
+    // This implements the reserve-before-execute pattern required by admission controller
+    const defaultBudgetPolicy: BudgetPolicy = {
+      maxTaskCostUsd: 10,
+      maxPackCostUsd: 100,
+      maxPlatformCostUsd: 10000,
+      maxDailyCostUsd: 100,
+      maxMonthlyCostUsd: 1000,
+      maxModelTokens: 100000,
+      maxSteps: 100,
+      maxDurationMs: 600000,
+      warnAtRatio: 0.8,
+      mode: "auto",
+    };
+    let budgetReservationId: string | null = null;
+    try {
+      const budgetSession = budgetSessionManager.reserveAndCreateSession(
+        {
+          tenantId: input.tenantId ?? "tenant:local",
+          harnessRunId: harnessRunIdFromBundle,
+          traceId,
+          emittedBy: "single_task_happy_path",
+          ledger: budgetLedger,
+          policy: defaultBudgetPolicy,
+        },
+        task.estimatedCostUsd ?? 0,
+        "token",
+      );
+      budgetReservationId = budgetSession.sessionId;
+      // Mark as executing immediately since we're in the happy path
+      budgetSessionManager.markExecuting(budgetReservationId);
+    } catch (error) {
+      // Budget reservation failed - reject the task
+      logger.log({ level: "warn", message: `Budget reservation failed, cancelling task`, data: { error: error instanceof Error ? error.message : String(error), taskId } });
+      transitions.transitionTaskStatus({
+        entityKind: "task",
+        entityId: taskId,
+        fromStatus: "queued",
+        toStatus: "cancelled",
+        executionId,
+        ...createContext(traceContext, "budget.reservation_failed"),
+      });
+      transitions.transitionWorkflowStatus({
+        entityKind: "workflow",
+        entityId: taskId,
+        fromStatus: "running",
+        toStatus: "cancelled",
+        currentStepIndex: 0,
+        outputsJson: workflow.outputsJson,
+        ...createContext(traceContext, "budget.reservation_failed"),
+      });
+      transitions.transitionSessionStatus({
+        entityKind: "session",
+        entityId: sessionId,
+        fromStatus: "open",
+        toStatus: "cancelled",
+        ...createContext(traceContext, "budget.reservation_failed"),
+      });
+      transitions.transitionExecutionStatus({
+        entityKind: "execution",
+        entityId: executionId,
+        fromStatus: "created",
+        toStatus: "cancelled",
+        ...createContext(traceContext, "budget.reservation_failed"),
+      });
+      return store.operations.loadTaskSnapshot(taskId);
+    }
+
     const admissionDecision = admission.evaluate({
       priority: task.priority,
       estimatedCostUsd: task.estimatedCostUsd,
       budgetRemainingUsd: execution.budgetUsdLimit,
+      budgetReservationId,
     });
     if (admissionDecision.decision !== "allow") {
       if (admissionDecision.decision === "queue") {

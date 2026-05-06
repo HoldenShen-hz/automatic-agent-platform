@@ -144,6 +144,7 @@ async function runFailedConsumerAckReplay(outputDir: string): Promise<StableEven
     const inspectReplay = await ops.replayConsumer("inspect_projection");
     const failedAfterReplay = store.event.countFailedTier1Acks();
     const pendingAfterReplay = store.event.countPendingTier1Acks();
+    ops.dispose();
     db.close();
 
     return {

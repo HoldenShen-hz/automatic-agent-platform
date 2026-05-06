@@ -11,6 +11,7 @@ import {
 } from "../../../../../src/platform/orchestration/oapeflir/runtime-execute-bridge.js";
 import type { PlanStep } from "../../../../../src/platform/orchestration/oapeflir/types/plan.js";
 import type { StepOutputRecord } from "../../../../../src/platform/contracts/types/domain/task-types.js";
+import type { PlanGraphBundle, PlanNode } from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import type { MultiStepOrchestrationResult } from "../../../../../src/platform/execution/execution-engine/multi-step-orchestration-types.js";
 
 function createMockPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
@@ -24,6 +25,68 @@ function createMockPlanStep(overrides: Partial<PlanStep> = {}): PlanStep {
     timeout: 120_000,
     retryPolicy: { maxRetries: 0, backoffMs: 0 },
     ...overrides,
+  };
+}
+
+function toPlanNode(step: PlanStep): PlanNode {
+  return {
+    nodeId: step.stepId,
+    nodeType: "llm",
+    inputRefs: [],
+    outputSchemaRef: "schema:test.output",
+    riskClass: "medium",
+    budgetIntent: {
+      amount: 0,
+      currency: "USD",
+      resourceKinds: ["token"],
+    },
+    sideEffectProfile: {
+      mayCommitExternalEffect: false,
+      reversible: true,
+    },
+    retryPolicyRef: `retry:${step.retryPolicy.maxRetries}`,
+    timeoutMs: step.timeout,
+  };
+}
+
+function createPlanGraphBundle(planId: string, steps: PlanStep[]): PlanGraphBundle {
+  const dependencyIds = new Set(steps.flatMap((step) => step.dependencies));
+  return {
+    planGraphBundleId: planId,
+    harnessRunId: `harness_${planId}`,
+    graphVersion: 1,
+    graph: {
+      graphId: `graph_${planId}`,
+      nodes: steps.map(toPlanNode),
+      edges: steps.flatMap((step) =>
+        step.dependencies.map((dependencyId, index) => ({
+          edgeId: `${step.stepId}_${dependencyId}_${index}`,
+          fromNodeId: dependencyId,
+          toNodeId: step.stepId,
+          condition: true,
+          dependencyType: "hard" as const,
+        })),
+      ),
+      entryNodeIds: steps.filter((step) => step.dependencies.length === 0).map((step) => step.stepId),
+      terminalNodeIds: steps.filter((step) => !dependencyIds.has(step.stepId)).map((step) => step.stepId),
+      joinStrategy: "all",
+      graphHash: `hash_${planId}`,
+    },
+    schedulerPolicy: {
+      policyId: "scheduler:test",
+      strategy: "deterministic_fifo",
+    },
+    budgetPlanRef: `budget:${planId}`,
+    riskProfile: {
+      riskClass: "medium",
+      reasons: ["unit_test"],
+    },
+    validationReport: {
+      valid: true,
+      findings: [],
+    },
+    artifactRefs: [],
+    createdAt: "2026-04-01T00:00:00.000Z",
   };
 }
 
@@ -64,19 +127,11 @@ test("MockExecuteBridge.executeStep includes step outputs", async () => {
 
 test("MockExecuteBridge.executePlan returns results for multiple steps", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = {
-    planId: "plan_test",
-    taskId: "task_123",
-    version: 1,
-    assessmentRef: "assessment_123",
-    strategy: "linear" as const,
-    steps: [
-      createMockPlanStep({ stepId: "step_1", action: "action_1" }),
-      createMockPlanStep({ stepId: "step_2", action: "action_2" }),
-      createMockPlanStep({ stepId: "step_3", action: "action_3" }),
-    ],
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_test", [
+    createMockPlanStep({ stepId: "step_1", action: "action_1" }),
+    createMockPlanStep({ stepId: "step_2", action: "action_2" }),
+    createMockPlanStep({ stepId: "step_3", action: "action_3" }),
+  ]);
 
   const result = await bridge.executePlan(plan, { taskId: "task_123" });
 
@@ -89,18 +144,10 @@ test("MockExecuteBridge.executePlan returns results for multiple steps", async (
 
 test("MockExecuteBridge.executePlan calculates totals correctly", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = {
-    planId: "plan_totals",
-    taskId: "task_456",
-    version: 1,
-    assessmentRef: "assessment_456",
-    strategy: "linear" as const,
-    steps: [
-      createMockPlanStep({ stepId: "step_1" }),
-      createMockPlanStep({ stepId: "step_2" }),
-    ],
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_totals", [
+    createMockPlanStep({ stepId: "step_1" }),
+    createMockPlanStep({ stepId: "step_2" }),
+  ]);
 
   const result = await bridge.executePlan(plan, { taskId: "task_456" });
 
@@ -146,15 +193,7 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
 
 test("MockExecuteBridge.executePlan handles empty steps", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = {
-    planId: "plan_empty",
-    taskId: "task_empty",
-    version: 1,
-    assessmentRef: "assessment_empty",
-    strategy: "linear" as const,
-    steps: [],
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_empty", []);
 
   const result = await bridge.executePlan(plan, { taskId: "task_empty" });
 
@@ -217,21 +256,13 @@ test("RuntimeExecuteBridge delegates through injected runtime executor and maps 
     },
   );
 
-  const plan = {
-    planId: "plan_runtime",
-    taskId: "task_runtime",
-    version: 1,
-    assessmentRef: "assessment_runtime",
-    strategy: "linear" as const,
-    steps: [
-      createMockPlanStep({
-        stepId: "step_runtime_1",
-        action: "write_code",
-        outputs: ["artifact.txt"],
-      }),
-    ],
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_runtime", [
+    createMockPlanStep({
+      stepId: "step_runtime_1",
+      action: "write_code",
+      outputs: ["artifact.txt"],
+    }),
+  ]);
 
   const result = await bridge.executePlan(plan, {
     taskId: "task_runtime",
@@ -241,7 +272,7 @@ test("RuntimeExecuteBridge delegates through injected runtime executor and maps 
   assert.deepEqual(capturedInput, {
     dbPath: "/tmp/runtime-execute-bridge.db",
     title: "OAPEFLIR plan plan_runtime",
-    request: serialiseOapeflirPlan(plan.steps),
+    request: serialiseOapeflirPlan(plan.graph.nodes),
     contextBudgetTokens: 2048,
   });
   assert.equal(result.planId, "plan_runtime");
@@ -684,23 +715,15 @@ test("RuntimeExecuteBridge.executePlan calls runMultiStepOrchestration with seri
     createMockPlanStep({ stepId: "plan_step_1", action: "test" }),
   ];
 
-  const plan = {
-    planId: "plan_exec_test",
-    taskId: "task_exec",
-    version: 1,
-    assessmentRef: "assessment_exec",
-    strategy: "linear" as const,
-    steps,
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_exec_test", steps);
 
   // The request format must be the oapeflir URL format
   const { serialiseOapeflirPlan } = mockModule;
-  const request = serialiseOapeflirPlan(plan.steps);
+  const request = serialiseOapeflirPlan(plan.graph.nodes);
   assert.ok(request.startsWith("oapeflir://plan "));
   const parsedSteps = JSON.parse(request.slice("oapeflir://plan ".length));
   assert.equal(parsedSteps.length, 1);
-  assert.equal(parsedSteps[0].stepId, "plan_step_1");
+  assert.equal(parsedSteps[0].nodeId, "plan_step_1");
 
   callCount++;
   assert.ok(callCount > 0);
@@ -715,18 +738,10 @@ test("RuntimeExecuteBridge.executePlan includes tokenBudget in orchestrator inpu
     createMockPlanStep({ stepId: "budget_step", action: "budget_test" }),
   ];
 
-  const plan = {
-    planId: "plan_budget",
-    taskId: "task_budget",
-    version: 1,
-    assessmentRef: "assessment_budget",
-    strategy: "linear" as const,
-    steps,
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_budget", steps);
 
   // Verify plan structure is valid for execution
-  assert.ok(plan.steps.length === 1);
+  assert.ok(plan.graph.nodes.length === 1);
   assert.ok(steps[0].stepId === "budget_step");
 });
 
@@ -949,19 +964,11 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs maps skipped step status cor
 
 test("MockExecuteBridge.executePlan result has correct structure for aggregation", async () => {
   const bridge = new MockExecuteBridge();
-  const plan = {
-    planId: "plan_agg",
-    taskId: "task_agg",
-    version: 1,
-    assessmentRef: "assessment_agg",
-    strategy: "linear" as const,
-    steps: [
-      createMockPlanStep({ stepId: "agg_1" }),
-      createMockPlanStep({ stepId: "agg_2" }),
-      createMockPlanStep({ stepId: "agg_3" }),
-    ],
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_agg", [
+    createMockPlanStep({ stepId: "agg_1" }),
+    createMockPlanStep({ stepId: "agg_2" }),
+    createMockPlanStep({ stepId: "agg_3" }),
+  ]);
 
   const result = await bridge.executePlan(plan, { taskId: "task_agg" });
 
@@ -1177,15 +1184,10 @@ test("MockExecuteBridge.executePlan marks allSucceeded false when steps have mix
   // MockExecuteBridge always returns succeeded, but the type allows
   // us to verify the aggregation logic
   const bridge = new MockExecuteBridge();
-  const plan = {
-    planId: "plan_mixed",
-    taskId: "task_mixed",
-    version: 1,
-    assessmentRef: "assessment_mixed",
-    strategy: "linear" as const,
-    steps: [createMockPlanStep({ stepId: "mixed_1" }), createMockPlanStep({ stepId: "mixed_2" })],
-    createdAt: Date.now(),
-  };
+  const plan = createPlanGraphBundle("plan_mixed", [
+    createMockPlanStep({ stepId: "mixed_1" }),
+    createMockPlanStep({ stepId: "mixed_2" }),
+  ]);
 
   const result = await bridge.executePlan(plan, { taskId: "task_mixed" });
 

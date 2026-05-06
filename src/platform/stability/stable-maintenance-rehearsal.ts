@@ -355,7 +355,7 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
     const activeLease = leases.acquireLease({
       executionId: "exec-maintenance-active",
       workerId: "worker-maintenance-draining",
-      ttlMs: 60_000,
+      ttlMs: 30_000,
       queueName: "default",
       occurredAt: "2026-04-06T10:00:05.000Z",
     });
@@ -367,7 +367,7 @@ async function runDrainRejectsDispatchScenario(outputDir: string): Promise<Stabl
     });
     const dispatched = dispatch.dispatchNext({
       queueName: "default",
-      leaseTtlMs: 60_000,
+      leaseTtlMs: 30_000,
       occurredAt: "2026-04-06T10:00:15.000Z",
     });
 

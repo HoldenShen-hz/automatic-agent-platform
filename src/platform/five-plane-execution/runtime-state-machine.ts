@@ -492,6 +492,7 @@ function applyStatus<TAggregate extends RuntimeStateAggregate>(
       return {
         ...(command.aggregate as BudgetLedger),
         status: command.toStatus as BudgetLedger["status"],
+        version: (command.aggregate as BudgetLedger).version + 1,
       } as TAggregate;
     case "BudgetReservation":
       return {

@@ -19,6 +19,7 @@ test("HarnessSdk handles checkpoint and restore roundtrip", () => {
   const run = sdk.createRun({
     taskId: "task-checkpoint",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: ["policy.audit"],
       approvalMode: "supervised",
@@ -36,7 +37,7 @@ test("HarnessSdk handles checkpoint and restore roundtrip", () => {
   const restored = sdk.restoreFromCheckpoint(checkpointRef);
   // restoreFromCheckpoint may return null depending on implementation
   // Just verify it doesn't throw
-  assert.ok(restored === null || restored.runId === run.runId);
+  assert.ok(restored === null || restored.harnessRunId === run.harnessRunId);
 });
 
 test("HarnessSdk.decide with maxIterationsReached returns abort", () => {
@@ -84,6 +85,7 @@ test("HarnessSdk.sleep accepts string or run", () => {
   const run = sdk.createRun({
     taskId: "task-sleep",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -106,6 +108,7 @@ test("HarnessSdk.resume accepts string or run", () => {
   const run = sdk.createRun({
     taskId: "task-resume",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -128,6 +131,7 @@ test("HarnessSdk.requestHumanReview adds HITL request to run", () => {
   const run = sdk.createRun({
     taskId: "task-hitl",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -150,6 +154,7 @@ test("HarnessSdk.resolveReview with approved resolution", () => {
   const run = sdk.createRun({
     taskId: "task-resolve",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -172,6 +177,7 @@ test("HarnessSdk.resolveReview with rejected resolution", () => {
   const run = sdk.createRun({
     taskId: "task-reject",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -194,6 +200,7 @@ test("HarnessSdk.getTimeline returns timeline events", () => {
   const run = sdk.createRun({
     taskId: "task-timeline",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -215,6 +222,7 @@ test("HarnessSdk.getEvaluation returns evaluation report", () => {
   const run = sdk.createRun({
     taskId: "task-eval",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -235,6 +243,7 @@ test("HarnessSdk.persist persists run without error", () => {
   const run = sdk.createRun({
     taskId: "task-persist",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",
@@ -256,6 +265,7 @@ test("HarnessSdk.assertInvariants returns empty violations for valid run", () =>
   const run = sdk.createRun({
     taskId: "task-assert",
     domainId: "legal",
+    tenantId: "test-tenant",
     constraintPack: {
       policyIds: [],
       approvalMode: "none",

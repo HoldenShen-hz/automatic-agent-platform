@@ -11,7 +11,7 @@
  */
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
-import type { DataClassificationLevel } from "../../control-plane/iam/data-classification-service.js";
+import type { DataClassificationLevel } from "../../contracts/types/data-classification.js";
 
 // Re-export the classification level type for convenience
 export type { DataClassificationLevel };

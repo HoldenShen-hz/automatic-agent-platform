@@ -38,7 +38,7 @@ test("StreamBridge updateClientCursor", () => {
   assert.equal(bridge.isSlowConsumer("client-1"), false);
 
   // Emit 20 frames to make client slow
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 21; i++) {
     bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "progress", payload: { step: i } });
   }
 
@@ -56,6 +56,7 @@ test("StreamBridge getSlowConsumers returns correct clients", () => {
   for (let i = 0; i < 25; i++) {
     bridge.emitFrame({ streamId, taskId: "task-1", channel: "updates", eventType: "progress", payload: { step: i } });
   }
+  bridge.updateClientCursor("client-normal", 25);
 
   const slowConsumers = bridge.getSlowConsumers(streamId);
   assert.ok(slowConsumers.includes("client-slow"));

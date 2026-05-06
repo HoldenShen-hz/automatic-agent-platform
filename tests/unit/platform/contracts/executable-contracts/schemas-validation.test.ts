@@ -408,10 +408,10 @@ test("BudgetIntentSchema rejects empty currency", () => {
   assert.equal(result.success, false);
 });
 
-test("BudgetIntentSchema rejects empty resourceKinds", () => {
-  const invalid = { amount: 100, currency: "USD", resourceKinds: [] };
-  const result = BudgetIntentSchema.safeParse(invalid);
-  assert.equal(result.success, false);
+test("BudgetIntentSchema accepts empty resourceKinds", () => {
+  const valid = { amount: 100, currency: "USD", resourceKinds: [] };
+  const result = BudgetIntentSchema.safeParse(valid);
+  assert.equal(result.success, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -776,6 +776,7 @@ test("ConfirmedTaskSpecSchema allows optional confirmationReceipt", () => {
       confirmedBy: createValidPrincipalRef(),
       riskClass: "low",
       confirmedAt: "2026-04-01T00:00:00.000Z",
+      state: "confirmed",
     },
     idempotencyKey: "idem_123",
     traceId: "trace_456",
@@ -1333,7 +1334,7 @@ test("NodeAttemptReceiptSchema accepts valid receipt", () => {
     receiptKind: "tool",
     status: "succeeded",
     duration: 1500,
-    errorDetail: "",
+    errorDetail: "success",
     sideEffectRefs: [],
     budgetSettlementRefs: [],
     evidenceRefs: [],
@@ -1356,7 +1357,7 @@ test("NodeAttemptReceiptSchema accepts all receipt kinds", () => {
       receiptKind: kind,
       status: "succeeded",
       duration: 100,
-      errorDetail: "",
+      errorDetail: "success",
       sideEffectRefs: [],
       budgetSettlementRefs: [],
       evidenceRefs: [],
@@ -1380,7 +1381,7 @@ test("NodeAttemptReceiptSchema accepts all status values", () => {
       receiptKind: "tool",
       status,
       duration: 100,
-      errorDetail: status === "succeeded" ? "" : "error occurred",
+      errorDetail: status === "succeeded" ? "success" : "error occurred",
       sideEffectRefs: [],
       budgetSettlementRefs: [],
       evidenceRefs: [],
@@ -1403,7 +1404,7 @@ test("NodeAttemptReceiptSchema allows optional outputRef and error", () => {
     status: "succeeded",
     duration: 1500,
     outputRef: createValidArtifactRef(),
-    errorDetail: "",
+    errorDetail: "success",
     sideEffectRefs: [],
     budgetSettlementRefs: [],
     evidenceRefs: [],

@@ -12,8 +12,30 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import { existsSync, unlinkSync, readFileSync, mkdirSync, rmSync } from "node:fs";
+import { setTimeout as delay } from "node:timers/promises";
 import { StructuredLogger, type StructuredLogEntry } from "../../../../../src/platform/shared/observability/structured-logger.js";
 import { createTempWorkspace, cleanupPath } from "../../../../helpers/fs.js";
+
+async function waitForFileLines(filePath: string, minLineCount: number, timeoutMs = 1000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (existsSync(filePath)) {
+      const content = readFileSync(filePath, "utf8");
+      const lines = content.split("\n").filter((line) => line.length > 0);
+      if (lines.length >= minLineCount) {
+        return;
+      }
+    }
+    await delay(10);
+  }
+
+  throw new assert.AssertionError({
+    message: `Timed out waiting for ${minLineCount} log line(s) in ${filePath}`,
+    expected: true,
+    actual: false,
+    operator: "==",
+  });
+}
 
 test("StructuredLogger - basic log creates entry with required fields", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
@@ -277,7 +299,7 @@ test("StructuredLogger - closeTransports calls close and clears list", async () 
   assert.equal(closeCalled, true);
 });
 
-test("StructuredLogger - Issue #2139: multiple instances with shared global sink", () => {
+test("StructuredLogger - Issue #2139: multiple instances with shared global sink", async () => {
   // This test demonstrates the issue where rotationScheduled is per-instance
   // but fileSink is global, potentially causing concurrent rotation corruption
 
@@ -309,11 +331,7 @@ test("StructuredLogger - Issue #2139: multiple instances with shared global sink
     // but doesn't guarantee the race condition is triggered deterministically
 
     // Verify file exists and has content
-    if (existsSync(logFile)) {
-      const content = readFileSync(logFile, "utf8");
-      const lines = content.split("\n").filter((l) => l.length > 0);
-      assert.ok(lines.length > 0, "Should have written log entries");
-    }
+    await waitForFileLines(logFile, 1);
 
     // Verify all loggers captured entries
     assert.ok(logger1.getBufferSummary().entryCount > 0);

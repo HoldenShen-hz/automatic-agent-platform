@@ -36,8 +36,8 @@ export class WorkerRepository {
     this.snapshotRepo.insertHeartbeatSnapshot(snapshot);
   }
 
-  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord, expectedVersion: number): void {
-    this.snapshotRepo.upsertWorkerSnapshot(snapshot, expectedVersion);
+  public upsertWorkerSnapshot(snapshot: WorkerSnapshotRecord, expectedVersion?: number): void {
+    this.snapshotRepo.upsertWorkerSnapshot(snapshot, expectedVersion ?? snapshot.version ?? 0);
   }
 
   public upsertCoordinatorInstanceSnapshot(snapshot: CoordinatorInstanceRecord): void {

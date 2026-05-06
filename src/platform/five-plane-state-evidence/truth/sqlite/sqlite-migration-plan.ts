@@ -58,6 +58,7 @@ import {
   BILLING_USAGE_EVENT_CANONICAL_ATTRIBUTION_SQL,
   CONFIG_VERSIONING_AND_ROLLOUT_SQL,
   EXTENDED_DLQ_RECORDS_SQL,
+  DLQ_INCIDENT_LINKING_SQL,
 } from "./sqlite-migration-runtime-part3.js";
 import { ENTERPRISE_GOVERNANCE_DDL } from "../../../control-plane/incident-control/enterprise-governance-schema.js";
 import { CONTROL_PLANE_LOAD_BALANCING_DDL } from "../sql/control-plane-load-balancing-ddl.js";
@@ -367,6 +368,7 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigrationDefinition[] = [
   defineMigration(51, "0051_cas_records_persistence", CAS_RECORDS_SQL),
   // R16-37: Add extended DLQ columns for DlqService persistence
   defineMigration(52, "0052_extended_dlq_records", EXTENDED_DLQ_RECORDS_SQL),
+  defineMigration(53, "0053_dlq_incident_linking", DLQ_INCIDENT_LINKING_SQL),
 ] as const;
 
 /**

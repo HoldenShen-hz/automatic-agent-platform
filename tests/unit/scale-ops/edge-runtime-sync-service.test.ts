@@ -18,6 +18,7 @@ function makeTestProfile(overrides: Partial<EdgeRuntimeProfile> = {}): EdgeRunti
     offlineMaxDuration: 3600000,
     keyLease: "lease-001",
     allowedModels: ["gpt-4o-mini"],
+    riskLevel: "low",
     syncPolicy: {
       allowRestrictedDataUpload: false,
       requireOrdering: true,
@@ -85,7 +86,7 @@ test("EdgeRuntimeSyncService buildSyncEnvelope creates valid envelope", async ()
     "internal"
   );
 
-  assert.ok(envelope.envelopeId.startsWith("sync:"));
+  assert.ok(envelope.envelopeId.startsWith("sync_"));
   assert.equal(envelope.edgeNodeId, "edge-001");
   assert.equal(envelope.priority, 1);
   assert.equal(envelope.dataClassification, "internal");
@@ -104,7 +105,7 @@ test("EdgeRuntimeSyncService sync accepts valid envelopes", async () => {
     "internal"
   );
 
-  const receipt = service.sync(profile, [envelope], { "rec-001": "abc123" });
+  const receipt = service.sync(profile, [envelope], { [envelope.recordId]: "abc123" });
 
   assert.ok(receipt.acceptedEnvelopeIds.includes(envelope.envelopeId));
   assert.equal(receipt.rejectedEnvelopeIds.length, 0);
@@ -140,7 +141,7 @@ test("EdgeRuntimeSyncService sync applies central wins policy on digest mismatch
     "internal"
   );
 
-  const receipt = service.sync(profile, [envelope], { "rec-001": "different-digest" });
+  const receipt = service.sync(profile, [envelope], { [envelope.recordId]: "different-digest" });
 
   assert.ok(receipt.rejectedEnvelopeIds.includes(envelope.envelopeId));
   const decision = receipt.decisions.find((d) => d.envelopeId === envelope.envelopeId);
@@ -157,22 +158,20 @@ test("EdgeRuntimeSyncService sync respects ordering when requireOrdering is true
     profile,
     { edgeNodeId: "edge-001", taskId: "task-001", createdAt: new Date().toISOString(), recordId: "rec-001", payloadDigest: "abc123" },
     "abc123",
-    2,
+    1,
     "internal"
   );
   const envelope2 = service.buildSyncEnvelope(
     profile,
     { edgeNodeId: "edge-001", taskId: "task-002", createdAt: new Date().toISOString(), recordId: "rec-002", payloadDigest: "def456" },
     "def456",
-    1,
+    5,
     "internal"
   );
 
   const receipt = service.sync(profile, [envelope1, envelope2], { "rec-001": "abc123", "rec-002": "def456" });
 
-  // With ordering required, envelope2 (priority 1) should be processed first
-  // but since we're reversing and finding, let me just check both are accepted
-  assert.ok(receipt.acceptedEnvelopeIds.length >= 0);
+  assert.deepEqual(receipt.acceptedEnvelopeIds, [envelope2.envelopeId, envelope1.envelopeId]);
 });
 
 test("EdgeRuntimeSyncService sync skips ordering when requireOrdering is false", async () => {

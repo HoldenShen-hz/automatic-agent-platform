@@ -31,7 +31,7 @@ test("mission control snapshot aggregates task, approval, pmf, billing, and perc
     assert.ok(stability.workers.some((worker) => worker.workerId === context.seededWorkerId));
 
     const admin = context.missionControlService.getAdminTakeoverConsole(context.seededTaskId);
-    assert.equal(admin.scope.taskId, context.seededTaskId);
+    assert.equal(admin.scope.harnessRunId, context.seededTaskId);
     assert.equal(admin.activeWorker?.workerId, context.seededWorkerId);
     assert.ok(admin.inspect.takeoverSessions.length >= 1);
 

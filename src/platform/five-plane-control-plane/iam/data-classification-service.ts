@@ -12,25 +12,14 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import type { DataClassificationLevel, DataHandlingDimension } from "../../contracts/types/data-classification.js";
+
+// Re-export for backward compatibility
+export type { DataClassificationLevel, DataHandlingDimension } from "../../contracts/types/data-classification.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
 // ── Types ──────────────────────────────────────────────────────────────
-
-/**
- * Classification level hierarchy (least to most restrictive):
- * - public: No restrictions
- * - internal: Internal use only, limited distribution
- * - confidential: Sensitive business data, needs protection
- * - restricted: Highly sensitive, minimal access required
- */
-export type DataClassificationLevel = "public" | "internal" | "confidential" | "restricted";
-
-/**
- * Dimensions along which data handling decisions are made.
- * Each dimension represents a different context where data might flow.
- */
-export type DataHandlingDimension = "prompt" | "logs" | "memory" | "artifact" | "cross_worker" | "debug" | "audit";
 
 /**
  * Types of Personally Identifiable Information that can be detected.
@@ -688,8 +677,9 @@ export class DataClassificationService {
       throw new Error("Unauthorized: clearAuditLog requires platform_admin or service_operator role");
     }
 
-    // Emit audit-of-clear event before clearing
-    this.logAuditEntry({
+    const clearMarker: ClassificationAuditEntry = {
+      id: newId("clfsaudit"),
+      classifiedAt: nowIso(),
       originalContent: `[audit-of-clear] Audit log cleared by ${principalContext.principalType} at ${nowIso()}`,
       classificationLevel: "confidential",
       dimension: "audit",
@@ -697,9 +687,14 @@ export class DataClassificationService {
       reason: "audit_log_cleared",
       auditTrailId: newId("clfsaudit"),
       piiAnnotations: [],
-    });
+    };
 
+    // Root cause: the previous implementation appended the audit-of-clear
+    // marker into the same mutable array and then immediately erased it with
+    // `length = 0`, leaving no immutable evidence that the clear happened.
+    // Preserve the marker as the first post-clear audit entry instead.
     this.auditLog.length = 0;
+    this.auditLog.push(clearMarker);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────

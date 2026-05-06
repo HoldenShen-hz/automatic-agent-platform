@@ -198,7 +198,10 @@ export class MetricsService {
     const taskWindow = this.selectRow<{
       firstTaskCreatedAt: string | null;
       lastTaskUpdatedAt: string | null;
-    }>(`SELECT MIN(created_at) AS firstTaskCreatedAt, MAX(updated_at) AS lastTaskUpdatedAt FROM tasks`);
+    }>(
+      `SELECT MIN(created_at) AS firstTaskCreatedAt, MAX(updated_at) AS lastTaskUpdatedAt FROM tasks`,
+      { firstTaskCreatedAt: null, lastTaskUpdatedAt: null },
+    );
 
     // Query task status counts
     const taskCounts = this.selectRow<{
@@ -217,6 +220,7 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount,
          COALESCE(SUM(CASE WHEN status NOT IN ('done', 'failed', 'cancelled') THEN 1 ELSE 0 END), 0) AS activeCount
        FROM tasks`,
+      { total: 0, terminalCount: 0, successCount: 0, failedCount: 0, cancelledCount: 0, activeCount: 0 },
     );
 
     // Query workflow status counts
@@ -234,6 +238,7 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelledCount,
          COALESCE(SUM(CASE WHEN retry_count > 0 THEN 1 ELSE 0 END), 0) AS retriedCount
        FROM workflow_state`,
+      { total: 0, completedCount: 0, failedCount: 0, cancelledCount: 0, retriedCount: 0 },
     );
 
     // Query execution status counts
@@ -249,6 +254,7 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN attempt > 1 THEN 1 ELSE 0 END), 0) AS retryAttemptCount,
          COALESCE(SUM(CASE WHEN status = 'superseded' THEN 1 ELSE 0 END), 0) AS supersededCount
        FROM executions`,
+      { total: 0, activeCount: 0, retryAttemptCount: 0, supersededCount: 0 },
     );
 
     // Query recovery event counts
@@ -271,6 +277,7 @@ export class MetricsService {
        LEFT JOIN tasks t ON t.id = e.task_id
        WHERE e.task_id IS NOT NULL
          AND e.event_type LIKE 'recovery:%'`,
+      { taskCount: 0, successfulTaskCount: 0, decisionCount: 0, repairEventCount: 0, deadLetterCount: 0, cancelledCount: 0 },
     );
 
     // Query approval counts
@@ -286,6 +293,7 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN status != 'requested' THEN 1 ELSE 0 END), 0) AS resolvedCount,
          COUNT(DISTINCT task_id) AS taskTriggerCount
        FROM approvals`,
+      { total: 0, pendingCount: 0, resolvedCount: 0, taskTriggerCount: 0 },
     );
 
     // Query event tier counts
@@ -301,6 +309,7 @@ export class MetricsService {
          COALESCE(SUM(CASE WHEN event_tier = 'tier_2' THEN 1 ELSE 0 END), 0) AS tier2Count,
          COALESCE(SUM(CASE WHEN event_tier = 'tier_3' THEN 1 ELSE 0 END), 0) AS tier3Count
        FROM events`,
+      { total: 0, tier1Count: 0, tier2Count: 0, tier3Count: 0 },
     );
 
     // Query event consumer ack counts (for tier-1 pending/failed acks)
@@ -314,6 +323,7 @@ export class MetricsService {
        FROM event_consumer_acks a
        INNER JOIN events e ON e.id = a.event_id
        WHERE e.event_tier = 'tier_1'`,
+      { pendingTier1AckCount: 0, failedTier1AckCount: 0 },
     );
 
     // Query harness_runs counts (R4-42: harness.* metrics gap fix)
@@ -736,9 +746,9 @@ export class MetricsService {
    * Executes a SQL query and returns the first row with normalized values.
    * Converts non-finite numbers to 0 to ensure consistent types.
    */
-  private selectRow<T extends Record<string, unknown>>(sql: string): T {
+  private selectRow<T extends Record<string, unknown>>(sql: string, fallback?: T): T {
     const row = (this.db.connection.prepare(sql).get() ?? {}) as Record<string, unknown>;
-    const normalized: Record<string, unknown> = {};
+    const normalized: Record<string, unknown> = fallback == null ? {} : { ...fallback };
 
     for (const [key, value] of Object.entries(row)) {
       normalized[key] =

@@ -8,8 +8,27 @@ import {
   PackScaffoldService,
   PackTestLocalService,
   summarizeCapabilityMatrix,
-  validateBusinessPackManifest,
+  validateBusinessPackManifest as rawValidateBusinessPackManifest,
 } from "../../../../src/sdk/pack-sdk/index.js";
+
+const TEST_PACK_SIGNING = {
+  keyId: "test-pack-key",
+  signature: "test-pack-signature",
+  algorithm: "ed25519",
+} as const;
+
+function validateBusinessPackManifest(
+  manifest: Parameters<typeof rawValidateBusinessPackManifest>[0],
+  options?: Parameters<typeof rawValidateBusinessPackManifest>[1],
+) {
+  return rawValidateBusinessPackManifest(
+    {
+      ...manifest,
+      signing: manifest.signing === undefined ? TEST_PACK_SIGNING : manifest.signing,
+    },
+    options,
+  );
+}
 
 // ============================================================================
 // pack-manifest tests

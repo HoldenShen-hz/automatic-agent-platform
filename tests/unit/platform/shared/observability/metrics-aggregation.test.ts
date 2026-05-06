@@ -23,15 +23,19 @@ type ConnectionMock = Pick<any, "exec" | "prepare">;
 
 function createMockDb(overrides: Partial<AuthoritativeSqlDatabase> & { selectResults?: Record<string, unknown> } = {}): AuthoritativeSqlDatabase {
   const selectResults = overrides.selectResults ?? {};
+  const normalizeSql = (value: string): string => value.replace(/\s+/g, " ").trim().toLowerCase();
   return {
     filePath: "/tmp/test.db",
     backendType: "sqlite",
     connection: {
       exec: () => {},
       prepare: (sql: string) => {
+        const normalizedSql = normalizeSql(sql);
         // Return predefined results for specific queries
         for (const [key, value] of Object.entries(selectResults)) {
-          if (sql.includes(key)) {
+          const normalizedKey = normalizeSql(key);
+          const matches = normalizedKey.split(" ").every((token) => normalizedSql.includes(token));
+          if (matches) {
             return { get: () => value, all: () => [] };
           }
         }
@@ -296,6 +300,14 @@ test("MetricsService - approval metrics calculation", () => {
   const mockDb = createMockDb({
     selectResults: {
       "MIN(created_at)": { firstTaskCreatedAt: null, lastTaskUpdatedAt: null },
+      "COUNT(*) AS total COALESCE(SUM(CASE WHEN status IN ('done', 'failed', 'cancelled')": {
+        total: 50,
+        terminalCount: 30,
+        successCount: 20,
+        failedCount: 5,
+        cancelledCount: 5,
+        activeCount: 20,
+      },
       "COUNT(*) FROM approvals": { total: 50, pendingCount: 10, resolvedCount: 40, taskTriggerCount: 30 },
     },
   });
@@ -308,7 +320,7 @@ test("MetricsService - approval metrics calculation", () => {
   assert.equal(summary.approvalMetrics.pendingCount, 10);
   assert.equal(summary.approvalMetrics.resolvedCount, 40);
   assert.equal(summary.approvalMetrics.taskTriggerCount, 30);
-  // taskTriggerRate = taskTriggerCount / total = 30 / 50 = 0.6
+  // taskTriggerRate = taskTriggerCount / task total = 30 / 50 = 0.6
   assert.equal(summary.approvalMetrics.taskTriggerRate, 0.6);
 });
 
@@ -334,8 +346,8 @@ test("MetricsService - event consumer ack counts", () => {
   const mockDb = createMockDb({
     selectResults: {
       "MIN(created_at)": { firstTaskCreatedAt: null, lastTaskUpdatedAt: null },
-      "events e": { total: 0, tier1Count: 0, tier2Count: 0, tier3Count: 0 },
-      "event_consumer_acks": { pendingTier1AckCount: 15, failedTier1AckCount: 3 },
+      "COUNT(*) AS total COALESCE(SUM(CASE WHEN event_tier = 'tier_1'": { total: 0, tier1Count: 0, tier2Count: 0, tier3Count: 0 },
+      "FROM event_consumer_acks a": { pendingTier1AckCount: 15, failedTier1AckCount: 3 },
     },
   });
   const healthService = createMockHealthService();

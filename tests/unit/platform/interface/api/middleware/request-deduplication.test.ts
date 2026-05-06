@@ -1,5 +1,5 @@
 import { describe, it, beforeEach } from "node:test";
-import assert, { strictEqual, deepStrictEqual, ok, fail } from "node:assert";
+import assert, { strictEqual, deepStrictEqual, ok, fail, notStrictEqual } from "node:assert";
 import {
   DeduplicationMiddleware,
   DEFAULT_DEDUPLICATION_CONFIG,
@@ -119,8 +119,8 @@ describe("DeduplicationMiddleware", () => {
       const first = middleware.check("tenant:tenant-1", fp);
       const second = middleware.check("tenant:tenant-1", fp);
 
-      ok(first.originalRequestId !== null);
-      strictEqual(second.originalRequestId, first.originalRequestId);
+      strictEqual(first.originalRequestId, null);
+      ok(second.originalRequestId !== null);
     });
 
     it("should calculate retryAfterMs", () => {
@@ -158,7 +158,7 @@ describe("DeduplicationMiddleware", () => {
       strictEqual(result.isDuplicate, false);
     });
 
-    it("should clean expired entries", () => {
+    it("should clean expired entries", async () => {
       const shortWindowMiddleware = new DeduplicationMiddleware({
         windowMs: 1,
         maxFingerprints: 100,

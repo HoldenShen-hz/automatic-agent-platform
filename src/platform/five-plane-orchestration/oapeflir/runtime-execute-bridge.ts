@@ -346,9 +346,10 @@ export function minimalWorkflowToPlanGraphBundle(
   const entryNodeIds = workflow.steps
     .filter((s) => (s.dependsOnStepIds?.length ?? 0) === 0)
     .map((s) => s.stepId);
-  // Terminal nodes: steps that nothing else depends on
+  // Terminal nodes: steps that no other step depends on
+  const dependentStepIds = new Set(workflow.steps.flatMap((s) => s.dependsOnStepIds ?? []));
   const terminalNodeIds = workflow.steps
-    .filter((s) => !allStepIds.has(s.stepId) || (s.dependsOnStepIds?.length ?? 0) === 0)
+    .filter((s) => !dependentStepIds.has(s.stepId))
     .map((s) => s.stepId);
 
   return {

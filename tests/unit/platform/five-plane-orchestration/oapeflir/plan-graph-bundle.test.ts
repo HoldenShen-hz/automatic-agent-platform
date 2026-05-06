@@ -12,7 +12,7 @@ import {
   type ReadyNodeSchedulingPolicy,
   type RiskPreview,
   type ArtifactRef,
-} from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist/src/platform/contracts/executable-contracts/index.js";
+} from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
 // ---------------------------------------------------------------------------
 // Test fixtures

@@ -1,5 +1,5 @@
 import { describe, it, beforeEach } from "node:test";
-import assert, { strictEqual, deepStrictEqual, ok, fail } from "node:assert";
+import assert, { strictEqual, deepStrictEqual, ok, fail, notStrictEqual } from "node:assert";
 import {
   RateLimiter,
   RateLimitMiddleware,

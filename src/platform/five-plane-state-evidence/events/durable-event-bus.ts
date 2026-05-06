@@ -1000,18 +1000,29 @@ export class DurableEventBus {
       if (this.disposed || !this.subscriberRegistry.getHandler(consumerId)) {
         return;
       }
-      void this.enqueueDelivery(consumerId, true).finally(() => {
-        if (!this.disposed && this.subscriberRegistry.getHandler(consumerId)) {
-          // Calculate adaptive polling interval based on queue depth
-          const pending = this.store.event.listPendingEventsForConsumer(consumerId);
-          const queueDepth = pending.length;
-          const highWaterMark = 100;
-          // R12-30 fix: Record backpressure metrics for monitoring
-          runtimeMetricsRegistry.recordEventBackpressure(consumerId, queueDepth, queueDepth >= highWaterMark);
-          const nextInterval = this.calculatePollingInterval(consumerId, queueDepth);
-          this.schedulePollingTick(consumerId, nextInterval);
-        }
-      });
+      void this.enqueueDelivery(consumerId, true)
+        .catch(() => {
+          // Short-lived workflows/tests may close the backing database before
+          // a polling tick fires. Treat that like an external shutdown signal
+          // and let the finally block decide whether polling should continue.
+        })
+        .finally(() => {
+          if (this.disposed || !this.subscriberRegistry.getHandler(consumerId)) {
+            return;
+          }
+          try {
+            // Calculate adaptive polling interval based on queue depth
+            const pending = this.store.event.listPendingEventsForConsumer(consumerId);
+            const queueDepth = pending.length;
+            const highWaterMark = 100;
+            // R12-30 fix: Record backpressure metrics for monitoring
+            runtimeMetricsRegistry.recordEventBackpressure(consumerId, queueDepth, queueDepth >= highWaterMark);
+            const nextInterval = this.calculatePollingInterval(consumerId, queueDepth);
+            this.schedulePollingTick(consumerId, nextInterval);
+          } catch {
+            this.cancelPolling(consumerId);
+          }
+        });
     }, delayMs);
     timer.unref?.();
     this.pollingTimers.set(consumerId, timer);

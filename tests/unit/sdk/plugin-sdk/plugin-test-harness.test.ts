@@ -2,54 +2,53 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { PluginTestHarness } from "../../../../src/sdk/plugin-sdk/plugin-test-harness.js";
-import { defineTool, defineAdapter, defineRetriever, defineEvaluator } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
+import type { PluginDefinition, PluginType } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 
-test("PluginTestHarness creates with plugin definition", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
+function createPlugin(type: PluginType, pluginId: string, name: string): PluginDefinition {
+  return {
+    pluginId,
+    name,
     version: "1.0.0",
+    type,
     capabilities: [{
-      name: "execute",
-      description: "Execute",
+      name: type === "adapter" ? "adapt" : type === "retriever" ? "retrieve" : type === "evaluator" ? "evaluate" : "execute",
+      description: "Test capability",
       inputSchema: { type: "object" },
       outputSchema: { type: "object" },
     }],
-  });
+    resourceLimits: {
+      maxMemoryMb: 512,
+      maxCpuMs: 5000,
+      maxDurationMs: 30000,
+    },
+    dependencies: [],
+    security: {
+      sandboxTier: "read_only",
+      egressDomains: [],
+    },
+    spiTypes: [type],
+    domainIds: [],
+    sbomRef: null,
+    signing: null,
+  };
+}
+
+test("PluginTestHarness creates with plugin definition", () => {
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   assert.equal(harness.getPlugin().pluginId, "test.tool");
 });
 
 test("PluginTestHarness creates with custom timeout", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin, timeoutMs: 60000 });
   assert.ok(harness.getPlugin().pluginId === "test.tool");
 });
 
 test("PluginTestHarness creates with mock LLM config", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({
     plugin,
@@ -62,17 +61,7 @@ test("PluginTestHarness creates with mock LLM config", () => {
 });
 
 test("PluginTestHarness creates with mock tools", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({
     plugin,
@@ -84,17 +73,7 @@ test("PluginTestHarness creates with mock tools", () => {
 });
 
 test("PluginTestHarness.configureMockLlm updates mock config", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   harness.configureMockLlm({
@@ -105,17 +84,7 @@ test("PluginTestHarness.configureMockLlm updates mock config", () => {
 });
 
 test("PluginTestHarness.addMockToolResult adds tool result", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   harness.addMockToolResult({
@@ -128,17 +97,7 @@ test("PluginTestHarness.addMockToolResult adds tool result", () => {
 });
 
 test("PluginTestHarness.runCase executes and returns result", async () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object", properties: { query: { type: "string" } } },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const result = await harness.runCase({ query: "test" });
@@ -148,17 +107,7 @@ test("PluginTestHarness.runCase executes and returns result", async () => {
 });
 
 test("PluginTestHarness.runCase handles errors gracefully", async () => {
-  const plugin = defineAdapter({
-    pluginId: "test.adapter",
-    name: "Test Adapter",
-    version: "1.0.0",
-    capabilities: [{
-      name: "adapt",
-      description: "Adapt",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("adapter", "test.adapter", "Test Adapter");
 
   const harness = new PluginTestHarness({ plugin });
   // Run case - should handle gracefully
@@ -167,17 +116,7 @@ test("PluginTestHarness.runCase handles errors gracefully", async () => {
 });
 
 test("PluginTestHarness.runCases processes multiple test cases", async () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([
@@ -194,17 +133,7 @@ test("PluginTestHarness.runCases processes multiple test cases", async () => {
 });
 
 test("PluginTestHarness.runCases calculates coverage percentage", async () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([
@@ -216,17 +145,7 @@ test("PluginTestHarness.runCases calculates coverage percentage", async () => {
 });
 
 test("PluginTestHarness.runCases handles empty test case list", async () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([]);
@@ -238,17 +157,7 @@ test("PluginTestHarness.runCases handles empty test case list", async () => {
 });
 
 test("PluginTestHarness.runCases handles retriever plugin type", async () => {
-  const plugin = defineRetriever({
-    pluginId: "test.retriever",
-    name: "Test Retriever",
-    version: "1.0.0",
-    capabilities: [{
-      name: "retrieve",
-      description: "Retrieve",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("retriever", "test.retriever", "Test Retriever");
 
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([
@@ -259,17 +168,7 @@ test("PluginTestHarness.runCases handles retriever plugin type", async () => {
 });
 
 test("PluginTestHarness.runCases handles evaluator plugin type", async () => {
-  const plugin = defineEvaluator({
-    pluginId: "test.evaluator",
-    name: "Test Evaluator",
-    version: "1.0.0",
-    capabilities: [{
-      name: "evaluate",
-      description: "Evaluate",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("evaluator", "test.evaluator", "Test Evaluator");
 
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([
@@ -280,17 +179,7 @@ test("PluginTestHarness.runCases handles evaluator plugin type", async () => {
 });
 
 test("PluginTestHarness.createContext creates plugin context", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const ctx = harness.createContext({ taskId: "task-123" });
@@ -300,17 +189,7 @@ test("PluginTestHarness.createContext creates plugin context", () => {
 });
 
 test("PluginTestHarness.getPlugin returns original plugin definition", () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const returned = harness.getPlugin();
@@ -321,17 +200,7 @@ test("PluginTestHarness.getPlugin returns original plugin definition", () => {
 });
 
 test("PluginTestHarness handles case with expectedOutput mismatch", async () => {
-  const plugin = defineTool({
-    pluginId: "test.tool",
-    name: "Test Tool",
-    version: "1.0.0",
-    capabilities: [{
-      name: "execute",
-      description: "Execute",
-      inputSchema: { type: "object" },
-      outputSchema: { type: "object" },
-    }],
-  });
+  const plugin = createPlugin("tool", "test.tool", "Test Tool");
 
   const harness = new PluginTestHarness({ plugin });
   const report = await harness.runCases([

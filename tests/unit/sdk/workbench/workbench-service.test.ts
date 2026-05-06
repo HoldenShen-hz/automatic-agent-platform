@@ -18,6 +18,7 @@ test("SdkWorkbenchService.buildSnapshot creates snapshot with all inputs", () =>
     plugins: [
       {
         pluginId: "test-plugin",
+        name: "Test Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["tool"],
@@ -29,11 +30,12 @@ test("SdkWorkbenchService.buildSnapshot creates snapshot with all inputs", () =>
       {
         packId: "test-pack",
         version: "1.0.0",
-        domain: "test",
+        domainId: "test",
         owner: "owner@example.com",
         capabilities: [
           { capabilityKey: "test.capability", maturity: "ga", requiredContracts: ["runtime_execution_contract"] },
         ],
+        signing: { keyId: "test-key", signature: "test-sig" },
       },
     ],
     availableContracts: ["runtime_execution_contract"],
@@ -59,11 +61,12 @@ test("SdkWorkbenchService.buildSnapshot detects missing contracts", () => {
       {
         packId: "test-pack",
         version: "1.0.0",
-        domain: "test",
+        domainId: "test",
         owner: "owner@example.com",
         capabilities: [
           { capabilityKey: "test.capability", maturity: "ga", requiredContracts: ["missing_contract"] },
         ],
+        signing: { keyId: "test-key", signature: "test-sig" },
       },
     ],
     availableContracts: ["runtime_execution_contract"],
@@ -79,16 +82,18 @@ test("SdkWorkbenchService.createInstallPlan matches plugins to pack capabilities
     pack: {
       packId: "ops-pack",
       version: "1.0.0",
-      domain: "ops",
+      domainId: "ops",
       owner: "owner@example.com",
       capabilities: [
         { capabilityKey: "approve", maturity: "ga", requiredContracts: ["approval_contract"] },
         { capabilityKey: "triage", maturity: "beta", requiredContracts: ["runtime_contract"] },
       ],
+      signing: { keyId: "test-key", signature: "test-sig" },
     },
     plugins: [
       {
         pluginId: "approve-plugin",
+        name: "Approve Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["retriever"],
@@ -110,15 +115,17 @@ test("SdkWorkbenchService.createInstallPlan resolves all capabilities when plugi
     pack: {
       packId: "ops-pack",
       version: "1.0.0",
-      domain: "ops",
+      domainId: "ops",
       owner: "owner@example.com",
       capabilities: [
         { capabilityKey: "approve", maturity: "ga", requiredContracts: ["approval_contract"] },
       ],
+      signing: { keyId: "test-key", signature: "test-sig" },
     },
     plugins: [
       {
         pluginId: "approve-plugin",
+        name: "Approve Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["retriever"],
@@ -153,6 +160,7 @@ test("SdkWorkbenchService.buildPublishReadiness returns findings for unresolved 
     plugins: [
       {
         pluginId: "approve-plugin",
+        name: "Approve Plugin",
         version: "1.0.0",
         owner: "owner@example.com",
         spiTypes: ["retriever"],
@@ -164,11 +172,12 @@ test("SdkWorkbenchService.buildPublishReadiness returns findings for unresolved 
       {
         packId: "ops-pack",
         version: "1.0.0",
-        domain: "ops",
+        domainId: "ops",
         owner: "owner@example.com",
         capabilities: [
           { capabilityKey: "approve", maturity: "ga", requiredContracts: ["approval_contract"] },
         ],
+        signing: { keyId: "test-key", signature: "test-sig" },
       },
     ],
     availableContracts: [],
@@ -187,11 +196,12 @@ test("SdkWorkbenchService.buildPublishReadiness returns preview URLs", () => {
       {
         packId: "ops-pack",
         version: "1.0.0",
-        domain: "ops",
+        domainId: "ops",
         owner: "owner@example.com",
         capabilities: [
           { capabilityKey: "approve", maturity: "ga", requiredContracts: ["approval_contract"] },
         ],
+        signing: { keyId: "test-key", signature: "test-sig" },
       },
     ],
     availableContracts: ["approval_contract"],

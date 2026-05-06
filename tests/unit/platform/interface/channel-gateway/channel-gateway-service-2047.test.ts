@@ -99,34 +99,49 @@ function createHarness() {
 test("ISSUE #2047: Tracked message payload only contains text and metadata, not envelope context", async () => {
   const harness = createHarness();
   try {
-    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {});
-    const service = harness.createService({ deliveryService });
+    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
+      maxRetries: 3,
+      initialBackoffMs: 0,
+      maxBackoffMs: 0,
+    });
 
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "https://hooks.example.test/retry-me",
       displayName: "Retry Hook",
     });
 
-    await service.sendMessage({
-      targetId: "webhook:https://hooks.example.test/retry-me",
-      text: "Test message with metadata",
-      metadata: {
-        originalEventType: "task.completed",
-        sourceTenant: "tenant-123",
-      },
+    const failingService = new ChannelGatewayService(harness.store, harness.targets, {
+      deliveryService,
+      fetchImpl: async () => ({ ok: false, status: 503 } as Response),
+      webhook: { defaultHeaders: { "x-gateway-source": "test" } },
     });
+
+    await assert.rejects(
+      () => failingService.sendMessage({
+        targetId: target.targetId,
+        text: "Test message with metadata",
+        metadata: {
+          originalEventType: "task.completed",
+          sourceTenant: "tenant-123",
+        },
+      }),
+      /gateway\.webhook_delivery_failed:503/,
+    );
 
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
 
     const trackedPayload = queued[0]!.payload;
-    assert.equal(trackedPayload.targetId, "webhook:https://hooks.example.test/retry-me");
+    assert.equal(trackedPayload.targetId, target.targetId);
     assert.equal(trackedPayload.text, "Test message with metadata");
+    assert.deepEqual(trackedPayload.metadata, {
+      originalEventType: "task.completed",
+      sourceTenant: "tenant-123",
+    });
 
-    // ISSUE #2047: The envelope context (sourceTenant, eventType, etc.) is NOT stored
-    // Only text and metadata are preserved
+    // Retry payload stores normalized delivery input, not flattened top-level envelope fields.
     assert.equal(("sourceTenant" in trackedPayload), false);
     assert.equal(("originalEventType" in trackedPayload), false);
   } finally {
@@ -137,10 +152,13 @@ test("ISSUE #2047: Tracked message payload only contains text and metadata, not 
 test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payload", async () => {
   const harness = createHarness();
   try {
-    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {});
-    const service = harness.createService({ deliveryService });
+    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
+      maxRetries: 3,
+      initialBackoffMs: 0,
+      maxBackoffMs: 0,
+    });
 
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "https://hooks.example.test/full-envelope",
@@ -148,7 +166,7 @@ test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payl
     });
 
     const input: SendGatewayMessageInput = {
-      targetId: "webhook:https://hooks.example.test/full-envelope",
+      targetId: target.targetId,
       text: "Original message text",
       metadata: {
         // These fields should be part of RequestEnvelope but are lost
@@ -162,27 +180,23 @@ test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payl
       },
     };
 
-    await service.sendMessage(input);
+    const failingService = new ChannelGatewayService(harness.store, harness.targets, {
+      deliveryService,
+      fetchImpl: async () => ({ ok: false, status: 503 } as Response),
+      webhook: { defaultHeaders: { "x-gateway-source": "test" } },
+    });
+
+    await assert.rejects(() => failingService.sendMessage(input), /gateway\.webhook_delivery_failed:503/);
 
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
 
-    // When reconstructing for retry, we only have { targetId, text, metadata }
-    // The original RequestEnvelope is lost
     const trackedPayload = queued[0]!.payload;
-    const reconstructed = {
-      targetId: trackedPayload.targetId,
-      text: trackedPayload.text,
-      // Cannot restore envelope - it's nested inside metadata but wasn't preserved as structured data
-    };
-
-    // We can reconstruct basic fields
-    assert.equal(reconstructed.text, "Original message text");
-
-    // But we CANNOT reconstruct the envelope context
-    // because it was stored as a nested object in metadata, not as separate fields
-    assert.equal(("envelopeId" in reconstructed), false);
-    assert.equal(("source" in reconstructed), false);
+    assert.equal(trackedPayload.targetId, target.targetId);
+    assert.equal(trackedPayload.text, "Original message text");
+    assert.deepEqual((trackedPayload.metadata as { requestEnvelope?: unknown }).requestEnvelope, input.metadata?.requestEnvelope);
+    assert.equal(("envelopeId" in trackedPayload), false);
+    assert.equal(("source" in trackedPayload), false);
   } finally {
     harness.close();
   }
@@ -191,38 +205,46 @@ test("ISSUE #2047: Cannot reconstruct original RequestEnvelope from tracked payl
 test("ISSUE #2047: Webhook adapter metadata is preserved but envelope fields are flattened", async () => {
   const harness = createHarness();
   try {
-    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {});
-    const service = harness.createService({ deliveryService });
+    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
+      maxRetries: 3,
+      initialBackoffMs: 0,
+      maxBackoffMs: 0,
+    });
 
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "https://hooks.example.test/flattened",
       displayName: "Flattened Hook",
     });
 
-    // Send message with nested metadata that includes envelope fields
-    await service.sendMessage({
-      targetId: "webhook:https://hooks.example.test/flattened",
-      text: "Test with envelope fields",
-      metadata: {
-        webhookUrl: "https://hooks.example.test/flattened",
-        // Envelope fields were passed as part of metadata
-        _envelope_source: "bitbucket",
-        _envelope_tenantId: "tenant-bitbucket",
-        _envelope_eventType: "push",
-      },
+    const metadata = {
+      webhookUrl: "https://hooks.example.test/flattened",
+      _envelope_source: "bitbucket",
+      _envelope_tenantId: "tenant-bitbucket",
+      _envelope_eventType: "push",
+    };
+    const failingService = new ChannelGatewayService(harness.store, harness.targets, {
+      deliveryService,
+      fetchImpl: async () => ({ ok: false, status: 503 } as Response),
+      webhook: { defaultHeaders: { "x-gateway-source": "test" } },
     });
+
+    await assert.rejects(
+      () => failingService.sendMessage({
+        targetId: target.targetId,
+        text: "Test with envelope fields",
+        metadata,
+      }),
+      /gateway\.webhook_delivery_failed:503/,
+    );
 
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
 
-    // The metadata is preserved (with underscore prefix attempt to preserve)
     const trackedPayload = queued[0]!.payload;
     assert.equal(trackedPayload.text, "Test with envelope fields");
-
-    // But these envelope fields are flattened into metadata, not stored as structured envelope
-    // This means replay cannot properly restore the original RequestEnvelope structure
+    assert.deepEqual(trackedPayload.metadata, metadata);
   } finally {
     harness.close();
   }
@@ -231,24 +253,38 @@ test("ISSUE #2047: Webhook adapter metadata is preserved but envelope fields are
 test("ISSUE #2047: Retry processing reads text and metadata but cannot restore original envelope", async () => {
   const harness = createHarness();
   try {
-    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {});
+    const deliveryService = new ChannelGatewayDeliveryService(harness.db, {
+      maxRetries: 3,
+      initialBackoffMs: 0,
+      maxBackoffMs: 0,
+    });
     const service = harness.createService({ deliveryService });
 
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "https://hooks.example.test/retry-lost",
       displayName: "Retry Lost Hook",
     });
 
-    await service.sendMessage({
-      targetId: "webhook:https://hooks.example.test/retry-lost",
-      text: "Message that needs retry",
-      metadata: {
-        correlationId: "corr-123",
-        retryCount: 0,
-      },
+    const metadata = {
+      correlationId: "corr-123",
+      retryCount: 0,
+    };
+    const failingService = new ChannelGatewayService(harness.store, harness.targets, {
+      deliveryService,
+      fetchImpl: async () => ({ ok: false, status: 503 } as Response),
+      webhook: { defaultHeaders: { "x-gateway-source": "test" } },
     });
+
+    await assert.rejects(
+      () => failingService.sendMessage({
+        targetId: target.targetId,
+        text: "Message that needs retry",
+        metadata,
+      }),
+      /gateway\.webhook_delivery_failed:503/,
+    );
 
     const queued = deliveryService.getRetryableMessages();
     assert.equal(queued.length, 1);
@@ -256,11 +292,8 @@ test("ISSUE #2047: Retry processing reads text and metadata but cannot restore o
     // Process retry queue
     const summary = await service.processRetryQueue(10);
 
-    // Retry succeeded (delivery service recorded it)
     assert.equal(summary.delivered, 1);
-
-    // But the original envelope context (correlationId, source, etc.) was only in metadata
-    // and cannot be properly restored as a first-class RequestEnvelope
+    assert.deepEqual((harness.requests.at(-1)?.body as { metadata?: unknown } | undefined)?.metadata, metadata);
   } finally {
     harness.close();
   }
@@ -271,7 +304,7 @@ test("ISSUE #2047: Retry processing reads text and metadata but cannot restore o
 test("ChannelGatewayService sendMessage works without delivery service", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "https://hooks.example.test/no-tracking",
@@ -280,7 +313,7 @@ test("ChannelGatewayService sendMessage works without delivery service", async (
 
     const service = harness.createService();
     const receipt = await service.sendMessage({
-      targetId: "webhook:https://hooks.example.test/no-tracking",
+      targetId: target.targetId,
       text: "No tracking needed",
     });
 
@@ -317,7 +350,7 @@ test("ChannelGatewayService retry works when message is tracked and retried", as
     });
     const service = harness.createService({ deliveryService });
 
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "https://hooks.example.test/actual-retry",
@@ -336,13 +369,14 @@ test("ChannelGatewayService retry works when message is tracked and retried", as
 
     // Create service with failing fetch
     const failingService = new ChannelGatewayService(harness.store, harness.targets, {
+      deliveryService,
       fetchImpl: failingFetch,
       webhook: { defaultHeaders: {} },
     }, undefined);
 
     await assert.rejects(
       failingService.sendMessage({
-        targetId: "webhook:https://hooks.example.test/actual-retry",
+        targetId: target.targetId,
         text: "Will retry",
       }),
       /gateway\.webhook_delivery_failed:503/,

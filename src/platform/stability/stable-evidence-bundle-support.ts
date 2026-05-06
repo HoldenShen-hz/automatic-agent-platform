@@ -35,6 +35,7 @@
  */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHmac } from "node:crypto";
 import { dirname, join } from "node:path";
 
 import { DiagnosticsService } from "../shared/observability/diagnostics-service.js";
@@ -435,7 +436,18 @@ export function writeJson(path: string, value: unknown): void {
   // Without HMAC/signature/hash chain, attacker can modify config without alert (issue #1953).
   const content = JSON.stringify(value, null, 2);
   const signature = computeHmacSignature(content);
-  const signedPayload = { content, signature, signedAt: new Date().toISOString() };
+  const signedPayload =
+    value != null && typeof value === "object" && !Array.isArray(value)
+      ? {
+          ...(value as Record<string, unknown>),
+          evidenceSignature: signature,
+          evidenceSignedAt: new Date().toISOString(),
+        }
+      : {
+          value,
+          evidenceSignature: signature,
+          evidenceSignedAt: new Date().toISOString(),
+        };
   writeFileSync(path, JSON.stringify(signedPayload, null, 2));
 }
 
@@ -446,7 +458,6 @@ export function writeJson(path: string, value: unknown): void {
 function computeHmacSignature(content: string): string {
   // §58: Use HMAC-SHA256 for evidence bundle signature.
   // In production, key should be fetched from secure key management service.
-  const { createHmac } = require("node:crypto");
   const hmacKey = process.env.STABLE_EVIDENCE_HMAC_KEY ?? "stable-evidence-default-dev-key";
   return createHmac("sha256", hmacKey).update(content).digest("hex");
 }

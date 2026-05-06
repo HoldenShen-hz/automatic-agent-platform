@@ -137,15 +137,15 @@ test("RiskFactorsSchema accepts valid risk factors", () => {
 
 test("RiskFactorsSchema rejects missing required fields", () => {
   assert.throws(() => RiskFactorsSchema.parse({}));
-  assert.throws(() => RiskFactorsSchema.parse({ stepTypeRisk: "read" }));
+  assert.throws(() => RiskFactorsSchema.parse({ operationRisk: "read" }));
   assert.throws(() => RiskFactorsSchema.parse({
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
+    operationRisk: "read",
+    targetResourceCriticality: "internal",
     // missing other fields
   }));
 });
 
-test("RiskFactorsSchema rejects invalid stepTypeRisk", () => {
+test("RiskFactorsSchema rejects invalid operationRisk", () => {
   const invalidFactors = {
     operationRisk: "execute",
     targetResourceCriticality: "internal",
@@ -159,7 +159,7 @@ test("RiskFactorsSchema rejects invalid stepTypeRisk", () => {
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
-test("RiskFactorsSchema rejects invalid targetSystemRisk", () => {
+test("RiskFactorsSchema rejects invalid targetResourceCriticality", () => {
   const invalidFactors = {
     operationRisk: "read",
     targetResourceCriticality: "dev",
@@ -173,7 +173,7 @@ test("RiskFactorsSchema rejects invalid targetSystemRisk", () => {
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
-test("RiskFactorsSchema rejects invalid dataClassRisk", () => {
+test("RiskFactorsSchema rejects invalid dataSensitivity", () => {
   const invalidFactors = {
     operationRisk: "read",
     targetResourceCriticality: "internal",
@@ -221,22 +221,22 @@ test("RiskLevelSchema inferred type works correctly", () => {
   assert.ok(RiskLevelSchema.safeParse(level).success);
 });
 
-test("StepTypeRiskSchema inferred type works correctly", () => {
-  const stepType: StepTypeRisk = "delete";
-  assert.equal(stepType, "delete");
-  assert.ok(StepTypeRiskSchema.safeParse(stepType).success);
+test("OperationRiskSchema inferred type works correctly", () => {
+  const operationRisk: OperationRisk = "delete";
+  assert.equal(operationRisk, "delete");
+  assert.ok(OperationRiskSchema.safeParse(operationRisk).success);
 });
 
-test("TargetSystemRiskSchema inferred type works correctly", () => {
-  const target: TargetSystemRisk = "production";
+test("TargetResourceCriticalitySchema inferred type works correctly", () => {
+  const target: TargetResourceCriticality = "production";
   assert.equal(target, "production");
-  assert.ok(TargetSystemRiskSchema.safeParse(target).success);
+  assert.ok(TargetResourceCriticalitySchema.safeParse(target).success);
 });
 
-test("DataClassRiskSchema inferred type works correctly", () => {
-  const dataClass: DataClassRisk = "restricted";
-  assert.equal(dataClass, "restricted");
-  assert.ok(DataClassRiskSchema.safeParse(dataClass).success);
+test("DataSensitivitySchema inferred type works correctly", () => {
+  const dataSensitivity: DataSensitivity = "restricted";
+  assert.equal(dataSensitivity, "restricted");
+  assert.ok(DataSensitivitySchema.safeParse(dataSensitivity).success);
 });
 
 test("BlastRadiusSchema inferred type works correctly", () => {
@@ -245,8 +245,8 @@ test("BlastRadiusSchema inferred type works correctly", () => {
   assert.ok(BlastRadiusSchema.safeParse(blast).success);
 });
 
-test("ConfidenceLevelSchema inferred type works correctly", () => {
-  const conf: ConfidenceLevel = "low";
-  assert.equal(conf, "low");
-  assert.ok(ConfidenceLevelSchema.safeParse(conf).success);
+test("EvidenceConfidenceSchema inferred type works correctly", () => {
+  const confidence: EvidenceConfidence = "low";
+  assert.equal(confidence, "low");
+  assert.ok(EvidenceConfidenceSchema.safeParse(confidence).success);
 });

@@ -5,7 +5,7 @@ import {
   buildCostOptimizationRecommendation,
   prioritizeCostOptimizationRecommendations,
   type CostOptimizationRecommendation,
-} from "../../../../dist/src/ops-maturity/cost-optimizer/recommendation-engine/index.js";
+} from "../../../../src/ops-maturity/cost-optimizer/recommendation-engine/index.js";
 
 test("buildCostOptimizationRecommendation returns null for zero cost", () => {
   const result = buildCostOptimizationRecommendation("subj", 0);

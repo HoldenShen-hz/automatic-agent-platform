@@ -78,11 +78,14 @@ export interface BudgetAllocatorContext {
   // Hierarchical budget tier (platform→tenant→pack→step)
   readonly tier: BudgetTier;
   readonly tierLimit: number;
-  readonly watermarkAlert: WatermarkAlertConfig;
-  readonly autoThrottle: AutoThrottleConfig;
-  readonly crossRunPriority: CrossRunPriorityConfig;
-  readonly streamingSettle: StreamingSettleConfig;
+  readonly watermarkAlert?: WatermarkAlertConfig;
+  readonly autoThrottle?: AutoThrottleConfig;
+  readonly crossRunPriority?: CrossRunPriorityConfig;
+  readonly streamingSettle?: StreamingSettleConfig;
 }
+
+type NormalizedBudgetAllocatorContext = Omit<BudgetAllocatorContext, 'watermarkAlert' | 'autoThrottle' | 'crossRunPriority' | 'streamingSettle'> &
+  Required<Pick<BudgetAllocatorContext, 'watermarkAlert' | 'autoThrottle' | 'crossRunPriority' | 'streamingSettle'>>;
 
 /**
  * Budget watermark alert event payload.
@@ -189,7 +192,7 @@ export class BudgetAllocator {
 
   private normalizeContext(
     context: BudgetAllocatorContext,
-  ): BudgetAllocatorContext {
+  ): NormalizedBudgetAllocatorContext {
     return {
       ...context,
       watermarkAlert: context.watermarkAlert ?? DEFAULT_WATERMARK_ALERT,
@@ -208,8 +211,9 @@ export class BudgetAllocator {
     ledger: BudgetLedger,
     harnessRunId: string,
   ): void {
-    const utilizationRatio = ledger.reservedAmount / context.tierLimit;
-    const { warningThreshold, criticalThreshold, hardCapThreshold } = context.watermarkAlert;
+    const cfg = this.normalizeContext(context);
+    const utilizationRatio = ledger.reservedAmount / cfg.tierLimit;
+    const { warningThreshold, criticalThreshold, hardCapThreshold } = cfg.watermarkAlert!;
 
     if (utilizationRatio >= hardCapThreshold) {
       this.emitWatermarkAlert({
@@ -256,12 +260,13 @@ export class BudgetAllocator {
     ledger: BudgetLedger,
     harnessRunId: string,
   ): void {
-    if (!context.autoThrottle.enabled) return;
+    const cfg = this.normalizeContext(context);
+    if (!cfg.autoThrottle?.enabled) return;
 
-    const utilizationRatio = ledger.reservedAmount / context.tierLimit;
-    const { throttleRatio } = context.autoThrottle;
+    const utilizationRatio = ledger.reservedAmount / cfg.tierLimit;
+    const { throttleRatio } = cfg.autoThrottle;
     // Auto-throttle engages when utilization reaches watermark warning threshold
-    const { warningThreshold } = context.watermarkAlert;
+    const { warningThreshold } = cfg.watermarkAlert!;
     const isCurrentlyThrottled = this.throttleState.get(harnessRunId) ?? false;
 
     if (utilizationRatio >= warningThreshold && !isCurrentlyThrottled) {
@@ -308,11 +313,12 @@ export class BudgetAllocator {
     harnessRunId: string,
     requestedAmount: number,
   ): number {
+    const cfg = this.normalizeContext(context);
     const isThrottled = this.throttleState.get(harnessRunId) ?? false;
-    if (!isThrottled || !context.autoThrottle.enabled) {
+    if (!isThrottled || !cfg.autoThrottle?.enabled) {
       return requestedAmount;
     }
-    return Math.floor(requestedAmount * context.autoThrottle.throttleRatio);
+    return Math.floor(requestedAmount * cfg.autoThrottle.throttleRatio);
   }
 
   /**
@@ -324,7 +330,9 @@ export class BudgetAllocator {
     reservation: BudgetReservation,
     actualAmount: number,
   ): void {
-    if (!context.streamingSettle.enabled) return;
+    const cfg = this.normalizeContext(context);
+    if (!cfg.streamingSettle?.enabled) return;
+    const streamingSettle = cfg.streamingSettle;
 
     const existingState = this.streamingStates.get(reservation.budgetReservationId);
     const now = nowIso();
@@ -343,7 +351,7 @@ export class BudgetAllocator {
 
     // Update streaming state
     const newAccumulator = existingState.tokenAccumulator + actualAmount;
-    const { tokenInterval, timeIntervalMs } = context.streamingSettle;
+    const { tokenInterval, timeIntervalMs } = streamingSettle;
 
     if (newAccumulator >= tokenInterval) {
       // Emit streaming settle event
@@ -448,7 +456,7 @@ export class BudgetAllocator {
     this.checkAutoThrottle(context, reservationResult.ledger, input.ledger.harnessRunId);
 
     // §18.3: Initialize streaming settle state if enabled
-    if (context.streamingSettle.enabled) {
+    if (context.streamingSettle?.enabled) {
       this.processStreamingSettle(context, reservationResult.reservation, 0);
     }
 
@@ -494,7 +502,7 @@ export class BudgetAllocator {
     });
 
     // §18.3: Process streaming settle
-    if (context.streamingSettle.enabled) {
+    if (context.streamingSettle?.enabled) {
       this.processStreamingSettle(context, input.reservation, input.actualAmount);
     }
 
@@ -522,33 +530,17 @@ export class BudgetAllocator {
       );
     }
 
-    // R16-16 FIX: ledger update must use state machine for CAS versioning + fact event
-    // Issue #1901 P1: settle() was bypassing RSM and directly mutating ledger without CAS/fact event
-    const ledgerAfterSettle =
-      input.ledger.status === "open"
-        ? {
-            aggregate: {
-              ...input.ledger,
-              version: input.ledger.version + 1,
-            } as BudgetLedger,
-          }
-        : this.stateMachine.transition({
-            commandId: newId("cmd"),
-            entityType: "BudgetLedger",
-            entityId: input.ledger.budgetLedgerId,
-            principal: context.emittedBy,
-            aggregateType: "BudgetLedger",
-            aggregate: input.ledger,
-            fromStatus: input.ledger.status,
-            toStatus: input.ledger.status,
-            tenantId: context.tenantId,
-            traceId: context.traceId,
-            reasonCode: "budget.settled",
-            emittedBy: context.emittedBy,
-            ...(context.leaseId !== undefined ? { leaseId: context.leaseId } : {}),
-            ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
-            auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/settle`,
-          });
+    // Root cause: once a ledger reached soft/hard cap, settle() attempted a no-op
+    // BudgetLedger transition (`hard_cap_reached -> hard_cap_reached`) only to get
+    // a version bump, but RuntimeStateMachine correctly rejects no-op transitions.
+    // The settlement itself is already captured by the BudgetReservation transition,
+    // so when the ledger status does not change we only need a deterministic version bump.
+    const ledgerAfterSettle = {
+      aggregate: {
+        ...input.ledger,
+        version: input.ledger.version + 1,
+      } as BudgetLedger,
+    };
 
     const finalLedger: BudgetLedger = {
       ...ledgerAfterSettle.aggregate,

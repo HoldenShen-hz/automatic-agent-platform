@@ -31,6 +31,7 @@ test("OrgGovernanceSaga executes multi-phase governance lifecycle", () => {
     audit: (step, _ctx) => {
       assert.ok(step.action === "audit");
     },
+    compensate: () => {},
   });
 
   const steps: OrgGovernanceSagaStep[] = [
@@ -50,7 +51,6 @@ test("OrgGovernanceSaga executes multi-phase governance lifecycle", () => {
 });
 
 test("OrgGovernanceSaga respects phase ordering", () => {
-  const saga = new OrgGovernanceSaga();
   const phases: Array<{ phase: "identity" | "approval" | "budget" | "domain" | "agent"; order: number }> = [];
 
   const testSaga = new OrgGovernanceSaga({
@@ -60,6 +60,7 @@ test("OrgGovernanceSaga respects phase ordering", () => {
     commit: (step, _ctx) => {
       phases.push({ phase: step.phase, order: 1 });
     },
+    compensate: () => {},
   });
 
   // PHASE_ORDER = ["identity", "approval", "budget", "domain", "agent"]
@@ -88,6 +89,7 @@ test("OrgGovernanceSaga compensates on prepare failure", () => {
         throw new Error("Prepare failure");
       }
     },
+    commit: () => {},
     compensate: (step, _ctx) => {
       // compensate
     },
@@ -108,7 +110,12 @@ test("OrgGovernanceSaga compensates on prepare failure", () => {
 });
 
 test("OrgGovernanceSaga produces receipt with phase ordering", () => {
-  const saga = new OrgGovernanceSaga();
+  const saga = new OrgGovernanceSaga({
+    prepare: () => {},
+    commit: () => {},
+    compensate: () => {},
+    audit: () => {},
+  });
 
   const steps: OrgGovernanceSagaStep[] = [
     { stepId: "step-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },

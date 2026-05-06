@@ -26,9 +26,10 @@ export class SqliteDlqRepository implements DlqRepository {
           dead_letter_id, source_event_id, event_type, consumer_id, error_code,
           error_message, payload_json, status, retry_count, max_retries,
           next_retry_at, created_at, updated_at, original_timestamp,
-          failure_category, reason, retry_exhausted_at, last_attempt_at,
+          first_failed_at, last_failed_at, failure_category, reason,
+          retry_exhausted_at, last_attempt_at, linked_incident_id,
           operator_action_log_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         record.deadLetterId,
@@ -45,10 +46,13 @@ export class SqliteDlqRepository implements DlqRepository {
         record.createdAt,
         record.updatedAt,
         record.originalTimestamp,
+        record.firstFailedAt,
+        record.lastFailedAt,
         record.failureCategory,
         record.reason,
         record.retryExhaustedAt,
         record.lastAttemptAt,
+        record.linkedIncidentId,
         JSON.stringify(record.operatorActionLog),
       );
   }
@@ -71,10 +75,13 @@ export class SqliteDlqRepository implements DlqRepository {
         created_at AS createdAt,
         updated_at AS updatedAt,
         original_timestamp AS originalTimestamp,
+        first_failed_at AS firstFailedAt,
+        last_failed_at AS lastFailedAt,
         failure_category AS failureCategory,
         reason,
         retry_exhausted_at AS retryExhaustedAt,
         last_attempt_at AS lastAttemptAt,
+        linked_incident_id AS linkedIncidentId,
         operator_action_log_json AS operatorActionLogJson
        FROM dlq_records
        WHERE dead_letter_id = ?`,
@@ -99,10 +106,13 @@ export class SqliteDlqRepository implements DlqRepository {
           next_retry_at = ?,
           updated_at = ?,
           original_timestamp = ?,
+          first_failed_at = ?,
+          last_failed_at = ?,
           failure_category = ?,
           reason = ?,
           retry_exhausted_at = ?,
           last_attempt_at = ?,
+          linked_incident_id = ?,
           operator_action_log_json = ?
          WHERE dead_letter_id = ?`,
       )
@@ -119,10 +129,13 @@ export class SqliteDlqRepository implements DlqRepository {
         record.nextRetryAt,
         record.updatedAt,
         record.originalTimestamp,
+        record.firstFailedAt,
+        record.lastFailedAt,
         record.failureCategory,
         record.reason,
         record.retryExhaustedAt,
         record.lastAttemptAt,
+        record.linkedIncidentId,
         JSON.stringify(record.operatorActionLog),
         record.deadLetterId,
       );
@@ -151,10 +164,13 @@ export class SqliteDlqRepository implements DlqRepository {
         created_at AS createdAt,
         updated_at AS updatedAt,
         original_timestamp AS originalTimestamp,
+        first_failed_at AS firstFailedAt,
+        last_failed_at AS lastFailedAt,
         failure_category AS failureCategory,
         reason,
         retry_exhausted_at AS retryExhaustedAt,
         last_attempt_at AS lastAttemptAt,
+        linked_incident_id AS linkedIncidentId,
         operator_action_log_json AS operatorActionLogJson
        FROM dlq_records
        ORDER BY created_at ASC`,
@@ -180,10 +196,13 @@ export class SqliteDlqRepository implements DlqRepository {
         created_at AS createdAt,
         updated_at AS updatedAt,
         original_timestamp AS originalTimestamp,
+        first_failed_at AS firstFailedAt,
+        last_failed_at AS lastFailedAt,
         failure_category AS failureCategory,
         reason,
         retry_exhausted_at AS retryExhaustedAt,
         last_attempt_at AS lastAttemptAt,
+        linked_incident_id AS linkedIncidentId,
         operator_action_log_json AS operatorActionLogJson
        FROM dlq_records
        WHERE consumer_id = ?
@@ -211,10 +230,13 @@ export class SqliteDlqRepository implements DlqRepository {
         created_at AS createdAt,
         updated_at AS updatedAt,
         original_timestamp AS originalTimestamp,
+        first_failed_at AS firstFailedAt,
+        last_failed_at AS lastFailedAt,
         failure_category AS failureCategory,
         reason,
         retry_exhausted_at AS retryExhaustedAt,
         last_attempt_at AS lastAttemptAt,
+        linked_incident_id AS linkedIncidentId,
         operator_action_log_json AS operatorActionLogJson
        FROM dlq_records
        WHERE status = 'retrying'
@@ -242,10 +264,13 @@ export class SqliteDlqRepository implements DlqRepository {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       originalTimestamp: row.originalTimestamp,
+      firstFailedAt: row.firstFailedAt,
+      lastFailedAt: row.lastFailedAt,
       failureCategory: row.failureCategory as ExtendedDeadLetterRecord["failureCategory"],
       reason: row.reason,
       retryExhaustedAt: row.retryExhaustedAt,
       lastAttemptAt: row.lastAttemptAt,
+      linkedIncidentId: row.linkedIncidentId,
       operatorActionLog: row.operatorActionLogJson
         ? (JSON.parse(row.operatorActionLogJson) as OperatorActionRecord[])
         : [],
@@ -268,9 +293,12 @@ interface SqliteDlqRow {
   createdAt: string;
   updatedAt: string;
   originalTimestamp: string | null;
+  firstFailedAt: string | null;
+  lastFailedAt: string | null;
   failureCategory: string | null;
   reason: string | null;
   retryExhaustedAt: string | null;
   lastAttemptAt: string | null;
+  linkedIncidentId: string | null;
   operatorActionLogJson: string | null;
 }

@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ValidationError, WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
-import { createBudgetLedger, createBudgetReservation } from "../../../../src/platform/contracts/executable-contracts/index.js";
+import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext, type BudgetWatermarkAlert, type BudgetAutoThrottleEvent } from "../../../../src/platform/execution/budget-allocator.js";
 import { RuntimeStateMachine } from "../../../../src/platform/execution/runtime-state-machine.js";
 
@@ -45,9 +45,7 @@ function createTestLedger(overrides: Partial<Parameters<typeof createBudgetLedge
 
 function createTestContext(): BudgetAllocatorContext {
   return {
-    tenantId: "tenant-1",
-    traceId: "trace-1",
-    emittedBy: "test",
+    ...LOCKED_CONTEXT,
     tier: BudgetTier.STEP,
     tierLimit: 1000,
     watermarkAlert: {
@@ -219,7 +217,7 @@ test("BudgetAllocator: reserve() fails if another transaction modified ledger", 
   const ledger = createTestLedger({ version: 0 });
 
   // First reservation succeeds
-  allocator.reserve({
+  const reserved = allocator.reserve({
     ledger,
     amount: 100,
     resourceKind: "token",
@@ -232,11 +230,11 @@ test("BudgetAllocator: reserve() fails if another transaction modified ledger", 
   assert.throws(
     () =>
       allocator.reserve({
-        ledger: ledger, // Original ledger with version 0
+        ledger: reserved.ledger,
         amount: 200,
         resourceKind: "token",
         expiresAt: "2026-04-27T01:00:00.000Z",
-        expectedVersion: 0, // Stale - ledger was already modified
+        expectedVersion: 0,
         context: createTestContext(),
       }),
     ValidationError,
@@ -250,14 +248,6 @@ test("BudgetAllocator: settle() creates settlement record with fact event (issue
   const allocator = new BudgetAllocator({ stateMachine });
 
   const ledger = createTestLedger({ version: 0 });
-  const reservation = createBudgetReservation({
-    budgetLedgerId: ledger.budgetLedgerId,
-    harnessRunId: ledger.harnessRunId,
-    amount: 100,
-    resourceKind: "token",
-    expiresAt: "2026-04-27T01:00:00.000Z",
-    status: "reserved",
-  });
 
   // First reserve
   const reserved = allocator.reserve({
@@ -279,8 +269,8 @@ test("BudgetAllocator: settle() creates settlement record with fact event (issue
 
   assert.equal(settled.settlement.settlementKind, "final");
   assert.equal(settled.settlement.actualAmount, 95);
-  assert.equal(settled.settlement.budgetReservationId, reservation.budgetReservationId);
-  assert.ok(settled.event, "Settlement should produce a state transition event");
+  assert.equal(settled.settlement.budgetReservationId, reserved.reservation.budgetReservationId);
+  assert.ok(settled.reservation.event, "Settlement should produce a state transition event");
 });
 
 test("BudgetAllocator: settle() updates ledger correctly", () => {
@@ -493,7 +483,7 @@ test("BudgetAllocator: correctly uses tier hierarchy", () => {
     },
   };
 
-  const ledger = createTestLedger({ version: 0 });
+  const ledger = createTestLedger({ version: 0, hardCap: 5000 });
 
   const reserved = allocator.reserve({
     ledger,

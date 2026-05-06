@@ -22,6 +22,9 @@ test("DlqService enqueue creates a pending record", () => {
   assert.equal(record.maxRetries, 5);
   assert.equal(record.nextRetryAt, null);
   assert.equal(record.retryExhaustedAt, null);
+  assert.ok(record.firstFailedAt !== null);
+  assert.equal(record.firstFailedAt, record.lastFailedAt);
+  assert.equal(record.linkedIncidentId, null);
   assert.deepEqual(record.operatorActionLog, []);
 });
 
@@ -39,8 +42,35 @@ test("DlqService enqueue accepts optional fields", () => {
   });
 
   assert.equal(record.originalTimestamp, originalTs);
+  assert.equal(record.firstFailedAt, originalTs);
+  assert.equal(record.lastFailedAt, originalTs);
   assert.equal(record.failureCategory, "transient");
   assert.equal(record.reason, "network unreachable");
+});
+
+test("DlqService requires explicit persistence outside test fallback", () => {
+  const previousRunningTests = process.env["AA_RUNNING_TESTS"];
+  const previousNodeEnv = process.env["NODE_ENV"];
+  delete process.env["AA_RUNNING_TESTS"];
+  delete process.env["NODE_ENV"];
+
+  try {
+    assert.throws(
+      () => new DlqService(),
+      /requires a persistent DlqRepository or dbConnection/i,
+    );
+  } finally {
+    if (previousRunningTests === undefined) {
+      delete process.env["AA_RUNNING_TESTS"];
+    } else {
+      process.env["AA_RUNNING_TESTS"] = previousRunningTests;
+    }
+    if (previousNodeEnv === undefined) {
+      delete process.env["NODE_ENV"];
+    } else {
+      process.env["NODE_ENV"] = previousNodeEnv;
+    }
+  }
 });
 
 test("DlqService listAll returns all records sorted by createdAt", () => {
@@ -282,6 +312,20 @@ test("DlqService logOperatorAction appends to operatorActionLog", () => {
   assert.deepEqual(updated.operatorActionLog[0]!.details, { note: "checking logs" });
   assert.equal(updated.operatorActionLog[1]!.action, "mitigation_applied");
   assert.equal(updated.operatorActionLog[1]!.newStatus, null);
+});
+
+test("DlqService linkIncident stores linked incident id and audit log entry", () => {
+  const service = new DlqService();
+  const record = service.enqueue({ sourceEventId: "evt_incident", consumerId: "c1", errorCode: "e1", payloadJson: "{}" });
+
+  const linked = service.linkIncident(record.deadLetterId, "incident-123", "operator_incident");
+
+  assert.equal(linked.linkedIncidentId, "incident-123");
+  assert.equal(linked.operatorActionLog.at(-1)?.action, "escalation_triggered");
+  assert.deepEqual(linked.operatorActionLog.at(-1)?.details, {
+    previousIncidentId: null,
+    incidentId: "incident-123",
+  });
 });
 
 // --- Summarize ---

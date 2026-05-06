@@ -51,7 +51,7 @@ function createTestPack(overrides: Partial<BusinessPackManifest> = {}): Business
   return {
     packId: "test-pack",
     version: "1.0.0",
-    domain: "test",
+    domainId: "test",
     owner: "test@example.com",
     capabilities: [
       {
@@ -60,6 +60,10 @@ function createTestPack(overrides: Partial<BusinessPackManifest> = {}): Business
         requiredContracts: ["runtime_execution_contract"],
       },
     ],
+    signing: {
+      keyId: "test-key-id",
+      signature: "test-signature",
+    },
     ...overrides,
   };
 }

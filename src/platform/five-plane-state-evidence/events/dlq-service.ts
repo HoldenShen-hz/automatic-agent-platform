@@ -15,6 +15,9 @@ import { ValidationError } from "../../contracts/errors.js";
 import type { DurableEventBus } from "./durable-event-bus.js";
 import type { SqliteConnection } from "../truth/sqlite/query-helper.js";
 import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
  * Failure categories for DLQ entries
@@ -74,6 +77,10 @@ export interface ExtendedDeadLetterRecord {
   updatedAt: string;
   /** Original timestamp when the failed event occurred */
   originalTimestamp: string | null;
+  /** First time this event entered the DLQ */
+  firstFailedAt: string | null;
+  /** Most recent failure timestamp observed for this DLQ item */
+  lastFailedAt: string | null;
   /** Category classification for the failure */
   failureCategory: FailureCategory | null;
   /** Reason description for operator visibility */
@@ -82,6 +89,8 @@ export interface ExtendedDeadLetterRecord {
   retryExhaustedAt: string | null;
   /** Timestamp of last retry attempt */
   lastAttemptAt: string | null;
+  /** Linked incident for escalation tracking */
+  linkedIncidentId: string | null;
   /** Operator action log for audit trail */
   operatorActionLog: OperatorActionRecord[];
 }
@@ -130,6 +139,15 @@ export interface DlqRepository {
   listRetryable(asOf: string): ExtendedDeadLetterRecord[];
 }
 
+export interface DlqServiceOptions {
+  /**
+   * Allow ephemeral in-memory storage.
+   * This exists for tests and explicit dev-only callers; production callers
+   * must inject a persistent repository or database connection.
+   */
+  readonly allowInMemoryFallback?: boolean;
+}
+
 /**
  * In-memory implementation of DLQ repository for backward compatibility
  * and environments without persistent storage.
@@ -171,9 +189,11 @@ export class InMemoryDlqRepository implements DlqRepository {
  * DLQ Service - Handles dead letter queue operations with audit trail.
  * Supports both in-memory and persistent repository implementations.
  *
- * R12-06 FIX: In-memory repository is only suitable for testing/development.
- * Production deployments MUST provide a persistent DlqRepository implementation
- * to ensure DLQ entries survive process restarts per §28.8 requirements.
+ * R12-06 FIX: the previous constructor silently fell back to in-memory storage
+ * whenever the caller forgot to inject persistence. That meant the repository
+ * already supported SQLite durability, but the default production path still
+ * violated §28.8 and lost DLQ data on restart. The constructor now fails closed
+ * unless the caller explicitly opts into ephemeral mode.
  */
 export class DlqService {
   private readonly repo: DlqRepository;
@@ -184,28 +204,39 @@ export class DlqService {
   /**
    * Create a DLQ service with an optional repository or database connection.
    * @param repo - Optional repository for persistence. If not provided, the dbConnection is used
-   *               to create a SqliteDlqRepository. If neither is provided, defaults to in-memory storage.
+   *               to create a SqliteDlqRepository.
    * @param dbConnection - Optional SQLite database connection for persistent DLQ storage.
    *                       When provided and repo is not provided, creates a SqliteDlqRepository.
-   *             WARNING: In-memory storage loses all entries on process restart.
-   *             Production deployments must provide a persistent repository or dbConnection.
+   * @param options - Optional constructor flags. In-memory fallback must be explicitly
+   *                  enabled for tests or ephemeral tooling.
    */
-  public constructor(repo?: DlqRepository, dbConnection?: SqliteConnection) {
+  public constructor(repo?: DlqRepository, dbConnection?: SqliteConnection, options: DlqServiceOptions = {}) {
     if (repo != null) {
       this.repo = repo;
     } else if (dbConnection != null) {
-      // R12-06 FIX: Use SqliteDlqRepository when dbConnection is provided
       this.repo = new SqliteDlqRepository(dbConnection);
     } else {
-      this.repo = new InMemoryDlqRepository();
-      // R12-06 FIX: Emit warning once when using in-memory storage in non-test environments
-      if (!DlqService.IN_MEMORY_WARNING_EMITTED && process.env["NODE_ENV"] !== "test") {
-        console.warn(
-          "[DlqService] WARNING: Using in-memory DLQ repository. " +
-          "DLQ entries will be lost on process restart. " +
-          "For production, provide a persistent DlqRepository or dbConnection. " +
-          "See §28.8 for persistent DLQ requirements.",
+      const allowInMemoryFallback =
+        options.allowInMemoryFallback === true ||
+        process.env["AA_RUNNING_TESTS"] === "1" ||
+        process.env["NODE_ENV"] === "test";
+      if (!allowInMemoryFallback) {
+        throw new ValidationError(
+          "dlq.persistence_required",
+          "DlqService requires a persistent DlqRepository or dbConnection outside explicit test/dev fallback.",
         );
+      }
+      this.repo = new InMemoryDlqRepository();
+      if (
+        !DlqService.IN_MEMORY_WARNING_EMITTED &&
+        options.allowInMemoryFallback === true &&
+        process.env["AA_RUNNING_TESTS"] !== "1" &&
+        process.env["NODE_ENV"] !== "test"
+      ) {
+        logger.warn("DlqService using in-memory DLQ repository", {
+          warning: "DLQ entries will be lost on process restart. For production, provide a persistent DlqRepository or dbConnection.",
+          reference: "See §28.8 for persistent DLQ requirements.",
+        });
         DlqService.IN_MEMORY_WARNING_EMITTED = true;
       }
     }
@@ -226,6 +257,7 @@ export class DlqService {
     reason?: string | null;
   }): ExtendedDeadLetterRecord {
     const now = nowIso();
+    const firstFailureAt = input.originalTimestamp ?? now;
     const record: ExtendedDeadLetterRecord = {
       deadLetterId: newId("dlq"),
       sourceEventId: input.sourceEventId,
@@ -241,10 +273,13 @@ export class DlqService {
       createdAt: now,
       updatedAt: now,
       originalTimestamp: input.originalTimestamp ?? null,
+      firstFailedAt: firstFailureAt,
+      lastFailedAt: firstFailureAt,
       failureCategory: input.failureCategory ?? null,
       reason: input.reason ?? null,
       retryExhaustedAt: null,
       lastAttemptAt: null,
+      linkedIncidentId: null,
       operatorActionLog: [],
     };
     this.repo.insert(record);
@@ -289,6 +324,7 @@ export class DlqService {
       retryCount: record.retryCount + 1,
       nextRetryAt,
       updatedAt: now,
+      lastFailedAt: now,
       lastAttemptAt: now,
     };
     this.repo.update(updated);
@@ -376,6 +412,7 @@ export class DlqService {
       retryExhaustedAt: now,
       nextRetryAt: null,
       updatedAt: now,
+      lastFailedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
     this.repo.update(updated);
@@ -453,6 +490,36 @@ export class DlqService {
 
     const updated: ExtendedDeadLetterRecord = {
       ...record,
+      updatedAt: now,
+      operatorActionLog: [...record.operatorActionLog, actionLog],
+    };
+    this.repo.update(updated);
+    return updated;
+  }
+
+  /**
+   * Link a DLQ entry to an incident for operator escalation and redrive tracking.
+   */
+  public linkIncident(deadLetterId: string, incidentId: string, operatorId?: string): ExtendedDeadLetterRecord {
+    const record = this.getRequired(deadLetterId);
+    const now = nowIso();
+
+    const actionLog: OperatorActionRecord = {
+      actionId: newId("oplog"),
+      operatorId: operatorId ?? "system",
+      action: "escalation_triggered",
+      timestamp: now,
+      details: {
+        previousIncidentId: record.linkedIncidentId,
+        incidentId,
+      },
+      previousStatus: record.status,
+      newStatus: null,
+    };
+
+    const updated: ExtendedDeadLetterRecord = {
+      ...record,
+      linkedIncidentId: incidentId,
       updatedAt: now,
       operatorActionLog: [...record.operatorActionLog, actionLog],
     };
@@ -666,7 +733,10 @@ export class DlqConsumer {
         processed++;
       } catch (error) {
         // Log error but continue processing other entries
-        console.error(`DLQ consumer error processing ${record.deadLetterId}:`, error);
+        logger.error("DLQ consumer error processing record", {
+          deadLetterId: record.deadLetterId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

@@ -116,7 +116,7 @@ test("ChannelGatewayService constructor accepts custom adapter registry", () => 
 test("ChannelGatewayService sendMessage resolves target by targetId", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "telegram",
       targetKind: "user",
       externalTargetId: "finance-team",
@@ -125,7 +125,7 @@ test("ChannelGatewayService sendMessage resolves target by targetId", async () =
 
     const service = harness.createService();
     const receipt = await service.sendMessage({
-      targetId: "telegram:finance-team",
+      targetId: target.targetId,
       text: "Hello finance team",
     });
 
@@ -163,7 +163,7 @@ test("ChannelGatewayService sendMessage resolves target by query", async () => {
 test("ChannelGatewayService sendMessage throws on channel mismatch", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "telegram",
       targetKind: "user",
       externalTargetId: "finance-team",
@@ -173,7 +173,7 @@ test("ChannelGatewayService sendMessage throws on channel mismatch", async () =>
     const service = harness.createService();
     await assert.rejects(
       () => service.sendMessage({
-        query: "finance",
+        targetId: target.targetId,
         channel: "slack", // Different from target's channel
         text: "Hello",
       }),
@@ -226,7 +226,7 @@ test("ChannelGatewayService sendMessage throws when no query or targetId", async
 test("ChannelGatewayService sendMessage throws for unsupported channel", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "unsupported-channel",
       targetKind: "user",
       externalTargetId: "user-1",
@@ -236,7 +236,7 @@ test("ChannelGatewayService sendMessage throws for unsupported channel", async (
     const service = harness.createService();
     await assert.rejects(
       () => service.sendMessage({
-        targetId: "unsupported-channel:user-1",
+        targetId: target.targetId,
         text: "Hello",
       }),
       /gateway.unsupported_channel/,
@@ -308,7 +308,7 @@ test("createDefaultChannelAdapterRegistry includes telegram, slack, and webhook 
 test("ChannelGatewayService sendMessage via slack channel", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "slack",
       targetKind: "user",
       externalTargetId: "slack-channel-1",
@@ -317,7 +317,7 @@ test("ChannelGatewayService sendMessage via slack channel", async () => {
 
     const service = harness.createService();
     const receipt = await service.sendMessage({
-      targetId: "slack:slack-channel-1",
+      targetId: target.targetId,
       text: "Hello from Slack",
     });
 
@@ -357,7 +357,7 @@ test("ChannelGatewayService sendMessage via webhook channel", async () => {
   const store = new AuthoritativeTaskStore(db);
   const targets = new GatewayTargetDirectoryService(store);
 
-  targets.registerTarget({
+  const target = targets.registerTarget({
     channel: "webhook",
     targetKind: "webhook",
     externalTargetId: "https://example.webhook.test/endpoint",
@@ -375,7 +375,7 @@ test("ChannelGatewayService sendMessage via webhook channel", async () => {
 
   try {
     const receipt = await service.sendMessage({
-      targetId: "webhook:https://example.webhook.test/endpoint",
+      targetId: target.targetId,
       text: "Webhook message",
     });
 
@@ -390,7 +390,7 @@ test("ChannelGatewayService sendMessage via webhook channel", async () => {
 test("ChannelGatewayService sendMessage throws when telegram not configured", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "telegram",
       targetKind: "user",
       externalTargetId: "finance-team",
@@ -404,7 +404,7 @@ test("ChannelGatewayService sendMessage throws when telegram not configured", as
 
     await assert.rejects(
       () => service.sendMessage({
-        targetId: "telegram:finance-team",
+        targetId: target.targetId,
         text: "Hello",
       }),
       /gateway.telegram_not_configured/,
@@ -417,7 +417,7 @@ test("ChannelGatewayService sendMessage throws when telegram not configured", as
 test("ChannelGatewayService sendMessage throws when slack not configured", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "slack",
       targetKind: "user",
       externalTargetId: "slack-channel-1",
@@ -431,7 +431,7 @@ test("ChannelGatewayService sendMessage throws when slack not configured", async
 
     await assert.rejects(
       () => service.sendMessage({
-        targetId: "slack:slack-channel-1",
+        targetId: target.targetId,
         text: "Hello",
       }),
       /gateway.slack_not_configured/,
@@ -444,7 +444,7 @@ test("ChannelGatewayService sendMessage throws when slack not configured", async
 test("ChannelGatewayService sendMessage throws for invalid webhook URL", async () => {
   const harness = createHarness();
   try {
-    harness.targets.registerTarget({
+    const target = harness.targets.registerTarget({
       channel: "webhook",
       targetKind: "webhook",
       externalTargetId: "not-a-valid-url",
@@ -454,7 +454,7 @@ test("ChannelGatewayService sendMessage throws for invalid webhook URL", async (
     const service = harness.createService();
     await assert.rejects(
       () => service.sendMessage({
-        targetId: "webhook:not-a-valid-url",
+        targetId: target.targetId,
         text: "Hello",
       }),
       /gateway.webhook_url_required/,

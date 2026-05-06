@@ -48,7 +48,7 @@ test("createApiClient throws when baseUrl is whitespace only", () => {
         bearerToken: "test-token",
         principal: mockPrincipal,
       }),
-    /missing_base_url/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_base_url",
   );
 });
 
@@ -73,7 +73,7 @@ test("createApiClient throws when apiVersion is whitespace only", () => {
         bearerToken: "test-token",
         principal: mockPrincipal,
       }),
-    /missing_api_version/i,
+    (err: unknown) => err instanceof ValidationError && err.code === "client_sdk.missing_api_version",
   );
 });
 

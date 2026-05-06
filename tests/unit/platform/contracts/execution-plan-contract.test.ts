@@ -105,7 +105,7 @@ test("ExecutionPlan type is deprecated via JSDoc @deprecated marker", () => {
         ],
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "platform_contracts.legacy_execution_plan_forbidden",
+      error instanceof ValidationError && error.code === "execution_plan.legacy_contract_forbidden",
   );
 });
 
@@ -119,7 +119,7 @@ test("createExecutionPlan rejects all inputs with legacy_execution_plan_forbidde
         steps: [],
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "platform_contracts.legacy_execution_plan_forbidden",
+      error instanceof ValidationError && error.code === "execution_plan.legacy_contract_forbidden",
   );
 });
 

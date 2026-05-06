@@ -132,7 +132,7 @@ export class AsyncWorkerRepository {
 
   public async upsertWorkerSnapshot(
   snapshot: WorkerSnapshotRecord,
-  expectedVersion: number,
+  expectedVersion: number = snapshot.version ?? 0,
 ): Promise<void> {
   const result = await asyncExecute(
     this.conn,

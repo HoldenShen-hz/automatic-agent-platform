@@ -185,7 +185,22 @@ test("AutoStopLossService executePlaybook executes actions successfully", async 
   assert.equal(event.success, true);
   assert.equal(event.playbookId, "exec-playbook");
   assert.deepEqual(event.actionsExecuted, ["circuit_break", "scale_down"]);
+  assert.equal(event.escalationLevel, "act");
   assert.ok(event.completedAt);
+});
+
+test("AutoStopLossService executePlaybook derives escalation from action policy, not free-form text", async () => {
+  const service = new AutoStopLossService();
+  const playbook = createTestPlaybook({
+    id: "critical-action-playbook",
+    actions: ["disable_new_tasks"],
+    requireHumanApproval: false,
+  });
+
+  const event = await service.executePlaybook(playbook, "routine warning without emergency keyword");
+
+  assert.equal(event.success, true);
+  assert.equal(event.escalationLevel, "critical");
 });
 
 test("AutoStopLossService executePlaybook queues for human approval when required", async () => {
