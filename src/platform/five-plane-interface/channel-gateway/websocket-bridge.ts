@@ -280,6 +280,12 @@ export class WebSocketBridge {
     // Handle incoming messages
     ws.on("message", (data) => {
       try {
+        // R25-08: Reset activity timestamp on any incoming message
+        const client = this.clients.get(ws);
+        if (client) {
+          client.lastActivityAt = Date.now();
+          client.isAlive = true;
+        }
         // #2355: Check message size before parsing to prevent OOM DoS
         const dataLength = typeof data === "string"
           ? Buffer.byteLength(data)
@@ -352,7 +358,12 @@ export class WebSocketBridge {
         }
         break;
       case "pong":
-        // Heartbeat response - no action needed
+        // R25-08: Client responded to our heartbeat ping - mark as alive
+        const pongClient = this.clients.get(ws);
+        if (pongClient) {
+          pongClient.lastActivityAt = Date.now();
+          pongClient.isAlive = true;
+        }
         break;
       // §6.7/R15-80: Handle ack messages for at-least-once delivery guarantee
       case "ack":

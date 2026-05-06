@@ -8,10 +8,50 @@ import test from "node:test";
 
 import { HierarchicalPromptRegistryService } from "../../../../../src/platform/prompt-engine/registry/hierarchical-registry-service.js";
 import { PromptVersionManager } from "../../../../../src/platform/prompt-engine/registry/prompt-version-manager.js";
-import type { PromptBundleRegistrationInput, PromptBundleVersion } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
+import type { PromptBundle, PromptBundleRegistrationInput, PromptBundleVersion } from "../../../../../src/platform/contracts/prompt-bundle/index.js";
 
 // ============================================================================
-// R2-8: Prompt lifecycle deprecated stage
+// Helper functions
+// ============================================================================
+
+function makePromptBundle(
+  name: string,
+  version: number,
+  deprecated: boolean = false,
+): PromptBundle {
+  return {
+    bundleId: `${name}:${version}`,
+    name,
+    version,
+    displayVersion: `v${version}.0.0`,
+    domain: "test-domain",
+    taskType: "classification",
+    packId: undefined,
+    systemPrompt: { content: `Test content for ${name}@${version}`, templateVariables: [], channel: "system" },
+    userPrompt: undefined,
+    fewShotExamples: [],
+    constraints: { maxTokens: 1000, temperature: 0.7, topP: undefined, stopSequences: undefined, responseFormat: undefined, customConstraints: {} },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test-tool", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test-evaluator", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test-domain", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test-model", profileVersion: 1 }],
+    },
+    metadata: {
+      owner: "test",
+      deprecated,
+      lifecycleStatus: deprecated ? "deprecated" : "active",
+      tags: [],
+      compatibilityTags: [],
+      trafficAllocation: { weight: 100, startTime: undefined, endTime: undefined, targeting: undefined },
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+// ============================================================================
+// HierarchicalPromptRegistryService Tests
 // ============================================================================
 
 test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecated", () => {
@@ -19,13 +59,20 @@ test("HierarchicalPromptRegistryService.deprecateBundle marks bundle as deprecat
 
   registry.registerBundle({
     name: "deprecated-test-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "Test prompt content", templateVariables: [], channel: "system" },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
   }, "global");
 
-  registry.deprecateBundle("deprecated-test-bundle", "v1.0", "global");
+  registry.deprecateBundle("deprecated-test-bundle", 1, "global");
 
   const retrieved = registry.getBundle("deprecated-test-bundle", "classification");
   assert.equal(retrieved, null, "Deprecated bundle should not be retrievable");
@@ -36,11 +83,18 @@ test("HierarchicalPromptRegistryService.getBundle skips deprecated bundles", () 
 
   registry.registerBundle({
     name: "skip-deprecated-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "Test content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   const retrieved = registry.getBundle("skip-deprecated-bundle", "classification");
@@ -52,33 +106,47 @@ test("HierarchicalPromptRegistryService.listBundleVersions shows deprecated flag
 
   registry.registerBundle({
     name: "versions-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "v1.0 content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: false },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: false, owner: "test", lifecycleStatus: "active", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   registry.registerBundle({
     name: "versions-bundle",
-    version: "v2.0",
+    version: 2,
+    displayVersion: "v2.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "v2.0 content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   const versions = registry.listBundleVersions("versions-bundle");
 
   assert.ok(versions.length >= 2);
-  const v1Version = versions.find(v => v.version === "v1.0");
-  const v2Version = versions.find(v => v.version === "v2.0");
+  const v1Version = versions.find(v => v.version === 1);
+  const v2Version = versions.find(v => v.version === 2);
 
   if (v1Version) {
-    assert.equal(v1Version.deprecated, false, "v1.0 should not be deprecated");
+    assert.equal(v1Version.deprecated, false, "v1 should not be deprecated");
   }
   if (v2Version) {
-    assert.equal(v2Version.deprecated, true, "v2.0 should be deprecated");
+    assert.equal(v2Version.deprecated, true, "v2 should be deprecated");
   }
 });
 
@@ -87,20 +155,34 @@ test("HierarchicalPromptRegistryService.listBundles excludes deprecated bundles 
 
   registry.registerBundle({
     name: "visible-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "Visible content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: false },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: false, owner: "test", lifecycleStatus: "active", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   registry.registerBundle({
     name: "hidden-deprecated-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "Hidden content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   const bundles = registry.listBundles("global");
@@ -116,21 +198,35 @@ test("HierarchicalPromptRegistryService domain-level deprecation works independe
   // Register at global level
   registry.registerBundle({
     name: "domain-deprecation-test",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "global-domain",
     taskType: "classification",
     systemPrompt: { content: "Global content", templateVariables: [], channel: "system" },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
   }, "global");
 
   // Register at domain level with deprecation
   registry.registerBundle({
     name: "domain-deprecation-test",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "override-domain",
     taskType: "classification",
     packId: "test-pack",
     systemPrompt: { content: "Domain content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "domain", "override-domain");
 
   // Global bundle should still be accessible
@@ -147,28 +243,39 @@ test("HierarchicalPromptRegistryService removeBundle completely removes deprecat
 
   registry.registerBundle({
     name: "remove-bundle-test",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "To be removed", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
-  const removed = registry.removeBundle("remove-bundle-test", "v1.0", "global");
+  const removed = registry.removeBundle("remove-bundle-test", 1, "global");
 
   assert.equal(removed, true, "Bundle should be removed");
 
   const versions = registry.listBundleVersions("remove-bundle-test");
-  const removedVersion = versions.find(v => v.version === "v1.0");
+  const removedVersion = versions.find(v => v.version === 1);
   assert.ok(removedVersion === undefined || removedVersion.deprecated === true,
     "Removed version should not appear or should be marked deprecated");
 });
 
+// ============================================================================
+// PromptVersionManager Tests
+// ============================================================================
+
 test("PromptVersionManager registers versions with deprecated state", () => {
   const manager = new PromptVersionManager();
 
-  const bundle1 = createTestBundle("version-test-bundle", "v1.0", false);
-  const bundle2 = createTestBundle("version-test-bundle", "v2.0", true);
+  const bundle1 = makePromptBundle("version-test-bundle", 1, false);
+  const bundle2 = makePromptBundle("version-test-bundle", 2, true);
 
   manager.registerBundleVersion(bundle1);
   manager.registerBundleVersion(bundle2);
@@ -176,8 +283,8 @@ test("PromptVersionManager registers versions with deprecated state", () => {
   const versions = manager.listBundleVersions("version-test-bundle");
 
   assert.ok(versions.length >= 2);
-  const v1 = versions.find(v => v.version === "v1.0");
-  const v2 = versions.find(v => v.version === "v2.0");
+  const v1 = versions.find(v => v.version === 1);
+  const v2 = versions.find(v => v.version === 2);
 
   if (v1) assert.equal(v1.deprecated, false);
   if (v2) assert.equal(v2.deprecated, true);
@@ -186,9 +293,9 @@ test("PromptVersionManager registers versions with deprecated state", () => {
 test("PromptVersionManager.listBundleVersions returns deprecated flag for all versions", () => {
   const manager = new PromptVersionManager();
 
-  manager.registerBundleVersion(createTestBundle("deprecation-flags-bundle", "v1.0", false));
-  manager.registerBundleVersion(createTestBundle("deprecation-flags-bundle", "v2.0", false));
-  manager.registerBundleVersion(createTestBundle("deprecation-flags-bundle", "v3.0", true));
+  manager.registerBundleVersion(makePromptBundle("deprecation-flags-bundle", 1, false));
+  manager.registerBundleVersion(makePromptBundle("deprecation-flags-bundle", 2, false));
+  manager.registerBundleVersion(makePromptBundle("deprecation-flags-bundle", 3, true));
 
   const versions = manager.listBundleVersions("deprecation-flags-bundle");
 
@@ -200,30 +307,26 @@ test("PromptVersionManager.listBundleVersions returns deprecated flag for all ve
 test("PromptVersionManager isCurrentVersion respects deprecated state", () => {
   const manager = new PromptVersionManager();
 
-  manager.registerBundleVersion(createTestBundle("current-version-bundle", "v1.0", false));
-  manager.registerBundleVersion(createTestBundle("current-version-bundle", "v2.0", true));
+  manager.registerBundleVersion(makePromptBundle("current-version-bundle", 1, false));
+  manager.registerBundleVersion(makePromptBundle("current-version-bundle", 2, true));
 
-  // v1.0 should be considered current (only non-deprecated)
-  const isCurrent = manager.isCurrentVersion("current-version-bundle", "v1.0");
-  assert.equal(isCurrent, true, "v1.0 should be current version");
+  // Version 2 is the latest (highest number), so version 1 is not current
+  const isCurrent = manager.isCurrentVersion("current-version-bundle", 2);
+  assert.equal(isCurrent, true, "v2 should be current version");
 });
 
 test("PromptVersionManager.getVersionLineage shows deprecated in lineage", () => {
   const manager = new PromptVersionManager();
 
-  manager.registerBundleVersion(createTestBundle("lineage-bundle", "v1.0", false));
-  manager.registerBundleVersion(createTestBundle("lineage-bundle", "v2.0", true));
-  manager.registerBundleVersion(createTestBundle("lineage-bundle", "v3.0", false));
+  manager.registerBundleVersion(makePromptBundle("lineage-bundle", 1, false));
+  manager.registerBundleVersion(makePromptBundle("lineage-bundle", 2, true));
+  manager.registerBundleVersion(makePromptBundle("lineage-bundle", 3, false));
 
-  const lineage = manager.getVersionLineage("lineage-bundle", "v3.0");
+  const lineage = manager.getVersionLineage("lineage-bundle", 3);
 
-  assert.equal(lineage.current, "v3.0");
+  assert.equal(lineage.current, 3);
   assert.ok(lineage.previous !== undefined, "Should have previous version");
 });
-
-// ============================================================================
-// Additional deprecated stage lifecycle tests
-// ============================================================================
 
 test("HierarchicalPromptRegistryService supports re-registration of deprecated bundle", () => {
   const registry = new HierarchicalPromptRegistryService();
@@ -231,11 +334,18 @@ test("HierarchicalPromptRegistryService supports re-registration of deprecated b
   // First registration
   registry.registerBundle({
     name: "reprocess-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "Original content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   // Should be able to get at global level (deprecation doesn't affect existence)
@@ -249,33 +359,47 @@ test("HierarchicalPromptRegistryService deprecated bundles excluded from traffic
 
   registry.registerBundle({
     name: "traffic-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "v1 content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: false, trafficAllocation: { weight: 100 } },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: false, owner: "test", lifecycleStatus: "active", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   registry.registerBundle({
     name: "traffic-bundle",
-    version: "v2.0",
+    version: 2,
+    displayVersion: "v2.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "v2 content", templateVariables: [], channel: "system" },
-    metadata: { deprecated: true, trafficAllocation: { weight: 100 } },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
+    metadata: { deprecated: true, owner: "test", lifecycleStatus: "deprecated", tags: [], compatibilityTags: [], trafficAllocation: { weight: 100 } },
   }, "global");
 
   const resolved = registry.resolveBundleForTraffic("traffic-bundle", "classification", undefined, undefined, "test-key");
 
   assert.ok(resolved !== null, "Should resolve a bundle");
-  assert.equal(resolved!.version, "v1.0", "Should resolve to non-deprecated version");
+  assert.equal(resolved!.version, 1, "Should resolve to non-deprecated version");
 });
 
 test("HierarchicalPromptRegistryService.deprecateBundle throws for non-existent bundle", () => {
   const registry = new HierarchicalPromptRegistryService();
 
   assert.throws(
-    () => registry.deprecateBundle("non-existent-bundle", "v1.0", "global"),
+    () => registry.deprecateBundle("non-existent-bundle", 1, "global"),
     /not found/i,
   );
 });
@@ -283,29 +407,16 @@ test("HierarchicalPromptRegistryService.deprecateBundle throws for non-existent 
 test("PromptVersionManager compares versions correctly with deprecated", () => {
   const manager = new PromptVersionManager();
 
-  manager.registerBundleVersion(createTestBundle("compare-bundle", "v1.0", false));
-  manager.registerBundleVersion(createTestBundle("compare-bundle", "v2.0", true));
-  manager.registerBundleVersion(createTestBundle("compare-bundle", "v3.0", false));
+  manager.registerBundleVersion(makePromptBundle("compare-bundle", 1, false));
+  manager.registerBundleVersion(makePromptBundle("compare-bundle", 2, true));
+  manager.registerBundleVersion(makePromptBundle("compare-bundle", 3, false));
 
-  // v1.0 < v2.0
-  assert.equal(manager.compareVersions("v1.0", "v2.0"), -1);
-  // v2.0 < v3.0
-  assert.equal(manager.compareVersions("v2.0", "v3.0"), -1);
-  // v1.0 < v3.0
-  assert.equal(manager.compareVersions("v1.0", "v3.0"), -1);
-});
-
-test("PromptVersionManager parses versions with patch numbers correctly", () => {
-  const manager = new PromptVersionManager();
-
-  const v1 = manager.parseVersion("v1.0");
-  const v2 = manager.parseVersion("v1.0.1");
-  const v3 = manager.parseVersion("v1.0.2");
-
-  assert.equal(manager.compareVersions("v1.0", "v1.0.1"), -1);
-  assert.equal(manager.compareVersions("v1.0.1", "v1.0.2"), -1);
-  assert.equal(v2.patch, 1);
-  assert.equal(v3.patch, 2);
+  // 1 < 2
+  assert.equal(manager.compareVersions(1, 2), -1);
+  // 2 < 3
+  assert.equal(manager.compareVersions(2, 3), -1);
+  // 1 < 3
+  assert.equal(manager.compareVersions(1, 3), -1);
 });
 
 test("HierarchicalPromptRegistryService listBundleVersions sorts by version order", () => {
@@ -313,48 +424,53 @@ test("HierarchicalPromptRegistryService listBundleVersions sorts by version orde
 
   registry.registerBundle({
     name: "sorted-versions-bundle",
-    version: "v2.0",
+    version: 2,
+    displayVersion: "v2.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "v2 content", templateVariables: [], channel: "system" },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
   }, "global");
 
   registry.registerBundle({
     name: "sorted-versions-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "test-domain",
     taskType: "classification",
     systemPrompt: { content: "v1 content", templateVariables: [], channel: "system" },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
   }, "global");
 
   const versions = registry.listBundleVersions("sorted-versions-bundle");
 
   assert.ok(versions.length >= 2);
-  // Versions should be sorted
-  const v1Idx = versions.findIndex(v => v.version === "v1.0");
-  const v2Idx = versions.findIndex(v => v.version === "v2.0");
+  // Versions should be sorted descending (newest first)
+  const v1Idx = versions.findIndex(v => v.version === 1);
+  const v2Idx = versions.findIndex(v => v.version === 2);
   if (v1Idx !== -1 && v2Idx !== -1) {
-    assert.ok(v1Idx < v2Idx, "v1.0 should come before v2.0");
+    assert.ok(v2Idx < v1Idx, "v2 should come before v1 (descending order)");
   }
 });
 
 test("PromptVersionManager.getNextVersion calculates correct next version", () => {
   const manager = new PromptVersionManager();
 
-  const patchNext = manager.getNextVersion("v1.0", "patch");
-  assert.equal(patchNext.major, 1);
-  assert.equal(patchNext.minor, 0);
-  assert.equal(patchNext.patch, 1);
+  const next1 = manager.getNextVersion(1);
+  assert.equal(next1, 2);
 
-  const minorNext = manager.getNextVersion("v1.0", "minor");
-  assert.equal(minorNext.major, 1);
-  assert.equal(minorNext.minor, 1);
-  assert.equal(minorNext.patch, 0);
-
-  const majorNext = manager.getNextVersion("v1.0", "major");
-  assert.equal(majorNext.major, 2);
-  assert.equal(majorNext.minor, 0);
-  assert.equal(majorNext.patch, 0);
+  const next5 = manager.getNextVersion(5);
+  assert.equal(next5, 6);
 });
 
 test("HierarchicalPromptRegistryService getBundle follows hierarchical lookup precedence", () => {
@@ -362,43 +478,38 @@ test("HierarchicalPromptRegistryService getBundle follows hierarchical lookup pr
 
   registry.registerBundle({
     name: "hierarchy-test-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "global",
     taskType: "classification",
     systemPrompt: { content: "global content", templateVariables: [], channel: "system" },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
   }, "global");
 
   registry.registerBundle({
     name: "hierarchy-test-bundle",
-    version: "v1.0",
+    version: 1,
+    displayVersion: "v1.0.0",
     domain: "domain-override",
     taskType: "classification",
     packId: "test-pack",
     systemPrompt: { content: "domain override content", templateVariables: [], channel: "system" },
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "test", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "test", profileVersion: 1 }],
+    },
   }, "domain", "domain-override");
 
   // Should find domain override when packId and domain provided
   const domainBundle = registry.getBundle("hierarchy-test-bundle", "classification", "test-pack", "domain-override");
   assert.ok(domainBundle !== null);
-  assert.equal(domainBundle!.version, "v1.0");
+  assert.equal(domainBundle!.version, 1);
   assert.ok(domainBundle!.metadata.deprecated === false);
 });
-
-// ============================================================================
-// Helper function
-// ============================================================================
-
-function createTestBundle(name: string, version: string, deprecated: boolean): { name: string; version: string; domain: string; taskType: string; packId: string | undefined; systemPrompt: { content: string; templateVariables: unknown[]; channel: string }; metadata: { deprecated: boolean; trafficAllocation: { weight: number } } } {
-  return {
-    name,
-    version,
-    domain: "test-domain",
-    taskType: "classification",
-    packId: undefined,
-    systemPrompt: { content: `Test content for ${name}@${version}`, templateVariables: [], channel: "system" },
-    metadata: {
-      deprecated,
-      trafficAllocation: { weight: 100 },
-    },
-  };
-}

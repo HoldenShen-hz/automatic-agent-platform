@@ -266,23 +266,23 @@ test("ConfigVersioningService.diffVersions detects additions", async () => {
   assert.ok(diff!.additions > 0 || diff!.modifications > 0);
 });
 
-test("ConfigVersioningService.diffVersions detects removals", () => {
+test("ConfigVersioningService.diffVersions detects removals", async () => {
   const service = new ConfigVersioningService();
 
-  const v1 = service.createVersion("config", "platform", null, { kept: true, removed: true }, "user", "v1");
-  const v2 = service.createVersion("config", "platform", null, { kept: true }, "user", "v2");
+  const v1 = await service.createVersion("config", "platform", null, { kept: true, removed: true }, "user", "v1");
+  const v2 = await service.createVersion("config", "platform", null, { kept: true }, "user", "v2");
 
-  const diff = service.diffVersions(v1.versionId, v2.versionId);
+  const diff = await service.diffVersions(v1.versionId, v2.versionId);
 
   assert.ok(diff);
   assert.ok(diff!.removals > 0);
 });
 
-test("ConfigVersioningService emits version event when eventBus is provided", () => {
+test("ConfigVersioningService emits version event when eventBus is provided", async () => {
   const mockBus = new MockEventBus();
   const service = new ConfigVersioningService({ eventBus: mockBus as any });
 
-  const version = service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1", "test reason");
+  const version = await service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1", "test reason");
 
   assert.strictEqual(mockBus.publishedEvents.length, 1);
   assert.strictEqual(mockBus.publishedEvents[0]!.eventType, "config.version.created");
@@ -290,15 +290,15 @@ test("ConfigVersioningService emits version event when eventBus is provided", ()
   assert.strictEqual(mockBus.publishedEvents[0]!.payload.createdBy, "user1");
 });
 
-test("ConfigVersioningService emits rollback event on rollback operation", () => {
+test("ConfigVersioningService emits rollback event on rollback operation", async () => {
   const mockBus = new MockEventBus();
   const service = new ConfigVersioningService({ eventBus: mockBus as any });
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1");
-  const oldVersion = service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user1");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 5000 }, "user1");
+  const oldVersion = await service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user1");
 
   mockBus.publishedEvents = [];
-  const rollbackVersion = service.rollback(oldVersion.versionId, "admin");
+  const rollbackVersion = await service.rollback(oldVersion.versionId, "admin");
 
   assert.ok(rollbackVersion);
   // rollback creates a new version, so we get both "config.version.created" and "config.version.rollback"
