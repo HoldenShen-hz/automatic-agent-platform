@@ -70,6 +70,7 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 chainHash: args[7] as string,
                 recordedAt: args[8] as string,
               };
+              console.log("  [DEBUG run INSERT] inserting:", record.eventId, "pos:", record.chainPosition, "prev:", record.previousChainHash, "hash:", record.chainHash);
               integrityRecords.set(record.eventId, record);
             } else if (sql.includes("INSERT INTO events")) {
               const record: Record<string, unknown> = {
@@ -115,7 +116,7 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .map(([event_type, cnt]) => ({ event_type, cnt }))
                 .sort((a, b) => b.cnt - a.cnt)
                 .slice(0, 10);
-            } else if (sql.includes("ORDER BY chain_position DESC")) {
+            } else if (sql.includes("SELECT chain_position, chain_hash FROM audit_integrity_records ORDER BY chain_position DESC")) {
               // Return the latest integrity record to enable chain validation.
               // This allows insertIntegrityRecord to validate chain position sequence
               // and previousChainHash matching.

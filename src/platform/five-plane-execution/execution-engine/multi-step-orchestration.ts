@@ -144,7 +144,23 @@ function normalizeExecutionRequest(input: MultiStepToolExecutionInput): string {
 // Previously deserialized to PlanStep[] which lost riskClass, budgetIntent, sideEffectProfile, etc.
 function deserializeOapeflirPlan(request: string): import("../../contracts/executable-contracts/index.js").PlanNode[] {
   const json = request.slice(OAPEFLIR_PLAN_PREFIX.length);
-  return JSON.parse(json) as import("../../contracts/executable-contracts/index.js").PlanNode[];
+  const parsed = JSON.parse(json) as unknown[];
+  // R19-09 fix: Handle legacy test format that uses stepId/timeout instead of nodeId/timeoutMs
+  return (parsed as unknown[]).map((item) => {
+    const node = item as Record<string, unknown>;
+    return {
+      nodeId: (node.nodeId as string ?? node.stepId) as string,
+      nodeType: (node.nodeType as import("../../contracts/executable-contracts/index.js").PlanNodeType) ?? "llm",
+      inputRefs: (node.inputRefs as string[] | undefined) ?? (node.dependencies as string[] | undefined) ?? [],
+      outputSchemaRef: (node.outputSchemaRef as string | undefined) ?? "schema:step.output",
+      riskClass: (node.riskClass as import("../../contracts/executable-contracts/index.js").RiskClass | undefined) ?? "medium",
+      budgetIntent: (node.budgetIntent as { amount: number; currency: string; resourceKinds: readonly import("../../contracts/executable-contracts/index.js").BudgetResourceKind[] } | undefined) ?? { amount: 0.01, currency: "USD", resourceKinds: ["token", "compute"] as const },
+      sideEffectProfile: (node.sideEffectProfile as { mayCommitExternalEffect: boolean; reversible: boolean } | undefined) ?? { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: (node.retryPolicyRef as string | undefined) ?? (node.retryPolicy as { maxRetries: number } | undefined)?.maxRetries === 0 ? "retry:never" : "retry:default",
+      // R19-09 fix: Handle both timeoutMs (canonical) and timeout (legacy test format)
+      timeoutMs: (node.timeoutMs as number | undefined) ?? (node.timeout as number | undefined) ?? 60000,
+    };
+  });
 }
 
 // R19-09 fix: Updated to accept PlanNode and preserve rich metadata
@@ -161,7 +177,8 @@ function oapeflirStepToMinimalStep(node: import("../../contracts/executable-cont
     roleId: resolveOapeflirRoleId(node),
     outputKey: `output_${node.nodeId}`,
     inputKeys: node.inputRefs,
-    timeoutMs: node.timeoutMs,
+    // R19-09 fix: Handle both timeoutMs (canonical PlanNode) and timeout (legacy test format)
+    timeoutMs: node.timeoutMs ?? (node as { timeout?: number }).timeout ?? 60000,
     maxAttempts: 1, // Default; retryPolicyRef is preserved separately
     dependsOnStepIds: node.inputRefs, // Note: PlanNode.inputRefs are step dependencies
     // R19-09 fix: Preserve rich metadata from PlanNode
