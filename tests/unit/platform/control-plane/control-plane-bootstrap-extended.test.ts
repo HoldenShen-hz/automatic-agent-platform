@@ -11,8 +11,8 @@ import {
   CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
   CONTROL_PLANE_CATALOG_SERVICE_ID,
   registerControlPlaneBootstrap,
-} from "../../../../../src/platform/control-plane/control-plane-bootstrap.js";
-import { ServiceRegistry } from "../../../../../src/platform/shared/lifecycle/service-registry.js";
+} from "../../../../src/platform/five-plane-control-plane/control-plane-bootstrap.js";
+import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
 // ============================================================================
 // Bootstrap Service Structure Tests
@@ -44,7 +44,8 @@ test("buildControlPlaneBootstrap catalog contains capability items", () => {
 
   for (const item of bootstrap.catalog) {
     assert.ok(item.capabilityId);
-    assert.ok(item.version);
+    assert.ok(item.entryModule);
+    assert.ok(Array.isArray(item.baselineServices));
   }
 });
 
@@ -121,19 +122,20 @@ test("catalog entries have required fields", () => {
 
   for (const item of bootstrap.catalog) {
     assert.ok(item.capabilityId, "Each catalog item must have capabilityId");
-    assert.ok(item.version, "Each catalog item must have version");
+    assert.ok(item.entryModule, "Each catalog item must have entryModule");
+    assert.ok(item.description, "Each catalog item must have description");
+    assert.ok(Array.isArray(item.baselineServices), "Each catalog item must have baselineServices");
     assert.ok(item.capabilityId.length > 0, "capabilityId must not be empty");
   }
 });
 
-test("catalog entries have valid version format", () => {
+test("catalog entries expose control-plane source entry modules", () => {
   const bootstrap = buildControlPlaneBootstrap();
 
   for (const item of bootstrap.catalog) {
-    // Version should be in format like "1.0.0" or similar
     assert.ok(
-      /^\d+\.\d+\.\d+/.test(item.version),
-      `Version ${item.version} should be in semver format`,
+      item.entryModule.startsWith("src/platform/control-plane/"),
+      `entryModule ${item.entryModule} should point at the control-plane source tree`,
     );
   }
 });
@@ -252,13 +254,14 @@ test("catalog item structure is consistent", () => {
   for (const item of bootstrap.catalog) {
     // Each item should have these properties
     assert.ok("capabilityId" in item);
-    assert.ok("version" in item);
+    assert.ok("entryModule" in item);
+    assert.ok("baselineServices" in item);
 
     // capabilityId should be a string
     assert.strictEqual(typeof item.capabilityId, "string");
 
-    // version should be a string
-    assert.strictEqual(typeof item.version, "string");
+    // entryModule should be a string
+    assert.strictEqual(typeof item.entryModule, "string");
   }
 });
 

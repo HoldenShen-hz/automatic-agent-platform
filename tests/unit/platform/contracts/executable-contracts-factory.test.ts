@@ -44,8 +44,8 @@ import {
   type BudgetIntent,
   type PlanGraph,
   type RiskPreview,
-} from "../../../../../src/platform/contracts/executable-contracts/index.js";
-import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
+} from "../../../../src/platform/contracts/executable-contracts/index.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 // =============================================================================
 // Helper Functions

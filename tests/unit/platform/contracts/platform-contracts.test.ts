@@ -554,11 +554,8 @@ test("platform-contracts: LEGACY_CONTRACT_NAMES contains expected contracts", ()
 // CANONICAL_CONTRACT_NAMES Tests
 // =============================================================================
 
-test("platform-contracts: CANONICAL_CONTRACT_NAMES contains ContractEnvelope", () => {
-  assert.ok(
-    CANONICAL_CONTRACT_NAMES.includes("ContractEnvelope"),
-    "ContractEnvelope should be in CANONICAL_CONTRACT_NAMES",
-  );
+test("platform-contracts: CANONICAL_CONTRACT_NAMES does not include ContractEnvelope as a first-class canonical contract name", () => {
+  assert.equal(CANONICAL_CONTRACT_NAMES.includes("ContractEnvelope" as never), false);
 });
 
 test("platform-contracts: CANONICAL_CONTRACT_NAMES includes expected contracts", () => {

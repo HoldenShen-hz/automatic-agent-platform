@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ReconciliationWorker } from "../../../src/platform/execution/reconciliation-worker.js";
+import { ReconciliationWorker } from "../../../../src/platform/five-plane-execution/reconciliation-worker.js";
 
 // ── Next Action Determination Tests ─────────────────────────────────────────────
 

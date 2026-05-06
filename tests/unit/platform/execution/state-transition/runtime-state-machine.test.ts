@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
+import { WorkflowStateError } from "../../../../../src/platform/contracts/errors.js";
 import {
   createBudgetLedger,
   createBudgetReservation,
@@ -12,13 +12,13 @@ import {
   type HarnessRunStatus,
   type NodeRunStatus,
   type SideEffectStatus,
-} from "../../../../src/platform/contracts/executable-contracts/index.js";
+} from "../../../../../src/platform/contracts/executable-contracts/index.js";
 import {
   RuntimeStateMachine,
   isTruthConsumerEvent,
   type RuntimeTransitionCommand,
   type RuntimeTransitionResult,
-} from "../../../../src/platform/execution/runtime-state-machine.js";
+} from "../../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
 // ---------------------------------------------------------------------------
 // Test Helpers
@@ -34,7 +34,7 @@ function createMachine(): RuntimeStateMachine {
   return new RuntimeStateMachine();
 }
 
-function makeCommand<T extends import("../../../../src/platform/execution/runtime-state-machine.js").RuntimeStateAggregate>(
+function makeCommand<T extends import("../../../../../src/platform/five-plane-execution/runtime-state-machine.js").RuntimeStateAggregate>(
   overrides: Partial<RuntimeTransitionCommand<T>>,
 ): RuntimeTransitionCommand<T> {
   return {

@@ -6,7 +6,7 @@ import test from "node:test";
  * - Issue #2098: Field encryption is base64url not AES-256-GCM
  */
 
-import { FieldEncryptionService, type FieldProtectionRule } from "../../../../../src/platform/compliance/encryption/index.js";
+import { FieldEncryptionService, type FieldProtectionRule } from "../../../../src/platform/compliance/encryption/index.js";
 
 function createRule(overrides: Partial<FieldProtectionRule> = {}): FieldProtectionRule {
   return {

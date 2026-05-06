@@ -5,8 +5,13 @@ import {
   NoOpControlPlaneDirectiveSink,
   createNoOpDirectiveSink,
   type ControlPlaneDirectiveSink,
-} from "../../../../../src/platform/control-plane/control-plane-directive-sink.js";
-import type { DecisionDirective, OperationalDirective } from "../../../../../src/platform/contracts/control-directive/index.js";
+} from "../../../../src/platform/five-plane-control-plane/control-plane-directive-sink.js";
+import {
+  createDecisionDirective,
+  createOperationalDirective,
+  type DecisionDirective,
+  type OperationalDirective,
+} from "../../../../src/platform/contracts/control-directive/index.js";
 
 // Test-specific concrete implementation for interface testing
 class TestControlPlaneDirectiveSink implements ControlPlaneDirectiveSink {
@@ -30,27 +35,24 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink implements Con
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink.emitOperationalDirective does nothing", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-  sink.emitOperationalDirective({
-    directiveId: "op-1",
-    directiveType: "rollout_control",
-    payload: { action: "freeze" },
-    emittedAt: Date.now(),
-    sourcePlane: "control-plane",
-    targetPlane: "execution",
-  });
+  sink.emitOperationalDirective(createOperationalDirective({
+    type: "pause",
+    issuedBy: { principalId: "ops-1", tenantId: "tenant-1", roles: ["operator"] },
+    reason: "freeze rollout",
+    params: { action: "freeze" },
+  }));
   // No error thrown, nothing happens
 });
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink.emitDecisionDirective does nothing", () => {
   const sink = new NoOpControlPlaneDirectiveSink();
-  sink.emitDecisionDirective({
-    decisionId: "dec-1",
-    decisionType: "approval",
-    outcome: "approved",
+  sink.emitDecisionDirective(createDecisionDirective({
+    type: "approve",
+    issuedBy: { principalId: "ops-1", tenantId: "tenant-1", roles: ["approver"] },
+    targetRef: "task://task-1",
     payload: { taskId: "task-1" },
-    decidedAt: Date.now(),
-    decidingPlane: "control-plane",
-  });
+    reason: "approved by test",
+  }));
   // No error thrown, nothing happens
 });
 
@@ -61,34 +63,31 @@ test("control-plane-directive-sink: createNoOpDirectiveSink returns NoOpControlP
 
 test("control-plane-directive-sink: TestControlPlaneDirectiveSink records operational directives", () => {
   const sink = new TestControlPlaneDirectiveSink();
-  const directive: OperationalDirective = {
-    directiveId: "op-2",
-    directiveType: "incident_control",
-    payload: { action: "escalate", severity: "high" },
-    emittedAt: Date.now(),
-    sourcePlane: "control-plane",
-    targetPlane: "execution",
-  };
+  const directive: OperationalDirective = createOperationalDirective({
+    type: "kill",
+    issuedBy: { principalId: "ops-2", tenantId: "tenant-1", roles: ["operator"] },
+    reason: "escalate",
+    params: { severity: "high" },
+  });
 
   sink.emitOperationalDirective(directive);
   assert.equal(sink.operationalDirectives.length, 1);
-  assert.equal(sink.operationalDirectives[0].directiveId, "op-2");
+  assert.equal(sink.operationalDirectives[0].operationalDirectiveId, directive.operationalDirectiveId);
 });
 
 test("control-plane-directive-sink: TestControlPlaneDirectiveSink records decision directives", () => {
   const sink = new TestControlPlaneDirectiveSink();
-  const directive: DecisionDirective = {
-    decisionId: "dec-2",
-    decisionType: "risk_evaluation",
-    outcome: "deny",
+  const directive: DecisionDirective = createDecisionDirective({
+    type: "deny",
+    issuedBy: { principalId: "ops-2", tenantId: "tenant-1", roles: ["approver"] },
+    targetRef: "task://task-2",
     payload: { taskId: "task-2", reason: "budget_exceeded" },
-    decidedAt: Date.now(),
-    decidingPlane: "control-plane",
-  };
+    reason: "budget exceeded",
+  });
 
   sink.emitDecisionDirective(directive);
   assert.equal(sink.decisionDirectives.length, 1);
-  assert.equal(sink.decisionDirectives[0].decisionId, "dec-2");
+  assert.equal(sink.decisionDirectives[0].decisionDirectiveId, directive.decisionDirectiveId);
 });
 
 test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink can be used in a loop safely", () => {
@@ -98,22 +97,18 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink can be used in
   }
 
   for (const sink of sinks) {
-    sink.emitOperationalDirective({
-      directiveId: `op-${Math.random()}`,
-      directiveType: "test",
+    sink.emitOperationalDirective(createOperationalDirective({
+      type: "resume",
+      issuedBy: { principalId: "ops-loop", tenantId: "tenant-1", roles: ["operator"] },
+      reason: "loop safety",
+    }));
+    sink.emitDecisionDirective(createDecisionDirective({
+      type: "approve",
+      issuedBy: { principalId: "ops-loop", tenantId: "tenant-1", roles: ["approver"] },
+      targetRef: "task://loop",
       payload: {},
-      emittedAt: Date.now(),
-      sourcePlane: "control-plane",
-      targetPlane: "execution",
-    });
-    sink.emitDecisionDirective({
-      decisionId: `dec-${Math.random()}`,
-      decisionType: "test",
-      outcome: "approved",
-      payload: {},
-      decidedAt: Date.now(),
-      decidingPlane: "control-plane",
-    });
+      reason: "loop safety",
+    }));
   }
   // No errors thrown
 });
@@ -122,14 +117,12 @@ test("control-plane-directive-sink: NoOpControlPlaneDirectiveSink multiple calls
   const sink = createNoOpDirectiveSink();
 
   for (let i = 0; i < 100; i++) {
-    sink.emitOperationalDirective({
-      directiveId: `op-${i}`,
-      directiveType: "stress_test",
-      payload: { iteration: i },
-      emittedAt: Date.now(),
-      sourcePlane: "control-plane",
-      targetPlane: "execution",
-    });
+    sink.emitOperationalDirective(createOperationalDirective({
+      type: "quota_adjust",
+      issuedBy: { principalId: "ops-stress", tenantId: "tenant-1", roles: ["operator"] },
+      reason: "stress test",
+      params: { iteration: i },
+    }));
   }
 
   // No errors, all calls are no-ops

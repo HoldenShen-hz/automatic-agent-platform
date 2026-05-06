@@ -7,18 +7,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   RiskLevelSchema,
-  StepTypeRiskSchema,
-  TargetSystemRiskSchema,
-  DataClassRiskSchema,
+  OperationRiskSchema,
+  TargetResourceCriticalitySchema,
+  DataSensitivitySchema,
+  AutonomyModeRiskSchema,
+  TenantImpactSchema,
   BlastRadiusSchema,
-  ConfidenceLevelSchema,
+  HistoricalFailureRateSchema,
+  EvidenceConfidenceSchema,
   RiskFactorsSchema,
   type RiskLevel,
-  type StepTypeRisk,
-  type TargetSystemRisk,
-  type DataClassRisk,
+  type OperationRisk,
+  type TargetResourceCriticality,
+  type DataSensitivity,
+  type AutonomyModeRisk,
+  type TenantImpact,
   type BlastRadius,
-  type ConfidenceLevel,
+  type HistoricalFailureRate,
+  type EvidenceConfidence,
   type RiskFactors,
 } from "../../../../../src/platform/control-plane/risk-control/types.js";
 
@@ -37,42 +43,42 @@ test("RiskLevelSchema rejects invalid risk levels", () => {
   assert.throws(() => RiskLevelSchema.parse(null));
 });
 
-test("StepTypeRiskSchema accepts valid step types", () => {
-  assert.doesNotThrow(() => StepTypeRiskSchema.parse("read"));
-  assert.doesNotThrow(() => StepTypeRiskSchema.parse("write"));
-  assert.doesNotThrow(() => StepTypeRiskSchema.parse("delete"));
-  assert.doesNotThrow(() => StepTypeRiskSchema.parse("external_call"));
+test("OperationRiskSchema accepts valid operation risks", () => {
+  assert.doesNotThrow(() => OperationRiskSchema.parse("read"));
+  assert.doesNotThrow(() => OperationRiskSchema.parse("write"));
+  assert.doesNotThrow(() => OperationRiskSchema.parse("delete"));
+  assert.doesNotThrow(() => OperationRiskSchema.parse("external_call"));
 });
 
-test("StepTypeRiskSchema rejects invalid step types", () => {
-  assert.throws(() => StepTypeRiskSchema.parse("execute"));
-  assert.throws(() => StepTypeRiskSchema.parse("read_only"));
-  assert.throws(() => StepTypeRiskSchema.parse(""));
+test("OperationRiskSchema rejects invalid operation risks", () => {
+  assert.throws(() => OperationRiskSchema.parse("execute"));
+  assert.throws(() => OperationRiskSchema.parse("read_only"));
+  assert.throws(() => OperationRiskSchema.parse(""));
 });
 
-test("TargetSystemRiskSchema accepts valid target systems", () => {
-  assert.doesNotThrow(() => TargetSystemRiskSchema.parse("internal"));
-  assert.doesNotThrow(() => TargetSystemRiskSchema.parse("staging"));
-  assert.doesNotThrow(() => TargetSystemRiskSchema.parse("production"));
+test("TargetResourceCriticalitySchema accepts valid target criticality values", () => {
+  assert.doesNotThrow(() => TargetResourceCriticalitySchema.parse("internal"));
+  assert.doesNotThrow(() => TargetResourceCriticalitySchema.parse("staging"));
+  assert.doesNotThrow(() => TargetResourceCriticalitySchema.parse("production"));
 });
 
-test("TargetSystemRiskSchema rejects invalid target systems", () => {
-  assert.throws(() => TargetSystemRiskSchema.parse("dev"));
-  assert.throws(() => TargetSystemRiskSchema.parse("local"));
-  assert.throws(() => TargetSystemRiskSchema.parse(""));
+test("TargetResourceCriticalitySchema rejects invalid target criticality values", () => {
+  assert.throws(() => TargetResourceCriticalitySchema.parse("dev"));
+  assert.throws(() => TargetResourceCriticalitySchema.parse("local"));
+  assert.throws(() => TargetResourceCriticalitySchema.parse(""));
 });
 
-test("DataClassRiskSchema accepts valid data classes", () => {
-  assert.doesNotThrow(() => DataClassRiskSchema.parse("public"));
-  assert.doesNotThrow(() => DataClassRiskSchema.parse("internal"));
-  assert.doesNotThrow(() => DataClassRiskSchema.parse("confidential"));
-  assert.doesNotThrow(() => DataClassRiskSchema.parse("restricted"));
+test("DataSensitivitySchema accepts valid data sensitivity values", () => {
+  assert.doesNotThrow(() => DataSensitivitySchema.parse("public"));
+  assert.doesNotThrow(() => DataSensitivitySchema.parse("internal"));
+  assert.doesNotThrow(() => DataSensitivitySchema.parse("confidential"));
+  assert.doesNotThrow(() => DataSensitivitySchema.parse("restricted"));
 });
 
-test("DataClassRiskSchema rejects invalid data classes", () => {
-  assert.throws(() => DataClassRiskSchema.parse("private"));
-  assert.throws(() => DataClassRiskSchema.parse("secret"));
-  assert.throws(() => DataClassRiskSchema.parse(""));
+test("DataSensitivitySchema rejects invalid data sensitivity values", () => {
+  assert.throws(() => DataSensitivitySchema.parse("private"));
+  assert.throws(() => DataSensitivitySchema.parse("secret"));
+  assert.throws(() => DataSensitivitySchema.parse(""));
 });
 
 test("BlastRadiusSchema accepts valid blast radius values", () => {
@@ -88,74 +94,45 @@ test("BlastRadiusSchema rejects invalid blast radius values", () => {
   assert.throws(() => BlastRadiusSchema.parse(""));
 });
 
-test("ConfidenceLevelSchema accepts valid confidence levels", () => {
-  assert.doesNotThrow(() => ConfidenceLevelSchema.parse("high"));
-  assert.doesNotThrow(() => ConfidenceLevelSchema.parse("medium"));
-  assert.doesNotThrow(() => ConfidenceLevelSchema.parse("low"));
+test("AutonomyModeRiskSchema accepts valid autonomy modes", () => {
+  assert.doesNotThrow(() => AutonomyModeRiskSchema.parse("full_auto"));
+  assert.doesNotThrow(() => AutonomyModeRiskSchema.parse("semi_auto"));
+  assert.doesNotThrow(() => AutonomyModeRiskSchema.parse("supervised"));
+  assert.doesNotThrow(() => AutonomyModeRiskSchema.parse("suggestion"));
 });
 
-test("ConfidenceLevelSchema rejects invalid confidence levels", () => {
-  assert.throws(() => ConfidenceLevelSchema.parse("very_high"));
-  assert.throws(() => ConfidenceLevelSchema.parse("medium_high"));
-  assert.throws(() => ConfidenceLevelSchema.parse(""));
+test("TenantImpactSchema accepts valid tenant impact values", () => {
+  assert.doesNotThrow(() => TenantImpactSchema.parse("single_task"));
+  assert.doesNotThrow(() => TenantImpactSchema.parse("workflow"));
+  assert.doesNotThrow(() => TenantImpactSchema.parse("tenant"));
+  assert.doesNotThrow(() => TenantImpactSchema.parse("platform"));
+});
+
+test("HistoricalFailureRateSchema accepts valid historical failure rates", () => {
+  assert.doesNotThrow(() => HistoricalFailureRateSchema.parse("low"));
+  assert.doesNotThrow(() => HistoricalFailureRateSchema.parse("medium"));
+  assert.doesNotThrow(() => HistoricalFailureRateSchema.parse("high"));
+  assert.doesNotThrow(() => HistoricalFailureRateSchema.parse("critical"));
+});
+
+test("EvidenceConfidenceSchema accepts valid evidence confidence levels", () => {
+  assert.doesNotThrow(() => EvidenceConfidenceSchema.parse("high"));
+  assert.doesNotThrow(() => EvidenceConfidenceSchema.parse("medium"));
+  assert.doesNotThrow(() => EvidenceConfidenceSchema.parse("low"));
 });
 
 test("RiskFactorsSchema accepts valid risk factors", () => {
   const validFactors: RiskFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
+    operationRisk: "read",
+    targetResourceCriticality: "internal",
+    dataSensitivity: "public",
+    autonomyModeRisk: "supervised",
+    tenantImpact: "single_task",
     blastRadius: "single_task",
-    priorFailureRatePercent: 5,
-    confidence: "high",
+    historicalFailureRate: "low",
+    evidenceConfidence: "high",
   };
   assert.doesNotThrow(() => RiskFactorsSchema.parse(validFactors));
-});
-
-test("RiskFactorsSchema accepts boundary priorFailureRatePercent values", () => {
-  const minFactors: RiskFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: 0,
-    confidence: "high",
-  };
-  assert.doesNotThrow(() => RiskFactorsSchema.parse(minFactors));
-
-  const maxFactors: RiskFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: 100,
-    confidence: "high",
-  };
-  assert.doesNotThrow(() => RiskFactorsSchema.parse(maxFactors));
-});
-
-test("RiskFactorsSchema rejects priorFailureRatePercent below 0", () => {
-  const invalidFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: -1,
-    confidence: "high",
-  };
-  assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
-});
-
-test("RiskFactorsSchema rejects priorFailureRatePercent above 100", () => {
-  const invalidFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
-    blastRadius: "single_task",
-    priorFailureRatePercent: 101,
-    confidence: "high",
-  };
-  assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
 test("RiskFactorsSchema rejects missing required fields", () => {
@@ -170,60 +147,70 @@ test("RiskFactorsSchema rejects missing required fields", () => {
 
 test("RiskFactorsSchema rejects invalid stepTypeRisk", () => {
   const invalidFactors = {
-    stepTypeRisk: "execute",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
+    operationRisk: "execute",
+    targetResourceCriticality: "internal",
+    dataSensitivity: "public",
+    autonomyModeRisk: "supervised",
+    tenantImpact: "single_task",
     blastRadius: "single_task",
-    priorFailureRatePercent: 5,
-    confidence: "high",
+    historicalFailureRate: "low",
+    evidenceConfidence: "high",
   };
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
 test("RiskFactorsSchema rejects invalid targetSystemRisk", () => {
   const invalidFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "dev",
-    dataClassRisk: "public",
+    operationRisk: "read",
+    targetResourceCriticality: "dev",
+    dataSensitivity: "public",
+    autonomyModeRisk: "supervised",
+    tenantImpact: "single_task",
     blastRadius: "single_task",
-    priorFailureRatePercent: 5,
-    confidence: "high",
+    historicalFailureRate: "low",
+    evidenceConfidence: "high",
   };
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
 test("RiskFactorsSchema rejects invalid dataClassRisk", () => {
   const invalidFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "secret",
+    operationRisk: "read",
+    targetResourceCriticality: "internal",
+    dataSensitivity: "secret",
+    autonomyModeRisk: "supervised",
+    tenantImpact: "single_task",
     blastRadius: "single_task",
-    priorFailureRatePercent: 5,
-    confidence: "high",
+    historicalFailureRate: "low",
+    evidenceConfidence: "high",
   };
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
 test("RiskFactorsSchema rejects invalid blastRadius", () => {
   const invalidFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
+    operationRisk: "read",
+    targetResourceCriticality: "internal",
+    dataSensitivity: "public",
+    autonomyModeRisk: "supervised",
+    tenantImpact: "single_task",
     blastRadius: "global",
-    priorFailureRatePercent: 5,
-    confidence: "high",
+    historicalFailureRate: "low",
+    evidenceConfidence: "high",
   };
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });
 
 test("RiskFactorsSchema rejects invalid confidence", () => {
   const invalidFactors = {
-    stepTypeRisk: "read",
-    targetSystemRisk: "internal",
-    dataClassRisk: "public",
+    operationRisk: "read",
+    targetResourceCriticality: "internal",
+    dataSensitivity: "public",
+    autonomyModeRisk: "supervised",
+    tenantImpact: "single_task",
     blastRadius: "single_task",
-    priorFailureRatePercent: 5,
-    confidence: "very_high",
+    historicalFailureRate: "low",
+    evidenceConfidence: "very_high",
   };
   assert.throws(() => RiskFactorsSchema.parse(invalidFactors));
 });

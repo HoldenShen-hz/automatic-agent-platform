@@ -16,6 +16,19 @@
  */
 
 import { newId, nowIso } from "./ids.js";
+export {
+  createControlDirective,
+  type ControlDirective,
+  type ControlDirectiveKind as ControlDirectiveType,
+} from "../control-directive/index.js";
+export { createExecutionPlan, type ExecutionPlan } from "../execution-plan/index.js";
+export { createExecutionReceipt, type ExecutionReceipt } from "../execution-receipt/index.js";
+export {
+  createStateCommand,
+  type StateCommand,
+  type StateCommandAction as StateCommandType,
+} from "../state-command/index.js";
+export type { SideEffectRecord } from "../executable-contracts/index.js";
 
 // =============================================================================
 // Platform-Level Contract Types
@@ -48,6 +61,8 @@ export interface RequestEnvelopeLegacy<TPayload = unknown> {
   readonly metadata: Readonly<Record<string, string>>;
 }
 
+export type RequestEnvelope<TPayload = unknown> = RequestEnvelopeLegacy<TPayload>;
+
 /**
  * @deprecated SideEffectExpectation is deprecated per §5.3.
  * Use SideEffectRecord from executable-contracts (canonical with 16 states per §14.5/§14.11).
@@ -59,6 +74,18 @@ export interface SideEffectExpectation {
   readonly targetRef: string;
   readonly requiredReceipt: boolean;
   readonly reversible: boolean;
+}
+
+export interface ExecutionPlanBudget {
+  readonly maxSteps: number;
+  readonly maxDurationMs: number;
+  readonly maxCost: number;
+}
+
+export interface ExecutionReceiptErrorDetail {
+  readonly code: string;
+  readonly message: string;
+  readonly retryable: boolean;
 }
 
 export interface EvidenceRecord {
