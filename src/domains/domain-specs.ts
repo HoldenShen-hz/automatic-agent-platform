@@ -57,7 +57,7 @@ export const DomainCoreDescriptorSchema = z.object({
   lifecycleState: DomainLifecycleStateSchema.default("draft"),
 });
 
-export const DomainRiskSpecSchema = z.object({
+const DomainRiskSpecSchemaBase = z.object({
   domainId: z.string().min(1),
   riskClass: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   advisoryOnly: z.boolean().default(false),
@@ -70,6 +70,23 @@ export const DomainRiskSpecSchema = z.object({
   sideEffectTypes: z.array(z.string().min(1)).default([]),
   approvalThresholds: z.record(z.string(), z.number().nonnegative()).default({}),
 });
+
+function normalizeDomainRiskSpecInput(input: unknown): unknown {
+  if (input == null || typeof input !== "object" || Array.isArray(input)) {
+    return input;
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    ...record,
+    advisoryOnly: record.advisoryOnly ?? record.advisory_only,
+    humanAccountable: record.humanAccountable ?? record.human_accountable,
+    deterministicHotPathOnly: record.deterministicHotPathOnly ?? record.deterministic_hot_path_only,
+    allowedCapabilityOverrides: record.allowedCapabilityOverrides ?? record.allowed_capability_overrides,
+    requiredApprovalPolicies: record.requiredApprovalPolicies ?? record.required_approval_policies,
+  };
+}
+
+export const DomainRiskSpecSchema = z.preprocess(normalizeDomainRiskSpecInput, DomainRiskSpecSchemaBase);
 
 export const DomainKnowledgeSpecSchema = z.object({
   domainId: z.string().min(1),

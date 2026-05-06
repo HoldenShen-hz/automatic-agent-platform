@@ -301,6 +301,10 @@ test("integration: DomainRecipeService validates recipes", () => {
   const validationErrors = service.validate(invalidRecipe);
   assert.ok(validationErrors.length > 0);
   assert.ok(validationErrors.some((e) => e.includes("id_required") || e.includes("domain_id_required")));
+  assert.ok(validationErrors.includes("recipe.risk_profile_ref_required"));
+  assert.ok(validationErrors.includes("recipe.guardrail_overlay_required"));
+  assert.ok(validationErrors.includes("recipe.default_prompt_bundle_ref_required"));
+  assert.ok(validationErrors.includes("recipe.acceptance_checklist_ref_required"));
 });
 
 test("integration: DomainRecipeService update returns null for nonexistent", () => {

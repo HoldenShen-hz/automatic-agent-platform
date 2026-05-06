@@ -47,6 +47,26 @@ test("DomainRiskSpecSchema accepts valid risk spec", () => {
   assert.equal(spec.deterministicHotPathOnly, true);
 });
 
+test("DomainRiskSpecSchema accepts contract snake_case fields", () => {
+  const spec = DomainRiskSpecSchema.parse({
+    domainId: "snake-case-domain",
+    riskClass: "high",
+    advisory_only: true,
+    human_accountable: true,
+    deterministic_hot_path_only: false,
+    allowed_capability_overrides: ["budget_override"],
+    required_approval_policies: ["human_signoff"],
+    liabilityOwner: ["owner1"],
+    compensationModel: ["manual_repair"],
+  });
+
+  assert.equal(spec.advisoryOnly, true);
+  assert.equal(spec.humanAccountable, true);
+  assert.equal(spec.deterministicHotPathOnly, false);
+  assert.deepEqual(spec.allowedCapabilityOverrides, ["budget_override"]);
+  assert.deepEqual(spec.requiredApprovalPolicies, ["human_signoff"]);
+});
+
 test("DomainRiskSpecSchema defaults advisoryOnly to false", () => {
   const spec = DomainRiskSpecSchema.parse({
     domainId: "minimal",
@@ -225,8 +245,16 @@ test("resolveDomainRiskSpec returns spec with default sideEffectTypes and approv
 // DomainLifecycleStateSchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DomainLifecycleStateSchema accepts all valid states", () => {
-  const states = ["draft", "validated", "registered", "active", "updating", "deprecated", "archived"] as const;
+test("DomainLifecycleStateSchema accepts all canonical contract states", () => {
+  const states = ["draft", "validating", "certified", "canary", "active", "deprecated", "retired"] as const;
+  for (const state of states) {
+    const parsed = DomainLifecycleStateSchema.parse(state);
+    assert.equal(parsed, state);
+  }
+});
+
+test("DomainLifecycleStateSchema preserves legacy compatibility aliases", () => {
+  const states = ["testing", "registered", "archived", "updating", "validated"] as const;
   for (const state of states) {
     const parsed = DomainLifecycleStateSchema.parse(state);
     assert.equal(parsed, state);

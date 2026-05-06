@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const NonEmptyRecipeReferenceSchema = z.string().trim().min(1);
+
 export const DomainRecipeArchetypeSchema = z.enum([
   "crud_heavy",
   "analytics",
@@ -22,11 +24,11 @@ export const DomainRecipeSchema = z.object({
   name: z.string().trim().optional(),
   description: z.string().optional(),
   triggerPhrases: z.array(z.string()).default([]),
-  risk_profile_ref: z.string().default(""),
-  guardrail_overlay: z.string().default(""),
-  recommended_workflow_ids: z.array(z.string()).default([]),
-  default_prompt_bundle_ref: z.string().default(""),
-  acceptance_checklist_ref: z.string().default(""),
+  risk_profile_ref: NonEmptyRecipeReferenceSchema,
+  guardrail_overlay: NonEmptyRecipeReferenceSchema,
+  recommended_workflow_ids: z.array(z.string().trim().min(1)),
+  default_prompt_bundle_ref: NonEmptyRecipeReferenceSchema,
+  acceptance_checklist_ref: NonEmptyRecipeReferenceSchema,
   defaultWorkflowId: z.string().trim().min(1),
   defaultToolBundleIds: z.array(z.string()).default([]),
   riskLevel: z.enum(["low", "medium", "high", "critical"]).default("medium"),

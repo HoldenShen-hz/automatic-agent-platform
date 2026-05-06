@@ -326,8 +326,35 @@ export class DomainRecipeService {
       errors.push("recipe.default_workflow_id_required");
     }
 
+    if (!recipe.risk_profile_ref || recipe.risk_profile_ref.trim().length === 0) {
+      errors.push("recipe.risk_profile_ref_required");
+    }
+
+    if (!recipe.guardrail_overlay || recipe.guardrail_overlay.trim().length === 0) {
+      errors.push("recipe.guardrail_overlay_required");
+    }
+
+    if (!recipe.default_prompt_bundle_ref || recipe.default_prompt_bundle_ref.trim().length === 0) {
+      errors.push("recipe.default_prompt_bundle_ref_required");
+    }
+
+    if (!recipe.acceptance_checklist_ref || recipe.acceptance_checklist_ref.trim().length === 0) {
+      errors.push("recipe.acceptance_checklist_ref_required");
+    }
+
     if (recipe.triggerPhrases.length === 0) {
       errors.push("recipe.trigger_phrases_required");
+    }
+
+    if (!Array.isArray(recipe.recommended_workflow_ids)) {
+      errors.push("recipe.recommended_workflow_ids_required");
+    } else {
+      for (const workflowId of recipe.recommended_workflow_ids) {
+        if (workflowId.trim().length === 0) {
+          errors.push("recipe.recommended_workflow_id_invalid");
+          break;
+        }
+      }
     }
 
     for (const phrase of recipe.triggerPhrases) {

@@ -10,6 +10,11 @@ test("DomainRecipeSchema parses valid recipe", () => {
     name: "Coding Recipe",
     description: "A recipe for coding tasks",
     triggerPhrases: ["write code", "implement", "develop"],
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    recommended_workflow_ids: ["coding_workflow"],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "coding_workflow",
     defaultToolBundleIds: ["repo_tools", "build_tools"],
   };
@@ -21,6 +26,11 @@ test("DomainRecipeSchema applies default values", () => {
   const recipe = {
     recipeId: "recipe_minimal",
     domainId: "coding",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.parse(recipe);
@@ -37,6 +47,11 @@ test("DomainRecipeSchema normalizes blank recipe name to recipeId", () => {
     recipeId: "recipe_blank_name",
     domainId: "coding",
     name: "   ",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
 
@@ -49,6 +64,11 @@ test("DomainRecipeSchema requires recipeId to be non-empty", () => {
   const recipe = {
     recipeId: "",
     domainId: "coding",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.safeParse(recipe);
@@ -59,6 +79,11 @@ test("DomainRecipeSchema requires domainId to be non-empty", () => {
   const recipe = {
     recipeId: "recipe_1",
     domainId: "",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "workflow_1",
   };
   const result = DomainRecipeSchema.safeParse(recipe);
@@ -69,9 +94,43 @@ test("DomainRecipeSchema requires defaultWorkflowId to be non-empty", () => {
   const recipe = {
     recipeId: "recipe_1",
     domainId: "coding",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
     defaultWorkflowId: "",
   };
   const result = DomainRecipeSchema.safeParse(recipe);
+  assert.equal(result.success, false);
+});
+
+test("DomainRecipeSchema requires contract references to be non-empty", () => {
+  const result = DomainRecipeSchema.safeParse({
+    recipeId: "recipe_1",
+    domainId: "coding",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "",
+    recommended_workflow_ids: [],
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
+    defaultWorkflowId: "workflow_1",
+  });
+
+  assert.equal(result.success, false);
+});
+
+test("DomainRecipeSchema requires recommended_workflow_ids to be provided", () => {
+  const result = DomainRecipeSchema.safeParse({
+    recipeId: "recipe_1",
+    domainId: "coding",
+    risk_profile_ref: "coding.risk",
+    guardrail_overlay: "coding.guardrails",
+    default_prompt_bundle_ref: "coding.prompts",
+    acceptance_checklist_ref: "coding.acceptance",
+    defaultWorkflowId: "workflow_1",
+  });
+
   assert.equal(result.success, false);
 });
 

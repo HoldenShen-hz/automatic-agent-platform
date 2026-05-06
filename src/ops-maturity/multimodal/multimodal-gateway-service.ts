@@ -103,26 +103,26 @@ const VideoMetadataSchema = z.object({
 });
 
 const MultimodalProvenanceSchema = z.object({
-  c2pa: z.string().min(1).optional(),
-  watermark: z.string().min(1).optional(),
-  hash: z.string().min(1).optional(),
-  license: z.string().min(1).optional(),
+  c2pa: z.union([z.string().min(1), z.undefined()]),
+  watermark: z.union([z.string().min(1), z.undefined()]),
+  hash: z.union([z.string().min(1), z.undefined()]),
+  license: z.union([z.string().min(1), z.undefined()]),
 }).strict();
 
 export const MultimodalInputPartSchema = z.object({
   partId: z.string().min(1),
   type: z.string().min(1),
   contentRef: z.string().min(1),
-  provenance: MultimodalProvenanceSchema.optional(),
-  artifactRef: z.string().min(1).optional(),
+  provenance: z.union([MultimodalProvenanceSchema, z.undefined()]),
+  artifactRef: z.union([z.string().min(1), z.undefined()]),
   safetyLabels: z.array(z.string().min(1)).optional(),
-  mimeType: z.string().min(1).optional(),
-  costKey: z.string().min(1).optional(),
-  text: z.string().optional(),
+  mimeType: z.union([z.string().min(1), z.undefined()]),
+  costKey: z.union([z.string().min(1), z.undefined()]),
+  text: z.union([z.string(), z.undefined()]),
   imageMetadata: ImageMetadataSchema.optional(),
   videoMetadata: VideoMetadataSchema.optional(),
-  audioSampleCount: z.number().int().nonnegative().optional(),
-  audioSampleRate: z.number().int().positive().optional(),
+  audioSampleCount: z.union([z.number().int().nonnegative(), z.undefined()]),
+  audioSampleRate: z.union([z.number().int().positive(), z.undefined()]),
   documentChunks: z.array(z.string()).optional(),
   dataClassification: DataClassificationSchema.optional(),
 }).strict();
