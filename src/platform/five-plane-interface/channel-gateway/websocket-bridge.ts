@@ -480,6 +480,14 @@ export class WebSocketBridge {
    * Handle client disconnection.
    */
   private handleDisconnection(ws: WebSocket): void {
+    this.removeClient(ws);
+  }
+
+  /**
+   * R25-08: Remove a client from the bridge and clean up all associated state.
+   * Used both for normal disconnections and for removing dead connections during heartbeat.
+   */
+  private removeClient(ws: WebSocket): void {
     const client = this.clients.get(ws);
     if (!client) return;
 
@@ -495,10 +503,16 @@ export class WebSocketBridge {
     this.slowConsumers.delete(ws);
     // R20-33: Remove all listeners to prevent listener leak
     ws.removeAllListeners();
+    // R25-08: Close the WebSocket connection if still open
+    if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) {
+      ws.close(4000, "Connection timeout");
+    }
     this.clients.delete(ws);
 
-    logger.info("WebSocket client disconnected", {
+    logger.info("WebSocket client removed", {
       actorId: client.principal.actorId,
+      wasAlive: client.isAlive,
+      reason: client.isAlive ? "disconnect" : "timeout",
     });
   }
 

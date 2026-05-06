@@ -184,7 +184,7 @@ test("BasicPlanner returns direct-execute for simple complexity", async () => {
   assert.ok(result != null);
   assert.equal(result.workflowId, "workflow.core.simple");
   assert.equal(result.overrides.length, 1);
-  assert.equal(result.overrides[0].stepName, "direct-execute");
+  assert.equal(result.overrides[0]!.stepName, "direct-execute");
 });
 
 test("BasicPlanner returns plan-execute-review for moderate complexity without approval", async () => {
@@ -338,7 +338,7 @@ test("GithubAdapter authenticates with token", async () => {
   });
 
   assert.equal(result.repository, "owner/repo");
-  assert.ok(result.credentialFingerprint.includes("ghp"));
+  assert.ok((result.credentialFingerprint as string).includes("ghp"));
 });
 
 test("GithubAdapter authenticates with managedSecretRef", async () => {
@@ -351,7 +351,7 @@ test("GithubAdapter authenticates with managedSecretRef", async () => {
     body: "Test body",
   });
 
-  assert.ok(result.credentialFingerprint.startsWith("secret://"));
+  assert.ok((result.credentialFingerprint as string).startsWith("secret://"));
 });
 
 test("GithubAdapter throws when not authenticated", async () => {
