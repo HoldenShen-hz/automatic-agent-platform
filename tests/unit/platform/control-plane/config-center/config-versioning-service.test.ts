@@ -130,11 +130,11 @@ test("ConfigVersioningService.diffVersions returns null for non-existent version
   assert.strictEqual(diff, null);
 });
 
-test("ConfigVersioningService.createRollbackPoint creates a rollback point", () => {
+test("ConfigVersioningService.createRollbackPoint creates a rollback point", async () => {
   const service = new ConfigVersioningService();
 
-  const version = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
-  const rollbackPoint = service.createRollbackPoint("runtime.timeout", "platform", null, "user");
+  const version = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
+  const rollbackPoint = await service.createRollbackPoint("runtime.timeout", "platform", null, "user");
 
   assert.ok(rollbackPoint);
   assert.ok(rollbackPoint!.rollbackId.startsWith("rbp_"));
@@ -145,10 +145,10 @@ test("ConfigVersioningService.createRollbackPoint creates a rollback point", () 
   assert.strictEqual(rollbackPoint!.createdBy, "user");
 });
 
-test("ConfigVersioningService.createRollbackPoint returns null without current version", () => {
+test("ConfigVersioningService.createRollbackPoint returns null without current version", async () => {
   const service = new ConfigVersioningService();
 
-  const rollbackPoint = service.createRollbackPoint("runtime.timeout", "platform", null, "user");
+  const rollbackPoint = await service.createRollbackPoint("runtime.timeout", "platform", null, "user");
 
   assert.strictEqual(rollbackPoint, null);
 });

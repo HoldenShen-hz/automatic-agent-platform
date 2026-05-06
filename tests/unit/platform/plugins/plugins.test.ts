@@ -210,7 +210,7 @@ test("BasicPlanner returns plan-execute-review for moderate complexity with appr
 
 test("BasicPlanner returns full workflow for high complexity", async () => {
   const plugin = createBasicPlannerPlugin();
-  const result = await plugin.suggestWorkflow(createMockAssessment("high", "high", true));
+  const result = await plugin.suggestWorkflow(createMockAssessment("complex", "high", true));
 
   assert.ok(result != null);
   assert.equal(result.workflowId, "workflow.core.high");
