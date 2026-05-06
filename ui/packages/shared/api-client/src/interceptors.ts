@@ -106,6 +106,29 @@ export function createTenantInterceptor(tenantId: string | null): RestClientInte
 }
 
 /**
+ * Adds an idempotency key to mutating requests per §5.6.4.
+ * Both canonical and legacy header names are written because current server
+ * handlers accept a mixed set during the migration window.
+ */
+export function createIdempotencyKeyInterceptor(): RestClientInterceptor {
+  return {
+    onRequest(request) {
+      if (request.method === "GET") {
+        return request;
+      }
+      const existingKey = request.headers.get("Idempotency-Key")
+        ?? request.headers.get("idempotency-key")
+        ?? request.headers.get("X-Idempotency-Key")
+        ?? request.headers.get("x-idempotency-key");
+      const key = existingKey ?? crypto.randomUUID();
+      request.headers.set("Idempotency-Key", key);
+      request.headers.set("x-idempotency-key", key);
+      return request;
+    },
+  };
+}
+
+/**
  * Creates a CSRF interceptor per §5.4.4.
  * P1 FIX: Read CSRF token fresh on each request via readCsrfToken().
  * Previously the token was captured once in a closure when the interceptor was created.

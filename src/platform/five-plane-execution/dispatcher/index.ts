@@ -22,6 +22,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { BudgetGuard, BudgetExecutionSessionManager, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { PolicyEngine, mapToolRiskToPolicyCategory } from "../../five-plane-control-plane/iam/policy-engine.js";
 import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../control-plane/iam/sandbox-policy.js";
+import { getGlobalNetworkEgressPolicyService } from "../../five-plane-control-plane/iam/network-egress-policy.js";
 import { ToolRiskLevel } from "../tool-executor/tool-metadata.js";
 
 import type { LlmModelCallResult } from "../execution-engine/model-call-provider.js";
@@ -343,6 +344,20 @@ class MultiStepToolRegistry {
         }
       }
       return; // Only todo_write was checked - other tools continue below
+    }
+
+    // For web_fetch/web_search, check network egress policy
+    if (toolName === "web_fetch" || toolName === "web_search") {
+      // These tools make external network calls - check egress policy
+      const egressResult = this.checkEgressAllowed(toolName, args);
+      if (!egressResult.allowed) {
+        throw new ToolExecutionError(
+          "tool.egress_denied",
+          `Network egress denied for ${toolName}: ${egressResult.reasonCode}`,
+          { details: { toolName, reasonCode: egressResult.reasonCode }, retryable: false },
+        );
+      }
+      return; // Network check done, proceed
     }
 
     // Only check tools that interact with the filesystem

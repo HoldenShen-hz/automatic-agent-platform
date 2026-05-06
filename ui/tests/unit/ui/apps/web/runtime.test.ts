@@ -59,6 +59,7 @@ vi.mock("@aa/shared-api-client", () => ({
   createAuthInterceptor: vi.fn(() => (request: unknown) => request),
   createContractVersionInterceptor: vi.fn(() => (request: unknown) => request),
   createCsrfInterceptor: vi.fn(() => (request: unknown) => request),
+  createIdempotencyKeyInterceptor: vi.fn(() => (request: unknown) => request),
   createOfflineQueueInterceptor: vi.fn(() => (request: unknown) => request),
   createTenantInterceptor: vi.fn(() => (request: unknown) => request),
   createTraceInterceptor: vi.fn(() => (request: unknown) => request),

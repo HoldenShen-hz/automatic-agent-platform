@@ -4,6 +4,7 @@ import {
   BrowserWSClient,
   DefaultRESTClient,
   HttpTransport,
+  createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   fetchTasks,
   type RestClientRequest,
@@ -185,5 +186,23 @@ describe("shared api-client runtime regressions", () => {
     } else {
       Object.defineProperty(window.navigator, "onLine", onlineDescriptor);
     }
+  });
+
+  it("adds Idempotency-Key headers to mutating requests before hitting the transport", async () => {
+    let idempotencyKey = "";
+    let legacyIdempotencyKey = "";
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      idempotencyKey = request.headers.get("Idempotency-Key") ?? "";
+      legacyIdempotencyKey = request.headers.get("x-idempotency-key") ?? "";
+      return {
+        status: 200,
+        data: { ok: true } as T,
+      };
+    }, [createIdempotencyKeyInterceptor()]);
+
+    await client.post("/tasks", { title: "dedupe me" });
+
+    expect(idempotencyKey).toBeTruthy();
+    expect(legacyIdempotencyKey).toBe(idempotencyKey);
   });
 });

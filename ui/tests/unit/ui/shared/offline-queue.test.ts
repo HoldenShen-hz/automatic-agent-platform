@@ -16,17 +16,24 @@ function createMutation(id: string): OfflineMutation {
     idempotencyKey: `idem-${id}`,
     retryCount: 0,
     status: "pending",
+    tenantId: "tenant-1",
+    traceId: `trace-${id}`,
+    principal: {
+      principalId: "user-1",
+      tenantId: "tenant-1",
+      roles: ["operator"],
+    },
   };
 }
 
 describe("OfflineQueue", () => {
   describe("core operations", () => {
-    it("enqueue adds mutation to queue", async () => {
+    it("enqueue adds mutation to queue after the async persist barrier completes", async () => {
       const store = createMemoryOfflineMutationStore([]);
       const queue = new OfflineQueue(store);
       const mutation = createMutation("m1");
 
-      queue.enqueue(mutation);
+      await queue.enqueue(mutation);
 
       expect(queue.size()).toBe(1);
       expect(queue.peek()[0]).toEqual(mutation);
@@ -36,9 +43,9 @@ describe("OfflineQueue", () => {
       const store = createMemoryOfflineMutationStore([]);
       const queue = new OfflineQueue(store);
 
-      queue.enqueue(createMutation("m1"));
-      queue.enqueue(createMutation("m2"));
-      queue.enqueue(createMutation("m3"));
+      await queue.enqueue(createMutation("m1"));
+      await queue.enqueue(createMutation("m2"));
+      await queue.enqueue(createMutation("m3"));
 
       const drained = queue.drain();
 
@@ -51,9 +58,9 @@ describe("OfflineQueue", () => {
       const store = createMemoryOfflineMutationStore([]);
       const queue = new OfflineQueue(store, 2);
 
-      queue.enqueue(createMutation("oldest"));
-      queue.enqueue(createMutation("middle"));
-      queue.enqueue(createMutation("newest"));
+      await queue.enqueue(createMutation("oldest"));
+      await queue.enqueue(createMutation("middle"));
+      await queue.enqueue(createMutation("newest"));
 
       expect(queue.size()).toBe(2);
       const remaining = queue.peek().map((m) => m.id);
@@ -75,8 +82,8 @@ describe("OfflineQueue", () => {
       const queue = createPersistentOfflineQueue(store);
       await queue.whenReady();
 
-      queue.enqueue(createMutation("m1"));
-      queue.enqueue(createMutation("m2"));
+      await queue.enqueue(createMutation("m1"));
+      await queue.enqueue(createMutation("m2"));
 
       await new Promise((resolve) => setImmediate(resolve));
 
@@ -85,7 +92,7 @@ describe("OfflineQueue", () => {
   });
 
   describe("IndexedDB Before Load (Issue #2073)", () => {
-    it("persist is called but does not block when before whenReady", async () => {
+    it("waits for the initial load before making the mutation visible", async () => {
       const store = createMemoryOfflineMutationStore([]);
       const persistCalls: string[] = [];
 
@@ -97,13 +104,14 @@ describe("OfflineQueue", () => {
 
       const queue = new OfflineQueue(store);
 
-      queue.enqueue(createMutation("m1"));
+      const enqueuePromise = queue.enqueue(createMutation("m1"));
 
+      expect(queue.size()).toBe(0);
+
+      await enqueuePromise;
       expect(queue.size()).toBe(1);
 
-      await queue.whenReady();
-
-      queue.enqueue(createMutation("m2"));
+      await queue.enqueue(createMutation("m2"));
 
       await new Promise((resolve) => setImmediate(resolve));
 
@@ -114,12 +122,15 @@ describe("OfflineQueue", () => {
       const store = createMemoryOfflineMutationStore([]);
       const queue = new OfflineQueue(store);
 
-      queue.enqueue(createMutation("before-ready"));
+      const firstEnqueue = queue.enqueue(createMutation("before-ready"));
+      expect(queue.size()).toBe(0);
+
+      await firstEnqueue;
       expect(queue.size()).toBe(1);
 
       await queue.whenReady();
 
-      queue.enqueue(createMutation("after-ready"));
+      await queue.enqueue(createMutation("after-ready"));
       expect(queue.size()).toBe(2);
 
       const drained = queue.drain();
@@ -154,7 +165,7 @@ describe("OfflineQueue", () => {
       const store = createMemoryOfflineMutationStore([]);
       const queue = new OfflineQueue(store);
 
-      queue.enqueue(createMutation("m1"));
+      await queue.enqueue(createMutation("m1"));
       const peeked = queue.peek();
 
       expect(peeked.length).toBe(1);
@@ -167,11 +178,11 @@ describe("OfflineQueue", () => {
       const store = createMemoryOfflineMutationStore([]);
       const queue = new OfflineQueue(store, 3);
 
-      queue.enqueue({ ...createMutation("m1"), retryCount: 5 });
-      queue.enqueue(createMutation("m2"));
+      await queue.enqueue({ ...createMutation("m1"), retryCount: 5 });
+      await queue.enqueue(createMutation("m2"));
 
-      queue.enqueue(createMutation("m3"));
-      queue.enqueue(createMutation("m4"));
+      await queue.enqueue(createMutation("m3"));
+      await queue.enqueue(createMutation("m4"));
 
       const remaining = queue.peek();
       expect(remaining.some((m) => m.id === "m1")).toBe(false);

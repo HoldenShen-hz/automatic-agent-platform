@@ -6,6 +6,7 @@ import {
   createAuthInterceptor,
   createContractVersionInterceptor,
   createCsrfInterceptor,
+  createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   createTenantInterceptor,
   createTraceInterceptor,
@@ -69,6 +70,7 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): WebRuntimeCli
     createTraceInterceptor(),
     createContractVersionInterceptor(),
     createCsrfInterceptor(),
+    createIdempotencyKeyInterceptor(),
     // §5.4.4: Dynamic token from TokenManager with auto-refresh
     createAuthInterceptor(tokenManager),
     // §5.1.1: Tenant ID from auth context, not hardcoded

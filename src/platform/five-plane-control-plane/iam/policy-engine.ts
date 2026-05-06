@@ -28,6 +28,14 @@
  * - auto: Automated execution, high-risk still needs approval
  * - full-auto: Fully automated, no approval required (use with caution)
  *
+ * ## Deny-by-Default Invariant (INV-POLICY-001)
+ *
+ * Tools that are not explicitly mapped in the risk level registry are treated as
+ * unknown and denied by default. This ensures:
+ * - New/unknown tools cannot silently pass through with "allow_with_constraints"
+ * - Operators must explicitly register and approve new tools
+ * - Security posture is conservative (fail closed)
+ *
  * @see docs_zh/contracts/policy_engine_contract.md
  */
 

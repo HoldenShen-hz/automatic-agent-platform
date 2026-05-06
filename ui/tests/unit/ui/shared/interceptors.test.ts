@@ -4,6 +4,7 @@ import {
   createContractVersionInterceptor,
   createAuthInterceptor,
   createTenantInterceptor,
+  createIdempotencyKeyInterceptor,
   createCsrfInterceptor,
   createRetryInterceptor,
   createDedupeInterceptor,
@@ -203,6 +204,38 @@ describe("createTenantInterceptor", () => {
     const result = await interceptor.onRequest!(request);
 
     expect(result.headers.has("x-tenant-id")).toBe(false);
+  });
+});
+
+describe("createIdempotencyKeyInterceptor", () => {
+  it("adds idempotency headers to mutating requests", async () => {
+    const interceptor = createIdempotencyKeyInterceptor();
+    const request = createMockRequest("POST");
+
+    const result = await interceptor.onRequest!(request);
+
+    expect(result.headers.get("Idempotency-Key")).toBeTruthy();
+    expect(result.headers.get("x-idempotency-key")).toBe(result.headers.get("Idempotency-Key"));
+  });
+
+  it("preserves an existing idempotency key", async () => {
+    const interceptor = createIdempotencyKeyInterceptor();
+    const request = createMockRequest("PATCH", { "Idempotency-Key": "existing-key-123" });
+
+    const result = await interceptor.onRequest!(request);
+
+    expect(result.headers.get("Idempotency-Key")).toBe("existing-key-123");
+    expect(result.headers.get("x-idempotency-key")).toBe("existing-key-123");
+  });
+
+  it("does not add idempotency headers to GET requests", async () => {
+    const interceptor = createIdempotencyKeyInterceptor();
+    const request = createMockRequest("GET");
+
+    const result = await interceptor.onRequest!(request);
+
+    expect(result.headers.has("Idempotency-Key")).toBe(false);
+    expect(result.headers.has("x-idempotency-key")).toBe(false);
   });
 });
 

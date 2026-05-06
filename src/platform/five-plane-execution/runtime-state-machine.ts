@@ -457,6 +457,28 @@ function assertLeaseAndFencing<TAggregate extends RuntimeStateAggregate>(
       );
     }
   }
+
+  // R4-30 (INV-FENCING): BudgetReservation requires fencing token for write operations
+  // Check via aggregateType or entityId prefix (bdr_)
+  if (command.aggregateType === "BudgetReservation" || command.entityId.startsWith("bdr_")) {
+    assertBudgetReservationFencing(command);
+  }
+}
+
+function assertBudgetReservationFencing<TAggregate extends RuntimeStateAggregate>(
+  command: RuntimeTransitionCommand<TAggregate>,
+): void {
+  if (command.aggregateType !== "BudgetReservation" && !command.entityId.startsWith("bdr_")) {
+    return;
+  }
+  // BudgetReservation requires fencing token for write operations
+  if (command.fencingToken == null) {
+    throw new WorkflowStateError(
+      "runtime_state_machine.fencing_token_required",
+      `BudgetReservation ${command.entityId}: write operation requires fencing token`,
+      { details: { budgetReservationId: command.entityId } },
+    );
+  }
 }
 
 function applyStatus<TAggregate extends RuntimeStateAggregate>(
