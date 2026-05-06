@@ -430,13 +430,14 @@ test("route() uses amount-based routing when threshold rules provided", () => {
   const nodes: OrgNode[] = [
     makeOrgNode({ orgNodeId: "dept_1", nodeType: "department", ownerUserIds: ["dept_owner"] }),
   ];
+  // Use maxAmountCny to avoid FX rate requirement in threshold normalization
   const rules: AmountThresholdRule[] = [
-    { maxAmountUsd: 10000, targetNodeTypes: ["department"] },
+    { maxAmountCny: 50000, targetNodeTypes: ["department"] },
   ];
   const service = new ApprovalRoutingService({ orgNodes: nodes, amountThresholdRules: rules });
 
   const result = service.route(
-    makeRequest({ amountUsd: 5000, orgNodeId: "dept_1" }),
+    makeRequest({ amount: { currency: "CNY", value: 5000 }, orgNodeId: "dept_1" }),
     "2026-04-01T00:00:00.000Z",
     "2026-04-01T00:00:00.000Z",
   );
