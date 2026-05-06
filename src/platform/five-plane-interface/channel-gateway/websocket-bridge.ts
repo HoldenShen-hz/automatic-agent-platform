@@ -110,6 +110,10 @@ interface ClientConnection {
   pendingAcks: Map<number, string>;
   /** Buffered event count for back-pressure monitoring */
   bufferedEventCount: number;
+  /** R25-08: Last activity timestamp for heartbeat/liveness detection */
+  lastActivityAt: number;
+  /** R25-08: Flag to track if client is alive (responded to last ping) */
+  isAlive: boolean;
 }
 
 /**

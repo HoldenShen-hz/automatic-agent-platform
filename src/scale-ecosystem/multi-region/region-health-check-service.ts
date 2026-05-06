@@ -290,9 +290,11 @@ export class RegionHealthCheckService {
 
   /**
    * Perform health check on a region
+   * §21-04: Uses per-region circuit breaker to determine if probe is allowed.
    */
   public async checkRegion(regionId: string): Promise<RegionHealthCheckResult> {
     const config = this.configs.get(regionId);
+    const breaker = this.circuitBreakers.get(regionId);
 
     if (!config) {
       return {
@@ -302,6 +304,18 @@ export class RegionHealthCheckService {
         latencyMs: 0,
         metrics: [],
         errorMessage: "Region not registered",
+      };
+    }
+
+    // §21-04: Check circuit breaker before attempting health check
+    if (breaker && !breaker.isRequestAllowed()) {
+      return {
+        regionId,
+        status: "unhealthy", // Treat circuit open as unhealthy
+        checkedAt: nowIso(),
+        latencyMs: 0,
+        metrics: [],
+        errorMessage: "Circuit breaker open: health check blocked",
       };
     }
 
@@ -319,6 +333,8 @@ export class RegionHealthCheckService {
         metrics: result.metrics,
       };
 
+      // §21-04: Record success with circuit breaker
+      breaker?.recordSuccess();
       this.updateHealthState(regionId, healthResult);
       return healthResult;
     } catch (error) {
@@ -326,6 +342,9 @@ export class RegionHealthCheckService {
       const failures = (this.consecutiveFailures.get(regionId) ?? 0) + 1;
       this.consecutiveFailures.set(regionId, failures);
       this.lastCheckTime.set(regionId, nowIso());
+
+      // §21-04: Record failure with circuit breaker
+      breaker?.recordFailure();
 
       return {
         regionId,

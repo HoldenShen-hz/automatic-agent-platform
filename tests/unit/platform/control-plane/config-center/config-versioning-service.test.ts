@@ -192,19 +192,19 @@ test("ConfigVersioningService.rollback returns null for non-existent version", a
   assert.strictEqual(rollbackVersion, null);
 });
 
-test("ConfigVersioningService.getVersionContent returns content for version", () => {
+test("ConfigVersioningService.getVersionContent returns content for version", async () => {
   const service = new ConfigVersioningService();
 
-  const created = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
-  const content = service.getVersionContent(created.versionId);
+  const created = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
+  const content = await service.getVersionContent(created.versionId);
 
   assert.deepStrictEqual(content, { value: 1000 });
 });
 
-test("ConfigVersioningService.getVersionContent returns null for non-existent version", () => {
+test("ConfigVersioningService.getVersionContent returns null for non-existent version", async () => {
   const service = new ConfigVersioningService();
 
-  const content = service.getVersionContent("non-existent-id");
+  const content = await service.getVersionContent("non-existent-id");
 
   assert.strictEqual(content, null);
 });
