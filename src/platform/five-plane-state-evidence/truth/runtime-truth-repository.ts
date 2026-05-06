@@ -3,6 +3,8 @@ import { nowIso } from "../../contracts/types/ids.js";
 import {
   type BudgetLedger,
   type BudgetReservation,
+  type DecisionInputBundle,
+  type HarnessDecision,
   type HarnessRun,
   type NodeAttemptReceipt,
   type NodeRun,
@@ -31,6 +33,8 @@ export interface RuntimeTruthRepositorySnapshot {
   readonly budgetReservations: readonly BudgetReservation[];
   readonly nodeAttemptReceipts: readonly NodeAttemptReceipt[];
   readonly runVersionLocks: readonly RunVersionLock[];
+  readonly decisionInputBundles: readonly DecisionInputBundle[];
+  readonly harnessDecisions: readonly HarnessDecision[];
   readonly events: readonly PlatformFactEvent[];
   readonly outbox: readonly PlatformFactEvent[];
   readonly auditRefs: readonly string[];
@@ -43,6 +47,8 @@ export interface RuntimeRepository {
   ): RuntimeTransitionResult<TAggregate>;
   appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void;
   appendRunVersionLock(lock: RunVersionLock): void;
+  appendDecisionInputBundle(bundle: DecisionInputBundle): void;
+  appendHarnessDecision(decision: HarnessDecision): void;
   appendEvidenceRecord(evidence: EvidenceRecord): void;
   snapshot(): RuntimeTruthRepositorySnapshot;
 }
@@ -65,6 +71,8 @@ interface RuntimeTruthRepositoryState {
   readonly budgetReservations: Map<string, BudgetReservation>;
   readonly nodeAttemptReceipts: Map<string, NodeAttemptReceipt>;
   readonly runVersionLocks: Map<string, RunVersionLock>;
+  readonly decisionInputBundles: Map<string, DecisionInputBundle>;
+  readonly harnessDecisions: Map<string, HarnessDecision>;
   readonly events: PlatformFactEvent[];
   readonly outbox: PlatformFactEvent[];
   readonly auditRefs: string[];
@@ -133,6 +141,40 @@ export class RuntimeTruthRepository implements RuntimeRepository {
         );
       }
       this.state.runVersionLocks.set(lock.runVersionLockId, lock);
+    });
+  }
+
+  /**
+   * R4-35 (INV-EVIDENCE-001): Append a DecisionInputBundle as an immutable evidence record.
+   * DecisionInputBundle captures the full decision context (model, prompt, tools, context)
+   * before a HarnessDecision is made, enabling complete audit replay.
+   */
+  public appendDecisionInputBundle(bundle: DecisionInputBundle): void {
+    this.transaction(() => {
+      if (this.state.decisionInputBundles.has(bundle.decisionInputBundleId)) {
+        throw new ValidationError(
+          "runtime_truth_repository.duplicate_decision_input_bundle",
+          "DecisionInputBundle is append-only and cannot be overwritten.",
+        );
+      }
+      this.state.decisionInputBundles.set(bundle.decisionInputBundleId, bundle);
+    });
+  }
+
+  /**
+   * R4-35 (INV-EVIDENCE-001): Append a HarnessDecision as an immutable evidence record.
+   * HarnessDecision captures the model's choice (selected tool, parameters, reasoning)
+   * and is linked to its preceding DecisionInputBundle by bundleId.
+   */
+  public appendHarnessDecision(decision: HarnessDecision): void {
+    this.transaction(() => {
+      if (this.state.harnessDecisions.has(decision.harnessDecisionId)) {
+        throw new ValidationError(
+          "runtime_truth_repository.duplicate_harness_decision",
+          "HarnessDecision is append-only and cannot be overwritten.",
+        );
+      }
+      this.state.harnessDecisions.set(decision.harnessDecisionId, decision);
     });
   }
 
@@ -279,6 +321,8 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       budgetReservations: [...this.state.budgetReservations.values()],
       nodeAttemptReceipts: [...this.state.nodeAttemptReceipts.values()],
       runVersionLocks: [...this.state.runVersionLocks.values()],
+      decisionInputBundles: [...this.state.decisionInputBundles.values()],
+      harnessDecisions: [...this.state.harnessDecisions.values()],
       events: [...this.state.events],
       outbox: [...this.state.outbox],
       auditRefs: [...this.state.auditRefs],
@@ -502,6 +546,8 @@ function createEmptyState(): RuntimeTruthRepositoryState {
     budgetReservations: new Map(),
     nodeAttemptReceipts: new Map(),
     runVersionLocks: new Map(),
+    decisionInputBundles: new Map(),
+    harnessDecisions: new Map(),
     events: [],
     outbox: [],
     auditRefs: [],
@@ -517,6 +563,8 @@ function cloneState(state: RuntimeTruthRepositoryState): RuntimeTruthRepositoryS
     budgetReservations: new Map(state.budgetReservations),
     nodeAttemptReceipts: new Map(state.nodeAttemptReceipts),
     runVersionLocks: new Map(state.runVersionLocks),
+    decisionInputBundles: new Map(state.decisionInputBundles),
+    harnessDecisions: new Map(state.harnessDecisions),
     events: [...state.events],
     outbox: [...state.outbox],
     auditRefs: [...state.auditRefs],

@@ -537,6 +537,7 @@ test("UnifiedChatPlanGenerator passes traceId and tenantId when budgetControl is
       tenantId: "tenant-1",
       traceId: "trace-abc",
       emittedBy: "test",
+      fencingToken: "test-token",
     },
   });
 

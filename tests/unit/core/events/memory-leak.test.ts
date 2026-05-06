@@ -7,21 +7,34 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/
 import { SqliteDatabase } from "../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
+import { initHaCoordinatorForTests } from "../../../helpers/ha-coordinator.js";
 
-function createTestBus(): { bus: DurableEventBus; db: SqliteDatabase; store: AuthoritativeTaskStore; workspace: string } {
-  const workspace = createTempWorkspace("event-bus-test-");
-  const dbPath = `${workspace}/test.db`;
-  const db = new SqliteDatabase(dbPath);
-  db.migrate();
-  const store = new AuthoritativeTaskStore(db);
-  const bus = new DurableEventBus(db, store);
-  return { bus, db, store, workspace };
+interface TestBusContext {
+  bus: DurableEventBus;
+  db: SqliteDatabase;
+  store: AuthoritativeTaskStore;
+  workspace: string;
+  cleanup: () => void;
 }
 
-function cleanupBus(bus: DurableEventBus, db: SqliteDatabase, workspace: string): void {
-  bus.dispose();
-  db.close();
-  cleanupPath(workspace);
+function createTestBus(): TestBusContext {
+  // Initialize HA coordinator first - this sets up the singleton needed for DurableEventBus
+  const haContext = initHaCoordinatorForTests();
+  const workspace = haContext.dbPath.replace("/test-ha.db", ""); // Derive workspace from db path
+  const db = haContext.db;
+  const store = new AuthoritativeTaskStore(db);
+  const bus = new DurableEventBus(db, store);
+  return {
+    bus,
+    db,
+    store,
+    workspace,
+    cleanup: () => {
+      bus.dispose();
+      haContext.cleanup();
+      cleanupPath(workspace);
+    },
+  };
 }
 
 // =============================================================================
@@ -61,7 +74,7 @@ test("[SYS-PERF-3.1] DurableEventBus subscribe does not leak when called multipl
     // Handler should be called exactly once (last subscription wins)
     assert.equal(handlerCallCount, 1, "Handler should be called only once despite multiple subscribes");
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -97,7 +110,7 @@ test("[SYS-PERF-3.1] DurableEventBus unsubscribe removes handler", () => {
     // Handler should not be called after unsubscribe
     assert.equal(handlerCallCount, 0, "Handler should not be called after unsubscribe");
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -134,7 +147,7 @@ test("[SYS-PERF-3.1] DurableEventBus dispose clears all subscribers", () => {
     // Handler should not be called since dispose cleared subscribers
     assert.equal(handlerCallCount, 0, "No handlers should be called after dispose");
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -152,7 +165,7 @@ test("[SYS-PERF-3.1] DurableEventBus dispose is idempotent", () => {
     bus.dispose();
     bus.dispose();
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -176,7 +189,7 @@ test("[SYS-PERF-3.1] DurableEventBus publish after dispose throws", () => {
       /disposed/,
     );
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -214,7 +227,7 @@ test("[SYS-PERF-3.1] DurableEventBus multiple consumers each get their own handl
     assert.equal(handlerBCalls, 0, "Second handler should not be called - was overwritten");
     assert.equal(handlerCCalls, 1, "Last handler should be called once");
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -248,7 +261,7 @@ test("[SYS-PERF-3.1] DurableEventBus off() is not required when unsubscribe is u
 
     assert.equal(calls, 0, "unsubscribe must remove the handler");
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 
@@ -280,7 +293,7 @@ test("[SYS-PERF-3.1] DurableEventBus re-subscribe after unsubscribe works", asyn
 
     assert.equal(calls, 1, "Re-subscribe after unsubscribe should work");
   } finally {
-    cleanupBus(bus, db, workspace);
+    context.cleanup();
   }
 });
 

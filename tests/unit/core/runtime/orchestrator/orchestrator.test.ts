@@ -15,6 +15,7 @@ import type {
   MultiStepToolExecutionInput,
   StepFailurePlan,
 } from "../../../../../src/core/runtime/orchestrator/types.js";
+import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,6 +31,9 @@ function cleanupDb(dbPath: string): void {
 }
 
 test("runMultiStepOrchestration basic execution", async () => {
+  // Initialize HA coordinator for tests that use TransitionService
+  const { cleanup: haCleanup } = initHaCoordinatorForTests();
+
   const dbPath = createTempDbPath("test-basic.db");
 
   cleanupDb(dbPath);
@@ -51,6 +55,7 @@ test("runMultiStepOrchestration basic execution", async () => {
     assert.ok("compaction" in result, "result should have compaction property");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -96,6 +101,7 @@ test("runMultiStepOrchestration with oapeflir plan request", async () => {
     );
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -119,6 +125,7 @@ test("runMultiStepOrchestration creates task snapshot", async () => {
     assert.ok(result.snapshot.task.status, "task should have status");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -143,6 +150,7 @@ test("runMultiStepOrchestration workflow planning", async () => {
     assert.ok(result.plannedWorkflow.planReason, "plannedWorkflow should have planReason");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -167,6 +175,7 @@ test("runMultiStepOrchestration routing", async () => {
     assert.ok("requiresOrchestration" in result.routing, "routing should have requiresOrchestration");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -188,6 +197,7 @@ test("runMultiStepOrchestration streamFrames is array", async () => {
     assert.ok(Array.isArray(result.streamFrames), "streamFrames should be an array");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -221,6 +231,7 @@ test("runMultiStepOrchestration with admission backpressure snapshot", async () 
     assert.ok(result, "runMultiStepOrchestration should handle custom backpressure snapshot");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -247,6 +258,7 @@ test("runMultiStepOrchestration task status transitions to terminal state", asyn
     );
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -272,6 +284,7 @@ test("runMultiStepOrchestration compaction result property", async () => {
     );
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -303,6 +316,7 @@ test("runMultiStepOrchestration with custom admission policy", async () => {
     assert.ok(result, "runMultiStepOrchestration should handle custom admission policy");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -324,6 +338,7 @@ test("runMultiStepOrchestration dependency edges in planned workflow", async () 
     assert.ok(Array.isArray(result.plannedWorkflow.dependencyEdges), "dependencyEdges should be array");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -344,6 +359,7 @@ test("runMultiStepOrchestration with contextBudgetTokens", async () => {
     assert.ok(result, "runMultiStepOrchestration should handle contextBudgetTokens");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -565,6 +581,7 @@ test("oapeflir plan with compensation model", async () => {
     assert.ok(result.plannedWorkflow.executionSteps.length === 1);
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -610,6 +627,7 @@ test("oapeflir plan with multiple dependencies", async () => {
     assert.ok(result.plannedWorkflow.executionSteps.length === 3);
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -641,6 +659,7 @@ test("oapeflir plan with outputSchemaPath", async () => {
     assert.ok(result, "runMultiStepOrchestration should handle outputSchemaPath");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -662,6 +681,7 @@ test("runMultiStepOrchestration with empty request triggers workflow planning", 
     assert.ok(result.plannedWorkflow, "should have planned workflow");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -684,6 +704,7 @@ test("runMultiStepOrchestration normalizes input request", async () => {
     assert.ok(task, "task should exist");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -705,6 +726,7 @@ test("runMultiStepOrchestration with high priority task", async () => {
     assert.ok(result.snapshot.task, "should have task snapshot");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });
 
@@ -726,5 +748,6 @@ test("runMultiStepOrchestration workflow execution produces events", async () =>
     assert.ok(Array.isArray(result.snapshot.events), "events should be array");
   } finally {
     cleanupDb(dbPath);
+    haCleanup();
   }
 });

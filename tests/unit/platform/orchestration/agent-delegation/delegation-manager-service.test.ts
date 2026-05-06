@@ -160,7 +160,7 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
 
   await service.delegate(parent, spec);
 
-  const active = service.getActiveDelegations("agent-1");
+  const active = await service.getActiveDelegations("agent-1");
   assert.ok(active.length > 0);
 });
 
