@@ -194,10 +194,10 @@ test("BasicPlanner returns plan-execute-review for moderate complexity without a
   assert.ok(result != null);
   assert.equal(result.workflowId, "workflow.core.moderate");
   assert.equal(result.overrides.length, 3);
-  assert.equal(result.overrides[0].stepName, "plan");
-  assert.equal(result.overrides[1].stepName, "execute");
-  assert.equal(result.overrides[2].stepName, "review");
-  assert.equal(result.overrides[2].requiresReview, false);
+  assert.equal(result.overrides[0]!.stepName, "plan");
+  assert.equal(result.overrides[1]!.stepName, "execute");
+  assert.equal(result.overrides[2]!.stepName, "review");
+  assert.equal(result.overrides[2]!.requiresReview, false);
 });
 
 test("BasicPlanner returns plan-execute-review for moderate complexity with approval", async () => {
