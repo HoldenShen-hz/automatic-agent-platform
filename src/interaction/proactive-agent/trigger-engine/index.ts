@@ -1,4 +1,14 @@
-export function resolveTriggerActionMode(requireConfirmation: boolean, riskLevel: "low" | "medium" | "high" | "critical"): "suggest" | "auto_execute" | "silent_record" {
+export function resolveTriggerActionMode(
+  requireConfirmation: boolean,
+  riskLevel: "low" | "medium" | "high" | "critical",
+  actionType?: string,
+): "suggest" | "auto_execute" | "silent_record" {
+  // R9-47 FIX: update_dashboard actions are read-only dashboard sync operations.
+  // They must use silent_record so the suggestion is recorded for the dashboard
+  // pipeline but does not auto-execute — avoiding mis-routing to auto_execute.
+  if (actionType === "update_dashboard") {
+    return "silent_record";
+  }
   if (requireConfirmation) {
     return "suggest";
   }

@@ -446,6 +446,7 @@ export class ProactiveAgentService implements ProactiveAgentPort {
     let actionMode = resolveTriggerActionMode(
       state.trigger.action.requireConfirmation,
       state.trigger.riskLevel,
+      state.trigger.action.actionType,
     );
 
     // R9-22: Check situation awareness before allowing execution

@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AnomalyDetectionService } from "../../../../src/ops-maturity/monitoring/anomaly-detection-service.js";
+import { AnomalyDetectionService } from "../../../src/ops-maturity/monitoring/anomaly-detection-service.js";
 
 /**
  * Helper to access internal metricBuffer size via inspection.

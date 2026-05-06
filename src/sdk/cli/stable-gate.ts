@@ -16,7 +16,7 @@ createStableCli({
     const envConfig = loadStableGateCliEnv();
     return {
       outputDir: envConfig.outputDir,
-      evidenceRootDir: envConfig.evidenceRootDir ?? undefined,
+      ...(envConfig.evidenceRootDir ? { evidenceRootDir: envConfig.evidenceRootDir } : {}),
       targetStatus: envConfig.targetStatus,
     };
   },

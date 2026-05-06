@@ -55,7 +55,7 @@ describe("ExplanationRenderer - Edge Cases", () => {
     test("evidence nodes have sequential IDs", () => {
       const tree = buildDecisionTree("Test", [], ["ev_a", "ev_b", "ev_c"], []);
 
-      const evidenceNodes = tree.allNodes.filter((n) => n.nodeId.startsWith("evidence-"));
+      const evidenceNodes = tree.allNodes.filter((n) => n.type === "evidence");
       assert.equal(evidenceNodes.length, 3);
       assert.equal(evidenceNodes[0]!.nodeId, "evidence-0");
       assert.equal(evidenceNodes[1]!.nodeId, "evidence-1");

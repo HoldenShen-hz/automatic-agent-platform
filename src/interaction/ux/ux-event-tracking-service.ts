@@ -83,6 +83,17 @@ function isValidInteractionType(value: string): value is InteractionType {
   return validTypes.includes(value);
 }
 
+function normalizeElementId(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function normalizeInteractionType(value: unknown): InteractionType {
+  if (typeof value === "string" && isValidInteractionType(value)) {
+    return value;
+  }
+  return "click";
+}
+
 export interface ABTestAssignment {
   readonly testId: string;
   readonly variantId: string;
@@ -115,6 +126,17 @@ interface BaseUxPayload {
   metadata: Record<string, string>;
   occurredAt: string;
   eventId: string;
+}
+
+interface TrackEventPayload {
+  userId: string;
+  sessionId?: string | null;
+  taskId?: string | null;
+  abTestGroup?: string | null;
+  metadata?: Record<string, string> | null;
+  elementId?: unknown;
+  interactionType?: unknown;
+  [key: string]: unknown;
 }
 
 // Mapping from internal UxEventType to canonical platform.ux.* event types
@@ -156,7 +178,7 @@ export class UxEventTrackingService {
 
   public trackEvent<T extends UxEventType>(
     eventType: T,
-    payload: { userId: string; sessionId?: string | null; taskId?: string | null; abTestGroup?: string | null; metadata?: Record<string, string>; [key: string]: unknown },
+    payload: TrackEventPayload,
   ): UxEventTrack {
     const eventId = newId("uxevt");
     const occurredAt = nowIso();
@@ -167,8 +189,8 @@ export class UxEventTrackingService {
       sessionId: payload.sessionId ?? null,
       taskId: payload.taskId ?? null,
       abTestGroup: payload.abTestGroup ?? null,
-      elementId: (payload.elementId as string | null) ?? null,
-      interactionType: (payload.interactionType as UxEventTrack["interactionType"]) ?? "click",
+      elementId: normalizeElementId(payload.elementId),
+      interactionType: normalizeInteractionType(payload.interactionType),
       metadata: payload.metadata ?? {},
       occurredAt,
     };
@@ -193,7 +215,7 @@ export class UxEventTrackingService {
           sessionId: payload.sessionId ?? null,
           taskId: payload.taskId ?? null,
           abTestGroup: payload.abTestGroup ?? null,
-          elementId: (payload.elementId as string | null) ?? null,
+          elementId: trackEntry.elementId,
           interactionType: trackEntry.interactionType,
           eventType: trackEntry.eventType,
           metadata: payload.metadata ?? {},

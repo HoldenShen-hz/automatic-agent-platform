@@ -89,6 +89,28 @@ test("UxEventTrackingService handles unicode in metadata values", () => {
   assert.equal(event.metadata.emoji, "🎉🚀");
 });
 
+test("UxEventTrackingService defaults invalid interactionType to click", () => {
+  const service = new UxEventTrackingService();
+
+  const event = service.trackEvent("ux:button_click", {
+    userId: "user_invalid_interaction",
+    interactionType: "not-a-real-interaction",
+  });
+
+  assert.equal(event.interactionType, "click");
+});
+
+test("UxEventTrackingService drops non-string elementId values", () => {
+  const service = new UxEventTrackingService();
+
+  const event = service.trackEvent("ux:navigation", {
+    userId: "user_invalid_element",
+    elementId: { nested: true },
+  });
+
+  assert.equal(event.elementId, null);
+});
+
 test("UxEventTrackingService assigns consistent A/B test buckets", () => {
   const service = new UxEventTrackingService();
   const userId = "ab_consistent_user";

@@ -25,7 +25,7 @@ test("StageRationale contains all required fields per R3-33", () => {
   assert.ok(bundle.rationale.taskId, "taskId should be present");
   assert.ok(bundle.rationale.stageId, "stageId should be present");
   assert.equal(bundle.rationale.decision, "accept", "decision should match request");
-  assert.equal(bundle.rationale.summary, request.summary, "summary should match request");
+  assert.equal(bundle.rationale.inferredSummary, request.summary, "inferredSummary should match request");
   assert.deepEqual(bundle.rationale.decisionFactors, ["production change", "error budget tight"], "decisionFactors should match request");
   assert.ok(Array.isArray(bundle.rationale.evidenceRefs), "evidenceRefs should be an array");
   assert.ok(Array.isArray(bundle.rationale.riskNotes), "riskNotes should be an array");

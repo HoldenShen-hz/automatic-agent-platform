@@ -1091,8 +1091,9 @@ export class NlEntryService implements NlEntryPort {
     this.intakeRouter = options.intakeRouter ?? new IntakeRouter();
     this.costEstimator = options.costEstimator ?? null;
     this.nlConfig = mergeNlGatewayConfig(options.nlGatewayConfig);
+    // R5-14: Read threshold AFTER merge so custom configs are properly applied
     const configuredThreshold = options.clarificationThreshold
-      ?? options.nlGatewayConfig?.disambiguation.threshold
+      ?? this.nlConfig.disambiguation.threshold
       ?? INTENT_CONFIDENCE_THRESHOLD;
     this.clarificationThreshold = Math.min(1, Math.max(0, configuredThreshold));
     this.localeConfig = options.localeConfig ?? DEFAULT_LOCALE_CONFIG;

@@ -57,19 +57,28 @@ import { join } from "node:path";
 /** Standard runner options (output dir only) */
 export interface StableRunnerOptions {
   outputDir: string;
+  [key: string]: unknown;
 }
 
-/** Runner function — accepts any options object and returns any report (sync or async) */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type StableRunner = (opts: any) => any;
+/** Runner function — strongly typed by argument shape and report payload. */
+export type StableRunner<
+  RunnerArgs extends object = StableRunnerOptions,
+  Report = unknown,
+> = (opts: RunnerArgs) => Report | Promise<Report>;
 
-/** Writer function — accepts any report */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type StableReportWriter = (path: string, report: any) => void;
+/** Writer function — accepts the same report shape produced by the runner. */
+export type StableReportWriter<Report = unknown> = (path: string, report: Report) => void;
 
-/** Predicate that determines process exit code — return true = exit 1 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type FailedPredicate = (report: any) => boolean;
+/** Predicate that determines process exit code — return true = exit 1. */
+export type FailedPredicate<Report = unknown> = (report: Report) => boolean;
+
+function defaultFailed(report: unknown): boolean {
+  if (typeof report !== "object" || report === null) {
+    return false;
+  }
+  const failedScenarios = (report as { failedScenarios?: unknown }).failedScenarios;
+  return typeof failedScenarios === "number" && failedScenarios > 0;
+}
 
 // ---------------------------------------------------------------------------
 // createStableCli — main factory
@@ -84,45 +93,17 @@ export type FailedPredicate = (report: any) => boolean;
  * 4. `console.log(JSON.stringify(report, null, 2))`
  * 5. Call `failed(report)` — set exit code 1 if true
  */
-export function createStableCli(opts: {
-  /**
-   * Environment variable prefix (e.g. "AA_STABLE_CHAOS").
-   * The OUTPUT_DIR suffix is appended automatically.
-   */
+export function createStableCli<
+  RunnerArgs extends object = StableRunnerOptions,
+  Report = unknown,
+>(opts: {
   envVar: string;
-
-  /** Default data directory relative to cwd (e.g. "data/stable-chaos") */
   defaultDir: string;
-
-  /** Filename written inside outputDir (e.g. "stable-chaos-report.json") */
   reportFilename?: string;
-
-  /**
-   * Runner function. Receives `{ outputDir }` by default.
-   * For CLIs that need extra args (soak, validate), supply `prepare` instead.
-   */
-  runner: StableRunner;
-
-  /** Report serialiser */
-  writer?: StableReportWriter;
-
-  /**
-   * Determines whether the run should be considered failed (exit code 1).
-   * Default: `(r) => (r.failedScenarios ?? 0) > 0`
-   */
-  failed?: FailedPredicate;
-
-  /**
-   * Override argument resolution. When supplied, `runner` receives
-   * the return value of `prepare` instead of just `{ outputDir }`.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  prepare?: (outputDir: string) => Record<string, any>;
-
-  /**
-   * When false, do not inject outputDir into runner args.
-   * Useful for CLIs that only accept evidenceRootDir or similar inputs.
-   */
+  runner: StableRunner<RunnerArgs, Report>;
+  writer?: StableReportWriter<Report>;
+  failed?: FailedPredicate<Report>;
+  prepare?: (outputDir: string) => Partial<RunnerArgs> | RunnerArgs;
   includeOutputDir?: boolean;
 }): void {
   const {
@@ -131,7 +112,7 @@ export function createStableCli(opts: {
     reportFilename,
     runner,
     writer,
-    failed = (r) => (r.failedScenarios ?? 0) > 0,
+    failed = defaultFailed as FailedPredicate<Report>,
     prepare,
     includeOutputDir = true,
   } = opts;
@@ -158,12 +139,13 @@ export function createStableCli(opts: {
 
     // prepare() allows callers like soak/validate to add extra arguments
     const preparedArgs = prepare ? prepare(outputDir) : {};
-    const runnerArgs = includeOutputDir
-      ? { ...preparedArgs, outputDir }
-      : preparedArgs;
+    const runnerArgs = (
+      includeOutputDir
+        ? { ...preparedArgs, outputDir }
+        : preparedArgs
+    ) as RunnerArgs;
     // Support both sync and async runners (stable-package is sync)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (runner as (opts: any) => any)(runnerArgs as any);
+    const result = runner(runnerArgs);
     const report = result instanceof Promise ? await result : result;
 
     if (writer && reportFilename) {
