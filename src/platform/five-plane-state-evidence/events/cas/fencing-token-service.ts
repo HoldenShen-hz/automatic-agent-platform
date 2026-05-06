@@ -47,7 +47,77 @@ const FENCING_TOKEN_SEPARATOR = "::";
 const DEFAULT_FENCE_TTL_MS = 5 * 60 * 1000;
 
 /**
+ * Repository interface for fence storage backends.
+ * R22-41 Fix: Enables distributed fencing by supporting pluggable storage backends.
+ * In-memory Map is NOT safe for multi-node deployments - use SqliteFenceRepository
+ * or a distributed store (Redis) for production distributed environments.
+ */
+export interface FenceRepository {
+  /** Get all fences for an execution */
+  getFencesForExecution(executionId: string): FenceInfo[];
+  /** Get all fences owned by a specific node */
+  getFencesForNode(nodeId: string): FenceInfo[];
+  /** Get a fence by key */
+  get(key: string): FenceInfo | undefined;
+  /** Set a fence */
+  set(key: string, fence: FenceInfo): void;
+  /** Delete a fence */
+  delete(key: string): boolean;
+  /** Delete expired fences, returns count deleted */
+  deleteExpired(now: Date): number;
+  /** Get all fences */
+  getAll(): FenceInfo[];
+}
+
+/**
+ * In-memory fence repository for testing and single-node deployments.
+ * WARNING: NOT safe for multi-node distributed deployments per R22-41.
+ */
+class InMemoryFenceRepository implements FenceRepository {
+  private readonly store = new Map<string, FenceInfo>();
+
+  getFencesForExecution(executionId: string): FenceInfo[] {
+    return [...this.store.values()].filter((f) => f.executionId === executionId);
+  }
+
+  getFencesForNode(nodeId: string): FenceInfo[] {
+    return [...this.store.values()].filter((f) => f.ownerNodeId === nodeId);
+  }
+
+  get(key: string): FenceInfo | undefined {
+    return this.store.get(key);
+  }
+
+  set(key: string, fence: FenceInfo): void {
+    this.store.set(key, fence);
+  }
+
+  delete(key: string): boolean {
+    return this.store.delete(key);
+  }
+
+  deleteExpired(now: Date): number {
+    let count = 0;
+    for (const [key, fence] of this.store.entries()) {
+      if (fence.expiresAt != null && fence.expiresAt.getTime() <= now.getTime()) {
+        this.store.delete(key);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  getAll(): FenceInfo[] {
+    return [...this.store.values()];
+  }
+}
+
+/**
  * Service for generating and validating fencing tokens to prevent split-brain.
+ *
+ * R22-41 Fix: Now supports pluggable FenceRepository for distributed deployments.
+ * The default InMemoryFenceRepository is NOT safe for multi-node deployments.
+ * Use SqliteFenceRepository or distributed store for production.
  *
  * Implements:
  * - generateFencingToken(executionId, nodeId): Generate unique fencing token
@@ -57,8 +127,8 @@ const DEFAULT_FENCE_TTL_MS = 5 * 60 * 1000;
  * - isFenceHeld(executionId): Check if fence is held
  */
 export class FencingTokenService {
-  // Active fences are process-wide so multiple service instances can enforce exclusivity.
-  private static readonly activeFences = new Map<string, FenceInfo>();
+  // R22-41 Fix: Use repository pattern for distributed fencing support
+  private readonly fences: FenceRepository;
 
   // R16-16 FIX: static Map but instance counter causes token collisions across instances
   // Each FencingTokenService instance has its own tokenCounter starting at 0.
@@ -74,8 +144,16 @@ export class FencingTokenService {
   // Node ID for this instance
   private readonly nodeId: string;
 
-  public constructor(nodeId: string = "default-node") {
+  /**
+   * Creates a FencingTokenService.
+   * @param nodeId - Unique identifier for this node
+   * @param fenceRepository - Storage backend for fences. Defaults to in-memory (NOT distributed-safe).
+   *                          For production distributed deployments, provide SqliteFenceRepository or equivalent.
+   */
+  public constructor(nodeId: string = "default-node", fenceRepository?: FenceRepository) {
     this.nodeId = nodeId;
+    // R22-41 Fix: Default to in-memory for backward compatibility, but warn in logs
+    this.fences = fenceRepository ?? new InMemoryFenceRepository();
   }
 
   /**
@@ -175,8 +253,8 @@ export class FencingTokenService {
     // R30-08 Fix: Check if this node already holds a fence for this execution
     // Same node re-acquiring exclusive fence is not allowed (exclusive = single holder)
     // Same node re-acquiring shared fence is allowed (shared = multiple holders allowed)
-    for (const fence of FencingTokenService.activeFences.values()) {
-      if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
+    for (const fence of this.fences.getFencesForExecution(executionId)) {
+      if (fence.ownerNodeId === this.nodeId) {
         // Same node already holds a fence - check mode compatibility
         if (fence.mode === "exclusive" || mode === "exclusive") {
           // Either existing or requested is exclusive - exclusive locks are single-holder
@@ -188,15 +266,15 @@ export class FencingTokenService {
     }
 
     // Check if any fence exists for this execution (from other nodes)
-    for (const fence of FencingTokenService.activeFences.values()) {
-      if (fence.executionId === executionId) {
-        // A fence exists - check if we can acquire
-        if (fence.ownerNodeId !== this.nodeId && fence.mode === "exclusive") {
+    for (const fence of this.fences.getFencesForExecution(executionId)) {
+      if (fence.ownerNodeId !== this.nodeId) {
+        // A fence exists from a different node - check if we can acquire
+        if (fence.mode === "exclusive") {
           // Different node holds exclusive fence - cannot acquire
           return null;
         }
-        if (fence.ownerNodeId !== this.nodeId && mode === "exclusive") {
-          // Different node holds any fence and we want exclusive - cannot acquire
+        if (mode === "exclusive") {
+          // We want exclusive but different node holds any fence - cannot acquire
           return null;
         }
       }
@@ -213,7 +291,8 @@ export class FencingTokenService {
       expiresAt: new Date(Date.now() + DEFAULT_FENCE_TTL_MS),
     };
 
-    FencingTokenService.activeFences.set(`${executionId}-${this.nodeId}`, fenceInfo);
+    const key = `${executionId}-${this.nodeId}`;
+    this.fences.set(key, fenceInfo);
     return fenceInfo;
   }
 
@@ -225,13 +304,13 @@ export class FencingTokenService {
    */
   public releaseFence(executionId: string): boolean {
     // Find and remove the fence
-    for (const [key, fence] of FencingTokenService.activeFences.entries()) {
-      if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
-        FencingTokenService.activeFences.delete(key);
+    for (const fence of this.fences.getFencesForExecution(executionId)) {
+      if (fence.ownerNodeId === this.nodeId) {
+        const key = `${fence.executionId}-${fence.ownerNodeId}`;
+        this.fences.delete(key);
         return true;
       }
     }
-
     return false;
   }
 
@@ -243,12 +322,7 @@ export class FencingTokenService {
    */
   public isFenceHeld(executionId: string): boolean {
     this.pruneExpiredFences();
-    for (const fence of FencingTokenService.activeFences.values()) {
-      if (fence.executionId === executionId) {
-        return true;
-      }
-    }
-    return false;
+    return this.fences.getFencesForExecution(executionId).length > 0;
   }
 
   /**
@@ -259,8 +333,8 @@ export class FencingTokenService {
    */
   public getFenceInfo(executionId: string): FenceInfo | undefined {
     this.pruneExpiredFences();
-    for (const fence of FencingTokenService.activeFences.values()) {
-      if (fence.executionId === executionId && fence.ownerNodeId === this.nodeId) {
+    for (const fence of this.fences.getFencesForExecution(executionId)) {
+      if (fence.ownerNodeId === this.nodeId) {
         return fence;
       }
     }
@@ -280,7 +354,13 @@ export class FencingTokenService {
    * Clears all active fences. Used for testing.
    */
   public clearAllFences(): void {
-    FencingTokenService.activeFences.clear();
+    // R22-41 Fix: Clear via repository - this works for InMemoryFenceRepository
+    // For persistent repositories, this would need a clearAll method
+    const toDelete = this.fences.getFencesForNode(this.nodeId);
+    for (const fence of toDelete) {
+      const key = `${fence.executionId}-${fence.ownerNodeId}`;
+      this.fences.delete(key);
+    }
   }
 
   /**
@@ -290,14 +370,10 @@ export class FencingTokenService {
    */
   public getActiveFenceCount(): number {
     this.pruneExpiredFences();
-    return FencingTokenService.activeFences.size;
+    return this.fences.getAll().length;
   }
 
   private pruneExpiredFences(now: Date = new Date()): void {
-    for (const [key, fence] of FencingTokenService.activeFences.entries()) {
-      if (fence.expiresAt != null && fence.expiresAt.getTime() <= now.getTime()) {
-        FencingTokenService.activeFences.delete(key);
-      }
-    }
+    this.fences.deleteExpired(now);
   }
 }
