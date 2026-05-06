@@ -38,6 +38,7 @@ function createMockStore(): AuthoritativeTaskStore {
     worker: {
       getActiveExecutionTicket: () => null,
       insertExecutionTicket: () => {},
+      invalidateExecutionTicket: () => {},
       listDispatchableExecutionTickets: () => [],
       claimExecutionTicket: () => {},
       getExecutionTicket: () => null,
@@ -437,4 +438,91 @@ test("dispatchNext allows critical priority even when pause_non_critical backpre
   assert.equal(result.outcome, "blocked");
   assert.equal(result.reasonCode, "dispatch.no_emergency_worker_available");
   assert.equal(result.ticket?.id, "ticket-1");
+});
+
+test("dispatchNext invalidates abandoned poison-pill tickets instead of leaving them in the queue forever", () => {
+  const staleTicket = createMockTicket("ticket-stale", "exec-stale", "task-stale", "normal", {
+    createdAt: "2025-01-01T00:00:00.000Z",
+    updatedAt: "2025-01-01T00:00:00.000Z",
+  });
+  const invalidations: Array<{ ticketId: string; status: string; invalidatedAt: string }> = [];
+  const executionUpdates: Array<{ executionId: string; status: string; reasonCode: string | null; occurredAt: string }> = [];
+  const eventTypes: string[] = [];
+  const deadLetters: Array<{ failureCategory: string; errorCode: string; payloadJson: string }> = [];
+
+  const store = createMockStore();
+  (store.worker as any).listDispatchableExecutionTickets = () => [staleTicket];
+  (store.worker as any).invalidateExecutionTicket = (input: { ticketId: string; status: string; invalidatedAt: string }) => {
+    invalidations.push(input);
+  };
+  (store.worker as any).getExecutionTicket = () => null;
+  (store.worker as any).listWorkers = () => [];
+  (store.execution as any).updateExecutionStatus = (
+    executionId: string,
+    status: string,
+    reasonCode: string | null,
+    occurredAt: string,
+  ) => {
+    executionUpdates.push({ executionId, status, reasonCode, occurredAt });
+  };
+  (store.event as any).insertEvent = (event: { eventType: string }) => {
+    eventTypes.push(event.eventType);
+  };
+
+  const db = createMockDb();
+  const backpressureSnapshot = () => ({
+    status: "ok" as const,
+    degradationMode: "none" as const,
+    queueGovernance: {
+      backlogSize: 1,
+      dispatchableBacklogSize: 1,
+      claimedBacklogSize: 0,
+      oldestWaitSeconds: 3605,
+      oldestClaimAgeSeconds: null,
+      queueNames: ["default"],
+      starvationDetected: false,
+    },
+    findings: [],
+  });
+  const service = new ExecutionDispatchService(
+    db,
+    store,
+    backpressureSnapshot,
+    null,
+    null,
+    {
+      enqueue: (deadLetter) => {
+        deadLetters.push({
+          failureCategory: deadLetter.failureCategory,
+          errorCode: deadLetter.errorCode,
+          payloadJson: deadLetter.payloadJson,
+        });
+        return { deadLetterId: "dlq-1" } as never;
+      },
+    },
+    1_000,
+  );
+
+  const result = service.dispatchNext({
+    leaseTtlMs: 30_000,
+    occurredAt: "2025-01-01T01:00:05.000Z",
+  });
+
+  assert.equal(invalidations.length, 1);
+  assert.deepEqual(invalidations[0], {
+    ticketId: "ticket-stale",
+    status: "cancelled",
+    invalidatedAt: "2025-01-01T01:00:05.000Z",
+  });
+  assert.deepEqual(executionUpdates[0], {
+    executionId: "exec-stale",
+    status: "failed",
+    reasonCode: "dispatch.poison_pill_abandoned",
+    occurredAt: "2025-01-01T01:00:05.000Z",
+  });
+  assert.ok(eventTypes.includes("dispatch:poison_pill_detected"));
+  assert.ok(eventTypes.includes("dispatch.dlq_enqueue"));
+  assert.equal(deadLetters.length, 1);
+  assert.equal(deadLetters[0]?.failureCategory, "poison_pill");
+  assert.equal(result.trace?.reasonCode, "dispatch.poison_pill_detected");
 });
