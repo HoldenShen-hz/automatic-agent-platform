@@ -134,13 +134,13 @@ test("BasicEvaluator handles multiple errors and suggestions", async () => {
 test("BasicEvaluator lifecycle methods work", async () => {
   const plugin = createBasicEvaluatorPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 

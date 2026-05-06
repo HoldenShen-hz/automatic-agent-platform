@@ -121,11 +121,11 @@ test("ConfigVersioningService.diffVersions computes correct diff", async () => {
   assert.ok(diff!.modifications >= 0);
 });
 
-test("ConfigVersioningService.diffVersions returns null for non-existent version", () => {
+test("ConfigVersioningService.diffVersions returns null for non-existent version", async () => {
   const service = new ConfigVersioningService();
 
-  const created = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
-  const diff = service.diffVersions(created.versionId, "non-existent-id");
+  const created = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "test");
+  const diff = await service.diffVersions(created.versionId, "non-existent-id");
 
   assert.strictEqual(diff, null);
 });

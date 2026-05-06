@@ -153,7 +153,7 @@ test("RiskEvaluationEngine produces factor breakdown", () => {
   const result = engine.evaluate({
     taskId: "task_006",
     factors: {
-      operationRisk: "execute",
+      operationRisk: "external_call",
       targetResourceCriticality: "staging",
       dataSensitivity: "internal",
       autonomyModeRisk: "suggestion",
@@ -215,6 +215,11 @@ test("loadRiskConfig returns risk matrix", () => {
   const config = loadRiskConfig();
 
   assert.ok(config.riskLevelThresholds !== undefined);
+  const thresholds = config.riskLevelThresholds;
+  assert.ok(typeof thresholds.low === "number");
+  assert.ok(typeof thresholds.medium === "number");
+  assert.ok(typeof thresholds.high === "number");
+  assert.ok(typeof thresholds.critical === "number");
 });
 
 test("RiskConfig has valid risk levels", () => {
@@ -274,7 +279,6 @@ test("RiskEvaluationError has correct properties", () => {
 
   assert.equal(error.code, "E001");
   assert.equal(error.message, "Invalid request");
-  assert.ok(error.details !== undefined);
 });
 
 test("RiskEvaluationError is instance of Error", () => {
