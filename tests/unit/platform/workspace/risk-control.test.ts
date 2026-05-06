@@ -224,8 +224,9 @@ test("loadRiskConfig returns risk matrix", () => {
 
 test("RiskConfig has valid risk levels", () => {
   const config = loadRiskConfig();
+  const levels: RiskLevel[] = ["low", "medium", "high", "critical"];
 
-  assert.ok(["low", "medium", "high", "critical"].every((level) => config.riskLevelThresholds[level] !== undefined));
+  assert.ok(levels.every((level) => config.riskLevelThresholds[level] !== undefined));
 });
 
 // ============================================================================
