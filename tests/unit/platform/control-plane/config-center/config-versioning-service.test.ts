@@ -153,29 +153,29 @@ test("ConfigVersioningService.createRollbackPoint returns null without current v
   assert.strictEqual(rollbackPoint, null);
 });
 
-test("ConfigVersioningService.getRollbackPoints returns all rollback points", () => {
+test("ConfigVersioningService.getRollbackPoints returns all rollback points", async () => {
   const service = new ConfigVersioningService();
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
-  service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
 
-  service.createRollbackPoint("runtime.timeout", "platform", null, "user");
-  const rp2 = service.createRollbackPoint("runtime.timeout", "platform", null, "user");
+  await service.createRollbackPoint("runtime.timeout", "platform", null, "user");
+  const rp2 = await service.createRollbackPoint("runtime.timeout", "platform", null, "user");
 
-  const points = service.getRollbackPoints("runtime.timeout", "platform", null);
+  const points = await service.getRollbackPoints("runtime.timeout", "platform", null);
 
   assert.strictEqual(points.length, 2);
   assert.strictEqual(points[1]!.rollbackId, rp2!.rollbackId);
 });
 
-test("ConfigVersioningService.rollback creates new version with old content", () => {
+test("ConfigVersioningService.rollback creates new version with old content", async () => {
   const service = new ConfigVersioningService();
 
-  const v1 = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
-  service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
-  service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
+  const v1 = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
 
-  const rollbackVersion = service.rollback(v1.versionId, "admin", "Reverting to v1");
+  const rollbackVersion = await service.rollback(v1.versionId, "admin", "Reverting to v1");
 
   assert.ok(rollbackVersion);
   assert.notStrictEqual(rollbackVersion!.versionId, v1.versionId);
