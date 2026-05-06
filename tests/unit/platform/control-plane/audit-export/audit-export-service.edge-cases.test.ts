@@ -116,9 +116,18 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .sort((a, b) => b.cnt - a.cnt)
                 .slice(0, 10);
             } else if (sql.includes("ORDER BY chain_position DESC")) {
-              // Return undefined to skip chain validation in insertIntegrityRecord.
-              // This allows tests to insert records with arbitrary previousChainHash
-              // for testing verifyIntegrity's chain-break detection logic.
+              // Return the latest integrity record to enable chain validation.
+              // This allows insertIntegrityRecord to validate chain position sequence
+              // and previousChainHash matching.
+              const values = Array.from(integrityRecords.values());
+              if (values.length === 0) return undefined;
+              const latest = values.sort((a, b) => b.chainPosition - a.chainPosition)[0];
+              return {
+                chain_position: latest.chainPosition,
+                chain_hash: latest.chainHash,
+              };
+            } else if (sql.includes("SELECT id FROM audit_integrity_records")) {
+              // Duplicate check - no duplicate exists in our mock
               return undefined;
             }
             return undefined;

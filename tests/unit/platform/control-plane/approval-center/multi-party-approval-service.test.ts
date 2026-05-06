@@ -7,6 +7,7 @@ import type { ApprovalRecord, EventRecord } from "../../../../../src/platform/co
 import type { EventTier } from "../../../../../src/platform/contracts/types/domain/primitives.js";
 import type { ApprovalStatus } from "../../../../../src/platform/contracts/types/status.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
 
 // ---------------------------------------------------------------------------
 // Mock Infrastructure
@@ -104,10 +105,13 @@ function createMockStore() {
 }
 
 function createMockDb() {
+  // Initialize HA coordinator for tests that use TransitionService
+  const { cleanup } = initHaCoordinatorForTests();
   return {
     transaction<T>(fn: () => T): T {
       return fn();
     },
+    _haCleanup: cleanup,
   } as unknown as AuthoritativeSqlDatabase;
 }
 

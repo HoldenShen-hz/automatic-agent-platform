@@ -140,7 +140,7 @@ test("deserializeOapeflirPlan handles single step plan", async () => {
   cleanupDb(dbPath);
 
   const planSteps = [
-    { stepId: "only_step", dependencies: [], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+    { nodeId: "only_step", nodeType: "llm" as const, inputRefs: [], outputSchemaRef: "schema:only_step.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {
@@ -187,7 +187,7 @@ test("deserializeOapeflirPlan handles step with multiple dependencies", async ()
   cleanupDb(dbPath);
 
   const planSteps = [
-    { stepId: "step_final", dependencies: ["dep_a", "dep_b", "dep_c"], outputs: ["final_out"], timeout: 120000, retryPolicy: { maxRetries: 2 } },
+    { nodeId: "step_final", nodeType: "llm" as const, inputRefs: ["dep_a", "dep_b", "dep_c"], outputSchemaRef: "schema:step_final.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 120000 },
   ];
 
   const input: MultiStepToolExecutionInput = {

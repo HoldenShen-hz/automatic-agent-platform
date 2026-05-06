@@ -515,21 +515,21 @@ test("EscalationManager getActiveDelegationForApproval returns undefined for exp
   assert.strictEqual(delegation, undefined);
 });
 
-test("EscalationManager getActiveDelegationForApproval returns undefined for revoked", () => {
+test("EscalationManager getActiveDelegationForApproval returns undefined for revoked", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("approver-1", "approver-2", "approval-revoked", 3600000);
-  manager.revokeDelegation(delegation.delegationId);
+  const delegation = await manager.createDelegation("approver-1", "approver-2", "approval-revoked", 3600000);
+  await manager.revokeDelegation(delegation.delegationId);
 
   const result = manager.getActiveDelegationForApproval("approval-revoked");
 
   assert.strictEqual(result, undefined);
 });
 
-test("EscalationManager getActiveDelegationForApproval returns undefined for completed", () => {
+test("EscalationManager getActiveDelegationForApproval returns undefined for completed", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("approver-1", "approver-2", "approval-completed", 3600000);
+  const delegation = await manager.createDelegation("approver-1", "approver-2", "approval-completed", 3600000);
   manager.completeDelegation(delegation.delegationId);
 
   const result = manager.getActiveDelegationForApproval("approval-completed");

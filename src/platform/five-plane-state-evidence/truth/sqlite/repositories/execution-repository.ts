@@ -24,10 +24,10 @@ export class ExecutionRepository {
       .prepare(
         `INSERT INTO executions (
           id, task_id, workflow_id, parent_execution_id, agent_id, role_id, run_kind, status,
-          input_ref, trace_id, attempt, timeout_ms, budget_usd_limit, budget_reservation_id, budget_ledger_id,
-          requires_approval, sandbox_mode, allowed_tools_json, allowed_paths_json, max_retries, retry_backoff,
+          input_ref, trace_id, attempt, timeout_ms, budget_usd_limit, requires_approval,
+          sandbox_mode, allowed_tools_json, allowed_paths_json, max_retries, retry_backoff,
           last_error_code, last_error_message, started_at, finished_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         execution.id,
@@ -43,8 +43,6 @@ export class ExecutionRepository {
         execution.attempt,
         execution.timeoutMs,
         execution.budgetUsdLimit,
-        execution.budgetReservationId,
-        execution.budgetLedgerId,
         execution.requiresApproval,
         execution.sandboxMode,
         execution.allowedToolsJson,

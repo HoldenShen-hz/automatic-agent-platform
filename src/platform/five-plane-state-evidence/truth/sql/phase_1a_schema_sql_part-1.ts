@@ -100,8 +100,6 @@ CREATE TABLE IF NOT EXISTS executions (
   attempt INTEGER NOT NULL,
   timeout_ms INTEGER NOT NULL,
   budget_usd_limit REAL NULL,
-  budget_reservation_id TEXT NULL,
-  budget_ledger_id TEXT NULL,
   requires_approval INTEGER NOT NULL DEFAULT 0,
   sandbox_mode TEXT NULL,
   allowed_tools_json TEXT NULL,
