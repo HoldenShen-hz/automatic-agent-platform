@@ -587,7 +587,7 @@ test("executable-contracts: reserveBudgetHardCap rejects amount exceeding remain
   });
 
   // Reserve some first
-  reserveBudgetHardCap({
+  const result = reserveBudgetHardCap({
     ledger,
     amount: 90,
     resourceKind: "token",
@@ -596,13 +596,7 @@ test("executable-contracts: reserveBudgetHardCap rejects amount exceeding remain
   });
 
   // Try to reserve more than remaining (10 remaining, requesting 20)
-  const updatedLedger = createBudgetLedger({
-    tenantId: "tenant-1",
-    harnessRunId: "run-1",
-    currency: "USD",
-    hardCap: 100,
-    version: 1,
-  });
+  const updatedLedger = result.ledger;
 
   assert.throws(
     () =>

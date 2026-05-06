@@ -64,7 +64,7 @@ export function createExecutionPlan(input: Omit<ExecutionPlan, "planId" | "creat
   void newId;
   void nowIso;
   throw new ValidationError(
-    "platform_contracts.legacy_execution_plan_forbidden",
+    "execution_plan.legacy_contract_forbidden",
     "ExecutionPlan is deprecated. Use PlanGraphBundle from executable-contracts instead.",
   );
 }

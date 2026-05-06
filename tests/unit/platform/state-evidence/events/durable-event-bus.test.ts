@@ -192,7 +192,6 @@ test("durable event bus dispose clears subscribers and rejects new operations", 
   }
 });
 
-
 test("durable event bus delivery retries MAX_DELIVERY_RETRIES times before dead-lettering", async () => {
   const workspace = createTempWorkspace("aa-event-bus-retry-exhaust-");
 

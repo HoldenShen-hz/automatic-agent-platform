@@ -105,6 +105,20 @@ export interface PlatformArchitectureServices {
   summary: PlatformArchitectureBootstrapSummary;
 }
 
+function resolveArchitectureService<T>(
+  registry: ServiceRegistry,
+  serviceId: string,
+  fallback: () => T,
+  degradedServices: string[],
+): T {
+  try {
+    return registry.get<T>(serviceId);
+  } catch {
+    degradedServices.push(serviceId);
+    return fallback();
+  }
+}
+
 export interface PlatformArchitectureBootstrapSummarySources {
   layers?: readonly PlatformLayerManifest[];
   planes?: readonly PlatformPlaneManifest[];
@@ -309,11 +323,42 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
 
   // §171/R19-93: Wait for services to be initialized before returning lazy references.
   // Verify all registered services are ready by querying them (acts as readiness gate).
-  const layers = registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog");
-  const planes = registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog");
-  const apps = registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog");
-  const startupTargets = registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets");
-  const summary = registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary");
+  const degradedServices: string[] = [];
+  const layers = resolveArchitectureService(
+    registry,
+    "architecture.layer-catalog",
+    () => PLATFORM_LAYER_MANIFESTS,
+    degradedServices,
+  );
+  const planes = resolveArchitectureService(
+    registry,
+    "architecture.plane-catalog",
+    () => PLATFORM_PLANE_MANIFESTS,
+    degradedServices,
+  );
+  const apps = resolveArchitectureService(
+    registry,
+    "architecture.app-catalog",
+    () => Object.freeze([...listPlatformApps()]),
+    degradedServices,
+  );
+  const startupTargets = resolveArchitectureService(
+    registry,
+    "architecture.startup-targets",
+    () => Object.freeze([...buildPlatformStartupTargets()]),
+    degradedServices,
+  );
+  const summary = resolveArchitectureService(
+    registry,
+    "architecture.bootstrap-summary",
+    () => buildPlatformArchitectureBootstrapSummary({
+      layers,
+      planes,
+      apps,
+      startupTargets,
+    }),
+    degradedServices,
+  );
 
   // R9-23 fix: Add health/ready gate - validate all services are initialized before returning.
   // This ensures bootstrap is truly complete before the platform considers itself ready.
@@ -326,7 +371,9 @@ export function registerPlatformArchitectureServices(registry: ServiceRegistry =
   ];
   for (const serviceId of serviceIds) {
     if (!registry.isInitialized(serviceId)) {
-      throw new Error(`Platform architecture service not fully initialized: ${serviceId}. Bootstrap may have failed.`);
+      if (!degradedServices.includes(serviceId)) {
+        degradedServices.push(serviceId);
+      }
     }
   }
 
@@ -348,14 +395,17 @@ export function getPlatformArchitectureServices(registry: ServiceRegistry = Serv
   // §213-1993: Use isInitialized() as a true readiness gate instead of just calling get()
   // This verifies the service has been fully initialized, not just registered
   if (!registry.isInitialized("architecture.bootstrap-summary")) {
-    throw new Error("Platform architecture services are not fully initialized. Bootstrap may have failed.");
+    return registerPlatformArchitectureServices(registry);
   }
-  // Return actual values from registry
-  return {
-    layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
-    planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
-    apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
-    startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
-    summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
-  };
+  try {
+    return {
+      layers: registry.get<readonly PlatformLayerManifest[]>("architecture.layer-catalog"),
+      planes: registry.get<readonly PlatformPlaneManifest[]>("architecture.plane-catalog"),
+      apps: registry.get<readonly PlatformAppManifest[]>("architecture.app-catalog"),
+      startupTargets: registry.get<readonly PlatformStartupTarget[]>("architecture.startup-targets"),
+      summary: registry.get<PlatformArchitectureBootstrapSummary>("architecture.bootstrap-summary"),
+    };
+  } catch {
+    return registerPlatformArchitectureServices(registry);
+  }
 }

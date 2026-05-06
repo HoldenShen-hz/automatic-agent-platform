@@ -50,7 +50,7 @@ export function createExecutionReceipt(input: Omit<ExecutionReceipt, "receiptId"
   void newId;
   void nowIso;
   throw new ValidationError(
-    "platform_contracts.legacy_execution_receipt_forbidden",
+    "execution_receipt.legacy_contract_forbidden",
     "ExecutionReceipt is deprecated. Use NodeAttemptReceipt from executable-contracts instead.",
   );
 }

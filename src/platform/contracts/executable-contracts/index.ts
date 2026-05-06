@@ -869,7 +869,7 @@ export function createTaskDraft(input: {
     ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
     sources,
     errorCode: "task_draft.domain_id_required",
-    errorMessage: "TaskDraft requires a domainId or a legacy domain/division binding in normalizedIntent.",
+    errorMessage: "task_draft.domain_id_required: TaskDraft requires a domainId or a legacy domain/division binding in normalizedIntent.",
   });
   return {
     taskDraftId: input.taskDraftId ?? newId("taskdraft"),
@@ -907,7 +907,7 @@ export function createConfirmedTaskSpec(input: {
   if (isHighRisk(input.riskClass) && input.confirmationReceipt == null) {
     throw new ValidationError(
       "confirmed_task_spec.confirmation_required",
-      "High and critical task specs require a confirmation receipt.",
+      "confirmed_task_spec.confirmation_required: High and critical task specs require a confirmation receipt.",
     );
   }
   const sources: readonly unknown[] = [input.inputs];
@@ -916,7 +916,7 @@ export function createConfirmedTaskSpec(input: {
     sources,
     refCandidate: input.constraintPackRef,
     errorCode: "confirmed_task_spec.domain_id_required",
-    errorMessage: "ConfirmedTaskSpec requires a domainId or a legacy domain/division binding in inputs.",
+    errorMessage: "confirmed_task_spec.domain_id_required: ConfirmedTaskSpec requires a domainId or a legacy domain/division binding in inputs.",
   });
   return {
     confirmedTaskSpecId: input.confirmedTaskSpecId ?? newId("ctspec"),
@@ -997,7 +997,7 @@ export function createHarnessRun(input: {
     ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
     refCandidate: input.constraintPackRef,
     errorCode: "harness_run.domain_id_required",
-    errorMessage: "HarnessRun requires a domainId or a constraintPackRef that preserves the domain binding.",
+    errorMessage: "harness_run.domain_id_required: HarnessRun requires a domainId or a constraintPackRef that preserves the domain binding.",
   });
   return {
     harnessRunId,
@@ -1038,7 +1038,7 @@ export function createPlanGraphBundle(input: {
   createdAt?: string;
 }): PlanGraphBundle {
   if (input.graph.nodes.length === 0) {
-    throw new ValidationError("plan_graph.nodes_required", "PlanGraphBundle requires at least one node.");
+    throw new ValidationError("plan_graph.nodes_required", "plan_graph.nodes_required: PlanGraphBundle requires at least one node.");
   }
   return {
     planGraphBundleId: input.planGraphBundleId ?? newId("pgb"),
@@ -1068,10 +1068,10 @@ export function createGraphPatch(input: {
   graphPatchId?: string;
 }): GraphPatch {
   if (input.newGraphVersion <= input.baseGraphVersion) {
-    throw new ValidationError("graph_patch.version_must_advance", "GraphPatch newGraphVersion must advance.");
+    throw new ValidationError("graph_patch.version_must_advance", "graph_patch.version_must_advance: GraphPatch newGraphVersion must advance.");
   }
   if (input.operations.length === 0) {
-    throw new ValidationError("graph_patch.operations_required", "GraphPatch requires at least one operation.");
+    throw new ValidationError("graph_patch.operations_required", "graph_patch.operations_required: GraphPatch requires at least one operation.");
   }
   const patch: GraphPatch = {
     graphPatchId: input.graphPatchId ?? newId("gpatch"),
@@ -1095,13 +1095,13 @@ export function assertGraphPatchSafety(patch: GraphPatch): void {
   if (touchesExecutedFacts && patch.compatibilityClass === "safe_append") {
     throw new ValidationError(
       "graph_patch.safe_append_cannot_touch_executed_facts",
-      "GraphPatch safe_append cannot affect executed nodes or side effects.",
+      "graph_patch.safe_append_cannot_touch_executed_facts: GraphPatch safe_append cannot affect executed nodes or side effects.",
     );
   }
   if (patch.affectedSideEffects.length > 0 && patch.compensationPlanRef == null) {
     throw new ValidationError(
       "graph_patch.compensation_required_for_side_effects",
-      "GraphPatch affecting side effects requires a compensation plan.",
+      "graph_patch.compensation_required_for_side_effects: GraphPatch affecting side effects requires a compensation plan.",
     );
   }
   const executedNodeIds = new Set(patch.affectedExecutedNodes);
@@ -1114,7 +1114,7 @@ export function assertGraphPatchSafety(patch: GraphPatch): void {
   if (rewritesExecutedNode) {
     throw new ValidationError(
       "graph_patch.executed_node_rewrite_forbidden",
-      "GraphPatch cannot disable or skip an already executed node.",
+      "graph_patch.executed_node_rewrite_forbidden: GraphPatch cannot disable or skip an already executed node.",
     );
   }
 }
@@ -1162,7 +1162,7 @@ export function createNodeAttempt(input: {
   receiptId?: string;
 }): NodeAttempt {
   if (input.attemptNo < 1) {
-    throw new ValidationError("node_attempt.attempt_no_invalid", "NodeAttempt attemptNo starts at 1.");
+    throw new ValidationError("node_attempt.attempt_no_invalid", "node_attempt.attempt_no_invalid: NodeAttempt attemptNo starts at 1.");
   }
   return {
     nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
@@ -1389,13 +1389,13 @@ export function reserveBudgetHardCap(input: {
   if (input.ledger.version !== input.expectedVersion) {
     throw new ValidationError(
       "budget_reservation.version_cas_failed",
-      "Budget reservation requires the current ledger version.",
+      "budget_reservation.version_cas_failed: Budget reservation requires the current ledger version.",
     );
   }
   requirePositive(input.amount, "budget_reservation.amount_invalid");
   const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
   if (activeCommittedAmount + input.amount > input.ledger.hardCap) {
-    throw new ValidationError("budget_reservation.hard_cap_exceeded", "Budget reservation exceeds hard cap.");
+    throw new ValidationError("budget_reservation.hard_cap_exceeded", "budget_reservation.hard_cap_exceeded: Budget reservation exceeds hard cap.");
   }
   const ledger: BudgetLedger = {
     ...input.ledger,
@@ -1473,7 +1473,7 @@ export function createArtifactVersionLockSet(input: {
   if (input.artifactLocks.length === 0) {
     throw new ValidationError(
       "artifact_version_lock_set.artifact_locks_required",
-      "ArtifactVersionLockSet requires at least one artifact lock.",
+      "artifact_version_lock_set.artifact_locks_required: ArtifactVersionLockSet requires at least one artifact lock.",
     );
   }
   return {
@@ -1549,7 +1549,7 @@ export function createHumanResponsibilityRecord(input: {
   if (isHighRisk(input.acknowledgedRiskClass) && input.expiresAt == null) {
     throw new ValidationError(
       "human_responsibility_record.expires_at_required",
-      "High and critical human responsibility records require expiresAt.",
+      "human_responsibility_record.expires_at_required: High and critical human responsibility records require expiresAt.",
     );
   }
   return {
@@ -1630,7 +1630,7 @@ export function createOapeflirViewEvent<TPayload extends JsonValue>(input: {
   if (input.derivedFromEventIds.length === 0) {
     throw new ValidationError(
       "oapeflir_view_event.derived_from_required",
-      "OAPEFLIR view events require at least one source event.",
+      "oapeflir_view_event.derived_from_required: OAPEFLIR view events require at least one source event.",
     );
   }
   return {
@@ -1671,19 +1671,19 @@ export function canTruthConsumerConsume(event: EventEnvelope): boolean {
 
 function requireNonEmpty(value: string, code: string): void {
   if (value.trim().length === 0) {
-    throw new ValidationError(code, "Required string cannot be empty.");
+    throw new ValidationError(code, `${code}: Required string cannot be empty.`);
   }
 }
 
 function requireNonNegative(value: number, code: string): void {
   if (!Number.isFinite(value) || value < 0) {
-    throw new ValidationError(code, "Value must be a finite non-negative number.");
+    throw new ValidationError(code, `${code}: Value must be a finite non-negative number.`);
   }
 }
 
 function requirePositive(value: number, code: string): void {
   if (!Number.isFinite(value) || value <= 0) {
-    throw new ValidationError(code, "Value must be a finite positive number.");
+    throw new ValidationError(code, `${code}: Value must be a finite positive number.`);
   }
 }
 
@@ -1693,7 +1693,7 @@ function isHighRisk(riskClass: RiskClass): boolean {
 
 function assertPlatformEventType(eventType: string): void {
   if (!eventType.startsWith("platform.")) {
-    throw new ValidationError("platform_fact_event.namespace_required", "Platform fact events must use platform.*.");
+    throw new ValidationError("platform_fact_event.namespace_required", "platform_fact_event.namespace_required: Platform fact events must use platform.*.");
   }
 }
 
@@ -1701,7 +1701,7 @@ function assertOapeflirViewEventType(eventType: string): void {
   if (!eventType.startsWith("oapeflir.view.") && !eventType.startsWith("oapeflir.rationale.")) {
     throw new ValidationError(
       "oapeflir_view_event.namespace_required",
-      "OAPEFLIR view events must use oapeflir.view.* or oapeflir.rationale.*.",
+      "oapeflir_view_event.namespace_required: OAPEFLIR view events must use oapeflir.view.* or oapeflir.rationale.*.",
     );
   }
 }

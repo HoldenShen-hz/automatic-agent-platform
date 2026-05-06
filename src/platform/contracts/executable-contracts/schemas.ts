@@ -490,7 +490,7 @@ export const ArtifactVersionLockSchema = z.object({
 export const ArtifactVersionLockSetSchema = z.object({
   artifactVersionLockSetId: z.string().min(1),
   harnessRunId: z.string().min(1),
-  artifactLocks: z.array(ArtifactVersionLockSchema),
+  artifactLocks: z.array(ArtifactVersionLockSchema).min(1),
   createdAt: z.string().min(1),
 });
 
@@ -564,7 +564,7 @@ export const PlatformFactEventSchema = EventEnvelopeSchema.extend({
 
 export const OapeflirViewEventSchema = EventEnvelopeSchema.extend({
   eventType: z.string().regex(/^oapeflir\.(view|rationale)\./),
-  derivedFromEventIds: z.array(z.string()),
+  derivedFromEventIds: z.array(z.string()).min(1),
   projectionOnly: z.literal(true),
 });
 

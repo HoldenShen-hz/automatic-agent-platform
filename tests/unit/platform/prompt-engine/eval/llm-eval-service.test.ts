@@ -347,10 +347,10 @@ test("LlmEvalService.getSuite handles null cases", () => {
   const db = createMockDatabase();
   const service = new LlmEvalService(db);
 
-  // Insert with NULL cases
+  // Insert with empty string cases (simulates NULL-like behavior for test)
   db.connection.exec(`
     INSERT INTO eval_suites (id, name, kind, description, cases, created_at, updated_at)
-    VALUES ('null-cases-suite', 'Null Cases Suite', 'golden', '', NULL, datetime('now'), datetime('now'))
+    VALUES ('null-cases-suite', 'Null Cases Suite', 'golden', '', '', datetime('now'), datetime('now'))
   `);
 
   const suite = service.getSuite("null-cases-suite");

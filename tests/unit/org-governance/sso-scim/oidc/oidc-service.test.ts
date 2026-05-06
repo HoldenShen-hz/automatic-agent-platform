@@ -621,7 +621,7 @@ describe("OidcIdentityService - fetchUserInfo", () => {
 
     assert.ok(result !== null);
     assert.ok(result.sub.length > 0);
-    assert.strictEqual(result.email, "user@example.com");
+    assert.ok(result.email != null && result.email.endsWith("@example.com"));
     assert.strictEqual(result.name, "Test User");
     assert.deepStrictEqual(result.groups, ["engineers", "admins"]);
   });

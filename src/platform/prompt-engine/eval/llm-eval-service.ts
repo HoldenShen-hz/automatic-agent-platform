@@ -244,7 +244,13 @@ export class LlmEvalService {
    */
   startRun(suiteId: string, modelId: string, promptVersion: string = "default", triggeredBy: string = "ci"): EvalRunRecord {
     const suite = this.getSuite(suiteId);
-    const cases = suite ? this.parseCases(suite) : [];
+    let cases: EvalCaseDefinition[] = [];
+    try {
+      cases = suite ? this.parseCases(suite) : [];
+    } catch {
+      // Malformed cases result in 0 total cases
+      cases = [];
+    }
     const now = nowIso();
 
     const run: EvalRunRecord = {
@@ -748,7 +754,7 @@ async runAbTest(
       name: String(row.name ?? ""),
       kind: String(row.kind ?? "golden") as EvalSuiteKind,
       description: String(row.description ?? ""),
-      cases: String(row.cases ?? "[]"),
+      cases: String(row.cases ?? "[]") || "[]",
       createdAt: String(row.created_at ?? ""),
       updatedAt: String(row.updated_at ?? ""),
     };

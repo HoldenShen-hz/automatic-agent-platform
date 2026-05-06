@@ -51,6 +51,8 @@ export interface CircuitBreakerOptions {
   onStateChange?: (payload: CircuitBreakerStateChangePayload) => void;
   /** Minimum sample size before failure rate is considered reliable (default: 10) */
   minSampleSize?: number;
+  /** Maximum timestamps retained per outcome window to bound memory (default: 10000) */
+  maxWindowEntries?: number;
 }
 
 /**
@@ -76,6 +78,7 @@ export interface CircuitBreakerMetrics {
  * - half_open: Testing if service has recovered, limited requests pass through
  */
 export class CircuitBreaker {
+  private static readonly DEFAULT_MAX_WINDOW_ENTRIES = 10_000;
   private readonly name: string;
   private readonly failureThreshold: number;
   private readonly resetTimeoutMs: number;
@@ -83,6 +86,7 @@ export class CircuitBreaker {
   private readonly monitorWindowMs: number;
   // §179-2097: Minimum sample size before failure rate is considered statistically reliable
   private readonly minSampleSize: number;
+  private readonly maxWindowEntries: number;
 
   private state: CircuitBreakerState = "closed";
   private failures = 0;
@@ -106,6 +110,7 @@ export class CircuitBreaker {
     this.halfOpenSuccessThreshold = options.halfOpenSuccessThreshold ?? 3;
     this.monitorWindowMs = options.monitorWindowMs ?? 60_000;
     this.minSampleSize = options.minSampleSize ?? 10;
+    this.maxWindowEntries = Math.max(1, options.maxWindowEntries ?? CircuitBreaker.DEFAULT_MAX_WINDOW_ENTRIES);
     this.onStateChange = options.onStateChange ?? undefined;
   }
 
@@ -337,6 +342,7 @@ export class CircuitBreaker {
     while (this.successTimestamps.length > 0 && this.successTimestamps[0]! < cutoff) {
       this.successTimestamps.shift();
     }
+    this.trimWindowEntries(this.successTimestamps);
   }
 
   private onSuccessInternal(): void {
@@ -353,6 +359,14 @@ export class CircuitBreaker {
     while (this.failureTimestamps.length > 0 && this.failureTimestamps[0]! < cutoff) {
       this.failureTimestamps.shift();
     }
+    this.trimWindowEntries(this.failureTimestamps);
+  }
+
+  private trimWindowEntries(timestamps: number[]): void {
+    if (timestamps.length <= this.maxWindowEntries) {
+      return;
+    }
+    timestamps.splice(0, timestamps.length - this.maxWindowEntries);
   }
 
   private onFailureInternal(): void {

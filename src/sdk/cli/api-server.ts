@@ -51,7 +51,9 @@ import { MetricsService } from "../../platform/shared/observability/metrics-serv
 import { initOtel, shutdownOtel } from "../../platform/shared/observability/otel-bootstrap.js";
 import { PrometheusMetricsExporter } from "../../platform/shared/observability/prometheus-metrics-exporter.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { resetModelCallProvider } from "../../platform/execution/execution-engine/model-call-provider.js";
 import { CoordinatorLoadBalancingService } from "../../platform/execution/ha/coordinator-load-balancing-service.js";
+import { getProcessTracker, resetProcessTracker } from "../../platform/execution/resource/process-tracker.js";
 import { getGlobalGracefulShutdown } from "../../platform/execution/startup/graceful-shutdown.js";
 import { BillingService } from "../../scale-ecosystem/billing/billing-service.js";
 import { ArtifactPublishLedger } from "../../platform/state-evidence/artifacts/artifact-publish-ledger.js";
@@ -322,6 +324,26 @@ async function main(): Promise<void> {
       handler: async () => {
         await StructuredLogger.flushTransports();
         await StructuredLogger.closeTransports();
+      },
+    });
+    shutdown.addHandler({
+      name: "process_tracker",
+      handler: async () => {
+        const tracker = getProcessTracker();
+        await tracker.killAll();
+        resetProcessTracker();
+      },
+    });
+    shutdown.addHandler({
+      name: "model_call_provider",
+      handler: async () => {
+        resetModelCallProvider();
+      },
+    });
+    shutdown.addHandler({
+      name: "typed_event_bus",
+      handler: async () => {
+        typedEventBus.dispose();
       },
     });
     shutdown.addHandler({

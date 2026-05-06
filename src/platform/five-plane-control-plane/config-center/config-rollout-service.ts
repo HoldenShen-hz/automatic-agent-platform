@@ -39,12 +39,12 @@ export interface RolloutStage {
 
 /**
  * Default rollout stages in order.
- * §24.3 spec: canary → 30min → 5% → 25% → 50% → full
+ * §24.3 spec: pending → canary observation → 10% → full
  */
 export const DEFAULT_ROLLOUT_STAGES: RolloutStage[] = [
   { phase: RolloutPhase.PENDING, percentage: 0, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.CANARY, percentage: 5, minDurationMs: 1800000, autoProgress: true },
-  { phase: RolloutPhase.CANARY_10, percentage: 25, minDurationMs: 0, autoProgress: false },
+  { phase: RolloutPhase.CANARY_10, percentage: 10, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false },
   { phase: RolloutPhase.CANCELLED, percentage: 0, minDurationMs: 0, autoProgress: false },
 ];
@@ -91,6 +91,14 @@ export interface ConfigRollout {
   lastHealthCheckAt: string | null;
   /** Whether last health check passed */
   lastHealthCheckPassed: boolean | null;
+  /** Last observed error rate percentage */
+  lastObservedErrorRate: number | null;
+  /** Last observed latency regression percentage */
+  lastObservedLatencyRegression: number | null;
+  /** Last observed incident rate */
+  lastObservedIncidentRate: number | null;
+  /** Last health gate failure reasons */
+  lastHealthCheckReasons: string[];
 }
 
 /**
@@ -246,6 +254,10 @@ export class ConfigRolloutService {
       healthGates: mergedHealthGates,
       lastHealthCheckAt: null,
       lastHealthCheckPassed: null,
+      lastObservedErrorRate: null,
+      lastObservedLatencyRegression: null,
+      lastObservedIncidentRate: null,
+      lastHealthCheckReasons: [],
     };
 
     this.activeRollouts.set(rolloutId, rollout);
@@ -447,12 +459,20 @@ export class ConfigRolloutService {
 
     rollout.lastHealthCheckAt = nowIso();
     rollout.lastHealthCheckPassed = passed;
+    rollout.lastObservedErrorRate = healthCheck.errorRate;
+    rollout.lastObservedLatencyRegression = healthCheck.latencyRegression;
+    rollout.lastObservedIncidentRate = healthCheck.incidentRate;
+    rollout.lastHealthCheckReasons = [...reasons];
     rollout.updatedAt = nowIso();
 
     this.persistRollout(rollout);
 
     // Emit health check event
     this.emitHealthCheckEvent(rollout, passed, reasons);
+
+    if (!passed) {
+      this.rollbackFailedRollout(rollout, "config.rollout.auto_rolled_back");
+    }
 
     return rollout;
   }
@@ -495,11 +515,11 @@ export class ConfigRolloutService {
     return {
       rolloutId,
       passed: rollout.lastHealthCheckPassed ?? false,
-      errorRate: 0, // Would be populated from metrics
-      latencyRegression: 0,
-      incidentRate: 0,
+      errorRate: rollout.lastObservedErrorRate ?? 0,
+      latencyRegression: rollout.lastObservedLatencyRegression ?? 0,
+      incidentRate: rollout.lastObservedIncidentRate ?? 0,
       checkedAt: rollout.lastHealthCheckAt ?? rollout.startedAt,
-      reasons: [],
+      reasons: [...rollout.lastHealthCheckReasons],
     };
   }
 
@@ -515,23 +535,7 @@ export class ConfigRolloutService {
     if (!rollout) {
       return null;
     }
-
-    const currentIndex = this.stages.findIndex((s) => s.phase === rollout.stage.phase);
-    if (currentIndex <= 0) {
-      // Already at first stage, cannot roll back further
-      return rollout;
-    }
-
-    const previousStage = this.stages[currentIndex - 1]!;
-    rollout.stage = previousStage;
-    rollout.currentPercentage = previousStage.percentage;
-    rollout.updatedAt = nowIso();
-    rollout.lastHealthCheckPassed = null;
-
-    this.persistRollout(rollout);
-    this.emitRolloutEvent("config.rollout.rolled_back", rollout);
-
-    return rollout;
+    return this.rollbackFailedRollout(rollout, "config.rollout.rolled_back");
   }
 
   /**
@@ -550,24 +554,33 @@ export class ConfigRolloutService {
         continue;
       }
 
-      // Only roll back if not already at the first stage
-      const currentIndex = this.stages.findIndex((s) => s.phase === rollout.stage.phase);
-      if (currentIndex <= 0) {
-        continue;
+      if (this.rollbackFailedRollout(rollout, "config.rollout.auto_rolled_back") != null) {
+        rollbackCount++;
       }
-
-      const previousStage = this.stages[currentIndex - 1]!;
-      rollout.stage = previousStage;
-      rollout.currentPercentage = previousStage.percentage;
-      rollout.updatedAt = nowIso();
-      rollout.lastHealthCheckPassed = null;
-
-      this.persistRollout(rollout);
-      this.emitRolloutEvent("config.rollout.auto_rolled_back", rollout);
-      rollbackCount++;
     }
 
     return rollbackCount;
+  }
+
+  private rollbackFailedRollout(
+    rollout: ConfigRollout,
+    eventType: string,
+  ): ConfigRollout | null {
+    const currentIndex = this.stages.findIndex((s) => s.phase === rollout.stage.phase);
+    if (currentIndex <= 0) {
+      return rollout;
+    }
+
+    const previousStage = this.stages[currentIndex - 1]!;
+    rollout.stage = previousStage;
+    rollout.currentPercentage = previousStage.percentage;
+    rollout.updatedAt = nowIso();
+    rollout.lastHealthCheckPassed = null;
+
+    this.persistRollout(rollout);
+    this.emitRolloutEvent(eventType, rollout);
+
+    return rollout;
   }
 
   /**

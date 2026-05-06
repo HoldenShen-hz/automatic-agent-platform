@@ -147,8 +147,6 @@ export class DegradationController {
   private currentLevel: DegradationLevel = DegradationLevel.D0;
   private consecutiveHealthyCount: number = 0;
   private lastEscalationReason: string | null = null;
-  /** R16-10 FIX: Track recursion depth to prevent stack overflow during cascading failures */
-  private routeRecursionDepth: number = 0;
   private static readonly MAX_ROUTE_RECURSION_DEPTH: number = 5;
 
   private readonly config: DegradationConfig;
@@ -202,12 +200,19 @@ export class DegradationController {
    * D4: Service unavailable error
    */
   public async route(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+    return this.routeWithDepth(request, 0);
+  }
+
+  private async routeWithDepth(
+    request: LLMDegradationRequest,
+    recursionDepth: number,
+  ): Promise<LLMDegradationResponse> {
     switch (this.currentLevel) {
       case DegradationLevel.D0:
-        return this.routeD0(request);
+        return this.routeD0(request, recursionDepth);
 
       case DegradationLevel.D1:
-        return this.routeD1(request);
+        return this.routeD1(request, recursionDepth);
 
       case DegradationLevel.D2:
         return this.routeD2(request);
@@ -220,10 +225,28 @@ export class DegradationController {
     }
   }
 
+  private routeAfterEscalation(
+    request: LLMDegradationRequest,
+    recursionDepth: number,
+  ): Promise<LLMDegradationResponse> {
+    if (recursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
+      this.currentLevel = DegradationLevel.D4;
+      throw new ProviderError(
+        "degradation.max_recursion_exceeded",
+        "LLM service failed after maximum retry attempts due to sustained degradation.",
+        { retryable: true, details: { recursionDepth } },
+      );
+    }
+    return this.routeWithDepth(request, recursionDepth);
+  }
+
   /**
    * D0: Normal operation with primary model.
    */
-  private async routeD0(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+  private async routeD0(
+    request: LLMDegradationRequest,
+    recursionDepth: number,
+  ): Promise<LLMDegradationResponse> {
     try {
       const response = await this.primaryProvider.createChatCompletion({
         model: request.model,
@@ -256,43 +279,22 @@ export class DegradationController {
     } catch (error) {
       this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
       this.escalate();
-      // R16-10 FIX: Check recursion depth to prevent stack overflow
-      this.routeRecursionDepth++;
-      if (this.routeRecursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
-        // Too many cascading failures, escalate to D4 to break the cycle
-        this.routeRecursionDepth = 0;
-        this.currentLevel = DegradationLevel.D4;
-        throw new ProviderError(
-          "degradation.max_recursion_exceeded",
-          "LLM service failed after maximum retry attempts due to sustained degradation.",
-          { retryable: true, details: { recursionDepth: this.routeRecursionDepth } },
-        );
-      }
-      // Retry with new level
-      return this.route(request);
+      return this.routeAfterEscalation(request, recursionDepth + 1);
     }
   }
 
   /**
    * D1: Fallback to alternative model.
    */
-  private async routeD1(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+  private async routeD1(
+    request: LLMDegradationRequest,
+    recursionDepth: number,
+  ): Promise<LLMDegradationResponse> {
     const fallbackProfile = this.selectFallbackProfile(request.model);
     if (fallbackProfile == null) {
       // No fallback available, escalate to D2
       this.escalate();
-      // R16-10 FIX: Check recursion depth before recursing
-      this.routeRecursionDepth++;
-      if (this.routeRecursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
-        this.routeRecursionDepth = 0;
-        this.currentLevel = DegradationLevel.D4;
-        throw new ProviderError(
-          "degradation.max_recursion_exceeded",
-          "LLM service failed after maximum retry attempts due to sustained degradation.",
-          { retryable: true, details: { recursionDepth: this.routeRecursionDepth } },
-        );
-      }
-      return this.route(request);
+      return this.routeAfterEscalation(request, recursionDepth + 1);
     }
 
     try {
@@ -316,19 +318,7 @@ export class DegradationController {
     } catch (error) {
       this.lastEscalationReason = error instanceof Error ? error.message : "unknown";
       this.escalate();
-      // R16-10 FIX: Check recursion depth before recursing
-      this.routeRecursionDepth++;
-      if (this.routeRecursionDepth >= DegradationController.MAX_ROUTE_RECURSION_DEPTH) {
-        this.routeRecursionDepth = 0;
-        this.currentLevel = DegradationLevel.D4;
-        throw new ProviderError(
-          "degradation.max_recursion_exceeded",
-          "LLM service failed after maximum retry attempts due to sustained degradation.",
-          { retryable: true, details: { recursionDepth: this.routeRecursionDepth } },
-        );
-      }
-      // Retry with new level
-      return this.route(request);
+      return this.routeAfterEscalation(request, recursionDepth + 1);
     }
   }
 
