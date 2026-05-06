@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   RuntimeExecuteBridge,
   serialiseOapeflirPlan,
+  mapStepOutputRecord,
 } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import type { PlanStep } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { MultiStepOrchestrationResult } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
@@ -160,4 +161,53 @@ test("integration: five-plane RuntimeExecuteBridge executeStep reuses the inject
   assert.ok(capturedRequest?.startsWith("oapeflir://plan "));
   assert.equal(result.stepId, "step_single");
   assert.equal(result.summary, "Single step completed");
+});
+
+test("mapStepOutputRecord derives validationPassed from validationJson.valid", () => {
+  const passed = mapStepOutputRecord({
+    id: "sor-pass",
+    stepId: "step_pass",
+    taskId: "task_pass",
+    roleId: "general_executor",
+    status: "succeeded",
+    dataJson: "{}",
+    artifactsJson: null,
+    summary: "passed",
+    durationMs: 1,
+    tokenCost: 1,
+    validationJson: "{\"valid\":true}",
+    producedAt: "2026-04-29T00:00:00.000Z",
+  });
+  const failed = mapStepOutputRecord({
+    id: "sor-fail",
+    stepId: "step_fail",
+    taskId: "task_fail",
+    roleId: "general_executor",
+    status: "failed",
+    dataJson: "{}",
+    artifactsJson: null,
+    summary: "failed",
+    durationMs: 1,
+    tokenCost: 1,
+    validationJson: "{\"valid\":false}",
+    producedAt: "2026-04-29T00:00:00.000Z",
+  });
+  const invalid = mapStepOutputRecord({
+    id: "sor-invalid",
+    stepId: "step_invalid",
+    taskId: "task_invalid",
+    roleId: "general_executor",
+    status: "failed",
+    dataJson: "{}",
+    artifactsJson: null,
+    summary: "invalid",
+    durationMs: 1,
+    tokenCost: 1,
+    validationJson: "{bad-json}",
+    producedAt: "2026-04-29T00:00:00.000Z",
+  });
+
+  assert.equal(passed.validationPassed, true);
+  assert.equal(failed.validationPassed, false);
+  assert.equal(invalid.validationPassed, false);
 });

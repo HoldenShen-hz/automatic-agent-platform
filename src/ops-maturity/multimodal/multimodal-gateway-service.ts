@@ -23,22 +23,22 @@ export interface MultimodalInputPart {
   readonly type: string;
   readonly contentRef: string;
   readonly provenance?: {
-    readonly c2pa?: string;
-    readonly watermark?: string;
-    readonly hash?: string;
-    readonly license?: string;
-  };
-  readonly artifactRef?: string;
-  readonly safetyLabels?: readonly string[];
-  readonly mimeType?: string;
-  readonly costKey?: string;
-  readonly text?: string;
-  readonly imageMetadata?: ImageMetadata;
-  readonly videoMetadata?: VideoMetadata;
-  readonly audioSampleCount?: number;
-  readonly audioSampleRate?: number;
-  readonly documentChunks?: readonly string[];
-  readonly dataClassification?: "public" | "internal" | "restricted";
+    readonly c2pa?: string | undefined;
+    readonly watermark?: string | undefined;
+    readonly hash?: string | undefined;
+    readonly license?: string | undefined;
+  } | undefined;
+  readonly artifactRef?: string | undefined;
+  readonly safetyLabels?: readonly string[] | undefined;
+  readonly mimeType?: string | undefined;
+  readonly costKey?: string | undefined;
+  readonly text?: string | undefined;
+  readonly imageMetadata?: ImageMetadata | undefined;
+  readonly videoMetadata?: VideoMetadata | undefined;
+  readonly audioSampleCount?: number | undefined;
+  readonly audioSampleRate?: number | undefined;
+  readonly documentChunks?: readonly string[] | undefined;
+  readonly dataClassification?: "public" | "internal" | "restricted" | undefined;
 }
 
 export interface MultimodalRequest {
@@ -50,7 +50,7 @@ export interface MultimodalRequest {
   readonly costBudget: {
     readonly maxUsd: number;
   };
-  readonly traceId?: string;
+  readonly traceId?: string | undefined;
 }
 
 export interface ModalityRouteDecision {
@@ -66,9 +66,9 @@ export interface MultimodalSafetyFinding {
   readonly severity: "low" | "medium" | "high";
   readonly reasonCode: string;
   readonly blocked: boolean;
-  readonly confidence?: number;
-  readonly policyDecision?: string;
-  readonly appealPath?: string;
+  readonly confidence?: number | undefined;
+  readonly policyDecision?: string | undefined;
+  readonly appealPath?: string | undefined;
 }
 
 export interface MultimodalGatewayResult {
@@ -103,26 +103,26 @@ const VideoMetadataSchema = z.object({
 });
 
 const MultimodalProvenanceSchema = z.object({
-  c2pa: z.union([z.string().min(1), z.undefined()]),
-  watermark: z.union([z.string().min(1), z.undefined()]),
-  hash: z.union([z.string().min(1), z.undefined()]),
-  license: z.union([z.string().min(1), z.undefined()]),
+  c2pa: z.string().min(1).optional(),
+  watermark: z.string().min(1).optional(),
+  hash: z.string().min(1).optional(),
+  license: z.string().min(1).optional(),
 }).strict();
 
 export const MultimodalInputPartSchema = z.object({
   partId: z.string().min(1),
   type: z.string().min(1),
   contentRef: z.string().min(1),
-  provenance: z.union([MultimodalProvenanceSchema, z.undefined()]),
-  artifactRef: z.union([z.string().min(1), z.undefined()]),
+  provenance: MultimodalProvenanceSchema.optional(),
+  artifactRef: z.string().min(1).optional(),
   safetyLabels: z.array(z.string().min(1)).optional(),
-  mimeType: z.union([z.string().min(1), z.undefined()]),
-  costKey: z.union([z.string().min(1), z.undefined()]),
-  text: z.union([z.string(), z.undefined()]),
+  mimeType: z.string().min(1).optional(),
+  costKey: z.string().min(1).optional(),
+  text: z.string().optional(),
   imageMetadata: ImageMetadataSchema.optional(),
   videoMetadata: VideoMetadataSchema.optional(),
-  audioSampleCount: z.union([z.number().int().nonnegative(), z.undefined()]),
-  audioSampleRate: z.union([z.number().int().positive(), z.undefined()]),
+  audioSampleCount: z.number().int().nonnegative().optional(),
+  audioSampleRate: z.number().int().positive().optional(),
   documentChunks: z.array(z.string()).optional(),
   dataClassification: DataClassificationSchema.optional(),
 }).strict();

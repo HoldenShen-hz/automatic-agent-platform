@@ -130,6 +130,34 @@ test("assess with inheritedRiskAssessment", () => {
   assert.ok(result.riskAssessment.factors.some(f => f.startsWith("inherited:previous_failure")));
 });
 
+test("assess routes data-oriented domains to data division", () => {
+  const service = new AssessmentService();
+  const situation = makeTaskSituation({
+    domainId: "data-engineering",
+    objective: "Build an ETL pipeline for warehouse analytics",
+  } as TaskSituation);
+
+  const result = service.assess(situation);
+
+  assert.equal(result.routingDecision.division, "data");
+});
+
+test("assess routes operational tasks to ops division from task content", () => {
+  const service = new AssessmentService();
+  const situation = makeTaskSituation({
+    objective: "Deploy rollback and restore cluster capacity after incident",
+    userIntent: {
+      raw: "rollback deployment and restore cluster",
+      normalized: "deploy rollback restore cluster",
+      confidence: 0.95,
+    },
+  });
+
+  const result = service.assess(situation);
+
+  assert.equal(result.routingDecision.division, "ops");
+});
+
 test("assess sets correct executionMode based on risk", () => {
   const serviceLow = new AssessmentService();
   const lowRisk = serviceLow.assess(makeTaskSituation({ blockers: [] }));

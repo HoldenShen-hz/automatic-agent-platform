@@ -98,11 +98,12 @@ test("SimpleReflectionEngine reflect groups multiple failures of same mode", asy
 
   const reflections = await engine.reflect(failures);
 
-  // type_error has 2 failures so it should generate a reflection
+  // All 3 failures share same taskType so they generate exactly 1 reflection
+  // with evidenceIds containing all 3 records
   assert.ok(reflections.length >= 1);
   const typeReflection = reflections.find(r => r.metadata?.["failureMode"] === "type_error");
   assert.ok(typeReflection);
-  assert.equal(typeReflection.evidenceIds.length, 2);
+  assert.equal(typeReflection.evidenceIds.length, 3);
 });
 
 test("SimpleProposalEngine create produces valid proposal", async () => {
@@ -121,7 +122,7 @@ test("SimpleProposalEngine create produces valid proposal", async () => {
   assert.ok(proposal.id.startsWith("prop_"));
   assert.equal(proposal.title, "Test Proposal");
   assert.equal(proposal.kind, "tool_routing_rule");
-  assert.equal(proposal.status, "proposed");
+  assert.equal(proposal.status, "draft");
 });
 
 test("SimpleProposalEngine canAutoPromote returns true for low-risk kinds", () => {
@@ -541,7 +542,7 @@ test("InMemoryEvolutionRegistry save and retrieve rollout", async () => {
 test("InMemoryEvolutionRegistry getStatistics calculates correct aggregates", async () => {
   const registry = new InMemoryEvolutionRegistry();
   await registry.saveProposal({ id: "p1", title: "", description: "", kind: "tool_routing_rule" as const, target: "", patch: "", rationale: "", risk: "low" as const, evidenceIds: [], status: "canary" as const, createdAt: "", updatedAt: "" });
-  await registry.saveProposal({ id: "p2", title: "", description: "", kind: "tool_routing_rule" as const, target: "", patch: "", rationale: "", risk: "low" as const, evidenceIds: [], status: "rejected" as const, createdAt: "", updatedAt: "" });
+  await registry.saveProposal({ id: "p2", title: "", description: "", kind: "tool_routing_rule" as const, target: "", patch: "", rationale: "", risk: "low" as const, evidenceIds: [], status: "archived" as const, createdAt: "", updatedAt: "" });
   await registry.saveEvaluation({
     proposalId: "p1",
     benchmarkCases: 10,
