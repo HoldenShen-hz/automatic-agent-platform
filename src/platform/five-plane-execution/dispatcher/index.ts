@@ -30,7 +30,7 @@ import { getMultiStepToolDefinitions } from "../execution-engine/multi-step-tool
 import { parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../execution-engine/multi-step-utils.js";
 import { createSideEffectRecord, createBudgetLedger, type BudgetLedger, type SideEffectKind, type SideEffectStatus } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
-import type { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
+import type { RuntimeRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -99,7 +99,7 @@ class MultiStepToolRegistry {
   // R4-35 (INV-EVIDENCE-001): Track EvidenceRecords for decisions and executions
   private readonly evidenceRecords: Map<string, ReturnType<typeof createEvidenceRecord>>;
   // R4-33/R4-35: RuntimeTruthRepository for persisting side effect and evidence records
-  private runtimeTruthRepository: RuntimeTruthRepository | null = null;
+  private runtimeTruthRepository: RuntimeRepository | null = null;
   // R4-33: Current harnessRunId for correlating side effect records with the execution context
   private currentHarnessRunId: string | null = null;
   // R4-25 (INV-BUDGET-001): Budget ledger for reserve→execute→settle pattern
@@ -137,14 +137,14 @@ class MultiStepToolRegistry {
    * R4-33/R4-35: Set the RuntimeTruthRepository for persisting side effect and evidence records.
    * This must be called before tool execution to enable proper record persistence.
    */
-  public setRuntimeTruthRepository(repository: RuntimeTruthRepository): void {
+  public setRuntimeTruthRepository(repository: RuntimeRepository): void {
     this.runtimeTruthRepository = repository;
   }
 
   /**
    * R4-33/R4-35: Get the currently set RuntimeTruthRepository.
    */
-  public getRuntimeTruthRepository(): RuntimeTruthRepository | null {
+  public getRuntimeTruthRepository(): RuntimeRepository | null {
     return this.runtimeTruthRepository;
   }
 
@@ -984,7 +984,7 @@ export function resetToolRegistry(): void {
  * R4-33/R4-35: This enables persisting SideEffectRecords and EvidenceRecords
  * to the authoritative runtime truth store during tool execution.
  */
-export function initializeToolRegistryWithRepository(repository: RuntimeTruthRepository): void {
+export function initializeToolRegistryWithRepository(repository: RuntimeRepository): void {
   const registry = getToolRegistry();
   registry.setRuntimeTruthRepository(repository);
 }

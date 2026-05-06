@@ -233,10 +233,11 @@ function scoreCapability(score: CapabilityTrustScore): number {
 
 /**
  * Autonomy level order (index 0 = lowest, higher = more autonomous)
- * Note: frozen is excluded because it represents a manual-intervention state
- * that is not part of the normal promotion/demotion progression.
+ * Includes frozen at index 0 as the lowest autonomy level for manual intervention state.
+ * §174-2042 fix: frozen must be included to ensure consistent ordering across modules.
  */
 const AUTONOMY_LEVEL_ORDER: readonly AutonomyLevel[] = [
+  "frozen",
   "suggestion",
   "supervised",
   "semi_auto",
@@ -307,6 +308,9 @@ function decideLevel(
     // Only apply demotion if incident is recent; older incidents don't trigger demotion
     if (lastIncidentAgeDays > recentIncidentThreshold) {
       // Incident is old - don't demote, but still require incident-free for promotion
+    } else if (severity === "P0") {
+      // §42.2: P0 incidents demote to suggestion, not frozen
+      return "suggestion";
     } else if (severity === "P1" && options.severityBasedDemotion) {
       // P1 demotes one level instead of freezing
       return score.currentAutonomy === "suggestion" ? "suggestion" : demoteOneLevel(score.currentAutonomy);

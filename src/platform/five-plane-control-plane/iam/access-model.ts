@@ -373,11 +373,11 @@ export function evaluateAuthorizationContext(input: {
     allowed: true,
     requiresApproval: false,
     reasonCode: null,
-    matchedRuleRefs: [manualTakeoverActive ? "context.manual_takeover_active" : "context.default_allow"],
+    matchedRuleRefs: [manualTakeoverActive ? "context.manual_takeover_active" : "capability.granted"],
     constraints: manualTakeoverActive ? { manualTakeoverActive: true } : {},
     explainSummary: manualTakeoverActive
       ? "Operator-authorized manual takeover recorded; capability and context checks still passed."
-      : "Action allowed because the principal satisfies the required capability and context checks.",
+      : "Action allowed because the principal holds the required capabilities.",
   };
 }
 

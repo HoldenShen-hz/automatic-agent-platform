@@ -44,7 +44,8 @@ import { PlanGraphHarnessRuntime, PlanGraphScheduler } from "../../orchestration
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
-import { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
+import { ServiceRegistry } from "../../shared/lifecycle/service-registry.js";
+import { getRuntimeTruthRepository, RUNTIME_TRUTH_REPOSITORY_SERVICE_ID } from "../../five-plane-state-evidence/state-evidence-plane-bootstrap.js";
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
 import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { BudgetTier } from "../budget-allocator.js";
@@ -250,9 +251,9 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   // Reset the tool registry to ensure clean state for this orchestration run
   resetMultiStepToolRegistryForTests();
 
-  // R4-33/R4-35: Initialize RuntimeTruthRepository for persisting SideEffectRecords and EvidenceRecords
-  // This ensures that tool executions produce immutable evidence that can be audited
-  const runtimeTruthRepository = new RuntimeTruthRepository();
+  // R4-33/R4-35: Get RuntimeTruthRepository from bootstrap-level singleton service registry
+  // Previously this was created per-orchestration-run here, which violated bootstrap architecture
+  const runtimeTruthRepository = getRuntimeTruthRepository(ServiceRegistry.getInstance());
   initializeToolRegistryWithRepository(runtimeTruthRepository);
 
   let plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;

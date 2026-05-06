@@ -197,6 +197,37 @@ abstract class BasePluginRuntimeHost {
     this.pending.delete(requestId);
   }
 
+  /**
+   * R30-37 FIX: Validates an incoming IPC message matches the expected schema.
+   * Without validation, a compromised child process could inject arbitrary data
+   * that passes as a valid PluginRuntimeMessage.
+   */
+  protected isValidPluginRuntimeMessage(message: unknown): message is PluginRuntimeMessage {
+    if (message == null || typeof message !== "object") {
+      return false;
+    }
+    const record = message as Record<string, unknown>;
+    if (record.type === "ready") {
+      return typeof record.pid === "number";
+    }
+    if (record.type === "response") {
+      return (
+        typeof record.requestId === "string" &&
+        typeof record.ok === "boolean" &&
+        typeof record.pid === "number"
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Emits an error from the plugin runtime host.
+   * Logs the error for diagnostics and evidence purposes.
+   */
+  protected emitError(error: Error): void {
+    console.error(`[PluginRuntimeHost ${this.pluginId}] ${error.message}`);
+  }
+
   private buildError(message: PluginRuntimeResponse): Error {
     if (!message.error) {
       return new Error(`Plugin runtime for ${this.pluginId} returned an unknown error.`);
@@ -258,7 +289,13 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
       this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-4096);
     });
     child.on("message", (message: unknown) => {
-      this.handleMessage(message as PluginRuntimeMessage);
+      // R30-37 FIX: Validate IPC message against schema before casting
+      // A compromised child process could inject arbitrary data without validation
+      if (this.isValidPluginRuntimeMessage(message)) {
+        this.handleMessage(message);
+      } else {
+        this.emitError(new Error(`Invalid IPC message schema from child ${this.pluginId}: ${JSON.stringify(message).slice(0, 200)}`));
+      }
     });
   }
 

@@ -29,25 +29,31 @@ import { loadShadowSnapshotCliEnv } from "../../platform/control-plane/config-ce
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { ShadowSnapshotService } from "../../platform/execution/tool-executor/shadow-snapshot-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/control-plane/iam/sandbox-policy.js";
-const envConfig = loadShadowSnapshotCliEnv();
 
-const service = new ShadowSnapshotService({
-  workspaceRoot: envConfig.workspaceRoot,
-  shadowRoot: envConfig.shadowRoot,
-  // Sandbox policy must cover the actual write target (shadowRoot), not just workspaceRoot
-  sandboxPolicy: createWorkspaceWritePolicy(envConfig.shadowRoot),
-  ...(envConfig.maxEntryBytes != null
-    ? { maxEntryBytes: envConfig.maxEntryBytes }
-    : {}),
-  ...(envConfig.excludedPaths != null
-    ? { excludedPaths: envConfig.excludedPaths }
-    : {}),
-});
+let envConfig: ReturnType<typeof loadShadowSnapshotCliEnv> | null = null;
+let service: ShadowSnapshotService | null = null;
+
+function getService(): ShadowSnapshotService {
+  if (service) return service;
+  // Deferred initialization - load environment only when actually needed
+  // This avoids module-level side effects that break lazy loading and testing
+  envConfig ??= loadShadowSnapshotCliEnv();
+  service = new ShadowSnapshotService({
+    workspaceRoot: envConfig.workspaceRoot,
+    shadowRoot: envConfig.shadowRoot,
+    sandboxPolicy: createWorkspaceWritePolicy(envConfig.shadowRoot),
+    ...(envConfig.maxEntryBytes != null ? { maxEntryBytes: envConfig.maxEntryBytes } : {}),
+    ...(envConfig.excludedPaths != null ? { excludedPaths: envConfig.excludedPaths } : {}),
+  });
+  return service;
+}
 
 let output: unknown;
-switch (envConfig.action) {
+// R31-43 FIX: Deferred env loading to avoid module-level side effects
+const resolvedEnvConfig = envConfig ?? (envConfig = loadShadowSnapshotCliEnv(), envConfig);
+switch (resolvedEnvConfig.action) {
   case "create":
-    output = service.createSnapshot({
+    output = getService().createSnapshot({
       ...(envConfig.snapshotId != null ? { snapshotId: envConfig.snapshotId } : {}),
       ...(envConfig.label != null ? { label: envConfig.label } : {}),
       ...(envConfig.reasonCode != null ? { reasonCode: envConfig.reasonCode } : {}),

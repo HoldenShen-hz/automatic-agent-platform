@@ -9,7 +9,9 @@ const require = createRequire(import.meta.url);
 
 let currentPluginId: string | null = null;
 let currentPlugin: RegisteredPlugin | null = null;
-let stdoutBuffer = "";
+// R30-39 FIX: Renamed from stdoutBuffer to stdinBuffer since it accumulates stdin data
+// (copy-paste naming error - was accumulating stdin but named as stdout)
+let stdinBuffer = "";
 
 installRuntimeGuards();
 installStdioProtocolConsoleRedirection();
@@ -142,14 +144,14 @@ process.on("message", (message: unknown) => {
 
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk: string) => {
-  stdoutBuffer += chunk;
+  stdinBuffer += chunk;
   while (true) {
-    const newlineIndex = stdoutBuffer.indexOf("\n");
+    const newlineIndex = stdinBuffer.indexOf("\n");
     if (newlineIndex === -1) {
       break;
     }
-    const line = stdoutBuffer.slice(0, newlineIndex).trim();
-    stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+    const line = stdinBuffer.slice(0, newlineIndex).trim();
+    stdinBuffer = stdinBuffer.slice(newlineIndex + 1);
     if (line.length === 0) {
       continue;
     }

@@ -261,7 +261,8 @@ export class RetryableApiClient {
     const response = await this.get<T[]>(path, query);
     const nextCursor = response.headers["x-next-cursor"] ?? null;
     const totalCountHeader = response.headers["x-total-count"];
-    const totalCount = totalCountHeader !== undefined ? parseInt(totalCountHeader, 10) : undefined;
+    const parsedTotal = totalCountHeader !== undefined ? parseInt(totalCountHeader, 10) : NaN;
+    const totalCount = Number.isNaN(parsedTotal) ? undefined : parsedTotal;
 
     const result: PaginatedResponse<T> = {
       data: response.data,
