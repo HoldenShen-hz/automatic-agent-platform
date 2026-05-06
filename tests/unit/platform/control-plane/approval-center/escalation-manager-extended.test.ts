@@ -49,7 +49,7 @@ function createTestContext(overrides: Partial<EscalationContext> = {}): Escalati
 // TTL Reset Edge Cases
 // ============================================================================
 
-test("EscalationManager resetDelegationTtl throws on EXPIRED status", () => {
+test("EscalationManager resetDelegationTtl throws on EXPIRED status", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -63,13 +63,13 @@ test("EscalationManager resetDelegationTtl throws on EXPIRED status", () => {
     status: DelegationStatus.EXPIRED,
   };
 
-  assert.throws(
+  await assert.rejects(
     () => manager.resetDelegationTtl(delegation),
     /inactive delegation/,
   );
 });
 
-test("EscalationManager resetDelegationTtl throws on REVOKED status", () => {
+test("EscalationManager resetDelegationTtl throws on REVOKED status", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -83,13 +83,13 @@ test("EscalationManager resetDelegationTtl throws on REVOKED status", () => {
     status: DelegationStatus.REVOKED,
   };
 
-  assert.throws(
+  await assert.rejects(
     () => manager.resetDelegationTtl(delegation),
     /inactive delegation/,
   );
 });
 
-test("EscalationManager resetDelegationTtl throws on COMPLETED status", () => {
+test("EscalationManager resetDelegationTtl throws on COMPLETED status", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -103,13 +103,13 @@ test("EscalationManager resetDelegationTtl throws on COMPLETED status", () => {
     status: DelegationStatus.COMPLETED,
   };
 
-  assert.throws(
+  await assert.rejects(
     () => manager.resetDelegationTtl(delegation),
     /inactive delegation/,
   );
 });
 
-test("EscalationManager resetDelegationTtl updates expiresAt correctly", () => {
+test("EscalationManager resetDelegationTtl updates expiresAt correctly", async () => {
   const manager = new EscalationManager();
   const originalExpiry = new Date(Date.now() + 1000).toISOString(); // 1 second from now
   const delegation: Delegation = {
@@ -124,13 +124,13 @@ test("EscalationManager resetDelegationTtl updates expiresAt correctly", () => {
     status: DelegationStatus.ACTIVE,
   };
 
-  const updated = manager.resetDelegationTtl(delegation, 3600000);
+  const updated = await manager.resetDelegationTtl(delegation, 3600000);
 
   assert.ok(new Date(updated.expiresAt).getTime() > new Date(originalExpiry).getTime());
   assert.strictEqual(updated.ttlResetCount, 1);
 });
 
-test("EscalationManager resetDelegationTtl uses default TTL when not specified", () => {
+test("EscalationManager resetDelegationTtl uses default TTL when not specified", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -145,7 +145,7 @@ test("EscalationManager resetDelegationTtl uses default TTL when not specified",
   };
 
   const beforeReset = new Date(delegation.expiresAt).getTime();
-  const updated = manager.resetDelegationTtl(delegation);
+  const updated = await manager.resetDelegationTtl(delegation);
 
   // Default TTL is 2 hours
   assert.ok(new Date(updated.expiresAt).getTime() > beforeReset);

@@ -501,7 +501,7 @@ test("buildOapeflirPlannedWorkflow with dependencyTypes set to hard", async () =
   cleanupDb(dbPath);
 
   const planSteps = [
-    { stepId: "types_step", dependencies: ["dep1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+    { nodeId: "types_step", nodeType: "tool_call" as const, inputRefs: ["dep1"], outputSchemaRef: "schema:types_step.output", riskClass: "medium" as const, budgetIntent: { amount: 1, currency: "USD" as const, resourceKinds: ["token"] as const }, sideEffectProfile: { mayCommitExternalEffect: false, reversible: true }, retryPolicyRef: "retry:default", timeoutMs: 30000 },
   ];
 
   const input: MultiStepToolExecutionInput = {

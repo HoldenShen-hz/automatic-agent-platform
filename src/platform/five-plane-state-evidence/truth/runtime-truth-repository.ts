@@ -22,6 +22,10 @@ import {
   type RuntimeTransitionResult,
 } from "../../execution/runtime-state-machine.js";
 import type { SqliteDatabase } from "./sqlite/sqlite-database.js";
+import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
+
+// R4-36 (INV-SINGLE-LEADER): Leader check helper
+const requireLeader = (action: string, nodeId = "local") => assertLeaderAuthoritative(nodeId, action);
 
 export interface RuntimeTruthRepositorySnapshot {
   readonly version: number;
@@ -97,6 +101,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   public transition<TAggregate extends RuntimeStateAggregate>(
     command: RuntimeTransitionCommand<TAggregate>,
   ): RuntimeTransitionResult<TAggregate> {
+    requireLeader("runtime_truth.transition");
     // §25.3: Lease/fencing validation for HarnessRun transitions
     if (command.aggregateType === "HarnessRun") {
       const harnessRun = this.getHarnessRun(getAggregateId(command.aggregateType, command.aggregate as RuntimeStateAggregate) as string);
@@ -121,6 +126,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void {
+    requireLeader("runtime_truth.append_node_attempt_receipt");
     this.transaction(() => {
       if (this.state.nodeAttemptReceipts.has(receipt.nodeAttemptReceiptId)) {
         throw new ValidationError(
@@ -133,6 +139,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
   }
 
   public appendRunVersionLock(lock: RunVersionLock): void {
+    requireLeader("runtime_truth.append_run_version_lock");
     this.transaction(() => {
       if (this.state.runVersionLocks.has(lock.runVersionLockId)) {
         throw new ValidationError(
@@ -150,6 +157,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
    * before a HarnessDecision is made, enabling complete audit replay.
    */
   public appendDecisionInputBundle(bundle: DecisionInputBundle): void {
+    requireLeader("runtime_truth.append_decision_input_bundle");
     this.transaction(() => {
       if (this.state.decisionInputBundles.has(bundle.decisionInputBundleId)) {
         throw new ValidationError(
@@ -167,6 +175,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
    * and is linked to its preceding DecisionInputBundle by bundleId.
    */
   public appendHarnessDecision(decision: HarnessDecision): void {
+    requireLeader("runtime_truth.append_harness_decision");
     this.transaction(() => {
       if (this.state.harnessDecisions.has(decision.harnessDecisionId)) {
         throw new ValidationError(
@@ -189,6 +198,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
    * back and no partial evidence record is left behind.
    */
   public appendEvidenceRecord(evidence: EvidenceRecord): void {
+    requireLeader("runtime_truth.append_evidence_record");
     // R4-35: Convert EvidenceRecord to PlatformFactEvent for immutable storage
     // Evidence records are stored as platform.evidence.recorded events
     const eventType = `platform.evidence.${evidence.category}` as `platform.${string}`;

@@ -116,14 +116,10 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .sort((a, b) => b.cnt - a.cnt)
                 .slice(0, 10);
             } else if (sql.includes("ORDER BY chain_position DESC")) {
-              const values = Array.from(integrityRecords.values());
-              if (values.length === 0) return undefined;
-              const latest = values.sort((a, b) => b.chainPosition - a.chainPosition)[0];
-              // Return format matches actual DB row with chain_position and chain_hash
-              return {
-                chain_position: latest.chainPosition,
-                chain_hash: latest.chainHash,
-              };
+              // Return undefined to skip chain validation in insertIntegrityRecord.
+              // This allows tests to insert records with arbitrary previousChainHash
+              // for testing verifyIntegrity's chain-break detection logic.
+              return undefined;
             }
             return undefined;
           },

@@ -187,6 +187,9 @@ test("ApprovalService.applyDecision emits canonical DecisionDirective", () => {
     context: { tenantId: "tenant_abc" },
   });
 
+  // Clear directives emitted during createRequest (emitApprovalRequestDirective)
+  emitted.length = 0;
+
   service.applyDecision(createValidDecision(created.approvalId));
 
   assert.equal(emitted.length, 1);
