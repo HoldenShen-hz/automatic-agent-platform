@@ -116,7 +116,7 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .map(([event_type, cnt]) => ({ event_type, cnt }))
                 .sort((a, b) => b.cnt - a.cnt)
                 .slice(0, 10);
-            } else if (sql.includes("SELECT chain_position, chain_hash FROM audit_integrity_records ORDER BY chain_position DESC")) {
+            } else if (sql.includes("SELECT chain_position, chain_hash FROM audit_integrity_records ORDER BY chain_position DESC LIMIT 1")) {
               // Return the latest integrity record to enable chain validation.
               // This allows insertIntegrityRecord to validate chain position sequence
               // and previousChainHash matching.
