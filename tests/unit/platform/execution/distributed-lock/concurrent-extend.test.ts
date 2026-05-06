@@ -24,6 +24,7 @@ function createAdapterWithMockRedis(mockRedis: any): RedisLockAdapter {
 function createMockRedis(overrides: Partial<{
   status: string;
   connect: () => Promise<void>;
+  incr: (key: string) => Promise<number>;
   set: (key: string, value: string, ...args: Array<string | number>) => Promise<string | null>;
   get: (key: string) => Promise<string | null>;
   del: (key: string) => Promise<number>;
@@ -36,6 +37,7 @@ function createMockRedis(overrides: Partial<{
   return {
     status: "ready",
     connect: async () => {},
+    incr: async () => 1,
     set: async () => "OK",
     get: async () => null,
     del: async () => 1,
@@ -62,6 +64,7 @@ test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async 
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => 1,
     eval: async () => {
       evalCallCount++;
       // First call succeeds, subsequent calls fail (lock no longer owned by this owner)
@@ -92,9 +95,14 @@ test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async 
 
 test("[SYS-REL-2.2] concurrent extendAsync with same owner - only one succeeds", async () => {
   let evalCallCount = 0;
+  let fencingCounter = 0;
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      fencingCounter += 1;
+      return fencingCounter;
+    },
     eval: async () => {
       evalCallCount++;
       // Simulate: only first eval succeeds (lock extended), second fails (owner changed between checks)
@@ -128,9 +136,14 @@ test("[SYS-REL-2.2] concurrent extendAsync with same owner - only one succeeds",
 test("[SYS-REL-2.2] concurrent extendAsync race - many concurrent workers", async () => {
   let evalCallCount = 0;
   const workers = 10;
+  let fencingCounter = 0;
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      fencingCounter += 1;
+      return fencingCounter;
+    },
     eval: async () => {
       evalCallCount++;
       // Only the first eval call succeeds (others see changed state)
@@ -170,6 +183,7 @@ test("[SYS-REL-2.2] extendAsync returns null when lock was stolen between eval a
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => 1,
     eval: async () => {
       // eval succeeds - we "own" the lock according to Lua script
       return evalSucceeded ? 1 : 0;
@@ -191,11 +205,16 @@ test("[SYS-REL-2.2] extendAsync returns null when lock was stolen between eval a
 
 test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly", async () => {
   let stealCount = 0;
+  let fencingCounter = 0;
   // Track what was actually stored via set()
   let storedOwner = "original-owner";
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      fencingCounter += 1;
+      return fencingCounter;
+    },
     set: async (_key: string, value: string) => {
       stealCount++;
       // Extract owner from the data that was stored
@@ -249,9 +268,14 @@ test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly", asyn
 
 test("[SYS-REL-2.2] runConcurrentInvariant helper for extend race detection", async () => {
   let evalCallCount = 0;
+  let fencingCounter = 0;
 
   const mockRedis = createMockRedis({
     status: "ready",
+    incr: async () => {
+      fencingCounter += 1;
+      return fencingCounter;
+    },
     eval: async () => {
       evalCallCount++;
       return evalCallCount === 1 ? 1 : 0;

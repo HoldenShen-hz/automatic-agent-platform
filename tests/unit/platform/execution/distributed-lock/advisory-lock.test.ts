@@ -74,12 +74,15 @@ test("PgAdvisoryLockAdapter: inspect() returns null (advisory locks not inspecta
   assert.equal(result, null);
 });
 
-test("PgAdvisoryLockAdapter: extend() delegates to inspect and returns null", () => {
+test("PgAdvisoryLockAdapter: extend() throws pg_async_required error", () => {
   const adapter = new PgAdvisoryLockAdapter();
 
-  const result = adapter.extend("test-key", "test-owner", 5000);
-
-  assert.equal(result, null);
+  assert.throws(
+    () => adapter.extend("test-key", "test-owner", 5000),
+    (error: unknown) =>
+      (error as { code?: string }).code === "E7lock.pg_async_required"
+      && (error as Error).message.includes("extend() requires async"),
+  );
 });
 
 test("PgAdvisoryLockAdapter: backendKind is pg_advisory", () => {

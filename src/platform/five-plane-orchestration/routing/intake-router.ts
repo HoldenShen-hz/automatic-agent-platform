@@ -414,6 +414,15 @@ function detectAmbiguityFlags(request: string): readonly string[] {
  * Result of the full intake pipeline per §5.3/§4.2
  */
 export interface IntakePipelineResult {
+  readonly workflowId: string;
+  readonly divisionId: string;
+  readonly agentId?: string;
+  readonly routeReason: string;
+  readonly routeTrace: string[];
+  readonly requiresOrchestration: boolean;
+  readonly classification: IntakeIntentClassification;
+  readonly confirmedTaskSpecId: string;
+  readonly capabilityMatch: CapabilityMatchResult;
   readonly taskDraft: TaskDraft;
   readonly clarificationSession: ClarificationSession | null;
   readonly confirmedTaskSpec: ConfirmedTaskSpec;
@@ -530,10 +539,10 @@ export interface LlmIntentResult {
  * R6-11: Adds LLM intent extraction with confidence threshold (0.80) per §39.3.
  * §39.5: Uses prior conversation context for multi-turn intent resolution.
  */
-async function extractLlmIntent(
+function extractLlmIntent(
   request: string,
   priorContext?: IntakeRouteInput["priorConversationContext"],
-): Promise<LlmIntentResult | null> {
+): LlmIntentResult | null {
   // §39.5: Incorporate prior conversation turns into intent analysis
   if (priorContext && priorContext.turns.length > 0) {
     // Build context-aware prompt using prior conversation turns
@@ -875,7 +884,7 @@ export class IntakeRouter {
  * @param input - The raw intake request to process through the pipeline
  * @returns A complete pipeline result with all artifacts and routing decision
  */
-public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
+public route(input: IntakeRouteInput): IntakePipelineResult {
   // R19-16: Build pipeline context from input fields
   const routeTrace: string[] = [];
 
@@ -891,6 +900,7 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   routeTrace.push(`pipeline_context:tenantId=${pipelineContext.tenantId}`);
   routeTrace.push(`pipeline_context:traceId=${pipelineContext.traceId}`);
   routeTrace.push(`pipeline_context:source=${pipelineContext.source}`);
+  routeTrace.push(`tenantId:${pipelineContext.tenantId}`);
 
   // =========================================================================
   // Stage 1: RawInput → TaskDraft
@@ -899,13 +909,18 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   const normalized = [normalize(input.title), normalize(input.request)]
     .filter((segment) => segment.length > 0)
     .join(" ");
+  const safeGoal = input.request.trim().length > 0
+    ? input.request
+    : (input.title?.trim().length ?? 0) > 0
+      ? input.title!.trim()
+      : "unspecified request";
   const matchedHints = ORCHESTRATION_HINTS.filter((hint) => normalized.includes(hint));
   let classification = classifyIntent(normalized, matchedHints);
 
   // Build normalized intent from classification
   const normalizedIntent: JsonValue = {
-    goal: input.request ?? "",
-    title: input.title ?? "",
+    goal: safeGoal,
+    title: input.title ?? safeGoal,
     intent: classification.intent,
     continuation: classification.continuation,
     confidence: classification.confidence,
@@ -930,6 +945,7 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
 
   routeTrace.push(`stage1:taskDraft:${taskDraft.taskDraftId}`);
   routeTrace.push(`stage1:ambiguity_flags:[${ambiguityFlags.join(",")}]`);
+  routeTrace.push(`matched_keywords:[${matchedHints.join(",")}]`);
 
   // =========================================================================
   // Stage 2: TaskDraft → ClarificationSession (if ambiguity detected)
@@ -976,7 +992,7 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
 
   if (!useLlmClassification) {
     try {
-      const llmResult = await extractLlmIntent(input.request, input.priorConversationContext);
+      const llmResult = extractLlmIntent(input.request, input.priorConversationContext);
       if (llmResult != null && llmResult.confidence >= 0.80) {
         classification = {
           intent: llmResult.intent,
@@ -995,6 +1011,20 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   routeTrace.push(`intent:${classification.intent}`);
   routeTrace.push(`continuation:${classification.continuation}`);
   routeTrace.push(`confidence:${classification.confidence.toFixed(2)}`);
+  routeTrace.push(`matched_intent_rules:[${classification.matchedRules.join(",")}]`);
+
+  const riskClass = input.riskPreview?.riskClass ?? determineRiskClass(classification, normalized);
+  const confirmationReceipt = (riskClass === "high" || riskClass === "critical")
+    ? {
+      receiptId: newId("confirm"),
+      confirmedBy: pipelineContext.principal,
+      riskClass,
+      confirmedAt: nowIso(),
+      state: "pending_user_confirmation" as const,
+      timestamp: nowIso(),
+      actor: pipelineContext.principal.principalId,
+    }
+    : undefined;
 
   // R6-11: Apply AmbiguityResolver per §39.3 to detect low-confidence classifications
   // If classification confidence is below threshold, flag for clarification
@@ -1015,13 +1045,12 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   }
 
   // Build the ConfirmedTaskSpec from pipeline artifacts
-  const riskClass = input.riskPreview?.riskClass ?? determineRiskClass(classification, normalized);
   const confirmedTaskSpec = createConfirmedTaskSpec({
     taskDraftId: taskDraft.taskDraftId,
     tenantId: pipelineContext.tenantId,
     principal: pipelineContext.principal,
     domainId: taskDraft.domainId,
-    goal: input.request ?? input.title ?? "",
+    goal: safeGoal,
     inputs: {
       title: input.title ?? null,
       request: input.request,
@@ -1036,10 +1065,14 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
     riskClass,
     idempotencyKey: pipelineContext.idempotencyKey,
     traceId: pipelineContext.traceId,
+    confirmedTaskSpecId: input.confirmedTaskSpecId,
+    confirmationReceipt,
   });
 
   routeTrace.push(`stage3:confirmed_task_spec:${confirmedTaskSpec.confirmedTaskSpecId}`);
   routeTrace.push(`stage3:risk_class:${confirmedTaskSpec.riskClass}`);
+  routeTrace.push(`confirmedTaskSpecId:${confirmedTaskSpec.confirmedTaskSpecId}`);
+  routeTrace.push(`riskClass:${confirmedTaskSpec.riskClass}`);
 
   // =========================================================================
   // Stage 4: ConfirmedTaskSpec → RequestEnvelope
@@ -1110,6 +1143,7 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
     };
 
     return {
+      ...routeDecision,
       taskDraft,
       clarificationSession,
       confirmedTaskSpec,
@@ -1148,6 +1182,7 @@ public async route(input: IntakeRouteInput): Promise<IntakePipelineResult> {
   };
 
   return {
+    ...routeDecision,
     taskDraft,
     clarificationSession,
     confirmedTaskSpec,
