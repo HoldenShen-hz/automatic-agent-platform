@@ -344,30 +344,30 @@ test("ConfigVersioningService emits rollback point event when creating rollback 
   assert.strictEqual(mockBus.publishedEvents[1]!.eventType, "config.rollback_point.created");
 });
 
-test("ConfigVersioningService.pruneAllVersions returns 0 when nothing to prune", () => {
+test("ConfigVersioningService.pruneAllVersions returns 0 when nothing to prune", async () => {
   const service = new ConfigVersioningService({ maxVersionsPerPath: 50 });
 
-  service.createVersion("runtime.task", "platform", null, { a: 1 }, "user1");
-  service.createVersion("runtime.task", "platform", null, { a: 2 }, "user1");
+  await service.createVersion("runtime.task", "platform", null, { a: 1 }, "user1");
+  await service.createVersion("runtime.task", "platform", null, { a: 2 }, "user1");
 
-  const totalPruned = service.pruneAllVersions();
+  const totalPruned = await service.pruneAllVersions();
 
   assert.strictEqual(totalPruned, 0);
 });
 
-test("ConfigVersioningService.pruneVersions prunes by path", () => {
+test("ConfigVersioningService.pruneVersions prunes by path", async () => {
   const service = new ConfigVersioningService({ maxVersionsPerPath: 2 });
 
-  service.createVersion("runtime.task", "platform", null, { a: 1 }, "user1");
-  service.createVersion("runtime.task", "platform", null, { a: 2 }, "user1");
-  service.createVersion("runtime.task", "platform", null, { a: 3 }, "user1");
-  service.createVersion("runtime.task", "platform", null, { a: 4 }, "user1");
+  await service.createVersion("runtime.task", "platform", null, { a: 1 }, "user1");
+  await service.createVersion("runtime.task", "platform", null, { a: 2 }, "user1");
+  await service.createVersion("runtime.task", "platform", null, { a: 3 }, "user1");
+  await service.createVersion("runtime.task", "platform", null, { a: 4 }, "user1");
 
   // After creating 4 versions with maxVersionsPerPath=2, only 2 remain (v3, v4)
   // because pruning happens during createVersion
-  assert.strictEqual(service.getVersionHistory("runtime.task", "platform", null).length, 2);
+  assert.strictEqual((await service.getVersionHistory("runtime.task", "platform", null)).length, 2);
 
   // Calling pruneVersions explicitly returns 0 since nothing to prune
-  const pruned = service.pruneVersions("runtime.task", "platform", null);
+  const pruned = await service.pruneVersions("runtime.task", "platform", null);
   assert.strictEqual(pruned, 0);
 });
