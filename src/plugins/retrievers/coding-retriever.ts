@@ -1,7 +1,7 @@
 import { relative } from "node:path";
 import { cwd } from "node:process";
 
-import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
+import type { DomainRetrieverPlugin, PluginLifecycleContext, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
 import { SemanticRepoMapService } from "../../platform/execution/tool-executor/semantic-repo-map-service.js";
 
 export interface CodingRetrieverPluginOptions {
@@ -29,6 +29,18 @@ export function createCodingRetrieverPlugin(options: CodingRetrieverPluginOption
     domainId: "coding",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "repo.search"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       repoMapService.buildMap();
     },

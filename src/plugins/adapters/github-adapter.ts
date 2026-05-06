@@ -14,8 +14,8 @@ const GITHUB_ADAPTER_MANIFEST: PluginManifest = {
   capabilityIds: ["external.github", "external.github.issue", "external.github.workflow"],
   spiTypes: ["adapter"],
   extensionKind: "external_adapter",
-  trustLevel: "trusted",
-  publicSdkSurface: "@automatic-agent/plugin-github-adapter",
+  trustLevel: "verified",
+  publicSdkSurface: ["@automatic-agent/plugin-github-adapter"],
   dependencies: [],
   settingsSchema: {},
   sandbox: {
@@ -62,7 +62,7 @@ function verifyPluginSignature(
   const signing = (manifest as Record<string, unknown>).signing as { keyId?: string; signature?: string; algorithm?: string } | undefined;
   if (!signing) {
     // No signature configured - allow for trusted built-in plugins
-    if (manifest.trustLevel === "internal" || manifest.trustLevel === "trusted") {
+    if (manifest.trustLevel === "verified" || manifest.trustLevel === "trusted") {
       return;
     }
     throw new Error("github_adapter.signature_required: Plugin signing configuration is required");

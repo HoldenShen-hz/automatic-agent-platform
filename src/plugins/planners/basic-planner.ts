@@ -1,4 +1,4 @@
-import type { DomainPlannerPlugin } from "../../domains/registry/plugin-spi.js";
+import type { DomainPlannerPlugin, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 export function createBasicPlannerPlugin(): DomainPlannerPlugin {
   return {
@@ -6,6 +6,18 @@ export function createBasicPlannerPlugin(): DomainPlannerPlugin {
     domainId: "core",
     spiType: "planner",
     capabilityIds: ["workflow.suggest"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       return undefined;
     },

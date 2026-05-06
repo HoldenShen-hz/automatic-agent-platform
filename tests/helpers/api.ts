@@ -198,8 +198,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     capabilityIds: ["knowledge.retrieve"],
     spiTypes: ["retriever"],
     extensionKind: "domain_plugin",
-    trustLevel: "trusted",
-    publicSdkSurface: "tests/mock",
+    trustLevel: "verified",
+    publicSdkSurface: ["tests/mock"],
     dependencies: [],
     settingsSchema: {},
     sandbox: {
@@ -232,8 +232,8 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     capabilityIds: ["present.output"],
     spiTypes: ["presenter"],
     extensionKind: "domain_plugin",
-    trustLevel: "trusted",
-    publicSdkSurface: "tests/mock",
+    trustLevel: "verified",
+    publicSdkSurface: ["tests/mock"],
     dependencies: [],
     settingsSchema: {},
     sandbox: {

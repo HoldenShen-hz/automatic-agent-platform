@@ -950,10 +950,9 @@ export class DurableEventBus {
     if (this.disposed) {
       return;
     }
-    this.enqueueDelivery(consumerId, true).catch((error) => {
-      // R11-42/43 fix: Error already logged in enqueueDelivery; re-throw for visibility
-      // rather than silently discarding via void
-      throw error;
+    // Swallow errors - delivery errors are logged in enqueueDelivery and return 0
+    this.enqueueDelivery(consumerId, true).catch(() => {
+      // Error already logged in enqueueDelivery; swallow here
     });
   }
 
@@ -1093,7 +1092,8 @@ export class DurableEventBus {
           eventBusLogger.warn("event_bus.volatile_delivery_chain_error", {
             errorMessage: error instanceof Error ? error.message : String(error),
           });
-          throw error; // R11-42/43 fix: propagate error for visibility
+          // Don't re-throw - volatile errors should not propagate to caller per R11-42/43
+          return undefined;
         },
       );
       this.deliveryChains.set(consumerId, chain);

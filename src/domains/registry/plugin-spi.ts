@@ -61,6 +61,27 @@ export const PluginSandboxPolicySchema = z.object({
   rateLimitPerMinute: z.number().int().positive().optional().default(60),
 });
 
+/**
+ * R8-25: PluginSignature holds cryptographic signature data for plugin integrity verification.
+ * When loading a plugin, the signature must be verified using the corresponding public key.
+ */
+export interface PluginSignature {
+  /** Unique identifier for the key used to create this signature */
+  keyId: string;
+  /** Base64-encoded cryptographic signature of the plugin manifest */
+  signature: string;
+  /** Algorithm used for signature creation/verification (e.g., "RS256", "RS384", "RS512") */
+  algorithm: "RS256" | "RS384" | "RS512" | "ES256" | "ES384" | "ES512" | "HS256" | "HS384" | "HS512";
+}
+
+export const PluginSignatureSchema = z.object({
+  keyId: z.string().min(1),
+  signature: z.string().min(1),
+  algorithm: z.enum(["RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "HS256", "HS384", "HS512"]),
+});
+
+export type PluginSignatureData = z.infer<typeof PluginSignatureSchema>;
+
 export const PluginManifestSchema = z.object({
   pluginId: z.string().min(1),
   name: z.string().min(1),
@@ -70,8 +91,8 @@ export const PluginManifestSchema = z.object({
   capabilityIds: z.array(z.string().min(1)).default([]),
   spiTypes: z.array(PluginSpiTypeSchema).min(1),
   extensionKind: z.enum(["domain_plugin", "external_adapter"]).default("domain_plugin"),
-  trustLevel: z.enum(["internal", "trusted", "community", "unverified"]).default("trusted"),
-  publicSdkSurface: z.string().min(1),
+  trustLevel: z.enum(["internal", "trusted", "community", "unverified", "verified"]).default("trusted"),
+  publicSdkSurface: z.array(z.string().min(1)).default([]),
   /** R18-7: Plugin dependencies - list of plugin IDs this plugin depends on */
   dependencies: z.array(z.string().min(1)).default([]),
   settingsSchema: z.record(z.string(), z.unknown()).default({}),
@@ -85,6 +106,8 @@ export const PluginManifestSchema = z.object({
     runtimeIsolation: "serialized_in_process",
     cooldownMs: 0,
   }),
+  /** R8-25: Optional cryptographic signature for plugin integrity verification */
+  signature: PluginSignatureSchema.optional(),
 });
 
 export type PluginSpiType = z.infer<typeof PluginSpiTypeSchema>;

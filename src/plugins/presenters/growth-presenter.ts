@@ -7,7 +7,7 @@
  * §G8: Growth domain — formats for "end_user" and "reviewer" audiences.
  */
 
-import type { DomainPresenterPlugin, HumanOutput, MachineOutput } from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput, MachineOutput, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 function resolveMachineOutputStepId(output: MachineOutput): string {
   return output.nodeId ?? output.stepId ?? "unknown_step";
@@ -53,6 +53,18 @@ export function createGrowthPresenterPlugin(): DomainPresenterPlugin {
     domainId: "growth",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.campaign", "present.abtest"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       return undefined;
     },

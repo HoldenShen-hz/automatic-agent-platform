@@ -117,7 +117,13 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
                 .slice(0, 10);
             } else if (sql.includes("ORDER BY chain_position DESC")) {
               const values = Array.from(integrityRecords.values());
-              return values.length > 0 ? values[values.length - 1] : undefined;
+              if (values.length === 0) return undefined;
+              const latest = values.sort((a, b) => b.chainPosition - a.chainPosition)[0];
+              // Return format matches actual DB row with chain_position and chain_hash
+              return {
+                chain_position: latest.chainPosition,
+                chain_hash: latest.chainHash,
+              };
             }
             return undefined;
           },

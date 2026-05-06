@@ -132,7 +132,7 @@ test("ApprovalFlowEngine flow state tracks escalation triggered", () => {
 // Delegation Edge Cases
 // ============================================================================
 
-test("ApprovalFlowEngine delegateApproval fails for non-existent flow", () => {
+test("ApprovalFlowEngine delegateApproval fails for non-existent flow", async () => {
   const engine = new ApprovalFlowEngine();
 
   const result = await engine.delegateApproval("nonexistent-flow", "user1", "user2");

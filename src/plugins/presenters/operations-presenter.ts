@@ -7,7 +7,7 @@
  * §G8: Operations domain — formats for "operator" and "reviewer" audiences.
  */
 
-import type { DomainPresenterPlugin, HumanOutput, MachineOutput } from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput, MachineOutput, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 function resolveMachineOutputStepId(output: MachineOutput): string {
   return output.nodeId ?? output.stepId ?? "unknown_step";
@@ -40,6 +40,18 @@ export function createOperationsPresenterPlugin(): DomainPresenterPlugin {
     domainId: "operations",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.incident", "present.runbook"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       return undefined;
     },

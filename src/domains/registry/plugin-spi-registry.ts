@@ -1,5 +1,6 @@
+import { createHash, createHmac, createVerify } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
-import { ValidationError } from "../../platform/contracts/errors.js";
+import { ValidationError, SecurityError } from "../../platform/contracts/errors.js";
 import type { ArtifactRef } from "../../platform/orchestration/oapeflir/ref-types.js";
 import { hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type {
@@ -13,7 +14,7 @@ import type {
   RegisteredPlugin,
   RetrieverKnowledgeResult,
 } from "./plugin-spi.js";
-import { PluginLifecycleStateSchema, PluginManifestSchema } from "./plugin-spi.js";
+import { PluginLifecycleStateSchema, PluginManifestSchema, PluginSignatureSchema } from "./plugin-spi.js";
 import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
 import { ContainerizedPluginRuntimeHost, ForkedPluginRuntimeHost } from "./plugin-runtime-host.js";
 
@@ -73,6 +74,211 @@ function buildContext(
   };
 }
 
+/**
+ * R8-25: SignatureVerificationResult holds the result of signature verification.
+ */
+export interface SignatureVerificationResult {
+  valid: boolean;
+  reason?: string;
+}
+
+/**
+ * R8-25: PluginSignatureVerifier handles plugin signature verification.
+ * This is a security feature to ensure plugin integrity before loading.
+ */
+export interface PluginSignatureVerifier {
+  /**
+   * Verify a plugin manifest signature.
+   * @param manifest - The plugin manifest to verify
+   * @param signature - The signature to verify against
+   * @returns Verification result with valid flag and optional reason
+   */
+  verify(manifest: PluginManifest, signature: { keyId: string; signature: string; algorithm: string }): SignatureVerificationResult;
+}
+
+/**
+ * R8-25: Default implementation of PluginSignatureVerifier.
+ * Uses Node's crypto module for cryptographic verification.
+ */
+export class DefaultPluginSignatureVerifier implements PluginSignatureVerifier {
+  private readonly publicKeys = new Map<string, string>();
+
+  constructor(publicKeys?: Record<string, string>) {
+    if (publicKeys) {
+      for (const [keyId, key] of Object.entries(publicKeys)) {
+        this.publicKeys.set(keyId, key);
+      }
+    }
+  }
+
+  /**
+   * Register a public key for signature verification.
+   */
+  registerPublicKey(keyId: string, publicKey: string): void {
+    this.publicKeys.set(keyId, publicKey);
+  }
+
+  /**
+   * Get the Node.js signature algorithm name for the given algorithm.
+   */
+  private getSignatureAlgorithm(alg: string): string {
+    switch (alg) {
+      case "RS256": return "RSA-SHA256";
+      case "RS384": return "RSA-SHA384";
+      case "RS512": return "RSA-SHA512";
+      case "ES256": return "SHA256";
+      case "ES384": return "SHA384";
+      case "ES512": return "SHA512";
+      default: return "RSA-SHA256";
+    }
+  }
+
+  /**
+   * R8-25: Verify a plugin manifest signature.
+   */
+  verify(manifest: PluginManifest, signature: { keyId: string; signature: string; algorithm: string }): SignatureVerificationResult {
+    // If no signature provided, skip verification (backward compatibility)
+    if (!signature || !signature.keyId || !signature.signature || !signature.algorithm) {
+      return { valid: true };
+    }
+
+    const publicKey = this.publicKeys.get(signature.keyId);
+    if (!publicKey) {
+      return { valid: false, reason: `plugin.signature.key_not_found: Public key '${signature.keyId}' not found` };
+    }
+
+    try {
+      // Create a canonical representation of the manifest for signing
+      const canonicalManifest = this.canonicalizeManifest(manifest);
+      const sigBuffer = Buffer.from(signature.signature, "base64");
+      const alg = this.getSignatureAlgorithm(signature.algorithm);
+
+      // Use verify based on algorithm type
+      if (signature.algorithm.startsWith("HS")) {
+        // HMAC-based verification
+        const hmac = createHmac(signature.algorithm.toLowerCase().replace("s", ""), publicKey);
+        hmac.update(canonicalManifest);
+        const expected = hmac.digest("base64");
+        const actual = signature.signature;
+        if (expected !== actual) {
+          return { valid: false, reason: "plugin.signature.invalid: HMAC signature verification failed" };
+        }
+        return { valid: true };
+      } else if (signature.algorithm.startsWith("RS") || signature.algorithm.startsWith("ES")) {
+        // RSA or ECDSA verification
+        const verifier = createVerify(alg);
+        verifier.update(canonicalManifest);
+        const isValid = verifier.verify(publicKey, sigBuffer);
+        if (!isValid) {
+          return { valid: false, reason: "plugin.signature.invalid: Signature verification failed" };
+        }
+        return { valid: true };
+      } else {
+        return { valid: false, reason: `plugin.signature.unsupported_algorithm: Unsupported algorithm '${signature.algorithm}'` };
+      }
+    } catch (error) {
+      return {
+        valid: false,
+        reason: `plugin.signature.verification_error: Signature verification error: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
+  /**
+   * Create a canonical string representation of the manifest for signing.
+   * Excludes the signature field itself to allow self-referential signing.
+   */
+  private canonicalizeManifest(manifest: PluginManifest): string {
+    // Create a copy without the signature field
+    const { signature: _sig, ...manifestWithoutSig } = manifest as PluginManifest & { signature?: unknown };
+    return JSON.stringify(manifestWithoutSig);
+  }
+}
+
+/**
+ * R8-25: Global default verifier instance.
+ */
+const defaultVerifier = new DefaultPluginSignatureVerifier();
+
+/**
+ * R8-25: Get the global plugin signature verifier.
+ */
+export function getPluginSignatureVerifier(): PluginSignatureVerifier {
+  return defaultVerifier;
+}
+
+/**
+ * R8-25: Register a public key for plugin signature verification.
+ */
+export function registerPluginSigningKey(keyId: string, publicKey: string): void {
+  defaultVerifier.registerPublicKey(keyId, publicKey);
+}
+
+/**
+ * R8-25: Verify plugin manifest signature.
+ * Throws SecurityError if verification fails.
+ *
+ * Security policy:
+ * - Plugins with trustLevel "internal" or "trusted" may omit signature (pre-approved)
+ * - Plugins with trustLevel "community" or "unverified" MUST have a valid signature
+ * - If a signature is provided, it must be valid
+ */
+export function verifyPluginSignature(manifest: PluginManifest): void {
+  const signature = manifest.signature;
+  if (!signature) {
+    // No signature provided - check trust level
+    const trustLevel = manifest.trustLevel;
+    if (trustLevel === "internal" || trustLevel === "trusted") {
+      // Pre-approved plugins don't require signatures
+      return;
+    }
+    // Community/unverified plugins must have signatures
+    throw new SecurityError(
+      "plugin.signature.required",
+      `Plugin '${manifest.pluginId}' requires a signature due to trustLevel '${trustLevel}'`,
+      {
+        details: {
+          pluginId: manifest.pluginId,
+          trustLevel,
+        },
+      },
+    );
+  }
+
+  // Validate signature structure
+  const parseResult = PluginSignatureSchema.safeParse(signature);
+  if (!parseResult.success) {
+    throw new SecurityError(
+      "plugin.signature.invalid_structure",
+      "Plugin signature has invalid structure",
+      {
+        details: {
+          pluginId: manifest.pluginId,
+          errors: parseResult.error.errors.map(e => ({ path: e.path.join("."), message: e.message })),
+        },
+      },
+    );
+  }
+
+  const verifier = getPluginSignatureVerifier();
+  const result = verifier.verify(manifest, signature);
+
+  if (!result.valid) {
+    throw new SecurityError(
+      "plugin.signature.verification_failed",
+      `Plugin signature verification failed: ${result.reason}`,
+      {
+        details: {
+          pluginId: manifest.pluginId,
+          keyId: signature.keyId,
+          algorithm: signature.algorithm,
+          reason: result.reason,
+        },
+      },
+    );
+  }
+}
+
 export class PluginSpiRegistry {
   private readonly registry = new Map<string, RegisteredPluginRecord>();
   private readonly eventPublisher: TypedEventPublisher | null;
@@ -99,6 +305,9 @@ export class PluginSpiRegistry {
           ? Array.from(new Set([plugin.domainId, ...(manifest?.domainIds ?? plugin.manifest?.domainIds ?? [])]))
           : [...(manifest?.domainIds ?? plugin.manifest?.domainIds ?? [])],
     });
+
+    // R8-25: Verify plugin signature before registration (security requirement)
+    verifyPluginSignature(normalizedManifest);
 
     if (!normalizedManifest.spiTypes.includes(plugin.spiType)) {
       throw new ValidationError("plugin_spi.spi_type_mismatch", "Plugin manifest does not include the plugin spi type.", {

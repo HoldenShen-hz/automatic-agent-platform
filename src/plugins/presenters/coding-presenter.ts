@@ -1,4 +1,4 @@
-import type { DomainPresenterPlugin, HumanOutput } from "../../domains/registry/plugin-spi.js";
+import type { DomainPresenterPlugin, HumanOutput, MachineOutput, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 function stringifyPayload(payload: Record<string, unknown>): string {
   return JSON.stringify(payload, null, 2);
@@ -10,6 +10,18 @@ export function createCodingPresenterPlugin(): DomainPresenterPlugin {
     domainId: "coding",
     spiType: "presenter",
     capabilityIds: ["present.output", "present.diff", "present.summary"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       return undefined;
     },

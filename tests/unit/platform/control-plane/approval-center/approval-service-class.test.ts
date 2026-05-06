@@ -16,6 +16,7 @@ import type { ApprovalStatus } from "../../../../../src/platform/contracts/types
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import type { ControlPlaneDirectiveSink } from "../../../../../src/platform/control-plane/control-plane-directive-sink.js";
+import { initHaCoordinatorForTests, resetHaCoordinatorInstance } from "../../../../helpers/ha-coordinator.js";
 
 // ---------------------------------------------------------------------------
 // Mock Infrastructure

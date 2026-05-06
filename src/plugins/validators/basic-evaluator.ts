@@ -1,4 +1,4 @@
-import type { DomainValidatorPlugin } from "../../domains/registry/plugin-spi.js";
+import type { DomainValidatorPlugin, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
 
 interface BasicValidationContract {
   requiredFields?: string[];
@@ -89,6 +89,18 @@ export function createBasicEvaluatorPlugin(): DomainValidatorPlugin {
     domainId: "core",
     spiType: "validator",
     capabilityIds: ["output.validate", "output.evaluate", "output.harness-decision"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       lifecycleState.initialized = true;
       return undefined;

@@ -7,7 +7,7 @@
  * §G8: Growth domain — M2 Phase 2 (medium complexity, needs Ad Platforms + CRM).
  */
 
-import type { DomainRetrieverPlugin, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
+import type { DomainRetrieverPlugin, PluginLifecycleContext, RetrieverKnowledgeResult } from "../../domains/registry/plugin-spi.js";
 
 /**
  * Build a search query from the intent and context.
@@ -30,6 +30,18 @@ export function createGrowthRetrieverPlugin(): DomainRetrieverPlugin {
     domainId: "growth",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "growth.playbook_search"],
+    async onLoad(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being loaded
+    },
+    async onActivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being activated
+    },
+    async onDeactivate(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being deactivated
+    },
+    async onUnload(_context: PluginLifecycleContext): Promise<void> {
+      // Plugin is being unloaded
+    },
     async initialize() {
       // No-op: knowledge plane is available immediately
     },

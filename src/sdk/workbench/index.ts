@@ -21,7 +21,7 @@ function validatePluginManifest(manifest: PluginManifest): PluginManifest {
     });
   }
   // Enforce trustLevel restrictions in workbench context
-  if (manifest.trustLevel === "community" || manifest.trustLevel === "unverified") {
+  if (manifest.trustLevel === "untrusted") {
     throw new ValidationError(
       "workbench.untrusted_plugin",
       `Plugin ${manifest.pluginId} has trustLevel '${manifest.trustLevel}' which is not allowed in workbench context. Only internal/trusted plugins may be installed.`,

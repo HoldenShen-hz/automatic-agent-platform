@@ -84,8 +84,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["retriever.coding"],
       spiTypes: ["retriever"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-coding-retriever",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-coding-retriever"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -115,8 +115,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["presenter.coding"],
       spiTypes: ["presenter"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-coding-presenter",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-coding-presenter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -147,8 +147,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["output.validate", "output.harness-decision"],
       spiTypes: ["validator"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-basic-validator",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-basic-validator"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -178,8 +178,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["planner.core"],
       spiTypes: ["planner"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-basic-planner",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-basic-planner"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -211,7 +211,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       spiTypes: ["adapter"],
       extensionKind: "external_adapter",
       trustLevel: "trusted",
-      publicSdkSurface: "@automatic-agent/plugin-github-adapter",
+      publicSdkSurface: ["@automatic-agent/plugin-github-adapter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -242,8 +242,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["retriever.operations"],
       spiTypes: ["retriever"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-operations-retriever",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-operations-retriever"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -273,8 +273,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["presenter.operations"],
       spiTypes: ["presenter"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-operations-presenter",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-operations-presenter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -305,8 +305,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["retriever.growth"],
       spiTypes: ["retriever"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-growth-retriever",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-growth-retriever"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -336,8 +336,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["presenter.growth"],
       spiTypes: ["presenter"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-growth-presenter",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-growth-presenter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -368,7 +368,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       spiTypes: ["adapter"],
       extensionKind: "external_adapter",
       trustLevel: "trusted",
-      publicSdkSurface: "@automatic-agent/plugin-crm-adapter",
+      publicSdkSurface: ["@automatic-agent/plugin-crm-adapter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -399,8 +399,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["retriever.gamedev"],
       spiTypes: ["retriever"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-gamedev-retriever",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-gamedev-retriever"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -431,7 +431,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       spiTypes: ["adapter"],
       extensionKind: "external_adapter",
       trustLevel: "trusted",
-      publicSdkSurface: "@automatic-agent/plugin-unity-adapter",
+      publicSdkSurface: ["@automatic-agent/plugin-unity-adapter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -462,8 +462,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["retriever.assetproduction"],
       spiTypes: ["retriever"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-assetproduction-retriever",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-assetproduction-retriever"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -494,7 +494,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       spiTypes: ["adapter"],
       extensionKind: "external_adapter",
       trustLevel: "trusted",
-      publicSdkSurface: "@automatic-agent/plugin-figma-adapter",
+      publicSdkSurface: ["@automatic-agent/plugin-figma-adapter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -525,8 +525,8 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       capabilityIds: ["retriever.livestream"],
       spiTypes: ["retriever"],
       extensionKind: "domain_plugin",
-      trustLevel: "internal",
-      publicSdkSurface: "@automatic-agent/plugin-livestream-retriever",
+      trustLevel: "verified",
+      publicSdkSurface: ["@automatic-agent/plugin-livestream-retriever"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -557,7 +557,7 @@ const BUILTIN_PLUGIN_ENTRIES: ReadonlyMap<string, BuiltinPluginEntry> = (() => {
       spiTypes: ["adapter"],
       extensionKind: "external_adapter",
       trustLevel: "trusted",
-      publicSdkSurface: "@automatic-agent/plugin-obs-adapter",
+      publicSdkSurface: ["@automatic-agent/plugin-obs-adapter"],
       dependencies: [],
       settingsSchema: {},
       sandbox: {
@@ -750,7 +750,7 @@ export interface MarketplacePluginEntry {
   name: string;
   version: string;
   owner: string;
-  trustLevel: "internal" | "trusted" | "verified" | "certified";
+  trustLevel: "verified" | "trusted" | "untrusted";
   source: string;
   verifiedAt?: string;
   certifications?: readonly string[];
