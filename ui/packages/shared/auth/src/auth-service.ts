@@ -12,11 +12,22 @@ export interface AuthCodeFlowState {
   readonly createdAt: number;
 }
 
+export interface AuthServiceOptions {
+  readonly exchangeCodeForTokens?: (
+    code: string,
+    codeVerifier: string,
+    redirectUri: string,
+  ) => Promise<AuthSession>;
+}
+
 export class AuthService {
   private codeFlowState: AuthCodeFlowState | null = null;
   private readonly codeVerifierChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
-  public constructor(private readonly tokenManager: TokenManager = new TokenManager()) {
+  public constructor(
+    private readonly tokenManager: TokenManager = new TokenManager(),
+    private readonly options: AuthServiceOptions = {},
+  ) {
     this.tokenManager.setUnauthorizedHandler(() => this.redirectToAuthorizationFlow());
   }
 
@@ -123,11 +134,10 @@ export class AuthService {
   }
 
   private async exchangeCodeForTokens(code: string, _codeVerifier: string, _redirectUri: string): Promise<AuthSession> {
-    // In production: POST to /oauth/token with code, code_verifier, redirect_uri
-    // Server validates and returns { access_token, refresh_token, expires_in }
-    // For mock purposes, we return a simulated session
-    void code; // Will be used in real implementation
-    return this.login(`mock-access-token-${Date.now()}`, `mock-refresh-token-${Date.now()}`, 3600);
+    if (this.options.exchangeCodeForTokens == null) {
+      throw new Error("auth.token_exchange_not_configured:Authorization code exchange handler is not configured");
+    }
+    return this.options.exchangeCodeForTokens(code, _codeVerifier, _redirectUri);
   }
 
   private async redirectToAuthorizationFlow(): Promise<void> {

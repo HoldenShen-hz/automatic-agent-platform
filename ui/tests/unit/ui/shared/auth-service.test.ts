@@ -117,7 +117,13 @@ describe("AuthService", () => {
 
   it("handleAuthorizationCallback completes successfully with valid params", async () => {
     const tokenManager = new TokenManager();
-    const authService = new AuthService(tokenManager);
+    const authService = new AuthService(tokenManager, {
+      exchangeCodeForTokens: async () => ({
+        accessToken: "issued-access-token",
+        refreshToken: "issued-refresh-token",
+        expiresAt: Date.now() + 3600 * 1000,
+      }),
+    });
 
     await authService.initiateCodeFlow("https://app.example.com/auth/callback");
 
@@ -127,13 +133,19 @@ describe("AuthService", () => {
     const params = new URLSearchParams(`state=${state}&code=valid-auth-code`);
     const session = await authService.handleAuthorizationCallback(params);
 
-    expect(session.accessToken).toMatch(/^mock-access-token-/);
-    expect(session.refreshToken).toMatch(/^mock-refresh-token-/);
+    expect(session.accessToken).toBe("issued-access-token");
+    expect(session.refreshToken).toBe("issued-refresh-token");
   });
 
   it("handleAuthorizationCallback clears code flow state after success", async () => {
     const tokenManager = new TokenManager();
-    const authService = new AuthService(tokenManager);
+    const authService = new AuthService(tokenManager, {
+      exchangeCodeForTokens: async () => ({
+        accessToken: "issued-access-token",
+        refreshToken: "issued-refresh-token",
+        expiresAt: Date.now() + 3600 * 1000,
+      }),
+    });
 
     await authService.initiateCodeFlow("https://app.example.com/auth/callback");
 
@@ -143,6 +155,20 @@ describe("AuthService", () => {
 
     const params = new URLSearchParams(`state=${state}&code=auth-code`);
     await expect(authService.handleAuthorizationCallback(params)).rejects.toThrow(/auth.no_pending_flow/);
+  });
+
+  it("handleAuthorizationCallback fails closed when no token exchange handler is configured", async () => {
+    const tokenManager = new TokenManager();
+    tokenManager.clear();
+    const authService = new AuthService(tokenManager);
+
+    const authUrl = await authService.initiateCodeFlow("https://app.example.com/auth/callback");
+    const state = new URLSearchParams(authUrl.split("?")[1]!).get("state")!;
+
+    await expect(
+      authService.handleAuthorizationCallback(new URLSearchParams(`state=${state}&code=valid-auth-code`)),
+    ).rejects.toThrow(/auth.token_exchange_not_configured/);
+    expect(authService.getSession()).toBeNull();
   });
 
   it("handleSsoCallback redirects to authorization server - does NOT accept token in URL (Issue #2069)", async () => {
