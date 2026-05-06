@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware/persist";
+import { persist } from "zustand/middleware";
 
 export type NotificationKind = "info" | "success" | "warning" | "error";
 
@@ -30,7 +29,7 @@ function generateId(): string {
 export function createNotificationStore() {
   return createStore<NotificationStoreState>()(
     persist(
-      immer((set, get) => ({
+      (set) => ({
         notifications: [],
         unreadCount: 0,
         addNotification(notification) {
@@ -76,7 +75,7 @@ export function createNotificationStore() {
         clearAll() {
           set({ notifications: [], unreadCount: 0 });
         },
-      })),
+      }),
       { name: "aa-notification-store" },
     ),
   );

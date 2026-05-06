@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware/persist";
+import { persist } from "zustand/middleware";
 
 /**
  * UIStore state per §5.1.1 - complete UI state including theme, sidebar, and NL panel.
@@ -27,7 +26,7 @@ export interface UiStoreState {
 export function createUiStore() {
   return createStore<UiStoreState>()(
     persist(
-      immer((set) => ({
+      (set) => ({
         activeRoute: "/",
         activeFeature: "dashboard",
         theme: "dark",
@@ -55,7 +54,7 @@ export function createUiStore() {
         setCommandPaletteOpen(commandPaletteOpen) {
           set({ commandPaletteOpen });
         },
-      })),
+      }),
       { name: "aa-ui-store" },
     ),
   );

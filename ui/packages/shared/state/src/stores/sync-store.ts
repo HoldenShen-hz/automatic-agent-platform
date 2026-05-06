@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware/persist";
+import { persist } from "zustand/middleware";
 
 /**
  * SyncStore state per §5.1.1 - complete sync state including online status and conflicts.
@@ -34,7 +33,7 @@ export interface ConflictInfo {
 export function createSyncStore() {
   return createStore<SyncStoreState>()(
     persist(
-      immer<SyncStoreState>((set) => ({
+      (set) => ({
         online: typeof navigator !== "undefined" ? navigator.onLine : true,
         pendingMutations: 0,
         lastFlushedAt: null,
@@ -63,7 +62,7 @@ export function createSyncStore() {
         retrySync() {
           set({ syncStatus: "syncing" });
         },
-      })),
+      }),
       { name: "aa-sync-store" },
     ),
   );

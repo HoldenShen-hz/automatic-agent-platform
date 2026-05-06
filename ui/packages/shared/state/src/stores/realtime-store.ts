@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware/persist";
+import { persist } from "zustand/middleware";
 
 /**
  * RealtimeStore state per §5.1.1 - complete realtime state including subscriptions and incidents.
@@ -34,7 +33,7 @@ export interface RealtimeStoreState {
 export function createRealtimeStore() {
   return createStore<RealtimeStoreState>()(
     persist(
-      immer((set) => ({
+      (set) => ({
         wsStatus: "disconnected",
         panicActivated: false,
         offlineQueueSize: 0,
@@ -77,7 +76,7 @@ export function createRealtimeStore() {
             activeIncidents: state.activeIncidents.filter((id: string) => id !== incidentId),
           }));
         },
-      })),
+      }),
       { name: "aa-realtime-store" },
     ),
   );

@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware/persist";
+import { persist } from "zustand/middleware";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ColorScheme = "light" | "dark";
@@ -13,7 +12,7 @@ export interface ThemeStoreState {
 
 function resolveColorScheme(mode: ThemeMode): ColorScheme {
   if (mode === "system") {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
       return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     return "light";
@@ -24,13 +23,13 @@ function resolveColorScheme(mode: ThemeMode): ColorScheme {
 export function createThemeStore() {
   return createStore<ThemeStoreState>()(
     persist(
-      immer((set) => ({
+      (set) => ({
         themeMode: "system",
         resolvedColorScheme: resolveColorScheme("system"),
         setThemeMode(themeMode) {
           set({ themeMode, resolvedColorScheme: resolveColorScheme(themeMode) });
         },
-      })),
+      }),
       { name: "aa-theme-store" },
     ),
   );

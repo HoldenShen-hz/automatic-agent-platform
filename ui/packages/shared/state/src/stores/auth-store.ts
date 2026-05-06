@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { immer } from "zustand/middleware/immer";
-import { persist } from "zustand/middleware/persist";
+import { persist } from "zustand/middleware";
 
 /**
  * AuthStore state per §5.1.1 - complete auth context including tokens and tenant info.
@@ -35,7 +34,7 @@ export interface AuthSessionData {
 export function createAuthStore() {
   return createStore<AuthStoreState>()(
     persist(
-      immer((set) => ({
+      (set) => ({
         authenticated: false,
         locale: "zh-CN",
         userId: null,
@@ -75,7 +74,7 @@ export function createAuthStore() {
         updateTokens(accessToken, refreshToken) {
           set({ accessToken, refreshToken });
         },
-      })),
+      }),
       { name: "aa-auth-store" },
     ),
   );
