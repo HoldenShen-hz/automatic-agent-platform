@@ -76,6 +76,62 @@ test("runMultiStepOrchestration with oapeflir plan request", async () => {
   }
 });
 
+test("runMultiStepOrchestration preserves preplanned OAPEFLIR node metadata instead of replanning raw text", async () => {
+  const dbPath = join(__dirname, "test-oapeflir-rich-plan.db");
+
+  if (existsSync(dbPath)) {
+    unlinkSync(dbPath);
+  }
+
+  const planNodes = [
+    {
+      nodeId: "node_prepare",
+      nodeType: "tool_call",
+      inputRefs: [],
+      outputSchemaRef: "schema:prepare.output",
+      riskClass: "high",
+      budgetIntent: { amount: 3, currency: "USD", resourceKinds: ["token", "compute"] as const },
+      sideEffectProfile: { mayCommitExternalEffect: true, reversible: false },
+      retryPolicyRef: "retry:guarded",
+      timeoutMs: 45_000,
+    },
+    {
+      nodeId: "node_verify",
+      nodeType: "llm_call",
+      inputRefs: ["node_prepare"],
+      outputSchemaRef: "schema:verify.output",
+      riskClass: "medium",
+      budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: "retry:default",
+      timeoutMs: 30_000,
+    },
+  ];
+
+  const input: MultiStepToolExecutionInput = {
+    dbPath,
+    title: "Rich Oapeflir Plan",
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
+  };
+
+  try {
+    const result = await runMultiStepOrchestration(input);
+
+    assert.equal(result.plannedWorkflow.planReason, "oapeflir_bridge: Rich Oapeflir Plan");
+    assert.equal(result.plannedWorkflow.workflow.steps[0]?.stepId, "node_prepare");
+    assert.equal(result.plannedWorkflow.workflow.steps[0]?.nodeType, "tool_call");
+    assert.equal(result.plannedWorkflow.workflow.steps[0]?.riskClass, "high");
+    assert.deepEqual(result.plannedWorkflow.workflow.steps[0]?.budgetIntent, planNodes[0].budgetIntent);
+    assert.deepEqual(result.plannedWorkflow.workflow.steps[0]?.sideEffectProfile, planNodes[0].sideEffectProfile);
+    assert.equal(result.plannedWorkflow.workflow.steps[0]?.retryPolicyRef, "retry:guarded");
+    assert.deepEqual(result.plannedWorkflow.executionSteps[1]?.dependsOnStepIds, ["node_prepare"]);
+  } finally {
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+  }
+});
+
 test("runMultiStepOrchestration creates task snapshot", async () => {
   const dbPath = join(__dirname, "test-snapshot.db");
 
@@ -418,28 +474,38 @@ test("runMultiStepOrchestration oapeflir plan with multiple steps and dependenci
   }
 });
 
-test("runMultiStepOrchestration oapeflir plan with step retry policy", async () => {
+test("runMultiStepOrchestration oapeflir plan preserves retryPolicyRef from preplanned nodes", async () => {
   const dbPath = join(__dirname, "test-retry-plan.db");
 
   if (existsSync(dbPath)) {
     unlinkSync(dbPath);
   }
 
-  const planSteps = [
-    { stepId: "retry_step", dependencies: [], outputs: ["out"], timeout: 30000, retryPolicy: { maxRetries: 3 } },
+  const planNodes = [
+    {
+      nodeId: "retry_step",
+      nodeType: "tool_call",
+      inputRefs: [],
+      outputSchemaRef: "schema:retry.output",
+      riskClass: "medium",
+      budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: "retry:max-3",
+      timeoutMs: 30_000,
+    },
   ];
 
   const input: MultiStepToolExecutionInput = {
     dbPath,
     title: "Retry Policy Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
+    request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
   };
 
   try {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
-    const step = result.plannedWorkflow.executionSteps[0];
-    assert.equal(step.maxAttempts, 4, "maxAttempts should be retryPolicy.maxRetries + 1");
+    const step = result.plannedWorkflow.workflow.steps[0];
+    assert.equal(step?.retryPolicyRef, "retry:max-3", "Should preserve retryPolicyRef on the preplanned workflow step");
   } finally {
     if (existsSync(dbPath)) {
       unlinkSync(dbPath);
@@ -1264,28 +1330,38 @@ test("runMultiStepOrchestration oapeflir plan without outputs uses default outpu
   }
 });
 
-test("runMultiStepOrchestration oapeflir plan uses first output as outputKey", async () => {
+test("runMultiStepOrchestration oapeflir plan synthesizes outputKey from nodeId", async () => {
   const dbPath = join(__dirname, "test-first-output.db");
 
   if (existsSync(dbPath)) {
     unlinkSync(dbPath);
   }
 
-  const planSteps = [
-    { stepId: "multi_output_step", dependencies: [], outputs: ["primary", "secondary"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
+  const planNodes = [
+    {
+      nodeId: "multi_output_step",
+      nodeType: "tool_call",
+      inputRefs: [],
+      outputSchemaRef: "schema:multi.output",
+      riskClass: "low",
+      budgetIntent: { amount: 1, currency: "USD", resourceKinds: ["token"] as const },
+      sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+      retryPolicyRef: "retry:default",
+      timeoutMs: 30_000,
+    },
   ];
 
-  const input: MultiStepToolExecutionInput = {
-    dbPath,
-    title: "First Output Test",
-    request: `oapeflir://plan ${JSON.stringify(planSteps)}`,
-  };
+    const input: MultiStepToolExecutionInput = {
+      dbPath,
+      title: "First Output Test",
+      request: `oapeflir://plan ${JSON.stringify(planNodes)}`,
+    };
 
   try {
     const result = await runMultiStepOrchestration(input);
     assert.ok(result);
     const step = result.plannedWorkflow.executionSteps[0];
-    assert.equal(step.outputKey, "primary", "Should use first output as outputKey");
+    assert.equal(step.outputKey, "output_multi_output_step", "Should derive outputKey from the preplanned nodeId");
   } finally {
     if (existsSync(dbPath)) {
       unlinkSync(dbPath);

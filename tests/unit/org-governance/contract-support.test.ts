@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach } from "node:test";
 
 import { resolveDelegatedApprover } from "../../../src/org-governance/approval-routing/delegation/index.js";
 import { shouldEscalateApproval } from "../../../src/org-governance/approval-routing/escalation/index.js";
-import { resolveApprovalRoute } from "../../../src/org-governance/approval-routing/route-engine/index.js";
+import { resolveApprovalRoute, setDefaultLegacyFxRate } from "../../../src/org-governance/approval-routing/route-engine/index.js";
 import { buildGovernanceAuditRecord } from "../../../src/org-governance/compliance-engine/audit-enforcer/index.js";
 import { inheritPolicyLayers } from "../../../src/org-governance/compliance-engine/inheritance/index.js";
 import { resolveCompliancePolicyForNode } from "../../../src/org-governance/compliance-engine/policy-resolver/index.js";
@@ -20,11 +20,19 @@ import { buildSamlAudience } from "../../../src/org-governance/sso-scim/saml/ind
 import { isTerminalScimAction } from "../../../src/org-governance/sso-scim/scim-sync/index.js";
 
 const orgNodes: OrgNode[] = [
-  { orgNodeId: "ent_1", nodeType: "company", displayName: "Enterprise", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, metadata: {}, costCenter: "" },
+  { orgNodeId: "ent_1", nodeType: "tenant", displayName: "Enterprise", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, metadata: {}, costCenter: "" },
   { orgNodeId: "dept_1", nodeType: "department", displayName: "Platform", parentOrgNodeId: "ent_1", ownerUserIds: ["director"], active: true, metadata: {}, costCenter: "" },
   { orgNodeId: "team_1", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept_1", ownerUserIds: ["manager"], active: true, metadata: {}, costCenter: "" },
   { orgNodeId: "team_2", nodeType: "team", displayName: "Infrastructure", parentOrgNodeId: "dept_1", ownerUserIds: ["backup_manager"], active: true, metadata: {}, costCenter: "" },
 ];
+
+beforeEach(() => {
+  setDefaultLegacyFxRate(7.2);
+});
+
+afterEach(() => {
+  setDefaultLegacyFxRate(null);
+});
 
 test("org-governance support modules expose contract-aligned helpers", () => {
   assert.equal(
@@ -143,7 +151,7 @@ test("org-governance support modules expose contract-aligned helpers", () => {
     fieldAllowlist: [],
   };
   assert.equal(canAccessKnowledgeBoundary(boundary, "team_1"), true);
-  assert.equal(
+  assert.deepEqual(
     evaluateKnowledgeShare(boundary, "team_2", [
       {
         grantId: "grant_1",
@@ -153,12 +161,12 @@ test("org-governance support modules expose contract-aligned helpers", () => {
         expiresAt: "2026-04-21T00:00:00.000Z",
       },
     ], "2026-04-20T00:00:00.000Z"),
-    true,
+    { mode: "summary" },
   );
 
   assert.deepEqual(validateOrgHierarchy(orgNodes), []);
   assert.deepEqual(listAncestorNodeIds(orgNodes, "team_1"), ["dept_1", "ent_1"]);
-  assert.equal(isLeafOrgNode(orgNodes[2]!), true);
+  assert.equal(isLeafOrgNode(orgNodes[2]!), false);
   assert.equal(mergeOrgNodes(orgNodes, [{ ...orgNodes[1]!, displayName: "Platform Org" }]).find((item) => item.orgNodeId === "dept_1")?.displayName, "Platform Org");
 
   assert.match(

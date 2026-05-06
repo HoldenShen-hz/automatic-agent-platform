@@ -26,6 +26,11 @@ function makeRecipe(overrides: Partial<DomainRecipe> & { recipeId: string; domai
     name: overrides.name ?? `Recipe ${overrides.recipeId}`,
     description: overrides.description,
     triggerPhrases: overrides.triggerPhrases ?? [],
+    risk_profile_ref: overrides.risk_profile_ref ?? `${overrides.domainId}.risk`,
+    guardrail_overlay: overrides.guardrail_overlay ?? `${overrides.domainId}.guardrails`,
+    recommended_workflow_ids: overrides.recommended_workflow_ids ?? [overrides.defaultWorkflowId],
+    default_prompt_bundle_ref: overrides.default_prompt_bundle_ref ?? `${overrides.domainId}.prompts`,
+    acceptance_checklist_ref: overrides.acceptance_checklist_ref ?? `${overrides.domainId}.acceptance`,
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
   });

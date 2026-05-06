@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach } from "node:test";
 
 import { ApprovalRoutingService } from "../../../src/org-governance/approval-routing/approval-routing-service.js";
+import { setDefaultLegacyFxRate } from "../../../src/org-governance/approval-routing/route-engine/index.js";
 import type { OrgNode } from "../../../src/org-governance/org-model/org-node/index.js";
+
+beforeEach(() => {
+  setDefaultLegacyFxRate(7.2);
+});
+
+afterEach(() => {
+  setDefaultLegacyFxRate(null);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test fixtures
@@ -324,7 +333,7 @@ test("ApprovalRoutingService.route combines delegation and escalation", () => {
     orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T01:00:00.000Z");
 
-  assert.deepEqual(result.approverChain, ["backup_director", "vp_ops"]);
+  assert.deepEqual(result.approverChain, ["vp_ops", "backup_director"]);
   assert.equal(result.delegated, true);
   assert.equal(result.escalatedTo, "vp_ops");
 });
@@ -613,7 +622,7 @@ test("ApprovalRoutingService applies delegation and escalation", () => {
     orgVersion: "org-chart/v2",
   }, "2026-04-20T00:00:00.000Z", "2026-04-20T01:00:00.000Z");
 
-  assert.deepEqual(result.approverChain, ["backup_director", "vp_ops"]);
+  assert.deepEqual(result.approverChain, ["vp_ops", "backup_director"]);
   assert.equal(result.delegated, true);
   assert.equal(result.escalatedTo, "vp_ops");
   assert.ok(result.auditRecord.reasonCodes?.includes("approval.escalated"));

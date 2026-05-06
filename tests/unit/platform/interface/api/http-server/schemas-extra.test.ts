@@ -80,7 +80,7 @@ test("parseCreateTaskPayload parses full payload", () => {
 });
 
 test("parseCreateTaskPayload parses all priority values", () => {
-  for (const priority of ["low", "normal", "high", "urgent"] as const) {
+  for (const priority of ["low", "normal", "high", "critical"] as const) {
     const payload = parseCreateTaskPayload({ title: "Task", priority });
     assert.equal(payload.priority, priority);
   }
@@ -158,19 +158,33 @@ test("parseUpdateTaskPayload parses title only", () => {
 });
 
 test("parseUpdateTaskPayload parses status only", () => {
-  const payload = parseUpdateTaskPayload({ status: "done" });
-  assert.equal(payload.status, "done");
+  const payload = parseUpdateTaskPayload({ status: "completed" });
+  assert.equal(payload.status, "completed");
 });
 
 test("parseUpdateTaskPayload parses all status values", () => {
-  for (const status of ["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"] as const) {
+  for (const status of [
+    "created",
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+    "completed",
+    "failed",
+    "aborted",
+  ] as const) {
     const payload = parseUpdateTaskPayload({ status });
     assert.equal(payload.status, status);
   }
 });
 
 test("parseUpdateTaskPayload parses all priority values", () => {
-  for (const priority of ["low", "normal", "high", "urgent"] as const) {
+  for (const priority of ["low", "normal", "high", "critical"] as const) {
     const payload = parseUpdateTaskPayload({ priority });
     assert.equal(payload.priority, priority);
   }

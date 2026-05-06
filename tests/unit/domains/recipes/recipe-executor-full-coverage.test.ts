@@ -25,6 +25,7 @@ function createRecipe(
     acceptance_checklist_ref: overrides.acceptance_checklist_ref ?? `${overrides.domainId}.acceptance`,
     defaultWorkflowId: overrides.defaultWorkflowId,
     defaultToolBundleIds: overrides.defaultToolBundleIds ?? [],
+    recommended_workflow_ids: overrides.recommended_workflow_ids ?? [overrides.defaultWorkflowId],
   });
 }
 

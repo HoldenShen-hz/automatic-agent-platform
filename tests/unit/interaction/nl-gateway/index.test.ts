@@ -307,8 +307,8 @@ test("NlEntryService getClarificationThreshold returns configured threshold", as
     intakeRouter: createMockIntakeRouter() as any,
   });
 
-  // Default threshold is max(0.8, configured) = 0.8
-  assert.equal(service.getClarificationThreshold(), 0.8);
+  // Default threshold comes from DEFAULT_NL_GATEWAY_CONFIG.disambiguation.threshold
+  assert.equal(service.getClarificationThreshold(), 0.7);
 });
 
 test("NlEntryService shouldRequestClarification works correctly", async () => {
@@ -317,7 +317,7 @@ test("NlEntryService shouldRequestClarification works correctly", async () => {
   });
 
   assert.equal(service.shouldRequestClarification(0.5), true);  // below threshold
-  assert.equal(service.shouldRequestClarification(0.8), false); // at threshold
+  assert.equal(service.shouldRequestClarification(0.7), false); // at threshold
   assert.equal(service.shouldRequestClarification(0.95), false); // above threshold
 });
 

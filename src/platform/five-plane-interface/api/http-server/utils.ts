@@ -89,8 +89,17 @@ export function readQueryParam(
   return value;
 }
 
-export function readJsonBody(body: string | null | undefined): unknown {
-  if (body == null || body.length === 0) {
+export function readJsonBody(body: unknown): unknown {
+  if (body == null) {
+    return {};
+  }
+  if (typeof body === "object") {
+    return body;
+  }
+  if (typeof body !== "string") {
+    throw new ApiError(400, "api.invalid_json", "Request body must be valid JSON.");
+  }
+  if (body.length === 0) {
     return {};
   }
   try {

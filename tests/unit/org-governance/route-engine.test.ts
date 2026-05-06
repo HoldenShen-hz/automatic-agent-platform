@@ -5,7 +5,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach } from "node:test";
 import {
   ApprovalRouteRequestSchema,
   OrgChartRoutingStrategy,
@@ -13,6 +13,7 @@ import {
   resolveAmountRoute,
   applySodPolicy,
   resolveApprovalRoute,
+  setDefaultLegacyFxRate,
   type ApprovalRouteRequest,
   type AmountThresholdRule,
 } from "../../../src/org-governance/approval-routing/route-engine/index.js";
@@ -22,6 +23,14 @@ import {
   resolveDelegatedApprover,
   type ApprovalDelegation,
 } from "../../../src/org-governance/approval-routing/delegation/index.js";
+
+beforeEach(() => {
+  setDefaultLegacyFxRate(7.2);
+});
+
+afterEach(() => {
+  setDefaultLegacyFxRate(null);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mock OrgNode factory
@@ -112,7 +121,7 @@ test("OrgChartRoutingStrategy.selectNode returns exact match", () => {
   assert.equal(result?.orgNodeId, "dept-1");
 });
 
-test("OrgChartRoutingStrategy.selectNode falls back to first node when no match", () => {
+test("OrgChartRoutingStrategy.selectNode returns null when no match", () => {
   const strategy = new OrgChartRoutingStrategy();
   const request: ApprovalRouteRequest = {
     requesterId: "user-1",
@@ -122,7 +131,7 @@ test("OrgChartRoutingStrategy.selectNode falls back to first node when no match"
   };
 
   const result = strategy.selectNode(SAMPLE_NODES, request);
-  assert.equal(result?.orgNodeId, "company-1"); // First node
+  assert.equal(result, null);
 });
 
 test("OrgChartRoutingStrategy prefers active nodes when finding by exact match", () => {
@@ -180,7 +189,7 @@ test("AmountBasedRoutingStrategy.selectNode respects amount threshold", () => {
   assert.ok(["department", "division"].includes(result?.nodeType ?? ""));
 });
 
-test("AmountBasedRoutingStrategy.selectNode uses fallback to company when no rule matches", () => {
+test("AmountBasedRoutingStrategy.selectNode returns null when no tenant fallback exists", () => {
   const rules: readonly AmountThresholdRule[] = [
     { maxAmountUsd: 100, targetNodeTypes: ["department"] },
   ];
@@ -194,7 +203,7 @@ test("AmountBasedRoutingStrategy.selectNode uses fallback to company when no rul
   };
 
   const result = strategy.selectNode(SAMPLE_NODES, request);
-  assert.equal(result?.nodeType, "company");
+  assert.equal(result, null);
 });
 
 test("AmountBasedRoutingStrategy.selectNode returns null for empty nodes", () => {
@@ -235,7 +244,7 @@ test("resolveAmountRoute returns matching node for amount within threshold", () 
   assert.ok(["department", "team"].includes(result?.nodeType ?? ""));
 });
 
-test("resolveAmountRoute uses fallback company when no rule matches", () => {
+test("resolveAmountRoute returns null when no tenant fallback exists", () => {
   const rules: readonly AmountThresholdRule[] = [
     { maxAmountUsd: 100, targetNodeTypes: ["team"] },
   ];
@@ -248,7 +257,7 @@ test("resolveAmountRoute uses fallback company when no rule matches", () => {
   };
 
   const result = resolveAmountRoute(SAMPLE_NODES, request, rules);
-  assert.equal(result?.nodeType, "company");
+  assert.equal(result, null);
 });
 
 test("resolveAmountRoute prefers nodes within request orgNodeId or its parent", () => {

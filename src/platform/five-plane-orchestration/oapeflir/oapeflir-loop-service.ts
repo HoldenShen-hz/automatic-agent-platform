@@ -862,7 +862,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
             : qualityGate.accepted
               ? "continue"
               : qualityGate.reasonCodes.join("; "),
-          confidence: outcome.passed ? 0.9 : 0.5,
+          confidence: this.deriveEvaluationConfidence(outcome),
         };
         decisionInputBundle = this.buildDecisionInputBundle({
           taskId: currentInput.taskId,
@@ -1328,7 +1328,7 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
         remainingDurationMs: Math.max((budgetEnvelope?.maxDurationMs ?? 0) - input.stepOutputs.reduce((sum, step) => sum + step.systemTelemetry.durationMs, 0), 0),
       },
       risk: {
-        currentScore: Number(input.evaluationReport.confidence.toFixed(4)),
+        currentScore: this.deriveHarnessRiskScore(input.assessment.risk),
         maxScore: 1,
         escalationThreshold: input.constraintPack?.risk_policy?.escalationThreshold ?? 0.8,
       },
@@ -1355,6 +1355,25 @@ public async produceStageRationale(input: OapeflirLoopInput): Promise<OapeflirLo
       artifactId: ref,
       uri: `artifact://oapeflir/${kind}/${encodeURIComponent(ref || `ref-${index}`)}`,
     }));
+  }
+
+  private deriveEvaluationConfidence(outcome: ExecutionOutcomeEvaluation): number {
+    const candidate = Number.isFinite(outcome.confidence) ? outcome.confidence : outcome.qualityScore;
+    return Number(Math.max(0, Math.min(1, candidate)).toFixed(4));
+  }
+
+  private deriveHarnessRiskScore(risk: UnifiedAssessment["risk"]): number {
+    switch (risk) {
+      case "critical":
+        return 1;
+      case "high":
+        return 0.85;
+      case "medium":
+        return 0.5;
+      case "low":
+      default:
+        return 0.2;
+    }
   }
 
   private async runStage<T>(

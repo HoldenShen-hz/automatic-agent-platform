@@ -45,7 +45,7 @@ test("NlEntryService.getConversationWindowSize returns task-type specific size",
 
 test("NlEntryService.getClarificationThreshold returns configured threshold", () => {
   const service = new NlEntryService();
-  assert.equal(service.getClarificationThreshold(), 0.8);
+  assert.equal(service.getClarificationThreshold(), 0.7);
 });
 
 test("NlEntryService.shouldRequestClarification returns true when below threshold", () => {

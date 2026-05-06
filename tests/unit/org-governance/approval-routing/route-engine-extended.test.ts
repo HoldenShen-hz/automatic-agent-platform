@@ -5,7 +5,7 @@
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach } from "node:test";
 import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/index.js";
 import {
   OrgChartRoutingStrategy,
@@ -14,8 +14,17 @@ import {
   applySodPolicy,
   resolveApprovalRoute,
   ApprovalRouteRequestSchema,
+  setDefaultLegacyFxRate,
   type AmountThresholdRule,
 } from "../../../../src/org-governance/approval-routing/route-engine/index.js";
+
+beforeEach(() => {
+  setDefaultLegacyFxRate(7.2);
+});
+
+afterEach(() => {
+  setDefaultLegacyFxRate(null);
+});
 
 function createOrgNode(overrides: Partial<OrgNode> = {}): OrgNode {
   return {
@@ -122,7 +131,7 @@ test("OrgChartRoutingStrategy.selectNode returns first active match", () => {
   assert.equal(result?.orgNodeId, "dept-1");
 });
 
-test("OrgChartRoutingStrategy.selectNode falls back to first node when orgNodeId not found", () => {
+test("OrgChartRoutingStrategy.selectNode returns null when orgNodeId not found", () => {
   const strategy = new OrgChartRoutingStrategy();
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", active: true }),
@@ -137,7 +146,7 @@ test("OrgChartRoutingStrategy.selectNode falls back to first node when orgNodeId
 
   const result = strategy.selectNode(nodes, request);
 
-  assert.equal(result?.orgNodeId, "dept-1");
+  assert.equal(result, null);
 });
 
 test("OrgChartRoutingStrategy.selectNode returns null for empty nodes array", () => {
@@ -175,7 +184,7 @@ test("AmountBasedRoutingStrategy selects node based on amount threshold", () => 
   assert.equal(result?.nodeType, "department");
 });
 
-test("AmountBasedRoutingStrategy falls back to company when no rule matches", () => {
+test("AmountBasedRoutingStrategy returns null when no tenant fallback node exists", () => {
   const strategy = new AmountBasedRoutingStrategy([
     { maxAmountUsd: 500, targetNodeTypes: ["team"] },
   ]);
@@ -192,7 +201,7 @@ test("AmountBasedRoutingStrategy falls back to company when no rule matches", ()
 
   const result = strategy.selectNode(nodes, request);
 
-  assert.equal(result?.orgNodeId, "company-1");
+  assert.equal(result, null);
 });
 
 test("resolveAmountRoute returns null when nodes array is empty", () => {
@@ -210,7 +219,7 @@ test("resolveAmountRoute returns null when nodes array is empty", () => {
   assert.equal(result, null);
 });
 
-test("resolveAmountRoute selects company when amount exceeds all thresholds", () => {
+test("resolveAmountRoute returns null when amount exceeds all thresholds and no tenant node exists", () => {
   const rules: AmountThresholdRule[] = [
     { maxAmountUsd: 500, targetNodeTypes: ["team"] },
     { maxAmountUsd: 2000, targetNodeTypes: ["department"] },
@@ -227,7 +236,7 @@ test("resolveAmountRoute selects company when amount exceeds all thresholds", ()
     amountUsd: 10000,
   }, rules);
 
-  assert.equal(result?.orgNodeId, "company-1");
+  assert.equal(result, null);
 });
 
 test("applySodPolicy filters out initiator from approver list", () => {

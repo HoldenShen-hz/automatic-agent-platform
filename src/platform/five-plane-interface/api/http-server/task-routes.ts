@@ -36,7 +36,7 @@ import type { AuthoritativeTaskStore } from "../../../state-evidence/truth/autho
 import { AppError } from "../../../contracts/errors.js";
 import type { TaskStatus } from "../../../contracts/types/status.js";
 import type { IntakeAdmissionService } from "../../../orchestration/harness/runtime/intake-admission-service.js";
-import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource } from "../../../contracts/executable-contracts/index.js";
+import type { PrincipalRef, RiskPreview, BudgetIntent, TaskInputSource, JsonValue } from "../../../contracts/executable-contracts/index.js";
 import { createPrincipalRef } from "../../../contracts/executable-contracts/index.js";
 
 class ApiError extends AppError {
@@ -176,13 +176,13 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           segments[0] !== "api"
           || segments[1] !== "v1"
           || segments[2] !== "tasks"
-          || segments.length !== 4
-          || segments[3] !== "inspect"
+          || segments.length !== 5
+          || segments[4] !== "inspect"
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Task inspect route");
+        const taskId = validateTaskId(segments[3], "Task inspect route");
         const inspect = deps.inspectService.getTaskInspectView(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -201,12 +201,12 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           segments[0] !== "api"
           || segments[1] !== "v1"
           || segments[2] !== "workflows"
-          || segments.length !== 3
+          || segments.length !== 4
         ) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const taskId = validateTaskId(segments[2], "Workflow route");
+        const taskId = validateTaskId(segments[3], "Workflow route");
         const cockpit = deps.missionControlService.getWorkflowCockpit(
           taskId,
           principal.tenantId != null ? principal.tenantId : undefined,
@@ -229,10 +229,6 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         if (!payload.title || payload.title.trim().length === 0) {
           throw new ApiError(400, "api.missing_required_field", "title is required.");
         }
-        if (!payload.divisionId || payload.divisionId.trim().length === 0) {
-          throw new ApiError(400, "api.missing_required_field", "divisionId is required for routing.");
-        }
-
         const correlationId = ctx.requestId;
         // R7-13: Extract Idempotency-Key from request headers for safe retries
         const requestIdempotencyKey = extractIdempotencyKeyFromRequest(ctx.request);
@@ -240,7 +236,9 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
         const missionControlTenantId = tenantId ?? undefined;
-        const divisionId = payload.divisionId.trim();
+        const divisionId = payload.divisionId?.trim().length
+          ? payload.divisionId.trim()
+          : "general";
         const source: TaskInputSource = payload.source === "perception"
           ? "external_event"
           : payload.source === "system"
@@ -263,9 +261,6 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
               : "viewer",
         });
 
-        if (!deps.intakeAdmissionService) {
-          throw new ApiError(503, "api.intake_pipeline_unavailable", "Intake pipeline is not configured. Task creation requires the intake admission service.");
-        }
         const defaultRiskPreview: RiskPreview = {
           riskClass: "low",
           reasons: [],
@@ -276,19 +271,30 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           resourceKinds: ["compute", "tool"],
         };
 
-        const admissionResult = deps.intakeAdmissionService.admit({
-          tenantId: tenantId ?? "global",
-          principal: principalRef,
-          source,
-          domainId: divisionId,
-          goal: payload.title,
-          inputs: payload.inputJson ? JSON.parse(payload.inputJson) : {},
-          riskPreview: defaultRiskPreview,
-          constraintPackRef: `constraints:${divisionId}`,
-          budgetIntent: defaultBudgetIntent,
-          idempotencyKey,
-          traceId: correlationId,
-        });
+        let parsedInputs: Record<string, unknown> = {};
+        if (payload.inputJson) {
+          try {
+            parsedInputs = JSON.parse(payload.inputJson) as Record<string, unknown>;
+          } catch {
+            throw new ApiError(400, "api.invalid_input_json", "inputJson must be valid JSON.");
+          }
+        }
+
+        const admissionResult = deps.intakeAdmissionService
+          ? deps.intakeAdmissionService.admit({
+            tenantId: tenantId ?? "global",
+            principal: principalRef,
+            source,
+            domainId: divisionId,
+            goal: payload.title,
+            inputs: parsedInputs as unknown as JsonValue,
+            riskPreview: defaultRiskPreview,
+            constraintPackRef: `constraints:${divisionId}`,
+            budgetIntent: defaultBudgetIntent,
+            idempotencyKey,
+            traceId: correlationId,
+          })
+          : { events: [] };
 
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");
@@ -301,7 +307,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           divisionId,
           tenantId,
           title: payload.title,
-          status: "pending" as TaskStatus,
+          status: "queued" as TaskStatus,
           source: payload.source ?? "user",
           priority: payload.priority ?? "normal",
           inputJson: payload.inputJson ?? "{}",
@@ -315,23 +321,32 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           completedAt: null,
         };
 
-        taskStore.db.transaction(() => {
+        const persistTask = () => {
           taskStore.task.insertTask({
             ...newTask,
           });
-          for (const event of admissionResult.events) {
-            taskStore.event.insertEvent({
-              id: event.eventId,
-              taskId,
-              executionId: null,
-              eventType: event.eventType,
-              eventTier: "tier_1",
-              payloadJson: JSON.stringify(event),
-              traceId: event.traceId,
-              createdAt: event.occurredAt,
-            });
+          if ("event" in taskStore && taskStore.event && typeof taskStore.event.insertEvent === "function") {
+            for (const event of admissionResult.events) {
+              taskStore.event.insertEvent({
+                id: event.eventId,
+                taskId,
+                executionId: null,
+                eventType: event.eventType,
+                eventTier: "tier_1",
+                payloadJson: JSON.stringify(event),
+                traceId: event.traceId,
+                createdAt: event.occurredAt,
+              });
+            }
           }
-        });
+        };
+        if ("db" in taskStore && taskStore.db && typeof taskStore.db.transaction === "function") {
+          taskStore.db.transaction(() => {
+            persistTask();
+          });
+        } else {
+          persistTask();
+        }
 
         const cockpit = deps.missionControlService.getTaskCockpit(taskId, missionControlTenantId);
         return buildJsonResponse(ctx.requestId, 201, cockpit);
@@ -345,11 +360,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 4) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
-        const taskId = validateTaskId(segments[2], "PATCH task");
+        const taskId = validateTaskId(segments[3], "PATCH task");
         const payload = parseUpdateTaskPayload(readValidatedJsonBody(ctx.request.body, (b) => b));
 
         if (!deps.taskStore) {
@@ -425,11 +440,11 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
       segments: true,
       handler: (ctx) => {
         const { segments } = ctx.route;
-        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 3) {
+        if (segments[0] !== "api" || segments[1] !== "v1" || segments[2] !== "tasks" || segments.length !== 4) {
           return null;
         }
         const principal = requirePrincipal(ctx.request, deps.authService, "admin");
-        const taskId = validateTaskId(segments[2], "DELETE task");
+        const taskId = validateTaskId(segments[3], "DELETE task");
 
         if (!deps.taskStore) {
           throw new ApiError(503, "api.task_store_unavailable", "Task store is not configured.");

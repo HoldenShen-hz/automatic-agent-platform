@@ -71,7 +71,7 @@ test("ISSUE #2038: isOriginAllowed rejects wildcard origin for any requested ori
   assert.equal(isOriginAllowed("https://bank.com", config), false);
 });
 
-test("ISSUE #2038: buildPreflightHeaders echoes validated origin back (not wildcard) when credentials enabled", () => {
+test("ISSUE #2038: buildPreflightHeaders returns empty when wildcard is paired with credentials", () => {
   const config = {
     ...DEFAULT_CORS_CONFIG,
     allowedOrigins: ["*"],
@@ -80,10 +80,7 @@ test("ISSUE #2038: buildPreflightHeaders echoes validated origin back (not wildc
 
   const headers = buildPreflightHeaders("https://example.com", config);
 
-  // When credentials=true and wildcard is configured, the response must
-  // echo back the validated origin, NOT the wildcard
-  assert.equal(headers["access-control-allow-origin"], "https://example.com");
-  assert.equal(headers["access-control-allow-credentials"], "true");
+  assert.deepEqual(headers, {});
 });
 
 test("ISSUE #2038: buildPreflightHeaders uses wildcard when credentials are disabled", () => {
@@ -95,12 +92,11 @@ test("ISSUE #2038: buildPreflightHeaders uses wildcard when credentials are disa
 
   const headers = buildPreflightHeaders("https://any-origin.com", config);
 
-  // When credentials=false, wildcard is returned as-is
-  assert.equal(headers["access-control-allow-origin"], "*");
+  assert.equal(headers["access-control-allow-origin"], "https://any-origin.com");
   assert.equal(headers["access-control-allow-credentials"], undefined);
 });
 
-test("ISSUE #2038: decorateResponseHeaders echoes validated origin when credentials enabled with wildcard config", () => {
+test("ISSUE #2038: decorateResponseHeaders omits CORS headers when credentials-enabled wildcard is configured", () => {
   const payload: ApiResponsePayload = {
     statusCode: 200,
     headers: {},
@@ -112,11 +108,10 @@ test("ISSUE #2038: decorateResponseHeaders echoes validated origin when credenti
     credentials: true,
   };
 
-  const result = decorateResponseHeaders(payload, "https://myapp.com", config);
+  const result = decorateResponseHeaders(payload, "https://myapp.com", config, undefined);
 
-  // The actual origin should be echoed back, not wildcard
-  assert.equal(result.headers["access-control-allow-origin"], "https://myapp.com");
-  assert.equal(result.headers["access-control-allow-credentials"], "true");
+  assert.equal(result.headers["access-control-allow-origin"], undefined);
+  assert.equal(result.headers["access-control-allow-credentials"], undefined);
 });
 
 test("ISSUE #2038: decorateResponseHeaders does NOT add CORS headers when origin is disallowed", () => {
@@ -133,7 +128,7 @@ test("ISSUE #2038: decorateResponseHeaders does NOT add CORS headers when origin
 
   // When origin is not allowed (wildcard + credentials rejects all),
   // no CORS headers should be added
-  const result = decorateResponseHeaders(payload, "https://any-site.com", config);
+  const result = decorateResponseHeaders(payload, "https://any-site.com", config, undefined);
 
   assert.equal(result.headers["access-control-allow-origin"], undefined);
   assert.equal(result.headers["access-control-allow-credentials"], undefined);
@@ -163,7 +158,6 @@ test("ISSUE #2038: buildPreflightHeaders returns empty when origin not allowed",
     credentials: true,
   };
 
-  // Since wildcard+credentials rejects all origins, preflight returns empty
   const headers = buildPreflightHeaders("https://example.com", config);
   assert.deepEqual(headers, {});
 });
@@ -193,6 +187,7 @@ test("isOriginAllowed returns false when origin does not match any allowed origi
 test("buildPreflightHeaders includes allow methods and headers", () => {
   const config = {
     ...DEFAULT_CORS_CONFIG,
+    allowedOrigins: ["https://example.com"],
     allowedMethods: ["GET", "POST", "PUT"],
     allowedHeaders: ["content-type", "authorization"],
   };
@@ -207,8 +202,8 @@ test("decorateResponseHeaders adds all required security headers", () => {
     headers: {},
     body: "test",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
-  assert.equal(result.headers["content-security-policy"], "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
+  assert.equal(result.headers["content-security-policy"], "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; object-src 'none'");
   assert.equal(result.headers["strict-transport-security"], "max-age=31536000; includeSubDomains");
   assert.equal(result.headers["x-frame-options"], "DENY");
   assert.equal(result.headers["x-content-type-options"], "nosniff");
@@ -223,7 +218,7 @@ test("decorateResponseHeaders preserves existing custom headers", () => {
     headers: { "x-custom-header": "custom-value" },
     body: "test",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
   assert.equal(result.headers["x-custom-header"], "custom-value");
 });
 
@@ -233,7 +228,7 @@ test("decorateResponseHeaders calculates content-length for plain text body", ()
     headers: {},
     body: "hello world",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
   assert.equal(result.headers["content-length"], "11");
 });
 
@@ -243,7 +238,7 @@ test("decorateResponseHeaders does not override content-length when already set"
     headers: { "content-length": "100" },
     body: "hello world",
   };
-  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG);
+  const result = decorateResponseHeaders(payload, undefined, DEFAULT_CORS_CONFIG, undefined);
   assert.equal(result.headers["content-length"], "100");
 });
 

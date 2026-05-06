@@ -35,11 +35,11 @@ test("orderEdgeSyncQueue sorts by priority descending", () => {
   assert.equal(ordered[2]!.envelopeId, "a");
 });
 
-test("orderEdgeSyncQueue sorts by createdAt ascending when priority is equal", () => {
+test("orderEdgeSyncQueue sorts by sequence_no ascending when priority is equal", () => {
   const items: EdgeSyncEnvelope[] = [
-    makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-25T12:00:00Z" }),
-    makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-25T10:00:00Z" }),
-    makeEnvelope({ envelopeId: "c", priority: 1, createdAt: "2026-04-25T11:00:00Z" }),
+    makeEnvelope({ envelopeId: "a", priority: 1, sequence_no: 3, createdAt: "2026-04-25T12:00:00Z" }),
+    makeEnvelope({ envelopeId: "b", priority: 1, sequence_no: 1, createdAt: "2026-04-25T10:00:00Z" }),
+    makeEnvelope({ envelopeId: "c", priority: 1, sequence_no: 2, createdAt: "2026-04-25T11:00:00Z" }),
   ];
 
   const ordered = orderEdgeSyncQueue(items);
@@ -74,16 +74,16 @@ test("orderEdgeSyncQueue handles single item", () => {
   assert.equal(ordered[0]!.envelopeId, "only");
 });
 
-test("orderEdgeSyncQueue sorts earlier canonical createdAt first when priority matches", () => {
+test("orderEdgeSyncQueue ignores createdAt when sequence_no establishes canonical order", () => {
   const items: EdgeSyncEnvelope[] = [
-    makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-25T09:00:00Z" }),
-    makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-25T10:00:00Z" }),
+    makeEnvelope({ envelopeId: "a", priority: 1, sequence_no: 2, createdAt: "2026-04-25T09:00:00Z" }),
+    makeEnvelope({ envelopeId: "b", priority: 1, sequence_no: 1, createdAt: "2026-04-25T10:00:00Z" }),
   ];
 
   const ordered = orderEdgeSyncQueue(items);
 
-  assert.equal(ordered[0]!.envelopeId, "a");
-  assert.equal(ordered[1]!.envelopeId, "b");
+  assert.equal(ordered[0]!.envelopeId, "b");
+  assert.equal(ordered[1]!.envelopeId, "a");
 });
 
 test("dedupeEdgeSyncQueue removes duplicate envelopeIds", () => {

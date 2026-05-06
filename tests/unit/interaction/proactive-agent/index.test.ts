@@ -293,7 +293,7 @@ test("ProactiveAgentService low risk action follows shared action-mode logic", (
     ...makeTrigger(),
     triggerId: "dashboard_trigger",
     action: {
-      actionType: "update_dashboard",
+      actionType: "create_task",
       template: {},
       requireConfirmation: false,
     },

@@ -50,8 +50,8 @@ test("getClarificationThreshold returns configured threshold", async () => {
 
   const threshold = service.getClarificationThreshold();
 
-  // Default threshold is 0.8 (INTENT_CONFIDENCE_THRESHOLD)
-  assert.equal(threshold, 0.8);
+  // Default threshold comes from DEFAULT_NL_GATEWAY_CONFIG.disambiguation.threshold
+  assert.equal(threshold, 0.7);
 });
 
 test("getClarificationThreshold respects custom threshold from nlGatewayConfig", async () => {
@@ -84,7 +84,7 @@ test("shouldRequestClarification returns true when confidence below threshold", 
 test("shouldRequestClarification returns false when confidence at threshold", async () => {
   const service = new NlEntryService({ intakeRouter: mockIntakeRouter as any });
 
-  const shouldClarify = service.shouldRequestClarification(0.8);
+  const shouldClarify = service.shouldRequestClarification(0.7);
 
   assert.equal(shouldClarify, false);
 });

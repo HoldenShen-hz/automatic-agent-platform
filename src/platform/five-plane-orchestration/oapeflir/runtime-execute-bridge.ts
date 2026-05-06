@@ -10,10 +10,11 @@
  *
  * 1. The OAPEFLIR `PlanGraphBundle` (canonical per ADR-060/ADR-109) contains
  *    `PlanNode[]` in the `graph.nodes` field representing actionable steps.
- * 2. `RuntimeExecuteBridge.executePlan()` converts `PlanNode[]` into the format
- *    expected by `runMultiStepOrchestration` and calls it.
- * 3. The orchestrator handles routing, planning, and step execution internally,
- *    then returns a `MultiStepOrchestrationResult`.
+ * 2. `RuntimeExecuteBridge.executePlan()` serialises `PlanNode[]` with the
+ *    `oapeflir://plan` prefix and calls `runMultiStepOrchestration`.
+ * 3. The runtime detects that prefix, rebuilds a planned workflow directly from
+ *    the supplied `PlanNode[]`, and then executes it without invoking the normal
+ *    raw-text workflow planner.
  * 4. The bridge extracts `StepOutputRecord[]` from the result snapshot and maps
  *    them to `DualChannelStepOutput[]` for consumption by Feedback → Learn → Improve.
  *
@@ -24,12 +25,13 @@
  * - `PlanNode.timeoutMs` → timeout (used for per-step timeout in supervisor)
  * - `StepOutputRecord` → `DualChannelStepOutput` (status, telemetry, summary mapping)
  *
- * ## Re-planning Note
+ * ## Pre-planned Execution Note
  *
- * The orchestrator's internal `WorkflowPlanner` will re-plan the `request` string,
- * so there is a mild inefficiency where OAPEFLIR's plan and the orchestrator's plan
- * may differ. This is acceptable for the initial implementation. A future optimisation
- * would add a "pre-planned" execution path that bypasses the internal planner.
+ * OAPEFLIR plans are no longer treated as raw text at runtime. The
+ * `oapeflir://plan` request format is recognised by the execution entrypoint,
+ * which reconstructs a workflow from the validated `PlanNode[]` payload and
+ * preserves rich metadata such as `riskClass`, `budgetIntent`,
+ * `sideEffectProfile`, and `retryPolicyRef`.
  *
  * Part of GAP-V2-01.
  */

@@ -381,7 +381,7 @@ test("execution-plan: contract remains as compatibility shell and rejects legacy
         ],
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "execution_plan.legacy_contract_forbidden",
+      error instanceof ValidationError && error.code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 

@@ -1,11 +1,10 @@
 /**
  * @fileoverview Unit tests for Task Routes - Issue #2043
  *
- * ISSUE #2043: PATCH title update is dead code
+ * ISSUE #2043: PATCH title update wiring
  *
- * The task-routes.ts PATCH handler calls taskStore.task.updateTaskTitle(taskId, payload.title, now)
- * but payload.title is never set by parseUpdateTaskPayload - it's always undefined.
- * This makes the title update code unreachable (dead code).
+ * The PATCH handler should propagate title updates all the way through parsing
+ * and persistence. These tests verify the previously reported dead path stays closed.
  */
 
 import assert from "node:assert/strict";
@@ -144,14 +143,10 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
  * EXPECTED BEHAVIOR: Title updates should work when title is provided
  */
 
-test("ISSUE #2043: parseUpdateTaskPayload returns title as undefined even when provided", () => {
-  // The bug: parseUpdateTaskPayload does not correctly extract title
+test("ISSUE #2043: parseUpdateTaskPayload returns title when provided", () => {
   const payload = parseUpdateTaskPayload({ title: "New Title" });
 
-  // The title is NOT present in the returned object
-  // This is because the schema has title as optional but the parsing logic
-  // doesn't correctly handle it when it's the only field provided
-  assert.equal(Object.keys(payload).includes("title"), false);
+  assert.equal(payload.title, "New Title");
 });
 
 test("ISSUE #2043: parseUpdateTaskPayload returns empty object when no fields provided", () => {
@@ -161,18 +156,17 @@ test("ISSUE #2043: parseUpdateTaskPayload returns empty object when no fields pr
   assert.deepEqual(payload, {});
 });
 
-test("ISSUE #2043: parseUpdateTaskPayload does not include title even when explicitly set", () => {
+test("ISSUE #2043: parseUpdateTaskPayload includes title when explicitly set", () => {
   const payload = parseUpdateTaskPayload({
     title: "My New Task Title",
     status: "running",
   });
 
-  // Status is returned but title is not
   assert.equal(payload.status, "running");
-  assert.equal(("title" in payload), false);
+  assert.equal(payload.title, "My New Task Title");
 });
 
-test("ISSUE #2043: PATCH route does not call updateTaskTitle because payload.title is undefined", async () => {
+test("ISSUE #2043: PATCH route calls updateTaskTitle when title is provided", async () => {
   let titleUpdated = false;
   const mockTaskStore = {
     task: {
@@ -212,11 +206,10 @@ test("ISSUE #2043: PATCH route does not call updateTaskTitle because payload.tit
 
   await callRoute(routes, ctx);
 
-  // Title update was NOT called because payload.title is undefined
-  assert.equal(titleUpdated, false);
+  assert.equal(titleUpdated, true);
 });
 
-test("ISSUE #2043: The title update condition is never satisfied", async () => {
+test("ISSUE #2043: The title update condition forwards the provided title", async () => {
   let capturedTitle: string | undefined;
   const mockTaskStore = {
     task: {
@@ -256,8 +249,7 @@ test("ISSUE #2043: The title update condition is never satisfied", async () => {
 
   await callRoute(routes, ctx);
 
-  // capturedTitle is undefined because updateTaskTitle was never called
-  assert.equal(capturedTitle, undefined);
+  assert.equal(capturedTitle, "Should Update Title");
 });
 
 test("ISSUE #2043: Status update works (not dead code)", async () => {

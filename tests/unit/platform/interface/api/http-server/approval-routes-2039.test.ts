@@ -25,22 +25,78 @@ function createMockApprovalService(): ApprovalService {
   } as unknown as ApprovalService;
 }
 
-function createMockInspectService(): InspectService {
+function createMockInspectService(options?: {
+  tenantId?: string | null;
+  allowedActorIds?: string[];
+  existingApprovalIds?: string[];
+}): InspectService {
+  const tenantId = options?.tenantId ?? "tenant-a";
+  const allowedActorIds = options?.allowedActorIds ?? ["actor-1"];
+  const existingApprovalIds = new Set(options?.existingApprovalIds ?? ["appr-1"]);
   return {
     queryDecisionInspectSummaries: () => [
       { decisionId: "appr-1", decisionType: "approval", status: "requested", taskId: "task-1", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: null },
     ],
-    getApprovalInspectView: () => ({
-      approval: { id: "appr-1", taskId: "task-1", decisionType: "approval", status: "completed", requestedAt: "2026-04-16T00:00:00.000Z", completedAt: "2026-04-16T01:00:00.000Z" },
-      timeline: { entries: [] },
-    }),
+    getApprovalInspectView: (approvalId: string) => {
+      if (!existingApprovalIds.has(approvalId)) {
+        const error = new Error(`Approval not found: ${approvalId}`) as Error & { code?: string };
+        error.code = "inspect.approval_not_found";
+        throw error;
+      }
+      return {
+        task: { id: "task-1", title: "Task 1", status: "queued", tenantId } as never,
+        workflowState: null,
+        execution: null,
+        session: null,
+        approval: {
+          id: approvalId,
+          taskId: "task-1",
+          executionId: null,
+          status: "requested",
+          requestJson: JSON.stringify({
+            approvalId,
+            taskId: "task-1",
+            sourceAgentId: "agent-1",
+            reason: "Need review",
+            riskLevel: "high",
+            options: ["approve", "reject"],
+            context: { allowedActorIds },
+            timeoutPolicy: "reject",
+            createdAt: "2026-04-16T00:00:00.000Z",
+          }),
+          responseJson: null,
+          timeoutPolicy: "reject",
+          createdAt: "2026-04-16T00:00:00.000Z",
+          respondedAt: null,
+        },
+        approvals: [],
+        operatorActions: [],
+        agentExecution: null,
+        dispatchDecisions: [],
+        remoteRoutingSummary: null,
+        leaseHandoverSummary: null,
+        recentEvents: [],
+        stepResults: [],
+        taskResult: null,
+        artifacts: [],
+        runtimeRecovery: null,
+      };
+    },
   } as unknown as InspectService;
 }
 
-function createMockAuthService(roles: string[] = ["viewer", "operator"]): ApiAuthService {
+function createMockAuthService(
+  roles: string[] = ["viewer", "operator"],
+  options?: { actorId?: string; tenantId?: string | null },
+): ApiAuthService {
   return {
     requireRole: (headers: Record<string, string | undefined>, role: string) => {
-      return { actorId: "actor-1", roles: roles as ("viewer" | "operator" | "admin")[], authMethod: "api_key", tenantId: null };
+      return {
+        actorId: options?.actorId ?? "actor-1",
+        roles: roles as ("viewer" | "operator" | "admin")[],
+        authMethod: "api_key",
+        tenantId: options?.tenantId ?? "tenant-a",
+      };
     },
   } as unknown as ApiAuthService;
 }
@@ -73,79 +129,75 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-// ── Issue #2039: ID Injection Vulnerability in Approval Routes ────────────────
+// ── Issue #2039: Authz hardening in Approval Routes ───────────────────────────
 
 /**
  * ISSUE #2039 TEST SUITE
  *
- * The approvalId is taken directly from URL segments without authorization check.
- * This allows any authenticated actor to submit decisions for ANY approval by guessing IDs.
+ * The route now validates approval existence, tenant scope, and actor allow-lists
+ * before applying decisions. These tests verify the previous BOLA gap stays closed.
  *
- * CURRENT BEHAVIOR: The routes DO NOT verify that the actor has permission to act
- * on the specific approval. The code simply trusts the approvalId from the URL.
- *
- * EXPECTED BEHAVIOR: The routes should verify that:
- * 1. The actor is authorized to act on this approval
- * 2. The approval belongs to a task the actor has access to
- * 3. The actor has the required role for this specific approval
+ * GUARDED BEHAVIOR:
+ * 1. The actor must be authorized to act on this approval
+ * 2. The approval must belong to the actor's tenant scope unless actor is admin
+ * 3. Unknown approval IDs must 404
  */
 
-test("ISSUE #2039: POST /approvals/:id/decision accepts any approvalId without authorization", async () => {
-  // This test demonstrates the vulnerability: any approvalId is accepted
+test("ISSUE #2039: POST /approvals/:id/decision rejects actor outside allow-list", async () => {
   const deps = {
-    authService: createMockAuthService(),
+    authService: createMockAuthService(["viewer", "operator"], { actorId: "actor-2", tenantId: "tenant-a" }),
     approvalService: createMockApprovalService(),
-    inspectService: createMockInspectService(),
+    inspectService: createMockInspectService({
+      tenantId: "tenant-a",
+      allowedActorIds: ["actor-1"],
+      existingApprovalIds: ["appr-1"],
+    }),
   };
   const routes = createApprovalRoutes(deps);
 
-  // Attacker can guess an approval ID and submit a decision
-  const attackerApprovalId = "appr-attacker-guessed-id";
   const ctx = createMockContext(
-    `/approvals/${attackerApprovalId}/decision`,
-    ["approvals", attackerApprovalId, "decision"],
+    "/approvals/appr-1/decision",
+    ["approvals", "appr-1", "decision"],
     {},
     JSON.stringify({ decisionType: "confirmed" }),
     "POST",
   );
 
-  const response = await callRoute(routes, ctx);
-
-  // The route does not reject the unknown approvalId
-  // It processes the decision without verifying authorization
-  assert.equal(response?.statusCode, 200);
+  await assert.rejects(() => callRoute(routes, ctx), /Actor not authorized for this approval/);
 });
 
-test("ISSUE #2039: POST /v1/approvals/:id/decision accepts any approvalId without authorization", async () => {
+test("ISSUE #2039: POST /v1/approvals/:id/decision rejects cross-tenant access", async () => {
   const deps = {
-    authService: createMockAuthService(),
+    authService: createMockAuthService(["viewer", "operator"], { actorId: "actor-1", tenantId: "tenant-a" }),
     approvalService: createMockApprovalService(),
-    inspectService: createMockInspectService(),
+    inspectService: createMockInspectService({
+      tenantId: "tenant-b",
+      allowedActorIds: ["actor-1"],
+      existingApprovalIds: ["appr-1"],
+    }),
   };
   const routes = createApprovalRoutes(deps);
 
-  // Attacker can guess a v1 approval ID
-  const attackerApprovalId = "v1-appr-some-other-users-approval";
   const ctx = createMockContext(
-    `/v1/approvals/${attackerApprovalId}/decision`,
-    ["v1", "approvals", attackerApprovalId, "decision"],
+    "/v1/approvals/appr-1/decision",
+    ["v1", "approvals", "appr-1", "decision"],
     {},
     JSON.stringify({ decisionType: "confirmed" }),
     "POST",
   );
 
-  const response = await callRoute(routes, ctx);
-
-  // The route processes the request without authorization check on the approvalId
-  assert.equal(response?.statusCode, 200);
+  await assert.rejects(() => callRoute(routes, ctx), /Actor not authorized for this approval/);
 });
 
-test("ISSUE #2039: Approval decision route does not verify approval exists before processing", async () => {
-  // Even a non-existent approval ID is accepted
+test("ISSUE #2039: Approval decision route rejects unknown approval IDs", async () => {
   const deps = {
-    authService: createMockAuthService(),
+    authService: createMockAuthService(["viewer", "operator"], { actorId: "actor-1", tenantId: "tenant-a" }),
     approvalService: createMockApprovalService(),
-    inspectService: createMockInspectService(),
+    inspectService: createMockInspectService({
+      tenantId: "tenant-a",
+      allowedActorIds: ["actor-1"],
+      existingApprovalIds: ["appr-1"],
+    }),
   };
   const routes = createApprovalRoutes(deps);
 
@@ -158,14 +210,10 @@ test("ISSUE #2039: Approval decision route does not verify approval exists befor
     "POST",
   );
 
-  const response = await callRoute(routes, ctx);
-
-  // The route should 404 for non-existent approvals, but it doesn't
-  // This indicates the missing authorization check
-  assert.equal(response?.statusCode, 200);
+  await assert.rejects(() => callRoute(routes, ctx), /Approval not found/);
 });
 
-test("ISSUE #2039: Route extracts approvalId from segments without validation", async () => {
+test("ISSUE #2039: Route validates approvalId format before processing", async () => {
   const deps = {
     authService: createMockAuthService(),
     approvalService: createMockApprovalService(),
@@ -173,31 +221,29 @@ test("ISSUE #2039: Route extracts approvalId from segments without validation", 
   };
   const routes = createApprovalRoutes(deps);
 
-  // The approvalId is taken directly from segments[1] without validation
   const ctx = createMockContext(
-    "/approvals/my-approval-123/decision",
-    ["approvals", "my-approval-123", "decision"],
+    "/approvals/appr-invalid!/decision",
+    ["approvals", "appr-invalid!", "decision"],
     {},
     JSON.stringify({ decisionType: "confirmed" }),
     "POST",
   );
 
-  const response = await callRoute(routes, ctx);
-
-  // No error about invalid approval ID format or missing authorization
-  assert.equal(response?.statusCode, 200);
+  await assert.rejects(() => callRoute(routes, ctx), /Invalid approvalId format/);
 });
 
-test("ISSUE #2039: No tenant isolation check on approvalId", async () => {
-  // Actors in different tenants should not be able to access each other's approvals
+test("ISSUE #2039: No tenant isolation check on approvalId is closed by tenant guard", async () => {
   const deps = {
-    authService: createMockAuthService(),
+    authService: createMockAuthService(["viewer", "operator"], { actorId: "actor-1", tenantId: "tenant-a" }),
     approvalService: createMockApprovalService(),
-    inspectService: createMockInspectService(),
+    inspectService: createMockInspectService({
+      tenantId: "tenant-b",
+      allowedActorIds: ["actor-1"],
+      existingApprovalIds: ["appr-tenant-b-approved"],
+    }),
   };
   const routes = createApprovalRoutes(deps);
 
-  // Attacker tries to access another tenant's approval
   const crossTenantApprovalId = "appr-tenant-b-approved";
   const ctx = createMockContext(
     `/approvals/${crossTenantApprovalId}/decision`,
@@ -207,21 +253,21 @@ test("ISSUE #2039: No tenant isolation check on approvalId", async () => {
     "POST",
   );
 
-  const response = await callRoute(routes, ctx);
-
-  // Currently no tenant isolation check - the request succeeds
-  assert.equal(response?.statusCode, 200);
+  await assert.rejects(() => callRoute(routes, ctx), /Actor not authorized for this approval/);
 });
 
-test("ISSUE #2039: applyDecision is called without authorization verification", async () => {
-  // Verify that applyDecision is called even for unauthorized approvals
+test("ISSUE #2039: applyDecision is not called when authorization fails", async () => {
   let decisionApplied = false;
   const deps = {
-    authService: createMockAuthService(),
+    authService: createMockAuthService(["viewer", "operator"], { actorId: "actor-2", tenantId: "tenant-a" }),
     approvalService: {
       applyDecision: () => { decisionApplied = true; },
     } as unknown as ApprovalService,
-    inspectService: createMockInspectService(),
+    inspectService: createMockInspectService({
+      tenantId: "tenant-a",
+      allowedActorIds: ["actor-1"],
+      existingApprovalIds: ["appr-unauthorized-access-attempt"],
+    }),
   };
   const routes = createApprovalRoutes(deps);
 
@@ -234,10 +280,9 @@ test("ISSUE #2039: applyDecision is called without authorization verification", 
     "POST",
   );
 
-  await callRoute(routes, ctx);
+  await assert.rejects(() => callRoute(routes, ctx), /Actor not authorized for this approval/);
 
-  // Decision was applied even though the actor had no rights to this approval
-  assert.equal(decisionApplied, true);
+  assert.equal(decisionApplied, false);
 });
 
 // ── Existing behavior tests (to ensure we don't break anything) ───────────────

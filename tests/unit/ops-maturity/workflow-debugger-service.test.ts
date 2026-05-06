@@ -85,5 +85,5 @@ test("WorkflowDebuggerService evaluates trace hits and compares replayable snaps
       },
     ],
   );
-  assert.deepEqual(report.differences, ["step:deploy:paused->failed"]);
+  assert.deepEqual(report.differences, ["step:deploy:status:paused->failed"]);
 });

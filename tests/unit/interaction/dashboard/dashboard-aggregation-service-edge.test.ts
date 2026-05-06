@@ -405,8 +405,8 @@ test("buildOperatorDashboard attentionQueue sorted by createdAt ascending", () =
 
   const dashboard = service.buildOperatorDashboard();
 
-  // System health incident should be at the end (most recent createdAt)
-  const systemIncident = dashboard.attentionQueue[dashboard.attentionQueue.length - 1];
+  // System health incident should be first (most recent createdAt with descending sort)
+  const systemIncident = dashboard.attentionQueue[0];
   assert.ok(systemIncident!.title.includes("Platform health degraded"));
 });
 

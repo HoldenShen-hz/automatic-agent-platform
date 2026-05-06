@@ -6,6 +6,7 @@ import {
   parseGatewaySendPayload,
   parseApprovalDecisionPayload,
   parseBillingReconcilePayload,
+  parseUpdateTaskPayload,
 } from "../../../../../../src/platform/interface/api/http-server/schemas.js";
 import { TASK_STATUSES } from "../../../../../../src/platform/contracts/types/status.js";
 
@@ -358,8 +359,22 @@ test("TASK_STATUSES defines correct state transitions", () => {
   assert.ok(TASK_STATUSES.includes("cancelled"));
 });
 
-test("parseUpdateTaskPayload accepts all 7 valid task statuses", () => {
-  const validStatuses = ["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"] as const;
+test("parseUpdateTaskPayload accepts all canonical runtime task statuses", () => {
+  const validStatuses = [
+    "created",
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+    "completed",
+    "failed",
+    "aborted",
+  ] as const;
   for (const status of validStatuses) {
     const payload = parseUpdateTaskPayload({ status });
     assert.equal(payload.status, status, `Expected status '${status}' to be accepted`);
@@ -367,7 +382,7 @@ test("parseUpdateTaskPayload accepts all 7 valid task statuses", () => {
 });
 
 test("parseUpdateTaskPayload rejects invalid status values", () => {
-  const invalidStatuses = ["unknown", "running", "completed", "active", "stopped", "invalid_status", "processing"];
+  const invalidStatuses = ["unknown", "active", "stopped", "invalid_status", "processing", "cancelled", "done"];
   for (const status of invalidStatuses) {
     try {
       parseUpdateTaskPayload({ status: status as any });
@@ -379,16 +394,30 @@ test("parseUpdateTaskPayload rejects invalid status values", () => {
 });
 
 test("parseUpdateTaskPayload status transitions are valid", () => {
-  const validStatuses = ["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"] as const;
+  const validStatuses = [
+    "created",
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+    "completed",
+    "failed",
+    "aborted",
+  ] as const;
   for (const status of validStatuses) {
     const payload = parseUpdateTaskPayload({ status });
     assert.equal(payload.status, status);
   }
 });
 
-test("parseUpdateTaskPayload terminal status: done is accepted", () => {
-  const payload = parseUpdateTaskPayload({ status: "done" });
-  assert.equal(payload.status, "done");
+test("parseUpdateTaskPayload terminal status: completed is accepted", () => {
+  const payload = parseUpdateTaskPayload({ status: "completed" });
+  assert.equal(payload.status, "completed");
 });
 
 test("parseUpdateTaskPayload terminal status: failed is accepted", () => {
@@ -396,7 +425,7 @@ test("parseUpdateTaskPayload terminal status: failed is accepted", () => {
   assert.equal(payload.status, "failed");
 });
 
-test("parseUpdateTaskPayload terminal status: cancelled is accepted", () => {
-  const payload = parseUpdateTaskPayload({ status: "cancelled" });
-  assert.equal(payload.status, "cancelled");
+test("parseUpdateTaskPayload terminal status: aborted is accepted", () => {
+  const payload = parseUpdateTaskPayload({ status: "aborted" });
+  assert.equal(payload.status, "aborted");
 });

@@ -87,7 +87,7 @@ test("ExecutionPlan is listed in LEGACY_CONTRACT_NAMES", () => {
 });
 
 test("ExecutionPlan type is deprecated via JSDoc @deprecated marker", () => {
-  // Verify by checking that createExecutionPlan throws with legacy_contract_forbidden code
+  // Verify by checking that createExecutionPlan throws with legacy_execution_plan_forbidden code
   assert.throws(
     () =>
       createExecutionPlan({
@@ -105,11 +105,11 @@ test("ExecutionPlan type is deprecated via JSDoc @deprecated marker", () => {
         ],
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "execution_plan.legacy_contract_forbidden",
+      error instanceof ValidationError && error.code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 
-test("createExecutionPlan rejects all inputs with legacy_contract_forbidden error", () => {
+test("createExecutionPlan rejects all inputs with legacy_execution_plan_forbidden error", () => {
   assert.throws(
     () =>
       createExecutionPlan({
@@ -119,7 +119,7 @@ test("createExecutionPlan rejects all inputs with legacy_contract_forbidden erro
         steps: [],
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "execution_plan.legacy_contract_forbidden",
+      error instanceof ValidationError && error.code === "platform_contracts.legacy_execution_plan_forbidden",
   );
 });
 
