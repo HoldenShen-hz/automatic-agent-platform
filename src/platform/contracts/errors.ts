@@ -538,7 +538,27 @@ export class InternalAppError extends AppError {
 }
 
 /**
+ * Error for leader authority violations in HA coordinator operations.
+ * Thrown when a non-leader node attempts a leader-only action.
+ * Default HTTP status: 403 Forbidden
+ */
+export class LeaderAuthorityError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "security",
+      source: options.source ?? "internal",
+      statusCode: options.statusCode ?? 403,
+      retryable: options.retryable ?? false,
+    });
+    this.name = "LeaderAuthorityError";
+  }
+}
+
+/**
  * Legacy locking error with E7-prefixed error code.
+ * Indicates distributed lock acquisition failures or lock conflicts.
+ */
  * Indicates distributed lock acquisition failures or lock conflicts.
  */
 export class LockingError extends StorageError {

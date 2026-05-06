@@ -63,6 +63,32 @@ export type {
 
 // ── Service ─────────────────────────────────────────────────────────
 
+/**
+ * Singleton instance of HaCoordinatorService for leader authority checks.
+ * R4-36 fix: Wired into write paths to enforce leader-only authorization.
+ */
+let _haCoordinatorInstance: HaCoordinatorService | null = null;
+
+/**
+ * Gets the singleton HA Coordinator instance.
+ * Throws if no instance has been set via setHaCoordinatorInstance().
+ */
+export function getHaCoordinatorInstance(): HaCoordinatorService {
+  if (!_haCoordinatorInstance) {
+    throw new Error("HA Coordinator not initialized. Call setHaCoordinatorInstance() first.");
+  }
+  return _haCoordinatorInstance;
+}
+
+/**
+ * Sets the singleton HA Coordinator instance.
+ * Should be called during application startup.
+ */
+export function setHaCoordinatorInstance(db: AuthoritativeSqlDatabase, options?: HaCoordinatorServiceOptions): HaCoordinatorService {
+  _haCoordinatorInstance = new HaCoordinatorService(db, options);
+  return _haCoordinatorInstance;
+}
+
 export class HaCoordinatorService {
   private readonly defaultTtlMs: number;
   private readonly strictLeaderAuthority: boolean;
@@ -768,5 +794,40 @@ export class HaCoordinatorService {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(id, actionType, requestingNodeId, leaderNodeId, epoch, fencingToken, authorized ? 1 : 0, reasonCode, now);
+  }
+}
+
+// ── Leader Authority Helper ─────────────────────────────────────────
+
+import { LeaderAuthorityError } from "../../contracts/errors.js";
+
+/**
+ * Asserts that the given node is the current leader and authorized to perform
+ * leader-only actions. Throws LeaderAuthorityError if not authorized.
+ *
+ * R4-36 fix: This helper wires HACoordinator.authorizeAction into write paths
+ * to enforce that only the current leader can perform write operations.
+ *
+ * @param nodeId - The node ID requesting authorization
+ * @param actionType - The action type being authorized (for audit logging)
+ * @throws LeaderAuthorityError if the node is not the current leader
+ */
+export function assertLeaderAuthoritative(nodeId: string, actionType: string): void {
+  const coordinator = getHaCoordinatorInstance();
+  const auth = coordinator.authorizeAction(nodeId, actionType, "leader_only");
+  if (!auth.authorized) {
+    throw new LeaderAuthorityError(
+      "ha.leader_authority_required",
+      `Node ${nodeId} not authorized for ${actionType}: ${auth.reasonCode}`,
+      {
+        details: {
+          nodeId,
+          actionType,
+          reasonCode: auth.reasonCode,
+          leaderNodeId: auth.leaderNodeId,
+          epoch: auth.epoch,
+        },
+      },
+    );
   }
 }

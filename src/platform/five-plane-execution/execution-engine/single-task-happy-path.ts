@@ -686,6 +686,14 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         toStatus: "cancelled",
         ...createContext(traceContext, "budget.reservation_failed"),
       });
+      // R4-25 (INV-BUDGET-001): Settle budget session before returning
+      if (budgetReservationId) {
+        try {
+          budgetSessionManager.settle(budgetReservationId, 0);
+        } catch (settleError) {
+          logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+        }
+      }
       return store.operations.loadTaskSnapshot(taskId);
     }
 
@@ -758,6 +766,15 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         traceId,
         createdAt: nowIso(),
       });
+
+      // R4-25 (INV-BUDGET-001): Settle budget session before returning
+      if (budgetReservationId) {
+        try {
+          budgetSessionManager.settle(budgetReservationId, 0);
+        } catch (settleError) {
+          logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+        }
+      }
 
       return store.operations.loadTaskSnapshot(taskId);
     }
@@ -951,6 +968,15 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       }),
       context: createContext(traceContext, "task.completed"),
     });
+
+    // R4-25 (INV-BUDGET-001): Settle budget session on normal completion
+    if (budgetReservationId) {
+      try {
+        budgetSessionManager.settle(budgetReservationId, 0);
+      } catch (settleError) {
+        logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+      }
+    }
 
     return store.operations.loadTaskSnapshot(taskId);
     }); // end provideContext

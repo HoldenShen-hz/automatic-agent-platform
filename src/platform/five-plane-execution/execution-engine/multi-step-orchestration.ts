@@ -576,6 +576,14 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "queued", toStatus: "cancelled", executionId: null, ...createContext(traceContext, "budget.reservation_failed") });
         transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "cancelled", currentStepIndex: 0, outputsJson: workflow.outputsJson, ...createContext(traceContext, "budget.reservation_failed") });
         transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "open", toStatus: "cancelled", ...createContext(traceContext, "budget.reservation_failed") });
+        // R4-25 (INV-BUDGET-001): Settle budget session before returning
+        if (budgetReservationId) {
+          try {
+            budgetSessionManager.settle(budgetReservationId, 0);
+          } catch (settleError) {
+            logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+          }
+        }
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: [],
@@ -617,6 +625,14 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           traceId,
           createdAt: nowIso(),
         });
+        // R4-25 (INV-BUDGET-001): Settle budget session before returning
+        if (budgetReservationId) {
+          try {
+            budgetSessionManager.settle(budgetReservationId, 0);
+          } catch (settleError) {
+            logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+          }
+        }
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: [],
@@ -684,6 +700,14 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
       ({ outputs, stepOutputs, latestCompaction, workflowRetryCount, workflowLastErrorCode, blockedForDecision, skippedStepIds, failedStepIds } = stepResult);
 
       if (blockedForDecision) {
+        // R4-25 (INV-BUDGET-001): Settle budget session before returning
+        if (budgetReservationId) {
+          try {
+            budgetSessionManager.settle(budgetReservationId, 0);
+          } catch (settleError) {
+            logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+          }
+        }
         return {
           snapshot: store.operations.loadTaskSnapshot(taskId),
           streamFrames: streamBridge.replayAfterSequence(streamId, 0),
@@ -744,6 +768,15 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
           outputsJson: JSON.stringify(outputs),
           context: createContext(traceContext, "task.completed"),
         });
+      }
+
+      // R4-25 (INV-BUDGET-001): Settle budget session on normal completion
+      if (budgetReservationId) {
+        try {
+          budgetSessionManager.settle(budgetReservationId, 0);
+        } catch (settleError) {
+          logger.log({ level: "warn", message: "R4-25: Failed to settle outer budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+        }
       }
 
       return {

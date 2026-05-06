@@ -235,7 +235,6 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         const correlationId = ctx.requestId;
         // R7-13: Extract Idempotency-Key from request headers for safe retries
         const requestIdempotencyKey = extractIdempotencyKeyFromRequest(ctx.request);
-        const taskId = newId("task");
         const now = nowIso();
         const tenantId = principal.tenantId ?? null;
         const missionControlTenantId = tenantId ?? undefined;
@@ -283,6 +282,28 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           }
         }
 
+        // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as P3→P4 contract
+        // All execution paths must use PlanGraphBundle as the authoritative entry point
+        const minimalWorkflow = {
+          workflowId: newId("workflow"),
+          divisionId,
+          steps: [{
+            stepId: "step-1",
+            roleId: "general_executor",
+            outputKey: "result",
+            timeoutMs: 300000,
+            maxAttempts: 3,
+          }],
+        };
+        const harnessRunId = newId("harness_run");
+        const planGraphBundle = minimalWorkflowToPlanGraphBundle(minimalWorkflow, harnessRunId);
+        const entryGuard = new RuntimeEntryGuard();
+        const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
+        // R4-26 (INV-GRAPH-001): Extract validated PlanGraphBundle from guard result
+        const validatedPlanGraphBundle = guardResult.planGraphBundle;
+        // R4-26 (INV-GRAPH-001): Derive taskId from PlanGraphBundle instead of independent newId("task")
+        const taskId = validatedPlanGraphBundle.planGraphBundleId;
+
         const admissionResult = deps.intakeAdmissionService
           ? deps.intakeAdmissionService.admit({
             tenantId: tenantId ?? "global",
@@ -325,6 +346,23 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
         };
 
         const persistTask = () => {
+          // R4-26 (INV-GRAPH-001): Insert plan_graph_bundles record alongside task creation
+          // This establishes the P3→P4 contract as the authoritative execution entry point
+          if ("db" in taskStore && taskStore.db && typeof taskStore.db.transaction === "function") {
+            // Insert plan_graph_bundle first within the same transaction
+            executeQuery(
+              taskStore.db.connection,
+              `INSERT INTO plan_graph_bundles (
+                plan_graph_bundle_id, harness_run_id, graph_version, graph_json, validation_report_json, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?)`,
+              validatedPlanGraphBundle.planGraphBundleId,
+              harnessRunId,
+              validatedPlanGraphBundle.graphVersion,
+              JSON.stringify(validatedPlanGraphBundle.graph),
+              JSON.stringify(validatedPlanGraphBundle.validationReport),
+              validatedPlanGraphBundle.createdAt,
+            );
+          }
           taskStore.task.insertTask({
             ...newTask,
           });
