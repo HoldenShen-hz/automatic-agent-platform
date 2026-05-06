@@ -61,18 +61,18 @@ switch (resolvedEnvConfig.action) {
     });
     break;
   case "list":
-    output = service.listSnapshots();
+    output = getService().listSnapshots();
     break;
   case "restore":
-    if (envConfig.snapshotId == null) {
+    if (resolvedEnvConfig.snapshotId == null) {
       throw new ValidationError("missing_env:AA_SHADOW_SNAPSHOT_ID", "missing_env:AA_SHADOW_SNAPSHOT_ID");
     }
-    output = service.restoreSnapshot({
-      snapshotId: envConfig.snapshotId,
+    output = getService().restoreSnapshot({
+      snapshotId: resolvedEnvConfig.snapshotId,
     });
     break;
   default:
-    throw new ValidationError(`unknown_shadow_snapshot_action:${envConfig.action}`, `unknown_shadow_snapshot_action:${envConfig.action}`);
+    throw new ValidationError(`unknown_shadow_snapshot_action:${resolvedEnvConfig.action}`, `unknown_shadow_snapshot_action:${resolvedEnvConfig.action}`);
 }
 
 process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);

@@ -121,6 +121,19 @@ const JARGON_MAP: Record<string, string> = {
 };
 
 /**
+ * §165-1926 P2 FIX: Pre-compiled RegExp cache for jargon replacement.
+ * Previously, simplifyText() created new RegExp objects on every call for each
+ * jargon term, causing repeated regex compilation overhead. Now we pre-compile
+ * and cache at module load time for O(1) lookups.
+ */
+const JARGON_REGEX_CACHE: ReadonlyMap<string, RegExp> = new Map(
+  Object.entries(JARGON_MAP).map(([jargon]) => [
+    jargon,
+    new RegExp(jargon, "gi"),
+  ])
+);
+
+/**
  * Generates a concise headline for the explanation.
  */
 function generateHeadline(stageName: string, summary: string, icon: string): string {
@@ -225,12 +238,14 @@ function calculateConfidence(factors: readonly string[], causalLinks: readonly C
 
 /**
  * Replaces technical jargon with simple language.
+ * §165-1926 P2 FIX: Uses pre-compiled RegExp cache for performance.
  */
 function simplifyText(text: string): string {
   let simplified = text;
 
-  for (const [jargon, simple] of Object.entries(JARGON_MAP)) {
-    simplified = simplified.replace(new RegExp(jargon, "gi"), simple);
+  // Use pre-compiled regex cache instead of creating new RegExp on each call
+  for (const [jargon, regex] of JARGON_REGEX_CACHE) {
+    simplified = simplified.replace(regex, JARGON_MAP[jargon]!);
   }
 
   // Remove excessive technical detail markers

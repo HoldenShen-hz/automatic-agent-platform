@@ -895,6 +895,18 @@ export class ScimProvisionService {
         case "remove":
           if (operation.path === "groups") {
             next = { ...next, groups: [] };
+          } else if (operation.path != null && operation.path.startsWith("members[value eq")) {
+            // Parse members[value eq "xxx"] filter to remove specific member
+            const match = operation.path.match(/members\[value eq\s+"([^"]+)"\]/);
+            if (match && typeof operation.value === "object" && operation.value !== null) {
+              // Get the member value to remove from the filter
+              const memberValueToRemove = match[1];
+              if (memberValueToRemove) {
+                const currentGroups = user.groups;
+                const updatedGroups = currentGroups.filter((g) => g.value !== memberValueToRemove);
+                next = { ...next, groups: updatedGroups };
+              }
+            }
           }
           break;
       }

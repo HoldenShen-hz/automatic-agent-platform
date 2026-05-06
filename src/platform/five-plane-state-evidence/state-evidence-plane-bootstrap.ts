@@ -29,14 +29,19 @@ export function buildStateEvidencePlaneBootstrap(): StateEvidencePlaneBootstrap 
   };
 }
 
-export function registerStateEvidencePlaneBootstrap(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
-): StateEvidencePlaneBootstrap {
+/**
+ * Bootstrap registrar for state-evidence plane services.
+ * R4-33/R4-35: Using registerBootstrap ensures RuntimeTruthRepository is available
+ * on ALL registry instances (global singleton via getInstance() AND scoped registries).
+ * This fixes the architecture gap where multi-step-orchestration.ts uses
+ * ServiceRegistry.getInstance() but the repository was only registered on scoped registries.
+ */
+ServiceRegistry.registerBootstrap("state-evidence-plane", (registry) => {
   registry.register<readonly StateEvidenceCapabilityBaseline[]>(STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID, {
     init: () => listStateEvidenceCapabilityBaselines(),
   });
-  // R4-33/R4-35: Register RuntimeTruthRepository as a singleton bootstrap service
-  // Previously this was created per-orchestration-run in multi-step-orchestration.ts:255
+  // R4-33/R4-35: Register RuntimeTruthRepository as a bootstrap-level service
+  // Using registerBootstrap ensures it's available on every registry instance
   registry.register<RuntimeRepository>(RUNTIME_TRUTH_REPOSITORY_SERVICE_ID, {
     init: () => new RuntimeTruthRepository(),
     dependsOn: [STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID],
@@ -45,7 +50,13 @@ export function registerStateEvidencePlaneBootstrap(
     init: () => buildStateEvidencePlaneBootstrap(),
     dependsOn: [STATE_EVIDENCE_PLANE_CATALOG_SERVICE_ID, RUNTIME_TRUTH_REPOSITORY_SERVICE_ID],
   });
+});
 
+export function registerStateEvidencePlaneBootstrap(
+  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+): StateEvidencePlaneBootstrap {
+  // R4-33/R4-35: RuntimeTruthRepository is now registered via registerBootstrap above,
+  // so it's available on this registry even if it was created via createScoped()
   return registry.get<StateEvidencePlaneBootstrap>(STATE_EVIDENCE_PLANE_BOOTSTRAP_SERVICE_ID);
 }
 

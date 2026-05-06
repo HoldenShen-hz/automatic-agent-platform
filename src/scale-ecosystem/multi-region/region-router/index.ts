@@ -19,6 +19,16 @@ export const RegionDescriptorSchema = z.object({
   residencyAllowed: z.boolean().default(true),
   // R3-16 FIX: fencing epoch for region-level leader election
   fencingEpoch: z.number().int().nonnegative().default(0),
+  // R13-24 FIX: §52 requires explicit topology mode declaration
+  // active_active: all regions serve reads/writes, conflicts resolved via consensus
+  // active_passive: only primary serves writes, standby serves reads after failover
+  // single_region: no multi-region replication, single point of deployment
+  topologyMode: z.enum(["active_active", "active_passive", "single_region"]).default("single_region"),
+  // R13-24 FIX: promotion priority for active-passive failover - lower number = higher priority
+  // Used to determine promotion order when primary fails
+  promotionPriority: z.number().int().nonnegative().default(0),
+  // R13-24 FIX: conflict resolution mode for active-active topology
+  conflictResolutionMode: z.enum(["lww", "vector_clock", "quorum", "none"]).default("none"),
 });
 
 export type RegionDescriptor = z.output<typeof RegionDescriptorSchema>;

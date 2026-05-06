@@ -130,6 +130,8 @@ describe("web runtime clients creation", () => {
   });
 
   it("uses TokenManager when provided in config", () => {
+    const { createAuthInterceptor } = require("@aa/shared-api-client");
+    createAuthInterceptor.mockClear();
     const mockTokenManager = {
       getToken: vi.fn(() => "test-token"),
       refreshToken: vi.fn(),
@@ -140,15 +142,20 @@ describe("web runtime clients creation", () => {
       tokenManager: mockTokenManager as never,
     });
     expect(result.client).toBeDefined();
+    expect(result.tokenManager).toBe(mockTokenManager);
+    expect(createAuthInterceptor).toHaveBeenCalledWith(mockTokenManager);
   });
 
   it("passes tenantId to createWebRuntimeClients", () => {
+    const { createTenantInterceptor } = require("@aa/shared-api-client");
+    createTenantInterceptor.mockClear();
     const config = createWebRuntimeConfig({});
     const result = createWebRuntimeClients({
       ...config,
       tenantId: "tenant-123",
     });
     expect(result.client).toBeDefined();
+    expect(createTenantInterceptor).toHaveBeenCalledWith("tenant-123");
   });
 });
 
