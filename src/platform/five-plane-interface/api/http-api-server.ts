@@ -18,11 +18,13 @@ import { MissionControlService } from "./mission-control-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { PrometheusMetricsExporter } from "../../shared/observability/prometheus-metrics-exporter.js";
 import { AppError } from "../../contracts/errors.js";
+import { nowIso } from "../../contracts/types/ids.js";
 import { BillingService } from "../../../scale-ecosystem/billing/billing-service.js";
 import { DomainRegistryService } from "../../../domains/registry/domain-registry-service.js";
 import { PluginSpiRegistry } from "../../../domains/registry/plugin-spi-registry.js";
 import type { KnowledgePlaneService } from "../../state-evidence/knowledge/knowledge-plane-service.js";
 import type { ArtifactPlaneService } from "../../state-evidence/artifacts/artifact-plane-service.js";
+import { WorkerRegistryService } from "../../execution/worker-pool/worker-registry-service.js";
 import { WebSocketBridge, type TaskWebSocketEvent } from "../channel-gateway/websocket-bridge.js";
 import type { WebhookIngressService } from "../webhook/index.js";
 import type { WebhookOutboxDispatchService } from "../webhook/webhook-outbox-dispatch-service.js";
@@ -120,6 +122,10 @@ export interface HttpApiServerOptions {
   apiDefaultTimeoutMs?: number;
   /** Maximum allowed synchronous API timeout in milliseconds */
   apiMaxTimeoutMs?: number;
+  /** Interval for stale worker heartbeat sweeps; values <= 0 disable the monitor */
+  workerHeartbeatSweepIntervalMs?: number;
+  /** Heartbeat TTL used when detecting stale workers */
+  workerHeartbeatTtlMs?: number;
 }
 
 export interface StartServerOptions {
@@ -165,6 +171,10 @@ export class HttpApiServer {
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
   private readonly idempotencyKeyMiddleware: IdempotencyKeyMiddleware;
+  private readonly workerRegistry: WorkerRegistryService | null;
+  private readonly workerHeartbeatSweepIntervalMs: number;
+  private readonly workerHeartbeatTtlMs: number;
+  private workerHeartbeatSweepHandle: ReturnType<typeof setInterval> | null = null;
 
   public constructor(private readonly options: HttpApiServerOptions) {
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
@@ -179,6 +189,9 @@ export class HttpApiServer {
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
     this.idempotencyKeyMiddleware = getGlobalIdempotencyKeyMiddleware();
+    this.workerRegistry = options.taskStore != null ? new WorkerRegistryService(options.taskStore) : null;
+    this.workerHeartbeatSweepIntervalMs = Math.max(0, Math.trunc(options.workerHeartbeatSweepIntervalMs ?? 15_000));
+    this.workerHeartbeatTtlMs = Math.max(1, Math.trunc(options.workerHeartbeatTtlMs ?? 30_000));
     const corsConfigInput: Partial<CorsConfig> = {
       allowedOrigins: options.cors?.allowedOrigins ?? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"]),
     };
@@ -223,6 +236,7 @@ export class HttpApiServer {
       );
       logger.info("WebSocket bridge initialized", { path: "/ws/v1/stream" });
     }
+    this.startWorkerHeartbeatSweep();
 
     const address = this.server.address();
     if (address == null || typeof address === "string") {
@@ -240,6 +254,7 @@ export class HttpApiServer {
   }
 
   public async stop(): Promise<void> {
+    this.stopWorkerHeartbeatSweep();
     if (!this.server.listening) {
       return;
     }
@@ -264,6 +279,44 @@ export class HttpApiServer {
         resolve();
       });
     });
+  }
+
+  private startWorkerHeartbeatSweep(): void {
+    if (this.workerRegistry == null || this.workerHeartbeatSweepIntervalMs <= 0 || this.workerHeartbeatSweepHandle != null) {
+      return;
+    }
+    this.runWorkerHeartbeatSweep();
+    this.workerHeartbeatSweepHandle = setInterval(() => {
+      this.runWorkerHeartbeatSweep();
+    }, this.workerHeartbeatSweepIntervalMs);
+  }
+
+  private stopWorkerHeartbeatSweep(): void {
+    if (this.workerHeartbeatSweepHandle == null) {
+      return;
+    }
+    clearInterval(this.workerHeartbeatSweepHandle);
+    this.workerHeartbeatSweepHandle = null;
+  }
+
+  private runWorkerHeartbeatSweep(occurredAt: string = nowIso()): void {
+    if (this.workerRegistry == null) {
+      return;
+    }
+    const staleWorkerIds = this.workerRegistry.detectStaleHeartbeats(occurredAt, this.workerHeartbeatTtlMs);
+    if (staleWorkerIds.length === 0) {
+      return;
+    }
+    if (this.options.incidentService != null) {
+      for (const workerId of staleWorkerIds) {
+        this.options.incidentService.openIncident({
+          tenantId: null,
+          severity: "high",
+          title: `Worker heartbeat missing: ${workerId}`,
+          linkedEvidenceRefs: [`worker://${workerId}`],
+        });
+      }
+    }
   }
 
   public broadcastTaskEvent(taskId: string, event: TaskWebSocketEvent): void {

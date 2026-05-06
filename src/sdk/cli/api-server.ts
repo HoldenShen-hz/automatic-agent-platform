@@ -41,6 +41,7 @@ import { loadApiServerEnv } from "../../platform/control-plane/config-center/api
 import { requireValidStartupEnv } from "../../platform/control-plane/config-center/startup-env-schema.js";
 import { TypedEventBus } from "../../platform/state-evidence/events/typed-event-bus.js";
 import { TypedEventBusPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
+import { IncidentCaseService } from "../../platform/state-evidence/incident/index.js";
 import { DomainEventFeedbackConsumer } from "../../scale-ecosystem/feedback-loop/collector/domain-event-feedback-consumer.js";
 import { InspectService } from "../../platform/shared/observability/inspect-service.js";
 import { HealthService } from "../../platform/shared/observability/health-service.js";
@@ -155,6 +156,7 @@ async function main(): Promise<void> {
 
     // Initialize billing service
     const billingService = new BillingService(db, store);
+    const incidentService = new IncidentCaseService();
 
     // Initialize authentication service - require at least one auth mechanism
     // Per security requirements, the server must not run with all endpoints unprotected
@@ -232,10 +234,12 @@ async function main(): Promise<void> {
       coordinatorLoadBalancingService: coordinatorLoadBalancing,
       prometheusMetricsExporter,
       billingService,
+      incidentService,
       knowledgePlaneService: knowledgePlane,
       artifactPlaneService: artifactPlane,
       domainRegistryService: domainRegistry,
       pluginRegistry,
+      taskStore: store,
       enableWebSocket: envConfig.enableWebSocket,
     });
     const webSocketStatusRelay =

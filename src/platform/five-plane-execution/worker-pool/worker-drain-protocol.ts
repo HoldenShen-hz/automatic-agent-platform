@@ -329,7 +329,7 @@ export class WorkerDrainProtocol {
       phase: newPhase,
       runTerminationCleanupRequired: deadlineExceeded || currentReceipt.handoverLeaseIds.length > 0,
       forcedHandoffCount: deadlineExceeded ? currentReceipt.completedLeaseCount : currentReceipt.forcedHandoffCount,
-      cleanupResult: currentReceipt.cleanupResult,
+      ...(currentReceipt.cleanupResult !== undefined && { cleanupResult: currentReceipt.cleanupResult }),
       phaseHistory: updatedHistory,
     };
   }

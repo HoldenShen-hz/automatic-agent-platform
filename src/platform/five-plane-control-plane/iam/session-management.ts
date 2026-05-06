@@ -8,7 +8,7 @@
  * - Layer 3: Context-aware authorization
  */
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 
 // ============================================================================
@@ -83,6 +83,10 @@ interface SessionEntry {
 const sessions = new Map<string, SessionEntry>();
 const accessTokenIndex = new Map<string, string>(); // tokenId -> sessionId
 const refreshTokenIndex = new Map<string, string>(); // tokenId -> sessionId
+// Index for revoked tokens to enable session_revoked error instead of access_token_invalid
+const revokedAccessTokenIndex = new Map<string, string>(); // revoked tokenId -> sessionId
+// Index for rotated refresh tokens to enable refresh_token_reused error
+const rotatedRefreshTokenIndex = new Map<string, string>(); // old rotated tokenId -> sessionId
 
 // ============================================================================
 // Token Generation
@@ -95,7 +99,6 @@ function generateTokenId(): string {
 function hashToken(token: string): string {
   // Use a simple hash for index lookup (not for password storage)
   // In production, use a proper HMAC-based token storage
-  const { createHash } = require("node:crypto");
   return createHash("sha256").update(token).digest("base64url");
 }
 
@@ -171,7 +174,12 @@ export function createSession(input: {
  */
 export function validateAccessToken(accessTokenString: string): SessionValidationResult {
   const tokenId = accessTokenString; // In production, parse JWT or opaque token
-  const sessionId = accessTokenIndex.get(tokenId);
+  let sessionId = accessTokenIndex.get(tokenId);
+
+  // Check if token was revoked (deleted from index but tracked separately)
+  if (!sessionId) {
+    sessionId = revokedAccessTokenIndex.get(tokenId) ?? undefined;
+  }
 
   if (!sessionId) {
     return { valid: false, session: null, reason: "access_token_invalid" };
@@ -206,7 +214,12 @@ export function validateAccessToken(accessTokenString: string): SessionValidatio
  */
 export function refreshSession(refreshTokenString: string): Session {
   const tokenId = refreshTokenString;
-  const sessionId = refreshTokenIndex.get(tokenId);
+  let sessionId = refreshTokenIndex.get(tokenId);
+
+  // Check if token was rotated (deleted from index but tracked separately)
+  if (!sessionId) {
+    sessionId = rotatedRefreshTokenIndex.get(tokenId) ?? undefined;
+  }
 
   if (!sessionId) {
     throw new ValidationError("session.refresh_token_invalid", "session.refresh_token_invalid");
@@ -231,6 +244,9 @@ export function refreshSession(refreshTokenString: string): Session {
   if (session.refreshToken.isRotated && session.refreshToken.tokenId !== tokenId) {
     throw new ValidationError("session.refresh_token_reused", "session.refresh_token_reused");
   }
+
+  // Record rotated refresh token for later reuse detection
+  rotatedRefreshTokenIndex.set(session.refreshToken.tokenId, sessionId);
 
   // Invalidate old tokens
   accessTokenIndex.delete(session.accessToken.tokenId);
@@ -290,6 +306,9 @@ export function revokeSession(sessionId: string): void {
   if (!entry) {
     throw new ValidationError("session.not_found", "session.not_found");
   }
+
+  // Record revoked access token for later lookup (enables session_revoked error)
+  revokedAccessTokenIndex.set(entry.session.accessToken.tokenId, sessionId);
 
   // Invalidate tokens
   accessTokenIndex.delete(entry.session.accessToken.tokenId);

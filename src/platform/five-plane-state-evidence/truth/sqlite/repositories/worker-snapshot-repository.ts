@@ -290,6 +290,7 @@ export class WorkerSnapshotRepository {
       this.conn,
       `${WORKER_SNAPSHOT_SELECT}
        WHERE last_heartbeat_at < ?
+         AND status <> 'offline'
        ORDER BY last_heartbeat_at ASC`,
       heartbeatBefore,
     );

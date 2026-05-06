@@ -97,12 +97,28 @@ test("TaskDecompositionService.decompose sets ownerRoleId from step.roleId", () 
   assert.equal(result[1]?.ownerRoleId, "reviewer");
 });
 
-test("TaskDecompositionService.decompose always includes read tool", () => {
+test("TaskDecompositionService.decompose does not add read for an isolated step", () => {
   const service = new TaskDecompositionService();
   const workflow = createMockWorkflow({
     executionSteps: [
       createMockExecutionStep({
         stepId: "step_a",
+      }),
+    ],
+  });
+
+  const result = service.decompose(workflow);
+
+  assert.ok(!result[0]?.toolNames.includes("read"));
+});
+
+test("TaskDecompositionService.decompose adds read when step depends on prior outputs", () => {
+  const service = new TaskDecompositionService();
+  const workflow = createMockWorkflow({
+    executionSteps: [
+      createMockExecutionStep({
+        stepId: "step_a",
+        dependsOnStepIds: ["step_prev"],
       }),
     ],
   });
@@ -189,7 +205,7 @@ test("TaskDecompositionService.decompose handles both compensationModel and outp
 
   const result = service.decompose(workflow);
 
-  assert.ok(result[0]?.toolNames.includes("read"));
+  assert.ok(!result[0]?.toolNames.includes("read"));
   assert.ok(result[0]?.toolNames.includes("apply_patch"));
   assert.ok(result[0]?.toolNames.includes("validate_output"));
 });

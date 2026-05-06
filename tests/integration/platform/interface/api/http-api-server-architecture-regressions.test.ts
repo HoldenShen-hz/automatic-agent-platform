@@ -6,15 +6,21 @@ import test from "node:test";
 
 import { ApiAuthService } from "../../../../../src/platform/interface/api/api-auth-service.js";
 import { HttpApiServer } from "../../../../../src/platform/interface/api/http-api-server.js";
+import { IncidentCaseService } from "../../../../../src/platform/state-evidence/incident/index.js";
 import { IntakeAdmissionService } from "../../../../../src/platform/orchestration/harness/runtime/intake-admission-service.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/state-evidence/truth/sqlite-database.js";
+import { WorkerRegistryService } from "../../../../../src/platform/execution/worker-pool/worker-registry-service.js";
 
-function createServerHarness() {
+function createServerHarness(options: {
+  workerHeartbeatSweepIntervalMs?: number;
+  workerHeartbeatTtlMs?: number;
+} = {}) {
   const workspace = mkdtempSync(join(tmpdir(), "aa-http-api-arch-"));
   const db = new SqliteDatabase(join(workspace, "api.db"));
   db.migrate();
   const store = new AuthoritativeTaskStore(db);
+  const incidentService = new IncidentCaseService();
   const authService = new ApiAuthService({
     apiKeys: [
       {
@@ -117,10 +123,18 @@ function createServerHarness() {
       approvalService: approvalService as never,
       authService,
       inspectService: inspectService as never,
+      incidentService,
       missionControlService: missionControlService as never,
       taskStore: store,
       intakeAdmissionService,
+      ...(options.workerHeartbeatSweepIntervalMs !== undefined
+        ? { workerHeartbeatSweepIntervalMs: options.workerHeartbeatSweepIntervalMs }
+        : {}),
+      ...(options.workerHeartbeatTtlMs !== undefined
+        ? { workerHeartbeatTtlMs: options.workerHeartbeatTtlMs }
+        : {}),
     }),
+    incidentService,
     cleanup() {
       db.close();
       rmSync(workspace, { recursive: true, force: true });
@@ -203,4 +217,33 @@ test("HttpApiServer replays idempotent task creation and persists the RSM fact e
   const factEvent = events.find((event) => event.eventType === "platform.harness_run.status_changed");
   assert.ok(factEvent, "expected task creation to persist the emitted harness platform fact event");
   assert.equal(factEvent?.traceId, "corr-task-create");
+});
+
+test("HttpApiServer sweeps stale worker heartbeats, marks workers offline, and opens a single incident", async (t) => {
+  const harness = createServerHarness({
+    workerHeartbeatSweepIntervalMs: 10,
+    workerHeartbeatTtlMs: 1_000,
+  });
+  t.after(async () => {
+    await harness.server.stop();
+    harness.cleanup();
+  });
+
+  const workers = new WorkerRegistryService(harness.store);
+  workers.recordHeartbeat({
+    workerId: "worker-stale-1",
+    status: "idle",
+    capabilities: ["read"],
+    runningExecutionIds: [],
+    maxConcurrency: 1,
+    occurredAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  await harness.server.start({ host: "127.0.0.1", port: 0 });
+  await new Promise((resolve) => setTimeout(resolve, 40));
+
+  const snapshot = harness.store.worker.getWorkerSnapshot("worker-stale-1");
+  assert.equal(snapshot?.status, "offline");
+  assert.equal(harness.incidentService.countIncidents(undefined), 1);
+  assert.match(harness.incidentService.listIncidents(undefined, 10)[0]?.title ?? "", /worker-stale-1/);
 });

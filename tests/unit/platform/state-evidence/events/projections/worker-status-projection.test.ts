@@ -145,6 +145,48 @@ test("workerStatusProjectionHandler handles worker:lease_released_after_writebac
   assert.equal(state.leaseReleasesAfterWriteback, 1);
 });
 
+test("workerStatusProjectionHandler handles worker:registered", () => {
+  const event = makeEvent(
+    "evt_registered_1",
+    "worker:registered",
+    "task_1",
+    '{"workerId":"worker_1"}',
+  );
+
+  const state = workerStatusProjectionHandler(null, event) as unknown as WorkerStatusState;
+
+  assert.equal(state.status, "idle");
+  assert.equal(state.eventCount, 1);
+});
+
+test("workerStatusProjectionHandler handles worker:deregistered", () => {
+  const event = makeEvent(
+    "evt_deregistered_1",
+    "worker:deregistered",
+    "task_1",
+    '{"workerId":"worker_1"}',
+  );
+
+  const state = workerStatusProjectionHandler(null, event) as unknown as WorkerStatusState;
+
+  assert.equal(state.status, "dead");
+  assert.equal(state.eventCount, 1);
+});
+
+test("workerStatusProjectionHandler handles worker:drain_started", () => {
+  const event = makeEvent(
+    "evt_drain_started_1",
+    "worker:drain_started",
+    "task_1",
+    '{"workerId":"worker_1"}',
+  );
+
+  const state = workerStatusProjectionHandler(null, event) as unknown as WorkerStatusState;
+
+  assert.equal(state.status, "idle");
+  assert.equal(state.eventCount, 1);
+});
+
 test("workerStatusProjectionHandler is idempotent - same event twice", () => {
   const event = makeEvent(
     "evt_idem_1",

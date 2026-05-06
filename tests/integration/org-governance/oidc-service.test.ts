@@ -255,7 +255,8 @@ test("integration: OIDC fetchUserInfo falls back to simulation on network error"
 
   assert.ok(result !== null, "should return simulated user info on error");
   assert.ok(result.sub.length > 0, "sub should be non-empty");
-  assert.equal(result.email, "user@example.com", "simulated email should match");
+  // simulateUserInfo generates email from hash of access token, check format
+  assert.ok(result.email?.endsWith("@example.com"), "simulated email should have correct domain");
 });
 
 test("integration: OIDC fetchUserInfo returns simulated data when endpoint returns error", async () => {

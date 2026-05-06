@@ -12,6 +12,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { RecipeExecutor, type RecipeExecutionContext, type RecipeExecutionResult } from "../../../../src/domains/recipes/recipe-executor.js";
 import { DomainRecipeSchema, type DomainRecipe } from "../../../../src/domains/recipes/index.js";
+import { WorkflowRegistry } from "../../../../src/domains/registry/workflow-registry.js";
+
+function createExecutor(workflowIds: readonly string[]): RecipeExecutor {
+  const registry = new WorkflowRegistry();
+  registry.registerAll(
+    workflowIds.map((workflowId) => ({
+      workflowId,
+      name: `Workflow ${workflowId}`,
+      triggerConditions: {},
+      steps: [],
+    })),
+  );
+  return new RecipeExecutor(registry);
+}
 
 function createRecipe(overrides: Partial<DomainRecipe> = {}): DomainRecipe {
   const validRecipe: DomainRecipe = {
@@ -47,7 +61,7 @@ function createContext(overrides: Partial<RecipeExecutionContext> = {}): RecipeE
 }
 
 test("recipe executor: successful execution with valid workflow", async () => {
-  const executor = new RecipeExecutor();
+  const executor = createExecutor(["wf_primary"]);
   const recipe = createRecipe({ recipeId: "recipe-success", defaultWorkflowId: "wf_primary" });
   const context = createContext();
 
@@ -94,7 +108,7 @@ test("recipe executor: case-insensitive nonexistent workflow detection", async (
 });
 
 test("recipe executor: preserves execution ID in result", async () => {
-  const executor = new RecipeExecutor();
+  const executor = createExecutor(["wf_valid"]);
   const recipe = createRecipe({ recipeId: "recipe-exec-id" });
   const context = createContext({ executionId: "custom-exec-123" });
 
@@ -104,7 +118,7 @@ test("recipe executor: preserves execution ID in result", async () => {
 });
 
 test("recipe executor: handles multiple tool bundle IDs", async () => {
-  const executor = new RecipeExecutor();
+  const executor = createExecutor(["wf_valid"]);
   const recipe = createRecipe({ recipeId: "recipe-multi-bundle", defaultToolBundleIds: ["bundle1", "bundle2", "bundle3"] });
   const context = createContext();
 
@@ -115,7 +129,7 @@ test("recipe executor: handles multiple tool bundle IDs", async () => {
 });
 
 test("recipe executor: workflow with valid name succeeds", async () => {
-  const executor = new RecipeExecutor();
+  const executor = createExecutor(["analysis_workflow"]);
   const recipe = createRecipe({ recipeId: "recipe-wf-name", defaultWorkflowId: "analysis_workflow" });
   const context = createContext();
 
@@ -142,7 +156,7 @@ test("recipe executor: schema validation on recipe input", async () => {
 });
 
 test("recipe executor: context input is preserved in output", async () => {
-  const executor = new RecipeExecutor();
+  const executor = createExecutor(["wf_valid"]);
   const recipe = createRecipe({ recipeId: "recipe-context-input" });
   const context = createContext({ input: "specific test input for processing" });
 

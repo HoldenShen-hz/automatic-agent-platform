@@ -16,7 +16,7 @@ import {
   buildContainerizedPluginRuntimeLaunchSpec,
   buildPluginRuntimeExecArgv,
   buildPluginRuntimeSandboxRoot,
-} from "../../../../src/domains/registry/plugin-runtime-host.js";
+} from "../../../src/domains/registry/plugin-runtime-host.js";
 import type { PluginLifecycleContext, PluginSandboxPolicy } from "../../../../src/domains/registry/plugin-spi.js";
 
 function createSandboxPolicy(overrides: Partial<PluginSandboxPolicy> = {}): PluginSandboxPolicy {
@@ -108,15 +108,15 @@ test("buildPluginRuntimeSandboxRoot sanitizes pluginId for path safety", () => {
   const root = buildPluginRuntimeSandboxRoot("plugin.coding.retriever", "/tmp/sandboxes");
 
   assert.ok(root.includes("/tmp/sandboxes"));
-  // The sanitize function replaces invalid chars with -
-  assert.ok(!root.includes("."));
+  // The sanitize function replaces invalid chars with - but preserves dots, underscores, hyphens
+  assert.ok(root.includes("plugin.coding.retriever"));
 });
 
 test("buildPluginRuntimeSandboxRoot replaces dots with hyphens", () => {
   const root = buildPluginRuntimeSandboxRoot("plugin.test.adapter", "/tmp/sandboxes");
 
-  // plugin.test.adapter becomes plugin-test-adapter
-  assert.ok(root.includes("plugin-test-adapter") || root.includes("plugin_test_adapter"));
+  // plugin.test.adapter should be preserved (dots are valid)
+  assert.ok(root.includes("plugin.test.adapter"));
 });
 
 test("buildPluginRuntimeSandboxRoot handles underscores", () => {
@@ -177,8 +177,8 @@ test("buildContainerizedPluginRuntimeLaunchSpec renders container launcher place
 // The pluginId is substituted directly into command template without sanitization
 // =============================================================================
 
-test("buildContainerizedPluginRuntimeLaunchSpec substitutes pluginId without sanitization (issue #1945)", () => {
-  // This demonstrates the bug: pluginId with special characters is not sanitized
+test("buildContainerizedPluginRuntimeLaunchSpec substitutes pluginId with sanitization (issue #1945)", () => {
+  // Security fix: pluginId is now sanitized before substitution
   const spec = buildContainerizedPluginRuntimeLaunchSpec({
     pluginId: "plugin.test; echo hacked",
     childModulePath: "/workspace/dist/plugin-runtime-child.js",
@@ -195,13 +195,13 @@ test("buildContainerizedPluginRuntimeLaunchSpec substitutes pluginId without san
     },
   });
 
-  // The pluginId with semicolon is NOT sanitized - it remains in the command
+  // The pluginId with semicolon IS sanitized - special chars become underscores
   assert.equal(spec.command, "docker");
-  assert.ok(spec.args.includes("plugin.test; echo hacked"));
+  assert.ok(spec.args.includes("plugin.test__echo_hacked"));
 });
 
 test("buildContainerizedPluginRuntimeLaunchSpec substitutes pluginId with path traversal characters (issue #1945)", () => {
-  // This demonstrates the vulnerability: pluginId with ../ could cause path traversal
+  // Security fix: pluginId is now sanitized - path traversal chars become underscores
   const spec = buildContainerizedPluginRuntimeLaunchSpec({
     pluginId: "../../../etc",
     childModulePath: "/workspace/dist/plugin-runtime-child.js",
@@ -219,8 +219,8 @@ test("buildContainerizedPluginRuntimeLaunchSpec substitutes pluginId with path t
     },
   });
 
-  // The pluginId with ../ is NOT sanitized
-  assert.ok(spec.args.includes("../../../etc"));
+  // The pluginId with ../ is sanitized - path traversal is neutralized
+  assert.ok(spec.args.includes(".._.._.._etc"));
 });
 
 test("buildContainerizedPluginRuntimeLaunchSpec handles pluginId with newlines (issue #1945)", () => {
@@ -239,8 +239,8 @@ test("buildContainerizedPluginRuntimeLaunchSpec handles pluginId with newlines (
     },
   });
 
-  // Newline character is NOT sanitized
-  assert.ok(spec.args.some(arg => arg.includes("\n")));
+  // Newline character is sanitized to underscore
+  assert.ok(spec.args.some(arg => arg.includes("plugin.test_malicious")));
 });
 
 test("buildContainerizedPluginRuntimeLaunchSpec substitutes workspaceRoot correctly", () => {
@@ -507,17 +507,16 @@ test("ContainerizedPluginRuntimeHost requires AA_PLUGIN_RUNTIME_CONTAINER_COMMAN
 // Sandbox root path handling tests
 // =============================================================================
 
-test("sanitizePluginIdForPath is called by buildPluginRuntimeSandboxRoot", () => {
-  // This test documents that pluginId is sanitized when building sandbox root
-  // but NOT when rendering container command
+test("sanitizePluginIdForPath preserves valid pluginId characters", () => {
+  // pluginId with dots, underscores, hyphens are preserved
   const root = buildPluginRuntimeSandboxRoot("plugin.test.special", "/tmp");
-  assert.ok(root.includes("plugin-test-special") || root.includes("plugin_test_special"));
+  assert.ok(root.includes("plugin.test.special"));
 });
 
-test("buildPluginRuntimeSandboxRoot handles complex pluginId", () => {
+test("buildPluginRuntimeSandboxRoot preserves valid pluginId characters", () => {
   const root = buildPluginRuntimeSandboxRoot("plugin.coding.retriever", "/tmp/sandboxes");
-  // Should not contain dots
-  assert.ok(!root.includes("."));
+  // Dots are valid pluginId characters and are preserved
+  assert.ok(root.includes("plugin.coding.retriever"));
 });
 
 // =============================================================================

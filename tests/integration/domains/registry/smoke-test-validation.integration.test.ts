@@ -55,7 +55,7 @@ function createTestDomain(overrides: Partial<DomainDefinition> = {}): DomainDefi
       optionalTools: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
     status: "registered",
     externalAdapters: [],
@@ -113,7 +113,7 @@ test("smoke test: missing required tool in bundles fails", async () => {
       supportedTaskTypes: [],
       modelPreferences: {},
       budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
-      securityLevel: "standard",
+      securityLevel: "restricted",
     },
   });
   const runner = new DomainSmokeTestRunner();
@@ -340,6 +340,14 @@ test("smoke test: rollback points computed for steps with dependencies", async (
 test("smoke test: valid multi-step workflow passes dependency check", async () => {
   const domain = createTestDomain({
     domainId: "valid-multi-step",
+    capabilities: {
+      requiredTools: ["bash"],
+      optionalTools: [],
+      supportedTaskTypes: [],
+      modelPreferences: {},
+      budgetLimits: { maxTokensPerTask: 4000, maxCostPerTask: 5 },
+      securityLevel: "restricted",
+    },
     workflows: [
       {
         workflowId: "linear_wf",

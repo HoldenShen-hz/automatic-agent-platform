@@ -167,7 +167,18 @@ export class ComplianceCaseOrchestrationService {
       reasons.push("artifact_handling_denied");
     }
     if (transferDecision.action === "deny" && !redactionApplied) {
-      reasons.push("transfer_handling_denied");
+      if (input.allowRedactedRestrictedTransfer && artifactDecision.action === "summarize") {
+        // Special case: cross-worker deny but artifact allows summarize mode,
+        // and caller explicitly allows redaction of restricted content.
+        // Apply redaction so the transfer can proceed.
+        exportContent = this.services.classification.redactContent(input.content, annotations);
+        redactionApplied = exportContent !== input.content;
+        if (redactionApplied) {
+          reasons.push("classification_redaction_applied");
+        }
+      } else {
+        reasons.push("transfer_handling_denied");
+      }
     }
     if (residency.decision === "deny") {
       reasons.push(`residency:${residency.reason}`);
