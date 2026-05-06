@@ -39,6 +39,7 @@ export interface UnifiedChatPlanGeneratorOptions {
     readonly emittedBy: string;
     readonly expiresAt?: string;
     readonly resourceKind?: BudgetResourceKind;
+    readonly fencingToken?: string;
   };
 }
 
@@ -80,6 +81,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
           tenantId: this.options.budgetControl.tenantId,
           traceId: this.options.budgetControl.traceId,
           emittedBy: this.options.budgetControl.emittedBy,
+          ...(this.options.budgetControl.fencingToken !== undefined ? { fencingToken: this.options.budgetControl.fencingToken } : {}),
         },
       });
 
@@ -106,6 +108,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,
+            ...(this.options.budgetControl!.fencingToken !== undefined ? { fencingToken: this.options.budgetControl!.fencingToken } : {}),
           },
         });
       }
@@ -170,6 +173,7 @@ export class UnifiedChatPlanGenerator implements LlmPlanGenerator {
             tenantId: this.options.budgetControl!.tenantId,
             traceId: this.options.budgetControl!.traceId,
             emittedBy: this.options.budgetControl!.emittedBy,
+            ...(this.options.budgetControl!.fencingToken !== undefined ? { fencingToken: this.options.budgetControl!.fencingToken } : {}),
           },
         });
       }

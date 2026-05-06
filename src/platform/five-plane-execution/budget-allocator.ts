@@ -510,7 +510,7 @@ export class BudgetAllocator {
         hardCapSatisfied,
       },
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
-      fencingToken: context.fencingToken,
+      ...(context.fencingToken != null ? { fencingToken: context.fencingToken } : {}),
     });
 
     // §18.3: Process streaming settle
@@ -605,7 +605,7 @@ export class BudgetAllocator {
       reasonCode: input.reasonCode ?? "budget.released_without_execution",
       emittedBy: context.emittedBy,
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
-      fencingToken: context.fencingToken,
+      ...(context.fencingToken != null ? { fencingToken: context.fencingToken } : {}),
     });
 
     // Clean up streaming state on release
