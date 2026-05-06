@@ -51,8 +51,8 @@ test("BasicEvaluator detects missing required fields", async () => {
 
   assert.equal(result.valid, false);
   assert.equal(result.errors.length, 1);
-  assert.equal(result.errors[0].field, "description");
-  assert.equal(result.errors[0].severity, "error");
+  assert.equal(result.errors[0]!.field, "description");
+  assert.equal(result.errors[0]!.severity, "error");
   assert.ok(result.suggestions.length > 0);
 });
 

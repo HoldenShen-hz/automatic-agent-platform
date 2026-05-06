@@ -17,9 +17,9 @@ class MockEventBus {
   }
 }
 
-test("ConfigVersioningService.createVersion creates a new version snapshot", () => {
+test("ConfigVersioningService.createVersion creates a new version snapshot", async () => {
   const service = new ConfigVersioningService();
-  const snapshot = service.createVersion(
+  const snapshot = await service.createVersion(
     "runtime.timeout",
     "platform",
     null,
@@ -40,34 +40,34 @@ test("ConfigVersioningService.createVersion creates a new version snapshot", () 
   assert.strictEqual(snapshot.parentVersionId, null);
 });
 
-test("ConfigVersioningService.createVersion tracks parent version", () => {
+test("ConfigVersioningService.createVersion tracks parent version", async () => {
   const service = new ConfigVersioningService();
 
-  const v1 = service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user-1", "v1");
-  const v2 = service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user-2", "v2");
+  const v1 = await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user-1", "v1");
+  const v2 = await service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user-2", "v2");
 
   assert.strictEqual(v1.parentVersionId, null);
   assert.strictEqual(v2.parentVersionId, v1.versionId);
 });
 
-test("ConfigVersioningService.getCurrentVersion returns latest version", () => {
+test("ConfigVersioningService.getCurrentVersion returns latest version", async () => {
   const service = new ConfigVersioningService();
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
-  service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
-  const v3 = service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 1000 }, "user", "v1");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 2000 }, "user", "v2");
+  const v3 = await service.createVersion("runtime.timeout", "platform", null, { value: 3000 }, "user", "v3");
 
-  const current = service.getCurrentVersion("runtime.timeout", "platform", null);
+  const current = await service.getCurrentVersion("runtime.timeout", "platform", null);
 
   assert.ok(current);
   assert.strictEqual(current!.versionId, v3.versionId);
   assert.deepStrictEqual(current!.content, { value: 3000 });
 });
 
-test("ConfigVersioningService.getCurrentVersion returns null for non-existent path", () => {
+test("ConfigVersioningService.getCurrentVersion returns null for non-existent path", async () => {
   const service = new ConfigVersioningService();
 
-  const current = service.getCurrentVersion("non.existent", "platform", null);
+  const current = await service.getCurrentVersion("non.existent", "platform", null);
 
   assert.strictEqual(current, null);
 });
