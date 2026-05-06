@@ -6,9 +6,9 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
-import { DelegatedGovernanceService } from "../../../../../../src/org-governance/delegated-governance/delegated-governance-service.js";
-import type { GovernanceDelegation, Guardrail } from "../../../../../../src/org-governance/delegated-governance/delegation-registry/index.js";
-import type { GovernanceOperationContext } from "../../../../../../src/org-governance/delegated-governance/scope-manager/index.js";
+import { DelegatedGovernanceService } from "../../../../src/org-governance/delegated-governance/delegated-governance-service.js";
+import type { GovernanceDelegation, Guardrail } from "../../../../src/org-governance/delegated-governance/delegation-registry/index.js";
+import type { GovernanceOperationContext } from "../../../../src/org-governance/delegated-governance/scope-manager/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures
@@ -168,6 +168,18 @@ describe("DelegatedGovernanceService - resolve", () => {
 
 describe("DelegatedGovernanceService - checkOperation", () => {
   let service: DelegatedGovernanceService;
+  const createRoleOnlyService = () => new DelegatedGovernanceService([]);
+  const createServiceWithGuardrail = (guardrail: Guardrail) =>
+    new DelegatedGovernanceService([
+      createDelegation({
+        delegationId: `guardrail-${guardrail.guardrailId}`,
+        grantorId: "platform_team",
+        granteeId: "platform_team",
+        orgNodeIds: [],
+        domainIds: [],
+        guardrails: [guardrail],
+      }),
+    ]);
 
   beforeEach(() => {
     const delegations: GovernanceDelegation[] = [
@@ -189,41 +201,46 @@ describe("DelegatedGovernanceService - checkOperation", () => {
 
   describe("role-based access", () => {
     it("should allow platform_team to perform all operations", () => {
+      const roleOnlyService = createRoleOnlyService();
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_task");
+      const result = roleOnlyService.checkOperation(ctx, "approve_task");
 
       assert.strictEqual(result.allowed, true);
     });
 
     it("should deny team_lead for operations beyond allowed set", () => {
+      const roleOnlyService = createRoleOnlyService();
       const ctx = createContext({ actorRole: "team_lead" });
 
-      const result = service.checkOperation(ctx, "modify_global_guardrails");
+      const result = roleOnlyService.checkOperation(ctx, "modify_global_guardrails");
 
       assert.strictEqual(result.allowed, false);
       assert.ok(result.violatedGuardrails.includes("role_guardrail"));
     });
 
     it("should allow team_lead for approve_task and create_trigger", () => {
+      const roleOnlyService = createRoleOnlyService();
       const ctx = createContext({ actorRole: "team_lead" });
 
-      assert.strictEqual(service.checkOperation(ctx, "approve_task").allowed, true);
-      assert.strictEqual(service.checkOperation(ctx, "create_trigger").allowed, true);
+      assert.strictEqual(roleOnlyService.checkOperation(ctx, "approve_task").allowed, true);
+      assert.strictEqual(roleOnlyService.checkOperation(ctx, "create_trigger").allowed, true);
     });
 
     it("should allow division_admin for domain_onboarding", () => {
+      const roleOnlyService = createRoleOnlyService();
       const ctx = createContext({ actorRole: "division_admin" });
 
-      const result = service.checkOperation(ctx, "domain_onboarding");
+      const result = roleOnlyService.checkOperation(ctx, "domain_onboarding");
 
       assert.strictEqual(result.allowed, true);
     });
 
     it("should deny department_admin for approve_budget_increase", () => {
+      const roleOnlyService = createRoleOnlyService();
       const ctx = createContext({ actorRole: "department_admin" });
 
-      const result = service.checkOperation(ctx, "approve_budget_increase");
+      const result = roleOnlyService.checkOperation(ctx, "approve_budget_increase");
 
       assert.strictEqual(result.allowed, false);
     });
@@ -231,64 +248,82 @@ describe("DelegatedGovernanceService - checkOperation", () => {
 
   describe("guardrail evaluation", () => {
     it("should pass when attempted value within guardrail limits", () => {
+      const riskService = createServiceWithGuardrail(
+        createGuardrail({ guardrailId: "max-risk", type: "max_risk_level", value: "high" }),
+      );
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_task", "high");
+      const result = riskService.checkOperation(ctx, "approve_task", "high");
 
       assert.strictEqual(result.allowed, true);
       assert.strictEqual(result.violatedGuardrails.length, 0);
     });
 
     it("should fail when risk level exceeds max", () => {
+      const riskService = createServiceWithGuardrail(
+        createGuardrail({ guardrailId: "max-risk", type: "max_risk_level", value: "high" }),
+      );
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_task", "critical");
+      const result = riskService.checkOperation(ctx, "approve_task", "critical");
 
       assert.strictEqual(result.allowed, false);
       assert.ok(result.violatedGuardrails.includes("max-risk"));
     });
 
     it("should pass when budget within limit", () => {
+      const budgetService = createServiceWithGuardrail(
+        createGuardrail({ guardrailId: "max-budget", type: "max_budget", value: 50000 }),
+      );
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_budget_increase", 30000);
+      const result = budgetService.checkOperation(ctx, "approve_budget_increase", 30000);
 
       assert.strictEqual(result.allowed, true);
     });
 
     it("should fail when budget exceeds max", () => {
+      const budgetService = createServiceWithGuardrail(
+        createGuardrail({ guardrailId: "max-budget", type: "max_budget", value: 50000 }),
+      );
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_budget_increase", 60000);
+      const result = budgetService.checkOperation(ctx, "approve_budget_increase", 60000);
 
       assert.strictEqual(result.allowed, false);
       assert.ok(result.violatedGuardrails.includes("max-budget"));
     });
 
     it("should fail when tool is forbidden", () => {
+      const toolService = createServiceWithGuardrail(
+        createGuardrail({ guardrailId: "forbidden-shell", type: "forbidden_tools", value: ["shell_exec", "rm_rf"] }),
+      );
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_task", "shell_exec");
+      const result = toolService.checkOperation(ctx, "approve_task", "shell_exec");
 
       assert.strictEqual(result.allowed, false);
       assert.ok(result.violatedGuardrails.includes("forbidden-shell"));
     });
 
     it("should allow non-forbidden tools", () => {
+      const toolService = createServiceWithGuardrail(
+        createGuardrail({ guardrailId: "forbidden-shell", type: "forbidden_tools", value: ["shell_exec", "rm_rf"] }),
+      );
       const ctx = createContext({ actorRole: "platform_team" });
 
-      const result = service.checkOperation(ctx, "approve_task", "allowed_tool");
+      const result = toolService.checkOperation(ctx, "approve_task", "allowed_tool");
 
       assert.strictEqual(result.allowed, true);
     });
 
-    it("should skip guardrail evaluation when attemptedValue is undefined", () => {
+    it("should deny when attemptedValue is undefined but guardrails exist", () => {
       const ctx = createContext({ actorRole: "platform_team" });
 
       const result = service.checkOperation(ctx, "approve_task");
 
-      assert.strictEqual(result.allowed, true);
-      assert.strictEqual(result.violatedGuardrails.length, 0);
+      assert.strictEqual(result.allowed, false);
+      assert.ok(result.violatedGuardrails.length > 0);
     });
   });
 });
@@ -453,9 +488,9 @@ describe("DelegatedGovernanceService - validateInheritanceRule", () => {
   });
 
   describe("tighten action", () => {
-    it("should allow anyone to tighten restrictions", () => {
+    it("should allow tighten only when child is not acting above parent role", () => {
       const result = service.validateInheritanceRule("team_lead", "platform_team", "tighten");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
 
       const result2 = service.validateInheritanceRule("platform_team", "team_lead", "tighten");
       assert.strictEqual(result2.allowed, true);
@@ -463,9 +498,12 @@ describe("DelegatedGovernanceService - validateInheritanceRule", () => {
   });
 
   describe("loosen action", () => {
-    it("should allow parent to loosen restrictions", () => {
+    it("should only allow same-level loosen", () => {
       const result = service.validateInheritanceRule("platform_team", "division_admin", "loosen");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
+
+      const sameLevel = service.validateInheritanceRule("division_admin", "division_admin", "loosen");
+      assert.strictEqual(sameLevel.allowed, true);
     });
 
     it("should deny lower role from loosening", () => {
@@ -481,34 +519,39 @@ describe("DelegatedGovernanceService - validateInheritanceRule", () => {
   });
 
   describe("append action", () => {
-    it("should allow anyone to append constraints", () => {
+    it("should allow append only when child is not acting above parent role", () => {
       const result = service.validateInheritanceRule("team_lead", "platform_team", "append");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
+
+      const result2 = service.validateInheritanceRule("platform_team", "team_lead", "append");
+      assert.strictEqual(result2.allowed, true);
     });
   });
 
   describe("delete action", () => {
-    it("should allow delete with ownership check note", () => {
+    it("should only allow delete at the same role level", () => {
       const result = service.validateInheritanceRule("division_admin", "team_lead", "delete");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
+
+      const sameLevel = service.validateInheritanceRule("division_admin", "division_admin", "delete");
+      assert.strictEqual(sameLevel.allowed, true);
     });
   });
 
   describe("hierarchy enforcement", () => {
-    it("should enforce platform_team > division_admin", () => {
-      // Platform team is parent of division admin
+    it("should deny cross-level loosening from platform_team to division_admin", () => {
       const result = service.validateInheritanceRule("platform_team", "division_admin", "loosen");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
     });
 
-    it("should enforce division_admin > department_admin", () => {
+    it("should deny cross-level loosening from division_admin to department_admin", () => {
       const result = service.validateInheritanceRule("division_admin", "department_admin", "loosen");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
     });
 
-    it("should enforce department_admin > team_lead", () => {
+    it("should deny cross-level loosening from department_admin to team_lead", () => {
       const result = service.validateInheritanceRule("department_admin", "team_lead", "loosen");
-      assert.strictEqual(result.allowed, true);
+      assert.strictEqual(result.allowed, false);
     });
 
     it("should deny cross-hierarchy loosening", () => {

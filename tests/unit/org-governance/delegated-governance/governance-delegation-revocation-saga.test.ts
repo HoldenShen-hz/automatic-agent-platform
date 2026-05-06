@@ -32,11 +32,11 @@ test("GovernanceDelegationRevocationSaga completes successfully with all handler
   assert.equal(receipt.failedStage, null);
   assert.equal(receipt.delegationId, "delegation-test");
   assert.deepEqual(receipt.frozenResourceIds, ["resource-1", "resource-2"]);
-  assert.deepEqual(receipt.revokedPendingApprovals, []);
-  assert.deepEqual(receipt.revokedActiveSessions, []);
-  assert.deepEqual(receipt.revokedSecretLeases, []);
-  assert.deepEqual(receipt.revokedWorkerLeases, []);
-  assert.deepEqual(receipt.revokedScheduledTriggers, []);
+  assert.deepEqual(receipt.revokedPendingApprovals, ["delegation-test"]);
+  assert.deepEqual(receipt.revokedActiveSessions, ["delegation-test"]);
+  assert.deepEqual(receipt.revokedSecretLeases, ["delegation-test"]);
+  assert.deepEqual(receipt.revokedWorkerLeases, ["delegation-test"]);
+  assert.deepEqual(receipt.revokedScheduledTriggers, ["delegation-test"]);
   assert.deepEqual(receipt.revokedDerivedDelegationIds, ["delegation-child-1"]);
   assert.deepEqual(receipt.compensationResourceIds, []);
   assert.deepEqual(receipt.sagaStages, ["prepare", "commit", "audit"]);
@@ -140,7 +140,7 @@ test("GovernanceDelegationRevocationSaga compensates when elapsed exceeds cascad
   assert.deepEqual(calls, [
     "freeze:resource-1",
     "freeze:resource-2",
-    "revoke:delegation-child-1",
+    "revoke",
     "compensate:resource-2",
     "compensate:resource-1",
   ]);
@@ -217,8 +217,10 @@ test("GovernanceDelegationRevocationSaga calculates SLO metrics correctly", () =
 test("GovernanceDelegationRevocationSaga provides context with correct failed stage", () => {
   let capturedContext: { delegationId: string; failedStage: string | null } | null = null;
   const saga = new GovernanceDelegationRevocationSaga({
-    freezeResource: () => {
-      throw new Error("prepare failed");
+    freezeResource: (id) => {
+      if (id === "resource-2") {
+        throw new Error("prepare failed");
+      }
     },
     compensateResource: (_id, ctx) => {
       capturedContext = ctx;

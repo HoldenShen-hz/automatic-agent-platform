@@ -5,18 +5,19 @@
 
 ## Context
 
-Agents with different maturity levels require different autonomy permissions. Newly onboarded agents should progressively earn trust.
+Agents at different maturity levels need different autonomy permissions. Newly onboarded agents should gradually earn trust.
 
 ## Decision
 
-### Autonomy Levels
+### Autonomy Levels (§42 Five-Level Model)
 
 | Level | Name | Permission |
-|-------|------|------------|
-| 0 | suggestion | Provides suggestions only, requires human confirmation |
-| 1 | supervised | Full human supervision during execution |
-| 2 | semi_auto | Semi-automatic, can auto-execute but requires human oversight |
-| 3 | full_auto | Full automation |
+|-------|------|------|
+| 0 | manual_only | Manual operation only, no automation |
+| 1 | suggestion | Suggestions only, requires human confirmation |
+| 2 | supervised | Fully human-supervised execution |
+| 3 | semi_auto | Semi-automatic, can execute automatically but requires human oversight |
+| 4 | full_auto | Fully automated |
 
 Rules:
 
@@ -41,30 +42,30 @@ Rules:
 
 - Each level has clear permission scope
 - High-risk operations require higher levels
-- Critical decisions retain human approval
+- Key decisions retain human approval
 
 ## Consequences
 
-Positive:
+Pros:
 
 - Progressive authorization reduces risk
-- Encourages continuous agent improvement
+- Incentivizes agents to continuously improve
 - Clear permission boundaries facilitate management
 
-Negative:
+Cons:
 
 - Promotion/demotion logic is complex
-- Requires comprehensive monitoring and evaluation mechanisms
+- Requires完善的监控和评估机制
 
-## Cross-References
+## Cross-references
 
 - [ADR-041 Proactive Agent Framework](./041-proactive-agent-framework.md)
 - [ADR-083 Proactive Agent and Progressive Autonomy](./083-proactive-agent-and-progressive-autonomy.md)
 
-## Source Sections
+## Source Section
 
 - `§42` Progressive Autonomy Model
 
 ## v4.3 ADR Remediation
 
-- A-34: This ADR originally described level 4 `full_auto` as "full automation". The root cause was that the Progressive Autonomy ADR mistakenly wrote autonomy levels as an unlimited authorization ladder, without binding to high-risk domain risk override rules. Fix: The main text now explicitly states that high-risk domains cannot enter `full_auto` by default, unless there is explicit `DomainRiskSpec` / `DomainRiskProfile` allowance.
+- A-34: This ADR originally described level 4 `full_auto` as "fully automated". Root cause: the progressive autonomy ADR mistakenly wrote autonomy levels as an unlimited authorization ladder, without binding to high-risk domain risk override rules. Fix: The text now clarifies that high-risk domains are not allowed `full_auto` by default, unless explicitly allowed by `DomainRiskSpec / DomainRiskProfile`.

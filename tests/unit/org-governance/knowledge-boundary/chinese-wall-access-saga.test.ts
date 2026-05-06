@@ -20,7 +20,7 @@ test("ChineseWallAccessSaga completes grant flow successfully", () => {
 
   assert.equal(receipt.status, "committed");
   assert.equal(receipt.accessId, "access-1");
-  assert.deepEqual(receipt.committedActions, ["prepare_grant", "commit_grant"]);
+  assert.deepEqual(receipt.committedActions, ["commit_grant"]);
   assert.deepEqual(receipt.rollbackRequired, false);
   assert.deepEqual(receipt.compensatedActions, []);
   assert.equal(receipt.failedAction, null);
@@ -104,7 +104,7 @@ test("ChineseWallAccessSaga handles multiple grant steps", () => {
   ]);
 
   assert.equal(receipt.status, "committed");
-  assert.deepEqual(receipt.committedActions, ["prepare_grant", "prepare_grant", "commit_grant", "commit_grant"]);
+  assert.deepEqual(receipt.committedActions, ["commit_grant", "commit_grant"]);
   assert.deepEqual(calls, ["prepare:grant-1", "prepare:grant-2", "commit:grant-1", "commit:grant-2"]);
 });
 
@@ -126,20 +126,21 @@ test("ChineseWallAccessSaga handles mixed grant and release steps", () => {
 
   assert.equal(receipt.status, "committed");
   assert.deepEqual(receipt.committedActions, [
-    "prepare_grant",
     "commit_grant",
-    "prepare_release",
     "commit_release",
   ]);
 });
 
 test("ChineseWallAccessSaga compensates in reverse order on failure", () => {
   const calls: string[] = [];
+  const compensationCalls: string[] = [];
   const saga = new ChineseWallAccessSaga({
     prepareGrant: (step) => calls.push(`prepare:${step.stepId}`),
     commitGrant: (step) => calls.push(`commit:${step.stepId}`),
     prepareRelease: (step) => calls.push(`release:${step.stepId}`),
     commitRelease: (step) => calls.push(`release:${step.stepId}`),
+    compensateGrant: (step) => compensationCalls.push(`compensateGrant:${step.stepId}:${step.action}`),
+    compensateRelease: (step) => compensationCalls.push(`compensateRelease:${step.stepId}:${step.action}`),
   });
 
   const receipt = saga.execute("access-7", [
@@ -153,12 +154,12 @@ test("ChineseWallAccessSaga compensates in reverse order on failure", () => {
   assert.equal(receipt.status, "rolled_back");
   assert.deepEqual(receipt.committedActions, []);
   assert.deepEqual(receipt.compensatedActions, [
-    "commit_release",
-    "commit_release",
     "prepare_release",
     "prepare_release",
+    "commit_release",
+    "commit_release",
   ]);
-  assert.ok(calls.includes("release:access-7:prepare_release"));
+  assert.ok(compensationCalls.includes("compensateGrant:access-7:prepare_release:prepare_release"));
 });
 
 test("ChineseWallAccessSaga execution log tracks all outcomes", () => {
@@ -212,7 +213,7 @@ test("ChineseWallAccessSaga updates context when failure occurs", () => {
       capturedContexts.push({ ...ctx });
       throw new Error("fail");
     },
-    prepareRelease: (_step, ctx) => {
+    compensateGrant: (_step, ctx) => {
       capturedContexts.push({ ...ctx });
     },
   });
@@ -260,7 +261,7 @@ test("ChineseWallAccessSaga skips uncommitted actions in rollback", () => {
   ]);
 
   assert.equal(receipt.status, "rolled_back");
-  assert.deepEqual(receipt.compensatedActions, ["commit_release", "prepare_release"]);
+  assert.deepEqual(receipt.compensatedActions, ["prepare_release", "commit_release"]);
 });
 
 test("ChineseWallAccessSaga handles empty steps array", () => {

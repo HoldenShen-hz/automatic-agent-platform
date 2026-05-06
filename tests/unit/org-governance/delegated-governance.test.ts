@@ -926,9 +926,9 @@ test("DelegatedGovernanceService.validateInheritanceRule blocks child acting as 
 test("DelegatedGovernanceService.validateInheritanceRule handles delete action", () => {
   const service = new DelegatedGovernanceService([]);
 
-  // Delete is allowed (subject to ownership check)
+  // Cross-role delete is denied; only same-level owners can delete their own constraints.
   const result = service.validateInheritanceRule("platform_team", "team_lead", "delete");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
 });
 
 test("DelegatedGovernanceService.listDelegationsForGrantee returns active delegations", () => {

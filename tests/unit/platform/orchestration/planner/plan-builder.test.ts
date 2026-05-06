@@ -229,3 +229,22 @@ test("PlanBuilder.buildGraphBundle includes budgetPlanRef", () => {
   assert.ok(bundle.budgetPlanRef, "budgetPlanRef should exist");
   assert.ok(bundle.budgetPlanRef.startsWith("budget:plan."), "budgetPlanRef should start with budget:plan.");
 });
+
+test("PlanBuilder.buildGraphBundle rejects invalid cyclic workflows instead of silently building fallback ordering", () => {
+  const builder = new PlanBuilder();
+
+  assert.throws(
+    () =>
+      builder.buildGraphBundle({
+        observation: createMinimalObservation("task_cycle"),
+        assessment: createMinimalAssessment("task_cycle"),
+        workflow: createWorkflow([
+          { stepId: "step_a", dependsOnStepIds: ["step_c"] },
+          { stepId: "step_b", dependsOnStepIds: ["step_a"] },
+          { stepId: "step_c", dependsOnStepIds: ["step_b"] },
+        ]),
+        harnessRunId: "harness_cycle",
+      }),
+    /Invalid plan: .*cycle_detected/,
+  );
+});

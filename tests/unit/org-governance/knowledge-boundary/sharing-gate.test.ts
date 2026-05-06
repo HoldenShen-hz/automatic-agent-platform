@@ -145,7 +145,7 @@ test("evaluateKnowledgeShare defaults to summary mode when grant has no transfor
   assert.strictEqual(result?.allowedFieldKeys, undefined);
 });
 
-test("evaluateKnowledgeShare respects null vs undefined expiresAt", () => {
+test("evaluateKnowledgeShare treats empty expiresAt as invalid grant metadata", () => {
   const boundary = createBoundary("kb_finance", "dept_finance");
 
   // Grant with no expiresAt (null/undefined) should be valid
@@ -159,7 +159,7 @@ test("evaluateKnowledgeShare respects null vs undefined expiresAt", () => {
 
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.notStrictEqual(result, null);
+  assert.strictEqual(result, null);
 });
 
 test("evaluateKnowledgeShare allows multiple grants, returns first matching", () => {

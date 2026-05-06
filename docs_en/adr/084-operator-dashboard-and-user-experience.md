@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Context
 
-v2.7 `§43-§44` requires the platform to provide not just infrastructure metrics, but:
+v4.3 `§43-§44` requires the platform to provide not just infrastructure metrics, but:
 
 - L1 Operator view
 - L2 Domain admin view

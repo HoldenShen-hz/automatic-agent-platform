@@ -1,59 +1,70 @@
-# ADR-033 Phased Roadmap
+# ADR-033 Phased Roadmap (Historical Phase Version, Superseded by Ring Roadmap)
 
-- Status: Accepted
+- Status: Superseded by ADR-112
 - Decision Date: 2026-04-17
 
 ## Context
 
-Platform construction is an incremental process that requires clear phase divisions and phase gates to ensure each phase delivers usable functionality.
+Platform construction is an incremental process requiring clear phase definitions and phase gates to ensure deliverable functionality at each stage.
 
 ## Decision
 
-### 7-Phase Roadmap
+### 3 Ring Roadmap
 
-| Phase | Objective | Key Deliverables |
-|-------|-----------|------------------|
-| Phase 1 | Core Execution Plane | Basic Workflow, Plugin, State Management |
-| Phase 2 | Stability Enhancement | Recovery Mechanism, Monitoring Alerts |
-| Phase 3 | AI Operations Layer | LLM Abstraction, Prompt Governance, Cost Management |
-| Phase 4 | Business Domain Onboarding | DomainDescriptor, Pack SDK |
-| Phase 5 | Intelligent Interaction | NL Entry, Goal Decomposition, Proactive Agent |
-| Phase 6 | Organization Governance | Tenant Isolation, SSO, Permission Management |
-| Phase 7 | Scale Ecosystem | Multi-Region, Marketplace |
+| Phase | Goal | Key Deliverables |
+|-------|------|------------------|
+| Ring 1 | Core Execution Plane | HarnessRuntime, PlanGraphBundle, State Management |
+| Ring 2 | Stability Enhancement | Recovery mechanisms, Monitoring alerts, Governance and durability |
+| Ring 3 | Business Domains and Ecosystem | DomainDescriptor, Pack SDK, Marketplace, Multi-Region |
 
-### Roadmap Service
+### Historical Roadmap Service (Compatibility Note)
 
 - `domains/roadmap/roadmap-service.ts` (124 lines)
-- Phase tracking and status management
-- Completion records
+- Historical phase tracking and state management
+- Completion record projection
 
-### Phase Gates
+### Historical Phase Gates (Compatibility Projection)
 
-- SuccessCriteriaService supports phase gate registration
+- SuccessCriteriaService supports ring gate registration; old `evaluatePhaseAdvance()` only allowed as historical milestone projection, no longer defines canonical advancement conditions
 - Metric scoring
 - `evaluatePhaseAdvance()` interception
 
 ### Feature Flags
 
-- Feature flag governance in `config-override-governance`
-- `gray-release-rehearsal` supports canary release
+- Feature flag governance in config-override-governance
+- gray-release-rehearsal supports canary release
 
 ## Consequences
 
-Positive:
+Pros:
+
 - Phasing reduces delivery risk
 - Phase gates ensure quality
-- Feature flags support incremental release
+- Feature flags support progressive release
 
-Negative:
+Cons:
+
 - Roadmap maintenance requires ongoing investment
 - Phase boundaries may need adjustment
 
-## Cross-References
+## Cross-references
 
 - [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 - [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
-## Source Sections
+## v4.3 ADR Remediation
+
+- A-64: This ADR originally used `Phase 1-7` as the canonical roadmap. Root cause: when the rollout roadmap ADR was formed, the main architecture had not yet unified to the ring terminology. Fix: The text now uses `Ring 1/2/3`, with historical phases only allowed as old milestone mappings.
+- R8-63 / R6-48: Historical `evaluatePhaseAdvance()` and `Phase 1-7` gates are no longer the active canonical roadmap. The text now clarifies that this ADR is superseded historical mapping, with current advancement boundaries based on `Ring 1 / Ring 2 / Ring 3` and ADR-112.
+
+## Current Authority
+
+- Ring 1: Core execution plane available
+- Ring 2: Stability, governance, and recovery readiness
+- Ring 3: Business domains, ecosystem, and multi-region expansion
+
+Historical `Phase 1-7`, if needed in old reports for display, must be labeled as migration aliases and cannot be used as basis for new gates or new contracts.
+
+## Source Section
 
 - `§33` Phased Roadmap

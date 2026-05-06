@@ -360,7 +360,9 @@ export class DelegationManagerService {
         parentRiskMode: 100,
         parentConstraints: delegation.permissions.constraints as unknown as Record<string, unknown>,
         parentBudgetRemaining: Number.MAX_SAFE_INTEGER,
-        globalCallDepth: delegation.depth,
+        // Completion reports are validated against the platform delegation depth budget,
+        // not against the child delegation's current depth as an exact ceiling.
+        globalCallDepth: DEFAULT_MAX_DEPTH,
       },
     );
     if (!validation.accepted) {

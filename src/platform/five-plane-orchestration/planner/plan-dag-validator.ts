@@ -212,9 +212,8 @@ export class PlanDagValidator {
       }
     }
 
-    // Find root nodes (entry points)
-    const roots = steps.filter((step) => (incomingCounts.get(step.stepId) ?? 0) === 0);
-    if (roots.length === 0) {
+    const terminalNodes = steps.filter((step) => (outgoing.get(step.stepId)?.length ?? 0) === 0);
+    if (terminalNodes.length === 0) {
       return null;
     }
 
@@ -261,11 +260,12 @@ export class PlanDagValidator {
       return { cost: totalCost, path: [...worstPath, stepId] };
     }
 
-    // Evaluate all root paths and find the worst
+    // Evaluate all terminal paths and find the worst.
+    // computeCost() already accumulates dependency chains backward.
     let worstOverallCost = 0;
     let worstOverallPath: string[] = [];
-    for (const root of roots) {
-      const { cost, path } = computeCost(root.stepId);
+    for (const terminal of terminalNodes) {
+      const { cost, path } = computeCost(terminal.stepId);
       if (cost > worstOverallCost) {
         worstOverallCost = cost;
         worstOverallPath = path;

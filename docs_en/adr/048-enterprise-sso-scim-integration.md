@@ -5,7 +5,7 @@
 
 ## Context
 
-Enterprises need to integrate with existing Identity Providers (IdP) to achieve single sign-on and automated user lifecycle management.
+Enterprises need to integrate with existing identity providers (IdP) to achieve single sign-on and automated user lifecycle management.
 
 ## Decision
 
@@ -35,13 +35,18 @@ interface SCIMGroup {
 }
 ```
 
-### User Lifecycle
+### User Lifecycle (§2.4 Saga Semantics)
 
-| Event | Automatic Action |
-|-------|------------------|
-| Onboarding | Create account + join default group |
-| Transfer | Update organization information |
-| Offboarding | Disable account + revoke permissions |
+SCIM user lifecycle management follows four-phase Saga semantics:
+
+| Phase | Onboarding | Transfer | Offboarding |
+|-------|------------|----------|-------------|
+| prepare | Validate IdP user attributes complete, prepare account template | Collect transfer target organization info, prepare permission change list | Freeze account, generate permission recovery list |
+| commit | Create account, assign initial roles and default groups | Update organization info, apply new permission configuration | Disable account, recover all permissions |
+| compensate | If creation fails, clean up allocated resources | If update fails, rollback to original organization info | If disable fails, retry and log compensation |
+| audit | Record account creation event, send welcome notification | Record transfer change, notify old/new managers | Record offboarding handling, trigger security audit |
+
+Note: Saga ensures all user lifecycle operations have idempotency and compensation capabilities, preventing permission inconsistencies from intermediate states.
 
 ### Sync Strategy
 
@@ -51,22 +56,22 @@ interface SCIMGroup {
 
 ## Consequences
 
-Positive:
+Pros:
 
 - SSO improves user experience and security
 - SCIM automates user management
 - Reduces manual operations
 
-Negative:
+Cons:
 
 - IdP integration complexity
-- Sync delays may cause permission issues
+- Sync delay may cause permission issues
 
-## Cross-References
+## Cross-references
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§48` Enterprise SSO/SCIM Integration Architecture

@@ -28,17 +28,19 @@ Minimum fields:
 
 `SideEffectStatus`:
 
-- `proposed`
-- `reserved`
-- `committing`
-- `confirmed`
-- `ambiguous`
-- `reconciling`
-- `compensating`
-- `compensated`
-- `failed`
-- `revoked`
-- `expired`
+- `proposed` — Side effect declared, waiting for budget reservation
+- `reserved` — Budget reserved, awaiting commit
+- `claimed` — Execution window seized (§14.11)
+- `executing` — Executing
+- `awaiting_confirmation` — Awaiting external confirmation (§14.11)
+- `confirmed` — Confirmed complete
+- `ambiguous` — External state uncertain
+- `reconciling` — Reconciling
+- `compensating` — Compensating
+- `compensated` — Compensation complete
+- `failed` — Execution failed
+- `revoked` — Revoked
+- `expired` — Expired
 
 ## 3. ReconciliationRecord
 

@@ -16,7 +16,7 @@ test("evaluateKnowledgeShare returns summary mode for owner", () => {
 
   const result = evaluateKnowledgeShare(boundary, "org_owner", [], "2026-04-20T00:00:00.000Z");
 
-  assert.deepStrictEqual(result, { mode: "summary", allowedFieldKeys: undefined });
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
 
 test("evaluateKnowledgeShare returns summary mode for allowed org", () => {
@@ -29,7 +29,7 @@ test("evaluateKnowledgeShare returns summary mode for allowed org", () => {
 
   const result = evaluateKnowledgeShare(boundary, "org_allowed", [], "2026-04-20T00:00:00.000Z");
 
-  assert.deepStrictEqual(result, { mode: "summary", allowedFieldKeys: undefined });
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
 
 test("evaluateKnowledgeShare returns null for unauthorized no grant", () => {
@@ -85,7 +85,7 @@ test("evaluateKnowledgeShare uses summary default when transformMode not specifi
 
   const result = evaluateKnowledgeShare(boundary, "org_requester", grants, "2026-04-20T00:00:00.000Z");
 
-  assert.deepStrictEqual(result, { mode: "summary", allowedFieldKeys: undefined });
+  assert.deepStrictEqual(result, { mode: "summary" });
 });
 
 test("KnowledgeShareGrantSchema parses valid grant", () => {

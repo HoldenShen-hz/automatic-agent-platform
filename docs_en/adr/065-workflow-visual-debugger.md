@@ -65,10 +65,10 @@ Note: §176-2056 Fix: The original document referenced `WorkflowState` as the au
 
 ### Trace Integration
 
-- Full trace
+- Full链路 trace
 - Span details
 - Performance profiling
-- Error chain
+- Error链路
 
 ## Consequences
 
@@ -92,6 +92,6 @@ Negative:
 - [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 - [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
-## Source Sections
+## Source Section
 
 - `§65` Workflow Visual Debugger Architecture

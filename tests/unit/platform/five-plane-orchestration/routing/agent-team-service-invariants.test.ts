@@ -53,6 +53,15 @@ test("buildPlan populates §19.5 lane invariant fields (R19-21)", () => {
     workflow,
     riskLevel: "high",
     parentRunId: "run-parent-1",
+    parentDepth: 1,
+    parentAllowedTools: [
+      "read",
+      "glob",
+      "grep",
+      "repo_map",
+      "apply_patch",
+      "diagnostics",
+    ],
     budget: 600,
   });
 
@@ -60,7 +69,7 @@ test("buildPlan populates §19.5 lane invariant fields (R19-21)", () => {
 
   for (const lane of plan.lanes) {
     assert.equal(typeof lane.depth, "number");
-    assert.ok(lane.depth >= 0, "depth should be non-negative");
+    assert.equal(lane.depth, 2, "delegated lanes should advance chain depth by one");
     assert.equal(typeof lane.budgetRemaining, "number");
     assert.ok(lane.budgetRemaining <= 600, "budgetRemaining should stay within parent budget");
     assert.equal(typeof lane.correlationId, "string");

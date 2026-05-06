@@ -5,6 +5,14 @@ const MAX_DELEGATION_DEPTH_PER_PATH = 3;
 const MAX_GLOBAL_DELEGATION_DEPTH = 8;
 const DEFAULT_BUDGET = 1000;
 const DEFAULT_RISK_LEVEL_NUMERIC = 50;
+const ROOT_ALLOWED_TOOLS = [
+  "read",
+  "glob",
+  "grep",
+  "repo_map",
+  "apply_patch",
+  "diagnostics",
+] as const;
 
 export type AgentTeamStage =
   | "plan"
@@ -48,6 +56,8 @@ export interface AgentTeamPlanInput {
   workflow: PlannedWorkflow;
   riskLevel?: "low" | "medium" | "high";
   parentRunId?: string | null;
+  parentDepth?: number;
+  parentAllowedTools?: string[];
   budget?: number;
 }
 
@@ -76,25 +86,41 @@ function computeExecutionLoop(
   riskLevel: "low" | "medium" | "high",
   workflowStepsCount: number,
 ): AgentTeamStage[] {
-  // §19.5 R19-26: risk-adaptive composition for high-risk tasks
-  // Low-risk: minimal pipeline
   if (riskLevel === "low") {
     return ["plan", "build", "release"];
   }
-  // Medium-risk: full review loop (same adaptive logic as high-risk)
-  // R9-13 fix: medium risk also uses adaptive stage count based on workflow step count
-  const baseLoop: AgentTeamStage[] = ["plan", "build"];
-  // Add review-validate cycles based on step count (more steps = more checks)
-  const reviewCycles = Math.min(Math.ceil(workflowStepsCount / 2), 3);
-  for (let i = 0; i < reviewCycles; i++) {
-    baseLoop.push("review", "validate");
-    // Only add repair after first review cycle if steps > threshold
-    if (i === 0 && workflowStepsCount > 3) {
-      baseLoop.push("repair");
+
+  const normalizedStepCount = Math.max(1, workflowStepsCount);
+  if (riskLevel === "medium") {
+    const baseLoop: AgentTeamStage[] = ["plan", "build"];
+    const reviewCycles = Math.min(Math.ceil(normalizedStepCount / 2), 3);
+    for (let i = 0; i < reviewCycles; i++) {
+      baseLoop.push("review", "validate");
+      if (i === 0 && normalizedStepCount > 3) {
+        baseLoop.push("repair");
+      }
     }
+    baseLoop.push("release");
+    return baseLoop;
   }
-  baseLoop.push("release");
-  return baseLoop;
+
+  const highRiskLoop: AgentTeamStage[] = [
+    "plan",
+    "build",
+    "review",
+    "validate",
+    "repair",
+    "validate",
+  ];
+  const extraReviewCycles = Math.min(
+    Math.max(Math.ceil((normalizedStepCount - 2) / 2), 0),
+    2,
+  );
+  for (let i = 0; i < extraReviewCycles; i++) {
+    highRiskLoop.push("review", "validate");
+  }
+  highRiskLoop.push("release");
+  return highRiskLoop;
 }
 
 function unique(values: readonly string[]): string[] {
@@ -134,6 +160,19 @@ function checkBudgetNotExceeded(
   return childBudget <= parentBudget;
 }
 
+function assertDelegationDepth(depth: number): void {
+  if (depth > MAX_DELEGATION_DEPTH_PER_PATH) {
+    throw new Error(
+      `delegation.depth_exceeded: path depth ${depth} exceeds max ${MAX_DELEGATION_DEPTH_PER_PATH}`,
+    );
+  }
+  if (depth > MAX_GLOBAL_DELEGATION_DEPTH) {
+    throw new Error(
+      `delegation.depth_exceeded: global depth ${depth} exceeds max ${MAX_GLOBAL_DELEGATION_DEPTH}`,
+    );
+  }
+}
+
 export class AgentTeamService {
   /**
    * Build a collaboration plan for an agent team.
@@ -149,30 +188,34 @@ export class AgentTeamService {
     const parentRunId = input.parentRunId ?? null;
     const parentBudget = input.budget ?? DEFAULT_BUDGET;
     const riskNumeric = riskLevelToNumeric(riskLevel);
+    const delegatedPlan = parentRunId != null;
 
     // Generate trace and correlation IDs
     const traceId = `trace:${workflow.workflow.workflowId}:${input.taskId}:${Date.now()}`;
     const correlationId = `corr:${workflow.workflow.workflowId}:${input.taskId}`;
 
-    // §19.5: depth starts at 0 for root plan, parent depth + 1 for delegated
-    const rootDepth = 0;
-    const effectiveGlobalDepth = rootDepth + 1;
-
-    // R19-17: Validate delegation depth limits (use >= since depth of exactly MAX should be rejected)
-    if (effectiveGlobalDepth >= MAX_GLOBAL_DELEGATION_DEPTH) {
+    if (delegatedPlan && input.parentDepth == null) {
       throw new Error(
-        `delegation.depth_exceeded: global depth ${effectiveGlobalDepth} exceeds max ${MAX_GLOBAL_DELEGATION_DEPTH}`,
+        "acp.parent_depth_required: delegated plans must include parentDepth to enforce chain limits",
       );
     }
+    const laneDepth = delegatedPlan ? input.parentDepth! + 1 : 0;
+    assertDelegationDepth(laneDepth);
 
-    // Compute parent permissions (tools) for C1 subsetting check
-    // Root plan has full permissions; delegated plans inherit subset
-    const parentTools = parentRunId
-      ? ["read", "glob", "grep"] // Delegated agents get restricted tools
-      : ["read", "glob", "grep", "repo_map", "apply_patch", "diagnostics"]; // Root has more
+    const parentTools = delegatedPlan
+      ? unique(input.parentAllowedTools ?? [])
+      : [...ROOT_ALLOWED_TOOLS];
+    if (delegatedPlan && parentTools.length === 0) {
+      throw new Error(
+        "acp.parent_allowed_tools_required: delegated plans must include parentAllowedTools to enforce permission subsetting",
+      );
+    }
+    if (!delegatedPlan && !checkRiskNotEscalated(riskNumeric, DEFAULT_RISK_LEVEL_NUMERIC + 25)) {
+      throw new Error(`acp.risk_escalated: root plan risk ${riskNumeric} is invalid`);
+    }
 
     // Build build lanes with collaboration invariant fields
-    const buildLanes: AgentTeamLane[] = workflow.executionSteps.map((step, idx) => {
+    const buildLanes: AgentTeamLane[] = workflow.executionSteps.map((step) => {
       const stepTools = unique([
         "read",
         "glob",
@@ -180,23 +223,8 @@ export class AgentTeamService {
         ...(step.compensationModel != null ? ["apply_patch"] : []),
       ]);
 
-      // C1: Check permission subsetting - build lane tools must be subset of parent tools
-      if (!checkPermissionSubset(stepTools, parentTools)) {
-        throw new Error(
-          `acp.permission_not_subset: lane ${step.stepId} tools ${JSON.stringify(stepTools)} are not a subset of parent tools ${JSON.stringify(parentTools)}`,
-        );
-      }
-
       // C6: Budget propagation - each lane gets proportional budget
       const laneBudget = Math.floor(parentBudget / (workflow.executionSteps.length + 1));
-
-      // R19-17: Per-path depth check (max 3 per path, >= since exactly 3 is not allowed)
-      const pathDepth = rootDepth + idx + 1;
-      if (pathDepth >= MAX_DELEGATION_DEPTH_PER_PATH) {
-        throw new Error(
-          `delegation.depth_exceeded: path depth ${pathDepth} exceeds max ${MAX_DELEGATION_DEPTH_PER_PATH}`,
-        );
-      }
 
       return {
         laneId: `lane:${step.stepId}`,
@@ -209,7 +237,7 @@ export class AgentTeamService {
           `Produce output ${step.outputKey}`,
         ],
         allowedTools: stepTools,
-        depth: pathDepth,
+        depth: laneDepth,
         budgetRemaining: laneBudget,
         correlationId: `${correlationId}:${step.stepId}`,
         parentRunId,
@@ -233,8 +261,8 @@ export class AgentTeamService {
           "Build dependency graph",
           "Freeze allowed execution scope",
         ],
-        allowedTools: parentRunId ? ["read", "glob", "grep"] : ["read", "glob", "grep", "repo_map"],
-        depth: rootDepth,
+        allowedTools: unique(["read", "glob", "grep", "repo_map"]),
+        depth: laneDepth,
         budgetRemaining: standardLaneBudget,
         correlationId,
         parentRunId,
@@ -254,7 +282,7 @@ export class AgentTeamService {
           "Reject unsafe or out-of-scope changes",
         ],
         allowedTools: ["read", "grep", "repo_map", "diagnostics"],
-        depth: rootDepth + 1,
+        depth: laneDepth,
         budgetRemaining: standardLaneBudget,
         correlationId: `${correlationId}:review`,
         parentRunId,
@@ -273,7 +301,7 @@ export class AgentTeamService {
           "Produce validation decision",
         ],
         allowedTools: ["diagnostics", "read"],
-        depth: rootDepth + 1,
+        depth: laneDepth,
         budgetRemaining: standardLaneBudget,
         correlationId: `${correlationId}:validate`,
         parentRunId,
@@ -292,7 +320,7 @@ export class AgentTeamService {
           "Consume structured failure evidence package",
         ],
         allowedTools: ["read", "apply_patch", "diagnostics"],
-        depth: rootDepth + 1,
+        depth: laneDepth,
         budgetRemaining: standardLaneBudget,
         correlationId: `${correlationId}:repair`,
         parentRunId,
@@ -310,7 +338,7 @@ export class AgentTeamService {
           "Approve release or escalate to human review",
         ],
         allowedTools: ["read"],
-        depth: rootDepth + 1,
+        depth: laneDepth,
         budgetRemaining: standardLaneBudget,
         correlationId: `${correlationId}:release`,
         parentRunId,
@@ -322,6 +350,12 @@ export class AgentTeamService {
 
     // R19-17: C2 risk_mode guard - ensure risk level is consistent across lanes
     for (const lane of lanes) {
+      assertDelegationDepth(lane.depth);
+      if (!checkPermissionSubset(lane.allowedTools, parentTools)) {
+        throw new Error(
+          `acp.permission_not_subset: lane ${lane.laneId} tools ${JSON.stringify(lane.allowedTools)} are not a subset of parent tools ${JSON.stringify(parentTools)}`,
+        );
+      }
       if (!checkRiskNotEscalated(lane.riskLevel, riskNumeric)) {
         throw new Error(
           `acp.risk_escalated: lane ${lane.laneId} risk ${lane.riskLevel} exceeds parent risk ${riskNumeric}`,

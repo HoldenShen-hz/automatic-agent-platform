@@ -316,7 +316,7 @@ describe("DekManager decrypt edge cases", () => {
 
   it("should throw for non-existent DEK", async () => {
     await assert.rejects(
-      async () => manager.decrypt("non-existent-dek", "some:ciphertext"),
+      async () => manager.decrypt("non-existent-dek", "00112233445566778899aabb:00112233445566778899aabbccddeeff:deadbeef"),
       (error: unknown) => {
         if (error instanceof Error && "code" in error) {
           return (error as { code: string }).code === "dek.not_found";

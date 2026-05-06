@@ -9,9 +9,9 @@
 - **Plan**: Plan recovery path and repair boundary
 - **Execute**: Apply recovery actions
 - **Feedback**: Record recovery evidence and residual risk
-- **Learn**: Accumulate failure patterns into learning pipeline
+- **Learn**: Accumulate failure patterns to learning pipeline
 - **Improve**: Enhance recovery strategy
-- **Release**: Recovery control as Phase 8b gate
+- **Release**: Recovery control as Ring 2 durable-readiness gate
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Context
 
-Harness failure recovery cannot rely on the caller to decide freely, as this would undermine consistency and auditing.
+Harness failure recovery cannot rely on the caller's free decision, otherwise it will break consistency and audit.
 
 ## Decision
 
@@ -30,5 +30,9 @@ Harness failure recovery cannot rely on the caller to decide freely, as this wou
 
 ## Consequences
 
-- Failure handling is no longer fragmented
+- Failure handling is no longer scattered
 - Replay, repair, and resume share the same recovery model
+
+## v4.3 ADR Remediation
+
+- R10-45: Delivery gate terminology corrected to `Ring 2 durable-readiness`, conforming to the requirement in §33 ring terminology to retire Phase 1-9.

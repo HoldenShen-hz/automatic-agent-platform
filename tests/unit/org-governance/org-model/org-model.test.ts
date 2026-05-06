@@ -17,8 +17,8 @@ import {
 } from "../../../../src/org-governance/org-model/org-node/index.js";
 
 const canonicalNodes = [
-  OrgNodeSchema.parse({ orgNodeId: "company", nodeType: "company", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "", metadata: {} }),
-  OrgNodeSchema.parse({ orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "company", ownerUserIds: ["vp"], active: true, costCenter: "", metadata: {} }),
+  OrgNodeSchema.parse({ orgNodeId: "tenant", nodeType: "tenant", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "", metadata: {} }),
+  OrgNodeSchema.parse({ orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "tenant", ownerUserIds: ["vp"], active: true, costCenter: "", metadata: {} }),
   OrgNodeSchema.parse({ orgNodeId: "dept", nodeType: "department", displayName: "Eng", parentOrgNodeId: "division", ownerUserIds: ["director"], active: true, costCenter: "", metadata: {} }),
   OrgNodeSchema.parse({ orgNodeId: "team", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: ["lead"], active: true, costCenter: "", metadata: {} }),
 ];

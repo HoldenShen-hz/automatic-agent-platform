@@ -16,8 +16,8 @@ import {
 } from "../../../../src/org-governance/org-model/org-node/index.js";
 
 const nodes = [
-  OrgNodeSchema.parse({ orgNodeId: "company", nodeType: "company", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "", metadata: {} }),
-  OrgNodeSchema.parse({ orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "company", ownerUserIds: ["vp"], active: true, costCenter: "", metadata: {} }),
+  OrgNodeSchema.parse({ orgNodeId: "tenant", nodeType: "tenant", displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "", metadata: {} }),
+  OrgNodeSchema.parse({ orgNodeId: "division", nodeType: "division", displayName: "Biz", parentOrgNodeId: "tenant", ownerUserIds: ["vp"], active: true, costCenter: "", metadata: {} }),
   OrgNodeSchema.parse({ orgNodeId: "dept", nodeType: "department", displayName: "Eng", parentOrgNodeId: "division", ownerUserIds: ["director"], active: true, costCenter: "", metadata: {} }),
   OrgNodeSchema.parse({ orgNodeId: "team", nodeType: "team", displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: ["lead"], active: true, costCenter: "", metadata: {} }),
 ];
@@ -43,7 +43,7 @@ test("org-model-service smoke detects principal offboarding and transfers", () =
 test("org-model-service smoke creates cross-org collaborator records", () => {
   const collaborator = createCrossOrgCollaborator({
     userId: "user-1",
-    homeOrgNodeId: "company-a",
+    homeOrgNodeId: "tenant-a",
     targetOrgNodeId: "team",
     role: "consultant",
     scope: {

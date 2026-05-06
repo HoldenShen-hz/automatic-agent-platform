@@ -6,12 +6,12 @@
 
 - **Observe**: Read orders, positions, and risk control thresholds
 - **Assess**: Perform pre-trade risk assessment
-- **Plan**: Decide whether to allow order submission
+- **Plan**: Decide whether to allow order placement
 - **Execute**: Only enter execution chain after risk control passes
-- **Feedback**: Record block reason and risk control evidence
+- **Feedback**: Record blocking reasons and risk control evidence
 - **Learn**: Review abnormal order patterns
 - **Improve**: Adjust risk control parameters
-- **Release**: Trading domain must pass domain-specific risk gate
+- **Release**: Trading domain must pass exclusive risk gate
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Context
 
-The cost of erroneous execution in the quant trading domain is extremely high; it must have pre-trade risk control independent of the platform's general risk controls.
+Quant trading domain has extremely high cost of erroneous execution and must have pre-trade risk control independent of the platform's general risk.
 
 ## Decision
 
@@ -29,4 +29,4 @@ The cost of erroneous execution in the quant trading domain is extremely high; i
 
 ## Consequences
 
-- `quant-trading` domain has a non-bypassable pre-trade risk boundary
+- `quant-trading` domain has non-bypassable pre-risk control boundary

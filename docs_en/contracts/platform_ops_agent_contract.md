@@ -22,16 +22,20 @@ This contract defines the platform self-operations Agent, catalog, and security 
 
 ## 4. Maturity Levels
 
-`OpsMaturityLevel` is fixed to:
+`OpsMaturityLevel` must align with canonical runtime modes, using an 8-level model (corresponding to §42.1 autonomy levels):
 
-- `observe_only`
-- `suggest_only`
-- `supervised_execution`
-- `trusted_automation`
+- `manual_only` (0) - Manual operations only
+- `suggestion` (1) - Suggestions only
+- `supervised` (2) - Human-supervised execution
+- `semi_auto` (3) - Semi-automatic execution
+- `trusted_auto` (4) - Trusted automatic execution
+- `full_auto` (5) - Fully automatic execution
+- `high_auto` (6) - High-risk automatic execution
+- `unrestricted_auto` (7) - Unrestricted automatic execution
 
 ## 5. Rules
 
-- Self-operations Agents must not bypass panic, budget, policy, or rollout.
+- Self-operations Agents must not bypass panic, budget, policy, and release.
 - All operations actions must first form an `OpsActionProposal`.
 - High-impact operations actions require human approval by default.
 

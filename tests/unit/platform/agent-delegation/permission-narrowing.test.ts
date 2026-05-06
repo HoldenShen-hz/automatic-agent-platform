@@ -243,13 +243,13 @@ test("delegation constraints merge via spread (child overrides parent)", async (
   assert.deepEqual(delegation.permissions.constraints.allowedDomains, ["domain-b.com", "domain-c.com"]);
 });
 
-test("delegation inherits parent permissions when no specific constraints requested", async () => {
+test("delegation keeps actions but not resources when no specific resources are requested", async () => {
   const service = createDelegationManager();
   const parent = createParentContext();
   const spec = createDelegationSpec({
     requiredPermissions: {
-      resources: [], // Empty = inherit all
-      actions: [],   // Empty = inherit all
+      resources: [],
+      actions: [],
       constraints: {},
     },
   });
@@ -258,8 +258,7 @@ test("delegation inherits parent permissions when no specific constraints reques
   const delegation = service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
-  // Child inherits all parent permissions
-  assert.deepEqual(delegation.permissions.resources, ["resource-a", "resource-b", "resource-c"]);
+  assert.deepEqual(delegation.permissions.resources, []);
   assert.deepEqual(delegation.permissions.actions, ["action-read", "action-write", "action-delete"]);
 });
 

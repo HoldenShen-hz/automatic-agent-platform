@@ -4,7 +4,7 @@
 - Decision Date: 2026-04-17
 - Related: ADR-015 Unified Extension Marketplace
 
-## Background
+## Context
 
 OAPEFLIR's eight-stage architecture needs to provide differentiated retrieval, validation, planning, and presentation capabilities for different business domains (coding/operations/growth/game-dev/asset-production/livestream). At the same time, external systems (Jira/GitHub/Notion/Figma/OBS/Ad/CRM) need unified interface access.
 
@@ -15,7 +15,7 @@ The existing `PluginSPIRegistry` (`plugin-spi-registry.ts`, 829 lines) has alrea
 ### 1. Plugin SPI 4 Core Interfaces
 
 | Interface | Responsibility | Method Signature |
-|------|------|---------|
+|-----------|---------------|-------------------|
 | `DomainRetrieverPlugin` | Retrieve relevant content from knowledge base/memory/context | `retrieve(query: RetrievalQuery): Promise<RetrievalResult[]>` |
 | `DomainValidatorPlugin` | Validate whether execution input/output complies with domain specifications | `validate(input: unknown, context: ValidationContext): Promise<ValidationResult>` |
 | `DomainPlannerPlugin` | Generate customized execution plans for specific domains | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>` |
@@ -30,7 +30,7 @@ unregistered → loading → registered → initialized → active ↔ suspended
 ```
 
 | State | Description | Allowed Operations |
-|------|------|----------|
+|-------|-------------|-------------------|
 | `unregistered` | Plugin not registered | `register()` |
 | `loading` | Currently loading | — |
 | `registered` | Registered, pending initialization | `initialize()` |
@@ -44,7 +44,7 @@ unregistered → loading → registered → initialized → active ↔ suspended
 ### 3. ExternalAdapterPlugin 8 Adapter Types
 
 | Adapter | Purpose | Implementation Status |
-|--------|------|---------|
+|---------|---------|----------------------|
 | `github` | GitHub API integration (issues/PRs/code search) | Implemented (`github-adapter.ts`, 120 lines) |
 | `jira` | Jira ticket management | Not implemented |
 | `notion` | Notion document/database integration | Not implemented |
@@ -75,7 +75,7 @@ interface PluginRegistryService {
 }
 ```
 
-## Alternative Approaches
+## Alternatives
 
 ### Option A: Hardcoded Domain Logic
 
@@ -95,13 +95,13 @@ Costs: Adds runtime overhead (~5-10ms per invoke), requires isolation mechanism
 - `PluginConfigValidator` prevents malicious configuration injection
 - Ring 2 prioritizes implementing Operations Domain (reusing GitHub adapter)
 
-## Cross References
+## Cross-References
 
 - [ADR-015 Unified Extension Marketplace](./015-unified-extension-marketplace.md)
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 
-## Source Sections
+## Source Section
 
 Note: After v4.3 migration, the original §B/§G appendices have been restructured into modular contract documents. This ADR's related content is now distributed across the following contract documents:
 

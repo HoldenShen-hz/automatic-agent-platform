@@ -107,6 +107,34 @@ test("GET /v1/incidents lists only incidents inside tenant scope", async () => {
   assert.doesNotMatch(response.body, /Tenant B incident/);
 });
 
+test("GET /v1/incidents reports actual total before limit slicing", async () => {
+  const incidentService = new IncidentCaseService();
+  incidentService.openIncident({ tenantId: "tenant-a", severity: "high", title: "Tenant A incident 1" });
+  incidentService.openIncident({ tenantId: "tenant-a", severity: "high", title: "Tenant A incident 2" });
+  incidentService.openIncident({ tenantId: "tenant-a", severity: "high", title: "Tenant A incident 3" });
+  const routes = createIncidentRoutes({
+    authService: createMockAuthService(["viewer"], "tenant-a"),
+    incidentService,
+  });
+
+  const response = await callRoute(
+    routes,
+    {
+      requestId: "req-incident-limit",
+      request: { method: "GET", url: "/v1/incidents?limit=2", headers: {}, body: null } as never,
+      route: { pathname: "/v1/incidents", segments: ["v1", "incidents"] },
+      principal: null,
+    },
+  );
+  if (!response) {
+    throw new Error("handler returned null");
+  }
+
+  const parsed = JSON.parse(response.body);
+  assert.equal(parsed.data.incidents.length, 2);
+  assert.equal(parsed.data.total, 3);
+});
+
 test("GET /v1/incidents/:id rejects invalid incident id format", async () => {
   const routes = createIncidentRoutes({
     authService: createMockAuthService(["viewer"], "tenant-a"),

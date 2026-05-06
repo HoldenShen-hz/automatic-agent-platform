@@ -187,3 +187,83 @@ test("PUT /v1/prompts/:name/deprecate accepts validated payload", async () => {
   assert.equal(parsed.data.deprecated, true);
   assert.equal(parsed.data.name, "system.default");
 });
+
+test("GET /v1/prompts/:name returns ErrorEnvelope when bundle is missing", async () => {
+  const routes = createPromptRoutes({
+    authService: createMockAuthService(),
+    promptRegistryService: seedPromptRegistry(),
+  });
+
+  const response = await callRoute(routes, {
+    requestId: "req-prompt-missing",
+    request: {
+      method: "GET",
+      url: "/v1/prompts/does-not-exist?taskType=general",
+      headers: {},
+      body: null,
+    } as never,
+    route: { pathname: null, segments: ["v1", "prompts", "does-not-exist"] },
+    principal: null,
+  });
+
+  if (!response) throw new Error("handler returned null");
+  assert.equal(response.statusCode, 404);
+  const parsed = JSON.parse(response.body);
+  assert.equal(parsed.error.code, "prompt.bundle_not_found");
+  assert.match(parsed.error.message, /does-not-exist/);
+});
+
+test("PUT /v1/prompts/:name/deprecate returns 404 when bundle is missing", async () => {
+  const routes = createPromptRoutes({
+    authService: createMockAuthService(["operator"]),
+    promptRegistryService: seedPromptRegistry(),
+  });
+
+  const response = await callRoute(routes, {
+    requestId: "req-prompt-deprecate-missing",
+    request: {
+      method: "PUT",
+      url: "/v1/prompts/missing/deprecate",
+      headers: {},
+      body: JSON.stringify({ version: 1, level: "global" }),
+    } as never,
+    route: { pathname: null, segments: ["v1", "prompts", "missing", "deprecate"] },
+    principal: null,
+  });
+
+  if (!response) throw new Error("handler returned null");
+  assert.equal(response.statusCode, 404);
+  const parsed = JSON.parse(response.body);
+  assert.equal(parsed.error.code, "prompt.bundle_not_found");
+});
+
+test("POST /v1/prompts rejects unexpected fields via strict schema", async () => {
+  const routes = createPromptRoutes({
+    authService: createMockAuthService(["operator"]),
+    promptRegistryService: seedPromptRegistry(),
+  });
+
+  await assert.rejects(
+    () => callRoute(routes, {
+      requestId: "req-prompt-create-invalid",
+      request: {
+        method: "POST",
+        url: "/v1/prompts",
+        headers: {},
+        body: JSON.stringify({
+          name: "system.extra",
+          promptText: "hello",
+          model: "balanced",
+          tools: [],
+          scope: { responsibilities: [], boundaries: [] },
+          inputSchema: { required: [] },
+          outputSchema: { required: [] },
+          preconditions: [],
+          unexpected: true,
+        }),
+      } as never,
+      route: { pathname: "/v1/prompts", segments: ["v1", "prompts"] },
+      principal: null,
+    }),
+  );
+});

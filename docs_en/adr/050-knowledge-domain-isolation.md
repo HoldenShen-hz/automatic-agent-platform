@@ -5,7 +5,7 @@
 
 ## Context
 
-Different department knowledge requires boundary isolation to prevent data leakage while supporting controlled knowledge sharing.
+Different departments need boundary isolation for knowledge to prevent data leakage, while supporting controlled knowledge sharing.
 
 ## Decision
 
@@ -31,18 +31,18 @@ interface SharingPolicy {
 
 ### Isolation Levels
 
-| Level | Description | Cross-Domain Search |
-|-------|-------------|---------------------|
+| Level | Description | Cross-domain Search |
+|-------|-------------|-------------------|
 | strict | Complete isolation | Not allowed |
 | moderate | Sharing after approval | Requires approval |
 | open | Visible but requires authorization | Requires authorization |
 
-### Knowledge Sharing Flow
+### Knowledge Sharing Process
 
-1. Request sharing (specify target domain and purpose)
+1. Apply for sharing (specify target domain and purpose)
 2. Source domain approval
 3. Target domain confirmation
-4. Audit log recording
+4. Audit log record
 
 ### Trust Model
 
@@ -52,17 +52,22 @@ interface SharingPolicy {
 
 ## Consequences
 
-Positive:
+Pros:
 
 - Strict isolation prevents data leakage
 - Controlled sharing supports business collaboration
-- Audit trail ensures clear accountability
+- Audit tracking ensures accountability
 
-Negative:
+Cons:
 
 - Isolation affects knowledge reuse
 - Sharing process adds latency
 
-## Cross-References
+## Cross-references
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
+- [ADR-049 Department Compliance Policy Engine](./049-department-compliance-policy-engine.md)
+
+## Source Section
+
+- `§50` Knowledge Domain Isolation and Controlled Sharing

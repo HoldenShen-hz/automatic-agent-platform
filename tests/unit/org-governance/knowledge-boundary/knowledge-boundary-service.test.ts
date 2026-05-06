@@ -7,9 +7,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeBoundaryService } from "../../../../../src/org-governance/knowledge-boundary/knowledge-boundary-service.js";
-import type { KnowledgeBoundary } from "../../../../../src/org-governance/knowledge-boundary/boundary-manager/index.js";
-import type { KnowledgeShareGrant } from "../../../../../src/org-governance/knowledge-boundary/sharing-gate/index.js";
+import { KnowledgeBoundaryService } from "../../../../src/org-governance/knowledge-boundary/knowledge-boundary-service.js";
+import type { KnowledgeBoundary } from "../../../../src/org-governance/knowledge-boundary/boundary-manager/index.js";
+import type { KnowledgeShareGrant } from "../../../../src/org-governance/knowledge-boundary/sharing-gate/index.js";
 
 function createBoundary(boundaryId: string, ownerOrgNodeId: string, allowedOrgNodeIds: string[] = []): KnowledgeBoundary {
   return {
@@ -391,7 +391,7 @@ test("KnowledgeBoundaryService traceBoundaryAccess returns all logs", () => {
 
 test("KnowledgeBoundaryService evaluateTenantScope handles null boundary tenant", () => {
   const service = new KnowledgeBoundaryService();
-  const boundary = createBoundary("kb_no_tenant", "dept_finance");
+  const boundary = createBoundary("kb_no_tenant", "dept_finance", ["dept_hr"]);
 
   // Boundary has no tenant, requester has no tenant - should allow
   const result = service.evaluateDynamicAccess({
@@ -404,7 +404,6 @@ test("KnowledgeBoundaryService evaluateTenantScope handles null boundary tenant"
     occurredAt: "2026-04-20T00:00:00.000Z",
   });
 
-  // No dynamic policy, boundary access allowed
   assert.equal(result.allowed, true);
 });
 

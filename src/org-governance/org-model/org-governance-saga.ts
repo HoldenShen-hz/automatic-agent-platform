@@ -148,6 +148,8 @@ export interface CompensationReceiptEntry {
   readonly receiptId: string;
   readonly sagaId: string;
   readonly failedStepId: string;
+  readonly compensationStepId: string;
+  readonly phase: OrgGovernancePhase;
   readonly compensatedNodeId: string;
   readonly compensatedAt: number;
   readonly compensationOutcome: "success" | "failed";
@@ -289,6 +291,8 @@ export class OrgGovernanceSaga {
     committedNodeIds: readonly string[];
     preparedNodeIds: readonly string[];
     useFrozenSnapshot?: boolean;
+    compensationSteps?: readonly OrgGovernanceSagaStep[];
+    allSteps?: readonly OrgGovernanceSagaStep[];
   }): { success: boolean; compensatedCount: number; hasFailures: boolean } {
     const allNodes = [...params.committedNodeIds, ...params.preparedNodeIds];
     const uniqueNodes = [...new Set(allNodes)].reverse(); // §46.3: Reverse order for rollback
@@ -303,11 +307,15 @@ export class OrgGovernanceSaga {
 
     for (const nodeId of uniqueNodes) {
       const receiptId = newId("comp_receipt");
-      const compensationStep: OrgGovernanceSagaStep = {
+      const explicitCompensationStep = params.compensationSteps?.find((step) => step.targetOrgNodeId === nodeId);
+      const matchedOriginalStep = params.allSteps?.find(
+        (step) => step.targetOrgNodeId === nodeId && step.action !== "compensate",
+      );
+      const compensationStep: OrgGovernanceSagaStep = explicitCompensationStep ?? {
         stepId: `${params.failedStepId}:compensate:${nodeId}`,
         targetOrgNodeId: nodeId,
         action: "compensate",
-        phase: "domain", // default phase, would be derived from failed step
+        phase: matchedOriginalStep?.phase ?? "domain",
       };
 
       try {
@@ -320,6 +328,8 @@ export class OrgGovernanceSaga {
           receiptId,
           sagaId: params.sagaId,
           failedStepId: params.failedStepId,
+          compensationStepId: compensationStep.stepId,
+          phase: compensationStep.phase,
           compensatedNodeId: nodeId,
           compensatedAt: Date.now(),
           compensationOutcome: "success",
@@ -333,6 +343,8 @@ export class OrgGovernanceSaga {
           receiptId,
           sagaId: params.sagaId,
           failedStepId: params.failedStepId,
+          compensationStepId: compensationStep.stepId,
+          phase: compensationStep.phase,
           compensatedNodeId: nodeId,
           compensatedAt: Date.now(),
           compensationOutcome: "failed",
@@ -456,14 +468,22 @@ export class OrgGovernanceSaga {
         committedNodeIds,
         preparedNodeIds,
         useFrozenSnapshot: true,
+        compensationSteps: sortedSteps.filter((candidate) => candidate.action === "compensate"),
+        allSteps: sortedSteps,
       });
 
-      compensatedNodeIds.push(...Array(compensationResult.compensatedCount).fill("compensated_node"));
+      if (compensationResult.compensatedCount > 0) {
+        compensatedNodeIds.push(
+          ...this.compensationReceipt
+            .filter((receipt) => receipt.compensationOutcome === "success")
+            .map((receipt) => receipt.compensatedNodeId),
+        );
+      }
 
       // Add compensation entries to execution log
       for (const receipt of this.compensationReceipt) {
         executionLog.push({
-          stepId: `${failedStepId}:compensate:${receipt.compensatedNodeId}`,
+          stepId: receipt.compensationStepId,
           action: "compensate",
           targetOrgNodeId: receipt.compensatedNodeId,
           outcome: receipt.compensationOutcome === "success" ? "compensated" : "failed",
@@ -514,8 +534,9 @@ export class OrgGovernanceSaga {
     const result = this.execute(sagaId, steps);
 
     const enrichedLog = result.executionLog.map((entry) => {
-      const step = steps.find((s) => s.stepId === entry.stepId);
-      return { ...entry, phase: step?.phase ?? "domain" };
+      const step = steps.find((candidate) => candidate.stepId === entry.stepId);
+      const compensationReceipt = this.compensationReceipt.find((receipt) => receipt.compensationStepId === entry.stepId);
+      return { ...entry, phase: step?.phase ?? compensationReceipt?.phase ?? "domain" };
     });
 
     const preparedByPhase = buildPhaseMap(enrichedLog, "prepared");

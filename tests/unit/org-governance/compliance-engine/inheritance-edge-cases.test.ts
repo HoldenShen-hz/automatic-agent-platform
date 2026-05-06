@@ -10,15 +10,15 @@ import type { OrgNode } from "../../../../src/org-governance/org-model/org-node/
 
 test("resolveCompliancePolicyForNode handles deeply nested org hierarchy", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "company", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
-    { orgNodeId: "division", nodeType: "division", displayName: "Engineering", parentOrgNodeId: "company", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "tenant", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "division", nodeType: "division", displayName: "Engineering", parentOrgNodeId: "tenant", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "department", nodeType: "department", displayName: "Backend", parentOrgNodeId: "division", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "team", nodeType: "team", displayName: "Platform", parentOrgNodeId: "department", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "member", nodeType: "member", displayName: "Alice", parentOrgNodeId: "team", ownerUserIds: ["user-1"], active: true, costCenter: "", metadata: {} },
   ];
 
   const policiesByNodeId = {
-    company: [{ policyId: "company_policy", rules: { retentionDays: 365 } }],
+    tenant: [{ policyId: "tenant_policy", rules: { retentionDays: 365 } }],
     division: [{ policyId: "division_policy", rules: { encryptionRequired: true } }],
     department: [{ policyId: "dept_policy", rules: { dataClassification: "internal" } }],
     team: [],
@@ -34,7 +34,7 @@ test("resolveCompliancePolicyForNode handles deeply nested org hierarchy", () =>
 
 test("resolveCompliancePolicyForNode returns empty when target node not found", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "root", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
   const policiesByNodeId = {
@@ -43,12 +43,12 @@ test("resolveCompliancePolicyForNode returns empty when target node not found", 
 
   const result = resolveCompliancePolicyForNode(nodes, "nonexistent_node", policiesByNodeId);
 
-  assert.deepStrictEqual(result, {});
+  assert.deepStrictEqual(result, { _denyByDefault: true });
 });
 
 test("resolveCompliancePolicyForNode handles nodes with null parent", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "standalone", nodeType: "member", displayName: "Bob", parentOrgNodeId: null, ownerUserIds: ["user-2"], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "standalone", nodeType: "seat", displayName: "Bob", parentOrgNodeId: null, ownerUserIds: ["user-2"], active: true, costCenter: "", metadata: {} },
   ];
 
   const policiesByNodeId = {
@@ -62,7 +62,7 @@ test("resolveCompliancePolicyForNode handles nodes with null parent", () => {
 
 test("resolveCompliancePolicyForNode merges multiple policies from same node", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "root", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
   const policiesByNodeId = {
@@ -81,17 +81,17 @@ test("resolveCompliancePolicyForNode merges multiple policies from same node", (
 
 test("resolveCompliancePolicyForNode handles empty policiesByNodeId", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "root", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 
   const result = resolveCompliancePolicyForNode(nodes, "root", {});
 
-  assert.deepStrictEqual(result, {});
+  assert.deepStrictEqual(result, { _denyByDefault: true });
 });
 
 test("resolveCompliancePolicyForNode handles intermediate node without policies", () => {
   const nodes: readonly OrgNode[] = [
-    { orgNodeId: "root", nodeType: "company", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "root", nodeType: "tenant", displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
     { orgNodeId: "dept", nodeType: "department", displayName: "IT", parentOrgNodeId: "root", ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
 

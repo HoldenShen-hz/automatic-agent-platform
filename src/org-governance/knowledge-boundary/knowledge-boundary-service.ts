@@ -403,7 +403,7 @@ export class KnowledgeBoundaryService {
       return false;
     }
     if (policy.requiredGrantBoundaryIds != null && policy.requiredGrantBoundaryIds.length > 0) {
-      const grantedBoundaryIds = new Set(grants.filter((grant) => grant.boundaryId === boundaryId).map((grant) => grant.boundaryId));
+      const grantedBoundaryIds = new Set(grants.map((grant) => grant.boundaryId));
       const missingRequiredGrant = policy.requiredGrantBoundaryIds.some((grantBoundaryId) => !grantedBoundaryIds.has(grantBoundaryId));
       if (missingRequiredGrant) {
         reasonCodes.push(`knowledge_boundary.required_grant_missing:${policy.policyId}`);

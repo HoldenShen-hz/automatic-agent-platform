@@ -10,14 +10,14 @@ import {
 test("OrgNodeSchema parses valid org node", () => {
   const node = OrgNodeSchema.parse({
     nodeId: "org_1",
-    type: "company",
+    type: "tenant",
     name: "Acme Corp",
     parentNodeId: null,
     ownerUserIds: ["user_1"],
   });
 
   assert.strictEqual(node.orgNodeId, "org_1");
-  assert.strictEqual(node.nodeType, "company");
+  assert.strictEqual(node.nodeType, "tenant");
   assert.strictEqual(node.displayName, "Acme Corp");
 });
 
@@ -37,10 +37,19 @@ test("OrgNodeSchema accepts legacy field names", () => {
 test("OrgNodeSchema rejects missing nodeId and orgNodeId", () => {
   assert.throws(() => {
     OrgNodeSchema.parse({
-      type: "company",
+      type: "tenant",
       name: "Test",
     });
   }, /nodeId or orgNodeId is required/);
+});
+
+test("OrgNodeSchema rejects deprecated company node type before required nodeId check", () => {
+  assert.throws(() => {
+    OrgNodeSchema.parse({
+      type: "company",
+      name: "Test",
+    });
+  });
 });
 
 test("OrgNodeSchema rejects missing type", () => {
@@ -53,10 +62,11 @@ test("OrgNodeSchema rejects missing type", () => {
 });
 
 test("OrgNodeTypeSchema validates enum values", () => {
-  assert.strictEqual(OrgNodeTypeSchema.parse("company"), "company");
+  assert.strictEqual(OrgNodeTypeSchema.parse("tenant"), "tenant");
   assert.strictEqual(OrgNodeTypeSchema.parse("division"), "division");
   assert.strictEqual(OrgNodeTypeSchema.parse("department"), "department");
   assert.strictEqual(OrgNodeTypeSchema.parse("team"), "team");
+  assert.strictEqual(OrgNodeTypeSchema.parse("seat"), "seat");
 });
 
 test("OrgNodeTypeSchema rejects invalid values", () => {

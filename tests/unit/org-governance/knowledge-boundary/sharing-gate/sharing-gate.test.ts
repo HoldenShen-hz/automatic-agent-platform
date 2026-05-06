@@ -49,7 +49,7 @@ function createGrant(overrides: Partial<{
 
 // ─── Issue #1973: Grant expiry check logic error + string comparison not date comparison ─
 
-test("evaluateKnowledgeShare uses string comparison for dates - demonstrates string comparison bug", () => {
+test("evaluateKnowledgeShare denies grant at exact expiry time", () => {
   const boundary = createBoundary("kb_finance", "dept_finance");
 
   const grants = [
@@ -62,17 +62,11 @@ test("evaluateKnowledgeShare uses string comparison for dates - demonstrates str
     }),
   ];
 
-  // Query time is exactly the same as expiry
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T00:00:00.000Z");
-
-  // BUG: The code uses string comparison: `item.expiresAt >= nowIso`
-  // "2026-04-20T00:00:00.000Z" >= "2026-04-20T00:00:00.000Z" is TRUE (lexicographic)
-  // But logically, if expiresAt equals nowIso, the grant should be EXPIRED
-  // This is a logic error - at exact expiry moment, access is still granted
-  assert.notStrictEqual(result, null); // Still allowed - BUG!
+  assert.strictEqual(result, null);
 });
 
-test("evaluateKnowledgeShare allows grant at exact expiry moment - demonstrates bug", () => {
+test("evaluateKnowledgeShare treats exact expiry as expired", () => {
   const boundary = createBoundary("kb_finance", "dept_finance");
 
   const grants = [
@@ -84,15 +78,11 @@ test("evaluateKnowledgeShare allows grant at exact expiry moment - demonstrates 
     }),
   ];
 
-  // Now is exactly at the expiry moment
   const result = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T12:00:00.000Z");
-
-  // BUG: String comparison "2026-04-20T12:00:00.000Z" >= "2026-04-20T12:00:00.000Z" = true
-  // But logically, at the exact expiry moment, the grant should be expired
-  assert.notStrictEqual(result, null); // Still allowed - BUG!
+  assert.strictEqual(result, null);
 });
 
-test("evaluateKnowledgeShare string comparison causes wrong ordering for similar dates", () => {
+test("evaluateKnowledgeShare uses parsed timestamps around expiry boundary", () => {
   const boundary = createBoundary("kb_finance", "dept_finance");
 
   // Grant expires at April 20
@@ -105,18 +95,14 @@ test("evaluateKnowledgeShare string comparison causes wrong ordering for similar
     }),
   ];
 
-  // Query at April 20 23:59:59.998 (just before expiry)
   const resultBefore = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T23:59:59.998Z");
-  assert.notStrictEqual(resultBefore, null); // Allowed
+  assert.notStrictEqual(resultBefore, null);
 
-  // Query at April 20 23:59:59.999 (exactly at expiry - string comparison issue)
   const resultAt = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-20T23:59:59.999Z");
-  // BUG: Still allowed because string comparison is >= (should be >)
-  assert.notStrictEqual(resultAt, null); // Still allowed - BUG!
+  assert.strictEqual(resultAt, null);
 
-  // Query at April 21 (after expiry)
   const resultAfter = evaluateKnowledgeShare(boundary, "dept_hr", grants, "2026-04-21T00:00:00.000Z");
-  assert.strictEqual(resultAfter, null); // Correctly expired
+  assert.strictEqual(resultAfter, null);
 });
 
 test("evaluateKnowledgeShare with null expiresAt allows access - demonstrates logic error", () => {

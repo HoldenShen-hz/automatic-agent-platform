@@ -32,7 +32,17 @@ test("org-model/org-node maps team to pack-group layer", () => {
   assert.equal(getPlatformMapping("team"), "domain/pack_group");
 });
 
-test("org-model/org-node marks only team as leaf org node", () => {
+test("org-model/org-node marks only seat as leaf org node", () => {
+  assert.equal(isLeafOrgNode({
+    orgNodeId: "seat-1",
+    nodeType: "seat",
+    displayName: "Runtime Seat",
+    parentOrgNodeId: "team-1",
+    ownerUserIds: [],
+    active: true,
+    costCenter: "",
+    metadata: {},
+  }), true);
   assert.equal(isLeafOrgNode({
     orgNodeId: "team-1",
     nodeType: "team",
@@ -42,7 +52,7 @@ test("org-model/org-node marks only team as leaf org node", () => {
     active: true,
     costCenter: "",
     metadata: {},
-  }), true);
+  }), false);
   assert.equal(isLeafOrgNode({
     orgNodeId: "dept-1",
     nodeType: "department",

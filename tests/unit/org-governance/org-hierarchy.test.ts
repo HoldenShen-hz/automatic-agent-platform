@@ -12,8 +12,8 @@ import {
 } from "../../../src/org-governance/org-model/hierarchy/index.js";
 
 const nodes = [
-  { orgNodeId: "company", nodeType: "company" as const, displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "", metadata: {} },
-  { orgNodeId: "division", nodeType: "division" as const, displayName: "Biz", parentOrgNodeId: "company", ownerUserIds: ["vp"], active: true, costCenter: "", metadata: {} },
+  { orgNodeId: "tenant", nodeType: "tenant" as const, displayName: "Acme", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "", metadata: {} },
+  { orgNodeId: "division", nodeType: "division" as const, displayName: "Biz", parentOrgNodeId: "tenant", ownerUserIds: ["vp"], active: true, costCenter: "", metadata: {} },
   { orgNodeId: "dept", nodeType: "department" as const, displayName: "Eng", parentOrgNodeId: "division", ownerUserIds: ["director"], active: true, costCenter: "", metadata: {} },
   { orgNodeId: "team", nodeType: "team" as const, displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: ["lead"], active: true, costCenter: "", metadata: {} },
 ];
@@ -23,8 +23,8 @@ test("org-hierarchy validates canonical org tree", () => {
 });
 
 test("org-hierarchy exposes lineage helpers for canonical nodes", () => {
-  assert.deepEqual(listAncestorNodeIds(nodes, "team"), ["dept", "division", "company"]);
-  assert.deepEqual(new Set(listDescendantNodeIds(nodes, "company")), new Set(["division", "dept", "team"]));
+  assert.deepEqual(listAncestorNodeIds(nodes, "team"), ["dept", "division", "tenant"]);
+  assert.deepEqual(new Set(listDescendantNodeIds(nodes, "tenant")), new Set(["division", "dept", "team"]));
   assert.equal(findLowestCommonAncestor(nodes, "team", "dept"), "dept");
 });
 

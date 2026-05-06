@@ -22,7 +22,7 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Context
 
-v2.7 `§37-§38` requires the platform to no longer treat business domains as opaque business packages, but instead use `DomainDescriptor` as a structured governance unit, unifying risk profile, knowledge structure, evaluation framework, Prompt library, Recipe, and cross-domain interaction strategy.
+v4.3 `§37-§38` requires the platform to no longer treat business domains as opaque business packages, but instead use `DomainDescriptor` as a structured governance unit, unifying risk profile, knowledge structure, evaluation framework, Prompt library, Recipe, and cross-domain interaction strategy.
 
 The current repository already has `src/domains/*` directory and initial implementation of `src/domains/registry/*`, but authoritative decisions are still missing, leading to:
 

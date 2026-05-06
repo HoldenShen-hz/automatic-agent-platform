@@ -60,16 +60,20 @@ function eventRecord(overrides: Partial<import("../../../../../../src/platform/c
 // ─── insertEvent ─────────────────────────────────────────────────────────────
 
 test("insertEvent executes INSERT with event fields", async () => {
-  const { connection, calls } = createConnection();
+  const { connection, calls } = createConnection({
+    queryOneRows: [{ tenantId: "tenant-1" }],
+  });
   const repo = new AsyncEventRepository(connection);
 
-  const record = eventRecord();
+  const record = { ...eventRecord(), tenantId: "tenant-1" };
   await repo.insertEvent(record);
 
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0]!.method, "execute");
-  assert.ok(calls[0]!.sql.includes("INSERT INTO events"));
-  assert.deepEqual(calls[0]!.params.slice(0, 9), [
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0]!.method, "queryOne");
+  assert.ok(calls[0]!.sql.includes("FROM tasks WHERE id = $1"));
+  assert.equal(calls[1]!.method, "execute");
+  assert.ok(calls[1]!.sql.includes("INSERT INTO events"));
+  assert.deepEqual(calls[1]!.params.slice(0, 9), [
     "evt-1",
     "task-1",
     null,
@@ -83,25 +87,51 @@ test("insertEvent executes INSERT with event fields", async () => {
 });
 
 test("insertEvent generates eventTier from eventType when not provided", async () => {
-  const { connection, calls } = createConnection();
+  const { connection, calls } = createConnection({
+    queryOneRows: [{ tenantId: "tenant-1" }],
+  });
   const repo = new AsyncEventRepository(connection);
 
-  const record = eventRecord({ eventTier: undefined as any });
+  const record = { ...eventRecord({ eventTier: undefined as any }), tenantId: "tenant-1" };
   await repo.insertEvent(record);
 
   // The repo calls getEventTier to determine tier
-  assert.equal(calls[0]!.method, "execute");
+  assert.equal(calls[1]!.method, "execute");
 });
 
 test("insertEvent returns the event record", async () => {
-  const { connection } = createConnection();
+  const { connection } = createConnection({
+    queryOneRows: [{ tenantId: "tenant-1" }],
+  });
   const repo = new AsyncEventRepository(connection);
 
-  const record = eventRecord();
+  const record = { ...eventRecord(), tenantId: "tenant-1" };
   const result = await repo.insertEvent(record);
 
   assert.equal(result.id, "evt-1");
   assert.equal(result.eventType, "task.started");
+});
+
+test("insertEvent rejects missing tenantId", async () => {
+  const { connection } = createConnection();
+  const repo = new AsyncEventRepository(connection);
+
+  await assert.rejects(
+    () => repo.insertEvent({ ...eventRecord(), tenantId: "" }),
+    /event_repository\.tenant_id_required/,
+  );
+});
+
+test("insertEvent rejects task tenant mismatch", async () => {
+  const { connection } = createConnection({
+    queryOneRows: [{ tenantId: "tenant-db" }],
+  });
+  const repo = new AsyncEventRepository(connection);
+
+  await assert.rejects(
+    () => repo.insertEvent({ ...eventRecord(), tenantId: "tenant-request" }),
+    /event_repository\.tenant_scope_mismatch/,
+  );
 });
 
 // ─── insertEventDeadLetter ───────────────────────────────────────────────────

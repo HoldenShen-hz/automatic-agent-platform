@@ -40,7 +40,7 @@ test("createControlDirective fails fast because ControlDirective is no longer ca
         metadata: { source: "console" },
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+      error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -59,7 +59,7 @@ test("createControlDirective generates a directiveId when not provided", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -79,7 +79,7 @@ test("createControlDirective uses provided directiveId", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -98,7 +98,7 @@ test("createControlDirective sets createdAt to nowIso when not provided", () => 
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -118,7 +118,7 @@ test("createControlDirective uses provided createdAt timestamp", () => {
         metadata: {},
         createdAt: "2026-01-01T00:00:00.000Z",
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -201,7 +201,7 @@ test("createControlDirective allows null tenantId and executionId", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -221,7 +221,7 @@ test("createControlDirective accepts all directive kinds", () => {
           executionId: null,
           metadata: {},
         }),
-      (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+      (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
     );
   }
 });

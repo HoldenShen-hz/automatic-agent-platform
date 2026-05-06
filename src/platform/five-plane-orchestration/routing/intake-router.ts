@@ -1065,8 +1065,8 @@ public route(input: IntakeRouteInput): IntakePipelineResult {
     riskClass,
     idempotencyKey: pipelineContext.idempotencyKey,
     traceId: pipelineContext.traceId,
-    confirmedTaskSpecId: input.confirmedTaskSpecId,
-    confirmationReceipt,
+    confirmedTaskSpecId: input.confirmedTaskSpecId ?? "",
+    ...(confirmationReceipt != null ? { confirmationReceipt } : {}),
   });
 
   routeTrace.push(`stage3:confirmed_task_spec:${confirmedTaskSpec.confirmedTaskSpecId}`);

@@ -591,10 +591,9 @@ export class SamlService {
     return this.providers.get(providerId) ?? null;
   }
 
-  private cleanupExpiredAssertions(): void {
-    const now = Date.now();
+  private cleanupExpiredAssertions(referenceTime = Date.now()): void {
     for (const [assertionId, expiresAt] of this.consumedAssertionIds.entries()) {
-      if (now > expiresAt) {
+      if (referenceTime > expiresAt) {
         this.consumedAssertionIds.delete(assertionId);
       }
     }
@@ -677,7 +676,13 @@ export class SamlService {
         let x509Cert: string | null = null;
         if (typeof _keyInfo === "string") {
           // Parse the KeyInfo XML to find X509Certificate
-          const certMatch = _keyInfo.match(/<X509Certificate>([^<]+)<\/X509Certificate>/);
+          const certMatch = _keyInfo.match(/<(?:[\w-]+:)?X509Certificate>([^<]+)<\/(?:[\w-]+:)?X509Certificate>/);
+          if (certMatch?.[1] !== undefined) {
+            x509Cert = certMatch[1]!;
+          }
+        } else if (_keyInfo && typeof _keyInfo === "object") {
+          const serialized = Object.values(_keyInfo as Record<string, unknown>).join("");
+          const certMatch = serialized.match(/<(?:[\w-]+:)?X509Certificate>([^<]+)<\/(?:[\w-]+:)?X509Certificate>/);
           if (certMatch?.[1] !== undefined) {
             x509Cert = certMatch[1]!;
           }
@@ -704,7 +709,7 @@ export class SamlService {
     if (assertion.assertionId) {
       const replayKey = `${providerId}:${assertion.assertionId}`;
       // SECURITY FIX: Cleanup expired assertions before checking to prevent memory leak
-      this.cleanupExpiredAssertions();
+      this.cleanupExpiredAssertions(now.getTime());
       if (this.consumedAssertionIds.has(replayKey)) {
         throw new Error(`saml.assertion_replayed:${providerId}`);
       }

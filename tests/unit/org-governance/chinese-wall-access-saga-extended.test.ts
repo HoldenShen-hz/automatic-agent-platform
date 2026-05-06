@@ -380,17 +380,14 @@ test("ChineseWallAccessSaga handles multiple grant and release pairs", () => {
     commitRelease: () => {},
   });
 
-  // Test the saga with stepIds that do NOT have "prepare_" or "commit_" prefix
-  // The hasMatchingPrepareStep uses stepId directly (not action-based lookup)
-  // So "grant-1" prepare step should not match "grant-1" commit step because preparedSet contains action names
   const receipt = saga.execute("access-20", [
     { stepId: "grant-1", action: "prepare_grant", succeeded: true },
     { stepId: "grant-1", action: "commit_grant", succeeded: true },
   ]);
 
-  // The saga will rollback because hasMatchingPrepareStep doesn't find "grant-1" in preparedSet
-  // (preparedSet contains "prepare_grant" action, not stepId)
-  assert.equal(receipt.status, "rolled_back");
+  assert.equal(receipt.status, "committed");
+  assert.equal(receipt.rollbackRequired, false);
+  assert.deepEqual(receipt.committedActions, ["commit_grant"]);
 });
 
 test("ChineseWallAccessSaga phase sorting is stable for same phase actions", () => {

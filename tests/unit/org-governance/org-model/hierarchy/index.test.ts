@@ -16,8 +16,8 @@ import {
 
 test("validateOrgHierarchy returns empty array for valid hierarchy", () => {
   const nodes = [
-    { orgNodeId: "company", nodeType: "company" as const, active: true, ownerUserIds: ["admin"], parentOrgNodeId: null },
-    { orgNodeId: "dept1", nodeType: "department" as const, active: true, ownerUserIds: ["mgr1"], parentOrgNodeId: "company" },
+    { orgNodeId: "tenant", nodeType: "tenant" as const, active: true, ownerUserIds: ["admin"], parentOrgNodeId: null },
+    { orgNodeId: "dept1", nodeType: "department" as const, active: true, ownerUserIds: ["mgr1"], parentOrgNodeId: "tenant" },
     { orgNodeId: "team1", nodeType: "team" as const, active: true, ownerUserIds: ["lead1"], parentOrgNodeId: "dept1" },
   ];
   const findings = validateOrgHierarchy(nodes);

@@ -24,19 +24,21 @@ import {
   getLegalEntityApprovalRoles,
 } from "../../../src/org-governance/org-model/org-node/index.js";
 
-const companyNode = { orgNodeId: "company", nodeType: "company" as const, displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "CC-000", metadata: {} };
-const divisionNode = { orgNodeId: "division", nodeType: "division" as const, displayName: "Engineering", parentOrgNodeId: "company", ownerUserIds: ["vp-eng"], active: true, costCenter: "CC-100", metadata: {} };
+const tenantNode = { orgNodeId: "tenant", nodeType: "tenant" as const, displayName: "Acme Corp", parentOrgNodeId: null, ownerUserIds: ["ceo"], active: true, costCenter: "CC-000", metadata: {} };
+const divisionNode = { orgNodeId: "division", nodeType: "division" as const, displayName: "Engineering", parentOrgNodeId: "tenant", ownerUserIds: ["vp-eng"], active: true, costCenter: "CC-100", metadata: {} };
 const deptNode = { orgNodeId: "dept", nodeType: "department" as const, displayName: "Platform", parentOrgNodeId: "division", ownerUserIds: ["dir-platform"], active: true, costCenter: "CC-110", metadata: {} };
 const teamNode = { orgNodeId: "team", nodeType: "team" as const, displayName: "Runtime", parentOrgNodeId: "dept", ownerUserIds: ["lead-runtime"], active: true, costCenter: "CC-111", metadata: {} };
+const seatNode = { orgNodeId: "seat", nodeType: "seat" as const, displayName: "Engineer Seat", parentOrgNodeId: "team", ownerUserIds: ["engineer"], active: true, costCenter: "CC-112", metadata: {} };
 
-const fullHierarchy = [companyNode, divisionNode, deptNode, teamNode];
+const fullHierarchy = [tenantNode, divisionNode, deptNode, teamNode];
 
-test("OrgNodeTypeSchema accepts all four canonical node types", () => {
-  assert.equal(OrgNodeTypeSchema.parse("company"), "company");
+test("OrgNodeTypeSchema accepts all canonical node types", () => {
+  assert.equal(OrgNodeTypeSchema.parse("tenant"), "tenant");
   assert.equal(OrgNodeTypeSchema.parse("division"), "division");
   assert.equal(OrgNodeTypeSchema.parse("department"), "department");
   assert.equal(OrgNodeTypeSchema.parse("team"), "team");
-  assert.throws(() => OrgNodeTypeSchema.parse("member"));
+  assert.equal(OrgNodeTypeSchema.parse("seat"), "seat");
+  assert.throws(() => OrgNodeTypeSchema.parse("company"));
   assert.throws(() => OrgNodeTypeSchema.parse("group"));
 });
 
@@ -61,18 +63,20 @@ test("OrgNodeSchema requires either nodeId or orgNodeId", () => {
   assert.throws(() => OrgNodeSchema.parse({ nodeType: "team", displayName: "Test" }));
 });
 
-test("isLeafOrgNode returns true only for team nodes", () => {
-  assert.equal(isLeafOrgNode(companyNode), false);
+test("isLeafOrgNode returns true only for seat nodes", () => {
+  assert.equal(isLeafOrgNode(tenantNode), false);
   assert.equal(isLeafOrgNode(divisionNode), false);
   assert.equal(isLeafOrgNode(deptNode), false);
-  assert.equal(isLeafOrgNode(teamNode), true);
+  assert.equal(isLeafOrgNode(teamNode), false);
+  assert.equal(isLeafOrgNode(seatNode), true);
 });
 
 test("getPlatformMapping returns correct architectural mapping", () => {
-  assert.equal(getPlatformMapping("company"), "platform");
+  assert.equal(getPlatformMapping("tenant"), "platform");
   assert.equal(getPlatformMapping("division"), "tenant_group");
   assert.equal(getPlatformMapping("department"), "tenant");
   assert.equal(getPlatformMapping("team"), "domain/pack_group");
+  assert.equal(getPlatformMapping("seat"), "resource/seat");
 });
 
 test("validateHierarchyDepth accepts valid four-level hierarchy", () => {
@@ -83,7 +87,7 @@ test("validateHierarchyDepth accepts valid four-level hierarchy", () => {
 
 test("validateHierarchyDepth rejects hierarchies exceeding four levels", () => {
   const overDepth = [
-    companyNode,
+    tenantNode,
     divisionNode,
     deptNode,
     teamNode,
@@ -161,15 +165,15 @@ test("getLegalEntityApprovalRoles returns union of roles when approval required"
 
 test("validateOrgHierarchy detects multiple roots", () => {
   const findings = validateOrgHierarchy([
-    { ...companyNode, orgNodeId: "company-2", parentOrgNodeId: null },
-    { ...companyNode, orgNodeId: "company-1", parentOrgNodeId: null },
+    { ...tenantNode, orgNodeId: "tenant-2", parentOrgNodeId: null },
+    { ...tenantNode, orgNodeId: "tenant-1", parentOrgNodeId: null },
   ]);
   assert.ok(findings.some((f) => f.includes("invalid_root_count")));
 });
 
 test("validateOrgHierarchy detects missing parent references", () => {
   const findings = validateOrgHierarchy([
-    companyNode,
+    tenantNode,
     { ...deptNode, parentOrgNodeId: "missing-parent" },
   ]);
   assert.ok(findings.some((f) => f.includes("missing_parent")));
@@ -177,18 +181,18 @@ test("validateOrgHierarchy detects missing parent references", () => {
 
 test("validateOrgHierarchy detects self-referential cycles", () => {
   const findings = validateOrgHierarchy([
-    { ...companyNode, orgNodeId: "self-ref", parentOrgNodeId: "self-ref" },
+    { ...tenantNode, orgNodeId: "self-ref", parentOrgNodeId: "self-ref" },
   ]);
   assert.ok(findings.some((f) => f.includes("self_cycle")));
 });
 
 test("listAncestorNodeIds returns path to root", () => {
   const ancestors = listAncestorNodeIds(fullHierarchy, "team");
-  assert.deepEqual(ancestors, ["dept", "division", "company"]);
+  assert.deepEqual(ancestors, ["dept", "division", "tenant"]);
 });
 
 test("listAncestorNodeIds returns empty array for root node", () => {
-  const ancestors = listAncestorNodeIds(fullHierarchy, "company");
+  const ancestors = listAncestorNodeIds(fullHierarchy, "tenant");
   assert.deepEqual(ancestors, []);
 });
 
@@ -199,8 +203,8 @@ test("listDescendantNodeIds returns all descendants using breadth-first", () => 
 
 test("findRootNode returns the company-level node", () => {
   const root = findRootNode(fullHierarchy);
-  assert.equal(root?.orgNodeId, "company");
-  assert.equal(root?.nodeType, "company");
+  assert.equal(root?.orgNodeId, "tenant");
+  assert.equal(root?.nodeType, "tenant");
 });
 
 test("getNodesAtLevel returns nodes at specified depth", () => {
@@ -214,7 +218,7 @@ test("getNodesAtLevel returns nodes at specified depth", () => {
 });
 
 test("getNodeDepth calculates correct depth from root", () => {
-  assert.equal(getNodeDepth(fullHierarchy, "company"), 0);
+  assert.equal(getNodeDepth(fullHierarchy, "tenant"), 0);
   assert.equal(getNodeDepth(fullHierarchy, "division"), 1);
   assert.equal(getNodeDepth(fullHierarchy, "dept"), 2);
   assert.equal(getNodeDepth(fullHierarchy, "team"), 3);
@@ -227,10 +231,10 @@ test("findLowestCommonAncestor returns shared ancestor", () => {
 
 test("findLowestCommonAncestor returns null for nodes in different trees", () => {
   const otherHierarchy = [
-    { orgNodeId: "company2", nodeType: "company" as const, displayName: "Other", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
+    { orgNodeId: "tenant2", nodeType: "tenant" as const, displayName: "Other", parentOrgNodeId: null, ownerUserIds: [], active: true, costCenter: "", metadata: {} },
   ];
   const combined = [...fullHierarchy, ...otherHierarchy];
-  const lca = findLowestCommonAncestor(combined, "team", "company2");
+  const lca = findLowestCommonAncestor(combined, "team", "tenant2");
   assert.equal(lca, null);
 });
 
@@ -245,9 +249,9 @@ test("buildReportingChain does not include the employee themselves", () => {
 });
 
 test("detectOrgChangeEvents identifies employee transfer events via principal assignment", () => {
-  const before = [companyNode, divisionNode, deptNode, teamNode];
+  const before = [tenantNode, divisionNode, deptNode, teamNode];
   const after = [
-    companyNode,
+    tenantNode,
     divisionNode,
     deptNode,
     { ...teamNode, parentOrgNodeId: "division" },
@@ -259,9 +263,9 @@ test("detectOrgChangeEvents identifies employee transfer events via principal as
 });
 
 test("detectOrgChangeEvents identifies org restructure when team moves without assignment", () => {
-  const before = [companyNode, divisionNode, deptNode, teamNode];
+  const before = [tenantNode, divisionNode, deptNode, teamNode];
   const after = [
-    companyNode,
+    tenantNode,
     divisionNode,
     deptNode,
     { ...teamNode, parentOrgNodeId: "division" },
@@ -272,7 +276,7 @@ test("detectOrgChangeEvents identifies org restructure when team moves without a
 
 test("detectOrgChangeEvents identifies employee onboarding events", () => {
   const before: typeof fullHierarchy = [];
-  const after = [companyNode, divisionNode, deptNode, teamNode];
+  const after = [tenantNode, divisionNode, deptNode, teamNode];
   const events = detectOrgChangeEvents(before, after, [
     { principalId: "seat-1", userId: "engineer", homeNodeId: "team", managerUserId: "lead-runtime", active: true },
   ]);
@@ -280,11 +284,11 @@ test("detectOrgChangeEvents identifies employee onboarding events", () => {
 });
 
 test("detectOrgChangeEvents identifies department merge events", () => {
-  const before = [companyNode, divisionNode, deptNode, teamNode];
+  const before = [tenantNode, divisionNode, deptNode, teamNode];
   const after = [
-    companyNode,
+    tenantNode,
     divisionNode,
-    { ...deptNode, parentOrgNodeId: "company" },
+    { ...deptNode, parentOrgNodeId: "tenant" },
     teamNode,
   ];
   const events = detectOrgChangeEvents(before, after, []);
@@ -293,7 +297,7 @@ test("detectOrgChangeEvents identifies department merge events", () => {
 
 test("buildOrgChangeImpactArtifacts generates approval reroute records", () => {
   const after = [
-    companyNode,
+    tenantNode,
     divisionNode,
     deptNode,
     { ...teamNode, parentOrgNodeId: "division", ownerUserIds: ["new-lead"] },
@@ -307,7 +311,7 @@ test("buildOrgChangeImpactArtifacts generates approval reroute records", () => {
 
 test("buildOrgChangeImpactArtifacts generates orphan agent freeze policies", () => {
   const after = [
-    companyNode,
+    tenantNode,
     divisionNode,
     { ...deptNode, orgNodeId: "orphaned-dept", parentOrgNodeId: "missing-parent" },
   ];
@@ -317,7 +321,7 @@ test("buildOrgChangeImpactArtifacts generates orphan agent freeze policies", () 
 });
 
 test("buildOrgChangeImpactArtifacts generates identity deprovisioning reports", () => {
-  const before = [companyNode, divisionNode, deptNode, teamNode];
+  const before = [tenantNode, divisionNode, deptNode, teamNode];
   const after: typeof fullHierarchy = [];
   const artifacts = buildOrgChangeImpactArtifacts(before, after, [
     { principalId: "seat-1", userId: "engineer", homeNodeId: "team", managerUserId: "lead-runtime", active: true },

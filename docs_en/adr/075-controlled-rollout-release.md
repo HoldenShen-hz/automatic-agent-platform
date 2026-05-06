@@ -115,12 +115,12 @@ interface RolloutScheduler {
 
 ## Alternatives
 
-### Option A: Only off/suggest/shadow (Phase 1 Simplified)
+### Option A: Only off/suggest/shadow (Ring 1 Simplified)
 
 Pros: Simple implementation, low risk.
 Cons: Cannot implement progressive release, limited benefit.
 
-### Option B: 6-Level Controlled Release (Chosen)
+### Option B: 6-Level Controlled Release (Selected)
 
 Pros: Complete progressive release capability, supports automatic rollback.
 Cons: Higher implementation complexity (~500 lines of code + monitoring integration).
@@ -141,7 +141,7 @@ Cons: Higher implementation complexity (~500 lines of code + monitoring integrat
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 - `src/core/improvement/` module
 
-## Source Sections
+## Source Section
 
 - `§9` Improve Hub Design
 - `§9.1` 6-Level Controlled Release

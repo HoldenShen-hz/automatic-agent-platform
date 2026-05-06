@@ -40,6 +40,7 @@ function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRout
     request: overrides.request ?? "",
     tenantId: overrides.tenantId,
     traceId: overrides.traceId,
+    confirmedTaskSpecId: overrides.confirmedTaskSpecId,
     riskPreview: overrides.riskPreview,
     preferredIntent: overrides.preferredIntent,
     priorConversationContext: overrides.priorConversationContext,

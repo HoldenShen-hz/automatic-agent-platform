@@ -21,14 +21,14 @@ function createMockOrgNode(id: string, parentId: string | null): OrgNode {
   };
 }
 
-test("resolveCompliancePolicyForNode returns empty object for unknown node", () => {
+test("resolveCompliancePolicyForNode returns deny-by-default marker for unknown node", () => {
   const nodes: OrgNode[] = [
     createMockOrgNode("node1", null),
   ];
   const policies: Record<string, PolicyLayer[]> = {};
 
   const result = resolveCompliancePolicyForNode(nodes, "unknown_node", policies);
-  assert.deepEqual(result, {});
+  assert.deepEqual(result, { _denyByDefault: true });
 });
 
 test("resolveCompliancePolicyForNode returns policy for single node without parent", () => {
@@ -91,5 +91,5 @@ test("resolveCompliancePolicyForNode handles empty nodes array", () => {
   const policies: Record<string, PolicyLayer[]> = {};
 
   const result = resolveCompliancePolicyForNode(nodes, "any_node", policies);
-  assert.deepEqual(result, {});
+  assert.deepEqual(result, { _denyByDefault: true });
 });

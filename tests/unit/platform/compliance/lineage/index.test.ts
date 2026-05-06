@@ -28,6 +28,7 @@ test("Issue #2092: Recorded edges must be immutable (append-only, no in-place mo
   });
 
   // Attempt to modify the returned edge should not affect stored data
+  const originalEdgeId = edge.edgeId;
   const originalCreatedAt = edge.createdAt;
   (edge as DataLineageEdge & { createdAt: string }).createdAt = " tampering timestamp";
   (edge as DataLineageEdge & { edgeId: string }).edgeId = "tampered_id";
@@ -35,7 +36,7 @@ test("Issue #2092: Recorded edges must be immutable (append-only, no in-place mo
   // Verify stored data is unchanged
   const storedEdges = service.listEdges();
   assert.equal(storedEdges[0]?.createdAt, originalCreatedAt, "stored edge must be immutable");
-  assert.equal(storedEdges[0]?.edgeId, edge.edgeId, "stored edgeId must be unchanged");
+  assert.equal(storedEdges[0]?.edgeId, originalEdgeId, "stored edgeId must be unchanged");
 });
 
 test("Issue #2092: listEdges returns fresh copies preventing external mutation", async () => {
@@ -377,8 +378,8 @@ test("Multiple edges maintain independent metadata", () => {
 
   // edge2 metadata must be independent
   const stored = service.listEdges();
-  assert.equal(stored[0]?.metadata, { index: 1 }, "edge1 metadata must be unchanged");
-  assert.equal(stored[1]?.metadata, { index: 2 }, "edge2 metadata must be unchanged");
+  assert.deepEqual(stored[0]?.metadata, { index: 1 }, "edge1 metadata must be unchanged");
+  assert.deepEqual(stored[1]?.metadata, { index: 2 }, "edge2 metadata must be unchanged");
 });
 
 test("Empty metadata is handled correctly", () => {

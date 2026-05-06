@@ -1,10 +1,10 @@
-# v4.3 Event Envelope Contract
+# Event Envelope Contract
 
-> v4.3 canonical contract. Covers `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent`.
+> **v4.3 canonical contract**. Covers `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent`.
 
 ## 1. Scope
 
-The event system is divided into truth fact and view projection. `platform.*` is the only truth fact namespace; `oapeflir.view.*` and `oapeflir.rationale.*` only express OAPEFLIR semantic projections, explanations, and audit views.
+The event system is divided into truth fact and view projection. `platform.*` is the only truth fact namespace; `oapeflir.view.*` and `oapeflir.rationale.*` only express OAPEFLIR semantic projection, explanation, and audit views.
 
 ## 2. EventEnvelope
 
@@ -12,37 +12,52 @@ Minimum fields:
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `schema_version` | `string` | Envelope wire schema version; used for cross-storage, cross-queue, and cross-language compatibility |
 | `eventId` | `string` | Event ID |
+| `runId` | `string` | Run chain anchor; usually `harnessRunId` or stable run-level ID aligned with aggregate |
 | `eventType` | `string` | Event type |
-| `eventVersion` | `string` | Event schema version |
-| `idempotency_key` | `string` | Producer-side idempotency key; used for append / relay / consumer deduplication |
+| `schemaVersion` | `number` | Event schema version; v4.3 canonical is numeric version not string |
 | `aggregateType` | `string` | Aggregate type |
 | `aggregateId` | `string` | Aggregate ID |
 | `aggregateSeq` | `number` | Aggregate sequence |
 | `tenantId` | `string` | Tenant |
 | `traceId` | `string` | Trace |
-| `causation_id` | `string?` | Directly upstream event or command ID that triggered this event |
-| `correlationId` | `string?` | Correlation chain |
-| `partition_key` | `string` | Partition routing key; same truth aggregate must be stably routed to same partition strategy |
-| `ttl` | `duration?` | Retention/expiration hint; used for relay, cache, view rebuild, or temporary projection expiration strategy |
 | `payloadHash` | `string` | Payload hash |
 | `payload` | `json` | Payload |
+| `replayBehavior` | `replay_as_fact \| skip_side_effect \| simulate \| forbidden` | Replay behavior declaration |
 | `occurredAt` | `timestamp` | Occurrence time |
+| `idempotencyKey` | `string?` | Producer-side idempotency key; used for append / relay / consumer deduplication |
+| `causationId` | `string?` | ID of upstream event or command that directly triggered this event |
+| `correlationId` | `string?` | Correlation chain |
+| `partitionKey` | `string?` | Partition routing key; same truth aggregate should be stably routed to same partition strategy |
+| `ttl` | `duration?` | Retention/expiration hint; used for relay, cache, view rebuild, or temporary projection expiration strategy |
+
+Canonical compatibility mapping:
+
+| legacy / wire alias | v4.3 canonical field |
+| --- | --- |
+| `schema_version` | `schemaVersion` |
+| `event_version` | `schemaVersion` |
+| `idempotency_key` | `idempotencyKey` |
+| `causation_id` | `causationId` |
+| `partition_key` | `partitionKey` |
+| `payload_hash` | `payloadHash` |
+| `occurred_at` | `occurredAt` |
 
 Rules:
 
+- v4.3 canonical schema only uses camelCase; snake_case is only allowed in wire adapter, import compatibility layer, or historical migration explanation, and must not be defined in parallel with canonical fields.
 - `(aggregateType, aggregateId, aggregateSeq)` must be unique.
-- `schema_version`, `idempotency_key`, `partition_key` are indispensable; must not enter canonical event bus when missing.
-- `ttl` only controls envelope lifecycle strategy, must not change audit retention obligations for committed truth facts.
+- `runId`, `schemaVersion`, `replayBehavior` are authoritative fields of canonical EventEnvelope and must not be omitted in new implementations.
+- If entry still provides `schema_version`, `idempotency_key`, or other snake_case aliases, they must be normalized to camelCase before entering canonical event bus.
+- `ttl` only controls envelope lifecycle strategy and must not change audit retention obligations of committed truth facts.
 - Tier 1 platform fact must support per-consumer ack and replay.
 - Event append must be transactional with truth mutation.
 
 ## 3. PlatformFactEvent
 
-`PlatformFactEvent` is a fact event where `eventType` starts with `platform.`.
+`PlatformFactEvent` is a fact event with `eventType` starting with `platform.`.
 
-Initial namespaces:
+First batch namespace:
 
 - `platform.harness_run.*`
 - `platform.plan_graph.*`
@@ -55,16 +70,25 @@ Initial namespaces:
 - `platform.hitl.*`
 - `platform.version_lock.*`
 
+Supplementary truth namespaces (truth projector, recovery scanner, budget projector, side-effect projector can only consume `platform.*`):
+
+- `platform.release.*` — release status changes are truth fact, must use `platform.release.*`
+- `platform.approval.*` — approval status changes are truth fact
+- `platform.feedback.*` — feedback signal is truth fact
+- `platform.learn.*` — learning object creation/promotion is truth fact
+- `platform.improve.*` — improve candidate is truth fact
+- `platform.loop.*` — OAPEFLIR loop iteration status is truth fact
+
 Rules:
 
-- Truth projectors, recovery scanners, budget projectors, side-effect projectors can only consume `platform.*`.
-- Platform fact must not be directly generated by UI view projector; must come from authoritative paths such as state machine, admission, scheduler, budget, side-effect, decision.
+- Truth projector, recovery scanner, budget projector, side-effect projector can only consume `platform.*`.
+- Platform fact must not be directly generated by UI view projector; must come from authoritative paths like state machine, admission, scheduler, budget, side-effect, decision, etc.
 
 ## 4. OapeflirViewEvent
 
-`OapeflirViewEvent` is a projection event where `eventType` starts with `oapeflir.view.` or `oapeflir.rationale.`.
+`OapeflirViewEvent` is a projection event with `eventType` starting with `oapeflir.view.` or `oapeflir.rationale.`.
 
-Uses:
+Purpose:
 
 - StageRationale.
 - TraceProjection.
@@ -76,29 +100,30 @@ Rules:
 
 - Must not drive `HarnessRun`, `NodeRun`, `BudgetLedger`, `SideEffectRecord` truth mutation.
 - Must declare `derivedFromEventId` or `derivedFromEventIds`.
-- Can be rebuilt after loss; must not be the sole audit fact.
+- Can be rebuilt after loss; must not be used as sole audit fact.
 
 ## 5. Legacy / Deprecated Mapping
 
-| Legacy Name | v4.3 Semantics |
+| Old Name | v4.3 Semantics |
 | --- | --- |
-| `task.*` | Legacy event; after migration should project or convert to `platform.harness_run.*` |
-| `workflow.*` | Legacy event; new runtime facts use `platform.*` |
-| `oapeflir.*` | Default projection; only becomes platform fact after explicit adapter conversion |
-| `dispatch:*` / `worker:*` | Runtime diagnostics or platform fact depending on registry declaration; truth consumer only looks at `platform.*` |
+| `task.*` | legacy event; after migration should project or convert to `platform.harness_run.*` |
+| `workflow.*` | legacy event; new run facts use `platform.*` |
+| `release.*` / `approval.*` / `feedback.*` / `learn.*` / `improve.*` / `loop.*` | If carrying truth fact, must be normalized to `platform.release.*` / `platform.approval.*` / `platform.feedback.*` / `platform.learn.*` / `platform.improve.*` / `platform.loop.*`; bare namespace only allowed as historical projection or adapter input |
+| `oapeflir.*` | default projection; can only become platform fact after explicit adapter conversion |
+| `dispatch:*` / `worker:*` | Operational diagnostics or platform fact depends on registry declaration; truth consumer only looks at `platform.*` |
 
 ## 6. Test Requirements
 
 - Truth consumer does not consume `oapeflir.view.*`.
 - OAPEFLIR view event must carry source fact.
 - Platform fact replay can rebuild HarnessRun / NodeRun / Budget / SideEffect read model.
-- Unregistered event type production must fail at startup inspection or test.
+- Production of unregistered event type must fail in startup inspection or test.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-5: Missing 5 required fields for architecture ContractEnvelope: schema_version/idempotency_key/causation_id/partition_key/ttl. Root cause: Early documents only described event fact storage fields, omitted idempotency, partitioning, and lifecycle metadata at the envelope layer. Fix: These 5 fields now enter `EventEnvelope` canonical minimum fields; old camelCase / omitted field writing can only be used as adapter or migration input, must not be used as new implementation entry.
+- T-5: Missing 5 required fields required by architecture EventEnvelope: `schema_version/idempotency_key/causation_id/partition_key/ttl`. Root cause: early documents only described event fact storage fields, missing idempotency, partitioning, and lifecycle metadata at the envelope layer. Fix: These fields are now frozen through canonical `schemaVersion/idempotencyKey/causationId/partitionKey/ttl` with alias mapping; snake_case only allowed as adapter / migration input, can no longer be mixed with canonical schema.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

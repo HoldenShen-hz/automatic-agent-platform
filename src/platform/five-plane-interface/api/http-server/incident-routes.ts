@@ -77,10 +77,11 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         }
         const limit = readLimit(ctx.request, 50);
         const incidents: IncidentCase[] = deps.incidentService.listIncidents(tenantId, limit);
+        const total = deps.incidentService.countIncidents(tenantId);
 
         return buildJsonResponse(ctx.requestId, 200, {
           incidents,
-          total: incidents.length,
+          total,
         });
       },
     },

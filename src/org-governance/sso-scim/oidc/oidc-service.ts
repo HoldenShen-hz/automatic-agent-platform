@@ -121,6 +121,10 @@ function validateProductionToken(token: string): void {
   }
 }
 
+function isMockToken(token: string): boolean {
+  return token.startsWith("at_") || token.startsWith("id_") || token.startsWith("rt_");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // In-Memory State Store (for development; use Redis in production)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -240,6 +244,9 @@ export class OidcIdentityService {
    * @returns User info or null if fetch fails
    */
   public async fetchUserInfo(accessToken: string): Promise<OidcUserInfo | null> {
+    if (!isProductionEnvironment() && isMockToken(accessToken)) {
+      return this.simulateUserInfo(accessToken);
+    }
     const userInfoEndpoint = this.providerConfig.userInfoEndpoint ?? `${this.providerConfig.issuer}/userinfo`;
     try {
       const response = await fetch(userInfoEndpoint, {
@@ -651,13 +658,14 @@ export class OidcIdentityService {
   }
 
   private simulateUserInfo(accessToken: string): OidcUserInfo {
+    const subjectHash = createHash("sha256").update(accessToken).digest("hex").slice(0, 12);
     return {
-      sub: newId("user"),
-      email: "user@example.com",
+      sub: `user_${subjectHash}`,
+      email: `${subjectHash}@example.com`,
       name: "Test User",
       givenName: "Test",
       familyName: "User",
-      preferredUsername: "testuser",
+      preferredUsername: `testuser_${subjectHash}`,
       groups: ["engineers", "admins"],
     };
   }

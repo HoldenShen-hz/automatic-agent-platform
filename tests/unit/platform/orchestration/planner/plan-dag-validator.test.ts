@@ -26,12 +26,14 @@ function createPlanStep(
     stepId,
     action: `action_${stepId}`,
     title: overrides.title ?? `Step ${stepId}`,
-    inputs: overrides.inputs ?? {},
+    inputs: overrides.inputs ?? { riskClass: "medium", budget: 1000 },
     outputs: [],
     dependencies,
     status: "pending" as const,
     timeout: overrides.timeout ?? 1000,
     retryPolicy: { maxRetries: overrides.maxRetries ?? 0, backoffMs: 0 },
+    executor: `agent_${stepId}`,
+    sandboxMode: "workspace-write" as const,
   };
 }
 
@@ -107,6 +109,7 @@ test("PlanDagValidator detects cycle and reports it", () => {
 
   assert.equal(result.valid, false, "should be invalid due to cycle");
   assert.ok(result.issues.some(i => i.includes("cycle_detected")), "should report cycle_detected");
+  assert.deepEqual(result.orderedSteps, [], "cycle must not return unsorted fallback orderedSteps");
 });
 
 test("PlanDagValidator detects self-dependency", () => {

@@ -3,60 +3,45 @@
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
-Agent, as a high-risk automated execution unit, must perform risk assessment before and after execution to prevent dangerous operations from causing business losses.
+Agent, as a high-risk automated execution unit, must undergo risk assessment before and after execution to prevent dangerous operations from causing business losses.
 
 ## Decision
 
-### 8-Factor Weighted Scoring Algorithm
+### Canonical Risk Model
 
-| Factor | Weight | Description |
-|--------|--------|-------------|
-| operationRisk | 3 | Current operation type and side effect risk |
-| targetResourceCriticality | 3 | Criticality of target resource or system |
-| dataSensitivity | 3 | Sensitivity level of input/output data |
-| autonomyModeRisk | 2 | Automation amplification risk from current runtime mode |
-| tenantImpact | 2 | Scope of tenant/organization affected |
-| blastRadius | 2 | Failure propagation radius |
-| historicalFailureRate | 2 | Historical failure rate of similar actions |
-| evidenceConfidence | 1 | Sufficiency of evidence and judgment confidence |
-
-### Risk Scoring Formula
+v4.3 §10.2 specifies the canonical risk model adopts a two-dimensional scoring system:
 
 ```
-risk_score = (
-  operationRisk*3 +
-  targetResourceCriticality*3 +
-  dataSensitivity*3 +
-  autonomyModeRisk*2 +
-  tenantImpact*2 +
-  blastRadius*2 +
-  historicalFailureRate*2 +
-  evidenceConfidence*1
-) / 18
+risk_score = impact × 4 + irreversibility × 4
 ```
+
+| Dimension | Description |
+|-----------|-------------|
+| impact | Business impact degree (0-4 magnitude) |
+| irreversibility | Irreversibility/rollback difficulty (0-4 magnitude) |
 
 ### 4-Level Risk Mapping
 
 | Level | Threshold | Handling Strategy |
 |-------|-----------|-------------------|
-| low | 0-0.25 | Direct execution |
-| medium | 0.25-0.5 | Log only |
-| high | 0.5-0.75 | Requires human approval |
-| critical | 0.75-1.0 | break_glass approval |
+| low | 0-8 | Direct execution |
+| medium | 9-16 | Log only |
+| high | 17-24 | Requires human approval |
+| critical | 25-32 | break_glass approval |
 
-### Configuration
+### Risk Assessment Constraints
 
-- `config/risk/default.json` fully defines 8 factors and thresholds
-- RiskEvaluationEngine implements score calculation
+- §10.3 specifies: high/critical risk levels default deny (default deny), auto execution requires explicit approval
+- RiskEvaluationEngine implementation must follow §10.2-§10.3 canonical model
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Quantified risk makes decisions traceable
-- Tiered handling strategy balances security and efficiency
+- Tiered handling strategy balances safety and efficiency
 - Configurable weights adapt to different business scenarios
 
 Costs:
@@ -69,10 +54,10 @@ Costs:
 - [ADR-005 Security Model](./005-security-model.md)
 - [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
 
-## Source Section
+## Source Sections
 
-- `§10` Risk Control Architecture
+- `§10` Risk control architecture
 
 ## v4.3 ADR Remediation
 
-- A-18: This ADR originally kept the `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence` six-factor model. The root cause was that the risk ADR followed an early step-centric scoring draft and did not upgrade to incorporate autonomy mode, tenant impact scope, and evidence sufficiency into a unified risk assessment. Fix: The text now converges to the 8-factor canonical model and synchronizes the weights and formula.
+- A-18: This ADR originally retained the six-factor model of `stepTypeRisk / targetSystemRisk / dataClassRisk / blastRadius / priorFailureRate / confidence`. The root cause was that risk ADR followed early step-centric scoring draft and did not upgrade along with main architecture migrating from step to node-run. Fix: The text now converges to the v4.3 §10.2 two-dimensional canonical model of `impact × 4 + irreversibility × 4`.

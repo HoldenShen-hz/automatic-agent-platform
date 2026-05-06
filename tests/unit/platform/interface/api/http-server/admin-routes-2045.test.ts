@@ -1,14 +1,14 @@
 /**
- * @fileoverview Unit tests for Admin Routes - Issue #2045
+ * @fileoverview Unit tests for Admin Routes - Issue #2045 regression guard.
  *
- * ISSUE #2045: listTenants(MAX_SAFE_INTEGER) causes OOM
+ * Historical bug:
+ * - /admin/tenants used an unbounded `listTenants(Number.MAX_SAFE_INTEGER)` call for `total`
+ * - that forced loading the full tenant set into memory and could trigger OOM
  *
- * In admin-routes.ts line 249:
- *   tenants: deps.tenantRegistryService?.listTenants(limit) ?? [],
- *   total: deps.tenantRegistryService?.listTenants(Number.MAX_SAFE_INTEGER).length ?? 0,
- *
- * The total calculation always uses MAX_SAFE_INTEGER regardless of the limit parameter,
- * which can cause memory exhaustion when there are many tenants.
+ * Current guardrail:
+ * - the handler must stay on the canonical `/api/v1/admin/tenants` route
+ * - all reads must remain bounded by the validated request limit
+ * - the handler must never fall back to `Number.MAX_SAFE_INTEGER`
  */
 
 import assert from "node:assert/strict";
@@ -64,11 +64,26 @@ function createMockAuthService(roles: string[] = ["admin"]): ApiAuthService {
   } as unknown as ApiAuthService;
 }
 
+function normalizePathname(pathname: string): string {
+  return pathname.startsWith("/api/") ? pathname : `/api${pathname}`;
+}
+
+function normalizeSegments(pathname: string, segments: string[]): string[] {
+  if (segments.length > 0) {
+    return segments[0] === "api" ? segments : ["api", ...segments];
+  }
+  return normalizePathname(pathname)
+    .split("?")[0]
+    .split("/")
+    .filter((segment) => segment.length > 0);
+}
+
 function createMockContext(pathname = "/v1/admin/tenants", segments: string[] = [], headers: Record<string, string | undefined> = {}, body: string | null = null, method: string = "GET"): RouteContext {
+  const normalizedPathname = normalizePathname(pathname);
   return {
     requestId: "req-123",
-    request: { method, url: pathname, headers, body } as never,
-    route: { pathname, segments },
+    request: { method, url: normalizedPathname, headers, body } as never,
+    route: { pathname: normalizedPathname.split("?")[0]!, segments: normalizeSegments(normalizedPathname, segments) },
     principal: null,
   };
 }
@@ -92,35 +107,23 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-// ── Issue #2045: listTenants(MAX_SAFE_INTEGER) OOM vulnerability ────────────────
+// ── Issue #2045: bounded tenant listing regression guard ────────────────────────
 
 /**
  * ISSUE #2045 TEST SUITE
  *
- * The /v1/admin/tenants endpoint has an OOM vulnerability:
- * 1. It calls listTenants(limit) to get the paginated tenants
- * 2. It calls listTenants(Number.MAX_SAFE_INTEGER) to get the total count
- *
- * This means every request to list tenants with a small limit still causes
- * the backend to load ALL tenants into memory just to count them.
- *
- * CURRENT CODE (line 248-249):
- *   tenants: deps.tenantRegistryService?.listTenants(limit) ?? [],
- *   total: deps.tenantRegistryService?.listTenants(Number.MAX_SAFE_INTEGER).length ?? 0,
- *
- * The total should be a separate metadata query that doesn't load all tenants.
+ * The old route used an unbounded list call for totals. The current
+ * implementation keeps both reads bounded to the validated request limit.
  */
 
-test("ISSUE #2045: GET /v1/admin/tenants calls listTenants twice with different limits", async () => {
+test("ISSUE #2045: GET /api/v1/admin/tenants keeps both listTenants calls on the bounded default limit", async () => {
   const callLog: { limit: number }[] = [];
 
   const mockTenantRegistryService = {
     listTenants: (limit: number) => {
       callLog.push({ limit });
-      // Return empty array with metadata to track the call
       return [];
     },
-    getTotalTenantCount: () => 0, // This method doesn't exist in the current code
   };
 
   const deps = {
@@ -135,14 +138,11 @@ test("ISSUE #2045: GET /v1/admin/tenants calls listTenants twice with different 
 
   await callRoute(routes, ctx);
 
-  // The route should call listTenants TWICE: once with limit, once with MAX_SAFE_INTEGER
-  // This is the bug - it loads all tenants just to count them
   assert.equal(callLog.length, 2);
-  assert.equal(callLog[0]?.limit, 50); // Default limit
-  assert.equal(callLog[1]?.limit, Number.MAX_SAFE_INTEGER); // Bug: max integer for count
+  assert.deepEqual(callLog, [{ limit: 50 }, { limit: 50 }]);
 });
 
-test("ISSUE #2045: GET /v1/admin/tenants?limit=10 still calls listTenants with MAX_SAFE_INTEGER", async () => {
+test("ISSUE #2045: GET /api/v1/admin/tenants?limit=10 reuses the requested bounded limit", async () => {
   const callLog: { limit: number }[] = [];
 
   const mockTenantRegistryService = {
@@ -164,29 +164,11 @@ test("ISSUE #2045: GET /v1/admin/tenants?limit=10 still calls listTenants with M
 
   await callRoute(routes, ctx);
 
-  // Even with a small limit, MAX_SAFE_INTEGER is used for total count
   assert.equal(callLog.length, 2);
-  assert.equal(callLog[0]?.limit, 10);
-  assert.equal(callLog[1]?.limit, Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(callLog, [{ limit: 10 }, { limit: 10 }]);
 });
 
-test("ISSUE #2045: The total calculation loads all tenants into memory", async () => {
-  // Simulate many tenants being loaded just for counting
-  const allTenants = Array.from({ length: 1000 }, (_, i) => ({
-    tenantId: `tenant-${i}`,
-    organizationId: "org-1",
-    displayName: `Tenant ${i}`,
-    storageScope: `storage/tenant-${i}`,
-    identityScope: `identity/tenant-${i}`,
-    policyScope: `policy/tenant-${i}`,
-    artifactScope: `artifacts/tenant-${i}`,
-    isolationMode: "shared_logical" as const,
-    deploymentMode: "cloud_shared" as const,
-    status: "active" as const,
-    createdAt: "2026-04-16T00:00:00.000Z",
-    updatedAt: "2026-04-16T00:00:00.000Z",
-  }));
-
+test("ISSUE #2045: GET /api/v1/admin/tenants clamps oversized limits instead of issuing an unbounded read", async () => {
   let maxLimitUsed = 0;
 
   const mockTenantRegistryService = {
@@ -194,12 +176,30 @@ test("ISSUE #2045: The total calculation loads all tenants into memory", async (
       if (limit > maxLimitUsed) {
         maxLimitUsed = limit;
       }
-      // If limit is MAX_SAFE_INTEGER, return all tenants
-      if (limit === Number.MAX_SAFE_INTEGER) {
-        return allTenants;
-      }
-      // Otherwise return empty (simulating pagination)
       return [];
+    },
+  };
+
+  const deps = {
+    authService: createMockAuthService(),
+    missionControlService: createMockMissionControlService(),
+    coordinatorLoadBalancingService: createMockLoadBalancingService(),
+    tenantRegistryService: mockTenantRegistryService as any,
+  };
+  const routes = createAdminRoutes(deps);
+
+  const ctx = createMockContext("/v1/admin/tenants?limit=999999", ["v1", "admin", "tenants"]);
+
+  await callRoute(routes, ctx);
+
+  assert.equal(maxLimitUsed, 200);
+});
+
+test("ISSUE #2045: response body total stays aligned with the bounded tenant page", async () => {
+  const firstPage = Array.from({ length: 10 }, (_, index) => ({ tenantId: `tenant-${index}` }));
+  const mockTenantRegistryService = {
+    listTenants: (limit: number) => {
+      return limit === 10 ? firstPage : [];
     },
   };
 
@@ -213,39 +213,11 @@ test("ISSUE #2045: The total calculation loads all tenants into memory", async (
 
   const ctx = createMockContext("/v1/admin/tenants?limit=10", ["v1", "admin", "tenants"]);
 
-  await callRoute(routes, ctx);
-
-  // The bug causes MAX_SAFE_INTEGER to be used, loading all 1000 tenants
-  assert.equal(maxLimitUsed, Number.MAX_SAFE_INTEGER);
-});
-
-test("ISSUE #2045: Response body shows incorrect total when tenants are empty", async () => {
-  const mockTenantRegistryService = {
-    listTenants: (limit: number) => {
-      if (limit === Number.MAX_SAFE_INTEGER) {
-        // Simulate the OOM actually happening - return huge array
-        return Array.from({ length: 10000 }, (_, i) => ({ tenantId: `tenant-${i}` }));
-      }
-      return [];
-    },
-  };
-
-  const deps = {
-    authService: createMockAuthService(),
-    missionControlService: createMockMissionControlService(),
-    coordinatorLoadBalancingService: createMockLoadBalancingService(),
-    tenantRegistryService: mockTenantRegistryService as any,
-  };
-  const routes = createAdminRoutes(deps);
-
-  const ctx = createMockContext("/v1/admin/tenants", ["v1", "admin", "tenants"]);
-
   const response = await callRoute(routes, ctx);
 
-  // The response contains all 10000 tenants in memory (OOM risk)
   const body = JSON.parse(response!.body);
-  assert.equal(body.data.total, 10000);
-  assert.equal(body.data.tenants.length, 0);
+  assert.equal(body.data.total, 10);
+  assert.equal(body.data.tenants.length, 10);
 });
 
 // ── Existing tests that should continue to pass ─────────────────────────────────

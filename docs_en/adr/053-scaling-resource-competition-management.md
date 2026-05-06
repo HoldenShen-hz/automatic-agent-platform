@@ -5,7 +5,7 @@
 
 ## Context
 
-When multiple business lines run concurrently, resource competition occurs, requiring fair and effective resource allocation mechanisms.
+When multiple business lines run concurrently, resource competition occurs. A fair and effective resource allocation mechanism is needed.
 
 ## Decision
 
@@ -27,6 +27,8 @@ interface ResourceAllocation {
 }
 ```
 
+Note: ResourcePool / ResourceAllocation (reserved/used) integrates with §1.5 frozen BudgetLedger / BudgetReservation / BudgetSettlement — ResourcePool is responsible for runtime compute resource quotas, BudgetLedger is responsible for financial budget settlement. The two are linked via `tenant_id`, with BudgetSettlement as the sole settlement exit. ResourcePool must not land quotas alone (must be validated via BudgetLedger). The original parallel model (each landing independently) has been abolished.
+
 ### Resource Types
 
 | Type | Description |
@@ -37,10 +39,10 @@ interface ResourceAllocation {
 | api_quota | API call quota |
 | llm_token | LLM Token quota |
 
-### Scheduling Policies
+### Scheduling Strategies
 
-| Policy | Description |
-|--------|-------------|
+| Strategy | Description |
+|----------|-------------|
 | priority | Priority first |
 | fair_share | Fair sharing |
 | fifo | First in, first out |
@@ -55,18 +57,18 @@ interface ResourceAllocation {
 
 ## Consequences
 
-Advantages:
+Pros:
 
 - Fair resource allocation prevents starvation
-- Priority mechanism ensures critical business needs
+- Priority mechanism guarantees critical business
 - Dynamic adjustment adapts to load changes
 
-Costs:
+Cons:
 
 - Scheduling algorithm complexity
 - Quota calculation overhead
 
-## Cross-References
+## Cross-references
 
 - [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
 - [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)

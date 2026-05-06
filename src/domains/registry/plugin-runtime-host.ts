@@ -222,11 +222,13 @@ abstract class BasePluginRuntimeHost {
 }
 
 export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
+  private stderrBuffer = "";
+
   public constructor(options: PluginRuntimeHostOptions) {
     super(
       options,
       options.isolation === "sandboxed_process"
-        ? buildPluginRuntimeSandboxRoot(options.pluginId)
+        ? buildEphemeralPluginRuntimeSandboxRoot(options.pluginId)
         : null,
     );
   }
@@ -248,9 +250,13 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
         sandboxRoot: this.sandboxRoot,
         env: process.env,
       }),
-      stdio: ["ignore", "ignore", "ignore", "ipc"],
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
     });
     this.attachChild(child, process.execPath, [this.childModulePath]);
+    child.stderr?.setEncoding("utf8");
+    child.stderr?.on("data", (chunk: string) => {
+      this.stderrBuffer = `${this.stderrBuffer}${chunk}`.slice(-4096);
+    });
     child.on("message", (message: unknown) => {
       this.handleMessage(message as PluginRuntimeMessage);
     });
@@ -288,6 +294,12 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
       child.kill();
     });
   }
+
+  protected override handleExit(message: string): void {
+    const stderr = this.stderrBuffer.trim();
+    this.stderrBuffer = "";
+    super.handleExit(stderr.length > 0 ? `${message} stderr=${stderr}` : message);
+  }
 }
 
 export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
@@ -295,7 +307,7 @@ export class ContainerizedPluginRuntimeHost extends BasePluginRuntimeHost {
   private stderrBuffer = "";
 
   public constructor(options: PluginRuntimeHostOptions) {
-    super(options, buildPluginRuntimeSandboxRoot(options.pluginId));
+    super(options, buildEphemeralPluginRuntimeSandboxRoot(options.pluginId));
   }
 
   protected spawnChild(): void {
@@ -428,6 +440,13 @@ export function buildPluginRuntimeSandboxRoot(
   baseDir: string = join(process.cwd(), "data", "plugin-runtime-sandboxes"),
 ): string {
   return resolve(baseDir, sanitizePluginIdForPath(pluginId));
+}
+
+function buildEphemeralPluginRuntimeSandboxRoot(
+  pluginId: string,
+  baseDir: string = join(process.cwd(), "data", "plugin-runtime-sandboxes"),
+): string {
+  return resolve(buildPluginRuntimeSandboxRoot(pluginId, baseDir), newId("runtime"));
 }
 
 export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOptions): string[] {

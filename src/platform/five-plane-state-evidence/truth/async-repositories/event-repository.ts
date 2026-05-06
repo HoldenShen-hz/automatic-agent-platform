@@ -36,6 +36,12 @@ export interface TaskEventListResult {
   lastCreatedAt: string | null;
 }
 
+type AsyncEventInsertInput = Omit<EventRecord, "eventTier" | "sessionId"> & {
+  eventTier?: EventRecord["eventTier"];
+  sessionId?: string | null;
+  tenantId: string;
+};
+
 function encodeEventStreamCursor(event: Pick<EventRecord, "id" | "createdAt">): string {
   return Buffer.from(JSON.stringify({ id: event.id, createdAt: event.createdAt }), "utf8").toString("base64url");
 }
@@ -57,12 +63,39 @@ function decodeEventStreamCursor(cursor: string): { id: string; createdAt: strin
 export class AsyncEventRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
+  private async assertTenantScopeForEvent(input: {
+    taskId: string | null;
+    tenantId: string;
+  }): Promise<void> {
+    if (input.tenantId.trim().length === 0) {
+      throw new Error("event_repository.tenant_id_required");
+    }
+    if (input.taskId == null) {
+      return;
+    }
+    const taskScope = await asyncQueryOne<{ tenantId: string }>(
+      this.conn,
+      `SELECT tenant_id AS "tenantId" FROM tasks WHERE id = $1`,
+      input.taskId,
+    );
+    if (taskScope == null) {
+      throw new Error(`event_repository.task_not_found_for_tenant_scope:${input.taskId}`);
+    }
+    if (taskScope.tenantId !== input.tenantId) {
+      throw new Error(
+        `event_repository.tenant_scope_mismatch:${input.taskId}:${input.tenantId}:${taskScope.tenantId}`,
+      );
+    }
+  }
+
   public async insertEvent(
-    event: Omit<EventRecord, "eventTier" | "sessionId"> & {
-      eventTier?: EventRecord["eventTier"];
-      sessionId?: string | null;
-    },
+    event: AsyncEventInsertInput,
   ): Promise<EventRecord> {
+    const tenantId = event.tenantId.trim();
+    await this.assertTenantScopeForEvent({
+      taskId: event.taskId ?? null,
+      tenantId,
+    });
     const record: EventRecord = {
       id: event.id,
       taskId: event.taskId ?? null,

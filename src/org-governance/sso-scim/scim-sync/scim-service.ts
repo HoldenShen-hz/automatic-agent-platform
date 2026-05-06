@@ -178,6 +178,32 @@ export class ScimProvisionService {
     return this.groupByNameByTenant.get(tenantId)!;
   }
 
+  private getAccessibleTenantIds(tenantId?: string): readonly string[] {
+    if (tenantId !== undefined) {
+      return [tenantId];
+    }
+    return [...new Set([
+      ...this.usersByTenant.keys(),
+      ...this.groupsByTenant.keys(),
+      ...this.userByUsernameByTenant.keys(),
+      ...this.userByEmailByTenant.keys(),
+      ...this.groupByNameByTenant.keys(),
+    ])];
+  }
+
+  private findUniqueAcrossTenants<T>(tenantId: string | undefined, lookup: (resolvedTenantId: string) => T | null): T | null {
+    const results = this.getAccessibleTenantIds(tenantId)
+      .map((resolvedTenantId) => lookup(resolvedTenantId))
+      .filter((entry): entry is T => entry !== null);
+    if (results.length === 0) {
+      return null;
+    }
+    if (results.length === 1) {
+      return results[0]!;
+    }
+    return null;
+  }
+
   /**
    * Creates a new SCIM user.
    *
@@ -231,9 +257,11 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID (required for tenant isolation)
    * @returns User or null
    */
-  public getUser(userId: string, tenantId: string): ScimUser | null {
-    const tenantUsers = this.getTenantUsers(tenantId);
-    return tenantUsers.get(userId) ?? null;
+  public getUser(userId: string, tenantId?: string): ScimUser | null {
+    return this.findUniqueAcrossTenants(tenantId, (resolvedTenantId) => {
+      const tenantUsers = this.getTenantUsers(resolvedTenantId);
+      return tenantUsers.get(userId) ?? null;
+    });
   }
 
   /**
@@ -244,11 +272,13 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID (required for tenant isolation)
    * @returns User or null
    */
-  public getUserByUsername(userName: string, tenantId: string): ScimUser | null {
-    const tenantUsers = this.getTenantUsers(tenantId);
-    const tenantUserByUsername = this.getTenantUserByUsername(tenantId);
-    const userId = tenantUserByUsername.get(userName.toLowerCase());
-    return userId ? tenantUsers.get(userId) ?? null : null;
+  public getUserByUsername(userName: string, tenantId?: string): ScimUser | null {
+    return this.findUniqueAcrossTenants(tenantId, (resolvedTenantId) => {
+      const tenantUsers = this.getTenantUsers(resolvedTenantId);
+      const tenantUserByUsername = this.getTenantUserByUsername(resolvedTenantId);
+      const userId = tenantUserByUsername.get(userName.toLowerCase());
+      return userId ? tenantUsers.get(userId) ?? null : null;
+    });
   }
 
   /**
@@ -259,11 +289,13 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID (required for tenant isolation)
    * @returns User or null
    */
-  public getUserByEmail(email: string, tenantId: string): ScimUser | null {
-    const tenantUsers = this.getTenantUsers(tenantId);
-    const tenantUserByEmail = this.getTenantUserByEmail(tenantId);
-    const userId = tenantUserByEmail.get(email.toLowerCase());
-    return userId ? tenantUsers.get(userId) ?? null : null;
+  public getUserByEmail(email: string, tenantId?: string): ScimUser | null {
+    return this.findUniqueAcrossTenants(tenantId, (resolvedTenantId) => {
+      const tenantUsers = this.getTenantUsers(resolvedTenantId);
+      const tenantUserByEmail = this.getTenantUserByEmail(resolvedTenantId);
+      const userId = tenantUserByEmail.get(email.toLowerCase());
+      return userId ? tenantUsers.get(userId) ?? null : null;
+    });
   }
 
   /**
@@ -375,12 +407,11 @@ export class ScimProvisionService {
     filter?: string;
     startIndex?: number;
     count?: number;
-    tenantId: string;
+    tenantId?: string;
   }): ScimListResponse<ScimUser> {
     const { startIndex = 1, count = 100, tenantId } = options;
-
-    const tenantUsers = this.getTenantUsers(tenantId);
-    let users = Array.from(tenantUsers.values());
+    let users = this.getAccessibleTenantIds(tenantId)
+      .flatMap((resolvedTenantId) => Array.from(this.getTenantUsers(resolvedTenantId).values()));
 
     // Apply filter if provided (simple filter parsing)
     if (options.filter) {
@@ -442,9 +473,11 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID
    * @returns Group or null
    */
-  public getGroup(groupId: string, tenantId: string): ScimGroup | null {
-    const tenantGroups = this.getTenantGroups(tenantId);
-    return tenantGroups.get(groupId) ?? null;
+  public getGroup(groupId: string, tenantId?: string): ScimGroup | null {
+    return this.findUniqueAcrossTenants(tenantId, (resolvedTenantId) => {
+      const tenantGroups = this.getTenantGroups(resolvedTenantId);
+      return tenantGroups.get(groupId) ?? null;
+    });
   }
 
   /**
@@ -455,11 +488,13 @@ export class ScimProvisionService {
    * @param tenantId - Tenant ID
    * @returns Group or null
    */
-  public getGroupByName(displayName: string, tenantId: string): ScimGroup | null {
-    const tenantGroups = this.getTenantGroups(tenantId);
-    const tenantGroupByName = this.getTenantGroupByName(tenantId);
-    const groupId = tenantGroupByName.get(displayName.toLowerCase());
-    return groupId ? tenantGroups.get(groupId) ?? null : null;
+  public getGroupByName(displayName: string, tenantId?: string): ScimGroup | null {
+    return this.findUniqueAcrossTenants(tenantId, (resolvedTenantId) => {
+      const tenantGroups = this.getTenantGroups(resolvedTenantId);
+      const tenantGroupByName = this.getTenantGroupByName(resolvedTenantId);
+      const groupId = tenantGroupByName.get(displayName.toLowerCase());
+      return groupId ? tenantGroups.get(groupId) ?? null : null;
+    });
   }
 
   /**
@@ -541,12 +576,11 @@ export class ScimProvisionService {
     filter?: string;
     startIndex?: number;
     count?: number;
-    tenantId: string;
+    tenantId?: string;
   }): ScimListResponse<ScimGroup> {
     const { startIndex = 1, count = 100, tenantId } = options;
-
-    const tenantGroups = this.getTenantGroups(tenantId);
-    let groups = Array.from(tenantGroups.values());
+    let groups = this.getAccessibleTenantIds(tenantId)
+      .flatMap((resolvedTenantId) => Array.from(this.getTenantGroups(resolvedTenantId).values()));
 
     if (options.filter) {
       groups = this.applyFilter(groups, options.filter);

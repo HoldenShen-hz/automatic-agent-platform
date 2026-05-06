@@ -81,11 +81,11 @@ test("org-model index exports HrRoleGovernanceService", () => {
 
 test("isLeafOrgNode works via exported function", () => {
   const node = {
-    orgNodeId: "team-1",
-    displayName: "Runtime Team",
-    nodeType: "team" as const,
-    parentOrgNodeId: "dept-1",
-    ownerUserIds: ["manager-1"],
+    orgNodeId: "seat-1",
+    displayName: "Engineer Seat",
+    nodeType: "seat" as const,
+    parentOrgNodeId: "team-1",
+    ownerUserIds: ["engineer-1"],
     metadata: {},
     active: true,
     costCenter: "CC001",
@@ -94,14 +94,15 @@ test("isLeafOrgNode works via exported function", () => {
 });
 
 test("getPlatformMapping returns correct mapping via exported function", () => {
-  assert.equal(OrgModelExports.getPlatformMapping("company"), "platform");
+  assert.equal(OrgModelExports.getPlatformMapping("tenant"), "platform");
   assert.equal(OrgModelExports.getPlatformMapping("division"), "tenant_group");
   assert.equal(OrgModelExports.getPlatformMapping("department"), "tenant");
   assert.equal(OrgModelExports.getPlatformMapping("team"), "domain/pack_group");
+  assert.equal(OrgModelExports.getPlatformMapping("seat"), "resource/seat");
 });
 
 test("OrgNodeTypeSchema parses valid types", () => {
-  const types = ["company", "division", "department", "team"];
+  const types = ["tenant", "division", "department", "team", "seat"];
   for (const type of types) {
     const result = OrgModelExports.OrgNodeTypeSchema.safeParse(type);
     assert.equal(result.success, true, `Type ${type} should be valid`);

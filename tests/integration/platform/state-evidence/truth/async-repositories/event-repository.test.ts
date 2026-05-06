@@ -74,7 +74,7 @@ test.describe("AsyncEventRepository", () => {
 
   test("insertEvent and getEvent roundtrip", async () => {
     await insertTestTask("task-event-001");
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null; tenantId: string } = {
       id: "event-001",
       taskId: "task-event-001",
       sessionId: null,
@@ -83,6 +83,7 @@ test.describe("AsyncEventRepository", () => {
       payloadJson: '{"taskId":"task-event-001"}',
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
+      tenantId: "tenant-event",
     };
 
     const record = await harness.repo.insertEvent(event);
@@ -103,9 +104,9 @@ test.describe("AsyncEventRepository", () => {
 
   test("listEventsByType returns events filtered by type", async () => {
     const events = [
-      { id: "event-type-001", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:00:00.000Z" },
-      { id: "event-type-002", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:01:00.000Z" },
-      { id: "event-type-003", taskId: null, sessionId: null, executionId: null, eventType: "decision:requested", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:02:00.000Z" },
+      { id: "event-type-001", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:00:00.000Z", tenantId: "tenant-event" },
+      { id: "event-type-002", taskId: null, sessionId: null, executionId: null, eventType: "task:status_changed", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:01:00.000Z", tenantId: "tenant-event" },
+      { id: "event-type-003", taskId: null, sessionId: null, executionId: null, eventType: "decision:requested", payloadJson: "{}", traceId: null, createdAt: "2026-04-23T10:02:00.000Z", tenantId: "tenant-event" },
     ];
 
     for (const event of events) {
@@ -121,7 +122,7 @@ test.describe("AsyncEventRepository", () => {
 
   test("listEventsByType with limit", async () => {
     for (let i = 0; i < 5; i++) {
-      const event = { id: `event-limit-${i}`, taskId: null, sessionId: null, executionId: null, eventType: "test.event", payloadJson: "{}", traceId: null, createdAt: new Date(2026, 3, 23, 10, i).toISOString() };
+      const event = { id: `event-limit-${i}`, taskId: null, sessionId: null, executionId: null, eventType: "test.event", payloadJson: "{}", traceId: null, createdAt: new Date(2026, 3, 23, 10, i).toISOString(), tenantId: "tenant-event" };
       await harness.repo.insertEvent(event);
     }
 
@@ -130,7 +131,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("insertEventConsumerAck and getEventConsumerAck roundtrip", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null; tenantId: string } = {
       id: "event-ack-001",
       taskId: null,
       sessionId: null,
@@ -139,6 +140,7 @@ test.describe("AsyncEventRepository", () => {
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
+      tenantId: "tenant-event",
     };
     await harness.repo.insertEvent(event);
 
@@ -160,7 +162,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("markEventAck preserves readable ack state", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null; tenantId: string } = {
       id: "event-mark-001",
       taskId: null,
       sessionId: null,
@@ -169,6 +171,7 @@ test.describe("AsyncEventRepository", () => {
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
+      tenantId: "tenant-event",
     };
     await harness.repo.insertEvent(event);
     await harness.repo.markEventAck("event-mark-001", "task_projection", "acked", "2026-04-23T10:30:00.000Z", null);
@@ -179,7 +182,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("ackAllConsumersForEvent marks all pending/failed acks as acked", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null; tenantId: string } = {
       id: "event-ack-all-001",
       taskId: null,
       sessionId: null,
@@ -188,6 +191,7 @@ test.describe("AsyncEventRepository", () => {
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
+      tenantId: "tenant-event",
     };
     await harness.repo.insertEvent(event);
 
@@ -215,7 +219,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("countPendingTier1Acks counts pending tier 1 acks", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null; tenantId: string } = {
       id: "event-tier1-001",
       taskId: null,
       sessionId: null,
@@ -224,6 +228,7 @@ test.describe("AsyncEventRepository", () => {
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
+      tenantId: "tenant-event",
     };
     await harness.repo.insertEvent(event);
 
@@ -232,7 +237,7 @@ test.describe("AsyncEventRepository", () => {
   });
 
   test("getRequiredConsumerIds returns consumer ids for event", async () => {
-    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null } = {
+    const event: Omit<EventRecord, "eventTier" | "sessionId"> & { sessionId?: string | null; tenantId: string } = {
       id: "event-consumers-001",
       taskId: null,
       sessionId: null,
@@ -241,6 +246,7 @@ test.describe("AsyncEventRepository", () => {
       payloadJson: "{}",
       traceId: null,
       createdAt: "2026-04-23T10:00:00.000Z",
+      tenantId: "tenant-event",
     };
     await harness.repo.insertEvent(event);
 

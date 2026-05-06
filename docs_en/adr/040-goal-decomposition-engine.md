@@ -5,7 +5,7 @@
 
 ## Context
 
-Complex business goals need to be decomposed into executable task sequences, and the platform needs automated goal decomposition capability.
+Complex business goals need to be decomposed into executable task sequences. The platform requires automated goal decomposition capabilities.
 
 ## Decision
 
@@ -38,7 +38,7 @@ interface GoalDecomposition {
 interface PlannedTask {
   task_id: string;
   description: string;
-  dependencies: string[];  // Dependent task IDs
+  dependencies: string[];  // Task IDs this task depends on
   estimated_duration_minutes: number;
   domain_id?: string;
 }
@@ -50,18 +50,18 @@ interface TaskDependency {
 }
 ```
 
-### Decomposition Flow
+### Decomposition Process
 
 1. Parse Goal's success_criteria
 2. Identify task dependencies
-3. Construct DAG (Directed Acyclic Graph)
-4. Validate no circular dependencies
+3. Build DAG (Directed Acyclic Graph)
+4. Verify no circular dependencies
 5. Calculate decomposition confidence
 
-### Confidence Thresholds
+### Confidence Threshold
 
 ```typescript
-const CLARIFICATION_THRESHOLD = 0.7;  // Confidence < 0.7 → human assistance
+const CLARIFICATION_THRESHOLD = 0.7;  // confidence < 0.7 → human assistance
 ```
 
 - `confidence < 0.7` triggers clarification
@@ -70,17 +70,17 @@ const CLARIFICATION_THRESHOLD = 0.7;  // Confidence < 0.7 → human assistance
 ### Depth Limit
 
 ```typescript
-const DEFAULT_MAX_DEPTH = 5;  // Maximum decomposition depth 5 layers
+const DEFAULT_MAX_DEPTH = 5;  // Maximum decomposition depth of 5 levels
 ```
 
-**Global Call Depth Constraint**: Goal decomposition depth limit must coordinate with the global `call_depth` hard cap (default 8) defined in §19.2. Decomposition depth must not exceed global call depth, and must not be multiplied with delegation local caps to circumvent the limit (see §19.2 call depth contradiction analysis).
+**Global Call Depth Constraint**: Goal decomposition depth limits must work in conjunction with the global `call_depth` hard upper limit (default 8) as defined in §19.2. Decomposition depth must not exceed global call depth, and must not be multiplied with delegation local limits to circumvent restrictions (see §19.2 call depth conflict analysis).
 
 ### GoalProjection and HarnessRun Lifecycle Relationship
 
-`Goal` itself only describes the decomposition input; upon entering execution, the truth state must converge to `HarnessRun.status`.
+`Goal` only describes decomposition input; upon execution, the state truth must converge to `HarnessRun.status`.
 
-| GoalProjection State | Corresponding HarnessRun truth |
-|---------------------|-------------------------------|
+| GoalProjection State | Corresponding HarnessRun Truth |
+|------|------|
 | draft | HarnessRun not yet created |
 | decomposing | `created / admitted / planning` |
 | planned | `ready` |
@@ -91,34 +91,32 @@ const DEFAULT_MAX_DEPTH = 5;  // Maximum decomposition depth 5 layers
 | cancelled | `aborted` |
 
 Rules:
-- `GoalProjection` is only allowed as an upper-level projection or product display, and must not replace `HarnessRun.status`.
-- The 9-state goal lifecycle parallel to `HarnessRun` is no longer defined separately.
+
+- `GoalProjection` is only allowed as an upper-level projection or product state display, and must not replace `HarnessRun.status`.
+- The 9-state goal truth lifecycle parallel to `HarnessRun` is no longer defined separately.
 
 ### Circular Dependency Detection
 
 - DependencyGraph + Validator
-- Rejects decomposition when circular dependency detected
+- Rejects decomposition when circular dependency is found
 
 ## Consequences
 
-Positive:
-- Automated decomposition improves efficiency
-- Confidence mechanism balances automation and human intervention
-- DAG validation ensures executability
+Pros:
 
-Negative:
+- Automated decomposition improves efficiency
+- Confidence mechanism balances automation and human involvement
+- DAG verification ensures executability
+
+Cons:
+
 - Complex goal decomposition may be inaccurate
-- Dependency analysis requires comprehensive context
+- Dependency analysis overhead
 
 ## v4.3 ADR Remediation
 
-- A-28: This ADR originally defined a separate 9-state goal lifecycle. The root cause was that the goal decomposition ADR mixed "decomposition product state" and "runtime truth state" into one lifecycle, and did not converge when `HarnessRun` became the sole execution state machine. Fix: The main text now demotes goal state to `GoalProjection`, and the execution phase uniformly maps to `HarnessRun.status`.
+- A-28: This ADR originally defined a separate 9-state goal lifecycle. Root cause: the goal decomposition ADR mixed "decomposition product state" and "runtime truth state" into one lifecycle, and did not converge as `HarnessRun` became the sole execution state machine. Fix: The text now demotes goal state to `GoalProjection`, and maps execution phase uniformly to `HarnessRun.status`.
 
-## Cross-References
+## Source Section
 
-- [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
-- [ADR-082 Natural Language Entry and Goal Decomposition](./082-natural-language-entry-and-goal-decomposition.md)
-
-## Source Sections
-
-- `§40` Goal Decomposition Engine
+- `§40` Goal Decomposition Engine Architecture

@@ -330,7 +330,7 @@ test("normalizeThresholdCny requires FX snapshot when USD thresholds are applied
   setDefaultLegacyFxRate(null);
   const nodes = [
     createOrgNode({ orgNodeId: "dept-1", nodeType: "department", active: true, ownerUserIds: ["director"] }),
-    createOrgNode({ orgNodeId: "company-1", nodeType: "company", active: true, ownerUserIds: ["admin"] }),
+    createOrgNode({ orgNodeId: "tenant-1", nodeType: "tenant", active: true, ownerUserIds: ["admin"] }),
   ];
   const strategy = new AmountBasedRoutingStrategy([
     { maxAmountUsd: 1000, targetNodeTypes: ["department"] },
@@ -365,13 +365,12 @@ test("normalizeThresholdCny uses provided FX snapshot for USD conversion", () =>
     },
   });
   // maxAmountUsd = 100, so threshold = 100 * 7.0 = 700 CNY
-  // 500 USD * 7.0 = 3500 CNY > 700, so should fall back to company
+  // 500 USD * 7.0 = 3500 CNY > 700, so current amount rule does not match and no tenant fallback is applied.
   const strategy = new AmountBasedRoutingStrategy([
     { maxAmountUsd: 100, targetNodeTypes: ["department"] },
   ]);
   const selected = strategy.selectNode(nodes, request);
-  assert.ok(selected != null);
-  assert.equal(selected.nodeType, "company");
+  assert.equal(selected, null);
 });
 
 // R9-35: ApprovalRouteSnapshot.expiresAt

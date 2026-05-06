@@ -394,6 +394,15 @@ export class DekManager {
    * Decrypts data using the specified DEK.
    */
   public async decrypt(dekId: string, ciphertext: string): Promise<string> {
+    const parts = ciphertext.split(":");
+    if (parts.length !== 3) {
+      throw new AppError("dek.invalid_ciphertext", "Invalid ciphertext format", {
+        statusCode: 400,
+        category: "validation",
+        source: "internal",
+      });
+    }
+
     const metadata = await this.store.getMetadata(dekId);
     if (!metadata) {
       throw new AppError("dek.not_found", `DEK ${dekId} not found`, {
@@ -417,15 +426,6 @@ export class DekManager {
       throw new AppError("dek.key_unavailable", `Key for DEK ${dekId} is not available`, {
         statusCode: 500,
         category: "storage",
-        source: "internal",
-      });
-    }
-
-    const parts = ciphertext.split(":");
-    if (parts.length !== 3) {
-      throw new AppError("dek.invalid_ciphertext", "Invalid ciphertext format", {
-        statusCode: 400,
-        category: "validation",
         source: "internal",
       });
     }

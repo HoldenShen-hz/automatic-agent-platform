@@ -29,8 +29,9 @@ The design requires supporting 7 types of feedback sources, implementing signal 
 ```typescript
 interface FeedbackSignal {
   signalId: string;
-  taskId: string;
-  executionId: string;
+  harnessRunId: string;             // v4.3 canonical: truth primary key
+  nodeRunId?: string;               // v4.3 canonical: node-level association
+  receiptId?: string;              // v4.3 canonical: step receipt
   kind: FeedbackSignalKind;        // 20+ enum values
   source: FeedbackSourceType;
   payload: unknown;                // Source-specific data
@@ -65,14 +66,19 @@ type FeedbackSignalKind =
 ```typescript
 interface Feedback {
   feedbackId: string;
-  taskId: string;
-  executionId: string;
+  harnessRunId: string;             // v4.3 canonical: truth primary key
+  nodeRunId?: string;               // v4.3 canonical: node-level association
   signals: FeedbackSignal[];       // Associated signal list
   aggregated: boolean;
   processedAt?: string;
   learningSignals?: LearningSignal[];
 }
 ```
+
+## v4.3 ADR Remediation
+
+- A-67: This ADR originally used `executionId` as Feedback/Signal primary chain key. Root cause: feedback hub was modeled under old execution semantics, and later did not update signal chain to `NodeAttemptReceipt`. Fix: The main text now switches signal anchor to `harnessRunId / nodeRunId / receiptId`.
+- R6-46: Fixed FeedbackSignal interface, removed taskId association key, unified using harnessRunId/nodeRunId as correlation keys to ensure learning objects can join truth.
 
 ### 4. Signal Preprocessor
 
@@ -159,7 +165,7 @@ eventBus.subscribe('execution:completed', async (event) => {
 Pros: Simple implementation.
 Cons: High latency, large resource consumption.
 
-### Option B: Event-Driven + Active Collection (Chosen)
+### Option B: Event-Driven + Active Collection (Selected)
 
 Pros: Low latency, strong signal correlation capability.
 Cons: Requires DurableEventBus support.
@@ -173,13 +179,13 @@ Cons: Requires DurableEventBus support.
 - `types/feedback-signal.ts` (25 lines) defines FeedbackSignal.
 - Event subscriptions require DurableEventBus support (Tier 1 reliable delivery).
 
-## Cross References
+## Cross-References
 
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 - `src/core/feedback/` module
 
-## Source Sections
+## Source Section
 
 - `§7` Feedback Hub Design
 - `§7.1` 7 Feedback Source Types

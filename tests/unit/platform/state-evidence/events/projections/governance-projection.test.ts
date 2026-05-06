@@ -154,6 +154,21 @@ test("governanceProjectionHandler handles decision:rejected", () => {
   assert.equal(state.actionType, "approval_denied");
 });
 
+test("governanceProjectionHandler does not infer approval_granted for unknown decision events", () => {
+  const event = makeEvent(
+    "evt_decision_expired",
+    "decision:expired",
+    null,
+    '{"approvalId":"dec_1","principal":"system"}',
+  );
+
+  const state = governanceProjectionHandler(null, event) as unknown as GovernanceState;
+
+  assert.equal(state.actionType, null);
+  assert.equal(state.status, "denied");
+  assert.equal(state.approved, false);
+});
+
 test("governanceProjectionHandler handles delegation:created", () => {
   const event = makeEvent(
     "evt_delegation_created",

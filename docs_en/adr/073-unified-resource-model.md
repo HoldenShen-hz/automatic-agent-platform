@@ -10,7 +10,7 @@ Updated: 2026-04-16
 
 The repository already contains:
 
-- Persistent objects such as `tasks / workflow_state / executions / events / approvals / artifacts / memories`
+- Persistent objects such as `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / events / approvals / artifacts / memories`
 - Domain objects such as `FeedbackSignal / LearningObject / ImprovementCandidate / StrategyVersion / RolloutRecord`
 - Reference semantics like `ArtifactRef / EvidenceRef`
 
@@ -18,7 +18,7 @@ However, the resource model still has three issues:
 
 1. Typed refs are incomplete — `MemoryRef / KnowledgeRef` are not explicitly defined in the unified resource model.
 2. The resource enumeration is outdated and has not yet incorporated feedback / learning / improvement / rollout / knowledge / memory layers into the same canonical resource family.
-3. The old draft directly wrote `EnvironmentSpec / Session / AgentThread / McpServerSpec` as current must-deliver items, which easily creates confusion with the already-completed phase1-4 scope.
+3. The old draft directly wrote `EnvironmentSpec / Session / AgentThread / McpServerSpec` as current must-deliver items, which easily creates confusion with the already-completed Ring 1 scope.
 
 Therefore, this ADR needs to be rewritten to: first define the current authoritative resource boundaries, then separately mark the `M2` target-state extensions.
 
@@ -28,7 +28,6 @@ The unified resource model adopts a "two-layer definition":
 
 1. Ring 1 authoritative resource family: resource types, typed refs, and lineage boundaries that the current repository and contracts should uniformly use.
 2. Ring 2 / Ring 3 extension resource family: extended resources after full platformization of Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry, not counted toward current delivery declarations.
-2. `M2` target-state resource family: extended resources after full platformization of Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry, not counted toward current delivery declarations.
 
 ## Canonical Typed Ref
 
@@ -115,7 +114,7 @@ interface ResourceEnvelope<Id extends string, Kind extends string> {
 }
 ```
 
-Notes:
+Note:
 
 - Not all tables are required to literally adopt the same interface.
 - However, all contracts must be able to map core entities to the same set of minimum governance fields: identity, status, timestamps, trace, evidence references, and related typed refs.
@@ -218,4 +217,4 @@ After adopting this ADR, the meaning of the unified resource model is consolidat
 ## v4.3 ADR Remediation
 
 - A-20: This ADR originally listed `tasks / workflow / execution / ExecutionEnvelope` as authoritative resource family. Root cause: The unified resource model was first drafted from historical storage projection objects, then was not rewritten when `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt` became runtime truth. Fix: The canonical resource subject is now changed to run/node/graph/receipt in the main text; old task/workflow/execution are retained only as projection resources.
-- A-29: This ADR repeatedly used `phase1-4` as the current completion boundary. Root cause: The resource model ADR followed old scheduling naming and was not updated along with the main architecture's unification to `Ring 1 / Ring 2 / Ring 3`. Fix: The main text now uses ring layering terminology; old phase names are no longer used as canonical delivery scope.
+- A-29: This ADR repeatedly used `phase1-4` as the current completion boundary. Root cause: The resource model ADR followed old scheduling naming and was not updated along with the main architecture's unification to `Ring 1 / Ring 2 / Ring 3`. Fix

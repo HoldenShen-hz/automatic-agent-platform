@@ -85,11 +85,26 @@ function createTenantRegistryService(): TenantBoundaryRegistryService {
   });
 }
 
+function normalizePathname(pathname: string): string {
+  return pathname.startsWith("/api/") ? pathname : `/api${pathname}`;
+}
+
+function normalizeSegments(pathname: string, segments: string[]): string[] {
+  if (segments.length > 0) {
+    return segments[0] === "api" ? segments : ["api", ...segments];
+  }
+  return normalizePathname(pathname)
+    .split("?")[0]
+    .split("/")
+    .filter((segment) => segment.length > 0);
+}
+
 function createMockContext(pathname = "/v1/stability", segments: string[] = [], headers: Record<string, string | undefined> = {}, body: string | null = null): RouteContext {
+  const normalizedPathname = normalizePathname(pathname);
   return {
     requestId: "req-123",
-    request: { method: body != null ? "POST" : "GET", url: pathname, headers, body } as never,
-    route: { pathname, segments },
+    request: { method: body != null ? "POST" : "GET", url: normalizedPathname, headers, body } as never,
+    route: { pathname: normalizedPathname.split("?")[0]!, segments: normalizeSegments(normalizedPathname, segments) },
     principal: null,
   };
 }
@@ -113,14 +128,14 @@ async function callRoute(routes: RouteDefinition[], ctx: RouteContext): Promise<
   return null;
 }
 
-test("createAdminRoutes returns 16 routes", () => {
+test("createAdminRoutes returns 24 routes", () => {
   const deps = {
     authService: createMockAuthService(),
     missionControlService: createMockMissionControlService(),
     coordinatorLoadBalancingService: createMockLoadBalancingService(),
   };
   const routes = createAdminRoutes(deps);
-  assert.equal(routes.length, 16);
+  assert.equal(routes.length, 24);
 });
 
 test("GET /v1/stability returns stability panel", async () => {

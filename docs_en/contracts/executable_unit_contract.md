@@ -12,16 +12,16 @@ This contract participates in the following stages of the OAPEFLIR eight-stage c
 - **Execute**: Step execution and fault tolerance
 - **Feedback**: Signal collection and preprocessing
 - **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
+- **Improve**: Improvement candidate evaluation and release
 - **Release**: Controlled release and rollback
 
 ---
 
 ## 1. Scope
 
-This contract defines a unified "executable unit" semantic view within the platform, used to map heterogeneous objects such as Task, WorkflowStep, Tool Call, HITL Decision, SubTask to a unified observation and visualization layer.
+This contract defines the unified "executable unit" semantic view within the platform, used to map heterogeneous objects like Task, WorkflowStep, Tool Call, HITL decision, SubTask, etc. to a unified observation and visualization layer.
 
-`ExecutableUnit` is not runtime truth. The normative minimum execution unit for v4.3 is `NodeRun` / `NodeAttempt`; `ExecutableUnit` can only serve as a semantic projection or import adapter layer built around them.
+`ExecutableUnit` is not runtime truth. The v4.3 canonical minimum execution unit is `NodeRun` / `NodeAttempt`; `ExecutableUnit` can only be used as a semantic projection or import adapter layer built around them.
 
 Related documents:
 
@@ -30,9 +30,9 @@ Related documents:
 - `transition_service_contract.md`
 - `tool_metadata_and_recovery_contract.md`
 
-## 2. Objectives
+## 2. Goals
 
-The purpose of unifying execution units is to enable the following capabilities to reuse the same semantic view:
+The purpose of unified execution unit is to enable the following capabilities to share the same semantic view:
 
 - Scheduling
 - Timeout
@@ -55,7 +55,7 @@ The purpose of unifying execution units is to enable the following capabilities 
 | `graph_version` | `number?` | Corresponding graph version |
 | `parent_unit_id` | `string?` | Parent execution unit |
 | `root_task_id` | `string?` | Root task query entry |
-| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Belonging closed-loop stage view |
+| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Associated closed-loop stage view |
 | `ref_id` | `string?` | Associated typed ref |
 | `input_ref` | `string \| json` | Input reference or input body |
 | `output_ref` | `string?` | Output reference |
@@ -69,47 +69,47 @@ The purpose of unifying execution units is to enable the following capabilities 
 
 Rules:
 
-- `ExecutableUnit` must be traceable back to `NodeRun` / `NodeAttempt`; new unit objects without `harness_run_id` must not serve as execution layer canonical input.
-- `stage_view_ref`, `status_view` only express projection semantics; real execution state is still defined by `RuntimeStateMachine.transition(command)` and `NodeAttemptReceipt`.
-- Old `unit_kind` such as `skill_step`, `decision_request`, `observe_step` can only serve as import mapping, must not appear in new schema.
+- `ExecutableUnit` must be traceable back to `NodeRun` / `NodeAttempt`; new unit objects without `harness_run_id` must not be used as execution layer canonical input.
+- `stage_view_ref`, `status_view` are only allowed to express projection semantics; actual execution state is still defined by `RuntimeStateMachine.transition(command)` and `NodeAttemptReceipt`.
+- Old `unit_kind` like `skill_step`, `decision_request`, `observe_step` can only be used as import mappings and must not appear in new schema.
 
 ## 4. Constraints
 
-- Unified execution unit is an abstraction layer, does not replace specific domain objects.
-- `Task` remains the user primary object, `ExecutableUnit` is a cross-object reusable semantic/display view.
-- Execution scheduling, timeout, recovery, and truth audit prioritize consumption of `NodeRun` / `NodeAttempt` / `NodeAttemptReceipt`; `ExecutableUnit` is only used for cross-object unified display, search, or import.
+- Unified execution unit is an abstraction layer and does not replace concrete domain objects.
+- `Task` remains the user primary object; `ExecutableUnit` is a cross-object reusable semantic/presentation view.
+- Execution scheduling, timeout, recovery, and truth audit prioritize consuming `NodeRun` / `NodeAttempt` / `NodeAttemptReceipt`; `ExecutableUnit` is only used for cross-object unified display, search, or import.
 
-## 5. Current Stage Mapping
+## 5. Current Phase Mapping
 
 | Domain Object | Mapping Method |
 | --- | --- |
 | `Task` | Top-level user-visible execution unit view |
 | `WorkflowStep` | Semantic mapping view of `PlanNode` / `NodeRun` |
 | `ToolCall` | Atomic view of `NodeAttemptReceipt(receiptKind=tool)` |
-| `DecisionRequest` | `hitl_wait_view`, must trace back to `ApprovalRequest` / `DecisionDirective` |
-| `SubTask` | Subtree runtime view, must trace back to child `HarnessRun` |
-| `Observe / Assess / Feedback / Learn / Improve / Release` | OAPEFLIR stage views, not independent truth units |
+| `DecisionRequest` | `hitl_wait_view`, needs to trace back to `ApprovalRequest` / `DecisionDirective` |
+| `SubTask` | Subtree-type running view, needs to trace back to child `HarnessRun` |
+| `Observe / Assess / Feedback / Learn / Improve / Release` | OAPEFLIR stage view, not independent truth unit |
 
 ## 6. Phase Boundaries
 
-Phase 1a / 1b will do:
+Phase 1a / 1b does:
 
-- Document and runtime concept layer unified abstraction
+- Documentation and runtime concept layer unified abstraction
 - Used for scheduling, timeout, recovery, and visualization design
 
-Currently not doing:
+Currently does not do:
 
--单独新建一套独立存储表强行替代现有 `HarnessRun / NodeRun / NodeAttempt` truth 表
+- Separately creating a new independent storage table to forcibly replace existing `HarnessRun / NodeRun / NodeAttempt` truth tables
 
 ## 7. Conclusion
 
-The purpose of unifying execution units is not to create another layer of concepts, but to reduce the future cost of "implementing the same scheduling logic repeatedly on five or six types of objects".
+The purpose of unified execution unit is not to recreate a concept layer, but to reduce the future cost of "the same type of scheduling logic being reimplemented five or six times on different objects".
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-20: This document originally wrote `ExecutableUnit` as a unified execution truth that could directly replace task/workflow_step/tool_call. The root cause is that early on, an abstraction was wanted to flatten all execution objects, but it wasn't demoted back to projection layer as `NodeRun / NodeAttempt` became the normative minimum execution unit. Fix: The main text now explicitly states `ExecutableUnit` is only a semantic view around `HarnessRun / NodeRun / NodeAttempt`, and demotes old `unit_kind` to import mapping.
+- T-20: This document originally wrote `ExecutableUnit` as a unified execution truth that could directly replace task/workflow_step/tool_call. Root cause: early attempt to use an abstraction to flatten all execution objects, without descending it to a projection layer as `NodeRun / NodeAttempt` became the canonical minimum execution unit. Fix: The text now clarifies that `ExecutableUnit` is only a semantic view around `HarnessRun / NodeRun / NodeAttempt`, and old `unit_kind` is demoted to import mapping.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -1,16 +1,16 @@
-# ADR-060 Explicit Planning Layer and Plan Hub
+# ADR-060 Explicit Planning Hub and Plan Hub
 
 - Status: Accepted
 - Decision Date: 2026-04-17
-- Related: ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model
+- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
 
 ## Context
 
 In the early Phase 1A/1B architecture, the generation logic for execution plans (Plan) was scattered within `AgentExecutor`, implementing task decomposition through an implicit "dispatch mode". This design has three problems:
 
-1. **Non-traceable**: No explicit Plan DTO, making it impossible to independently validate plan content.
-2. **Non-auditable**: Replan decisions have no version chain, making debugging difficult.
-3. **Non-reusable**: Planning strategies cannot be shared across multiple execution engines.
+1. **Not traceable**: No explicit Plan DTO, making it impossible to independently validate plan content.
+2. **Not auditable**: Replan decisions have no version chain, making debugging difficult.
+3. **Not reusable**: Planning strategies cannot be shared across multiple execution engines.
 
 The OAPEFLIR Loop model (ADR-016) requires Plan as an independent Hub, forming a clear Assess → Plan → Execute boundary.
 
@@ -18,7 +18,7 @@ The OAPEFLIR Loop model (ADR-016) requires Plan as an independent Hub, forming a
 
 ### 1. Establish Independent Plan Hub
 
-Plan Hub serves as OAPEFLIR Phase 3 (between Assess and Execute), with responsibilities:
+Plan Hub serves as OAPEFLIR Stage 3 (between Assess and Execute), with responsibilities:
 
 - Receive `UnifiedAssessment` (from Assess Hub)
 - Output `PlanGraphBundle` (as the sole canonical input to Execute Hub per §5.3)
@@ -90,7 +90,7 @@ interface RuntimeExecuteBridge {
 | `time_budget_exceeded` | Time budget exceeded | `hierarchical` compression |
 | `quality_below_threshold` | Quality below threshold | `uncertainty-aware` |
 
-## Alternative Approaches
+## Alternatives
 
 ### Option A: Maintain dispatch implicit planning (current state)
 
@@ -118,7 +118,7 @@ Costs: Need to add new planning/ module, approximately 1500 lines of code.
 
 ## Cross-References
 
-- [ADR-016 OAPEFLIR Eight-Phase Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)
 - [ADR-072 Testing Strategy](./072-oapeflir-testing-strategy.md)
 

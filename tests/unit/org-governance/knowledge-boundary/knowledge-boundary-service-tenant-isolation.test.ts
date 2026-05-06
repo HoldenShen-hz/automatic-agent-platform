@@ -124,11 +124,11 @@ test("KnowledgeBoundaryService tenant isolation - same tenants: access granted",
   assert.strictEqual(decision.tenantId, "tenant_a");
 });
 
-test("KnowledgeBoundaryService tenant isolation - owner bypasses tenant check", () => {
+test("KnowledgeBoundaryService tenant isolation - owner does not bypass tenant check", () => {
   const service = new KnowledgeBoundaryService();
   const boundary = createBoundary("kb_finance", "dept_finance", "tenant_a");
 
-  // Owner access - should be allowed even with different tenant
+  // Current runtime enforces tenant scope before owner/grant checks.
   const decision = service.evaluateAccess(
     boundary,
     "user_owner",
@@ -140,16 +140,17 @@ test("KnowledgeBoundaryService tenant isolation - owner bypasses tenant check", 
     "tenant_b", // different requester tenantId
   );
 
-  assert.strictEqual(decision.allowed, true);
+  assert.strictEqual(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("knowledge_boundary.tenant_scope_denied"));
 });
 
-test("KnowledgeBoundaryService tenant isolation - grant bypasses tenant check", () => {
+test("KnowledgeBoundaryService tenant isolation - grant does not bypass tenant check", () => {
   const service = new KnowledgeBoundaryService();
   const boundary = createBoundary("kb_finance", "dept_finance", "tenant_a");
 
   const grants: KnowledgeShareGrant[] = [createGrant("kb_finance", "dept_hr", "2026-04-25T00:00:00.000Z")];
 
-  // Grant access - should be allowed even with different tenant
+  // Current runtime enforces tenant scope before evaluating cross-boundary grants.
   const decision = service.evaluateAccess(
     boundary,
     "user_1",
@@ -161,7 +162,8 @@ test("KnowledgeBoundaryService tenant isolation - grant bypasses tenant check", 
     "tenant_b", // different requester tenantId
   );
 
-  assert.strictEqual(decision.allowed, true);
+  assert.strictEqual(decision.allowed, false);
+  assert.ok(decision.reasonCodes.includes("knowledge_boundary.tenant_scope_denied"));
 });
 
 test("KnowledgeBoundaryService tenantId propagates to access log when boundary has no tenantId", () => {

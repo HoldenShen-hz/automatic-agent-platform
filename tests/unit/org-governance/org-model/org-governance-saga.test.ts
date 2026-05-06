@@ -155,6 +155,7 @@ test("OrgGovernanceSaga status is committed when no compensation needed", () => 
   const saga = new OrgGovernanceSaga({
     prepare: () => {},
     commit: () => {},
+    compensate: () => {},
   });
 
   const result = saga.execute("saga-7", [
@@ -170,6 +171,7 @@ test("OrgGovernanceSaga executeWithReceipt returns phase breakdown", () => {
   const saga = new OrgGovernanceSaga({
     prepare: () => {},
     commit: () => {},
+    compensate: () => {},
     audit: () => {},
   });
 
@@ -194,6 +196,7 @@ test("OrgGovernanceSaga executeWithReceipt tracks failed phase", () => {
         throw new Error("budget failed");
       }
     },
+    compensate: () => {},
   });
 
   const receipt = saga.executeWithReceipt("saga-9", [
@@ -285,7 +288,9 @@ test("OrgGovernanceSaga handles empty steps array", () => {
 });
 
 test("OrgGovernanceSaga result contains all expected fields", () => {
-  const saga = new OrgGovernanceSaga({});
+  const saga = new OrgGovernanceSaga({
+    prepare: () => {},
+  });
   const result = saga.execute("saga-fields", [
     { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
   ]);
@@ -301,7 +306,9 @@ test("OrgGovernanceSaga result contains all expected fields", () => {
 });
 
 test("OrgGovernanceSaga receipt contains all expected fields", () => {
-  const saga = new OrgGovernanceSaga({});
+  const saga = new OrgGovernanceSaga({
+    prepare: () => {},
+  });
   const receipt = saga.executeWithReceipt("saga-receipt-fields", [
     { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },
   ]);
@@ -342,8 +349,12 @@ test("OrgGovernanceSaga compensation reverses committed then prepared nodes", ()
   assert.deepEqual(compensateCalls, ["compensate:org-3", "compensate:org-2", "compensate:org-1"]);
 });
 
-test("OrgGovernanceSaga missing optional handlers handled gracefully", () => {
-  const saga = new OrgGovernanceSaga({});
+test("OrgGovernanceSaga missing optional audit handler is handled gracefully", () => {
+  const saga = new OrgGovernanceSaga({
+    prepare: () => {},
+    commit: () => {},
+    compensate: () => {},
+  });
 
   const result = saga.execute("saga-no-handlers", [
     { stepId: "prepare-1", targetOrgNodeId: "org-1", action: "prepare", phase: "identity" },

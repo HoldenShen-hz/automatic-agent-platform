@@ -1,127 +1,125 @@
-# ADR-013 Whether EventEmitter Continues to Phase 2
+# ADR-013 Whether to Continue Using EventEmitter to Ring 2 Readiness
 
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
-Current platform needs event-driven state projection, gateway streaming feedback, recovery scanning, and operations observation. But Phase 1a/1b still primarily uses single-machine, single-process, and minimal multi-Agent orchestration.
+The current platform needs event-driven state projections, gateway streaming feedback, recovery scanning, and operations observability. But Ring 1 is still primarily single-machine, single-process, with minimal multi-agent orchestration.
 
-Problem is:
+The problem is:
 
-- Whether to continue using in-memory event distribution mechanism currently.
-- How to avoid "using EventEmitter then mistakenly treating it as reliable event bus".
+- Whether to continue using in-memory event distribution mechanism.
+- How to avoid "using EventEmitter and mistakenly treating it as a reliable event bus".
 
 ## Decision
 
-Phase 1a/1b allows continuing to use in-memory event distribution mechanism as intra-process distribution tool.
+Ring 1 allows continuing to use in-memory event distribution mechanism as intra-process distribution tool.
 
 But simultaneously freeze the following boundaries:
 
-- Tier 1 event authoritative source must be persistent event table and per-consumer ack.
-- EventEmitter only responsible for intra-process fan-out, does not bear reliable delivery semantics.
-- Whether to replace with more formal queue/bus in Phase 2 will be decided separately at that time.
-- Feedback/Learn/Improve/Release events introduced by OAPEFLIR similarly comply with the above boundaries; they can first go through intra-process fan-out but must not cross the persistence layer to define themselves as authoritative source.
+- Tier 1 event authoritative source must be persistent event table + per-consumer ack.
+- EventEmitter only handles intra-process fan-out, does not bear reliable delivery semantics.
+- Whether to replace with more formal queue/bus after Ring 2 readiness, to be decided separately at that time.
+- Feedback / Learn / Improve / Release events introduced by OAPEFLIR also comply with the above boundaries; they can first go through intra-process fan-out, but must not define themselves as authoritative source beyond the persistent fact layer.
 
-## Alternatives
+## Alternative Solutions
 
-### Option A: Immediately Replace with Redis/Postgres/BullMQ Queue
+### Solution A: Immediately Replace with Redis / Postgres / BullMQ Queue
 
-Benefits:
+Advantages:
 
-- Stronger reliability and cross-process scaling space.
+- Stronger reliability and cross-process expansion space.
 
 Costs:
 
-- Current stage will significantly raise deployment and debugging complexity.
-- Reliability problems first need tightening through contract, ack, and replay mechanism, not just changing technical names.
+- At current stage, significantly elevates deployment and debugging complexity.
+- Reliability problem truly needs first to be tightened through contract, ack, and replay mechanism, not first changing technical name.
 
-### Option B: Completely Rely on In-Memory EventEmitter, No Persistent Events
+### Solution B: Completely Rely on In-Memory EventEmitter, No Persistent Events
 
-Benefits:
+Advantages:
 
 - Simplest implementation.
 
 Costs:
 
-- Crash recovery, event replay, per-consumer ack all become distorted.
-- Cannot satisfy Tier 1 event semantics already clarified for current system.
+- Crash recovery, event replay, and per-consumer ack all become distorted.
+- Cannot satisfy Tier 1 event semantics already clearly defined in current system.
 
-### Option C: Current Decision
+### Solution C: Current Decision Solution
 
 - In-memory EventEmitter continues for intra-process distribution
 - Persistent event table and ack bear reliable event authoritative source
-- Phase 2 re-evaluates whether to upgrade to heavier queue system
+- After Ring 2 readiness, evaluate whether to upgrade to heavier queue system
 
-## Reasons for Choosing This Approach
+## Reasons for Choosing This Solution
 
-- Current stage intra-process event distribution needs objectively exist, EventEmitter is light enough.
-- But key risk is not "in-memory distribution tool not advanced enough" but whether reliability semantics are placed in persistence layer.
-- Current approach can support main chain with lowest complexity while not obscuring its boundaries.
+- Current stage intra-process event distribution needs objectively exist, EventEmitter is lightweight enough.
+- But the key risk is not "memory distribution tool not advanced enough", but whether reliability semantics are placed on the persistent layer.
+- Current solution supports main chain with lowest complexity, and does not conceal its boundaries.
 
 ## Key Invariants
 
-- Tier 1 factual events must first write to DB, then register consumer ack, then attempt distribution.
-- EventEmitter failure must not become factual state rollback basis.
-- Recovery scanning and event replay only based on `events + event_consumer_acks`.
-- Tier 3 streaming chunks must not impersonate recoverable factual source.
-- If events like `feedback.signal_received`, `learning.object_promoted`, `release.rollout_*` are defined as high-value factual events, must prioritize satisfy persistence and ack constraints rather than relying on pure memory subscription success.
+- Tier 1 fact events must first write to DB, then register consumer ack, then attempt distribution.
+- EventEmitter failure must not become fact state rollback basis.
+- Recovery scan and event replay only based on `events + event_consumer_acks`.
+- Tier 3 streaming chunks must not pretend to be recoverable fact source.
+- Events like `platform.feedback.signal_received`, `platform.learn.object_promoted`, `platform.release.rollout_*`, if defined as high-value fact events, must first satisfy persistence and ack constraints, rather than relying on pure memory subscription success.
 
 ## Adoption Triggers
 
-As long as system still:
+Continue maintaining this decision as long as system still has:
 
 - Primarily single-machine
 - Primarily intra-process distribution
-- Phase 1a/1b orchestration primarily
-
-Continue to maintain this decision.
+- Primarily Ring 1 MVP / Ring 2 readiness orchestration
 
 ## Exit Conditions
 
-If any of the following occur, should re-evaluate and possibly upgrade:
+Should re-evaluate and possibly upgrade if any of the following occurs:
 
-- Multi-process/multi-worker becomes formal implementation topic
-- Out-of-process consumers significantly increase
-- Event throughput and backpressure clearly exceed single-process fan-out applicable boundary
-- queue/lease/execution plane has entered core path
+- Multi-process / multi-worker becomes a formal implementation topic
+- Off-process consumers significantly increase
+- Event throughput and backpressure already clearly exceed single-process fan-out applicable boundary
+- queue / lease / execution plane has entered core path
 
 ## Implementation Impact
 
-Current implementation must be done:
+Current implementation must-do:
 
-- Clearly distinguish "reliable event factual source" and "memory distribution channel"
-- Event registry, ack threshold, recovery scanning, and replay tools established concurrently
-- Keep EventEmitter usage within intra-process adapter/projection scope
-- OAPEFLIR closed-loop related services even if first implemented with memory/lightweight registry should guarantee future migratability to more formal queue/bus through typed payload, reason code, and state machine constraints.
+- Clearly distinguish "reliable event authoritative source" and "memory distribution channel"
+- Simultaneously establish event registry, ack threshold, recovery scan, and replay tools
+- Keep EventEmitter usage within intra-process adapter / projection scope
+- Even if OAPEFLIR closed-loop related services first implement via in-memory/lightweight registry, should ensure future migratability to more formal queue/bus through typed payload, reason code, and state machine constraints.
 
 ## Results
 
-Benefits:
+Advantages:
 
-- Current stage implementation is lightest.
-- Won't prematurely raise infrastructure complexity for possible future multi-process.
-- Consistent with existing Tier 1/Tier 2/Tier 3 event tiering documentation.
-- Allows OAPEFLIR main/secondary chain to first form closed loop in single process, then consolidate reliability issues to contract and persistence layer.
+- Lightest at current stage.
+- Does not elevate infrastructure complexity for possible multi-process prematurely.
+- Consistent with existing Tier 1 / Tier 2 / Tier 3 event classification documentation.
+- Allows OAPEFLIR main/secondary chain first to form closed loop in single process, then consolidate reliability issues to contract and persistence layer.
 
 Costs:
 
 - Requires team to continuously remember EventEmitter is not a reliable messaging system.
-- Once entering multi-worker stage, must actively upgrade, cannot continue defaulting.
+- Once entering multi-worker stage, must actively upgrade, cannot continue to default to using it.
 
 ## Current Implementation Alignment
 
 As of current phase1-4 delivery, aligned parts include:
 
-- Feedback preprocessing, LearningObject validation, Rollout guardrail have first closed through type and service boundary.
-- OAPEFLIR stage timeline can already provide main/secondary chain sequence perspective, but it itself is not reliable event bus substitute.
-- If event layer upgrades in the future, should only replace transport/fan-out, should not destroy already defined closed-loop state machine and authoritative semantics.
+- Feedback preprocessing, LearningObject validation, Rollout guardrail have first closed through types and service boundaries.
+- OAPEFLIR stage timeline already provides main chain/secondary chain sequential perspective, but it itself is not a reliable event bus replacement.
+- If event layer upgrades later, should only replace transport/fan-out, should not destroy already-defined closed-loop state machine and authoritative semantics.
 
-## Cross-References
+## Cross References
 
-- [ADR-012 Whether SQLite as Phase 1-2 Only Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-012 Whether SQLite Should Be Ring 1-2 Default Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
-- [ADR-011 Whether Effect-TS as Core Runtime Foundation](./011-effect-ts-adoption.md)
+- [ADR-011 Whether Effect-TS Should Be Core Runtime Foundation](./011-effect-ts-adoption.md)
 
 ## Source Sections
 
@@ -129,3 +127,7 @@ As of current phase1-4 delivery, aligned parts include:
 - `event_reliability_matrix_contract.md`
 - `event_registry_and_ops_threshold_contract.md`
 - `typed_event_bus_contract.md`
+
+## v4.3 Ring Remediation
+
+- R8-72: This ADR originally still used `Phase 1a / 1b / Phase 2` to describe applicability boundary and exit triggers. The root cause was that event transport ADR's historical naming was not rewritten along with ring terminology. Fix: The text now uniformly converges to `Ring 1 MVP / Ring 2 readiness`, and changes "whether to replace" expression to a separate decision after ring readiness.

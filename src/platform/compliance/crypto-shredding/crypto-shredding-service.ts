@@ -42,6 +42,8 @@ export interface ShredResult {
   status: "completed" | "no_dek_found";
   /** All DEKs associated with the subject (including rotated ones) */
   affectedDekCount: number;
+  /** Historical DEK ids destroyed by this shred operation */
+  previousDekIds?: string[];
 }
 
 /**
@@ -77,7 +79,6 @@ export interface EncryptRecordResult {
   encryptions: Array<{
     fieldPath: string;
     dekId: string;
-    originalValue: string;
   }>;
 }
 
@@ -197,6 +198,7 @@ export class CryptoShreddingService {
       shreddedAt,
       status: destroyedDekId ? "completed" : "no_dek_found",
       affectedDekCount: previousDekIds.length,
+      previousDekIds,
     };
   }
 
@@ -246,11 +248,9 @@ export class CryptoShreddingService {
       const result = await this.dekManager.encryptForSubject(subjectId, value);
       this.writeField(encryptedRecord, fieldSpec.fieldPath, result.ciphertext);
 
-      // R23-1 FIX: originalValue should be the plaintext, not ciphertext
       encryptions.push({
         fieldPath: fieldSpec.fieldPath,
         dekId: result.dekId,
-        originalValue: value, // Store plaintext for audit trail
       });
     }
 

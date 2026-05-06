@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines knowledge domain isolation, federated search, and Chinese Wall constraints for `§50`.
+This contract defines knowledge domain isolation for `§50`, federated search, and Chinese Wall constraints.
 
 ## 2. Canonical Objects
 
@@ -47,9 +47,9 @@ This contract defines knowledge domain isolation, federated search, and Chinese 
 - Default deny cross-boundary access.
 - Sharing must go through `KnowledgeShareGrant` or explicit policy.
 - Requests hitting Chinese Wall must be blocked and audited.
-- Federated search audit must simultaneously record boundary, tenant, and runtime lineage; recording only org dimension is prohibited.
+- Federated search audit must simultaneously record boundary, tenant, and runtime lineage, must not only record org dimension.
 
-## 6. Testing Requirements
+## 6. Test Requirements
 
 - unit: boundary resolution, share grant, Chinese Wall checks
 - integration: federated search with mixed allow / deny boundaries
@@ -57,4 +57,4 @@ This contract defines knowledge domain isolation, federated search, and Chinese 
 
 ## v4.3 Contract Remediation
 
-- T-74: This document originally only required requester/query/boundary without enforcing tenant and runtime chain audit. The root cause was that the knowledge boundary contract was designed from organizational isolation perspective, and subsequent multi-tenant runtime lineage was not added. Fix: The main text now requires `requester_tenant_id / harness_run_id / node_run_id` to enter the federated search request and audit chain.
+- T-74: This document originally only required requester/query/boundary without enforcing tenant and runtime chain audit. Root cause: knowledge boundary contract was designed from organizational isolation perspective; subsequent multi-tenant runtime lineage was not supplemented. Fix: The text now requires `requester_tenant_id / harness_run_id / node_run_id` to enter federated search request and audit chain.

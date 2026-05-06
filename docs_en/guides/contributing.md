@@ -28,7 +28,7 @@ The split documentation structure is designed to reduce maintenance difficulty. 
 - A decision should be primarily explained in only one ADR; other files should only link, not duplicate long passages.
 - Use stable headings as much as possible to reduce future link breakage.
 - Each modification should include at least one cross-link to avoid orphaned documents.
-- Design, implementation order, risks, and boundaries should be expressed separately as much as possible, avoiding mixed流水账 (tedious enumeration).
+- Design, implementation order, risks, and boundaries should be expressed separately as much as possible, avoiding mixed chronological narration.
 
 ## Migration Rules
 

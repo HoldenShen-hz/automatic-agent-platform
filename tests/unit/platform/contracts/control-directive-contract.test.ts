@@ -32,7 +32,7 @@ test("ControlDirective is listed in LEGACY_CONTRACT_NAMES", () => {
 });
 
 test("ControlDirective type is deprecated via JSDoc @deprecated marker", () => {
-  // Verify by checking that createControlDirective throws with legacy_contract_forbidden code
+  // Verify by checking that createControlDirective fails fast with the legacy contract rejection code
   assert.throws(
     () =>
       createControlDirective({
@@ -45,11 +45,11 @@ test("ControlDirective type is deprecated via JSDoc @deprecated marker", () => {
         metadata: {},
       }),
     (error: unknown) =>
-      error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+      error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
-test("createControlDirective rejects all directive kinds with legacy_contract_forbidden", () => {
+test("createControlDirective rejects all directive kinds with the legacy contract rejection code", () => {
   const kinds: Array<"pause" | "resume" | "cancel" | "rollback" | "escalate"> = [
     "pause",
     "resume",
@@ -71,7 +71,7 @@ test("createControlDirective rejects all directive kinds with legacy_contract_fo
           metadata: {},
         }),
       (error: unknown) =>
-        error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+        error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
       `kind '${kind}' should be rejected`,
     );
   }

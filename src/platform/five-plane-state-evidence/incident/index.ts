@@ -84,8 +84,7 @@ export class IncidentCaseService {
   }
 
   public listIncidents(tenantId: string | undefined, limit = 50): IncidentCase[] {
-    return [...this.incidents.values()]
-      .filter((incident) => tenantId == null || incident.tenantId === tenantId)
+    return this.filterIncidentsByTenant(tenantId)
       .sort((left, right) => {
         const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
         if (createdAtOrder !== 0) {
@@ -94,6 +93,10 @@ export class IncidentCaseService {
         return (this.incidentOrder.get(right.incidentId) ?? 0) - (this.incidentOrder.get(left.incidentId) ?? 0);
       })
       .slice(0, Math.max(0, limit));
+  }
+
+  public countIncidents(tenantId: string | undefined): number {
+    return this.filterIncidentsByTenant(tenantId).length;
   }
 
   private getRequired(tenantId: string | undefined, incidentId: string): IncidentCase {
@@ -107,5 +110,10 @@ export class IncidentCaseService {
   private update(incidentId: string, incident: IncidentCase): IncidentCase {
     this.incidents.set(incidentId, incident);
     return incident;
+  }
+
+  private filterIncidentsByTenant(tenantId: string | undefined): IncidentCase[] {
+    return [...this.incidents.values()]
+      .filter((incident) => tenantId == null || incident.tenantId === tenantId);
   }
 }

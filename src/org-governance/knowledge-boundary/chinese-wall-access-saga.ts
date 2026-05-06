@@ -70,6 +70,7 @@ export class ChineseWallAccessSaga {
   public execute(accessId: string, steps: readonly ChineseWallAccessStep[]): ChineseWallAccessSagaReceipt {
     const sortedSteps = sortStepsByPhase(steps);
     const preparedActions: ChineseWallAccessStep["action"][] = [];
+    const preparedStepIds: string[] = [];
     const committedActions: ChineseWallAccessStep["action"][] = [];
     const compensatedActions: ChineseWallAccessStep["action"][] = [];
     const executionLog: Array<ChineseWallAccessSagaReceipt["executionLog"][number]> = [];
@@ -81,6 +82,7 @@ export class ChineseWallAccessSaga {
       try {
         this.runAction(step, context());
         preparedActions.push(step.action);
+        preparedStepIds.push(step.stepId);
         executionLog.push({
           stepId: step.stepId,
           action: step.action,
@@ -99,7 +101,7 @@ export class ChineseWallAccessSaga {
 
     // Phase: commit
     if (failedAction == null) {
-      const preparedSet = new Set(preparedActions);
+      const preparedSet = new Set(preparedStepIds);
       for (const step of sortedSteps.filter((candidate) => candidate.action === "commit_grant" || candidate.action === "commit_release")) {
         if (!hasMatchingPrepareStep(preparedSet, step.stepId)) {
           failedAction = step.action;
@@ -151,7 +153,7 @@ export class ChineseWallAccessSaga {
         };
         try {
           this.runCompensation(syntheticStep, context());
-          compensatedActions.push(action);
+          compensatedActions.push(syntheticStep.action);
           executionLog.push({
             stepId: syntheticStep.stepId,
             action: syntheticStep.action,

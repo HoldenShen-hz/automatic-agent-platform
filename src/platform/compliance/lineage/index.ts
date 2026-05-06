@@ -14,8 +14,13 @@ export interface DataLineageEdge {
   metadata: Record<string, unknown>;
 }
 
+interface StoredLineageEdge extends DataLineageEdge {
+  _integrityHash: string;
+  _previousHash: string | null;
+}
+
 export class DataLineageService {
-  private readonly edges: DataLineageEdge[] = [];
+  private readonly edges: StoredLineageEdge[] = [];
   private lastEdgeHash: string | null = null;
 
   /**
@@ -31,7 +36,8 @@ export class DataLineageService {
     policyRef?: string | null;
     metadata?: Record<string, unknown>;
   }): DataLineageEdge {
-    const edge: DataLineageEdge = {
+    const metadata = cloneMetadata(input.metadata);
+    const publicEdge: DataLineageEdge = {
       edgeId: newId("lineage"),
       sourceRef: input.sourceRef,
       targetRef: input.targetRef,
@@ -39,30 +45,32 @@ export class DataLineageService {
       actorRef: input.actorRef,
       policyRef: input.policyRef ?? null,
       createdAt: nowIso(),
-      metadata: cloneMetadata(input.metadata),
+      metadata,
     };
 
     // R16-36 FIX #2092: Compute integrity hash linking to previous edge
     // This creates an append-only chain: each edge hash includes the previous hash
     const edgeData = JSON.stringify({
-      edgeId: edge.edgeId,
-      sourceRef: edge.sourceRef,
-      targetRef: edge.targetRef,
-      kind: edge.kind,
-      actorRef: edge.actorRef,
-      policyRef: edge.policyRef,
-      createdAt: edge.createdAt,
+      edgeId: publicEdge.edgeId,
+      sourceRef: publicEdge.sourceRef,
+      targetRef: publicEdge.targetRef,
+      kind: publicEdge.kind,
+      actorRef: publicEdge.actorRef,
+      policyRef: publicEdge.policyRef,
+      createdAt: publicEdge.createdAt,
+      metadata,
       previousHash: this.lastEdgeHash,
     });
-    edge.metadata = {
-      ...edge.metadata,
+    const storedEdge: StoredLineageEdge = {
+      ...publicEdge,
+      metadata,
       _integrityHash: createHash("sha256").update(edgeData).digest("hex"),
       _previousHash: this.lastEdgeHash,
     };
 
-    this.edges.push(edge);
-    this.lastEdgeHash = edge.metadata._integrityHash as string;
-    return cloneEdge(edge);
+    this.edges.push(storedEdge);
+    this.lastEdgeHash = storedEdge._integrityHash;
+    return cloneEdge(storedEdge);
   }
 
   /**
@@ -72,8 +80,8 @@ export class DataLineageService {
   public verifyIntegrity(): { valid: boolean; lastHash: string | null; corruptedAt?: string } {
     let previousHash: string | null = null;
     for (const edge of this.edges) {
-      const storedHash = edge.metadata._integrityHash as string | undefined;
-      const storedPreviousHash = edge.metadata._previousHash as string | undefined;
+      const storedHash = edge._integrityHash;
+      const storedPreviousHash = edge._previousHash;
 
       if (storedPreviousHash !== previousHash) {
         return { valid: false, lastHash: this.lastEdgeHash, corruptedAt: edge.createdAt };
@@ -88,6 +96,7 @@ export class DataLineageService {
         actorRef: edge.actorRef,
         policyRef: edge.policyRef,
         createdAt: edge.createdAt,
+        metadata: edge.metadata,
         previousHash,
       });
       const expectedHash: string = createHash("sha256").update(edgeData).digest("hex");
@@ -122,5 +131,5 @@ function cloneEdge(edge: DataLineageEdge): DataLineageEdge {
 }
 
 function cloneMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> {
-  return metadata == null ? {} : { ...metadata };
+  return metadata == null ? {} : structuredClone(metadata);
 }

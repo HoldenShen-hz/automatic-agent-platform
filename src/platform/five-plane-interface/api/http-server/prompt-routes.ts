@@ -3,7 +3,7 @@ import type { HierarchicalPromptRegistryService } from "../../../prompt-engine/r
 import type { ApiAuthService } from "../api-auth-service.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import type { RouteDefinition } from "./types.js";
-import { buildJsonResponse, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
+import { buildJsonErrorResponse, buildJsonResponse, readLimit, readQueryParam, requirePrincipal } from "./utils.js";
 import { z } from "zod";
 
 const promptBundleRequestSchema = z.object({
@@ -167,7 +167,10 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         const packId = readQueryParam(ctx.request, "packId", { maxLength: 128 });
         const bundle = deps.promptRegistryService.getBundle(name, taskType, packId, domain);
         if (!bundle) {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "prompt.bundle_not_found", message: `Bundle ${name} not found.` } });
+          return buildJsonErrorResponse(ctx.requestId, 404, {
+            code: "prompt.bundle_not_found",
+            message: `Bundle ${name} not found.`,
+          });
         }
         return buildJsonResponse(ctx.requestId, 200, { bundle });
       },
@@ -190,7 +193,10 @@ export function createPromptRoutes(deps: PromptRouteDeps): RouteDefinition[] {
         try {
           deps.promptRegistryService.deprecateBundle(name, version, level, domain, packId);
         } catch {
-          return buildJsonResponse(ctx.requestId, 404, { error: { code: "prompt.bundle_not_found", message: `Bundle ${name} not found.` } });
+          return buildJsonErrorResponse(ctx.requestId, 404, {
+            code: "prompt.bundle_not_found",
+            message: `Bundle ${name} not found.`,
+          });
         }
         return buildJsonResponse(ctx.requestId, 200, { deprecated: true, name });
       },

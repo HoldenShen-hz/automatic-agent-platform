@@ -5,16 +5,19 @@
 
 ## Context
 
-Regulations like the EU AI Act require AI decisions to be explainable, and the platform needs to provide decision transparency mechanisms.
+EU AI Act and other regulations require AI decision explainability. The platform needs to provide decision transparency mechanisms.
 
 ## Decision
 
-### Decision Tracing
+### Decision Traceability
 
 ```typescript
 interface DecisionRecord {
   decision_id: string;
   agent_id: string;
+  harness_run_id: string;     // §5.5 All decisions must link to HarnessRun
+  node_run_id: string;        // §5.5 Decision context node
+  plan_graph_id: string;     // §5.5 Plan graph associated with decision
   context: DecisionContext;
   reasoning: string;
   evidence: Evidence[];
@@ -23,13 +26,15 @@ interface DecisionRecord {
 }
 ```
 
+Note: All DecisionRecord must link to HarnessRun via `harness_run_id` / `node_run_id` / `plan_graph_id` to satisfy §5.5 decision traceability requirements.
+
 ### Explainability Levels
 
 | Level | Description | Audience |
 |-------|-------------|----------|
-### Decision Traceability
+| what | What was done | Operators |
 | why | Why it was done | Analysts |
-| how | How it was done | Developer |
+| how | How it was done | Developers |
 | full | Complete reasoning chain | Auditors |
 
 ### Explanation Generation
@@ -41,35 +46,35 @@ interface DecisionRecord {
 | Counterfactual analysis | "What if..." |
 | Case-based reasoning | Similar decision reference |
 
-### Audit Logs
+### Audit Log
 
-- All high-risk decisions are recorded
+- All high-risk decisions recorded
 - Tamper-proof storage
-- Supports querying and exporting
+- Query and export support
 
-### Compliance Reports
+### Compliance Reporting
 
-- Automatically generated compliance reports
-- Supports regulatory agency review
-- Regularly published transparency reports
+- Automatic compliance report generation
+- Support regulatory review
+- Regular transparency report publication
 
 ## Consequences
 
-Advantages:
+Positive:
 
-- Meets EU AI Act and other regulatory requirements
-- Increases user trust
-- Facilitates problem identification and resolution
+- Meet EU AI Act and other regulatory requirements
+- Improve user trust
+- Facilitate problem location and resolution
 
-Costs:
+Negative:
 
 - Explanation generation adds latency
-- Increased storage costs
+- Increased storage cost
 
 ## Cross-References
 
 - [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
-- [ADR-066 Compliance Report Auto-Generation Engine](./066-compliance-report-auto-generation.md)
+- [ADR-066 Compliance Report Auto-Generation](./066-compliance-report-auto-generation.md)
 
 ## Source Section
 

@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This contract defines Agent Supervisor's minimum supervision boundaries for runtime instances, health status, heartbeats, alerts, recovery actions, performance, and OAPEFLIR closed-loop proposals.
+This contract defines the minimum supervision boundary for Agent Supervisor over runtime instances, health status, heartbeats, alerts, recovery actions, performance, and OAPEFLIR closed-loop proposals.
 
 It is not responsible for directly executing tasks, but for observing, judging, escalating, and auditing.
 
@@ -34,7 +34,7 @@ It is not responsible for directly executing tasks, but for observing, judging, 
 
 Rules:
 
-- `current_node_view_ref` can only express semantic projection, must not reintroduce `HarnessStep` / `current_step_id` as runtime truth primary key.
+- `current_node_view_ref` can only express semantic projection; must not reintroduce `HarnessStep` / `current_step_id` as runtime truth primary key.
 - Any supervisor recovery, alert, or takeover action must be traceable back to `harness_run_id / node_run_id / attempt_id`.
 
 ## 4. HealthSnapshot Minimum Fields
@@ -53,10 +53,10 @@ Rules:
 - `stale_after_sec`
 - `sample_strategy` (`latest_only | sampled | all_persisted`)
 
-Phase 1a rules:
+Phase 1a Rules:
 
-- Defaults to `latest_only` or `sampled`, avoiding high-frequency heartbeat directly filling database.
-- When heartbeat not seen after exceeding `stale_after_sec`, Supervisor should mark instance as `degraded` or `stalled`, not silently ignore.
+- Default to `latest_only` or `sampled` to avoid high-frequency heartbeat directly flooding the database.
+- When heartbeat is not seen for more than `stale_after_sec`, Supervisor should mark instance as `degraded` or `stalled`, not silently ignore.
 
 ## 6. AlertRecord Minimum Fields
 
@@ -72,8 +72,8 @@ Alert severity recommendations:
 
 - `SEV4`: Local minor, auto-recoverable, mainly for observation hints.
 - `SEV3`: Single workflow / single worker impact, e.g., stale heartbeat, high retry count, abnormal runtime.
-- `SEV2`: Single business domain / single tenant significantly impacted, e.g., security policy anomaly, batch failure, budget anomaly spread.
-- `SEV1`: Platform-level impact / security incident / production serious risk.
+- `SEV2`: Single business domain / single tenant significantly affected, e.g., security policy anomaly, batch failure, budget anomaly spread.
+- `SEV1`: Platform-level impact / security incident / production severe risk.
 
 Recommended alert code baseline:
 
@@ -92,27 +92,27 @@ Recommended alert code baseline:
 
 Rules:
 
-- Supervisor can suggest or trigger controlled recovery actions, but must not silently overwrite business output.
-- Auto recovery, cancel, escalation must all leave audit records.
-- High-risk actions still must obey approval and security contracts.
+- Supervisor can suggest or trigger controlled recovery actions, but must not silently rewrite business output.
+- Auto-recovery, cancel, and escalation must all leave audit records.
+- High-risk actions must still obey approval and security contracts.
 
 ## 8. Behavioral Constraints
 
-- Supervisor is responsible for monitoring and escalation, does not directly tamper business results.
-- Any auto recovery or termination action must leave audit record.
+- Supervisor is responsible for monitoring and escalation, not directly tampering with business results.
+- Any auto-recovery or termination action must leave audit records.
 - Evolution-related suggestions can only form proposals, cannot take effect directly.
-- Supervisor's judgment on heartbeat, alert, recovery should be consistent with runtime execution contract.
+- Supervisor's judgments on heartbeat, alert, and recovery should be consistent with runtime execution contract.
 
 ## 9. Relationship with Runtime
 
-- `runtime_execution_contract.md` defines how single run prechecks, executes, retries, and terminates.
-- This contract defines who discovers run anomalies, and how to form alerts and recovery actions.
-- `event_bus_contract.md` is responsible for how these signals propagate, not responsible for rewriting supervision semantics.
+- `runtime_execution_contract.md` defines how a single run prechecks, executes, retries, and terminates.
+- This contract defines who discovers run anomalies and how to form alerts and recovery actions.
+- `event_bus_contract.md` is responsible for how these signals propagate, not for rewriting supervision semantics.
 
 ## 10. Supplementary Rules
 
-- Under Phase 1b multi-worker topology, supervisor should at minimum distinguish node-local monitor from control-plane supervisor.
-- Performance scoring can only form proposals, must not directly drive prompt / role hot updates; formal effect still requires governance chain approval.
+- Under Phase 1b multi-worker topology, supervisor should at least distinguish node-local monitor from control-plane supervisor.
+- Performance scoring can only form proposals, must not directly drive prompt / role hot updates; formal governance chain approval is still required for activation.
 
 ## 10A. OAPEFLIR Loop Monitoring
 
@@ -148,15 +148,15 @@ Rules:
 
 Rules:
 
-- Supervisor can only suggest `skip_stage`, `force_loop_exit`, `rollback_improvement`, whether to execute still requires going through control-plane / policy boundary.
-- `feedback.negative_spike` can only serve as governance and recovery signal, cannot be directly equivalent to candidate rejection or rollout rollback.
-- If loop has entered `release`, Supervisor's recovery actions must prioritize protecting rollout audit and evidence integrity.
+- Supervisor can only suggest `skip_stage`, `force_loop_exit`, `rollback_improvement`; execution still requires going through control-plane / policy boundary.
+- `feedback.negative_spike` can only serve as governance and recovery signal, must not directly equate to candidate rejection or release rollback.
+- If loop has entered `release`, Supervisor's recovery actions must prioritize protecting release audit and evidence integrity.
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-23: This document originally wrote `current_step_id` and `info / warning / critical` three-tier severity into supervisor main objects. Root cause: early single-process agent supervision model used business steps as execution primary key while沿用通用日志级别代替平台事件分级 (adopted general log levels in place of platform event grading). Fix: This version converges instance association keys to `harness_run_id / node_run_id / attempt_id`, and changes alert severity to `SEV1-4`.
+- T-23: This document originally wrote `current_step_id` and `info / warning / critical` three-tier severity into supervisor main objects. The root cause was early single-process agent supervision model used business steps as execution primary key and continued using generic log levels instead of platform event classification. Fix: The main text now converges instance association keys to `harness_run_id / node_run_id / attempt_id`, and changes alert severity to `SEV1-4`.
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -50,20 +50,56 @@ export class FieldEncryptionService {
   }
 
   public revealField(input: { ciphertext: string; keyRef: string }): string {
-    const prefix = `enc:${fingerprintKey(input.keyRef)}:`;
-    if (!input.ciphertext.startsWith(prefix)) {
+    const parts = input.ciphertext.split(":");
+    if (parts.length !== 5 || parts[0] !== "enc") {
+      throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext is not in enc:fingerprint:iv:authTag:ciphertext format.");
+    }
+    const [, fingerprint, ivHex, authTagHex, ciphertextHex] = parts;
+    if (fingerprint !== fingerprintKey(input.keyRef)) {
       throw new ValidationError("field_encryption.key_mismatch", "Ciphertext does not match the provided key reference.");
     }
-    return Buffer.from(input.ciphertext.slice(prefix.length), "base64url").toString("utf8");
+    if (!isHex(ivHex, 24) || !isHex(authTagHex, 32) || !isHex(ciphertextHex)) {
+      throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext contains malformed AES-GCM components.");
+    }
+
+    try {
+      const decipher = createDecipheriv("aes-256-gcm", deriveEncryptionKey(input.keyRef), Buffer.from(ivHex, "hex"));
+      decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+      const plaintext = Buffer.concat([
+        decipher.update(Buffer.from(ciphertextHex, "hex")),
+        decipher.final(),
+      ]);
+      return plaintext.toString("utf8");
+    } catch {
+      throw new ValidationError("field_encryption.decrypt_failed", "Ciphertext authentication failed or key reference is invalid.");
+    }
   }
 }
 
 function protectValue(value: string, keyRef: string): string {
-  return `enc:${fingerprintKey(keyRef)}:${Buffer.from(value, "utf8").toString("base64url")}`;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", deriveEncryptionKey(keyRef), iv);
+  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `enc:${fingerprintKey(keyRef)}:${iv.toString("hex")}:${authTag.toString("hex")}:${ciphertext.toString("hex")}`;
 }
 
 function fingerprintKey(keyRef: string): string {
   return createHash("sha256").update(keyRef).digest("hex").slice(0, 12);
+}
+
+function deriveEncryptionKey(keyRef: string): Buffer {
+  return createHash("sha256").update(`field-encryption:${keyRef}`).digest();
+}
+
+function isHex(value: string | undefined, expectedLength?: number): value is string {
+  if (typeof value !== "string" || value.length === 0) {
+    return false;
+  }
+  if (expectedLength !== undefined && value.length !== expectedLength) {
+    return false;
+  }
+  return /^[0-9a-f]+$/i.test(value);
 }
 
 function readField(record: Record<string, unknown>, path: string): unknown {

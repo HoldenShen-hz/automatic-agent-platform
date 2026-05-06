@@ -159,14 +159,14 @@ test("createDelegationManager increments depth correctly", async () => {
   assert.equal(handle2.depth, 2);
 });
 
-test("createDelegationManager default maxDepth is 3", async () => {
+test("createDelegationManager default maxDepth is 8", async () => {
   const service = createDelegationManager();
-  const parent = createParentContext({ delegationDepth: 3 });
+  const parent = createParentContext({ delegationDepth: 8 });
   const spec = createDelegationSpec();
 
   await assert.rejects(
     async () => service.delegate(parent, spec),
-    DelegationDepthExceededError,
+    /delegation\.call_depth_exceeded|Call depth 9 exceeds maximum 8/,
   );
 });
 

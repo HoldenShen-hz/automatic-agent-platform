@@ -1,11 +1,11 @@
-# ADR-058 Emergency Stop and Global Circuit Breaker Architecture
+# ADR-058 Emergency Stop and Global Circuit Breaker
 
 - Status: Accepted
 - Decision Date: 2026-04-20
 
 ## Context
 
-When security incidents occur, the platform needs to be able to instantly stop all Agent operations across the platform. A global circuit breaker mechanism prevents fault propagation.
+Platform needs to respond quickly to cascading failures, requires emergency stop mechanism and global circuit breaker.
 
 ## Decision
 
@@ -76,7 +76,7 @@ Costs:
 
 ## Source Section
 
-- `§60` Emergency Stop and Global Circuit Breaker Architecture
+- `§58` Emergency Stop and Global Circuit Breaker
 
 ## v4.3 ADR Remediation
 

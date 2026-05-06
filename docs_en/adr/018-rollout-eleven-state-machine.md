@@ -1,82 +1,49 @@
-# ADR-018 Rollout Eleven-State Machine and Six-Stage Release
+# ADR-018 Rollout Eleven-State Machine
 
----
-
-## OAPEFLIR Association
-
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
-
-- **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post-execution assessment and risk judgment
-- **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and dual-channel output
-- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
-- **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
-- **Release**: Six-level controlled release and automatic rollback
-
----
-
-- Status: Superseded by ADR-075
+- Status: Accepted
 - Decision Date: 2026-04-17
-- Superseded by: ADR-075 (2026-04-17) redefined the six-level release state machine with incompatible Level and state set compared to ADR-018
 
-## Context
+## Background
 
-§9 defines five release levels (L0-L5) and 11-state RolloutStatus state machine. Current `rollout-state-machine.ts` only implements 3 states (off → suggest → shadow) and cannot support progressive release (canary → staged → stable) and automatic rollback.
+The rollout system requires controlled release of improvements to production with state machine-driven transitions to ensure safety and observability.
 
 ## Decision
 
-### Eleven-State RolloutStatus Enum
+### Eleven Rollout States
+
+| State | Description |
+|-------|-------------|
+| `draft` | Initial state, candidate not yet submitted |
+| `submitted` | Submitted for review |
+| `reviewing` | Under review/evaluation |
+| `approved` | Approved for rollout |
+| `shadow` | Running in shadow mode (monitoring only) |
+| `canary` | Released to small percentage |
+| `staged` | Released to staged rollout |
+| `full` | Fully released |
+| `paused` | Rollout paused |
+| `rolled_back` | Rolled back |
+| `superseded` | Superseded by newer version |
+
+### State Transitions
 
 ```
-draft
-  ↓ (guardrail pass)
-pending_approval
-  ↓           ↓ (rejected)
-shadow        rejected
-  ↓ (24h)
-canary_5      ← 5% traffic
-  ↓ (metrics gate: error_rate < 0.5%, p99 < 2x baseline)
-partial_25    ← 25% traffic
-  ↓
-partial_50    ← 50% traffic
-  ↓
-partial_75    ← 75% traffic
-  ↓
-stable        ← 100% traffic, considered adopted
-  ↓
-rolled_back   ← automatic or manual rollback
-  ↓
-paused        ← paused, can be resumed
+draft → submitted → reviewing → approved → shadow → canary → staged → full
+                                    ↓           ↓         ↓         ↓
+                                paused     paused   paused   paused
+                                    ↓           ↓         ↓         ↓
+                              rolled_back rolled_back rolled_back rolled_back
 ```
 
-### Five-Level Release
+### Rollout Guardrails
 
-| Level | Name | Traffic | Applicable Scenario |
-|-------|------|---------|---------------------|
-| L0 | off | 0% | Disabled |
-| L1 | suggest | 0% | Suggestion only, no automatic execution |
-| L2 | shadow | 0% | Shadow mode, does not affect production |
-| L3 | canary | 1-10% | Small traffic verification |
-| L4 | staged | 25-75% | Gray release |
-| L5 | stable | 100% | Full release |
+- All transitions must be logged
+- Rollback must preserve evidence
+- Shadow mode must meet success criteria before canary
+- Canary must meet stability threshold before staged
+- Staged must meet full rollout criteria
 
-### Automatic Rollback Rules
+## Cross References
 
-When any of the following conditions are met, automatic trigger `rolled_back`:
-
-- `failureRate > 5%` (5-minute window)
-- `p99Latency > 2x baseline`
-
-### Current Implementation Status
-
-- `src/core/improvement/rollout/rollout-state-machine.ts`: 3/11 states, needs expansion.
-- `src/core/improvement/auto-rollback-service.ts`: To be created.
-- `src/core/improvement/canary-traffic-router.ts`: To be created.
-
-## Consequences
-
-- Rollout state machine expansion is core work of Sprint 2 (GAP-V2-07).
-- Complete 11-state + automatic rollback enables production-grade progressive release capability.
-- RolloutRecord must persist all state transition history for audit and RCA.
+- [ADR-007 Evolution Engine](./007-evolution-engine.md)
+- [ADR-016 OAPEFLIR Loop Model](./016-oapeflir-loop-model.md)

@@ -20,9 +20,9 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - Status: Accepted
 - Decision Date: 2026-04-20
 
-## Background
+## Context
 
-v2.7 `§52-§57` requires the platform to enter the scale operation and open ecosystem phase. The current repository already has:
+v4.3 `§52-§57` requires the platform to enter the scale operation and open ecosystem phase. The current repository already has:
 
 - `src/scale-ecosystem/multi-region`
 - `src/scale-ecosystem/resource-manager`

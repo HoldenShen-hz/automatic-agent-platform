@@ -179,6 +179,7 @@ export interface KnowledgeFacadeService {
  */
 export interface IncidentFacadeService {
   listIncidents(tenantId: string | undefined, limit?: number): IncidentCase[];
+  countIncidents(tenantId: string | undefined): number;
   getIncident(tenantId: string | undefined, incidentId: string): IncidentCase | null;
   openIncident(input: {
     tenantId: string | null;
@@ -201,6 +202,9 @@ export interface IncidentFacadeService {
 class NoOpIncidentFacadeService implements IncidentFacadeService {
   public listIncidents(_tenantId: string | undefined, limit?: number): IncidentCase[] {
     return [];
+  }
+  public countIncidents(_tenantId: string | undefined): number {
+    return 0;
   }
   public getIncident(_tenantId: string | undefined, _incidentId: string): IncidentCase | null {
     return null;

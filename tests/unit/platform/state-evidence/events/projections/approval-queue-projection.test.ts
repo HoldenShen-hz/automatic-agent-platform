@@ -180,6 +180,24 @@ test("approvalQueueProjectionHandler handles decision:approved (multi-party fina
   assert.equal(state.respondedBy, "approver_final");
 });
 
+test("approvalQueueProjectionHandler handles decision:expired", () => {
+  const event = makeEvent("evt_expired", "decision:expired", "task_expired", '{"approvalId":"approval_expired"}');
+
+  const state = approvalQueueProjectionHandler(null, event) as unknown as ApprovalQueueState;
+
+  assert.equal(state.status, "expired");
+  assert.equal(state.respondedAt, "2026-04-19T10:00:00.000Z");
+});
+
+test("approvalQueueProjectionHandler handles decision:cancelled", () => {
+  const event = makeEvent("evt_cancelled", "decision:cancelled", "task_cancelled", '{"approvalId":"approval_cancelled"}');
+
+  const state = approvalQueueProjectionHandler(null, event) as unknown as ApprovalQueueState;
+
+  assert.equal(state.status, "cancelled");
+  assert.equal(state.respondedAt, "2026-04-19T10:00:00.000Z");
+});
+
 test("approvalQueueProjectionHandler handles decision:rejected (multi-party final)", () => {
   const payload = {
     approvalId: "approval_denied",

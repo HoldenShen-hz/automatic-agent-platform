@@ -51,15 +51,14 @@ interface EdgeRuntime {
 | Strategy | Scope | Description |
 |----------|-------|-------------|
 | `server_wins` | truth / budget / side effect objects | Server single leader write (required); complies with §25.11/§52.3 fencing requirements |
-| `last_write_wins` | projection / non-critical statistical objects | Client timestamp priority write (allowed for projections only, NOT for truth objects) |
+| `last_write_wins` | projection / non-critical statistical objects | Client timestamp priority write |
 | `merge` | projection / non-critical statistical objects | Merge conflicts (can use CRDT) |
 | `manual` | all objects | Manual resolution |
 
 **Constraints**:
-- truth / budget / side effect objects must use `server_wins` (single leader write + fencing); `last_write_wins` is NOT allowed for truth/budget/side-effect objects, even if they are in offline scenarios
+- truth / budget / side effect objects must use `server_wins` (single leader write + fencing); `last_write_wins` not allowed
 - projection / non-critical statistical objects may use `last_write_wins` or `merge`
-- §25.11/§52.3 requires that single leader write does not use fencing token protection
-- `server_wins` is the ONLY acceptable strategy for truth and budget objects, including in edge/offline deployments
+- §25.11/§52.3 requires single leader write must use fencing token protection to prevent split-brain
 
 ## Consequences
 
@@ -79,6 +78,6 @@ Negative:
 - [ADR-052 Multi-Region Deployment Architecture](./052-multi-region-deployment-architecture.md)
 - [ADR-031 Disaster Recovery and High Availability](./031-disaster-recovery-and-high-availability.md)
 
-## Source Sections
+## Source Section
 
 - `§62` Offline and Edge Deployment Architecture

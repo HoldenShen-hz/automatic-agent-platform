@@ -3,9 +3,9 @@
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
-The platform exposes REST/WebSocket APIs externally and requires a unified versioning strategy, error format, pagination standard, and idempotency guarantees to avoid API fragmentation.
+The platform exposes REST/WebSocket APIs externally and needs unified versioning strategy, error format, pagination specification, and idempotency guarantees to avoid API fragmentation.
 
 ## Decision
 
@@ -14,12 +14,12 @@ The platform exposes REST/WebSocket APIs externally and requires a unified versi
 | Method | Path | Description |
 |--------|------|-------------|
 | POST/GET | /api/v1/tasks | Task CRUD |
-| GET/DELETE | /api/v1/tasks/{id} | Single task operations |
+| GET/DELETE | /api/v1/tasks/{id} | Single task operation |
 | GET | /api/v1/harness-runs | Harness run list |
 | GET | /api/v1/node-runs | Node run list |
-| GET | /api/v1/workflow-runs | Legacy query projection (deprecated) |
+| GET | /api/v1/workflow-runs | Query projection (legacy兼容) |
 | GET/POST | /api/v1/approvals | Approval management |
-| GET | /api/v1/incidents | Incident viewing |
+| GET | /api/v1/incidents | Event view |
 | GET/POST | /api/v1/knowledge | Knowledge management |
 | GET/POST | /api/v1/packs | Pack management |
 | GET/POST | /api/v1/plugins | Plugin management |
@@ -47,36 +47,36 @@ interface ApiError {
 ### Idempotency Guarantee
 
 - Supports Idempotency-Key header
-- Repeated requests with the same key return the original response
+- Requests with same key return original response
 
-### Pagination Standard
+### Pagination Specification
 
-- Cursor-based pagination, max 100 items per page
+- Cursor pagination, max 100 items/page
 
 ### Webhook Delivery Guarantee
 
-- Retry mechanism: up to 50 times
-- Automatically disables webhook after 50 consecutive failures
+- Retry mechanism: Up to 50 times
+- Auto-disable webhook after 50 consecutive failures
 - Failure count can be reset
 
 ## Consequences
 
-Benefits:
+Advantages:
 
-- Unified API contracts improve developer experience
-- Idempotency guarantee makes retries safe
-- Automatic webhook disabling prevents invalid deliveries
+- Unified API contract improves developer experience
+- Idempotency guarantee makes retry safe
+- Webhook auto-disable prevents invalid delivery
 
 Costs:
 
-- Routing layer needs to implement unified error handling and pagination logic
-- Idempotency-Key storage requires additional resources
+- Routing layer needs unified error handling and pagination logic
+- Idempotency-Key storage needs additional resources
 
 ## Cross References
 
 - [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
 
-## Source Section
+## Source Sections
 
-- `§6` API Contract and Versioning Architecture
+- `§6` API contract and versioning architecture

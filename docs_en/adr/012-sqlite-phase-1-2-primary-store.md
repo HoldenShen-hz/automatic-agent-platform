@@ -1,138 +1,138 @@
-# ADR-012 SQLite as Phase 1-2 Sole Primary Storage
+# ADR-012 Whether SQLite Should Be Ring 1 MVP / Ring 2 Readiness Default Primary Storage
 
 - Status: Accepted
 - Decision Date: 2026-04-03
 
-## Context
+## Background
 
-The platform is currently still in the Phase 1a / 1b basic closure stage. The priority is to stabilize task, workflow, execution, approval, event, session, and recovery paths, rather than implementing a layered data plane or multi-tenant transaction infrastructure from the start.
+The platform is still in the basic closed-loop stage from Ring 1 MVP to Ring 2 readiness. The priority goal is to get tasks, workflow, execution, approval, event, session, and recovery paths running stably, not to immediately implement a layered data plane or multi-tenant transaction infrastructure.
 
-The decision question is:
+The decision problem to resolve:
 
-- Should SQLite continue as the default primary transactional storage for Phase 1a / 1b?
-- When must this decision be exited?
+- Should Ring 1 continue using SQLite as the default primary transaction storage.
+- When must we exit this decision.
 
 ## Decision
 
-Phase 1a and Phase 1b will continue to use SQLite as the default/preferred primary transactional storage.
+Ring 1 and early Ring 2 continue using SQLite as the default/preferred primary transaction storage.
 
-Simultaneously, boundaries are clarified:
+Simultaneously clarify boundaries:
 
-- SQLite continues to serve as the primary single-machine authoritative transactional storage for the current stage.
-- PostgreSQL backend may exist as a controlled alternative implementation for dual-write exercises, concurrency verification, and subsequent migration preparation, but must not bypass existing storage contracts.
-- Artifact bodies may still be stored in filesystem or object storage, but indexes and factual state are based on SQLite.
-- Upon entering more complex data planes, evolve to layered storage according to `data_plane_contract.md`.
-- Cognitive projection objects newly added by OAPEFLIR such as `TaskSituation / Assessment / PlanRationale / Feedback / Learning / Improvement / ReleaseDecisionView` must still be mappable to the `harness_runs / node_runs / node_attempt_receipts` SQLite authoritative truth boundary at the current stage.
+- SQLite continues to serve as the primary single-machine authoritative transaction storage for current Ring 1 / early Ring 2.
+- PostgreSQL backend can exist as a controlled alternative implementation for dual-write drills, concurrency verification, and subsequent migration preparation, but must not bypass existing storage contract.
+- Artifact body can still be stored in file system or object storage, but index and fact state use SQLite as standard.
+- After entering more complex data plane, evolve to layered storage according to `data_plane_contract.md`.
+- New cognitive projection objects introduced by OAPEFLIR, such as `TaskSituation / Assessment / PlanRationale / Feedback / Learning / Improvement / ReleaseDecisionView`, must still be able to map back to the `harness_runs / node_runs / node_attempt_receipts` set of SQLite authoritative truth boundaries at the current stage.
 
-## Alternatives
+## Alternative Solutions
 
-### Option A: Adopt PostgreSQL directly in the current stage
+### Solution A: Directly Adopt PostgreSQL at Current Stage
 
-Pros:
+Advantages:
 
 - Stronger concurrency capability.
-- Closer to future multi-tenant / multi-worker patterns.
+- Closer to future multi-tenant / multi-worker form.
 
 Costs:
 
 - Significantly increased complexity for local development, testing, release, and operations.
-- The primary risk at this stage is not the DB ceiling, but incomplete contract-to-code mapping.
-- Early stages will consume substantial energy on infrastructure rather than product closure.
+- Current main risk is not DB ceiling, but contract not yet fully mapped to code.
+- Early stage would exhaust a lot of energy on infrastructure rather than product closed loop.
 
-### Option B: SQLite + Other Cache/Queue Hybrid Approach
+### Solution B: SQLite + Other Cache/Queue Hybrid Solution
 
-Pros:
+Advantages:
 
 - Can partially relieve write pressure.
 
 Costs:
 
-- System complexity increases, but the actual problem boundaries may still not be tightened.
-- Introduces multiple authoritative sources prematurely.
+- System complexity rises, but the real problem boundary may still not be tightened.
+- Prematurely introduces multiple authoritative sources.
 
-### Option C: Current Decision
+### Solution C: Current Decision Solution
 
-- SQLite continues as the sole primary transactional storage
-- Clearly define concurrency, backpressure, and phase boundaries
-- Formal upgrade through ADR and contract in subsequent phases
+- SQLite continues as the sole primary transaction storage
+- Explicitly define concurrency, backpressure, and Ring boundaries
+- Formally upgrade through ADR and contract later
 
-## Reasons for Selecting This Option
+## Reasons for Choosing This Solution
 
-- The current stage needs lowest operational cost, highest reproducibility, and local debuggability.
-- SQLite is sufficient to support Phase 1a / 1b single-machine closure.
-- Tightening state, events, approvals, recovery, and storage schema first is more critical than adopting heavier databases prematurely.
-- The project already has clear data plane evolution documentation, so choosing SQLite now does not forfeit the upgrade path.
+- Currently most needed is low operations cost, high reproducibility, and local debuggability.
+- SQLite is sufficient to support Ring 1 MVP single-machine closed loop and provide auditable single-machine authoritative storage for Ring 2 readiness.
+- Currently first tighten state, events, approval, recovery, and storage schema, which is more critical than prematurely implementing heavier databases.
+- Project already has clear data plane evolution documentation, so current SQLite choice will not lose subsequent upgrade path.
 
 ## Key Invariants
 
-- SQLite is the current default authoritative transactional source.
-- If PostgreSQL is enabled, it must be connected through a controlled storage adapter / migration / dual-run scheme and cannot form a second uncontrolled business semantics layer.
+- SQLite is the current default authoritative transaction source.
+- If enabling PostgreSQL, must connect through controlled storage adapter / migration / dual-run solution, must not form a second set of ungoverned business semantics.
 - `foreign_keys = ON` is a formal operation requirement, not an optional optimization.
-- High-value factual state must not exist only in memory.
-- "SQLite will migrate in the future" must not be used as an excuse for current negligible consistency.
-- OAPEFLIR evolutionary entities, even if temporarily hosted by lightweight services or in-memory registries, must be mappable to the `HarnessRun / NodeRun / NodeAttemptReceipt` SQLite authoritative factual boundary and must not form an uncontrolled second source of truth.
+- High-value fact state must not exist only in memory.
+- Do not use "SQLite will migrate in the future" as an excuse for currently ignoring consistency.
+- OAPEFLIR evolutionary entities, even if temporarily hosted by lightweight service or in-memory registry, must be able to map back to `HarnessRun / NodeRun / NodeAttemptReceipt` SQLite authoritative fact boundary, must not form an ungoverned second source of truth.
 
-## Adoption Conditions
+## Adoption Triggers
 
-Continue to maintain this decision as long as the system still meets:
+Continue maintaining this decision as long as system still satisfies:
 
 - Primarily single-machine
-- Primarily Phase 1a / 1b main chain
-- Concurrency scale remains controlled
-- Multi-tenant, remote worker, and analytics plane have not entered formal implementation
+- Primarily Ring 1 MVP / Ring 2 readiness main chain
+- Concurrency scale still controlled
+- Multi-tenant, remote worker, analytics plane not yet formally implemented
 
 ## Exit Conditions
 
-If any of the following occur, re-evaluation is required:
+Should re-decide if any of the following occurs:
 
 - Execution plane enters multi-worker / queue / lease main implementation
-- Single-machine write bottleneck becomes a persistent problem, and backpressure/async batching is insufficient to relieve it
+- Single-machine write bottleneck becomes persistent problem, and backpressure/async batch insufficient to relieve
 - Multi-tenant or enterprise transaction isolation formally enters implementation scope
-- Analytics / archive / replay requires an independent data plane
+- Analytics / archive / replay needs independent data plane
 
 ## Implementation Impact
 
-Current requirements:
+Current must-do:
 
-- Schema, migration, repository, and recovery inspection must all be designed within SQLite boundaries
-- FileLock, event ack, execution, and approval all fall to SQLite authoritative tables
-- Control over-stage concurrency through backpressure and operational constraints
-- When phase1-4 introduces new factual objects such as `learning_objects`, `improvement_candidates`, `rollout_records`, contracts and state machines must first clearly define authoritative responsibilities before extending persistence implementation
+- schema, migration, repository, and recovery inspection all designed per SQLite boundaries
+- FileLock, event ack, execution, approval all fall to SQLite authoritative tables
+- Control over-phase concurrency through backpressure and operational constraints
+- When phase1-4 introduces new fact objects like `learning_objects`, `improvement_candidates`, `rollout_records`, contract and state machine must first clearly define authoritative responsibility before extending persistence implementation.
 
-Upgrade requirements:
+Subsequent upgrade requirements:
 
-- If migrating to PostgreSQL, business contracts must not drift; prioritize replacing storage adapter / migration / queue layer rather than rewriting the main business chain
+- If migrating to PostgreSQL, must not let business contract drift; should prioritize replacing storage adapter / migration / queue layer rather than rewriting business main chain
 
 ## Results
 
-Pros:
+Advantages:
 
-- Lowest local development and testing costs.
-- Most suitable for rapidly establishing a recoverable, auditable minimum platform closure at the current stage.
+- Lowest local development and testing cost.
+- Most suitable for quickly establishing recoverable, auditable minimum platform closed loop at current stage.
 - Naturally aligned with current single-machine contract system.
 
 Costs:
 
-- Clear limits on concurrency and scalability.
-- If capabilities continue to expand after Phase 2, migration must be seriously planned and cannot be indefinitely delayed.
+- Concurrency and scalability have clear upper limits.
+- If capabilities continue expanding after Ring 2, must seriously plan migration, cannot indefinitely delay.
 
 ## Current Implementation Alignment
 
-As of current phase1-4 delivery, the practical implications of this ADR are:
+As of current phase1-4 delivery, this ADR's practical implications are:
 
-- Facts such as `harness_runs / node_runs / node_attempt_receipts / approvals / events / diagnostics` are still backed by SQLite boundaries.
-- New objects like OAPEFLIR cognitive DTOs, LearningObject, and ReleaseDecisionView have first been closed at the type, test, and contract layers before gradually extending to persistence.
-- This means "first define authoritative semantics, then fill in storage form", rather than first introducing a second data plane.
+- Fact such as `harness_runs / node_runs / node_attempt_receipts / approvals / events / diagnostics` still backed by SQLite boundaries.
+- New objects like OAPEFLIR cognitive DTO, LearningObject, ReleaseDecisionView have first closed at type, test, and contract layer before gradually extending to persistence.
+- This means "first define authoritative semantics, then supplement storage form", rather than first introducing second data plane.
 
 ## v4.3 ADR Remediation
 
-- A-4: This ADR originally continued the task/workflow/execution-centric storage narrative, root cause being that when the SQLite decision was formed, runtime truth still used old object naming. Subsequent `NodeRun` / `NodeAttemptReceipt` main chain unification migration was not completed. Fix: The body now explicitly states that SQLite authoritative truth subject is `harness_runs / node_runs / node_attempt_receipts`. Old task/workflow/execution is retained only for compatible narrative.
+- A-4: This ADR originally continued task/workflow/execution-centric storage narrative. The root cause was that SQLite decision was made when runtime truth still used old object naming, and it was not migrated along with `NodeRun` / `NodeAttemptReceipt` main chain completion. Fix: The text now explicitly states that SQLite authoritative truth subject is `harness_runs / node_runs / node_attempt_receipts`, and old task/workflow/execution retained only as compatibility narrative.
 
-## Cross-References
+## Cross References
 
 - [ADR-009 Deployment and Operations](./009-deployment-ops.md)
-- [ADR-013 EventEmitter Usage Through Phase 2](./013-eventemitter-phase-2-boundary.md)
-- [ADR-011 Effect-TS Adoption](./011-effect-ts-adoption.md)
+- [ADR-013 Whether to Continue Using EventEmitter to Ring 2 Readiness](./013-eventemitter-phase-2-boundary.md)
+- [ADR-011 Whether Effect-TS Should Be Core Runtime Foundation](./011-effect-ts-adoption.md)
 
 ## Source Sections
 
@@ -140,3 +140,7 @@ As of current phase1-4 delivery, the practical implications of this ADR are:
 - `runtime_repository_and_migration_contract.md`
 - `state_transition_matrix_contract.md`
 - `data_plane_contract.md`
+
+## v4.3 Ring Remediation
+
+- R8-71: This ADR originally wrote applicability as `Phase 1a / 1b / Phase 2`. The root cause was that after repository migrated from phase to ring terminology, this ADR only rewrote main semantics without synchronizing rewriting applicability boundary. Fix: The text now uniformly converges to `Ring 1 MVP / Ring 2 readiness`, with phase retained only as historical migration semantics.

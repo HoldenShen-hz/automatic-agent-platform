@@ -45,7 +45,7 @@ test("control-directive: createControlDirective rejects legacy pause directives"
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -61,7 +61,7 @@ test("control-directive: createControlDirective rejects legacy resume directives
         executionId: "exec_789",
         metadata: { resumeReason: "manual" },
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -125,7 +125,7 @@ test("control-directive: createControlDirective accepts rollback kind", () => {
         executionId: "exec_abc",
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -141,7 +141,7 @@ test("control-directive: createControlDirective accepts escalate kind", () => {
         executionId: null,
         metadata: {},
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -159,7 +159,7 @@ test("control-directive: createControlDirective rejects even fully populated leg
         directiveId: "custom_directive",
         createdAt: "2026-01-01T00:00:00.000Z",
       }),
-    (error: unknown) => error instanceof ValidationError && error.code === "control_directive.legacy_contract_forbidden",
+    (error: unknown) => error instanceof ValidationError && error.code === "platform_contracts.legacy_control_directive_forbidden",
   );
 });
 
@@ -632,7 +632,7 @@ test("control-directive: DecisionDirective has readonly properties", () => {
   assert.ok(directive.payload);
   assert.ok(directive.issuedBy);
   assert.ok(directive.reason);
-  assert.ok(directive.riskAcknowledged);
+  assert.equal(directive.riskAcknowledged, false);
   assert.ok(directive.createdAt);
 });
 
