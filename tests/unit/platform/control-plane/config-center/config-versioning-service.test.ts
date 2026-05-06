@@ -184,10 +184,10 @@ test("ConfigVersioningService.rollback creates new version with old content", as
   assert.strictEqual(rollbackVersion!.createdBy, "admin");
 });
 
-test("ConfigVersioningService.rollback returns null for non-existent version", () => {
+test("ConfigVersioningService.rollback returns null for non-existent version", async () => {
   const service = new ConfigVersioningService();
 
-  const rollbackVersion = service.rollback("non-existent-id", "user", "test");
+  const rollbackVersion = await service.rollback("non-existent-id", "user", "test");
 
   assert.strictEqual(rollbackVersion, null);
 });

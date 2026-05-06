@@ -115,15 +115,140 @@ export interface FailoverRecord {
 }
 
 /**
+ * Circuit breaker states for per-region fault isolation.
+ * §21-04: Implements closed/open/half_open state machine per region.
+ */
+type RegionCircuitBreakerState = "closed" | "open" | "half_open";
+
+/**
+ * Per-region circuit breaker configuration.
+ */
+interface RegionCircuitBreakerConfig {
+  /** Number of consecutive failures before opening circuit */
+  failureThreshold: number;
+  /** Milliseconds to wait before attempting half-open probe */
+  resetTimeoutMs: number;
+  /** Number of successful probes needed to close circuit from half_open */
+  halfOpenSuccessThreshold: number;
+}
+
+/**
+ * Per-region circuit breaker state machine.
+ * Provides fault isolation by tracking region health with proper state transitions.
+ */
+class RegionCircuitBreaker {
+  private state: RegionCircuitBreakerState = "closed";
+  private consecutiveFailures: number = 0;
+  private consecutiveSuccesses: number = 0;
+  private nextAttemptAt: number | null = null;
+  private halfOpenInFlight: number = 0;
+
+  constructor(private readonly config: RegionCircuitBreakerConfig) {}
+
+  /**
+   * Check if a health check probe is allowed to execute.
+   * Returns true if circuit is closed, or if in half_open with available probe slot.
+   */
+  public isRequestAllowed(): boolean {
+    if (this.state === "closed") {
+      return true;
+    }
+
+    if (this.state === "open") {
+      if (this.nextAttemptAt != null && Date.now() >= this.nextAttemptAt) {
+        this.state = "half_open";
+        this.consecutiveSuccesses = 0;
+        this.halfOpenInFlight = 1;
+        return true;
+      }
+      return false;
+    }
+
+    // half_open state - allow at most one probe at a time
+    if (this.halfOpenInFlight >= 1) {
+      return false;
+    }
+    this.halfOpenInFlight++;
+    return true;
+  }
+
+  /**
+   * Record a successful health check.
+   */
+  public recordSuccess(): void {
+    if (this.state === "half_open") {
+      this.consecutiveSuccesses++;
+      this.halfOpenInFlight = Math.max(0, this.halfOpenInFlight - 1);
+      if (this.consecutiveSuccesses >= this.config.halfOpenSuccessThreshold) {
+        this.state = "closed";
+        this.consecutiveFailures = 0;
+        this.consecutiveSuccesses = 0;
+        this.nextAttemptAt = null;
+      }
+    } else if (this.state === "closed") {
+      this.consecutiveFailures = 0;
+    }
+  }
+
+  /**
+   * Record a failed health check.
+   */
+  public recordFailure(): void {
+    this.consecutiveFailures++;
+    this.consecutiveSuccesses = 0;
+    this.halfOpenInFlight = 0;
+
+    if (this.state === "closed" && this.consecutiveFailures >= this.config.failureThreshold) {
+      this.state = "open";
+      this.nextAttemptAt = Date.now() + this.config.resetTimeoutMs;
+    } else if (this.state === "half_open") {
+      // Any failure in half_open goes back to open
+      this.state = "open";
+      this.nextAttemptAt = Date.now() + this.config.resetTimeoutMs;
+    }
+  }
+
+  /**
+   * Get current circuit breaker state for observability.
+   */
+  public getState(): RegionCircuitBreakerState {
+    return this.state;
+  }
+
+  /**
+   * Get circuit breaker metrics for debugging/monitoring.
+   */
+  public getMetrics(): { state: RegionCircuitBreakerState; consecutiveFailures: number; consecutiveSuccesses: number } {
+    return {
+      state: this.state,
+      consecutiveFailures: this.consecutiveFailures,
+      consecutiveSuccesses: this.consecutiveSuccesses,
+    };
+  }
+}
+
+/**
+ * Default circuit breaker configuration per §21-04.
+ */
+const DEFAULT_REGION_CIRCUIT_BREAKER_CONFIG: RegionCircuitBreakerConfig = {
+  failureThreshold: 3,
+  resetTimeoutMs: 30_000, // 30 seconds
+  halfOpenSuccessThreshold: 2,
+};
+
+/**
  * Region Health Check Service
  *
  * Monitors region health and determines if failover is needed.
+ * §21-04: Includes per-region circuit breaker state machine for fault isolation.
  */
 export class RegionHealthCheckService {
   private readonly configs = new Map<string, RegionHealthCheckConfig>();
   private readonly healthResults = new Map<string, RegionHealthCheckResult>();
   private readonly consecutiveFailures = new Map<string, number>();
   private readonly lastCheckTime = new Map<string, string>();
+  // §21-04: Per-region circuit breakers for fault isolation
+  private readonly circuitBreakers = new Map<string, RegionCircuitBreaker>();
 
   /**
    * Register a region for health monitoring
@@ -131,6 +256,7 @@ export class RegionHealthCheckService {
   public registerRegion(config: RegionHealthCheckConfig): void {
     this.configs.set(config.regionId, config);
     this.consecutiveFailures.set(config.regionId, 0);
+    this.circuitBreakers.set(config.regionId, new RegionCircuitBreaker(DEFAULT_REGION_CIRCUIT_BREAKER_CONFIG));
   }
 
   /**
@@ -141,6 +267,25 @@ export class RegionHealthCheckService {
     this.healthResults.delete(regionId);
     this.consecutiveFailures.delete(regionId);
     this.lastCheckTime.delete(regionId);
+    this.circuitBreakers.delete(regionId);
+  }
+
+  /**
+   * Get circuit breaker state for a region.
+   * §21-04: Exposes circuit breaker state for observability.
+   */
+  public getCircuitBreakerState(regionId: string): RegionCircuitBreakerState | null {
+    const breaker = this.circuitBreakers.get(regionId);
+    return breaker?.getState() ?? null;
+  }
+
+  /**
+   * Get circuit breaker metrics for a region.
+   * §21-04: Exposes circuit breaker metrics for monitoring.
+   */
+  public getCircuitBreakerMetrics(regionId: string): { state: RegionCircuitBreakerState; consecutiveFailures: number; consecutiveSuccesses: number } | null {
+    const breaker = this.circuitBreakers.get(regionId);
+    return breaker?.getMetrics() ?? null;
   }
 
   /**
