@@ -91,7 +91,7 @@ export const PluginManifestSchema = z.object({
   capabilityIds: z.array(z.string().min(1)).default([]),
   spiTypes: z.array(PluginSpiTypeSchema).min(1),
   extensionKind: z.enum(["domain_plugin", "external_adapter"]).default("domain_plugin"),
-  trustLevel: z.enum(["internal", "trusted", "community", "unverified", "verified"]).default("trusted"),
+  trustLevel: z.enum(["internal", "trusted", "community", "unverified", "verified", "untrusted"]).default("trusted"),
   publicSdkSurface: z.array(z.string().min(1)).default([]),
   /** R18-7: Plugin dependencies - list of plugin IDs this plugin depends on */
   dependencies: z.array(z.string().min(1)).default([]),
