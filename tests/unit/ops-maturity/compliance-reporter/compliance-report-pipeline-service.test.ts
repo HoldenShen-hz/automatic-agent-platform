@@ -5,6 +5,7 @@
  */
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import {
   ComplianceReportRendererService,
@@ -200,6 +201,33 @@ test("ComplianceReportPipelineService.evaluateHumanSignoff returns signed_late w
 
   assert.equal(signoff.status, "signed_late");
   assert.equal(signoff.signerId, "reviewer-1");
+});
+
+test("ComplianceReportPipelineService.evaluateHumanSignoff compares non-UTC offsets using parsed timestamps", () => {
+  const service = new ComplianceReportPipelineService(createTestTemplates());
+  const artifact = service.generate({
+    templateId: "soc2-type2",
+    evidence: createEvidence(["access_log", "change_record", "incident_log"]),
+    requestedBy: "auditor-1",
+  });
+
+  const signoff = service.evaluateHumanSignoff({
+    artifact,
+    signerId: "reviewer-1",
+    signoffDueAt: "2026-05-01T12:00:00+08:00",
+    signedAt: "2026-05-01T04:00:01Z",
+    now: "2026-05-01T04:00:01Z",
+  });
+
+  assert.equal(signoff.status, "signed_late");
+});
+
+test("ComplianceReportPipelineService.generate performs a single registry template lookup", () => {
+  const source = fs.readFileSync(
+    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/ops-maturity/compliance-reporter/compliance-report-pipeline-service.ts",
+    "utf-8",
+  );
+  assert.equal((source.match(/registry\.find\(request\.templateId\)/g) ?? []).length, 1);
 });
 
 test("ComplianceReportPipelineService.generate handles GDPR template with data evidence", () => {

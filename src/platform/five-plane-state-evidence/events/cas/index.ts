@@ -8,7 +8,7 @@
  * @see R16-35: SqliteCasRepository provides durable storage for CAS records
  */
 
-export { CasService, type CasResult, type CasRepository, createInMemoryCasService } from "./cas-service.js";
+export { CasService, type CasResult, type CasRepository, createInMemoryCasService, createSqliteCasService } from "./cas-service.js";
 export { SqliteCasRepository } from "./sqlite-cas-repository.js";
 export {
   FencingTokenService,

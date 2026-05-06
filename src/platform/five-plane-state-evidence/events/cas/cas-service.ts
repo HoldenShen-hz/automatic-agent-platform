@@ -17,6 +17,9 @@
  * @see R16-35: CAS service now uses SQLite-backed SqliteCasRepository for durable storage
  */
 
+import type { SqliteDatabase } from "../../truth/sqlite/sqlite-database.js";
+import { SqliteCasRepository } from "./sqlite-cas-repository.js";
+
 /**
  * Result of a CAS operation indicating success or failure.
  */
@@ -273,9 +276,24 @@ class InMemoryCasRepository implements CasRepository {
 /**
  * Creates an in-memory CAS service (non-durable, for testing only).
  *
- * @deprecated Use SqliteCasRepository in production. This function exists
+ * @deprecated Use createSqliteCasService in production. This function exists
  * only for backward compatibility with tests.
  */
 export function createInMemoryCasService(): CasService {
   return new CasService(new InMemoryCasRepository());
+}
+
+/**
+ * Creates a SQLite-backed CAS service for production use.
+ *
+ * Provides durable persistent storage for CAS records using SQLite, ensuring
+ * that CAS state survives process restarts. This is the recommended factory
+ * for production environments.
+ *
+ * @param sqliteDb - The SQLite database instance (from openAuthoritativeStorageBackend or openAuthoritativeStorageContext)
+ * @returns A CasService backed by SqliteCasRepository for durable CAS operations
+ * @see R22-32: Wired in production bootstrap for durable CAS state
+ */
+export function createSqliteCasService(sqliteDb: SqliteDatabase): CasService {
+  return new CasService(new SqliteCasRepository(sqliteDb.connection));
 }

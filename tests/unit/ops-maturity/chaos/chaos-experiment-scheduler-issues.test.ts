@@ -4,12 +4,12 @@ import test from "node:test";
 import { ChaosExperimentScheduler, SteadyStateHypothesis } from "../../../../src/ops-maturity/chaos/chaos-experiment-scheduler.js";
 
 /**
- * Issue #2100: injectFault() only returns config, doesn't inject real faults
+ * Issue #2100: injectFault() used to be a pure return-only stub
  * Issue #2101: recordSteadyStateResult deduplicates by count not hypothesis ID
  * Issue #2104: autoTerminate doesn't rollback injected faults
  * Issue #2111: steadyStateCache declared but never used
  */
-test("ChaosExperimentScheduler: injectFault returns config only (issue #2100)", () => {
+test("ChaosExperimentScheduler: injectFault tracks an active fault instead of remaining a pure no-op", () => {
   const scheduler = new ChaosExperimentScheduler();
   const experiment = scheduler.scheduleExperiment({
     name: "Fault Injection Test",
@@ -29,7 +29,16 @@ test("ChaosExperimentScheduler: injectFault returns config only (issue #2100)", 
   assert.equal(fault!.faultType, "latency");
   assert.equal(fault!.intensity, 100);
   assert.equal(fault!.parameters.delay, 200);
-  // Note: This confirms injectFault only returns config, not actual fault injection
+  const activeFaults = (scheduler as unknown as {
+    activeFaults: Map<string, unknown>;
+    experimentFaults: Map<string, Set<string>>;
+  }).activeFaults;
+  const experimentFaults = (scheduler as unknown as {
+    activeFaults: Map<string, unknown>;
+    experimentFaults: Map<string, Set<string>>;
+  }).experimentFaults;
+  assert.equal(activeFaults.size, 1);
+  assert.equal(experimentFaults.get(experiment.experimentId)?.size, 1);
 });
 
 test("ChaosExperimentScheduler: injectFault returns null for non-running experiment", () => {
@@ -100,24 +109,13 @@ test("ChaosExperimentScheduler: autoTerminate rolls back faults on termination",
   assert.equal(retrieved!.autoRollbackTriggered, true);
 });
 
-test("ChaosExperimentScheduler: steadyStateCache declared but never used (issue #2111)", () => {
-  const scheduler = new ChaosExperimentScheduler();
-  // The steadyStateCache is declared in the constructor but never used
-  // This is a code smell - cache exists but no method populates or reads it
-  const experiment = scheduler.scheduleExperiment({
-    name: "Cache Test",
-    description: "Testing steady state cache usage",
-    target: { targetKind: "service", targetId: "svc", labels: {} },
-    fault: { faultType: "latency", intensity: 1, durationMs: 1000, parameters: {} },
-    steadyStateHypotheses: [],
-    scheduledAt: "2026-04-20T00:00:00.000Z",
-    maxDurationMs: 5000,
-  });
-  scheduler.startExperiment(experiment.experimentId);
-
-  // No method populates steadyStateCache - it's unused dead code
-  // This test documents the issue
-  assert.ok(experiment.experimentId.startsWith("chaos_"));
+test("ChaosExperimentScheduler source no longer declares the removed steadyStateCache dead field", async () => {
+  const source = await import("node:fs");
+  const text = source.readFileSync(
+    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/ops-maturity/chaos/chaos-experiment-scheduler.ts",
+    "utf-8",
+  );
+  assert.equal(text.includes("private readonly steadyStateCache"), false);
 });
 
 test("ChaosExperimentScheduler: recordSteadyStateResult marks violated on hypothesis failure with rollback", () => {

@@ -9,6 +9,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import { DlqService, type FailureCategory } from "./dlq-service.js";
 import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
 import { runtimeMetricsRegistry } from "../../shared/observability/runtime-metrics-registry.js";
+import { createHash } from "node:crypto";
 
 // REL-01: dedicated logger for dead-letter visibility. The ack row already
 // persists the final status and error code, but there was previously no
@@ -389,6 +390,14 @@ export class DurableEventBus {
     runId?: string | null;
     sequence?: number | null;
     principal?: string | null;
+    // §28.1 causation tracking for event chain reconstruction
+    causationId?: string | null;
+    // §28.1 payload integrity for replay verification
+    payloadHash?: string | null;
+    // §28.1 idempotency key for duplicate detection
+    idempotencyKey?: string | null;
+    replayBehavior?: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
+    evidenceRefs?: readonly string[];
   }): EventRecord {
     this.assertNotDisposed();
     const payloadWithTraceContext = injectTraceContext(input.payload, input.traceContext ?? null);
@@ -403,6 +412,8 @@ export class DurableEventBus {
     // §14.3: Maintain monotonic sequence for events within the same run
     // If runId is provided but sequence is not, auto-assign a monotonically increasing sequence
     const effectiveSequence = input.sequence ?? (input.runId ? this.getNextRunSequence(input.runId) : null);
+    // R5-37 fix: Compute payloadHash from validatedPayload if not provided for replay integrity
+    const effectivePayloadHash = input.payloadHash ?? this.computePayloadHash(validatedPayload);
     // R20-39 fix: Event insert and truth update (ensurePendingAcksForActiveConsumers)
     // are wrapped in a transaction to ensure atomicity. If either fails, both rollback.
     // This satisfies the requirement that event append and truth update must be
@@ -426,13 +437,13 @@ export class DurableEventBus {
           runId: input.runId ?? null,
           sequence: effectiveSequence,
           // §28.1 causation/correlation/payload integrity fields
-          causationId: null,
+          causationId: input.causationId ?? null,
           correlationId: input.traceContext?.correlationId ?? null,
-          payloadHash: null,
-          idempotencyKey: null,
-          replayBehavior: null,
+          payloadHash: effectivePayloadHash,
+          idempotencyKey: input.idempotencyKey ?? null,
+          replayBehavior: input.replayBehavior ?? null,
           principal: input.principal ?? null,
-          evidenceRefs: [],
+          evidenceRefs: input.evidenceRefs ?? [],
         });
         this.ensurePendingAcksForActiveConsumers(record);
         return record;
@@ -471,6 +482,14 @@ export class DurableEventBus {
     runId?: string | null;
     sequence?: number | null;
     principal?: string | null;
+    // §28.1 causation tracking for event chain reconstruction
+    causationId?: string | null;
+    // §28.1 payload integrity for replay verification
+    payloadHash?: string | null;
+    // §28.1 idempotency key for duplicate detection
+    idempotencyKey?: string | null;
+    replayBehavior?: "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden" | null;
+    evidenceRefs?: readonly string[];
   }>): EventRecord[] {
     this.assertNotDisposed();
 
@@ -492,6 +511,9 @@ export class DurableEventBus {
         const schema = getEventSchema(input.eventType);
         // §14.3: Maintain monotonic sequence for events within the same run
         const effectiveSequence = input.sequence ?? (input.runId ? this.getNextRunSequence(input.runId) : null);
+        // R5-37 fix: Compute payloadHash from validatedPayload if not provided for replay integrity
+        const validatedPayload = validatedPayloads[index]!;
+        const effectivePayloadHash = input.payloadHash ?? this.computePayloadHash(validatedPayload);
         this.ensureReferencedTask(input.taskId ?? null);
         const record = this.store.event.insertEvent({
           id: newId("evt"),
@@ -500,7 +522,7 @@ export class DurableEventBus {
           executionId: input.executionId ?? null,
           eventType: input.eventType,
           eventTier: schema.tier,
-          payloadJson: JSON.stringify(validatedPayloads[index]),
+          payloadJson: JSON.stringify(validatedPayload),
           traceId: input.traceContext?.traceId ?? input.traceId ?? null,
           createdAt: nowIso(),
           // §28.1 replay ordering fields
@@ -509,13 +531,13 @@ export class DurableEventBus {
           runId: input.runId ?? null,
           sequence: effectiveSequence,
           // §28.1 causation/correlation/payload integrity fields
-          causationId: null,
+          causationId: input.causationId ?? null,
           correlationId: input.traceContext?.correlationId ?? null,
-          payloadHash: null,
-          idempotencyKey: null,
-          replayBehavior: null,
+          payloadHash: effectivePayloadHash,
+          idempotencyKey: input.idempotencyKey ?? null,
+          replayBehavior: input.replayBehavior ?? null,
           principal: input.principal ?? null,
-          evidenceRefs: [],
+          evidenceRefs: input.evidenceRefs ?? [],
         });
         this.ensurePendingAcksForActiveConsumers(record);
         return record;
@@ -1235,6 +1257,17 @@ export class DurableEventBus {
   public getSchemaVersion(eventType: string): string {
     const schema = getEventSchema(eventType);
     return schema.compatibilityPolicy === "versioned_breaking_change" ? "2.0" : "1.0";
+  }
+
+  /**
+   * Computes a SHA-256 hash of the payload for integrity verification during replay.
+   * R5-37 fix: Payload hash is now computed and persisted for replay safety.
+   * @param payload - The validated event payload
+   * @returns Hex-encoded SHA-256 hash of the payload
+   */
+  private computePayloadHash(payload: Record<string, unknown>): string {
+    const jsonString = JSON.stringify(payload);
+    return createHash("sha256").update(jsonString).digest("hex");
   }
 }
 

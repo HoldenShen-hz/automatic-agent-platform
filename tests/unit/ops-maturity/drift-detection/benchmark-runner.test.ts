@@ -6,6 +6,7 @@ import {
   type BenchmarkCase,
   type ProposalExecutor,
 } from "../../../../src/ops-maturity/drift-detection/benchmark-runner.js";
+import fs from "node:fs";
 
 function createExecutor(
   results: Map<string, { success: boolean; costUsd: number; latencyMs: number; violations: string[] }>,
@@ -129,4 +130,31 @@ test("SimpleBenchmarkRunner evaluate returns needs_revision when safety violatio
 
   assert.equal(report.decision, "needs_revision");
   assert.equal(report.safetyViolations, 1);
+});
+
+test("SimpleBenchmarkRunner evaluate fails closed when baseline data is missing", async () => {
+  const runner = new SimpleBenchmarkRunner([
+    { id: "case_1", taskType: "tool", input: { testCaseId: "case_1" } },
+  ]);
+  runner.setProposalExecutor(createExecutor(new Map([
+    ["case_1", { success: true, costUsd: 0.01, latencyMs: 80, violations: [] }],
+  ])));
+
+  await assert.rejects(
+    () => runner.evaluate(createProposal({
+      id: "proposal_without_baseline",
+      target: "tool_policy",
+      kind: "tool",
+    }) as any),
+    /baseline_required/,
+  );
+});
+
+test("benchmark runner source no longer uses Math.random shortcuts", () => {
+  const source = fs.readFileSync(
+    "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/ops-maturity/drift-detection/benchmark-runner.ts",
+    "utf-8",
+  );
+  assert.equal(source.includes("Math.random"), false);
+  assert.ok(source.includes("ProposalExecutor required"));
 });

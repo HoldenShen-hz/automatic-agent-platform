@@ -745,7 +745,7 @@ export class HarnessRuntimeService {
     run: HarnessRunRuntimeState,
     input: {
       role: HarnessRole;
-      stage: string;
+      stage?: string; // R8-21 fix: stage is optional, defaults to "default"
       inputs: Readonly<Record<string, unknown>>;
       outputs: Readonly<Record<string, unknown>>;
       iteration?: number;
@@ -759,6 +759,7 @@ export class HarnessRuntimeService {
       nextAction?: string;
     },
   ): HarnessRunRuntimeState {
+    const effectiveStage = input.stage ?? "default";
     if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
       throw new Error("harness.feedback.required_for_non_accept_decision");
     }
@@ -769,9 +770,9 @@ export class HarnessRuntimeService {
     const step: HarnessStep = {
       stepId: newId("harness_step"),
       role: input.role,
-      stage: input.stage,
+      stage: effectiveStage,
       iteration,
-      semanticPhase: mapHarnessStepToOapeflirPhase(input.role, input.stage),
+      semanticPhase: mapHarnessStepToOapeflirPhase(input.role, effectiveStage),
       inputs: input.inputs,
       outputs: input.outputs,
       startedAt,

@@ -105,6 +105,10 @@ export interface MinimalWorkflowStep {
   sideEffectProfile?: import("../../../../platform/contracts/executable-contracts/index.js").SideEffectProfile;
   /** Retry policy reference from the original PlanNode */
   retryPolicyRef?: string;
+  // R4-26 (INV-GRAPH-001): Preserve original roleId for execution after PlanNode conversion
+  // When MinimalWorkflowStep is converted to PlanNode, roleId is converted to nodeType.
+  // This field preserves the original roleId for tool exposure resolution.
+  executionRoleId?: string;
 }
 
 /**

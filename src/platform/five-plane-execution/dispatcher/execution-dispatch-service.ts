@@ -366,10 +366,27 @@ export class ExecutionDispatchService {
     // R13-14 fix: Sort tickets by priority (highest first) so that workers pick
     // highest priority tasks first, not just for preemption decisions but for
     // deterministic queue ordering per §14.
+    // R6-4: §14.9 full determinism - include critical_path_rank, scheduler_seed, risk_class
     const PRIORITY_RANK: Record<string, number> = { critical: 4, high: 3, normal: 2, low: 1 };
     tickets = [...tickets].sort((a, b) => {
       const priorityDiff = (PRIORITY_RANK[b.priority] ?? 0) - (PRIORITY_RANK[a.priority] ?? 0);
       if (priorityDiff !== 0) return priorityDiff;
+      // R6-4: critical_path_rank - lower rank = higher priority in critical path
+      const aCriticalPathRank = (a as any).critical_path_rank ?? null;
+      const bCriticalPathRank = (b as any).critical_path_rank ?? null;
+      if (aCriticalPathRank !== null && bCriticalPathRank !== null && aCriticalPathRank !== bCriticalPathRank) {
+        return aCriticalPathRank - bCriticalPathRank;
+      }
+      // R6-4: scheduler_seed - deterministic tiebreaker for otherwise-equal tickets
+      const aSchedulerSeed = (a as any).scheduler_seed ?? null;
+      const bSchedulerSeed = (b as any).scheduler_seed ?? null;
+      if (aSchedulerSeed !== null && bSchedulerSeed !== null && aSchedulerSeed !== bSchedulerSeed) {
+        return aSchedulerSeed.localeCompare(bSchedulerSeed);
+      }
+      // R6-4: risk_class - critical > high > normal for equal priority tickets
+      const RISK_CLASS_RANK: Record<string, number> = { critical: 3, high: 2, normal: 1, low: 0 };
+      const riskDiff = (RISK_CLASS_RANK[b.riskClass ?? "normal"] ?? 0) - (RISK_CLASS_RANK[a.riskClass ?? "normal"] ?? 0);
+      if (riskDiff !== 0) return riskDiff;
       // Preserve relative order for equal priorities (stable sort)
       return a.createdAt.localeCompare(b.createdAt);
     });
@@ -1197,15 +1214,9 @@ export class ExecutionDispatchService {
         return (leftToolBacklogCount ?? 0) - (rightToolBacklogCount ?? 0);
       }
 
-      // R17-16 fix: Add jitter to break ties evenly among workers with equal scores
-      // Previously used only workerId tiebreaker which created deterministic hotspots
-      // when multiple workers had identical metrics. Now we use a small random offset
-      // to distribute load more evenly across equal-caliber workers.
-      const jitter = Math.random() - 0.5;
-      if (jitter !== 0) {
-        return jitter;
-      }
-
+      // R17-16 fix (reverted): Remove random jitter to ensure fully deterministic
+      // dispatch per §14.9. The jitter broke determinism when workers had equal scores.
+      // Deterministic tiebreaker: use workerId as final fallback.
       return left.workerId.localeCompare(right.workerId);
     })[0]!;
   }

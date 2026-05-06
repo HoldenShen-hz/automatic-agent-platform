@@ -178,13 +178,15 @@ export class RuntimeTruthRepository implements RuntimeRepository {
     });
 
     // R5-48: Use real DB transaction when database is available for crash-safe durability
+    // Both DB persist AND memory update must be atomic - both inside the transaction
     if (this.db != null) {
       this.db.transaction(() => {
         this.persistEventToDatabase(platformEvent);
+        this.appendEvent(platformEvent); // Must be inside transaction to maintain truth+event atomicity
       });
+    } else {
+      this.appendEvent(platformEvent);
     }
-
-    this.appendEvent(platformEvent);
   }
 
   /**

@@ -5,12 +5,14 @@ export interface DesktopShellManifest {
   readonly platform: Extract<PlatformId, "linux">;
   readonly runtime: "tauri";
   readonly supportsBackgroundAgent: boolean;
+  readonly updateChannel: "stable" | "beta";
 }
 
 export const tauriLinuxManifest: DesktopShellManifest = {
   platform: "linux",
   runtime: "tauri",
   supportsBackgroundAgent: true,
+  updateChannel: "stable",
 };
 
 export function createTauriLinuxAdapter(base: PlatformAdapter): PlatformAdapter {

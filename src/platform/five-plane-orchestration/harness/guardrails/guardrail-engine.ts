@@ -37,6 +37,10 @@ export interface GuardrailAssessmentInput {
   readonly inputPrompt?: string;
   /** Memory access pattern to check for self-enhancement risks */
   readonly memoryAccessPattern?: readonly string[];
+  /** Generated plan/strategy to check for planning-layer risks */
+  readonly planningOutput?: string;
+  /** Generated output/response to check for output-layer risks */
+  readonly generatedOutput?: string;
 }
 
 export class GuardrailEngine {
@@ -126,6 +130,50 @@ export class GuardrailEngine {
             severity: "block",
             code: "harness.guardrail.self_enhancement_detected",
             message: "Potential self-enhancement attempt detected in memory access",
+          });
+          break;
+        }
+      }
+    }
+
+    // Planning layer: check generated plan for dangerous instructions or goal injection
+    if (input.planningOutput) {
+      const planningRiskPatterns = [
+        /ignore.*(safety|guardrail|policy)/i,
+        /disable.*(safety|guardrail|policy)/i,
+        /override.*(safety|guardrail|policy)/i,
+        /bypass.*(safety|guardrail|policy)/i,
+        /set.*role.*to.*admin/i,
+        /grant.*admin.*privileges/i,
+        /escalate.*(own)?.*permissions/i,
+      ];
+      for (const pattern of planningRiskPatterns) {
+        if (pattern.test(input.planningOutput)) {
+          findings.push({
+            layer: "planning",
+            severity: "block",
+            code: "harness.guardrail.planning_policy_violation",
+            message: "Generated plan contains potential policy-violating instructions",
+          });
+          break;
+        }
+      }
+    }
+
+    // Output layer: check generated output for sensitive data leakage or injection
+    if (input.generatedOutput) {
+      const outputRiskPatterns = [
+        /(password|secret|token|api[_-]?key).*[:=]\s*\S+/i,
+        /-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----/i,
+        /sk-[a-zA-Z0-9]{20,}/, // OpenAI API key pattern
+      ];
+      for (const pattern of outputRiskPatterns) {
+        if (pattern.test(input.generatedOutput)) {
+          findings.push({
+            layer: "output",
+            severity: "warn",
+            code: "harness.guardrail.output_sensitive_data",
+            message: "Generated output may contain sensitive data patterns",
           });
           break;
         }

@@ -256,17 +256,23 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     // R4-32 (INV-APPROVAL): Initialize approval policy engine for risk-proportional approval
     const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
     const [step] = SINGLE_AGENT_MINIMAL_WORKFLOW.steps;
-    const toolExposure = new RoleToolExposureService().resolve({
-      divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
-      roleId: step!.roleId,
-      taskContext: `${input.title}\n${input.request}`,
-    });
 
     if (!step) {
       throw new ValidationError("workflow.definition_invalid", "Workflow definition is invalid: missing initial step", {
         details: { workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId },
       });
     }
+
+    // R4-26 (INV-GRAPH-001): Use executionRoleId which is set by minimalWorkflowToPlanGraphBundle
+    // to preserve the original roleId after PlanNode conversion. This ensures the execution
+    // path uses the role from the PlanGraphBundle rather than relying on the original
+    // workflow definition directly.
+    const stepRoleId = step.executionRoleId ?? step.roleId;
+    const toolExposure = new RoleToolExposureService().resolve({
+      divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
+      roleId: stepRoleId,
+      taskContext: `${input.title}\n${input.request}`,
+    });
 
     const sessionId = newId("sess");
     const executionId = newId("exec");
@@ -798,7 +804,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         workflowId: SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId,
         divisionId: SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId,
         stepId: step.stepId,
-        roleId: step.roleId,
+        roleId: stepRoleId,
         outputKey: step.outputKey,
         status: "succeeded",
         producedAt: stepProducedAt,

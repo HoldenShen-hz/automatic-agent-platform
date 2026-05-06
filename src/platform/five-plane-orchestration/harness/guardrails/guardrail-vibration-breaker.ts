@@ -23,7 +23,19 @@ export class GuardrailVibrationBreaker {
   ) {}
 
   public evaluate(signal: GuardrailActionSignal, state: GuardrailVibrationState): GuardrailVibrationDecision {
-    if (state.guardrailCooldownUntilMs != null && signal.observedAtMs < state.guardrailCooldownUntilMs) {
+    // R23-40 fix: Track all repeated signals (not just consecutive) to detect vibration patterns.
+    // The original bug: only consecutive same signatures were counted, so alternating A,B,A,B never tripped.
+    // With cooldown, we now reject signals within the cooldown window, but after cooldown expires,
+    // we need to reset appropriately to prevent immediate re-trip.
+    //
+    // CooldownExpiry semantics:
+    // - null: not in cooldown
+    // - > now: in cooldown, reject all signals
+    // - <= now: cooldown just expired, reset based on signature
+    const cooldownExpiry = state.guardrailCooldownUntilMs;
+
+    // If in cooldown period (cooldownExpiry > now), reject regardless of signature
+    if (cooldownExpiry != null && signal.observedAtMs < cooldownExpiry) {
       return {
         allowed: false,
         state,
@@ -31,15 +43,32 @@ export class GuardrailVibrationBreaker {
       };
     }
 
+    // Cooldown just expired (cooldownExpiry <= now) - first signal after cooldown
+    if (cooldownExpiry != null && signal.observedAtMs >= cooldownExpiry) {
+      const repeated = state.lastGuardrailSignature === signal.signature;
+      // R23-40 fix: After cooldown expires, if same signature appears again, start fresh at count=1.
+      // This prevents the same signal from immediately re-tripping the breaker.
+      // If a different signature appears, also start fresh since it's a new observation window.
+      const nextState: GuardrailVibrationState = {
+        guardrailActionCount: 1,
+        lastGuardrailSignature: signal.signature,
+        guardrailCooldownUntilMs: null,
+      };
+      return {
+        allowed: true,
+        state: nextState,
+        reasonCode: "guardrail.allowed",
+      };
+    }
+
+    // Normal case: not in cooldown, track repeated signals
     const repeated = state.lastGuardrailSignature === signal.signature;
-    const nextCount = repeated ? state.guardrailActionCount + 1 : 1;
-    // R32-07 fix: off-by-one error - use >= so blocking occurs at maxRepeatedActions boundary.
-    // With >: nextCount=2, maxRepeat=1 → blocked (allows maxRepeat+1=2 actions).
-    // With >=: nextCount=2, maxRepeat=1 → blocked (allows maxRepeat=1 actions).
-    // For maxRepeat=0 with >=: nextCount=1 >= 0 → blocked immediately (allows 0 actions).
+    const nextCount = state.guardrailActionCount + 1;
+
     const cooldown = nextCount >= this.maxRepeatedActions;
+
     const nextState: GuardrailVibrationState = {
-      guardrailActionCount: nextCount,
+      guardrailActionCount: cooldown ? 0 : nextCount,
       lastGuardrailSignature: signal.signature,
       guardrailCooldownUntilMs: cooldown ? signal.observedAtMs + this.cooldownMs : null,
     };

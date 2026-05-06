@@ -307,6 +307,32 @@ test("ConfigVersioningService emits rollback event on rollback operation", () =>
   assert.strictEqual(rollbackEvent!.payload.versionId, rollbackVersion!.versionId);
 });
 
+test("ConfigVersioningService.rollback deep-clones nested content", async () => {
+  const service = new ConfigVersioningService();
+  const original = await service.createVersion(
+    "runtime.nested",
+    "platform",
+    null,
+    { limits: { retries: 3, flags: ["a"] } },
+    "user1",
+  );
+  await service.createVersion(
+    "runtime.nested",
+    "platform",
+    null,
+    { limits: { retries: 5, flags: ["b"] } },
+    "user1",
+  );
+
+  const rollbackVersion = await service.rollback(original.versionId, "admin");
+  assert.ok(rollbackVersion);
+  (rollbackVersion!.content.limits as { retries: number; flags: string[] }).retries = 99;
+  (rollbackVersion!.content.limits as { retries: number; flags: string[] }).flags.push("mutated");
+
+  const originalContent = await service.getVersionContent(original.versionId);
+  assert.deepStrictEqual(originalContent, { limits: { retries: 3, flags: ["a"] } });
+});
+
 test("ConfigVersioningService emits rollback point event when creating rollback point", () => {
   const mockBus = new MockEventBus();
   const service = new ConfigVersioningService({ eventBus: mockBus as any });

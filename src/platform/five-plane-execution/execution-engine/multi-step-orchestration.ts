@@ -44,6 +44,11 @@ import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../.
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 import { RuntimeTruthRepository } from "../../five-plane-state-evidence/truth/runtime-truth-repository.js";
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
+import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
+import { BudgetTier } from "../budget-allocator.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+
+const logger = new StructuredLogger({ retentionLimit: 100 });
 
 const DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS = {
   memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
@@ -399,10 +404,14 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     const backpressureSnapshot =
       (input.admissionBackpressureSnapshot as (() => AdmissionBackpressureSnapshot | null) | undefined)
       ?? (() => healthService.getReport());
+    // R4-25 (INV-BUDGET-001): Initialize BudgetExecutionSessionManager for atomic reserve→execute→settle
+    // This must be created before admission evaluation to support budget reservation verification
+    const budgetSessionManager = new BudgetExecutionSessionManager();
     const admission = new AdmissionController(
       store,
       input.admissionPolicy as AdmissionPolicy | undefined,
       backpressureSnapshot,
+      budgetSessionManager,
     );
     const contextCompaction = new ContextCompactionService(db, store);
     const streamBridge = new StreamBridge();
@@ -491,16 +500,26 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         };
         store.session.insertMessage({ ...planMessage, partsJson: ensureMessagePartsJson(planMessage) });
 
+        // R4-27 (INV-RUN-001): Emit harness_run.status_changed event when HarnessRun is created
+        // This pairs with the harness_runs INSERT at line 362-379 to ensure truth mutation is
+        // paired with the corresponding platform.* event within the same transaction
         store.event.insertEvent({
           id: newId("evt"),
           taskId,
           executionId: null,
-          eventType: "platform.graph_scheduler.decision_recorded",
-          eventTier: "tier_2",
-          payloadJson: JSON.stringify(routing),
+          eventType: "platform.harness_run.status_changed",
+          eventTier: "tier_1",
+          payloadJson: JSON.stringify({
+            harnessRunId: harnessRunIdFromBundle,
+            status: "created",
+            tenantId,
+            domainId: plannedWorkflow.workflow.divisionId,
+            occurredAt: nowIso(),
+          }),
           traceId,
           createdAt: nowIso(),
         });
+
         store.event.insertEvent({
           id: newId("evt"),
           taskId,
@@ -517,10 +536,57 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         });
       });
 
+      // R8-01 FIX: Create budget reservation BEFORE admission evaluation
+      // This implements the reserve-before-execute pattern required by INV-BUDGET-001
+      const defaultBudgetPolicy: BudgetPolicy = {
+        maxTaskCostUsd: 10,
+        maxPackCostUsd: 100,
+        maxPlatformCostUsd: 10000,
+        maxDailyCostUsd: 100,
+        maxMonthlyCostUsd: 1000,
+        maxModelTokens: 100000,
+        maxSteps: 100,
+        maxDurationMs: 600000,
+        warnAtRatio: 0.8,
+        mode: "auto",
+      };
+      let budgetReservationId: string | null = null;
+      try {
+        const budgetSession = budgetSessionManager.reserveAndCreateSession(
+          {
+            tenantId,
+            harnessRunId: harnessRunIdFromBundle,
+            traceId,
+            emittedBy: "multi_step_orchestration",
+            ledger: budgetLedger,
+            policy: defaultBudgetPolicy,
+          },
+          task.estimatedCostUsd ?? 0.05,
+          "token",
+        );
+        budgetReservationId = budgetSession.sessionId;
+        // Mark as executing immediately since we're in the main execution path
+        budgetSessionManager.markExecuting(budgetReservationId);
+      } catch (error) {
+        // Budget reservation failed - reject the task
+        logger.log({ level: "warn", message: `Budget reservation failed, cancelling task`, data: { error: error instanceof Error ? error.message : String(error), taskId } });
+        transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "queued", toStatus: "cancelled", executionId: null, ...createContext(traceContext, "budget.reservation_failed") });
+        transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "cancelled", currentStepIndex: 0, outputsJson: workflow.outputsJson, ...createContext(traceContext, "budget.reservation_failed") });
+        transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "open", toStatus: "cancelled", ...createContext(traceContext, "budget.reservation_failed") });
+        return {
+          snapshot: store.operations.loadTaskSnapshot(taskId),
+          streamFrames: [],
+          routing,
+          plannedWorkflow,
+          compaction: null,
+        };
+      }
+
       const admissionDecision = admission.evaluate({
         priority: task.priority,
         estimatedCostUsd: task.estimatedCostUsd,
-        budgetRemainingUsd: plannedWorkflow.executionSteps.length,
+        budgetRemainingUsd: task.estimatedCostUsd,
+        budgetReservationId,
       });
 
       if (admissionDecision.decision !== "allow") {

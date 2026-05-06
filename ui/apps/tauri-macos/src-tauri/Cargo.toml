@@ -5,11 +5,7 @@ edition = "2021"
 
 [dependencies]
 tauri = { version = "2", features = [] }
-// §R8-55: Tauri updater plugin for macOS auto-update
+# §R8-55: Tauri updater plugin for macOS auto-update
 tauri-plugin-updater = "2"
-// §R8-59: Secure storage plugin for Keychain integration
-tauri-plugin-secure-storage = "2"
-// §R8-55: Tauri updater plugin for macOS auto-update
-tauri-plugin-updater = "2"
-// §R8-59: Secure storage plugin for Keychain integration
+# §R8-59: Secure storage plugin for Keychain integration
 tauri-plugin-secure-storage = "2"

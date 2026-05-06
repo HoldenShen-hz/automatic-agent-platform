@@ -376,16 +376,32 @@ export class HarnessSdk {
    * Per §5.3, produces NodeAttemptReceipt for tracking execution.
    */
   public appendStep(run: HarnessRun, input: HarnessSdkAppendStepInput): HarnessRun {
-    // nodeRunId is the primary routing mechanism per §5.3
-    // phase is passed through for runtime's semanticPhase mapping via mapHarnessStepToOapeflirPhase
-    const runtimeInput = {
+    // R8-21 FIX: nodeRunId is the primary routing mechanism per §5.3
+    // nodeRunId is passed directly to the runtime, not stuffed into inputs bag
+    // stage is only passed when phase is explicitly provided for semantic phase mapping
+    const runtimeInput: {
+      role: HarnessRole;
+      stage?: string;
+      inputs: Readonly<Record<string, unknown>>;
+      outputs: Readonly<Record<string, unknown>>;
+      nodeRunId?: string;
+      iteration?: number;
+    } = {
       role: input.role,
-      stage: input.phase ?? "default",
       inputs: input.inputs,
       outputs: input.outputs,
-      ...(input.iteration !== undefined ? { iteration: input.iteration } : {}),
-      nodeRunId: input.nodeRunId,
     };
+    // Only pass stage when phase is explicitly provided for semantic phase mapping
+    if (input.phase !== undefined) {
+      runtimeInput.stage = input.phase;
+    }
+    // Only pass nodeRunId when explicitly provided - the runtime tracks it properly
+    if (input.nodeRunId) {
+      runtimeInput.nodeRunId = input.nodeRunId;
+    }
+    if (input.iteration !== undefined) {
+      runtimeInput.iteration = input.iteration;
+    }
     const runtimeRun = this.requireRuntimeRun(run);
     const updated = this.runtime.appendStep(runtimeRun, runtimeInput);
     this.runtime.persistRun(updated);

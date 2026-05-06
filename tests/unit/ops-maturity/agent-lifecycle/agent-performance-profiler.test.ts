@@ -3,19 +3,19 @@ import test from "node:test";
 
 import { AgentPerformanceProfiler, type ExecutionRecord } from "../../../../src/ops-maturity/agent-lifecycle/agent-performance-profiler.js";
 
-/**
- * Issue #2108: Eviction uses Map insertion order, not activity
- */
-test("AgentPerformanceProfiler: eviction uses insertion order not activity (issue #2108)", () => {
+test("AgentPerformanceProfiler: eviction retains the most recently active agent when cleanup runs", () => {
   const profiler = new AgentPerformanceProfiler();
+  const internal = profiler as unknown as {
+    recordCleanupAt: number;
+    executionRecords: Map<string, ExecutionRecord[]>;
+  };
+  const hotTimestamp = "2026-05-06T10:00:00.000Z";
+  const coldTimestamp = "2026-05-05T10:00:00.000Z";
 
-  // Add many agents to trigger eviction
-  // The bug: eviction uses Map.keys() which is insertion order
-  // Not based on recency of activity
-  for (let i = 0; i < 1100; i++) {
+  for (let i = 0; i < 1001; i++) {
     profiler.recordExecution({
       executionId: `exec_${i}`,
-      agentId: `agent_${i % 100}`, // 100 different agents
+      agentId: `agent_${i}`,
       versionId: "v1",
       taskId: `task_${i}`,
       taskType: "test_task",
@@ -23,16 +23,25 @@ test("AgentPerformanceProfiler: eviction uses insertion order not activity (issu
       durationMs: 100,
       costUsd: 0.01,
       errorCode: null,
-      completedAt: new Date().toISOString(),
+      completedAt: i === 0 ? hotTimestamp : coldTimestamp,
     });
   }
+  internal.recordCleanupAt = 0;
+  profiler.recordExecution({
+    executionId: "exec_trigger",
+    agentId: "agent_trigger",
+    versionId: "v1",
+    taskId: "task_trigger",
+    taskType: "test_task",
+    status: "success",
+    durationMs: 100,
+    costUsd: 0.01,
+    errorCode: null,
+    completedAt: coldTimestamp,
+  });
 
-  // The profiler should still function after eviction
-  const profile = profiler.computeProfile("agent_0", "v1");
-  assert.ok(profile !== null);
-
-  // The bug: oldest agent (agent_0 which was inserted first) gets evicted
-  // even if it's still active, because eviction is by insertion order not activity
+  assert.ok(internal.executionRecords.has("agent_0:v1"));
+  assert.ok(internal.executionRecords.size < 1002);
 });
 
 test("AgentPerformanceProfiler: computeProfile groups by taskType correctly", () => {

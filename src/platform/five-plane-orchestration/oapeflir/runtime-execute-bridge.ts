@@ -293,6 +293,10 @@ function createSyntheticPlanGraphBundle(
   };
 }
 
+/**
+ * R4-26 (INV-GRAPH-001): Maps roleId to PlanNodeType.
+ * Preserves original roleId as nodeType for execution compatibility.
+ */
 function roleToNodeType(roleId?: string): import("../../contracts/executable-contracts/index.js").PlanNodeType {
   if (roleId === "generator") return "tool";
   // evaluator maps to llm since evaluation is performed by an LLM judge
@@ -308,15 +312,26 @@ export function minimalWorkflowToPlanGraphBundle(
   workflow: import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowDefinition,
   harnessRunId: string,
 ): PlanGraphBundle {
+  // R4-26 (INV-GRAPH-001): Preserve original roleId for execution
+  // Before converting MinimalWorkflowStep to PlanNode, set executionRoleId to the original roleId
+  // This allows single-task-happy-path.ts to use executionRoleId for tool exposure
+  // instead of relying on the original workflow definition
+  for (const step of workflow.steps) {
+    // Only set if not already set (allows explicit override)
+    if (!step.executionRoleId) {
+      step.executionRoleId = step.roleId;
+    }
+  }
+
   const nodes: import("../../contracts/executable-contracts/index.js").PlanNode[] = workflow.steps.map((step) => ({
     nodeId: step.stepId,
     nodeType: roleToNodeType(step.roleId),
     inputRefs: step.inputKeys ?? [],
     outputSchemaRef: step.outputSchemaPath ?? "schema:step.output",
-    riskClass: "medium",
-    budgetIntent: { amount: 0.01, currency: "USD" as const, resourceKinds: ["token", "compute"] as const },
-    sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
-    retryPolicyRef: step.compensationModel ?? "retry:default",
+    riskClass: step.riskClass ?? "medium",
+    budgetIntent: step.budgetIntent ?? { amount: 0.01, currency: "USD" as const, resourceKinds: ["token", "compute"] as const },
+    sideEffectProfile: step.sideEffectProfile ?? { mayCommitExternalEffect: false, reversible: true },
+    retryPolicyRef: step.retryPolicyRef ?? step.compensationModel ?? "retry:default",
     timeoutMs: step.timeoutMs,
   }));
 

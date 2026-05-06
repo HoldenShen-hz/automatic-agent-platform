@@ -139,6 +139,42 @@ test("UnifiedChatProvider correctly routes MiniMax-M2.7 model to minimax provide
   assert.equal(provider.hasProvider("minimax"), true);
 });
 
+test("UnifiedChatProvider createChatCompletion routes mixed-case MiniMax models to the minimax service", async () => {
+  const provider = new UnifiedChatProvider({
+    minimax: { apiKey: "test-key" },
+  });
+  const minimaxService = (provider as unknown as {
+    minimax: {
+      createChatCompletion: (request: { model: string }) => Promise<{
+        id: string;
+        content: string;
+        reasoningContent: string | null;
+        finishReason: string;
+        usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+        model: string;
+      }>;
+    };
+  }).minimax;
+
+  const stub = mock.method(minimaxService, "createChatCompletion", async (request) => ({
+    id: "minimax-test",
+    content: request.model,
+    reasoningContent: null,
+    finishReason: "stop",
+    usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    model: request.model,
+  }));
+
+  try {
+    const result = await provider.createChatCompletion(createRequest("MiniMax-M2.7"));
+    assert.equal(result.provider, "minimax");
+    assert.equal(result.content, "MiniMax-M2.7");
+    assert.equal(stub.mock.callCount(), 1);
+  } finally {
+    stub.mock.restore();
+  }
+});
+
 test("UnifiedChatProvider correctly routes GPT models to openai provider", () => {
   const provider = new UnifiedChatProvider({
     openai: { apiKey: "test-key" },
@@ -155,13 +191,12 @@ test("UnifiedChatProvider correctly routes Claude models to anthropic provider",
   assert.equal(provider.hasProvider("anthropic"), true);
 });
 
-test("UnifiedChatProvider throws error for unknown model without fallback", () => {
+test("UnifiedChatProvider throws error for unknown model without fallback", async () => {
   const provider = new UnifiedChatProvider({});
 
-  assert.throws(
+  await assert.rejects(
     () => {
-      // This uses the internal getProviderForModel which throws for unknown models
-      provider.createChatCompletion({
+      return provider.createChatCompletion({
         model: "completely-unknown-model-xyz",
         messages: [{ role: "user", content: "hello" }],
         maxTokens: 100,
@@ -282,10 +317,7 @@ test("UnifiedChatProvider.dispose disables providers and rejects new requests", 
   provider.dispose();
 
   assert.equal(provider.hasProvider("openai"), false);
-  assert.throws(
-    () => provider.hasProvider("anthropic"),
-    /disposed/,
-  );
+  assert.equal(provider.hasProvider("anthropic"), false);
 });
 
 test("UnifiedChatProvider.dispose can be called multiple times", () => {
@@ -310,12 +342,34 @@ test("UnifiedChatProvider.streamChat method exists", () => {
 
 test("UnifiedChatProvider complete uses default model", async () => {
   const provider = createProvider();
+  const stub = mock.method(provider, "createChatCompletion", async (request) => ({
+    id: "complete-test",
+    content: request.model,
+    refusal: null,
+    reasoningContent: null,
+    finishReason: "stop",
+    stopSequence: null,
+    toolCalls: [],
+    usage: {
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+      estimatedCost: 0,
+    },
+    model: request.model,
+    provider: "minimax",
+    requestId: "complete-test",
+    estimatedCost: 0,
+    latencyMs: 0,
+  }));
 
-  // Will fail without real API but verifies the method exists and uses default model
-  await assert.rejects(
-    () => provider.complete("hello"),
-    /MiniMax provider is not configured|not configured/,
-  );
+  try {
+    const result = await provider.complete("hello");
+    assert.equal(result, "MiniMax-M2.7");
+    assert.equal(stub.mock.callCount(), 1);
+  } finally {
+    stub.mock.restore();
+  }
 });
 
 // ============================================================================
@@ -421,17 +475,17 @@ test("createUnifiedChatProvider creates provider with config", () => {
 // Error Handling Tests
 // ============================================================================
 
-test("UnifiedChatProvider throws ProviderError with correct code when disposed", () => {
+test("UnifiedChatProvider throws ProviderError with correct code when disposed", async () => {
   const provider = createProvider();
   provider.dispose();
 
-  assert.throws(
+  await assert.rejects(
     () => provider.createChatCompletion(createRequest("gpt-4o")),
     /disposed/,
   );
 });
 
-test("UnifiedChatProvider.abortSignal check happens before execution", () => {
+test("UnifiedChatProvider.abortSignal check happens before execution", async () => {
   const provider = createProvider();
 
   const controller = new AbortController();
@@ -440,7 +494,7 @@ test("UnifiedChatProvider.abortSignal check happens before execution", () => {
   const request = createRequest("gpt-4o");
   request.abortSignal = controller.signal;
 
-  assert.throws(
+  await assert.rejects(
     () => provider.createChatCompletion(request),
     /aborted/,
   );
@@ -450,8 +504,8 @@ test("UnifiedChatProvider.abortSignal check happens before execution", () => {
 // Barrel Export Tests
 // ============================================================================
 
-test("UnifiedChatProvider facade is exported from provider-registry barrel", () => {
-  const { UnifiedChatProvider: BarrelUnifiedChatProvider } = require("../../../../../src/platform/model-gateway/provider-registry/index.js");
+test("UnifiedChatProvider facade is exported from provider-registry barrel", async () => {
+  const { UnifiedChatProvider: BarrelUnifiedChatProvider } = await import("../../../../../src/platform/model-gateway/provider-registry/index.js");
   const provider = new BarrelUnifiedChatProvider({});
 
   assert.equal(typeof provider.complete, "function");
