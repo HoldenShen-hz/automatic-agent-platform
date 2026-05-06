@@ -77,9 +77,9 @@ test("PromptVersionManager.getNextVersion increments correctly", () => {
 
 test("PromptVersionManager.getVersionLineage returns correct lineage", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("lineage-test", 1, "v1.0.0"));
-  manager.registerBundle(createTestBundle("lineage-test", 2, "v2.0.0"));
-  manager.registerBundle(createTestBundle("lineage-test", 3, "v3.0.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test", 2, "v2.0.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-test", 3, "v3.0.0"));
 
   // Issue #1964: VersionLineage interface should be properly defined
   const lineage = manager.getVersionLineage("lineage-test", 2);
@@ -91,8 +91,8 @@ test("PromptVersionManager.getVersionLineage returns correct lineage", () => {
 
 test("PromptVersionManager.getVersionLineage for latest version has no next", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("latest-test", 1, "v1.0.0"));
-  manager.registerBundle(createTestBundle("latest-test", 2, "v2.0.0"));
+  manager.registerBundleVersion(createTestBundle("latest-test", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("latest-test", 2, "v2.0.0"));
 
   const lineage = manager.getVersionLineage("latest-test", 2);
 
@@ -103,8 +103,8 @@ test("PromptVersionManager.getVersionLineage for latest version has no next", ()
 
 test("PromptVersionManager.getVersionLineage for first version has no previous", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("first-test", 1, "v1.0.0"));
-  manager.registerBundle(createTestBundle("first-test", 2, "v2.0.0"));
+  manager.registerBundleVersion(createTestBundle("first-test", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("first-test", 2, "v2.0.0"));
 
   const lineage = manager.getVersionLineage("first-test", 1);
 
@@ -115,8 +115,8 @@ test("PromptVersionManager.getVersionLineage for first version has no previous",
 
 test("PromptVersionManager.isCurrentVersion identifies latest", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("current-test", 1, "v1.0.0"));
-  manager.registerBundle(createTestBundle("current-test", 2, "v2.0.0"));
+  manager.registerBundleVersion(createTestBundle("current-test", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("current-test", 2, "v2.0.0"));
 
   assert.equal(manager.isCurrentVersion("current-test", 1), false);
   assert.equal(manager.isCurrentVersion("current-test", 2), true);
@@ -130,9 +130,9 @@ test("PromptVersionManager.isCurrentVersion returns true for empty bundle", () =
 
 test("PromptVersionManager.getSortedVersions returns ordered list", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("sorted-test", 3, "v3.0.0"));
-  manager.registerBundle(createTestBundle("sorted-test", 1, "v1.0.0"));
-  manager.registerBundle(createTestBundle("sorted-test", 2, "v2.0.0"));
+  manager.registerBundleVersion(createTestBundle("sorted-test", 3, "v3.0.0"));
+  manager.registerBundleVersion(createTestBundle("sorted-test", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("sorted-test", 2, "v2.0.0"));
 
   const versions = manager.getSortedVersions("sorted-test");
 
@@ -151,7 +151,7 @@ test("PromptVersionManager.registerBundle enforces max versions limit", () => {
   const manager = new PromptVersionManager({ maxVersionsPerBundle: 3 });
 
   for (let i = 1; i <= 5; i++) {
-    manager.registerBundle(createTestBundle("limit-test", i, `v${i}.0.0`));
+    manager.registerBundleVersion(createTestBundle("limit-test", i, `v${i}.0.0`));
   }
 
   const versions = manager.getSortedVersions("limit-test");
@@ -163,8 +163,8 @@ test("PromptVersionManager.registerBundle enforces max versions limit", () => {
 
 test("PromptVersionManager.listBundleVersions returns correct metadata", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("metadata-test", 1, "v1.0.0"));
-  manager.registerBundle(createTestBundle("metadata-test", 2, "v2.0.0"));
+  manager.registerBundleVersion(createTestBundle("metadata-test", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("metadata-test", 2, "v2.0.0"));
 
   const versions = manager.listBundleVersions("metadata-test");
 
@@ -273,7 +273,7 @@ test("PromptVersionManager handles autoDeprecateOldVersions configuration", () =
 
 test("PromptVersionManager getVersionLineage with single version", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("single-version", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("single-version", 1, "v1.0.0"));
 
   const lineage = manager.getVersionLineage("single-version", 1);
 
@@ -284,7 +284,7 @@ test("PromptVersionManager getVersionLineage with single version", () => {
 
 test("PromptVersionManager VersionLineage type allows undefined for optional fields", () => {
   const manager = new PromptVersionManager();
-  manager.registerBundle(createTestBundle("lineage-optional", 1, "v1.0.0"));
+  manager.registerBundleVersion(createTestBundle("lineage-optional", 1, "v1.0.0"));
 
   const lineage = manager.getVersionLineage("lineage-optional", 1);
 

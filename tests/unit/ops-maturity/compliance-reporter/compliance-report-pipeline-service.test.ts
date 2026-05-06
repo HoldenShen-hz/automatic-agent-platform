@@ -181,6 +181,27 @@ test("ComplianceReportPipelineService.generate uses provided generatedAt timesta
   assert.equal(report.generatedAt, fixedTime);
 });
 
+test("ComplianceReportPipelineService.evaluateHumanSignoff returns signed_late when signoff misses due date", () => {
+  const service = new ComplianceReportPipelineService(createTestTemplates());
+  const artifact = service.generate({
+    templateId: "soc2-type2",
+    evidence: createEvidence(["access_log", "change_record", "incident_log"]),
+    requestedBy: "auditor-1",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+  });
+
+  const signoff = service.evaluateHumanSignoff({
+    artifact,
+    signerId: "reviewer-1",
+    signoffDueAt: "2026-01-08T00:00:00.000Z",
+    signedAt: "2026-01-08T00:00:01.000Z",
+    now: "2026-01-08T00:00:01.000Z",
+  });
+
+  assert.equal(signoff.status, "signed_late");
+  assert.equal(signoff.signerId, "reviewer-1");
+});
+
 test("ComplianceReportPipelineService.generate handles GDPR template with data evidence", () => {
   const service = new ComplianceReportPipelineService(createTestTemplates());
   const request: ComplianceReportRequest = {

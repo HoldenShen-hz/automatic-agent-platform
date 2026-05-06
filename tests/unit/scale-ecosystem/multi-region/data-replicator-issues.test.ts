@@ -15,7 +15,7 @@ import {
   ReplicationEventBuffer,
   computeChecksum,
   type ReplicationEvent,
-} from "../../../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
+} from "../../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2204: Event ID uses Date.now()+random not unique
@@ -255,6 +255,39 @@ test("data-replicator-2197: pendingCount should track in-flight events", async (
   // pendingCount tracks events in flight, not errors
 });
 
+test("data-replicator-2197: pendingCount reflects only events that remain unconfirmed", async () => {
+  const replicator = new DataReplicatorService({
+    sourceRegionId: "us-east-1",
+    targetRegionIds: ["us-west-2"],
+    policy: {
+      sourceRegionId: "us-east-1",
+      targetRegionIds: ["us-west-2"],
+      residencyMode: "allowed_cross_border",
+    },
+    batchSize: 100,
+    flushIntervalMs: 5000,
+    retryAttempts: 2,
+    checksumAlgorithm: "sha256",
+  });
+
+  replicator.onEvent("us-west-2", async (event) => {
+    if (event.aggregateId === "task-2") {
+      throw new Error("permanent failure");
+    }
+  });
+
+  replicator.recordEvent("us-west-2", "Task", "task-1", { data: "ok" });
+  replicator.recordEvent("us-west-2", "Task", "task-2", { data: "fail" });
+  replicator.recordEvent("us-west-2", "Task", "task-3", { data: "ok" });
+
+  const result = await replicator.flush("us-west-2");
+  const checkpoint = replicator.getCheckpoint("us-west-2");
+
+  assert.equal(result.lastSequence, 2);
+  assert.equal(checkpoint?.pendingCount, 1);
+  assert.equal(checkpoint?.sequenceNumber, 2);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2198: Retry causes sequence double count
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,6 +375,40 @@ test("data-replicator-2198: sequence counting should not double count on retry",
 
   // In practice without handler, all sends succeed, so no issue
   assert.equal(result.lastSequence, 3);
+});
+
+test("data-replicator-2198: successful retry increments lastSequence only once", async () => {
+  const replicator = new DataReplicatorService({
+    sourceRegionId: "us-east-1",
+    targetRegionIds: ["us-west-2"],
+    policy: {
+      sourceRegionId: "us-east-1",
+      targetRegionIds: ["us-west-2"],
+      residencyMode: "allowed_cross_border",
+    },
+    batchSize: 100,
+    flushIntervalMs: 5000,
+    retryAttempts: 3,
+    checksumAlgorithm: "sha256",
+  });
+
+  let attempts = 0;
+  replicator.onEvent("us-west-2", async () => {
+    attempts++;
+    if (attempts === 1) {
+      throw new Error("first attempt fails");
+    }
+  });
+
+  replicator.recordEvent("us-west-2", "Task", "task-1", { data: "retry" });
+
+  const result = await replicator.flush("us-west-2");
+  const checkpoint = replicator.getCheckpoint("us-west-2");
+
+  assert.equal(attempts, 2);
+  assert.equal(result.lastSequence, 1);
+  assert.equal(checkpoint?.sequenceNumber, 1);
+  assert.equal(checkpoint?.pendingCount, 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

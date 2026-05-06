@@ -1,7 +1,9 @@
 import { dirname } from "node:path";
 
 import { ConfigGovernanceService } from "../../control-plane/config-center/config-governance-service.js";
+import { ConfigDriftReconciler, type ConfigDriftSource } from "../../control-plane/config-center/config-drift-reconciler.js";
 import { resolveConfigEnvironment, resolveConfigRoot } from "../../control-plane/config-center/runtime-env.js";
+import type { DurableEventBus } from "../../state-evidence/events/durable-event-bus.js";
 import {
   deriveProviderApiKeyEnvName as deriveProviderApiKeyEnvNameFromPool,
   deriveProviderApiKeySecretRefEnvName,
@@ -26,6 +28,7 @@ export interface StartupPreflightOptions {
   contextSandboxPolicy?: SandboxPolicy;
   providerEnv?: NodeJS.ProcessEnv;
   providerSecretResolver?: ((secretRef: string) => string) | null;
+  configDriftEventBus?: DurableEventBus | null;
 }
 
 /**
@@ -38,6 +41,91 @@ function normalizeConfigRoot(configRoot?: string): string {
 /** Formats an error as a string, extracting message from Error instances. */
 function formatErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
+}
+
+function flattenConfig(
+  input: Record<string, unknown>,
+  prefix = "",
+): Record<string, string | number | boolean> {
+  const flattened: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(input)) {
+    const path = prefix.length > 0 ? `${prefix}.${key}` : key;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      flattened[path] = value;
+      if (prefix === "") {
+        flattened[key] = value;
+      }
+      continue;
+    }
+    if (isPlainObject(value)) {
+      Object.assign(flattened, flattenConfig(value, path));
+    }
+  }
+  return flattened;
+}
+
+function loadRuntimeOverridesFromEnv(env: NodeJS.ProcessEnv, prefix = "AA_"): Record<string, string> {
+  const overrides: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (!key.startsWith(prefix) || value == null) {
+      continue;
+    }
+    const configKey = key
+      .slice(prefix.length)
+      .toLowerCase()
+      .replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase());
+    overrides[configKey] = value;
+  }
+  return overrides;
+}
+
+function buildRuntimeDriftIssues(
+  bundle: NonNullable<StartupConfigValidationResult["bundle"]>,
+  runtimeEnv: NodeJS.ProcessEnv,
+  eventBus: DurableEventBus | null,
+): string[] {
+  const baselineValues = flattenConfig(
+    Object.entries(bundle.layers).reduce<Record<string, unknown>>((accumulator, [layerName, layerConfig]) => {
+      if (isPlainObject(layerConfig)) {
+        accumulator[layerName] = layerConfig;
+        Object.assign(accumulator, layerConfig);
+      }
+      return accumulator;
+    }, {}),
+  );
+  const runtimeOverrides = Object.fromEntries(
+    Object.entries(loadRuntimeOverridesFromEnv(runtimeEnv)).filter(
+      ([key, value]) =>
+        Object.prototype.hasOwnProperty.call(baselineValues, key)
+        && (typeof value === "string" || typeof value === "number" || typeof value === "boolean"),
+    ),
+  ) as Record<string, string | number | boolean>;
+  if (Object.keys(runtimeOverrides).length === 0) {
+    return [];
+  }
+  const reconciler = new ConfigDriftReconciler({
+    eventBus,
+    incidentSeverityThreshold: "warning",
+  });
+  const report = reconciler.reconcile({
+    baseline: {
+      sourceName: "defaults",
+      values: baselineValues,
+    } satisfies ConfigDriftSource,
+    observed: [{
+      sourceName: "runtime",
+      values: runtimeOverrides,
+    }],
+    generatedAt: new Date().toISOString(),
+  });
+
+  return report.findings.map(
+    (finding) => `config_drift.${finding.severity}:${finding.key}:expected=${String(finding.expectedValue)}:observed=${String(finding.observedValue)}`,
+  );
 }
 
 /** Derives the environment variable name for a provider's API key. */
@@ -111,7 +199,8 @@ export function buildDefaultStartupConfigValidator(
         env: runtimeEnv,
         sandboxPolicy: contextSandboxPolicy,
       });
-      const issues = [...bundle.issues, ...trustedContextIssues, ...storageIssues];
+      const driftIssues = buildRuntimeDriftIssues(bundle, runtimeEnv, options.configDriftEventBus ?? null);
+      const issues = [...bundle.issues, ...trustedContextIssues, ...storageIssues, ...driftIssues];
       return {
         ok: issues.length === 0,
         environment,

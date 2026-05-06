@@ -30,82 +30,38 @@ import type { PromptBundleRegistrationInput } from "../../../src/platform/contra
 
 // ── PromptVersionManager Tests ────────────────────────────────────────
 
-test("PromptVersionManager parses semantic version formats", () => {
-  const manager = new PromptVersionManager();
-
-  assert.deepEqual(manager.parseVersion("v1.0"), { major: 1, minor: 0 });
-  assert.deepEqual(manager.parseVersion("1.0"), { major: 1, minor: 0 });
-  assert.deepEqual(manager.parseVersion("v2.5.3"), { major: 2, minor: 5, patch: 3 });
-  assert.deepEqual(manager.parseVersion("3.10.1"), { major: 3, minor: 10, patch: 1 });
-  assert.deepEqual(manager.parseVersion("  v1.2  "), { major: 1, minor: 2 });
-});
-
-test("PromptVersionManager throws on invalid version format", () => {
-  const manager = new PromptVersionManager();
-
-  assert.throws(() => manager.parseVersion("invalid"));
-  assert.throws(() => manager.parseVersion("1"));
-  assert.throws(() => manager.parseVersion("v1"));
-  assert.throws(() => manager.parseVersion("v1."));
-  assert.throws(() => manager.parseVersion("1.2.3.4"));
-});
-
-test("PromptVersionManager formats semantic versions", () => {
-  const manager = new PromptVersionManager();
-
-  assert.equal(manager.formatVersion({ major: 1, minor: 0 }), "v1.0");
-  assert.equal(manager.formatVersion({ major: 2, minor: 5, patch: 3 }), "v2.5"); // without includePatch flag
-  assert.equal(manager.formatVersion({ major: 2, minor: 5, patch: 3 }, true), "v2.5.3"); // with includePatch flag
-  assert.equal(manager.formatVersion({ major: 1, minor: 0 }, true), "v1.0");
-  assert.equal(manager.formatVersion({ major: 1, minor: 0, patch: 5 }, true), "v1.0.5");
-});
-
 test("PromptVersionManager compares versions correctly", () => {
   const manager = new PromptVersionManager();
 
-  assert.equal(manager.compareVersions("v1.0", "v2.0"), -1);
-  assert.equal(manager.compareVersions("v2.0", "v1.0"), 1);
-  assert.equal(manager.compareVersions("v1.0", "v1.0"), 0);
-  assert.equal(manager.compareVersions("v1.1", "v1.0"), 1);
-  assert.equal(manager.compareVersions("v1.0.1", "v1.0.0"), 1);
-  assert.equal(manager.compareVersions("v1.0.0", "v1.0.1"), -1);
+  assert.equal(manager.compareVersions(1, 2), -1);
+  assert.equal(manager.compareVersions(2, 1), 1);
+  assert.equal(manager.compareVersions(1, 1), 0);
 });
 
 test("PromptVersionManager calculates next versions", () => {
   const manager = new PromptVersionManager();
 
-  assert.deepEqual(manager.getNextVersion("v1.0", "major"), { major: 2, minor: 0, patch: 0 });
-  assert.deepEqual(manager.getNextVersion("v1.0", "minor"), { major: 1, minor: 1, patch: 0 });
-  assert.deepEqual(manager.getNextVersion("v1.5.3", "patch"), { major: 1, minor: 5, patch: 4 });
-  assert.deepEqual(manager.getNextVersion("v2.3", "patch"), { major: 2, minor: 3, patch: 1 });
-});
-
-test("PromptVersionManager validates version formats without throwing", () => {
-  const manager = new PromptVersionManager();
-
-  assert.equal(manager.isValidVersionFormat("v1.0"), true);
-  assert.equal(manager.isValidVersionFormat("1.2.3"), true);
-  assert.equal(manager.isValidVersionFormat("invalid"), false);
-  assert.equal(manager.isValidVersionFormat(""), false);
+  assert.equal(manager.getNextVersion(1), 2);
+  assert.equal(manager.getNextVersion(99), 100);
 });
 
 test("PromptVersionManager registers and lists bundle versions", () => {
   const manager = new PromptVersionManager();
-  const bundle = createMockPromptBundle("test_bundle", "v1.0");
+  const bundle = createMockPromptBundle("test_bundle", 1);
 
   manager.registerBundleVersion(bundle as any);
 
   const sorted = manager.getSortedVersions("test_bundle");
-  assert.deepEqual(sorted, ["v1.0"]);
+  assert.deepEqual(sorted, [1]);
 });
 
 test("PromptVersionManager respects max versions limit", () => {
   const manager = new PromptVersionManager({ maxVersionsPerBundle: 3 });
 
-  manager.registerBundleVersion(createMockPromptBundle("bundle", "v1.0") as any);
-  manager.registerBundleVersion(createMockPromptBundle("bundle", "v1.1") as any);
-  manager.registerBundleVersion(createMockPromptBundle("bundle", "v1.2") as any);
-  manager.registerBundleVersion(createMockPromptBundle("bundle", "v1.3") as any);
+  manager.registerBundleVersion(createMockPromptBundle("bundle", 1) as any);
+  manager.registerBundleVersion(createMockPromptBundle("bundle", 2) as any);
+  manager.registerBundleVersion(createMockPromptBundle("bundle", 3) as any);
+  manager.registerBundleVersion(createMockPromptBundle("bundle", 4) as any);
 
   const sorted = manager.getSortedVersions("bundle");
   assert.equal(sorted.length, 3);
@@ -115,7 +71,7 @@ test("PromptVersionManager respects max versions limit", () => {
 
 test("HierarchicalPromptRegistryService registers and retrieves bundles at global level", () => {
   const service = new HierarchicalPromptRegistryService();
-  const bundle = service.registerBundle(createBundleInput("test_bundle", "v1"), "global");
+  const bundle = service.registerBundle(createBundleInput("test_bundle", 1), "global");
 
   const retrieved = service.getBundle("test_bundle", "task_type", undefined, undefined);
   assert.ok(retrieved != null);
@@ -124,7 +80,7 @@ test("HierarchicalPromptRegistryService registers and retrieves bundles at globa
 
 test("HierarchicalPromptRegistryService registers bundles at domain level", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("test_bundle", "v1"), "domain", "ops_domain");
+  service.registerBundle(createBundleInput("test_bundle", 1), "domain", "ops_domain");
 
   const retrieved = service.getBundle("test_bundle", "task_type", undefined, "ops_domain");
   assert.ok(retrieved != null);
@@ -133,7 +89,7 @@ test("HierarchicalPromptRegistryService registers bundles at domain level", () =
 
 test("HierarchicalPromptRegistryService registers bundles at pack level", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("test_bundle", "v1"), "pack", undefined, "pack_123");
+  service.registerBundle(createBundleInput("test_bundle", 1), "pack", undefined, "pack_123");
 
   const retrieved = service.getBundle("test_bundle", "task_type", "pack_123", undefined);
   assert.ok(retrieved != null);
@@ -142,7 +98,7 @@ test("HierarchicalPromptRegistryService registers bundles at pack level", () => 
 
 test("HierarchicalPromptRegistryService registers bundles at task-type level", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("test_bundle", "v1"), "task-type", "ops_domain", "pack_123");
+  service.registerBundle(createBundleInput("test_bundle", 1), "task-type", "ops_domain", "pack_123");
 
   // Use the same taskType as in createBundleInput ("test_task")
   const retrieved = service.getBundle("test_bundle", "test_task", "pack_123", "ops_domain");
@@ -151,23 +107,23 @@ test("HierarchicalPromptRegistryService registers bundles at task-type level", (
 
 test("HierarchicalPromptRegistryService hierarchical lookup precedence", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("shared_bundle", "v1"), "global");
-  service.registerBundle(createBundleInput("shared_bundle", "v2"), "domain", "ops_domain");
+  service.registerBundle(createBundleInput("shared_bundle", 1), "global");
+  service.registerBundle(createBundleInput("shared_bundle", 2), "domain", "ops_domain");
 
   const globalOnly = service.getBundle("shared_bundle", "task_type", undefined, undefined);
   const domainOverride = service.getBundle("shared_bundle", "task_type", undefined, "ops_domain");
 
   assert.ok(globalOnly != null);
   assert.ok(domainOverride != null);
-  assert.equal(globalOnly.version, "v1");
-  assert.equal(domainOverride.version, "v2");
+  assert.equal(globalOnly.version, 1);
+  assert.equal(domainOverride.version, 2);
 });
 
 test("HierarchicalPromptRegistryService deprecates bundles", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("test_bundle", "v1"), "global");
+  service.registerBundle(createBundleInput("test_bundle", 1), "global");
 
-  service.deprecateBundle("test_bundle", "v1", "global");
+  service.deprecateBundle("test_bundle", 1, "global");
 
   const retrieved = service.getBundle("test_bundle", "task_type", undefined, undefined);
   assert.equal(retrieved, null);
@@ -175,9 +131,9 @@ test("HierarchicalPromptRegistryService deprecates bundles", () => {
 
 test("HierarchicalPromptRegistryService removes bundles", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("test_bundle", "v1"), "global");
+  service.registerBundle(createBundleInput("test_bundle", 1), "global");
 
-  const removed = service.removeBundle("test_bundle", "v1", "global");
+  const removed = service.removeBundle("test_bundle", 1, "global");
   assert.equal(removed, true);
 
   // Note: removeBundle removes from versionsByScope/versionsByName,
@@ -189,8 +145,8 @@ test("HierarchicalPromptRegistryService removes bundles", () => {
 
 test("HierarchicalPromptRegistryService lists bundles by level", () => {
   const service = new HierarchicalPromptRegistryService();
-  service.registerBundle(createBundleInput("bundle1", "v1"), "global");
-  service.registerBundle(createBundleInput("bundle2", "v1"), "domain", "ops_domain");
+  service.registerBundle(createBundleInput("bundle1", 1), "global");
+  service.registerBundle(createBundleInput("bundle2", 1), "domain", "ops_domain");
 
   const globalBundles = service.listBundles("global");
   const domainBundles = service.listBundles("domain", "ops_domain");
@@ -202,41 +158,41 @@ test("HierarchicalPromptRegistryService lists bundles by level", () => {
 test("HierarchicalPromptRegistryService validates registration input", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", "v1"), name: "" } as any, "global"));
-  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", "v1"), version: "" } as any, "global"));
-  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", "v1"), domain: "" } as any, "global"));
-  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", "v1"), taskType: "" } as any, "global"));
-  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", "v1"), systemPrompt: { content: "", templateVariables: [], channel: "system" } } as any, "global"));
+  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", 1), name: "" } as any, "global"));
+  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", 1), version: "" } as any, "global"));
+  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", 1), domain: "" } as any, "global"));
+  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", 1), taskType: "" } as any, "global"));
+  assert.throws(() => service.registerBundle({ ...createBundleInput("bundle", 1), systemPrompt: { content: "", templateVariables: [], channel: "system" } } as any, "global"));
 });
 
 test("HierarchicalPromptRegistryService requires domain for domain-level registration", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "domain", undefined));
+  assert.throws(() => service.registerBundle(createBundleInput("bundle", 1), "domain", undefined));
 });
 
 test("HierarchicalPromptRegistryService requires packId for pack-level registration", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "pack", undefined, undefined));
+  assert.throws(() => service.registerBundle(createBundleInput("bundle", 1), "pack", undefined, undefined));
 });
 
 test("HierarchicalPromptRegistryService requires packId and domain for task-type level", () => {
   const service = new HierarchicalPromptRegistryService();
 
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "task-type", undefined, undefined));
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "task-type", "domain", undefined));
-  assert.throws(() => service.registerBundle(createBundleInput("bundle", "v1"), "task-type", undefined, "pack"));
+  assert.throws(() => service.registerBundle(createBundleInput("bundle", 1), "task-type", undefined, undefined));
+  assert.throws(() => service.registerBundle(createBundleInput("bundle", 1), "task-type", "domain", undefined));
+  assert.throws(() => service.registerBundle(createBundleInput("bundle", 1), "task-type", undefined, "pack"));
 });
 
 test("HierarchicalPromptRegistryService resolves bundle for traffic with A/B testing", () => {
   const service = new HierarchicalPromptRegistryService({ enableTrafficSplit: true });
   service.registerBundle(
-    { ...createBundleInput("bundle", "v1"), metadata: { trafficAllocation: { weight: 30 } } } as any,
+    { ...createBundleInput("bundle", 1), metadata: { trafficAllocation: { weight: 30 } } } as any,
     "global",
   );
   service.registerBundle(
-    { ...createBundleInput("bundle", "v2"), metadata: { trafficAllocation: { weight: 70 } } } as any,
+    { ...createBundleInput("bundle", 2), metadata: { trafficAllocation: { weight: 70 } } } as any,
     "global",
   );
 
@@ -916,7 +872,7 @@ test("nextPromptRolloutStage returns null for last stage", () => {
 
 // ── Helper Functions ──────────────────────────────────────────────────
 
-function createMockPromptBundle(name: string, version: string) {
+function createMockPromptBundle(name: string, version: number) {
   return {
     bundleId: `${name}:${version}`,
     name,
@@ -937,10 +893,11 @@ function createMockPromptBundle(name: string, version: string) {
     },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    displayVersion: `v${version}.0.0`,
   };
 }
 
-function createBundleInput(name: string, version: string): PromptBundleRegistrationInput {
+function createBundleInput(name: string, version: number): PromptBundleRegistrationInput {
   return {
     name,
     version,

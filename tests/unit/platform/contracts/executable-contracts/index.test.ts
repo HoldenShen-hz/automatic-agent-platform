@@ -173,6 +173,7 @@ test("intake factories enforce confirmation before request envelope", () => {
       confirmedBy: principal,
       riskClass: "high",
       confirmedAt: "2026-04-27T00:00:00.000Z",
+      state: "confirmed" as const,
     },
     idempotencyKey: "idem-1",
     traceId: "trace-1",

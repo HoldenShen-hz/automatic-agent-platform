@@ -71,12 +71,18 @@ export class ReplicationEventBuffer {
   private buffer: ReplicationEvent[] = [];
   private readonly maxSize: number;
   private readonly flushIntervalMs: number;
+  private readonly autoFlushHandler: ((events: readonly ReplicationEvent[]) => Promise<void> | void) | null;
   private lastFlushAt: number = Date.now();
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  public constructor(maxSize = 1000, flushIntervalMs: number = 5000) {
+  public constructor(
+    maxSize = 1000,
+    flushIntervalMs: number = 5000,
+    autoFlushHandler: ((events: readonly ReplicationEvent[]) => Promise<void> | void) | null = null,
+  ) {
     this.maxSize = maxSize;
     this.flushIntervalMs = flushIntervalMs;
+    this.autoFlushHandler = autoFlushHandler;
   }
 
   public add(event: ReplicationEvent): boolean {
@@ -99,11 +105,9 @@ export class ReplicationEventBuffer {
     return events;
   }
 
-  private flushTimer(): ReplicationEvent[] {
-    const flushed = this.flush();
-    // §187-2194: Return value was being discarded - these events must be emitted
-    // or the caller never receives the replicated events, causing permanent data loss
-    return flushed;
+  private requeue(events: readonly ReplicationEvent[]): void {
+    this.buffer = [...events, ...this.buffer];
+    this.scheduleFlush();
   }
 
   public size(): number {
@@ -117,18 +121,19 @@ export class ReplicationEventBuffer {
   private scheduleFlush(): void {
     if (this.timer || this.buffer.length === 0) return;
     this.timer = setTimeout(() => {
-      // §187-2194: flushTimer return value must be used - events are lost if discarded
-      const events = this.flushTimer();
+      this.timer = null;
+      const events = this.flush();
       if (events.length > 0) {
-        // Should emit these events to target regions
-        this.handleFlush(events);
+        if (this.autoFlushHandler == null) {
+          this.requeue(events);
+          return;
+        }
+        Promise.resolve(this.autoFlushHandler(events)).catch(() => {
+          this.requeue(events);
+        });
       }
     }, this.flushIntervalMs);
-  }
-
-  private handleFlush(events: ReplicationEvent[]): void {
-    // Placeholder for actual event emission logic
-    // In production this should send events to target regions
+    this.timer.unref?.();
   }
 }
 
@@ -156,7 +161,16 @@ export class DataReplicatorService {
     this.config = { ...config };
     this.emit = config.emit ?? (() => {});
     for (const regionId of config.targetRegionIds) {
-      this.buffers.set(regionId, new ReplicationEventBuffer(this.config.batchSize, this.config.flushIntervalMs));
+      this.buffers.set(
+        regionId,
+        new ReplicationEventBuffer(
+          this.config.batchSize,
+          this.config.flushIntervalMs,
+          async (events) => {
+            await this.processEvents(regionId, events);
+          },
+        ),
+      );
     }
   }
 
@@ -228,6 +242,10 @@ export class DataReplicatorService {
     }
 
     const events = buffer.flush();
+    return this.processEvents(targetRegionId, events);
+  }
+
+  private async processEvents(targetRegionId: string, events: readonly ReplicationEvent[]): Promise<ReplicationResult> {
     if (events.length === 0) {
       return {
         success: true,

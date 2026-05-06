@@ -197,6 +197,11 @@ test("RuntimeStateMachine: SideEffectRecord applyStatus increments version (issu
     emittedBy: "side-effect-manager",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    occurredAt: "2026-04-27T00:00:00.000Z",
+    auditRef: "audit-1",
+    sideEffectSafety: {
+      preCommitPolicyProofRef: "proof-ref-1",
+    },
   });
 
   // SideEffectRecord should have updatedAt changed
@@ -237,6 +242,10 @@ test("RuntimeStateMachine: SideEffectRecord transitions increment version on eac
       emittedBy: "side-effect-manager",
       leaseId: "lease-1",
       fencingToken: "fence-1",
+      auditRef: "audit-1",
+      sideEffectSafety: {
+        preCommitPolicyProofRef: "proof-ref-1",
+      },
     }).aggregate as typeof sideEffect;
 
     assert.equal(sideEffect.status, change.to);
@@ -271,6 +280,7 @@ test("RuntimeStateMachine: transition returns RuntimeTransitionResult (issue #19
     tenantId: "tenant-1",
     reasonCode: "execution_complete",
     emittedBy: "worker",
+    auditRef: "audit-1",
   });
 
   // Result should be RuntimeTransitionResult with aggregate and event
@@ -513,6 +523,7 @@ test("RuntimeStateMachine: HarnessRun valid transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
+      auditRef: "audit-1",
       ...(needsLeaseFencing ? { leaseId: "lease-1", fencingToken: "fence-1" } : {}),
       ...(to === "admitted" ? { runVersionLockId: "rvlock-1", policyGuard: { allowed: true, policyProofRef: "proof" } } : {}),
     });
@@ -539,7 +550,6 @@ test("RuntimeStateMachine: NodeRun valid transitions", () => {
     ["running", "aborted"],
     ["retry_wait", "ready"],
     ["retry_wait", "failed"],
-    ["awaiting_hitl", "ready"],
     ["awaiting_hitl", "running"],
     ["awaiting_hitl", "failed"],
     ["awaiting_hitl", "cancelled"],
@@ -548,6 +558,15 @@ test("RuntimeStateMachine: NodeRun valid transitions", () => {
   ];
 
   for (const [from, to] of validTransitions) {
+    // Execution statuses that require lease/fencing - must match source definition
+    const executionStatuses = ["created", "ready", "leased", "running", "retry_wait", "awaiting_hitl", "reconciling"];
+    const terminalStatuses = ["succeeded", "failed", "skipped", "cancelled", "dependency_failed", "policy_blocked", "aborted"];
+    const activeStatuses = ["leased", "running", "retry_wait", "awaiting_hitl", "reconciling"];
+
+    const isExecutionTransition = executionStatuses.includes(to);
+    const isTerminalFromActive = terminalStatuses.includes(to) && activeStatuses.includes(from);
+    const needsLeaseFencing = isExecutionTransition || isTerminalFromActive;
+
     const nodeRun = createNodeRun({
       harnessRunId: "run-1",
       planGraphBundleId: "pgb-1",
@@ -555,11 +574,9 @@ test("RuntimeStateMachine: NodeRun valid transitions", () => {
       nodeId: "node-1",
       status: from as any,
       currentSeq: 0,
-      leaseId: from === "created" || from === "ready" ? undefined : "lease-1",
-      fencingToken: from === "created" || from === "ready" ? undefined : "fence-1",
+      leaseId: needsLeaseFencing ? "lease-1" : undefined,
+      fencingToken: needsLeaseFencing ? "fence-1" : undefined,
     });
-
-    const needsLeaseFencing = ["leased", "running", "retry_wait", "awaiting_hitl", "reconciling", "succeeded", "failed", "cancelled", "aborted"].includes(to);
 
     const result = machine.transition({
       aggregateType: "NodeRun",
@@ -571,6 +588,7 @@ test("RuntimeStateMachine: NodeRun valid transitions", () => {
       tenantId: "tenant-1",
       reasonCode: "test",
       emittedBy: "test",
+      auditRef: (to === "succeeded" || to === "failed") ? "audit-1" : undefined,
       ...(needsLeaseFencing ? { leaseId: "lease-1", fencingToken: "fence-1" } : {}),
     });
 
@@ -679,6 +697,7 @@ test("RuntimeStateMachine: rejects mismatched leaseId for NodeRun", () => {
         tenantId: "tenant-1",
         reasonCode: "writeback",
         emittedBy: "worker",
+        auditRef: "audit-1",
       }),
     (error: unknown) =>
       error instanceof WorkflowStateError &&
@@ -713,6 +732,7 @@ test("RuntimeStateMachine: rejects mismatched fencingToken for NodeRun", () => {
         tenantId: "tenant-1",
         reasonCode: "writeback",
         emittedBy: "worker",
+        auditRef: "audit-1",
       }),
     (error: unknown) =>
       error instanceof WorkflowStateError &&

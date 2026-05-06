@@ -189,17 +189,20 @@ test("createTaskDraft derives domainId from normalizedIntent when not provided",
   assert.equal(draft.domainId, "coding");
 });
 
-test("createTaskDraft derives domainId from constraintPackRef", () => {
-  const draft = createTaskDraft({
+test("createConfirmedTaskSpec derives domainId from constraintPackRef", () => {
+  const spec = createConfirmedTaskSpec({
+    taskDraftId: "draft-1",
     tenantId: "tenant-1",
     principal: minimalPrincipal,
-    source: "webhook",
+    goal: "build something",
+    inputs: {},
     constraintPackRef: "constraint_pack:coding",
-    normalizedIntent: { goal: "build something" },
-    riskPreview: { riskClass: "low", reasons: [] },
+    riskClass: "low",
+    idempotencyKey: "idem-1",
+    traceId: "trace-1",
   });
 
-  assert.equal(draft.domainId, "coding");
+  assert.equal(spec.domainId, "coding");
 });
 
 test("createTaskDraft rejects when no domain binding available", () => {

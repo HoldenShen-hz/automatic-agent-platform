@@ -261,6 +261,47 @@ test("RegionHealthCheckService resets stale failures when region recovers to deg
   assert.equal(summary?.consecutiveFailures, 0);
 });
 
+test("RegionHealthCheckService marks first successful check as degraded when latency exceeds region threshold", async () => {
+  const service = new RegionHealthCheckService();
+
+  service.registerRegion({
+    regionId: "us-east",
+    endpoint: "https://us-east.api.example.com",
+    checkIntervalMs: 30000,
+    timeoutMs: 5000,
+    retryCount: 3,
+    thresholds: {
+      maxLatencyMs: 0,
+      maxErrorRate: 0.05,
+      maxCpuUsage: 0.8,
+      maxMemoryUsage: 0.9,
+    },
+  });
+
+  (service as unknown as {
+    performHealthCheck: (config: RegionHealthCheckConfig) => Promise<{
+      metrics: Array<{ metricName: string; value: number; threshold: number; isHealthy: boolean }>;
+    }>;
+  }).performHealthCheck = async (config) => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return {
+      metrics: [
+        {
+          metricName: "latency",
+          value: config.thresholds.maxLatencyMs,
+          threshold: config.thresholds.maxLatencyMs,
+          isHealthy: true,
+        },
+      ],
+    };
+  };
+
+  const result = await service.checkRegion("us-east");
+
+  assert.equal(result.status, "degraded");
+  assert.ok(result.latencyMs > 0);
+});
+
 test("RegionHealthCheckService checkAllRegions runs checks in parallel", async () => {
   const service = new RegionHealthCheckService();
 

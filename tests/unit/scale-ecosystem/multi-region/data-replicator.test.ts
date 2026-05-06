@@ -199,6 +199,36 @@ test("ReplicationEventBuffer returns empty array after flush", () => {
   assert.equal(buffer.size(), 0);
 });
 
+test("DataReplicatorService timer auto-flush emits buffered events instead of dropping them", async () => {
+  const emitted: ReplicationEvent[] = [];
+  const replicator = new DataReplicatorService({
+    sourceRegionId: "us-east-1",
+    targetRegionIds: ["eu-west-1"],
+    policy: {
+      sourceRegionId: "us-east-1",
+      targetRegionIds: ["eu-west-1"],
+      residencyMode: "allowed_cross_border",
+    },
+    batchSize: 100,
+    flushIntervalMs: 10,
+    retryAttempts: 2,
+    checksumAlgorithm: "sha256",
+    emit: (_targetRegionId, event) => {
+      emitted.push(event);
+    },
+  });
+
+  replicator.recordEvent("eu-west-1", "task", "task-123", { data: "timer" });
+
+  await new Promise((resolve) => setTimeout(resolve, 40));
+
+  const checkpoint = replicator.getCheckpoint("eu-west-1");
+  assert.equal(emitted.length, 1);
+  assert.equal(checkpoint?.sequenceNumber, 1);
+  assert.equal(checkpoint?.pendingCount, 0);
+  assert.equal(replicator.getBuffer("eu-west-1")?.size(), 0);
+});
+
 test("ReplicationEventBuffer shouldFlush returns false when empty", () => {
   const buffer = new ReplicationEventBuffer(100, 1);
   assert.equal(buffer.shouldFlush(), false);

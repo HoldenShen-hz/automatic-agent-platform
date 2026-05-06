@@ -168,7 +168,7 @@ export class RegionHealthCheckService {
 
       const healthResult: RegionHealthCheckResult = {
         regionId,
-        status: this.determineStatus(result.metrics, latencyMs),
+        status: this.determineStatus(config, result.metrics, latencyMs),
         checkedAt: nowIso(),
         latencyMs,
         metrics: result.metrics,
@@ -376,10 +376,13 @@ export class RegionHealthCheckService {
 
   /**
    * Determine overall status from metrics
-   * §187-2193: Fixed equality comparison - latencyMs is a number, not a reference.
-   * Changed from identity check (===) to value comparison with threshold.
+   * Must evaluate latency against the current region's thresholds directly.
    */
-  private determineStatus(metrics: HealthCheckMetric[], latencyMs: number): RegionHealthStatus {
+  private determineStatus(
+    config: RegionHealthCheckConfig,
+    metrics: HealthCheckMetric[],
+    latencyMs: number,
+  ): RegionHealthStatus {
     if (metrics.length === 0) {
       return "unhealthy";
     }
@@ -389,19 +392,7 @@ export class RegionHealthCheckService {
       return "degraded";
     }
 
-    const regionId = [...this.healthResults.entries()]
-      .find(([, result]) =>
-        result.metrics.length === metrics.length &&
-        result.metrics.every((m, i) => {
-          const other = metrics[i];
-          return other !== undefined && m.metricName === other.metricName && m.value === other.value;
-        })
-      )?.[0];
-    const config = regionId == null ? null : this.configs.get(regionId);
-    // §187-2193: Fixed - was checking `latencyMs === config.thresholds.maxLatencyMs`
-    // which is a dead equality check that never triggers degradation.
-    // Changed to proper inequality check for exceeding threshold.
-    if (config && latencyMs > config.thresholds.maxLatencyMs) {
+    if (latencyMs > config.thresholds.maxLatencyMs) {
       return "degraded";
     }
 
