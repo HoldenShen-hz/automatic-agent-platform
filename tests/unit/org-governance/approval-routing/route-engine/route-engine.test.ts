@@ -19,7 +19,7 @@ import {
   type ApprovalRouteRequest,
   type AmountThresholdRule,
   type OrgNode,
-} from "../../../../../../src/org-governance/approval-routing/route-engine/index.js";
+} from "../../../../../src/org-governance/approval-routing/route-engine/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

@@ -111,9 +111,9 @@ test("PlanBuilder.buildGraphBundle sets entryNodeIds for steps with no dependenc
     observation: createMinimalObservation("task_entry"),
     assessment: createMinimalAssessment("task_entry"),
     workflow: createWorkflow([
-      { stepId: "start", dependsOnStepIds: [] },
-      { stepId: "middle", dependsOnStepIds: ["start"] },
-      { stepId: "end", dependsOnStepIds: ["middle"] },
+      { stepId: "step_a", dependsOnStepIds: [] },
+      { stepId: "step_b", dependsOnStepIds: ["step_a"] },
+      { stepId: "step_c", dependsOnStepIds: ["step_b"] },
     ]),
     harnessRunId: "harness_entry",
   });
@@ -130,9 +130,9 @@ test("PlanBuilder.buildGraphBundle sets terminalNodeIds for steps with no depend
     observation: createMinimalObservation("task_terminal"),
     assessment: createMinimalAssessment("task_terminal"),
     workflow: createWorkflow([
-      { stepId: "a", dependsOnStepIds: [] },
-      { stepId: "b", dependsOnStepIds: ["a"] },
-      { stepId: "c", dependsOnStepIds: ["b"] },
+      { stepId: "step_a", dependsOnStepIds: [] },
+      { stepId: "step_b", dependsOnStepIds: ["step_a"] },
+      { stepId: "step_c", dependsOnStepIds: ["step_b"] },
     ]),
     harnessRunId: "harness_terminal",
   });

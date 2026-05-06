@@ -44,28 +44,31 @@ test.describe("sync-queue", () => {
 
     test("sorts by createdAt ascending when priorities are equal", () => {
       const items: EdgeSyncEnvelope[] = [
-        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:02:00.000Z" }),
-        makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
-        makeEnvelope({ envelopeId: "c", priority: 1, createdAt: "2026-04-20T00:01:00.000Z" }),
+        makeEnvelope({ envelopeId: "a", priority: 1, sequence_no: 3, createdAt: "2026-04-20T00:02:00.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 1, sequence_no: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "c", priority: 1, sequence_no: 2, createdAt: "2026-04-20T00:01:00.000Z" }),
       ];
 
       const result = orderEdgeSyncQueue(items);
 
-      assert.equal(result[0]?.envelopeId, "b"); // earliest
-      assert.equal(result[1]?.envelopeId, "c");
-      assert.equal(result[2]?.envelopeId, "a"); // latest
+      // Sorted by sequence_no ascending within same priority
+      assert.equal(result[0]?.envelopeId, "b"); // sequence_no 1 (earliest)
+      assert.equal(result[1]?.envelopeId, "c"); // sequence_no 2
+      assert.equal(result[2]?.envelopeId, "a"); // sequence_no 3 (latest)
     });
 
     test("handles items with canonical required metadata", () => {
       const items: EdgeSyncEnvelope[] = [
-        makeEnvelope({ envelopeId: "a", priority: 1, createdAt: "2026-04-20T00:00:01.000Z" }),
-        makeEnvelope({ envelopeId: "b", priority: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
+        makeEnvelope({ envelopeId: "a", priority: 1, sequence_no: 2, createdAt: "2026-04-20T00:00:01.000Z" }),
+        makeEnvelope({ envelopeId: "b", priority: 1, sequence_no: 1, createdAt: "2026-04-20T00:00:00.000Z" }),
       ];
 
       const result = orderEdgeSyncQueue(items);
 
       assert.equal(result.length, 2);
-      assert.equal(result[0]?.envelopeId, "b");
+      // Sorted by sequence_no ascending
+      assert.equal(result[0]?.envelopeId, "b"); // sequence_no 1 first
+      assert.equal(result[1]?.envelopeId, "a"); // sequence_no 2 second
     });
 
     test("returns empty array for empty input", () => {

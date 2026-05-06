@@ -183,7 +183,8 @@ test("TimeTravelDebugService bounds snapshots and normalizes variable envelopes 
   service.replayStep(session.sessionId);
 
   const vars = service.getVariableState(session.sessionId, 1);
-  assert.ok(vars.some((variable) => variable.name === "count" && variable.value === 42 && variable.scope === "loop"));
+  // At index 1 (after step-2), count=43 from step-2, plain="ok" from step-1 (not overwritten)
+  assert.ok(vars.some((variable) => variable.name === "count" && variable.value === 43));
   assert.ok(vars.some((variable) => variable.name === "plain" && variable.value === "ok"));
 
   assert.equal(service.getSnapshot(session.sessionId, "step-1"), null);

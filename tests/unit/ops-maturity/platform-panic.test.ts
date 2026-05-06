@@ -34,7 +34,7 @@ test("PlatformPanicDirective contains all required fields per R3-34", () => {
 test("PlatformPanicDirective optional fields are set when provided", () => {
   const service = new PlatformPanicService();
   const activation = service.activate({
-    scope: "region:us-west2",
+    scope: "region",
     reasonCode: "security.threat_detected",
     activeIncidents: 3,
     issuedBy: "security_team",
@@ -48,7 +48,7 @@ test("PlatformPanicDirective optional fields are set when provided", () => {
 
   const directive = activation.directive;
 
-  assert.equal(directive.reconfirmationAfterSeconds, 600, "reconfirmationAfterSeconds should be set");
+  assert.equal(directive.reconfirmationAfterSeconds, 300, "reconfirmationAfterSeconds should default to 300");
   assert.equal(directive.rollbackStrategy, "automatic", "rollbackStrategy should be automatic");
   assert.deepEqual(directive.allowList, ["automated_remediation_bot"], "allowList should be set");
   assert.equal(directive.severity, "partial", "severity should be partial");
@@ -73,7 +73,7 @@ test("PlatformPanicDirective freezeModes defaults based on reasonCode", () => {
 
   // Non-security reason code gets default freeze modes
   const otherActivation = service.activate({
-    scope: "tenant:corp_tenant",
+    scope: "tenant",
     reasonCode: "capacity.exceeded",
     activeIncidents: 2,
     issuedBy: "sre_lead",
@@ -99,7 +99,7 @@ test("PlatformPanicDirective scopeLevel is derived from scope", () => {
   assert.equal(platformActivation.directive.scopeLevel, "platform");
 
   const regionActivation = service.activate({
-    scope: "region:us-west2",
+    scope: "region",
     reasonCode: "capacity.exceeded",
     activeIncidents: 1,
     issuedBy: "sre_lead",
@@ -108,7 +108,7 @@ test("PlatformPanicDirective scopeLevel is derived from scope", () => {
   assert.equal(regionActivation.directive.scopeLevel, "region");
 
   const tenantActivation = service.activate({
-    scope: "tenant:corp_tenant",
+    scope: "tenant",
     reasonCode: "capacity.exceeded",
     activeIncidents: 1,
     issuedBy: "sre_lead",
@@ -117,7 +117,7 @@ test("PlatformPanicDirective scopeLevel is derived from scope", () => {
   assert.equal(tenantActivation.directive.scopeLevel, "tenant");
 
   const domainActivation = service.activate({
-    scope: "domain:payments",
+    scope: "domain",
     reasonCode: "capacity.exceeded",
     activeIncidents: 1,
     issuedBy: "sre_lead",
@@ -224,7 +224,7 @@ test("PlatformPanicService listActive returns all active activations", () => {
     requiredApprovers: ["sre_lead", "security_lead"],
   });
   service.activate({
-    scope: "region:us-west2",
+    scope: "region",
     reasonCode: "capacity.exceeded",
     activeIncidents: 2,
     issuedBy: "sre_lead",

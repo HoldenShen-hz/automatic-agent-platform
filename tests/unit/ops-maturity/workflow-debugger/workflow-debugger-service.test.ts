@@ -45,7 +45,9 @@ test.describe("WorkflowDebuggerService", () => {
       const result = service.registerBreakpoint(createNonProdActor(), "dev", bp);
 
       assert.equal(result.breakpointId, "bp-1");
-      assert.deepEqual(service.listBreakpoints("wf-123"), [bp]);
+      assert.equal(result.planGraphId, "wf-123");
+      assert.equal(result.nodeRunSelector, "deploy");
+      assert.deepEqual(service.listBreakpoints("wf-123"), [result]);
     });
 
     test("registers breakpoint in staging environment for any actor", () => {
@@ -105,7 +107,9 @@ test.describe("WorkflowDebuggerService", () => {
 
       const result = service.registerBreakpoint(createProdActor(), "staging", bp);
 
-      assert.equal(result, bp);
+      assert.equal(result.breakpointId, "bp-specific");
+      assert.equal(result.planGraphId, "wf-xyz");
+      assert.equal(result.nodeRunSelector, "test");
     });
   });
 
@@ -186,7 +190,7 @@ test.describe("WorkflowDebuggerService", () => {
 
       assert.equal(result.length, 1);
       assert.equal(result[0]?.breakpointId, "bp-1");
-      assert.equal(result[0]?.stepId, "deploy");
+      assert.equal(result[0]?.nodeRunId, "deploy");
       assert.equal(result[0]?.action, "pause");
     });
 
@@ -262,7 +266,7 @@ test.describe("WorkflowDebuggerService", () => {
 
       const report = service.buildComparisonReport("wf-123", leftFrames, rightFrames);
 
-      assert.deepEqual(report.differences, ["step:deploy:paused->failed"]);
+      assert.deepEqual(report.differences, ["step:deploy:status:paused->failed"]);
     });
 
     test("returns empty differences when statuses match", () => {
@@ -276,7 +280,7 @@ test.describe("WorkflowDebuggerService", () => {
       assert.deepEqual(report.differences, []);
     });
 
-    test("includes workflowId in report", () => {
+    test("includes planGraphId in report", () => {
       const service = new WorkflowDebuggerService();
 
       const report = service.buildComparisonReport(
@@ -285,7 +289,7 @@ test.describe("WorkflowDebuggerService", () => {
         [],
       );
 
-      assert.equal(report.workflowId, "wf-special");
+      assert.equal(report.planGraphId, "wf-special");
     });
 
     test("reports missing step on right side as 'missing'", () => {
@@ -300,7 +304,7 @@ test.describe("WorkflowDebuggerService", () => {
 
       const report = service.buildComparisonReport("wf-123", leftFrames, rightFrames);
 
-      assert.deepEqual(report.differences, ["step:deploy:done->missing"]);
+      assert.deepEqual(report.differences, ["step:deploy:missing_in_right"]);
     });
 
     test("includes leftFrames in report", () => {
@@ -343,8 +347,8 @@ test.describe("WorkflowDebuggerService", () => {
       const report = service.buildComparisonReport("wf-123", leftFrames, rightFrames);
 
       assert.equal(report.differences.length, 2);
-      assert.ok(report.differences.includes("step:test:passed->failed"));
-      assert.ok(report.differences.includes("step:deploy:pending->skipped"));
+      assert.ok(report.differences.includes("step:test:status:passed->failed"));
+      assert.ok(report.differences.includes("step:deploy:status:pending->skipped"));
     });
   });
 
@@ -421,7 +425,7 @@ test.describe("WorkflowDebuggerService", () => {
       ];
 
       const report = service.buildComparisonReport("wf-release", frames, previousFrames);
-      assert.deepEqual(report.differences, ["step:deploy:paused->failed"]);
+      assert.deepEqual(report.differences, ["step:deploy:status:paused->failed"]);
 
       // Render timeline
       const timeline = service.renderTraceTimeline(frames);
