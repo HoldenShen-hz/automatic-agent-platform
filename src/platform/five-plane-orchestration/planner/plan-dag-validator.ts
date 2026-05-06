@@ -19,7 +19,78 @@ export interface PlanDagExtendedValidation {
   unsupportedNodeTypes: string[];
 }
 
+/**
+ * Tool registry interface for tool availability validation.
+ * §13.10: Referenced tools must exist and be available.
+ */
+export interface ToolRegistry {
+  isToolAvailable(toolName: string): boolean;
+  getToolSandboxRequirements?(toolName: string): string[] | undefined;
+}
+
+/**
+ * Executor registry interface for executor availability validation.
+ * §13.10: Each node's executor must be available.
+ */
+export interface ExecutorRegistry {
+  isExecutorAvailable(executorId: string): boolean;
+}
+
+/**
+ * Approval policy for high-risk operations.
+ * §13.10: High-risk nodes need approval policy.
+ */
+export interface ApprovalPolicy {
+  requiredRiskClasses: string[];
+  approvalRequired: boolean;
+}
+
+/**
+ * Budget constraint for plan validation.
+ * §13.10: Total estimated cost must fit within budget.
+ */
+export interface BudgetConstraint {
+  maxCost: number;
+  maxDurationMs?: number;
+}
+
+/**
+ * Sandbox compatibility entry.
+ * §13.10: Tool/sandbox must be compatible.
+ */
+export interface SandboxCompatibility {
+  sandboxMode: string;
+  compatibleTools: string[];
+  incompatibleTools: string[];
+}
+
+/**
+ * Validation options for PlanDagValidator.
+ * Allows injection of external registries for validation.
+ */
+export interface PlanDagValidationOptions {
+  toolRegistry?: ToolRegistry | undefined;
+  executorRegistry?: ExecutorRegistry | undefined;
+  approvalPolicy?: ApprovalPolicy | undefined;
+  budgetConstraint?: BudgetConstraint | undefined;
+  sandboxCompatibility?: SandboxCompatibility[] | undefined;
+}
+
 export class PlanDagValidator {
+  private readonly toolRegistry?: ToolRegistry | undefined;
+  private readonly executorRegistry?: ExecutorRegistry | undefined;
+  private readonly approvalPolicy?: ApprovalPolicy | undefined;
+  private readonly budgetConstraint?: BudgetConstraint | undefined;
+  private readonly sandboxCompatibility?: SandboxCompatibility[] | undefined;
+
+  constructor(options?: PlanDagValidationOptions) {
+    this.toolRegistry = options?.toolRegistry ?? undefined;
+    this.executorRegistry = options?.executorRegistry ?? undefined;
+    this.approvalPolicy = options?.approvalPolicy ?? undefined;
+    this.budgetConstraint = options?.budgetConstraint ?? undefined;
+    this.sandboxCompatibility = options?.sandboxCompatibility ?? undefined;
+  }
+
   public validate(steps: readonly PlanStep[]): PlanDagValidationResult {
     const stepById = new Map(steps.map((step) => [step.stepId, step]));
     const issues: string[] = [];
@@ -133,6 +204,58 @@ export class PlanDagValidator {
       const sandboxMode = stepRecord["sandboxMode"] as string | undefined;
       if (sandboxMode == null || sandboxMode.trim().length === 0) {
         issues.push(`planning.missing_sandbox_mode:${step.stepId}`);
+      }
+
+      // §13.10: Executor availability validation
+      if (this.executorRegistry && executor && typeof executor === "string" && executor.trim().length > 0) {
+        if (!this.executorRegistry.isExecutorAvailable(executor)) {
+          issues.push(`planning.executor_unavailable:${step.stepId}:${executor}`);
+        }
+      }
+
+      // §13.10: Risk validation - high/critical risk nodes need approval policy
+      const riskClass = inputs?.riskClass as string | undefined;
+      if (riskClass && this.approvalPolicy?.requiredRiskClasses.includes(riskClass)) {
+        if (!this.approvalPolicy.approvalRequired) {
+          issues.push(`planning.high_risk_without_approval:${step.stepId}:${riskClass}`);
+        }
+      }
+
+      // §13.10: Tool availability validation
+      if (this.toolRegistry && tools != null && Array.isArray(tools)) {
+        for (const tool of tools) {
+          if (typeof tool === "string" && tool.trim().length > 0) {
+            if (!this.toolRegistry.isToolAvailable(tool)) {
+              issues.push(`planning.tool_unavailable:${step.stepId}:${tool}`);
+            }
+          }
+        }
+      }
+
+      // §13.10: Sandbox compatibility validation
+      if (sandboxMode && this.sandboxCompatibility && this.sandboxCompatibility.length > 0) {
+        const compatibleEntry = this.sandboxCompatibility.find((entry) => entry.sandboxMode === sandboxMode);
+        if (compatibleEntry) {
+          if (tools != null && Array.isArray(tools)) {
+            for (const tool of tools) {
+              if (typeof tool === "string" && tool.trim().length > 0) {
+                if (compatibleEntry.incompatibleTools.includes(tool)) {
+                  issues.push(`planning.sandbox_incompatible_tool:${step.stepId}:${sandboxMode}:${tool}`);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // §13.10: Budget constraint validation - total estimated cost must fit within budget
+    if (this.budgetConstraint) {
+      const worstPath = this.analyzeWorstPath(steps);
+      if (worstPath && worstPath.estimatedCost > this.budgetConstraint.maxCost) {
+        issues.push(
+          `planning.budget_exceeded:estimated=${worstPath.estimatedCost},max=${this.budgetConstraint.maxCost}`,
+        );
       }
     }
 

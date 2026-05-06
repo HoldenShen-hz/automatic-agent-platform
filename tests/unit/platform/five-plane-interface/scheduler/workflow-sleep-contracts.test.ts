@@ -5,8 +5,8 @@ import {
   toWorkflowResumeWindow,
   type WorkflowSleepLease,
   type WorkflowResumeWindow,
-} from "../../../../src/platform/five-plane-interface/scheduler/workflow-sleep-contracts.js";
-import type { WorkflowSuspensionRecord } from "../../../../src/platform/five-plane-interface/scheduler/long-running-workflow-service.js";
+} from "../../../../../src/platform/five-plane-interface/scheduler/workflow-sleep-contracts.js";
+import type { WorkflowSuspensionRecord } from "../../../../../src/platform/five-plane-interface/scheduler/long-running-workflow-service.js";
 
 function createMockSuspensionRecord(overrides?: Partial<WorkflowSuspensionRecord>): WorkflowSuspensionRecord {
   return {

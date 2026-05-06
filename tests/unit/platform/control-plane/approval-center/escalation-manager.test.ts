@@ -141,10 +141,10 @@ test("EscalationManager getCurrentEscalationLevel returns max level", () => {
   assert.equal(level, 2);
 });
 
-test("EscalationManager createDelegation creates delegation", () => {
+test("EscalationManager createDelegation creates delegation", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("approver-1", "approver-2", "approval-1");
+  const delegation = await manager.createDelegation("approver-1", "approver-2", "approval-1");
 
   assert.equal(delegation.fromApprover, "approver-1");
   assert.equal(delegation.toApprover, "approver-2");
@@ -154,10 +154,10 @@ test("EscalationManager createDelegation creates delegation", () => {
   assert.ok(delegation.expiresAt);
 });
 
-test("EscalationManager createDelegation throws on self-delegation", () => {
+test("EscalationManager createDelegation throws on self-delegation", async () => {
   const manager = new EscalationManager();
 
-  assert.throws(
+  await assert.rejects(
     () => manager.createDelegation("approver-1", "approver-1", "approval-1"),
     /Cannot delegate to yourself/,
   );
@@ -220,7 +220,7 @@ test("EscalationManager isDelegationExpired returns true for revoked status", ()
   assert.equal(manager.isDelegationExpired(delegation), false);
 });
 
-test("EscalationManager resetDelegationTtl resets TTL", () => {
+test("EscalationManager resetDelegationTtl resets TTL", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -234,13 +234,13 @@ test("EscalationManager resetDelegationTtl resets TTL", () => {
     status: DelegationStatus.ACTIVE,
   };
 
-  const updated = manager.resetDelegationTtl(delegation, 7200000);
+  const updated = await manager.resetDelegationTtl(delegation, 7200000);
 
   assert.equal(updated.ttlResetCount, 1);
   assert.ok(new Date(updated.expiresAt).getTime() > new Date(delegation.expiresAt).getTime());
 });
 
-test("EscalationManager resetDelegationTtl throws when max resets exceeded", () => {
+test("EscalationManager resetDelegationTtl throws when max resets exceeded", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -254,13 +254,13 @@ test("EscalationManager resetDelegationTtl throws when max resets exceeded", () 
     status: DelegationStatus.ACTIVE,
   };
 
-  assert.throws(
+  await assert.rejects(
     () => manager.resetDelegationTtl(delegation),
     /Cannot reset TTL more than/,
   );
 });
 
-test("EscalationManager resetDelegationTtl throws when not active", () => {
+test("EscalationManager resetDelegationTtl throws when not active", async () => {
   const manager = new EscalationManager();
   const delegation: Delegation = {
     delegationId: "delegation-1",
@@ -274,34 +274,34 @@ test("EscalationManager resetDelegationTtl throws when not active", () => {
     status: DelegationStatus.COMPLETED,
   };
 
-  assert.throws(
+  await assert.rejects(
     () => manager.resetDelegationTtl(delegation),
     /Cannot reset TTL on inactive delegation/,
   );
 });
 
-test("EscalationManager revokeDelegation revokes delegation", () => {
+test("EscalationManager revokeDelegation revokes delegation", async () => {
   const manager = new EscalationManager();
-  const delegation = manager.createDelegation("approver-1", "approver-2", "approval-1");
+  const delegation = await manager.createDelegation("approver-1", "approver-2", "approval-1");
 
-  manager.revokeDelegation(delegation.delegationId);
+  await manager.revokeDelegation(delegation.delegationId);
 
   const retrieved = manager.getDelegation(delegation.delegationId);
   assert.equal(retrieved?.status, DelegationStatus.REVOKED);
 });
 
-test("EscalationManager revokeDelegation throws for unknown delegation", () => {
+test("EscalationManager revokeDelegation throws for unknown delegation", async () => {
   const manager = new EscalationManager();
 
-  assert.throws(
+  await assert.rejects(
     () => manager.revokeDelegation("unknown-delegation"),
     /Delegation not found/,
   );
 });
 
-test("EscalationManager completeDelegation marks as completed", () => {
+test("EscalationManager completeDelegation marks as completed", async () => {
   const manager = new EscalationManager();
-  const delegation = manager.createDelegation("approver-1", "approver-2", "approval-1");
+  const delegation = await manager.createDelegation("approver-1", "approver-2", "approval-1");
 
   manager.completeDelegation(delegation.delegationId);
 
@@ -318,9 +318,9 @@ test("EscalationManager completeDelegation throws for unknown delegation", () =>
   );
 });
 
-test("EscalationManager getDelegation retrieves delegation", () => {
+test("EscalationManager getDelegation retrieves delegation", async () => {
   const manager = new EscalationManager();
-  const delegation = manager.createDelegation("approver-1", "approver-2", "approval-1");
+  const delegation = await manager.createDelegation("approver-1", "approver-2", "approval-1");
 
   const retrieved = manager.getDelegation(delegation.delegationId);
 
@@ -336,9 +336,9 @@ test("EscalationManager getDelegation returns undefined for unknown", () => {
   assert.equal(retrieved, undefined);
 });
 
-test("EscalationManager getActiveDelegationForApproval finds active delegation", () => {
+test("EscalationManager getActiveDelegationForApproval finds active delegation", async () => {
   const manager = new EscalationManager();
-  manager.createDelegation("approver-1", "approver-2", "approval-1");
+  await manager.createDelegation("approver-1", "approver-2", "approval-1");
 
   const delegation = manager.getActiveDelegationForApproval("approval-1");
 

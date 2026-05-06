@@ -215,13 +215,13 @@ export class DegradationController {
         return this.routeD1(request, recursionDepth);
 
       case DegradationLevel.D2:
-        return this.routeD2(request);
+        return this.routeD2(request, recursionDepth);
 
       case DegradationLevel.D3:
-        return this.routeD3(request);
+        return this.routeD3(request, recursionDepth);
 
       case DegradationLevel.D4:
-        return this.routeD4(request);
+        return this.routeD4(request, recursionDepth);
     }
   }
 
@@ -325,10 +325,10 @@ export class DegradationController {
   /**
    * D2: Serve cached responses when available.
    */
-  private async routeD2(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+  private async routeD2(request: LLMDegradationRequest, recursionDepth: number): Promise<LLMDegradationResponse> {
     if (!request.semanticKey) {
       // No cache key, fall through to D3
-      return this.routeD3(request);
+      return this.routeD3(request, recursionDepth);
     }
 
     const cached = this.cacheService.get(request.semanticKey);
@@ -342,14 +342,14 @@ export class DegradationController {
       };
     }
 
-    // No cache hit, fall through to D3
-    return this.routeD3(request);
+    // No cache hit, fall through to D3 with incremented recursion depth
+    return this.routeD3(request, recursionDepth);
   }
 
   /**
    * D3: Return template-based responses.
    */
-  private async routeD3(request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+  private async routeD3(request: LLMDegradationRequest, recursionDepth: number): Promise<LLMDegradationResponse> {
     const templateKey = getTemplateKey(request.taskType);
     const content = this.templates[templateKey] ?? DEFAULT_TEMPLATE_RESPONSES["default"]!;
 
@@ -365,7 +365,7 @@ export class DegradationController {
   /**
    * D4: Reject service (service unavailable).
    */
-  private async routeD4(_request: LLMDegradationRequest): Promise<LLMDegradationResponse> {
+  private async routeD4(_request: LLMDegradationRequest, _recursionDepth: number): Promise<LLMDegradationResponse> {
     throw new ProviderError(
       "degradation.service_unavailable",
       "LLM service is currently unavailable due to sustained high error rates. Please retry later.",

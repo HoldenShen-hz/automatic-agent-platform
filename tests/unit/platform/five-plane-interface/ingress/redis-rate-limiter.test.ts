@@ -3,9 +3,9 @@ import { EventEmitter } from "node:events";
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { RedisRateLimiter, type RateLimitResult } from "../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
-import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
-import type { StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
+import { RedisRateLimiter, type RateLimitResult } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
+import { StructuredLogger } from "../../../../../src/platform/shared/observability/structured-logger.js";
+import type { StructuredLogEntry } from "../../../../../src/platform/shared/observability/structured-logger.js";
 
 test("RedisRateLimiter accepts valid config and creates instance", () => {
   const limiter = new RedisRateLimiter({

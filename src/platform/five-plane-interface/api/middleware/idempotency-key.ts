@@ -147,20 +147,7 @@ export class IdempotencyKeyMiddleware {
       const existing = await this.storage.get(storageKey);
 
       if (existing && Date.now() < existing.expiresAt) {
-        if (existing.statusCode === 0) {
-          return {
-            allowed: false,
-            isDuplicate: true,
-            requestInFlight: true,
-            error: {
-              statusCode: 409,
-              code: "api.idempotency_request_in_flight",
-              message: `Idempotency-Key '${idempotencyKey}' is already processing another ${existing.method} request.`,
-            },
-          };
-        }
-
-        // Check if the method matches (same key with different method = conflict)
+        // Check if the method matches first (same key with different method = conflict)
         if (existing.method !== method) {
           return {
             allowed: false,
@@ -169,6 +156,19 @@ export class IdempotencyKeyMiddleware {
               statusCode: 409,
               code: "api.idempotency_key_conflict",
               message: `Idempotency-Key '${idempotencyKey}' was already used for a ${existing.method} request.`,
+            },
+          };
+        }
+
+        if (existing.statusCode === 0) {
+          return {
+            allowed: true,
+            isDuplicate: true,
+            requestInFlight: true,
+            error: {
+              statusCode: 409,
+              code: "api.idempotency_request_in_flight",
+              message: `Idempotency-Key '${idempotencyKey}' is already processing another ${existing.method} request.`,
             },
           };
         }

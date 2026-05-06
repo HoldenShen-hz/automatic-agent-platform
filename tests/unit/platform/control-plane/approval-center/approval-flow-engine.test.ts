@@ -241,10 +241,10 @@ test("EscalationManager canEscalate returns false at max depth", () => {
   assert.strictEqual(manager.canEscalate(4, 3), false);
 });
 
-test("EscalationManager createDelegation creates valid delegation", () => {
+test("EscalationManager createDelegation creates valid delegation", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("user1", "user2", "approval_123", 3600000);
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123", 3600000);
 
   assert.ok(delegation);
   assert.strictEqual(delegation.fromApprover, "user1");
@@ -254,19 +254,19 @@ test("EscalationManager createDelegation creates valid delegation", () => {
   assert.strictEqual(delegation.ttlResetCount, 0);
 });
 
-test("EscalationManager createDelegation throws on self-delegation", () => {
+test("EscalationManager createDelegation throws on self-delegation", async () => {
   const manager = new EscalationManager();
 
-  assert.throws(
+  await assert.rejects(
     () => manager.createDelegation("user1", "user1", "approval_123"),
     /Cannot delegate to yourself/,
   );
 });
 
-test("EscalationManager isDelegationExpired detects expired delegation", () => {
+test("EscalationManager isDelegationExpired detects expired delegation", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("user1", "user2", "approval_123", 1); // 1ms TTL
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123", 1); // 1ms TTL
 
   // Wait for expiration
   const start = Date.now();
@@ -277,28 +277,28 @@ test("EscalationManager isDelegationExpired detects expired delegation", () => {
   assert.strictEqual(manager.isDelegationExpired(delegation), true);
 });
 
-test("EscalationManager resetDelegationTtl resets TTL", () => {
+test("EscalationManager resetDelegationTtl resets TTL", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("user1", "user2", "approval_123", 1);
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123", 1);
 
   // Reset TTL
-  const reset = manager.resetDelegationTtl(delegation, 3600000);
+  const reset = await manager.resetDelegationTtl(delegation, 3600000);
 
   assert.strictEqual(reset.ttlResetCount, 1);
   assert.strictEqual(reset.status, DelegationStatus.ACTIVE);
 });
 
-test("EscalationManager resetDelegationTtl throws on max resets", () => {
+test("EscalationManager resetDelegationTtl throws on max resets", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("user1", "user2", "approval_123", 3600000, 1);
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123", 3600000, 1);
 
   // First reset should succeed
-  const updatedDelegation = manager.resetDelegationTtl(delegation, 3600000);
+  const updatedDelegation = await manager.resetDelegationTtl(delegation, 3600000);
 
   // Second reset should throw
-  assert.throws(
+  await assert.rejects(
     () => manager.resetDelegationTtl(updatedDelegation, 3600000),
     /Cannot reset TTL more than/,
   );
@@ -594,7 +594,7 @@ test("ApprovalFlowEngine submitVote returns error for non-pending flow", () => {
   assert.ok(result.error?.includes("not pending"));
 });
 
-test("ApprovalFlowEngine delegateApproval creates delegation", () => {
+test("ApprovalFlowEngine delegateApproval creates delegation", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
@@ -613,7 +613,7 @@ test("ApprovalFlowEngine delegateApproval creates delegation", () => {
     request,
   );
 
-  const result = engine.delegateApproval(flow.flowId, "user1", "user2");
+  const result = await engine.delegateApproval(flow.flowId, "user1", "user2");
 
   assert.strictEqual(result.success, true);
   assert.ok(result.delegation);
@@ -621,7 +621,7 @@ test("ApprovalFlowEngine delegateApproval creates delegation", () => {
   assert.strictEqual(result.delegation!.toApprover, "user2");
 });
 
-test("ApprovalFlowEngine delegateApproval resets TTL on existing delegation", () => {
+test("ApprovalFlowEngine delegateApproval resets TTL on existing delegation", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
@@ -641,10 +641,10 @@ test("ApprovalFlowEngine delegateApproval resets TTL on existing delegation", ()
   );
 
   // First delegation
-  engine.delegateApproval(flow.flowId, "user1", "user2");
+  await engine.delegateApproval(flow.flowId, "user1", "user2");
 
   // Delegate again to reset TTL
-  const result = engine.delegateApproval(flow.flowId, "user1", "user3");
+  const result = await engine.delegateApproval(flow.flowId, "user1", "user3");
 
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.delegation!.toApprover, "user2");

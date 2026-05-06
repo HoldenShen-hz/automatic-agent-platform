@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { OperatorConsoleBackendService } from "../../../../../../src/platform/five-plane-interface/console-backend/index.js";
-import { ValidationError } from "../../../../../../src/platform/contracts/errors.js";
+import { OperatorConsoleBackendService } from "../../../../../src/platform/five-plane-interface/console-backend/index.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 const now = "2026-05-01T00:00:00.000Z";
 

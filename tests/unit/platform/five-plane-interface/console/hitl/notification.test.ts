@@ -11,7 +11,7 @@ import {
   groupByStage,
   type NotificationSeverity,
   type NotificationPriority,
-} from "../../../../../src/platform/five-plane-interface/console/hitl/notification.js";
+} from "../../../../../../src/platform/five-plane-interface/console/hitl/notification.js";
 
 // Minimal HitlQueueItem for testing - only the fields actually used by notification.ts
 function makeQueueItem(overrides: Partial<{

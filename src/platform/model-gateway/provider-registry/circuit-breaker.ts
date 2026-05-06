@@ -203,11 +203,11 @@ export class CircuitBreaker {
 
   /**
    * Get current circuit breaker state.
-   * R22-45 fix: Pure read-only getter - returns actual state without transition side effect.
-   * Use canExecute() to trigger open->half_open transition before execution.
+   * Returns the effective state, accounting for time-based transitions
+   * (e.g., open -> half_open after reset timeout).
    */
   getState(): CircuitBreakerState {
-    return this.state;
+    return this.computeReadableState();
   }
 
   /**

@@ -1,5 +1,5 @@
 import { describe, it, beforeEach, afterEach } from "node:test";
-import assert, { strictEqual, deepStrictEqual, ok, fail } from "node:assert";
+import assert, { strictEqual, deepStrictEqual, ok, fail, notStrictEqual } from "node:assert";
 import {
   IdempotencyKeyMiddleware,
   WRITE_METHODS,
@@ -46,28 +46,28 @@ describe("IdempotencyKeyMiddleware", () => {
   });
 
   describe("check", () => {
-    it("should allow read operations without idempotency key", () => {
-      const result = middleware.check({ method: "GET" });
+    it("should allow read operations without idempotency key", async () => {
+      const result = await middleware.check({ method: "GET" });
       strictEqual(result.allowed, true);
       strictEqual(result.isDuplicate, false);
     });
 
-    it("should allow write operations without idempotency key when not required", () => {
+    it("should allow write operations without idempotency key when not required", async () => {
       const middlewareNoRequired = new IdempotencyKeyMiddleware({ required: false });
-      const result = middlewareNoRequired.check({ method: "POST" });
+      const result = await middlewareNoRequired.check({ method: "POST" });
       strictEqual(result.allowed, true);
       strictEqual(result.isDuplicate, false);
     });
 
-    it("should reject write operations without idempotency key when required", () => {
-      const result = middleware.check({ method: "POST" });
+    it("should reject write operations without idempotency key when required", async () => {
+      const result = await middleware.check({ method: "POST" });
       strictEqual(result.allowed, false);
       strictEqual(result.error?.statusCode, 400);
       strictEqual(result.error?.code, "api.idempotency_key_required");
     });
 
-    it("should allow first write with idempotency key", () => {
-      const result = middleware.check({
+    it("should allow first write with idempotency key", async () => {
+      const result = await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
@@ -75,13 +75,13 @@ describe("IdempotencyKeyMiddleware", () => {
       strictEqual(result.isDuplicate, false);
     });
 
-    it("should detect duplicate with same idempotency key", () => {
-      middleware.check({
+    it("should detect duplicate with same idempotency key", async () => {
+      await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
 
-      const result = middleware.check({
+      const result = await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
@@ -89,19 +89,19 @@ describe("IdempotencyKeyMiddleware", () => {
       strictEqual(result.isDuplicate, true);
     });
 
-    it("should return cached response for duplicate", () => {
-      middleware.check({
+    it("should return cached response for duplicate", async () => {
+      await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
 
-      middleware.record({
+      await middleware.record({
         idempotencyKey: "key-123",
         statusCode: 201,
         responseBody: { id: "123" },
       });
 
-      const result = middleware.check({
+      const result = await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
@@ -109,13 +109,13 @@ describe("IdempotencyKeyMiddleware", () => {
       deepStrictEqual(result.cachedResponse?.body, { id: "123" });
     });
 
-    it("should reject duplicate with different method", () => {
-      middleware.check({
+    it("should reject duplicate with different method", async () => {
+      await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
 
-      const result = middleware.check({
+      const result = await middleware.check({
         method: "PUT",
         idempotencyKey: "key-123",
       });
@@ -124,14 +124,14 @@ describe("IdempotencyKeyMiddleware", () => {
       strictEqual(result.error?.code, "api.idempotency_key_conflict");
     });
 
-    it("should isolate per tenant when perTenant enabled", () => {
-      middleware.check({
+    it("should isolate per tenant when perTenant enabled", async () => {
+      await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
         tenantId: "tenant-a",
       });
 
-      const result = middleware.check({
+      const result = await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
         tenantId: "tenant-b",
@@ -139,16 +139,16 @@ describe("IdempotencyKeyMiddleware", () => {
       strictEqual(result.isDuplicate, false);
     });
 
-    it("should not isolate per tenant when perTenant disabled", () => {
+    it("should not isolate per tenant when perTenant disabled", async () => {
       const middlewareNoTenant = new IdempotencyKeyMiddleware({ perTenant: false });
 
-      middlewareNoTenant.check({
+      await middlewareNoTenant.check({
         method: "POST",
         idempotencyKey: "key-123",
         tenantId: "tenant-a",
       });
 
-      const result = middlewareNoTenant.check({
+      const result = await middlewareNoTenant.check({
         method: "POST",
         idempotencyKey: "key-123",
         tenantId: "tenant-b",
@@ -158,19 +158,19 @@ describe("IdempotencyKeyMiddleware", () => {
   });
 
   describe("record", () => {
-    it("should update entry with response", () => {
-      middleware.check({
+    it("should update entry with response", async () => {
+      await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
 
-      middleware.record({
+      await middleware.record({
         idempotencyKey: "key-123",
         statusCode: 201,
         responseBody: { created: true },
       });
 
-      const result = middleware.check({
+      const result = await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
@@ -179,15 +179,15 @@ describe("IdempotencyKeyMiddleware", () => {
   });
 
   describe("clear", () => {
-    it("should remove entry", () => {
-      middleware.check({
+    it("should remove entry", async () => {
+      await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
 
-      middleware.clear("key-123");
+      await middleware.clear("key-123");
 
-      const result = middleware.check({
+      const result = await middleware.check({
         method: "POST",
         idempotencyKey: "key-123",
       });
@@ -196,9 +196,9 @@ describe("IdempotencyKeyMiddleware", () => {
   });
 
   describe("cleanup", () => {
-    it("should remove expired entries", () => {
+    it("should remove expired entries", async () => {
       const shortTtlMiddleware = new IdempotencyKeyMiddleware({ ttlMs: 1 });
-      shortTtlMiddleware.check({
+      await shortTtlMiddleware.check({
         method: "POST",
         idempotencyKey: "key-short",
       });
@@ -206,9 +206,9 @@ describe("IdempotencyKeyMiddleware", () => {
       // Wait for expiration
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      shortTtlMiddleware.cleanup();
+      await shortTtlMiddleware.cleanup();
 
-      const result = shortTtlMiddleware.check({
+      const result = await shortTtlMiddleware.check({
         method: "POST",
         idempotencyKey: "key-short",
       });
@@ -217,9 +217,9 @@ describe("IdempotencyKeyMiddleware", () => {
   });
 
   describe("clearAll", () => {
-    it("should remove all entries", () => {
-      middleware.check({ method: "POST", idempotencyKey: "key-1" });
-      middleware.check({ method: "PUT", idempotencyKey: "key-2" });
+    it("should remove all entries", async () => {
+      await middleware.check({ method: "POST", idempotencyKey: "key-1" });
+      await middleware.check({ method: "PUT", idempotencyKey: "key-2" });
 
       strictEqual(middleware.size(), 2);
 
@@ -230,11 +230,11 @@ describe("IdempotencyKeyMiddleware", () => {
   });
 
   describe("size", () => {
-    it("should return entry count", () => {
+    it("should return entry count", async () => {
       strictEqual(middleware.size(), 0);
-      middleware.check({ method: "POST", idempotencyKey: "key-1" });
+      await middleware.check({ method: "POST", idempotencyKey: "key-1" });
       strictEqual(middleware.size(), 1);
-      middleware.check({ method: "PUT", idempotencyKey: "key-2" });
+      await middleware.check({ method: "PUT", idempotencyKey: "key-2" });
       strictEqual(middleware.size(), 2);
     });
   });
@@ -292,10 +292,10 @@ describe("buildIdempotencyErrorResponse", () => {
 });
 
 describe("createIdempotencyKeyMiddleware", () => {
-  it("should create middleware with custom config", () => {
+  it("should create middleware with custom config", async () => {
     const middleware = createIdempotencyKeyMiddleware({ ttlMs: 30_000 });
     strictEqual(middleware.isWriteOperation("POST"), true);
-    const result = middleware.check({ method: "POST" });
+    const result = await middleware.check({ method: "POST" });
     strictEqual(result.allowed, false);
   });
 });

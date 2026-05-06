@@ -135,26 +135,26 @@ test("ApprovalFlowEngine flow state tracks escalation triggered", () => {
 test("ApprovalFlowEngine delegateApproval fails for non-existent flow", () => {
   const engine = new ApprovalFlowEngine();
 
-  const result = engine.delegateApproval("nonexistent-flow", "user1", "user2");
+  const result = await engine.delegateApproval("nonexistent-flow", "user1", "user2");
 
   assert.strictEqual(result.success, false);
   assert.ok(result.error?.includes("not found"));
 });
 
-test("ApprovalFlowEngine delegateApproval fails for non-pending flow", () => {
+test("ApprovalFlowEngine delegateApproval fails for non-pending flow", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
   const flow = engine.createFlow(createSinglePartyFlowConfig(), request);
   engine.submitVote(flow.flowId, "admin", VoteType.APPROVE);
 
-  const result = engine.delegateApproval(flow.flowId, "admin", "user2");
+  const result = await engine.delegateApproval(flow.flowId, "admin", "user2");
 
   assert.strictEqual(result.success, false);
   assert.ok(result.error?.includes("not pending"));
 });
 
-test("ApprovalFlowEngine delegateApproval fails when approver cannot delegate", () => {
+test("ApprovalFlowEngine delegateApproval fails when approver cannot delegate", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
@@ -163,19 +163,19 @@ test("ApprovalFlowEngine delegateApproval fails when approver cannot delegate", 
 
   const flow = engine.createFlow(config, request);
 
-  const result = engine.delegateApproval(flow.flowId, "nodelegate", "user2");
+  const result = await engine.delegateApproval(flow.flowId, "nodelegate", "user2");
 
   assert.strictEqual(result.success, false);
   assert.ok(result.error?.includes("cannot delegate"));
 });
 
-test("ApprovalFlowEngine delegateApproval creates new delegation when none exists", () => {
+test("ApprovalFlowEngine delegateApproval creates new delegation when none exists", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
   const flow = engine.createFlow(createSinglePartyFlowConfig(), request);
 
-  const result = engine.delegateApproval(flow.flowId, "admin", "user2");
+  const result = await engine.delegateApproval(flow.flowId, "admin", "user2");
 
   assert.strictEqual(result.success, true);
   assert.ok(result.delegation);
@@ -183,14 +183,14 @@ test("ApprovalFlowEngine delegateApproval creates new delegation when none exist
   assert.strictEqual(result.delegation!.toApprover, "user2");
 });
 
-test("ApprovalFlowEngine delegateApproval with expired delegation fails", () => {
+test("ApprovalFlowEngine delegateApproval with expired delegation fails", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
   const flow = engine.createFlow(createSinglePartyFlowConfig(), request);
 
   // Create a delegation with a very short TTL
-  const delegation = engine.delegateApproval(flow.flowId, "admin", "user2");
+  const delegation = await engine.delegateApproval(flow.flowId, "admin", "user2");
 
   // Since we can't easily expire the delegation in tests,
   // we verify the flow has delegation state

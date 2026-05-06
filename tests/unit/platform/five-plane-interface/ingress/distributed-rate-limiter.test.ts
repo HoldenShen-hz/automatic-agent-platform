@@ -4,7 +4,7 @@ import { test } from "node:test";
 import {
   DistributedRateLimiter,
   type RateLimitCheckResult,
-} from "../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
+} from "../../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
 test("DistributedRateLimiter uses in-memory mode when no Redis config", () => {
   const limiter = new DistributedRateLimiter({});

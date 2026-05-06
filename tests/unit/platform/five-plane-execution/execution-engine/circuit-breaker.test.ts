@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CircuitBreaker, CircuitBreakerOpenError } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/dist_temp/src/platform/model-gateway/provider-registry/circuit-breaker.js";
+import { CircuitBreaker, CircuitBreakerOpenError } from "/Users/holden/Project/automatic_agent/automatic_agent_platform/src/platform/model-gateway/provider-registry/circuit-breaker.js";
 
 test("circuit breaker starts in closed state", () => {
   const cb = new CircuitBreaker({ name: "test-circuit" });
