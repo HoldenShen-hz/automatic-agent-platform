@@ -110,10 +110,13 @@ function createMockStore() {
 }
 
 function createMockDb() {
+  // Initialize HA coordinator for tests that use TransitionService
+  const { cleanup } = initHaCoordinatorForTests();
   return {
     transaction<T>(fn: () => T): T {
       return fn();
     },
+    _haCleanup: cleanup,
   } as unknown as AuthoritativeSqlDatabase;
 }
 
