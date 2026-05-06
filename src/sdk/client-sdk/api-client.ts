@@ -640,6 +640,313 @@ export function unwrapContractEnvelope<TPayload>(
 // §6/§28 Typed event subscription API for client SDK
 
 /**
+ * WebSocket-based EventSubscriptionClient for subscribing to platform events.
+ * Connects to /ws/v1/stream for real-time event delivery with automatic reconnection.
+ */
+export interface SubscriptionHandle {
+  /** Unique subscription ID */
+  readonly subscriptionId: string;
+  /** Event types this subscription is subscribed to */
+  readonly eventTypes: readonly string[];
+  /** Close the subscription and release resources */
+  close(): void;
+}
+
+/**
+ * Event subscription options for EventSubscriptionClient.
+ */
+export interface EventSubscriptionClientOptions {
+  /** WebSocket endpoint URL (e.g., wss://platform.example.com/ws/v1/stream) */
+  webSocketUrl: string;
+  /** Bearer token for authentication via Sec-WebSocket-Protocol header */
+  bearerToken: string;
+  /** Initial event types to subscribe to */
+  eventTypes?: readonly string[];
+  /** Reconnection delay in ms (default 3000) */
+  reconnectDelayMs?: number;
+  /** Maximum reconnection attempts (default 10) */
+  maxReconnectAttempts?: number;
+  /** Called when connection is established */
+  onConnect?: () => void;
+  /** Called when disconnected */
+  onDisconnect?: () => void;
+  /** Called on connection error */
+  onError?: (error: Error) => void;
+}
+
+export class EventSubscriptionClient {
+  private webSocket: WebSocket | null = null;
+  private readonly options: Required<EventSubscriptionClientOptions>;
+  private subscriptionCounter = 0;
+  private subscriptions = new Map<string, {
+    eventTypes: Set<string>;
+    handler: (event: PlatformFactEvent) => void | Promise<void>;
+  }>();
+  private reconnectAttempts = 0;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private shouldReconnect = true;
+  private isIntentionallyClosed = false;
+  private messageQueue: string[] = [];
+
+  constructor(options: EventSubscriptionClientOptions) {
+    if (!options.webSocketUrl?.trim()) {
+      throw new ValidationError("client_sdk.missing_websocket_url", "EventSubscriptionClient requires webSocketUrl.");
+    }
+    if (!options.bearerToken?.trim()) {
+      throw new ValidationError("client_sdk.missing_bearer_token", "EventSubscriptionClient requires bearerToken.");
+    }
+
+    this.options = {
+      webSocketUrl: options.webSocketUrl,
+      bearerToken: options.bearerToken,
+      eventTypes: options.eventTypes ?? [],
+      reconnectDelayMs: options.reconnectDelayMs ?? 3000,
+      maxReconnectAttempts: options.maxReconnectAttempts ?? 10,
+      onConnect: options.onConnect ?? (() => {}),
+      onDisconnect: options.onDisconnect ?? (() => {}),
+      onError: options.onError ?? (() => {}),
+    };
+  }
+
+  /**
+   * Connect to the WebSocket endpoint and optionally subscribe to event types.
+   */
+  async connect(): Promise<void> {
+    return this.doConnect();
+  }
+
+  /**
+   * Subscribe to events with the given handler.
+   * @param eventTypes - Array of event type strings to subscribe to
+   * @param handler - Callback function invoked when matching events arrive
+   * @returns SubscriptionHandle for managing the subscription lifecycle
+   */
+  async subscribe(
+    eventTypes: readonly string[],
+    handler: (event: PlatformFactEvent) => void | Promise<void>,
+  ): Promise<SubscriptionHandle> {
+    const subscriptionId = `sub:${++this.subscriptionCounter}:${Date.now()}`;
+
+    // Store subscription
+    this.subscriptions.set(subscriptionId, {
+      eventTypes: new Set(eventTypes),
+      handler,
+    });
+
+    // If WebSocket is connected, send subscribe message
+    if (this.webSocket?.readyState === 1) {
+      for (const eventType of eventTypes) {
+        const subscribeMsg = JSON.stringify({
+          type: "subscribe",
+          eventType,
+          subscriptionId,
+        });
+        this.webSocket.send(subscribeMsg);
+      }
+    }
+
+    return {
+      subscriptionId,
+      eventTypes,
+      close: () => this.unsubscribe(subscriptionId),
+    };
+  }
+
+  /**
+   * Unsubscribe from events using the subscription handle.
+   * @param handle - The SubscriptionHandle returned from subscribe()
+   */
+  async unsubscribe(handle: SubscriptionHandle | string): Promise<void> {
+    const subscriptionId = typeof handle === "string" ? handle : handle.subscriptionId;
+    const subscription = this.subscriptions.get(subscriptionId);
+    if (!subscription) return;
+
+    // Send unsubscribe messages if connected
+    if (this.webSocket?.readyState === 1) {
+      for (const eventType of subscription.eventTypes) {
+        const unsubscribeMsg = JSON.stringify({
+          type: "unsubscribe",
+          eventType,
+          subscriptionId,
+        });
+        this.webSocket.send(unsubscribeMsg);
+      }
+    }
+
+    this.subscriptions.delete(subscriptionId);
+  }
+
+  /**
+   * Disconnect and clean up all resources.
+   */
+  async disconnect(): Promise<void> {
+    this.shouldReconnect = false;
+    this.isIntentionallyClosed = true;
+    this.clearReconnectTimer();
+    this.closeWebSocket();
+  }
+
+  /**
+   * Check if the client is currently connected.
+   */
+  isConnected(): boolean {
+    return this.webSocket?.readyState === WebSocket.OPEN;
+  }
+
+  private doConnect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Connect to WebSocket with bearer token via Sec-WebSocket-Protocol header
+        // §11/R11-09: Token via header NOT URL query param to prevent exposure in logs
+        this.webSocket = new WebSocket(
+          this.options.webSocketUrl,
+          this.options.bearerToken,
+        );
+
+        this.webSocket.onopen = () => {
+          this.reconnectAttempts = 0;
+          this.isIntentionallyClosed = false;
+          this.options.onConnect();
+
+          // Send initial subscriptions
+          for (const [subId, subscription] of this.subscriptions) {
+            for (const eventType of subscription.eventTypes) {
+              const msg = JSON.stringify({
+                type: "subscribe",
+                eventType,
+                subscriptionId: subId,
+              });
+              this.webSocket!.send(msg);
+            }
+          }
+
+          // Flush queued messages
+          while (this.messageQueue.length > 0) {
+            const msg = this.messageQueue.shift()!;
+            this.webSocket!.send(msg);
+          }
+
+          resolve();
+        };
+
+        this.webSocket.onmessage = (event) => {
+          this.handleMessage(event.data);
+        };
+
+        this.webSocket.onclose = (event) => {
+          this.options.onDisconnect();
+          this.handleClose(event);
+        };
+
+        this.webSocket.onerror = (event) => {
+          const error = new Error(`WebSocket error: ${event.type}`);
+          this.options.onError(error);
+          reject(error);
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private handleMessage(data: string): void {
+    try {
+      const message = JSON.parse(data) as Record<string, unknown>;
+
+      // Handle task_update messages
+      if (message.type === "task_update") {
+        const event = message.event as Record<string, unknown>;
+        const eventCausationId = event.causationId as string | undefined;
+        const eventCorrelationId = event.correlationId as string | undefined;
+
+        // Build platform event object - only include optional properties when defined
+        // This satisfies exactOptionalPropertyTypes: omit when undefined, include when set
+        const platformEvent: PlatformFactEvent = {
+          eventId: String(event.eventId ?? message.eventId ?? ""),
+          runId: String(event.runId ?? message.runId ?? ""),
+          eventType: String(event.eventType ?? message.eventType ?? ""),
+          schemaVersion: Number(event.schemaVersion ?? 1),
+          aggregateType: String(event.aggregateType ?? "task"),
+          aggregateId: String(event.aggregateId ?? message.taskId ?? ""),
+          aggregateSeq: Number(event.aggregateSeq ?? 0),
+          tenantId: String(event.tenantId ?? ""),
+          traceId: String(event.traceId ?? ""),
+          payloadHash: String(event.payloadHash ?? ""),
+          payload: event.payload ?? {},
+          replayBehavior: (event.replayBehavior as "replay_as_fact" | "skip_side_effect" | "simulate" | "forbidden") ?? "replay_as_fact",
+          sourceOfTruth: (event.sourceOfTruth as "platform" | "projection") ?? "platform",
+          occurredAt: String(event.occurredAt ?? event.timestamp ?? new Date().toISOString()),
+          ...(eventCausationId !== undefined && { causationId: eventCausationId }),
+          ...(eventCorrelationId !== undefined && { correlationId: eventCorrelationId }),
+        };
+
+        // Dispatch to all matching subscriptions
+        for (const [subId, subscription] of this.subscriptions) {
+          if (subscription.eventTypes.has(platformEvent.eventType)) {
+            try {
+              const result = subscription.handler(platformEvent);
+              if (result instanceof Promise) {
+                result.catch((err) => {
+                  console.error(`Subscription handler error for ${subId}:`, err);
+                });
+              }
+            } catch (err) {
+              console.error(`Subscription handler error for ${subId}:`, err);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to parse WebSocket message:", error);
+    }
+  }
+
+  private handleClose(event: { wasClean: boolean; code: number; reason: string }): void {
+    if (this.isIntentionallyClosed) {
+      return;
+    }
+
+    if (this.shouldReconnect && this.reconnectAttempts < this.options.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(
+        this.options.reconnectDelayMs * Math.pow(1.5, this.reconnectAttempts - 1),
+        30000,
+      );
+
+      this.reconnectTimer = setTimeout(() => {
+        this.doConnect().catch((error) => {
+          this.options.onError(error);
+        });
+      }, delay);
+    }
+  }
+
+  private closeWebSocket(): void {
+    if (this.webSocket) {
+      // WebSocket.OPEN = 1, WebSocket.CONNECTING = 0
+      if (this.webSocket.readyState === 1 || this.webSocket.readyState === 0) {
+        this.webSocket.close(1000, "Client disconnect");
+      }
+      this.webSocket = null;
+    }
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+}
+
+/**
+ * Create a new EventSubscriptionClient with the given options.
+ */
+export function createEventSubscriptionClient(options: EventSubscriptionClientOptions): EventSubscriptionClient {
+  return new EventSubscriptionClient(options);
+}
+
+/**
  * Event subscription options.
  */
 export interface EventSubscriptionOptions {

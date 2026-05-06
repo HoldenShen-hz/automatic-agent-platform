@@ -1712,32 +1712,62 @@ function assertOapeflirViewEventType(eventType: string): void {
 // Contract Envelope (canonical per §5.5)
 // =============================================================================
 
+/**
+ * R8-19 FIX: ContractEnvelope for inter-plane messages.
+ * All inter-plane messages must carry schemaVersion/commandId/correlationId/signature
+ * per the five-plane boundary contract per §5.5.
+ */
 export interface ContractEnvelope<TPayload = unknown> {
-  readonly version: string;
-  readonly schema: string;
-  readonly payload: TPayload;
+  /** Unique envelope identifier for traceability */
+  readonly envelopeId: string;
+  /** Schema version for contract compatibility */
+  readonly schemaVersion: string;
+  /** Command identifier for request tracking */
+  readonly commandId: string;
+  /** Idempotency key for deduplication */
+  readonly idempotencyKey: string;
+  /** Correlation ID for tracing across plane boundaries */
+  readonly correlationId: string;
+  /** ISO 8601 timestamp when envelope was created */
+  readonly timestamp: string;
+  /** HMAC signature for authenticity verification (HMAC-SHA256) */
   readonly signature: string | null;
+  /** Envelope payload (the actual inter-plane message) */
+  readonly payload: TPayload;
+  /** TTL in milliseconds (null = no expiry) */
   readonly ttl: number | null;
+  /** Additional metadata for envelope routing and context */
+  readonly metadata: Readonly<Record<string, string>>;
 }
 
 export function createContractEnvelope<TPayload>(input: {
   payload: TPayload;
-  version?: string;
-  schema?: string;
+  envelopeId?: string;
+  schemaVersion?: string;
+  commandId?: string;
+  idempotencyKey?: string;
+  correlationId?: string;
+  timestamp?: string;
   signature?: string | null;
   ttl?: number | null;
+  metadata?: Readonly<Record<string, string>>;
 }): ContractEnvelope<TPayload> {
   return {
-    version: input.version ?? CONTRACT_SCHEMA_VERSION,
-    schema: input.schema ?? "canonical",
-    payload: input.payload,
+    envelopeId: input.envelopeId ?? newId("env"),
+    schemaVersion: input.schemaVersion ?? CONTRACT_SCHEMA_VERSION,
+    commandId: input.commandId ?? newId("cmd"),
+    idempotencyKey: input.idempotencyKey ?? newId("idem"),
+    correlationId: input.correlationId ?? newId("corr"),
+    timestamp: input.timestamp ?? nowIso(),
     signature: input.signature ?? null,
+    payload: input.payload,
     ttl: input.ttl ?? null,
+    metadata: input.metadata ?? {},
   };
 }
 
 /**
- * R7-44 FIX: Inter-plane ContractEnvelope signature verification.
+ * R7-44/R8-19 FIX: Inter-plane ContractEnvelope signature verification.
  * Verifies the signature of a ContractEnvelope to ensure authenticity
  * and integrity of cross-plane contract delivery per §5.5.
  */
@@ -1771,11 +1801,11 @@ export function verifyContractEnvelopeSignature<TPayload>(
 
   try {
     // Compute expected signature using HMAC-SHA256
-    // Signature covers: version + schema + payload (stringified)
+    // Signature covers: schemaVersion + commandId + correlationId + timestamp + payload (stringified)
     const payloadString = typeof envelope.payload === "string"
       ? envelope.payload
       : JSON.stringify(envelope.payload);
-    const signatureInput = `${envelope.version}:${envelope.schema}:${payloadString}`;
+    const signatureInput = `${envelope.schemaVersion}:${envelope.commandId}:${envelope.correlationId}:${envelope.timestamp}:${payloadString}`;
     const expectedSignature = createHash("sha256")
       .update(signatureInput)
       .update(secretKey)
@@ -1818,7 +1848,7 @@ export function signContractEnvelope<TPayload>(
   const payloadString = typeof envelope.payload === "string"
     ? envelope.payload
     : JSON.stringify(envelope.payload);
-  const signatureInput = `${envelope.version}:${envelope.schema}:${payloadString}`;
+  const signatureInput = `${envelope.schemaVersion}:${envelope.commandId}:${envelope.correlationId}:${envelope.timestamp}:${payloadString}`;
   const signature = createHash("sha256")
     .update(signatureInput)
     .update(secretKey)

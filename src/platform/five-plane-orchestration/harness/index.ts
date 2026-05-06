@@ -749,7 +749,8 @@ export class HarnessRuntimeService {
     run: HarnessRunRuntimeState,
     input: {
       role: HarnessRole;
-      stage?: string; // R8-21 fix: stage is optional, defaults to "default"
+      nodeId?: string; // R8-21 fix: replaces stage for precise node targeting
+      stage?: string; // Only for semantic phase mapping when nodeId not available
       inputs: Readonly<Record<string, unknown>>;
       outputs: Readonly<Record<string, unknown>>;
       iteration?: number;
@@ -763,7 +764,9 @@ export class HarnessRuntimeService {
       nextAction?: string;
     },
   ): HarnessRunRuntimeState {
-    const effectiveStage = input.stage ?? "default";
+    // R8-21 fix: nodeId takes precedence over stage for node routing
+    const effectiveNodeId = input.nodeId;
+    const effectiveStage = input.nodeId ? undefined : (input.stage ?? "default");
     if (run.decision != null && run.decision.action !== "accept" && run.feedbackEnvelope == null) {
       throw new Error("harness.feedback.required_for_non_accept_decision");
     }
@@ -782,13 +785,14 @@ export class HarnessRuntimeService {
     const step: HarnessStep = {
       stepId: newId("harness_step"),
       role: input.role,
-      stage: effectiveStage,
+      stage: effectiveStage ?? "default",
       iteration,
-      semanticPhase: mapHarnessStepToOapeflirPhase(input.role, effectiveStage),
+      semanticPhase: mapHarnessStepToOapeflirPhase(input.role, effectiveStage ?? "default"),
       inputs: input.inputs,
       outputs: input.outputs,
       startedAt,
       completedAt,
+      ...(effectiveNodeId != null ? { nodeId: effectiveNodeId } : {}),
       ...(input.nodeRunId != null ? { nodeRunRefs: [input.nodeRunId] as const } : {}),
       ...(input.rationale != null ? { rationale: input.rationale } : {}),
       ...(input.evidenceRefs != null ? { evidenceRefs: input.evidenceRefs } : {}),

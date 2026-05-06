@@ -430,29 +430,36 @@ test("platform-contracts: createContractEnvelope wraps payload correctly", () =>
     payload: { taskId: "task_123", status: "completed" },
   });
 
-  assert.equal(envelope.version, CONTRACT_SCHEMA_VERSION);
-  assert.equal(envelope.schema, "canonical");
+  assert.equal(envelope.schemaVersion, CONTRACT_SCHEMA_VERSION);
+  assert.ok(envelope.envelopeId.startsWith("env_"));
+  assert.ok(envelope.commandId.startsWith("cmd_"));
+  assert.ok(envelope.idempotencyKey.startsWith("idem_"));
+  assert.ok(envelope.correlationId.startsWith("corr_"));
+  assert.ok(envelope.timestamp);
   assert.deepEqual(envelope.payload, { taskId: "task_123", status: "completed" });
   assert.equal(envelope.signature, null);
   assert.equal(envelope.ttl, null);
+  assert.deepEqual(envelope.metadata, {});
 });
 
-test("platform-contracts: createContractEnvelope accepts custom version", () => {
+test("platform-contracts: createContractEnvelope accepts custom schemaVersion", () => {
   const envelope = createContractEnvelope({
     payload: { data: "test" },
-    version: "v5.0",
+    schemaVersion: "v5.0",
   });
 
-  assert.equal(envelope.version, "v5.0");
+  assert.equal(envelope.schemaVersion, "v5.0");
 });
 
-test("platform-contracts: createContractEnvelope accepts custom schema", () => {
+test("platform-contracts: createContractEnvelope accepts custom commandId and correlationId", () => {
   const envelope = createContractEnvelope({
     payload: { data: "test" },
-    schema: "custom-schema",
+    commandId: "custom_cmd",
+    correlationId: "custom_corr",
   });
 
-  assert.equal(envelope.schema, "custom-schema");
+  assert.equal(envelope.commandId, "custom_cmd");
+  assert.equal(envelope.correlationId, "custom_corr");
 });
 
 test("platform-contracts: createContractEnvelope accepts signature", () => {

@@ -48,6 +48,8 @@ export interface HarnessSdkAppendStepInput {
   readonly role: HarnessRole;
   readonly nodeRunId: string;
   readonly planGraphId: string;
+  /** R8-21 fix: nodeId replaces stage string routing for precise node targeting */
+  readonly nodeId: string;
   readonly graphVersion?: number;
   readonly phase?: string;
   readonly inputs: Readonly<Record<string, unknown>>;
@@ -385,13 +387,15 @@ export class HarnessSdk {
   /**
    * Append a step to a harness run with proper nodeRunId/planGraphId routing.
    * Per §5.3, produces NodeAttemptReceipt for tracking execution.
+   * R8-21 fix: Uses planGraphId + nodeId routing instead of stage string routing.
    */
   public appendStep(run: HarnessRun, input: HarnessSdkAppendStepInput): HarnessRun {
-    // R8-21 FIX: nodeRunId is the primary routing mechanism per §5.3
-    // nodeRunId is passed directly to the runtime, not stuffed into inputs bag
-    // stage is only passed when phase is explicitly provided for semantic phase mapping
+    // R8-21 fix: planGraphId + nodeId routing replaces stage string routing
+    // nodeId specifies which plan graph node this step belongs to
+    // stage (via phase) is only used for semantic phase mapping when explicitly provided
     const runtimeInput: {
       role: HarnessRole;
+      nodeId?: string;
       stage?: string;
       inputs: Readonly<Record<string, unknown>>;
       outputs: Readonly<Record<string, unknown>>;
@@ -402,6 +406,10 @@ export class HarnessSdk {
       inputs: input.inputs,
       outputs: input.outputs,
     };
+    // R8-21 fix: Use nodeId for precise plan graph node routing
+    if (input.nodeId) {
+      runtimeInput.nodeId = input.nodeId;
+    }
     // Only pass stage when phase is explicitly provided for semantic phase mapping
     if (input.phase !== undefined) {
       runtimeInput.stage = input.phase;
@@ -417,6 +425,23 @@ export class HarnessSdk {
     const updated = this.runtime.appendStep(runtimeRun, runtimeInput);
     this.runtime.persistRun(updated);
     return toCanonicalHarnessRun(updated);
+  }
+
+  /**
+   * Append a step with explicit plan graph routing.
+   * R8-21 fix: Provides explicit planGraphId + nodeId routing for multi-plan-graph scenarios.
+   */
+  public appendStepWithPlanGraph(
+    run: HarnessRun,
+    planGraphId: string,
+    nodeId: string,
+    input: Omit<HarnessSdkAppendStepInput, "planGraphId" | "nodeId">,
+  ): HarnessRun {
+    return this.appendStep(run, {
+      ...input,
+      planGraphId,
+      nodeId,
+    });
   }
 
   /**
