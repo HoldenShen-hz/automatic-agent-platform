@@ -105,13 +105,13 @@ test("ConfigVersioningService.getVersionHistory returns all versions in order", 
   assert.strictEqual(history[2]!.versionId, v3.versionId);
 });
 
-test("ConfigVersioningService.diffVersions computes correct diff", () => {
+test("ConfigVersioningService.diffVersions computes correct diff", async () => {
   const service = new ConfigVersioningService();
 
-  const v1 = service.createVersion("runtime.timeout", "platform", null, { value: 1000, name: "old" }, "user", "v1");
-  const v2 = service.createVersion("runtime.timeout", "platform", null, { value: 2000, name: "new" }, "user", "v2");
+  const v1 = await service.createVersion("runtime.timeout", "platform", null, { value: 1000, name: "old" }, "user", "v1");
+  const v2 = await service.createVersion("runtime.timeout", "platform", null, { value: 2000, name: "new" }, "user", "v2");
 
-  const diff = service.diffVersions(v1.versionId, v2.versionId);
+  const diff = await service.diffVersions(v1.versionId, v2.versionId);
 
   assert.ok(diff);
   assert.strictEqual(diff!.versionA, v1.versionId);
