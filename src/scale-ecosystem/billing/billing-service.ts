@@ -440,6 +440,7 @@ export class BillingService {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           actualAmount: ledgerEntry.amountUsd,
+          expectedVersion: reservedBudget.ledger.version,
           context: {
             tenantId: input.budgetControl!.tenantId,
             traceId: input.budgetControl!.traceId ?? newId("trace"),
@@ -458,6 +459,7 @@ export class BillingService {
           ledger: reservedBudget.ledger,
           reservation: reservedBudget.reservation,
           reasonCode: "budget.billing_usage_record_failed",
+          expectedVersion: reservedBudget.ledger.version,
           context: {
             tenantId: input.budgetControl!.tenantId,
             traceId: input.budgetControl!.traceId ?? newId("trace"),

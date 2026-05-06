@@ -89,13 +89,13 @@ describe("createContractVersionInterceptor", () => {
 });
 
 describe("createAuthInterceptor - Token Refresh (Issue #2071)", () => {
-  it("adds Bearer token from string", async () => {
-    const interceptor = createAuthInterceptor("static-token-123");
+  it("rejects static bearer token strings and requires a dynamic resolver", async () => {
+    const interceptor = createAuthInterceptor("static-token-123" as never);
     const request = createMockRequest();
 
-    const result = await interceptor.onRequest!(request);
-
-    expect(result.headers.get("authorization")).toBe("Bearer static-token-123");
+    await expect(interceptor.onRequest!(request)).rejects.toThrow(
+      "auth.dynamic_token_required:Static bearer tokens are not supported",
+    );
   });
 
   it("adds token from TokenResolver with getAccessToken", async () => {

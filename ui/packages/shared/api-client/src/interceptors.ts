@@ -43,20 +43,16 @@ export function createContractVersionInterceptor(supportedVersions: string[] = [
 
 /**
  * Creates an auth interceptor with dynamic token resolution per §5.4.4.
- * @param tokenOrResolver - Either a static token string (deprecated), a TokenManager-like object,
- *                         or a function that returns the current access token asynchronously.
+ * @param tokenOrResolver - A TokenManager-like object that resolves the current access token.
  *
  * P1 FIX: Use dynamic token resolution via getAccessToken() in onRequest.
- * Previously, string tokens were captured in closure at creation time and never updated.
- * With TokenManager-like objects, we call getAccessToken() fresh per request so refresh is respected.
+ * Static bearer strings are rejected so production callers cannot bypass refresh-aware auth.
  */
 export function createAuthInterceptor(
-  tokenOrResolver: string | TokenResolver | null,
+  tokenOrResolver: TokenResolver | null,
 ): RestClientInterceptor {
   return {
     async onRequest(request) {
-      // P1 FIX: Resolve token fresh on each request - not captured in closure.
-      // This ensures token refresh is respected even when interceptor is reused.
       const token = await resolveToken(tokenOrResolver);
       if (token !== null) {
         request.headers.set("authorization", `Bearer ${token}`);
@@ -64,7 +60,7 @@ export function createAuthInterceptor(
       return request;
     },
     async onResponse<T>(response: RestClientResponse<T>): Promise<RestClientResponse<T>> {
-      if (response.status === 401 && tokenOrResolver !== null && typeof tokenOrResolver !== "string") {
+      if (response.status === 401 && tokenOrResolver !== null) {
         if (typeof tokenOrResolver.handleUnauthorized === "function") {
           await tokenOrResolver.handleUnauthorized();
         }
@@ -81,24 +77,21 @@ type TokenResolver = {
   handleUnauthorized?(): Promise<void> | void;
 };
 
-async function resolveToken(tokenOrResolver: string | TokenResolver | null): Promise<string | null> {
-  if (tokenOrResolver === null) {
+async function resolveToken(tokenOrResolver: TokenResolver | null): Promise<string | null> {
+  const resolver = tokenOrResolver as TokenResolver | string | null;
+  if (resolver === null) {
     return null;
   }
-  if (typeof tokenOrResolver === "string") {
-    // Deprecated: static token string - log warning in development
-    if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
-      console.warn("[AuthInterceptor] Static token string is deprecated. Use TokenManager for auto-refresh.");
-    }
-    return tokenOrResolver;
+  if (typeof resolver === "string") {
+    throw new Error("auth.dynamic_token_required:Static bearer tokens are not supported");
   }
   if (
-    typeof tokenOrResolver.getAccessTokenWithRefresh === "function"
-    && tokenOrResolver.shouldRefresh?.() === true
+    typeof resolver.getAccessTokenWithRefresh === "function"
+    && resolver.shouldRefresh?.() === true
   ) {
-    return tokenOrResolver.getAccessTokenWithRefresh();
+    return resolver.getAccessTokenWithRefresh();
   }
-  return tokenOrResolver.getAccessToken();
+  return resolver.getAccessToken();
 }
 
 export function createTenantInterceptor(tenantId: string | null): RestClientInterceptor {

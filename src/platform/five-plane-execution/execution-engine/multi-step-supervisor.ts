@@ -251,6 +251,8 @@ export async function executeStepLoop(
         attempt: executionAttemptCounter,
         timeoutMs: step.timeoutMs,
         budgetUsdLimit: stepBudgetUsd,
+        budgetReservationId: null,
+        budgetLedgerId: null,
         // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
         // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
         requiresApproval: approvalResult.requiresApproval ? 1 : 0,

@@ -420,6 +420,8 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       attempt: 1,
       timeoutMs: step.timeoutMs,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
       // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
       requiresApproval: approvalResult.requiresApproval ? 1 : 0,

@@ -499,6 +499,7 @@ export class BudgetExecutionSessionManager {
       ledger: session.ledger,
       reservation: session.reservation,
       actualAmount: Number(actualCostUsd.toFixed(4)),
+      expectedVersion: session.ledger.version,
       ...(evidenceRefs != null
         ? {
             evidenceRefs: evidenceRefs.map((evidenceRef) => ({
@@ -578,6 +579,7 @@ export class BudgetExecutionSessionManager {
       ledger: session.ledger,
       reservation: session.reservation,
       reasonCode: reasonCode ?? "budget_session.execution_failed",
+      expectedVersion: session.ledger.version,
       context: {
         tenantId: session.ledger.tenantId,
         traceId: session.harnessRunId,

@@ -755,6 +755,7 @@ export class OapeflirLoopService {
         // R5-13: Execute with subgraph/child-run support if parentContext provided
         // R9-14 fix: OAPEFLIR should be projection/view only. Do NOT call executeViaBridge here.
         // Caller must provide stepOutputs from execution plane. This removes direct execution coupling.
+        // R5-13 fix: Pass parentContext to execution context for subgraph/child-run tracking
         const stepOutputs = await this.runStage<DualChannelStepOutput[]>("execute", async () => {
           if (currentInput.stepOutputs == null) {
             throw new Error("oapeflir.execute_violation: stepOutputs must be provided by caller - OAPEFLIR does not execute");
@@ -763,6 +764,14 @@ export class OapeflirLoopService {
         }, {
           taskId: currentInput.taskId,
           planId: plan.planId,
+          // R5-13: Include parentContext in stage metadata for subgraph tracking
+          ...(currentInput.parentContext?.parentPlanGraphBundleId != null
+            ? {
+                parentPlanGraphBundleId: currentInput.parentContext.parentPlanGraphBundleId,
+                parentNodeId: currentInput.parentContext.parentNodeId,
+                childRunId: currentInput.parentContext.childRunId,
+              }
+            : {}),
         });
         timeline.record("execute", "completed", stepOutputs[stepOutputs.length - 1]?.stepId ?? plan.planId, null, "Executed the plan or consumed supplied step outputs for the task.");
         this.stageFsm.recordStageCompletion("execute");

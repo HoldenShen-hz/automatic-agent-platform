@@ -119,6 +119,8 @@ function seedExecution(
       attempt: input.attempt ?? 1,
       timeoutMs: 1_500,
       budgetUsdLimit: 1,
+      budgetReservationId: null,
+      budgetLedgerId: null,
       requiresApproval: input.requiresApproval ?? 0,
       sandboxMode: "workspace_write",
       allowedToolsJson: JSON.stringify(["analysis"]),
