@@ -225,15 +225,15 @@ test("BasicPlanner includes retry policy for moderate complexity", async () => {
   const result = await plugin.suggestWorkflow(createMockAssessment("moderate", "medium"));
 
   assert.ok(result != null);
-  assert.deepEqual(result.overrides[1].retryPolicy, { maxRetries: 1, backoffMs: 500 });
+  assert.deepEqual(result.overrides[1]!.retryPolicy, { maxRetries: 1, backoffMs: 500 });
 });
 
-test("BasicPlanner includes retry policy for high complexity", async () => {
+test("BasicPlanner includes retry policy for complex complexity", async () => {
   const plugin = createBasicPlannerPlugin();
-  const result = await plugin.suggestWorkflow(createMockAssessment("high", "high"));
+  const result = await plugin.suggestWorkflow(createMockAssessment("complex", "high"));
 
   assert.ok(result != null);
-  assert.deepEqual(result.overrides[2].retryPolicy, { maxRetries: 2, backoffMs: 1000 });
+  assert.deepEqual(result.overrides[2]!.retryPolicy, { maxRetries: 2, backoffMs: 1000 });
 });
 
 test("BasicPlanner includes rationale in response", async () => {
@@ -248,13 +248,13 @@ test("BasicPlanner includes rationale in response", async () => {
 test("BasicPlanner lifecycle methods work", async () => {
   const plugin = createBasicPlannerPlugin();
 
-  const initResult = await plugin.initialize();
+  const initResult = await plugin.initialize!();
   assert.equal(initResult, undefined);
 
-  const healthResult = await plugin.healthCheck();
+  const healthResult = await plugin.healthCheck!();
   assert.equal(healthResult, true);
 
-  const shutdownResult = await plugin.shutdown();
+  const shutdownResult = await plugin.shutdown!();
   assert.equal(shutdownResult, undefined);
 });
 

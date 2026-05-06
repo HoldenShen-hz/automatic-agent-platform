@@ -139,6 +139,10 @@ export class WebSocketBridge {
   private static readonly MAX_SUBSCRIPTIONS_PER_CLIENT = 100;
   /** #2355: Max WebSocket message size to prevent GB-level frame OOM DoS (1MB) */
   private static readonly MAX_MESSAGE_SIZE_BYTES = 1_000_000;
+  /** R25-08: Heartbeat interval in ms (30 seconds) for server-initiated liveness check */
+  private static readonly HEARTBEAT_INTERVAL_MS = 30_000;
+  /** R25-08: Connection timeout in ms (90 seconds = 3 missed heartbeats) */
+  private static readonly CONNECTION_TIMEOUT_MS = 90_000;
 
   constructor(
     server: Server,

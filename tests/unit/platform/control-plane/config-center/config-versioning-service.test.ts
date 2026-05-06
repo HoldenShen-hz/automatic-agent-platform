@@ -209,15 +209,15 @@ test("ConfigVersioningService.getVersionContent returns null for non-existent ve
   assert.strictEqual(content, null);
 });
 
-test("ConfigVersioningService.pruneVersions removes old versions", () => {
+test("ConfigVersioningService.pruneVersions removes old versions", async () => {
   const service = new ConfigVersioningService({ maxVersionsPerPath: 3 });
 
-  service.createVersion("runtime.timeout", "platform", null, { value: 2 }, "user", "v2");
-  service.createVersion("runtime.timeout", "platform", null, { value: 3 }, "user", "v3");
-  service.createVersion("runtime.timeout", "platform", null, { value: 4 }, "user", "v4");
-  service.createVersion("runtime.timeout", "platform", null, { value: 5 }, "user", "v5");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 2 }, "user", "v2");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 3 }, "user", "v3");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 4 }, "user", "v4");
+  await service.createVersion("runtime.timeout", "platform", null, { value: 5 }, "user", "v5");
 
-  const history = service.getVersionHistory("runtime.timeout", "platform", null);
+  const history = await service.getVersionHistory("runtime.timeout", "platform", null);
 
   assert.strictEqual(history.length, 3);
   assert.deepStrictEqual(history[0]!.content, { value: 3 });
