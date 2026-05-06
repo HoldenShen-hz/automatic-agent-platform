@@ -672,6 +672,9 @@ export class UnifiedChatProvider {
     if (request.traceId) {
       (result as unknown as Record<string, unknown>).traceId = request.traceId;
     }
+    if (request.spanId) {
+      (result as unknown as Record<string, unknown>).spanId = request.spanId;
+    }
     // R22-4 FIX: Propagate tenantId/principalId/policyOutcome for audit per §11.1-11.2
     if (request.tenantId) {
       (result as unknown as Record<string, unknown>).tenantId = request.tenantId;
