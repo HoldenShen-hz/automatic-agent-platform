@@ -5,12 +5,15 @@ import {
   createHarnessDecision as createCanonicalHarnessDecision,
   type ArtifactRef,
   type DecisionInputBundle as CanonicalDecisionInputBundle,
+  type HarnessAuditTrail,
+  type HarnessBudgetEnvelope,
   type HarnessDecision as CanonicalHarnessDecision,
   type HarnessRun as CanonicalHarnessRun,
   type HarnessRunStatus as CanonicalHarnessRunStatus,
   type PlanGraphBundle,
   type PolicyFinding,
   type RiskClass,
+  type RiskPreview,
 } from "../../../platform/contracts/executable-contracts/index.js";
 import type { EvidenceRecord } from "../../../platform/contracts/types/platform-contracts.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../../platform/contracts/types/platform-contracts.js";
@@ -472,9 +475,11 @@ export interface HarnessRunRuntimeState {
  * This extracts only the canonical fields for external consumption.
  */
 export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalHarnessRun {
+  const riskLevel = (state.riskLevel as RiskClass) ?? "medium";
   const base: CanonicalHarnessRun = {
     harnessRunId: state.harnessRunId,
     tenantId: state.tenantId,
+    orgId: state.tenantId,
     domainId: state.domainId,
     confirmedTaskSpecId: state.confirmedTaskSpecId,
     requestEnvelopeId: state.requestEnvelopeId,
@@ -489,11 +494,14 @@ export function toCanonicalHarnessRun(state: HarnessRunRuntimeState): CanonicalH
     updatedAt: state.updatedAt,
     // R18-02 fix: Map traceId/riskLevel/ownership/auditRefs with defaults per §45.3
     traceId: state.traceId ?? `trace:${state.harnessRunId}`,
-    riskLevel: (state.riskLevel as RiskClass) ?? "medium",
+    riskLevel,
+    riskProfile: { riskClass: riskLevel, reasons: [`risk_level:${riskLevel}`] },
     ownership: state.ownership ?? { ownerId: state.tenantId, ownerType: "harness" },
     auditRefs: state.auditRefs ?? [],
+    auditTrail: { auditRefs: state.auditRefs ?? [], evidenceRefs: [] },
+    budgetEnvelope: { budgetLedgerId: state.budgetLedgerId, currency: "credits" },
     ...(state.leaseId != null ? { leaseId: state.leaseId } : {}),
-    ...(state.fencingToken != null ? { fencingToken: state.fencingToken } : {}),
+    fencingToken: state.fencingToken ?? `fence:${state.harnessRunId}:${state.currentSeq}`,
   };
   if (state.completedAt != null) {
     return { ...base, terminalAt: state.completedAt };
@@ -1678,9 +1686,11 @@ export class HarnessRuntimeService {
     if (run.status === toStatus) {
       return run;
     }
+    const riskLevel = (run.riskLevel as RiskClass) ?? "medium";
     const baseAggregate: CanonicalHarnessRun = {
       harnessRunId: run.harnessRunId ?? run.runId,
       tenantId: run.tenantId ?? "tenant:local",
+      orgId: run.tenantId ?? "tenant:local",
       domainId: run.domainId,
       confirmedTaskSpecId: run.confirmedTaskSpecId ?? `confirmed_task_spec:${run.taskId}`,
       requestEnvelopeId: run.requestEnvelopeId ?? `request_envelope:${run.taskId}`,
@@ -1695,11 +1705,14 @@ export class HarnessRuntimeService {
       updatedAt: run.updatedAt ?? run.createdAt,
       // R18-02 fix: Map traceId/riskLevel/ownership/auditRefs with defaults per §45.3
       traceId: run.traceId ?? `trace:${run.harnessRunId ?? run.runId}`,
-      riskLevel: (run.riskLevel as RiskClass) ?? "medium",
+      riskLevel,
+      riskProfile: { riskClass: riskLevel, reasons: [`risk_level:${riskLevel}`] },
       ownership: run.ownership ?? { ownerId: run.tenantId, ownerType: "harness" },
       auditRefs: run.auditRefs ?? [],
+      auditTrail: { auditRefs: run.auditRefs ?? [], evidenceRefs: [] },
+      budgetEnvelope: { budgetLedgerId: run.budgetLedgerId ?? `${run.runId}:compat_budget_ledger`, currency: "credits" },
       ...(run.leaseId != null ? { leaseId: run.leaseId } : {}),
-      ...(run.fencingToken != null ? { fencingToken: run.fencingToken } : {}),
+      fencingToken: run.fencingToken ?? `fence:${run.harnessRunId ?? run.runId}:${run.currentSeq ?? 0}`,
     };
     if (run.completedAt != null) {
       (baseAggregate as { terminalAt?: string }).terminalAt = run.completedAt;

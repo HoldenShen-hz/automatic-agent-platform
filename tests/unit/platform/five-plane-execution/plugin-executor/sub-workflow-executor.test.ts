@@ -20,7 +20,7 @@ function createTestContext(overrides: Partial<SubWorkflowContextInput> = {}): Su
     taskId: "task_123",
     tenantId: null,
     correlationId: "corr_abc",
-    sandboxTier: "standard",
+    sandboxTier: "read_only",
     ...overrides,
   };
 }

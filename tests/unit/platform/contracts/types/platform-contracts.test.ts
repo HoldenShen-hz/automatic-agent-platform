@@ -11,7 +11,6 @@ import {
   createEvidenceRecord,
   createProjectionUpdate,
   type PlatformPrincipal,
-  type RequestEnvelope,
   type ControlDirective,
   type ControlDirectiveType,
   type SideEffectExpectation,

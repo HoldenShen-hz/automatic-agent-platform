@@ -20,6 +20,8 @@ import {
   createTaskDraft,
   createConfirmedTaskSpec,
   createRequestEnvelopeFromConfirmedTask,
+  createHarnessRun,
+  createNodeRun,
   createNodeAttempt,
   createAttemptLineage,
   createSideEffectRecord,
@@ -472,6 +474,38 @@ test("executable-contracts: createRequestEnvelopeFromConfirmedTask accepts optio
   assert.equal(envelope.priority, 5);
   assert.deepEqual(envelope.policyContext, { key: "value" });
   assert.deepEqual(envelope.artifactRefs, [artifact]);
+});
+
+test("executable-contracts: createHarnessRun backfills canonical governance and budget fields", () => {
+  const run = createHarnessRun({
+    tenantId: "tenant-1",
+    confirmedTaskSpecId: "ctspec-1",
+    requestEnvelopeId: "req-1",
+    requestHash: "hash-1",
+    constraintPackRef: "constraint-pack-1",
+    versionLockId: "vlock-1",
+    budgetLedgerId: "bledger-1",
+  });
+
+  assert.equal(run.orgId, "tenant-1");
+  assert.equal(run.riskProfile.riskClass, "medium");
+  assert.deepEqual(run.auditTrail, { auditRefs: [], evidenceRefs: [] });
+  assert.equal(run.budgetEnvelope.budgetLedgerId, "bledger-1");
+  assert.equal(run.budgetEnvelope.currency, "credits");
+  assert.equal(run.fencingToken, `fence:${run.harnessRunId}:0`);
+});
+
+test("executable-contracts: createNodeRun backfills canonical side effect and fencing fields", () => {
+  const nodeRun = createNodeRun({
+    harnessRunId: "hrun-1",
+    planGraphBundleId: "pgb-1",
+    graphVersion: 1,
+    nodeId: "node-1",
+  });
+
+  assert.deepEqual(nodeRun.sideEffects, []);
+  assert.deepEqual(nodeRun.compensation, []);
+  assert.equal(nodeRun.fencingToken, `fence:${nodeRun.nodeRunId}:0`);
 });
 
 // =============================================================================
@@ -1258,6 +1292,8 @@ test("executable-contracts: createPlatformFactEvent creates valid event", () => 
   assert.equal(event.eventType, "platform.task.created");
   assert.equal(event.aggregateType, "Task");
   assert.equal(event.aggregateSeq, 1);
+  assert.equal(event.correlationId, "run-1");
+  assert.equal(event.source, "platform-runtime");
   assert.equal(event.sourceOfTruth, "platform");
   assert.equal(event.schemaOwner, "platform-runtime");
 });

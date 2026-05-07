@@ -29,7 +29,7 @@ function createTestContext(overrides: Partial<BrowserExecutionContext> = {}): Br
     tenantId: null,
     correlationId: "corr_789",
     sessionId: "session_abc",
-    sandboxTier: "standard",
+    sandboxTier: "read_only",
     ...overrides,
   };
 }

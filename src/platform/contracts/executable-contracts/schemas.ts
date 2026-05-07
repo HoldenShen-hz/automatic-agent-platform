@@ -137,6 +137,25 @@ export const RequestEnvelopeSchema = z.object({
   policyContext: JsonValueSchema,
   artifactRefs: z.array(ArtifactRefSchema),
   submittedAt: z.string().min(1),
+  sourcePlane: z.string().min(1).optional(),
+  targetPlane: z.string().min(1).optional(),
+});
+
+export const HarnessBudgetEnvelopeSchema = z.object({
+  budgetLedgerId: z.string().min(1),
+  currency: z.string().min(1),
+  maxSteps: z.number().int().positive().optional(),
+  maxCost: z.number().nonnegative().optional(),
+  maxDurationMs: z.number().int().positive().optional(),
+  maxModelTokens: z.number().int().positive().optional(),
+  maxContextTokens: z.number().int().positive().optional(),
+  maxOutputTokens: z.number().int().positive().optional(),
+});
+
+export const HarnessAuditTrailSchema = z.object({
+  auditRefs: z.array(z.string()),
+  evidenceRefs: z.array(ArtifactRefSchema),
+  lastEventId: z.string().min(1).optional(),
 });
 
 export const HarnessRunStatusSchema = z.enum([
@@ -158,6 +177,16 @@ export const HarnessRunStatusSchema = z.enum([
 export const HarnessRunSchema = z.object({
   harnessRunId: z.string().min(1),
   tenantId: z.string().min(1),
+  orgId: z.string().min(1),
+  traceId: z.string().min(1),
+  riskLevel: RiskClassSchema,
+  riskProfile: RiskPreviewSchema,
+  ownership: z.object({
+    ownerId: z.string().min(1),
+    ownerType: z.string().min(1),
+  }),
+  auditRefs: z.array(z.string()),
+  auditTrail: HarnessAuditTrailSchema,
   domainId: z.string().min(1),
   confirmedTaskSpecId: z.string().min(1),
   requestEnvelopeId: z.string().min(1),
@@ -167,11 +196,14 @@ export const HarnessRunSchema = z.object({
   versionLockId: z.string().min(1),
   planGraphBundleId: z.string().optional(),
   budgetLedgerId: z.string().min(1),
+  budgetEnvelope: HarnessBudgetEnvelopeSchema,
   currentSeq: z.number().int().nonnegative(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
   terminalAt: z.string().optional(),
   terminalReason: z.string().optional(),
+  leaseId: z.string().optional(),
+  fencingToken: z.string().min(1),
 });
 
 export const PlanNodeTypeSchema = z.enum(["tool", "llm", "hitl_wait", "subgraph", "evaluator", "router", "compensation"]);
@@ -308,8 +340,10 @@ export const NodeRunSchema = z.object({
   nodeId: z.string().min(1),
   status: NodeRunStatusSchema,
   attemptCount: z.number().int().nonnegative(),
+  sideEffects: z.array(z.string()),
+  compensation: z.array(z.string()),
   leaseId: z.string().optional(),
-  fencingToken: z.string().optional(),
+  fencingToken: z.string().min(1),
   currentSeq: z.number().int().nonnegative(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
@@ -560,6 +594,8 @@ export const EventEnvelopeSchema = z.object({
 
 export const PlatformFactEventSchema = EventEnvelopeSchema.extend({
   eventType: z.string().regex(/^platform\./),
+  source: z.string().min(1),
+  correlationId: z.string().min(1),
 });
 
 export const OapeflirViewEventSchema = EventEnvelopeSchema.extend({

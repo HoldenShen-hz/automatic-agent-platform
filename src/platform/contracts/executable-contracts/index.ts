@@ -230,6 +230,23 @@ export interface RequestEnvelope {
   readonly targetPlane?: string;
 }
 
+export interface HarnessBudgetEnvelope {
+  readonly budgetLedgerId: string;
+  readonly currency: string;
+  readonly maxSteps?: number;
+  readonly maxCost?: number;
+  readonly maxDurationMs?: number;
+  readonly maxModelTokens?: number;
+  readonly maxContextTokens?: number;
+  readonly maxOutputTokens?: number;
+}
+
+export interface HarnessAuditTrail {
+  readonly auditRefs: readonly string[];
+  readonly evidenceRefs: readonly ArtifactRef[];
+  readonly lastEventId?: string;
+}
+
 export type HarnessRunStatus =
   | "created"
   | "admitted"
@@ -250,10 +267,13 @@ export const HARNESS_RUN_TERMINAL_STATUSES = ["completed", "failed", "aborted"] 
 export interface HarnessRun {
   readonly harnessRunId: string;
   readonly tenantId: string;
+  readonly orgId: string;
   readonly traceId: string;
   readonly riskLevel: RiskClass;
+  readonly riskProfile: RiskPreview;
   readonly ownership: Readonly<{ ownerId: string; ownerType: string }>;
   readonly auditRefs: readonly string[];
+  readonly auditTrail: HarnessAuditTrail;
   readonly domainId: string;
   readonly confirmedTaskSpecId: string;
   readonly requestEnvelopeId: string;
@@ -263,13 +283,14 @@ export interface HarnessRun {
   readonly versionLockId: string;
   readonly planGraphBundleId?: string;
   readonly budgetLedgerId: string;
+  readonly budgetEnvelope: HarnessBudgetEnvelope;
   readonly currentSeq: number;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly terminalAt?: string;
   readonly terminalReason?: string;
   readonly leaseId?: string;
-  readonly fencingToken?: string;
+  readonly fencingToken: string;
 }
 
 export type PlanNodeType =
@@ -424,8 +445,10 @@ export interface NodeRun {
   readonly nodeId: string;
   readonly status: NodeRunStatus;
   readonly attemptCount: number;
+  readonly sideEffects: readonly string[];
+  readonly compensation: readonly string[];
   readonly leaseId?: string;
-  readonly fencingToken?: string;
+  readonly fencingToken: string;
   readonly currentSeq: number;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -708,6 +731,8 @@ export type EventSourceOfTruth = "platform" | "projection";
 
 export interface PlatformFactEvent<TPayload extends JsonValue = JsonValue> extends EventEnvelope<TPayload> {
   readonly eventType: `platform.${string}`;
+  readonly source: string;
+  readonly correlationId: string;
 }
 
 export interface OapeflirViewEvent<TPayload extends JsonValue = JsonValue> extends EventEnvelope<TPayload> {
@@ -971,10 +996,13 @@ export function createRequestEnvelopeFromConfirmedTask(input: {
 
 export function createHarnessRun(input: {
   tenantId: string;
+  orgId?: string;
   traceId?: string;
   riskLevel?: RiskClass;
+  riskProfile?: RiskPreview;
   ownership?: Readonly<{ ownerId: string; ownerType: string }>;
   auditRefs?: readonly string[];
+  auditTrail?: HarnessAuditTrail;
   domainId?: string;
   confirmedTaskSpecId: string;
   requestEnvelopeId: string;
@@ -982,6 +1010,7 @@ export function createHarnessRun(input: {
   constraintPackRef: string;
   versionLockId: string;
   budgetLedgerId: string;
+  budgetEnvelope?: Partial<HarnessBudgetEnvelope>;
   harnessRunId?: string;
   status?: HarnessRunStatus;
   planGraphBundleId?: string;
@@ -995,6 +1024,7 @@ export function createHarnessRun(input: {
 }): HarnessRun {
   const timestamp = input.createdAt ?? nowIso();
   const harnessRunId = input.harnessRunId ?? newId("hrun");
+  const riskLevel = input.riskLevel ?? "medium";
   const domainId = resolveDomainBindingId({
     ...(input.domainId != null && input.domainId.trim().length > 0 ? { explicit: input.domainId } : {}),
     refCandidate: input.constraintPackRef,
@@ -1004,10 +1034,13 @@ export function createHarnessRun(input: {
   return {
     harnessRunId,
     tenantId: input.tenantId,
+    orgId: input.orgId ?? input.tenantId,
     traceId: input.traceId ?? `trace:${harnessRunId}`,
-    riskLevel: input.riskLevel ?? "medium",
+    riskLevel,
+    riskProfile: input.riskProfile ?? { riskClass: riskLevel, reasons: [`risk_level:${riskLevel}`] },
     ownership: input.ownership ?? { ownerId: input.tenantId, ownerType: "tenant" },
     auditRefs: input.auditRefs ?? [],
+    auditTrail: input.auditTrail ?? { auditRefs: input.auditRefs ?? [], evidenceRefs: [] },
     domainId,
     confirmedTaskSpecId: input.confirmedTaskSpecId,
     requestEnvelopeId: input.requestEnvelopeId,
@@ -1017,8 +1050,18 @@ export function createHarnessRun(input: {
     versionLockId: input.versionLockId,
     ...(input.planGraphBundleId != null ? { planGraphBundleId: input.planGraphBundleId } : {}),
     budgetLedgerId: input.budgetLedgerId,
+    budgetEnvelope: {
+      budgetLedgerId: input.budgetEnvelope?.budgetLedgerId ?? input.budgetLedgerId,
+      currency: input.budgetEnvelope?.currency ?? "credits",
+      ...(input.budgetEnvelope?.maxSteps != null ? { maxSteps: input.budgetEnvelope.maxSteps } : {}),
+      ...(input.budgetEnvelope?.maxCost != null ? { maxCost: input.budgetEnvelope.maxCost } : {}),
+      ...(input.budgetEnvelope?.maxDurationMs != null ? { maxDurationMs: input.budgetEnvelope.maxDurationMs } : {}),
+      ...(input.budgetEnvelope?.maxModelTokens != null ? { maxModelTokens: input.budgetEnvelope.maxModelTokens } : {}),
+      ...(input.budgetEnvelope?.maxContextTokens != null ? { maxContextTokens: input.budgetEnvelope.maxContextTokens } : {}),
+      ...(input.budgetEnvelope?.maxOutputTokens != null ? { maxOutputTokens: input.budgetEnvelope.maxOutputTokens } : {}),
+    },
     ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
-    ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
+    fencingToken: input.fencingToken ?? `fence:${harnessRunId}:${input.currentSeq ?? 0}`,
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
@@ -1129,6 +1172,8 @@ export function createNodeRun(input: {
   nodeRunId?: string;
   status?: NodeRunStatus;
   attemptCount?: number;
+  sideEffects?: readonly string[];
+  compensation?: readonly string[];
   leaseId?: string;
   fencingToken?: string;
   currentSeq?: number;
@@ -1136,16 +1181,19 @@ export function createNodeRun(input: {
   updatedAt?: string;
 }): NodeRun {
   const timestamp = input.createdAt ?? nowIso();
+  const nodeRunId = input.nodeRunId ?? newId("nrun");
   return {
-    nodeRunId: input.nodeRunId ?? newId("nrun"),
+    nodeRunId,
     harnessRunId: input.harnessRunId,
     planGraphBundleId: input.planGraphBundleId,
     graphVersion: input.graphVersion,
     nodeId: input.nodeId,
     status: input.status ?? "created",
     attemptCount: input.attemptCount ?? 0,
+    sideEffects: input.sideEffects ?? [],
+    compensation: input.compensation ?? [],
     ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
-    ...(input.fencingToken != null ? { fencingToken: input.fencingToken } : {}),
+    fencingToken: input.fencingToken ?? `fence:${nodeRunId}:${input.currentSeq ?? 0}`,
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,
@@ -1575,6 +1623,7 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
   runId: string;
   traceId: string;
   payload: TPayload;
+  source?: string;
   eventId?: string;
   schemaVersion?: number;
   causationId?: string;
@@ -1597,10 +1646,11 @@ export function createPlatformFactEvent<TPayload extends JsonValue>(input: {
     tenantId: input.tenantId,
     traceId: input.traceId,
     ...(input.causationId != null ? { causationId: input.causationId } : {}),
-    ...(input.correlationId != null ? { correlationId: input.correlationId } : {}),
+    correlationId: input.correlationId ?? input.runId,
     payloadHash: input.payloadHash ?? newId("payloadhash"),
     payload: input.payload,
     replayBehavior: input.replayBehavior ?? "replay_as_fact",
+    source: input.source ?? "platform-runtime",
     sourceOfTruth: "platform",
     schemaOwner: input.schemaOwner ?? "platform-runtime",
     consumerContractTests: input.consumerContractTests ?? [],

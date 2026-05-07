@@ -825,6 +825,8 @@ test("RequestEnvelopeSchema accepts valid envelope", () => {
     domainId: "coding",
     priority: 0,
     submittedAt: "2026-04-01T00:00:00.000Z",
+    sourcePlane: "P2",
+    targetPlane: "P4",
   };
   const result = RequestEnvelopeSchema.safeParse(valid);
   assert.equal(result.success, true, `RequestEnvelope should be valid: ${JSON.stringify(result.error?.issues)}`);
@@ -880,6 +882,13 @@ test("HarnessRunSchema accepts valid harness run", () => {
   const valid = {
     harnessRunId: "hrun_123",
     tenantId: "tenant_456",
+    orgId: "org_456",
+    traceId: "trace_456",
+    riskLevel: "medium",
+    riskProfile: createValidRiskPreview(),
+    ownership: { ownerId: "owner_1", ownerType: "principal" },
+    auditRefs: [],
+    auditTrail: { auditRefs: [], evidenceRefs: [] },
     confirmedTaskSpecId: "ctspec_789",
     requestEnvelopeId: "req_env_abc",
     requestHash: "hash_def",
@@ -887,10 +896,16 @@ test("HarnessRunSchema accepts valid harness run", () => {
     constraintPackRef: "constraint-pack-1",
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
+    budgetEnvelope: {
+      budgetLedgerId: "bledger_uvw",
+      currency: "USD",
+      maxCost: 100,
+    },
     currentSeq: 0,
     domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    fencingToken: "fence_hrun_123_0",
   };
   const result = HarnessRunSchema.safeParse(valid);
   assert.equal(result.success, true, `HarnessRun should be valid: ${JSON.stringify(result.error?.issues)}`);
@@ -916,6 +931,13 @@ test("HarnessRunSchema accepts all valid statuses", () => {
     const valid = {
       harnessRunId: "hrun_123",
       tenantId: "tenant_456",
+      orgId: "org_456",
+      traceId: "trace_456",
+      riskLevel: "medium",
+      riskProfile: createValidRiskPreview(),
+      ownership: { ownerId: "owner_1", ownerType: "principal" },
+      auditRefs: [],
+      auditTrail: { auditRefs: [], evidenceRefs: [] },
       confirmedTaskSpecId: "ctspec_789",
       requestEnvelopeId: "req_env_abc",
       requestHash: "hash_def",
@@ -923,10 +945,15 @@ test("HarnessRunSchema accepts all valid statuses", () => {
       constraintPackRef: "constraint-pack-1",
       versionLockId: "vlock_xyz",
       budgetLedgerId: "bledger_uvw",
+      budgetEnvelope: {
+        budgetLedgerId: "bledger_uvw",
+        currency: "USD",
+      },
       currentSeq: 0,
       domainId: "coding",
       createdAt: "2026-04-01T00:00:00.000Z",
       updatedAt: "2026-04-01T00:00:00.000Z",
+      fencingToken: "fence_hrun_123_0",
     };
     const result = HarnessRunSchema.safeParse(valid);
     assert.equal(result.success, true, `Status '${status}' should be valid`);
@@ -937,6 +964,13 @@ test("HarnessRunSchema allows optional terminal fields", () => {
   const valid = {
     harnessRunId: "hrun_123",
     tenantId: "tenant_456",
+    orgId: "org_456",
+    traceId: "trace_456",
+    riskLevel: "high",
+    riskProfile: { riskClass: "high", reasons: ["requires approval"] },
+    ownership: { ownerId: "owner_1", ownerType: "principal" },
+    auditRefs: ["audit-1"],
+    auditTrail: { auditRefs: ["audit-1"], evidenceRefs: [] },
     confirmedTaskSpecId: "ctspec_789",
     requestEnvelopeId: "req_env_abc",
     requestHash: "hash_def",
@@ -944,12 +978,18 @@ test("HarnessRunSchema allows optional terminal fields", () => {
     constraintPackRef: "constraint-pack-1",
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
+    budgetEnvelope: {
+      budgetLedgerId: "bledger_uvw",
+      currency: "USD",
+      maxCost: 100,
+    },
     currentSeq: 42,
     domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T01:00:00.000Z",
     terminalAt: "2026-04-01T01:30:00.000Z",
     terminalReason: "Execution timed out",
+    fencingToken: "fence_hrun_123_42",
   };
   const result = HarnessRunSchema.safeParse(valid);
   assert.equal(result.success, true);
@@ -959,6 +999,13 @@ test("HarnessRunSchema rejects negative currentSeq", () => {
   const invalid = {
     harnessRunId: "hrun_123",
     tenantId: "tenant_456",
+    orgId: "org_456",
+    traceId: "trace_456",
+    riskLevel: "medium",
+    riskProfile: createValidRiskPreview(),
+    ownership: { ownerId: "owner_1", ownerType: "principal" },
+    auditRefs: [],
+    auditTrail: { auditRefs: [], evidenceRefs: [] },
     confirmedTaskSpecId: "ctspec_789",
     requestEnvelopeId: "req_env_abc",
     requestHash: "hash_def",
@@ -966,10 +1013,15 @@ test("HarnessRunSchema rejects negative currentSeq", () => {
     constraintPackRef: "constraint-pack-1",
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
+    budgetEnvelope: {
+      budgetLedgerId: "bledger_uvw",
+      currency: "USD",
+    },
     currentSeq: -1,
     domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    fencingToken: "fence_hrun_123_bad",
   };
   const result = HarnessRunSchema.safeParse(invalid);
   assert.equal(result.success, false);
@@ -1166,6 +1218,9 @@ test("NodeRunSchema accepts valid node run", () => {
     nodeId: "node_abc",
     status: "created",
     attemptCount: 0,
+    sideEffects: [],
+    compensation: [],
+    fencingToken: "fence_nrun_123_0",
     currentSeq: 0,
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
@@ -1200,6 +1255,9 @@ test("NodeRunSchema accepts all valid statuses", () => {
       nodeId: "node_abc",
       status,
       attemptCount: 0,
+      sideEffects: [],
+      compensation: [],
+      fencingToken: "fence_nrun_123_0",
       currentSeq: 0,
       createdAt: "2026-04-01T00:00:00.000Z",
       updatedAt: "2026-04-01T00:00:00.000Z",
@@ -1209,7 +1267,7 @@ test("NodeRunSchema accepts all valid statuses", () => {
   }
 });
 
-test("NodeRunSchema allows optional leaseId and fencingToken", () => {
+test("NodeRunSchema accepts lease metadata and lifecycle refs", () => {
   const valid = {
     nodeRunId: "nrun_123",
     harnessRunId: "hrun_456",
@@ -1218,6 +1276,8 @@ test("NodeRunSchema allows optional leaseId and fencingToken", () => {
     nodeId: "node_abc",
     status: "leased",
     attemptCount: 0,
+    sideEffects: ["se_1"],
+    compensation: ["comp_1"],
     currentSeq: 0,
     leaseId: "lease_xyz",
     fencingToken: "fence_uvw",
@@ -2000,6 +2060,8 @@ test("PlatformFactEventSchema requires platform.* event type", () => {
     aggregateSeq: 1,
     tenantId: "tenant_abc",
     traceId: "trace_def",
+    correlationId: "run_456",
+    source: "platform-runtime",
     payloadHash: "sha256:hash123",
     payload: {},
     replayBehavior: "replay_as_fact",
@@ -2020,6 +2082,8 @@ test("PlatformFactEventSchema rejects non-platform event type", () => {
     aggregateSeq: 1,
     tenantId: "tenant_abc",
     traceId: "trace_def",
+    correlationId: "run_456",
+    source: "platform-runtime",
     payloadHash: "sha256:hash123",
     payload: {},
     replayBehavior: "replay_as_fact",
@@ -2410,6 +2474,13 @@ test("CONTRACT_ZOD_SCHEMAS schemas can parse their corresponding factory-created
   const harnessRunData = {
     harnessRunId: "hrun_123",
     tenantId: "tenant_456",
+    orgId: "org_456",
+    traceId: "trace_456",
+    riskLevel: "medium" as const,
+    riskProfile: riskPreview,
+    ownership: { ownerId: "owner_1", ownerType: "principal" },
+    auditRefs: [],
+    auditTrail: { auditRefs: [], evidenceRefs: [] },
     confirmedTaskSpecId: "ctspec_789",
     requestEnvelopeId: "req_env_abc",
     requestHash: "hash_def",
@@ -2417,10 +2488,16 @@ test("CONTRACT_ZOD_SCHEMAS schemas can parse their corresponding factory-created
     constraintPackRef: "constraint-pack-1",
     versionLockId: "vlock_xyz",
     budgetLedgerId: "bledger_uvw",
+    budgetEnvelope: {
+      budgetLedgerId: "bledger_uvw",
+      currency: "USD",
+      maxCost: 100,
+    },
     currentSeq: 0,
     domainId: "coding",
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",
+    fencingToken: "fence_hrun_123_0",
   };
   const harnessRunResult = CONTRACT_ZOD_SCHEMAS.HarnessRun.safeParse(harnessRunData);
   assert.equal(harnessRunResult.success, true, `HarnessRun should parse: ${JSON.stringify(harnessRunResult.error?.issues)}`);
@@ -2434,6 +2511,9 @@ test("CONTRACT_ZOD_SCHEMAS schemas can parse their corresponding factory-created
     nodeId: "node_abc",
     status: "created" as const,
     attemptCount: 0,
+    sideEffects: [],
+    compensation: [],
+    fencingToken: "fence_nrun_123_0",
     currentSeq: 0,
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",

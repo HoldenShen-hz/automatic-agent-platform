@@ -28,7 +28,7 @@ export {
   type StateCommand,
   type StateCommandAction as StateCommandType,
 } from "../state-command/index.js";
-export type { SideEffectRecord } from "../executable-contracts/index.js";
+export type { RequestEnvelope, SideEffectRecord } from "../executable-contracts/index.js";
 
 // =============================================================================
 // Platform-Level Contract Types
@@ -60,8 +60,6 @@ export interface RequestEnvelopeLegacy<TPayload = unknown> {
   readonly payload: TPayload;
   readonly metadata: Readonly<Record<string, string>>;
 }
-
-export type RequestEnvelope<TPayload = unknown> = RequestEnvelopeLegacy<TPayload>;
 
 /**
  * @deprecated SideEffectExpectation is deprecated per §5.3.
