@@ -463,3 +463,92 @@ export function createContextTruncationReport(
     timestamp: new Date().toISOString(),
   };
 }
+
+/**
+ * Performs LRU eviction from the working (runtime) layer with ContextTruncationReport.
+ * §29.2 R8-18: "Facts cannot be silently discarded, compression must include loss report"
+ *
+ * This function handles working layer memory eviction where the LRU strategy is applied.
+ * It identifies candidates for eviction and generates a mandatory truncation report.
+ *
+ * @param records - Current memory records in the working layer
+ * @param maxWorkingSize - Maximum number of records allowed in working layer
+ * @returns Object containing the eviction report and list of evicted record IDs
+ */
+export function evictFromWorkingLayer(
+  records: MemoryRecord[],
+  maxWorkingSize: number,
+): { report: ContextTruncationReport; evictedRecordIds: string[] } {
+  if (records.length <= maxWorkingSize) {
+    // No eviction needed
+    return {
+      report: createContextTruncationReport("runtime", [], "lru_eviction"),
+      evictedRecordIds: [],
+    };
+  }
+
+  // Sort by eviction priority (LRU = lowest priority = evict first)
+  const sortedRecords = [...records].sort(
+    (a, b) => getEvictionPriority(a) - getEvictionPriority(b),
+  );
+
+  // Select records to evict (keep the highest priority ones)
+  const recordsToEvict = sortedRecords.slice(0, records.length - maxWorkingSize);
+
+  // Generate the mandatory ContextTruncationReport
+  const report = createContextTruncationReport("runtime", recordsToEvict, "lru_eviction");
+
+  // Augment the report with working layer specific details per §29.2
+  const workingLayerRecords = recordsToEvict.map((record) => ({
+    recordId: record.id,
+    scope: record.scope,
+    key: record.id,
+    createdAt: record.createdAt,
+    lastAccessedAt: record.lastAccessedAt ?? null,
+    ttlMs: getLayerTtlConfig("runtime")?.defaultTtlMs ?? 60_000,
+    priority: getEvictionPriority(record),
+    qualityScore: record.qualityScore ?? null,
+    importanceScore: record.importanceScore ?? null,
+    // Working layer specific: indicate recency at time of eviction
+    ageMs: Date.now() - new Date(record.createdAt).getTime(),
+  }));
+
+  const augmentedReport: ContextTruncationReport & {
+    readonly impactMetrics: {
+      readonly contextQualityBefore: number;
+      readonly contextQualityAfter: number;
+      readonly oldestRetainedAgeMs: number | null;
+      readonly evictionStrategy: "lru";
+    };
+  } = {
+    ...report,
+    evictedRecords: workingLayerRecords as readonly EvictedMemoryRecord[],
+    impactMetrics: {
+      contextQualityBefore: calculateContextQuality(records),
+      contextQualityAfter: calculateContextQuality(records.filter((r) => !recordsToEvict.some((e) => e.id === r.id))),
+      oldestRetainedAgeMs:
+        records.length > maxWorkingSize
+          ? Math.min(...records.filter((r) => !recordsToEvict.some((e) => e.id === r.id)).map((r) => Date.now() - new Date(r.lastAccessedAt ?? r.createdAt).getTime()))
+          : null,
+      evictionStrategy: "lru",
+    },
+  };
+
+  return {
+    report: augmentedReport as ContextTruncationReport,
+    evictedRecordIds: recordsToEvict.map((r) => r.id),
+  };
+}
+
+/**
+ * Calculates a simple context quality metric for records.
+ * Used to demonstrate impact of eviction on context quality per §29.2.
+ *
+ * @param records - Memory records to evaluate
+ * @returns Quality score 0-1
+ */
+function calculateContextQuality(records: MemoryRecord[]): number {
+  if (records.length === 0) return 0;
+  const qualityScores = records.map((r) => r.qualityScore ?? 0.5);
+  return qualityScores.reduce((sum, q) => sum + q, 0) / qualityScores.length;
+}

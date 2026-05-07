@@ -83,17 +83,16 @@ export class DelegationManagerService {
   private readonly governanceService: DelegationGovernanceService;
   private readonly auditService: DelegationAuditService;
   private readonly defaultTimeout: number;
-  // R9-06: delegationStore and chainStore now default to repository when provided
-  // Only use in-memory Maps as fallback when no repository is available
+  // R9-06: Cache maps populated from repository - repository is the authoritative store
+  // These are caches only, populated on init from repository and kept in sync
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
   private readonly delegationRootStore: Map<string, string>;
-  // R17-13: Persistence layer - if provided, delegations survive restarts
-  // R9-06: When provided, repository is the primary store (source of truth)
-  private readonly delegationRepository: DelegationRepository | null = null;
-  private readonly eventRepository: DelegationEventRepository | null = null;
-  // R9-06: Flag to indicate if we're using repository as primary store
-  private readonly useRepositoryAsPrimaryStore: boolean = false;
+  // R9-06: Injected delegation repository - the authoritative persistent store
+  private readonly delegationRepository: DelegationRepository;
+  private readonly eventRepository: DelegationEventRepository | null;
+  // R9-06: Always use repository when available (injected repositories are always truthy)
+  private readonly useRepositoryAsPrimaryStore: boolean = true;
   // C-11: TTL-based eviction to prevent memory leaks (only used when no repository)
   private readonly MAX_ENTRIES = 1000;
   private readonly ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -113,21 +112,22 @@ export class DelegationManagerService {
     this.auditService = options.auditService ?? delegationAuditService;
     this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
 
-    // R9-06: Determine primary store based on repository availability
-    this.delegationRepository = delegationRepository ?? null;
+    // R9-06: Repository is the authoritative store when provided
+    // If not provided, fall back to in-memory mode (for backward compatibility)
+    this.delegationRepository = delegationRepository!;
     this.eventRepository = eventRepository ?? null;
     this.useRepositoryAsPrimaryStore = this.delegationRepository !== null;
 
-    // R9-06: Only initialize in-memory stores as fallback when no repository
-    // When repository is available, these are initialized empty and serve as cache
+    // R9-06: Initialize in-memory caches - populated from repository on init
     this.delegationStore = new Map();
     this.chainStore = new Map();
     this.delegationRootStore = new Map();
 
     // R9-06: Hydrate active delegations from repository to survive process restarts
+    // This MUST complete before the service is ready to handle requests
     if (this.delegationRepository) {
       this.hydrateFromRepository().catch((err) => {
-        // Log but don't fail startup - in-memory mode still works
+        // Log but don't fail startup - in-memory mode still works as fallback
         console.error("Failed to hydrate delegations from repository:", err);
       });
     }
@@ -962,6 +962,22 @@ export class DelegationManagerService {
       data_class: spec.dataClass ?? "delegation",
     };
 
+    // R9-06: Build the full delegation chain from root to this delegation
+    // delegationChain stores [rootAgentId, ..., parentAgentId, childAgentId]
+    // This enables getDelegationChain to find all delegations in a chain
+    let delegationChain: readonly string[] = [delegation.parentAgentId, delegation.childAgentId];
+    if (this.delegationRepository && parent.activeDelegations.length > 0) {
+      // Find the parent's delegation to extend its chain
+      const parentDelegationId = parent.activeDelegations.at(-1);
+      if (parentDelegationId) {
+        const parentDelegation = await this.delegationRepository.findById(parentDelegationId);
+        if (parentDelegation && parentDelegation.delegationChain.length > 0) {
+          // Extend parent's chain with new child
+          delegationChain = [...parentDelegation.delegationChain, delegation.childAgentId];
+        }
+      }
+    }
+
     // R9-06: When repository is available as primary store, write to repository first
     // then update in-memory cache. When no repository, use in-memory as primary store.
     if (this.delegationRepository) {
@@ -969,7 +985,7 @@ export class DelegationManagerService {
         delegationId: delegation.delegationId,
         parentAgentId: delegation.parentAgentId,
         childAgentId: delegation.childAgentId,
-        delegationChain: [delegation.parentAgentId, delegation.childAgentId],
+        delegationChain,
         depth: delegation.depth,
         expiresAt: delegation.expiresAt,
         status: delegation.status,
@@ -1035,10 +1051,23 @@ export class DelegationManagerService {
     if (nextStatus === "completed") {
       delegation.completedAt = nowIso();
     }
-    // R17-13: Persist status change to repository for durability
+    // R9-06: Update BOTH repository AND in-memory cache to keep them in sync
+    // Repository is authoritative for persistence; in-memory cache must reflect current state
     if (this.delegationRepository) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       this.delegationRepository.updateStatus(delegation.delegationId, nextStatus);
+    }
+    // R9-06: For terminal states, remove from in-memory cache to prevent memory leaks.
+    // Terminal delegations (completed/failed/cancelled/expired/timed_out) are persisted in repository
+    // and can be fetched from repository if needed. This ensures the in-memory cache only holds active delegations.
+    const terminalStatuses: readonly DelegationStatus[] = ["completed", "failed", "cancelled", "expired", "timed_out"];
+    if (terminalStatuses.includes(nextStatus)) {
+      this.delegationStore.delete(delegation.delegationId);
+      // R9-06: Also clean up chain-related entries for this delegation
+      this.delegationRootStore.delete(delegation.delegationId);
+    } else {
+      // R9-06: Update in-memory cache for non-terminal states
+      this.delegationStore.set(delegation.delegationId, delegation);
     }
   }
 

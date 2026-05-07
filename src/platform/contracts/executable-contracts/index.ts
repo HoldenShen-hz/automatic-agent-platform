@@ -597,7 +597,7 @@ export interface BudgetLedger {
   readonly reservedAmount: number;
   readonly settledAmount: number;
   readonly releasedAmount: number;
-  readonly status: "open" | "soft_cap_reached" | "hard_cap_reached" | "closed";
+  readonly status: "open" | "soft_cap_reached" | "hard_cap_reached" | "closed" | "settling" | "reserving" | "releasing";
   readonly version: number;
 }
 

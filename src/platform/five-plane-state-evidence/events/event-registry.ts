@@ -46,6 +46,17 @@ interface RawEventSchemaDefinition {
 }
 
 /**
+ * Backward compatibility alias mapping from legacy event names to canonical platform.* events.
+ * Used to ensure legacy producers continue working while migration to canonical names occurs.
+ */
+export const LEGACY_TO_CANONICAL_EVENT_ALIASES: Record<string, string> = {
+  "task:status_changed": "platform.harness_run.status_changed",
+  "workflow:step_completed": "platform.node_run.completed",
+  "division:completed": "platform.harness_run.completed",
+  "division:failed": "platform.harness_run.aborted",
+};
+
+/**
  * Registry of all event schemas in the system.
  *
  * Tier 1 events (must have reliable delivery and ack):
@@ -1464,37 +1475,52 @@ export const RUNTIME_EVENT_REPLAY_METADATA: Record<string, EventReplayMetadata> 
 };
 
 /**
+ * Resolves a legacy event type to its canonical equivalent.
+ * Returns the original type if no alias exists.
+ * @param type - The event type to resolve
+ * @returns The canonical event type or original if no alias
+ */
+export function resolveCanonicalEventType(type: string): string {
+  return LEGACY_TO_CANONICAL_EVENT_ALIASES[type] ?? type;
+}
+
+/**
  * Checks if an event type has a registered schema.
+ * Also checks legacy aliases for backward compatibility.
  * @param type - The event type to check
  * @returns True if the event type is registered
  */
 export function hasEventSchema(type: string): boolean {
-  return type in EVENT_SCHEMA_REGISTRY || type in RUNTIME_EVENT_REPLAY_METADATA;
+  // Check direct registration first
+  if (type in EVENT_SCHEMA_REGISTRY || type in RUNTIME_EVENT_REPLAY_METADATA) {
+    return true;
+  }
+  // Check legacy alias
+  const canonical = LEGACY_TO_CANONICAL_EVENT_ALIASES[type];
+  if (canonical != null) {
+    return canonical in EVENT_SCHEMA_REGISTRY || canonical in RUNTIME_EVENT_REPLAY_METADATA;
+  }
+  return false;
 }
 
 /**
  * Gets the registered consumers for an event type.
+ * Resolves legacy event types to their canonical equivalents via LEGACY_TO_CANONICAL_EVENT_ALIASES.
  * Returns empty array if event type is not found.
- * @param type - The event type to get consumers for
- * @returns Array of consumer IDs
- */
-/**
- * Gets the registered consumers for an event type.
- * §174-2034 FIX: Wrapped getEventSchema call in try-catch to prevent crashes
- * when schema validation fails for unknown runtime event types. Previously
- * threw ValidationError which propagated up and crashed the caller; now returns
- * empty array gracefully.
  *
  * @param type - The event type to get consumers for
  * @returns Array of consumer IDs
  */
 export function getRegisteredConsumers(type: string): readonly string[] {
-  if (type in EVENT_SCHEMA_REGISTRY) {
-    return EVENT_SCHEMA_REGISTRY[type as KnownEventType].consumers;
+  // Resolve legacy aliases to canonical event types
+  const resolvedType = resolveCanonicalEventType(type);
+
+  if (resolvedType in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[resolvedType as KnownEventType].consumers;
   }
-  if (type in RUNTIME_EVENT_REPLAY_METADATA) {
+  if (resolvedType in RUNTIME_EVENT_REPLAY_METADATA) {
     try {
-      return getEventSchema(type).consumers;
+      return getEventSchema(resolvedType).consumers;
     } catch {
       // Schema validation failed for this runtime event type - return empty
       // rather than crashing the caller.
@@ -1506,20 +1532,24 @@ export function getRegisteredConsumers(type: string): readonly string[] {
 
 /**
  * Gets the full event schema for an event type.
+ * Resolves legacy event types to their canonical equivalents via LEGACY_TO_CANONICAL_EVENT_ALIASES.
  * @param type - The event type to get the schema for
  * @returns The event schema definition
  * @throws Error if the schema is not found
  */
 export function getEventSchema(type: string): EventSchemaDefinition {
-  if (type in EVENT_SCHEMA_REGISTRY) {
-    return EVENT_SCHEMA_REGISTRY[type as KnownEventType];
+  // Resolve legacy aliases to canonical event types
+  const resolvedType = resolveCanonicalEventType(type);
+
+  if (resolvedType in EVENT_SCHEMA_REGISTRY) {
+    return EVENT_SCHEMA_REGISTRY[resolvedType as KnownEventType];
   }
-  const metadata = RUNTIME_EVENT_REPLAY_METADATA[type];
+  const metadata = RUNTIME_EVENT_REPLAY_METADATA[resolvedType];
   if (metadata != null) {
     // R16-30 FIX: Use getRequiredConsumers() from event-types.ts to get the proper
     // consumers instead of hard-coded values. This ensures consistency with
     // REQUIRED_CONSUMERS_BY_EVENT_TYPE defined in event-types.ts
-    const requiredConsumers = getRequiredConsumers(type);
+    const requiredConsumers = getRequiredConsumers(resolvedType);
     const consumers = requiredConsumers.length > 0
       ? requiredConsumers
       : metadata.sourceOfTruth === "platform"
@@ -1527,15 +1557,15 @@ export function getEventSchema(type: string): EventSchemaDefinition {
         : ["oapeflir_projection"];
 
     return {
-      type,
-      tier: type.startsWith("platform.") || type.startsWith("oapeflir.") ? "tier_1" : "tier_2",
+      type: resolvedType,
+      tier: resolvedType.startsWith("platform.") || resolvedType.startsWith("oapeflir.") ? "tier_1" : "tier_2",
       producer: metadata.schemaOwner,
       consumers,
-      payloadSchemaRef: buildPayloadSchemaRef(type),
+      payloadSchemaRef: buildPayloadSchemaRef(resolvedType),
       compatibilityPolicy: "backward_compatible_additive",
     };
   }
-  if (!hasEventSchema(type)) {
+  if (!hasEventSchema(resolvedType)) {
     throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
       details: { eventType: type },
     });

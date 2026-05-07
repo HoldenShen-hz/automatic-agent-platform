@@ -91,7 +91,7 @@ export interface LoadedDivisionDefinition {
   triggers: string[];
   /** ID of the default workflow for this division */
   defaultWorkflowId: string;
-  /** ID of the orchestration workflow (if any) for multi-step requests */
+  /** ID of the orchestration workflow (if any) for this division */
   orchestrationWorkflowId: string | null;
   /** All roles defined in this division */
   roles: DivisionRoleDefinition[];
@@ -101,7 +101,70 @@ export interface LoadedDivisionDefinition {
   rootPath: string;
   /** R19-15: Resource quotas for this division */
   quotas?: readonly DivisionResourceQuota[];
+  // §37: DomainDescriptor structured hierarchy
+  /** Domain descriptor containing core domain information */
+  domainDescriptor?: DomainDescriptor;
+  /** Risk profile for this domain */
+  riskProfile?: DomainRiskProfile;
+  /** Evaluation specification for this domain */
+  evalSpec?: DomainEvalSpec;
 }
+
+/**
+ * §37: DomainDescriptor - Core domain information per vertical business domain.
+ */
+export interface DomainDescriptor {
+  /** Unique domain identifier */
+  domainId: string;
+  /** Owner organization node ID */
+  ownerOrgNodeId: string;
+  /** Primary entities this domain operates on */
+  primaryEntities: string[];
+  /** Recipe archetype for this domain */
+  recipeArchetype: string;
+  /** Lifecycle state */
+  lifecycleState: DomainLifecycleState;
+}
+
+/**
+ * §37: DomainRiskProfile - Risk classification for this domain.
+ */
+export interface DomainRiskProfile {
+  /** Profile identifier */
+  profileId: string;
+  /** Associated domain ID */
+  domainId: string;
+  /** Risk classification level */
+  riskLevel: DomainRiskLevel;
+  /** Whether this domain is advisory only */
+  advisoryOnly: boolean;
+  /** Whether human accountability is required */
+  humanAccountable: boolean;
+  /** Whether only deterministic hot path is allowed */
+  deterministicHotPathOnly: boolean;
+  /** Regulatory classification */
+  regulatoryClass: string;
+}
+
+/**
+ * §37: DomainEvalSpec - Evaluation specifications for this domain.
+ */
+export interface DomainEvalSpec {
+  /** Domain identifier */
+  domainId: string;
+  /** Evaluation baselines */
+  evalBaselines: string[];
+  /** Critical cases requiring special handling */
+  criticalCases: string[];
+  /** Acceptance thresholds for metrics */
+  acceptanceThresholds: Record<string, number>;
+  /** Adversarial scenarios to test */
+  adversarialScenarios: string[];
+}
+
+type DomainLifecycleState = "draft" | "validating" | "testing" | "certified" | "registered" | "canary" | "active" | "deprecated" | "retired" | "archived" | "updating" | "validated";
+
+type DomainRiskLevel = "low" | "medium" | "high" | "critical";
 
 /**
  * Registry containing all loaded divisions and their associated workflows.
@@ -553,6 +616,11 @@ export class DivisionLoader {
       }
     }
 
+    // §37: Parse DomainDescriptor, DomainRiskProfile, and DomainEvalSpec from division config
+    const domainDescriptor = this.parseDomainDescriptor(divisionConfig.domain_descriptor, divisionConfig.id);
+    const riskProfile = this.parseRiskProfile(divisionConfig.risk_profile, divisionConfig.id);
+    const evalSpec = this.parseEvalSpec(divisionConfig.eval_spec, divisionConfig.id);
+
     // Construct and return the fully loaded division definition
     return {
       id: divisionConfig.id,
@@ -568,7 +636,93 @@ export class DivisionLoader {
       workflows,
       rootPath: divisionRoot,
       quotas: resolvedQuotas,
+      domainDescriptor,
+      riskProfile,
+      evalSpec,
     };
+  }
+
+  /**
+   * Parses the domain_descriptor field from division.yaml into a DomainDescriptor.
+   * §37: DomainDescriptor contains core domain information.
+   */
+  private parseDomainDescriptor(raw: unknown, divisionId: string): DomainDescriptor | undefined {
+    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+      return undefined;
+    }
+    const desc = raw as Record<string, unknown>;
+    return {
+      domainId: typeof desc.domainId === "string" ? desc.domainId : divisionId,
+      ownerOrgNodeId: typeof desc.ownerOrgNodeId === "string" ? desc.ownerOrgNodeId : "",
+      primaryEntities: toStringArray(desc.primaryEntities),
+      recipeArchetype: typeof desc.recipeArchetype === "string" ? desc.recipeArchetype : "crud_heavy",
+      lifecycleState: this.normalizeLifecycleState(desc.lifecycleState),
+    };
+  }
+
+  /**
+   * Parses the risk_profile field from division.yaml into a DomainRiskProfile.
+   * §37: DomainRiskProfile contains risk classification information.
+   */
+  private parseRiskProfile(raw: unknown, divisionId: string): DomainRiskProfile | undefined {
+    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+      return undefined;
+    }
+    const profile = raw as Record<string, unknown>;
+    return {
+      profileId: typeof profile.profileId === "string" ? profile.profileId : `${divisionId}.risk`,
+      domainId: typeof profile.domainId === "string" ? profile.domainId : divisionId,
+      riskLevel: this.normalizeRiskLevel(profile.riskLevel),
+      advisoryOnly: typeof profile.advisoryOnly === "boolean" ? profile.advisoryOnly : false,
+      humanAccountable: typeof profile.humanAccountable === "boolean" ? profile.humanAccountable : false,
+      deterministicHotPathOnly: typeof profile.deterministicHotPathOnly === "boolean" ? profile.deterministicHotPathOnly : false,
+      regulatoryClass: typeof profile.regulatoryClass === "string" ? profile.regulatoryClass : "lightly_regulated",
+    };
+  }
+
+  /**
+   * Parses the eval_spec field from division.yaml into a DomainEvalSpec.
+   * §37: DomainEvalSpec contains evaluation specifications.
+   */
+  private parseEvalSpec(raw: unknown, divisionId: string): DomainEvalSpec | undefined {
+    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+      return undefined;
+    }
+    const spec = raw as Record<string, unknown>;
+    const acceptanceThresholds: Record<string, number> = {};
+    if (spec.acceptanceThresholds != null && typeof spec.acceptanceThresholds === "object" && !Array.isArray(spec.acceptanceThresholds)) {
+      const thresholds = spec.acceptanceThresholds as Record<string, unknown>;
+      for (const [key, value] of Object.entries(thresholds)) {
+        if (typeof value === "number") {
+          acceptanceThresholds[key] = value;
+        }
+      }
+    }
+    return {
+      domainId: typeof spec.domainId === "string" ? spec.domainId : divisionId,
+      evalBaselines: toStringArray(spec.evalBaselines),
+      criticalCases: toStringArray(spec.criticalCases),
+      acceptanceThresholds,
+      adversarialScenarios: toStringArray(spec.adversarialScenarios),
+    };
+  }
+
+  private normalizeLifecycleState(value: unknown): DomainLifecycleState {
+    const validStates: DomainLifecycleState[] = [
+      "draft", "validating", "testing", "certified", "registered",
+      "canary", "active", "deprecated", "retired", "archived", "updating", "validated",
+    ];
+    if (typeof value === "string" && validStates.includes(value as DomainLifecycleState)) {
+      return value as DomainLifecycleState;
+    }
+    return "draft";
+  }
+
+  private normalizeRiskLevel(value: unknown): DomainRiskLevel {
+    if (typeof value === "string" && ["low", "medium", "high", "critical"].includes(value)) {
+      return value as DomainRiskLevel;
+    }
+    return "medium";
   }
 
   /**
@@ -718,6 +872,10 @@ export class DivisionLoader {
       orchestration_workflow: parsed.orchestration_workflow,
       triggers: parsed.triggers,
       roles: parsed.roles,
+      // §37: DomainDescriptor structured hierarchy
+      domain_descriptor: parsed.domain_descriptor,
+      risk_profile: parsed.risk_profile,
+      eval_spec: parsed.eval_spec,
     };
   }
 

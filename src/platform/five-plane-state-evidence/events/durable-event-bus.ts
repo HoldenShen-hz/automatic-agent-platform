@@ -987,7 +987,13 @@ export class DurableEventBus {
     if (this.pollingTimers.has(consumerId)) {
       return;
     }
-    this.schedulePollingTick(consumerId, 0);
+    // R12-04 fix: Use adaptive initial delay based on queue depth instead of hardcoded 0.
+    // This implements queue-depth graduated back-pressure from the first tick,
+    // preventing immediate polling when there's a large backlog.
+    const pending = this.store.event.listPendingEventsForConsumer(consumerId);
+    const queueDepth = pending.length;
+    const initialDelay = this.calculatePollingInterval(consumerId, queueDepth);
+    this.schedulePollingTick(consumerId, initialDelay);
   }
 
   /**

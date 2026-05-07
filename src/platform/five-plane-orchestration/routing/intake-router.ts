@@ -77,8 +77,28 @@ export interface IntakeIntentClassification {
 }
 
 /**
+ * R9-09: Capacity snapshot for a single eligible worker.
+ * Contains the worker's current load and availability info.
+ */
+export interface WorkerCapacitySnapshot {
+  /** Worker identifier */
+  workerId: string;
+  /** Available execution slots (maxConcurrency - running executions) */
+  availableSlots: number;
+  /** Maximum concurrent executions the worker supports */
+  maxConcurrency: number;
+  /** Current saturation ratio (0-1) */
+  saturation: number | null;
+  /** Current status of the worker */
+  status: string;
+  /** Number of active leases held by this worker */
+  activeLeaseCount: number;
+}
+
+/**
  * R9-09: Result of capability matching for routing decisions.
- * Indicates whether a capable worker was found for the selected division.
+ * Indicates whether a capable worker was found for the selected division,
+ * and includes capacity snapshots for load-aware routing.
  */
 export interface CapabilityMatchResult {
   /** Whether a capable worker was found */
@@ -89,8 +109,16 @@ export interface CapabilityMatchResult {
   requiredCapabilities: string[];
   /** Number of eligible workers found with required capabilities */
   eligibleWorkerCount: number;
+  /** R9-09: Capacity snapshots of all eligible workers (for load-aware routing) */
+  workerCapacitySnapshots?: WorkerCapacitySnapshot[];
+  /** R9-09: Total available slots across all eligible workers */
+  totalAvailableSlots?: number;
+  /** R9-09: Average saturation across eligible workers (0-1, lower is better) */
+  averageSaturation?: number | null;
   /** Fallback reason if no capable worker found */
   fallbackReason?: string;
+  /** R9-09: Whether the worker registry was actually queried */
+  registryQueried?: boolean;
 }
 
 /** Keywords indicating the request may need multi-step orchestration */
@@ -649,6 +677,18 @@ function normalize(text: string | null | undefined): string {
 }
 
 /**
+ * R9-09: Detailed result of capability and capacity checking.
+ * Internal type used by IntakeRouter to track worker availability.
+ */
+interface CapabilityCheckResult {
+  eligibleWorkerCount: number;
+  workerCapacitySnapshots: WorkerCapacitySnapshot[];
+  totalAvailableSlots: number;
+  averageSaturation: number | null;
+  registryQueried: boolean;
+}
+
+/**
  * Routes incoming requests to appropriate divisions and workflows.
  *
  * The router analyzes request content to determine:
@@ -720,33 +760,82 @@ export class IntakeRouter {
    * - Have available slots (capacity > 0)
    * - Are not in draining, unavailable, quarantined, or offline states
    *
+   * Unlike the previous implementation that only returned a count, this method
+   * now returns detailed capacity snapshots for load-aware routing decisions
+   * per Architecture §8.5.
+   *
    * @param requiredCapabilities - Capabilities required for the task
    * @param routeTrace - Trace array for logging
-   * @returns Number of eligible workers found (0 if none)
+   * @returns CapabilityCheckResult with detailed capacity information
    */
   private checkCapableWorkerAvailability(
     requiredCapabilities: string[],
     routeTrace: string[],
-  ): number {
+  ): CapabilityCheckResult {
     if (!this.workerRegistry) {
       routeTrace.push("capability_check:worker_registry_not_configured");
-      return 1; // Assume available if registry not configured
+      routeTrace.push("capability_check:cannot_verify_worker_availability");
+      // Return empty result indicating no verified workers when registry not available
+      return {
+        eligibleWorkerCount: 0,
+        workerCapacitySnapshots: [],
+        totalAvailableSlots: 0,
+        averageSaturation: null,
+        registryQueried: false,
+      };
     }
 
     if (requiredCapabilities.length === 0) {
-      routeTrace.push("capability_check:no_capabilities_required");
-      return 1; // No specific capabilities required, assume available
+      // When no specific capabilities required, query ALL eligible workers
+      // to ensure at least one worker with capacity exists
+      routeTrace.push("capability_check:no_specific_capabilities_required");
+      routeTrace.push("capability_check:querying_all_eligible_workers");
+    } else {
+      routeTrace.push(`capability_check:required_capabilities=[${requiredCapabilities.join(",")}]`);
     }
 
     const eligibleWorkers = this.workerRegistry.listEligibleWorkers({
       requiredCapabilities,
     });
 
-    const count = eligibleWorkers.length;
-    routeTrace.push(`capability_check:eligible_workers=${count}`);
-    routeTrace.push(`capability_check:required_capabilities=[${requiredCapabilities.join(",")}]`);
+    // R9-09: Filter to only workers with actual available capacity (> 0).
+    // Workers at full capacity (availableSlots === 0) are not eligible for new work.
+    const workersWithCapacity = eligibleWorkers.filter((worker) => worker.availableSlots > 0);
 
-    return count;
+    const workerCapacitySnapshots: WorkerCapacitySnapshot[] = workersWithCapacity.map((worker) => ({
+      workerId: worker.workerId,
+      availableSlots: worker.availableSlots,
+      maxConcurrency: worker.maxConcurrency,
+      saturation: worker.saturation,
+      status: worker.status,
+      activeLeaseCount: worker.activeLeaseCount,
+    }));
+
+    const totalAvailableSlots = workerCapacitySnapshots.reduce(
+      (sum, snapshot) => sum + snapshot.availableSlots,
+      0,
+    );
+
+    // Calculate average saturation (lower is better, 0 = no load, 1 = fully saturated)
+    const workersWithSaturation = workerCapacitySnapshots.filter((s) => s.saturation != null);
+    const averageSaturation = workersWithSaturation.length > 0
+      ? workersWithSaturation.reduce((sum, s) => sum + (s.saturation ?? 0), 0) / workersWithSaturation.length
+      : null;
+
+    const count = workersWithCapacity.length;
+    routeTrace.push(`capability_check:eligible_workers=${count}`);
+    routeTrace.push(`capability_check:total_available_slots=${totalAvailableSlots}`);
+    if (averageSaturation !== null) {
+      routeTrace.push(`capability_check:average_saturation=${averageSaturation.toFixed(3)}`);
+    }
+
+    return {
+      eligibleWorkerCount: count,
+      workerCapacitySnapshots,
+      totalAvailableSlots,
+      averageSaturation,
+      registryQueried: true,
+    };
   }
 
   /**
@@ -800,19 +889,61 @@ export class IntakeRouter {
     }
 
     if (requiredCapabilities.length === 0) {
-      routeTrace.push(`capability_match:no_capabilities_required`);
+      // When no specific capabilities required, still need to verify at least
+      // one worker with capacity exists by querying the registry
+      routeTrace.push(`capability_match:no_specific_capabilities_checking_worker_exists`);
+      const checkResult = this.checkCapableWorkerAvailability([], routeTrace);
+
+      if (!checkResult.registryQueried) {
+        // Registry not available - cannot verify, route with caution
+        routeTrace.push(`capability_match:registry_unavailable_deferring`);
+        return {
+          capableWorkerFound: true, // Assume available but mark as unverified
+          targetDivisionId,
+          requiredCapabilities: [],
+          eligibleWorkerCount: 0,
+          workerCapacitySnapshots: [],
+          totalAvailableSlots: 0,
+          averageSaturation: null,
+          registryQueried: false,
+          fallbackReason: "Worker registry unavailable - cannot verify capacity",
+        };
+      }
+
+      if (checkResult.eligibleWorkerCount === 0 || checkResult.totalAvailableSlots === 0) {
+        routeTrace.push(`capability_match:no_workers_with_capacity`);
+        routeTrace.push(`capability_match:routing_to_fallback_queue`);
+        return {
+          capableWorkerFound: false,
+          targetDivisionId,
+          requiredCapabilities: [],
+          eligibleWorkerCount: 0,
+          workerCapacitySnapshots: [],
+          totalAvailableSlots: 0,
+          averageSaturation: null,
+          registryQueried: true,
+          fallbackReason: "No workers with available capacity found in registry",
+        };
+      }
+
+      routeTrace.push(`capability_match:found=${checkResult.eligibleWorkerCount}_workers_with_capacity`);
       return {
         capableWorkerFound: true,
         targetDivisionId,
         requiredCapabilities: [],
-        eligibleWorkerCount: 1,
+        eligibleWorkerCount: checkResult.eligibleWorkerCount,
+        workerCapacitySnapshots: checkResult.workerCapacitySnapshots,
+        totalAvailableSlots: checkResult.totalAvailableSlots,
+        averageSaturation: checkResult.averageSaturation,
+        registryQueried: true,
       };
     }
 
     routeTrace.push(`capability_match:required=[${requiredCapabilities.join(",")}]`);
-    const eligibleWorkerCount = this.checkCapableWorkerAvailability(requiredCapabilities, routeTrace);
+    const checkResult = this.checkCapableWorkerAvailability(requiredCapabilities, routeTrace);
 
-    if (eligibleWorkerCount === 0) {
+    // R9-09: Even if workers found, verify they have actual capacity
+    if (checkResult.eligibleWorkerCount === 0) {
       routeTrace.push(`capability_match:no_capable_worker_found_for_division=${targetDivisionId}`);
       routeTrace.push(`capability_match:routing_to_fallback_queue`);
       return {
@@ -820,16 +951,42 @@ export class IntakeRouter {
         targetDivisionId,
         requiredCapabilities,
         eligibleWorkerCount: 0,
+        workerCapacitySnapshots: [],
+        totalAvailableSlots: 0,
+        averageSaturation: null,
+        registryQueried: checkResult.registryQueried,
         fallbackReason: `No workers available with required capabilities: ${requiredCapabilities.join(", ")}`,
       };
     }
 
-    routeTrace.push(`capability_match:found=${eligibleWorkerCount}_capable_workers_for=${targetDivisionId}`);
+    // R9-09: Check if any eligible workers have actual capacity
+    if (checkResult.totalAvailableSlots === 0) {
+      routeTrace.push(`capability_match:workers_found_but_no_capacity=${targetDivisionId}`);
+      routeTrace.push(`capability_match:routing_to_fallback_queue`);
+      return {
+        capableWorkerFound: false,
+        targetDivisionId,
+        requiredCapabilities,
+        eligibleWorkerCount: checkResult.eligibleWorkerCount,
+        workerCapacitySnapshots: checkResult.workerCapacitySnapshots,
+        totalAvailableSlots: 0,
+        averageSaturation: checkResult.averageSaturation,
+        registryQueried: checkResult.registryQueried,
+        fallbackReason: `Workers with required capabilities found but all at capacity: ${requiredCapabilities.join(", ")}`,
+      };
+    }
+
+    routeTrace.push(`capability_match:found=${checkResult.eligibleWorkerCount}_capable_workers_for=${targetDivisionId}`);
+    routeTrace.push(`capability_match:total_capacity_slots=${checkResult.totalAvailableSlots}`);
     return {
       capableWorkerFound: true,
       targetDivisionId,
       requiredCapabilities,
-      eligibleWorkerCount,
+      eligibleWorkerCount: checkResult.eligibleWorkerCount,
+      workerCapacitySnapshots: checkResult.workerCapacitySnapshots,
+      totalAvailableSlots: checkResult.totalAvailableSlots,
+      averageSaturation: checkResult.averageSaturation,
+      registryQueried: checkResult.registryQueried,
     };
   }
 

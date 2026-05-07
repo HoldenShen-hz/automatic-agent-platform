@@ -23,6 +23,11 @@ import {
   type HarnessTimelineEvent,
   type ConstraintPack,
 } from "../../src/platform/orchestration/harness/index.js";
+import {
+  TestHarnessOrchestrator,
+  createTestConstraintPack,
+  type TestHarnessOrchestrator,
+} from "../unit/platform/orchestration/harness/test-service-wrapper.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -82,15 +87,25 @@ test("E2E: runLoop executes full workflow and records all 8 HarnessTimelineEvent
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-all-events-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-all-events-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput: { planId: "plan-001", summary: "Implement feature" },
-      generatorOutput: { artifact: "feature.diff", toolCalls: [] },
-      evaluatorOutput: { verdict: "pass", feedback: "Looks good" },
-      evaluatorScore: 0.91,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       producedEvidenceRefs: [],
     });
 
@@ -133,15 +148,25 @@ test("E2E: runLoop produces 8 distinct timeline event types in successful accept
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.88, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-eight-types-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-eight-types-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput: { planId: "plan-eight-001", summary: "Full workflow test" },
-      generatorOutput: { artifact: "output.diff" },
-      evaluatorOutput: { verdict: "pass" },
-      evaluatorScore: 0.88,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       producedEvidenceRefs: [],
     });
 
@@ -277,15 +302,25 @@ test("E2E: HITL path records hitl_requested and hitl_resolved events", (t) => {
       autonomyMode: "supervised",
       risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
     });
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.72, verdict: "needs-review" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-hitl-001",
+      domainId: "security",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-hitl-001",
       domainId: "security",
       constraintPack,
-      plannerOutput: { planId: "plan-hitl-001", summary: "Deploy to prod" },
-      generatorOutput: { deploymentTarget: "production", toolCalls: [] },
-      evaluatorOutput: { verdict: "needs-review" },
-      evaluatorScore: 0.72,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       riskScore: 65, // Above escalationThreshold of 50
       producedEvidenceRefs: ["deployment_manifest"],
       requiresHuman: true,

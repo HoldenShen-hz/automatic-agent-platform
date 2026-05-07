@@ -551,6 +551,25 @@ export class WebSocketBridge {
         continue;
       }
 
+      // R12-07 fix: Check if client is already known to be slow BEFORE any processing
+      // to avoid wasting resources on clients that can't receive more data
+      if (this.slowConsumers.has(ws)) {
+        // §7.1: Critical events are never dropped - always deliver even to slow consumers
+        const isCritical = event.eventType === "completed" ||
+                           event.eventType === "failed" ||
+                           event.eventType === "approval_requested" ||
+                           event.eventType === "artifact_ready";
+        if (!isCritical) {
+          logger.debug("Skipping non-critical event for known slow consumer", {
+            actorId: client.principal.actorId,
+            taskId,
+            eventType: event.eventType,
+          });
+          continue;
+        }
+        // Critical events still get through to slow consumers
+      }
+
       // §7.1: Back-pressure check - detect slow consumers with large send buffers
       const bufferedAmount = ws.bufferedAmount;
       const maxBufferedAmount = 1_000_000; // 1MB threshold
@@ -567,7 +586,7 @@ export class WebSocketBridge {
 
         if (!isCritical) {
           // §7.1: Drop low-priority event for slow consumer
-          logger.debug("Dropping low-priority event for slow consumer", {
+          logger.debug("Dropping low-priority event for slow consumer due to back-pressure", {
             actorId: client.principal.actorId,
             taskId,
             eventType: event.eventType,
@@ -790,12 +809,22 @@ export class WebSocketBridge {
     for (const [ws, client] of Array.from(this.clients.entries())) {
       if (ws.readyState !== ws.OPEN) continue;
 
-      // §7.1: Back-pressure check - track slow consumers
+      // R12-07 fix: Check if client is already known to be slow before attempting send
+      // to avoid wasting resources on clients that can't receive more data
+      if (this.slowConsumers.has(ws)) {
+        logger.debug("Skipping slow consumer in broadcastToAll", {
+          actorId: client.principal.actorId,
+          bufferedAmount: ws.bufferedAmount,
+        });
+        continue;
+      }
+
+      // §7.1: Back-pressure check - detect slow consumers before sending
       const bufferedAmount = ws.bufferedAmount;
       const maxBufferedAmount = 1_000_000; // 1MB threshold
       if (bufferedAmount > maxBufferedAmount) {
         this.slowConsumers.add(ws);
-        logger.warn("WebSocket client back-pressure in broadcastToAll, skipping", {
+        logger.warn("WebSocket client back-pressure in broadcastToAll, marking and skipping", {
           actorId: client.principal.actorId,
           bufferedAmount,
         });

@@ -10,11 +10,13 @@ export type KnowledgeGraphEdgeType =
   | "contradicts"       // Contradicting knowledge
   | "specializes"       // Specializes/generalizes relationship
   | "trust_boost"       // Trust propagation edge
-  | "trust_degrades"   // Trust degradation edge
-  | "learned_from"     // R13-07: Learned knowledge edge - knowledge learned from another source
-  | "failure_pattern"  // R13-07: Failure pattern edge - marks recurring failure patterns
+  | "trust_degrades"    // Trust degradation edge
+  | "learned_from"      // R13-07: Learned knowledge edge - knowledge learned from another source
+  | "failure_pattern"   // R13-07: Failure pattern edge - marks recurring failure patterns
   | "causal_relationship" // R13-07: Causal relationship edge - cause-effect relationship
-  | "temporal_correlation"; // R13-07: Temporal correlation edge - time-based correlation
+  | "temporal_correlation" // R13-07: Temporal correlation edge - time-based correlation
+  | "sequential"       // R8-11: Sequential edge - execution ordering dependency
+  | "entity_relation";  // R8-11: Entity relation edge - direct entity relationship
 
 export interface KnowledgeGraphNode {
   nodeId: string;
@@ -424,17 +426,144 @@ export class SemanticKnowledgeGraph {
   }
 
   /**
-   * Emits knowledge.trust_downgraded event when trust degrades below threshold.
-   * §13.9: Emits trust_downgraded event for knowledge that loses trust.
+   * R8-11: Knowledge trust downgraded event handler.
+   * Handles knowledge.trust_downgraded event - demotes node trust level and triggers re-evaluation.
    */
-  public emitTrustDegradationEvent(nodeId: string, oldTrust: number, newTrust: number): void {
-    // In a full implementation, this would emit to an event bus
-    // For now, we track this in memory for audit purposes
-    const threshold = 0.3;
-    if (oldTrust >= threshold && newTrust < threshold) {
-      // Emit: knowledge.trust_downgraded event
-      // This would be handled by the event bus in production
-      this.addEdge(nodeId, `event:knowledge.trust_downgraded`, "trust_degrades", 1.0);
+  public handleTrustDowngradedEvent(
+    nodeId: string,
+    demotionLevel: "to_team_reviewed" | "to_private_unverified" | "to_contested" = "to_team_reviewed",
+  ): void {
+    const node = this.nodes.get(nodeId);
+    if (!node) {
+      return;
     }
+
+    const oldTrust = node.trustLevel;
+    let newTrustLevel: KnowledgeGraphNode["trustLevel"] = node.trustLevel;
+
+    switch (demotionLevel) {
+      case "to_contested":
+        newTrustLevel = "contested";
+        break;
+      case "to_team_reviewed":
+        newTrustLevel = "team_reviewed";
+        break;
+      case "to_private_unverified":
+        newTrustLevel = "private_unverified";
+        break;
+    }
+
+    // Update node trust level
+    this.nodes.set(nodeId, { ...node, trustLevel: newTrustLevel });
+
+    // Create audit trail edge for the trust demotion event
+    const eventNodeId = `event:knowledge.trust_downgraded:${nodeId}:${Date.now()}`;
+    this.nodes.set(eventNodeId, {
+      nodeId: eventNodeId,
+      nodeType: "entity",
+      label: `trust_downgraded:${nodeId}`,
+      namespace: node.namespace,
+      knowledgeRef: null,
+      trustLevel: "authoritative", // Events are always authoritative
+    });
+
+    // Connect event to affected node
+    this.addEdge(eventNodeId, nodeId, "trust_degrades", 1.0);
+
+    // Propagate trust degradation to connected nodes
+    this.propagateTrust([nodeId], -0.2);
+  }
+
+  /**
+   * R8-11: Adds a sequential edge between nodes representing execution ordering.
+   */
+  public addSequentialEdge(
+    fromNodeId: string,
+    toNodeId: string,
+    weight: number = 1.0,
+  ): void {
+    this.addEdge(fromNodeId, toNodeId, "sequential", weight);
+  }
+
+  /**
+   * R8-11: Adds a direct entity relationship edge between two entities.
+   */
+  public addEntityRelationEdge(
+    fromEntityRef: string,
+    toEntityRef: string,
+    weight: number = 1.0,
+  ): void {
+    this.addEntityRelation(fromEntityRef, toEntityRef, "entity_relation", weight);
+  }
+
+  /**
+   * R8-11: Persistence layer - serializes graph state to a portable format.
+   */
+  public serialize(): string {
+    const state = {
+      nodes: [...this.nodes.entries()],
+      edges: [...this.edges.entries()],
+      adjacency: [...this.adjacencyByNodeId.entries()],
+      chunkByKnowledgeRef: [...this.chunkByKnowledgeRef.entries()],
+      keywordToChunkIds: [...this.keywordToChunkIds.entries()].map(
+        ([k, v]) => [k, [...v]] as [string, string[]],
+      ),
+      chunkToKeywordIds: [...this.chunkToKeywordIds.entries()].map(
+        ([k, v]) => [k, [...v]] as [string, string[]],
+      ),
+      timestamp: Date.now(),
+    };
+    return JSON.stringify(state);
+  }
+
+  /**
+   * R8-11: Persistence layer - deserializes graph state from a portable format.
+   */
+  public deserialize(data: string): void {
+    const state = JSON.parse(data) as {
+      nodes: [string, KnowledgeGraphNode][];
+      edges: [string, KnowledgeGraphEdge][];
+      adjacency: [string, KnowledgeGraphEdge[]][];
+      chunkByKnowledgeRef: [string, string][];
+      keywordToChunkIds: [string, string[]][];
+      chunkToKeywordIds: [string, string[]][];
+      timestamp: number;
+    };
+
+    this.nodes.clear();
+    this.edges.clear();
+    this.adjacencyByNodeId.clear();
+    this.chunkByKnowledgeRef.clear();
+    this.keywordToChunkIds.clear();
+    this.chunkToKeywordIds.clear();
+
+    for (const [id, node] of state.nodes) {
+      this.nodes.set(id, node);
+    }
+    for (const [id, edge] of state.edges) {
+      this.edges.set(id, edge);
+    }
+    for (const [nodeId, adjacents] of state.adjacency) {
+      this.adjacencyByNodeId.set(nodeId, adjacents);
+    }
+    for (const [ref, chunkId] of state.chunkByKnowledgeRef) {
+      this.chunkByKnowledgeRef.set(ref, chunkId);
+    }
+    for (const [keyword, chunkIds] of state.keywordToChunkIds) {
+      this.keywordToChunkIds.set(keyword, new Set(chunkIds));
+    }
+    for (const [chunkId, keywordIds] of state.chunkToKeywordIds) {
+      this.chunkToKeywordIds.set(chunkId, new Set(keywordIds));
+    }
+  }
+
+  /**
+   * R8-11: Persistence layer - exports graph inspection for debugging/auditing.
+   */
+  public exportInspection(): KnowledgeGraphInspection {
+    return {
+      nodes: [...this.nodes.values()],
+      edges: [...this.edges.values()],
+    };
   }
 }

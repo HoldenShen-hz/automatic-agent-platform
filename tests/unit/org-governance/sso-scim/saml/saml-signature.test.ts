@@ -7,6 +7,8 @@ import {
   SamlService,
   validateXmlSignature,
   SAML_SIGNATURE_ALGORITHMS,
+  SAML_CANONICALIZATION_ALGORITHMS,
+  X509TrustChainValidator,
   buildSamlAudience,
   type SamlProviderConfig,
   type SamlAssertionInput,
@@ -119,6 +121,26 @@ test("SAML_SIGNATURE_ALGORITHMS contains expected algorithms", () => {
   assert.equal(SAML_SIGNATURE_ALGORITHMS.length, 2);
 });
 
+test("SAML_CANONICALIZATION_ALGORITHMS contains the supported allowlist", () => {
+  assert.ok(SAML_CANONICALIZATION_ALGORITHMS.includes("http://www.w3.org/2001/10/xml-exc-c14n#"));
+  assert.ok(SAML_CANONICALIZATION_ALGORITHMS.includes("http://www.w3.org/TR/2001/REC-xml-c14n-20010315"));
+});
+
+test("X509TrustChainValidator rejects self-signed certificates outside the trusted CA store", () => {
+  const validator = new X509TrustChainValidator();
+  const result = validator.validateCertificate(TEST_SIGNING_CERTIFICATE_PEM);
+  assert.equal(result.valid, false);
+  assert.match(result.error ?? "", /trust_chain_invalid/);
+});
+
+test("X509TrustChainValidator accepts self-signed certificates explicitly trusted as CA roots", () => {
+  const validator = new X509TrustChainValidator();
+  validator.addTrustedCA(TEST_SIGNING_CERTIFICATE_PEM);
+  const result = validator.validateCertificate(TEST_SIGNING_CERTIFICATE_PEM);
+  assert.equal(result.valid, true);
+  assert.equal(result.chainDepth, 1);
+});
+
 test("validateXmlSignature returns valid for empty signature with no verification", () => {
   // When signature is empty and no keyProviderFn, validation should fail gracefully
   const result = validateXmlSignature("", "<xml>test</xml>");
@@ -139,6 +161,15 @@ test("validateXmlSignature returns valid structure on success path", () => {
   if (!result.valid) {
     assert.ok(result.error != null);
   }
+});
+
+test("validateXmlSignature rejects unsupported canonicalization algorithms", () => {
+  const result = validateXmlSignature(
+    "<ds:Signature><ds:SignedInfo><ds:CanonicalizationMethod Algorithm=\"urn:unsupported:c14n\" /></ds:SignedInfo></ds:Signature>",
+    "<xml>test</xml>",
+  );
+  assert.equal(result.valid, false);
+  assert.equal(result.error, "unsupported_canonicalization:urn:unsupported:c14n");
 });
 
 test("buildSamlAudience constructs correct audience format", () => {
@@ -647,6 +678,35 @@ test("SamlService consumeAssertion allows unsigned assertion only when provider 
 
   const session = service.consumeAssertion("corp-idp", assertion, new Date());
   assert.equal(session.subjectId, "user-123");
+});
+
+test("SamlService consumeAssertion rejects encrypted assertions unless the provider explicitly allows them", () => {
+  const service = new SamlService();
+  service.registerProvider({
+    providerId: "corp-idp",
+    entryPoint: "https://idp.example.com/saml/login",
+    issuer: "https://idp.example.com",
+    certificateFingerprint: "AA:BB:CC",
+    allowUnsignedAssertions: true,
+  });
+
+  assert.throws(
+    () =>
+      service.consumeAssertion("corp-idp", {
+        issuer: "https://idp.example.com",
+        audience: buildSamlAudience({
+          providerId: "corp-idp",
+          entryPoint: "https://idp.example.com/saml/login",
+          issuer: "https://idp.example.com",
+          certificateFingerprint: "AA:BB:CC",
+          allowUnsignedAssertions: true,
+        }),
+        nameId: "user-123",
+        fingerprint: "AA:BB:CC",
+        rawXml: "<Response><EncryptedAssertion>ciphertext</EncryptedAssertion></Response>",
+      }),
+    /saml.encrypted_assertion_unsupported/,
+  );
 });
 
 test("SamlService consumeAssertion rejects recipient mismatch", () => {

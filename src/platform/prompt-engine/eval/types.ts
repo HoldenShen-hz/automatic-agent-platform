@@ -38,6 +38,14 @@ export interface QualityGateConfig {
     readonly completionOutcome: number;
     readonly failureSignal: number;
     readonly partialSignal: number;
+    /** R11-03: Weight for constraint compliance evaluation per §13.5 */
+    readonly constraintCompliance?: number;
+    /** R11-03: Weight for budget adherence evaluation per §13.5 */
+    readonly budgetAdherence?: number;
+    /** R11-03: Weight for risk boundary evaluation per §13.5 */
+    readonly riskBoundary?: number;
+    /** R11-03: Weight for timing SLO evaluation per §13.5 */
+    readonly timingSlo?: number;
   };
   readonly actionThresholds: {
     readonly completeMinScore: number;
@@ -91,6 +99,8 @@ export interface BudgetAdherenceResult {
     readonly spent: number;
     readonly reserved: number;
   };
+  /** R11-03: Whether budget was exceeded per §13.5 */
+  readonly budgetExceeded?: boolean;
 }
 
 export interface RiskBoundaryResult {
@@ -103,4 +113,6 @@ export interface TimingSloResult {
   readonly withinSlo: boolean;
   readonly actualMs?: number;
   readonly maxAllowedMs?: number;
+  /** R11-03: Reason for SLO miss if not within SLO */
+  readonly sloMissReason?: "timeout_signal" | "duration_exceeded";
 }

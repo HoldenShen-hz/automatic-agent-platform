@@ -925,3 +925,86 @@ test("buildPlanGraphBundle uses default budget plan ref when not provided", () =
 
   assert.equal(result.bundle.budgetPlanRef, "budget:default");
 });
+
+test("HarnessSdk.sendInterPlaneMessage signs envelopes when inter-plane security is configured", async () => {
+  let capturedEnvelope: any;
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    {
+      async send<TResponse>({ envelope }: { targetPlane: string; envelope: any }): Promise<TResponse> {
+        capturedEnvelope = envelope;
+        return { ok: true } as TResponse;
+      },
+    },
+    {
+      sharedSecretKey: "test-shared-secret",
+    },
+  );
+
+  const result = await sdk.sendInterPlaneMessage("execution-plane", "cmd.execute", { taskId: "task-1" });
+  assert.deepEqual(result, { ok: true });
+  assert.equal(typeof capturedEnvelope.signature, "string");
+  assert.ok((capturedEnvelope.signature as string).length > 0);
+  assert.equal(sdk.verifyReceivedInterPlaneEnvelope(capturedEnvelope).valid, true);
+});
+
+test("HarnessSdk.verifyReceivedInterPlaneEnvelope rejects tampered payloads", async () => {
+  let capturedEnvelope: any;
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    {
+      async send<TResponse>({ envelope }: { targetPlane: string; envelope: any }): Promise<TResponse> {
+        capturedEnvelope = envelope;
+        return { ok: true } as TResponse;
+      },
+    },
+    {
+      sharedSecretKey: "test-shared-secret",
+    },
+  );
+
+  await sdk.sendInterPlaneMessage("execution-plane", "cmd.execute", { taskId: "task-1" });
+  const tamperedEnvelope = {
+    ...capturedEnvelope,
+    payload: { taskId: "task-2" },
+  };
+
+  const verification = sdk.verifyReceivedInterPlaneEnvelope(tamperedEnvelope);
+  assert.equal(verification.valid, false);
+  assert.equal(verification.error, "contract_envelope.signature_invalid");
+});
+
+test("HarnessSdk.sendInterPlaneMessage applies bulkhead isolation when configured", async () => {
+  let inFlight = 0;
+  const sdk = new HarnessSdk(
+    undefined,
+    undefined,
+    {
+      async send<TResponse>(): Promise<TResponse> {
+        inFlight += 1;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        inFlight -= 1;
+        return { ok: true } as TResponse;
+      },
+    },
+    {
+      sharedSecretKey: "test-shared-secret",
+      bulkheadConfig: {
+        maxConcurrentCalls: 1,
+        queueSize: 0,
+        timeoutMs: 50,
+      },
+    },
+  );
+
+  const first = sdk.sendInterPlaneMessage("execution-plane", "cmd.execute", { taskId: "task-1" });
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  await assert.rejects(
+    sdk.sendInterPlaneMessage("execution-plane", "cmd.execute", { taskId: "task-2" }),
+    (error: unknown) => error instanceof HarnessSdkError && error.code === "harness_sdk.inter_plane_bulkhead_rejected",
+  );
+  await first;
+  assert.equal(inFlight, 0);
+});

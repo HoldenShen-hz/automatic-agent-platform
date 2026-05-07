@@ -16,6 +16,32 @@ import type { UnifiedSeverity } from "../../../contracts/types/unified-severity.
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
 
 /**
+ * Legacy severity levels used in event payloads (e.g., ComplianceViolationDetectedPayload).
+ * These must be converted to UnifiedSeverity (SEV1-4) for internal use.
+ */
+type LegacySeverity = "low" | "medium" | "high" | "critical";
+
+/**
+ * Converts legacy severity format to UnifiedSeverity.
+ * Mapping: critical -> SEV1, high -> SEV2, medium -> SEV3, low -> SEV4
+ *
+ * R14-02: Event payloads may use legacy severity format, so conversion is required
+ * when processing events that originate from external systems or older event schemas.
+ */
+function legacySeverityToUnifiedSeverity(legacy: LegacySeverity): UnifiedSeverity {
+  switch (legacy) {
+    case "critical":
+      return "SEV1";
+    case "high":
+      return "SEV2";
+    case "medium":
+      return "SEV3";
+    case "low":
+      return "SEV4";
+  }
+}
+
+/**
  * Incident Projection State
  *
  * Tracks the complete lifecycle of an incident including:
@@ -486,9 +512,11 @@ function handleComplianceViolation(
     state.incidentId = (payload.violationId as string | undefined) ?? null;
   }
   if (state.severity === null) {
-    const severity = payload.severity as IncidentSeverity | undefined;
-    if (severity) {
-      state.severity = severity;
+    // R14-02: Convert legacy severity format (low/medium/high/critical) to UnifiedSeverity (SEV1-4)
+    // ComplianceViolationDetectedPayload uses legacy severity, so conversion is required
+    const legacySeverity = payload.severity as LegacySeverity | undefined;
+    if (legacySeverity) {
+      state.severity = legacySeverityToUnifiedSeverity(legacySeverity);
     }
   }
   if (state.description === null) {

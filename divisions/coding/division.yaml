@@ -1,0 +1,58 @@
+id: coding
+version: 1
+name: Coding Division
+description: Software change delivery and code lifecycle execution.
+priority: 50
+default_workflow: coding_primary
+orchestration_workflow: coding_primary
+triggers:
+  - coding
+  - software change
+  - implementation
+  - development
+  - code patch
+roles:
+  - id: coding_agent
+    name: Coding Agent
+    prompt: roles/coding_agent.prompt.md
+    model: precision
+    tools: [repo_map, patch_apply, test_runner, static_analysis, dependency_graph]
+    max_instances: 5
+# §37: DomainDescriptor - Core domain information
+domain_descriptor:
+  domainId: coding
+  ownerOrgNodeId: org.eng
+  primaryEntities:
+    - code
+    - repository
+    - patch
+    - test
+  recipeArchetype: realtime
+  lifecycleState: canary
+# §37: DomainRiskProfile - Risk classification
+risk_profile:
+  profileId: coding.risk
+  domainId: coding
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec - Evaluation specifications
+eval_spec:
+  domainId: coding
+  evalBaselines:
+    - quality_gate
+    - regression_rate
+  criticalCases:
+    - production_deployment
+    - security_patch
+    - dependency_update
+  acceptanceThresholds:
+    quality: 85
+    regression_rate: 90
+    latency: 75
+  adversarialScenarios:
+    - prompt_injection
+    - dependency_confusion
+    - malicious_code_insertion

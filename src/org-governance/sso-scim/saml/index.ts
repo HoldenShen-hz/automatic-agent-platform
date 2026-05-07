@@ -21,6 +21,10 @@ import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 
 export const SAML_SIGNATURE_ALGORITHMS = ["http://www.w3.org/2001/04/xmldsig-more#rsa-sha256", "http://www.w3.org/2000/09/xmldsig#rsa-sha1"] as const;
 export type SamlSignatureAlgorithm = (typeof SAML_SIGNATURE_ALGORITHMS)[number];
+export const SAML_CANONICALIZATION_ALGORITHMS = [
+  "http://www.w3.org/2001/10/xml-exc-c14n#",
+  "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+] as const;
 
 /**
  * R7-46 FIX: X.509 Certificate Trust Chain Validation
@@ -458,6 +462,19 @@ export function validateXmlSignature(
   } = {},
 ): { valid: boolean; error?: string } {
   try {
+    const canonicalizationMatch = signature.match(
+      /<(?:(?:[\w-]+:)?CanonicalizationMethod)\s+Algorithm="([^"]+)"/,
+    );
+    if (
+      canonicalizationMatch?.[1] != null
+      && !SAML_CANONICALIZATION_ALGORITHMS.includes(canonicalizationMatch[1] as (typeof SAML_CANONICALIZATION_ALGORITHMS)[number])
+    ) {
+      return {
+        valid: false,
+        error: `unsupported_canonicalization:${canonicalizationMatch[1]}`,
+      };
+    }
+
     const sig = new SignedXml({
       signatureAlgorithm: options.signatureAlgorithm ?? "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
     });
@@ -502,10 +519,12 @@ export const SamlProviderConfigSchema = z.object({
   entryPoint: z.string().min(1),
   issuer: z.string().min(1),
   certificateFingerprint: z.string().min(1),
+  trustedCaCertificates: z.array(z.string().min(1)).optional(),
   entityId: z.string().min(1).optional(),
   acsUrl: z.string().min(1).optional(),
   allowedAudiences: z.array(z.string().min(1)).optional(),
   allowUnsignedAssertions: z.boolean().default(false),
+  allowEncryptedAssertions: z.boolean().default(false),
   attributeMapping: z.record(z.string()).optional(),
 });
 
@@ -534,6 +553,19 @@ export interface SamlAssertionInput {
   readonly xmlSignature?: string;
   readonly rawXml?: string;
   readonly recipient?: string;
+}
+
+function extractEmbeddedCertificateBase64(keyInfo: string | object): string | null {
+  if (typeof keyInfo === "string") {
+    const certMatch = keyInfo.match(/<(?:[\w-]+:)?X509Certificate>([^<]+)<\/(?:[\w-]+:)?X509Certificate>/);
+    return certMatch?.[1] ?? null;
+  }
+  if (keyInfo && typeof keyInfo === "object") {
+    const serialized = Object.values(keyInfo as Record<string, unknown>).join("");
+    const certMatch = serialized.match(/<(?:[\w-]+:)?X509Certificate>([^<]+)<\/(?:[\w-]+:)?X509Certificate>/);
+    return certMatch?.[1] ?? null;
+  }
+  return null;
 }
 
 export interface SamlSession {
@@ -658,6 +690,13 @@ export class SamlService {
     if (!isAssertionTimeValid(assertion, now)) {
       throw new Error(`saml.assertion_expired:${providerId}`);
     }
+    if (
+      assertion.rawXml
+      && /<(?:[\w-]+:)?EncryptedAssertion\b/.test(assertion.rawXml)
+      && provider.allowEncryptedAssertions !== true
+    ) {
+      throw new Error(`saml.encrypted_assertion_unsupported:${providerId}`);
+    }
     if (provider.allowUnsignedAssertions !== true) {
       if (!assertion.xmlSignature || !assertion.rawXml) {
         throw new Error(`saml.signature_required:${providerId}`);
@@ -672,21 +711,7 @@ export class SamlService {
       // the known-good certificate fingerprint configured for this IdP.
       const trustedFingerprint = normalizeCertificateFingerprint(provider.certificateFingerprint);
       const keyProviderFn = (_keyInfo: string | object): string | null => {
-        // Extract X509 certificate from KeyInfo for fingerprint validation
-        let x509Cert: string | null = null;
-        if (typeof _keyInfo === "string") {
-          // Parse the KeyInfo XML to find X509Certificate
-          const certMatch = _keyInfo.match(/<(?:[\w-]+:)?X509Certificate>([^<]+)<\/(?:[\w-]+:)?X509Certificate>/);
-          if (certMatch?.[1] !== undefined) {
-            x509Cert = certMatch[1]!;
-          }
-        } else if (_keyInfo && typeof _keyInfo === "object") {
-          const serialized = Object.values(_keyInfo as Record<string, unknown>).join("");
-          const certMatch = serialized.match(/<(?:[\w-]+:)?X509Certificate>([^<]+)<\/(?:[\w-]+:)?X509Certificate>/);
-          if (certMatch?.[1] !== undefined) {
-            x509Cert = certMatch[1]!;
-          }
-        }
+        const x509Cert = extractEmbeddedCertificateBase64(_keyInfo);
         if (x509Cert) {
           // Compute SHA-256 fingerprint of the DER-encoded certificate
           const der = Buffer.from(x509Cert, "base64");
@@ -697,6 +722,16 @@ export class SamlService {
           }
           // Return the certificate in PEM format for xml-crypto verification
           const pem = `-----BEGIN CERTIFICATE-----\n${x509Cert.match(/.{1,64}/g)?.join("\n") ?? ""}\n-----END CERTIFICATE-----`;
+          if ((provider.trustedCaCertificates?.length ?? 0) > 0) {
+            const trustChainValidator = new X509TrustChainValidator();
+            for (const trustedCaCertificate of provider.trustedCaCertificates ?? []) {
+              trustChainValidator.addTrustedCA(trustedCaCertificate);
+            }
+            const trustResult = trustChainValidator.validateCertificate(pem);
+            if (!trustResult.valid) {
+              return null;
+            }
+          }
           return pem;
         }
         return null;

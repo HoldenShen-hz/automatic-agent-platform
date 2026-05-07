@@ -538,6 +538,24 @@ export class InternalAppError extends AppError {
 }
 
 /**
+ * Error for operations that are not implemented or no longer supported.
+ * Used when deprecated APIs are called or unimplemented methods are invoked.
+ * Default HTTP status: 501 Not Implemented
+ */
+export class UnimplementedError extends AppError {
+  public constructor(code: ErrorCode, message: string, options: ErrorOptions = {}) {
+    super(code, message, {
+      ...options,
+      category: options.category ?? "internal",
+      source: options.source ?? "internal",
+      statusCode: options.statusCode ?? 501,
+      retryable: options.retryable ?? false,
+    });
+    this.name = "UnimplementedError";
+  }
+}
+
+/**
  * Error for leader authority violations in HA coordinator operations.
  * Thrown when a non-leader node attempts a leader-only action.
  * Default HTTP status: 403 Forbidden

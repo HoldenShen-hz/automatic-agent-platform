@@ -84,17 +84,22 @@ export interface WorkflowStepCheckpointFileDiffSummary {
  * A checkpoint captures the full state needed to resume execution later,
  * including output, decision reasoning, resume position, file changes,
  * and artifact dependencies.
+ *
+ * R8-10: Uses harnessRunId/nodeRunId as primary keys with graphVersion
+ * and planGraphId for PlanGraph alignment.
  */
 export interface WorkflowStepCheckpoint {
   schemaVersion: typeof WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION;
   harnessRunId: string;
   nodeRunId: string;
   planGraphBundleId: string;
+  graphVersion: number;
+  planGraphId: string;
   taskId: string;
   executionId: string | null;
   workflowId: string;
   divisionId: string;
-  stepId: string;
+  nodeId: string;
   roleId: string;
   outputKey: string;
   status: StepOutputRecord["status"];
@@ -112,16 +117,21 @@ export interface WorkflowStepCheckpoint {
  *
  * Used by the workflow executor to capture step state at completion
  * or during critical points in execution.
+ *
+ * R8-10: Uses harnessRunId/nodeRunId as primary keys with graphVersion
+ * and planGraphId for PlanGraph alignment.
  */
 export interface CreateWorkflowStepCheckpointInput {
   harnessRunId: string;
   nodeRunId: string;
   planGraphBundleId: string;
+  graphVersion: number;
+  planGraphId: string;
   taskId: string;
   executionId: string | null;
   workflowId: string;
   divisionId: string;
-  stepId: string;
+  nodeId: string;
   roleId: string;
   outputKey: string;
   status: StepOutputRecord["status"];
@@ -147,17 +157,19 @@ export interface CreateWorkflowStepCheckpointInput {
  *
  * A condensed view that excludes full output and context to allow
  * listing checkpoints without loading all data.
- * §5.5: Uses canonical harnessRunId/nodeRunId/planGraphBundleId identifiers.
+ * R8-10: Uses canonical harnessRunId/nodeRunId identifiers with
+ * graphVersion and planGraphId for PlanGraph alignment.
  */
 export interface WorkflowStepCheckpointSummary {
   artifactId: string;
   harnessRunId: string;
   nodeRunId: string | null;
   planGraphBundleId: string;
+  graphVersion: number;
+  planGraphId: string;
   status: StepOutputRecord["status"];
   producedAt: string;
   nextNodeRunId: string | null;
-  nextStepId: string | null;
   outputKeys: string[];
   summary: string | null;
   source: string;
@@ -319,11 +331,13 @@ export function createWorkflowStepCheckpoint(
     harnessRunId: input.harnessRunId,
     nodeRunId: input.nodeRunId,
     planGraphBundleId: input.planGraphBundleId,
+    graphVersion: input.graphVersion,
+    planGraphId: input.planGraphId,
     taskId: input.taskId,
     executionId: input.executionId,
     workflowId: input.workflowId,
     divisionId: input.divisionId,
-    stepId: input.stepId,
+    nodeId: input.nodeId,
     roleId: input.roleId,
     outputKey: input.outputKey,
     status: input.status,
@@ -383,9 +397,10 @@ export function readWorkflowStepCheckpoint(record: ArtifactRecord): WorkflowStep
 /**
  * Creates a summary view of a checkpoint.
  *
- * Extracts key fields for display: step ID, status, timestamps,
- * next step, output keys, and summary text.
- * §5.5: Uses canonical harnessRunId/nodeRunId/planGraphBundleId identifiers.
+ * Extracts key fields for display: node ID, status, timestamps,
+ * next node, output keys, and summary text.
+ * R8-10: Uses canonical harnessRunId/nodeRunId/planGraphBundleId identifiers
+ * with graphVersion and planGraphId for PlanGraph alignment.
  */
 export function summarizeWorkflowStepCheckpoint(
   artifactId: string,
@@ -397,10 +412,11 @@ export function summarizeWorkflowStepCheckpoint(
     harnessRunId: checkpoint.harnessRunId,
     nodeRunId: checkpoint.nodeRunId,
     planGraphBundleId: checkpoint.planGraphBundleId,
+    graphVersion: checkpoint.graphVersion,
+    planGraphId: checkpoint.planGraphId,
     status: checkpoint.status,
     producedAt: checkpoint.producedAt,
     nextNodeRunId: checkpoint.resumeContext.nextNodeRunId,
-    nextStepId: checkpoint.resumeContext.nextStepId,
     outputKeys: [...checkpoint.resumeContext.outputKeys],
     summary: typeof output?.summary === "string" ? output.summary : null,
     source: checkpoint.decisionContext.source,
@@ -418,11 +434,13 @@ function isWorkflowStepCheckpoint(value: unknown): value is WorkflowStepCheckpoi
     || typeof candidate.harnessRunId !== "string"
     || typeof candidate.nodeRunId !== "string"
     || typeof candidate.planGraphBundleId !== "string"
+    || typeof candidate.graphVersion !== "number"
+    || typeof candidate.planGraphId !== "string"
     || typeof candidate.taskId !== "string"
     || (candidate.executionId !== null && typeof candidate.executionId !== "string")
     || typeof candidate.workflowId !== "string"
     || typeof candidate.divisionId !== "string"
-    || typeof candidate.stepId !== "string"
+    || typeof candidate.nodeId !== "string"
     || typeof candidate.roleId !== "string"
     || typeof candidate.outputKey !== "string"
     || typeof candidate.status !== "string"

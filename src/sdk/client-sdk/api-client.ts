@@ -12,6 +12,7 @@ import {
   BusinessError,
   ValidationError,
 } from "../../platform/contracts/errors.js";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import type { PrincipalRef } from "../../platform/contracts/executable-contracts/index.js";
 
@@ -27,6 +28,67 @@ export interface ContractEnvelope<TPayload = unknown> {
   readonly timestamp: string;
   readonly payload: TPayload;
   readonly metadata: Readonly<Record<string, string>>;
+}
+
+export interface ContractEnvelopeVerificationResult {
+  readonly valid: boolean;
+  readonly error?: string;
+}
+
+function serializeEnvelopeForSignature<TPayload>(envelope: ContractEnvelope<TPayload>): string {
+  return JSON.stringify({
+    envelopeId: envelope.envelopeId,
+    schemaVersion: envelope.schemaVersion,
+    commandId: envelope.commandId,
+    idempotencyKey: envelope.idempotencyKey,
+    correlationId: envelope.correlationId,
+    principal: envelope.principal,
+    timestamp: envelope.timestamp,
+    payload: envelope.payload,
+    metadata: envelope.metadata,
+  });
+}
+
+export function signContractEnvelope<TPayload>(
+  envelope: ContractEnvelope<TPayload>,
+  sharedSecretKey: string,
+): ContractEnvelope<TPayload> {
+  const payload = serializeEnvelopeForSignature(envelope);
+  const signature = createHmac("sha256", sharedSecretKey).update(payload).digest("hex");
+  return {
+    ...envelope,
+    signature,
+  };
+}
+
+export function verifyContractEnvelopeSignature<TPayload>(
+  envelope: ContractEnvelope<TPayload>,
+  sharedSecretKey: string,
+): ContractEnvelopeVerificationResult {
+  if (envelope.signature == null || envelope.signature.trim().length === 0) {
+    return {
+      valid: false,
+      error: "contract_envelope.signature_missing",
+    };
+  }
+
+  const payload = serializeEnvelopeForSignature(envelope);
+  const expected = createHmac("sha256", sharedSecretKey).update(payload).digest("hex");
+  const received = envelope.signature.trim();
+  if (expected.length !== received.length) {
+    return {
+      valid: false,
+      error: "contract_envelope.signature_invalid",
+    };
+  }
+
+  const valid = timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(received, "utf8"));
+  return valid
+    ? { valid: true }
+    : {
+      valid: false,
+      error: "contract_envelope.signature_invalid",
+    };
 }
 
 export interface ApiClientConfig {

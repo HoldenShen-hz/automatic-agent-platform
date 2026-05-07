@@ -122,3 +122,10 @@ export {
   type PrincipalAccessProfile,
   type AuthorizationContextDecision,
 } from "./access-model.js";
+
+export {
+  // SAML/X.509 trust chain validation exports (R7-46 fix)
+  X509TrustChainValidator,
+  type X509CertificateInfo,
+  type TrustChainValidationResult,
+} from "../../../org-governance/sso-scim/saml/index.js";

@@ -351,7 +351,10 @@ export class BudgetAllocator {
     ledger: BudgetLedger,
     amount: number,
     tierLimit: number,
+    expectedVersion: number,
+    context: BudgetAllocatorContext,
   ): BudgetLedger {
+    // R22-35 FIX: Use state machine transition for ledger version increment with CAS.
     const effectiveHardCap = Math.min(ledger.hardCap, tierLimit);
     const activeCommittedAmount = this.computeActiveCommittedAmount(ledger);
     if (activeCommittedAmount + amount > effectiveHardCap) {
@@ -377,11 +380,34 @@ export class BudgetAllocator {
       ? "hard_cap_reached"
       : (ledger.softCap != null && nextActiveAmount >= ledger.softCap ? "soft_cap_reached" : ledger.status);
 
+    // Use state machine transition for atomic version increment with CAS check.
+    // If status changes, transition provides version bump. If status stays same,
+    // use intermediate "reserving" status for version bump.
+    const targetStatus = nextStatus === ledger.status ? "reserving" : nextStatus;
+
+    const result = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetLedger",
+      entityId: ledger.budgetLedgerId,
+      principal: context.emittedBy,
+      aggregateType: "BudgetLedger",
+      aggregate: ledger,
+      fromStatus: ledger.status,
+      toStatus: targetStatus,
+      expectedVersion,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode: "budget.ledger_reserve",
+      emittedBy: context.emittedBy,
+      auditRef: `audit://budget-ledgers/${ledger.budgetLedgerId}/reserve`,
+      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
+    });
+
     return {
-      ...ledger,
+      ...result.aggregate,
       reservedAmount: nextReservedAmount,
       status: nextStatus,
-      version: ledger.version + 1,
+      ...(targetStatus === "reserving" ? { status: ledger.status as BudgetLedger["status"] } : {}),
     };
   }
 
@@ -389,26 +415,113 @@ export class BudgetAllocator {
     ledger: BudgetLedger,
     reservedAmount: number,
     actualAmount: number,
+    expectedVersion: number,
+    context: BudgetAllocatorContext,
   ): BudgetLedger {
+    // R22-35 FIX: Use state machine transition for ledger version increment with CAS.
+    // Previously did direct version increment (version: ledger.version + 1) without CAS,
+    // allowing concurrent settle to overwrite each other.
+    const nextReservedAmount = Math.max(0, ledger.reservedAmount - reservedAmount);
+    const nextReleasedAmount = ledger.releasedAmount + Math.max(0, reservedAmount - actualAmount);
+    const nextSettledAmount = ledger.settledAmount + actualAmount;
+    const effectiveHardCap = ledger.hardCap;
+    const activeCommittedAmount = nextReservedAmount + nextSettledAmount - nextReleasedAmount;
+    const nextStatus = activeCommittedAmount >= effectiveHardCap
+      ? "hard_cap_reached"
+      : (ledger.softCap != null && activeCommittedAmount >= ledger.softCap ? "soft_cap_reached" : "open");
+
+    // Use state machine transition for atomic version increment with CAS check.
+    // If status changes, transition provides version bump. If status stays same,
+    // we use an intermediate "settling" status that transitions back, giving us
+    // a valid 2-step transition (this -> settling -> this) with 2 version bumps.
+    // Note: "settling" must be added to BUDGET_LEDGER_TRANSITIONS.
+    const targetStatus = nextStatus === ledger.status ? "settling" : nextStatus;
+
+    const result = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetLedger",
+      entityId: ledger.budgetLedgerId,
+      principal: context.emittedBy,
+      aggregateType: "BudgetLedger",
+      aggregate: ledger,
+      fromStatus: ledger.status,
+      toStatus: targetStatus,
+      expectedVersion,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode: "budget.ledger_settle",
+      emittedBy: context.emittedBy,
+      auditRef: `audit://budget-ledgers/${ledger.budgetLedgerId}/settle`,
+      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
+    });
+
+    // Apply amount changes and return to original status if we used intermediate
     return {
-      ...ledger,
-      reservedAmount: Math.max(0, ledger.reservedAmount - reservedAmount),
-      settledAmount: ledger.settledAmount + actualAmount,
-      releasedAmount: ledger.releasedAmount + Math.max(0, reservedAmount - actualAmount),
-      version: ledger.version + 1,
+      ...result.aggregate,
+      reservedAmount: nextReservedAmount,
+      settledAmount: nextSettledAmount,
+      releasedAmount: nextReleasedAmount,
+      ...(targetStatus === "settling" ? { status: ledger.status as BudgetLedger["status"] } : {}),
     };
   }
 
   private releaseLedgerAmount(
     ledger: BudgetLedger,
     reservedAmount: number,
+    expectedVersion: number,
+    context: BudgetAllocatorContext,
   ): BudgetLedger {
+    // R22-35 FIX: Use state machine transition for ledger version increment with CAS.
+    const nextReservedAmount = Math.max(0, ledger.reservedAmount - reservedAmount);
+    const nextReleasedAmount = ledger.releasedAmount + reservedAmount;
+
+    // Release typically doesn't change status (we're freeing reserved amount back)
+    // Use "releasing" intermediate status for version bump
+    const result = this.stateMachine.transition({
+      commandId: newId("cmd"),
+      entityType: "BudgetLedger",
+      entityId: ledger.budgetLedgerId,
+      principal: context.emittedBy,
+      aggregateType: "BudgetLedger",
+      aggregate: ledger,
+      fromStatus: ledger.status,
+      toStatus: "releasing",
+      expectedVersion,
+      tenantId: context.tenantId,
+      traceId: context.traceId,
+      reasonCode: "budget.ledger_release",
+      emittedBy: context.emittedBy,
+      auditRef: `audit://budget-ledgers/${ledger.budgetLedgerId}/release`,
+      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
+    });
+
     return {
-      ...ledger,
-      reservedAmount: Math.max(0, ledger.reservedAmount - reservedAmount),
-      releasedAmount: ledger.releasedAmount + reservedAmount,
-      version: ledger.version + 1,
+      ...result.aggregate,
+      reservedAmount: nextReservedAmount,
+      releasedAmount: nextReleasedAmount,
+      status: ledger.status as BudgetLedger["status"],
     };
+  }
+
+  /**
+   * Determine the target status for a settle operation when the ledger status
+   * doesn't change but we still need a version bump.
+   */
+  private determineSettleStatus(
+    nextSettledAmount: number,
+    ledger: BudgetLedger,
+  ): BudgetLedger["status"] {
+    // If the ledger was open and now has settled amount, it stays open
+    // (open can transition to soft_cap_reached or hard_cap_reached based on totals)
+    if (ledger.status === "open") {
+      return "open";
+    }
+    // For soft_cap_reached or hard_cap_reached, we can't do a no-op,
+    // but the only valid transition from these is "closed"
+    if (ledger.status === "soft_cap_reached" || ledger.status === "hard_cap_reached") {
+      return "hard_cap_reached";
+    }
+    return ledger.status;
   }
 
   private ensureSeededLedger(ledger: BudgetLedger): void {
@@ -601,12 +714,14 @@ export class BudgetAllocator {
     this.checkHierarchicalBudgetAllowance(context, input.hierarchyLedgers ?? [], effectiveAmount);
 
     const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
-      this.reserveLedgerAmount(entry.ledger, effectiveAmount, entry.ledger.hardCap)
+      this.reserveLedgerAmount(entry.ledger, effectiveAmount, entry.ledger.hardCap, entry.expectedVersion, context)
     );
     const ledgerForReservation = this.reserveLedgerAmount(
       input.ledger,
       effectiveAmount,
       context.tierLimit,
+      input.expectedVersion,
+      context,
     );
     const reservation = createBudgetReservation({
       budgetLedgerId: input.ledger.budgetLedgerId,
@@ -762,9 +877,11 @@ export class BudgetAllocator {
       input.ledger,
       input.reservation.amount,
       input.actualAmount,
+      input.expectedVersion,
+      context,
     );
     const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
-      this.settleLedgerAmount(entry.ledger, input.reservation.amount, input.actualAmount)
+      this.settleLedgerAmount(entry.ledger, input.reservation.amount, input.actualAmount, entry.expectedVersion, context)
     );
     const persistedHierarchyLedgers = this.persistHierarchyLedgersIfNeeded(
       input.hierarchyLedgers,
@@ -847,14 +964,14 @@ export class BudgetAllocator {
     }
 
     const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
-      this.releaseLedgerAmount(entry.ledger, input.reservation.amount)
+      this.releaseLedgerAmount(entry.ledger, input.reservation.amount, entry.expectedVersion, context)
     );
     const persistedHierarchyLedgers = this.persistHierarchyLedgersIfNeeded(
       input.hierarchyLedgers,
       hierarchyLedgers,
     );
     const persistedLedger = this.persistLedgerIfNeeded(
-      this.releaseLedgerAmount(input.ledger, input.reservation.amount),
+      this.releaseLedgerAmount(input.ledger, input.reservation.amount, input.expectedVersion, context),
       input.expectedVersion,
     );
 

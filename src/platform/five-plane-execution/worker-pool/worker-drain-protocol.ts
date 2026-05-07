@@ -157,36 +157,112 @@ interface WorkerDrainProtocolState {
     leasesCompleted: number;
   }>;
   currentPhaseStartedAt: string;
+  /** Track if we've emitted events for this phase */
+  phaseEventEmitted: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Drain Phase Events
+// ---------------------------------------------------------------------------
+
+/**
+ * Events emitted during the three-phase drain protocol per §8.2.
+ */
+export enum WorkerDrainPhaseEvent {
+  /** Phase 1 started: Worker stops accepting new work */
+  DRAIN_STARTED = "worker_drain_drain_started",
+  /** Phase 1 completed: All existing work finished, moving to quiesce */
+  DRAIN_COMPLETED = "worker_drain_drain_completed",
+  /** Phase 2 started: Waiting for in-flight work to complete */
+  QUIESCE_STARTED = "worker_drain_quiesce_started",
+  /** Phase 2 completed: All in-flight work done or timeout exceeded */
+  QUIESCE_COMPLETED = "worker_drain_quiesce_completed",
+  /** Phase 3 started: Termination initiated */
+  TERMINATE_STARTED = "worker_drain_terminate_started",
+  /** Phase 3 completed: Worker fully terminated */
+  TERMINATE_COMPLETED = "worker_drain_terminate_completed",
+  /** All leases released during drain */
+  ALL_LEASES_RELEASED = "worker_drain_all_leases_released",
+  /** Forced handoff occurred for pending leases */
+  FORCED_HANDOFF_OCCURRED = "worker_drain_forced_handoff",
 }
 
 /**
- * WorkerDrainProtocol implements the three-phase drain behavior per §8.2.
- *
- * Phase 1 - DRAIN:
- *   Worker stops accepting new leases but continues processing existing ones.
- *   Transition to QUIESCE when drain timeout expires or all leases completed.
- *
- * Phase 2 - QUIESCE:
- *   Worker waits for all in-flight work to complete.
- *   Transition to TERMINATE when quiesce timeout expires.
- *
- * Phase 3 - TERMINATE:
- *   Forceful termination if deadline exceeded or quiesce timeout exceeded.
+ * Payload for drain phase events.
  */
+export interface WorkerDrainPhaseEventPayload {
+  [WorkerDrainPhaseEvent.DRAIN_STARTED]: {
+    workerId: string;
+    requestedBy: string;
+    requestedAt: string;
+    deadlineAt: string;
+    activeLeaseCount: number;
+    handoverLeaseIds: readonly string[];
+  };
+  [WorkerDrainPhaseEvent.DRAIN_COMPLETED]: {
+    workerId: string;
+    completedLeaseCount: number;
+    transitionedTo: WorkerDrainPhase.QUIESCE;
+  };
+  [WorkerDrainPhaseEvent.QUIESCE_STARTED]: {
+    workerId: string;
+    pendingLeaseCount: number;
+    deadlineAt: string;
+  };
+  [WorkerDrainPhaseEvent.QUIESCE_COMPLETED]: {
+    workerId: string;
+    finalLeaseCount: number;
+    transitionedTo: WorkerDrainPhase.TERMINATE;
+    deadlineExceeded: boolean;
+  };
+  [WorkerDrainPhaseEvent.TERMINATE_STARTED]: {
+    workerId: string;
+    forcedHandoffLeaseIds: readonly string[];
+    deadlineExceeded: boolean;
+  };
+  [WorkerDrainPhaseEvent.TERMINATE_COMPLETED]: {
+    workerId: string;
+    totalLeasesProcessed: number;
+    forcedHandoffCount: number;
+    gracefulMs: number;
+    forcedMs: number;
+  };
+  [WorkerDrainPhaseEvent.ALL_LEASES_RELEASED]: {
+    workerId: string;
+    leaseIds: readonly string[];
+  };
+  [WorkerDrainPhaseEvent.FORCED_HANDOFF_OCCURRED]: {
+    workerId: string;
+    forcedHandoffLeaseIds: readonly string[];
+  };
+}
+
+/**
+ * Handler signature for drain phase event subscribers.
+ */
+export type WorkerDrainPhaseEventHandler = (
+  event: WorkerDrainPhaseEvent,
+  payload: WorkerDrainPhaseEventPayload[WorkerDrainPhaseEvent],
+) => void | Promise<void>;
+
 /**
  * WorkerDrainProtocol implements the three-phase drain behavior per §8.2 with
- * stateful checkpoint coordination, lease release, and RecoveryWorker integration.
+ * stateful checkpoint coordination, lease release, RecoveryWorker integration,
+ * and typed event emission for each phase transition.
  *
  * Phase 1 - DRAIN:
  *   Worker stops accepting new leases but continues processing existing ones.
  *   Transition to QUIESCE when drain timeout expires or all leases completed.
+ *   Emits: DRAIN_STARTED → DRAIN_COMPLETED
  *
  * Phase 2 - QUIESCE:
  *   Worker waits for all in-flight work to complete.
  *   Transition to TERMINATE when quiesce timeout expires.
+ *   Emits: QUIESCE_STARTED → QUIESCE_COMPLETED
  *
  * Phase 3 - TERMINATE:
  *   Forceful termination if deadline exceeded or quiesce timeout exceeded.
+ *   Emits: TERMINATE_STARTED → TERMINATE_COMPLETED
  *
  * §9 Integration:
  *   - Coordinates with CheckpointCoordinator for state snapshots before termination
@@ -200,6 +276,8 @@ export class WorkerDrainProtocol {
   private readonly recoveryNotifier: WorkerDrainRecoveryNotifier | undefined;
   // R20-03: Stateful drain tracking - keyed by workerId
   private readonly drainState = new Map<string, WorkerDrainProtocolState>();
+  // Event handlers for phase transitions
+  private readonly eventHandlers = new Map<WorkerDrainPhaseEvent, Set<WorkerDrainPhaseEventHandler>>();
 
   public constructor(options: WorkerDrainProtocolOptions = {}) {
     this.config = {
@@ -210,6 +288,47 @@ export class WorkerDrainProtocol {
     this.checkpointCoordinator = options.checkpointCoordinator;
     this.leaseManager = options.leaseManager;
     this.recoveryNotifier = options.recoveryNotifier;
+  }
+
+  /**
+   * Subscribe to drain phase events.
+   */
+  public on(event: WorkerDrainPhaseEvent, handler: WorkerDrainPhaseEventHandler): void {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, new Set());
+    }
+    this.eventHandlers.get(event)!.add(handler);
+  }
+
+  /**
+   * Unsubscribe from drain phase events.
+   */
+  public off(event: WorkerDrainPhaseEvent, handler: WorkerDrainPhaseEventHandler): void {
+    this.eventHandlers.get(event)?.delete(handler);
+  }
+
+  /**
+   * Emit a drain phase event to all registered handlers.
+   */
+  private emitPhaseEvent<K extends WorkerDrainPhaseEvent>(
+    event: K,
+    payload: WorkerDrainPhaseEventPayload[K],
+  ): void {
+    const handlers = this.eventHandlers.get(event);
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          const result = handler(event, payload);
+          if (result instanceof Promise) {
+            void result.catch((err) => {
+              console.error(`Error in drain event handler for ${event}:`, err);
+            });
+          }
+        } catch (err) {
+          console.error(`Error invoking drain event handler for ${event}:`, err);
+        }
+      }
+    }
   }
 
   /**
@@ -241,6 +360,17 @@ export class WorkerDrainProtocol {
       forcedHandoffLeases: [],
       phaseHistory,
       currentPhaseStartedAt: startedAt,
+      phaseEventEmitted: false,
+    });
+
+    // Emit DRAIN_STARTED event
+    this.emitPhaseEvent(WorkerDrainPhaseEvent.DRAIN_STARTED, {
+      workerId: request.workerId,
+      requestedBy: request.requestedBy,
+      requestedAt: request.requestedAt,
+      deadlineAt: request.deadlineAt,
+      activeLeaseCount: request.activeLeases.length,
+      handoverLeaseIds,
     });
 
     return {
@@ -285,6 +415,14 @@ export class WorkerDrainProtocol {
     const currentPhase = state.phaseHistory[state.phaseHistory.length - 1];
     if (currentPhase) {
       currentPhase.leasesCompleted = state.completedLeases.length;
+    }
+
+    // Emit ALL_LEASES_RELEASED if all leases are now complete
+    if (state.completedLeases.length === state.activeLeases.length) {
+      this.emitPhaseEvent(WorkerDrainPhaseEvent.ALL_LEASES_RELEASED, {
+        workerId,
+        leaseIds: state.completedLeases,
+      });
     }
   }
 
@@ -383,27 +521,74 @@ export class WorkerDrainProtocol {
 
     let newPhase: WorkerDrainPhase;
     let newStatus: WorkerDrainReceipt["status"];
-    let newStatusText: string;
+
+    const state = this.getDrainState(currentReceipt.workerId);
+    const wasEventEmittedForCurrentPhase = state?.phaseEventEmitted ?? false;
 
     switch (currentReceipt.phase) {
       case WorkerDrainPhase.DRAIN:
-        // Transition to QUIESCE
+        // Transition to QUIESCE: emit DRAIN_COMPLETED and QUIESCE_STARTED
+        if (!wasEventEmittedForCurrentPhase && state) {
+          // Emit DRAIN_COMPLETED
+          this.emitPhaseEvent(WorkerDrainPhaseEvent.DRAIN_COMPLETED, {
+            workerId: currentReceipt.workerId,
+            completedLeaseCount: currentReceipt.completedLeaseCount,
+            transitionedTo: WorkerDrainPhase.QUIESCE,
+          });
+          // Emit QUIESCE_STARTED
+          const pendingLeases = state.activeLeases.filter(
+            (lease) => !state.completedLeases.includes(lease.leaseId),
+          );
+          this.emitPhaseEvent(WorkerDrainPhaseEvent.QUIESCE_STARTED, {
+            workerId: currentReceipt.workerId,
+            pendingLeaseCount: pendingLeases.length,
+            deadlineAt: state.deadlineAt,
+          });
+          state.phaseEventEmitted = true;
+        }
         newPhase = WorkerDrainPhase.QUIESCE;
         newStatus = "quiescing";
-        newStatusText = "draining";
         break;
 
       case WorkerDrainPhase.QUIESCE:
-        // Transition to TERMINATE
+        // Transition to TERMINATE: emit QUIESCE_COMPLETED and TERMINATE_STARTED
+        if (!wasEventEmittedForCurrentPhase && state) {
+          // Emit QUIESCE_COMPLETED
+          this.emitPhaseEvent(WorkerDrainPhaseEvent.QUIESCE_COMPLETED, {
+            workerId: currentReceipt.workerId,
+            finalLeaseCount: currentReceipt.completedLeaseCount,
+            transitionedTo: WorkerDrainPhase.TERMINATE,
+            deadlineExceeded,
+          });
+          // Perform forced handoff before terminate
+          this.forceHandoffPendingLeases(currentReceipt.workerId);
+          // Emit TERMINATE_STARTED
+          this.emitPhaseEvent(WorkerDrainPhaseEvent.TERMINATE_STARTED, {
+            workerId: currentReceipt.workerId,
+            forcedHandoffLeaseIds: state.forcedHandoffLeases,
+            deadlineExceeded,
+          });
+          // Notify recovery worker
+          this.notifyRecoveryWorker(currentReceipt.workerId);
+          state.phaseEventEmitted = true;
+        }
         newPhase = WorkerDrainPhase.TERMINATE;
         newStatus = deadlineExceeded ? "deadline_exceeded" : "terminated";
-        newStatusText = "deadline_exceeded";
-        this.forceHandoffPendingLeases(currentReceipt.workerId);
-        this.notifyRecoveryWorker(currentReceipt.workerId);
         break;
 
       case WorkerDrainPhase.TERMINATE:
-        // Already in terminal phase
+        // Already in terminal phase - emit TERMINATE_COMPLETED if not yet emitted
+        if (!wasEventEmittedForCurrentPhase && state) {
+          const gracefulMs = new Date(observedAt).getTime() - new Date(state.startedAt).getTime();
+          this.emitPhaseEvent(WorkerDrainPhaseEvent.TERMINATE_COMPLETED, {
+            workerId: currentReceipt.workerId,
+            totalLeasesProcessed: state.completedLeases.length + state.forcedHandoffLeases.length,
+            forcedHandoffCount: state.forcedHandoffLeases.length,
+            gracefulMs,
+            forcedMs: 0,
+          });
+          state.phaseEventEmitted = true;
+        }
         return currentReceipt;
 
       default:
@@ -419,12 +604,20 @@ export class WorkerDrainProtocol {
       leasesCompleted: currentReceipt.completedLeaseCount,
     });
 
+    // Update state with new phase and reset event flag
+    if (state) {
+      state.phase = newPhase;
+      state.phaseHistory = updatedHistory;
+      state.currentPhaseStartedAt = observedAt;
+      state.phaseEventEmitted = false;
+    }
+
     return {
       ...currentReceipt,
       status: newStatus,
       phase: newPhase,
       runTerminationCleanupRequired: deadlineExceeded || currentReceipt.handoverLeaseIds.length > 0,
-      forcedHandoffCount: this.getDrainState(currentReceipt.workerId)?.forcedHandoffLeases.length
+      forcedHandoffCount: state?.forcedHandoffLeases.length
         ?? (deadlineExceeded ? currentReceipt.completedLeaseCount : currentReceipt.forcedHandoffCount),
       ...(currentReceipt.cleanupResult !== undefined && { cleanupResult: currentReceipt.cleanupResult }),
       phaseHistory: updatedHistory,
@@ -571,6 +764,14 @@ export class WorkerDrainProtocol {
         leaseId: lease.leaseId,
         nodeRunId: lease.nodeRunId,
         reason: "forced_handoff",
+      });
+    }
+
+    // Emit FORCED_HANDOFF_OCCURRED if any forced handoffs were performed
+    if (state.forcedHandoffLeases.length > 0) {
+      this.emitPhaseEvent(WorkerDrainPhaseEvent.FORCED_HANDOFF_OCCURRED, {
+        workerId,
+        forcedHandoffLeaseIds: state.forcedHandoffLeases,
       });
     }
   }

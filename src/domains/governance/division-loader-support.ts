@@ -50,6 +50,10 @@ export interface RawDivisionConfig {
   orchestration_workflow?: unknown;
   triggers?: unknown;
   roles?: unknown;
+  // §37: DomainDescriptor structured hierarchy
+  domain_descriptor?: unknown;
+  risk_profile?: unknown;
+  eval_spec?: unknown;
 }
 
 export interface RawWorkflowStepConfig {

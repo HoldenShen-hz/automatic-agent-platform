@@ -1,4 +1,4 @@
-import { ValidationError } from "../errors.js";
+import { UnimplementedError, ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
 import type { EventAppendCommand, AuditAppendCommand, ArtifactWriteCommand, EventReplayBehavior } from "../executable-contracts/index.js";
 
@@ -104,7 +104,7 @@ export function createStateCommand<TPayload>(
   _input: SimpleStateCommandInput<TPayload> | CompatibilityStateCommandInput<TPayload>,
 ): StateCommand<TPayload> {
   // R16-79: StateCommand is deprecated - throw UnimplementedError
-  throw new Error("UnimplementedError: createStateCommand is no longer supported. StateCommand is deprecated. Use canonical contracts from executable-contracts instead.");
+  throw new UnimplementedError("DEPRECATED_STATE_COMMAND", "createStateCommand is no longer supported. StateCommand is deprecated. Use canonical contracts from executable-contracts instead.");
 }
 
 // =============================================================================

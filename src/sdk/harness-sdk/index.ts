@@ -25,12 +25,21 @@ import { createPrincipalRef, type PrincipalRef } from "../../platform/contracts/
 import type { ContractEnvelope } from "../client-sdk/api-client.js";
 import {
   createContractEnvelope as createApiContractEnvelope,
+  signContractEnvelope as signApiContractEnvelope,
+  verifyContractEnvelopeSignature as verifyApiContractEnvelopeSignature,
+  type ContractEnvelopeVerificationResult,
   type TypedEventSubscriber,
   type EventSubscription,
   type PlatformFactEvent as ApiPlatformFactEvent,
   type ProjectionUpdate,
   createEventSubscriber,
 } from "../client-sdk/api-client.js";
+import {
+  BulkheadIsolator,
+  BulkheadRejectionError,
+  BulkheadTimeoutError,
+  type BulkheadConfig,
+} from "../../platform/stability/bulkhead-isolation.js";
 
 import type { RuntimeRepository } from "../../platform/state-evidence/truth/runtime-truth-repository.js";
 
@@ -82,6 +91,11 @@ interface BudgetValidationResult {
   error?: string;
 }
 
+export interface HarnessSdkInterPlaneSecurityOptions {
+  readonly sharedSecretKey: string;
+  readonly bulkheadConfig?: Partial<BulkheadConfig>;
+}
+
 /**
  * Lifecycle hook types for harness run phases.
  */
@@ -131,11 +145,14 @@ export class HarnessSdk {
   private readonly runtime: HarnessRuntimeService;
   private readonly budgetChecker: ((budgetRef: string) => BudgetValidationResult) | undefined;
   private readonly interPlaneTransport: InterPlaneTransport | undefined;
+  private readonly interPlaneSecurity: HarnessSdkInterPlaneSecurityOptions | undefined;
+  private readonly interPlaneBulkheads = new Map<string, BulkheadIsolator>();
 
   public constructor(
     runtimeOrRepository?: HarnessRuntimeService | RuntimeRepository,
     budgetChecker?: (budgetRef: string) => BudgetValidationResult,
     interPlaneTransport?: InterPlaneTransport,
+    interPlaneSecurity?: HarnessSdkInterPlaneSecurityOptions,
   ) {
     // Accept either a pre-configured HarnessRuntimeService or a RuntimeRepository
     if (runtimeOrRepository instanceof HarnessRuntimeService) {
@@ -147,6 +164,19 @@ export class HarnessSdk {
     }
     this.budgetChecker = budgetChecker;
     this.interPlaneTransport = interPlaneTransport;
+    this.interPlaneSecurity = interPlaneSecurity;
+  }
+
+  private getInterPlaneBulkhead(targetPlane: string): BulkheadIsolator | null {
+    if (this.interPlaneSecurity == null) {
+      return null;
+    }
+    let bulkhead = this.interPlaneBulkheads.get(targetPlane);
+    if (bulkhead == null) {
+      bulkhead = new BulkheadIsolator(`harness-sdk:${targetPlane}`, this.interPlaneSecurity.bulkheadConfig);
+      this.interPlaneBulkheads.set(targetPlane, bulkhead);
+    }
+    return bulkhead;
   }
 
   // =============================================================================
@@ -198,12 +228,55 @@ export class HarnessSdk {
       correlationId: options?.correlationId ?? newId("corr"),
       idempotencyKey: options?.idempotencyKey ?? newId("idem"),
     });
+    const signedEnvelope = this.interPlaneSecurity == null
+      ? envelope
+      : signApiContractEnvelope(envelope, this.interPlaneSecurity.sharedSecretKey);
+    const bulkhead = this.getInterPlaneBulkhead(targetPlane);
 
-    return this.interPlaneTransport.send<TResponse>({
-      targetPlane,
-      envelope,
-      timeoutMs: options?.timeoutMs ?? 30000,
-    });
+    try {
+      if (bulkhead == null) {
+        return await this.interPlaneTransport.send<TResponse>({
+          targetPlane,
+          envelope: signedEnvelope,
+          timeoutMs: options?.timeoutMs ?? 30000,
+        });
+      }
+      return await bulkhead.execute(async () =>
+        this.interPlaneTransport!.send<TResponse>({
+          targetPlane,
+          envelope: signedEnvelope,
+          timeoutMs: options?.timeoutMs ?? 30000,
+        })
+      );
+    } catch (error) {
+      if (error instanceof BulkheadRejectionError) {
+        throw new HarnessSdkError(
+          "harness_sdk.inter_plane_bulkhead_rejected",
+          error.message,
+          { targetPlane, code: error.code },
+        );
+      }
+      if (error instanceof BulkheadTimeoutError) {
+        throw new HarnessSdkError(
+          "harness_sdk.inter_plane_bulkhead_timeout",
+          error.message,
+          { targetPlane, code: error.code, timeoutMs: error.timeoutMs },
+        );
+      }
+      throw error;
+    }
+  }
+
+  public verifyReceivedInterPlaneEnvelope<TPayload>(
+    envelope: ContractEnvelope<TPayload>,
+  ): ContractEnvelopeVerificationResult {
+    if (this.interPlaneSecurity == null) {
+      return {
+        valid: envelope.signature == null,
+        ...(envelope.signature == null ? {} : { error: "harness_sdk.inter_plane_security_not_configured" }),
+      };
+    }
+    return verifyApiContractEnvelopeSignature(envelope, this.interPlaneSecurity.sharedSecretKey);
   }
 
   /**
@@ -627,6 +700,44 @@ export class HarnessSdk {
     }
     return restored;
   }
+
+  // =============================================================================
+  // R8-22: PlanGraphBundle build/validate API - graph-level planning operations
+  // §22 SDK must expose graph-level planning operations for external consumers
+  // =============================================================================
+
+  /**
+   * R8-22: Build a PlanGraphBundle from nodes and edges.
+   * Exposes graph-level planning operations per §22 SDK specification.
+   *
+   * @param input - Plan graph build input with nodes, edges, entry/terminal nodes
+   * @returns PlanGraphBundleBuildResult containing the bundle and validation report
+   */
+  public buildPlanGraph(input: PlanGraphBuildInput): PlanGraphBundleBuildResult {
+    return buildPlanGraphBundle(input);
+  }
+
+  /**
+   * R8-22: Validate a PlanGraph for structural correctness.
+   * Checks entry/terminal nodes, edge references, orphans, and cycles.
+   *
+   * @param graph - The plan graph to validate
+   * @returns GraphValidationReport with findings
+   */
+  public validatePlanGraph(graph: PlanGraph): GraphValidationReport {
+    return validatePlanGraph(graph);
+  }
+
+  /**
+   * R8-22: Validate a PlanGraphBundle after construction.
+   * Per §22 SDK, exposes graph-level planning validation.
+   *
+   * @param bundle - The plan graph bundle to validate
+   * @returns PlanGraphValidationResult with validation status and findings
+   */
+  public validatePlanGraphBundle(bundle: PlanGraphBundle): PlanGraphValidationResult {
+    return validatePlanGraphBundle(bundle);
+  }
 }
 
 // §22 SDK PlanGraphBundle API - graph-level planning operations
@@ -743,11 +854,79 @@ export function validatePlanGraph(graph: PlanGraph): GraphValidationReport {
     }
   }
 
+  // R8-22: Check for cycles using DFS with color marking (white/gray/black)
+  const cycles = detectCycles(graph.nodes, graph.edges);
+  for (const cycle of cycles) {
+    findings.push(`Cycle detected: ${cycle.join(" -> ")}`);
+  }
+
   return {
     valid: findings.length === 0,
     findings,
     normalizedNodeIds: graph.nodes.map((n) => n.nodeId),
   };
+}
+
+/**
+ * R8-22: Detect cycles in the graph using DFS with color marking.
+ * White (0) = unvisited, Gray (1) = in progress, Black (2) = completed.
+ * A cycle exists if we encounter a gray node during DFS.
+ */
+function detectCycles(
+  nodes: readonly PlanNode[],
+  edges: readonly PlanEdge[],
+): readonly string[][] {
+  const cycles: string[][] = [];
+  const nodeIds = new Set(nodes.map((n) => n.nodeId));
+  const adjacency = new Map<string, string[]>();
+
+  for (const nodeId of nodeIds) {
+    adjacency.set(nodeId, []);
+  }
+  for (const edge of edges) {
+    const adj = adjacency.get(edge.fromNodeId);
+    if (adj) {
+      adj.push(edge.toNodeId);
+    }
+  }
+
+  // Color: 0 = white (unvisited), 1 = gray (in stack), 2 = black (done)
+  const color = new Map<string, number>();
+  const parent = new Map<string, string | null>();
+
+  for (const nodeId of nodeIds) {
+    color.set(nodeId, 0);
+    parent.set(nodeId, null);
+  }
+
+  const dfs = (startNodeId: string, path: string[]): void => {
+    color.set(startNodeId, 1); // gray - in progress
+    path.push(startNodeId);
+
+    const neighbors = adjacency.get(startNodeId) ?? [];
+    for (const neighbor of neighbors) {
+      const neighborColor = color.get(neighbor) ?? 0;
+      if (neighborColor === 1) {
+        // Found a back edge - cycle detected
+        const cycleStartIndex = path.indexOf(neighbor);
+        const cycle = [...path.slice(cycleStartIndex), neighbor];
+        cycles.push(cycle);
+      } else if (neighborColor === 0) {
+        parent.set(neighbor, startNodeId);
+        dfs(neighbor, [...path]);
+      }
+    }
+
+    color.set(startNodeId, 2); // black - completed
+  };
+
+  for (const nodeId of nodeIds) {
+    if (color.get(nodeId) === 0) {
+      dfs(nodeId, []);
+    }
+  }
+
+  return cycles;
 }
 
 /**

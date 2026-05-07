@@ -61,6 +61,18 @@ export {
   signContractEnvelope,
 } from "./executable-contracts/index.js";
 
+// R7-44 FIX: Inter-plane Contract Gateway with signature verification
+// R7-45 FIX: Bulkhead isolation pattern for plane-to-plane communication
+export {
+  type InterPlaneGatewayConfig,
+  type InterPlaneSendResult,
+  type InterPlaneReceiveResult,
+  type PlaneName,
+  type InterPlaneMessageType,
+  InterPlaneContractGateway,
+  createInterPlaneGateway,
+} from "./inter-plane-contract-gateway.js";
+
 // emitDeprecationWarning and assertNotDeprecated are defined in this file below
 // and provide runtime enforcement for LEGACY_CONTRACT_NAMES usage
 

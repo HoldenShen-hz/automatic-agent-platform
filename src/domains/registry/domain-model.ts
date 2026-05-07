@@ -171,18 +171,34 @@ export const WorkflowConfigSchema = z.object({
   const hasPlanGraph = workflow.planGraph != null;
   const hasStepGraph = workflow.stepGraph != null && workflow.stepGraph.edges.length > 0;
   const stepNames = new Set(workflow.steps.map((step) => step.stepName));
-  const requiresGraph = workflow.steps.length > 1 || workflow.steps.some((step) => step.dependsOn.length > 0);
 
-  if (requiresGraph && !hasPlanGraph && !hasStepGraph) {
+  // §13: Linear steps[] allowed only for simple workflows (single-step or linear chain ≤3 steps).
+  // Complex workflows (branching, parallel execution, high step count) require graph structure.
+  const stepCount = workflow.steps.length;
+  const hasMultiParentDeps = workflow.steps.some((step) => step.dependsOn.length > 1);  // AND-split
+  const hasCircularDeps = hasCircularDependencies(workflow.steps);  // circular refs
+  const hasParallelRoots = stepCount > 1 && workflow.steps.every((step) => step.dependsOn.length === 0);  // parallel entry points
+
+  // Complexity triggers: step count threshold, multi-parent, circular, or parallel
+  const isComplexWorkflow = (
+    stepCount > 3 ||
+    hasMultiParentDeps ||
+    hasCircularDeps ||
+    hasParallelRoots
+  );
+
+  if (isComplexWorkflow && !hasPlanGraph && !hasStepGraph) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["steps"],
-      message: "Multi-step workflows must declare planGraph or stepGraph; linear-only steps[] is reserved for single-step flows.",
+      message: `§13 violation: Complex workflow (steps=${stepCount}, multiParent=${hasMultiParentDeps}, parallel=${hasParallelRoots}) requires planGraph or stepGraph. Linear steps[] only allowed for simple workflows (≤3 steps, no branching, no parallelism).`,
     });
   }
 
   if (workflow.stepGraph != null) {
-    for (const [edgeIndex, edge] of workflow.stepGraph.edges.entries()) {
+    const edges = workflow.stepGraph.edges;
+    for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
+      const edge = edges[edgeIndex];
       if (!stepNames.has(edge.fromStep)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -200,6 +216,42 @@ export const WorkflowConfigSchema = z.object({
     }
   }
 });
+
+// §13 helper: detect circular dependencies in linear steps array
+function hasCircularDependencies(steps: Array<{ stepName?: string; dependsOn?: string[] }>): boolean {
+  const stepMap = new Map<string, string[]>();
+  for (const s of steps) {
+    if (s.stepName) {
+      stepMap.set(s.stepName, s.dependsOn ?? []);
+    }
+  }
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+
+  function hasCycle(stepName: string): boolean {
+    visited.add(stepName);
+    recursionStack.add(stepName);
+
+    const deps = stepMap.get(stepName) ?? [];
+    for (const dep of deps) {
+      if (!visited.has(dep)) {
+        if (hasCycle(dep)) return true;
+      } else if (recursionStack.has(dep)) {
+        return true;  // cycle detected
+      }
+    }
+
+    recursionStack.delete(stepName);
+    return false;
+  }
+
+  for (const step of steps) {
+    if (step.stepName && !visited.has(step.stepName)) {
+      if (hasCycle(step.stepName)) return true;
+    }
+  }
+  return false;
+}
 
 export const ToolBundleEntrySchema = z.object({
   toolName: NonEmptyTrimmedStringSchema.refine(

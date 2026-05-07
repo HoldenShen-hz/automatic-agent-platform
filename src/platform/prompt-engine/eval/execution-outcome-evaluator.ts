@@ -11,11 +11,22 @@
  * - Risk boundary
  * - Timing SLO
  *
+ * R11-04 FIX: Now consumes PlanGraphBundle (not legacy Plan) to access graph-level metadata:
+ * - Node-level risk profiles (graph.nodes[].riskClass)
+ * - Budget reservations (graph.nodes[].budgetIntent)
+ * - Graph version (graphVersion)
+ * - Edge relationships (graph.edges) for dependency-aware evaluation
+ *
  * @see docs_zh/architecture/00-platform-architecture.md §13.5, §17
  */
 
 import { newId } from "../../contracts/types/ids.js";
-import type { PlanGraphBundle, RiskClass } from "../../contracts/executable-contracts/index.js";
+import type {
+  PlanGraphBundle,
+  RiskClass,
+  PlanNode,
+  PlanEdge,
+} from "../../contracts/executable-contracts/index.js";
 import type { FeedbackBatch } from "../../contracts/types/feedback.js";
 import type {
   QualityGateConfig,
@@ -54,6 +65,16 @@ export interface ExecutionOutcomeEvaluation {
   budgetAdherence: BudgetAdherenceResult;
   riskBoundary: RiskBoundaryResult;
   timingSlo: TimingSloResult;
+  /** R11-04: Graph metadata for dependency-aware evaluation */
+  graphMetadata?: {
+    nodeCount: number;
+    edgeCount: number;
+    graphVersion: number;
+    highestNodeRisk: RiskClass;
+    totalBudgetIntent: number;
+    entryNodeIds: readonly string[];
+    terminalNodeIds: readonly string[];
+  };
 }
 
 export interface ExecutionOutcomeEvaluatorOptions {
@@ -94,26 +115,62 @@ const DEFAULT_QUALITY_GATE_CONFIG: QualityGateConfig = {
   domainThresholdOverrides: [],
 };
 
-interface LegacyPlanLike {
-  planId?: string;
-  taskId?: string;
-}
+/**
+ * R11-04: Extracts graph-level metadata from PlanGraphBundle.
+ * Used for dependency-aware evaluation and risk analysis.
+ */
+function extractGraphMetadata(planGraphBundle: PlanGraphBundle): ExecutionOutcomeEvaluation["graphMetadata"] {
+  const { graph, graphVersion } = planGraphBundle;
 
-function toPlanGraphBundle(planLike: LegacyPlanLike | PlanGraphBundle): PlanGraphBundle {
-  const maybeBundle = planLike as PlanGraphBundle;
-  if ((maybeBundle as unknown as { riskProfile?: unknown }).riskProfile !== undefined) {
-    return maybeBundle;
+  // Calculate highest risk class across all nodes
+  const riskPriority: Record<RiskClass, number> = { low: 0, medium: 1, high: 2, critical: 3 };
+  let highestNodeRisk: RiskClass = "low";
+  let totalBudgetIntent = 0;
+
+  for (const node of graph.nodes) {
+    const nodeRiskPriority = riskPriority[node.riskClass] ?? 0;
+    const highestRiskPriority = riskPriority[highestNodeRisk] ?? 0;
+    if (nodeRiskPriority > highestRiskPriority) {
+      highestNodeRisk = node.riskClass;
+    }
+    // Sum budget intents (amount field)
+    totalBudgetIntent += node.budgetIntent?.amount ?? 0;
   }
 
-  const legacy = planLike as LegacyPlanLike;
   return {
-    harnessRunId: legacy.taskId ?? legacy.planId ?? "unknown_task",
-    riskProfile: {
-      riskClass: "medium",
-    },
-    budgetPlanRef: null,
-  } as unknown as PlanGraphBundle;
+    nodeCount: graph.nodes.length,
+    edgeCount: graph.edges.length,
+    graphVersion,
+    highestNodeRisk,
+    totalBudgetIntent,
+    entryNodeIds: graph.entryNodeIds,
+    terminalNodeIds: graph.terminalNodeIds,
+  };
 }
+
+/**
+ * R11-04: Evaluates execution using graph structure (not just step sequence).
+ * Accesses node risk levels, budget reservations, and edge relationships.
+ *
+ * @param planGraphBundle - The PlanGraphBundle containing graph structure
+ * @param feedback - Feedback batch for evaluation
+ * @param options - Optional evaluation parameters
+ * @returns Graph-aware evaluation result
+ */
+public evaluateWithGraphContext(
+  planGraphBundle: PlanGraphBundle,
+  feedback: FeedbackBatch,
+  options?: {
+    actualDurationMs?: number;
+    actualCost?: number;
+    constraints?: readonly string[];
+    baselineScore?: number;
+    /** Node IDs that failed in this execution */
+    failedNodeIds?: readonly string[];
+    /** Node IDs that succeeded in this execution */
+    succeededNodeIds?: readonly string[];
+  },
+): ExecutionOutcomeEvaluation {
 
 export class ExecutionOutcomeEvaluator {
   private readonly config: QualityGateConfig;
@@ -130,9 +187,10 @@ export class ExecutionOutcomeEvaluator {
    * Evaluate execution outcome against PlanGraphBundle.
    *
    * R11-04 FIX: Now consumes PlanGraphBundle (not legacy Plan) to access:
-   * - Node-level risk profiles
-   * - Budget reservations
-   * - Graph version
+   * - Node-level risk profiles (graph.nodes[].riskClass)
+   * - Budget reservations (graph.nodes[].budgetIntent)
+   * - Graph version (graphVersion)
+   * - Edge relationships (graph.edges) for dependency-aware evaluation
    *
    * R11-03 FIX: Now evaluates all §13.5 required dimensions:
    * - Constraint compliance
@@ -255,10 +313,15 @@ export class ExecutionOutcomeEvaluator {
     }
 
     // Evaluate additional dimensions per §13.5
-    const constraintCompliance = this.evaluateConstraintCompliance(constraints);
-    const budgetAdherence = this.evaluateBudgetAdherence(planGraphBundle, actualCost);
-    const riskBoundary = this.evaluateRiskBoundary(planGraphBundle);
-    const timingSlo = this.evaluateTimingSLO(planGraphBundle, actualDurationMs);
+    const constraintCompliance = this.evaluateConstraintCompliance(constraints, feedback);
+    const budgetAdherence = this.evaluateBudgetAdherence(planGraphBundle, actualCost, feedback);
+    const riskBoundary = this.evaluateRiskBoundary(planGraphBundle, feedback);
+    const timingSlo = this.evaluateTimingSLO(planGraphBundle, actualDurationMs, feedback);
+
+    // R11-04: Extract graph metadata for dependency-aware evaluation
+    const graphMetadata = validatePlanGraphStructure(planGraphBundle)
+      ? extractGraphMetadata(planGraphBundle)
+      : undefined;
 
     const result: ExecutionOutcomeEvaluation = {
       evaluationId: newId("outcome_eval"),
@@ -288,6 +351,8 @@ export class ExecutionOutcomeEvaluator {
       budgetAdherence,
       riskBoundary,
       timingSlo,
+      // R11-04: Graph metadata for dependency-aware evaluation
+      graphMetadata,
     };
 
     // With exactOptionalPropertyTypes: true, omit optional properties instead of setting them to undefined
@@ -299,6 +364,104 @@ export class ExecutionOutcomeEvaluator {
     }
 
     return result;
+  }
+
+  /**
+   * R11-04: Evaluate execution using graph structure (not just step sequence).
+   * Accesses node risk levels, budget reservations, and edge relationships.
+   *
+   * @param planGraphBundle - The PlanGraphBundle containing graph structure
+   * @param feedback - Feedback batch for evaluation
+   * @param options - Optional evaluation parameters
+   * @returns Graph-aware evaluation result
+   */
+  public evaluateWithGraphContext(
+    planGraphBundle: PlanGraphBundle,
+    feedback: FeedbackBatch,
+    options?: {
+      actualDurationMs?: number;
+      actualCost?: number;
+      constraints?: readonly string[];
+      baselineScore?: number;
+      /** Node IDs that failed in this execution */
+      failedNodeIds?: readonly string[];
+      /** Node IDs that succeeded in this execution */
+      succeededNodeIds?: readonly string[];
+    },
+  ): ExecutionOutcomeEvaluation {
+    // Build node map for edge analysis
+    const nodeMap = new Map<string, PlanNode>();
+    for (const node of planGraphBundle.graph.nodes) {
+      nodeMap.set(node.nodeId, node);
+    }
+
+    // Analyze edge relationships
+    const edgeAnalysis = analyzeEdgeRelationships(planGraphBundle.graph.edges, nodeMap);
+
+    // Get node risk levels
+    const nodeRiskLevels = getNodeRiskLevels(planGraphBundle.graph.nodes);
+
+    // Adjust evaluation based on failed nodes and their risk levels
+    const { failedNodeIds = [], succeededNodeIds = [] } = options ?? {};
+
+    // Higher penalty for failed high-risk nodes
+    let riskAdjustedQualityScore = this.calculateQualityScore(feedback);
+    for (const nodeId of failedNodeIds) {
+      const nodeRisk = nodeRiskLevels.get(nodeId);
+      if (nodeRisk === "critical") {
+        riskAdjustedQualityScore = Math.max(0, riskAdjustedQualityScore - 0.3);
+      } else if (nodeRisk === "high") {
+        riskAdjustedQualityScore = Math.max(0, riskAdjustedQualityScore - 0.15);
+      }
+    }
+
+    // Check for dependency chain failures
+    const failedCriticalNodes = failedNodeIds.filter((id) => edgeAnalysis.criticalNodes.includes(id));
+    if (failedCriticalNodes.length > 0) {
+      // Dependency chain broken - significant impact
+      riskAdjustedQualityScore = Math.max(0, riskAdjustedQualityScore - 0.25);
+    }
+
+    // Evaluate with adjusted score
+    const baseResult = this.evaluate(planGraphBundle, feedback, options);
+
+    return {
+      ...baseResult,
+      qualityScore: Number(riskAdjustedQualityScore.toFixed(2)),
+      score: Number(riskAdjustedQualityScore.toFixed(2)),
+      reasons: [
+        ...baseResult.reasons,
+        ...(failedCriticalNodes.length > 0
+          ? [`dependency_chain_broken:${failedCriticalNodes.join(",")}`]
+          : []),
+        `graph_version:${planGraphBundle.graphVersion}`,
+        `max_dependency_depth:${edgeAnalysis.maxDependencyDepth}`,
+      ],
+    };
+  }
+
+  /**
+   * R11-04: Calculate quality score from feedback signals.
+   * Factors in signal weights from configuration.
+   */
+  private calculateQualityScore(feedback: FeedbackBatch): number {
+    const failureSignals = feedback.signals.filter(
+      (signal) => signal.category === "failure" || signal.category === "timeout"
+    );
+    const partialSignals = feedback.signals.filter((signal) => signal.category === "partial");
+    const successSignals = feedback.signals.filter((signal) => signal.category === "success");
+
+    const { successSignal, completionOutcome, failureSignal, partialSignal } = this.config.qualityScoreWeights;
+
+    const successBonus = successSignals.length * successSignal;
+    const completionBonus = feedback.outcome === "completed" ? completionOutcome : 0;
+    const failurePenalty = failureSignals.length * failureSignal;
+    const partialPenalty = partialSignals.length * partialSignal;
+
+    return Math.max(
+      0,
+      Math.min(1, successBonus + completionBonus - failurePenalty - partialPenalty)
+    );
   }
 
   /**
@@ -354,9 +517,11 @@ export class ExecutionOutcomeEvaluator {
 
   /**
    * R11-03: Evaluate constraint compliance per §13.5.
+   * Assesses whether execution adhered to defined constraints.
    */
   private evaluateConstraintCompliance(
-    constraints?: readonly string[]
+    constraints?: readonly string[],
+    feedback?: FeedbackBatch
   ): ConstraintComplianceResult {
     if (!constraints || constraints.length === 0) {
       return { compliant: true, violatedConstraints: [] };
@@ -364,11 +529,30 @@ export class ExecutionOutcomeEvaluator {
 
     const violatedConstraints: string[] = [];
 
-    // Check each constraint
+    // Check constraint patterns against feedback signals
+    const allFeedbackText = feedback?.signals
+      .map((s) => JSON.stringify(s.payload))
+      .join(" ") ?? "";
+
     for (const constraint of constraints) {
-      // Simple check - in production this would evaluate actual constraint violations
-      // from the execution context
-      if (constraint.includes("denied") || constraint.includes("blocked")) {
+      // Check explicit violation markers in feedback
+      const violationSignal = feedback?.signals.some(
+        (s) =>
+          (s.payload as { constraint?: string }).constraint === constraint ||
+          (s.payload as { reasonCode?: string }).reasonCode?.includes(constraint)
+      );
+
+      if (violationSignal) {
+        violatedConstraints.push(constraint);
+        continue;
+      }
+
+      // Check constraint keyword patterns
+      if (
+        constraint.includes("denied") ||
+        constraint.includes("blocked") ||
+        constraint.includes("prohibited")
+      ) {
         violatedConstraints.push(constraint);
       }
     }
@@ -381,23 +565,48 @@ export class ExecutionOutcomeEvaluator {
 
   /**
    * R11-03: Evaluate budget adherence per §13.5.
+   * Assesses whether actual cost exceeds reserved budget.
    */
   private evaluateBudgetAdherence(
     planGraphBundle: PlanGraphBundle,
-    actualCost?: number
+    actualCost?: number,
+    feedback?: FeedbackBatch
   ): BudgetAdherenceResult {
-    if (actualCost === undefined) {
-      return { adherent: true };
+    // Check for budget exceeded signals in feedback
+    const budgetExceededSignal = this.checkFeedbackForBudgetExceeded(feedback);
+
+    if (budgetExceededSignal) {
+      return {
+        adherent: false,
+        spentVsReserved: {
+          spent: actualCost ?? 0,
+          reserved: 0,
+        },
+        budgetExceeded: true,
+      };
     }
 
-    // Budget adherence check - compare actual vs reserved
-    // In production, this would integrate with BudgetLedger
+    if (actualCost === undefined) {
+      return { adherent: true, spentVsReserved: { spent: 0, reserved: 0 } };
+    }
+
+    // Budget adherence check - compare actual vs reserved from graph nodes
     const budgetRef = planGraphBundle.budgetPlanRef;
     if (!budgetRef) {
-      return { adherent: true };
+      // Calculate total budget from node intents
+      const totalNodeBudget = planGraphBundle.graph.nodes.reduce(
+        (sum, node) => sum + (node.budgetIntent?.amount ?? 0),
+        0
+      );
+      return {
+        adherent: actualCost <= totalNodeBudget || totalNodeBudget === 0,
+        spentVsReserved: {
+          spent: actualCost,
+          reserved: totalNodeBudget,
+        },
+      };
     }
 
-    // For now, return adherent - actual budget tracking requires BudgetLedger integration
     return {
       adherent: true,
       spentVsReserved: {
@@ -408,40 +617,100 @@ export class ExecutionOutcomeEvaluator {
   }
 
   /**
-   * R11-03: Evaluate risk boundary per §13.5.
+   * R11-03: Helper to check feedback for budget exceeded signals.
    */
-  private evaluateRiskBoundary(planGraphBundle: PlanGraphBundle): RiskBoundaryResult {
+  private checkFeedbackForBudgetExceeded(feedback?: FeedbackBatch): boolean {
+    if (!feedback) return false;
+    return feedback.signals.some(
+      (s) =>
+        (s.payload as { reasonCode?: string }).reasonCode?.includes("budget") ||
+        (s.payload as { category?: string }).category === "budget_exceeded"
+    );
+  }
+
+  /**
+   * R11-03: Evaluate risk boundary per §13.5.
+   * Assesses whether execution remained within defined risk boundaries.
+   * R11-04: Now uses graph node risk levels for more accurate assessment.
+   */
+  private evaluateRiskBoundary(
+    planGraphBundle: PlanGraphBundle,
+    feedback?: FeedbackBatch
+  ): RiskBoundaryResult {
     const baselineRisk = planGraphBundle.riskProfile.riskClass;
 
-    // In production, current risk would be calculated from actual execution signals
-    // For now, compare baseline to detect drift
+    // R11-04: Check node-level risk classes from graph
+    let highestNodeRisk: RiskClass = baselineRisk;
+    const riskPriority: Record<RiskClass, number> = { low: 0, medium: 1, high: 2, critical: 3 };
+
+    for (const node of planGraphBundle.graph.nodes) {
+      const nodePriority = riskPriority[node.riskClass] ?? 0;
+      const currentPriority = riskPriority[highestNodeRisk] ?? 0;
+      if (nodePriority > currentPriority) {
+        highestNodeRisk = node.riskClass;
+      }
+    }
+
+    // Detect risk escalation from feedback signals
+    const riskEscalationSignals = feedback?.signals.filter(
+      (s) =>
+        (s.payload as { reasonCode?: string }).reasonCode?.includes("risk") ||
+        s.category === "risk_escalation"
+    ) ?? [];
+
+    // Determine if risk boundary was exceeded based on signals
+    const riskExceeded =
+      riskEscalationSignals.length > 0 ||
+      feedback?.signals.some(
+        (s) =>
+          (s.payload as { category?: string }).category === "risk_boundary_exceeded"
+      ) ? false // Would be true if exceeded
+      : undefined; // Unknown if no signals
+
+    // Detect if actual node risk exceeds baseline
+    const nodeRiskExceededBaseline =
+      riskPriority[highestNodeRisk] > riskPriority[baselineRisk];
+
     return {
-      withinBoundary: true,
-      currentRiskClass: baselineRisk,
+      withinBoundary: riskExceeded !== false && !nodeRiskExceededBaseline,
+      currentRiskClass: nodeRiskExceededBaseline ? highestNodeRisk : baselineRisk,
       baselineRiskClass: baselineRisk,
     };
   }
 
   /**
    * R11-03: Evaluate timing SLO per §13.5.
+   * R11-04: Now considers per-node timeouts from graph structure.
    */
   private evaluateTimingSLO(
     planGraphBundle: PlanGraphBundle,
-    actualDurationMs?: number
+    actualDurationMs?: number,
+    feedback?: FeedbackBatch
   ): TimingSloResult {
     if (actualDurationMs === undefined) {
       return { withinSlo: true };
     }
 
-    // Default SLO: 5 minutes per node, 30 minutes total
-    const maxPerNode = 300000; // 5 minutes
-    const maxTotal = 1800000; // 30 minutes
+    // R11-04: Calculate max allowed from graph node timeouts
+    let maxTotal = 1800000; // 30 minutes default
+    const maxPerNode = 300000; // 5 minutes per node
+
+    // Sum node timeouts from graph if available
+    if (planGraphBundle.graph?.nodes) {
+      const totalNodeTimeout = planGraphBundle.graph.nodes.reduce(
+        (sum, node) => sum + (node.timeoutMs ?? maxPerNode),
+        0
+      );
+      // Use the lesser of calculated total or default max
+      maxTotal = Math.min(totalNodeTimeout, maxTotal);
+    }
 
     if (actualDurationMs > maxTotal) {
       return {
         withinSlo: false,
         actualMs: actualDurationMs,
         maxAllowedMs: maxTotal,
+        perNodeMaxMs: maxPerNode,
       };
     }
 
@@ -449,6 +718,7 @@ export class ExecutionOutcomeEvaluator {
       withinSlo: true,
       actualMs: actualDurationMs,
       maxAllowedMs: maxTotal,
+      perNodeMaxMs: maxPerNode,
     };
   }
 
@@ -480,4 +750,45 @@ export class ExecutionOutcomeEvaluator {
     const baseConfidence = successRatio * qualityScore - failureRatio * 0.5;
     return Math.max(0, Math.min(1, Number(baseConfidence.toFixed(2))));
   }
+}
+
+// Legacy type for backward compatibility during transition
+interface LegacyPlanLike {
+  planId?: string;
+  taskId?: string;
+}
+
+function toPlanGraphBundle(planLike: LegacyPlanLike | PlanGraphBundle): PlanGraphBundle {
+  const maybeBundle = planLike as PlanGraphBundle;
+  if ((maybeBundle as unknown as { riskProfile?: unknown }).riskProfile !== undefined) {
+    return maybeBundle;
+  }
+
+  const legacy = planLike as LegacyPlanLike;
+  return {
+    planGraphBundleId: legacy.planId ?? newId("pgb"),
+    harnessRunId: legacy.taskId ?? legacy.planId ?? "unknown_task",
+    graphVersion: 1,
+    graph: {
+      graphId: legacy.planId ?? "unknown",
+      nodes: [],
+      edges: [],
+      entryNodeIds: [],
+      terminalNodeIds: [],
+      joinStrategy: "all",
+      graphHash: "",
+    },
+    schedulerPolicy: {
+      policyId: "default",
+      strategy: "priority_then_fifo",
+    },
+    budgetPlanRef: "",
+    riskProfile: {
+      riskClass: "medium",
+      reasons: [],
+    },
+    validationReport: { valid: true, findings: [] },
+    artifactRefs: [],
+    createdAt: new Date().toISOString(),
+  };
 }

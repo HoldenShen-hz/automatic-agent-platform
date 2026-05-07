@@ -15,6 +15,8 @@ export interface AuditLogStore {
   append(entry: GovernanceConsoleAuditEntry): void;
   list(): GovernanceConsoleAuditEntry[];
   listByDelegationId(delegationId: string): GovernanceConsoleAuditEntry[];
+  listByActorId(actorId: string): GovernanceConsoleAuditEntry[];
+  listByTargetId(targetId: string): GovernanceConsoleAuditEntry[];
 }
 
 export class InMemoryDelegationStore implements DelegationStore {
@@ -56,6 +58,14 @@ export class InMemoryAuditLogStore implements AuditLogStore {
 
   public listByDelegationId(delegationId: string): GovernanceConsoleAuditEntry[] {
     return this.entries.filter((entry) => entry.delegationId === delegationId);
+  }
+
+  public listByActorId(actorId: string): GovernanceConsoleAuditEntry[] {
+    return this.entries.filter((entry) => entry.actorId === actorId);
+  }
+
+  public listByTargetId(targetId: string): GovernanceConsoleAuditEntry[] {
+    return this.entries.filter((entry) => entry.targetId === targetId);
   }
 }
 
@@ -178,55 +188,92 @@ export class SqliteAuditLogStore implements AuditLogStore {
   public constructor(private readonly db: DatabaseSync) {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS governance_audit_log (
-        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT PRIMARY KEY,
         action TEXT NOT NULL,
         actor_id TEXT NOT NULL,
+        actor_role TEXT NOT NULL,
         delegation_id TEXT,
+        target_type TEXT,
+        target_id TEXT,
         timestamp TEXT NOT NULL,
-        details_json TEXT NOT NULL
+        details_json TEXT NOT NULL,
+        success INTEGER NOT NULL,
+        failure_reason TEXT
       )
     `);
   }
 
   public append(entry: GovernanceConsoleAuditEntry): void {
     this.db.prepare(`
-      INSERT INTO governance_audit_log (action, actor_id, delegation_id, timestamp, details_json)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO governance_audit_log (event_id, action, actor_id, actor_role, delegation_id, target_type, target_id, timestamp, details_json, success, failure_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
+      entry.eventId,
       entry.action,
       entry.actorId,
+      entry.actorRole,
       entry.delegationId,
+      entry.targetType,
+      entry.targetId,
       entry.timestamp,
       JSON.stringify(entry.details),
+      entry.success ? 1 : 0,
+      entry.failureReason ?? null,
     );
   }
 
   public list(): GovernanceConsoleAuditEntry[] {
     const rows = this.db.prepare(`
-      SELECT action, actor_id, delegation_id, timestamp, details_json
+      SELECT event_id, action, actor_id, actor_role, delegation_id, target_type, target_id, timestamp, details_json, success, failure_reason
       FROM governance_audit_log
-      ORDER BY event_id ASC
+      ORDER BY timestamp ASC
     `).all() as Record<string, unknown>[];
     return rows.map((row) => this.deserialize(row));
   }
 
   public listByDelegationId(delegationId: string): GovernanceConsoleAuditEntry[] {
     const rows = this.db.prepare(`
-      SELECT action, actor_id, delegation_id, timestamp, details_json
+      SELECT event_id, action, actor_id, actor_role, delegation_id, target_type, target_id, timestamp, details_json, success, failure_reason
       FROM governance_audit_log
       WHERE delegation_id = ?
-      ORDER BY event_id ASC
+      ORDER BY timestamp ASC
     `).all(delegationId) as Record<string, unknown>[];
+    return rows.map((row) => this.deserialize(row));
+  }
+
+  public listByActorId(actorId: string): GovernanceConsoleAuditEntry[] {
+    const rows = this.db.prepare(`
+      SELECT event_id, action, actor_id, actor_role, delegation_id, target_type, target_id, timestamp, details_json, success, failure_reason
+      FROM governance_audit_log
+      WHERE actor_id = ?
+      ORDER BY timestamp ASC
+    `).all(actorId) as Record<string, unknown>[];
+    return rows.map((row) => this.deserialize(row));
+  }
+
+  public listByTargetId(targetId: string): GovernanceConsoleAuditEntry[] {
+    const rows = this.db.prepare(`
+      SELECT event_id, action, actor_id, actor_role, delegation_id, target_type, target_id, timestamp, details_json, success, failure_reason
+      FROM governance_audit_log
+      WHERE target_id = ?
+      ORDER BY timestamp ASC
+    `).all(targetId) as Record<string, unknown>[];
     return rows.map((row) => this.deserialize(row));
   }
 
   private deserialize(row: Record<string, unknown>): GovernanceConsoleAuditEntry {
     return {
+      eventId: String(row.event_id),
       action: String(row.action) as GovernanceConsoleAuditEntry["action"],
       actorId: String(row.actor_id),
+      actorRole: String(row.actor_role) as GovernanceConsoleAuditEntry["actorRole"],
       delegationId: row.delegation_id == null ? null : String(row.delegation_id),
+      targetType: row.target_type == null ? null : String(row.target_type) as GovernanceConsoleAuditEntry["targetType"],
+      targetId: row.target_id == null ? null : String(row.target_id),
       timestamp: String(row.timestamp),
       details: JSON.parse(String(row.details_json)) as Record<string, unknown>,
+      success: Number(row.success) === 1,
+      ...(row.failure_reason != null && { failureReason: String(row.failure_reason) }),
     };
   }
 }
