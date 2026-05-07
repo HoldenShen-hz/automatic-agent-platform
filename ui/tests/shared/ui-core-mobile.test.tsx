@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import {
   FeatureScaffold,
   FeatureWorkbenchPanel,
+  ListCard,
   MetricGrid,
   MiniTrendBars,
   SystemStatusBar,
@@ -41,6 +42,7 @@ describe("ui-core split modules", () => {
   });
 
   it("renders the interactive workbench baseline for L1 features", () => {
+    const onTrigger = vi.fn();
     render(
       <FeatureWorkbenchPanel
         metrics={[{ label: "Open", value: 3 }]}
@@ -49,7 +51,7 @@ describe("ui-core split modules", () => {
           { title: "Export Summary", description: "导出当前治理摘要。" },
         ]}
         actions={[
-          { id: "run", label: "执行动作", tone: "accent" },
+          { id: "run", label: "执行动作", tone: "accent", onTrigger },
           { id: "note", label: "记录批注", tone: "neutral" },
         ]}
       />,
@@ -58,6 +60,25 @@ describe("ui-core split modules", () => {
     expect(screen.getByPlaceholderText("筛选当前工作台项")).toBeInTheDocument();
     expect(screen.getAllByText("Review Queue").length).toBeGreaterThan(0);
     expect(screen.getByText("操作日志")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("执行动作"));
+    expect(onTrigger).toHaveBeenCalledWith(expect.objectContaining({ title: "Review Queue" }));
+  });
+
+  it("keeps duplicate-titled ListCard items renderable without key collisions", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <ListCard
+        items={[
+          { title: "重复标题", description: "第一条" },
+          { title: "重复标题", description: "第二条" },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText("重复标题")).toHaveLength(2);
+    expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining("Encountered two children with the same key"));
+    consoleError.mockRestore();
   });
 });
 
