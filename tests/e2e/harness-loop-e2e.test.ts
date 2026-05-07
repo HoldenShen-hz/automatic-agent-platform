@@ -25,42 +25,25 @@ import {
 } from "../../src/platform/orchestration/harness/index.js";
 import {
   TestHarnessOrchestrator,
+  createTestConstraintPack,
 } from "../unit/platform/orchestration/harness/test-service-wrapper.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * R10-39 fix: Use createTestConstraintPack for dynamic values instead of
+ * static construction parameters. This ensures tests exercise real
+ * planner/generator/evaluator code paths through the orchestrator.
+ */
 function createConstraintPack(overrides: Partial<ConstraintPack> = {}): ConstraintPack {
-  return {
+  return createTestConstraintPack({
     policyIds: ["policy.e2e.default"],
-    approvalMode: "none",
     autonomyMode: "semi_auto",
-    tool_policy: { allowedTools: ["read", "write", "bash"] },
-    risk_policy: {
-      maxRiskScore: 80,
-      escalationThreshold: 60,
-    },
-    output_policy: {
-      requiredEvidence: [],
-      redactSensitiveData: false,
-    },
-    sandboxRequirement: {
-      sandboxMode: "none",
-      timeoutMs: 60000,
-    },
-    approvalRequirement: {
-      requiredForRiskClass: ["low", "medium", "high", "critical"],
-      approverRoles: ["admin"],
-      escalationTimeoutMs: 60000,
-    },
-    budget: {
-      maxSteps: 9,
-      maxCost: 10,
-      maxDurationMs: 60_000,
-    },
+    budget: { maxSteps: 9, maxCost: 10, maxDurationMs: 60_000 },
     ...overrides,
-  };
+  });
 }
 
 function countTimelineEvents(timeline: readonly HarnessTimelineEvent[], type: HarnessTimelineEvent["type"]): number {

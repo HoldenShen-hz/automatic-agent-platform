@@ -309,7 +309,7 @@ export const FAILURE_CLASSIFICATION: Record<FailureCategory, Omit<FailureContext
     autoRepairable: true,
     requiresModelUpgrade: false,
     requiresHumanEscalation: false,
-    isPlatformException: false,
+    isPlatformException: true,
     recoveryStrategy: 'retry',
   },
 

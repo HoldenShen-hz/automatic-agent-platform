@@ -405,7 +405,8 @@ export class ExecutionOutcomeEvaluator {
       ? extractGraphMetadata(planGraphBundle)
       : undefined;
 
-    const result: ExecutionOutcomeEvaluation = {
+    // Build result with graphMetadata only when defined (exactOptionalPropertyTypes)
+    const resultBase = {
       evaluationId: newId("outcome_eval"),
       taskId: planGraphBundle.harnessRunId,
       passed,
@@ -433,9 +434,11 @@ export class ExecutionOutcomeEvaluator {
       budgetAdherence,
       riskBoundary,
       timingSlo,
-      // R11-04: Graph metadata for dependency-aware evaluation
-      graphMetadata,
     };
+
+    const result: ExecutionOutcomeEvaluation = graphMetadata !== undefined
+      ? { ...resultBase, graphMetadata }
+      : resultBase;
 
     // With exactOptionalPropertyTypes: true, omit optional properties instead of setting them to undefined
     if (baselineScore !== undefined) {

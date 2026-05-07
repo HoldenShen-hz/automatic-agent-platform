@@ -1,20 +1,10 @@
 id: engineering_ops
 version: 1
-name: Engineering Operations
-description: Handles software implementation, fixes, and code review workflows.
-priority: 50
+name: Coding Division
+description: Software change delivery, code implementation, bug fixes, code review, and CI/CD integration.
+priority: 60
 default_workflow: engineering_single_agent_minimal
 orchestration_workflow: engineering_multi_step_delivery
-// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
-resource_boundaries:
-  max_concurrent_tasks: 25
-  max_workflow_duration_ms: 5400000
-  memory_limit_mb: 2048
-  compute_quota: "engineering-standard"
-fault_domains:
-  - code_implementation
-  - bug_fixes
-  - code_review
 triggers:
   - code
   - coding
@@ -22,60 +12,50 @@ triggers:
   - fix
   - bug
   - refactor
-// §171-1996: Disambiguation rules for overlap with qa division on "bug" and "fix" triggers
-disambiguate:
-  - trigger: bug
-    conditions:
-      - context: ["triage", "regression", "test_failure", "QA"]
-        priority_boost: 10
-    notes: "QA owns bug_triage and test_failure context; engineering_ops owns code_fix context"
-  - trigger: fix
-    conditions:
-      - context: ["implementation", "refactor", "code_change"]
-        priority_boost: 10
-    notes: "engineering_ops owns implementation fixes; qa owns verification/validation fixes"
-// §37: Vertical business domain structured hierarchy
-domain_descriptors:
-  - domainId: coding
-    ownerOrgNodeId: org.eng
-    primaryEntities: [code, patches, reviews, commits]
-    recipeArchetype: crud_heavy
-    lifecycleState: canary
-  - domainId: game-dev
-    ownerOrgNodeId: org.games
-    primaryEntities: [code, assets, builds, playtests]
-    recipeArchetype: crud_heavy
-    lifecycleState: canary
-risk_profiles:
-  - profileId: coding.risk
-    domainId: coding
-    riskLevel: high
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: unregulated
-  - profileId: game-dev.risk
-    domainId: game-dev
-    riskLevel: medium
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: unregulated
-eval_specs:
-  - domainId: coding
-    evalBaselines: [quality, regression_rate]
-    criticalCases: [regression, security_vulnerability, broken_build]
-    acceptanceThresholds:
-      quality: 0.92
-      regression_rate: 0.95
-    adversarialScenarios: [edge_case_bug, security_exploit, dependency_conflict]
-  - domainId: game-dev
-    evalBaselines: [build_success, performance_budget]
-    criticalCases: [build_failure, performance_regression, asset_corruption]
-    acceptanceThresholds:
-      build_success: 0.98
-      performance_budget: 0.90
-    adversarialScenarios: [platform_incompatibility, asset_bloat, concurrent_modification]
+  - PR
+  - merge
+# §37: DomainDescriptor - Coding vertical business domain
+domain_descriptor:
+  domainId: coding
+  ownerOrgNodeId: org.eng
+  primaryEntities:
+    - code
+    - patches
+    - reviews
+    - commits
+    - pull_requests
+  recipeArchetype: crud_heavy
+  lifecycleState: active
+# §37: DomainRiskProfile - Coding risk classification
+risk_profile:
+  profileId: coding.risk
+  domainId: coding
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec - Coding evaluation framework
+eval_spec:
+  domainId: coding
+  evalBaselines:
+    - code_quality
+    - test_pass_rate
+    - regression_rate
+  criticalCases:
+    - regression
+    - security_vulnerability
+    - broken_build
+    - failed_tests
+  acceptanceThresholds:
+    code_quality: 90
+    test_pass_rate: 95
+    regression_rate: 95
+  adversarialScenarios:
+    - edge_case_bug
+    - security_exploit
+    - dependency_conflict
+    - malicious_code
 roles:
   - id: engineer
     name: Engineer

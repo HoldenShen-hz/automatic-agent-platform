@@ -1,159 +1,64 @@
 id: general_ops
 version: 1
-name: General Operations
-description: General purpose fallback division for research, summaries, and operational requests.
-priority: 10
+name: Executive Assistant Division
+description: Calendar management, meeting preparation, travel planning, briefing, task coordination for executives.
+priority: 25
 default_workflow: single_agent_minimal
 orchestration_workflow: phase1b_single_division_orchestration
-// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
-resource_boundaries:
-  max_concurrent_tasks: 10
-  max_workflow_duration_ms: 1800000
-  memory_limit_mb: 512
-  compute_quota: "general-standard"
-fault_domains:
-  - general_research
-  - summarization
-  - intake_routing
 triggers:
-  - summarize
-  - summary
-  - research
-  - analyze
-  - review
-// §171-1997: Disambiguation rules for overlap with research division on "research", "analyze", "review" triggers
-// Uses explicit priority: research division (priority 40) beats general_ops (priority 10) for these triggers
-disambiguate:
-  - trigger: research
-    conditions:
-      - context: ["technical", "literature", "competitive_analysis", "deep_dive"]
-        priority_boost: 20
-    notes: "research division owns technical research; general_ops is fallback for general queries"
-  - trigger: analyze
-    conditions:
-      - context: ["technical", "code", "data_analysis"]
-        priority_boost: 20
-    notes: "research division owns technical analysis; general_ops handles operational analysis"
-  - trigger: review
-    conditions:
-      - context: ["code_review", "PR_review", "design_review"]
-        priority_boost: 20
-    notes: "research division owns technical review; general_ops handles general document review"
-// §37: Vertical business domain structured hierarchy
-domain_descriptors:
-  - domainId: human-resources
-    ownerOrgNodeId: org.hr
-    primaryEntities: [employees, policies, cases, recommendations]
-    recipeArchetype: crud_heavy
-    lifecycleState: canary
-  - domainId: facilities
-    ownerOrgNodeId: org.facilities
-    primaryEntities: [work_orders, assets, schedules, tickets]
-    recipeArchetype: crud_heavy
-    lifecycleState: canary
-  - domainId: executive-assistant
-    ownerOrgNodeId: org.exec
-    primaryEntities: [calendars, briefs, followups, travel_plans]
-    recipeArchetype: conversational
-    lifecycleState: canary
-  - domainId: education
-    ownerOrgNodeId: org.education
-    primaryEntities: [curricula, materials, assessments, learner_records]
-    recipeArchetype: crud_heavy
-    lifecycleState: canary
-  - domainId: product-management
-    ownerOrgNodeId: org.product
-    primaryEntities: [requirements, roadmaps, releases, signals]
-    recipeArchetype: analytics
-    lifecycleState: canary
-risk_profiles:
-  - profileId: human-resources.risk
-    domainId: human-resources
-    riskLevel: high
-    advisoryOnly: false
-    humanAccountable: true
-    deterministicHotPathOnly: false
-    regulatoryClass: regulated
-  - profileId: facilities.risk
-    domainId: facilities
-    riskLevel: medium
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: unregulated
-  - profileId: executive-assistant.risk
-    domainId: executive-assistant
-    riskLevel: medium
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: regulated
-  - profileId: education.risk
-    domainId: education
-    riskLevel: medium
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: unregulated
-  - profileId: product-management.risk
-    domainId: product-management
-    riskLevel: medium
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: unregulated
-eval_specs:
-  - domainId: human-resources
-    evalBaselines: [policy_compliance, privacy_safety]
-    criticalCases: [discrimination_risk, privacy_breach, policy_misapplication]
-    acceptanceThresholds:
-      policy_compliance: 0.95
-      privacy_safety: 0.98
-    adversarialScenarios: [bias_in_screening, data_leak, policy_oversight]
-  - domainId: facilities
-    evalBaselines: [work_order_sla, safety_readiness]
-    criticalCases: [safety_hazard, missed_sla, vendor_issue]
-    acceptanceThresholds:
-      work_order_sla: 0.90
-      safety_readiness: 0.98
-    adversarialScenarios: [urgent_issue_flood, vendor_no_show, safety_compliance_gap]
-  - domainId: executive-assistant
-    evalBaselines: [brief_accuracy, scheduling_conflict_rate]
-    criticalCases: [incorrect_brief, double_booking, missed_deadline]
-    acceptanceThresholds:
-      brief_accuracy: 0.95
-      scheduling_conflict_rate: 0.02
-    adversarialScenarios: [calendar_conflict, priority_inversion, context_loss]
-  - domainId: education
-    evalBaselines: [assessment_quality, content_safety]
-    criticalCases: [inappropriate_content, incorrect_assessment, accessibility_issue]
-    acceptanceThresholds:
-      assessment_quality: 0.90
-      content_safety: 0.98
-    adversarialScenarios: [content_injection, learner_cheating, accessibility_violation]
-  - domainId: product-management
-    evalBaselines: [requirement_quality, roadmap_alignment]
-    criticalCases: [scope_creep, priority_misalignment, stakeholder_conflict]
-    acceptanceThresholds:
-      requirement_quality: 0.88
-      roadmap_alignment: 0.90
-    adversarialScenarios: [requirement_ambiguity, stakeholder_override, resource_constraint]
+  - calendar
+  - schedule
+  - meeting
+  - travel
+  - briefing
+  - executive
+  - assistant
+# §37: DomainDescriptor - Executive Assistant vertical business domain
+domain_descriptor:
+  domainId: executive-assistant
+  ownerOrgNodeId: org.exec
+  primaryEntities:
+    - calendars
+    - briefs
+    - followups
+    - travel_plans
+    - meetings
+  recipeArchetype: conversational
+  lifecycleState: canary
+# §37: DomainRiskProfile - Executive Assistant risk classification
+risk_profile:
+  profileId: executive-assistant.risk
+  domainId: executive-assistant
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec - Executive Assistant evaluation framework
+eval_spec:
+  domainId: executive-assistant
+  evalBaselines:
+    - brief_accuracy
+    - scheduling_conflict_rate
+    - task_completion_rate
+  criticalCases:
+    - incorrect_brief
+    - double_booking
+    - missed_deadline
+    - priority_confusion
+  acceptanceThresholds:
+    brief_accuracy: 95
+    scheduling_conflict_rate: 2
+    task_completion_rate: 90
+  adversarialScenarios:
+    - calendar_conflict
+    - priority_inversion
+    - context_loss
+    - scheduling_chaos
 roles:
-  - id: general_executor
-    name: General Executor
+  - id: executive_assistant
+    name: Executive Assistant
     prompt: roles/general_executor.prompt.md
     model: balanced
-    tools: [read, bash]
+    tools: [read, write, web_search]
     max_instances: 3
-  - id: intake_router
-    name: Intake Router
-    prompt: roles/intake_router.prompt.md
-    model: balanced
-    tools: [read]
-    max_instances: 2
-  - id: workflow_planner
-    name: Workflow Planner
-    prompt: roles/workflow_planner.prompt.md
-    model: reasoning
-    tools: [read]
-    max_instances: 2

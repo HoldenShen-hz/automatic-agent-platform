@@ -1,0 +1,57 @@
+id: live-streaming
+version: 1
+name: Live Streaming Division
+description: Livestream planning, moderation, and incident response.
+priority: 50
+default_workflow: live_streaming_primary
+triggers:
+  - live streaming
+  - livestream
+  - broadcast
+  - stream
+  - video
+roles:
+  - id: stream_operator
+    name: Stream Operator
+    prompt: roles/stream_operator.prompt.md
+    model: balanced
+    tools: [stream_monitor, chat_moderator, incident_feed, cue_sheet, clip_router]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: live-streaming
+  ownerOrgNodeId: org.live
+  primaryEntities:
+    - stream
+    - broadcast
+    - chat
+    - incident
+  recipeArchetype: realtime
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: live-streaming.risk
+  domainId: live-streaming
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: live-streaming
+  evalBaselines:
+    - stream_health
+    - policy_enforcement
+  criticalCases:
+    - stream_interruption
+    - chat_abuse
+    - content_violation
+  acceptanceThresholds:
+    stream_health: 90
+    policy_enforcement: 90
+    viewer_retention: 75
+  adversarialScenarios:
+    - stream_jacking
+    - chat_flooding
+    - harassment

@@ -1,0 +1,55 @@
+id: project-management
+version: 1
+name: Project Management Division
+description: Cross-team delivery planning, dependency tracking, and milestone orchestration.
+priority: 40
+default_workflow: project_management_primary
+triggers:
+  - project management
+  - project
+  - delivery
+  - milestone
+  - dependency
+roles:
+  - id: project_manager
+    name: Project Manager
+    prompt: roles/project_manager.prompt.md
+    model: balanced
+    tools: [dependency_tracker, milestone_planner, status_reporter, risk_register, resource_forecaster]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: project-management
+  ownerOrgNodeId: org.pm
+  primaryEntities:
+    - project
+    - milestone
+    - dependency
+    - deliverable
+  recipeArchetype: crud_heavy
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: project-management.risk
+  domainId: project-management
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: project-management
+  evalBaselines:
+    - dependency_integrity
+    - milestone_adherence
+  criticalCases:
+    - missed_milestone
+    - blocked_dependency
+  acceptanceThresholds:
+    dependency_integrity: 85
+    milestone_adherence: 80
+    burnup: 75
+  adversarialScenarios:
+    - scope_creep
+    - resource_gaming

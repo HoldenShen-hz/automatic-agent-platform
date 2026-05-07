@@ -1,70 +1,66 @@
 id: devops
 version: 1
-name: DevOps Division
-description: CI/CD pipelines, infrastructure automation, deployment, monitoring.
-priority: 45
+name: IT Operations Division
+description: Infrastructure automation, deployment pipelines, monitoring, incident response, SRE practices.
+priority: 55
 default_workflow: devops_single_step
 orchestration_workflow: devops_single_step
-// §171-1994: resource_boundaries and fault_domains for runtime isolation and quota enforcement
-resource_boundaries:
-  max_concurrent_tasks: 20
-  max_workflow_duration_ms: 3600000
-  memory_limit_mb: 512
-  compute_quota: "devops-standard"
-fault_domains:
-  - deployment
-  - infrastructure
-  - ci_cd
 triggers:
   - deploy
   - deployment
-  - CI
-  - CD
-  - pipeline
   - infrastructure
   - kubernetes
   - docker
-  - dockerfile
-// §171-1995: Disambiguation rules for overlap with operations division on "deployment" trigger
-disambiguate:
-  - trigger: deployment
-    conditions:
-      - context: ["ci_pipeline", "gitops", "argocd", "jenkins", "github_action"]
-        priority_boost: 10
-    notes: "DevOps owns CI/CD-driven deployments; operations owns runbook-driven incident deployments"
-// §37: Vertical business domain structured hierarchy
-domain_descriptors:
-  - domainId: devops
-    ownerOrgNodeId: org.devops
-    primaryEntities: [pipelines, deployments, infrastructure, containers]
-    recipeArchetype: incident_ops
-    lifecycleState: canary
-risk_profiles:
-  - profileId: devops.risk
-    domainId: devops
-    riskLevel: high
-    advisoryOnly: false
-    humanAccountable: false
-    deterministicHotPathOnly: false
-    regulatoryClass: unregulated
-eval_specs:
-  - domainId: devops
-    evalBaselines: [deployment_success, pipeline_health]
-    criticalCases: [failed_deployment, pipeline_breakdown, security_misconfiguration]
-    acceptanceThresholds:
-      deployment_success: 0.95
-      pipeline_health: 0.92
-    adversarialScenarios: [secret_exposure, dependency_conflict, resource_exhaustion]
+  - monitoring
+  - incident
+  - SRE
+  - it operations
+# §37: DomainDescriptor - IT Operations vertical business domain
+domain_descriptor:
+  domainId: it-operations
+  ownerOrgNodeId: org.platform
+  primaryEntities:
+    - deployments
+    - infrastructure
+    - monitoring
+    - incidents
+    - configurations
+  recipeArchetype: incident_ops
+  lifecycleState: active
+# §37: DomainRiskProfile - IT Operations risk classification
+risk_profile:
+  profileId: it-operations.risk
+  domainId: it-operations
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec - IT Operations evaluation framework
+eval_spec:
+  domainId: it-operations
+  evalBaselines:
+    - deployment_success
+    - incident_mttr
+    - slo_compliance
+  criticalCases:
+    - failed_deployment
+    - security_misconfiguration
+    - prolonged_outage
+    - data_loss
+  acceptanceThresholds:
+    deployment_success: 95
+    incident_mttr: 90
+    slo_compliance: 99
+  adversarialScenarios:
+    - secret_exposure
+    - dependency_conflict
+    - resource_exhaustion
+    - configuration_drift
 roles:
-  - id: devops_engineer
-    name: DevOps Engineer
-    prompt: roles/devops/engineer.prompt.md
-    model: balanced
-    tools: [read, bash]
-    max_instances: 3
-  - id: sre
-    name: Site Reliability Engineer
+  - id: sre_engineer
+    name: SRE Engineer
     prompt: roles/devops/sre.prompt.md
     model: balanced
-    tools: [read, bash]
-    max_instances: 2
+    tools: [read, bash, monitoring]
+    max_instances: 3

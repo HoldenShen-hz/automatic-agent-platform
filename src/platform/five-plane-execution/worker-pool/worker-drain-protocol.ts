@@ -527,6 +527,9 @@ export class WorkerDrainProtocol {
     const state = this.getDrainState(currentReceipt.workerId);
     const wasEventEmittedForCurrentPhase = state?.phaseEventEmitted ?? false;
 
+    // Get actual completed lease count from state
+    const actualCompletedCount = state?.completedLeases.length ?? currentReceipt.completedLeaseCount;
+
     switch (currentReceipt.phase) {
       case WorkerDrainPhase.DRAIN:
         // Transition to QUIESCE: emit DRAIN_COMPLETED and QUIESCE_STARTED
@@ -534,7 +537,7 @@ export class WorkerDrainProtocol {
           // Emit DRAIN_COMPLETED
           this.emitPhaseEvent(WorkerDrainPhaseEvent.DRAIN_COMPLETED, {
             workerId: currentReceipt.workerId,
-            completedLeaseCount: currentReceipt.completedLeaseCount,
+            completedLeaseCount: actualCompletedCount,
             transitionedTo: WorkerDrainPhase.QUIESCE,
           });
           // Emit QUIESCE_STARTED
@@ -558,7 +561,7 @@ export class WorkerDrainProtocol {
           // Emit QUIESCE_COMPLETED
           this.emitPhaseEvent(WorkerDrainPhaseEvent.QUIESCE_COMPLETED, {
             workerId: currentReceipt.workerId,
-            finalLeaseCount: currentReceipt.completedLeaseCount,
+            finalLeaseCount: actualCompletedCount,
             transitionedTo: WorkerDrainPhase.TERMINATE,
             deadlineExceeded,
           });
@@ -603,7 +606,7 @@ export class WorkerDrainProtocol {
       phase: newPhase,
       enteredAt: observedAt,
       exitedAt: null,
-      leasesCompleted: currentReceipt.completedLeaseCount,
+      leasesCompleted: actualCompletedCount,
     });
 
     // Update state with new phase and reset event flag
@@ -614,14 +617,27 @@ export class WorkerDrainProtocol {
       state.phaseEventEmitted = false;
     }
 
+    // Calculate forced handoff count from actual state
+    const forcedHandoffCount = state?.forcedHandoffLeases.length
+      ?? (deadlineExceeded ? (state?.activeLeases.length ?? currentReceipt.activeLeaseCount) - actualCompletedCount : 0);
+
+    // Determine cleanup result if entering TERMINATE phase
+    const cleanupResult = newPhase === WorkerDrainPhase.TERMINATE && state
+      ? {
+          runsTerminated: state.forcedHandoffLeases.length,
+          gracefulMs: new Date(observedAt).getTime() - new Date(state.startedAt).getTime(),
+          forcedMs: 0,
+        }
+      : undefined;
+
     return {
       ...currentReceipt,
       status: newStatus,
       phase: newPhase,
+      completedLeaseCount: actualCompletedCount,
       runTerminationCleanupRequired: deadlineExceeded || currentReceipt.handoverLeaseIds.length > 0,
-      forcedHandoffCount: state?.forcedHandoffLeases.length
-        ?? (deadlineExceeded ? currentReceipt.completedLeaseCount : currentReceipt.forcedHandoffCount),
-      ...(currentReceipt.cleanupResult !== undefined && { cleanupResult: currentReceipt.cleanupResult }),
+      forcedHandoffCount,
+      cleanupResult,
       phaseHistory: updatedHistory,
     };
   }

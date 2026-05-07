@@ -1,0 +1,33 @@
+id: healthcare_primary
+division_id: healthcare
+steps:
+  - step_id: collect_clinical_context
+    role_id: clinical_specialist
+    output_key: context_result
+    output_schema: schemas/health-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: apply_guidelines
+    role_id: clinical_specialist
+    output_key: guideline_result
+    output_schema: schemas/health-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_clinical_context
+  - step_id: prepare_summary
+    role_id: clinical_specialist
+    output_key: summary_result
+    output_schema: schemas/health-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - apply_guidelines
+  - step_id: route_for_clinician_review
+    role_id: clinical_specialist
+    output_key: review_result
+    output_schema: schemas/health-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - prepare_summary

@@ -1,0 +1,33 @@
+id: project_management_primary
+division_id: project-management
+steps:
+  - step_id: collect_dependencies
+    role_id: project_manager
+    output_key: deps_result
+    output_schema: schemas/pm-div-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: plan_milestones
+    role_id: project_manager
+    output_key: milestone_result
+    output_schema: schemas/pm-div-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_dependencies
+  - step_id: track_execution
+    role_id: project_manager
+    output_key: track_result
+    output_schema: schemas/pm-div-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - plan_milestones
+  - step_id: publish_status
+    role_id: project_manager
+    output_key: status_result
+    output_schema: schemas/pm-div-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - track_execution

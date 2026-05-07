@@ -1,0 +1,33 @@
+id: human_resources_primary
+division_id: human-resources
+steps:
+  - step_id: collect_people_context
+    role_id: hr_specialist
+    output_key: context_result
+    output_schema: schemas/hr-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: apply_policy
+    role_id: hr_specialist
+    output_key: policy_result
+    output_schema: schemas/hr-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_people_context
+  - step_id: prepare_recommendation
+    role_id: hr_specialist
+    output_key: recommend_result
+    output_schema: schemas/hr-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - apply_policy
+  - step_id: route_for_manager_signoff
+    role_id: hr_specialist
+    output_key: signoff_result
+    output_schema: schemas/hr-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - prepare_recommendation

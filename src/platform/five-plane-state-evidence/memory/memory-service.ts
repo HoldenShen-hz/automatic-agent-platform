@@ -33,6 +33,7 @@ import {
   buildMemoryConsolidationSummary,
   hasExplicitMemoryBoundary,
 } from "./memory-consolidation.js";
+import { evictFromWorkingLayer } from "./memory-layer-model.js";
 import {
   normalizeMemoryContent,
   stringifyStructuredMemoryContent,
@@ -45,6 +46,7 @@ import {
   type MemoryRecallQuery,
 } from "./memory-quality.js";
 import { MemoryError } from "../../contracts/errors.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 /**
  * Input for creating a memory via remember()
@@ -120,6 +122,11 @@ export class MemoryService {
 
   // V-02: Limit memory content size to prevent memory exhaustion
   private static readonly MAX_CONTENT_SIZE_BYTES = 1_000_000; // 1MB
+
+  // R8-18 FIX: Working layer LRU eviction requires ContextTruncationReport per §29.2
+  // "Facts cannot be silently discarded, compression requires loss report"
+  // Maximum number of records in the working (runtime/task_runtime) layer before LRU eviction
+  private static readonly MAX_WORKING_MEMORY_RECORDS = 1000;
 
   public getStore(): AuthoritativeTaskStore {
     return this.store;
@@ -212,6 +219,41 @@ export class MemoryService {
     };
 
     this.store.memory.insertMemory(record);
+
+    // R8-18 FIX: Enforce working layer capacity with ContextTruncationReport per §29.2
+    // "Facts cannot be silently discarded, compression requires loss report"
+    // Check if this is a working layer memory and enforce LRU eviction if over capacity
+    if (record.memoryLayer === "layer_3" && (record.scope === "task_runtime" || record.scope === "runtime")) {
+      const workingMemories = this.store.memory.listMemories({
+        memoryLayers: ["layer_3"],
+        scopes: ["task_runtime", "runtime"],
+        includeExpired: false,
+        includeRevoked: false,
+      });
+
+      if (workingMemories.length > MemoryService.MAX_WORKING_MEMORY_RECORDS) {
+        const { evictedRecordIds, report } = evictFromWorkingLayer(
+          workingMemories,
+          MemoryService.MAX_WORKING_MEMORY_RECORDS,
+        );
+
+        // Revoke evicted records (they are marked as revoked, not deleted)
+        for (const evictedId of evictedRecordIds) {
+          this.store.memory.revokeMemory(evictedId, nowIso(), "lru_eviction:working_layer_capacity_exceeded");
+        }
+
+        // NOTE: The report is generated and available for logging/auditing per §29.2
+        // In production, this should be sent to a logging/metrics system
+        if (evictedRecordIds.length > 0) {
+          StructuredLogger.warn("memory.working_layer_eviction", {
+            report,
+            evictedCount: evictedRecordIds.length,
+            remainingCount: workingMemories.length - evictedRecordIds.length,
+          });
+        }
+      }
+    }
+
     return record;
   }
 

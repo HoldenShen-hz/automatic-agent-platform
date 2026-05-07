@@ -1,0 +1,57 @@
+id: human-resources
+version: 1
+name: Human Resources Division
+description: Employee lifecycle, policy, and people-ops workflows.
+priority: 45
+default_workflow: human_resources_primary
+triggers:
+  - human resources
+  - HR
+  - employee
+  - onboarding
+  - people
+roles:
+  - id: hr_specialist
+    name: HR Specialist
+    prompt: roles/hr_specialist.prompt.md
+    model: balanced
+    tools: [hris_reader, policy_checker, case_manager, scheduler, sentiment_monitor]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: human-resources
+  ownerOrgNodeId: org.hr
+  primaryEntities:
+    - employee
+    - policy
+    - case
+    - document
+  recipeArchetype: compliance
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: human-resources.risk
+  domainId: human-resources
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: human-resources
+  evalBaselines:
+    - policy_compliance
+    - privacy_safety
+  criticalCases:
+    - employee_complaint
+    - policy_violation
+    - privacy_breach
+  acceptanceThresholds:
+    policy_compliance: 90
+    privacy_safety: 95
+    cycle_time: 80
+  adversarialScenarios:
+    - discrimination
+    - harassment
+    - privacy_violation

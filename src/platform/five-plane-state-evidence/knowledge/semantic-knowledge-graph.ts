@@ -328,7 +328,7 @@ export class SemanticKnowledgeGraph {
   public addEntityRelation(
     fromEntityRef: string,
     toEntityRef: string,
-    relation: "references" | "derives_from" | "contradicts" | "specializes" = "references",
+    relation: "references" | "derives_from" | "contradicts" | "specializes" | "entity_relation" = "references",
     weight: number = 1.0,
   ): void {
     const fromNodeId = `entity:${fromEntityRef}`;

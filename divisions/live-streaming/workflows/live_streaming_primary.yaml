@@ -1,0 +1,33 @@
+id: live_streaming_primary
+division_id: live-streaming
+steps:
+  - step_id: prepare_show
+    role_id: stream_operator
+    output_key: prepare_result
+    output_schema: schemas/stream-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: monitor_stream
+    role_id: stream_operator
+    output_key: monitor_result
+    output_schema: schemas/stream-output.json
+    timeout_ms: 600000
+    max_attempts: 1
+    depends_on:
+      - prepare_show
+  - step_id: moderate_events
+    role_id: stream_operator
+    output_key: moderate_result
+    output_schema: schemas/stream-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - monitor_stream
+  - step_id: stabilize_incidents
+    role_id: stream_operator
+    output_key: incident_result
+    output_schema: schemas/stream-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - moderate_events

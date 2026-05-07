@@ -607,7 +607,7 @@ export async function executeStepLoop(
             currentStepIndex: index + 1,
             outputsJson: JSON.stringify(outputs),
             updatedAt: failedAt,
-            resumableFromStep: step.stepId,
+            resumableFromStep: step.nodeId,
             retryCount: workflowRetryCount,
             lastErrorCode: errorCode,
           });
@@ -616,7 +616,8 @@ export async function executeStepLoop(
         break;
       }
 
-      const completedStepIds = [...stepOutputs.map((item) => item.stepId), step.stepId];
+      // R6-19 fix: Use nodeId as canonical identifier per §5.5
+      const completedNodeIds = [...stepOutputs.map((item) => item.nodeRunId), step.nodeId];
       const outputKeys = [...Object.keys(outputs), step.outputKey];
       const upstreamArtifactRefs = stepOutputs.flatMap((item) => {
         if (!item.artifactsJson) return [];
@@ -630,17 +631,20 @@ export async function executeStepLoop(
       const artifact = deps.artifactStore.writeJsonArtifact({
         taskId,
         executionId,
+        // R6-19 fix: stepId retained for artifact metadata legacy compatibility
         stepId: step.stepId,
         kind: "workflow_step_snapshot",
-        fileName: `${step.stepId}.json`,
+        fileName: `${step.nodeId}.json`,
         content: createWorkflowStepCheckpoint({
           harnessRunId: validatedPlanGraphBundle.harnessRunId,
-          nodeRunId: step.stepId,
+          // R6-19 fix: nodeRunId is canonical per §5.5
+          nodeRunId: step.nodeId,
           planGraphBundleId: validatedPlanGraphBundle.planGraphBundleId,
           taskId,
           executionId,
           workflowId: plannedWorkflow.workflow.workflowId,
           divisionId: plannedWorkflow.workflow.divisionId,
+          // R6-19 fix: stepId retained for legacy checkpoint compatibility
           stepId: step.stepId,
           roleId: step.roleId,
           outputKey: step.outputKey,
@@ -655,8 +659,9 @@ export async function executeStepLoop(
             dependsOnStepIds: [...step.dependsOnStepIds],
           },
           resumeContext: {
-            completedStepIds,
-            nextStepId: plannedWorkflow.executionSteps[index + 1]?.stepId ?? null,
+            completedNodeIds,
+            // R6-19 fix: Use nodeId for next step reference per §5.5
+            nextStepId: plannedWorkflow.executionSteps[index + 1]?.nodeId ?? null,
             outputKeys,
           },
           upstreamArtifactRefs,
@@ -673,6 +678,8 @@ export async function executeStepLoop(
       const stepOutput: StepOutputRecord = {
         id: newId("step"),
         taskId,
+        // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+        nodeRunId: step.nodeId,
         stepId: step.stepId,
         roleId: step.roleId,
         status: "succeeded",
@@ -694,7 +701,8 @@ export async function executeStepLoop(
         taskId,
         executionId,
         workflowId: plannedWorkflow.workflow.workflowId,
-        stepId: step.stepId,
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        stepId: step.nodeId,
       });
 
       deps.db.transaction(() => {
@@ -749,7 +757,8 @@ export async function executeStepLoop(
             summaryText: stepData.summary,
             resultText: stepData.result,
             artifactRefs: [artifact.ref],
-            metadata: { stepId: step.stepId, roleId: step.roleId },
+            // R6-19 fix: Use nodeId for canonical correlation per §5.5
+            metadata: { nodeId: step.nodeId, stepId: step.stepId, roleId: step.roleId },
           })),
         });
         deps.store.workflow.updateWorkflowRecoveryState({
@@ -768,7 +777,8 @@ export async function executeStepLoop(
           executionId,
           eventType: "subtask:completed",
           eventTier: "tier_1",
-          payloadJson: JSON.stringify(injectTraceContext({ stepId: step.stepId, roleId: step.roleId, status: stepOutput.status, attempt }, subtaskCompletedTrace)),
+          // R6-19 fix: Use nodeId for canonical correlation per §5.5
+          payloadJson: JSON.stringify(injectTraceContext({ nodeId: step.nodeId, stepId: step.stepId, roleId: step.roleId, status: stepOutput.status, attempt }, subtaskCompletedTrace)),
           traceId,
           createdAt: nowIso(),
         });
@@ -778,7 +788,8 @@ export async function executeStepLoop(
           executionId,
           eventType: "workflow:step_completed",
           eventTier: "tier_1",
-          payloadJson: JSON.stringify(injectTraceContext({ stepId: step.stepId, roleId: step.roleId, status: stepOutput.status, attempt }, workflowCompletedTrace)),
+          // R6-19 fix: Use nodeId for canonical correlation per §5.5
+          payloadJson: JSON.stringify(injectTraceContext({ nodeId: step.nodeId, stepId: step.stepId, roleId: step.roleId, status: stepOutput.status, attempt }, workflowCompletedTrace)),
           traceId,
           createdAt: nowIso(),
         });
@@ -793,7 +804,8 @@ export async function executeStepLoop(
         taskId,
         executionId,
         workflowId: plannedWorkflow.workflow.workflowId,
-        stepId: step.stepId,
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        stepId: step.nodeId,
       });
 
       if (index === plannedWorkflow.executionSteps.length - 1) {
@@ -832,23 +844,26 @@ export async function executeStepLoop(
         entityId: executionId,
         fromStatus: "executing",
         toStatus: "succeeded",
-        ...deps.createContext(`execution.succeeded:${step.stepId}:attempt_${attempt}`),
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        ...deps.createContext(`execution.succeeded:${step.nodeId}:attempt_${attempt}`),
       });
       stepCompleted = true;
       break;
     }
 
     if (blockedForDecision) break;
-    if (!stepCompleted && !failedStepIds.has(step.stepId) && !skippedStepIds.has(step.stepId)) {
-      failedStepIds.add(step.stepId);
+    // R6-19 fix: Use nodeId as canonical identifier per §5.5
+    if (!stepCompleted && !failedNodeIds.has(step.nodeId) && !skippedNodeIds.has(step.nodeId)) {
+      failedNodeIds.add(step.nodeId);
     }
   }
 
-  if (stepCompleted === false && blockedForDecision === false && failedStepIds.size > 0) {
+  if (stepCompleted === false && blockedForDecision === false && failedNodeIds.size > 0) {
     logger.log({
       level: "debug",
       message: "Multi-step supervisor completed with failed steps",
-      data: { failedStepIds: [...failedStepIds], skippedStepIds: [...skippedStepIds] },
+      // R6-19 fix: Use nodeId names for canonical logging per §5.5
+      data: { failedNodeIds: [...failedNodeIds], skippedNodeIds: [...skippedNodeIds] },
     });
   }
 
@@ -860,7 +875,12 @@ export async function executeStepLoop(
     workflowLastErrorCode,
     outputs,
     stepOutputs,
-    skippedStepIds,
-    failedStepIds,
+    // R6-19 fix: Return canonical nodeId names per §5.5
+    skippedNodeIds,
+    failedNodeIds,
+    // @deprecated Use skippedNodeIds per §5.5
+    skippedStepIds: skippedNodeIds,
+    // @deprecated Use failedNodeIds per §5.5
+    failedStepIds: failedNodeIds,
   };
 }

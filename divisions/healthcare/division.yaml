@@ -1,0 +1,57 @@
+id: healthcare
+version: 1
+name: Healthcare Division
+description: Healthcare workflow assistance under strict governance.
+priority: 60
+default_workflow: healthcare_primary
+triggers:
+  - healthcare
+  - medical
+  - clinical
+  - patient
+  - ehr
+roles:
+  - id: clinical_specialist
+    name: Clinical Specialist
+    prompt: roles/clinical_specialist.prompt.md
+    model: precision
+    tools: [ehr_reader, guideline_mapper, clinical_summary, care_pathway_router, appointment_sync]
+    max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: healthcare
+  ownerOrgNodeId: org.health
+  primaryEntities:
+    - patient
+    - clinical_note
+    - guideline
+    - care_pathway
+  recipeArchetype: compliance
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: healthcare.risk
+  domainId: healthcare
+  riskLevel: critical
+  advisoryOnly: true
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: heavily_regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: healthcare
+  evalBaselines:
+    - clinical_safety
+    - guideline_adherence
+  criticalCases:
+    - patient_safety
+    - medication_error
+    - misdiagnosis
+  acceptanceThresholds:
+    clinical_safety: 95
+    guideline_adherence: 95
+    handoff_latency: 90
+  adversarialScenarios:
+    - data_breach
+    - misinformation
+    - fraud

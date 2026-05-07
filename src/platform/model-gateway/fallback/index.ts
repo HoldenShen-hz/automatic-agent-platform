@@ -113,7 +113,7 @@ export class ModelGatewayFallbackService {
       if (tierCandidates.length > 0) {
         // Sort by cost (or fallbackPriority) within the tier
         tierCandidates.sort((a, b) => getSortKey(a) - getSortKey(b));
-        const bestCandidate = tierCandidates[0];
+        const bestCandidate = tierCandidates[0]!;
 
         // Add this tier's best candidate to the chain if not already present
         if (!fallbackChain.includes(bestCandidate.profileName)) {
@@ -148,7 +148,7 @@ export class ModelGatewayFallbackService {
         if (tierCandidates.length > 0) {
           // Sort by cost within the tier
           tierCandidates.sort((a, b) => getSortKey(a) - getSortKey(b));
-          selected = tierCandidates[0];
+          selected = tierCandidates[0] ?? null;
           selectedTier = tier;
           break;
         }
@@ -168,7 +168,7 @@ export class ModelGatewayFallbackService {
       const selectedPosition = FALLBACK_CHAIN_ORDER.indexOf(selectedTier);
       // Record all profiles from tiers before and including the selected tier
       for (let i = 0; i <= selectedPosition; i++) {
-        const tier = FALLBACK_CHAIN_ORDER[i];
+        const tier = FALLBACK_CHAIN_ORDER[i]!;
         const tierCandidates = candidatesByTier.get(tier)!.filter(isViable);
         attemptedProfiles.push(...tierCandidates.map((c) => c.profileName));
       }

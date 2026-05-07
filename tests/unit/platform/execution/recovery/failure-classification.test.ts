@@ -222,7 +222,7 @@ test("classifyFailure preserves all classification fields", () => {
   assert.equal(result.autoRepairable, true);
   assert.equal(result.requiresModelUpgrade, false);
   assert.equal(result.requiresHumanEscalation, false);
-  assert.equal(result.isPlatformException, false);
+  assert.equal(result.isPlatformException, true);
 });
 
 test("classifyFailureFromErrorCode classifies and builds context", () => {
@@ -368,7 +368,6 @@ test("FAILURE_CLASSIFICATION has all platform permanent categories", () => {
 
 test("FAILURE_CLASSIFICATION marks isPlatformException correctly for coding agent categories", () => {
   const codingAgentCategories: FailureCategory[] = [
-    "schema_error",
     "type_error",
     "unit_test_failure",
     "lint_error",
