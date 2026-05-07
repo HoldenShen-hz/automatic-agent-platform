@@ -1,0 +1,33 @@
+id: academic_research_primary
+division_id: academic-research
+steps:
+  - step_id: collect_papers
+    role_id: research_scholar
+    output_key: papers_result
+    output_schema: schemas/academic-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: screen_relevance
+    role_id: research_scholar
+    output_key: screen_result
+    output_schema: schemas/academic-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_papers
+  - step_id: summarize_findings
+    role_id: research_scholar
+    output_key: summary_result
+    output_schema: schemas/academic-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - screen_relevance
+  - step_id: prepare_citations
+    role_id: research_scholar
+    output_key: citation_result
+    output_schema: schemas/academic-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - summarize_findings

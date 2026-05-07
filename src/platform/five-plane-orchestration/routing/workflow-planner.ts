@@ -41,8 +41,16 @@ import { StorageError } from "../../contracts/errors.js";
  * and runtime parameters derived from the workflow definition.
  */
 export interface PlannedExecutionStep {
-  /** Unique identifier for this step within the workflow */
-  stepId: string;
+  /**
+   * Canonical node identifier per §5.5.
+   * This is the primary identifier for execution correlation.
+   */
+  nodeId: string;
+  /**
+   * @deprecated Legacy step identifier per §5.5.
+   * Use nodeId for canonical correlation. Retained for backward compatibility.
+   */
+  stepId?: string;
   /** Division that owns the step execution */
   divisionId: string;
   /** ID of the role that will execute this step */
@@ -55,9 +63,12 @@ export interface PlannedExecutionStep {
   outputKey: string;
   /** Schema path used to validate the step output before it is committed */
   outputSchemaPath?: string | null;
-  /** IDs of steps that must complete before this step begins */
+  /**
+   * @deprecated Use dependsOnNodeIds per §5.5.
+   * IDs of nodes that must complete before this node begins
+   */
   dependsOnStepIds: readonly string[];
-  /** Dependency type per upstream step ID ("hard" default, "soft" allows null fallback) */
+  /** Dependency type per upstream node ID ("hard" default, "soft" allows null fallback) */
   dependencyTypes: Readonly<Record<string, "hard" | "soft">>;
   /** Maximum time in milliseconds before this step times out */
   timeoutMs: number;

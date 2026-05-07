@@ -13,6 +13,67 @@ triggers:
   - copywriting
   - translate
   - SEO
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: creative-production
+    ownerOrgNodeId: org.creative
+    primaryEntities: [assets, briefs, campaigns]
+    recipeArchetype: creative
+    lifecycleState: canary
+  - domainId: advertising
+    ownerOrgNodeId: org.ads
+    primaryEntities: [campaigns, audiences, budgets]
+    recipeArchetype: analytics
+    lifecycleState: canary
+  - domainId: marketing
+    ownerOrgNodeId: org.marketing
+    primaryEntities: [programs, content, calendars]
+    recipeArchetype: crud_heavy
+    lifecycleState: canary
+risk_profiles:
+  - profileId: creative-production.risk
+    domainId: creative-production
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: lightly_regulated
+  - profileId: advertising.risk
+    domainId: advertising
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: marketing.risk
+    domainId: marketing
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: lightly_regulated
+eval_specs:
+  - domainId: creative-production
+    evalBaselines: [brand_safety, brief_alignment]
+    criticalCases: [brand_violation, off_model_content, copyright_infringement]
+    acceptanceThresholds:
+      brand_safety: 0.95
+      brief_alignment: 0.90
+    adversarialScenarios: [prompt_injection, style_drift, unintended_content]
+  - domainId: advertising
+    evalBaselines: [budget_adherence, policy_safety]
+    criticalCases: [budget_overspend, policy_violation, targeting_error]
+    acceptanceThresholds:
+      budget_adherence: 0.92
+      policy_safety: 0.95
+    adversarialScenarios: [fraud_click, targeting_bias, budget_exhaustion]
+  - domainId: marketing
+    evalBaselines: [brand_consistency, approval_completeness]
+    criticalCases: [brand_drift, missed_approval, timing_error]
+    acceptanceThresholds:
+      brand_consistency: 0.90
+      approval_completeness: 0.95
+    adversarialScenarios: [uncoordinated_campaigns, message_inconsistency, approval_bypass]
 roles:
   - id: editor
     name: Editor

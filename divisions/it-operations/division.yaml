@@ -1,0 +1,57 @@
+id: it-operations
+version: 1
+name: IT Operations Division
+description: IT operations, incident handling, and runbook execution.
+priority: 55
+default_workflow: it_operations_primary
+triggers:
+  - IT operations
+  - itops
+  - incident
+  - runbook
+  - sre
+roles:
+  - id: it_ops_engineer
+    name: IT Ops Engineer
+    prompt: roles/it_ops_engineer.prompt.md
+    model: precision
+    tools: [incident_feed, runbook_executor, system_observer, change_freezer, status_publisher]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: it-operations
+  ownerOrgNodeId: org.itops
+  primaryEntities:
+    - incident
+    - runbook
+    - system
+    - change
+  recipeArchetype: incident_ops
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: it-operations.risk
+  domainId: it-operations
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: it-operations
+  evalBaselines:
+    - incident_containment
+    - recovery_success
+  criticalCases:
+    - production_outage
+    - data_loss
+    - security_incident
+  acceptanceThresholds:
+    incident_containment: 90
+    recovery_success: 95
+    mttr: 80
+  adversarialScenarios:
+    - cascading_failure
+    - configuration_error
+    - security_breach

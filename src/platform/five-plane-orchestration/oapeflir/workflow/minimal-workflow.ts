@@ -65,8 +65,17 @@ export type CompensationModel =
  * PlanNode[] to MinimalWorkflowStep[], bypassing the validated PlanGraphBundle.
  */
 export interface MinimalWorkflowStep {
-  /** Unique identifier for this step within the workflow */
-  stepId: string;
+  /**
+   * Canonical node identifier per §5.5.
+   * This is the primary identifier for workflow nodes.
+   */
+  nodeId: string;
+  /**
+   * @deprecated Legacy step identifier per §5.5.
+   * Use nodeId for canonical correlation. This field is retained
+   * for backward compatibility with legacy workflow definitions.
+   */
+  stepId?: string;
   /** Division that owns the step execution. Defaults to the workflow's division when omitted. */
   divisionId?: string | null;
   /** Role that will execute this step (determines available tools and permissions) */
@@ -81,9 +90,12 @@ export interface MinimalWorkflowStep {
   timeoutMs: number;
   /** Maximum number of execution attempts on failure */
   maxAttempts: number;
-  /** Step IDs this step depends on (will not execute until all dependencies complete) */
+  /**
+   * @deprecated Use dependsOnNodeIds per §5.5.
+   * Node IDs this step depends on (will not execute until all dependencies complete)
+   */
   dependsOnStepIds?: readonly string[];
-  /** Dependency type per upstream step ID. Defaults to "hard" if not specified.
+  /** Dependency type per upstream node ID. Defaults to "hard" if not specified.
    *  - "hard": downstream is skipped if upstream fails/is skipped
    *  - "soft": downstream still executes; missing input filled with null */
   dependencyTypes?: Readonly<Record<string, "hard" | "soft">>;
@@ -139,7 +151,7 @@ export const SINGLE_AGENT_MINIMAL_WORKFLOW: MinimalWorkflowDefinition = {
   divisionId: "general_ops",
   steps: [
     {
-      stepId: "analyze_request",
+      nodeId: "analyze_request",
       roleId: "general_executor",
       outputKey: "analysis",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
@@ -165,7 +177,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
   divisionId: "general_ops",
   steps: [
     {
-      stepId: "intake_triage",
+      nodeId: "intake_triage",
       roleId: "intake_router",
       outputKey: "triage",
       outputSchemaPath: GENERAL_OPS_MINIMAL_OUTPUT_SCHEMA_PATH,
@@ -174,7 +186,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       compensationModel: "idempotent_replay",
     },
     {
-      stepId: "draft_solution",
+      nodeId: "draft_solution",
       roleId: "general_executor",
       inputKeys: ["triage"],
       outputKey: "draft",
@@ -185,7 +197,7 @@ export const PHASE_1B_SINGLE_DIVISION_WORKFLOW: MinimalWorkflowDefinition = {
       compensationModel: "idempotent_replay",
     },
     {
-      stepId: "final_review",
+      nodeId: "final_review",
       roleId: "workflow_planner",
       inputKeys: ["draft"],
       outputKey: "final",

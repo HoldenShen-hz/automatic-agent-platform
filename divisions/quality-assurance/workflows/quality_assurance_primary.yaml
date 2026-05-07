@@ -1,0 +1,33 @@
+id: quality_assurance_primary
+division_id: quality-assurance
+steps:
+  - step_id: derive_test_plan
+    role_id: qa_engineer
+    output_key: plan_result
+    output_schema: schemas/qa-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: execute_regression
+    role_id: qa_engineer
+    output_key: regression_result
+    output_schema: schemas/qa-output.json
+    timeout_ms: 600000
+    max_attempts: 2
+    depends_on:
+      - derive_test_plan
+  - step_id: triage_failures
+    role_id: qa_engineer
+    output_key: triage_result
+    output_schema: schemas/qa-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - execute_regression
+  - step_id: certify_release
+    role_id: qa_engineer
+    output_key: cert_result
+    output_schema: schemas/qa-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - triage_failures

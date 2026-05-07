@@ -1,0 +1,55 @@
+id: data-engineering
+version: 1
+name: Data Engineering Division
+description: Structured ingestion, transformation, and governed dataset delivery.
+priority: 40
+default_workflow: data_engineering_primary
+triggers:
+  - data engineering
+  - ETL
+  - data pipeline
+  - data transformation
+  - dataset
+roles:
+  - id: data_engineer
+    name: Data Engineer
+    prompt: roles/data_engineer.prompt.md
+    model: balanced
+    tools: [schema_registry, pipeline_runner, lineage_tracker, quality_monitor, warehouse_query]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: data-engineering
+  ownerOrgNodeId: org.data
+  primaryEntities:
+    - dataset
+    - pipeline
+    - schema
+    - warehouse
+  recipeArchetype: analytics
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: data-engineering.risk
+  domainId: data-engineering
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: lightly_regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: data-engineering
+  evalBaselines:
+    - data_freshness
+    - schema_validity
+  criticalCases:
+    - data_loss
+    - schema_breaking_change
+  acceptanceThresholds:
+    data_freshness: 80
+    schema_validity: 90
+    cost: 75
+  adversarialScenarios:
+    - data_leakage
+    - schema_poisoning

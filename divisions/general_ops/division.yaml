@@ -39,6 +39,105 @@ disambiguate:
       - context: ["code_review", "PR_review", "design_review"]
         priority_boost: 20
     notes: "research division owns technical review; general_ops handles general document review"
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: human-resources
+    ownerOrgNodeId: org.hr
+    primaryEntities: [employees, policies, cases, recommendations]
+    recipeArchetype: crud_heavy
+    lifecycleState: canary
+  - domainId: facilities
+    ownerOrgNodeId: org.facilities
+    primaryEntities: [work_orders, assets, schedules, tickets]
+    recipeArchetype: crud_heavy
+    lifecycleState: canary
+  - domainId: executive-assistant
+    ownerOrgNodeId: org.exec
+    primaryEntities: [calendars, briefs, followups, travel_plans]
+    recipeArchetype: conversational
+    lifecycleState: canary
+  - domainId: education
+    ownerOrgNodeId: org.education
+    primaryEntities: [curricula, materials, assessments, learner_records]
+    recipeArchetype: crud_heavy
+    lifecycleState: canary
+  - domainId: product-management
+    ownerOrgNodeId: org.product
+    primaryEntities: [requirements, roadmaps, releases, signals]
+    recipeArchetype: analytics
+    lifecycleState: canary
+risk_profiles:
+  - profileId: human-resources.risk
+    domainId: human-resources
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: true
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: facilities.risk
+    domainId: facilities
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+  - profileId: executive-assistant.risk
+    domainId: executive-assistant
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: education.risk
+    domainId: education
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+  - profileId: product-management.risk
+    domainId: product-management
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+eval_specs:
+  - domainId: human-resources
+    evalBaselines: [policy_compliance, privacy_safety]
+    criticalCases: [discrimination_risk, privacy_breach, policy_misapplication]
+    acceptanceThresholds:
+      policy_compliance: 0.95
+      privacy_safety: 0.98
+    adversarialScenarios: [bias_in_screening, data_leak, policy_oversight]
+  - domainId: facilities
+    evalBaselines: [work_order_sla, safety_readiness]
+    criticalCases: [safety_hazard, missed_sla, vendor_issue]
+    acceptanceThresholds:
+      work_order_sla: 0.90
+      safety_readiness: 0.98
+    adversarialScenarios: [urgent_issue_flood, vendor_no_show, safety_compliance_gap]
+  - domainId: executive-assistant
+    evalBaselines: [brief_accuracy, scheduling_conflict_rate]
+    criticalCases: [incorrect_brief, double_booking, missed_deadline]
+    acceptanceThresholds:
+      brief_accuracy: 0.95
+      scheduling_conflict_rate: 0.02
+    adversarialScenarios: [calendar_conflict, priority_inversion, context_loss]
+  - domainId: education
+    evalBaselines: [assessment_quality, content_safety]
+    criticalCases: [inappropriate_content, incorrect_assessment, accessibility_issue]
+    acceptanceThresholds:
+      assessment_quality: 0.90
+      content_safety: 0.98
+    adversarialScenarios: [content_injection, learner_cheating, accessibility_violation]
+  - domainId: product-management
+    evalBaselines: [requirement_quality, roadmap_alignment]
+    criticalCases: [scope_creep, priority_misalignment, stakeholder_conflict]
+    acceptanceThresholds:
+      requirement_quality: 0.88
+      roadmap_alignment: 0.90
+    adversarialScenarios: [requirement_ambiguity, stakeholder_override, resource_constraint]
 roles:
   - id: general_executor
     name: General Executor

@@ -1,0 +1,33 @@
+id: quant_trading_primary
+division_id: quant-trading
+steps:
+  - step_id: ingest_market_data
+    role_id: quant_researcher
+    output_key: data_result
+    output_schema: schemas/trading-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+  - step_id: run_strategy_backtest
+    role_id: quant_researcher
+    output_key: backtest_result
+    output_schema: schemas/trading-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - ingest_market_data
+  - step_id: check_risk_limits
+    role_id: quant_researcher
+    output_key: risk_result
+    output_schema: schemas/trading-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+    depends_on:
+      - run_strategy_backtest
+  - step_id: prepare_order_ticket
+    role_id: quant_researcher
+    output_key: order_result
+    output_schema: schemas/trading-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+    depends_on:
+      - check_risk_limits

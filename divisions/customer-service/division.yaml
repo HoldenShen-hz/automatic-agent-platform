@@ -1,0 +1,57 @@
+id: customer-service
+version: 1
+name: Customer Service Division
+description: Customer support triage, response generation, and escalation.
+priority: 45
+default_workflow: customer_service_primary
+triggers:
+  - customer service
+  - support
+  - ticket
+  - help
+  - complaint
+roles:
+  - id: support_agent
+    name: Support Agent
+    prompt: roles/support_agent.prompt.md
+    model: balanced
+    tools: [ticket_router, knowledge_search, response_drafter, sentiment_monitor, crm_sync]
+    max_instances: 5
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: customer-service
+  ownerOrgNodeId: org.support
+  primaryEntities:
+    - ticket
+    - customer
+    - response
+    - escalation
+  recipeArchetype: conversational
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: customer-service.risk
+  domainId: customer-service
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: customer-service
+  evalBaselines:
+    - csat_proxy
+    - policy_safety
+  criticalCases:
+    - customer_complaint
+    - policy_escalation
+    - refund_request
+  acceptanceThresholds:
+    csat_proxy: 85
+    policy_safety: 90
+    first_response_time: 80
+  adversarialScenarios:
+    - social_engineering
+    - fraud
+    - harassment

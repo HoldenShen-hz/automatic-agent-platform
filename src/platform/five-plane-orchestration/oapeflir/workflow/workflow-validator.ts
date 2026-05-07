@@ -145,12 +145,27 @@ function collectEntrypoints(steps: readonly MinimalWorkflowStep[]): string[] {
  */
 export class WorkflowValidator {
   /**
+   * Validates a workflow definition and returns the legacy-compatible lint report.
+   */
+  public validate(definition: MinimalWorkflowDefinition): WorkflowLintReport {
+    const issues = this.collectIssues(definition);
+    const errorCount = issues.filter((issue) => issue.severity === "error").length;
+    const warningCount = issues.length - errorCount;
+    return {
+      ok: errorCount === 0,
+      issues,
+      errorCount,
+      warningCount,
+    };
+  }
+
+  /**
    * Validates a workflow definition and returns static compatibility issues.
    *
    * @param definition - The workflow definition to validate
    * @returns Array of static compatibility issues found
    */
-  public validate(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
+  private collectIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
     const issues: WorkflowLintIssue[] = [];
     const seenStepIds = new Set<string>();
     const seenOutputKeys = new Set<string>();
@@ -343,7 +358,7 @@ export class WorkflowValidator {
   }
 
   public validateIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
-    return this.validate(definition);
+    return this.collectIssues(definition);
   }
 
   /**
@@ -538,20 +553,17 @@ export class WorkflowValidator {
  * @throws Error with code "workflow.invalid:{code}" if validation fails
  */
 export function assertWorkflowValid(definition: MinimalWorkflowDefinition): WorkflowLintReport {
-  const issues = new WorkflowValidator().validate(definition);
-  const errorCount = issues.filter((issue) => issue.severity === "error").length;
-  const warningCount = issues.length - errorCount;
-  const ok = errorCount === 0;
+  const report = new WorkflowValidator().validate(definition);
 
-  if (!ok) {
-    const firstError = issues.find((issue) => issue.severity === "error");
+  if (!report.ok) {
+    const firstError = report.issues.find((issue) => issue.severity === "error");
     throw new ValidationError(
       firstError ? `workflow.invalid:${firstError.code}` : "workflow.invalid:unknown",
       `${firstError ? `workflow.invalid:${firstError.code}` : "workflow.invalid:unknown"}: Workflow validation failed: ${firstError?.message ?? "unknown error"}`,
-      { details: { issues: issues.map((i) => ({ code: i.code, severity: i.severity, message: i.message })) } },
+      { details: { issues: report.issues.map((i) => ({ code: i.code, severity: i.severity, message: i.message })) } },
     );
   }
-  return { ok, issues, errorCount, warningCount };
+  return report;
 }
 
 export function validateWorkflowCompatibility(

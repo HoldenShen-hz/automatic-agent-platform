@@ -32,6 +32,29 @@ disambiguate:
       - context: ["ci_pipeline", "gitops", "argocd", "jenkins", "github_action"]
         priority_boost: 10
     notes: "DevOps owns CI/CD-driven deployments; operations owns runbook-driven incident deployments"
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: devops
+    ownerOrgNodeId: org.devops
+    primaryEntities: [pipelines, deployments, infrastructure, containers]
+    recipeArchetype: incident_ops
+    lifecycleState: canary
+risk_profiles:
+  - profileId: devops.risk
+    domainId: devops
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+eval_specs:
+  - domainId: devops
+    evalBaselines: [deployment_success, pipeline_health]
+    criticalCases: [failed_deployment, pipeline_breakdown, security_misconfiguration]
+    acceptanceThresholds:
+      deployment_success: 0.95
+      pipeline_health: 0.92
+    adversarialScenarios: [secret_exposure, dependency_conflict, resource_exhaustion]
 roles:
   - id: devops_engineer
     name: DevOps Engineer

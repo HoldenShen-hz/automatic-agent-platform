@@ -94,8 +94,13 @@ export interface StepSupervisorContext {
   workflowRetryCount: number;
   workflowLastErrorCode: string | null;
   blockedForDecision: boolean;
-  skippedStepIds: Set<string>;
-  failedStepIds: Set<string>;
+  // R6-19 fix: nodeId is canonical per §5.5, stepId is deprecated
+  skippedNodeIds: Set<string>;
+  failedNodeIds: Set<string>;
+  // @deprecated Use skippedNodeIds per §5.5
+  skippedStepIds?: Set<string>;
+  // @deprecated Use failedNodeIds per §5.5
+  failedStepIds?: Set<string>;
 }
 
 export interface StepExecutionResult {
@@ -106,8 +111,13 @@ export interface StepExecutionResult {
   workflowLastErrorCode: string | null;
   outputs: Record<string, unknown>;
   stepOutputs: StepOutputRecord[];
-  skippedStepIds: Set<string>;
-  failedStepIds: Set<string>;
+  // R6-19 fix: nodeId is canonical per §5.5, stepId is deprecated
+  skippedNodeIds: Set<string>;
+  failedNodeIds: Set<string>;
+  // @deprecated Use skippedNodeIds per §5.5
+  skippedStepIds?: Set<string>;
+  // @deprecated Use failedNodeIds per §5.5
+  failedStepIds?: Set<string>;
 }
 
 interface ExecutionDeps {
@@ -146,33 +156,39 @@ export async function executeStepLoop(
   let workflowLastErrorCode = ctx.workflowLastErrorCode;
   let blockedForDecision = ctx.blockedForDecision;
   let stepCompleted = false;
-  const skippedStepIds = ctx.skippedStepIds;
-  const failedStepIds = ctx.failedStepIds;
+  // R6-19 fix: Use canonical nodeId names per §5.5
+  const skippedNodeIds = ctx.skippedNodeIds ?? ctx.skippedStepIds ?? new Set<string>();
+  const failedNodeIds = ctx.failedNodeIds ?? ctx.failedStepIds ?? new Set<string>();
 
   for (const [index, step] of plannedWorkflow.executionSteps.entries()) {
     const priorSummaries = stepOutputs.map((item) => item.summary ?? "").filter(Boolean);
     const toolExposure = toolExposureService.resolve({
       divisionId: step.divisionId,
       roleId: step.roleId,
-      taskContext: [input.title, input.request, `step:${step.stepId}`, priorSummaries.join("\n")].filter((part) => part.length > 0).join("\n"),
+      // R6-19 fix: Use nodeId (step.nodeId) for canonical correlation per §5.5
+      taskContext: [input.title, input.request, `step:${step.nodeId}`, priorSummaries.join("\n")].filter((part) => part.length > 0).join("\n"),
     });
 
     const hardBlockers = (step.dependsOnStepIds ?? []).filter((depId) => {
       const depType = step.dependencyTypes[depId] ?? "hard";
-      return depType === "hard" && (failedStepIds.has(depId) || skippedStepIds.has(depId));
+      // R6-19 fix: Use canonical nodeId names per §5.5
+      return depType === "hard" && (failedNodeIds.has(depId) || skippedNodeIds.has(depId));
     });
 
     if (hardBlockers.length > 0) {
-      skippedStepIds.add(step.stepId);
+      // R6-19 fix: Use nodeId as canonical identifier per §5.5
+      skippedNodeIds.add(step.nodeId);
       const skipNow = nowIso();
       const skipOutput: StepOutputRecord = {
         id: newId("step"),
         taskId,
+        // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+        nodeRunId: step.nodeId,
         stepId: step.stepId,
         roleId: step.roleId,
         status: "skipped",
         dataJson: JSON.stringify({ reasonCode: "upstream_dependency_failed", blockedBy: hardBlockers }),
-        summary: `Step ${step.stepId} skipped: upstream dependency failed (${hardBlockers.join(", ")})`,
+        summary: `Step ${step.nodeId} skipped: upstream dependency failed (${hardBlockers.join(", ")})`,
         artifactsJson: null,
         tokenCost: 0,
         durationMs: 0,
@@ -189,6 +205,8 @@ export async function executeStepLoop(
           eventType: "workflow:step_skipped",
           eventTier: "tier_1",
           payloadJson: JSON.stringify(injectTraceContext({
+            // R6-19 fix: Use nodeId for canonical correlation per §5.5
+            nodeId: step.nodeId,
             stepId: step.stepId,
             roleId: step.roleId,
             status: "skipped",
@@ -215,7 +233,8 @@ export async function executeStepLoop(
     stepCompleted = false;
     // R4-32 (INV-APPROVAL): Risk-proportional approval - use ApprovalPolicyEngine
     const approvalEngine = new ApprovalPolicyEngine(DEFAULT_APPROVAL_POLICY_BUNDLE);
-    const stepBudgetUsd = validatedPlanGraphBundle.graph.nodes.find((node) => node.nodeId === step.stepId)?.budgetIntent.amount ?? 1;
+    // R6-19 fix: Use nodeId for canonical node lookup per §5.5
+    const stepBudgetUsd = validatedPlanGraphBundle.graph.nodes.find((node) => node.nodeId === step.nodeId)?.budgetIntent.amount ?? 1;
     for (let attempt = 1; attempt <= step.maxAttempts; attempt += 1) {
       executionAttemptCounter += 1;
       const executionId = newId("exec");
@@ -232,7 +251,8 @@ export async function executeStepLoop(
         action: "invoke_tool",
         riskCategory: (() => {
           // R4-32 (INV-APPROVAL): Derive actual risk category from tool metadata
-          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.stepId ?? "todo_write";
+          // R6-19 fix: Use nodeId as canonical identifier per §5.5
+          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.nodeId ?? "todo_write";
           const riskLevels: Record<string, "low" | "medium" | "high" | "critical"> = {
             web_fetch: "medium", web_search: "medium", git: "high", spawn_agent: "high",
             batch_tool: "medium", todo_write: "low", repo_map: "low", question: "low",
@@ -243,7 +263,8 @@ export async function executeStepLoop(
         mode: "auto", // Default mode for multi-step
         stage: "execute",
         estimatedCostUsd: stepBudgetUsd,
-        metadata: { roleId: step.roleId, stepId: step.stepId },
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        metadata: { roleId: step.roleId, nodeId: step.nodeId, stepId: step.stepId },
       };
       const approvalResult = approvalEngine.evaluate(approvalContext);
 
@@ -289,9 +310,11 @@ export async function executeStepLoop(
           eventType: "subtask:started",
           eventTier: "tier_1",
           payloadJson: JSON.stringify(injectTraceContext({
+            // R6-19 fix: Use nodeId for canonical correlation per §5.5
+            nodeId: step.nodeId,
             stepId: step.stepId,
             roleId: step.roleId,
-            dependsOnStepIds: step.dependsOnStepIds,
+            dependsOnNodeIds: step.dependsOnStepIds,
             attempt,
           }, subtaskStartTrace)),
           traceId,
@@ -304,7 +327,8 @@ export async function executeStepLoop(
         entityId: executionId,
         fromStatus: "created",
         toStatus: "prechecking",
-        ...deps.createContext(`execution.precheck_started:${step.stepId}:attempt_${attempt}`),
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        ...deps.createContext(`execution.precheck_started:${step.nodeId}:attempt_${attempt}`),
       });
 
       const precheck: ExecutionPrecheckRecord = {
@@ -326,7 +350,8 @@ export async function executeStepLoop(
         entityId: executionId,
         fromStatus: "prechecking",
         toStatus: "executing",
-        ...deps.createContext(`execution.started:${step.stepId}:attempt_${attempt}`),
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        ...deps.createContext(`execution.started:${step.nodeId}:attempt_${attempt}`),
       });
 
       maybeInjectWorkflowCrash(input.crashInjection, {
@@ -334,10 +359,12 @@ export async function executeStepLoop(
         taskId,
         executionId,
         workflowId: plannedWorkflow.workflow.workflowId,
-        stepId: step.stepId,
+        // R6-19 fix: Use nodeId for canonical correlation per §5.5
+        stepId: step.nodeId,
       });
 
-      const plannedFailure = resolveStepFailurePlan(input, step.stepId, attempt);
+      // R6-19 fix: Use nodeId for step lookup per §5.5
+      const plannedFailure = resolveStepFailurePlan(input, step.nodeId, attempt);
 
       if (plannedFailure != null) {
         const decision = decideWorkflowStepRetry({ errorCode: plannedFailure.errorCode, attempt, maxAttempts: step.maxAttempts });
@@ -362,6 +389,8 @@ export async function executeStepLoop(
             eventType: decision.action === "retry" ? "workflow:step_retry_scheduled" : "workflow:step_failed",
             eventTier: "tier_1",
             payloadJson: JSON.stringify(injectTraceContext({
+              // R6-19 fix: Use nodeId for canonical correlation per §5.5
+              nodeId: step.nodeId,
               stepId: step.stepId,
               roleId: step.roleId,
               attempt,
@@ -404,7 +433,8 @@ export async function executeStepLoop(
             currentStepIndex: index,
             outputsJson: JSON.stringify(outputs),
             updatedAt: failedAt,
-            resumableFromStep: step.stepId,
+            // R6-19 fix: Use nodeId for canonical correlation per §5.5
+            resumableFromStep: step.nodeId,
             retryCount: workflowRetryCount,
             lastErrorCode: plannedFailure.errorCode,
           });
@@ -421,10 +451,13 @@ export async function executeStepLoop(
           break;
         }
 
-        failedStepIds.add(step.stepId);
+        // R6-19 fix: Use nodeId as canonical identifier per §5.5
+        failedNodeIds.add(step.nodeId);
         const failOutput: StepOutputRecord = {
           id: newId("step"),
           taskId,
+          // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+          nodeRunId: step.nodeId,
           stepId: step.stepId,
           roleId: step.roleId,
           status: "failed",
@@ -445,7 +478,8 @@ export async function executeStepLoop(
             currentStepIndex: index + 1,
             outputsJson: JSON.stringify(outputs),
             updatedAt: failedAt,
-            resumableFromStep: step.stepId,
+            // R6-19 fix: Use nodeId for canonical correlation per §5.5
+            resumableFromStep: step.nodeId,
             retryCount: workflowRetryCount,
             lastErrorCode: plannedFailure.errorCode,
           });

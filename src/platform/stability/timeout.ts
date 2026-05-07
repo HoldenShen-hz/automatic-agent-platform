@@ -28,7 +28,7 @@ export interface TimeoutStats {
 
 export class Timeout {
   private readonly timeoutMs: number;
-  private readonly cleanupFn?: () => void;
+  private readonly cleanupFn: (() => void) | undefined;
   private readonly propagateError: boolean;
 
   private state: TimeoutState = TimeoutState.PENDING;
@@ -133,7 +133,10 @@ export function withTimeout<T extends (...args: any[]) => Promise<any>>(
   cleanupFn?: () => void
 ): T {
   return ((...args: Parameters<T>) => {
-    const timeout = new Timeout({ timeoutMs, cleanupFn, propagateError: true });
+    const options = cleanupFn !== undefined
+      ? { timeoutMs, cleanupFn, propagateError: true }
+      : { timeoutMs, propagateError: true };
+    const timeout = new Timeout(options);
     return timeout.wrap(() => fn(...args));
   }) as T;
 }
@@ -158,6 +161,9 @@ export async function withDeadline<T>(
     const timeout = new Timeout({ timeoutMs: remaining });
     try {
       const op = operations[i];
+      if (op === undefined) {
+        return { results, timedOut: true };
+      }
       const result = await timeout.wrap(() => op());
       results.push(result);
     } catch {

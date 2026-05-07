@@ -34,6 +34,48 @@ disambiguate:
       - context: ["implementation", "refactor", "code_change"]
         priority_boost: 10
     notes: "engineering_ops owns implementation fixes; qa owns verification/validation fixes"
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: coding
+    ownerOrgNodeId: org.eng
+    primaryEntities: [code, patches, reviews, commits]
+    recipeArchetype: crud_heavy
+    lifecycleState: canary
+  - domainId: game-dev
+    ownerOrgNodeId: org.games
+    primaryEntities: [code, assets, builds, playtests]
+    recipeArchetype: crud_heavy
+    lifecycleState: canary
+risk_profiles:
+  - profileId: coding.risk
+    domainId: coding
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+  - profileId: game-dev.risk
+    domainId: game-dev
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+eval_specs:
+  - domainId: coding
+    evalBaselines: [quality, regression_rate]
+    criticalCases: [regression, security_vulnerability, broken_build]
+    acceptanceThresholds:
+      quality: 0.92
+      regression_rate: 0.95
+    adversarialScenarios: [edge_case_bug, security_exploit, dependency_conflict]
+  - domainId: game-dev
+    evalBaselines: [build_success, performance_budget]
+    criticalCases: [build_failure, performance_regression, asset_corruption]
+    acceptanceThresholds:
+      build_success: 0.98
+      performance_budget: 0.90
+    adversarialScenarios: [platform_incompatibility, asset_bloat, concurrent_modification]
 roles:
   - id: engineer
     name: Engineer

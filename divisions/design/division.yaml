@@ -14,6 +14,29 @@ triggers:
   - mockup
   - architecture
   - system design
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: design
+    ownerOrgNodeId: org.design
+    primaryEntities: [designs, prototypes, wireframes, specifications]
+    recipeArchetype: creative
+    lifecycleState: canary
+risk_profiles:
+  - profileId: design.risk
+    domainId: design
+    riskLevel: low
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+eval_specs:
+  - domainId: design
+    evalBaselines: [design_quality, stakeholder_satisfaction]
+    criticalCases: [misunderstood_requirements, inconsistent_branding, accessibility_violation]
+    acceptanceThresholds:
+      design_quality: 0.88
+      stakeholder_satisfaction: 0.85
+    adversarialScenarios: [scope_creep, feedback_contradiction, accessibility_oversight]
 roles:
   - id: designer
     name: Designer

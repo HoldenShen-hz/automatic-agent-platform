@@ -1,0 +1,59 @@
+id: quant-trading
+version: 1
+name: Quant Trading Division
+description: Quant strategy research, simulation, and guarded order automation.
+priority: 60
+default_workflow: quant_trading_primary
+triggers:
+  - quant trading
+  - algorithmic trading
+  - strategy
+  - backtest
+  - trading
+roles:
+  - id: quant_researcher
+    name: Quantitative Researcher
+    prompt: roles/quant_researcher.prompt.md
+    model: precision
+    tools: [market_data, strategy_backtester, risk_calculator, order_execution, portfolio_analyzer, trade_journal]
+    max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: quant-trading
+  ownerOrgNodeId: org.trading
+  primaryEntities:
+    - strategy
+    - order
+    - portfolio
+    - market_data
+  recipeArchetype: trading
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: quant-trading.risk
+  domainId: quant-trading
+  riskLevel: critical
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: heavily_regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: quant-trading
+  evalBaselines:
+    - sharpe_ratio
+    - max_drawdown
+    - pre_trade_risk
+  criticalCases:
+    - market_crash
+    - regulatory_violation
+    - large_drawdown
+  acceptanceThresholds:
+    sharpe_ratio: 85
+    max_drawdown: 90
+    pre_trade_risk: 95
+    fill_rate: 75
+  adversarialScenarios:
+    - flash_crash
+    - front_running
+    - manipulation

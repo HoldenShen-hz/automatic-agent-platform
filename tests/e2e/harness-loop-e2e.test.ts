@@ -25,8 +25,6 @@ import {
 } from "../../src/platform/orchestration/harness/index.js";
 import {
   TestHarnessOrchestrator,
-  createTestConstraintPack,
-  type TestHarnessOrchestrator,
 } from "../unit/platform/orchestration/harness/test-service-wrapper.js";
 
 // ---------------------------------------------------------------------------
@@ -360,15 +358,25 @@ test("E2E: HITL rejection records hitl_resolved with rejected resolution and abo
       autonomyMode: "supervised",
       risk_policy: { maxRiskScore: 80, escalationThreshold: 50 },
     });
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.55, verdict: "requires-human" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-hitl-reject-001",
+      domainId: "security",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-hitl-reject-001",
       domainId: "security",
       constraintPack,
-      plannerOutput: { planId: "plan-hitl-reject-001", summary: "Delete prod data" },
-      generatorOutput: { dangerousOperation: true },
-      evaluatorOutput: { verdict: "requires-human" },
-      evaluatorScore: 0.55,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       riskScore: 78,
       producedEvidenceRefs: [],
       requiresHuman: true,
@@ -394,16 +402,26 @@ test("E2E: HITL resolution throws when no open HITL request exists", (t) => {
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.91, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-hitl-no-req-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
 
     // Run completes without HITL
     const run = service.runLoop({
       taskId: "task-e2e-hitl-no-req-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput: { planId: "plan-no-hitl-001" },
-      generatorOutput: { artifact: "patch.diff" },
-      evaluatorOutput: { verdict: "pass" },
-      evaluatorScore: 0.91,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       producedEvidenceRefs: [],
     });
 
@@ -489,15 +507,25 @@ test("E2E: runLoop with low score triggers replan path without HITL", (t) => {
     const constraintPack = createConstraintPack({
       budget: { maxSteps: 9, maxCost: 10, maxDurationMs: 60_000 },
     });
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.42, verdict: "retry" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-replan-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-replan-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput: { planId: "plan-replan-001", summary: "Initial plan" },
-      generatorOutput: { artifact: "draft.diff" },
-      evaluatorOutput: { verdict: "retry", reason: "Quality below threshold" },
-      evaluatorScore: 0.42,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       producedEvidenceRefs: [],
     });
 
@@ -525,15 +553,25 @@ test("E2E: guardrails_evaluated event is recorded with assessment details", (t) 
     const constraintPack = createConstraintPack({
       risk_policy: { maxRiskScore: 60, escalationThreshold: 50 },
     });
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.85, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-guardrails-001",
+      domainId: "security",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-guardrails-001",
       domainId: "security",
       constraintPack,
-      plannerOutput: { planId: "plan-guard-001" },
-      generatorOutput: { artifact: "security_patch.diff" },
-      evaluatorOutput: { verdict: "pass" },
-      evaluatorScore: 0.85,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       riskScore: 45, // Below escalationThreshold
       producedEvidenceRefs: [],
     });
@@ -558,6 +596,16 @@ test("E2E: guardrail assessment blocks when risk exceeds maxRiskScore", (t) => {
     const constraintPack = createConstraintPack({
       risk_policy: { maxRiskScore: 50, escalationThreshold: 40 },
     });
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.88, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-guardrail-block-001",
+      domainId: "security",
+      constraintPack,
+      iteration: 1,
+    });
 
     // Attempting to run with risk score above maxRiskScore should throw
     assert.throws(
@@ -566,10 +614,10 @@ test("E2E: guardrail assessment blocks when risk exceeds maxRiskScore", (t) => {
           taskId: "task-e2e-guardrail-block-001",
           domainId: "security",
           constraintPack,
-          plannerOutput: { planId: "plan-guard-block-001" },
-          generatorOutput: { toolCalls: ["delete_all_data"] },
-          evaluatorOutput: { verdict: "pass" },
-          evaluatorScore: 0.88,
+          plannerOutput,
+          generatorOutput,
+          evaluatorOutput,
+          evaluatorScore,
           riskScore: 85, // Exceeds maxRiskScore of 50
           producedEvidenceRefs: [],
         }),
@@ -586,15 +634,25 @@ test("E2E: guardrails_evaluated appears before decision_recorded in timeline", (
   try {
     const service = new HarnessRuntimeService();
     const constraintPack = createConstraintPack();
+    // Use real planner/generator/evaluator via orchestrator wrapper
+    const orchestrator = new TestHarnessOrchestrator();
+    orchestrator.evaluator.configure({ score: 0.9, verdict: "pass" });
+
+    const { plannerOutput, generatorOutput, evaluatorOutput, evaluatorScore } = orchestrator.executeLoop({
+      taskId: "task-e2e-guardrail-order-001",
+      domainId: "coding",
+      constraintPack,
+      iteration: 1,
+    });
 
     const run = service.runLoop({
       taskId: "task-e2e-guardrail-order-001",
       domainId: "coding",
       constraintPack,
-      plannerOutput: { planId: "plan-order-001" },
-      generatorOutput: { artifact: "code.diff" },
-      evaluatorOutput: { verdict: "pass" },
-      evaluatorScore: 0.9,
+      plannerOutput,
+      generatorOutput,
+      evaluatorOutput,
+      evaluatorScore,
       producedEvidenceRefs: [],
     });
 

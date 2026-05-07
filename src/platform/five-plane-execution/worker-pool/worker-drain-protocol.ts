@@ -316,7 +316,9 @@ export class WorkerDrainProtocol {
   ): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
-      for (const handler of handlers) {
+      // Iterate over a copy to avoid issues if handler modifies the set
+      const handlerArray = Array.from(handlers);
+      for (const handler of handlerArray) {
         try {
           const result = handler(event, payload);
           if (result instanceof Promise) {

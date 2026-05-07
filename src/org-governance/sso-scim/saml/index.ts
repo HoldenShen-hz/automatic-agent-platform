@@ -1,4 +1,4 @@
-import { createHash, verify } from "node:crypto";
+import { createHash, verify, X509Certificate } from "node:crypto";
 import { SignedXml } from "xml-crypto";
 import { z } from "zod";
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
@@ -169,30 +169,17 @@ export class X509TrustChainValidator {
    */
   private extractCertificateInfo(certificatePEM: string): X509CertificateInfo | null {
     try {
-      // Simple PEM parsing - extract base64 content
-      const base64Cert = certificatePEM
-        .replace(/-----BEGIN CERTIFICATE-----/, "")
-        .replace(/-----END CERTIFICATE-----/, "")
-        .replace(/\s/g, "");
-
-      const der = Buffer.from(base64Cert, "base64");
-      const hash = createHash("sha256").update(der).digest("hex");
-
-      // Parse ASN.1 structure to extract certificate fields
-      // This is a simplified implementation - production would use a proper ASN.1 parser
-      const info = this.parseASN1Certificate(der);
-      if (!info) {
-        return null;
-      }
+      const certificate = new X509Certificate(certificatePEM);
+      const hash = createHash("sha256").update(certificate.raw).digest("hex");
 
       return {
-        subject: info.subject ?? "Unknown",
-        issuer: info.issuer ?? "Unknown",
-        serialNumber: info.serialNumber ?? "Unknown",
-        notBefore: info.notBefore ?? "1970-01-01T00:00:00Z",
-        notAfter: info.notAfter ?? "1970-01-01T00:00:00Z",
+        subject: certificate.subject,
+        issuer: certificate.issuer,
+        serialNumber: certificate.serialNumber,
+        notBefore: new Date(certificate.validFrom).toISOString(),
+        notAfter: new Date(certificate.validTo).toISOString(),
         fingerprintSHA256: hash,
-        publicKeyAlgorithm: info.publicKeyAlgorithm ?? "RSA",
+        publicKeyAlgorithm: certificate.publicKey.asymmetricKeyType?.toUpperCase() ?? "RSA",
       };
     } catch {
       return null;
@@ -424,22 +411,16 @@ export class X509TrustChainValidator {
 
   private verifyCertificateSignature(certificatePEM: string, caCertPEM: string): boolean {
     try {
-      // Extract public key from CA certificate and verify signature
-      // This is a simplified check - in production, use proper X.509 verification
-      const caInfo = this.extractCertificateInfo(caCertPEM);
-      if (!caInfo) return false;
-
-      // Verify that CA certificate is still valid
-      const now = new Date();
-      const notBefore = new Date(caInfo.notBefore);
-      const notAfter = new Date(caInfo.notAfter);
-      if (now < notBefore || now > notAfter) {
+      const certificate = new X509Certificate(certificatePEM);
+      const caCertificate = new X509Certificate(caCertPEM);
+      const now = Date.now();
+      if (now < Date.parse(caCertificate.validFrom) || now > Date.parse(caCertificate.validTo)) {
         return false;
       }
-
-      // Signature verification would require extracting the public key and using crypto.verify
-      // For SAML, typically the IdP certificate is trusted directly, not via chain
-      return true;
+      if (certificate.issuer !== caCertificate.subject) {
+        return false;
+      }
+      return certificate.verify(caCertificate.publicKey);
     } catch {
       return false;
     }

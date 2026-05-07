@@ -1,0 +1,33 @@
+id: industry_research_primary
+division_id: industry-research
+steps:
+  - step_id: collect_sources
+    role_id: research_analyst
+    output_key: sources_result
+    output_schema: schemas/research-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: extract_signals
+    role_id: research_analyst
+    output_key: signals_result
+    output_schema: schemas/research-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_sources
+  - step_id: compare_competitors
+    role_id: research_analyst
+    output_key: competitor_result
+    output_schema: schemas/research-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - extract_signals
+  - step_id: publish_brief
+    role_id: research_analyst
+    output_key: brief_result
+    output_schema: schemas/research-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - compare_competitors

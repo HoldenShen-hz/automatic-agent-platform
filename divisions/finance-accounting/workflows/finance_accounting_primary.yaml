@@ -1,0 +1,33 @@
+id: finance_accounting_primary
+division_id: finance-accounting
+steps:
+  - step_id: collect_ledgers
+    role_id: finance_specialist
+    output_key: ledger_result
+    output_schema: schemas/finance-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: reconcile_variances
+    role_id: finance_specialist
+    output_key: variance_result
+    output_schema: schemas/finance-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_ledgers
+  - step_id: prepare_close_pack
+    role_id: finance_specialist
+    output_key: close_result
+    output_schema: schemas/finance-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - reconcile_variances
+  - step_id: route_for_signoff
+    role_id: finance_specialist
+    output_key: signoff_result
+    output_schema: schemas/finance-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - prepare_close_pack

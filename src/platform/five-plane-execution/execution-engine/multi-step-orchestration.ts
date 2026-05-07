@@ -181,6 +181,7 @@ function resolveOapeflirRoleId(_node: import("../../contracts/executable-contrac
 
 // R19-09 fix: Changed parameter type from PlanStep to PlanNode and preserves rich metadata
 // Previously converted PlanStep which lost nodeType, riskClass, budgetIntent, sideEffectProfile, retryPolicyRef
+// R6-19 fix: nodeId is now canonical per §5.5, stepId is deprecated legacy projection
 function oapeflirStepToMinimalStep(node: import("../../contracts/executable-contracts/index.js").PlanNode): import("../../orchestration/oapeflir/workflow/minimal-workflow.js").MinimalWorkflowStep {
   // R19-09 fix: Compute maxAttempts from legacy retryPolicy when present
   // For legacy format (retryPolicy: { maxRetries: N }), derive maxAttempts = maxRetries + 1
@@ -188,6 +189,8 @@ function oapeflirStepToMinimalStep(node: import("../../contracts/executable-cont
   const maxAttempts = legacyRetryPolicy != null ? legacyRetryPolicy.maxRetries + 1 : 1;
 
   return {
+    nodeId: node.nodeId,
+    // R6-19 fix: stepId is deprecated per §5.5, only use for legacy compatibility
     stepId: node.nodeId,
     roleId: resolveOapeflirRoleId(node),
     outputKey: `output_${node.nodeId}`,
@@ -219,7 +222,10 @@ function buildOapeflirPlannedWorkflow(
 
   const executionSteps: import("../../orchestration/routing/workflow-planner.js").PlannedExecutionStep[] = workflowDef.steps.map((step) => {
     const stepDeps = step.dependsOnStepIds ?? [];
+    // R6-19 fix: nodeId is canonical per §5.5, stepId is deprecated legacy projection
     return {
+      nodeId: step.nodeId,
+      // R6-19 fix: stepId retained for legacy compatibility only
       stepId: step.stepId,
       divisionId: step.divisionId ?? workflowDef.divisionId,
       roleId: step.roleId,

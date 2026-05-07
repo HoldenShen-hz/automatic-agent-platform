@@ -1,0 +1,33 @@
+id: knowledge_base_primary
+division_id: knowledge-base
+steps:
+  - step_id: collect_sources
+    role_id: knowledge_specialist
+    output_key: collect_result
+    output_schema: schemas/knowledge-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: normalize_documents
+    role_id: knowledge_specialist
+    output_key: normalize_result
+    output_schema: schemas/knowledge-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - collect_sources
+  - step_id: index_chunks
+    role_id: knowledge_specialist
+    output_key: index_result
+    output_schema: schemas/knowledge-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - normalize_documents
+  - step_id: publish_answers
+    role_id: knowledge_specialist
+    output_key: publish_result
+    output_schema: schemas/knowledge-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - index_chunks

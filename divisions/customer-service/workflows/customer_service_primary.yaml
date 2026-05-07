@@ -1,0 +1,33 @@
+id: customer_service_primary
+division_id: customer-service
+steps:
+  - step_id: triage_ticket
+    role_id: support_agent
+    output_key: triage_result
+    output_schema: schemas/cs-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+  - step_id: retrieve_context
+    role_id: support_agent
+    output_key: context_result
+    output_schema: schemas/cs-output.json
+    timeout_ms: 120000
+    max_attempts: 2
+    depends_on:
+      - triage_ticket
+  - step_id: draft_response
+    role_id: support_agent
+    output_key: response_result
+    output_schema: schemas/cs-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - retrieve_context
+  - step_id: escalate_if_needed
+    role_id: support_agent
+    output_key: escalation_result
+    output_schema: schemas/cs-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+    depends_on:
+      - draft_response

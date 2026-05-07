@@ -30,6 +30,86 @@ disambiguate:
       - context: ["incident", "runbook", "on_call", "pagerduty", "opsgenie"]
         priority_boost: 15
     notes: "Operations owns runbook-driven incident deployments; devops owns CI/CD-driven deployments"
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: it-operations
+    ownerOrgNodeId: org.itops
+    primaryEntities: [incidents, runbooks, systems, monitors]
+    recipeArchetype: incident_ops
+    lifecycleState: canary
+  - domainId: supply-chain
+    ownerOrgNodeId: org.supply
+    primaryEntities: [inventory, routes, suppliers, exceptions]
+    recipeArchetype: logistics
+    lifecycleState: canary
+  - domainId: manufacturing
+    ownerOrgNodeId: org.manufacturing
+    primaryEntities: [production_runs, quality_gates, batches, lines]
+    recipeArchetype: logistics
+    lifecycleState: canary
+  - domainId: agriculture
+    ownerOrgNodeId: org.agriculture
+    primaryEntities: [fields, crops, compliance_records, advisories]
+    recipeArchetype: logistics
+    lifecycleState: canary
+risk_profiles:
+  - profileId: it-operations.risk
+    domainId: it-operations
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: supply-chain.risk
+    domainId: supply-chain
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: manufacturing.risk
+    domainId: manufacturing
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: true
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: agriculture.risk
+    domainId: agriculture
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: lightly_regulated
+eval_specs:
+  - domainId: it-operations
+    evalBaselines: [incident_containment, recovery_success]
+    criticalCases: [data_loss, extended_outage, cascading_failure]
+    acceptanceThresholds:
+      incident_containment: 0.95
+      recovery_success: 0.98
+    adversarialScenarios: [coordinated_attack, zero_day_exploit, misconfiguration]
+  - domainId: supply-chain
+    evalBaselines: [fill_rate, exception_clearance]
+    criticalCases: [stockout, delivery_failure, quality_issue]
+    acceptanceThresholds:
+      fill_rate: 0.92
+      exception_clearance: 0.90
+    adversarialScenarios: [demand_spike, supplier_failure, logistics_bottleneck]
+  - domainId: manufacturing
+    evalBaselines: [quality_yield, production_readiness]
+    criticalCases: [quality_deviation, line_stoppage, batch_failure]
+    acceptanceThresholds:
+      quality_yield: 0.95
+      production_readiness: 0.98
+    adversarialScenarios: [equipment_failure, material_defect, specification_drift]
+  - domainId: agriculture
+    evalBaselines: [compliance_safety, signal_accuracy]
+    criticalCases: [regulatory_violation, incorrect_recommendation, sensor_malfunction]
+    acceptanceThresholds:
+      compliance_safety: 0.92
+      signal_accuracy: 0.88
+    adversarialScenarios: [weather_anomaly, sensor_bias, data_lag]
 roles:
   - id: ops_executor
     name: Operations Executor

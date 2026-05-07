@@ -859,6 +859,12 @@ export class DivisionLoader {
       throwDivisionValidationError("division.invalid_shape", { sourcePath });
     }
 
+    // §37: Normalize domain_descriptor - support both singular (new) and plural (legacy) forms
+    // If plural form exists (legacy), extract the first element for backward compatibility
+    const domainDescriptor = parsed.domain_descriptor ?? this.extractFirstFromArray(parsed.domain_descriptors);
+    const riskProfile = parsed.risk_profile ?? this.extractFirstFromArray(parsed.risk_profiles);
+    const evalSpec = parsed.eval_spec ?? this.extractFirstFromArray(parsed.eval_specs);
+
     return {
       id: expectNonEmptyString(parsed.id, `division.id_missing:${sourcePath}`),
       version: parsed.version,
@@ -873,10 +879,21 @@ export class DivisionLoader {
       triggers: parsed.triggers,
       roles: parsed.roles,
       // §37: DomainDescriptor structured hierarchy
-      domain_descriptor: parsed.domain_descriptor,
-      risk_profile: parsed.risk_profile,
-      eval_spec: parsed.eval_spec,
+      domain_descriptor: domainDescriptor,
+      risk_profile: riskProfile,
+      eval_spec: evalSpec,
     };
+  }
+
+  /**
+   * Extracts the first element from an array if the value is an array.
+   * Used for backward compatibility with legacy plural YAML keys.
+   */
+  private extractFirstFromArray(value: unknown): unknown {
+    if (Array.isArray(value) && value.length > 0) {
+      return value[0];
+    }
+    return undefined;
   }
 
   /**

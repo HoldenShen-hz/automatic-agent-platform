@@ -1,0 +1,33 @@
+id: data_engineering_primary
+division_id: data-engineering
+steps:
+  - step_id: profile_source
+    role_id: data_engineer
+    output_key: profile_result
+    output_schema: schemas/data-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: transform_dataset
+    role_id: data_engineer
+    output_key: transform_result
+    output_schema: schemas/data-output.json
+    timeout_ms: 600000
+    max_attempts: 2
+    depends_on:
+      - profile_source
+  - step_id: validate_lineage
+    role_id: data_engineer
+    output_key: lineage_result
+    output_schema: schemas/data-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - transform_dataset
+  - step_id: publish_dataset
+    role_id: data_engineer
+    output_key: publish_result
+    output_schema: schemas/data-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - validate_lineage

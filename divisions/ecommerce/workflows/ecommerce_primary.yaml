@@ -1,0 +1,33 @@
+id: ecommerce_primary
+division_id: ecommerce
+steps:
+  - step_id: sync_catalog
+    role_id: commerce_specialist
+    output_key: catalog_result
+    output_schema: schemas/ecommerce-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: optimize_merchandising
+    role_id: commerce_specialist
+    output_key: merchandising_result
+    output_schema: schemas/ecommerce-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - sync_catalog
+  - step_id: validate_promotions
+    role_id: commerce_specialist
+    output_key: promotion_result
+    output_schema: schemas/ecommerce-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - optimize_merchandising
+  - step_id: publish_changes
+    role_id: commerce_specialist
+    output_key: publish_result
+    output_schema: schemas/ecommerce-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - validate_promotions

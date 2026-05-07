@@ -1,0 +1,56 @@
+id: legal
+version: 1
+name: Legal Division
+description: Contract review, policy mapping, and legal operations support.
+priority: 60
+default_workflow: legal_primary
+triggers:
+  - legal
+  - contract
+  - compliance
+  - review
+  - policy
+roles:
+  - id: legal_specialist
+    name: Legal Specialist
+    prompt: roles/legal_specialist.prompt.md
+    model: precision
+    tools: [clause_library, redline_editor, approval_router, matter_tracker, policy_linker]
+    max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: legal
+  ownerOrgNodeId: org.legal
+  primaryEntities:
+    - contract
+    - clause
+    - policy
+    - matter
+  recipeArchetype: compliance
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: legal.risk
+  domainId: legal
+  riskLevel: critical
+  advisoryOnly: true
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: heavily_regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: legal
+  evalBaselines:
+    - policy_alignment
+    - approval_completeness
+  criticalCases:
+    - contract_risk
+    - regulatory_violation
+    - liability_exposure
+  acceptanceThresholds:
+    policy_alignment: 95
+    approval_completeness: 95
+    turnaround_time: 80
+  adversarialScenarios:
+    - liability_hiding
+    - clause_manipulation

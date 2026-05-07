@@ -1,0 +1,57 @@
+id: finance-accounting
+version: 1
+name: Finance Accounting Division
+description: Internal finance operations, reporting, and close workflows.
+priority: 50
+default_workflow: finance_accounting_primary
+triggers:
+  - finance
+  - accounting
+  - reconciliation
+  - reporting
+  - close
+roles:
+  - id: finance_specialist
+    name: Finance Specialist
+    prompt: roles/finance_specialist.prompt.md
+    model: precision
+    tools: [ledger_reader, variance_checker, close_calendar, forecast_model, approval_router]
+    max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: finance-accounting
+  ownerOrgNodeId: org.finance
+  primaryEntities:
+    - ledger
+    - transaction
+    - report
+    - close
+  recipeArchetype: compliance
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: finance-accounting.risk
+  domainId: finance-accounting
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: finance-accounting
+  evalBaselines:
+    - reconciliation_accuracy
+    - approval_completeness
+  criticalCases:
+    - financial_error
+    - compliance_violation
+    - audit_flag
+  acceptanceThresholds:
+    reconciliation_accuracy: 95
+    approval_completeness: 95
+    forecast_delta: 80
+  adversarialScenarios:
+    - fraud
+    - manipulation
+    - error_concealment

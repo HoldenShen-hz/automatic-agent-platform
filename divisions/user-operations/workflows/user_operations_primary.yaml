@@ -1,0 +1,33 @@
+id: user_operations_primary
+division_id: user-operations
+steps:
+  - step_id: segment_users
+    role_id: growth_specialist
+    output_key: segment_result
+    output_schema: schemas/user-ops-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: compose_campaign
+    role_id: growth_specialist
+    output_key: campaign_result
+    output_schema: schemas/user-ops-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - segment_users
+  - step_id: schedule_touchpoints
+    role_id: growth_specialist
+    output_key: schedule_result
+    output_schema: schemas/user-ops-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - compose_campaign
+  - step_id: measure_lift
+    role_id: growth_specialist
+    output_key: lift_result
+    output_schema: schemas/user-ops-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - schedule_touchpoints

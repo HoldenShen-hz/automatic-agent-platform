@@ -1,0 +1,55 @@
+id: academic-research
+version: 1
+name: Academic Research Division
+description: Literature collection, evaluation, and synthesis pipelines.
+priority: 35
+default_workflow: academic_research_primary
+triggers:
+  - academic research
+  - literature review
+  - paper analysis
+  - scholarly
+  - synthesis
+roles:
+  - id: research_scholar
+    name: Research Scholar
+    prompt: roles/research_scholar.prompt.md
+    model: balanced
+    tools: [paper_search, citation_builder, evidence_matrix, trend_scanner, knowledge_graph]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: academic-research
+  ownerOrgNodeId: org.research
+  primaryEntities:
+    - paper
+    - citation
+    - evidence
+    - finding
+  recipeArchetype: research
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: academic-research.risk
+  domainId: academic-research
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: academic-research
+  evalBaselines:
+    - citation_accuracy
+    - coverage
+  criticalCases:
+    - incorrect_citation
+    - missed_relevant_work
+  acceptanceThresholds:
+    citation_accuracy: 90
+    coverage: 85
+    novelty: 75
+  adversarialScenarios:
+    - fabricated_citation
+    - plagiarism

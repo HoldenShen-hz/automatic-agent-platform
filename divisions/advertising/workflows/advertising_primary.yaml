@@ -1,0 +1,33 @@
+id: advertising_primary
+division_id: advertising
+steps:
+  - step_id: plan_campaign
+    role_id: ads_specialist
+    output_key: plan_result
+    output_schema: schemas/ad-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+  - step_id: validate_budget
+    role_id: ads_specialist
+    output_key: budget_result
+    output_schema: schemas/ad-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - plan_campaign
+  - step_id: activate_channels
+    role_id: ads_specialist
+    output_key: channel_result
+    output_schema: schemas/ad-output.json
+    timeout_ms: 300000
+    max_attempts: 2
+    depends_on:
+      - validate_budget
+  - step_id: optimize_spend
+    role_id: ads_specialist
+    output_key: optimize_result
+    output_schema: schemas/ad-output.json
+    timeout_ms: 180000
+    max_attempts: 1
+    depends_on:
+      - activate_channels

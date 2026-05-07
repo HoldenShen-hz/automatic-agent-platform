@@ -1,0 +1,55 @@
+id: industry-research
+version: 1
+name: Industry Research Division
+description: Structured market and industry analysis workflows.
+priority: 35
+default_workflow: industry_research_primary
+triggers:
+  - industry research
+  - market analysis
+  - competitor analysis
+  - market intelligence
+  - trends
+roles:
+  - id: research_analyst
+    name: Research Analyst
+    prompt: roles/research_analyst.prompt.md
+    model: balanced
+    tools: [source_collector, signal_extractor, brief_builder, citation_builder, trend_scanner]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: industry-research
+  ownerOrgNodeId: org.strategy
+  primaryEntities:
+    - market
+    - competitor
+    - trend
+    - signal
+  recipeArchetype: research
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: industry-research.risk
+  domainId: industry-research
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: industry-research
+  evalBaselines:
+    - source_relevance
+    - citation_coverage
+  criticalCases:
+    - incorrect_analysis
+    - missed_key_signal
+  acceptanceThresholds:
+    source_relevance: 85
+    citation_coverage: 80
+    freshness: 75
+  adversarialScenarios:
+    - misinformation
+    - biased_analysis

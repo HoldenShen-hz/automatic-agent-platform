@@ -145,12 +145,16 @@ export interface StepOutputRecord {
   id: string;
   taskId: string;
   /**
-   * Canonical execution correlation key.
-   * Prefer this field for new code; legacy stores may only populate stepId.
+   * Canonical execution correlation key per §5.5.
+   * This is the primary identifier for correlating step outputs.
    */
-  nodeRunId?: string;
-  /** @deprecated Use nodeRunId for canonical correlation. */
-  stepId: string;
+  nodeRunId: string;
+  /**
+   * @deprecated Legacy projection identifier per §5.5.
+   * Only use for backward compatibility with legacy systems.
+   * New code should use nodeRunId for canonical correlation.
+   */
+  stepId?: string;
   roleId: string;
   status: "succeeded" | "failed" | "partial_success" | "skipped";
   /** JSON-serialized step output defined by the workflow output schema */

@@ -149,28 +149,110 @@ function extractGraphMetadata(planGraphBundle: PlanGraphBundle): ExecutionOutcom
 }
 
 /**
- * R11-04: Evaluates execution using graph structure (not just step sequence).
- * Accesses node risk levels, budget reservations, and edge relationships.
- *
- * @param planGraphBundle - The PlanGraphBundle containing graph structure
- * @param feedback - Feedback batch for evaluation
- * @param options - Optional evaluation parameters
- * @returns Graph-aware evaluation result
+ * R11-04: Analyzes edge relationships for dependency-aware evaluation.
+ * Returns information about node dependencies and critical paths.
  */
-public evaluateWithGraphContext(
-  planGraphBundle: PlanGraphBundle,
-  feedback: FeedbackBatch,
-  options?: {
-    actualDurationMs?: number;
-    actualCost?: number;
-    constraints?: readonly string[];
-    baselineScore?: number;
-    /** Node IDs that failed in this execution */
-    failedNodeIds?: readonly string[];
-    /** Node IDs that succeeded in this execution */
-    succeededNodeIds?: readonly string[];
-  },
-): ExecutionOutcomeEvaluation {
+function analyzeEdgeRelationships(
+  edges: readonly PlanEdge[],
+  nodeMap: Map<string, PlanNode>
+): {
+  dependencyChain: string[][];
+  criticalNodes: string[];
+  maxDependencyDepth: number;
+} {
+  const outgoingEdges = new Map<string, PlanEdge[]>();
+  const incomingEdges = new Map<string, PlanEdge[]>();
+
+  // Build adjacency maps
+  for (const edge of edges) {
+    if (!outgoingEdges.has(edge.fromNodeId)) {
+      outgoingEdges.set(edge.fromNodeId, []);
+    }
+    outgoingEdges.get(edge.fromNodeId)!.push(edge);
+
+    if (!incomingEdges.has(edge.toNodeId)) {
+      incomingEdges.set(edge.toNodeId, []);
+    }
+    incomingEdges.get(edge.toNodeId)!.push(edge);
+  }
+
+  // Find nodes with no incoming edges (entry nodes) and no outgoing edges (terminal nodes)
+  const entryNodes = new Set<string>();
+  const terminalNodes = new Set<string>();
+
+  for (const nodeId of Array.from(nodeMap.keys())) {
+    if (!incomingEdges.has(nodeId) || incomingEdges.get(nodeId)!.length === 0) {
+      entryNodes.add(nodeId);
+    }
+    if (!outgoingEdges.has(nodeId) || outgoingEdges.get(nodeId)!.length === 0) {
+      terminalNodes.add(nodeId);
+    }
+  }
+
+  // Trace dependency chains from entry to terminal nodes
+  const dependencyChain: string[][] = [];
+  const visited = new Set<string>();
+
+  function dfs(nodeId: string, path: string[]): void {
+    if (terminalNodes.has(nodeId)) {
+      dependencyChain.push([...path]);
+      return;
+    }
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+
+    const outgoing = outgoingEdges.get(nodeId) ?? [];
+    for (const edge of outgoing) {
+      dfs(edge.toNodeId, [...path, edge.toNodeId]);
+    }
+
+    visited.delete(nodeId);
+  }
+
+  for (const entryId of Array.from(entryNodes)) {
+    dfs(entryId, [entryId]);
+  }
+
+  // Critical nodes are those with hard dependencies or on the longest path
+  const criticalNodes: string[] = [];
+  let maxDepth = 0;
+
+  for (const chain of dependencyChain) {
+    if (chain.length > maxDepth) {
+      maxDepth = chain.length;
+      criticalNodes.length = 0;
+      criticalNodes.push(...chain);
+    }
+  }
+
+  return {
+    dependencyChain,
+    criticalNodes: Array.from(new Set(criticalNodes)),
+    maxDependencyDepth: maxDepth,
+  };
+}
+
+/**
+ * R11-04: Determines node risk levels from graph nodes.
+ * Maps node risk classes for evaluation purposes.
+ */
+function getNodeRiskLevels(nodes: readonly PlanNode[]): Map<string, RiskClass> {
+  const riskMap = new Map<string, RiskClass>();
+  for (const node of nodes) {
+    riskMap.set(node.nodeId, node.riskClass);
+  }
+  return riskMap;
+}
+
+/**
+ * R11-04: Validates that the PlanGraphBundle has required graph structure.
+ */
+function validatePlanGraphStructure(planGraphBundle: PlanGraphBundle): boolean {
+  if (!planGraphBundle.graph) return false;
+  if (!Array.isArray(planGraphBundle.graph.nodes)) return false;
+  if (!Array.isArray(planGraphBundle.graph.edges)) return false;
+  return true;
+}
 
 export class ExecutionOutcomeEvaluator {
   private readonly config: QualityGateConfig;
@@ -565,7 +647,7 @@ export class ExecutionOutcomeEvaluator {
 
   /**
    * R11-03: Evaluate budget adherence per §13.5.
-   * Assesses whether actual cost exceeds reserved budget.
+   * R11-04: Now uses graph node budgetIntent for accurate budget calculation.
    */
   private evaluateBudgetAdherence(
     planGraphBundle: PlanGraphBundle,
@@ -630,7 +712,6 @@ export class ExecutionOutcomeEvaluator {
 
   /**
    * R11-03: Evaluate risk boundary per §13.5.
-   * Assesses whether execution remained within defined risk boundaries.
    * R11-04: Now uses graph node risk levels for more accurate assessment.
    */
   private evaluateRiskBoundary(
@@ -655,7 +736,7 @@ export class ExecutionOutcomeEvaluator {
     const riskEscalationSignals = feedback?.signals.filter(
       (s) =>
         (s.payload as { reasonCode?: string }).reasonCode?.includes("risk") ||
-        s.category === "risk_escalation"
+        (s.payload as { category?: string }).category?.includes("risk")
     ) ?? [];
 
     // Determine if risk boundary was exceeded based on signals
@@ -710,7 +791,7 @@ export class ExecutionOutcomeEvaluator {
         withinSlo: false,
         actualMs: actualDurationMs,
         maxAllowedMs: maxTotal,
-        perNodeMaxMs: maxPerNode,
+        sloMissReason: "duration_exceeded",
       };
     }
 
@@ -718,7 +799,6 @@ export class ExecutionOutcomeEvaluator {
       withinSlo: true,
       actualMs: actualDurationMs,
       maxAllowedMs: maxTotal,
-      perNodeMaxMs: maxPerNode,
     };
   }
 

@@ -14,6 +14,67 @@ triggers:
   - error
   - fix
   - resolve
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: customer-service
+    ownerOrgNodeId: org.support
+    primaryEntities: [tickets, responses, escalations]
+    recipeArchetype: conversational
+    lifecycleState: canary
+  - domainId: user-operations
+    ownerOrgNodeId: org.growth
+    primaryEntities: [users, segments, campaigns, journey_touchpoints]
+    recipeArchetype: analytics
+    lifecycleState: canary
+  - domainId: live-streaming
+    ownerOrgNodeId: org.live
+    primaryEntities: [streams, chat_messages, incidents]
+    recipeArchetype: realtime
+    lifecycleState: canary
+risk_profiles:
+  - profileId: customer-service.risk
+    domainId: customer-service
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: user-operations.risk
+    domainId: user-operations
+    riskLevel: medium
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+  - profileId: live-streaming.risk
+    domainId: live-streaming
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: regulated
+eval_specs:
+  - domainId: customer-service
+    evalBaselines: [csat_proxy, policy_safety]
+    criticalCases: [incorrect_response, policy_violation, data_breach]
+    acceptanceThresholds:
+      csat_proxy: 0.90
+      policy_safety: 0.95
+    adversarialScenarios: [prompt_injection, social_engineering, information_disclosure]
+  - domainId: user-operations
+    evalBaselines: [opt_in_compliance, delivery_success]
+    criticalCases: [privacy_violation, unsubscribed_contact, message_misdelivery]
+    acceptanceThresholds:
+      opt_in_compliance: 0.98
+      delivery_success: 0.95
+    adversarialScenarios: [list_pollution, spam_complaint, regulatory_investigation]
+  - domainId: live-streaming
+    evalBaselines: [stream_health, policy_enforcement]
+    criticalCases: [stream_interruption, policy_violation, viewer_misconduct]
+    acceptanceThresholds:
+      stream_health: 0.95
+      policy_enforcement: 0.92
+    adversarialScenarios: [coordinated_chat_abuse, stream_jacking, content_injection]
 roles:
   - id: support_agent
     name: Support Agent

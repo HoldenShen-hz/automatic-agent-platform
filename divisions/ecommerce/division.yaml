@@ -1,0 +1,57 @@
+id: ecommerce
+version: 1
+name: Ecommerce Division
+description: Catalog, order, and merchandising operations.
+priority: 45
+default_workflow: ecommerce_primary
+triggers:
+  - ecommerce
+  - catalog
+  - order
+  - pricing
+  - merchandising
+roles:
+  - id: commerce_specialist
+    name: Commerce Specialist
+    prompt: roles/commerce_specialist.prompt.md
+    model: balanced
+    tools: [catalog_admin, pricing_engine, inventory_snapshot, recommendation_tuner, promotion_simulator]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: ecommerce
+  ownerOrgNodeId: org.commerce
+  primaryEntities:
+    - product
+    - order
+    - inventory
+    - promotion
+  recipeArchetype: crud_heavy
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: ecommerce.risk
+  domainId: ecommerce
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: ecommerce
+  evalBaselines:
+    - margin_guard
+    - inventory_accuracy
+  criticalCases:
+    - pricing_error
+    - inventory_overcommit
+    - promotion_abuse
+  acceptanceThresholds:
+    margin_guard: 90
+    inventory_accuracy: 90
+    conversion: 75
+  adversarialScenarios:
+    - promotion_abuse
+    - inventory_fraud
+    - price_manipulation

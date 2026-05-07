@@ -1,0 +1,55 @@
+id: product-management
+version: 1
+name: Product Management Division
+description: Product discovery, roadmap shaping, requirements synthesis, and release coordination.
+priority: 40
+default_workflow: product_management_primary
+triggers:
+  - product management
+  - roadmap
+  - requirements
+  - product discovery
+  - specification
+roles:
+  - id: product_manager
+    name: Product Manager
+    prompt: roles/product_manager.prompt.md
+    model: balanced
+    tools: [roadmap_planner, requirements_editor, feedback_synthesizer, experiment_tracker, release_calendar]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: product-management
+  ownerOrgNodeId: org.product
+  primaryEntities:
+    - feature
+    - requirement
+    - roadmap
+    - release
+  recipeArchetype: crud_heavy
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: product-management.risk
+  domainId: product-management
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: product-management
+  evalBaselines:
+    - requirement_quality
+    - roadmap_alignment
+  criticalCases:
+    - scope_creep
+    - missed_milestone
+  acceptanceThresholds:
+    requirement_quality: 85
+    roadmap_alignment: 80
+    cycle_time: 75
+  adversarialScenarios:
+    - scope_manipulation
+    - priority_gaming

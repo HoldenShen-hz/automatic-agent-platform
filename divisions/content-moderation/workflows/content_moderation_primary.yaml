@@ -1,0 +1,33 @@
+id: content_moderation_primary
+division_id: content-moderation
+steps:
+  - step_id: classify_content
+    role_id: moderation_specialist
+    output_key: classify_result
+    output_schema: schemas/moderation-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+  - step_id: apply_policy
+    role_id: moderation_specialist
+    output_key: policy_result
+    output_schema: schemas/moderation-output.json
+    timeout_ms: 120000
+    max_attempts: 2
+    depends_on:
+      - classify_content
+  - step_id: queue_for_review
+    role_id: moderation_specialist
+    output_key: review_result
+    output_schema: schemas/moderation-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+    depends_on:
+      - apply_policy
+  - step_id: record_enforcement
+    role_id: moderation_specialist
+    output_key: enforcement_result
+    output_schema: schemas/moderation-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+    depends_on:
+      - queue_for_review

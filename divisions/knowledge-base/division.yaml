@@ -1,0 +1,55 @@
+id: knowledge-base
+version: 1
+name: Knowledge Base Division
+description: Enterprise documentation, retrieval, and curated knowledge delivery.
+priority: 40
+default_workflow: knowledge_base_primary
+triggers:
+  - knowledge base
+  - documentation
+  - retrieval
+  - wiki
+  - search
+roles:
+  - id: knowledge_specialist
+    name: Knowledge Specialist
+    prompt: roles/knowledge_specialist.prompt.md
+    model: balanced
+    tools: [document_ingest, retrieval_index, citation_builder, taxonomy_mapper, quality_monitor]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: knowledge-base
+  ownerOrgNodeId: org.knowledge
+  primaryEntities:
+    - document
+    - knowledge
+    - citation
+    - index
+  recipeArchetype: research
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: knowledge-base.risk
+  domainId: knowledge-base
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: knowledge-base
+  evalBaselines:
+    - citation_coverage
+    - freshness
+  criticalCases:
+    - outdated_information
+    - incorrect_citation
+  acceptanceThresholds:
+    citation_coverage: 85
+    freshness: 80
+    latency: 75
+  adversarialScenarios:
+    - misinformation
+    - citation_manipulation

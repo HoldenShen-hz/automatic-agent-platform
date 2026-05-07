@@ -1,0 +1,33 @@
+id: it_operations_primary
+division_id: it-operations
+steps:
+  - step_id: detect_incident
+    role_id: it_ops_engineer
+    output_key: detect_result
+    output_schema: schemas/itops-output.json
+    timeout_ms: 60000
+    max_attempts: 1
+  - step_id: diagnose_signal
+    role_id: it_ops_engineer
+    output_key: diagnose_result
+    output_schema: schemas/itops-output.json
+    timeout_ms: 180000
+    max_attempts: 2
+    depends_on:
+      - detect_incident
+  - step_id: apply_runbook
+    role_id: it_ops_engineer
+    output_key: runbook_result
+    output_schema: schemas/itops-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - diagnose_signal
+  - step_id: verify_recovery
+    role_id: it_ops_engineer
+    output_key: recovery_result
+    output_schema: schemas/itops-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - apply_runbook

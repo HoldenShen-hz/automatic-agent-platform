@@ -1,0 +1,55 @@
+id: user-operations
+version: 1
+name: User Operations Division
+description: Lifecycle operations for user cohorts and growth execution.
+priority: 35
+default_workflow: user_operations_primary
+triggers:
+  - user operations
+  - growth
+  - user segmentation
+  - campaign
+  - lifecycle
+roles:
+  - id: growth_specialist
+    name: Growth Specialist
+    prompt: roles/growth_specialist.prompt.md
+    model: balanced
+    tools: [crm_sync, segment_builder, journey_scheduler, experiment_tracker, content_generator]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: user-operations
+  ownerOrgNodeId: org.growth
+  primaryEntities:
+    - user
+    - segment
+    - campaign
+    - journey
+  recipeArchetype: crud_heavy
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: user-operations.risk
+  domainId: user-operations
+  riskLevel: medium
+  advisoryOnly: false
+  humanAccountable: false
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: user-operations
+  evalBaselines:
+    - opt_in_compliance
+    - delivery_success
+  criticalCases:
+    - privacy_breach
+    - unauthorized_campaign
+  acceptanceThresholds:
+    opt_in_compliance: 95
+    delivery_success: 90
+    conversion_lift: 75
+  adversarialScenarios:
+    - spam_abuse
+    - privacy_leak

@@ -1,0 +1,57 @@
+id: financial-services
+version: 1
+name: Financial Services Division
+description: Customer-facing and regulated financial service workflows.
+priority: 60
+default_workflow: financial_services_primary
+triggers:
+  - financial services
+  - banking
+  - lending
+  - insurance
+  - wealth management
+roles:
+  - id: finserv_specialist
+    name: Financial Services Specialist
+    prompt: roles/finserv_specialist.prompt.md
+    model: precision
+    tools: [policy_checker, case_manager, decision_trace, kyc_lookup, pricing_engine]
+    max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: financial-services
+  ownerOrgNodeId: org.finserv
+  primaryEntities:
+    - customer
+    - account
+    - transaction
+    - policy
+  recipeArchetype: compliance
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: financial-services.risk
+  domainId: financial-services
+  riskLevel: critical
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: heavily_regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: financial-services
+  evalBaselines:
+    - policy_compliance
+    - suitability
+  criticalCases:
+    - regulatory_violation
+    - fraud_detection
+    - customer_complaint
+  acceptanceThresholds:
+    policy_compliance: 95
+    suitability: 95
+    sla_breach_rate: 90
+  adversarialScenarios:
+    - fraud
+    - money_laundering
+    - regulatory_avoidance

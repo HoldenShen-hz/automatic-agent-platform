@@ -1,0 +1,33 @@
+id: coding_primary
+division_id: coding
+steps:
+  - step_id: scope_change
+    role_id: coding_agent
+    output_key: scope_result
+    output_schema: schemas/coding-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+  - step_id: implement_patch
+    role_id: coding_agent
+    output_key: patch_result
+    output_schema: schemas/coding-output.json
+    timeout_ms: 600000
+    max_attempts: 2
+    depends_on:
+      - scope_change
+  - step_id: run_validation
+    role_id: coding_agent
+    output_key: validation_result
+    output_schema: schemas/coding-output.json
+    timeout_ms: 300000
+    max_attempts: 1
+    depends_on:
+      - implement_patch
+  - step_id: prepare_release_notes
+    role_id: coding_agent
+    output_key: release_notes
+    output_schema: schemas/coding-output.json
+    timeout_ms: 120000
+    max_attempts: 1
+    depends_on:
+      - run_validation

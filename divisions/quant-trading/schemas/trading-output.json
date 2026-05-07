@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuantTradingOutput",
+  "type": "object",
+  "required": ["summary", "result", "status"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failure", "pending_approval", "rejected"]
+    },
+    "orderTicket": {
+      "type": "object",
+      "properties": {
+        "symbol": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" }
+      }
+    },
+    "riskMetrics": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,57 @@
+id: content-moderation
+version: 1
+name: Content Moderation Division
+description: Policy-based moderation and escalation workflows.
+priority: 55
+default_workflow: content_moderation_primary
+triggers:
+  - content moderation
+  - moderation
+  - policy
+  - UGC
+  - user generated content
+roles:
+  - id: moderation_specialist
+    name: Moderation Specialist
+    prompt: roles/moderation_specialist.prompt.md
+    model: balanced
+    tools: [policy_engine, content_classifier, evidence_logger, appeal_router, trend_monitor]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: content-moderation
+  ownerOrgNodeId: org.safety
+  primaryEntities:
+    - content
+    - policy
+    - enforcement
+    - appeal
+  recipeArchetype: moderation
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: content-moderation.risk
+  domainId: content-moderation
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: content-moderation
+  evalBaselines:
+    - policy_precision
+    - appeal_reversal_rate
+  criticalCases:
+    - harmful_content
+    - policy_misapplication
+    - false_positive
+  acceptanceThresholds:
+    policy_precision: 90
+    appeal_reversal_rate: 85
+    queue_latency: 80
+  adversarialScenarios:
+    - evasion
+    - coordinated_abuse
+    - false_reporting

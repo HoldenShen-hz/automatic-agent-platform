@@ -1,0 +1,57 @@
+id: advertising
+version: 1
+name: Advertising Division
+description: Campaign planning, audience targeting, and budget governance.
+priority: 45
+default_workflow: advertising_primary
+triggers:
+  - advertising
+  - campaign
+  - audience
+  - targeting
+  - ad budget
+roles:
+  - id: ads_specialist
+    name: Advertising Specialist
+    prompt: roles/ads_specialist.prompt.md
+    model: balanced
+    tools: [audience_builder, budget_guard, channel_launcher, creative_brief, attribution_dashboard]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: advertising
+  ownerOrgNodeId: org.ads
+  primaryEntities:
+    - campaign
+    - audience
+    - budget
+    - creative
+  recipeArchetype: analytics
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: advertising.risk
+  domainId: advertising
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: advertising
+  evalBaselines:
+    - budget_adherence
+    - policy_safety
+  criticalCases:
+    - budget_overrun
+    - policy_violation
+    - brand_safety_issue
+  acceptanceThresholds:
+    budget_adherence: 90
+    policy_safety: 95
+    roas: 75
+  adversarialScenarios:
+    - click_fraud
+    - brand_safety_breach
+    - budget_manipulation

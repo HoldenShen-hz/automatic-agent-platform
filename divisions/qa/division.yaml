@@ -30,6 +30,29 @@ disambiguate:
       - context: ["triage", "regression", "test_failure"]
         priority_boost: 15
     notes: "QA owns bug_triage context; engineering_ops owns code_fix context"
+// §37: Vertical business domain structured hierarchy
+domain_descriptors:
+  - domainId: quality-assurance
+    ownerOrgNodeId: org.qa
+    primaryEntities: [test_plans, regression_suites, defects, releases]
+    recipeArchetype: adversarial
+    lifecycleState: canary
+risk_profiles:
+  - profileId: quality-assurance.risk
+    domainId: quality-assurance
+    riskLevel: high
+    advisoryOnly: false
+    humanAccountable: false
+    deterministicHotPathOnly: false
+    regulatoryClass: unregulated
+eval_specs:
+  - domainId: quality-assurance
+    evalBaselines: [regression_rate, quality_gate]
+    criticalCases: [regression_miss, false_negative, release_blocker_miss]
+    acceptanceThresholds:
+      regression_rate: 0.95
+      quality_gate: 0.92
+    adversarialScenarios: [flaky_test, environment_inconsistency, coverage_gaming]
 roles:
   - id: qa_engineer
     name: QA Engineer

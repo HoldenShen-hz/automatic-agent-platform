@@ -41,95 +41,110 @@ const mockData = {
 
 export function resolveMockRequest(path: string) {
   // Issue #1938 P2: path.includes uses substring matching - /api/v1/tasks incorrectly matches /api/v1/tasks-archive.
-  // Use proper prefix matching with trailing slash to avoid false positives.
-  const normalized = path.endsWith("/") ? path : path + "/";
-  if (normalized.includes("/dashboard/")) {
+  // Match on normalized path boundaries so only exact segments or nested subpaths resolve.
+  const normalizedPath = (() => {
+    try {
+      const url = path.startsWith("http://") || path.startsWith("https://")
+        ? new URL(path)
+        : new URL(path, "http://mock.local");
+      const pathname = url.pathname.replace(/\/+$/, "");
+      return pathname.length > 0 ? pathname : "/";
+    } catch {
+      const withoutQuery = path.split("?")[0] ?? path;
+      const trimmed = withoutQuery.replace(/\/+$/, "");
+      return trimmed.length > 0 ? trimmed : "/";
+    }
+  })();
+  const matchesRoute = (route: string): boolean =>
+    normalizedPath === route || normalizedPath.startsWith(`${route}/`);
+
+  if (matchesRoute("/dashboard")) {
     return defaultMockApiShape.dashboard;
   }
-  if (normalized.includes("/tasks/")) {
+  if (matchesRoute("/tasks")) {
     return defaultMockApiShape.tasks;
   }
-  if (normalized.includes("/workflows/")) {
+  if (matchesRoute("/workflows")) {
     return defaultMockApiShape.workflows;
   }
-  if (normalized.includes("/approvals")) {
+  if (matchesRoute("/approvals")) {
     return mockData.approvals;
   }
-  if (normalized.includes("/agents")) {
+  if (matchesRoute("/agents")) {
     return mockData.agents;
   }
-  if (normalized.includes("/admin/workers")) {
+  if (matchesRoute("/admin/workers")) {
     return mockData.workers;
   }
-  if (normalized.includes("/admin/queues")) {
+  if (matchesRoute("/admin/queues")) {
     return mockData.queues;
   }
-  if (normalized.includes("/incidents")) {
+  if (matchesRoute("/incidents")) {
     return mockData.incidents;
   }
-  if (normalized.includes("/dashboard/metrics")) {
+  if (matchesRoute("/dashboard/metrics")) {
     return mockData.analytics;
   }
-  if (normalized.includes("/cost-reports")) {
+  if (matchesRoute("/cost-reports")) {
     return mockData.costs;
   }
-  if (normalized.includes("/marketplace")) {
+  if (matchesRoute("/marketplace")) {
     return mockData.marketplace;
   }
-  if (normalized.includes("/knowledge")) {
+  if (matchesRoute("/knowledge")) {
     return mockData.knowledge;
   }
-  if (normalized.includes("/packs")) {
+  if (matchesRoute("/packs")) {
     return mockData.packs;
   }
-  if (normalized.includes("/plugins")) {
+  if (matchesRoute("/plugins")) {
     return mockData.plugins;
   }
-  if (normalized.includes("/prompts")) {
+  if (matchesRoute("/prompts")) {
     return mockData.prompts;
   }
-  if (normalized.includes("/explanations")) {
+  if (matchesRoute("/explanations")) {
     return mockData.explanations;
   }
-  if (normalized.includes("/admin/roles")) {
+  if (matchesRoute("/admin/roles")) {
     return mockData.roles;
   }
-  if (normalized.includes("/admin/feature-flags")) {
+  if (matchesRoute("/admin/feature-flags")) {
     return mockData.featureFlags;
   }
-  if (normalized.includes("/admin/models")) {
+  if (matchesRoute("/admin/models")) {
     return mockData.models;
   }
-  if (normalized.includes("/admin/domains")) {
+  if (matchesRoute("/admin/domains")) {
     return mockData.domainConfigs;
   }
-  if (normalized.includes("/admin/tenants")) {
+  if (matchesRoute("/admin/tenants")) {
     return mockData.tenants;
   }
-  if (normalized.includes("/admin/users")) {
+  if (matchesRoute("/admin/users")) {
     return mockData.users;
   }
-  if (normalized.includes("/admin/system-config")) {
+  if (matchesRoute("/admin/system-config")) {
     return { csrfEnabled: true, version: "1.0" };
   }
-  if (normalized.includes("/webhooks")) {
+  if (matchesRoute("/webhooks")) {
     return mockData.webhooks;
   }
-  if (normalized.includes("/preferences")) {
+  if (matchesRoute("/preferences")) {
     return mockData.preferences;
   }
-  if (normalized.includes("/workflows/builder")) {
+  if (matchesRoute("/workflows/builder")) {
     return { builderState: {} };
   }
-  if (normalized.includes("/api/v1/meta/contract-version")) {
+  if (matchesRoute("/api/v1/meta/contract-version")) {
     return mockData.contractVersion;
   }
   // §R8-52: WebSocket mock - return upgrade guidance for ws paths
-  if (normalized.includes("/ws") || path.includes("websocket")) {
+  if (matchesRoute("/ws") || normalizedPath.includes("websocket")) {
     return describePlannedEndpoint("websocket.upgrade");
   }
   // §R8-52: Policy endpoints marked as planned
-  if (normalized.includes("/policies")) {
+  if (matchesRoute("/policies")) {
     return describePlannedEndpoint("policies.list");
   }
   return {

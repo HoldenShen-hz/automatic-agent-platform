@@ -1,0 +1,55 @@
+id: quality-assurance
+version: 1
+name: Quality Assurance Division
+description: Validation planning, regression oversight, and release quality certification.
+priority: 45
+default_workflow: quality_assurance_primary
+triggers:
+  - quality assurance
+  - QA
+  - testing
+  - validation
+  - regression
+roles:
+  - id: qa_engineer
+    name: QA Engineer
+    prompt: roles/qa_engineer.prompt.md
+    model: balanced
+    tools: [test_manager, regression_runner, defect_tracker, coverage_analyzer, performance_profiler]
+    max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: quality-assurance
+  ownerOrgNodeId: org.qa
+  primaryEntities:
+    - test
+    - defect
+    - coverage
+    - release
+  recipeArchetype: compliance
+  lifecycleState: canary
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: quality-assurance.risk
+  domainId: quality-assurance
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: quality-assurance
+  evalBaselines:
+    - regression_rate
+    - quality_gate
+  criticalCases:
+    - production_defect
+    - missed_regression
+  acceptanceThresholds:
+    regression_rate: 90
+    quality_gate: 90
+    coverage: 80
+  adversarialScenarios:
+    - test_gaming
+    - false_positive
