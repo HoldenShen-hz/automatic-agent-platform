@@ -258,6 +258,21 @@ test("CommandSafetyClassifier blocks interpreter -c flag with inline code", () =
   assert.equal(result.reasonCode, "tool.inline_code_denied");
 });
 
+test("CommandSafetyClassifier allows interpreter flags when a real script path follows", () => {
+  const result = CLASSIFIER.assess("python", ["--verbose", "script.py"]);
+  assert.equal(result.allowed, true);
+  assert.equal(result.reasonCode, null);
+  assert.deepEqual(result.sandboxReadArgPaths, ["script.py"]);
+});
+
+test("createDefaultCommandPolicies keeps single touch and mkdir entries", async () => {
+  const { createDefaultCommandPolicies } = await import("../../../../../src/platform/execution/tool-executor/command-security.js");
+  const policies = createDefaultCommandPolicies();
+  const keys = [...policies.keys()];
+  assert.equal(keys.filter((key) => key === "touch").length, 1);
+  assert.equal(keys.filter((key) => key === "mkdir").length, 1);
+});
+
 test("CommandSafetyClassifier blocks python -c flag", () => {
   const result = CLASSIFIER.assess("python", ["-c", "print('hello')"]);
   assert.equal(result.allowed, false);

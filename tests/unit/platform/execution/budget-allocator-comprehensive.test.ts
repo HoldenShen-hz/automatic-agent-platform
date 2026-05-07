@@ -13,7 +13,31 @@ import {
   type ArtifactRef,
   type BudgetResourceKind,
 } from "../../../../src/platform/contracts/executable-contracts/index.js";
-import { BudgetAllocator } from "../../../../src/platform/execution/budget-allocator.js";
+import { BudgetAllocator, BudgetTier } from "../../../../src/platform/execution/budget-allocator.js";
+import { newId } from "../../../../src/platform/contracts/types/ids.js";
+
+function createTestContext(overrides: Partial<{
+  tenantId: string;
+  traceId: string;
+  emittedBy: string;
+  tier: BudgetTier;
+  tierLimit: number;
+}> = {}): {
+  tenantId: string;
+  traceId: string;
+  emittedBy: string;
+  tier: BudgetTier;
+  tierLimit: number;
+} {
+  return {
+    tenantId: "tenant-1",
+    traceId: "trace-1",
+    emittedBy: "test",
+    tier: BudgetTier.STEP,
+    tierLimit: 1000,
+    ...overrides,
+  };
+}
 
 function createTestLedger(overrides: Partial<Parameters<typeof createBudgetLedger>[0]> = {}): ReturnType<typeof createBudgetLedger> {
   return createBudgetLedger({
@@ -36,6 +60,7 @@ test("BudgetAllocator.reserve updates ledger reservedAmount and increments versi
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   assert.equal(result.ledger.reservedAmount, 30);
@@ -56,6 +81,7 @@ test("BudgetAllocator.reserve rejects version mismatch", () => {
         resourceKind: "tool",
         expiresAt: "2026-04-27T01:00:00.000Z",
         expectedVersion: 0,
+        context: createTestContext(),
       }),
     (error: unknown) =>
       error instanceof ValidationError && error.code === "budget_reservation.version_cas_failed",
@@ -74,6 +100,7 @@ test("BudgetAllocator.reserve rejects when amount is not positive", () => {
         resourceKind: "tool",
         expiresAt: "2026-04-27T01:00:00.000Z",
         expectedVersion: 0,
+        context: createTestContext(),
       }),
     (error: unknown) => error instanceof ValidationError && error.code === "budget_reservation.amount_invalid",
   );
@@ -86,6 +113,7 @@ test("BudgetAllocator.reserve rejects when amount is not positive", () => {
         resourceKind: "tool",
         expiresAt: "2026-04-27T01:00:00.000Z",
         expectedVersion: 0,
+        context: createTestContext(),
       }),
     (error: unknown) => error instanceof ValidationError && error.code === "budget_reservation.amount_invalid",
   );
@@ -104,6 +132,7 @@ test("BudgetAllocator.reserve rejects when hard cap would be exceeded", () => {
         resourceKind: "tool",
         expiresAt: "2026-04-27T01:00:00.000Z",
         expectedVersion: 0,
+        context: createTestContext({ tierLimit: 100 }),
       }),
     (error: unknown) => error instanceof ValidationError && error.code === "budget_reservation.hard_cap_exceeded",
   );
@@ -120,6 +149,7 @@ test("BudgetAllocator.reserve allows reservation up to exact hard cap", () => {
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext({ tierLimit: 100 }),
   });
 
   assert.equal(result.reservation.amount, 10);
@@ -137,6 +167,7 @@ test("BudgetAllocator.reserve sets ledger status to hard_cap_reached when cap is
     resourceKind: "token",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext({ tierLimit: 100 }),
   });
 
   assert.equal(result.ledger.status, "hard_cap_reached");
@@ -154,6 +185,7 @@ test("BudgetAllocator.reserve accepts all valid resource kinds", () => {
       resourceKind,
       expiresAt: "2026-04-27T01:00:00.000Z",
       expectedVersion: 0,
+      context: createTestContext(),
     });
     assert.equal(result.reservation.resourceKind, resourceKind, `Failed for resourceKind: ${resourceKind}`);
   }
@@ -170,6 +202,7 @@ test("BudgetAllocator.reserve with nodeRunId associates reservation with node", 
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
     nodeRunId: "node-run-abc",
+    context: createTestContext(),
   });
 
   assert.equal(result.reservation.nodeRunId, "node-run-abc");
@@ -184,17 +217,14 @@ test("BudgetAllocator.settle transitions reservation to settled status", () => {
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 40,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.reservation.aggregate.status, "settled");
@@ -209,16 +239,13 @@ test("BudgetAllocator.release transitions reservation to released status", () =>
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const released = allocator.release({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(released.reservation.aggregate.status, "released");
@@ -236,17 +263,14 @@ test("BudgetAllocator.settle updates ledger accounting correctly with exact amou
     resourceKind: "api",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.ledger.reservedAmount, 0);
@@ -264,17 +288,14 @@ test("BudgetAllocator.settle releases unused budget when actualAmount is less", 
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 45,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.ledger.settledAmount, 45);
@@ -290,6 +311,7 @@ test("BudgetAllocator.settle with evidence refs includes them in settlement", ()
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const evidenceRef: ArtifactRef = {
@@ -303,11 +325,7 @@ test("BudgetAllocator.settle with evidence refs includes them in settlement", ()
     reservation: reserved.reservation,
     actualAmount: 30,
     evidenceRefs: [evidenceRef],
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.settlement.evidenceRefs.length, 1);
@@ -323,17 +341,14 @@ test("BudgetAllocator.settle creates settlement with final kind", () => {
     resourceKind: "compute",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 20,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.settlement.settlementKind, "final");
@@ -349,6 +364,7 @@ test("BudgetAllocator multiple sequential reservations accumulate correctly", ()
     resourceKind: "token",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: ledger.version,
+    context: createTestContext(),
   });
   ledger = res1.ledger;
 
@@ -358,6 +374,7 @@ test("BudgetAllocator multiple sequential reservations accumulate correctly", ()
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: ledger.version,
+    context: createTestContext(),
   });
   ledger = res2.ledger;
 
@@ -367,6 +384,7 @@ test("BudgetAllocator multiple sequential reservations accumulate correctly", ()
     resourceKind: "api",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: ledger.version,
+    context: createTestContext(),
   });
 
   assert.equal(res3.ledger.reservedAmount, 75); // 30 + 25 + 20
@@ -383,6 +401,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
     resourceKind: "token",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: ledger.version,
+    context: createTestContext(),
   });
   ledger = res1.ledger;
 
@@ -392,6 +411,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: ledger.version,
+    context: createTestContext(),
   });
   ledger = res2.ledger;
 
@@ -400,7 +420,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
     ledger,
     reservation: res1.reservation,
     actualAmount: 25,
-    context: { tenantId: "tenant-1", traceId: "trace-1", emittedBy: "test" },
+    context: createTestContext(),
   });
   ledger = settled1.ledger;
 
@@ -409,7 +429,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
     ledger,
     reservation: res2.reservation,
     actualAmount: 30,
-    context: { tenantId: "tenant-1", traceId: "trace-1", emittedBy: "test" },
+    context: createTestContext(),
   });
 
   assert.equal(settled2.ledger.reservedAmount, 0);
@@ -435,6 +455,7 @@ test("BudgetAllocator.reserve with releasedAmount from previous settlements", ()
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 1,
+    context: createTestContext({ tierLimit: 100 }),
   });
 
   assert.equal(result.ledger.reservedAmount, 90); // 30 + 60
@@ -450,17 +471,14 @@ test("BudgetAllocator.settle emits platform event with correct structure", () =>
     resourceKind: "side_effect",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 35,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test-emitter",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.reservation.event.eventType, "platform.budget_reservation.status_changed");
@@ -477,6 +495,7 @@ test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   // The allocator recomputes the hard-cap precondition from ledger/reservation/actualAmount,
@@ -485,11 +504,7 @@ test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 40,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.reservation.aggregate.status, "settled");
@@ -505,17 +520,14 @@ test("BudgetAllocator reserve and settle with different currency preserves curre
     resourceKind: "compute",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   const settled = allocator.settle({
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.ledger.currency, "EUR");
@@ -531,6 +543,7 @@ test("BudgetAllocator reserve and settle with soft cap in ledger", () => {
     resourceKind: "tool",
     expiresAt: "2026-04-27T01:00:00.000Z",
     expectedVersion: 0,
+    context: createTestContext(),
   });
 
   assert.equal(reserved.ledger.softCap, 80);
@@ -541,11 +554,7 @@ test("BudgetAllocator reserve and settle with soft cap in ledger", () => {
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
-    context: {
-      tenantId: "tenant-1",
-      traceId: "trace-1",
-      emittedBy: "test",
-    },
+    context: createTestContext(),
   });
 
   assert.equal(settled.ledger.softCap, 80);

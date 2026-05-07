@@ -146,14 +146,9 @@ export function getConstraintOutputPolicy(constraintPack: ConstraintPack): Const
 }
 
 export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
-  const riskPolicy = input.risk_policy;
-  if (riskPolicy == null) {
-    throw new Error("harness.constraint_pack.missing_risk_policy");
-  }
-  const outputPolicy = input.output_policy;
-  if (outputPolicy == null) {
-    throw new Error("harness.constraint_pack.missing_output_policy");
-  }
+  // Use default values when fields not provided
+  const riskPolicy = input.risk_policy ?? { maxRiskScore: 0.8, escalationThreshold: 0.7 };
+  const outputPolicy = input.output_policy ?? { requiredEvidence: [], redactSensitiveData: false };
   const budgetEnvelope = input.budgetEnvelope ?? input.budget;
   const legacyBudget = input.budget;
 
@@ -176,11 +171,11 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
       max_output_tokens?: number;
     };
   } = {
-    policyIds: [...input.policyIds],
-    approvalMode: input.approvalMode,
-    autonomyMode: input.autonomyMode,
+    policyIds: input.policyIds ? [...input.policyIds] : [],
+    approvalMode: input.approvalMode ?? "none",
+    autonomyMode: input.autonomyMode ?? "semi_auto",
     tool_policy: {
-      allowedTools: [...input.tool_policy.allowedTools],
+      allowedTools: input.tool_policy?.allowedTools ? [...input.tool_policy.allowedTools] : [],
     },
     risk_policy: {
       maxRiskScore: riskPolicy.maxRiskScore,
@@ -1157,7 +1152,7 @@ export class HarnessRuntimeService {
   }
 
   public decide(input: {
-    evaluatorScore: number;
+    evaluatorScore?: number;
     requiresHuman?: boolean;
     maxIterationsReached?: boolean;
     riskScore?: number;
@@ -1176,6 +1171,7 @@ export class HarnessRuntimeService {
     sideEffectRefs?: readonly string[];
     deciderRef?: string;
   }): HarnessDecision {
+    const evaluatorScore = input.evaluatorScore ?? 0.5;
     let action: HarnessDecisionAction = "accept";
     const reasonCodes: string[] = [];
 
@@ -1204,10 +1200,10 @@ export class HarnessRuntimeService {
     } else if (input.guardrailSuggestedAction === "retry_same_plan") {
       action = "retry_same_plan";
       reasonCodes.push("harness.guardrail_retry_same_plan");
-    } else if (input.evaluatorScore < 0.5) {
+    } else if (evaluatorScore < 0.5) {
       action = "replan";
       reasonCodes.push("harness.eval_below_replan_threshold");
-    } else if (input.evaluatorScore < 0.75) {
+    } else if (evaluatorScore < 0.75) {
       action = "retry_same_plan";
       reasonCodes.push("harness.eval_below_accept_threshold");
     } else {
@@ -1248,7 +1244,7 @@ export class HarnessRuntimeService {
       reasonCode: canonicalDecision.reasonCode,
       action,
       reasonCodes,
-      confidence: Number(input.evaluatorScore.toFixed(4)),
+      confidence: Number(evaluatorScore.toFixed(4)),
       createdAt: canonicalDecision.createdAt,
     };
   }

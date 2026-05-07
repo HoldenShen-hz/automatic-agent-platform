@@ -301,9 +301,9 @@ test("NodeRun valid transition: ready -> leased", () => {
 
 test("NodeRun valid transition: leased -> running", () => {
   const sm = new RuntimeStateMachine();
-  const nodeRun = createTestNodeRun({ status: "leased", leaseId: createTestLeaseId(), fencingToken: createTestFencingToken() });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
+  const nodeRun = createTestNodeRun({ status: "leased", leaseId, fencingToken });
 
   const result = sm.transition({
     commandId: newId("cmd"),
@@ -717,6 +717,8 @@ test("BudgetReservation valid transition: reserved -> settled", () => {
       reservationId: reservation.budgetReservationId,
       hardCapSatisfied: true,
     },
+    leaseId,
+    fencingToken,
     auditRef: "audit://test",
   });
 
@@ -726,6 +728,8 @@ test("BudgetReservation valid transition: reserved -> settled", () => {
 test("BudgetReservation valid transition: reserved -> released", () => {
   const sm = new RuntimeStateMachine();
   const reservation = createTestBudgetReservation({ status: "reserved" });
+  const leaseId = createTestLeaseId();
+  const fencingToken = createTestFencingToken();
 
   const result = sm.transition({
     commandId: newId("cmd"),
@@ -740,6 +744,8 @@ test("BudgetReservation valid transition: reserved -> released", () => {
     traceId: newId("trace"),
     reasonCode: "test.released",
     emittedBy: "test",
+    leaseId,
+    fencingToken,
     auditRef: "audit://test",
   });
 

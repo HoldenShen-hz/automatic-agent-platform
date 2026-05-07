@@ -371,34 +371,40 @@ test("DelegationManagerService each delegation gets unique correlationId", async
 // Factory Function Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createDelegationManager without options uses defaults", () => {
+test("createDelegationManager without options uses defaults", async () => {
   const service = createDelegationManager();
 
-  // Should use DEFAULT_MAX_DEPTH from topology validator
-  const parent = createParentContext({ delegationDepth: 3 });
+  // Should use DEFAULT_MAX_DEPTH from topology validator (8)
+  // and governance depth limit (5) - the more restrictive one wins
+  const parent = createParentContext({ delegationDepth: 4 });
   const spec = createDelegationSpec();
 
-  // Depth 3 should fail with default maxDepth of 3
-  return assert.rejects(
-    async () => service.delegate(parent, spec),
+  // Depth 4+1=5 equals governance limit, should be allowed
+  const handle = await service.delegate(parent, spec);
+  assert.equal(handle.depth, 5);
+
+  // Now test that depth 5+1=6 exceeds governance limit
+  const parentAtDepth5 = createParentContext({ delegationDepth: 5 });
+  await assert.rejects(
+    async () => service.delegate(parentAtDepth5, spec),
     Error,
   );
 });
 
-test("createDelegationManager with custom options", () => {
+test("createDelegationManager with custom options", async () => {
   const service = createDelegationManager({
     maxDepth: 10,
     maxFanout: 5,
     defaultTimeout: 60000,
   });
 
-  const parent = createParentContext({ delegationDepth: 5 });
+  // Governance enforces max depth 5, so parent at depth 4 (child=5) is allowed
+  const parent = createParentContext({ delegationDepth: 4 });
   const spec = createDelegationSpec();
 
-  // Depth 5 should be allowed with maxDepth of 10
-  return service.delegate(parent, spec).then((handle) => {
-    assert.equal(handle.depth, 6);
-  });
+  // Child depth 5 equals governance limit - should be allowed
+  const handle = await service.delegate(parent, spec);
+  assert.equal(handle.depth, 5);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -411,11 +417,19 @@ test("DelegationManagerService validateCollaborationMessage rejects invalid mess
 
   const handle = await service.delegate(parent, createDelegationSpec());
 
-  const invalidMessage = {
+  // Build a valid message first - validateCollaborationMessage uses ACPMessageSchema.parse
+  // so we need to provide all required fields per collaboration-protocol/types.ts
+  const validMessage = {
     messageId: "msg-1",
     messageType: "completion_report" as const,
     correlation_id: "corr-1",
     parent_run_id: handle.delegationId,
+    delegationId: handle.delegationId, // Required field from ACPMessageSchema
+    childRunId: "child-run-1",
+    capabilityIntersection: ["cap-1"],
+    budgetCap: 1000,
+    dataBoundary: "boundary-1",
+    deadline: new Date(Date.now() + 60000).toISOString(),
     depth: 10, // Exceeds depth limit
     sender_agent_id: handle.childAgentId,
     receiver_agent_id: handle.parentAgentId,
@@ -423,7 +437,7 @@ test("DelegationManagerService validateCollaborationMessage rejects invalid mess
     risk_level: 99, // Exceeds risk limit
     budget_remaining: 200, // Exceeds budget
     trace_id: "trace-1",
-    payload: { evidence: [] }, // Empty evidence - invalid
+    payload: { evidence: ["some-evidence"] }, // Non-empty evidence
     timestamp: "2026-04-22T00:00:00.000Z",
   };
 
@@ -435,7 +449,7 @@ test("DelegationManagerService validateCollaborationMessage rejects invalid mess
     globalCallDepth: 5,
   };
 
-  const result = service.validateCollaborationMessage(invalidMessage, context);
+  const result = service.validateCollaborationMessage(validMessage, context);
 
   assert.equal(result.accepted, false);
   assert.ok(result.violations.length > 0);

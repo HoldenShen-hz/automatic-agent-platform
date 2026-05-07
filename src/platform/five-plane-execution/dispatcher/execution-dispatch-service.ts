@@ -845,7 +845,7 @@ export class ExecutionDispatchService {
         continue;
       }
 
-      const selectedWorker = this.selectDeterministicWorker(eligibleWorkers, evaluations);
+      const selectedWorker = this.selectDeterministicWorker(ticket, eligibleWorkers, evaluations);
 
       // Issue #1900 P1: Move lease acquisition inside transaction to ensure atomic
       // lease+claim. Previously lease was acquired outside (TOCTOU race), now we
@@ -1188,6 +1188,7 @@ export class ExecutionDispatchService {
   }
 
   private selectDeterministicWorker(
+    ticket: ExecutionTicketRecord,
     eligibleWorkers: readonly RegisteredWorkerView[],
     evaluations: readonly DispatchWorkerEvaluation[],
   ): RegisteredWorkerView {
@@ -1196,7 +1197,7 @@ export class ExecutionDispatchService {
         .filter((evaluation) => evaluation.accepted)
         .map((evaluation) => [evaluation.workerId, evaluation] as const),
     );
-    return [...eligibleWorkers].sort((left, right) => {
+    const rankedWorkers = [...eligibleWorkers].sort((left, right) => {
       const leftEvaluation = acceptedEvaluations.get(left.workerId);
       const rightEvaluation = acceptedEvaluations.get(right.workerId);
       const leftScore = leftEvaluation?.dispatchScore ?? Number.NEGATIVE_INFINITY;
@@ -1229,11 +1230,42 @@ export class ExecutionDispatchService {
         return (leftToolBacklogCount ?? 0) - (rightToolBacklogCount ?? 0);
       }
 
-      // R17-16 fix (reverted): Remove random jitter to ensure fully deterministic
-      // dispatch per §14.9. The jitter broke determinism when workers had equal scores.
-      // Deterministic tiebreaker: use workerId as final fallback.
+      // Keep tie groups stable. Final tie-breaking happens below using a
+      // deterministic ticket hash instead of always picking the first worker.
       return left.workerId.localeCompare(right.workerId);
-    })[0]!;
+    });
+
+    const firstWorker = rankedWorkers[0];
+    if (firstWorker == null) {
+      throw new AppError("dispatch.worker_selection_failed", "No eligible worker available for deterministic selection");
+    }
+
+    const firstEvaluation = acceptedEvaluations.get(firstWorker.workerId);
+    const tieGroup = rankedWorkers.filter((worker) => {
+      const evaluation = acceptedEvaluations.get(worker.workerId);
+      return (
+        (evaluation?.dispatchScore ?? Number.NEGATIVE_INFINITY) === (firstEvaluation?.dispatchScore ?? Number.NEGATIVE_INFINITY)
+        && worker.availableSlots === firstWorker.availableSlots
+        && (evaluation?.activeLeaseCount ?? worker.activeLeaseCount ?? 0) === (firstEvaluation?.activeLeaseCount ?? firstWorker.activeLeaseCount ?? 0)
+        && (evaluation?.runningExecutionCount ?? worker.runningExecutionIds.length) === (firstEvaluation?.runningExecutionCount ?? firstWorker.runningExecutionIds.length)
+        && (evaluation?.toolBacklogCount ?? worker.toolBacklogCount ?? 0) === (firstEvaluation?.toolBacklogCount ?? firstWorker.toolBacklogCount ?? 0)
+      );
+    });
+
+    if (tieGroup.length === 1) {
+      return firstWorker;
+    }
+
+    const stableSeed = `${ticket.id}:${ticket.executionId}:${ticket.taskId}`;
+    return tieGroup[this.computeDeterministicTieBreakerIndex(stableSeed, tieGroup.length)] ?? firstWorker;
+  }
+
+  private computeDeterministicTieBreakerIndex(seed: string, groupSize: number): number {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+    }
+    return hash % groupSize;
   }
 
   private toWorkerEvaluation(
@@ -1719,6 +1751,6 @@ export class ExecutionDispatchService {
     if (eligibleWorkers.length === 0) {
       return null;
     }
-    return this.selectDeterministicWorker(eligibleWorkers, []);
+    return this.selectDeterministicWorker(ticket, eligibleWorkers, []);
   }
 }

@@ -205,10 +205,10 @@ test("EscalationManager via barrel export - canEscalate", () => {
   assert.strictEqual(manager.canEscalate(3, 3), false);
 });
 
-test("EscalationManager via barrel export - createDelegation", () => {
+test("EscalationManager via barrel export - createDelegation", async () => {
   const manager = new EscalationManager();
 
-  const delegation = manager.createDelegation("user1", "user2", "approval_123");
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123");
 
   assert.ok(delegation);
   assert.strictEqual(delegation.fromApprover, "user1");
@@ -217,11 +217,11 @@ test("EscalationManager via barrel export - createDelegation", () => {
   assert.strictEqual(delegation.status, DelegationStatus.ACTIVE);
 });
 
-test("EscalationManager via barrel export - createDelegation throws on self-delegation", () => {
+test("EscalationManager via barrel export - createDelegation throws on self-delegation", async () => {
   const manager = new EscalationManager();
 
-  assert.throws(
-    () => manager.createDelegation("user1", "user1", "approval_123"),
+  await assert.rejects(
+    async () => manager.createDelegation("user1", "user1", "approval_123"),
     /Cannot delegate to yourself/,
   );
 });
@@ -260,9 +260,9 @@ test("EscalationManager via barrel export - isDelegationExpired detects expired"
   assert.strictEqual(manager.isDelegationExpired(delegation), true);
 });
 
-test("EscalationManager via barrel export - getDelegation", () => {
+test("EscalationManager via barrel export - getDelegation", async () => {
   const manager = new EscalationManager();
-  const created = manager.createDelegation("user1", "user2", "approval_123");
+  const created = await manager.createDelegation("user1", "user2", "approval_123");
 
   const retrieved = manager.getDelegation(created.delegationId);
 
@@ -270,9 +270,9 @@ test("EscalationManager via barrel export - getDelegation", () => {
   assert.strictEqual(retrieved!.delegationId, created.delegationId);
 });
 
-test("EscalationManager via barrel export - revokeDelegation", () => {
+test("EscalationManager via barrel export - revokeDelegation", async () => {
   const manager = new EscalationManager();
-  const delegation = manager.createDelegation("user1", "user2", "approval_123");
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123");
 
   manager.revokeDelegation(delegation.delegationId);
 
@@ -280,9 +280,9 @@ test("EscalationManager via barrel export - revokeDelegation", () => {
   assert.strictEqual(retrieved?.status, DelegationStatus.REVOKED);
 });
 
-test("EscalationManager via barrel export - completeDelegation", () => {
+test("EscalationManager via barrel export - completeDelegation", async () => {
   const manager = new EscalationManager();
-  const delegation = manager.createDelegation("user1", "user2", "approval_123");
+  const delegation = await manager.createDelegation("user1", "user2", "approval_123");
 
   manager.completeDelegation(delegation.delegationId);
 
@@ -463,7 +463,7 @@ test("ApprovalFlowEngine via barrel export - submitVote returns error for non-ex
   assert.ok(result.error?.includes("not found"));
 });
 
-test("ApprovalFlowEngine via barrel export - delegateApproval creates delegation", () => {
+test("ApprovalFlowEngine via barrel export - delegateApproval creates delegation", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
@@ -482,7 +482,7 @@ test("ApprovalFlowEngine via barrel export - delegateApproval creates delegation
     request,
   );
 
-  const result = engine.delegateApproval(flow.flowId, "user1", "user2");
+  const result = await engine.delegateApproval(flow.flowId, "user1", "user2");
 
   assert.strictEqual(result.success, true);
   assert.ok(result.delegation);

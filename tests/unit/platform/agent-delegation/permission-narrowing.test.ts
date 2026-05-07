@@ -67,7 +67,7 @@ test("delegation narrows permissions via intersection of resources", async () =>
   // Child gets: resource-a, resource-b (intersection)
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   assert.deepEqual(delegation.permissions.resources, ["resource-a", "resource-b"]);
@@ -83,7 +83,7 @@ test("delegation narrows permissions via intersection of actions", async () => {
   // Child gets: action-read, action-write (intersection)
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   assert.deepEqual(delegation.permissions.actions, ["action-read", "action-write"]);
@@ -101,7 +101,7 @@ test("delegation uses parent actions when child requests empty actions", async (
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   // Empty child actions means inherit all parent actions
@@ -130,7 +130,7 @@ test("delegation takes more restrictive maxDurationMs constraint", async () => {
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   assert.equal(delegation.permissions.constraints.maxDurationMs, 30000);
@@ -158,7 +158,7 @@ test("delegation takes more restrictive maxTokens constraint", async () => {
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   assert.equal(delegation.permissions.constraints.maxTokens, 5000);
@@ -182,7 +182,7 @@ test("delegation child cannot request resources parent does not have", async () 
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   // Only intersection - resource-b should be filtered out
@@ -207,7 +207,7 @@ test("delegation child cannot request actions parent does not have", async () =>
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   // Only intersection
@@ -236,7 +236,7 @@ test("delegation constraints merge via spread (child overrides parent)", async (
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   // Child constraints override parent via spread merge
@@ -255,7 +255,7 @@ test("delegation keeps actions but not resources when no specific resources are 
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   // R17-01 fix: When requiredPermissions is empty, child inherits parent's full set
@@ -281,7 +281,7 @@ test("delegation denies permissions when child requests no overlap", async () =>
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation);
   // No intersection = empty permissions

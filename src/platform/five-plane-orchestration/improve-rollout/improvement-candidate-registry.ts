@@ -38,12 +38,20 @@ export class ImprovementCandidateRegistry {
   }
 
   public register(input: RegisterImprovementCandidateInput): ImprovementCandidate {
+    const primaryLearningObject = input.learningObjects[0];
+    if (primaryLearningObject == null) {
+      throw new Error("ImprovementCandidateRegistry requires at least one learning object.");
+    }
     const candidate = parseImprovementCandidate({
       candidateId: newId("improvement_candidate"),
+      learningObjectId: primaryLearningObject.learningObjectId,
       taskId: input.taskId,
+      source: primaryLearningObject.learningType,
+      targetScope: this.mapTargetToTargetScope(input.target),
       sourceSignalRefs: Array.from(new Set(input.learningObjects.flatMap((item) => item.evidenceRefs))),
       sourceLearningObjectIds: input.learningObjects.map((item) => item.learningObjectId),
       changeScope: this.mapTargetToScope(input.target),
+      priority: "medium",
       description: input.description,
       expectedBenefit: input.expectedBenefit ?? "Reduce repeated failure modes and improve plan stability.",
       // R13-03 FIX: Start in candidate_created status, NOT approved.
@@ -85,6 +93,15 @@ export class ImprovementCandidateRegistry {
         return "tool_config";
       case "provider_registry":
         return "model";
+    }
+  }
+
+  private mapTargetToTargetScope(target: AutonomyTarget): "workflow" | "platform" {
+    switch (target) {
+      case "memory_policy":
+        return "workflow";
+      default:
+        return "platform";
     }
   }
 }
