@@ -582,21 +582,20 @@ export class RegionHealthCheckService {
 
   /**
    * Update health state after a check
-   * §187-2199: Reset consecutiveFailures when region is "healthy" OR "degraded"
+   * §187-2199: Reset consecutiveFailures only when region is "healthy"
    * - "healthy": Clear failures, region is fully recovered
-   * - "degraded": Clear failures since some metrics passed (partial recovery)
+   * - "degraded": Do NOT reset - keep accumulating since some metrics are failing
    * - "unhealthy": Do NOT reset - keep accumulating to drive failover
    */
   private updateHealthState(regionId: string, result: RegionHealthCheckResult): void {
     this.healthResults.set(regionId, result);
     this.lastCheckTime.set(regionId, result.checkedAt);
 
-    // Reset failures for both healthy and degraded (metrics are passing)
-    // Only keep accumulating for unhealthy status
-    if (result.status === "healthy" || result.status === "degraded") {
+    // Only reset failures for healthy status (all metrics passing)
+    // degraded and unhealthy keep accumulating to drive failover
+    if (result.status === "healthy") {
       this.consecutiveFailures.set(regionId, 0);
     }
-    // "unhealthy" status does NOT reset - failures keep accumulating
   }
 }
 
