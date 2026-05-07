@@ -281,6 +281,7 @@ test("ModelCallProviderService enforces maxDurationMs budget constraint during e
   });
 
   (provider as unknown as { hasAnyProvider: () => boolean }).hasAnyProvider = () => true;
+  (provider as unknown as { estimateLlmCallCost: (maxTokens: number, model: string) => number }).estimateLlmCallCost = () => 0.05;
   (provider as unknown as {
     executeGovernedCompletion: (key: string, request: LlmModelCallRequest) => Promise<{
       id: string;

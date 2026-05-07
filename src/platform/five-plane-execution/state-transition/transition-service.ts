@@ -402,7 +402,7 @@ export class TaskTransitionService {
       tenantId: current?.tenantId ?? "global",
       reasonCode: command.reasonCode,
       emittedBy: "TaskTransitionService",
-      principal: command.actorId,
+      principal: command.actorId ?? "system",
     });
     this.repository.appendPlatformFactEvent(platformEvent);
 
@@ -585,7 +585,7 @@ export class WorkflowTransitionService {
       correlationId: command.entityId,
       reasonCode: command.reasonCode,
       emittedBy: "WorkflowTransitionService",
-      principal: command.actorId,
+      principal: command.actorId ?? "system",
     });
     this.repository.appendPlatformFactEvent(platformEvent);
 
@@ -674,7 +674,7 @@ export class SessionTransitionService {
       correlationId: command.entityId,
       reasonCode: command.reasonCode,
       emittedBy: "SessionTransitionService",
-      principal: command.actorId,
+      principal: command.actorId ?? "system",
     });
     this.repository.appendPlatformFactEvent(platformEvent);
 
@@ -782,7 +782,7 @@ export class ExecutionTransitionService {
       correlationId: command.entityId,
       reasonCode: command.reasonCode,
       emittedBy: "ExecutionTransitionService",
-      principal: command.actorId,
+      principal: command.actorId ?? "system",
     });
     this.repository.appendPlatformFactEvent(platformEvent);
 
@@ -865,7 +865,7 @@ export class ApprovalTransitionService {
       correlationId: command.entityId,
       reasonCode: command.reasonCode,
       emittedBy: "ApprovalTransitionService",
-      principal: command.actorId,
+      principal: command.actorId ?? "system",
     });
     this.repository.appendPlatformFactEvent(platformEvent);
     // RT-01: CAS on status. If another transaction already moved the approval
@@ -993,7 +993,7 @@ class TaskTerminalTransitionService {
       tenantId: currentTask?.tenantId ?? "global",
       reasonCode: input.context.reasonCode,
       emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId,
+      principal: input.context.actorId ?? "system",
     });
     const workflowPlatformEvent = buildLegacyTransitionPlatformFactEvent({
       aggregateType: "Workflow",
@@ -1009,7 +1009,7 @@ class TaskTerminalTransitionService {
       correlationId: input.taskId,
       reasonCode: input.context.reasonCode,
       emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId,
+      principal: input.context.actorId ?? "system",
     });
     const sessionPlatformEvent = buildLegacyTransitionPlatformFactEvent({
       aggregateType: "Session",
@@ -1025,7 +1025,7 @@ class TaskTerminalTransitionService {
       correlationId: input.taskId,
       reasonCode: input.context.reasonCode,
       emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId,
+      principal: input.context.actorId ?? "system",
     });
     const executionPlatformEvent = buildLegacyTransitionPlatformFactEvent({
       aggregateType: "Execution",
@@ -1041,7 +1041,7 @@ class TaskTerminalTransitionService {
       correlationId: input.taskId,
       reasonCode: input.context.reasonCode,
       emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId,
+      principal: input.context.actorId ?? "system",
     });
     this.repository.appendPlatformFactEvent(taskPlatformEvent);
     this.repository.appendPlatformFactEvent(workflowPlatformEvent);
@@ -1536,7 +1536,7 @@ function buildLegacyTransitionPlatformFactEvent(input: {
     emittedBy: input.emittedBy ?? "TransitionService",
     auditRef: input.auditRef ?? `audit://legacy/${input.aggregateType.toLowerCase()}/${input.aggregateId}/status`,
     occurredAt: input.occurredAt,
-    correlationId: input.correlationId,
+    correlationId: input.correlationId ?? "unknown",
     payload: input.payload,
   }).event;
 }

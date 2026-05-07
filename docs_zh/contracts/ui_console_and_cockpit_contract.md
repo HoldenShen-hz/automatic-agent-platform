@@ -219,6 +219,17 @@ Console 首页应按以下优先级组织：
 
 最小动作：
 
+- 重试某个 `NodeAttempt`
+- 跳过某个 `NodeRun`
+- 注入 `override_artifact_ref`
+- 变更 `worker / model / policy` 路由
+- 触发 compensation / replay / rollback
+
+约束：
+
+- 不得再定义 `retry_step / skip_step / override_step_output` 这类 step-oriented legacy 动作名。
+- 所有 takeover 动作必须显式携带 `harness_run_id`，节点级动作还必须带 `node_run_id`。
+- workflow 图展示必须来自 `plan_graph`，不得以 `workflow_id + steps[] + current_step_index` 充当 cockpit truth。
 - `retry_node_run`
 - `skip_node_run`
 - `override_node_output`

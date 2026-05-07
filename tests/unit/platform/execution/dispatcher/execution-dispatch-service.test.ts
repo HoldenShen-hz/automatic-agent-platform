@@ -171,6 +171,46 @@ test("ExecutionDispatchService.dispatchNext blocked by backpressure", (t) => {
   assert.equal(result.outcome, "blocked");
 });
 
+test("ExecutionDispatchService.dispatchNext blocks when budget reservation is missing", () => {
+  const mockDb = {
+    transaction: (fn: () => void) => fn(),
+  } as unknown as AuthoritativeSqlDatabase;
+  const mockStore = createMockStore();
+  const ticket = {
+    id: "ticket-budget",
+    executionId: "exec-budget",
+    taskId: "task-budget",
+    priority: "normal" as const,
+    queueName: "default",
+    dispatchTarget: "any" as const,
+    requiredIsolationLevel: "standard" as const,
+    requiredRepoVersion: null,
+    requiredCapabilitiesJson: "[]",
+  };
+  mockStore.worker.listDispatchableExecutionTickets = () => [ticket];
+  mockStore.worker.listWorkers = () => [
+    { workerId: "worker-1", status: "idle", capabilities: ["bash"], placement: "local" },
+  ] as ReturnType<typeof mockStore.worker.listWorkers>;
+  mockStore.operations.loadExecutionAuthoritativeView = () => ({
+    execution: { id: "exec-budget", taskId: "task-budget", traceId: "trace-budget" },
+    task: { id: "task-budget", priority: "normal" as const },
+  });
+  mockStore.dispatch.getExecution = () => ({
+    id: "exec-budget",
+    taskId: "task-budget",
+    traceId: "trace-budget",
+    attempt: 1,
+    budgetReservationId: null,
+  });
+
+  const service = new ExecutionDispatchService(mockDb, mockStore);
+  const result = service.dispatchNext({ queueName: "default", leaseTtlMs: 30_000 });
+
+  assert.equal(result.outcome, "blocked");
+  assert.equal(result.trace?.reasonCode, "dispatch.budget_reservation_missing");
+  assert.equal(result.lease, undefined);
+});
+
 test("ExecutionDispatchService.evaluateWorkersForTicket filters workers by capabilities", (t) => {
   const mockDb = {
     transaction: (fn: () => void) => fn(),
@@ -197,7 +237,13 @@ test("ExecutionDispatchService.evaluateWorkersForTicket filters workers by capab
     execution: { id: "exec-cap", taskId: "task-cap", traceId: "trace-cap" },
     task: { id: "task-cap", priority: "normal" as const },
   });
-  mockStore.dispatch.getExecution = () => ({ id: "exec-cap", taskId: "task-cap", traceId: "trace-cap", attempt: 1 });
+  mockStore.dispatch.getExecution = () => ({
+    id: "exec-cap",
+    taskId: "task-cap",
+    traceId: "trace-cap",
+    attempt: 1,
+    budgetReservationId: "bresv-cap",
+  });
   mockStore.worker.getExecutionTicket = () => ({
     id: "ticket-cap",
     executionId: "exec-cap",
@@ -251,7 +297,13 @@ test("ExecutionDispatchService.dispatchNext applies worker placement filter", (t
     execution: { id: "exec-placement", taskId: "task-placement", traceId: "trace-placement" },
     task: { id: "task-placement", priority: "normal" as const },
   });
-  mockStore.dispatch.getExecution = () => ({ id: "exec-placement", taskId: "task-placement", traceId: "trace-placement", attempt: 1 });
+  mockStore.dispatch.getExecution = () => ({
+    id: "exec-placement",
+    taskId: "task-placement",
+    traceId: "trace-placement",
+    attempt: 1,
+    budgetReservationId: "bresv-placement",
+  });
   mockStore.worker.getExecutionTicket = () => ({
     ...ticket,
     dispatchAfter: null,

@@ -89,6 +89,11 @@ export interface RuntimeTransitionResult<TAggregate extends RuntimeStateAggregat
   readonly event: PlatformFactEvent;
 }
 
+export interface LegacyTransitionResult {
+  readonly aggregate: LegacyRuntimeAggregate;
+  readonly event: PlatformFactEvent;
+}
+
 export type LegacyRuntimeEntityKind = "Task" | "Workflow" | "Session" | "Execution" | "Approval";
 
 export interface LegacyRuntimeAggregate {
@@ -287,7 +292,7 @@ export class RuntimeStateMachine {
 
   public transitionLegacy(
     command: LegacyRuntimeTransitionCommand,
-  ): RuntimeTransitionResult<LegacyRuntimeAggregate> {
+  ): LegacyTransitionResult {
     assertLegacyTransitionAllowed(command.entityKind, command.fromStatus, command.toStatus);
     assertLegacyAuditRef(command.entityKind, command.toStatus, command.auditRef);
 

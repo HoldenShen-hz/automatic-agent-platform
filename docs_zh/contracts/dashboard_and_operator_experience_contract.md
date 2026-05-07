@@ -60,10 +60,21 @@
 - `validation_findings`
 - `owner_user_id`
 
+`plan_graph_draft` 最小结构：
+
+- `graph_id`
+- `nodes[]`
+- `edges[]`
+- `entry_node_ids`
+- `terminal_node_ids`
+- `join_strategy`
+- `graph_hash?`
+
 规则：
 
 - `WorkflowBuilderDraft.plan_graph_draft` 是 canonical 结构；UI 可以投影成步骤列表，但不得把列表回写成 truth。
 - `GuidedOnboardingSession` 若预生成流程草稿，必须引用 `draft_plan_graph_ref` 而不是内嵌线性 `steps[]`。
+- UI 层若为了可读性展示“步骤列表”，该列表必须是 `plan_graph_draft.nodes[]` 的只读投影；不得把 `steps[] / current_step_index / depends_on_step_ids` 重新定义为 draft truth。
 
 ## 6. 运行规则
 
