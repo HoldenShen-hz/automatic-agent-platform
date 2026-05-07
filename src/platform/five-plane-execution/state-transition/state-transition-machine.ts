@@ -45,11 +45,9 @@ export class StateTransitionMachine<TState extends string> {
    */
   public assertTransition(current: TState, next: TState): void {
     if (current === next) {
-      // Only allow noop if self-transition is explicitly allowed
-      const allowed = this.transitions[current];
-      if (allowed && allowed.includes(next)) {
-        return;
-      }
+      // No-op transitions are never allowed, even if self-transition is listed
+      // in the allowed list. This matches RuntimeStateMachine behavior which
+      // always rejects no-op transitions (see assertTransitionAllowed).
       throw new WorkflowStateError(`${this.entityKind}.noop_transition_denied`, `${this.entityKind}.noop_transition_denied: No-op transition is not allowed: ${current} -> ${next}`, {
         details: { entityKind: this.entityKind, current, next },
       });

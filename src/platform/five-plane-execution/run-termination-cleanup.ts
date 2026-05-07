@@ -268,9 +268,15 @@ export class RunTerminationCleanup {
 
       const handler = this.cleanupHandlers[resource.resourceKind];
       if (handler == null) {
-        // No handler registered - consider this a failure unless cleanup is not required
-        failedResourceIds.push(resource.resourceId);
-        allSucceeded = false;
+        // R17-03 fix: Try built-in cleanup as fallback before marking as failed
+        // §14.10: Built-in cleanup for core resource kinds (lease, secret, budget_reservation)
+        const builtInResult = await this.performBuiltInCleanupAsync(resource);
+        if (builtInResult.verified) {
+          cleanedResourceIds.push(resource.resourceId);
+        } else {
+          failedResourceIds.push(resource.resourceId);
+          allSucceeded = false;
+        }
         continue;
       }
 
@@ -279,12 +285,26 @@ export class RunTerminationCleanup {
         if (verification.verified) {
           cleanedResourceIds.push(resource.resourceId);
         } else {
+          // R17-03 fix: Handler returned verified=false, try built-in cleanup as fallback
+          // §14.10: Built-in cleanup for core resource kinds
+          const builtInResult = await this.performBuiltInCleanupAsync(resource);
+          if (builtInResult.verified) {
+            cleanedResourceIds.push(resource.resourceId);
+          } else {
+            failedResourceIds.push(resource.resourceId);
+            allSucceeded = false;
+          }
+        }
+      } catch {
+        // R17-03 fix: Handler threw, try built-in cleanup as fallback
+        // §14.10: Built-in cleanup for core resource kinds
+        const builtInResult = await this.performBuiltInCleanupAsync(resource);
+        if (builtInResult.verified) {
+          cleanedResourceIds.push(resource.resourceId);
+        } else {
           failedResourceIds.push(resource.resourceId);
           allSucceeded = false;
         }
-      } catch {
-        failedResourceIds.push(resource.resourceId);
-        allSucceeded = false;
       }
     }
 

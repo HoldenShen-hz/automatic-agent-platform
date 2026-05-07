@@ -130,6 +130,8 @@ export interface CiGateResult {
   regressions: string[];
   improvements: string[];
   summary: string;
+  /** §21.7: Reason code when independence check fails for high-risk evaluations */
+  independenceViolationReason?: string;
 }
 
 /**
@@ -170,8 +172,12 @@ export interface CiGateOptions {
   passingVerdicts?: readonly QualityVerdict[];
   /** §21.7: Enforce risk-level independence for high-risk evaluations */
   enforceIndependenceForHighRisk?: boolean;
-  /** §21.7: Required independent judge for high-risk evaluations */
+  /** §21.7: Required independent judge for high-risk evaluations (must be from different provider family) */
   requiredIndependentJudgeForHighRisk?: boolean;
+  /** §21.7: Explicit independent judge ID for high-risk evaluations.
+   * When enforceIndependenceForHighRisk is true and high-risk cases exist,
+   * this judge must be from a different provider family than the candidate. */
+  independentJudgeId?: string | null;
 }
 
 type RawRow = Record<string, unknown>;
@@ -655,17 +661,18 @@ async runAbTest(
     const uniqueImprovements = [...new Set(improvements)];
 
     // §21.7: Enforce independence for high-risk evaluations
+    // High-risk (critical/high) evaluations require an independent judge from a different provider family.
+    // The judge must be explicitly provided via independentJudgeId when enforceIndependenceForHighRisk is true.
     const highRiskCases = cases.filter((c) => (c as { riskLevel?: string }).riskLevel === "critical" || (c as { riskLevel?: string }).riskLevel === "high");
     const hasHighRisk = highRiskCases.length > 0;
     let independenceViolation = false;
+    let independenceViolationReason: string | undefined;
 
     if (hasHighRisk && options.enforceIndependenceForHighRisk) {
-      // High-risk evaluations require independent external review
-      // If no independent judge was configured, flag as violation
-      if (options.requiredIndependentJudgeForHighRisk) {
-        // Check if cases were evaluated with external judge
-        // For now, mark as violation if high-risk cases exist
-        independenceViolation = highRiskCases.length > 0;
+      if (!options.independentJudgeId) {
+        // §21.7: High-risk evaluations MUST have an explicitly configured independent judge
+        independenceViolation = true;
+        independenceViolationReason = "high_risk_evaluation_requires_independent_judge";
       }
     }
 
@@ -677,7 +684,7 @@ async runAbTest(
       && !independenceViolation
       && !hasLatencyRegression;
 
-    return {
+    const result: CiGateResult = {
       passed,
       runId: run.id,
       verdict,
@@ -685,6 +692,10 @@ async runAbTest(
       improvements: uniqueImprovements,
       summary: `${completed?.passedCases ?? 0}/${completed?.totalCases ?? 0} cases passed, verdict: ${verdict}${regressionSummary}`,
     };
+    if (independenceViolation && independenceViolationReason) {
+      result.independenceViolationReason = independenceViolationReason;
+    }
+    return result;
   }
 
   // -- Prompt Regression Detection ------------------------------------

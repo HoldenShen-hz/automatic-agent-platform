@@ -8920,7 +8920,7 @@ v4.2 将历史大平台蓝图收敛为 MVP / Hardening / Enterprise 三个生产
 | --- | --- | --- |
 | Phase 1 | harness_run、node_run、event_log、checkpoint、lease、CAS、idempotency、最小 CLI inspect | 完整 schema inventory、全部 Group 1/2 表、复杂 projection rebuild |
 | Phase 2 | Harness 主链最小 O→A→P→E→F、risk/approval basic、SideEffect proposed→committed→confirmed 最小链路 | 多 Pack 扩展、完整恢复 worker、复杂降级策略 |
-| Phase 8a | HarnessRuntime.run() 入口、ConstraintPack、Planner/Generator/Evaluator 分离、HarnessDecision 六种裁决 | 完整 Memory Namespace、完整 Toolbelt 画像、复杂 feedback pipeline |
+| Phase 8a | HarnessRuntime.run() 入口、ConstraintPack、Planner/Generator/Evaluator 分离、HarnessDecision 十种裁决 | 完整 Memory Namespace、完整 Toolbelt 画像、复杂 feedback pipeline |
 | Phase 8d | PlanGraph DAG、NodeRun 状态机、Event Registry facts、Budget atomic reserve、Trace Replay、SideEffect Reconciliation baseline | GraphPatch 完整策略、LearningCandidate、EvaluationGate 全量矩阵、完整 Runtime Test Matrix |
 
 必须最先交付的最小闭环能力集，缺失任一项则平台不可投产：
@@ -9218,7 +9218,7 @@ Phase 6 全部验收通过。
 - [ ] Planner/Generator/Evaluator 使用独立 Prompt，不共用
 - [ ] 每步执行后 Evaluator 评估通过率 ≥ 95%
 - [ ] HarnessRun/HarnessStep 契约完整覆盖所有运行和步骤
-- [ ] HarnessDecision 六种裁决均有测试覆盖
+- [ ] HarnessDecision 十种裁决均有测试覆盖
 
 ## Phase 8b：Harness 长时与人机（6 周）
 
@@ -10215,7 +10215,7 @@ Ring 1（平台生存环）成功标准对应 Phase 1-2 + Phase 8a/8d 的 MVP sl
 - HarnessRun 可稳定创建和推进；workflow_run 仅作为只读 projection 可查询
 - lease 超时自动 reclaim
 - CAS 冲突被正确拒绝
-- Phase 8a 验收：HarnessRuntime.run() 入口、ConstraintPack、Planner/Generator/Evaluator 分离、HarnessDecision 六种裁决基础链路跑通
+- Phase 8a 验收：HarnessRuntime.run() 入口、ConstraintPack、Planner/Generator/Evaluator 分离、HarnessDecision 十种裁决基础链路跑通
 - Phase 8d 验收：PlanGraph DAG 校验、NodeRun 状态机终态封闭、Event Registry facts 追加、Budget atomic reserve 链路、Trace Replay 可完整回放
 
 ### Ring 2（平台可用环）— 对应 Phase 3-5 + Phase 8b/8c
@@ -10241,7 +10241,7 @@ Ring 1（平台生存环）成功标准对应 Phase 1-2 + Phase 8a/8d 的 MVP sl
 
 ### Ring 3（平台扩张环）— 对应 Phase 6-9
 
-#### Phase 6-7 企业可靠化与规模化
+#### Ring 3a 企业可靠化与规模化（对应 Phase 6-7）
 
 - 双 Region 单 leader / follower read 部署，受控 failover 演练通过，单 Region 故障 RTO < 5min
 - active-active 仅用于非 truth 的缓存、遥测或聚合统计
@@ -10258,7 +10258,7 @@ Ring 1（平台生存环）成功标准对应 Phase 1-2 + Phase 8a/8d 的 MVP sl
 - 多模态：图片分析 + 语音转文字端到端可用
 - PlatformOps Agent L1 成熟度验证：自动诊断报告生成 < 5min
 
-#### Phase 8 高级能力门禁
+#### Ring 3b 高级能力门禁（对应 Phase 8）
 
 - Harness Runtime 端到端可运行：ConstraintPack 加载 + Planner→Generator→Evaluator 闭环 + HarnessDecision 十种裁决
 - HarnessRun / HarnessStep 全部字段持久化且可查询
@@ -10273,7 +10273,7 @@ Ring 1（平台生存环）成功标准对应 Phase 1-2 + Phase 8a/8d 的 MVP sl
 - Phase 8d 验收：HarnessRun / NodeRun 状态机、PlanGraph、Event Registry、Budget Ledger、SideEffect Reconciliation、EvaluationGate、Runtime Test Matrix 均有自动化覆盖
 - Replay 验证不产生真实 side effect，且 Trace Replay 可重建 scheduler decision
 
-#### Phase 9 域规模化（Enterprise 扩张 gate）
+#### Ring 3c 域规模化（对应 Phase 9，Enterprise 扩张 gate）
 
 - 24 个垂直业务域全部达到 GA 状态（通过 §38 四阶段门禁）
 - 12 种 DomainRecipe 原型模板全部有至少一个域实例验证通过
@@ -10348,7 +10348,7 @@ v4.3 的成功不是一次性覆盖全部域、全部市场能力和全部运营
 | ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------- |
 | Harness 定义模型？       | 五元组（Constraints+Tools+Context+Feedback+Recovery） | 八支柱（+Durability+Evaluation Harness+HITL Runtime+Observability） |
 | 运行和步骤有一级契约吗？ | 仅 HarnessRunRequest                                  | §45.13 HarnessRun/HarnessStep 完整生命周期                          |
-| 裁决有统一协议吗？       | LoopController 五种输出                               | §58.6 HarnessDecision 六种裁决标准化                                |
+| 裁决有统一协议吗？       | LoopController 五种输出                               | §58.6 HarnessDecision 十种裁决标准化（6 种基础 + 4 种生产扩展）                                |
 | 离线评测能力？           | 仅运行时 Evaluator                                    | §45.14 Evaluation Harness（预发布+版本对比+outcome 断言）           |
 | 长时任务怎么暂停恢复？   | Recovery Controller 故障恢复                          | §45.15 Durable Harness（5 种 pauseReason + 4 种 resumeStrategy）    |
 | 记忆怎么分层治理？       | HarnessContext 四类上下文                             | §45.16 Memory Namespace（Working/Long-term/Shared + 晋升策略）      |
@@ -10431,7 +10431,7 @@ v4.3 的成功不是一次性覆盖全部域、全部市场能力和全部运营
 | Toolbelt                 | 任务级工具集                                               | 按最小权限原则装配的工具子集(§45.4)                                                                                                                 |
 | HarnessRun               | Harness 运行实体                                           | 一次完整 Harness 任务运行的一级实体，含生命周期和审计(§45.13)                                                                                       |
 | HarnessStep              | Harness 步骤实体                                           | 单个执行步骤契约，含 phase/role/inputs/outputs/rationale(§45.13)                                                                                    |
-| HarnessDecision          | Harness 统一裁决                                           | 六种裁决：accept/retry/replan/escalate/downgrade/abort(§58.6)                                                                                       |
+| HarnessDecision          | Harness 统一裁决                                           | 十种裁决：accept/retry_same_plan/replan/escalate_to_human/downgrade_mode/abort + quarantine/revoke_approval/pause_for_external/require_revalidation(§58.6)                                                                                       |
 | Evaluation Harness       | 统一评测运行时                                             | 运行时裁决+预发布评测+版本对比的评测系统(§45.14)                                                                                                    |
 | Durable Harness          | 持久执行支柱                                               | checkpoint/pause/resume 作为 Harness 基础能力(§45.15)                                                                                               |
 | Memory Namespace         | 记忆命名空间                                               | Working/Long-term/Shared Knowledge 三层隔离与晋升(§45.16)                                                                                           |
@@ -10587,7 +10587,7 @@ v4.4 对象不按原名直接成为 v4.2 权威实现对象；以下映射用于
 | v2.6 | 2026-04-19 | **运营成熟度完备版**：新增 Agent 可解释性与决策透明度(§59)、紧急制动与全局熔断(§60)、Agent 统一生命周期管理(§61)、离线与边缘部署(§62)、Agent 行为漂移检测(§63)、成本归因与优化引擎(§64)、工作流可视化调试器(§65)、合规报告自动生成引擎(§66)、容量规划与成本预测(§67)、多模态能力(§68)、平台自运维 Agent(§69)；新增 11 个 ADR；补齐从"架构设计完整"到"可投产运营"的运营成熟度层                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | v2.7 | 2026-04-19 | **质量修正版**：修复 ADR 自主权等级矛盾（monotonic→guarded progression）；统一 §9.5/§14.8 模式枚举为 8 模式规范集；补全 ExecutionPlan/StateCommand 缺失的 principal/trace_id 字段；扩展 Prompt 注入防御架构(§16.5)；修复 ADR-NL TaskSpec→RequestEnvelope 引用；补全 §26 数据模型（44→71 表）和 §28 事件命名空间（17→25）；补全 §33 路线图 Phase 5-7；补全 §43 L2/L3 看板视图定义；新增 §39.7 i18n、§44.6 WCAG、§52.4 GDPR 跨境传输、§55.4-55.6 市场收益/废弃/依赖管理、§15.6 流式错误处理；新增 §40 循环依赖检测、§5.2 P2→P4 通信路径；修复 §62 typo 和 §70 结论遗漏；新增附录 G 术语表                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | v2.8 | 2026-04-21 | **Harness 工程化版**：新增 Harness Runtime 架构(§45)——HarnessRuntime 统一入口、ConstraintPack 任务级约束信封、ToolbeltAssembler 动态工具装配、HarnessContext 统一上下文与 token 预算、FeedbackEnvelope 四段反馈闭环、HarnessLoopController 统一闭环控制、Planner/Generator/Evaluator 三类 Agent 角色标准化、Recovery Controller 故障恢复；新增 Harness 横切关注面(§58)——Harness 级可观测性、Prompt 分层治理、Failure-to-Learning 管线、Replay/Simulation 能力、架构遗留问题收口（§21/§47 审批边界、§23/§49 合规边界、§31/§52 HA 映射、§32/§8/§33 阶段对照、统一错误分类、§42/§61 自主权关联）；新增 §13.5 OAPEFLIR→Harness 外部语义映射；新增 7 个 ADR；补全 §25.6 一致性模型与保证级别、§25.7 Schema 迁移策略；修复 §5.4 P5 通信完整性规则、§7.2 通信拓扑图、§8.4 S4 阶段 TODO、§19.2 全局调用深度上限、§20.4 超长审批续期机制、§42.3 信任分衰减机制、§60.3 Admin 不可用降级方案；更新 §33 路线图新增 Phase 8 + 并行依赖图；更新 §35 代码目录新增 harness/；更新附录 G 术语表新增 9 项 Harness 术语                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| v2.9 | 2026-04-21 | **Harness 八支柱深化版**：Harness 从五元组升级为八支柱模型（Constraints·Tools·State/Memory·Feedback·Durability·Evaluation Harness·HITL Runtime·Observability/Replay），融合 Anthropic 角色化闭环、LangGraph 持久运行时、OpenAI 治理与 Guardrails 原语三大行业流派；新增 §45.13 HarnessRun/HarnessStep 统一运行契约、§45.14 Evaluation Harness 统一评测运行时（预发布评测+版本对比+outcome 断言）、§45.15 Durable Harness 持久执行支柱（5 种 pauseReason+4 种 resumeStrategy）、§45.16 Memory Namespace 三层记忆命名空间（Working/Long-term/Shared Knowledge+晋升策略）、§45.17 Tool Harness 工具治理（Capability Profile+生命周期+信任度）、§45.18 HITL Runtime 人机协作运行时（inspect/patch/override/takeover/resume）、§45.19 Async Harness 异步运行模式、§45.20 Guardrails 五层架构（input/planning/tool/memory/output）、§45.21 十条不变量；新增 §58.6 HarnessDecision 统一裁决协议（六种裁决标准化）；更新 §45.1 核心公理升级八支柱+行业映射表、§45.2 总体架构图增加新组件；更新 §33 路线图 Phase 8 拆分为 8a/8b/8c 三阶段（20 周）；新增 9 个 ADR（共 81 个）；更新 §35 代码目录新增 7 个 harness 子目录；更新 §70 结论升级九层架构；更新附录 G 术语表新增 11 项 Harness 术语                                                                                                                                                                                                                                                                           |
+| v2.9 | 2026-04-21 | **Harness 八支柱深化版**：Harness 从五元组升级为八支柱模型（Constraints·Tools·State/Memory·Feedback·Durability·Evaluation Harness·HITL Runtime·Observability/Replay），融合 Anthropic 角色化闭环、LangGraph 持久运行时、OpenAI 治理与 Guardrails 原语三大行业流派；新增 §45.13 HarnessRun/HarnessStep 统一运行契约、§45.14 Evaluation Harness 统一评测运行时（预发布评测+版本对比+outcome 断言）、§45.15 Durable Harness 持久执行支柱（5 种 pauseReason+4 种 resumeStrategy）、§45.16 Memory Namespace 三层记忆命名空间（Working/Long-term/Shared Knowledge+晋升策略）、§45.17 Tool Harness 工具治理（Capability Profile+生命周期+信任度）、§45.18 HITL Runtime 人机协作运行时（inspect/patch/override/takeover/resume）、§45.19 Async Harness 异步运行模式、§45.20 Guardrails 五层架构（input/planning/tool/memory/output）、§45.21 十条不变量；新增 §58.6 HarnessDecision 统一裁决协议（十种裁决标准化：6 种基础 + 4 种生产扩展）；更新 §45.1 核心公理升级八支柱+行业映射表、§45.2 总体架构图增加新组件；更新 §33 路线图 Phase 8 拆分为 8a/8b/8c 三阶段（20 周）；新增 9 个 ADR（共 81 个）；更新 §35 代码目录新增 7 个 harness 子目录；更新 §70 结论升级九层架构；更新附录 G 术语表新增 11 项 Harness 术语                                                                                                                                                                                                                                                                           |
 | v3.0 | 2026-04-22 | **垂直业务域深化版**：新增 12 个垂直业务域架构章节(§71-§82)——量化交易·电商·广告推广·金融服务·数据处理·代码开发·用户运营·行业调研·学术调研·企业知识库·财务·法务；DomainRecipe 从 4 种原型扩展为 8 种（新增 Trading/Compliance/Research/Adversarial）；§37.1 问题陈述表扩展为 12 域×8 维度全景对比；§37.4/§37.5 知识和评估表扩展覆盖 12 域代表场景；§33 路线图新增 Phase 9（垂直业务域深化落地，3 批×8 周=24 周）含 Phase 依赖图更新；§34 新增 12 个域专属 ADR（共 93 个）；§35 代码目录新增 11 个域实例目录；§36 新增 8 项域专属风险和 7 项域专属硬约束；§38 接入 Runbook 三个 Gate 增加垂直域专项检查清单；§70 结论从九层架构升级为十层架构（新增垂直业务域深化层）；附录 G 新增 13 项域专属术语                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | v3.1 | 2026-04-22 | **24 域全覆盖版**：新增 12 个垂直业务域架构章节(§83-§94)——在线直播·广告素材制作·游戏开发·游戏上架·人力资源·供应链与物流·医疗健康·教育培训·客户服务·内容审核与安全·IT运维SRE/DevOps·市场营销与品牌；DomainRecipe 从 8 种原型扩展为 12 种（新增 Moderation/Logistics/Conversational/IncidentOps）；§37.1 问题陈述表扩展为 24 域×8 维度全景对比（4 张表）；§33 路线图 Phase 9 从 3 批扩展为 6 批（9a-9f，总计 48 周）含依赖图更新；§34 新增 12 个域专属 ADR（共 105 个）；§35 代码目录新增 12 个域实例目录；§36 新增 11 项域专属风险和 11 项域专属硬约束；§36.3 Phase 9 成功标准扩展至 24 域；§38 接入 Runbook 三个 Gate 扩展 Critical/High 风险域检查清单；§70 结论 12→24 垂直域；附录 G 新增 13 项域专属术语（4 种新原型 + CSAM/AIR/MTTR/MTTD/FCR/AHT/COPPA/SOV/SOV）；**结构重组**：全文按十层架构重排为 Part I-XI 分篇结构——基础设施层(§4-§14,§24-§32)整合为 Part I，§58 Harness横切合并到 §45 之后(Part VI)，§71-§94 垂直域移至 §38 之后(Part IV)，§33-§36 落地汇总移至 Part X，§70 结论移至全文末尾(Part XI)；章节编号保持稳定以兼容历史引用                                                                                                                                                                                                                                                                                                                                                                                                                |
 | v3.2 | 2026-04-22 | **架构深化版**：新增统一领域元模型(§37.11)——Canonical Domain Meta-Model 定义 12 问标准模板，24 域填充矩阵（Q1-Q6 + Q7-Q12 两张表），使新域接入模板化、平台内核配置驱动、看板/审批/评测统一生成；新增多 Agent 协作协议(§19.5)——Agent Collaboration Protocol 定义 8 种消息类型（task_request/task_offer/task_accept/task_reject/partial_result/escalation_request/completion_report/takeover_notice）、9 个强制字段、7 条不可违反规则（权限不扩大/风险不提升/约束不绕过/输出可复核/接管必审计/预算不超支/深度不超限），将 §19.1-19.4 委托模型从约定升级为强制协议；新增三环实施优先级（Part X 前言）——第一环平台生存环（P1-P5+ConstraintPack+HarnessRun+Risk/Audit+Lease/Recovery+Panic/Incident+ModelGateway，对应 Phase 1-2+8a，约 16 周）、第二环平台可用环（NL入口+GoalDecomposition+HITL+AsyncHarness+Dashboard+Org/SSO+DomainDescriptor+元模型+协作协议，对应 Phase 3-5+8b/8c，约 24 周）、第三环平台扩张环（Marketplace+MultiRegion+Edge+CostOptimizer+BehaviorDrift+ComplianceReporter+24 DomainPacks，对应 Phase 6-9，约 40+ 周）；更新 §70 结论新增 3 条核心原则（元模型统一·协作协议强制·分环实施）；**Review 修正**：§38 接入 Runbook 新增元模型步骤和门禁项(§37.11)、§45 Harness Runtime 新增协作协议关联(§19.5)、§33 Phase 5 交付物新增元模型+协作协议、§33 依赖 Phase 8b→8c 修正、§36.3 补全 Phase 8 成功标准、§34 域 ADR 标签 12→24+补全游戏开发域 ADR(共 105)、§36.1 补全游戏开发域风险(共 11 项)、§82 法务域 12→24 域修正、三环 Phase 映射修正 |

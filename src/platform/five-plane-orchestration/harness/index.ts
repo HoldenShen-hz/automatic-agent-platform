@@ -1489,6 +1489,32 @@ export class HarnessRuntimeService {
 
       const lastNodeRunId = run.nodeRunIds.at(-1);
       // R18-03 fix: Pass all decision factors to decide() per §45.25
+      // §45.25: Freeze all decision state at decision time before LLM-as-Judge evaluation
+      const frozenEvaluator = { score: input.evaluatorScore ?? 0.5, reasoning: "" };
+      const frozenRisk = {
+        currentScore: input.riskScore ?? 0,
+        maxScore: riskPolicy.maxRiskScore,
+        escalationThreshold: riskPolicy.escalationThreshold,
+      };
+      const frozenHitl = { pending: run.hitlRequest?.status === "pending_approval", requestId: run.hitlRequest?.requestId ?? null };
+      const frozenSideEffect = { mayCommit: input.constraintPack.tool_policy.allowedTools.length > 0, reversible: true };
+      const frozenBudget = inputBudget != null ? {
+        remainingSteps: Math.max(0, inputBudget.maxSteps - run.steps.length),
+        remainingCost: Math.max(0, inputBudget.maxCost - (run.loopMetrics?.totalCost ?? 0)),
+        remainingDurationMs: Math.max(0, inputBudget.maxDurationMs - (run.loopMetrics?.durationMs ?? 0)),
+      } : undefined;
+      const frozenPolicy = { policyIds: input.constraintPack.policyIds, constraintPackRef: run.constraintPackRef };
+      const frozenGuardrail: {
+        passed: boolean;
+        requiresHuman: boolean;
+        suggestedAction: string;
+        findings: readonly { code: string; message: string }[];
+      } = {
+        passed: guardrailAssessment.passed,
+        requiresHuman: guardrailAssessment.requiresHuman,
+        suggestedAction: guardrailAssessment.suggestedAction,
+        findings: guardrailAssessment.findings.map(f => ({ code: f.code, message: f.message })),
+      };
       const decision = this.decide({
         evaluatorScore: input.evaluatorScore,
         ...(input.requiresHuman || guardrailAssessment.requiresHuman ? { requiresHuman: true } : {}),
@@ -1503,7 +1529,16 @@ export class HarnessRuntimeService {
         ...(lastNodeRunId !== undefined ? { nodeRunId: lastNodeRunId } : {}),
         ...(input.producedEvidenceRefs != null ? { evidenceRefs: input.producedEvidenceRefs } : {}),
         deciderRef: "harness.run_loop",
-      });
+        // §45.25: Pass frozen state (all fields use null defaults in decide() if not provided)
+        frozenEvaluator,
+        frozenRisk,
+        frozenHitl,
+        frozenSideEffect,
+        frozenBudget,
+        frozenPolicy,
+        frozenGuardrail,
+        ...(lastNodeRunId !== undefined ? { frozenNode: { nodeId: lastNodeRunId, nodeType: "step", status: "running" } } : {}),
+      } as Parameters<typeof this.decide>[0]);
 
       // R18-05 fix: Check for guardrail vibration (repeated same action) per §45.20
       // VibrationBreaker detects when the same guardrail action repeats too often,

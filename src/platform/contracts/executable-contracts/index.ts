@@ -1677,14 +1677,15 @@ export function createDecisionInputBundle(input: {
     policyFindings: input.policyFindings ?? [],
     ...(input.budgetSnapshotRef != null ? { budgetSnapshotRef: input.budgetSnapshotRef } : {}),
     sideEffectRefs: input.sideEffectRefs ?? [],
-    ...(input.evaluator != null ? { evaluator: input.evaluator } : {}),
-    ...(input.policy != null ? { policy: input.policy } : {}),
-    ...(input.budget != null ? { budget: input.budget } : {}),
-    ...(input.risk != null ? { risk: input.risk } : {}),
-    ...(input.node != null ? { node: input.node } : {}),
-    ...(input.sideEffect != null ? { sideEffect: input.sideEffect } : {}),
-    ...(input.hitl != null ? { hitl: input.hitl } : {}),
-    ...(input.guardrail != null ? { guardrail: input.guardrail } : {}),
+    // §45.25: Always include frozen state fields with defaults when not provided
+    evaluator: input.evaluator ?? { score: 0, reasoning: "" },
+    policy: input.policy ?? { policyIds: [], constraintPackRef: "" },
+    budget: input.budget ?? { remainingSteps: 0, remainingCost: 0, remainingDurationMs: 0 },
+    risk: input.risk ?? { currentScore: 0, maxScore: 1, escalationThreshold: 0.7 },
+    node: input.node ?? { nodeId: "", nodeType: "", status: "" },
+    sideEffect: input.sideEffect ?? { mayCommit: false, reversible: false },
+    hitl: input.hitl ?? { pending: false, requestId: null },
+    guardrail: input.guardrail ?? null,
     createdAt,
   };
 }
