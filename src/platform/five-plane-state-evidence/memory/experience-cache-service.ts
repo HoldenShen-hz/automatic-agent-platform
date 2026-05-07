@@ -295,7 +295,7 @@ export class ExperienceCacheService {
           task_context, task_intent, tools_used_json,
           outcome, final_error_code, quality_score,
           created_at, hit_count, last_accessed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         id,
         input.taskId,
