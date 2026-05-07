@@ -124,20 +124,31 @@ test("checkSandboxPath rejects null byte in path", () => {
   assert.equal(result.reasonCode, "sandbox.path_invalid_encoding");
 });
 
-test("checkSandboxPath restricted_exec mode ignores allowed root boundary", () => {
+test("checkSandboxPath restricted_exec mode enforces allowed root boundary (S4/R8-42)", () => {
+  // §10.3 filesystem jail requires ALL modes (including restricted_exec)
+  // to enforce path boundaries - the exemption was a security flaw
   const policy: SandboxPolicy = {
     ...createRestrictedExecPolicy("/workspace/root"),
     deniedRoots: ["/etc"],
   };
 
-  // Should be allowed even though outside /workspace/root
+  // Path outside allowed root should be denied
   const result = checkSandboxPath(policy, "/tmp/ephemeral.txt");
-  assert.equal(result.allowed, true);
+  assert.equal(result.allowed, false);
+  assert.equal(result.reasonCode, "sandbox.path_outside_allowed_roots");
 
-  // But denied roots still apply
-  const deniedResult = checkSandboxPath(policy, "/etc/passwd");
+  // Denied roots still apply within allowed boundaries
+  const workspacePolicy: SandboxPolicy = {
+    ...createRestrictedExecPolicy("/workspace/root"),
+    deniedRoots: ["/workspace/root/secrets"],
+  };
+  const deniedResult = checkSandboxPath(workspacePolicy, "/workspace/root/secrets/api-keys.txt");
   assert.equal(deniedResult.allowed, false);
   assert.equal(deniedResult.reasonCode, "sandbox.path_in_denied_root");
+
+  // Path within allowed root should be allowed
+  const allowedResult = checkSandboxPath(policy, "/workspace/root/file.txt");
+  assert.equal(allowedResult.allowed, true);
 });
 
 test("resolveSandboxPath resolves simple paths", () => {

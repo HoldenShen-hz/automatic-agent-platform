@@ -515,6 +515,7 @@ export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOp
     ...loaderArgs,
     ...baseArgs,
     "--permission",
+    "--allow-worker",
     ...readRoots.map((root) => `--allow-fs-read=${root}`),
     ...writeRoots.map((root) => `--allow-fs-write=${root}`),
   ]);

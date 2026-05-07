@@ -1450,11 +1450,16 @@ export function reserveBudgetHardCap(input: {
   if (activeCommittedAmount + input.amount > input.ledger.hardCap) {
     throw new ValidationError("budget_reservation.hard_cap_exceeded", "budget_reservation.hard_cap_exceeded: Budget reservation exceeds hard cap.");
   }
+  const computedStatus = activeCommittedAmount + input.amount === input.ledger.hardCap ? "hard_cap_reached" : input.ledger.status;
+  // Only bump version if this function is computing the status transition itself.
+  // When ledger.status is not "open", the state machine already handled the version bump
+  // for any status transition, so we should not bump again.
+  const versionIncrement = input.ledger.status === "open" ? 1 : 0;
   const ledger: BudgetLedger = {
     ...input.ledger,
     reservedAmount: input.ledger.reservedAmount + input.amount,
-    status: activeCommittedAmount + input.amount === input.ledger.hardCap ? "hard_cap_reached" : input.ledger.status,
-    version: input.ledger.version + 1,
+    status: computedStatus,
+    version: input.ledger.version + versionIncrement,
   };
   const reservation = createBudgetReservation({
     budgetLedgerId: input.ledger.budgetLedgerId,

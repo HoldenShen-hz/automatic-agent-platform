@@ -219,7 +219,7 @@ export function registerPluginSigningKey(keyId: string, publicKey: string): void
  * Throws SecurityError if verification fails.
  *
  * Security policy:
- * - Plugins with trustLevel "internal" or "trusted" may omit signature (pre-approved)
+ * - Plugins with trustLevel "internal", "trusted", or "verified" may omit signature (pre-approved)
  * - Plugins with trustLevel "community" or "unverified" MUST have a valid signature
  * - If a signature is provided, it must be valid
  */
@@ -228,7 +228,7 @@ export function verifyPluginSignature(manifest: PluginManifest): void {
   if (!signature) {
     // No signature provided - check trust level
     const trustLevel = manifest.trustLevel;
-    if (trustLevel === "internal" || trustLevel === "trusted") {
+    if (trustLevel === "internal" || trustLevel === "trusted" || trustLevel === "verified") {
       // Pre-approved plugins don't require signatures
       return;
     }

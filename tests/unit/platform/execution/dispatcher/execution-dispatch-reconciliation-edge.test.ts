@@ -57,6 +57,8 @@ function createMockStore(
     worker: {
       listExecutionTicketsByStatuses: (statuses: string[]) =>
         tickets.filter(t => statuses.includes(t.status)),
+      listExecutionTicketsByStatusesPaginated: (statuses: string[], _limit: number, _offset: number) =>
+        tickets.filter(t => statuses.includes(t.status)),
       getExecutionTicket: (id: string) => tickets.find(t => t.id === id) ?? null,
       getActiveExecutionTicket: (executionId: string) => tickets.find(t => t.executionId === executionId && t.status !== "expired" && t.status !== "cancelled") ?? null,
       getActiveExecutionLease: (executionId: string) => leases.get(executionId) ?? null,
