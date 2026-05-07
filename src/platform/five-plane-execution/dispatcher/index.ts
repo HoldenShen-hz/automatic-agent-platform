@@ -138,6 +138,21 @@ class MultiStepToolRegistry {
   }
 
   /**
+   * R4-25 (INV-BUDGET-001): Reset the tool registry state for test cleanup.
+   * Preserves the singleton reference but clears mutable state.
+   */
+  public resetForTest(): void {
+    this.currentBudgetLedger = null;
+    this.currentHarnessRunId = null;
+    this.currentNodeRunId = null;
+    this.currentNodeAttemptId = null;
+    this.spawnDepth = 0;
+    this.sideEffectRecords.clear();
+    this.evidenceRecords.clear();
+    this.spawnedAgents.clear();
+  }
+
+  /**
    * R4-33/R4-35: Set the RuntimeTruthRepository for persisting side effect and evidence records.
    * This must be called before tool execution to enable proper record persistence.
    */
@@ -1159,5 +1174,7 @@ export async function executeMultiStepToolCallForTests(toolName: string, argumen
  * Test-only export: reset the tool registry singleton.
  */
 export function resetMultiStepToolRegistryForTests(): void {
-  _toolRegistry = null;
+  if (_toolRegistry !== null) {
+    _toolRegistry.resetForTest();
+  }
 }

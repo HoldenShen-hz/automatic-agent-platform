@@ -265,6 +265,7 @@ function createContext(
 export {
   executeMultiStepToolCallForTests,
   resetMultiStepToolRegistryForTests,
+  setToolRegistryBudgetLedger,
 };
 
 export type {
