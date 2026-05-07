@@ -180,8 +180,28 @@ type RawRow = Record<string, unknown>;
  * Configuration for real LLM evaluation in A/B test.
  */
 interface LlmAbTestEvaluatorConfig {
-  /** LLM evaluation function - takes input text, returns score 0-1 */
-  evaluateWithLlm: (input: string, expectedOutput: string, actualOutput: string) => Promise<number>;
+  /**
+   * Preferred real evaluator path.
+   * The evaluator is responsible for generating an actual candidate output for the
+   * specific model/prompt arm and then scoring it with an independent LLM judge.
+   */
+  evaluateCase?: (input: {
+    input: string;
+    expectedOutput: string;
+    modelId: string;
+    promptVersion: string;
+    arm: "control" | "treatment";
+  }) => Promise<{
+    actualOutput: string;
+    score: number;
+    latencyMs?: number;
+    metadata?: Record<string, unknown>;
+  }>;
+  /**
+   * Backward-compatible judge-only seam.
+   * Deprecated because the caller must fabricate actualOutput separately.
+   */
+  evaluateWithLlm?: (input: string, expectedOutput: string, actualOutput: string) => Promise<number>;
 }
 
 // -- Service ------------------------------------------------------------
@@ -408,32 +428,54 @@ async runAbTest(
     // Real LLM evaluation
     const runPromises = async () => {
       for (const c of cases) {
-        // Evaluate control
-        const controlActualOutput = `control:${c.expectedOutput}`; // Would be from LLM in real impl
-        const controlScore = await options.llmEvaluator!.evaluateWithLlm(c.input, c.expectedOutput, controlActualOutput);
+        const controlEvaluation = options.llmEvaluator?.evaluateCase != null
+          ? await options.llmEvaluator.evaluateCase({
+              input: c.input,
+              expectedOutput: c.expectedOutput,
+              modelId: config.controlModelId,
+              promptVersion: config.controlPromptVersion,
+              arm: "control",
+            })
+          : {
+              actualOutput: `control:${c.expectedOutput}`,
+              score: await options.llmEvaluator!.evaluateWithLlm!(c.input, c.expectedOutput, `control:${c.expectedOutput}`),
+              latencyMs: 150,
+            };
         this.recordCaseResult({
           runId: controlRun.id,
           caseId: c.id,
           input: c.input,
           expectedOutput: c.expectedOutput,
-          actualOutput: controlActualOutput,
-          score: controlScore,
-          passed: controlScore >= passThreshold,
-          latencyMs: 150,
+          actualOutput: controlEvaluation.actualOutput,
+          score: controlEvaluation.score,
+          passed: controlEvaluation.score >= passThreshold,
+          latencyMs: controlEvaluation.latencyMs ?? 150,
+          ...(controlEvaluation.metadata != null ? { metadata: controlEvaluation.metadata } : {}),
         });
 
-        // Evaluate treatment
-        const treatmentActualOutput = `treatment:${c.expectedOutput}`; // Would be from LLM in real impl
-        const treatmentScore = await options.llmEvaluator!.evaluateWithLlm(c.input, c.expectedOutput, treatmentActualOutput);
+        const treatmentEvaluation = options.llmEvaluator?.evaluateCase != null
+          ? await options.llmEvaluator.evaluateCase({
+              input: c.input,
+              expectedOutput: c.expectedOutput,
+              modelId: config.treatmentModelId,
+              promptVersion: config.treatmentPromptVersion,
+              arm: "treatment",
+            })
+          : {
+              actualOutput: `treatment:${c.expectedOutput}`,
+              score: await options.llmEvaluator!.evaluateWithLlm!(c.input, c.expectedOutput, `treatment:${c.expectedOutput}`),
+              latencyMs: 150,
+            };
         this.recordCaseResult({
           runId: treatmentRun.id,
           caseId: c.id,
           input: c.input,
           expectedOutput: c.expectedOutput,
-          actualOutput: treatmentActualOutput,
-          score: treatmentScore,
-          passed: treatmentScore >= passThreshold,
-          latencyMs: 150,
+          actualOutput: treatmentEvaluation.actualOutput,
+          score: treatmentEvaluation.score,
+          passed: treatmentEvaluation.score >= passThreshold,
+          latencyMs: treatmentEvaluation.latencyMs ?? 150,
+          ...(treatmentEvaluation.metadata != null ? { metadata: treatmentEvaluation.metadata } : {}),
         });
       }
     };

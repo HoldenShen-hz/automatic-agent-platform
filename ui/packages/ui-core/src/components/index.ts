@@ -2,6 +2,7 @@ import React, { createElement, useEffect, useMemo, useRef, useState, type Change
 import type { ImplementationStatus } from "@aa/shared-types";
 import { animation, createPanelStyle, designTokens } from "../design-tokens";
 import { LayoutFrame, ThreePaneLayout } from "../layouts";
+export * from "./extended";
 
 // =============================================================================
 // ANIMATION UTILITY

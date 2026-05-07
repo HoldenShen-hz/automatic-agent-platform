@@ -133,13 +133,18 @@ export class HarnessSdk {
   private readonly interPlaneTransport: InterPlaneTransport | undefined;
 
   public constructor(
-    runtimeTruthRepository?: RuntimeRepository,
+    runtimeOrRepository?: HarnessRuntimeService | RuntimeRepository,
     budgetChecker?: (budgetRef: string) => BudgetValidationResult,
     interPlaneTransport?: InterPlaneTransport,
   ) {
-    this.runtime = new HarnessRuntimeService(
-      runtimeTruthRepository ? { runtimeTruthRepository } : {},
-    );
+    // Accept either a pre-configured HarnessRuntimeService or a RuntimeRepository
+    if (runtimeOrRepository instanceof HarnessRuntimeService) {
+      this.runtime = runtimeOrRepository;
+    } else {
+      this.runtime = new HarnessRuntimeService(
+        runtimeOrRepository ? { runtimeTruthRepository: runtimeOrRepository } : {},
+      );
+    }
     this.budgetChecker = budgetChecker;
     this.interPlaneTransport = interPlaneTransport;
   }

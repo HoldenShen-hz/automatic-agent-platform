@@ -20,6 +20,10 @@ import {
   type UserConfirmationReceipt,
 } from "../../../contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../execution/runtime-state-machine.js";
+import {
+  InMemoryClarificationSessionRepository,
+  type ClarificationSessionRepository,
+} from "./clarification-session-repository.js";
 
 /**
  * ClarificationSession stages per §5.3
@@ -277,9 +281,14 @@ function evaluatePolicyGuard(input: {
 export class IntakeAdmissionService {
   private readonly stateMachine: RuntimeStateMachine;
   private readonly admittedByIdempotencyKey = new Map<string, HarnessAdmissionResult>();
+  private readonly clarificationRepository: ClarificationSessionRepository;
 
-  public constructor(options: { readonly stateMachine?: RuntimeStateMachine } = {}) {
+  public constructor(options: {
+    readonly stateMachine?: RuntimeStateMachine;
+    readonly clarificationRepository?: ClarificationSessionRepository;
+  } = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
+    this.clarificationRepository = options.clarificationRepository ?? new InMemoryClarificationSessionRepository();
   }
 
   public admit(input: RawTaskInput): HarnessAdmissionResult {
@@ -344,6 +353,12 @@ export class IntakeAdmissionService {
     // R6-1: If clarification session exists and is still pending, return with clarification needed
     // Per §5.3, ClarificationSession stage must gate the creation of ConfirmedTaskSpec
     if (clarificationSession != null && clarificationSession.stage === "pending_clarification") {
+      this.clarificationRepository.save({
+        session: clarificationSession,
+        taskDraft,
+        harnessRun,
+        budgetIntent: input.budgetIntent,
+      });
       // Emit clarification_needed event - cannot proceed without user confirmation
       const clarificationEvent = createPlatformFactEvent({
         eventType: "platform.intake.clarification_needed",
@@ -544,69 +559,47 @@ export class IntakeAdmissionService {
     sessionId: string,
     confirmationReceipt: UserConfirmationReceipt,
   ): ClarificationResumeResult {
-    // Find the pending clarification session by sessionId
-    // In production, this would be a database lookup; here we use the in-memory map
-    // by searching through admitted results for matching session
-    let foundSession: ClarificationSession | null = null;
-    let foundResult: HarnessAdmissionResult | null = null;
-
-    for (const [idempotencyKey, result] of this.admittedByIdempotencyKey) {
-      // Check if this result has a clarification session
-      const clarificationEvent = result.events.find(
-        (e) => e.eventType === "platform.intake.clarification_needed",
-      );
-      if (clarificationEvent && (clarificationEvent.payload as Record<string, unknown>)?.sessionId === sessionId) {
-        // Reconstruct the clarification session from the event
-        const payload = clarificationEvent.payload as Record<string, unknown>;
-        foundSession = {
-          sessionId: payload.sessionId as string,
-          taskDraftId: payload.taskDraftId as string,
-          stage: getNextClarificationStage("pending_clarification", confirmationReceipt),
-          ambiguityFlags: (payload.ambiguityFlags as string[]) ?? [],
-          createdAt: payload.createdAt as string,
-          expiresAt: payload.expiresAt as string | null,
-          confirmationReceipt,
-        };
-        foundResult = result;
-        break;
-      }
+    const persisted = this.clarificationRepository.get(sessionId);
+    if (persisted == null) {
+      throw new Error(`clarification.session_not_found: Session ${sessionId} not found or already resolved`);
     }
 
-    if (foundSession == null || foundResult == null) {
+    const foundSession = this.clarificationRepository.updateSession(
+      sessionId,
+      getNextClarificationStage(persisted.session.stage, confirmationReceipt),
+      confirmationReceipt,
+    );
+    if (foundSession == null) {
       throw new Error(`clarification.session_not_found: Session ${sessionId} not found or already resolved`);
     }
 
     // R6-1: Validate the confirmation receipt satisfies the risk requirements
-    if (foundSession.confirmationReceipt == null) {
+    if (foundSession.session.confirmationReceipt == null) {
       throw new Error(`clarification.confirmation_required: Session ${sessionId} requires confirmation before proceeding`);
     }
 
     // Create the confirmed task spec now that clarification is complete
     const confirmedTaskSpec = createConfirmedTaskSpec({
-      taskDraftId: foundResult.taskDraft.taskDraftId,
-      tenantId: foundResult.harnessRun.tenantId,
-      principal: foundResult.harnessRun.ownership.ownerId as unknown as PrincipalRef,
-      goal: (foundResult.taskDraft.normalizedIntent as Record<string, unknown>)?.goal as string ?? "",
-      inputs: (foundResult.taskDraft.normalizedIntent as Record<string, unknown>)?.inputs as JsonValue ?? {},
-      constraintPackRef: foundResult.harnessRun.constraintPackRef ?? "",
-      riskClass: foundResult.harnessRun.riskLevel as "low" | "medium" | "high" | "critical",
-      confirmationReceipt: foundSession.confirmationReceipt,
+      taskDraftId: persisted.taskDraft.taskDraftId,
+      tenantId: persisted.harnessRun.tenantId,
+      principal: persisted.harnessRun.ownership.ownerId as unknown as PrincipalRef,
+      goal: (persisted.taskDraft.normalizedIntent as Record<string, unknown>)?.goal as string ?? "",
+      inputs: (persisted.taskDraft.normalizedIntent as Record<string, unknown>)?.inputs as JsonValue ?? {},
+      constraintPackRef: persisted.harnessRun.constraintPackRef ?? "",
+      riskClass: persisted.harnessRun.riskLevel as "low" | "medium" | "high" | "critical",
+      confirmationReceipt: foundSession.session.confirmationReceipt,
       idempotencyKey: sessionId,
-      traceId: foundResult.harnessRun.traceId,
+      traceId: persisted.harnessRun.traceId,
     });
 
     const requestEnvelope = createRequestEnvelopeFromConfirmedTask({
       confirmedTaskSpec,
-      budgetIntent: {
-        amount: 100,
-        currency: "USD",
-        resourceKinds: ["compute", "tool"],
-      },
+      budgetIntent: persisted.budgetIntent,
       requestHash: `request:${sessionId}`,
     });
 
     const runVersionLock = createRunVersionLock({
-      harnessRunId: foundResult.harnessRun.harnessRunId,
+      harnessRunId: persisted.harnessRun.harnessRunId,
       runtimeProfileVersion: "runtime-profile:default",
     });
 
@@ -614,16 +607,16 @@ export class IntakeAdmissionService {
     const confirmedEvent = createPlatformFactEvent({
       eventType: "platform.intake.clarification_confirmed",
       aggregateType: "TaskDraft",
-      aggregateId: foundResult.taskDraft.taskDraftId,
+      aggregateId: persisted.taskDraft.taskDraftId,
       aggregateSeq: 2,
-      tenantId: foundResult.harnessRun.tenantId,
-      runId: foundResult.harnessRun.traceId,
-      traceId: foundResult.harnessRun.traceId,
+      tenantId: persisted.harnessRun.tenantId,
+      runId: persisted.harnessRun.traceId,
+      traceId: persisted.harnessRun.traceId,
       payload: {
-        sessionId: foundSession.sessionId,
-        taskDraftId: foundSession.taskDraftId,
-        stage: foundSession.stage,
-        confirmationReceipt: foundSession.confirmationReceipt,
+        sessionId: foundSession.session.sessionId,
+        taskDraftId: foundSession.session.taskDraftId,
+        stage: foundSession.session.stage,
+        confirmationReceipt: foundSession.session.confirmationReceipt,
         confirmedTaskSpecId: confirmedTaskSpec.confirmedTaskSpecId,
       } as unknown as JsonValue,
       schemaOwner: "intake-admission-service",
@@ -631,11 +624,11 @@ export class IntakeAdmissionService {
     });
 
     return {
-      clarificationSession: foundSession,
+      clarificationSession: foundSession.session,
       confirmedTaskSpec,
       requestEnvelope,
       runVersionLock,
-      harnessRun: foundResult.harnessRun,
+      harnessRun: persisted.harnessRun,
       events: [confirmedEvent],
     };
   }
@@ -647,24 +640,7 @@ export class IntakeAdmissionService {
    * @returns The ClarificationSession if found and pending, null otherwise
    */
   public getClarificationSession(sessionId: string): ClarificationSession | null {
-    for (const [idempotencyKey, result] of this.admittedByIdempotencyKey) {
-      const clarificationEvent = result.events.find(
-        (e) => e.eventType === "platform.intake.clarification_needed",
-      );
-      if (clarificationEvent && (clarificationEvent.payload as Record<string, unknown>)?.sessionId === sessionId) {
-        const payload = clarificationEvent.payload as Record<string, unknown>;
-        return {
-          sessionId: payload.sessionId as string,
-          taskDraftId: payload.taskDraftId as string,
-          stage: payload.stage as ClarificationSessionStage,
-          ambiguityFlags: (payload.ambiguityFlags as string[]) ?? [],
-          createdAt: payload.createdAt as string,
-          expiresAt: payload.expiresAt as string | null,
-          confirmationReceipt: null,
-        };
-      }
-    }
-    return null;
+    return this.clarificationRepository.get(sessionId)?.session ?? null;
   }
 
   /**

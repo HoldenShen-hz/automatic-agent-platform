@@ -137,7 +137,7 @@ const SIDE_EFFECT_TRANSITIONS: TransitionTable<SideEffectStatus> = {
 };
 
 const BUDGET_LEDGER_TRANSITIONS: TransitionTable<BudgetLedger["status"]> = {
-  open: ["soft_cap_reached", "closed"],
+  open: ["soft_cap_reached", "hard_cap_reached", "closed"],
   soft_cap_reached: ["open", "hard_cap_reached", "closed"],
   hard_cap_reached: ["closed"],
   closed: [],

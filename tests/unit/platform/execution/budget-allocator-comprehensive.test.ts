@@ -26,6 +26,8 @@ function createTestContext(overrides: Partial<{
   autoThrottle: { enabled: boolean; throttleRatio: number; recoveryRatio: number };
   crossRunPriority: { priority: number; weightFactor: number };
   streamingSettle: { enabled: boolean; tokenInterval: number; timeIntervalMs: number };
+  fencingToken: string;
+  leaseId: string;
 }> = {}): {
   tenantId: string;
   traceId: string;
@@ -36,6 +38,8 @@ function createTestContext(overrides: Partial<{
   autoThrottle: { enabled: boolean; throttleRatio: number; recoveryRatio: number };
   crossRunPriority: { priority: number; weightFactor: number };
   streamingSettle: { enabled: boolean; tokenInterval: number; timeIntervalMs: number };
+  fencingToken: string;
+  leaseId: string;
 } {
   return {
     tenantId: "tenant-1",
@@ -62,6 +66,8 @@ function createTestContext(overrides: Partial<{
       tokenInterval: Number.MAX_SAFE_INTEGER,
       timeIntervalMs: Number.MAX_SAFE_INTEGER,
     },
+    fencingToken: "test-fencing-token",
+    leaseId: "test-lease-id",
     ...overrides,
   };
 }
@@ -513,6 +519,7 @@ test("BudgetAllocator.settle emits platform event with correct structure", () =>
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 35,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -539,6 +546,7 @@ test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 40,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -562,6 +570,7 @@ test("BudgetAllocator reserve and settle with different currency preserves curre
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 
@@ -589,6 +598,7 @@ test("BudgetAllocator reserve and settle with soft cap in ledger", () => {
     ledger: reserved.ledger,
     reservation: reserved.reservation,
     actualAmount: 50,
+    expectedVersion: reserved.ledger.version,
     context: createTestContext(),
   });
 

@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId } from "@aa/shared-types";
 import { createRouteGuardChain } from "@aa/shared-domain";
-import { FeatureScaffold } from "./components";
+import { ComponentErrorBoundary, FeatureScaffold } from "./components";
 import { designTokens } from "./design-tokens";
 export { createSystemHealthSummary, SystemStatusBar } from "./business";
 export { ComponentErrorBoundary, FeatureScaffold, FeatureWorkbench, FeatureWorkbenchPanel, KeyValueTable, ListCard, StatusPill } from "./components";
@@ -37,6 +37,11 @@ export function createFeatureModule(config: {
       </p>
     </FeatureScaffold>
   ));
+  const WrappedComponent = () => (
+    <ComponentErrorBoundary>
+      <Component />
+    </ComponentErrorBoundary>
+  );
 
   return {
     manifest: {
@@ -62,7 +67,7 @@ export function createFeatureModule(config: {
       // Spec requires React.lazy for all features except / and /login
       codeSplit: true,
     },
-    Component,
+    Component: WrappedComponent,
   };
 }
 

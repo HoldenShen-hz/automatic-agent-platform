@@ -151,10 +151,14 @@ export function generateDtoTypes(spec: OpenAPISpec): string {
 export function parseOpenApiSpec(spec: OpenAPISpec): {
   dtoTypes: string;
   endpointBindings: string;
+  endpointClients: string;
+  queryKeys: string;
 } {
   return {
     dtoTypes: generateDtoTypes(spec),
     endpointBindings: generateEndpointBindings(spec),
+    endpointClients: generateEndpointClientFactories(spec),
+    queryKeys: generateQueryKeyFactories(spec),
   };
 }
 
@@ -171,5 +175,88 @@ function generateEndpointBindings(spec: OpenAPISpec): string {
       }
     }
   }
+  return lines.join("\n");
+}
+
+function generateEndpointClientFactories(spec: OpenAPISpec): string {
+  if (!spec.paths) return "";
+
+  const lines: string[] = [
+    "// Typed endpoint client factories",
+    "export interface GeneratedHttpClient {",
+    "  request<TResponse>(input: {",
+    "    method: string;",
+    "    path: string;",
+    "    params?: Record<string, unknown>;",
+    "    body?: unknown;",
+    "  }): Promise<TResponse>;",
+    "}",
+    "",
+  ];
+
+  for (const [path, methods] of Object.entries(spec.paths)) {
+    for (const [method, operation] of Object.entries(methods)) {
+      if (!operation.operationId) {
+        continue;
+      }
+      const opId = operation.operationId;
+      const paramsTypeName = `${opId}Params`;
+      const requestBodySchema = operation.requestBody?.content?.["application/json"]?.schema;
+      const requestBodyType = requestBodySchema != null
+        ? generateTypeFromSchema(`${opId}Request`, requestBodySchema)
+        : "undefined";
+      const responseSchema =
+        operation.responses?.["200"]?.content?.["application/json"]?.schema
+        ?? operation.responses?.["201"]?.content?.["application/json"]?.schema;
+      const responseType = responseSchema != null
+        ? generateTypeFromSchema(`${opId}Response`, responseSchema)
+        : "unknown";
+
+      lines.push(`export async function ${opId}(client: GeneratedHttpClient, input: {`);
+      if (operation.parameters?.length) {
+        lines.push(`  params: ${paramsTypeName};`);
+      } else {
+        lines.push("  params?: Record<string, never>;");
+      }
+      if (requestBodySchema != null) {
+        lines.push(`  body: ${requestBodyType};`);
+      } else {
+        lines.push("  body?: undefined;");
+      }
+      lines.push(`}): Promise<${responseType}> {`);
+      lines.push(`  return client.request<${responseType}>({`);
+      lines.push(`    method: "${method.toUpperCase()}",`);
+      lines.push(`    path: "${path}",`);
+      lines.push("    params: input.params,");
+      lines.push("    body: input.body,");
+      lines.push("  });");
+      lines.push("}");
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function generateQueryKeyFactories(spec: OpenAPISpec): string {
+  if (!spec.paths) return "";
+
+  const lines: string[] = ["// Query key factories"];
+  for (const methods of Object.values(spec.paths)) {
+    for (const operation of Object.values(methods)) {
+      if (!operation.operationId) {
+        continue;
+      }
+      const opId = operation.operationId;
+      const paramsTypeName = `${opId}Params`;
+      lines.push(
+        `export function ${opId}QueryKey(params${operation.parameters?.length ? `: ${paramsTypeName}` : "?: Record<string, never>"} = {}${operation.parameters?.length ? "" : " as Record<string, never>"}) {`,
+      );
+      lines.push(`  return ["${opId}", params] as const;`);
+      lines.push("}");
+      lines.push("");
+    }
+  }
+
   return lines.join("\n");
 }

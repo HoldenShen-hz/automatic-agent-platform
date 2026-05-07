@@ -265,8 +265,33 @@ function createMockRepository(): MockRepository {
       };
     },
 
+    appendPlatformFactEvent(_event: unknown): EventRecord {
+      return {
+        id: `event-${Date.now()}`,
+        taskId: "task-1",
+        sessionId: null,
+        executionId: null,
+        eventType: "platform.fact",
+        eventTier: "tier_1",
+        payloadJson: "{}",
+        traceId: "trace-1",
+        createdAt: new Date().toISOString(),
+      };
+    },
+
     updateTaskOutput(taskId: string, outputJson: string, _occurredAt: string): void {
       mockState.taskOutputs.set(taskId, outputJson);
+    },
+
+    updateTaskOutputCas(
+      taskId: string,
+      _expectedTaskUpdatedAt: string,
+      _expectedStatus: string,
+      outputJson: string,
+      occurredAt: string,
+    ): number {
+      mockState.taskOutputs.set(taskId, outputJson);
+      return 1;
     },
 
     updateTaskStatus(
