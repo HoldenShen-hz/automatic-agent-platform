@@ -41,7 +41,7 @@ describe("shared api-client runtime regressions", () => {
             headers: { "content-type": "application/json" },
           });
         }
-        return new Response(JSON.stringify({ ok: true, attempts }), {
+        return new Response(JSON.stringify({ requestId: "req_123", data: { ok: true, attempts } }), {
           status: 200,
           headers: { "content-type": "application/json" },
         });
@@ -53,8 +53,25 @@ describe("shared api-client runtime regressions", () => {
     const response = await promise;
 
     expect(attempts).toBe(3);
-    expect(acceptVersion).toBe("v1");
+    expect(acceptVersion).toBe("2026-04-01,2026-01-01");
     expect(response.data).toEqual({ ok: true, attempts: 3 });
+  });
+
+  it("unwraps the platform JSON response envelope before returning data to callers", async () => {
+    const transport = new HttpTransport({
+      baseUrl: "https://example.test",
+      fetchImplementation: async () => new Response(JSON.stringify({
+        requestId: "req_wrapped",
+        data: { ok: true, items: [1, 2, 3] },
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    });
+
+    const response = await transport.send<{ ok: boolean; items: number[] }>(createRequest("/api/v1/tasks"));
+
+    expect(response.data).toEqual({ ok: true, items: [1, 2, 3] });
   });
 
   it("opens the circuit breaker after repeated terminal failures and fail-closes subsequent requests", async () => {

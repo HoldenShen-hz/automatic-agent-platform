@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DEFAULT_ACCEPT_VERSIONS,
   createTraceInterceptor,
   createContractVersionInterceptor,
   createAuthInterceptor,
@@ -68,7 +69,7 @@ describe("createContractVersionInterceptor", () => {
 
     const result = await interceptor.onRequest!(request);
 
-    expect(result.headers.get("Accept-Version")).toBe("v1");
+    expect(result.headers.get("Accept-Version")).toBe(DEFAULT_ACCEPT_VERSIONS.join(","));
   });
 
   it("supports multiple versions", async () => {

@@ -450,5 +450,5 @@ export function resolveDispatchBackpressureReason(
 }
 
 export function isElevatedPriority(priority: TaskPriority): boolean {
-  return priority === "high" || priority === "critical";
+  return priority === "high" || priority === "critical" || priority === "urgent";
 }

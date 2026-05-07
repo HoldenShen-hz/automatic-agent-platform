@@ -32,7 +32,7 @@ test("PackCatalogService.createPack creates a new pack", () => {
   assert.ok(result.updatedAt.length > 0);
 });
 
-test("PackCatalogService.createPack sets default sandboxTier to closed", () => {
+test("PackCatalogService.createPack sets default sandboxTier to read_only", () => {
   const service = new PackCatalogService();
   const input: CreatePackCatalogInput = {
     packId: "pack_no_tier",
@@ -44,7 +44,7 @@ test("PackCatalogService.createPack sets default sandboxTier to closed", () => {
 
   const result = service.createPack(input);
 
-  assert.equal(result.sandboxTier, "closed");
+  assert.equal(result.sandboxTier, "read_only");
 });
 
 test("PackCatalogService.createPack uses provided optional fields", () => {
@@ -56,7 +56,7 @@ test("PackCatalogService.createPack uses provided optional fields", () => {
     domainId: "domain_prod",
     description: "Full featured pack",
     createdBy: "user_admin",
-    sandboxTier: "open",
+    sandboxTier: "workspace_write",
     riskCount: 5,
     dependencyCount: 3,
     pluginCount: 10,
@@ -65,7 +65,7 @@ test("PackCatalogService.createPack uses provided optional fields", () => {
 
   const result = service.createPack(input);
 
-  assert.equal(result.sandboxTier, "open");
+  assert.equal(result.sandboxTier, "workspace_write");
   assert.equal(result.riskCount, 5);
   assert.equal(result.dependencyCount, 3);
   assert.equal(result.pluginCount, 10);
@@ -127,10 +127,11 @@ test("PackCatalogService.listPacks returns empty array when no packs", () => {
   assert.deepEqual(result, []);
 });
 
-test("PackCatalogService.listPacks returns packs sorted by createdAt descending", () => {
+test("PackCatalogService.listPacks returns packs sorted by createdAt descending", async () => {
   const service = new PackCatalogService();
 
   // Create packs in order - newest first in the list
+  // Use delays to ensure distinct timestamps
   service.createPack({
     packId: "pack_first",
     name: "First Pack",
@@ -139,6 +140,8 @@ test("PackCatalogService.listPacks returns packs sorted by createdAt descending"
     createdBy: "user_holder",
   });
 
+  await new Promise((resolve) => setTimeout(resolve, 1));
+
   service.createPack({
     packId: "pack_second",
     name: "Second Pack",
@@ -146,6 +149,8 @@ test("PackCatalogService.listPacks returns packs sorted by createdAt descending"
     domainId: "domain_test",
     createdBy: "user_holder",
   });
+
+  await new Promise((resolve) => setTimeout(resolve, 1));
 
   service.createPack({
     packId: "pack_third",

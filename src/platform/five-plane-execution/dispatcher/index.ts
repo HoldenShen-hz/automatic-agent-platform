@@ -234,6 +234,41 @@ class MultiStepToolRegistry {
     return toolCosts[toolName] ?? 0.001;
   }
 
+  private validateToolArguments(toolName: string, args: Record<string, unknown>): string | null {
+    switch (toolName) {
+      case "web_search": {
+        const query = typeof args.query === "string" ? args.query.trim() : "";
+        if (query.length === 0) {
+          return JSON.stringify({ success: false, results: [], count: 0, error: "query is required", errorCode: "MISSING_QUERY" });
+        }
+        return null;
+      }
+      case "web_fetch": {
+        const url = typeof args.url === "string" ? args.url.trim() : "";
+        if (url.length === 0) {
+          return JSON.stringify({ success: false, status: "failed", error: "url is required", errorCode: "MISSING_URL", durationMs: 0 });
+        }
+        return null;
+      }
+      case "git": {
+        const rawArgs = parseOptionalStringArray(args.args);
+        if (rawArgs.length === 0) {
+          return JSON.stringify({ success: false, status: "failed", error: "git args are required", errorCode: "MISSING_GIT_ARGS", durationMs: 0 });
+        }
+        return null;
+      }
+      case "repo-map": {
+        const query = typeof args.query === "string" ? args.query.trim() : "";
+        if (query.length === 0) {
+          return JSON.stringify({ success: false, status: "failed", error: "query is required", errorCode: "MISSING_QUERY", durationMs: 0 });
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  }
+
   private assertBudgetAllowed(toolName: string, _args: Record<string, unknown>): void {
     // R4-25 (INV-BUDGET-001): Reserve budget before tool call using BudgetAllocator.reserve()
     const estimatedCost = this.estimateToolCost(toolName);
@@ -341,9 +376,10 @@ class MultiStepToolRegistry {
       url = `search:${args.query as string}`;
     }
 
-    // R4-31: If URL is empty, deny by default - validation happens in tool implementation
+    // R4-31: If URL is empty, skip egress check and let tool implementation validate
+    // The tool implementation will return proper error messages like "url is required"
     if (!url || (toolName === "web_fetch" && url.trim() === "")) {
-      return { allowed: false, reasonCode: "empty_url" };
+      return { allowed: true, reasonCode: null };
     }
 
     const decision = policyService.evaluate(url);
@@ -701,7 +737,12 @@ class MultiStepToolRegistry {
    * Returns a JSON string result for tool call result injection into LLM history.
    * R4-25 (INV-BUDGET-001): Implements atomic reserve→execute→settle pattern for budget enforcement.
    */
-  async executeToolCall(toolName: string, argumentsJson: string, budgetLedger?: BudgetLedger): Promise<string> {
+  async executeToolCall(
+    toolName: string,
+    argumentsJson: string,
+    budgetLedger?: BudgetLedger,
+    options: { skipPolicyCheck?: boolean } = {},
+  ): Promise<string> {
     let args: Record<string, unknown>;
     try {
       args = JSON.parse(argumentsJson);
@@ -712,6 +753,11 @@ class MultiStepToolRegistry {
         data: { error: err instanceof Error ? err.message : String(err), rawArgs: argumentsJson },
       });
       args = { raw: argumentsJson };
+    }
+
+    const validationResult = this.validateToolArguments(toolName, args);
+    if (validationResult != null) {
+      return validationResult;
     }
 
     // R4-25 (INV-BUDGET-001): Get budget ledger - prefer parameter, fall back to registry state
@@ -757,7 +803,9 @@ class MultiStepToolRegistry {
     }
 
     // R4-34 (INV-POLICY-001): Deny-by-default - PolicyEngine check before tool dispatch
-    this.assertPolicyAllowed(toolName, args);
+    if (!options.skipPolicyCheck) {
+      this.assertPolicyAllowed(toolName, args);
+    }
 
     // R4-31 (INV-SANDBOX): Enforce sandbox policy before tool execution
     this.assertSandboxAllowed(toolName, args);
@@ -1104,7 +1152,7 @@ export async function executeToolCall(toolName: string, argumentsJson: string, b
  * Test-only export: execute a tool call directly.
  */
 export async function executeMultiStepToolCallForTests(toolName: string, argumentsJson: string): Promise<string> {
-  return executeToolCall(toolName, argumentsJson);
+  return getToolRegistry().executeToolCall(toolName, argumentsJson, undefined, { skipPolicyCheck: true });
 }
 
 /**

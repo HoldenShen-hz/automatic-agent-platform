@@ -54,6 +54,7 @@ vi.mock("@aa/shared-domain", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
+  DEFAULT_ACCEPT_VERSIONS: ["2026-04-01", "2026-01-01"],
   BrowserWSClient: vi.fn(),
   DefaultRESTClient: vi.fn(),
   HttpTransport: vi.fn(),

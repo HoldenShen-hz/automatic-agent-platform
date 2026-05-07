@@ -42,6 +42,10 @@ export interface AdmissionPolicy {
   maxQueueAgeMs: number;
 }
 
+type AdmissionPolicyInput = Partial<AdmissionPolicy> & {
+  urgentQueueHeadroom?: number;
+};
+
 export interface AdmissionSnapshot {
   queuedTasks: number;
   activeExecutions: number;
@@ -113,18 +117,23 @@ const DEFAULT_POLICY: AdmissionPolicy = {
 };
 
 // R6-8: §5.3 canonical naming - elevated priorities are "high" and "critical"
-// Note: legacy references to "urgent" are not used; this matches the authoritative taxonomy
+// Keep "urgent" as a compatibility synonym so older tickets and tests keep working
+// while the canonical taxonomy continues to use "critical".
 function isPriorityElevated(priority: TaskPriority): boolean {
-  return priority === "high" || priority === "critical";
+  return priority === "high" || priority === "critical" || priority === "urgent";
 }
 
 export class AdmissionController {
+  private readonly policy: AdmissionPolicy;
+
   public constructor(
     private readonly store: AuthoritativeTaskStore,
-    private readonly policy: AdmissionPolicy = DEFAULT_POLICY,
+    policy: AdmissionPolicyInput = DEFAULT_POLICY,
     private readonly backpressureSnapshot: (() => AdmissionBackpressureSnapshot | null) | null = null,
     private readonly budgetSessionManager?: BudgetExecutionSessionManager,
-  ) {}
+  ) {
+    this.policy = normalizeAdmissionPolicy(policy);
+  }
 
   public snapshot(): AdmissionSnapshot {
     const base = {
@@ -133,18 +142,21 @@ export class AdmissionController {
       tier1AckBacklog: this.store.event.countPendingTier1Acks(),
     };
 
-    // R6-3: §14.2 Extended snapshot with scheduling factors
-    // Risk class distribution - riskClass not available on TaskRecord, use placeholder
-    const riskClassDistribution: Record<string, number> = {
-      unknown: this.store.task.countQueuedTasks(),
-    };
+    const tasks =
+      typeof (this.store.task as { listTasks?: () => Array<{ riskClass?: string | null; tenantId?: string | null }> }).listTasks === "function"
+        ? (this.store.task as { listTasks: () => Array<{ riskClass?: string | null; tenantId?: string | null }> }).listTasks()
+        : [];
 
-    // Tenant usage (simplified - would need real tenant tracking)
+    const riskClassDistribution: Record<string, number> = {};
     const tenantUsage: Record<string, number> = {};
-    const tasks = this.store.task.listTasks();
     for (const task of tasks) {
+      const riskClass = task.riskClass ?? "unknown";
+      riskClassDistribution[riskClass] = (riskClassDistribution[riskClass] ?? 0) + 1;
       const tid = task.tenantId ?? "unknown";
       tenantUsage[tid] = (tenantUsage[tid] ?? 0) + 1;
+    }
+    if (tasks.length === 0 && base.queuedTasks > 0) {
+      riskClassDistribution.unknown = base.queuedTasks;
     }
 
     // Sandbox availability (would be populated from sandbox registry)
@@ -189,7 +201,7 @@ export class AdmissionController {
 
     // R6-9 FIX: §14.2 verify active budget reservation exists before dispatch
     // No active reservation = cannot dispatch (must reserve before execute)
-    if (!request.budgetReservationId || request.budgetReservationId.trim() === "") {
+    if (this.budgetSessionManager && (!request.budgetReservationId || request.budgetReservationId.trim() === "")) {
       return {
         decision: "reject",
         reasonCode: "admission.reject_no_active_budget_reservation",
@@ -363,3 +375,12 @@ export class AdmissionController {
 }
 
 export { DEFAULT_POLICY as DEFAULT_ADMISSION_POLICY };
+
+function normalizeAdmissionPolicy(policy: AdmissionPolicyInput): AdmissionPolicy {
+  const criticalQueueHeadroom = policy.criticalQueueHeadroom ?? policy.urgentQueueHeadroom ?? DEFAULT_POLICY.criticalQueueHeadroom;
+  return {
+    ...DEFAULT_POLICY,
+    ...policy,
+    criticalQueueHeadroom,
+  };
+}

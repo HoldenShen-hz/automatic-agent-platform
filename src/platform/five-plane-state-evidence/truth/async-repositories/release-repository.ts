@@ -27,7 +27,7 @@ export class AsyncReleaseRepository {
         deployment_credential_ref, publish_workflow_path, deploy_workflow_path,
         required_readiness_checks_json, recommended_commands_json, task_id, json_artifact_uri,
         markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
       record.bundleId,
       record.environment,
       record.version,
@@ -62,7 +62,7 @@ export class AsyncReleaseRepository {
         registry_lease_id, registry_lease_status, registry_lease_expires_at, registry_lease_revoked_at,
         publish_workflow_run_id, publish_workflow_run_url, build_command, publish_command, command_results_json,
         task_id, json_artifact_uri, markdown_artifact_uri, generated_at, exported_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
       record.executionId,
       record.bundleId,
       record.environment,

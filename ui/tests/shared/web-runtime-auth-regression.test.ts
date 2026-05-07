@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@aa/shared-api-client", () => ({
+  DEFAULT_ACCEPT_VERSIONS: ["2026-04-01", "2026-01-01"],
   BrowserWSClient: mocks.BrowserWSClient,
   DefaultRESTClient: mocks.DefaultRESTClient,
   HttpTransport: mocks.HttpTransport,

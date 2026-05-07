@@ -20,7 +20,7 @@
 // CSI cursor/erase sequences, OSC (Operating System Command) sequences, and other ANSI sequences.
 // Attackers could use these other sequences for terminal injection attacks.
 // eslint-disable-next-line no-control-regex
-const ANSI_REGEX = /[\u001b\u009b][\x40-\x7e]|[\u001b\u009b\]\x8f\x91-\x97][\x20-\x7e]*(?:[\x07\x08\u001b\\]|\x9c|\x98|\x9d)?|[\u001bP-Z\$][^\x07]*(?:\x07|\u001b\\)?/g;
+const ANSI_REGEX = /[\u001b\u009b][\x40-\x7e]|[\u001b\u009b\]\x8f\x91-\x97][\x20-\x7e]*(?:[\x07\x08\u001b\\]|\x9c|\x98|\x9d)?|[\u001b\u009b][P-Z\$][^\x07]*(?:\x07|\u001b\\)?/g;
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const toolOutputSanitizerLogger = new StructuredLogger({ retentionLimit: 100 });

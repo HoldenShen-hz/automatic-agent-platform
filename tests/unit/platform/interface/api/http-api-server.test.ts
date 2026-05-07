@@ -532,6 +532,124 @@ test("POST /v1/auth/token exchanges API key for bearer token", async () => {
   }
 });
 
+test("GET /api/v1/meta/contract-version exposes the canonical contract-version route and payload shape", async () => {
+  const { server } = createTestServer();
+
+  try {
+    const response = await server.inject({
+      method: "GET",
+      url: "/api/v1/meta/contract-version",
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json<{
+      requestId: string;
+      data: {
+        contractVersion: string;
+        minServerVersion: string;
+        supportedVersions: string[];
+        version: string;
+        minVersion: string;
+      };
+    }>();
+    assert.equal(body.data.contractVersion, "2026-04-01");
+    assert.equal(body.data.minServerVersion, "2026-01-01");
+    assert.deepEqual(body.data.supportedVersions, ["2026-04-01", "2026-01-01"]);
+    assert.equal(body.data.version, body.data.contractVersion);
+    assert.equal(body.data.minVersion, body.data.minServerVersion);
+  } finally {
+    await server.stop();
+  }
+});
+
+test("workflow builder routes provide CRUD, validate, and publish operations", async () => {
+  const { server, authService } = createTestServer();
+  const operatorToken = authService.exchangeApiKey("test-operator-key").accessToken;
+
+  try {
+    const createResponse = await server.inject({
+      method: "POST",
+      url: "/api/v1/workflows/builder",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+        "content-type": "application/json",
+        "Idempotency-Key": "workflow-builder-create",
+      },
+      body: JSON.stringify({
+        name: "Builder Workflow",
+        description: "workflow builder api",
+        nodes: [
+          { nodeId: "node_1", label: "Draft plan" },
+          { nodeId: "node_2", label: "Approve plan" },
+        ],
+        edges: [{ fromNodeId: "node_1", toNodeId: "node_2" }],
+      }),
+    });
+    assert.equal(createResponse.statusCode, 201, createResponse.body);
+    const createdBody = createResponse.json<{ requestId: string; data: { workflow: { workflowId: string; status: string } } }>();
+    const workflowId = createdBody.data.workflow.workflowId;
+    assert.equal(createdBody.data.workflow.status, "draft");
+
+    const listResponse = await server.inject({
+      method: "GET",
+      url: "/api/v1/workflows/builder",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+      },
+    });
+    assert.equal(listResponse.statusCode, 200);
+    const listBody = listResponse.json<{ requestId: string; data: { workflows: Array<{ workflowId: string }> } }>();
+    assert.ok(listBody.data.workflows.some((workflow) => workflow.workflowId === workflowId));
+
+    const validateResponse = await server.inject({
+      method: "POST",
+      url: "/api/v1/workflows/builder/validate",
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+        "content-type": "application/json",
+        "Idempotency-Key": "workflow-builder-validate",
+      },
+      body: JSON.stringify({
+        nodes: [
+          { nodeId: "node_1", label: "Draft plan" },
+          { nodeId: "node_2", label: "Approve plan" },
+        ],
+        edges: [{ fromNodeId: "node_1", toNodeId: "node_2" }],
+      }),
+    });
+    assert.equal(validateResponse.statusCode, 200);
+    const validateBody = validateResponse.json<{ requestId: string; data: { validation: { valid: boolean } } }>();
+    assert.equal(validateBody.data.validation.valid, true);
+
+    const publishResponse = await server.inject({
+      method: "POST",
+      url: `/api/v1/workflows/builder/${workflowId}/publish`,
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+        "content-type": "application/json",
+        "Idempotency-Key": "workflow-builder-publish",
+      },
+      body: JSON.stringify({ version: "1.0.0" }),
+    });
+    assert.equal(publishResponse.statusCode, 200);
+    const publishBody = publishResponse.json<{ requestId: string; data: { workflow: { status: string; publishedAt: string | null } } }>();
+    assert.equal(publishBody.data.workflow.status, "published");
+    assert.ok(publishBody.data.workflow.publishedAt);
+
+    const deleteResponse = await server.inject({
+      method: "DELETE",
+      url: `/api/v1/workflows/builder/${workflowId}`,
+      headers: {
+        authorization: `Bearer ${operatorToken}`,
+        "Idempotency-Key": "workflow-builder-delete",
+      },
+    });
+    assert.equal(deleteResponse.statusCode, 200);
+  } finally {
+    await server.stop();
+  }
+});
+
 test("POST /v1/auth/token rejects empty API key", async () => {
   const { server } = createTestServer();
 
@@ -1261,7 +1379,8 @@ test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", 
   const promptRegistryService = new HierarchicalPromptRegistryService();
   promptRegistryService.registerBundle({
     name: "system.default",
-    version: "1.0.0",
+    version: 1,
+    displayVersion: "v1",
     domain: "global",
     taskType: "general",
     packId: undefined,
@@ -1269,6 +1388,12 @@ test("GET /v1/prompts returns registered prompt bundles through HttpApiServer", 
     userPrompt: undefined,
     fewShotExamples: undefined,
     constraints: undefined,
+    compatibilityMatrix: {
+      toolSchemaVersions: [{ toolName: "test-tool", schemaVersion: 1 }],
+      evaluatorSchemaVersions: [{ evaluatorName: "test-evaluator", schemaVersion: 1 }],
+      domainDescriptorVersions: [{ domainId: "global", version: 1 }],
+      modelRoutingProfiles: [{ modelId: "balanced/default", profileVersion: 1 }],
+    },
     metadata: undefined,
   }, "global");
   const { server, authService } = createTestServer({ promptRegistryService });
@@ -1495,8 +1620,12 @@ test("returns 404 for unsupported HTTP methods", async () => {
     const response = await server.inject({
       method: "DELETE",
       url: "/api/v1/tasks",
+      headers: {
+        "Idempotency-Key": "delete-tasks-test",
+      },
     });
 
+    // DELETE /api/v1/tasks is not a valid route - should return 404
     assert.equal(response.statusCode, 404);
   } finally {
     await server.stop();
@@ -1566,7 +1695,7 @@ test("inject responses include API version headers", async () => {
       url: "/healthz",
     });
 
-    assert.equal(response.headers["x-api-version"], "v1");
+    assert.equal(response.headers["x-api-version"], "2026-04-01");
     assert.equal(response.headers["x-app-version"], "0.1.0");
     assert.ok(typeof response.headers["content-length"] === "string");
   } finally {
@@ -1588,7 +1717,7 @@ test("network responses compress large JSON payloads with gzip and preserve head
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.headers["content-encoding"], "gzip");
-    assert.equal(response.headers["x-api-version"], "v1");
+    assert.equal(response.headers["x-api-version"], "2026-04-01");
     assert.ok(String(response.headers["content-type"]).startsWith("application/json"));
     const decompressed = gunzipSync(response.body).toString("utf8");
     assert.match(decompressed, /"openapi"/);
@@ -1881,7 +2010,9 @@ test("rate limiter is enforced in the HttpApiServer request pipeline", async () 
 });
 
 test("API responses include production security headers and CORS metadata", async () => {
-  const { server } = createTestServer();
+  const { server } = createTestServer({
+    cors: { allowedOrigins: ["https://console.example.test"], credentials: true },
+  });
 
   try {
     const response = await server.inject({
@@ -1894,7 +2025,7 @@ test("API responses include production security headers and CORS metadata", asyn
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
     assert.equal(response.headers["referrer-policy"], "no-referrer");
-    assert.match(String(response.headers["content-security-policy"]), /default-src 'none'/);
+    assert.match(String(response.headers["content-security-policy"]), /default-src 'self'/);
     assert.equal(response.headers["access-control-allow-origin"], "https://console.example.test");
     assert.equal(response.headers["access-control-allow-credentials"], "true");
   } finally {
@@ -1903,7 +2034,9 @@ test("API responses include production security headers and CORS metadata", asyn
 });
 
 test("OPTIONS preflight returns 204 with access-control headers", async () => {
-  const { server } = createTestServer();
+  const { server } = createTestServer({
+    cors: { allowedOrigins: ["https://console.example.test"], credentials: true },
+  });
 
   try {
     const response = await server.inject({

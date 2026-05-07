@@ -41,6 +41,14 @@ import { createPrincipalRef } from "../../../contracts/executable-contracts/inde
 import { RuntimeEntryGuard } from "../../../five-plane-orchestration/harness/runtime/runtime-entry-guard.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import { execute as executeQuery } from "../../../state-evidence/truth/sqlite/query-helper.js";
+import {
+  WorkflowBuilderService,
+  type CreateWorkflowRequest,
+  type UpdateWorkflowRequest,
+  type ValidateWorkflowRequest,
+  type PublishWorkflowRequest,
+} from "../../../../interaction/ux/workflow-builder-service.js";
+import { z } from "zod";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -73,6 +81,7 @@ export interface TaskRouteDeps {
   missionControlService: MissionControlService;
   taskStore?: AuthoritativeTaskStore;
   intakeAdmissionService?: IntakeAdmissionService;
+  workflowBuilderService?: WorkflowBuilderService;
 }
 
 interface PaginationCursor {
@@ -80,7 +89,44 @@ interface PaginationCursor {
   readonly taskId: string;
 }
 
+const workflowNodeSchema = z.object({
+  nodeId: z.string().min(1),
+  label: z.string().min(1),
+  componentId: z.string().min(1).optional(),
+}).strict();
+
+const workflowEdgeSchema = z.object({
+  fromNodeId: z.string().min(1),
+  toNodeId: z.string().min(1),
+}).strict();
+
+const createWorkflowRequestSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  nodes: z.array(workflowNodeSchema),
+  edges: z.array(workflowEdgeSchema),
+  divisionId: z.string().min(1).optional(),
+  tenantId: z.string().min(1).optional(),
+}).strict();
+
+const updateWorkflowRequestSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  nodes: z.array(workflowNodeSchema).optional(),
+  edges: z.array(workflowEdgeSchema).optional(),
+}).strict();
+
+const validateWorkflowRequestSchema = z.object({
+  nodes: z.array(workflowNodeSchema.pick({ nodeId: true, label: true })),
+  edges: z.array(workflowEdgeSchema),
+}).strict();
+
+const publishWorkflowRequestSchema = z.object({
+  version: z.string().min(1).optional(),
+}).strict();
+
 export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
+  const workflowBuilderService = deps.workflowBuilderService ?? new WorkflowBuilderService();
   return [
     // ── api/v1 ───────────────────────────────────────────────────────────────────
     {
@@ -123,6 +169,155 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
           hasMore: page.hasMore,
           limit: page.limit,
         });
+      },
+    },
+    {
+      method: "GET",
+      pathname: "/api/v1/workflows/builder",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const limit = readLimit(ctx.request, 25);
+        return buildJsonResponse(ctx.requestId, 200, {
+          workflows: workflowBuilderService.listWorkflows(limit),
+          limit,
+        });
+      },
+    },
+    {
+      method: "POST",
+      pathname: "/api/v1/workflows/builder",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, createWorkflowRequestSchema.parse);
+        let workflow;
+        try {
+          workflow = workflowBuilderService.createWorkflow(payload as CreateWorkflowRequest);
+        } catch (error) {
+          if (error instanceof Error && error.message.startsWith("workflow_builder.invalid_graph:")) {
+            throw new ApiError(400, "api.workflow_builder_invalid_graph", error.message);
+          }
+          throw error;
+        }
+        return buildJsonResponse(ctx.requestId, 201, { workflow });
+      },
+    },
+    {
+      method: "POST",
+      pathname: "/api/v1/workflows/builder/validate",
+      handler: (ctx) => {
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, validateWorkflowRequestSchema.parse);
+        const validation = workflowBuilderService.validateWorkflow(payload as ValidateWorkflowRequest);
+        return buildJsonResponse(ctx.requestId, 200, { validation });
+      },
+    },
+    {
+      method: "GET",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "workflows"
+          || segments[3] !== "builder"
+          || segments.length !== 5
+        ) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const workflow = workflowBuilderService.getWorkflow(segments[4] ?? "");
+        if (workflow == null) {
+          throw new ApiError(404, "api.workflow_builder_not_found", "Workflow builder definition not found.");
+        }
+        return buildJsonResponse(ctx.requestId, 200, { workflow });
+      },
+    },
+    {
+      method: "PUT",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "workflows"
+          || segments[3] !== "builder"
+          || segments.length !== 5
+        ) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, updateWorkflowRequestSchema.parse);
+        let workflow;
+        try {
+          workflow = workflowBuilderService.updateWorkflow({
+            workflowId: segments[4] ?? "",
+            ...(payload as Omit<UpdateWorkflowRequest, "workflowId">),
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message.startsWith("workflow_builder.invalid_graph:")) {
+            throw new ApiError(400, "api.workflow_builder_invalid_graph", error.message);
+          }
+          throw error;
+        }
+        if (workflow == null) {
+          throw new ApiError(404, "api.workflow_builder_not_found", "Workflow builder definition not found.");
+        }
+        return buildJsonResponse(ctx.requestId, 200, { workflow });
+      },
+    },
+    {
+      method: "DELETE",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "workflows"
+          || segments[3] !== "builder"
+          || segments.length !== 5
+        ) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const removed = workflowBuilderService.deleteWorkflow(segments[4] ?? "");
+        if (!removed) {
+          throw new ApiError(404, "api.workflow_builder_not_found", "Workflow builder definition not found.");
+        }
+        return buildJsonResponse(ctx.requestId, 200, { removed: true, workflowId: segments[4] ?? "" });
+      },
+    },
+    {
+      method: "POST",
+      pathname: null,
+      segments: true,
+      handler: (ctx) => {
+        const { segments } = ctx.route;
+        if (
+          segments[0] !== "api"
+          || segments[1] !== "v1"
+          || segments[2] !== "workflows"
+          || segments[3] !== "builder"
+          || segments.length !== 6
+          || segments[5] !== "publish"
+        ) {
+          return null;
+        }
+        requirePrincipal(ctx.request, deps.authService, "operator");
+        const payload = readValidatedJsonBody(ctx.request.body, publishWorkflowRequestSchema.parse);
+        const workflow = workflowBuilderService.publishWorkflow({
+          workflowId: segments[4] ?? "",
+          ...(payload as Omit<PublishWorkflowRequest, "workflowId">),
+        });
+        if (workflow == null) {
+          throw new ApiError(404, "api.workflow_builder_not_found", "Workflow builder definition not found.");
+        }
+        return buildJsonResponse(ctx.requestId, 200, { workflow });
       },
     },
     {

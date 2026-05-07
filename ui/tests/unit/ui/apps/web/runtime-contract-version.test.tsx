@@ -40,6 +40,7 @@ vi.mock("@aa/shared-domain", () => ({
 const fetchContractVersion = vi.fn();
 
 vi.mock("@aa/shared-api-client", () => ({
+  DEFAULT_ACCEPT_VERSIONS: ["2026-04-01", "2026-01-01"],
   BrowserWSClient: vi.fn(),
   DefaultRESTClient: vi.fn(),
   HttpTransport: vi.fn(),
@@ -71,15 +72,15 @@ vi.mock("@aa/shared-platform", () => ({
 describe("runtime contract version bootstrap", () => {
   it("returns a warning banner when server and client contract versions drift", async () => {
     fetchContractVersion.mockResolvedValueOnce({
-      contractVersion: "v2",
-      minServerVersion: "v2",
-      supportedVersions: ["v2"],
+      contractVersion: "2027-01-01",
+      minServerVersion: "2027-01-01",
+      supportedVersions: ["2027-01-01"],
     });
 
     await expect(checkWebContractVersion({} as never)).resolves.toEqual({
       tone: "warning",
       title: "Contract version mismatch",
-      message: "Server contract v2 is outside the client-supported set v1.",
+      message: "Server contract 2027-01-01 is outside the client-supported set 2026-04-01, 2026-01-01.",
     });
   });
 
@@ -112,12 +113,12 @@ describe("runtime contract version bootstrap", () => {
         startupBanner={{
           tone: "warning",
           title: "Contract version mismatch",
-          message: "Server contract v2 is outside the client-supported set v1.",
+          message: "Server contract 2027-01-01 is outside the client-supported set 2026-04-01, 2026-01-01.",
         }}
       />,
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent("Contract version mismatch");
-    expect(screen.getByRole("alert")).toHaveTextContent("Server contract v2 is outside the client-supported set v1.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Server contract 2027-01-01 is outside the client-supported set 2026-04-01, 2026-01-01.");
   });
 });

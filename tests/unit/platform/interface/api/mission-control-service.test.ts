@@ -18,6 +18,15 @@ test("mission control snapshot aggregates task, approval, pmf, billing, and perc
     assert.equal(snapshot.productSignals.latestPmfReport?.profileName, "phase3_default");
     assert.ok(snapshot.productSignals.perceptionBriefs.length >= 1);
     assert.ok(snapshot.gatewayTargets.some((target) => target.displayName === "Finance Team"));
+    assert.equal(typeof snapshot.successRate, "number");
+    assert.equal(typeof snapshot.avgDurationMs, "number");
+    assert.equal(typeof snapshot.activeAgents, "number");
+    assert.equal(typeof snapshot.queueDepth, "number");
+    assert.equal(typeof snapshot.errorRate, "number");
+    assert.equal(typeof snapshot.p50LatencyMs, "number");
+    assert.equal(typeof snapshot.p99LatencyMs, "number");
+    assert.equal(typeof snapshot.budgetUtilizationPercent, "number");
+    assert.equal(typeof snapshot.uptimePercent, "number");
 
     const workflows = context.missionControlService.listWorkflowCockpits(10);
     assert.ok(workflows.some((workflow) => workflow.taskId === context.seededTaskId));
@@ -25,10 +34,23 @@ test("mission control snapshot aggregates task, approval, pmf, billing, and perc
     const workflowCockpit = context.missionControlService.getWorkflowCockpit(context.seededTaskId);
     assert.equal(workflowCockpit.summary.taskId, context.seededTaskId);
     assert.ok(workflowCockpit.timeline.entries.length >= 1);
+    assert.ok(Array.isArray(workflowCockpit.presentation.planGraph.nodes));
+    assert.ok(Array.isArray(workflowCockpit.presentation.planGraph.edges));
+    assert.ok(Array.isArray(workflowCockpit.presentation.nodeRuns));
+    assert.equal(typeof workflowCockpit.presentation.progressPercent, "number");
+    assert.equal(typeof workflowCockpit.presentation.elapsedTimeMs, "number");
+    assert.equal(typeof workflowCockpit.presentation.estimatedRemainingMs, "number");
+    assert.equal(typeof workflowCockpit.presentation.keyMetrics.successRate, "number");
 
     const stability = context.missionControlService.getStabilityPanel(10);
     assert.equal(stability.health.status, "ok");
     assert.ok(stability.workers.some((worker) => worker.workerId === context.seededWorkerId));
+    assert.equal(stability.activeTaskCount, stability.activeTasks.length);
+    assert.equal(stability.queuedTaskCount, stability.queuedTasks.length);
+    assert.equal(stability.blockedTaskCount, stability.blockedTasks.length);
+    assert.equal(stability.pendingApprovalCount, stability.pendingApprovals.length);
+    assert.equal(stability.workerCount, stability.workers.length);
+    assert.equal(stability.findingsCount, stability.findings.length);
 
     const admin = context.missionControlService.getAdminTakeoverConsole(context.seededTaskId);
     assert.equal(admin.scope.harnessRunId, context.seededTaskId);

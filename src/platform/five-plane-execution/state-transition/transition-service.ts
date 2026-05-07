@@ -967,73 +967,93 @@ class TaskTerminalTransitionService {
     // (idempotent success) rather than throwing a noop transition error.
     // This handles cases where concurrent transitions or race conditions result
     // in the entity already being terminal when we attempt to transition.
-    // R9-02: Check if execution is already in its terminal state.
-    // If so, skip the execution transition since it was already handled by the step loop.
-    // This prevents a noop transition error when execution is already terminal but
-    // task/workflow/session are still transitioning.
+    // R9-02: Check if each entity is already in its terminal state.
+    // If so, skip that entity's transition since it was already handled.
+    // This prevents a noop transition error when individual entities are already
+    // terminal but others (like task) are still transitioning.
+    const taskAlreadyTerminal = freshTaskStatus === input.terminalStatus;
+    const workflowAlreadyTerminal = freshWorkflowStatus === workflowTerminal;
+    const sessionAlreadyTerminal = freshSessionStatus === sessionTerminal;
     const executionAlreadyTerminal = freshExecutionStatus === executionTerminal;
-    if (freshTaskStatus === input.terminalStatus && freshWorkflowStatus === workflowTerminal && freshSessionStatus === sessionTerminal && executionAlreadyTerminal) {
+
+    // If ALL entities are already in their terminal states, this is a true noop - return early
+    if (taskAlreadyTerminal && workflowAlreadyTerminal && sessionAlreadyTerminal && executionAlreadyTerminal) {
       // All entities already in terminal state - noop success
       return;
     }
-    taskStateMachine.assertTransition(freshTaskStatus, input.terminalStatus);
-    workflowStateMachine.assertTransition(freshWorkflowStatus, workflowTerminal);
-    sessionStateMachine.assertTransition(freshSessionStatus, sessionTerminal);
+
+    // For each entity: only assert transition if not already terminal
+    if (!taskAlreadyTerminal) {
+      taskStateMachine.assertTransition(freshTaskStatus, input.terminalStatus);
+    }
+    if (!workflowAlreadyTerminal) {
+      workflowStateMachine.assertTransition(freshWorkflowStatus, workflowTerminal);
+    }
+    if (!sessionAlreadyTerminal) {
+      sessionStateMachine.assertTransition(freshSessionStatus, sessionTerminal);
+    }
     if (!executionAlreadyTerminal) {
       executionStateMachine.assertTransition(freshExecutionStatus, executionTerminal);
     }
 
     // R4-28 (INV-STATE-001): Append PlatformFactEvent BEFORE state mutations - event is source of truth
-    // This establishes the terminal transition as a PlatformFactEvent before any derived table updates
-    const taskPlatformEvent = buildLegacyTransitionPlatformFactEvent({
-      aggregateType: "Task",
-      aggregateId: input.taskId,
-      traceId: input.context.traceId,
-      payload: injectTraceContext({
-        fromStatus: freshTaskStatus,
-        toStatus: input.terminalStatus,
-        reasonCode: input.context.reasonCode,
-        occurredAt: input.context.occurredAt,
-      }, traceContext),
-      occurredAt: input.context.occurredAt,
-      correlationId: input.taskId,
-      tenantId: currentTask?.tenantId ?? "global",
-      reasonCode: input.context.reasonCode,
-      emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId ?? "system",
-    });
-    const workflowPlatformEvent = buildLegacyTransitionPlatformFactEvent({
-      aggregateType: "Workflow",
-      aggregateId: input.taskId,
-      traceId: input.context.traceId,
-      payload: injectTraceContext({
-        fromStatus: freshWorkflowStatus,
-        toStatus: workflowTerminal,
-        reasonCode: input.context.reasonCode,
-        occurredAt: input.context.occurredAt,
-      }, traceContext),
-      occurredAt: input.context.occurredAt,
-      correlationId: input.taskId,
-      reasonCode: input.context.reasonCode,
-      emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId ?? "system",
-    });
-    const sessionPlatformEvent = buildLegacyTransitionPlatformFactEvent({
-      aggregateType: "Session",
-      aggregateId: input.sessionId,
-      traceId: input.context.traceId,
-      payload: injectTraceContext({
-        fromStatus: freshSessionStatus,
-        toStatus: sessionTerminal,
-        reasonCode: input.context.reasonCode,
-        occurredAt: input.context.occurredAt,
-      }, traceContext),
-      occurredAt: input.context.occurredAt,
-      correlationId: input.taskId,
-      reasonCode: input.context.reasonCode,
-      emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId ?? "system",
-    });
+    // This establishes the terminal transition as a PlatformFactEvent before any derived table updates.
+    // Skip events for entities that are already in their terminal state (no actual transition occurred).
+    const taskPlatformEvent = !taskAlreadyTerminal
+      ? buildLegacyTransitionPlatformFactEvent({
+          aggregateType: "Task",
+          aggregateId: input.taskId,
+          traceId: input.context.traceId,
+          payload: injectTraceContext({
+            fromStatus: freshTaskStatus,
+            toStatus: input.terminalStatus,
+            reasonCode: input.context.reasonCode,
+            occurredAt: input.context.occurredAt,
+          }, traceContext),
+          occurredAt: input.context.occurredAt,
+          correlationId: input.taskId,
+          tenantId: currentTask?.tenantId ?? "global",
+          reasonCode: input.context.reasonCode,
+          emittedBy: "TaskTerminalTransitionService",
+          principal: input.context.actorId ?? "system",
+        })
+      : null;
+    const workflowPlatformEvent = !workflowAlreadyTerminal
+      ? buildLegacyTransitionPlatformFactEvent({
+          aggregateType: "Workflow",
+          aggregateId: input.taskId,
+          traceId: input.context.traceId,
+          payload: injectTraceContext({
+            fromStatus: freshWorkflowStatus,
+            toStatus: workflowTerminal,
+            reasonCode: input.context.reasonCode,
+            occurredAt: input.context.occurredAt,
+          }, traceContext),
+          occurredAt: input.context.occurredAt,
+          correlationId: input.taskId,
+          reasonCode: input.context.reasonCode,
+          emittedBy: "TaskTerminalTransitionService",
+          principal: input.context.actorId ?? "system",
+        })
+      : null;
+    const sessionPlatformEvent = !sessionAlreadyTerminal
+      ? buildLegacyTransitionPlatformFactEvent({
+          aggregateType: "Session",
+          aggregateId: input.sessionId,
+          traceId: input.context.traceId,
+          payload: injectTraceContext({
+            fromStatus: freshSessionStatus,
+            toStatus: sessionTerminal,
+            reasonCode: input.context.reasonCode,
+            occurredAt: input.context.occurredAt,
+          }, traceContext),
+          occurredAt: input.context.occurredAt,
+          correlationId: input.taskId,
+          reasonCode: input.context.reasonCode,
+          emittedBy: "TaskTerminalTransitionService",
+          principal: input.context.actorId ?? "system",
+        })
+      : null;
     const executionPlatformEvent = !executionAlreadyTerminal
       ? buildLegacyTransitionPlatformFactEvent({
           aggregateType: "Execution",
@@ -1052,12 +1072,10 @@ class TaskTerminalTransitionService {
           principal: input.context.actorId ?? "system",
         })
       : null;
-    this.repository.appendPlatformFactEvent(taskPlatformEvent);
-    this.repository.appendPlatformFactEvent(workflowPlatformEvent);
-    this.repository.appendPlatformFactEvent(sessionPlatformEvent);
-    if (executionPlatformEvent) {
-      this.repository.appendPlatformFactEvent(executionPlatformEvent);
-    }
+    if (taskPlatformEvent) this.repository.appendPlatformFactEvent(taskPlatformEvent);
+    if (workflowPlatformEvent) this.repository.appendPlatformFactEvent(workflowPlatformEvent);
+    if (sessionPlatformEvent) this.repository.appendPlatformFactEvent(sessionPlatformEvent);
+    if (executionPlatformEvent) this.repository.appendPlatformFactEvent(executionPlatformEvent);
 
     // R9-02: updateTaskOutputCas uses updated_at as fencing token (§25.3) to prevent
     // TOCTOU races. Only updates if the task's updated_at matches expectedTaskUpdatedAt

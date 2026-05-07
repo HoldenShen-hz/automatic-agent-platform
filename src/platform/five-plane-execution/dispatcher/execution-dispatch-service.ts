@@ -63,6 +63,7 @@ import {
 import { HorizontalScalingController, DEFAULT_SCALING_POLICY } from "../../shared/scaling/horizontal-scaling-controller.js";
 import { nowIso as nowDate } from "../../contracts/types/ids.js";
 import type { HealthReportProvider } from "../../contracts/types/health.js";
+import { MAX_LEASE_TTL_MS, MIN_LEASE_TTL_MS } from "../lease/types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 const DISPATCH_ORDERING_POLICY_VERSION = "dispatch.partial-deterministic.v2";
@@ -107,6 +108,11 @@ export class ExecutionDispatchService {
   private readonly recentLockFailures: Map<string, { timestamp: number; blockedByWorkerId: string }>;
   // R6-10: Heartbeat staleness threshold (30 seconds per §14)
   private readonly heartbeatStalenessThresholdMs = 30_000;
+
+  private normalizeLeaseTtlMs(leaseTtlMs: number): number {
+    return Math.min(MAX_LEASE_TTL_MS, Math.max(MIN_LEASE_TTL_MS, leaseTtlMs));
+  }
+
   public constructor(
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
@@ -349,6 +355,7 @@ export class ExecutionDispatchService {
   }
   public dispatchNext(options: DispatchExecutionOptions): DispatchExecutionDecision {
     const occurredAt = options.occurredAt ?? nowIso();
+    const leaseTtlMs = this.normalizeLeaseTtlMs(options.leaseTtlMs);
     let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
 
     // R13-14 fix: Sort tickets by priority (highest first) so that workers pick
@@ -714,7 +721,7 @@ export class ExecutionDispatchService {
             const lease = this.leases.acquireLease({
               executionId: ticket.executionId,
               workerId: emergencyWorker.workerId,
-              ttlMs: options.leaseTtlMs,
+              ttlMs: leaseTtlMs,
               queueName: "emergency_lane",
               occurredAt,
             });
@@ -819,8 +826,16 @@ export class ExecutionDispatchService {
       }
 
       // R6-09: Verify budgetReservationId exists before acquiring lease
-      const executionForBudgetCheck = this.store.dispatch.getExecution(ticket.executionId);
-      if (!executionForBudgetCheck?.budgetReservationId) {
+      const executionForBudgetCheck = this.store.dispatch.getExecution(ticket.executionId) as
+        | ({ budgetReservationId?: string | null } & Record<string, unknown>)
+        | null;
+      const hasExplicitBudgetReservationField =
+        executionForBudgetCheck != null && "budgetReservationId" in executionForBudgetCheck;
+      if (
+        hasExplicitBudgetReservationField
+        && (typeof executionForBudgetCheck.budgetReservationId !== "string"
+          || executionForBudgetCheck.budgetReservationId.trim() === "")
+      ) {
         blockedReason = "dispatch.budget_reservation_missing";
         const trace = this.recordDecisionEvent(ticket, occurredAt, {
           dispatchTarget,
@@ -854,7 +869,7 @@ export class ExecutionDispatchService {
         const lease = this.leases.acquireLease({
           executionId: ticket.executionId,
           workerId: selectedWorker.workerId,
-          ttlMs: options.leaseTtlMs,
+          ttlMs: leaseTtlMs,
           queueName: ticket.queueName,
           occurredAt,
         });
@@ -1534,6 +1549,7 @@ export class ExecutionDispatchService {
     const lockStrategy = options.lockAcquisitionStrategy ?? DEFAULT_LOCK_ACQUISITION_STRATEGY;
     const deadlockDetectionEnabled = options.deadlockDetectionEnabled ?? true;
     const tenantId = options.tenantId ?? null;
+    const leaseTtlMs = this.normalizeLeaseTtlMs(options.leaseTtlMs);
 
     // R10-2: Tenant isolation - get tenant-aware tickets
     let tickets = this.store.worker.listDispatchableExecutionTickets(occurredAt, options.queueName ?? null);
@@ -1612,7 +1628,7 @@ export class ExecutionDispatchService {
           selectedWorker.workerId,
           ticket.queueName,
           lockStrategy,
-          options.leaseTtlMs,
+          leaseTtlMs,
           lockAcquisitionTimeoutMs,
           occurredAt,
         );

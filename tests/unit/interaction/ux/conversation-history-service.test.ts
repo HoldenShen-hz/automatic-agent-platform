@@ -157,3 +157,43 @@ test("ConversationTurnRecord structure is correct", () => {
   assert.deepEqual(turn.entities, { key: "value" });
   assert.deepEqual(turn.metadata, { custom: "data" });
 });
+
+test("ConversationHistoryService preserves clarification/risk/action option fields required by the UI contract", async () => {
+  const service = new ConversationHistoryService();
+  const session = service.startSession("tenant_1", "user_1");
+
+  const updated = await service.addTurn(session, {
+    role: "assistant",
+    message: "请确认是否发布到生产环境",
+    clarificationState: "awaiting_response",
+    riskPreview: {
+      riskLevel: "high",
+      riskFactors: ["production_release"],
+      mitigationSuggestions: ["request_human_approval"],
+    },
+    actionOptions: [
+      { actionId: "approve", label: "批准", intent: "approval.approve" },
+      { actionId: "revise", label: "修改", intent: "approval.revise" },
+    ],
+  });
+
+  assert.equal(updated.turns[0]?.clarificationState, "awaiting_response");
+  assert.deepEqual(updated.turns[0]?.riskPreview?.riskFactors, ["production_release"]);
+  assert.deepEqual(updated.turns[0]?.actionOptions?.map((item) => item.actionId), ["approve", "revise"]);
+});
+
+test("ConversationHistoryService emits nl.clarification_needed events for realtime consumers", () => {
+  const service = new ConversationHistoryService();
+  const emitted: Array<{ type: string; sessionId: string; turnId: string; prompt: string }> = [];
+  service.setEventEmitter((event) => {
+    emitted.push(event);
+  });
+
+  service.emitClarificationNeeded("conv_123", "turn_123", "请确认预算上限");
+
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0]?.type, "nl.clarification_needed");
+  assert.equal(emitted[0]?.sessionId, "conv_123");
+  assert.equal(emitted[0]?.turnId, "turn_123");
+  assert.equal(emitted[0]?.prompt, "请确认预算上限");
+});

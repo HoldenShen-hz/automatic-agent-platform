@@ -554,3 +554,46 @@ test("WorkflowBuilderService.build falls back to template_step when no component
 
   assert.equal(result.builder.canvas.nodes[0]!.componentId, "template_step_1");
 });
+
+test("WorkflowBuilderService persists workflow CRUD state across create, update, list, publish, and delete", () => {
+  const service = new WorkflowBuilderService();
+
+  const created = service.createWorkflow({
+    name: "Release Workflow",
+    description: "Initial draft",
+    nodes: [
+      { nodeId: "node_1", label: "Draft release" },
+      { nodeId: "node_2", label: "Approve release" },
+    ],
+    edges: [{ fromNodeId: "node_1", toNodeId: "node_2" }],
+    tenantId: "tenant_1",
+  });
+
+  assert.equal(created.status, "draft");
+  assert.equal(service.listWorkflows().length, 1);
+  assert.equal(service.getWorkflow(created.workflowId)?.name, "Release Workflow");
+
+  const updated = service.updateWorkflow({
+    workflowId: created.workflowId,
+    name: "Release Workflow v2",
+    nodes: [
+      { nodeId: "node_1", label: "Draft release" },
+      { nodeId: "node_2", label: "Approve release" },
+      { nodeId: "node_3", label: "Publish release" },
+    ],
+    edges: [
+      { fromNodeId: "node_1", toNodeId: "node_2" },
+      { fromNodeId: "node_2", toNodeId: "node_3" },
+    ],
+  });
+
+  assert.equal(updated?.name, "Release Workflow v2");
+  assert.equal(updated?.nodeCount, 3);
+
+  const published = service.publishWorkflow({ workflowId: created.workflowId, version: "1.0.0" });
+  assert.equal(published?.status, "published");
+  assert.ok(published?.publishedAt);
+
+  assert.equal(service.deleteWorkflow(created.workflowId), true);
+  assert.equal(service.getWorkflow(created.workflowId), null);
+});

@@ -10,6 +10,9 @@
  * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
  */
 
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import {
   isBlockedOutboundHostname,
@@ -54,8 +57,20 @@ export interface WebFetchResult {
   durationMs: number;
 }
 
+export interface WebFetchToolDeps {
+  readonly dnsLookup?: DnsLookupFunction;
+  readonly fetchImplementation?: typeof fetch;
+}
+
 const DEFAULT_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+
+export interface DnsLookupResult {
+  readonly address: string;
+  readonly family: number;
+}
+
+export type DnsLookupFunction = (hostname: string) => Promise<readonly DnsLookupResult[]>;
 
 /**
  * Checks if a hostname is blocked (internal/private IP or localhost).
@@ -116,12 +131,42 @@ export function isInternalUrl(url: URL): boolean {
   return isInternalNetworkUrl(url);
 }
 
+async function defaultDnsLookup(hostname: string): Promise<readonly DnsLookupResult[]> {
+  return lookup(hostname, { all: true, verbatim: true });
+}
+
+/**
+ * Resolves a hostname and rejects it when any resolved address maps to an
+ * internal/private destination. This closes DNS rebinding gaps where a public
+ * hostname later resolves to loopback or RFC1918 space.
+ */
+export async function resolvesToBlockedAddress(
+  hostname: string,
+  dnsLookup: DnsLookupFunction = defaultDnsLookup,
+): Promise<boolean> {
+  const normalizedHostname = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (isBlockedIpOrHostname(normalizedHostname)) {
+    return true;
+  }
+  if (isIP(normalizedHostname) !== 0) {
+    return isBlockedIpOrHostname(normalizedHostname);
+  }
+  try {
+    const resolved = await dnsLookup(normalizedHostname);
+    return resolved.some((entry) => isBlockedIpOrHostname(entry.address));
+  } catch {
+    return false;
+  }
+}
+
 const webFetchLogger = new StructuredLogger({ retentionLimit: 100 });
 
 /**
  * Creates a web fetch tool for retrieving remote content.
  */
-export function createWebFetchTool() {
+export function createWebFetchTool(deps: WebFetchToolDeps = {}) {
+  const dnsLookup = deps.dnsLookup ?? defaultDnsLookup;
+  const fetchImplementation = deps.fetchImplementation ?? globalThis.fetch.bind(globalThis);
   return {
     name: "web_fetch" as const,
 
@@ -180,6 +225,16 @@ export function createWebFetchTool() {
         };
       }
 
+      if (await resolvesToBlockedAddress(url.hostname, dnsLookup)) {
+        return {
+          success: false,
+          status: "blocked",
+          error: "Resolved destination points to an internal/network resource",
+          errorCode: "DNS_REBINDING_BLOCKED",
+          durationMs: Date.now() - startTime,
+        };
+      }
+
       // Set up timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -199,7 +254,7 @@ export function createWebFetchTool() {
           (fetchOptions as { duplex?: string }).duplex = "half";
         }
 
-        response = await fetch(url.toString(), fetchOptions);
+        response = await fetchImplementation(url.toString(), fetchOptions);
       } catch (err) {
         clearTimeout(timeoutId);
         const errorMessage = err instanceof Error ? err.message : "Unknown error";

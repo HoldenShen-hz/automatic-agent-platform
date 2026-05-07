@@ -96,6 +96,13 @@ export interface ValidationResponse {
   readonly errors: readonly string[];
 }
 
+interface StoredWorkflowDefinition extends WorkflowResponse {
+  readonly nodes: readonly { nodeId: string; label: string; componentId?: string }[];
+  readonly edges: readonly { fromNodeId: string; toNodeId: string }[];
+  readonly divisionId: string | null;
+  readonly tenantId: string | null;
+}
+
 function categorizeComponents(components: readonly DraggableComponent[]): ComponentCategory[] {
   const groups = new Map<ComponentCategory["category"], DraggableComponent[]>();
   for (const component of components) {
@@ -335,6 +342,8 @@ function buildCanonicalPlanGraph(
 }
 
 export class WorkflowBuilderService {
+  private readonly workflows = new Map<string, StoredWorkflowDefinition>();
+
   public build(request: WorkflowBuilderRequest): WorkflowBuilderResult {
     const template = normalizeTemplateForBuilder(request.template);
     const stepLabels = template.steps.map((step, index) => resolveStepLabel(step, index));
@@ -394,8 +403,15 @@ export class WorkflowBuilderService {
    * Create a new workflow (REST: POST /workflows)
    */
   public createWorkflow(request: CreateWorkflowRequest): WorkflowResponse {
+    const validation = this.validateWorkflow({
+      nodes: request.nodes.map((node) => ({ nodeId: node.nodeId, label: node.label })),
+      edges: request.edges,
+    });
+    if (!validation.valid) {
+      throw new Error(`workflow_builder.invalid_graph:${validation.errors.join(",")}`);
+    }
     const now = nowIso();
-    return {
+    const workflow: StoredWorkflowDefinition = {
       workflowId: newId("wf"),
       name: request.name,
       description: request.description ?? "",
@@ -405,51 +421,74 @@ export class WorkflowBuilderService {
       createdAt: now,
       updatedAt: now,
       publishedAt: null,
+      nodes: [...request.nodes],
+      edges: [...request.edges],
+      divisionId: request.divisionId ?? null,
+      tenantId: request.tenantId ?? null,
     };
+    this.workflows.set(workflow.workflowId, workflow);
+    return this.toWorkflowResponse(workflow);
   }
 
   /**
    * Get a workflow by ID (REST: GET /workflows/:workflowId)
    */
   public getWorkflow(workflowId: string): WorkflowResponse | null {
-    // In real implementation, this would query the store
-    // For now, return null to indicate not found
-    return null;
+    const workflow = this.workflows.get(workflowId);
+    return workflow == null ? null : this.toWorkflowResponse(workflow);
   }
 
   /**
    * Update an existing workflow (REST: PUT /workflows/:workflowId)
    */
   public updateWorkflow(request: UpdateWorkflowRequest): WorkflowResponse | null {
-    // In real implementation, this would update the store
+    const existing = this.workflows.get(request.workflowId);
+    if (existing == null) {
+      return null;
+    }
+    const nextNodes = request.nodes == null ? existing.nodes : [...request.nodes];
+    const nextEdges = request.edges == null ? existing.edges : [...request.edges];
+    const validation = this.validateWorkflow({
+      nodes: nextNodes.map((node) => ({ nodeId: node.nodeId, label: node.label })),
+      edges: nextEdges,
+    });
+    if (!validation.valid) {
+      throw new Error(`workflow_builder.invalid_graph:${validation.errors.join(",")}`);
+    }
     const now = nowIso();
-    return {
+    const updated: StoredWorkflowDefinition = {
+      ...existing,
       workflowId: request.workflowId,
-      name: request.name ?? "Updated Workflow",
-      description: request.description ?? "",
-      status: "draft",
-      nodeCount: request.nodes?.length ?? 0,
-      edgeCount: request.edges?.length ?? 0,
-      createdAt: now,
+      name: request.name ?? existing.name,
+      description: request.description ?? existing.description,
+      status: existing.status,
+      nodeCount: nextNodes.length,
+      edgeCount: nextEdges.length,
+      nodes: nextNodes,
+      edges: nextEdges,
+      createdAt: existing.createdAt,
       updatedAt: now,
-      publishedAt: null,
+      publishedAt: existing.publishedAt,
     };
+    this.workflows.set(updated.workflowId, updated);
+    return this.toWorkflowResponse(updated);
   }
 
   /**
    * Delete a workflow (REST: DELETE /workflows/:workflowId)
    */
   public deleteWorkflow(workflowId: string): boolean {
-    // In real implementation, this would delete from the store
-    return true;
+    return this.workflows.delete(workflowId);
   }
 
   /**
    * List workflows (REST: GET /workflows)
    */
   public listWorkflows(limit: number = 25): readonly WorkflowResponse[] {
-    // In real implementation, this would query the store
-    return [];
+    return [...this.workflows.values()]
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, limit)
+      .map((workflow) => this.toWorkflowResponse(workflow));
   }
 
   /**
@@ -496,18 +535,32 @@ export class WorkflowBuilderService {
    * Publish a workflow (REST: POST /workflows/:workflowId/publish)
    */
   public publishWorkflow(request: PublishWorkflowRequest): WorkflowResponse | null {
-    // In real implementation, this would update status to published
+    const existing = this.workflows.get(request.workflowId);
+    if (existing == null) {
+      return null;
+    }
     const now = nowIso();
-    return {
-      workflowId: request.workflowId,
-      name: "Published Workflow",
-      description: "",
+    const published: StoredWorkflowDefinition = {
+      ...existing,
       status: "published",
-      nodeCount: 0,
-      edgeCount: 0,
-      createdAt: now,
       updatedAt: now,
       publishedAt: now,
+    };
+    this.workflows.set(published.workflowId, published);
+    return this.toWorkflowResponse(published);
+  }
+
+  private toWorkflowResponse(workflow: StoredWorkflowDefinition): WorkflowResponse {
+    return {
+      workflowId: workflow.workflowId,
+      name: workflow.name,
+      description: workflow.description,
+      status: workflow.status,
+      nodeCount: workflow.nodeCount,
+      edgeCount: workflow.edgeCount,
+      createdAt: workflow.createdAt,
+      updatedAt: workflow.updatedAt,
+      publishedAt: workflow.publishedAt,
     };
   }
 }
