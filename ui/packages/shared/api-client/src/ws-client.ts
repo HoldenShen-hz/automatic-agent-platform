@@ -21,6 +21,11 @@ export interface WebSocketFactory {
   new(url: string, protocols?: string | string[]): WebSocket;
 }
 
+export interface BrowserWSClientOptions {
+  heartbeatIntervalMs?: number;
+  heartbeatTimeoutMs?: number;
+}
+
 export class InMemoryWSClient implements WSClient {
   private readonly handlers = new Map<string, Set<EventHandler>>();
   private readonly statusHandlers = new Set<(status: WSStatus) => void>();
@@ -82,11 +87,19 @@ export class BrowserWSClient implements WSClient {
   private currentToken: string | null = null;
   private readonly maxReconnectDelayMs = 30000;
   private readonly baseReconnectDelayMs = 1000;
+  private readonly heartbeatIntervalMs: number;
+  private readonly heartbeatTimeoutMs: number;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private heartbeatDeadlineTimer: ReturnType<typeof setTimeout> | null = null;
 
   public constructor(
     private readonly websocketFactory: WebSocketFactory = WebSocket,
     private readonly fallbackClient: InMemoryWSClient | null = null,
-  ) {}
+    options: BrowserWSClientOptions = {},
+  ) {
+    this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 15000;
+    this.heartbeatTimeoutMs = options.heartbeatTimeoutMs ?? 5000;
+  }
 
   private calculateBackoffDelay(): number {
     const exponentialDelay = Math.min(
@@ -112,6 +125,7 @@ export class BrowserWSClient implements WSClient {
 
   private doConnect(url: string, token: string): void {
     this.setStatus("connecting");
+    this.stopHeartbeat();
     try {
       // §6.5.4: Use WebSocket subprotocol for auth - token must not appear in URL (avoid CDN/proxy log exposure)
       const socket = new this.websocketFactory(url, "v1.auth.token");
@@ -124,16 +138,23 @@ export class BrowserWSClient implements WSClient {
         for (const channel of this.subscribedChannels) {
           socket.send(JSON.stringify({ action: "subscribe", channel }));
         }
+        this.startHeartbeat();
       };
       socket.onmessage = (event) => {
-        const data = JSON.parse(String(event.data)) as WSEventEnvelope;
+        const data = JSON.parse(String(event.data)) as WSEventEnvelope & { action?: string };
+        if (data.action === "pong" || data.type === "pong") {
+          this.clearHeartbeatDeadline();
+          return;
+        }
         this.publish(data);
       };
       socket.onclose = () => {
+        this.stopHeartbeat();
         this.setStatus("reconnecting");
         this.scheduleReconnect();
       };
       socket.onerror = () => {
+        this.stopHeartbeat();
         this.setStatus("reconnecting");
         this.scheduleReconnect();
         if (this.fallbackClient != null) {
@@ -141,6 +162,7 @@ export class BrowserWSClient implements WSClient {
         }
       };
     } catch {
+      this.stopHeartbeat();
       this.setStatus("reconnecting");
       this.scheduleReconnect();
       if (this.fallbackClient != null) {
@@ -161,6 +183,7 @@ export class BrowserWSClient implements WSClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    this.stopHeartbeat();
     this.reconnectAttempt = 0;
     this.currentUrl = null;
     this.currentToken = null;
@@ -214,6 +237,38 @@ export class BrowserWSClient implements WSClient {
     this.status = status;
     for (const handler of this.statusHandlers) {
       handler(status);
+    }
+  }
+
+  private startHeartbeat(): void {
+    if (this.heartbeatIntervalMs <= 0) {
+      return;
+    }
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      if (this.socket == null || this.socket.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      this.socket.send(JSON.stringify({ action: "ping" }));
+      this.clearHeartbeatDeadline();
+      this.heartbeatDeadlineTimer = setTimeout(() => {
+        this.socket?.close();
+      }, this.heartbeatTimeoutMs);
+    }, this.heartbeatIntervalMs);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer != null) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    this.clearHeartbeatDeadline();
+  }
+
+  private clearHeartbeatDeadline(): void {
+    if (this.heartbeatDeadlineTimer != null) {
+      clearTimeout(this.heartbeatDeadlineTimer);
+      this.heartbeatDeadlineTimer = null;
     }
   }
 }

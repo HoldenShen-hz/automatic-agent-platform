@@ -74,6 +74,11 @@ vi.mock("@aa/shared-sync", () => ({
   })),
 }));
 
+vi.mock("@aa/shared-platform", () => ({
+  createWebPlatformAdapter: vi.fn(() => ({ platform: "web" })),
+  PlatformAdapterProvider: ({ children }: { children: ReactElement }) => <div data-testid="platform-adapter-provider">{children}</div>,
+}));
+
 describe("web runtime configuration", () => {
   it("creates config from environment variables with VITE_API_BASE_URL", () => {
     const config = createWebRuntimeConfig({

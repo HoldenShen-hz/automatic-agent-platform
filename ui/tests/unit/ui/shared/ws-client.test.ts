@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   InMemoryWSClient,
   BrowserWSClient,
@@ -37,6 +37,11 @@ class FakeSocket {
 }
 
 describe("InMemoryWSClient", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it("connect does not throw and sets connected status", () => {
     const client = new InMemoryWSClient();
     let statusChanged = false;
@@ -98,6 +103,11 @@ describe("InMemoryWSClient", () => {
 });
 
 describe("BrowserWSClient", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it("connect does NOT put token in URL - uses subprotocol instead (Issue #2070)", () => {
     const client = new BrowserWSClient(FakeSocket as unknown as typeof WebSocket, new InMemoryWSClient());
 
@@ -215,6 +225,97 @@ describe("BrowserWSClient", () => {
         resolve();
       }, 10);
     });
+  });
+
+  it("sends heartbeat ping frames and reconnects when pong is missing", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const sockets: HeartbeatSocket[] = [];
+
+    class HeartbeatSocket {
+      public static readonly OPEN = 1;
+      public readyState = HeartbeatSocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: (() => void) | null = null;
+      public onerror: (() => void) | null = null;
+      public readonly sent: string[] = [];
+
+      public constructor(_url: string, _protocols?: string | string[]) {
+        sockets.push(this);
+        queueMicrotask(() => this.onopen?.());
+      }
+
+      public send(message: string): void {
+        this.sent.push(message);
+      }
+
+      public close(): void {
+        this.readyState = 3;
+        this.onclose?.();
+      }
+    }
+
+    const client = new BrowserWSClient(
+      HeartbeatSocket as unknown as typeof WebSocket,
+      new InMemoryWSClient(),
+      { heartbeatIntervalMs: 50, heartbeatTimeoutMs: 25 },
+    );
+    client.connect("ws://example.com/ws", "heartbeat-token");
+
+    await vi.runAllTicks();
+    await vi.advanceTimersByTimeAsync(55);
+
+    const firstSocket = sockets[0]!;
+    expect(firstSocket.sent.some((message) => message.includes('"action":"ping"'))).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(1200);
+    await vi.runAllTicks();
+
+    expect(sockets.length).toBeGreaterThan(1);
+  });
+
+  it("clears the heartbeat deadline when a pong frame arrives", async () => {
+    vi.useFakeTimers();
+
+    class PongSocket {
+      public static readonly OPEN = 1;
+      public readyState = PongSocket.OPEN;
+      public onopen: (() => void) | null = null;
+      public onmessage: ((event: { data: string }) => void) | null = null;
+      public onclose: (() => void) | null = null;
+      public onerror: (() => void) | null = null;
+
+      public constructor(_url: string, _protocols?: string | string[]) {
+        queueMicrotask(() => this.onopen?.());
+      }
+
+      public send(_message: string): void {}
+
+      public close(): void {
+        this.readyState = 3;
+        this.onclose?.();
+      }
+    }
+
+    const client = new BrowserWSClient(
+      PongSocket as unknown as typeof WebSocket,
+      new InMemoryWSClient(),
+      { heartbeatIntervalMs: 50, heartbeatTimeoutMs: 25 },
+    );
+    const statuses: string[] = [];
+    client.onStatusChange((status) => statuses.push(status));
+    client.connect("ws://example.com/ws", "heartbeat-token");
+
+    await vi.runAllTicks();
+    await vi.advanceTimersByTimeAsync(55);
+
+    (client as unknown as { socket: PongSocket | null }).socket?.onmessage?.({
+      data: JSON.stringify({ action: "pong" }),
+    });
+    await vi.advanceTimersByTimeAsync(30);
+
+    expect(statuses.includes("reconnecting")).toBe(false);
   });
 });
 

@@ -45,6 +45,18 @@ vi.mock("@aa/shared-domain", () => ({
   })),
 }));
 
+const sharedPlatformMocks = vi.hoisted(() => ({
+  createWebPlatformAdapter: vi.fn(() => ({ platform: "web" })),
+  PlatformAdapterProvider: ({ children }: { children: ReactElement }) => (
+    <div data-testid="platform-adapter-provider">{children}</div>
+  ),
+}));
+
+vi.mock("@aa/shared-platform", () => ({
+  createWebPlatformAdapter: sharedPlatformMocks.createWebPlatformAdapter,
+  PlatformAdapterProvider: sharedPlatformMocks.PlatformAdapterProvider,
+}));
+
 const createMockFeature = (overrides = {}): FeatureModule =>
   ({
     manifest: {
@@ -171,6 +183,23 @@ describe("WebAppShell navigation rendering", () => {
     );
 
     expect(screen.getByTestId("system-status-bar")).toBeInTheDocument();
+  });
+});
+
+describe("WebAppShell platform adapter integration", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("wraps the shell in PlatformAdapterProvider and creates a web adapter by default", () => {
+    render(
+      <MemoryRouter>
+        <WebAppShell features={[createMockFeature()]} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("platform-adapter-provider")).toBeInTheDocument();
+    expect(sharedPlatformMocks.createWebPlatformAdapter).toHaveBeenCalledTimes(1);
   });
 });
 

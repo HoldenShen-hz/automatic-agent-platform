@@ -6,6 +6,8 @@ import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
 import type { TokenManager } from "@aa/shared-auth";
+import { PlatformAdapterProvider, createWebPlatformAdapter } from "@aa/shared-platform";
+import type { PlatformAdapter } from "@aa/shared-types";
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
@@ -13,6 +15,7 @@ export interface WebAppShellProps {
   readonly tokenManager?: TokenManager;
   readonly wsClient?: WSClient;
   readonly wsUrl?: string;
+  readonly platformAdapter?: PlatformAdapter;
   readonly router?: "browser" | "memory";
   readonly initialEntries?: readonly string[];
   /** Auth context for RBAC - should come from auth store per §5.1.1 */
@@ -181,7 +184,11 @@ class AppErrorBoundary extends React.Component<
   }
 }
 
-export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
+export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, platformAdapter, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
+  const resolvedPlatformAdapter = React.useMemo(
+    () => platformAdapter ?? createWebPlatformAdapter(),
+    [platformAdapter],
+  );
   const runtimeProps = {
     ...(client == null ? {} : { client }),
     ...(tokenManager == null ? {} : { tokenManager }),
@@ -191,12 +198,14 @@ export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, r
   };
 
   return (
-    <UiRuntimeProvider {...runtimeProps}>
-      <AppErrorBoundary>
-        <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
-          <AppFrame features={features} authContext={authContext ?? null} />
-        </AppRouter>
-      </AppErrorBoundary>
-    </UiRuntimeProvider>
+    <PlatformAdapterProvider adapter={resolvedPlatformAdapter}>
+      <UiRuntimeProvider {...runtimeProps}>
+        <AppErrorBoundary>
+          <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
+            <AppFrame features={features} authContext={authContext ?? null} />
+          </AppRouter>
+        </AppErrorBoundary>
+      </UiRuntimeProvider>
+    </PlatformAdapterProvider>
   );
 }

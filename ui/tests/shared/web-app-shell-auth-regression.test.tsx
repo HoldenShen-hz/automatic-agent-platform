@@ -38,9 +38,46 @@ vi.mock("@aa/shared-domain", () => ({
   createRouteGuardChain: mocks.createRouteGuardChain,
 }));
 
+vi.mock("@aa/shared-platform", () => ({
+  createWebPlatformAdapter: vi.fn(() => ({ platform: "web" })),
+  PlatformAdapterProvider: ({ children }: { children: ReactElement }) => <div data-testid="platform-adapter-provider">{children}</div>,
+}));
+
 import { WebAppShell } from "../../apps/web/src/app-shell";
 
 describe("web app shell auth regression", () => {
+  it("provides a platform adapter to the shell tree instead of rendering features without a provider", () => {
+    render(
+      <WebAppShell
+        router="memory"
+        initialEntries={["/mission-control/dashboard"]}
+        features={[
+          {
+            manifest: {
+              id: "dashboard",
+              title: "Dashboard",
+              group: "Mission Control",
+              kind: "implemented",
+              status: "Implemented/Internal",
+            },
+            route: {
+              path: "/mission-control/dashboard",
+              featureId: "dashboard",
+              group: "Mission Control",
+              title: "Dashboard",
+              permission: "approval:read",
+              platforms: ["web"],
+              codeSplit: false,
+            },
+            Component: () => <div>Dashboard Content</div>,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("platform-adapter-provider")).toBeInTheDocument();
+  });
+
   it("builds route guard context from the provided authContext instead of a hardcoded demo admin", () => {
     render(
       <WebAppShell
