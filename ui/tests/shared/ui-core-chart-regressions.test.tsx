@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EChartSurface, EChartSurfaceRuntime, designTokens } from "@aa/ui-core";
+import { EChartSurface, designTokens } from "@aa/ui-core";
+import { EChartSurfaceRuntime } from "../../packages/ui-core/src/charts/echart-surface-runtime";
 
 const chartApi = {
   setOption: vi.fn(),

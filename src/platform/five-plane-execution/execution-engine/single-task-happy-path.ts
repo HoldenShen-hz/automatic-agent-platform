@@ -253,7 +253,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
     const now = nowIso();
 
-    // Try to get model call provider and make real LLM call (must happen before provideContext)
+    // Try to get model call provider and make real LLM call
     let llmResult: LlmModelCallResult | null = null;
     let stepData: Record<string, unknown>;
 
@@ -265,49 +265,109 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         ...input.stepOutputOverride,
       };
     } else {
-      // Initialize model call provider if not already done
-      // R4-25 (INV-BUDGET-001): Pass budgetLedger and harnessRunId from validatedPlanGraphBundle
-      // so BudgetAllocator.reserve() is called before createCompletion()
-      const modelProvider = initializeModelCallProvider({
-        budgetLedger,
-        harnessRunId: harnessRunIdFromBundle,
-      });
+      // R4-25 (INV-BUDGET-001): Reserve budget BEFORE LLM call (reserve-before-execute pattern)
+      // This must happen before initializeModelCallProvider since model calls may happen immediately
+      const defaultBudgetPolicy: BudgetPolicy = {
+        maxTaskCostUsd: 10,
+        maxPackCostUsd: 100,
+        maxPlatformCostUsd: 10000,
+        maxDailyCostUsd: 100,
+        maxMonthlyCostUsd: 1000,
+        maxModelTokens: 100000,
+        maxSteps: 100,
+        maxDurationMs: 600000,
+        warnAtRatio: 0.8,
+        mode: "auto",
+      };
+      let budgetReservationId: string | null = null;
 
-      if (modelProvider.hasAnyProvider()) {
-        try {
-          const messages = [
-            { role: "system" as const, content: "You are a helpful assistant that analyzes requests and produces structured outputs." },
-            { role: "user" as const, content: input.request },
-          ];
-
-          llmResult = await modelProvider.createCompletion({
-            model: modelProvider.getDefaultModel(),
-            messages,
-            maxTokens: 1024,
-          });
-
-          stepData = {
-            summary: `Analyzed request for ${input.title}`,
-            result: llmResult.content || `Analyzed: ${input.request}`,
-            modelUsed: llmResult.model,
-            provider: llmResult.provider,
-            usage: llmResult.usage,
-          };
-        } catch (llmError) {
-          // Fall back to synthetic output if LLM call fails
-          logger.log({ level: "warn", message: `LLM call failed, using synthetic output`, data: { error: llmError instanceof Error ? llmError.message : String(llmError), title: input.title } });
-          stepData = {
-            summary: `Analyzed request for ${input.title}`,
-            result: `Single-agent happy path finished for: ${input.request}`,
-            llmError: llmError instanceof Error ? llmError.message : String(llmError),
-          };
-        }
-      } else {
-        // No LLM provider configured, use synthetic output
+      try {
+        const budgetSession = budgetSessionManager.reserveAndCreateSession(
+          {
+            tenantId: input.tenantId ?? "tenant:local",
+            harnessRunId: harnessRunIdFromBundle,
+            traceId,
+            emittedBy: "single_task_happy_path",
+            ledger: budgetLedger,
+            policy: defaultBudgetPolicy,
+          },
+          task.estimatedCostUsd ?? 0,
+          "token",
+        );
+        budgetReservationId = budgetSession.sessionId;
+        // Mark as executing immediately since we're in the happy path
+        budgetSessionManager.markExecuting(budgetReservationId);
+      } catch (error) {
+        // Budget reservation failed - use synthetic output and return early
+        // since no LLM call has happened yet (reserve-before-execute)
+        logger.log({ level: "warn", message: `Budget reservation failed, using synthetic output`, data: { error: error instanceof Error ? error.message : String(error), title: input.title } });
         stepData = {
           summary: `Analyzed request for ${input.title}`,
           result: `Single-agent happy path finished for: ${input.request}`,
+          budgetError: error instanceof Error ? error.message : String(error),
         };
+        // R4-25 (INV-BUDGET-001): Settle budget session before returning
+        if (budgetReservationId) {
+          try {
+            budgetSessionManager.settle(budgetReservationId, 0);
+          } catch (settleError) {
+            logger.log({ level: "warn", message: "R4-25: Failed to settle budget session", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+          }
+        }
+      }
+
+      // Only proceed with LLM call if budget reservation succeeded
+      if (budgetReservationId !== null) {
+        // Initialize model call provider if not already done
+        // R4-25 (INV-BUDGET-001): Pass budgetLedger and harnessRunId from validatedPlanGraphBundle
+        // so BudgetAllocator.reserve() is called before createCompletion()
+        const modelProvider = initializeModelCallProvider({
+          budgetLedger,
+          harnessRunId: harnessRunIdFromBundle,
+        });
+
+        if (modelProvider.hasAnyProvider()) {
+          try {
+            const messages = [
+              { role: "system" as const, content: "You are a helpful assistant that analyzes requests and produces structured outputs." },
+              { role: "user" as const, content: input.request },
+            ];
+
+            llmResult = await modelProvider.createCompletion({
+              model: modelProvider.getDefaultModel(),
+              messages,
+              maxTokens: 1024,
+            });
+
+            stepData = {
+              summary: `Analyzed request for ${input.title}`,
+              result: llmResult.content || `Analyzed: ${input.request}`,
+              modelUsed: llmResult.model,
+              provider: llmResult.provider,
+              usage: llmResult.usage,
+            };
+          } catch (llmError) {
+            // Fall back to synthetic output if LLM call fails
+            logger.log({ level: "warn", message: `LLM call failed, using synthetic output`, data: { error: llmError instanceof Error ? llmError.message : String(llmError), title: input.title } });
+            stepData = {
+              summary: `Analyzed request for ${input.title}`,
+              result: `Single-agent happy path finished for: ${input.request}`,
+              llmError: llmError instanceof Error ? llmError.message : String(llmError),
+            };
+            // R4-25 (INV-BUDGET-001): Settle budget session after LLM failure
+            try {
+              budgetSessionManager.settle(budgetReservationId, 0);
+            } catch (settleError) {
+              logger.log({ level: "warn", message: "R4-25: Failed to settle budget session after LLM failure", data: { budgetReservationId, error: settleError instanceof Error ? settleError.message : String(settleError) } });
+            }
+          }
+        } else {
+          // No LLM provider configured, use synthetic output
+          stepData = {
+            summary: `Analyzed request for ${input.title}`,
+            result: `Single-agent happy path finished for: ${input.request}`,
+          };
+        }
       }
     }
 

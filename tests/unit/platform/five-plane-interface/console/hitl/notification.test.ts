@@ -9,6 +9,7 @@ import {
   sortByPriority,
   filterByStatus,
   groupByStage,
+  WCAG_COMPLIANCE_NOTES,
   type NotificationSeverity,
   type NotificationPriority,
 } from "../../../../../../src/platform/five-plane-interface/console/hitl/notification.js";
@@ -250,9 +251,7 @@ test("groupByStage preserves item order within group", () => {
 });
 
 test("WCAG_COMPLIANCE_NOTES is a string constant", () => {
-  // @ts-expect-error - intentionally accessing the notes
-  const notes = require("../../../../../src/platform/five-plane-interface/console/hitl/notification.js").WCAG_COMPLIANCE_NOTES;
-  assert.ok(typeof notes === "string");
-  assert.ok(notes.includes("WCAG 2.1 AA"));
-  assert.ok(notes.includes("contrast"));
+  assert.ok(typeof WCAG_COMPLIANCE_NOTES === "string");
+  assert.ok(WCAG_COMPLIANCE_NOTES.includes("WCAG 2.1 AA"));
+  assert.ok(WCAG_COMPLIANCE_NOTES.includes("contrast"));
 });

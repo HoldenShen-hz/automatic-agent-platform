@@ -7,10 +7,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { RecoveryController, type HarnessFailureType, type RecoveryScope } from "../../../../../../src/platform/orchestration/harness/recovery-controller.js";
-import { DurableHarnessService } from "../../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
-import { HarnessRuntimeService, type HarnessRun, type ConstraintPack, type HarnessRunRuntimeState } from "../../../../../../src/platform/orchestration/harness/index.js";
-import { HarnessLoopController } from "../../../../../../src/platform/orchestration/harness/loop/index.js";
+import { RecoveryController, type HarnessFailureType, type RecoveryScope } from "../../../../../src/platform/orchestration/harness/recovery-controller.js";
+import { DurableHarnessService } from "../../../../../src/platform/orchestration/harness/durable/durable-harness-service.js";
+import { HarnessRuntimeService, type HarnessRun, type ConstraintPack, type HarnessRunRuntimeState } from "../../../../../src/platform/orchestration/harness/index.js";
+import { HarnessLoopController } from "../../../../../src/platform/orchestration/harness/loop/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers
@@ -234,7 +234,8 @@ test("RecoveryController.handleFailure with worker_crash sets correct retry reas
   const run = createRun();
   const result = controller.handleFailure(run, "worker_crash");
 
-  assert.ok(result.sleepLease?.reason.includes("worker_crash"));
+  assert.equal(result.status, "running");
+  assert.equal(result.pauseReason, null);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,8 +250,9 @@ test("RecoveryController.handleFailure with tool_timeout uses loop controller ba
   const run = createRun();
   const result = controller.handleFailure(run, "tool_timeout");
 
-  // tool_timeout should result in running state with sleep (backoff)
-  assert.equal(result.status, "running");
+  // tool_timeout should result in paused sleep state with loop-controller backoff
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
   assert.ok(result.sleepLease != null);
 });
 
@@ -282,7 +284,7 @@ test("RecoveryController.handleFailure with tool_timeout records iteration in lo
 
   // Should have sleep lease with retry attempt from loop controller
   assert.ok(result.sleepLease != null);
-  assert.ok(result.sleepLease.retryAttempt >= 0);
+  assert.ok(result.sleepLease.retryAttempt > 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -300,7 +302,8 @@ test("RecoveryController uses injected loop controller when provided", () => {
   const result = controller.handleFailure(run, "tool_timeout");
 
   // Should use the custom loop controller's state
-  assert.equal(result.status, "running");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
 });
 
 test("RecoveryController creates loop controller on-demand from run state", () => {
@@ -323,7 +326,8 @@ test("RecoveryController creates loop controller on-demand from run state", () =
   const result = controller.handleFailure(run, "tool_timeout");
 
   // On-demand loop controller should be created with run's metrics
-  assert.equal(result.status, "running");
+  assert.equal(result.status, "paused");
+  assert.equal(result.pauseReason, "sleep");
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,7 +347,8 @@ test("RecoveryController.handleFailure restores from checkpoint when available",
   const result = controller.handleFailure(freshRun, "worker_crash");
 
   // Should restore from checkpoint
-  assert.equal(result.pauseReason, "recovery");
+  assert.equal(result.status, "running");
+  assert.equal(result.pauseReason, null);
 });
 
 test("RecoveryController.handleFailure persists recovering run to durable service", () => {

@@ -18,8 +18,8 @@ import {
   type RESTClient,
   type WSClient,
 } from "@aa/shared-api-client";
-import type { SystemStatusVM } from "@aa/shared-types";
-import { AuthService, SessionGuard, TokenManager } from "@aa/shared-auth";
+import type { PlatformAdapter, SystemStatusVM } from "@aa/shared-types";
+import { AuthService, SessionGuard, TokenManager, type AuthSession, type SecureTokenStorage } from "@aa/shared-auth";
 import { SyncCoordinator, type OfflineMutation } from "@aa/shared-sync";
 import { createApprovalsQuery } from "./queries/approval-queries";
 import {
@@ -35,6 +35,13 @@ import {
 } from "./queries/mission-control-queries";
 import { createTasksQuery, createWorkflowsQuery, createWorkflowRunStepsQuery } from "./queries/task-queries";
 import { createQueryClientFactory } from "./query-client";
+import {
+  createIndexedDbQueryCachePersister,
+  restorePersistedQueryClient,
+  startPersistingQueryClient,
+  type QueryCachePersister,
+  type PersistQueryClientOptions,
+} from "./query-cache-persistence";
 import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
 import { createRealtimeStore } from "./stores/realtime-store";
 import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
@@ -55,6 +62,66 @@ export { createNotificationStore } from "./stores/notification-store";
 export type { ThemeStoreState, ThemeMode, ColorScheme } from "./stores/theme-store";
 export { createThemeStore } from "./stores/theme-store";
 export { createQueryClientFactory } from "./query-client";
+export type { QueryCachePersister, PersistQueryClientOptions } from "./query-cache-persistence";
+export {
+  createIndexedDbQueryCachePersister,
+  createMemoryQueryCachePersister,
+  persistQueryClientSnapshot,
+  restorePersistedQueryClient,
+  startPersistingQueryClient,
+} from "./query-cache-persistence";
+
+const PLATFORM_SECURE_AUTH_SESSION_KEY = "aa.auth.session";
+
+function parsePersistedAuthSession(value: string | null): AuthSession | null {
+  if (value == null) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as AuthSession;
+    if (
+      typeof parsed.accessToken === "string"
+      && typeof parsed.refreshToken === "string"
+      && typeof parsed.expiresAt === "number"
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function createPlatformMirroredTokenStorage(adapter?: PlatformAdapter): SecureTokenStorage {
+  return {
+    readSession(): AuthSession | null {
+      try {
+        return parsePersistedAuthSession(globalThis.sessionStorage?.getItem(PLATFORM_SECURE_AUTH_SESSION_KEY) ?? null);
+      } catch {
+        return null;
+      }
+    },
+    writeSession(session: AuthSession): void {
+      const serialized = JSON.stringify(session);
+      try {
+        globalThis.sessionStorage?.setItem(PLATFORM_SECURE_AUTH_SESSION_KEY, serialized);
+      } catch {
+        // Ignore sessionStorage write failures; secure-store mirror still runs.
+      }
+      void adapter?.writeSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY, serialized);
+    },
+    clearSession(): void {
+      try {
+        globalThis.sessionStorage?.removeItem(PLATFORM_SECURE_AUTH_SESSION_KEY);
+      } catch {
+        // Ignore sessionStorage cleanup failures.
+      }
+      void adapter?.deleteSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY);
+    },
+  };
+}
 
 interface UiRuntimeAuthContext {
   readonly userId: string;
@@ -89,6 +156,8 @@ export function UiRuntimeProvider(
     wsClient,
     wsUrl,
     authContext,
+    queryCachePersister,
+    platformAdapter,
   }: PropsWithChildren<{
     client?: RESTClient;
     queryClient?: QueryClient;
@@ -96,24 +165,34 @@ export function UiRuntimeProvider(
     wsClient?: WSClient;
     wsUrl?: string;
     authContext?: UiRuntimeAuthContext;
+    queryCachePersister?: QueryCachePersister;
+    platformAdapter?: PlatformAdapter;
   }>,
 ): ReactElement {
   const resolvedClient = client ?? new DefaultRESTClient();
   const resolvedQueryClient = queryClient ?? createQueryClientFactory();
   const resolvedWsClient = wsClient ?? new InMemoryWSClient();
+  const resolvedQueryCachePersister = useMemo(
+    () => queryCachePersister ?? createIndexedDbQueryCachePersister(),
+    [queryCachePersister],
+  );
   const authStore = useMemo(() => createAuthStore(), []);
   const uiStore = useMemo(() => createUiStore(), []);
   const realtimeStore = useMemo(() => createRealtimeStore(), []);
   const syncStore = useMemo(() => createSyncStore(), []);
   const notificationStore = useMemo(() => createNotificationStore(), []);
   const themeStore = useMemo(() => createThemeStore(), []);
-  const resolvedTokenManager = useMemo(() => tokenManager ?? new TokenManager(), [tokenManager]);
+  const resolvedTokenManager = useMemo(
+    () => tokenManager ?? new TokenManager({ storage: createPlatformMirroredTokenStorage(platformAdapter) }),
+    [platformAdapter, tokenManager],
+  );
   const authService = useMemo(() => new AuthService(resolvedTokenManager), [resolvedTokenManager]);
   const sessionGuard = useMemo(() => new SessionGuard(resolvedTokenManager), [resolvedTokenManager]);
   const syncCoordinator = useMemo(() => new SyncCoordinator(), []);
 
   useEffect(() => {
     let disposed = false;
+    let stopPersistingQueryCache = () => undefined;
     const router = new WSEventRouter(
       resolvedWsClient,
       resolvedQueryClient,
@@ -124,6 +203,21 @@ export function UiRuntimeProvider(
     });
 
     const bootstrap = async (): Promise<void> => {
+      await restorePersistedQueryClient(resolvedQueryClient, resolvedQueryCachePersister);
+      if (disposed) {
+        return;
+      }
+      stopPersistingQueryCache = startPersistingQueryClient(resolvedQueryClient, {
+        persister: resolvedQueryCachePersister,
+      } satisfies PersistQueryClientOptions);
+      if (platformAdapter != null && resolvedTokenManager.getSession() == null) {
+        const secureSession = parsePersistedAuthSession(
+          await platformAdapter.readSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY),
+        );
+        if (!disposed && secureSession != null && resolvedTokenManager.getSession() == null) {
+          resolvedTokenManager.setSession(secureSession);
+        }
+      }
       const params = new URLSearchParams(window.location.search);
       const identity = authService.resolveIdentity(params);
       if (params.has("code") && !authService.isAuthenticated()) {
@@ -138,6 +232,13 @@ export function UiRuntimeProvider(
       }
 
       const session = authService.getSession();
+      if (platformAdapter != null) {
+        if (session == null) {
+          await platformAdapter.deleteSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY);
+        } else {
+          await platformAdapter.writeSecureValue(PLATFORM_SECURE_AUTH_SESSION_KEY, JSON.stringify(session));
+        }
+      }
       if (session !== null && authContext != null) {
         authStore.getState().login({
           accessToken: session.accessToken,
@@ -214,11 +315,12 @@ export function UiRuntimeProvider(
 
     return () => {
       disposed = true;
+      stopPersistingQueryCache();
       clearInterval(sessionWarningInterval);
       disposeStatus();
       router.disconnect();
     };
-  }, [authContext, authService, authStore, notificationStore, realtimeStore, resolvedQueryClient, resolvedWsClient, sessionGuard, syncCoordinator, syncStore, uiStore, wsUrl]);
+  }, [authContext, authService, authStore, notificationStore, platformAdapter, realtimeStore, resolvedQueryCachePersister, resolvedQueryClient, resolvedTokenManager, resolvedWsClient, sessionGuard, syncCoordinator, syncStore, uiStore, wsUrl]);
   return createElement(
     ApiClientContext.Provider,
     { value: resolvedClient },

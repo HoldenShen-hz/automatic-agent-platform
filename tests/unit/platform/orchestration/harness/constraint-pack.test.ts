@@ -15,7 +15,7 @@ import {
   type ConstraintRiskPolicy,
   type ConstraintOutputPolicy,
   type ConstraintBudgetEnvelope,
-} from "../../../../../../src/platform/orchestration/harness/index.js";
+} from "../../../../../src/platform/orchestration/harness/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers

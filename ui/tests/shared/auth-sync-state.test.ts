@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { AuthService, SessionGuard, TokenManager } from "@aa/shared-auth";
+import { createWebPlatformAdapter } from "@aa/shared-platform";
 import { SyncCoordinator, createMemoryOfflineMutationStore, createPersistentOfflineQueue } from "@aa/shared-sync";
 import {
   UiRuntimeProvider,
   createQueryClientFactory,
   createRealtimeStore,
   createSyncStore,
+  useAuthState,
   useNotificationState,
   useUiState,
 } from "@aa/shared-state";
@@ -161,5 +163,41 @@ describe("shared auth/sync/state split modules", () => {
     render(createElement(UiRuntimeProvider, { tokenManager }, createElement(WarningHarness)));
 
     expect(await screen.findByText("Session expiring soon")).toBeInTheDocument();
+  });
+
+  it("hydrates runtime auth from platform secure storage when sessionStorage is empty", async () => {
+    const platformAdapter = createWebPlatformAdapter();
+    await platformAdapter.writeSecureValue("aa.auth.session", JSON.stringify({
+      accessToken: "secure-access",
+      refreshToken: "secure-refresh",
+      expiresAt: Date.now() + 60_000,
+    }));
+    window.sessionStorage.removeItem("aa.auth.session");
+
+    function AuthHarness(): ReactElement {
+      const auth = useAuthState();
+      return createElement(
+        "div",
+        undefined,
+        auth.authenticated ? `${auth.userId}:${auth.accessToken}` : "anonymous",
+      );
+    }
+
+    render(createElement(
+      UiRuntimeProvider,
+      {
+        platformAdapter,
+        authContext: {
+          userId: "user-1",
+          tenantId: "tenant-1",
+          roles: ["operator"],
+          permissions: ["tasks.read"],
+        },
+      },
+      createElement(AuthHarness),
+    ));
+
+    expect(await screen.findByText("user-1:secure-access")).toBeInTheDocument();
+    expect(window.sessionStorage.getItem("aa.auth.session")).toContain("secure-access");
   });
 });

@@ -5,6 +5,9 @@ import {
   rejectApproval,
   delegateApproval,
   resumeWorkflow,
+  editApproval,
+  escalateApproval,
+  deferApproval,
   submitApprovalTextInput,
 } from "@aa/shared-api-client";
 import type { ApprovalDTO } from "@aa/shared-types";
@@ -122,9 +125,10 @@ export function useHitlVm(
   }
 
   async function edit(itemId: string, edits: Record<string, unknown>): Promise<void> {
-    // §4.6.2: Edit allows modifying the approval parameters before resolution
-    console.info(`[HITL] Edit item ${itemId}:`, edits);
-    // In production this would call an updateApproval API
+    await editApproval(effectiveClient, itemId, edits);
+    setItems((prev) => prev.map((item) => item.id === itemId
+      ? { ...item, description: `${item.description} · edited` }
+      : item));
   }
 
   async function patch(itemId: string, patch: Record<string, unknown>): Promise<void> {
@@ -146,16 +150,12 @@ export function useHitlVm(
   }
 
   async function escalate(itemId: string, reason: string): Promise<void> {
-    // §4.6.2: Escalate moves the approval to a higher authority
-    console.info(`[HITL] Escalate item ${itemId}: ${reason}`);
-    // Escalation would call escalateApproval API
+    await escalateApproval(effectiveClient, itemId, reason);
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   async function defer(itemId: string, until: string): Promise<void> {
-    // §4.6.2: Defer delays the approval until a specified time
-    console.info(`[HITL] Defer item ${itemId} until ${until}`);
-    // Deferral would call deferApproval API with a timestamp
+    await deferApproval(effectiveClient, itemId, until);
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
@@ -165,11 +165,8 @@ export function useHitlVm(
   }
 
   async function resume(itemId: string, mode: RecoveryMode): Promise<void> {
-    // §4.6.2: Resume with specific recovery mode - integrate with execution engine
-    console.info(`[HITL] Resume item ${itemId} with mode ${mode}`);
-    // For resume items, call the workflow resume API with the appropriate mode
-    // The itemId represents the workflow/execution to resume
-    await resumeWorkflow(effectiveClient, itemId);
+    await resumeWorkflow(effectiveClient, itemId, mode);
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
   }
 
   return { items, isLoading, approve, reject, edit, patch, override, escalate, defer, delegate, resume };

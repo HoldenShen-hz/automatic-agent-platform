@@ -234,7 +234,7 @@ class MultiStepToolRegistry {
     return toolCosts[toolName] ?? 0.001;
   }
 
-  private assertBudgetAllowed(toolName: string): void {
+  private assertBudgetAllowed(toolName: string, _args: Record<string, unknown>): void {
     // R4-25 (INV-BUDGET-001): Reserve budget before tool call using BudgetAllocator.reserve()
     const estimatedCost = this.estimateToolCost(toolName);
     // R4-25: First evaluate if task can proceed
@@ -756,6 +756,9 @@ class MultiStepToolRegistry {
 
     // R4-31 (INV-SANDBOX): Enforce sandbox policy before tool execution
     this.assertSandboxAllowed(toolName, args);
+
+    // R4-34 (INV-POLICY-001): Budget check before tool dispatch
+    this.assertBudgetAllowed(toolName, args);
 
     // R4-33 (INV-SIDEEFFECT-001): Create SideEffectRecord for external calls
     // web_fetch/web_search produce real side effects but don't record/track/reconcile

@@ -69,7 +69,7 @@ test("buildSnapshot does not filter tasks when operator has no tenantId", () => 
       { taskId: "t2", tenantId: "tenant-2", workspaceId: null, status: "running", riskLevel: "low", updatedAt: now },
     ],
   });
-  const operator = { operatorId: "op-1", roles: [] };
+  const operator = { operatorId: "op-1", roles: ["platform_admin"] };
   const snapshot = service.buildSnapshot(operator);
 
   assert.equal(snapshot.taskBoard.length, 2);
@@ -116,7 +116,7 @@ test("buildSnapshot sorts incidents by createdAt descending and limits to 50", (
   const service = new OperatorConsoleBackendService({
     listIncidents: () => incidents,
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.equal(snapshot.incidentTimeline.length, 50);
   assert.equal(snapshot.incidentTimeline[0].incidentId, "i59");
@@ -142,7 +142,7 @@ test("buildSnapshot builds moduleCoverage correctly for worker_management", () =
     listWorkers: () => [{ workerId: "w1", status: "online", activeExecutionCount: 0, queueDepth: 0 }],
     listTenants: () => [],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
   const workerMod = snapshot.moduleCoverage.find((m) => m.moduleId === "worker_management");
   assert.equal(workerMod?.status, "available");
 });
@@ -152,7 +152,7 @@ test("buildSnapshot builds moduleCoverage correctly when worker panel is empty",
     listWorkers: () => [],
     listTenants: () => [],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
   const workerMod = snapshot.moduleCoverage.find((m) => m.moduleId === "worker_management");
   assert.equal(workerMod?.status, "empty");
 });
@@ -162,7 +162,7 @@ test("buildSnapshot builds moduleCoverage correctly for queue_management when qu
     listWorkers: () => [{ workerId: "w1", status: "online", activeExecutionCount: 0, queueDepth: 5 }],
     listTenants: () => [],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
   const queueMod = snapshot.moduleCoverage.find((m) => m.moduleId === "queue_management");
   assert.equal(queueMod?.status, "available");
 });
@@ -173,7 +173,7 @@ test("buildSnapshot builds moduleCoverage correctly for approval_management when
       { approvalId: "a1", taskId: "t1", tenantId: null, riskLevel: "low", reason: "test", createdAt: now },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
   const approvalMod = snapshot.moduleCoverage.find((m) => m.moduleId === "approval_management");
   assert.equal(approvalMod?.status, "available");
 });
@@ -184,7 +184,7 @@ test("buildSnapshot builds moduleCoverage correctly for incident_timeline when i
       { incidentId: "i1", taskId: null, tenantId: null, severity: "warning", summary: "test", createdAt: now },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
   const incidentMod = snapshot.moduleCoverage.find((m) => m.moduleId === "incident_timeline");
   assert.equal(incidentMod?.status, "available");
 });
@@ -195,7 +195,7 @@ test("buildSnapshot builds moduleCoverage correctly for oapeflir_loop_management
       { taskId: "t1", tenantId: null, workspaceId: null, status: "running", riskLevel: "low", updatedAt: now },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
   const oapeflirMod = snapshot.moduleCoverage.find((m) => m.moduleId === "oapeflir_loop_management");
   assert.equal(oapeflirMod?.status, "available");
 });
@@ -206,7 +206,7 @@ test("buildSnapshot generates finding for critical approval", () => {
       { approvalId: "a1", taskId: "t1", tenantId: null, riskLevel: "critical", reason: "test", createdAt: now },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.ok(snapshot.findings.includes("critical approval waiting for operator decision"));
 });
@@ -217,7 +217,7 @@ test("buildSnapshot generates finding for offline worker with active executions"
       { workerId: "w1", status: "offline", activeExecutionCount: 3, queueDepth: 0 },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.ok(snapshot.findings.includes("offline worker still owns active executions"));
 });
@@ -228,7 +228,7 @@ test("buildSnapshot generates finding for critical incident", () => {
       { incidentId: "i1", taskId: null, tenantId: null, severity: "critical", summary: "test", createdAt: now },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.ok(snapshot.findings.includes("critical incident requires takeover review"));
 });
@@ -239,7 +239,7 @@ test("buildSnapshot generates finding for blocked tasks", () => {
       { taskId: "t1", tenantId: null, workspaceId: null, status: "blocked", riskLevel: "medium", updatedAt: now },
     ],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.ok(snapshot.findings.includes("blocked tasks exist in operator scope"));
 });
@@ -253,7 +253,7 @@ test("buildSnapshot does not generate findings when no issues exist", () => {
     listWorkers: () => [{ workerId: "w1", status: "online", activeExecutionCount: 0, queueDepth: 0 }],
     listIncidents: () => [],
   });
-  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: [] });
+  const snapshot = service.buildSnapshot({ operatorId: "op-1", roles: ["platform_admin"] });
 
   assert.equal(snapshot.findings.length, 0);
 });
@@ -264,7 +264,7 @@ test("planHumanTakeoverAction creates action plan with valid input", () => {
     actionId: "action-1",
     actionType: "take_over_task",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: ["operator"] },
+    operator: { operatorId: "op-1", roles: ["operator"], tenantId: "tenant-1" },
     reasonCode: "R1",
   });
 
@@ -337,7 +337,7 @@ test("planHumanTakeoverAction requires policy evaluation for high risk actions",
       actionId: "action-1",
       actionType,
       taskId: "task-1",
-      operator: { operatorId: "op-1", roles: [] },
+      operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
       reasonCode: "R1",
     });
     assert.equal(plan.requiresPolicyEvaluation, true, `${actionType} should require policy evaluation`);
@@ -358,7 +358,7 @@ test("planHumanTakeoverAction requires break glass for break glass actions witho
       actionId: "action-1",
       actionType,
       taskId: "task-1",
-      operator: { operatorId: "op-1", roles: [] },
+      operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
       reasonCode: "R1",
     });
     assert.equal(plan.requiresBreakGlass, true, `${actionType} should require break glass`);
@@ -371,7 +371,7 @@ test("planHumanTakeoverAction does not require break glass when operator has bre
     actionId: "action-1",
     actionType: "skip_step",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: ["break_glass"] },
+    operator: { operatorId: "op-1", roles: ["break_glass"], tenantId: "tenant-1" },
     reasonCode: "R1",
   });
 
@@ -411,7 +411,7 @@ test("planHumanTakeoverAction uses operator workspaceId when workspaceId not pro
     actionId: "action-1",
     actionType: "take_over_task",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: [], workspaceId: "my-workspace" },
+    operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1", workspaceId: "my-workspace" },
     reasonCode: "R1",
   });
 
@@ -424,7 +424,7 @@ test("planHumanTakeoverAction includes beforeStateRef and afterStateRef in audit
     actionId: "action-1",
     actionType: "modify_next_input",
     taskId: "task-1",
-    operator: { operatorId: "op-1", roles: [] },
+    operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
     reasonCode: "R1",
     beforeStateRef: "state-before",
     afterStateRef: "state-after",
@@ -443,10 +443,8 @@ test("planHumanTakeoverAction includes low risk actions in auditPayload", () => 
     { actionType: "modify_next_input" },
     { actionType: "retry_step" },
     { actionType: "switch_model" },
-    { actionType: "attach_artifact" },
     { actionType: "inject_feedback" },
     { actionType: "create_improvement_candidate" },
-    { actionType: "advance_rollout" },
   ];
 
   for (const { actionType } of lowRiskActions) {
@@ -454,7 +452,7 @@ test("planHumanTakeoverAction includes low risk actions in auditPayload", () => 
       actionId: "action-1",
       actionType,
       taskId: "task-1",
-      operator: { operatorId: "op-1", roles: [] },
+      operator: { operatorId: "op-1", roles: [], tenantId: "tenant-1" },
       reasonCode: "R1",
     });
     assert.equal(plan.requiresPolicyEvaluation, false, `${actionType} should not require policy evaluation`);

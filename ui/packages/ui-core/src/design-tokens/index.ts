@@ -311,6 +311,11 @@ export interface SemanticTokens {
     readonly monoFamily: string;
     readonly headingLineHeight: number;
     readonly bodyLineHeight: number;
+    readonly fontWeight: {
+      readonly medium: number;
+      readonly semibold: number;
+      readonly bold: number;
+    };
   };
   readonly motion: {
     readonly fast: string;
@@ -392,6 +397,11 @@ export const semanticTokens: SemanticTokens = {
     monoFamily: primitiveTokens.typography.fontFamily.mono,
     headingLineHeight: primitiveTokens.typography.lineHeight.tight,
     bodyLineHeight: primitiveTokens.typography.lineHeight.normal,
+    fontWeight: {
+      medium: primitiveTokens.typography.fontWeight.medium,
+      semibold: primitiveTokens.typography.fontWeight.semibold,
+      bold: primitiveTokens.typography.fontWeight.bold,
+    },
   },
   motion: {
     fast: primitiveTokens.motion.duration.fast,

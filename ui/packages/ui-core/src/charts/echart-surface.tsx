@@ -1,6 +1,5 @@
 import { Suspense, lazy, useState, type ReactElement } from "react";
 import { designTokens, type CoreDesignTokens } from "../design-tokens";
-import { ChartTableFallback } from "./index";
 
 export interface EChartSurfaceProps {
   readonly title: string;
@@ -10,6 +9,27 @@ export interface EChartSurfaceProps {
 }
 
 const LazyEChartSurfaceRuntime = lazy(async () => import("./echart-surface-runtime").then((module) => ({ default: module.EChartSurfaceRuntime })));
+
+export function ChartTableFallback({ title, values, theme = designTokens }: { title: string; values: readonly number[]; theme?: CoreDesignTokens }): ReactElement {
+  return (
+    <table aria-label={`${title} data table`} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <thead>
+        <tr>
+          <th scope="col" style={{ padding: "8px 12px", textAlign: "left", borderBottom: `2px solid ${theme.color.border}` }}>Index</th>
+          <th scope="col" style={{ padding: "8px 12px", textAlign: "right", borderBottom: `2px solid ${theme.color.border}` }}>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {values.map((value, index) => (
+          <tr key={index}>
+            <td style={{ padding: "8px 12px", borderBottom: `1px solid ${theme.color.border}` }}>{index + 1}</td>
+            <td style={{ padding: "8px 12px", textAlign: "right", borderBottom: `1px solid ${theme.color.border}` }}>{value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 export function EChartSurface({ title, values, showTableFallback, theme = designTokens }: EChartSurfaceProps): ReactElement {
   const [showTable, setShowTable] = useState(false);
@@ -27,7 +47,7 @@ export function EChartSurface({ title, values, showTableFallback, theme = design
             Show Chart
           </button>
         </div>
-        <ChartTableFallback title={title} values={values} />
+        <ChartTableFallback title={title} values={values} theme={theme} />
       </div>
     );
   }

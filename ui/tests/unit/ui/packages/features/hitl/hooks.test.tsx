@@ -18,6 +18,10 @@ const mockFetchApprovals = vi.fn(async () => ([
   },
 ]));
 const mockSubmitApprovalTextInput = vi.fn(async () => ({ ok: true }));
+const mockEditApproval = vi.fn(async () => ({ ok: true }));
+const mockEscalateApproval = vi.fn(async () => ({ ok: true }));
+const mockDeferApproval = vi.fn(async () => ({ ok: true }));
+const mockResumeWorkflow = vi.fn(async () => ({ ok: true }));
 
 vi.mock("@aa/shared-state", () => ({
   useRestClient: () => mockClient,
@@ -29,7 +33,10 @@ vi.mock("@aa/shared-api-client", () => ({
   approveApproval: vi.fn(async () => ({ ok: true })),
   rejectApproval: vi.fn(async () => ({ ok: true })),
   delegateApproval: vi.fn(async () => ({ ok: true })),
-  resumeWorkflow: vi.fn(async () => ({ ok: true })),
+  resumeWorkflow: (...args: unknown[]) => mockResumeWorkflow(...args),
+  editApproval: (...args: unknown[]) => mockEditApproval(...args),
+  escalateApproval: (...args: unknown[]) => mockEscalateApproval(...args),
+  deferApproval: (...args: unknown[]) => mockDeferApproval(...args),
   submitApprovalTextInput: (...args: unknown[]) => mockSubmitApprovalTextInput(...args),
 }));
 
@@ -80,5 +87,25 @@ describe("useHitlVm", () => {
     await waitFor(() => {
       expect(result.current.items.map((item) => item.id)).toEqual(["approval-1"]);
     });
+  });
+
+  it("routes edit, escalate, defer, and resume through real API helpers", async () => {
+    const { result } = renderHook(() => useHitlVm());
+
+    await waitFor(() => {
+      expect(result.current.items.map((item) => item.id)).toEqual(["approval-1", "approval-2"]);
+    });
+
+    await act(async () => {
+      await result.current.edit("approval-1", { field: "owner", value: "ops" });
+      await result.current.escalate("approval-2", "need higher authority");
+      await result.current.defer("approval-1", "2026-05-07T12:00:00Z");
+      await result.current.resume("workflow-1", "supervised");
+    });
+
+    expect(mockEditApproval).toHaveBeenCalledWith(mockClient, "approval-1", { field: "owner", value: "ops" });
+    expect(mockEscalateApproval).toHaveBeenCalledWith(mockClient, "approval-2", "need higher authority");
+    expect(mockDeferApproval).toHaveBeenCalledWith(mockClient, "approval-1", "2026-05-07T12:00:00Z");
+    expect(mockResumeWorkflow).toHaveBeenCalledWith(mockClient, "workflow-1", "supervised");
   });
 });

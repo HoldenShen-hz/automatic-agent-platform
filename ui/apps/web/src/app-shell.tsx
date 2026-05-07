@@ -199,6 +199,7 @@ export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, p
     ...(wsClient == null ? {} : { wsClient }),
     ...(wsUrl == null ? {} : { wsUrl }),
     ...(authContext == null ? {} : { authContext }),
+    platformAdapter: resolvedPlatformAdapter,
   };
 
   return (

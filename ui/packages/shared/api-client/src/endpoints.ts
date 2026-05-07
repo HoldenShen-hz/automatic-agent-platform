@@ -137,8 +137,15 @@ export async function pauseWorkflow(client: RESTClient, workflowId: string): Pro
   return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsPause.path, { workflowId }), { action: "pause" });
 }
 
-export async function resumeWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
-  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), { action: "resume" });
+export async function resumeWorkflow(
+  client: RESTClient,
+  workflowId: string,
+  mode?: "normal" | "replan" | "supervised" | "abort",
+): Promise<{ ok: true; body?: unknown }> {
+  return client.post<{ ok: true; body?: unknown }>(resolvePath(endpointCatalog.workflowsResume.path, { workflowId }), {
+    action: "resume",
+    ...(mode == null ? {} : { mode }),
+  });
 }
 
 export async function recoverWorkflow(client: RESTClient, workflowId: string): Promise<{ ok: true; body?: unknown }> {
@@ -189,6 +196,43 @@ export async function submitApprovalTextInput(
       inputText,
     },
   );
+}
+
+export async function submitApprovalAction(
+  client: RESTClient,
+  approvalId: string,
+  action: string,
+  payload: Record<string, unknown> = {},
+): Promise<{ ok: true; body?: unknown }> {
+  return submitApprovalTextInput(
+    client,
+    approvalId,
+    JSON.stringify({ action, ...payload }),
+  );
+}
+
+export async function editApproval(
+  client: RESTClient,
+  approvalId: string,
+  edits: Record<string, unknown>,
+): Promise<{ ok: true; body?: unknown }> {
+  return submitApprovalAction(client, approvalId, "edit", { edits });
+}
+
+export async function escalateApproval(
+  client: RESTClient,
+  approvalId: string,
+  reason: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return submitApprovalAction(client, approvalId, "escalate", { reason });
+}
+
+export async function deferApproval(
+  client: RESTClient,
+  approvalId: string,
+  until: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return submitApprovalAction(client, approvalId, "defer", { until });
 }
 
 // §210-2493: requestMoreContextApproval not previously defined - add endpoint for requesting additional context

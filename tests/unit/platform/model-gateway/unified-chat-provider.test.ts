@@ -19,7 +19,7 @@ import {
   type ChatMessage,
   type ChatTool,
   type UnifiedProviderConfig,
-} from "../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
+} from "../../../../src/platform/model-gateway/provider-registry/unified-chat-provider.js";
 
 // ============================================================================
 // Helper Functions
@@ -67,11 +67,11 @@ test("UnifiedChatProvider routes MiniMax-M2.7 to minimax", () => {
   assert.equal(provider.hasProvider("minimax"), true);
 });
 
-test("UnifiedChatProvider throws for unknown model without configured provider", () => {
+test("UnifiedChatProvider throws for unknown model without configured provider", async () => {
   const provider = createMinimalProvider();
 
-  assert.throws(
-    () => {
+  await assert.rejects(
+    async () => {
       provider.createChatCompletion({
         model: "completely-unknown-model-xyz",
         messages: [{ role: "user", content: "hello" }],
@@ -181,17 +181,17 @@ test("UnifiedChatProvider multiple dispose calls keep hasProvider false", () => 
 // Error Handling Tests
 // ============================================================================
 
-test("UnifiedChatProvider throws ProviderError when disposed", () => {
+test("UnifiedChatProvider throws ProviderError when disposed", async () => {
   const provider = createProvider();
   provider.dispose();
 
-  assert.throws(
+  await assert.rejects(
     () => provider.createChatCompletion(createRequest("gpt-4o")),
     /disposed/,
   );
 });
 
-test("UnifiedChatProvider throws when abort signal already aborted", () => {
+test("UnifiedChatProvider throws when abort signal already aborted", async () => {
   const provider = createProvider();
   const controller = new AbortController();
   controller.abort();
@@ -199,13 +199,13 @@ test("UnifiedChatProvider throws when abort signal already aborted", () => {
   const request = createRequest("gpt-4o");
   request.abortSignal = controller.signal;
 
-  assert.throws(
+  await assert.rejects(
     () => provider.createChatCompletion(request),
     /aborted/,
   );
 });
 
-test("UnifiedChatProvider abort signal check happens before provider call", () => {
+test("UnifiedChatProvider abort signal check happens before provider call", async () => {
   const provider = createProvider();
   const controller = new AbortController();
   controller.abort();
@@ -213,7 +213,7 @@ test("UnifiedChatProvider abort signal check happens before provider call", () =
   const request = createRequest("claude-opus-4-5");
   request.abortSignal = controller.signal;
 
-  assert.throws(
+  await assert.rejects(
     () => provider.createChatCompletion(request),
     /aborted/,
   );
@@ -293,14 +293,13 @@ test("getAvailableProfiles returns valid profile structure", () => {
   }
 });
 
-test("getAvailableProfiles excludes primary model from candidates", () => {
+test("getAvailableProfiles includes configured primary profiles for routing", () => {
   const provider = createProvider();
   const profiles = provider.getAvailableProfiles();
 
-  // Primary model should not appear in its own fallback candidates
-  for (const profile of profiles) {
-    assert.notEqual(profile.profileName, "claude-opus-4-5");
-  }
+  assert.ok(profiles.some((profile) => profile.profileName === "claude-opus-4-5"));
+  assert.ok(profiles.some((profile) => profile.profileName === "gpt-4o"));
+  assert.ok(profiles.some((profile) => profile.profileName === "MiniMax-M2.7"));
 });
 
 // ============================================================================
@@ -314,16 +313,24 @@ test("UnifiedChatProvider embed method exists", () => {
 
 test("UnifiedChatProvider embed returns vectors for string input", async () => {
   const provider = createProvider();
+  (provider as unknown as { createEmbeddingProvider: () => { embedBatch: (texts: readonly string[]) => Promise<Array<{ vector: number[] }>> } }).createEmbeddingProvider = () => ({
+    embedBatch: async (texts: readonly string[]) => texts.map(() => ({ vector: [0.1, 0.2, 0.3] })),
+  });
   const vectors = await provider.embed("hello world");
   assert.ok(Array.isArray(vectors));
   assert.ok(vectors.length > 0);
+  assert.deepEqual(vectors[0], [0.1, 0.2, 0.3]);
 });
 
 test("UnifiedChatProvider embed returns vectors for array input", async () => {
   const provider = createProvider();
+  (provider as unknown as { createEmbeddingProvider: () => { embedBatch: (texts: readonly string[]) => Promise<Array<{ vector: number[] }>> } }).createEmbeddingProvider = () => ({
+    embedBatch: async (texts: readonly string[]) => texts.map((_, index) => ({ vector: [index, index + 1] })),
+  });
   const vectors = await provider.embed(["hello", "world"]);
   assert.ok(Array.isArray(vectors));
   assert.equal(vectors.length, 2);
+  assert.deepEqual(vectors, [[0, 1], [1, 2]]);
 });
 
 // ============================================================================

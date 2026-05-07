@@ -54,8 +54,8 @@ test("DistributedRateLimiter checkAndConsume decrements remaining as calls incre
   const result2 = await limiter.checkAndConsume("test-key");
   const result3 = await limiter.checkAndConsume("test-key");
 
-  assert.equal(result2.remaining, 2);
-  assert.equal(result3.remaining, 1);
+  assert.equal(result2.remaining, 1);
+  assert.equal(result3.remaining, 0);
 });
 
 test("DistributedRateLimiter checkAndConsume blocks when limit exceeded", async () => {

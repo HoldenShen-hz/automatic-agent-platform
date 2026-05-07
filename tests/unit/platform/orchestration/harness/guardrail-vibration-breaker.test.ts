@@ -12,7 +12,7 @@ import {
   type GuardrailActionSignal,
   type GuardrailVibrationState,
   type GuardrailVibrationDecision,
-} from "../../../../../../src/platform/orchestration/harness/guardrails/guardrail-vibration-breaker.js";
+} from "../../../../../src/platform/orchestration/harness/guardrails/guardrail-vibration-breaker.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Helpers
@@ -95,7 +95,7 @@ test("GuardrailVibrationBreaker.evaluate triggers cooldown when max repeated act
   assert.ok(decision.state.guardrailCooldownUntilMs != null);
 });
 
-test("GuardrailVibrationBreaker.evaluate resets count on signature change", () => {
+test("GuardrailVibrationBreaker.evaluate continues counting across signature changes", () => {
   const breaker = new GuardrailVibrationBreaker(3, 30000);
   const signal = createSignal({ signature: "replan" }); // Different signature
   const state = createState({
@@ -106,7 +106,7 @@ test("GuardrailVibrationBreaker.evaluate resets count on signature change", () =
   const decision = breaker.evaluate(signal, state);
 
   assert.equal(decision.allowed, true);
-  assert.equal(decision.state.guardrailActionCount, 1);
+  assert.equal(decision.state.guardrailActionCount, 3);
   assert.equal(decision.state.lastGuardrailSignature, "replan");
 });
 
@@ -163,7 +163,7 @@ test("GuardrailVibrationBreaker.evaluate sets cooldown duration based on cooldow
   assert.ok(cooldownDuration >= 59000 && cooldownDuration <= 61000);
 });
 
-test("GuardrailVibrationBreaker.evaluate clears cooldown when signature changes", () => {
+test("GuardrailVibrationBreaker.evaluate keeps cooldown active even when signature changes", () => {
   const breaker = new GuardrailVibrationBreaker(3, 30000);
   const futureTime = Date.now() + 60000;
   const signal = createSignal({ signature: "replan" });
@@ -175,8 +175,8 @@ test("GuardrailVibrationBreaker.evaluate clears cooldown when signature changes"
 
   const decision = breaker.evaluate(signal, state);
 
-  assert.equal(decision.allowed, true);
-  assert.equal(decision.state.guardrailCooldownUntilMs, null);
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.state.guardrailCooldownUntilMs, futureTime);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,13 +301,13 @@ test("GuardrailVibrationBreaker.evaluate distinguishes between different guardra
   // Change to replan
   signal = createSignal({ signature: "replan" });
   decision = breaker.evaluate(signal, decision.state);
-  assert.equal(decision.state.guardrailActionCount, 1); // Reset to 1
+  assert.equal(decision.state.guardrailActionCount, 2);
   assert.equal(decision.state.lastGuardrailSignature, "replan");
 
   // Change to escalate_to_human
   signal = createSignal({ signature: "escalate_to_human" });
   decision = breaker.evaluate(signal, decision.state);
-  assert.equal(decision.state.guardrailActionCount, 1); // Reset to 1
+  assert.equal(decision.state.guardrailActionCount, 3);
   assert.equal(decision.state.lastGuardrailSignature, "escalate_to_human");
 });
 
