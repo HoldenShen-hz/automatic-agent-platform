@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createSign } from "node:crypto";
 
-import { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluator, validatePluginDefinition, getSigningKeyRegistry, setSbomScanner, verifySbomRef, type SbomScanner } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
+import { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluator, validatePluginDefinition, getSigningKeyRegistry, setSbomScanner, verifySbomRef, type SbomScanner, type PluginSpiType, type PluginDefinition } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 
 test("definePlugin throws when pluginId is missing", async () => {
   await assert.rejects(
@@ -291,12 +291,12 @@ test("validatePluginDefinition validates and returns same definition", async () 
 });
 
 test("validatePluginDefinition uses default description when missing", async () => {
-  const original = {
+  const original: PluginDefinition = {
     pluginId: "my-pack.tool",
     name: "My Tool",
     version: "1.0.0",
-    type: "tool" as const,
-    spiTypes: ["tool"] as string[],
+    type: "tool",
+    spiTypes: ["tool"] as PluginSpiType[],
     domainIds: [] as string[],
     sbomRef: null,
     signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
@@ -307,8 +307,8 @@ test("validatePluginDefinition uses default description when missing", async () 
       outputSchema: { type: "object" },
     }],
     resourceLimits: { maxMemoryMb: 512, maxCpuMs: 5000, maxDurationMs: 30000 },
-    dependencies: [],
-    security: { sandboxTier: "process" as const, egressDomains: [] },
+    dependencies: [] as string[],
+    security: { sandboxTier: "process", egressDomains: [] as string[] },
   };
 
   const validated = await validatePluginDefinition(original);

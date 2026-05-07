@@ -42,7 +42,7 @@ import { RuntimeEntryGuard } from "../../orchestration/harness/runtime/runtime-e
 import { HarnessRuntimeService } from "../../orchestration/harness/runtime/index.js";
 import { PlanGraphHarnessRuntime, PlanGraphScheduler } from "../../orchestration/harness/runtime/plan-graph-harness-runtime.js";
 import { minimalWorkflowToPlanGraphBundle } from "../../five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
-import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../../contracts/executable-contracts/index.js";
+import { createBudgetLedger, createHarnessRun, createRunVersionLock, type PlanNode } from "../../contracts/executable-contracts/index.js";
 import { createEvidenceRecord, createPlatformPrincipal } from "../../contracts/types/platform-contracts.js";
 import { ServiceRegistry } from "../../shared/lifecycle/service-registry.js";
 import { getRuntimeTruthRepository, RUNTIME_TRUTH_REPOSITORY_SERVICE_ID } from "../../five-plane-state-evidence/state-evidence-plane-bootstrap.js";
@@ -156,7 +156,14 @@ function deserializeOapeflirPlan(request: string): import("../../contracts/execu
       riskClass: (node.riskClass as import("../../contracts/executable-contracts/index.js").RiskClass | undefined) ?? "medium",
       budgetIntent: (node.budgetIntent as { amount: number; currency: string; resourceKinds: readonly import("../../contracts/executable-contracts/index.js").BudgetResourceKind[] } | undefined) ?? { amount: 0.01, currency: "USD", resourceKinds: ["token", "compute"] as const },
       sideEffectProfile: (node.sideEffectProfile as { mayCommitExternalEffect: boolean; reversible: boolean } | undefined) ?? { mayCommitExternalEffect: false, reversible: true },
-      retryPolicyRef: (node.retryPolicyRef as string | undefined) ?? (node.retryPolicy as { maxRetries: number } | undefined)?.maxRetries === 0 ? "retry:never" : "retry:default",
+      retryPolicyRef: (
+        (node.retryPolicyRef as string | undefined)
+        ?? (
+          (node.retryPolicy as { maxRetries: number } | undefined)?.maxRetries === 0
+            ? "retry:never"
+            : "retry:default"
+        )
+      ),
       // R19-09 fix: Handle both timeoutMs (canonical) and timeout (legacy test format)
       timeoutMs: (node.timeoutMs as number | undefined) ?? (node.timeout as number | undefined) ?? 60000,
     };

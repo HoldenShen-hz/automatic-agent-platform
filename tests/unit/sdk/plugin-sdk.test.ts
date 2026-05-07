@@ -8,7 +8,9 @@ import {
   defineRetriever,
   defineEvaluator,
   validatePluginDefinition,
+  type PluginDefinition,
   type PluginType,
+  type PluginSpiType,
 } from "../../../src/sdk/plugin-sdk/plugin-definition.js";
 import { PluginContext } from "../../../src/sdk/plugin-sdk/plugin-context.js";
 import {
@@ -18,7 +20,7 @@ import {
   type TestCase,
 } from "../../../src/sdk/plugin-sdk/plugin-test-harness.js";
 
-function createMinimalPlugin(overrides = {}) {
+function createMinimalPlugin(overrides = {}): PluginDefinition {
   return {
     pluginId: "test-plugin",
     name: "Test Plugin",
@@ -32,82 +34,102 @@ function createMinimalPlugin(overrides = {}) {
         outputSchema: { type: "object" },
       },
     ],
+    spiTypes: ["tool"] as PluginSpiType[],
+    domainIds: [] as string[],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     resourceLimits: {
       maxMemoryMb: 512,
       maxCpuMs: 5000,
       maxDurationMs: 30000,
     },
-    dependencies: [],
+    dependencies: [] as string[],
     security: {
       sandboxTier: "process" as const,
-      egressDomains: [],
+      egressDomains: [] as string[],
     },
     ...overrides,
   };
 }
 
-test("definePlugin validates required fields", () => {
-  assert.throws(
-    () => definePlugin({ pluginId: "", name: "Test", version: "1.0.0", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
+test("definePlugin validates required fields", async () => {
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "", name: "Test", version: "1.0.0", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
     /Plugin ID is required/
   );
-  assert.throws(
-    () => definePlugin({ pluginId: "  ", name: "Test", version: "1.0.0", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "  ", name: "Test", version: "1.0.0", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
     /Plugin ID is required/
   );
-  assert.throws(
-    () => definePlugin({ pluginId: "p", name: "", version: "1.0.0", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "p", name: "", version: "1.0.0", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
     /Plugin name is required/
   );
-  assert.throws(
-    () => definePlugin({ pluginId: "p", name: "Test", version: "", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "p", name: "Test", version: "", type: "tool", capabilities: [{ name: "exec", description: "", inputSchema: {}, outputSchema: {} }] }),
     /Plugin version is required/
   );
-  assert.throws(
-    () => definePlugin({ pluginId: "p", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "p", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
     /at least one capability/
   );
 });
 
-test("definePlugin validates capability fields", () => {
-  assert.throws(
-    () => definePlugin({
+test("definePlugin validates capability fields", async () => {
+  await assert.rejects(
+    async () => definePlugin({
       pluginId: "p",
       name: "Test",
       version: "1.0.0",
       type: "tool",
+      spiTypes: ["tool"],
+      domainIds: [],
+      sbomRef: null,
+      signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
       capabilities: [{ name: "", description: "desc", inputSchema: {}, outputSchema: {} }],
     }),
     /Capability name is required/
   );
-  assert.throws(
-    () => definePlugin({
+  await assert.rejects(
+    async () => definePlugin({
       pluginId: "p",
       name: "Test",
       version: "1.0.0",
       type: "tool",
+      spiTypes: ["tool"],
+      domainIds: [],
+      sbomRef: null,
+      signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
       capabilities: [{ name: "exec", description: "desc", inputSchema: undefined as any, outputSchema: {} }],
     }),
     /inputSchema/
   );
-  assert.throws(
-    () => definePlugin({
+  await assert.rejects(
+    async () => definePlugin({
       pluginId: "p",
       name: "Test",
       version: "1.0.0",
       type: "tool",
+      spiTypes: ["tool"],
+      domainIds: [],
+      sbomRef: null,
+      signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
       capabilities: [{ name: "exec", description: "desc", inputSchema: {}, outputSchema: undefined as any }],
     }),
     /outputSchema/
   );
 });
 
-test("definePlugin creates valid plugin definition", () => {
-  const plugin = definePlugin({
+test("definePlugin creates valid plugin definition", async () => {
+  const plugin = await definePlugin({
     pluginId: "  my-plugin  ",
     name: "  My Plugin  ",
     version: "  1.0.0  ",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     description: "  A test plugin  ",
     capabilities: [{
       name: "execute",
@@ -132,12 +154,16 @@ test("definePlugin creates valid plugin definition", () => {
   assert.deepEqual(plugin.security, { sandboxTier: "read_only", egressDomains: [] });
 });
 
-test("definePlugin applies custom resource limits and security", () => {
-  const plugin = definePlugin({
+test("definePlugin applies custom resource limits and security", async () => {
+  const plugin = await definePlugin({
     pluginId: "custom-plugin",
     name: "Custom Plugin",
     version: "1.0.0",
     type: "adapter",
+    spiTypes: ["adapter"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "adapt", description: "", inputSchema: {}, outputSchema: {} }],
     resourceLimits: { maxMemoryMb: 1024, maxCpuMs: 10000, maxDurationMs: 60000 },
     security: { sandboxTier: "container", egressDomains: ["api.example.com"] },
@@ -147,11 +173,15 @@ test("definePlugin applies custom resource limits and security", () => {
   assert.deepEqual(plugin.security, { sandboxTier: "workspace_write", egressDomains: ["api.example.com"] });
 });
 
-test("defineTool creates tool plugin", () => {
-  const tool = defineTool({
+test("defineTool creates tool plugin", async () => {
+  const tool = await defineTool({
     pluginId: "my-tool",
     name: "My Tool",
     version: "2.0.0",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "run", description: "Run tool", inputSchema: {}, outputSchema: {} }],
   });
 
@@ -159,51 +189,66 @@ test("defineTool creates tool plugin", () => {
   assert.equal(tool.pluginId, "my-tool");
 });
 
-test("defineAdapter creates adapter plugin", () => {
-  const adapter = defineAdapter({
+test("defineAdapter creates adapter plugin", async () => {
+  const adapter = await defineAdapter({
     pluginId: "my-adapter",
     name: "My Adapter",
     version: "1.0.0",
+    spiTypes: ["adapter"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "convert", description: "", inputSchema: {}, outputSchema: {} }],
   });
 
   assert.equal(adapter.type, "adapter");
 });
 
-test("defineRetriever creates retriever plugin", () => {
-  const retriever = defineRetriever({
+test("defineRetriever creates retriever plugin", async () => {
+  const retriever = await defineRetriever({
     pluginId: "my-retriever",
     name: "My Retriever",
     version: "1.0.0",
+    spiTypes: ["retriever"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "search", description: "", inputSchema: {}, outputSchema: {} }],
   });
 
   assert.equal(retriever.type, "retriever");
 });
 
-test("defineEvaluator creates evaluator plugin", () => {
-  const evaluator = defineEvaluator({
+test("defineEvaluator creates evaluator plugin", async () => {
+  const evaluator = await defineEvaluator({
     pluginId: "my-evaluator",
     name: "My Evaluator",
     version: "1.0.0",
+    spiTypes: ["evaluator"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "evaluate", description: "", inputSchema: {}, outputSchema: {} }],
   });
 
   assert.equal(evaluator.type, "evaluator");
 });
 
-test("validatePluginDefinition re-validates and preserves structure", () => {
+test("validatePluginDefinition re-validates and preserves structure", async () => {
   const original = createMinimalPlugin();
-  const validated = validatePluginDefinition(original);
+  const validated = await validatePluginDefinition(original);
 
   assert.equal(validated.pluginId, original.pluginId);
   assert.equal(validated.name, original.name);
   assert.equal(validated.type, original.type);
 });
 
-test("validatePluginDefinition throws on invalid definition", () => {
+test("validatePluginDefinition throws on invalid definition", async () => {
   const invalid = { ...createMinimalPlugin(), pluginId: "" };
-  assert.throws(() => validatePluginDefinition(invalid as any), /plugin_sdk\.missing_plugin_id/);
+  await assert.rejects(
+    async () => validatePluginDefinition(invalid as any),
+    /plugin_sdk\.missing_plugin_id/
+  );
 });
 
 test("PluginContext requires pluginId", () => {
