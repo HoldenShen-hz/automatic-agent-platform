@@ -8,6 +8,7 @@ import {
   createIdempotencyKeyInterceptor,
   createOfflineQueueInterceptor,
   fetchTasks,
+  updatePreferences,
   type RestClientRequest,
 } from "@aa/shared-api-client";
 
@@ -239,5 +240,20 @@ describe("shared api-client runtime regressions", () => {
 
     expect(idempotencyKey).toBeTruthy();
     expect(legacyIdempotencyKey).toBe(idempotencyKey);
+  });
+
+  it("forwards If-Match on preference updates so optimistic locking reaches the transport", async () => {
+    let ifMatch = "";
+    const client = new DefaultRESTClient(async <T,>(request: RestClientRequest) => {
+      ifMatch = request.headers.get("If-Match") ?? "";
+      return {
+        status: 200,
+        data: { ok: true } as T,
+      };
+    });
+
+    await updatePreferences(client, { theme: "light", locale: "en-US" }, "etag-42");
+
+    expect(ifMatch).toBe("etag-42");
   });
 });

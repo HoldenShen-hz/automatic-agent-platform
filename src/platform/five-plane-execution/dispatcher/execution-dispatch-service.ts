@@ -818,6 +818,33 @@ export class ExecutionDispatchService {
         continue;
       }
 
+      // R6-09: Verify budgetReservationId exists before acquiring lease
+      const executionForBudgetCheck = this.store.dispatch.getExecution(ticket.executionId);
+      if (!executionForBudgetCheck?.budgetReservationId) {
+        blockedReason = "dispatch.budget_reservation_missing";
+        const trace = this.recordDecisionEvent(ticket, occurredAt, {
+          dispatchTarget,
+          remoteAvailability,
+          requiredIsolationLevel,
+          requiredRepoVersion,
+          preferredWorkerId: options.preferredWorkerId ?? null,
+          requiredCapabilities,
+          outcome: "blocked",
+          reasonCode: blockedReason,
+          selectedWorkerId: null,
+          leaseId: null,
+          fallbackApplied: false,
+          preemption: preemptionTrace,
+          evaluations,
+          ...this.buildSchedulerTraceFields(ticket, occurredAt, readySet, [], null),
+        });
+        if (trace.outcome === "blocked") {
+          this.recordBlockedDispatchArtifacts(ticket, occurredAt, trace, "budget_reservation_missing");
+        }
+        lastTrace = trace;
+        continue;
+      }
+
       const selectedWorker = this.selectDeterministicWorker(eligibleWorkers, evaluations);
 
       // Issue #1900 P1: Move lease acquisition inside transaction to ensure atomic

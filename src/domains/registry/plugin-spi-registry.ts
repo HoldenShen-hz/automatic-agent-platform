@@ -743,13 +743,14 @@ export class PluginSpiRegistry {
         if (error instanceof ValidationError) {
           throw error;
         }
-        throw new ValidationError("plugin_spi.isolated_failure", `Plugin ${record.manifest.pluginId} failed during ${phase}.`, {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new ValidationError("plugin_spi.isolated_failure", `Plugin ${record.manifest.pluginId} failed during ${phase}: ${errorMessage}`, {
           category: "validation",
           source: "internal",
           details: {
             pluginId: record.manifest.pluginId,
             phase,
-            errorMessage: error instanceof Error ? error.message : String(error),
+            errorMessage,
             domainId: context.domainId,
             bindingId: context.bindingId,
           },

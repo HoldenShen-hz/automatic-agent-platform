@@ -1,28 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-
-const webVitalsHandlers: Partial<Record<"LCP" | "FCP" | "CLS" | "INP", (metric: {
-  name: string;
-  value: number;
-  rating: "good" | "needs-improvement" | "poor";
-  delta: number;
-  id: string;
-  entries: unknown[];
-}) => void>> = {};
-
-vi.mock("web-vitals", () => ({
-  onLCP: (callback: typeof webVitalsHandlers.LCP) => {
-    webVitalsHandlers.LCP = callback;
-  },
-  onFCP: (callback: typeof webVitalsHandlers.FCP) => {
-    webVitalsHandlers.FCP = callback;
-  },
-  onCLS: (callback: typeof webVitalsHandlers.CLS) => {
-    webVitalsHandlers.CLS = callback;
-  },
-  onINP: (callback: typeof webVitalsHandlers.INP) => {
-    webVitalsHandlers.INP = callback;
-  },
-}));
 import {
   startWebVitalsCollection,
   TelemetrySink,
@@ -254,13 +230,34 @@ describe("TelemetrySink", () => {
 describe("startWebVitalsCollection", () => {
   it("records FCP/LCP/CLS/INP into telemetry once the web-vitals hooks fire", async () => {
     const sink = new TelemetrySink([]);
-    startWebVitalsCollection(sink);
-    await vi.dynamicImportSettled();
+    const observers = new Map<string, (entries: unknown[]) => void>();
 
-    webVitalsHandlers.FCP?.({ name: "FCP", value: 1200, rating: "good", delta: 1200, id: "fcp-1", entries: [] });
-    webVitalsHandlers.LCP?.({ name: "LCP", value: 2100, rating: "good", delta: 2100, id: "lcp-1", entries: [] });
-    webVitalsHandlers.CLS?.({ name: "CLS", value: 0.03, rating: "good", delta: 0.03, id: "cls-1", entries: [] });
-    webVitalsHandlers.INP?.({ name: "INP", value: 110, rating: "good", delta: 110, id: "inp-1", entries: [] });
+    class FakePerformanceObserver {
+      public static supportedEntryTypes = ["paint", "largest-contentful-paint", "layout-shift", "event"];
+
+      public constructor(private readonly callback: { (list: { getEntries(): unknown[] }): void }) {}
+
+      public observe(options: { type: string }): void {
+        observers.set(options.type, (entries) => {
+          this.callback({ getEntries: () => entries });
+        });
+      }
+
+      public disconnect(): void {
+        return;
+      }
+    }
+
+    Object.defineProperty(globalThis, "PerformanceObserver", {
+      configurable: true,
+      value: FakePerformanceObserver,
+    });
+
+    startWebVitalsCollection(sink);
+    observers.get("paint")?.([{ name: "first-contentful-paint", startTime: 1200 }]);
+    observers.get("largest-contentful-paint")?.([{ startTime: 2100 }]);
+    observers.get("layout-shift")?.([{ value: 0.03, hadRecentInput: false, startTime: 0 }]);
+    observers.get("event")?.([{ duration: 110, interactionId: 1, startTime: 0 }]);
 
     expect(sink.list().map((event) => event.name)).toEqual([
       "web_vitals.FCP",

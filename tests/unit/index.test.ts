@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PROJECT_ROOT = resolve(__dirname, "..", "..");
+const RAW_PROJECT_ROOT = resolve(__dirname, "..", "..");
+const PROJECT_ROOT = RAW_PROJECT_ROOT.endsWith("/dist")
+  ? resolve(RAW_PROJECT_ROOT, "..")
+  : RAW_PROJECT_ROOT;
 
 function dist(path: string): string {
   return join(PROJECT_ROOT, "dist", path);

@@ -7,7 +7,7 @@ export class MobilePlatformAdapter extends DefaultPlatformAdapter {
     platform: Extract<PlatformId, "android" | "ios">,
     private readonly bridge: MobileBridge | undefined = globalThis.__AA_MOBILE__,
   ) {
-    super(platform, { analyticsConsentDefault: false });
+    super(platform, { analyticsConsentDefault: true });
   }
 
   public override async readSecureValue(key: string): Promise<string | null> {

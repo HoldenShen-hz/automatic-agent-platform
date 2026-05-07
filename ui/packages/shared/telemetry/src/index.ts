@@ -43,6 +43,37 @@ interface WebVitalsMetric {
   entries: unknown[];
 }
 
+interface PerformanceObserverEntryLike {
+  readonly name?: string;
+  readonly startTime: number;
+  readonly value?: number;
+  readonly hadRecentInput?: boolean;
+  readonly duration?: number;
+  readonly interactionId?: number;
+  readonly entryType?: string;
+}
+
+function inferRating(name: "FCP" | "LCP" | "CLS" | "INP", value: number): "good" | "needs-improvement" | "poor" {
+  if (name === "CLS") {
+    if (value <= 0.1) return "good";
+    if (value <= 0.25) return "needs-improvement";
+    return "poor";
+  }
+  if (name === "FCP") {
+    if (value <= 1800) return "good";
+    if (value <= 3000) return "needs-improvement";
+    return "poor";
+  }
+  if (name === "LCP") {
+    if (value <= 2500) return "good";
+    if (value <= 4000) return "needs-improvement";
+    return "poor";
+  }
+  if (value <= 200) return "good";
+  if (value <= 500) return "needs-improvement";
+  return "poor";
+}
+
 /**
  * Starts Web Vitals collection using the web-vitals library.
  * Reports LCP, FCP, CLS, and INP to the provided TelemetrySink.
@@ -55,7 +86,6 @@ export function startWebVitalsCollection(
   sink: TelemetrySink,
   reportAll = true,
 ): () => void {
-  // Dynamically import web-vitals to avoid blocking the initial render
   const onMetric = (metric: WebVitalsMetric) => {
     sink.record(`web_vitals.${metric.name}`, {
       value: metric.value,
@@ -67,41 +97,89 @@ export function startWebVitalsCollection(
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onReady = (metric: WebVitalsMetric) => {
-    if (!reportAll) {
-      onMetric(metric);
-    }
+  const observerCtor = globalThis.PerformanceObserver;
+  const supportedTypes = observerCtor?.supportedEntryTypes ?? [];
+  if (observerCtor == null || supportedTypes.length === 0) {
+    return () => undefined;
+  }
+
+  const observers: PerformanceObserver[] = [];
+  const latestValues = new Map<string, number>();
+  let cumulativeCls = 0;
+
+  const emitMetric = (
+    name: "FCP" | "LCP" | "CLS" | "INP",
+    value: number,
+    entry: PerformanceObserverEntryLike,
+  ): void => {
+    const previousValue = latestValues.get(name) ?? 0;
+    latestValues.set(name, value);
+    onMetric({
+      name,
+      value,
+      rating: inferRating(name, value),
+      delta: value - previousValue,
+      id: `${name.toLowerCase()}-${Math.round(value)}`,
+      entries: [entry],
+    });
   };
 
-  // We use dynamic import so the module can be loaded lazily
-  // and does not block the main thread during initial render
-  let cleanup: (() => void) | undefined;
+  const observe = (
+    entryType: string,
+    handleEntries: (entries: readonly PerformanceObserverEntryLike[]) => void,
+  ): void => {
+    if (!supportedTypes.includes(entryType)) {
+      return;
+    }
+    const observer = new observerCtor((list) => {
+      handleEntries(list.getEntries() as readonly PerformanceObserverEntryLike[]);
+    });
+    observer.observe({ type: entryType, buffered: true });
+    observers.push(observer);
+  };
 
-  import("web-vitals").then((vl) => {
-    const onLCP = (metric: WebVitalsMetric) => onMetric(metric);
-    const onFCP = (metric: WebVitalsMetric) => onMetric(metric);
-    const onCLS = (metric: WebVitalsMetric) => onMetric(metric);
-    const onINP = (metric: WebVitalsMetric) => onMetric(metric);
+  observe("paint", (entries) => {
+    for (const entry of entries) {
+      if (entry.name === "first-contentful-paint") {
+        emitMetric("FCP", entry.startTime, entry);
+      }
+    }
+  });
 
-    void vl.onLCP(onLCP, { reportAll });
-    void vl.onFCP(onFCP, { reportAll });
-    void vl.onCLS(onCLS, { reportAll });
-    void vl.onINP(onINP, { reportAll });
+  observe("largest-contentful-paint", (entries) => {
+    const latest = entries[entries.length - 1];
+    if (latest != null) {
+      emitMetric("LCP", latest.startTime, latest);
+    }
+  });
 
-    cleanup = () => {
-      void vl.onLCP(() => {});
-      void vl.onFCP(() => {});
-      void vl.onCLS(() => {});
-      void vl.onINP(() => {});
-    };
-  }).catch(() => {
-    // web-vitals not available in non-browser environments
+  observe("layout-shift", (entries) => {
+    for (const entry of entries) {
+      if (entry.hadRecentInput === true) {
+        continue;
+      }
+      cumulativeCls += entry.value ?? 0;
+      emitMetric("CLS", cumulativeCls, entry);
+      if (!reportAll) {
+        break;
+      }
+    }
+  });
+
+  observe("event", (entries) => {
+    const interactionEntries = entries.filter((entry) => (entry.interactionId ?? 0) > 0);
+    if (interactionEntries.length === 0) {
+      return;
+    }
+    const slowestInteraction = interactionEntries.reduce((current, entry) => (
+      (entry.duration ?? 0) > (current.duration ?? 0) ? entry : current
+    ));
+    emitMetric("INP", slowestInteraction.duration ?? 0, slowestInteraction);
   });
 
   return () => {
-    if (cleanup) {
-      cleanup();
+    for (const observer of observers) {
+      observer.disconnect();
     }
   };
 }

@@ -50,6 +50,7 @@ import type { ClarificationSession } from "../../five-plane-orchestration/harnes
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../domains/governance/division-loader.js";
 import { getDefaultDivisionRegistry } from "../../../domains/governance/division-loader.js";
 import type { WorkerRegistryService } from "../../five-plane-execution/worker-pool/worker/worker-registry-service.js";
+import type { IntentParserModelGateway } from "../../../interaction/nl-gateway/intent-parser/index.js";
 
 /** Intent types for request classification */
 export type IntakeIntent =
@@ -518,6 +519,8 @@ export interface IntakeRouterOptions {
   divisionRegistry?: DivisionRegistry | null;
   /** R9-09: The worker registry service for capability matching (optional) */
   workerRegistry?: WorkerRegistryService | null;
+  /** R6-11: Model gateway for LLM-based intent extraction (optional) */
+  intentModelGateway?: IntentParserModelGateway | null;
 }
 
 /**
@@ -539,10 +542,11 @@ export interface LlmIntentResult {
  * R6-11: Adds LLM intent extraction with confidence threshold (0.80) per §39.3.
  * §39.5: Uses prior conversation context for multi-turn intent resolution.
  */
-function extractLlmIntent(
+async function extractLlmIntent(
   request: string,
   priorContext?: IntakeRouteInput["priorConversationContext"],
-): LlmIntentResult | null {
+  modelGateway?: IntentParserModelGateway | null,
+): Promise<LlmIntentResult | null> {
   // §39.5: Incorporate prior conversation turns into intent analysis
   if (priorContext && priorContext.turns.length > 0) {
     // Build context-aware prompt using prior conversation turns
@@ -561,17 +565,18 @@ function extractLlmIntent(
     }
   }
   // R6-11 FIX: Actually call LLM for intent extraction per §39.3
-  // In production this would call the configured LLM service
-  try {
-    // Build intent classification prompt
-    const classificationPrompt = buildIntentClassificationPrompt(request, priorContext);
-    // TODO: Replace with actual LLM API call
-    // const llmResponse = await callLlmIntentApi(classificationPrompt);
-    // if (llmResponse && llmResponse.confidence >= 0.80) { return llmResponse; }
-    // For now, fall through to keyword-based classification
-    void classificationPrompt;
-  } catch {
-    // Fall through to keyword-based classification
+  if (modelGateway != null) {
+    try {
+      const classificationPrompt = buildIntentClassificationPrompt(request, priorContext);
+      const llmResponse = await modelGateway.complete(classificationPrompt);
+      // Parse the LLM response to extract intent and confidence
+      const parsedResult = parseLlmIntentResponse(llmResponse);
+      if (parsedResult != null && parsedResult.confidence >= 0.80) {
+        return parsedResult;
+      }
+    } catch {
+      // Fall through to keyword-based classification
+    }
   }
   // R6-11: No LLM available - return null so caller uses keyword-based classification
   return null;
@@ -590,6 +595,50 @@ function buildIntentClassificationPrompt(
     prompt += `\n\nPrior conversation context:\n${priorContext.turns.map((t) => `[Turn ${t.turnNumber}]: ${t.message}`).join("\n")}`;
   }
   return prompt;
+}
+
+/**
+ * R6-11: Parses LLM response to extract intent and confidence.
+ * The LLM is expected to return a structured response with intent and confidence.
+ */
+function parseLlmIntentResponse(content: string): LlmIntentResult | null {
+  const lower = content.toLowerCase();
+  let intent: IntakeIntent = "query";
+  let confidence = 0.80;
+
+  // Try to extract intent from the response
+  if (lower.includes("create")) {
+    intent = "create";
+  } else if (lower.includes("modify") || lower.includes("update") || lower.includes("change")) {
+    intent = "modify";
+  } else if (lower.includes("approve") || lower.includes("approval")) {
+    intent = "approve";
+  } else if (lower.includes("cancel")) {
+    intent = "cancel";
+  } else if (lower.includes("clarify")) {
+    intent = "clarify";
+  } else if (lower.includes("chitchat") || lower.includes("chat")) {
+    intent = "chitchat";
+  } else if (lower.includes("correction")) {
+    intent = "correction";
+  } else if (lower.includes("query") || lower.includes("search") || lower.includes("find")) {
+    intent = "query";
+  }
+
+  // Try to extract confidence score from the response
+  const confidenceMatch = content.match(/confidence[:\s]*(\d+\.?\d*)/i);
+  if (confidenceMatch != null && confidenceMatch[1] != null) {
+    const parsedConfidence = Number.parseFloat(confidenceMatch[1]);
+    if (!Number.isNaN(parsedConfidence) && parsedConfidence >= 0 && parsedConfidence <= 1) {
+      confidence = parsedConfidence;
+    }
+  }
+
+  return {
+    intent,
+    confidence,
+    reasoning: content,
+  };
 }
 
 /**
@@ -618,6 +667,8 @@ export class IntakeRouter {
   private readonly workerRegistry: WorkerRegistryService | null;
   // R6-11: AmbiguityResolver for handling low-confidence classifications per §39.3
   private readonly ambiguityResolver: AmbiguityResolver;
+  // R6-11: Model gateway for LLM-based intent extraction
+  private readonly intentModelGateway: IntentParserModelGateway | null;
 
   /**
    * Creates a new intake router instance.
@@ -632,6 +683,8 @@ export class IntakeRouter {
     this.workerRegistry = options.workerRegistry ?? null;
     // R6-11: Use DefaultAmbiguityResolver if not provided in options
     this.ambiguityResolver = new DefaultAmbiguityResolver(0.80);
+    // R6-11: Store the intent model gateway for LLM-based intent extraction
+    this.intentModelGateway = options.intentModelGateway ?? null;
   }
 
   /**
