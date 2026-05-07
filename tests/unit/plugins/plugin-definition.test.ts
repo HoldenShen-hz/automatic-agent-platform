@@ -152,20 +152,19 @@ test("definePlugin applies custom security config", () => {
   assert.deepEqual(plugin.security, { sandboxTier: "workspace_write", egressDomains: ["api.example.com"] });
 });
 
-test("definePlugin normalizes unknown sandbox tier to read_only", () => {
-  // R8-42/S4: "none" sandbox tier violates INV-POLICY-001
-  // normalizeSandboxMode converts unknown values to "read_only"
-  const plugin = definePlugin({
-    pluginId: "test-plugin",
-    name: "Test Plugin",
-    version: "1.0.0",
-    type: "tool",
-    capabilities: [{ name: "run", description: "", inputSchema: {}, outputSchema: {} }],
-    security: { sandboxTier: "none" as any },
-  });
-
-  // "none" is not a valid SandboxMode, so normalizeSandboxMode falls back to "read_only"
-  assert.equal(plugin.security.sandboxTier, "read_only");
+test("definePlugin rejects 'none' sandbox tier (S4/R8-42)", () => {
+  // R8-42/S4: "none" sandbox tier violates INV-POLICY-001 - it throws an error
+  assert.throws(
+    () => definePlugin({
+      pluginId: "test-plugin",
+      name: "Test Plugin",
+      version: "1.0.0",
+      type: "tool",
+      capabilities: [{ name: "run", description: "", inputSchema: {}, outputSchema: {} }],
+      security: { sandboxTier: "none" as any },
+    }),
+    (err: unknown) => err instanceof Error && err.message.includes("sandboxTier 'none'"),
+  );
 });
 
 test("definePlugin accepts valid sandbox tiers", () => {

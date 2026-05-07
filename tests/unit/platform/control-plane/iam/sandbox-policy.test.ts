@@ -17,6 +17,7 @@ import {
   type SandboxMode,
   type SandboxPathCheckResult,
 } from "../../../../../src/platform/control-plane/iam/sandbox-policy.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 test("createWorkspaceWritePolicy creates valid policy", () => {
   const policy = createWorkspaceWritePolicy("/workspace/root");
@@ -415,17 +416,20 @@ test("processRuleMode values are accepted", () => {
 // S4/R8-42: Sandbox tier "none" removal tests
 // =============================================================================
 
-test("normalizeSandboxMode rejects 'none' tier and falls back to read_only (S4/R8-42)", () => {
-  // Per S4/R8-42, "none" is not a valid sandbox mode
-  // It should fall back to default "read_only" rather than being accepted
-  const result = normalizeSandboxMode("none");
-  assert.equal(result, "read_only");
+test("normalizeSandboxMode rejects 'none' tier with error (S4/R8-42)", () => {
+  // Per S4/R8-42, "none" is not a valid sandbox mode - it throws
+  assert.throws(
+    () => normalizeSandboxMode("none"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
 });
 
 test("normalizeSandboxMode does not accept 'none' as valid mode (S4/R8-42)", () => {
-  // Verify that "none" is not treated as a valid mode
-  const result = normalizeSandboxMode("none");
-  assert.notEqual(result, "none");
+  // Verify that "none" is not treated as a valid mode - throws error
+  assert.throws(
+    () => normalizeSandboxMode("none"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
 });
 
 test("normalizeSandboxMode accepts null/undefined and returns read_only", () => {
@@ -451,11 +455,20 @@ test("normalizeSandboxMode normalizes alias 'container' to workspace_write", () 
   assert.equal(normalizeSandboxMode("container"), "workspace_write");
 });
 
-test("normalizeSandboxMode handles unknown mode strings with fallback to read_only", () => {
-  // Any unknown string should fall back to read_only
-  assert.equal(normalizeSandboxMode("invalid"), "read_only");
-  assert.equal(normalizeSandboxMode(""), "read_only");
-  assert.equal(normalizeSandboxMode("random_string"), "read_only");
+test("normalizeSandboxMode rejects unknown mode strings with error", () => {
+  // Unknown strings throw an error - no silent fallback
+  assert.throws(
+    () => normalizeSandboxMode("invalid"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
+  assert.throws(
+    () => normalizeSandboxMode(""),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
+  assert.throws(
+    () => normalizeSandboxMode("random_string"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
 });
 
 test("SandboxMode type definition excludes 'none' (S4/R8-42)", () => {
@@ -484,32 +497,25 @@ test("SandboxMode type definition excludes 'none' (S4/R8-42)", () => {
 });
 
 test("normalizeSandboxMode is case-sensitive for invalid modes", () => {
-  // Case variations should still fall back to read_only
-  assert.equal(normalizeSandboxMode("NONE"), "read_only");
-  assert.equal(normalizeSandboxMode("Read_Only"), "read_only");
-  assert.equal(normalizeSandboxMode("WORKSPACE_WRITE"), "read_only");
+  // Case variations throw errors - no silent fallback
+  assert.throws(
+    () => normalizeSandboxMode("NONE"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
+  assert.throws(
+    () => normalizeSandboxMode("Read_Only"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
+  assert.throws(
+    () => normalizeSandboxMode("WORKSPACE_WRITE"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
 });
 
-test("checkSandboxPath with policy using mode that normalized from 'none' still works", () => {
-  // Even though normalizeSandboxMode("none") returns read_only,
-  // the actual policy mode must be set to a valid SandboxMode
-  const normalizedMode = normalizeSandboxMode("none");
-  assert.equal(normalizedMode, "read_only");
-
-  // A policy created with the normalized mode should work correctly
-  const policy: SandboxPolicy = {
-    policyId: "none-replaced",
-    mode: normalizedMode,
-    allowedRoots: ["/workspace"],
-    deniedRoots: [],
-    realpathEnforced: false,
-    symlinkPolicy: "deny",
-    processRuleMode: "allow",
-  };
-
-  const result = checkSandboxPath(policy, "/workspace/file.txt");
-  assert.equal(result.allowed, true);
-
-  const outsideResult = checkSandboxPath(policy, "/etc/passwd");
-  assert.equal(outsideResult.allowed, false);
+test("checkSandboxPath with policy using mode that normalized from 'none' throws error", () => {
+  // normalizeSandboxMode("none") throws an error - it does NOT return read_only
+  assert.throws(
+    () => normalizeSandboxMode("none"),
+    (err: unknown) => err instanceof ValidationError && err.code === "sandbox_policy.invalid_sandbox_tier",
+  );
 });

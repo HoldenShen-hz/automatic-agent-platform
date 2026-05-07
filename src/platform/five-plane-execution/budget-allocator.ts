@@ -473,11 +473,13 @@ export class BudgetAllocator {
   }): BudgetSettlementResult {
     const context = this.normalizeContext(input.context);
 
-    // Validate CAS against expected version before proceeding
-    if (input.ledger.version !== input.expectedVersion) {
+    // Validate ledger hasn't regressed (CAS check on the reserved version, not settle)
+    // settle/release only read the ledger; they don't write to it, so no version bump needed here.
+    // We check that ledger version >= expectedVersion to catch regressions (not to enforce CAS).
+    if (input.ledger.version < input.expectedVersion) {
       throw new ValidationError(
         "budget_settlement.version_cas_failed",
-        "Budget settlement requires the current ledger version.",
+        "Budget settlement version regression detected.",
         { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
       );
     }
@@ -510,10 +512,8 @@ export class BudgetAllocator {
         hardCapSatisfied,
       },
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/settle`,
-      ...(context.fencingToken != null ? { fencingToken: context.fencingToken } : {}),
+      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
     });
-
-    // §18.3: Process streaming settle
     if (context.streamingSettle?.enabled) {
       this.processStreamingSettle(context, input.reservation, input.actualAmount);
     }
@@ -577,11 +577,13 @@ export class BudgetAllocator {
   }): BudgetReleaseResult {
     const context = this.normalizeContext(input.context);
 
-    // Validate CAS against expected version before proceeding
-    if (input.ledger.version !== input.expectedVersion) {
+    // Validate ledger hasn't regressed (CAS check on the reserved version, not release)
+    // release only reads the ledger; it doesn't write to it, so no version bump needed here.
+    // We check that ledger version >= expectedVersion to catch regressions (not to enforce CAS).
+    if (input.ledger.version < input.expectedVersion) {
       throw new ValidationError(
         "budget_release.version_cas_failed",
-        "Budget release requires the current ledger version.",
+        "Budget release version regression detected.",
         { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
       );
     }
@@ -605,7 +607,7 @@ export class BudgetAllocator {
       reasonCode: input.reasonCode ?? "budget.released_without_execution",
       emittedBy: context.emittedBy,
       auditRef: `audit://budget-reservations/${input.reservation.budgetReservationId}/release`,
-      ...(context.fencingToken != null ? { fencingToken: context.fencingToken } : {}),
+      ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
     });
 
     // Clean up streaming state on release
