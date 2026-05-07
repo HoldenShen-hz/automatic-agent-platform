@@ -269,6 +269,9 @@ export interface HarnessRun {
   readonly tenantId: string;
   readonly orgId: string;
   readonly traceId: string;
+  // R3-5 fix: Add goal/mode per §45.13
+  readonly goal?: string;
+  readonly mode?: string;
   readonly riskLevel: RiskClass;
   readonly riskProfile: RiskPreview;
   readonly ownership: Readonly<{ ownerId: string; ownerType: string }>;
@@ -1002,6 +1005,9 @@ export function createHarnessRun(input: {
   tenantId: string;
   orgId?: string;
   traceId?: string;
+  // R3-5 fix: Add goal/mode per §45.13
+  goal?: string;
+  mode?: string;
   riskLevel?: RiskClass;
   riskProfile?: RiskPreview;
   ownership?: Readonly<{ ownerId: string; ownerType: string }>;

@@ -228,7 +228,7 @@ export class HitlRuntime {
     return { request: takenOver, record };
   }
 
-  public resolve(requestId: string, resolution: "approved" | "rejected", actorId: string): HitlRequest {
+  public resolve(requestId: string, resolution: "approved" | "rejected", actorId: string): { request: HitlRequest; record: HumanResponsibilityRecord } {
     const request = this.memoryFallback.get(requestId);
     if (!request) {
       throw new Error(`harness.hitl.request_not_found:${requestId}`);
@@ -244,7 +244,11 @@ export class HitlRuntime {
       resolvedBy: actorId,
     };
     this.persistRequest(resolved);
-    return resolved;
+    // R3-3 fix: Produce HumanResponsibilityRecord for every HITL operation including resolve()
+    const action: HitlMode = resolution === "approved" ? "resume" : "abort";
+    const rationale = `hitl_resolution:${resolution}`;
+    const record = this.createResponsibilityRecord(resolved, actorId, action, rationale);
+    return { request: resolved, record };
   }
 
   /**
