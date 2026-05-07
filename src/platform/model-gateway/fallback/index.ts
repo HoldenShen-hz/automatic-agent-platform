@@ -59,13 +59,7 @@ export class ModelGatewayFallbackService {
         if (b.fallbackPriority !== undefined) {
           return 1;
         }
-        // Second priority: tier order (reasoning > balanced > coding > fast)
-        const tierOrder: Record<string, number> = { reasoning: 0, balanced: 1, coding: 2, fast: 3 };
-        const tierDiff = (tierOrder[a.tier] ?? 99) - (tierOrder[b.tier] ?? 99);
-        if (tierDiff !== 0) {
-          return tierDiff;
-        }
-        // Third priority: cost (cheapest)
+        // Default fallback policy prefers the cheapest healthy candidate.
         return a.inputCostPer1kUsd - b.inputCostPer1kUsd;
       });
 
@@ -87,7 +81,7 @@ export class ModelGatewayFallbackService {
       selectedProfileName: selected?.profileName ?? null,
       reasonCode: selected == null
         ? "fallback.no_candidate_available"
-        : `fallback.healthy_alternative_selected:${fallbackChain.indexOf(selected.profileName) + 1}`,
+        : "fallback.healthy_alternative_selected",
       degradedFromProfileName: input.primaryProfileName,
       attemptedProfiles,
       fallbackChain,

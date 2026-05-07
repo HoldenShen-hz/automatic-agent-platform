@@ -1,6 +1,6 @@
 import { newId, nowIso } from "../../../contracts/types/ids.js";
 import { ACPInvariantEnforcer, type InvariantContext } from "./invariant-enforcer.js";
-import { ACPMessageSchema, type ACPMessage, type ACPMessageType } from "./types.js";
+import { ACPMessageSchema, type ACPMessage, type ACPMessageInput, type ACPMessageType } from "./types.js";
 
 export class CollaborationProtocolService {
   private readonly acceptedMessageIds = new Set<string>();
@@ -9,7 +9,7 @@ export class CollaborationProtocolService {
 
   public constructor(private readonly invariantEnforcer: ACPInvariantEnforcer = new ACPInvariantEnforcer()) {}
 
-  public createMessage(type: ACPMessageType, fields: Omit<ACPMessage, "messageId" | "messageType" | "timestamp">): ACPMessage {
+  public createMessage(type: ACPMessageType, fields: Omit<ACPMessageInput, "messageId" | "messageType" | "timestamp">): ACPMessage {
     const lastSequence = this.lastSequenceByCorrelation.get(fields.correlation_id) ?? 0;
     return ACPMessageSchema.parse({
       ...fields,
@@ -22,7 +22,7 @@ export class CollaborationProtocolService {
     });
   }
 
-  public validateAndSend(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] } {
+  public validateAndSend(message: ACPMessage | ACPMessageInput, context: InvariantContext): { accepted: boolean; violations: string[] } {
     const parsed = ACPMessageSchema.parse(message);
     const result = this.invariantEnforcer.enforceAll(parsed, context);
     const sequencing = this.enforceSequencing(parsed);
@@ -47,7 +47,7 @@ export class CollaborationProtocolService {
     };
   }
 
-  public handleIncoming(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] } {
+  public handleIncoming(message: ACPMessage | ACPMessageInput, context: InvariantContext): { accepted: boolean; violations: string[] } {
     return this.validateAndSend(message, context);
   }
 

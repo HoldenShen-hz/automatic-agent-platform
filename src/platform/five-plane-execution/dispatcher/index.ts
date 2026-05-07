@@ -341,6 +341,11 @@ class MultiStepToolRegistry {
       url = `search:${args.query as string}`;
     }
 
+    // R4-31: If URL is empty, deny by default - validation happens in tool implementation
+    if (!url || (toolName === "web_fetch" && url.trim() === "")) {
+      return { allowed: false, reasonCode: "empty_url" };
+    }
+
     const decision = policyService.evaluate(url);
     return {
       allowed: decision.allowed,

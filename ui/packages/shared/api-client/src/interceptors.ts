@@ -17,6 +17,9 @@ export interface RestClientInterceptor {
   onResponse?<T>(response: RestClientResponse<T>): Promise<RestClientResponse<T>> | RestClientResponse<T>;
 }
 
+// Keep the UI API client aligned with server-side version routing defaults.
+export const DEFAULT_ACCEPT_VERSIONS = ["2026-04-01", "2026-01-01"] as const;
+
 export function createTraceInterceptor(): RestClientInterceptor {
   return {
     onRequest(request) {
@@ -26,7 +29,9 @@ export function createTraceInterceptor(): RestClientInterceptor {
   };
 }
 
-export function createContractVersionInterceptor(supportedVersions: string[] = ["v1"]): RestClientInterceptor {
+export function createContractVersionInterceptor(
+  supportedVersions: readonly string[] = DEFAULT_ACCEPT_VERSIONS,
+): RestClientInterceptor {
   return {
     onRequest(request) {
       request.headers.set("Accept-Version", supportedVersions.join(","));

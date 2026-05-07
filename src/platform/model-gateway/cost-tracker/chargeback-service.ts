@@ -70,7 +70,7 @@ function convertCurrency(amount: number, fromCurrency: string, toCurrency: strin
 function resolveCostSource(resource: CostReportResourceCost): string {
   const metadataCostSource = resource.metadata?.["costSource"];
   return typeof metadataCostSource === "string" && metadataCostSource.trim().length > 0
-    ? metadataCostSource
+    ? metadataCostSource.trim()
     : resource.resourceType;
 }
 
@@ -83,7 +83,14 @@ export class ChargebackService {
     readonly baseCurrency?: string;
   } = {}): ChargebackReport {
     const baseCurrency = input.baseCurrency ?? "USD";
-    const reports = this.source.listReports(input.limit ?? 500, input.tenantId ?? undefined);
+    const requestedLimit = input.limit ?? 500;
+    const sourceReports = this.source.listReports(requestedLimit, input.tenantId ?? undefined);
+    const filteredReports = input.tenantId == null
+      ? sourceReports
+      : sourceReports.filter((report) => report.tenantId === input.tenantId);
+    const reports = requestedLimit <= 0
+      ? []
+      : filteredReports.slice(0, requestedLimit);
     const allocations = new Map<string, ChargebackAllocation>();
     let totalCostUsd = 0;
 
@@ -118,7 +125,7 @@ export class ChargebackService {
               originalCurrency: resource.currency,
               baseCurrency,
               fxRateToBase: fxRate,
-              costOriginal: resource.costUsd / fxRate,
+              costOriginal: resource.costUsd,
               costUsd: costInBase,
               costSource: resolveCostSource(resource),
               reportCount: 1,
@@ -129,8 +136,7 @@ export class ChargebackService {
           }
           allocations.set(allocationKey, {
             ...current,
-            // costOriginal is in originalCurrency, not USD — divide USD by fxRate to get original amount
-            costOriginal: current.costOriginal + resource.costUsd / fxRate,
+            costOriginal: current.costOriginal + resource.costUsd,
             costUsd: current.costUsd + costInBase,
             reportCount: current.reportCount + 1,
             firstPeriodStart: report.periodStart.localeCompare(current.firstPeriodStart) < 0 ? report.periodStart : current.firstPeriodStart,

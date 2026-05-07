@@ -279,6 +279,7 @@ export class ForkedPluginRuntimeHost extends BasePluginRuntimeHost {
         workspaceRoot: this.workspaceRoot,
         sandboxPolicy: this.sandboxPolicy,
         sandboxRoot: this.sandboxRoot,
+        childModulePath: this.childModulePath,
         env: process.env,
       }),
       stdio: ["ignore", "ignore", "pipe", "ipc"],
@@ -444,6 +445,7 @@ interface BuildPluginRuntimeExecArgvOptions {
   workspaceRoot: string;
   sandboxPolicy: PluginSandboxPolicy;
   sandboxRoot: string | null;
+  childModulePath?: string;
   env: NodeJS.ProcessEnv;
 }
 
@@ -488,8 +490,9 @@ function buildEphemeralPluginRuntimeSandboxRoot(
 
 export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOptions): string[] {
   const baseArgs = sanitizePluginRuntimeExecArgs(process.execArgv);
+  const loaderArgs = shouldUseTsxLoader(options.childModulePath) ? ["--import", "tsx"] : [];
   if (options.isolation !== "sandboxed_process") {
-    return dedupeArgs(baseArgs);
+    return dedupeArgs([...loaderArgs, ...baseArgs]);
   }
 
   const readRoots = buildSandboxReadRoots(options.workspaceRoot, baseArgs);
@@ -509,6 +512,7 @@ export function buildPluginRuntimeExecArgv(options: BuildPluginRuntimeExecArgvOp
   }
 
   return dedupeArgs([
+    ...loaderArgs,
     ...baseArgs,
     "--permission",
     ...readRoots.map((root) => `--allow-fs-read=${root}`),
@@ -604,6 +608,13 @@ function deriveReadablePathFromExecArg(arg: string): string | null {
   return null;
 }
 
+function shouldUseTsxLoader(childModulePath: string | undefined): boolean {
+  if (childModulePath == null) {
+    return false;
+  }
+  return childModulePath.endsWith(".ts") || childModulePath.endsWith(".tsx");
+}
+
 function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOptions): NodeJS.ProcessEnv {
   const forwardedKeys = [
     "PATH",
@@ -626,6 +637,7 @@ function buildPluginRuntimeEnvironment(options: BuildPluginRuntimeEnvironmentOpt
   env.AA_PLUGIN_RUNTIME_ISOLATION = options.isolation;
   env.AA_PLUGIN_RUNTIME_PLUGIN_ID = options.pluginId;
   env.AA_PLUGIN_ALLOW_NETWORK_EGRESS = String(options.sandboxPolicy.allowNetworkEgress);
+  env.TSX_DISABLE_CACHE = "true";
   if (options.sandboxRoot) {
     env.AA_PLUGIN_SANDBOX_ROOT = options.sandboxRoot;
   }
@@ -694,9 +706,17 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
     );
   }
 
+  const args = rendered.slice(1);
+  if (shouldUseTsxLoader(options.childModulePath)) {
+    const childModuleIndex = args.findIndex((value) => value === options.childModulePath);
+    if (childModuleIndex !== -1) {
+      args.splice(childModuleIndex, 0, "--import", "tsx");
+    }
+  }
+
   return {
     command: rendered[0]!,
-    args: rendered.slice(1),
+    args,
   };
 }
 

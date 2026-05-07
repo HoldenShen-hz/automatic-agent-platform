@@ -2,8 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { MockExecuteBridge } from "../../../../../src/platform/five-plane-orchestration/oapeflir/runtime-execute-bridge.js";
 import type { DualChannelStepOutput } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/dual-channel-step-output.js";
-import type { Plan } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/plan.js";
 import type { TypedEventPublisher } from "../../../../../src/platform/state-evidence/events/typed-event-publisher.js";
+import {
+  createPlanGraphBundle,
+  type PlanGraphBundle,
+  type PlanNode,
+  type PlanEdge,
+  type RiskPreview,
+  type ReadyNodeSchedulingPolicy,
+} from "../../../../../src/platform/contracts/executable-contracts/index.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -22,39 +29,69 @@ interface ExecutionCompletedPayload {
   stepOutputs: DualChannelStepOutput[];
 }
 
-function makeMinimalPlan(planId: string, taskId: string): Plan {
+function makeMinimalPlanGraph(graphId: string) {
   return {
-    planId,
-    taskId,
-    version: 1,
-    assessmentRef: `assessment_${taskId}`,
-    strategy: "linear",
-    steps: [
+    graphId,
+    nodes: [
       {
-        stepId: "step_1",
-        action: "tool_action",
-        status: "pending",
-        inputs: {},
-        dependencies: [],
-        timeout: 30000,
-        retryPolicy: { maxRetries: 0, backoffMs: 0 },
-      },
+        nodeId: "node_1",
+        nodeType: "tool",
+        inputRefs: [],
+        outputSchemaRef: "schema_1",
+        riskClass: "low",
+        budgetIntent: { amount: 100, currency: "usd", resourceKinds: ["token"] },
+        sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+        retryPolicyRef: "retry_default",
+        timeoutMs: 30000,
+      } as PlanNode,
       {
-        stepId: "step_2",
-        action: "tool_action_2",
-        status: "pending",
-        inputs: {},
-        dependencies: ["step_1"],
-        timeout: 30000,
-        retryPolicy: { maxRetries: 0, backoffMs: 0 },
-      },
+        nodeId: "node_2",
+        nodeType: "tool",
+        inputRefs: ["node_1"],
+        outputSchemaRef: "schema_2",
+        riskClass: "medium",
+        budgetIntent: { amount: 200, currency: "usd", resourceKinds: ["token"] },
+        sideEffectProfile: { mayCommitExternalEffect: false, reversible: true },
+        retryPolicyRef: "retry_default",
+        timeoutMs: 30000,
+      } as PlanNode,
     ],
-    nodes: [],
-    edges: [],
-    entryNodeIds: [],
-    graphConstraints: {},
-    createdAt: Date.now(),
+    edges: [
+      {
+        edgeId: "edge_1",
+        fromNodeId: "node_1",
+        toNodeId: "node_2",
+        condition: { type: "always" },
+        dependencyType: "hard",
+      } as PlanEdge,
+    ],
   };
+}
+
+function makeMinimalRiskProfile(): RiskPreview {
+  return {
+    overall: "low",
+    byNode: {},
+    byClass: {},
+  };
+}
+
+function makeSchedulerPolicy(): ReadyNodeSchedulingPolicy {
+  return {
+    mode: " breadth_first" as unknown as ReadyNodeSchedulingPolicy["mode"],
+    maxConcurrentNodes: 3,
+  };
+}
+
+function makeMinimalPlan(planId: string, taskId: string): PlanGraphBundle {
+  return createPlanGraphBundle({
+    harnessRunId: `hrun_${taskId}`,
+    graph: makeMinimalPlanGraph(`graph_${taskId}`),
+    schedulerPolicy: makeSchedulerPolicy(),
+    budgetPlanRef: `budget_${taskId}`,
+    riskProfile: makeMinimalRiskProfile(),
+    planGraphBundleId: planId,
+  });
 }
 
 function makeStepOutputs(planId: string): DualChannelStepOutput[] {

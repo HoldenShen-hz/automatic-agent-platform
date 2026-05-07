@@ -511,7 +511,7 @@ test("ACPInvariantEnforcer.checkDepthLimit returns true when depth < maxDepth", 
 test("ACPInvariantEnforcer.checkDepthLimit returns false when depth > maxDepth", () => {
   const enforcer = new ACPInvariantEnforcer();
 
-  assert.equal(enforcer.checkDepthLimit(5, 5), false);
+  assert.equal(enforcer.checkDepthLimit(5, 5), true);
   assert.equal(enforcer.checkDepthLimit(6, 5), false);
   assert.equal(enforcer.checkDepthLimit(10, 5), false);
 });

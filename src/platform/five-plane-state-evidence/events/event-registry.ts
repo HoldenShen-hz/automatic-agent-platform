@@ -816,6 +816,43 @@ const runtimeStatusChangedPayloadSchema = z.object({
   auditRef: optionalStringSchema,
 }).passthrough();
 
+const platformRuntimeEventPayloadSchema = z.object({
+  harnessRunId: optionalStringSchema,
+  nodeRunId: optionalStringSchema,
+  nodeAttemptId: optionalStringSchema,
+  sideEffectId: optionalStringSchema,
+  budgetId: optionalStringSchema,
+  budgetReservationId: optionalStringSchema,
+  budgetLedgerId: optionalStringSchema,
+  budgetReconciliationId: optionalStringSchema,
+  aggregateType: optionalStringSchema,
+  fromStatus: optionalStringSchema,
+  toStatus: optionalStringSchema,
+  reasonCode: optionalStringSchema,
+  emittedBy: optionalStringSchema,
+  occurredAt: optionalStringSchema,
+  auditRef: optionalStringSchema,
+  traceContext: traceContextSchema.optional(),
+}).passthrough().superRefine((payload, ctx) => {
+  if (
+    payload.harnessRunId == null
+    && payload.nodeRunId == null
+    && payload.nodeAttemptId == null
+    && payload.sideEffectId == null
+    && payload.budgetId == null
+    && payload.budgetReservationId == null
+    && payload.budgetLedgerId == null
+    && payload.budgetReconciliationId == null
+    && payload.aggregateType == null
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["aggregateType"],
+      message: "platform runtime event payload must include a canonical aggregate or runtime identifier",
+    });
+  }
+});
+
 const graphSchedulerDecisionPayloadSchema = z.object({
   schedulerPolicy: z.string(),
   readyNodeIds: z.array(z.string()),
@@ -848,6 +885,34 @@ const oapeflirRunLifecyclePayloadSchema = z.object({
   taskId: optionalNullableStringSchema,
   occurredAt: optionalNullableStringSchema,
 }).passthrough();
+
+const oapeflirEventPayloadSchema = z.object({
+  runId: optionalStringSchema,
+  stage: optionalStringSchema,
+  fromPhase: optionalStringSchema,
+  toPhase: optionalStringSchema,
+  decisionKind: optionalStringSchema,
+  decision: optionalStringSchema,
+  deciderType: optionalStringSchema,
+  deciderRef: optionalStringSchema,
+  taskId: optionalNullableStringSchema,
+  occurredAt: optionalNullableStringSchema,
+  traceContext: traceContextSchema.optional(),
+}).passthrough().superRefine((payload, ctx) => {
+  if (
+    payload.runId == null
+    && payload.stage == null
+    && payload.fromPhase == null
+    && payload.toPhase == null
+    && payload.decisionKind == null
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["runId"],
+      message: "oapeflir payload must include runId, stage, phase transition, or decision metadata",
+    });
+  }
+});
 
 const dispatchEventPayloadSchema = z.object({
   taskId: optionalStringSchema,
@@ -1008,6 +1073,12 @@ function resolvePayloadValidator(type: string): {
   }
   if (type.startsWith("skill:")) {
     return { validator: skillEventPayloadSchema, source: "family" };
+  }
+  if (type.startsWith("platform.")) {
+    return { validator: platformRuntimeEventPayloadSchema, source: "family" };
+  }
+  if (type.startsWith("oapeflir.")) {
+    return { validator: oapeflirEventPayloadSchema, source: "family" };
   }
   return { validator: genericEventPayloadSchema, source: "generic" };
 }

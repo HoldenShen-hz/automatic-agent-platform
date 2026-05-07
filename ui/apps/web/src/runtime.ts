@@ -3,6 +3,7 @@ import {
   DefaultRESTClient,
   HttpTransport,
   createRuntimeWSClient,
+  DEFAULT_ACCEPT_VERSIONS,
   fetchContractVersion,
   createAuthInterceptor,
   createContractVersionInterceptor,
@@ -40,7 +41,7 @@ export interface WebRuntimeBanner {
   readonly message: string;
 }
 
-export const SUPPORTED_CONTRACT_VERSIONS = ["v1"] as const;
+export const SUPPORTED_CONTRACT_VERSIONS = [...DEFAULT_ACCEPT_VERSIONS] as const;
 
 /**
  * Creates web runtime configuration from environment variables per §5.1.2.

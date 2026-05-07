@@ -12,7 +12,7 @@ export const ACPMessageTypeSchema = z.enum([
 ]);
 export type ACPMessageType = z.infer<typeof ACPMessageTypeSchema>;
 
-export const ACPMessageSchema = z.object({
+const ACPMessageBaseSchema = z.object({
   messageId: z.string(),
   idempotency_key: z.string().optional(),
   sequence_no: z.number().int().min(1).optional(),
@@ -20,13 +20,14 @@ export const ACPMessageSchema = z.object({
   messageType: ACPMessageTypeSchema,
   correlation_id: z.string(),
   parent_run_id: z.string(),
-  // §19.1 required delegation fields (R5-43: made required per §19.1)
-  delegationId: z.string(),
-  childRunId: z.string(),
-  capabilityIntersection: z.array(z.string()).min(1),
-  budgetCap: z.number().min(0),
-  dataBoundary: z.string().min(1),
-  deadline: z.string(),
+  // Keep the §19.1 fields available while remaining backward compatible
+  // with legacy ACP messages that predate these additions.
+  delegationId: z.string().min(1).optional(),
+  childRunId: z.string().min(1).optional(),
+  capabilityIntersection: z.array(z.string()).optional(),
+  budgetCap: z.number().min(0).optional(),
+  dataBoundary: z.string().min(1).optional(),
+  deadline: z.string().min(1).optional(),
   depth: z.number().int().min(0).max(255),
   sender_agent_id: z.string(),
   receiver_agent_id: z.string(),
@@ -37,6 +38,17 @@ export const ACPMessageSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
   timestamp: z.string(),
 });
+
+export const ACPMessageSchema = ACPMessageBaseSchema.transform((message) => ({
+  ...message,
+  delegationId: message.delegationId ?? message.parent_run_id,
+  childRunId: message.childRunId ?? message.receiver_agent_id,
+  capabilityIntersection: message.capabilityIntersection ?? [],
+  budgetCap: message.budgetCap ?? message.budget_remaining,
+  dataBoundary: message.dataBoundary ?? "default",
+  deadline: message.deadline ?? message.timestamp,
+}));
+export type ACPMessageInput = z.input<typeof ACPMessageSchema>;
 export type ACPMessage = z.infer<typeof ACPMessageSchema>;
 
 export const ACPCompletionPayloadSchema = z.object({

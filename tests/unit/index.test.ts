@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,12 +11,18 @@ const PROJECT_ROOT = RAW_PROJECT_ROOT.endsWith("/dist")
   ? resolve(RAW_PROJECT_ROOT, "..")
   : RAW_PROJECT_ROOT;
 
-function dist(path: string): string {
-  return join(PROJECT_ROOT, "dist", path);
+function resolveRootEntryModule(): string {
+  const distEntry = join(PROJECT_ROOT, "dist", "src", "index.js");
+  if (existsSync(distEntry)) {
+    return distEntry;
+  }
+  return join(PROJECT_ROOT, "src", "index.ts");
 }
 
+const ROOT_ENTRY_MODULE = resolveRootEntryModule();
+
 test("src/index exports all expected module namespaces", async () => {
-  const index = await import(dist("src/index.js"));
+  const index = await import(ROOT_ENTRY_MODULE);
 
   assert.ok(index.domains != null, "should export domains namespace");
   assert.ok(index.interaction != null, "should export interaction namespace");
@@ -26,7 +33,7 @@ test("src/index exports all expected module namespaces", async () => {
 });
 
 test("src/index exports build functions from submodules", async () => {
-  const index = await import(dist("src/index.js"));
+  const index = await import(ROOT_ENTRY_MODULE);
 
   assert.equal(typeof index.buildDomainsRuntimeCatalog, "function");
   assert.equal(typeof index.buildDomainsStartupPlan, "function");
@@ -40,7 +47,7 @@ test("src/index exports build functions from submodules", async () => {
 });
 
 test("src/index exports type definitions from platform-architecture-types", async () => {
-  const index = await import(dist("src/index.js"));
+  const index = await import(ROOT_ENTRY_MODULE);
 
   // Types are erased at runtime, so we verify through buildPlatformRootSummary usage
   // The module exports these types - verify via runtime behavior
@@ -49,7 +56,7 @@ test("src/index exports type definitions from platform-architecture-types", asyn
 });
 
 test("src/index buildPlatformRootSummary returns complete PlatformRootSummary structure", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -62,7 +69,7 @@ test("src/index buildPlatformRootSummary returns complete PlatformRootSummary st
 });
 
 test("src/index buildPlatformRootSummary domains section has correct structure", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -74,7 +81,7 @@ test("src/index buildPlatformRootSummary domains section has correct structure",
 });
 
 test("src/index buildPlatformRootSummary planes section has correct structure", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -89,7 +96,7 @@ test("src/index buildPlatformRootSummary planes section has correct structure", 
 });
 
 test("src/index buildPlatformRootSummary aiOperations section has correct structure", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -102,7 +109,7 @@ test("src/index buildPlatformRootSummary aiOperations section has correct struct
 });
 
 test("src/index buildPlatformRootSummary interactionGovernance section has correct structure", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -113,7 +120,7 @@ test("src/index buildPlatformRootSummary interactionGovernance section has corre
 });
 
 test("src/index buildPlatformRootSummary scaleOps section has correct structure", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -124,7 +131,7 @@ test("src/index buildPlatformRootSummary scaleOps section has correct structure"
 });
 
 test("src/index buildPlatformRootSummary returns non-null architecture when available", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   const summary = buildPlatformRootSummary();
 
@@ -135,7 +142,7 @@ test("src/index buildPlatformRootSummary returns non-null architecture when avai
 });
 
 test("src/index safeBuild error boundary returns success:false on thrown error", async () => {
-  const { buildPlatformRootSummary } = await import(dist("src/index.js"));
+  const { buildPlatformRootSummary } = await import(ROOT_ENTRY_MODULE);
 
   // Calling multiple times should not throw even if services fail
   // The function uses safeBuild internally so it should handle errors gracefully
@@ -150,7 +157,7 @@ test("src/index safeBuild error boundary returns success:false on thrown error",
 });
 
 test("src/index getPlatformApplicationKernel returns kernel instance", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   assert.ok(kernel != null, "kernel should not be null");
@@ -160,7 +167,7 @@ test("src/index getPlatformApplicationKernel returns kernel instance", async () 
 });
 
 test("src/index getPlatformApplicationKernel listLayers returns array", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const layers = kernel.listLayers();
@@ -172,7 +179,7 @@ test("src/index getPlatformApplicationKernel listLayers returns array", async ()
 });
 
 test("src/index getPlatformApplicationKernel listApps returns array", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const apps = kernel.listApps();
@@ -185,7 +192,7 @@ test("src/index getPlatformApplicationKernel listApps returns array", async () =
 });
 
 test("src/index getPlatformApplicationKernel listStartupTargets returns array", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const targets = kernel.listStartupTargets();
@@ -198,7 +205,7 @@ test("src/index getPlatformApplicationKernel listStartupTargets returns array", 
 });
 
 test("src/index getPlatformApplicationKernel getApp returns app for valid kind", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const app = kernel.getApp("api");
@@ -208,7 +215,7 @@ test("src/index getPlatformApplicationKernel getApp returns app for valid kind",
 });
 
 test("src/index getPlatformApplicationKernel getApp throws for unknown kind", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   assert.throws(
@@ -218,7 +225,7 @@ test("src/index getPlatformApplicationKernel getApp throws for unknown kind", as
 });
 
 test("src/index getPlatformApplicationKernel buildStartupPlan returns plan structure", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const plan = kernel.buildStartupPlan("summary");
@@ -230,7 +237,7 @@ test("src/index getPlatformApplicationKernel buildStartupPlan returns plan struc
 });
 
 test("src/index getPlatformApplicationKernel buildSnapshot returns snapshot structure", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const snapshot = kernel.buildSnapshot();
@@ -244,7 +251,7 @@ test("src/index getPlatformApplicationKernel buildSnapshot returns snapshot stru
 });
 
 test("src/index getPlatformApplicationKernel buildSnapshot contains valid timestamps", async () => {
-  const { getPlatformApplicationKernel } = await import(dist("src/index.js"));
+  const { getPlatformApplicationKernel } = await import(ROOT_ENTRY_MODULE);
 
   const kernel = getPlatformApplicationKernel();
   const snapshot = kernel.buildSnapshot();
@@ -254,7 +261,7 @@ test("src/index getPlatformApplicationKernel buildSnapshot contains valid timest
 });
 
 test("src/index runPlatformStartupPlan outputs startup plan for api target", async () => {
-  const { runPlatformStartupPlan } = await import(dist("src/index.js"));
+  const { runPlatformStartupPlan } = await import(ROOT_ENTRY_MODULE);
 
   // Should not throw and should complete (console output is suppressed in test)
   await runPlatformStartupPlan("api");

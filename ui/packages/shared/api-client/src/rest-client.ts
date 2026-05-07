@@ -22,7 +22,7 @@ import type {
   WorkflowDTO,
 } from "@aa/shared-types";
 import { defaultMockApiShape, type MockApiShape } from "./mock-data";
-import type { RestClientInterceptor, RestClientRequest, RestClientResponse } from "./interceptors";
+import { DEFAULT_ACCEPT_VERSIONS, type RestClientInterceptor, type RestClientRequest, type RestClientResponse } from "./interceptors";
 
 export interface TransportResponse<T> {
   readonly status: number;
@@ -239,6 +239,19 @@ function parseRetryAfterMs(headers: Headers): number | null {
   return Math.max(0, dateMs - Date.now());
 }
 
+function unwrapApiEnvelope<T>(payload: unknown): T {
+  if (
+    payload != null
+    && typeof payload === "object"
+    && "requestId" in payload
+    && typeof (payload as { requestId?: unknown }).requestId === "string"
+    && "data" in payload
+  ) {
+    return (payload as { data: T }).data;
+  }
+  return payload as T;
+}
+
 export class HttpTransport {
   private readonly fetchImplementation: typeof fetch;
   private readonly fallbackTransport: MockTransport | null;
@@ -283,7 +296,7 @@ export class HttpTransport {
     const requestBody = request.body == null ? null : JSON.stringify(request.body);
     const requestHeaders = new Headers({
       "content-type": "application/json",
-      "Accept-Version": "v1",
+      "Accept-Version": DEFAULT_ACCEPT_VERSIONS.join(","),
       ...(this.options.headers ?? {}),
       ...Object.fromEntries(request.headers.entries()),
     });
@@ -336,9 +349,10 @@ export class HttpTransport {
         }
 
         this.recordSuccess();
+        const payload = await response.json();
         return {
           status: response.status,
-          data: (await response.json()) as T,
+          data: unwrapApiEnvelope<T>(payload),
         };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));

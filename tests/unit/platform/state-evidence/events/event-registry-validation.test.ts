@@ -215,7 +215,7 @@ test("registered tier_1 and tier_2 events do not fall back to generic payload va
 
 test("validateEventPayload rejects unknown event types instead of accepting generic payloads", () => {
   assert.throws(() => {
-    validateEventPayload("perf:test_event", {
+    validateEventPayload("unknown:event_generic_probe", {
       customField: "value",
       numberField: 42,
     });

@@ -213,7 +213,7 @@ test("registered tier_2 events do not use generic payload validators", () => {
 
 test("unknown event types are rejected instead of using generic payload validators", () => {
   assert.throws(
-    () => validateEventPayload("perf:test_event", { anyField: "anyValue", num: 123 }),
+    () => validateEventPayload("unknown:event_generic_probe", { anyField: "anyValue", num: 123 }),
     (error: any) => error.code === "event.schema_missing",
   );
 });

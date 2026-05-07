@@ -88,7 +88,7 @@ export const endpointCatalog = {
   preferencesUpdate: { id: "user.preferences.update", path: "/preferences", method: "PATCH", apiLayer: "C", planned: false },
   workflowBuilder: { id: "workflow-builder", path: "/workflows/builder", method: "GET", apiLayer: "C", planned: false },
   // §1.8 contract version negotiation
-  contractVersion: { id: "meta.contract-version", path: "/api/v1/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
+  contractVersion: { id: "meta.contract-version", path: "/meta/contract-version", method: "GET", apiLayer: "A", planned: false },
 } satisfies Record<string, EndpointDefinition>;
 
 function resolvePath(template: string, params: Record<string, string>): string {
