@@ -14,6 +14,36 @@ export interface MachineOutput {
   payload: Record<string, unknown>;
 }
 
+/**
+ * Resolve the best available execution reference for plugin-facing machine output.
+ * Canonical order is nodeRunId -> nodeId -> legacy stepId.
+ */
+export function resolveMachineOutputExecutionId(
+  output: Pick<MachineOutput, "nodeRunId" | "nodeId" | "stepId">,
+  fallback = "unknown_step",
+): string {
+  return output.nodeRunId ?? output.nodeId ?? output.stepId ?? fallback;
+}
+
+/**
+ * Backfill legacy stepId projection from canonical execution identifiers.
+ * This keeps older presenter plugins working while new callers migrate to nodeRunId.
+ */
+export function withLegacyMachineOutputProjection(output: MachineOutput): MachineOutput {
+  const executionId = resolveMachineOutputExecutionId(output, "");
+  if (executionId.length === 0 || output.stepId != null) {
+    return output;
+  }
+  return {
+    ...output,
+    stepId: executionId,
+  };
+}
+
+export function normalizeMachineOutputs(outputs: readonly MachineOutput[]): MachineOutput[] {
+  return outputs.map((output) => withLegacyMachineOutputProjection(output));
+}
+
 export interface HumanOutput {
   summary: string;
   sections: string[];

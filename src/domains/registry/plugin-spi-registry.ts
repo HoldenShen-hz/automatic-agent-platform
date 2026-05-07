@@ -14,7 +14,12 @@ import type {
   RegisteredPlugin,
   RetrieverKnowledgeResult,
 } from "./plugin-spi.js";
-import { PluginLifecycleStateSchema, PluginManifestSchema, PluginSignatureSchema } from "./plugin-spi.js";
+import {
+  normalizeMachineOutputs,
+  PluginLifecycleStateSchema,
+  PluginManifestSchema,
+  PluginSignatureSchema,
+} from "./plugin-spi.js";
 import type { TypedEventPublisher } from "../../platform/state-evidence/events/typed-event-publisher.js";
 import { ContainerizedPluginRuntimeHost, ForkedPluginRuntimeHost } from "./plugin-runtime-host.js";
 
@@ -534,7 +539,7 @@ export class PluginSpiRegistry {
     }
     return this.executeInvocation(record, context, "present", async () => {
       const presenterInput = {
-        machineOutputs: input.machineOutputs,
+        machineOutputs: normalizeMachineOutputs(input.machineOutputs),
         artifacts: input.artifacts,
         audience: input.audience,
       } as const;

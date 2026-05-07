@@ -24,7 +24,7 @@ import test from "node:test";
 
 import { createE2EHarness } from "../helpers/e2e-harness.js";
 import { withProcessGuard } from "../helpers/process-guard.js";
-import { runMultiStepOrchestration } from "../../../../src/platform/execution/execution-engine/multi-step-orchestration.js";
+import { runMultiStepOrchestration } from "../../src/platform/execution/execution-engine/multi-step-orchestration.js";
 import { TransitionService } from "../../src/platform/execution/state-transition/transition-service.js";
 import { DurableEventBus } from "../../src/platform/state-evidence/events/durable-event-bus.js";
 import { TypedEventBus } from "../../src/platform/state-evidence/events/typed-event-bus.js";

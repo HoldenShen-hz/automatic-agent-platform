@@ -152,6 +152,11 @@ export interface EvalDatasetEvaluationInput {
   gatePolicy?: EvalDatasetGatePolicy | undefined;
   /** §21.5: Optional holdout ratio (0–0.5) for statistical strictness. When set, only this fraction of cases are used for evaluation. */
   holdoutRatio?: number | undefined;
+  /** §21.7: Enforce independence for high-risk evaluations.
+   * When true and the dataset contains critical/high priority cases,
+   * an independent judge from a different provider family is required.
+   * Without one, the evaluation will be flagged with independence_violation in blockingFindings. */
+  enforceIndependenceForHighRisk?: boolean;
 }
 
 export class EvalDatasetJudgeService {
@@ -403,6 +408,16 @@ export class EvalDatasetJudgeService {
     }
     if (selectedJudge != null) {
       advisoryFindings.push(`judge_assigned:${selectedJudge.judgeId}`);
+    }
+
+    // §21.7: Enforce independence for high-risk evaluations
+    // High-risk (critical/high) priority cases require an independent judge from a different provider family.
+    // The resolveJudge() already enforces provider/family separation; this check ensures the flag is honored.
+    if (input.enforceIndependenceForHighRisk) {
+      const highRiskCases = dataset.cases.filter((c) => c.priority === "critical" || c.priority === "high");
+      if (highRiskCases.length > 0 && selectedJudge == null) {
+        blockingFindings.push("independence_violation:high_risk_evaluation_requires_independent_judge");
+      }
     }
 
     const phase = input.phase ?? "offline";

@@ -7,7 +7,11 @@
 import type { PluginDefinition } from "./plugin-definition.js";
 import type { PluginContextConfig } from "./plugin-context.js";
 import { PluginContext } from "./plugin-context.js";
-import type { PluginLifecycleContext, RegisteredPlugin } from "../../domains/registry/plugin-spi.js";
+import {
+  type PluginLifecycleContext,
+  type RegisteredPlugin,
+  withLegacyMachineOutputProjection,
+} from "../../domains/registry/plugin-spi.js";
 
 // Local type definitions to avoid cross-module import issues
 export interface MockLlmConfig {
@@ -561,12 +565,12 @@ function buildMachineOutput(input: Record<string, unknown>): {
   outputRef: string | null;
   payload: Record<string, unknown>;
 } {
-  return {
+  return withLegacyMachineOutputProjection({
     nodeId: readOptionalString(input["nodeId"]) ?? null,
     nodeRunId: readOptionalString(input["nodeRunId"]) ?? null,
     attemptId: readOptionalString(input["attemptId"]) ?? null,
     stepId: readOptionalString(input["stepId"]) ?? null,
     outputRef: readOptionalString(input["outputRef"]) ?? null,
     payload: asRecord(input["payload"]) ?? input,
-  };
+  });
 }

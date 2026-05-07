@@ -169,6 +169,22 @@ test("OperationsPresenter.formatOutput handles missing optional fields in runboo
   assert.ok(result.sections[0]?.includes("minimal_runbook"));
 });
 
+test("OperationsPresenter.formatOutput prefers nodeRunId when runbook title is absent", async () => {
+  const plugin = createOperationsPresenterPlugin();
+
+  const result = await plugin.formatOutput({
+    machineOutputs: [{
+      nodeRunId: "node_run_runbook",
+      outputRef: null,
+      payload: { type: "runbook" },
+    }],
+    artifacts: [],
+    audience: "operator",
+  });
+
+  assert.ok(result.sections[0]?.includes("node_run_runbook"));
+});
+
 test("OperationsPresenter.formatOutput formats multiple outputs correctly", async () => {
   const plugin = createOperationsPresenterPlugin();
 

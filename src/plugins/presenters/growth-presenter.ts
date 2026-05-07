@@ -7,10 +7,16 @@
  * §G8: Growth domain — formats for "end_user" and "reviewer" audiences.
  */
 
-import type { DomainPresenterPlugin, HumanOutput, MachineOutput, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
+import {
+  resolveMachineOutputExecutionId,
+  type DomainPresenterPlugin,
+  type HumanOutput,
+  type MachineOutput,
+  type PluginLifecycleContext,
+} from "../../domains/registry/plugin-spi.js";
 
 function resolveMachineOutputStepId(output: MachineOutput): string {
-  return output.nodeId ?? output.stepId ?? "unknown_step";
+  return resolveMachineOutputExecutionId(output);
 }
 
 function resolveCitation(output: MachineOutput): string {

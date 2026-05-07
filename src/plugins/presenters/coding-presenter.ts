@@ -1,7 +1,17 @@
-import type { DomainPresenterPlugin, HumanOutput, MachineOutput, PluginLifecycleContext } from "../../domains/registry/plugin-spi.js";
+import {
+  resolveMachineOutputExecutionId,
+  type DomainPresenterPlugin,
+  type HumanOutput,
+  type MachineOutput,
+  type PluginLifecycleContext,
+} from "../../domains/registry/plugin-spi.js";
 
 function stringifyPayload(payload: Record<string, unknown>): string {
   return JSON.stringify(payload, null, 2);
+}
+
+function resolveMachineOutputStepId(output: MachineOutput): string {
+  return resolveMachineOutputExecutionId(output);
 }
 
 export function createCodingPresenterPlugin(): DomainPresenterPlugin {
@@ -32,9 +42,9 @@ export function createCodingPresenterPlugin(): DomainPresenterPlugin {
       return undefined;
     },
     async formatOutput(input): Promise<HumanOutput> {
-      const completedSteps = input.machineOutputs.map((output) => output.stepId);
+      const completedSteps = input.machineOutputs.map((output) => resolveMachineOutputStepId(output));
       const sections = input.machineOutputs.map((output) => [
-        `### ${output.stepId}`,
+        `### ${resolveMachineOutputStepId(output)}`,
         output.outputRef ? `outputRef: ${output.outputRef}` : "outputRef: inline",
         "```json",
         stringifyPayload(output.payload),

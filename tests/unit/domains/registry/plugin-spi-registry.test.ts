@@ -384,6 +384,49 @@ test("PluginSpiRegistry invokes presenter plugins through isolated runtime path"
   assert.equal(registry.get("plugin.coding.presenter")?.lifecycleState, "active");
 });
 
+test("PluginSpiRegistry backfills presenter legacy stepId projection from nodeRunId", async () => {
+  const registry = new PluginSpiRegistry();
+
+  registry.register({
+    pluginId: "plugin.coding.presenter.compat",
+    domainId: "coding",
+    spiType: "presenter",
+    async formatOutput(input) {
+      return {
+        summary: input.machineOutputs.map((output) => output.stepId ?? "missing").join(","),
+        sections: input.machineOutputs.map((output) => `${output.nodeRunId}:${output.stepId}`),
+        citations: [],
+      };
+    },
+  }, {
+    pluginId: "plugin.coding.presenter.compat",
+    name: "coding presenter compat",
+    version: "1.0.0",
+    owner: "test",
+    domainIds: ["coding"],
+    capabilityIds: ["present.output"],
+    spiTypes: ["presenter"],
+    extensionKind: "domain_plugin",
+    trustLevel: "trusted",
+    publicSdkSurface: "tests/mock",
+    settingsSchema: {},
+    sandbox: makeSandboxPolicy({
+      timeoutMs: 1000,
+      allowedKnowledgeNamespaces: [],
+    }),
+  });
+
+  const output = await registry.invokePresenter("plugin.coding.presenter.compat", {
+    domainId: "coding",
+    machineOutputs: [{ nodeRunId: "node_run_compat", outputRef: null, payload: { ok: true } }],
+    artifacts: [],
+    audience: "developer",
+  });
+
+  assert.equal(output.summary, "node_run_compat");
+  assert.deepEqual(output.sections, ["node_run_compat:node_run_compat"]);
+});
+
 test("PluginSpiRegistry enforces adapter network policy and isolated adapter execution", async () => {
   const registry = new PluginSpiRegistry();
 

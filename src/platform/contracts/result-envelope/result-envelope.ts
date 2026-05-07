@@ -116,7 +116,8 @@ export function buildStepResultEnvelope(
     provenance: {
       entity: "step_output",
       taskId: stepOutput.taskId,
-      stepId: stepOutput.stepId,
+      // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+      nodeRunId: stepOutput.nodeRunId,
       roleId: stepOutput.roleId,
       producedAt: stepOutput.producedAt,
     },
@@ -132,7 +133,8 @@ function collectTaskWarnings(task: TaskRecord, stepOutputs: StepOutputRecord[]):
     warnings.push(`task_non_terminal:${task.status}`);
   }
   for (const stepOutput of stepOutputs) {
-    warnings.push(...collectStepWarnings(stepOutput).map((warning) => `${stepOutput.stepId}:${warning}`));
+    // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+    warnings.push(...collectStepWarnings(stepOutput).map((warning) => `${stepOutput.nodeRunId}:${warning}`));
   }
   return warnings;
 }
@@ -199,6 +201,9 @@ function resolveArtifactRefs(stepOutput: StepOutputRecord, artifacts: ArtifactRe
     return dedupeArtifactRefs(parsedRefs);
   }
 
+  // R6-19 fix: This legacy comparison uses stepId which is deprecated.
+  // TODO(R6-19): When ArtifactRecord is migrated to add nodeRunId, update this to use
+  // nodeRunId-based matching instead of stepId comparison.
   return dedupeArtifactRefs(
     artifacts.filter((artifact) => artifact.stepId === stepOutput.stepId).map(toArtifactRef),
   );

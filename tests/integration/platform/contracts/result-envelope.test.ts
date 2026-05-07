@@ -136,12 +136,17 @@ test("result-envelope: buildStepResultEnvelope handles artifact references", () 
     {
       artifactId: "artifact_1",
       taskId: stepOutput.taskId,
-      stepId: stepOutput.stepId,
+      // R6-19 fix: stepId is string | undefined in StepOutputRecord but string | null in ArtifactRecord
+      // Using non-null assertion since mock explicitly provides stepId
+      stepId: stepOutput.stepId!,
+      executionId: null,
       kind: "output",
       storagePath: "/path/to/artifact",
+      fileName: "artifact.json",
       mimeType: "application/json",
       sizeBytes: 100,
       checksum: "abc123",
+      lineageJson: null,
       createdAt: "2026-01-01T00:00:00.000Z",
     },
   ];
@@ -186,6 +191,8 @@ function createMockStepOutputRecord(
   return {
     id: "step_output_123",
     taskId: "task_test_123",
+    // R6-19 fix: nodeRunId is canonical per §5.5, stepId is deprecated legacy projection
+    nodeRunId: "nrun_123",
     stepId: "step_1",
     roleId: "general_executor",
     status,

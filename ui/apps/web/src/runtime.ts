@@ -15,12 +15,20 @@ import {
   type RESTClient,
   type WSClient,
 } from "@aa/shared-api-client";
+import {
+  createTelemetrySink,
+  OtlpHttpTelemetryExporter,
+  startWebVitalsCollection,
+  type TelemetrySink,
+} from "@aa/shared-telemetry";
 import { createPersistentOfflineQueue, type OfflineQueue } from "@aa/shared-sync";
 import { TokenManager } from "@aa/shared-auth";
 
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;
   readonly wsUrl?: string;
+  readonly telemetryEndpoint?: string;
+  readonly telemetryAuthToken?: string;
   /** Auth token manager for dynamic token resolution per §5.4.4 */
   readonly tokenManager?: TokenManager;
   /** Tenant ID from auth context per §5.1.1 - not hardcoded */
@@ -41,6 +49,11 @@ export interface WebRuntimeBanner {
   readonly message: string;
 }
 
+export interface WebTelemetryRuntime {
+  readonly sink: TelemetrySink;
+  stop(): void;
+}
+
 export const SUPPORTED_CONTRACT_VERSIONS = [...DEFAULT_ACCEPT_VERSIONS] as const;
 
 /**
@@ -50,10 +63,18 @@ export const SUPPORTED_CONTRACT_VERSIONS = [...DEFAULT_ACCEPT_VERSIONS] as const
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
   const apiBaseUrl = typeof env.VITE_API_BASE_URL === "string" && env.VITE_API_BASE_URL.trim().length > 0 ? env.VITE_API_BASE_URL.trim() : undefined;
   const wsUrl = typeof env.VITE_WS_URL === "string" && env.VITE_WS_URL.trim().length > 0 ? env.VITE_WS_URL.trim() : undefined;
+  const telemetryEndpoint = typeof env.VITE_OTLP_ENDPOINT === "string" && env.VITE_OTLP_ENDPOINT.trim().length > 0
+    ? env.VITE_OTLP_ENDPOINT.trim()
+    : undefined;
+  const telemetryAuthToken = typeof env.VITE_OTLP_AUTH_TOKEN === "string" && env.VITE_OTLP_AUTH_TOKEN.trim().length > 0
+    ? env.VITE_OTLP_AUTH_TOKEN.trim()
+    : undefined;
 
   return {
     ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
     ...(wsUrl == null ? {} : { wsUrl }),
+    ...(telemetryEndpoint == null ? {} : { telemetryEndpoint }),
+    ...(telemetryAuthToken == null ? {} : { telemetryAuthToken }),
   };
 }
 
@@ -119,6 +140,33 @@ export async function checkWebContractVersion(client: RESTClient): Promise<WebRu
   } catch {
     return null;
   }
+}
+
+/**
+ * Starts UI telemetry only when a real OTLP sink is configured.
+ * This wires Core Web Vitals/RUM collection into the web bootstrap path.
+ */
+export function startWebRuntimeTelemetry(config: Pick<WebRuntimeConfig, "telemetryEndpoint" | "telemetryAuthToken">): WebTelemetryRuntime | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  if (config.telemetryEndpoint == null || config.telemetryAuthToken == null) {
+    return null;
+  }
+  const exporter = new OtlpHttpTelemetryExporter(
+    config.telemetryEndpoint,
+    globalThis.fetch.bind(globalThis),
+    { authorization: config.telemetryAuthToken },
+  );
+  const sink = createTelemetrySink([exporter]);
+  const stopCollection = startWebVitalsCollection(sink);
+  return {
+    sink,
+    stop() {
+      stopCollection();
+      sink.dispose();
+    },
+  };
 }
 
 /**
