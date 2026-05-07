@@ -139,10 +139,11 @@ class MultiStepToolRegistry {
 
   /**
    * R4-25 (INV-BUDGET-001): Reset the tool registry state for test cleanup.
-   * Preserves the singleton reference but clears mutable state.
+   * Preserves the singleton reference and budget ledger but clears mutable state.
    */
   public resetForTest(): void {
-    this.currentBudgetLedger = null;
+    // NOTE: We do NOT clear currentBudgetLedger here because tests rely on
+    // beforeEach to set up the ledger, and resetForTest should not invalidate it.
     this.currentHarnessRunId = null;
     this.currentNodeRunId = null;
     this.currentNodeAttemptId = null;

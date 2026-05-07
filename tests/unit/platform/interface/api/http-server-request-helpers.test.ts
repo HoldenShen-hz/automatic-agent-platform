@@ -19,9 +19,9 @@ function createMockRequest(overrides: Partial<{ method: string; url: string; hea
 }
 
 test("matchRoute returns null for unsupported methods", () => {
-  assert.equal(matchRoute(createMockRequest({ method: "DELETE" })), null);
-  assert.equal(matchRoute(createMockRequest({ method: "PUT" })), null);
-  assert.equal(matchRoute(createMockRequest({ method: "PATCH" })), null);
+  assert.equal(matchRoute(createMockRequest({ method: "FOOBAR" })), null);
+  assert.equal(matchRoute(createMockRequest({ method: "TRACE" })), null);
+  assert.equal(matchRoute(createMockRequest({ method: "CONNECT" })), null);
 });
 
 test("matchRoute returns route for GET requests", () => {

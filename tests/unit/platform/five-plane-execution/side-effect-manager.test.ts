@@ -107,7 +107,7 @@ test("applyReconciliation: compensate transitions to compensation_required", () 
   assert.equal(result.aggregate.status, "compensation_required");
 });
 
-test("applyReconciliation: escalate_hitl transitions to ambiguous", () => {
+test("applyReconciliation: escalate_hitl transitions to manual_review_required", () => {
   const manager = new SideEffectManager();
   const sideEffect = createTestSideEffect({ status: "ambiguous" });
   const reconciliation = createReconciliationRecord({ nextAction: "escalate_hitl" });
@@ -115,7 +115,7 @@ test("applyReconciliation: escalate_hitl transitions to ambiguous", () => {
 
   const result = manager.applyReconciliation(sideEffect, reconciliation, context);
 
-  assert.equal(result.aggregate.status, "ambiguous");
+  assert.equal(result.aggregate.status, "manual_review_required");
 });
 
 test("applyReconciliation: mark_failed transitions to failed", () => {
@@ -259,6 +259,59 @@ test("startCompensation emits platform event", () => {
   assert.ok(result.event.eventType);
   assert.ok(result.event.aggregateId);
   assert.equal(result.event.aggregateType, "SideEffectRecord");
+});
+
+test("SideEffectManager exposes registration lifecycle before commit", () => {
+  const manager = new SideEffectManager();
+  const context = createTestContext();
+
+  const proposed = manager.registerProposal(
+    createTestSideEffect({ status: "proposed" }),
+    context,
+  );
+  const approved = manager.approve(proposed.aggregate, context);
+  const reserved = manager.reserve(approved.aggregate, context);
+  const committing = manager.startCommit(reserved.aggregate, context);
+  const committed = manager.recordCommitted(committing.aggregate, context);
+  const confirming = manager.startConfirmation(committed.aggregate, context);
+  const confirmed = manager.confirm(confirming.aggregate, context);
+
+  assert.equal(proposed.aggregate.status, "proposed");
+  assert.equal(approved.aggregate.status, "approved");
+  assert.equal(reserved.aggregate.status, "reserved");
+  assert.equal(committing.aggregate.status, "committing");
+  assert.equal(committed.aggregate.status, "committed");
+  assert.equal(confirming.aggregate.status, "confirming");
+  assert.equal(confirmed.aggregate.status, "confirmed");
+});
+
+test("SideEffectManager re-validates before entering commit path", () => {
+  const validationTargets: SideEffectStatus[] = [];
+  const manager = new SideEffectManager({
+    preCommitValidator: {
+      validate(request) {
+        validationTargets.push(request.targetStatus);
+      },
+    },
+  });
+  const context = createTestContext();
+
+  const proposed = manager.registerProposal(createTestSideEffect({ status: "proposed" }), context);
+  const approved = manager.approve(proposed.aggregate, context);
+  const reserved = manager.reserve(approved.aggregate, context);
+  const committing = manager.startCommit(reserved.aggregate, context);
+  const committed = manager.recordCommitted(committing.aggregate, context);
+  const confirming = manager.startConfirmation(committed.aggregate, context);
+  manager.confirm(confirming.aggregate, context);
+
+  assert.deepEqual(validationTargets, [
+    "approved",
+    "reserved",
+    "committing",
+    "committed",
+    "confirming",
+    "confirmed",
+  ]);
 });
 
 test("completeCompensation emits platform event", () => {

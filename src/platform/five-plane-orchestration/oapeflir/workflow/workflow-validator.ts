@@ -47,10 +47,15 @@ export interface WorkflowLintIssue {
     | "step.duplicate_output_key"
     | "step.invalid_timeout"
     | "step.invalid_max_attempts"
+    | "step.resource_bound_missing"
+    | "step.auth_scope_missing"
+    | "step.idempotency_missing"
+    | "step.timeout_budget_mismatch"
     | "dependency.missing_target"
     | "dependency.self_reference"
     | "dependency.duplicate"
     | "dependency.missing_input_key"
+    | "dependency.data_flow_missing"
     | "dependency.cycle"
     | "workflow.no_entrypoint";
   /** Error severity - errors prevent execution, warnings are advisory */
@@ -81,6 +86,8 @@ export interface WorkflowLintReport {
   warningCount: number;
 }
 
+export type StaticCompatibilityIssue = WorkflowLintIssue;
+
 /**
  * Normalizes a step ID by trimming whitespace.
  */
@@ -93,6 +100,23 @@ function normalizeStepId(value: string): string {
  */
 function isPositiveInteger(value: number): boolean {
   return Number.isInteger(value) && value > 0;
+}
+
+function requiresResourceBudget(step: MinimalWorkflowStep): boolean {
+  return step.nodeType === "llm"
+    || step.nodeType === "tool"
+    || step.nodeType === "compensation"
+    || step.sideEffectProfile?.mayCommitExternalEffect === true;
+}
+
+function requiresExplicitExecutionScope(step: MinimalWorkflowStep): boolean {
+  return step.nodeType === "tool"
+    || step.nodeType === "compensation"
+    || step.sideEffectProfile?.mayCommitExternalEffect === true;
+}
+
+function isDataFlowOptional(step: MinimalWorkflowStep): boolean {
+  return step.nodeType === "router" || step.nodeType === "hitl_wait" || step.nodeType === "compensation";
 }
 
 /**
@@ -231,6 +255,58 @@ export class WorkflowValidator {
           ...(stepId ? { stepId } : {}),
         });
       }
+
+      if (requiresResourceBudget(step)) {
+        const budgetIntent = step.budgetIntent;
+        if (budgetIntent == null || budgetIntent.amount <= 0 || budgetIntent.resourceKinds.length === 0) {
+          issues.push({
+            code: "step.resource_bound_missing",
+            severity: "error",
+            message: `Step ${stepId || "<unknown>"} must declare a positive budget intent with resource kinds.`,
+            ...(stepId ? { stepId } : {}),
+          });
+        }
+      }
+
+      if (requiresExplicitExecutionScope(step) && (step.executionRoleId?.trim().length ?? 0) === 0) {
+        issues.push({
+          code: "step.auth_scope_missing",
+          severity: "error",
+          message: `Step ${stepId || "<unknown>"} must declare executionRoleId for external execution scope binding.`,
+          ...(stepId ? { stepId } : {}),
+        });
+      }
+
+      if (step.sideEffectProfile?.mayCommitExternalEffect === true && step.compensationModel == null) {
+        issues.push({
+          code: "step.idempotency_missing",
+          severity: "error",
+          message: `Step ${stepId || "<unknown>"} commits external effects but declares no compensation/idempotency model.`,
+          ...(stepId ? { stepId } : {}),
+        });
+      }
+
+      if (step.nodeType === "llm" && !step.budgetIntent?.resourceKinds.includes("token")) {
+        issues.push({
+          code: "step.timeout_budget_mismatch",
+          severity: "error",
+          message: `Step ${stepId || "<unknown>"} is an LLM step and must budget token resources before execution.`,
+          ...(stepId ? { stepId } : {}),
+        });
+      }
+
+      if (
+        step.sideEffectProfile?.mayCommitExternalEffect === true
+        && step.nodeType === "tool"
+        && !(step.budgetIntent?.resourceKinds.includes("api") || step.budgetIntent?.resourceKinds.includes("side_effect"))
+      ) {
+        issues.push({
+          code: "step.timeout_budget_mismatch",
+          severity: "error",
+          message: `Step ${stepId || "<unknown>"} commits external tool effects and must budget api or side_effect resources.`,
+          ...(stepId ? { stepId } : {}),
+        });
+      }
     }
 
     // Pass 2: Validate dependency references and relationships
@@ -295,6 +371,19 @@ export class WorkflowValidator {
           });
         }
       }
+
+      if (
+        (step.dependsOnStepIds?.length ?? 0) > 0
+        && (step.inputKeys?.length ?? 0) === 0
+        && !isDataFlowOptional(step)
+      ) {
+        issues.push({
+          code: "dependency.data_flow_missing",
+          severity: "warning",
+          message: `Step ${stepId} declares dependencies but no inputKeys/data-flow contract.`,
+          stepId,
+        });
+      }
     }
 
     // Pass 3: Check for workflow-level issues (entrypoints, cycles)
@@ -317,6 +406,10 @@ export class WorkflowValidator {
       errorCount,
       warningCount,
     };
+  }
+
+  public validateIssues(definition: MinimalWorkflowDefinition): StaticCompatibilityIssue[] {
+    return this.validate(definition).issues;
   }
 
   /**
@@ -403,4 +496,10 @@ export function assertWorkflowValid(definition: MinimalWorkflowDefinition): Work
     );
   }
   return report;
+}
+
+export function validateWorkflowCompatibility(
+  definition: MinimalWorkflowDefinition,
+): StaticCompatibilityIssue[] {
+  return new WorkflowValidator().validateIssues(definition);
 }

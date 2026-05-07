@@ -330,7 +330,7 @@ export class DelegationManagerService {
     }
 
     // Step 1: Topology validation
-    this.validateTopology(parent, spec);
+    await this.validateTopology(parent, spec);
 
     // Step 2: Permission narrowing
     const narrowedPermissions = this.narrowPermissions(
@@ -366,11 +366,12 @@ export class DelegationManagerService {
 
   /**
    * Cancels an active delegation.
+   * R9-06: When repository is available, fetch from repository if not in memory.
    *
    * @param delegationId - Delegation to cancel
    */
-  public cancel(delegationId: string): void {
-    const delegation = this.delegationStore.get(delegationId);
+  public async cancel(delegationId: string): Promise<void> {
+    const delegation = this.delegationStore.get(delegationId) ?? await this.getDelegation(delegationId);
     if (!delegation) {
       throw new ValidationError(
         "delegation.not_found",
@@ -395,23 +396,27 @@ export class DelegationManagerService {
     this.transitionDelegationStatus(delegation, "cancelled", initialStatus);
   }
 
-  public cancelDelegation(delegationId: string): void {
-    this.cancel(delegationId);
+  public cancelDelegation(delegationId: string): Promise<void> {
+    return this.cancel(delegationId);
   }
 
   /**
    * Marks a delegation as completed.
+   * R9-06: When repository is available, fetch from repository if not in memory.
    *
    * @param delegationId - Delegation to complete
    * @param outputRef - Optional reference to output artifact
    */
-  public complete(delegationId: string, _outputRef?: string): void {
-    const delegation = this.requireDelegation(delegationId);
+  public async complete(delegationId: string, _outputRef?: string): Promise<void> {
+    const delegation = this.requireDelegation(delegationId) ?? await this.getDelegation(delegationId);
+    if (!delegation) {
+      throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
+    }
     this.transitionDelegationStatus(delegation, "completed");
   }
 
-  public completeDelegation(delegationId: string, outputRef?: string): void {
-    this.complete(delegationId, outputRef);
+  public completeDelegation(delegationId: string, outputRef?: string): Promise<void> {
+    return this.complete(delegationId, outputRef);
   }
 
   public async completeWithEvidence(delegationId: string, evidence: readonly string[], outputRef?: string): Promise<void> {
@@ -460,12 +465,16 @@ export class DelegationManagerService {
 
   /**
    * Marks a delegation as failed.
+   * R9-06: When repository is available, fetch from repository if not in memory.
    *
    * @param delegationId - Delegation to fail
    * @param error - Error message
    */
-  public fail(delegationId: string, error: string): void {
-    const delegation = this.requireDelegation(delegationId);
+  public async fail(delegationId: string, error: string): Promise<void> {
+    const delegation = this.requireDelegation(delegationId) ?? await this.getDelegation(delegationId);
+    if (!delegation) {
+      throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
+    }
     this.transitionDelegationStatus(delegation, "failed");
     // R31-55 fix: Record failure in audit trail with error reason
     this.auditService.recordDelegationFailed({
@@ -478,8 +487,11 @@ export class DelegationManagerService {
     });
   }
 
-  public handleDelegationTimeout(delegationId: string): void {
-    const delegation = this.requireDelegation(delegationId);
+  public async handleDelegationTimeout(delegationId: string): Promise<void> {
+    const delegation = this.requireDelegation(delegationId) ?? await this.getDelegation(delegationId);
+    if (!delegation) {
+      throw new ValidationError("delegation.not_found", `Delegation ${delegationId} not found`, { details: { delegationId } });
+    }
     this.transitionDelegationStatus(delegation, "timed_out");
   }
 
@@ -525,11 +537,58 @@ export class DelegationManagerService {
 
   /**
    * Gets the delegation chain for an agent.
+   * R9-06: When repository is available, query from repository instead of in-memory store.
    *
    * @param agentId - Root agent ID
    * @returns DelegationChain or null if not found
    */
-  public getDelegationChain(agentId: string): DelegationChain | null {
+  public async getDelegationChain(agentId: string): Promise<DelegationChain | null> {
+    // R9-06: When repository is available, use it as the source of truth for chain data
+    if (this.delegationRepository) {
+      // R9-06: Find all delegations where this agent is the root (first in chain) or involved
+      const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
+      const allRecords: DelegationRecord[] = [];
+
+      // Query by each active status and filter for chains containing this agent
+      for (const status of activeStatuses) {
+        const records = await this.delegationRepository.findByStatus(status);
+        for (const record of records) {
+          if (record.delegationChain.includes(agentId)) {
+            allRecords.push(record);
+          }
+        }
+      }
+
+      if (allRecords.length > 0) {
+        // R9-06: Reconstruct chain from repository records
+        const chain: DelegationChain = {
+          rootAgentId: agentId,
+          nodes: [],
+          maxDepthReached: 0,
+          totalDelegations: 0,
+        };
+        for (const record of allRecords) {
+          const node: DelegationChainNode = {
+            delegationId: record.delegationId,
+            agentId: record.childAgentId,
+            packId: record.childAgentId,
+            agentType: "worker",
+            depth: record.depth,
+            createdAt: record.createdAt,
+            parentDelegationId: null,
+          };
+          chain.nodes = [...chain.nodes, node];
+          chain.maxDepthReached = Math.max(chain.maxDepthReached, record.depth);
+          chain.totalDelegations++;
+        }
+        // R9-06: Cache in-memory for subsequent in-memory lookups
+        this.chainStore.set(agentId, chain);
+        return chain;
+      }
+      return null;
+    }
+
+    // Fallback to in-memory store when no repository available
     const direct = this.chainStore.get(agentId);
     if (direct) {
       return direct;
@@ -655,27 +714,60 @@ export class DelegationManagerService {
   /**
    * §49: Scans all delegations and expires those past their expiresAt time.
    * Returns the count of expired delegations.
+   * R9-06: When repository is available, query from repository for comprehensive scan.
    */
-  public revokeExpiredDelegations(): ExpirationScanResult {
+  public async revokeExpiredDelegations(): Promise<ExpirationScanResult> {
     const now = nowIso();
     const errors: string[] = [];
     let expired = 0;
+    let scanned = 0;
 
-    for (const delegation of this.delegationStore.values()) {
-      if (delegation.status === "pending" || delegation.status === "pending_approval" || delegation.status === "active") {
-        if (delegation.expiresAt < now) {
-          try {
-            this.transitionDelegationStatus(delegation, "expired");
-            expired++;
-          } catch (err) {
-            errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
+    // R9-06: When repository is available, query all active delegations from repository
+    // to ensure we catch all delegations including those not yet cached in memory
+    if (this.delegationRepository) {
+      const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active"];
+
+      // Query by each active status
+      for (const status of activeStatuses) {
+        const records = await this.delegationRepository.findByStatus(status);
+        for (const record of records) {
+          scanned++;
+          if (record.expiresAt && record.expiresAt < now) {
+            // R9-06: Try to get from in-memory store first, or reconstruct from record
+            let delegation = this.delegationStore.get(record.delegationId);
+            if (!delegation) {
+              delegation = await this.getDelegation(record.delegationId);
+            }
+            if (delegation) {
+              try {
+                this.transitionDelegationStatus(delegation, "expired");
+                expired++;
+              } catch (err) {
+                errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback to in-memory only when no repository
+      for (const delegation of this.delegationStore.values()) {
+        scanned++;
+        if (delegation.status === "pending" || delegation.status === "pending_approval" || delegation.status === "active") {
+          if (delegation.expiresAt < now) {
+            try {
+              this.transitionDelegationStatus(delegation, "expired");
+              expired++;
+            } catch (err) {
+              errors.push(`Failed to expire delegation ${delegation.delegationId}: ${err instanceof Error ? err.message : String(err)}`);
+            }
           }
         }
       }
     }
 
     return {
-      scanned: this.delegationStore.size,
+      scanned,
       expired,
       errors,
     };
@@ -684,9 +776,36 @@ export class DelegationManagerService {
   /**
    * §49: Gets all expired delegations that haven't been marked as expired yet.
    * Useful for auditing or cleanup verification.
+   * R9-06: When repository is available, query from repository for comprehensive results.
    */
-  public getExpiredDelegations(): DelegationResult[] {
+  public async getExpiredDelegations(): Promise<DelegationResult[]> {
     const now = nowIso();
+
+    // R9-06: When repository is available, query from repository for comprehensive results
+    if (this.delegationRepository) {
+      const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active"];
+      const results: DelegationResult[] = [];
+
+      // Query by each active status
+      for (const status of activeStatuses) {
+        const records = await this.delegationRepository.findByStatus(status);
+        for (const record of records) {
+          if (record.expiresAt && record.expiresAt < now) {
+            // Try in-memory first, then reconstruct from repository
+            let delegation = this.delegationStore.get(record.delegationId);
+            if (!delegation) {
+              delegation = await this.getDelegation(record.delegationId);
+            }
+            if (delegation) {
+              results.push(delegation);
+            }
+          }
+        }
+      }
+      return results;
+    }
+
+    // Fallback to in-memory only when no repository
     return [...this.delegationStore.values()].filter(
       (d) =>
         (d.status === "pending" || d.status === "pending_approval" || d.status === "active") &&
@@ -711,9 +830,10 @@ export class DelegationManagerService {
 
   // ── Private Methods ───────────────────────────────────────────────────────
 
-  private validateTopology(parent: AgentContext, spec: DelegationSpec): void {
+  private async validateTopology(parent: AgentContext, spec: DelegationSpec): Promise<void> {
     // Get the delegation chain for cycle detection
-    const chain = this.getDelegationChain(parent.agentId);
+    // R9-06: getDelegationChain is now async when repository is available
+    const chain = await this.getDelegationChain(parent.agentId);
     const chainPackIds = [
       parent.packId,
       ...(parent.delegationDepth > 0 ? chain?.nodes.map((n) => n.packId) ?? [] : []),

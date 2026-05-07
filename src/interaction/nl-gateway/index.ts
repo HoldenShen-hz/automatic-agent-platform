@@ -757,7 +757,8 @@ function deriveConversationState(
   if (confirmationRequired) {
     return "Confirming";
   }
-  return "Executing";
+  // R23-19: Low-risk should still go through Confirming before Executing
+  return "Confirming";
 }
 
 function buildRequestEnvelope(
@@ -768,6 +769,10 @@ function buildRequestEnvelope(
   confirmationRequired: boolean,
   canonicalRequestEnvelope: CanonicalRequestEnvelope | null,
 ): NlRequestEnvelope | null {
+  // R23-01: Block dispatch when confirmation is pending
+  if (confirmationRequired) {
+    return null;
+  }
   return createRequestEnvelope<NlRequestPayload>({
     principal: createPlatformPrincipal({
       actorId: request.userId,

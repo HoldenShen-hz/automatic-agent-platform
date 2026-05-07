@@ -35,13 +35,15 @@ class ApiError extends AppError {
 const nonEmptyStringSchema = z.string().trim().min(1);
 
 const createIncidentSchema = z.object({
-  severity: z.enum(["low", "medium", "high", "critical"]),
+  // R14-02: Use unified SEV naming (SEV1-4) instead of low/medium/high/critical
+  severity: z.enum(["SEV1", "SEV2", "SEV3", "SEV4"]),
   title: nonEmptyStringSchema,
   linkedEvidenceRefs: z.array(z.string()).optional(),
 }).strict();
 
 const updateIncidentSchema = z.object({
-  status: z.enum(["open", "acknowledged", "mitigating", "resolved"]).optional(),
+  // R14-24: Added "dismissed" status alongside acknowledge
+  status: z.enum(["open", "acknowledged", "mitigating", "resolved", "dismissed"]).optional(),
   owner: z.string().optional(),
 }).strict();
 
@@ -164,6 +166,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         }
 
         let updated: IncidentCase;
+        // R14-24: Added dismissed status transition alongside acknowledge
         if (payload.status === "acknowledged" && incident.status === "open") {
           // R14-17: Pass tenantId to enforce tenant scoping on state transitions
           updated = deps.incidentService.acknowledge(tenantId, incidentId, payload.owner ?? "unknown");
@@ -173,6 +176,9 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
         } else if (payload.status === "resolved") {
           // R14-17: Pass tenantId to enforce tenant scoping on state transitions
           updated = deps.incidentService.resolve(tenantId, incidentId);
+        } else if (payload.status === "dismissed") {
+          // R14-24: Dismiss action for incidents
+          updated = deps.incidentService.dismiss(tenantId, incidentId);
         } else {
           throw new ApiError(400, "incident.invalid_transition", `Cannot transition from ${incident.status} to ${payload.status}.`);
         }

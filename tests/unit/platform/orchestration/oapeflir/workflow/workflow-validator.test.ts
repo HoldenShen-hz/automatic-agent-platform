@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   WorkflowValidator,
   assertWorkflowValid,
+  validateWorkflowCompatibility,
+  type StaticCompatibilityIssue,
   type WorkflowLintIssue,
   type WorkflowLintSeverity,
 } from "../../../../../../src/platform/orchestration/oapeflir/workflow/workflow-validator.js";
@@ -288,4 +290,74 @@ test("assertWorkflowValid throws for invalid workflow", () => {
 test("WorkflowLintSeverity type accepts error and warning", () => {
   const severities: WorkflowLintSeverity[] = ["error", "warning"];
   assert.equal(severities.length, 2);
+});
+
+test("WorkflowValidator enforces resource/auth/idempotency/runtime budget checks", () => {
+  const validator = new WorkflowValidator();
+  const workflow = createValidWorkflow([createValidStep({
+    stepId: "tool-step",
+    nodeType: "tool",
+    sideEffectProfile: {
+      mayCommitExternalEffect: true,
+      reversible: false,
+    },
+  })]);
+
+  const report = validator.validate(workflow);
+  const issueCodes = report.issues.map((issue) => issue.code);
+
+  assert.ok(issueCodes.includes("step.resource_bound_missing"));
+  assert.ok(issueCodes.includes("step.auth_scope_missing"));
+  assert.ok(issueCodes.includes("step.idempotency_missing"));
+  assert.ok(issueCodes.includes("step.timeout_budget_mismatch"));
+});
+
+test("WorkflowValidator requires token budget for llm steps", () => {
+  const validator = new WorkflowValidator();
+  const workflow = createValidWorkflow([createValidStep({
+    stepId: "llm-step",
+    nodeType: "llm",
+    budgetIntent: {
+      amount: 10,
+      currency: "usd",
+      resourceKinds: ["compute"],
+    },
+  })]);
+
+  const report = validator.validate(workflow);
+
+  assert.ok(report.issues.some((issue) => issue.code === "step.timeout_budget_mismatch"));
+});
+
+test("WorkflowValidator warns when dependency chain has no data-flow contract", () => {
+  const validator = new WorkflowValidator();
+  const workflow = createValidWorkflow([
+    createValidStep({ stepId: "step1", outputKey: "out1" }),
+    createValidStep({
+      stepId: "step2",
+      outputKey: "out2",
+      dependsOnStepIds: ["step1"],
+    }),
+  ]);
+
+  const report = validator.validate(workflow);
+
+  assert.ok(report.issues.some((issue) => issue.code === "dependency.data_flow_missing"));
+});
+
+test("validateWorkflowCompatibility exports canonical static issue array", () => {
+  const workflow = createValidWorkflow([createValidStep({
+    stepId: "tool-step",
+    nodeType: "tool",
+    sideEffectProfile: {
+      mayCommitExternalEffect: true,
+      reversible: false,
+    },
+  })]);
+
+  const issues = validateWorkflowCompatibility(workflow);
+  const firstIssue: StaticCompatibilityIssue | undefined = issues[0];
+
+  assert.ok(Array.isArray(issues));
+  assert.ok(firstIssue != null);
 });

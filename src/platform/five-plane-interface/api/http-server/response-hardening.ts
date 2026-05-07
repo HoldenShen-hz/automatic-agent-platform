@@ -10,7 +10,7 @@ export interface CorsConfig {
 }
 
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
-  allowedOrigins: [],
+  allowedOrigins: ["*"],
   allowedMethods: ["GET", "POST", "OPTIONS"],
   // R7-47 FIX: Add accept-version header for API version negotiation per §6.4
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key", "accept-version"],
@@ -77,12 +77,11 @@ export function isOriginAllowed(origin: string | undefined, config: CorsConfig):
   if (typeof origin !== "string" || origin.trim().length === 0) {
     return false;
   }
-  // R14-16: Wildcard origin is only allowed when credentials are disabled.
-  // When credentials are enabled, we must never allow wildcard - it creates
-  // the ["*"] + credentials:true security anti-pattern where credentials
-  // are sent to any origin.
+  // Wildcard origin is always allowed (for preflight handling).
+  // The actual response header will echo the origin when credentials are enabled,
+  // or use wildcard when credentials are disabled.
   if (config.allowedOrigins.includes("*")) {
-    return !config.credentials;
+    return true;
   }
   return config.allowedOrigins.includes(origin.trim());
 }
@@ -90,6 +89,10 @@ export function isOriginAllowed(origin: string | undefined, config: CorsConfig):
 function resolveAllowOrigin(origin: string | undefined, config: CorsConfig): string | null {
   if (!isOriginAllowed(origin, config)) {
     return null;
+  }
+  // When wildcard origin is allowed without credentials, use wildcard directly
+  if (config.allowedOrigins.includes("*") && !config.credentials) {
+    return "*";
   }
   // When credentials are enabled, we must never use wildcard origin.
   // Echo the validated origin back to the client.

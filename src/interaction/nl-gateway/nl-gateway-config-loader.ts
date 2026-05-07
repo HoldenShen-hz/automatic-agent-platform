@@ -79,7 +79,7 @@ const DEFAULT_NL_GATEWAY_CONFIG: NlGatewayConfig = {
     },
   },
   disambiguation: {
-    threshold: 0.7,
+    threshold: 0.80,
     lowConfidenceThreshold: 0.5,
     maxClarificationQuestions: 3,
     enableProactiveClarification: true,

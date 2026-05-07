@@ -64,17 +64,15 @@ test("parseArtifactBundlePreviewPayload parses valid payload", () => {
     artifacts: [
       {
         artifactId: "art_1",
+        harnessRunId: "harness_run_1",
         taskId: "task_123",
-        stepId: "step_1",
-        agentRole: "executor",
         type: "source_code",
         path: "/path/to/artifact",
-        contentHash: "abc123def456",
+        mimeType: "text/plain",
+        sizeBytes: 1024,
         version: 1,
-        parentArtifactId: null,
-        size: 1024,
+        publishStatus: "published",
         createdAt: "2024-01-01T00:00:00.000Z",
-        status: "committed",
       },
     ],
   });
@@ -85,7 +83,7 @@ test("parseArtifactBundlePreviewPayload parses valid payload", () => {
 });
 
 test("parseArtifactBundlePreviewPayload accepts all bundle types", () => {
-  const bundleTypes = ["release_bundle", "asset_bundle", "campaign_bundle", "incident_bundle"] as const;
+  const bundleTypes = ["release_bundle", "asset_bundle", "campaign_bundle", "incident", "task_result", "promotion_evidence", "release_evidence", "learning_pattern_bundle", "canary_metrics", "workflow_snapshot"] as const;
   for (const bundleType of bundleTypes) {
     const result = parseArtifactBundlePreviewPayload({
       taskId: "task_123",
@@ -203,7 +201,7 @@ test("parseCreateTaskPayload parses minimal payload with only title", () => {
 });
 
 test("parseCreateTaskPayload accepts all priority values", () => {
-  const priorities = ["low", "normal", "high", "urgent"] as const;
+  const priorities = ["low", "normal", "high", "critical"] as const;
   for (const priority of priorities) {
     const result = parseCreateTaskPayload({ title: "Task", priority });
     assert.equal(result.priority, priority);
@@ -234,7 +232,7 @@ test("parseCreateTaskPayload throws for empty title", () => {
 
 test("parseCreateTaskPayload throws for invalid priority", () => {
   assert.throws(
-    () => parseCreateTaskPayload({ title: "Task", priority: "critical" as any }),
+    () => parseCreateTaskPayload({ title: "Task", priority: "urgent" as any }),
     (err: unknown) => (err as { code?: string }).code?.includes("priority")
   );
 });
@@ -254,13 +252,13 @@ test("parseCreateTaskPayload throws for extra unknown fields", () => {
 });
 
 test("parseUpdateTaskPayload parses valid payload with status", () => {
-  const result = parseUpdateTaskPayload({ status: "in_progress" });
-  assert.equal(result.status, "in_progress");
+  const result = parseUpdateTaskPayload({ status: "running" });
+  assert.equal(result.status, "running");
 });
 
 test("parseUpdateTaskPayload parses valid payload with priority", () => {
-  const result = parseUpdateTaskPayload({ priority: "urgent" });
-  assert.equal(result.priority, "urgent");
+  const result = parseUpdateTaskPayload({ priority: "critical" });
+  assert.equal(result.priority, "critical");
 });
 
 test("parseUpdateTaskPayload parses valid payload with outputJson", () => {
@@ -282,7 +280,7 @@ test("parseUpdateTaskPayload parses empty object", () => {
 });
 
 test("parseUpdateTaskPayload accepts all status values", () => {
-  const statuses = ["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"] as const;
+  const statuses = ["created", "admitted", "planning", "ready", "running", "pausing", "paused", "resuming", "replanning", "compensating", "completed", "failed", "aborted"] as const;
   for (const status of statuses) {
     const result = parseUpdateTaskPayload({ status });
     assert.equal(result.status, status);
@@ -290,7 +288,7 @@ test("parseUpdateTaskPayload accepts all status values", () => {
 });
 
 test("parseUpdateTaskPayload accepts all priority values", () => {
-  const priorities = ["low", "normal", "high", "urgent"] as const;
+  const priorities = ["low", "normal", "high", "critical"] as const;
   for (const priority of priorities) {
     const result = parseUpdateTaskPayload({ priority });
     assert.equal(result.priority, priority);
@@ -299,7 +297,7 @@ test("parseUpdateTaskPayload accepts all priority values", () => {
 
 test("parseUpdateTaskPayload throws for invalid status", () => {
   assert.throws(
-    () => parseUpdateTaskPayload({ status: "running" as any }),
+    () => parseUpdateTaskPayload({ status: "pending" as any }),
     (err: unknown) => (err as { code?: string }).code?.includes("status")
   );
 });

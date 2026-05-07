@@ -56,6 +56,37 @@ test("ConflictResolver.merge deduplicates arrays by id without replacing server 
   ]);
 });
 
+test("ConflictResolver.merge applies CRDT ordering to overlapping array entries by id", () => {
+  const resolver = new ConflictResolver();
+  const serverMetadata: ConflictMetadata = {
+    lamportTimestamp: 8,
+    vectorClock: {
+      existing: { actorId: "server", timestamp: 4 },
+    },
+  };
+  const localMetadata: ConflictMetadata = {
+    lamportTimestamp: 9,
+    vectorClock: {
+      existing: { actorId: "local", timestamp: 7 },
+    },
+  };
+
+  const result = resolver.resolve(
+    [{ id: "existing", value: "server", retained: true }],
+    [{ id: "existing", value: "local-newer", draftOnly: true }],
+    "merge",
+    serverMetadata,
+    localMetadata,
+  ) as Array<Record<string, unknown>>;
+
+  assert.deepEqual(result, [{
+    id: "existing",
+    value: "local-newer",
+    retained: true,
+    draftOnly: true,
+  }]);
+});
+
 test("ConflictResolver.server_wins compares Lamport timestamps for scalar values", () => {
   const resolver = new ConflictResolver();
 

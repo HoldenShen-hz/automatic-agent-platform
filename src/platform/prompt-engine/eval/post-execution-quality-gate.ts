@@ -6,6 +6,23 @@ export interface PostExecutionQualityGateDecision {
   reasonCodes: string[];
 }
 
+export interface PreReleaseQualityGateRequest {
+  readonly qualityScore: number;
+  readonly minimumQualityScore: number;
+  readonly regressionDetected?: boolean;
+  readonly blockingIncidentCount?: number;
+  readonly criticalCaseCount?: number;
+  readonly criticalCasePassedCount?: number;
+  readonly requiredEvidenceRefs?: readonly string[];
+  readonly presentEvidenceRefs?: readonly string[];
+}
+
+export interface PreReleaseQualityGateDecision {
+  promotable: boolean;
+  releaseStage: "promote" | "hold" | "blocked";
+  reasonCodes: string[];
+}
+
 export class PostExecutionQualityGate {
   /**
    * Evaluates critical_case_pass==100% as a hard release gate per §21.5.
@@ -52,6 +69,62 @@ export class PostExecutionQualityGate {
       accepted: false,
       releaseStage: "blocked",
       reasonCodes: ["quality.blocked"],
+    };
+  }
+}
+
+export class PreReleaseQualityGate {
+  public decide(request: PreReleaseQualityGateRequest): PreReleaseQualityGateDecision {
+    if (request.regressionDetected === true) {
+      return {
+        promotable: false,
+        releaseStage: "blocked",
+        reasonCodes: ["quality.pre_release_regression_detected"],
+      };
+    }
+
+    if ((request.blockingIncidentCount ?? 0) > 0) {
+      return {
+        promotable: false,
+        releaseStage: "blocked",
+        reasonCodes: ["quality.pre_release_blocking_incident"],
+      };
+    }
+
+    if ((request.criticalCaseCount ?? 0) > 0) {
+      const criticalPassRate = (request.criticalCasePassedCount ?? 0) / request.criticalCaseCount!;
+      if (criticalPassRate < 1) {
+        return {
+          promotable: false,
+          releaseStage: "blocked",
+          reasonCodes: [`quality.pre_release_critical_case_failed:${criticalPassRate}`],
+        };
+      }
+    }
+
+    const missingEvidenceRefs = (request.requiredEvidenceRefs ?? []).filter(
+      (ref) => !(request.presentEvidenceRefs ?? []).includes(ref),
+    );
+    if (missingEvidenceRefs.length > 0) {
+      return {
+        promotable: false,
+        releaseStage: "hold",
+        reasonCodes: missingEvidenceRefs.map((ref) => `quality.pre_release_missing_evidence:${ref}`),
+      };
+    }
+
+    if (request.qualityScore < request.minimumQualityScore) {
+      return {
+        promotable: false,
+        releaseStage: "hold",
+        reasonCodes: [`quality.pre_release_threshold_not_met:${request.qualityScore}`],
+      };
+    }
+
+    return {
+      promotable: true,
+      releaseStage: "promote",
+      reasonCodes: ["quality.pre_release_approved"],
     };
   }
 }

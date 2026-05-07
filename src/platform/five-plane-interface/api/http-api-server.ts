@@ -311,7 +311,8 @@ export class HttpApiServer {
       for (const workerId of staleWorkerIds) {
         this.options.incidentService.openIncident({
           tenantId: null,
-          severity: "high",
+          // R14-02: Use unified SEV naming - SEV2 corresponds to "high" severity
+          severity: "SEV2",
           title: `Worker heartbeat missing: ${workerId}`,
           linkedEvidenceRefs: [`worker://${workerId}`],
         });

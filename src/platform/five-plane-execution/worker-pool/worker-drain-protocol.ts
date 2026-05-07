@@ -88,6 +88,48 @@ export interface WorkerDrainConfig {
   checkIntervalMs: number;
 }
 
+export interface WorkerDrainCheckpointRequest {
+  readonly workerId: string;
+  readonly runId: string;
+  readonly stepId: string;
+  readonly deadlineAt: string;
+  readonly activeLeaseIds: readonly string[];
+  readonly activeNodeRunIds: readonly string[];
+}
+
+export interface WorkerDrainCheckpointCoordinator {
+  createCheckpoint(request: WorkerDrainCheckpointRequest): boolean | Promise<boolean>;
+}
+
+export interface WorkerDrainLeaseReleaseRequest {
+  readonly workerId: string;
+  readonly leaseId: string;
+  readonly nodeRunId: string;
+  readonly reason: "completed" | "forced_handoff";
+}
+
+export interface WorkerDrainLeaseManager {
+  releaseLease(request: WorkerDrainLeaseReleaseRequest): void | Promise<void>;
+}
+
+export interface WorkerDrainRecoveryNotification {
+  readonly workerId: string;
+  readonly deadlineAt: string;
+  readonly activeNodeRunIds: readonly string[];
+  readonly pendingLeaseIds: readonly string[];
+  readonly forcedHandoffLeaseIds: readonly string[];
+}
+
+export interface WorkerDrainRecoveryNotifier {
+  notifyWorkerDrain(notification: WorkerDrainRecoveryNotification): void | Promise<void>;
+}
+
+export interface WorkerDrainProtocolOptions extends Partial<WorkerDrainConfig> {
+  readonly checkpointCoordinator?: WorkerDrainCheckpointCoordinator;
+  readonly leaseManager?: WorkerDrainLeaseManager;
+  readonly recoveryNotifier?: WorkerDrainRecoveryNotifier;
+}
+
 /**
  * Default drain configuration per §8.2.
  */
@@ -104,9 +146,10 @@ interface WorkerDrainProtocolState {
   phase: WorkerDrainPhase;
   startedAt: string;
   deadlineAt: string;
-  activeLeases: readonly string[];
+  activeLeases: readonly ActiveLeaseSummary[];
   completedLeases: string[];
   handoverLeases: string[];
+  forcedHandoffLeases: string[];
   phaseHistory: Array<{
     phase: WorkerDrainPhase;
     enteredAt: string;
@@ -152,11 +195,21 @@ interface WorkerDrainProtocolState {
  */
 export class WorkerDrainProtocol {
   private readonly config: WorkerDrainConfig;
+  private readonly checkpointCoordinator?: WorkerDrainCheckpointCoordinator;
+  private readonly leaseManager?: WorkerDrainLeaseManager;
+  private readonly recoveryNotifier?: WorkerDrainRecoveryNotifier;
   // R20-03: Stateful drain tracking - keyed by workerId
   private readonly drainState = new Map<string, WorkerDrainProtocolState>();
 
-  public constructor(config: Partial<WorkerDrainConfig> = {}) {
-    this.config = { ...DEFAULT_DRAIN_CONFIG, ...config };
+  public constructor(options: WorkerDrainProtocolOptions = {}) {
+    this.config = {
+      drainTimeoutMs: options.drainTimeoutMs ?? DEFAULT_DRAIN_CONFIG.drainTimeoutMs,
+      quiesceTimeoutMs: options.quiesceTimeoutMs ?? DEFAULT_DRAIN_CONFIG.quiesceTimeoutMs,
+      checkIntervalMs: options.checkIntervalMs ?? DEFAULT_DRAIN_CONFIG.checkIntervalMs,
+    };
+    this.checkpointCoordinator = options.checkpointCoordinator;
+    this.leaseManager = options.leaseManager;
+    this.recoveryNotifier = options.recoveryNotifier;
   }
 
   /**
@@ -182,9 +235,10 @@ export class WorkerDrainProtocol {
       phase: WorkerDrainPhase.DRAIN,
       startedAt,
       deadlineAt: request.deadlineAt,
-      activeLeases: request.activeLeases.map((l) => l.leaseId),
+      activeLeases: request.activeLeases,
       completedLeases: [],
       handoverLeases: handoverLeaseIds,
+      forcedHandoffLeases: [],
       phaseHistory,
       currentPhaseStartedAt: startedAt,
     });
@@ -217,6 +271,16 @@ export class WorkerDrainProtocol {
       state.completedLeases.push(leaseId);
     }
 
+    const activeLease = state.activeLeases.find((lease) => lease.leaseId === leaseId);
+    if (activeLease != null) {
+      void this.leaseManager?.releaseLease({
+        workerId,
+        leaseId,
+        nodeRunId: activeLease.nodeRunId,
+        reason: "completed",
+      });
+    }
+
     // Update phase history with completed lease count
     const currentPhase = state.phaseHistory[state.phaseHistory.length - 1];
     if (currentPhase) {
@@ -234,10 +298,18 @@ export class WorkerDrainProtocol {
   ): Promise<boolean> {
     const state = this.drainState.get(workerId);
     if (!state) return false;
+    if (this.checkpointCoordinator == null) {
+      return false;
+    }
 
-    // For stateful drain, checkpoint coordination is required before termination
-    // Integration point for CheckpointCoordinator.createCheckpoint()
-    return true;
+    return await this.checkpointCoordinator.createCheckpoint({
+      workerId,
+      runId: checkpointCtx.runId,
+      stepId: checkpointCtx.stepId,
+      deadlineAt: state.deadlineAt,
+      activeLeaseIds: state.activeLeases.map((lease) => lease.leaseId),
+      activeNodeRunIds: state.activeLeases.map((lease) => lease.nodeRunId),
+    });
   }
 
   /**
@@ -247,9 +319,16 @@ export class WorkerDrainProtocol {
   public notifyRecoveryWorker(workerId: string): void {
     const state = this.drainState.get(workerId);
     if (!state) return;
+    const pendingLeases = state.activeLeases
+      .filter((lease) => !state.completedLeases.includes(lease.leaseId));
 
-    // For stateful drain, notify RecoveryWorker of in-progress runs
-    // Integration point for RecoveryWorker.handleWorkerDrain()
+    void this.recoveryNotifier?.notifyWorkerDrain({
+      workerId,
+      deadlineAt: state.deadlineAt,
+      activeNodeRunIds: pendingLeases.map((lease) => lease.nodeRunId),
+      pendingLeaseIds: pendingLeases.map((lease) => lease.leaseId),
+      forcedHandoffLeaseIds: state.forcedHandoffLeases,
+    });
   }
 
   /**
@@ -304,6 +383,8 @@ export class WorkerDrainProtocol {
         newPhase = WorkerDrainPhase.TERMINATE;
         newStatus = deadlineExceeded ? "deadline_exceeded" : "terminated";
         newStatusText = "deadline_exceeded";
+        this.forceHandoffPendingLeases(currentReceipt.workerId);
+        this.notifyRecoveryWorker(currentReceipt.workerId);
         break;
 
       case WorkerDrainPhase.TERMINATE:
@@ -328,7 +409,8 @@ export class WorkerDrainProtocol {
       status: newStatus,
       phase: newPhase,
       runTerminationCleanupRequired: deadlineExceeded || currentReceipt.handoverLeaseIds.length > 0,
-      forcedHandoffCount: deadlineExceeded ? currentReceipt.completedLeaseCount : currentReceipt.forcedHandoffCount,
+      forcedHandoffCount: this.getDrainState(currentReceipt.workerId)?.forcedHandoffLeases.length
+        ?? (deadlineExceeded ? currentReceipt.completedLeaseCount : currentReceipt.forcedHandoffCount),
       ...(currentReceipt.cleanupResult !== undefined && { cleanupResult: currentReceipt.cleanupResult }),
       phaseHistory: updatedHistory,
     };
@@ -451,5 +533,30 @@ export class WorkerDrainProtocol {
    */
   public isDeadlineExceeded(receipt: WorkerDrainReceipt, observedAt: string): boolean {
     return new Date(observedAt).getTime() > new Date(receipt.deadlineAt).getTime();
+  }
+
+  private forceHandoffPendingLeases(workerId: string): void {
+    const state = this.drainState.get(workerId);
+    if (state == null) {
+      return;
+    }
+
+    for (const lease of state.activeLeases) {
+      if (state.completedLeases.includes(lease.leaseId)) {
+        continue;
+      }
+      if (!lease.handoverRequired) {
+        continue;
+      }
+      if (!state.forcedHandoffLeases.includes(lease.leaseId)) {
+        state.forcedHandoffLeases.push(lease.leaseId);
+      }
+      void this.leaseManager?.releaseLease({
+        workerId,
+        leaseId: lease.leaseId,
+        nodeRunId: lease.nodeRunId,
+        reason: "forced_handoff",
+      });
+    }
   }
 }

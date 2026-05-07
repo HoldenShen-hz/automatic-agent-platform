@@ -1,8 +1,9 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import type { UnifiedSeverity } from "../../contracts/types/unified-severity.js";
 
-export type IncidentSeverity = "low" | "medium" | "high" | "critical";
-export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved";
+export type IncidentSeverity = UnifiedSeverity;
+export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved" | "dismissed";
 
 export interface IncidentCase {
   incidentId: string;
@@ -71,6 +72,17 @@ export class IncidentCaseService {
     return this.update(incidentId, { ...incident, status: "resolved", updatedAt: now, resolvedAt: now });
   }
 
+  // R14-24: dismiss action for incidents alongside acknowledge
+  public dismiss(tenantId: string | undefined, incidentId: string, reason?: string): IncidentCase {
+    const incident = this.getRequired(tenantId, incidentId);
+    return this.update(incidentId, {
+      ...incident,
+      status: "dismissed",
+      owner: null,
+      updatedAt: nowIso(),
+    });
+  }
+
   public getIncident(tenantId: string | undefined, incidentId: string): IncidentCase | null {
     const incident = this.incidents.get(incidentId) ?? null;
     if (incident == null) {
@@ -84,8 +96,21 @@ export class IncidentCaseService {
   }
 
   public listIncidents(tenantId: string | undefined, limit = 50): IncidentCase[] {
+    // R14-23: Priority sorting - SEV1 (highest priority) first, then by createdAt
+    const severityPriority: Record<IncidentSeverity, number> = {
+      SEV1: 1,
+      SEV2: 2,
+      SEV3: 3,
+      SEV4: 4,
+    };
     return this.filterIncidentsByTenant(tenantId)
       .sort((left, right) => {
+        // First sort by severity priority (SEV1 before SEV2 before SEV3 before SEV4)
+        const severityDiff = severityPriority[left.severity] - severityPriority[right.severity];
+        if (severityDiff !== 0) {
+          return severityDiff;
+        }
+        // Then by createdAt descending (newest first)
         const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
         if (createdAtOrder !== 0) {
           return createdAtOrder;

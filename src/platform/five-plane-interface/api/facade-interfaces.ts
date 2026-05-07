@@ -7,10 +7,15 @@
  * Part of P2.13: Cross-plane import violations
  */
 
+import type { UnifiedSeverity } from "../../contracts/types/unified-severity.js";
+
 // ─── Types shared across facades ────────────────────────────────────────────
 
-export type IncidentSeverity = "low" | "medium" | "high" | "critical";
-export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved";
+/**
+ * Incident severity using unified SEV naming per §12.2.
+   */
+export type IncidentSeverity = UnifiedSeverity;
+export type IncidentStatus = "open" | "acknowledged" | "mitigating" | "resolved" | "dismissed";
 
 export interface IncidentCase {
   incidentId: string;
@@ -191,6 +196,8 @@ export interface IncidentFacadeService {
   acknowledge(tenantId: string | undefined, incidentId: string, owner: string): IncidentCase;
   startMitigation(tenantId: string | undefined, incidentId: string): IncidentCase;
   resolve(tenantId: string | undefined, incidentId: string): IncidentCase;
+  // R14-24: dismiss action for incidents alongside acknowledge
+  dismiss(tenantId: string | undefined, incidentId: string, reason?: string): IncidentCase;
 }
 
 // ─── No-op implementations for defaults ─────────────────────────────────────
@@ -220,6 +227,10 @@ class NoOpIncidentFacadeService implements IncidentFacadeService {
     throw new Error("Incident service not configured");
   }
   public resolve(_tenantId: string | undefined, _incidentId: string): IncidentCase {
+    throw new Error("Incident service not configured");
+  }
+  // R14-24: dismiss action for incidents
+  public dismiss(_tenantId: string | undefined, _incidentId: string, _reason?: string): IncidentCase {
     throw new Error("Incident service not configured");
   }
 }

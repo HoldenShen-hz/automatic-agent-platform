@@ -1,4 +1,5 @@
 import {
+  createPlatformFactEvent,
   type CompensationRecord,
   type ReconciliationRecord,
   type SideEffectRecord,
@@ -12,6 +13,7 @@ import {
 
 export interface SideEffectManagerOptions {
   readonly stateMachine?: RuntimeStateMachine;
+  readonly preCommitValidator?: SideEffectPreCommitValidator;
 }
 
 export interface SideEffectManagerContext {
@@ -23,11 +25,102 @@ export interface SideEffectManagerContext {
   readonly fencingToken?: string;
 }
 
+export interface SideEffectPreCommitValidationRequest {
+  readonly sideEffect: SideEffectRecord;
+  readonly targetStatus: SideEffectStatus;
+  readonly context: SideEffectManagerContext;
+}
+
+export interface SideEffectPreCommitValidator {
+  validate(request: SideEffectPreCommitValidationRequest): void;
+}
+
 export class SideEffectManager {
   private readonly stateMachine: RuntimeStateMachine;
+  private readonly preCommitValidator?: SideEffectPreCommitValidator;
 
   public constructor(options: SideEffectManagerOptions = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
+    this.preCommitValidator = options.preCommitValidator ?? undefined;
+  }
+
+  public registerProposal(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    if (sideEffect.status === "proposed") {
+      return this.materializeCurrentState(sideEffect, context, "registration.proposed");
+    }
+    return this.transitionSideEffect(sideEffect, "proposed", {
+      ...context,
+      reasonCode: "registration.proposed",
+    });
+  }
+
+  public approve(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    this.validatePreCommit(sideEffect, "approved", context);
+    return this.transitionSideEffect(sideEffect, "approved", {
+      ...context,
+      reasonCode: "registration.approved",
+    });
+  }
+
+  public reserve(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    this.validatePreCommit(sideEffect, "reserved", context);
+    return this.transitionSideEffect(sideEffect, "reserved", {
+      ...context,
+      reasonCode: "registration.reserved",
+    });
+  }
+
+  public startCommit(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    this.validatePreCommit(sideEffect, "committing", context);
+    return this.transitionSideEffect(sideEffect, "committing", {
+      ...context,
+      reasonCode: "commit.started",
+    });
+  }
+
+  public recordCommitted(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    this.validatePreCommit(sideEffect, "committed", context);
+    return this.transitionSideEffect(sideEffect, "committed", {
+      ...context,
+      reasonCode: "commit.recorded",
+    });
+  }
+
+  public startConfirmation(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    this.validatePreCommit(sideEffect, "confirming", context);
+    return this.transitionSideEffect(sideEffect, "confirming", {
+      ...context,
+      reasonCode: "commit.confirming",
+    });
+  }
+
+  public confirm(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    this.validatePreCommit(sideEffect, "confirmed", context);
+    return this.transitionSideEffect(sideEffect, "confirmed", {
+      ...context,
+      reasonCode: "commit.confirmed",
+    });
   }
 
   public applyReconciliation(
@@ -104,6 +197,55 @@ export class SideEffectManager {
       ...(context.occurredAt != null ? { occurredAt: context.occurredAt } : {}),
     });
   }
+
+  private validatePreCommit(
+    sideEffect: SideEffectRecord,
+    targetStatus: SideEffectStatus,
+    context: SideEffectManagerContext,
+  ): void {
+    this.preCommitValidator?.validate({
+      sideEffect,
+      targetStatus,
+      context,
+    });
+  }
+
+  private materializeCurrentState(
+    sideEffect: SideEffectRecord,
+    context: SideEffectManagerContext,
+    reasonCode: string,
+  ): RuntimeTransitionResult<SideEffectRecord> {
+    const occurredAt = context.occurredAt ?? new Date(Date.now()).toISOString();
+    return {
+      aggregate: {
+        ...sideEffect,
+        updatedAt: occurredAt,
+      },
+      event: createPlatformFactEvent({
+        eventType: "platform.side_effect.status_changed",
+        aggregateType: "SideEffectRecord",
+        aggregateId: sideEffect.sideEffectId,
+        aggregateSeq: 1,
+        tenantId: context.tenantId,
+        runId: context.traceId,
+        traceId: context.traceId,
+        payload: {
+          aggregateType: "SideEffectRecord",
+          fromStatus: sideEffect.status,
+          toStatus: sideEffect.status,
+          reasonCode,
+          emittedBy: context.emittedBy,
+          sideEffectSafety: {
+            idempotencyKey: sideEffect.idempotencyKey,
+            preCommitPolicyProofRef: sideEffect.preCommitPolicyProofRef.uri,
+            ...(sideEffect.approvalRef != null ? { humanApprovalRef: sideEffect.approvalRef } : {}),
+          },
+          auditRef: `audit://side-effects/${sideEffect.sideEffectId}/${reasonCode}`,
+        },
+        occurredAt,
+      }),
+    };
+  }
 }
 
 function targetStatusForReconciliation(reconciliation: ReconciliationRecord): SideEffectStatus {
@@ -115,7 +257,7 @@ function targetStatusForReconciliation(reconciliation: ReconciliationRecord): Si
     case "compensate":
       return "compensation_required";
     case "escalate_hitl":
-      return "ambiguous";
+      return "manual_review_required";
     case "mark_failed":
       return "failed";
     default:

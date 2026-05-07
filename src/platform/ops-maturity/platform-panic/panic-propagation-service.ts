@@ -113,7 +113,7 @@ export class PanicPropagationService {
       this.updateHaltEvent(directiveId, updated);
     }
 
-    return events;
+    return this.haltingLog.get(directiveId) ?? events;
   }
 
   /**

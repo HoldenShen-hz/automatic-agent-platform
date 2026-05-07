@@ -269,6 +269,13 @@ export class DashboardWebSocketServer {
     authorization?: DashboardSubscriptionAuthorization,
     metricSubscriptions: readonly string[] = [],
   ): DashboardReconnectResult {
+    // R23-09: Validate tenantId in registerClient
+    if (!tenantId || typeof tenantId !== "string" || tenantId.trim().length === 0) {
+      throw new Error("dashboard.auth: Tenant ID is required for multi-tenant isolation");
+    }
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(tenantId)) {
+      throw new Error("dashboard.auth: Invalid tenant scope format");
+    }
     // Authenticate per §11.1
     this.validateCredentials(principal, tenantId);
     this.validateTenantScope(tenantId);

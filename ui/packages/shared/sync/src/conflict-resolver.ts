@@ -52,7 +52,7 @@ export class ConflictResolver {
   ): T {
     // Array merge: concatenate and deduplicate by ID
     if (Array.isArray(serverValue) && Array.isArray(localValue)) {
-      return this.mergeArrays(serverValue, localValue) as T;
+      return this.mergeArrays(serverValue, localValue, serverMetadata, localMetadata) as T;
     }
     // Object merge: CRDT last-writer-wins per field using vector clocks
     if (isPlainObject(serverValue) && isPlainObject(localValue)) {
@@ -67,7 +67,12 @@ export class ConflictResolver {
     return serverLamport >= localLamport ? serverValue : localValue;
   }
 
-  private mergeArrays<T>(serverArr: T[], localArr: T[]): T[] {
+  private mergeArrays<T>(
+    serverArr: T[],
+    localArr: T[],
+    serverMetadata?: ConflictMetadata,
+    localMetadata?: ConflictMetadata,
+  ): T[] {
     const idExtractor = (item: unknown): string | null => {
       if (isPlainObject(item) && "id" in item && typeof (item as Record<string, unknown>).id === "string") {
         return String((item as Record<string, unknown>).id);
@@ -90,6 +95,9 @@ export class ConflictResolver {
       if (id != null) {
         if (!serverMap.has(id)) {
           serverMap.set(id, item);
+        } else {
+          const serverItem = serverMap.get(id)!;
+          serverMap.set(id, this.mergeArrayItem(serverItem, item, id, serverMetadata, localMetadata));
         }
       } else {
         serverMap.set(String(serverMap.size), item);
@@ -97,6 +105,27 @@ export class ConflictResolver {
     }
 
     return Array.from(serverMap.values());
+  }
+
+  private mergeArrayItem<T>(
+    serverItem: T,
+    localItem: T,
+    itemId: string,
+    serverMetadata?: ConflictMetadata,
+    localMetadata?: ConflictMetadata,
+  ): T {
+    const serverEntry = serverMetadata?.vectorClock[itemId];
+    const localEntry = localMetadata?.vectorClock[itemId];
+    const scopedServerMetadata = this.scopeMetadata(serverMetadata, itemId, serverEntry?.timestamp);
+    const scopedLocalMetadata = this.scopeMetadata(localMetadata, itemId, localEntry?.timestamp);
+
+    if (isPlainObject(serverItem) && isPlainObject(localItem)) {
+      return this.mergeObjects(serverItem, localItem, scopedServerMetadata, scopedLocalMetadata) as T;
+    }
+
+    const serverLamport = serverEntry?.timestamp ?? serverMetadata?.lamportTimestamp ?? 0;
+    const localLamport = localEntry?.timestamp ?? localMetadata?.lamportTimestamp ?? 0;
+    return serverLamport >= localLamport ? serverItem : localItem;
   }
 
   private mergeObjects<T>(
@@ -120,8 +149,8 @@ export class ConflictResolver {
         // Field-level LWW using vector clocks
         const serverEntry = serverVC[key];
         const localEntry = localVC[key];
-        const serverLamport = serverEntry?.timestamp ?? 0;
-        const localLamport = localEntry?.timestamp ?? 0;
+        const serverLamport = serverEntry?.timestamp ?? serverMetadata?.lamportTimestamp ?? 0;
+        const localLamport = localEntry?.timestamp ?? localMetadata?.lamportTimestamp ?? 0;
         result[key] = serverLamport >= localLamport ? serverVal : localVal;
       } else {
         // New field from local - accept it
@@ -130,6 +159,21 @@ export class ConflictResolver {
     }
 
     return result;
+  }
+
+  private scopeMetadata(
+    metadata: ConflictMetadata | undefined,
+    key: string,
+    lamportTimestamp?: number,
+  ): ConflictMetadata | undefined {
+    if (metadata == null) {
+      return undefined;
+    }
+    return {
+      ...metadata,
+      lamportTimestamp: lamportTimestamp ?? metadata.lamportTimestamp,
+      vectorClock: key in metadata.vectorClock ? { [key]: metadata.vectorClock[key]! } : {},
+    };
   }
 }
 
