@@ -12,6 +12,7 @@
  * @see event-registry: ../event-registry.ts
  */
 
+import type { UnifiedSeverity } from "../../../contracts/types/unified-severity.js";
 import type { ProjectionHandler, ProjectionInputEvent } from "../../projections/projection-rebuild-service.js";
 
 /**
@@ -91,14 +92,16 @@ interface IncidentStateInternal extends Omit<IncidentState, "processedEventIds">
   _processedEventIdSet: Set<string>;
 }
 
-export type IncidentSeverity = "critical" | "high" | "medium" | "low";
+// R14-02: Use unified SEV naming per §12.2 (SEV1-4 instead of low/medium/high/critical)
+export type IncidentSeverity = UnifiedSeverity;
 export type IncidentStatus =
   | "detected"
   | "acknowledged"
   | "investigating"
   | "mitigated"
   | "resolved"
-  | "cancelled";
+  | "cancelled"
+  | "dismissed"; // R14-24: Added dismissed status alongside acknowledged
 
 /**
  * Timeline entry for incident events
@@ -341,6 +344,11 @@ export const incidentProjectionHandler: ProjectionHandler = (
       handleIncidentCancelled(newState, payload, event.createdAt);
       break;
 
+    // R14-24: Handle dismissed status for incidents
+    case "incident:dismissed":
+      handleIncidentDismissed(newState, payload, event.createdAt);
+      break;
+
     case "compliance:violation_detected":
       handleComplianceViolation(newState, payload, event.createdAt);
       break;
@@ -453,6 +461,20 @@ function handleIncidentCancelled(
 }
 
 /**
+ * R14-24: Handle incident:dismissed event
+ * Dismissed is a terminal state like resolved/cancelled but doesn't set resolvedAt
+ * since the incident was not actually resolved, just dismissed as not requiring action.
+ */
+function handleIncidentDismissed(
+  state: IncidentStateInternal,
+  _payload: Record<string, unknown>,
+  timestamp: string,
+): void {
+  state.status = "dismissed";
+  state.lastProjectedAt = timestamp;
+}
+
+/**
  * Handle compliance:violation_detected event (creates incident)
  */
 function handleComplianceViolation(
@@ -496,9 +518,9 @@ function handleSloBreached(
   if (state.incidentId === null) {
     state.incidentId = (payload.sloId as string | undefined) ?? null;
   }
-  // SLO breaches are typically high severity
+  // R14-02: SLO breaches are typically SEV2 (high) severity
   if (state.severity === null) {
-    state.severity = "high";
+    state.severity = "SEV2";
   }
   if (state.description === null) {
     const sloName = payload.sloName as string | undefined;

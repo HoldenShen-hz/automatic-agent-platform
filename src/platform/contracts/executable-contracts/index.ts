@@ -588,6 +588,9 @@ export interface BudgetLedger {
   readonly budgetLedgerId: string;
   readonly tenantId: string;
   readonly harnessRunId: string;
+  readonly tier?: "platform" | "tenant" | "pack" | "step";
+  readonly scopeKey?: string;
+  readonly parentBudgetLedgerId?: string;
   readonly currency: string;
   readonly hardCap: number;
   readonly softCap?: number;
@@ -622,6 +625,7 @@ export interface BudgetSettlement {
 export interface BudgetReservationResult {
   readonly ledger: BudgetLedger;
   readonly reservation: BudgetReservation;
+  readonly hierarchyLedgers?: readonly BudgetLedger[];
 }
 
 export interface RunVersionLock {
@@ -1382,6 +1386,9 @@ export function createBudgetLedger(input: {
   currency: string;
   hardCap: number;
   budgetLedgerId?: string;
+  tier?: "platform" | "tenant" | "pack" | "step";
+  scopeKey?: string;
+  parentBudgetLedgerId?: string;
   softCap?: number;
   reservedAmount?: number;
   settledAmount?: number;
@@ -1394,6 +1401,9 @@ export function createBudgetLedger(input: {
     budgetLedgerId: input.budgetLedgerId ?? newId("bledger"),
     tenantId: input.tenantId,
     harnessRunId: input.harnessRunId,
+    ...(input.tier != null ? { tier: input.tier } : {}),
+    ...(input.scopeKey != null ? { scopeKey: input.scopeKey } : {}),
+    ...(input.parentBudgetLedgerId != null ? { parentBudgetLedgerId: input.parentBudgetLedgerId } : {}),
     currency: input.currency,
     hardCap: input.hardCap,
     ...(input.softCap != null ? { softCap: input.softCap } : {}),

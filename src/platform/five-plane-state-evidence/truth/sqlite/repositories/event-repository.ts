@@ -107,6 +107,18 @@ function resolveTier1OutboxAggregate(input: {
 export class EventRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
+  // R12-16 fix: Store signingKey for HMAC tamper-evident checksums
+  private signingKey: string | undefined;
+
+  /**
+   * R12-16 fix: Sets the HMAC signing key for Tier 1 audit event checksums.
+   * This must be called before publishing tier-1 events if HMAC signing is required.
+   * @param key - The HMAC signing key
+   */
+  public setSigningKey(key: string): void {
+    this.signingKey = key;
+  }
+
   public insertCostEvent(costEvent: {
     id: string;
     taskId: string;
@@ -866,14 +878,15 @@ export class EventRepository {
     );
 
     for (const event of pendingEvents) {
-      const eventChecksum = computeTier1AuditEventChecksum(event);
+      // R12-16 fix: Use HMAC signing key for tamper-evident checksums
+      const eventChecksum = computeTier1AuditEventChecksum(event, this.signingKey);
       chainPosition += 1;
       const chainHash = computeTier1AuditChainHash({
         chainPosition,
         previousChainHash,
         eventChecksum,
         eventId: event.id,
-      });
+      }, this.signingKey);
 
       insertIntegrityRecord.run(
         event.id,

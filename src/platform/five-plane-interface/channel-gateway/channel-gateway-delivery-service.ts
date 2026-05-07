@@ -349,7 +349,7 @@ export class ChannelGatewayDeliveryService {
       targetId,
       status: "pending_retry",
       attempts: 0,
-      finalStatus: "pending_retry", // Will be updated after actual delivery attempt
+      finalStatus: undefined, // Will be updated after actual delivery attempt
       firstAttemptAt: now,
       lastAttemptAt: now,
       providerMessageId: null,

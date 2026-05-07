@@ -35,7 +35,7 @@ import type {
   DelegationCreatedEvent,
   DelegationStatus,
 } from "./delegation-types.js";
-import type { DelegationRepository, DelegationEventRepository } from "../../state-evidence/truth/sqlite/repositories/delegation-repository.js";
+import type { DelegationRepository, DelegationEventRepository, DelegationRecord } from "../../five-plane-state-evidence/truth/sqlite/repositories/delegation-repository.js";
 import {
   DelegationGovernanceService,
   defaultDelegationGovernanceService,
@@ -83,13 +83,18 @@ export class DelegationManagerService {
   private readonly governanceService: DelegationGovernanceService;
   private readonly auditService: DelegationAuditService;
   private readonly defaultTimeout: number;
+  // R9-06: delegationStore and chainStore now default to repository when provided
+  // Only use in-memory Maps as fallback when no repository is available
   private readonly delegationStore: Map<string, DelegationResult>;
   private readonly chainStore: Map<string, DelegationChain>;
   private readonly delegationRootStore: Map<string, string>;
-  // R17-13: Optional persistence layer - if provided, delegations survive restarts
+  // R17-13: Persistence layer - if provided, delegations survive restarts
+  // R9-06: When provided, repository is the primary store (source of truth)
   private readonly delegationRepository: DelegationRepository | null = null;
   private readonly eventRepository: DelegationEventRepository | null = null;
-  // C-11: TTL-based eviction to prevent memory leaks
+  // R9-06: Flag to indicate if we're using repository as primary store
+  private readonly useRepositoryAsPrimaryStore: boolean = false;
+  // C-11: TTL-based eviction to prevent memory leaks (only used when no repository)
   private readonly MAX_ENTRIES = 1000;
   private readonly ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour
   private lastEvictionTime = 0;
@@ -107,12 +112,18 @@ export class DelegationManagerService {
     this.governanceService = options.governanceService ?? defaultDelegationGovernanceService;
     this.auditService = options.auditService ?? delegationAuditService;
     this.defaultTimeout = options.defaultTimeout ?? options.defaultTimeoutMs ?? 300000; // 5 minutes
+
+    // R9-06: Determine primary store based on repository availability
+    this.delegationRepository = delegationRepository ?? null;
+    this.eventRepository = eventRepository ?? null;
+    this.useRepositoryAsPrimaryStore = this.delegationRepository !== null;
+
+    // R9-06: Only initialize in-memory stores as fallback when no repository
+    // When repository is available, these are initialized empty and serve as cache
     this.delegationStore = new Map();
     this.chainStore = new Map();
     this.delegationRootStore = new Map();
-    // R17-13: Initialize persistence layer if provided
-    this.delegationRepository = delegationRepository ?? null;
-    this.eventRepository = eventRepository ?? null;
+
     // R9-06: Hydrate active delegations from repository to survive process restarts
     if (this.delegationRepository) {
       this.hydrateFromRepository().catch((err) => {
@@ -125,8 +136,14 @@ export class DelegationManagerService {
   /**
    * C-11: Evict expired delegation entries to prevent memory leaks.
    * §186-2183: Only evict terminal-state delegations - never evict active delegations.
+   * R9-06: Skip eviction when repository is primary store - repository manages its own lifecycle.
    */
   private evictExpired(): void {
+    // R9-06: When repository is primary store, delegation lifecycle is managed by repository
+    if (this.useRepositoryAsPrimaryStore) {
+      return;
+    }
+
     const now = Date.now();
     if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
       return;
@@ -734,10 +751,7 @@ export class DelegationManagerService {
           scanned++;
           if (record.expiresAt && record.expiresAt < now) {
             // R9-06: Try to get from in-memory store first, or reconstruct from record
-            let delegation = this.delegationStore.get(record.delegationId);
-            if (!delegation) {
-              delegation = await this.getDelegation(record.delegationId);
-            }
+            const delegation = this.delegationStore.get(record.delegationId);
             if (delegation) {
               try {
                 this.transitionDelegationStatus(delegation, "expired");
@@ -791,11 +805,8 @@ export class DelegationManagerService {
         const records = await this.delegationRepository.findByStatus(status);
         for (const record of records) {
           if (record.expiresAt && record.expiresAt < now) {
-            // Try in-memory first, then reconstruct from repository
-            let delegation = this.delegationStore.get(record.delegationId);
-            if (!delegation) {
-              delegation = await this.getDelegation(record.delegationId);
-            }
+            // Try in-memory first
+            const delegation = this.delegationStore.get(record.delegationId);
             if (delegation) {
               results.push(delegation);
             }
@@ -816,8 +827,9 @@ export class DelegationManagerService {
   /**
    * §49: Gets the count of pending expirations (delegations past expiresAt but not yet processed).
    */
-  public getPendingExpirationCount(): number {
-    return this.getExpiredDelegations().length;
+  public async getPendingExpirationCount(): Promise<number> {
+    const expired = await this.getExpiredDelegations();
+    return expired.length;
   }
 
   public validateCollaborationMessage(message: ACPMessage, context: InvariantContext): { accepted: boolean; violations: string[] } {

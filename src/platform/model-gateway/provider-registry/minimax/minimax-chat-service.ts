@@ -411,7 +411,12 @@ export class MiniMaxChatService {
               // Only catch JSON parse errors, not business errors from assertMiniMaxBusinessSuccess
               // Business errors thrown above will propagate up and terminate the stream
               if (err instanceof MiniMaxAPIError) {
-                // This is a business error from assertMiniMaxBusinessSuccess - rethrow to propagate
+                // R27-02 FIX: Log business errors before rethrowing - don't swallow them
+                logger.error("minimax.stream.business_error", {
+                  error: err.message,
+                  statusCode: err.statusCode,
+                  statusText: err.statusText,
+                });
                 throw err;
               }
               logger.log({

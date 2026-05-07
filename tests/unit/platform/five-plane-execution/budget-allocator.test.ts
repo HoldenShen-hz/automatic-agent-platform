@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BudgetAllocator, BudgetTier, type BudgetAllocatorContext, type BudgetWatermarkAlert, type BudgetAutoThrottleEvent } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
-import { ValidationError, WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { createBudgetLedger } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
@@ -26,6 +26,7 @@ function createTestContext(overrides: Partial<BudgetAllocatorContext> = {}): Bud
     tenantId: TEST_TENANT,
     traceId: newId("trace"),
     emittedBy: "test",
+    fencingToken: "test-fencing-token",
     tier: BudgetTier.STEP,
     tierLimit: 1000,
     watermarkAlert: {
@@ -205,11 +206,11 @@ test("reserve() emits critical watermark alert at 95% utilization", () => {
     },
   });
 
-  const ledger = createTestLedger({ hardCap: 1000, reservedAmount: 900, version: 0 }); // 90% before reserve
+  const ledger = createTestLedger({ hardCap: 1000, reservedAmount: 850, version: 0 }); // 85% before reserve
 
   allocator.reserve({
     ledger,
-    amount: 100, // Will push to 100% - triggers critical (before hard_cap_reached)
+    amount: 100, // Will push to 95% - triggers critical
     resourceKind: "token",
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
     expectedVersion: 0,
@@ -228,7 +229,7 @@ test("reserve() emits hard_cap_reached watermark alert at 100% utilization", () 
     },
   });
 
-  const ledger = createTestLedger({ hardCap: 1000, reservedAmount: 950, version: 0 });
+  const ledger = createTestLedger({ hardCap: 1000, reservedAmount: 900, version: 0 });
 
   allocator.reserve({
     ledger,
@@ -353,13 +354,15 @@ test("settle() transitions reservation to settled and updates ledger", () => {
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
     actualAmount: 95,
+    expectedVersion: reserveResult.ledger.version,
     context: createTestContext(),
   });
 
   assert.equal(settleResult.reservation.aggregate.status, "settled");
   assert.equal(settleResult.settlement.actualAmount, 95);
-  assert.equal(settleResult.ledger.reservedAmount, 5);
+  assert.equal(settleResult.ledger.reservedAmount, 0);
   assert.equal(settleResult.ledger.settledAmount, 95);
+  assert.equal(settleResult.ledger.releasedAmount, 5);
 });
 
 test("settle() with actual amount less than reserved amount releases difference", () => {
@@ -381,6 +384,7 @@ test("settle() with actual amount less than reserved amount releases difference"
     ledger,
     reservation: reserveResult.reservation,
     actualAmount: 50,
+    expectedVersion: ledger.version,
     context: createTestContext(),
   });
 
@@ -407,33 +411,41 @@ test("settle() fails when actual amount exceeds reserved amount", () => {
         ledger: reserveResult.ledger,
         reservation: reserveResult.reservation,
         actualAmount: 150,
+        expectedVersion: reserveResult.ledger.version,
         context: createTestContext(),
       }),
-    (err: unknown) => err instanceof WorkflowStateError,
+    (err: unknown) =>
+      err instanceof ValidationError &&
+      err.code === "budget_settlement.actual_amount_exceeds_reservation",
   );
 });
 
 test("settle() fails when hard cap not satisfied at settlement time", () => {
   const allocator = new BudgetAllocator();
-  const ledger = createTestLedger({ hardCap: 100, reservedAmount: 90, version: 0 });
+  const ledger = createTestLedger({ hardCap: 110, settledAmount: 90, version: 0 });
 
   const reserveResult = allocator.reserve({
     ledger,
     amount: 10,
     resourceKind: "token",
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    expectedVersion: 0,
-    context: createTestContext({ tierLimit: 100 }),
+    expectedVersion: ledger.version,
+    context: createTestContext({ tierLimit: 110 }),
   });
 
-  // Try to settle more than would satisfy hard cap
+  const tightenedLedger = {
+    ...reserveResult.ledger,
+    hardCap: 95,
+  };
+
   assert.throws(
     () =>
       allocator.settle({
-        ledger: reserveResult.ledger,
+        ledger: tightenedLedger,
         reservation: reserveResult.reservation,
-        actualAmount: 20,
-        context: createTestContext({ tierLimit: 100 }),
+        actualAmount: 10,
+        expectedVersion: tightenedLedger.version,
+        context: createTestContext({ tierLimit: 95 }),
       }),
     (err: unknown) =>
       err instanceof ValidationError && err.code === "budget.settle.hard_cap_not_satisfied",
@@ -462,6 +474,7 @@ test("settle() with evidence refs preserves them in settlement", () => {
     reservation: reserveResult.reservation,
     actualAmount: 95,
     evidenceRefs,
+    expectedVersion: reserveResult.ledger.version,
     context: createTestContext(),
   });
 
@@ -489,6 +502,7 @@ test("release() transitions reservation from reserved to released", () => {
   const releaseResult = allocator.release({
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
+    expectedVersion: reserveResult.ledger.version,
     context: createTestContext(),
   });
 
@@ -516,6 +530,7 @@ test("release() with custom reason code", () => {
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
     reasonCode: "budget.timeout",
+    expectedVersion: reserveResult.ledger.version,
     context: createTestContext(),
   });
 
@@ -564,16 +579,111 @@ test("tier hierarchy is respected in reservation", () => {
 
   // STEP tier has lower limit
   const ledger2 = platformResult.ledger;
-  const stepResult = allocator.reserve({
-    ledger: ledger2,
-    amount: 400,
+  assert.throws(
+    () =>
+      allocator.reserve({
+        ledger: ledger2,
+        amount: 1,
+        resourceKind: "token",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        expectedVersion: ledger2.version,
+        context: createTestContext({ tier: BudgetTier.STEP, tierLimit: 500 }),
+      }),
+    (err: unknown) =>
+      err instanceof ValidationError && err.code === "budget_reservation.hard_cap_exceeded",
+  );
+});
+
+test("settle() requires exact ledger version instead of regression-only check", () => {
+  const allocator = new BudgetAllocator();
+  const reserveResult = allocator.reserve({
+    ledger: createTestLedger({ version: 0 }),
+    amount: 100,
     resourceKind: "token",
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    expectedVersion: ledger2.version,
-    context: createTestContext({ tier: BudgetTier.STEP, tierLimit: 500 }),
+    expectedVersion: 0,
+    context: createTestContext(),
   });
-  // Effective amount should be capped at tier limit
-  assert.ok(stepResult.reservation.amount <= 500);
+
+  assert.throws(
+    () => allocator.settle({
+      ledger: reserveResult.ledger,
+      reservation: reserveResult.reservation,
+      actualAmount: 50,
+      expectedVersion: reserveResult.ledger.version + 1,
+      context: createTestContext(),
+    }),
+    (err: unknown) => err instanceof ValidationError && err.code === "budget_settlement.version_cas_failed",
+  );
+});
+
+test("release() requires exact ledger version instead of regression-only check", () => {
+  const allocator = new BudgetAllocator();
+  const reserveResult = allocator.reserve({
+    ledger: createTestLedger({ version: 0 }),
+    amount: 100,
+    resourceKind: "token",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    expectedVersion: 0,
+    context: createTestContext(),
+  });
+
+  assert.throws(
+    () => allocator.release({
+      ledger: reserveResult.ledger,
+      reservation: reserveResult.reservation,
+      expectedVersion: reserveResult.ledger.version + 1,
+      context: createTestContext(),
+    }),
+    (err: unknown) => err instanceof ValidationError && err.code === "budget_release.version_cas_failed",
+  );
+});
+
+test("hierarchical ledgers reserve and settle together", () => {
+  const allocator = new BudgetAllocator();
+  const platformLedger = createTestLedger({
+    budgetLedgerId: "platform-ledger",
+    hardCap: 5000,
+    version: 0,
+    tier: "platform",
+  });
+  const packLedger = createTestLedger({
+    budgetLedgerId: "pack-ledger",
+    hardCap: 1000,
+    version: 0,
+    tier: "pack",
+    parentBudgetLedgerId: "platform-ledger",
+  });
+
+  const reserved = allocator.reserve({
+    ledger: packLedger,
+    amount: 200,
+    resourceKind: "token",
+    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    expectedVersion: 0,
+    hierarchyLedgers: [{ ledger: platformLedger, expectedVersion: 0 }],
+    context: createTestContext({ tier: BudgetTier.PACK, tierLimit: 1000 }),
+  });
+
+  assert.equal(reserved.ledger.reservedAmount, 200);
+  assert.equal(reserved.hierarchyLedgers?.[0]?.reservedAmount, 200);
+
+  const settled = allocator.settle({
+    ledger: reserved.ledger,
+    reservation: reserved.reservation,
+    actualAmount: 120,
+    expectedVersion: reserved.ledger.version,
+    hierarchyLedgers: [{
+      ledger: reserved.hierarchyLedgers?.[0] ?? platformLedger,
+      expectedVersion: reserved.hierarchyLedgers?.[0]?.version ?? platformLedger.version,
+    }],
+    context: createTestContext({ tier: BudgetTier.PACK, tierLimit: 1000 }),
+  });
+
+  assert.equal(settled.ledger.settledAmount, 120);
+  assert.equal(settled.hierarchyLedgers?.[0]?.settledAmount, 120);
+  assert.equal(settled.ledger.releasedAmount, 80);
+  assert.equal(settled.hierarchyLedgers?.[0]?.releasedAmount, 80);
 });
 
 // ---------------------------------------------------------------------------
@@ -673,6 +783,7 @@ test("settle routes through state machine for proper event emission", () => {
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
     actualAmount: 95,
+    expectedVersion: reserveResult.ledger.version,
     context: createTestContext(),
   });
 
@@ -697,6 +808,7 @@ test("release routes through state machine for proper event emission", () => {
   const releaseResult = allocator.release({
     ledger: reserveResult.ledger,
     reservation: reserveResult.reservation,
+    expectedVersion: reserveResult.ledger.version,
     context: createTestContext(),
   });
 

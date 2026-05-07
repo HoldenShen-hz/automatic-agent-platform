@@ -41,6 +41,21 @@ import { z } from "zod";
 const DROPPABLE_EVENT_TYPES = new Set<StreamEventFrame["eventType"]>(["status_changed", "progress", "message_delta"]);
 
 /**
+ * R12-09 FIX: Priority-based eviction for replay buffer.
+ * Lower priority number = lower priority = evicted first.
+ * Priority order: status_changed (1) < progress (2) < message_delta (3)
+ */
+const EVENT_DROP_PRIORITY: Record<StreamEventFrame["eventType"], number> = {
+  status_changed: 1,
+  progress: 2,
+  message_delta: 3,
+  artifact_ready: 999,
+  approval_requested: 999,
+  completed: 999,
+  failed: 999,
+};
+
+/**
  * Event types that must never be evicted from the replay buffer.
  * These events carry terminal outcomes or explicit operator handoff.
  */
@@ -606,24 +621,40 @@ export class StreamBridge {
   /**
    * Appends a frame to the replay buffer, evicting old frames if necessary.
    *
-   * When the buffer exceeds maxReplayFrames, it attempts to drop the oldest
-   * droppable frame (status_changed, progress, message_delta). Critical events
-   * (completed, failed, approval_requested, artifact_ready) are NEVER dropped.
-   * If all buffered frames are critical, the new frame is dropped instead.
+   * R12-09 FIX: Priority-based eviction instead of simple FIFO.
+   * When the buffer exceeds maxReplayFrames, it evicts the LOWEST priority
+   * droppable frame (status_changed first, then progress, then message_delta).
+   * Critical events (completed, failed, approval_requested, artifact_ready) are
+   * NEVER dropped. If all buffered frames are critical, the new frame is
+   * dropped instead.
    *
    * @param frame - The frame to append
    */
   private appendToReplayBuffer(frame: StreamEventFrame): void {
     const next = [...(this.replayBuffer.get(frame.streamId) ?? []), frame];
 
-    // If buffer exceeds limit, try to evict oldest droppable frame
+    // If buffer exceeds limit, evict based on priority (lowest priority first)
     while (next.length > this.options.maxReplayFrames) {
-      // Find the first droppable frame from oldest (index 0) onwards
-      const indexToDrop = next.findIndex((candidate) => DROPPABLE_EVENT_TYPES.has(candidate.eventType));
+      // Find ALL droppable candidates and select the lowest priority one
+      // R12-09 fix: priority-based eviction instead of findIndex which just
+      // finds the first droppable (oldest), not the lowest priority droppable
+      let lowestPriorityIndex = -1;
+      let lowestPriority = Infinity;
+
+      for (let i = 0; i < next.length; i++) {
+        const candidate = next[i]!;
+        if (DROPPABLE_EVENT_TYPES.has(candidate.eventType)) {
+          const priority = EVENT_DROP_PRIORITY[candidate.eventType] ?? 999;
+          if (priority < lowestPriority) {
+            lowestPriority = priority;
+            lowestPriorityIndex = i;
+          }
+        }
+      }
 
       // Only drop if we found a droppable frame; never drop critical events
-      if (indexToDrop >= 0) {
-        const removed = next.splice(indexToDrop, 1)[0];
+      if (lowestPriorityIndex >= 0) {
+        const removed = next.splice(lowestPriorityIndex, 1)[0];
         if (removed != null) {
           // Track the lowest dropped sequence so clients know buffer was truncated
           const previousDropped = this.droppedBeforeSequenceByStream.get(frame.streamId) ?? 0;

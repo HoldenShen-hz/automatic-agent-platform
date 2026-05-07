@@ -20,6 +20,28 @@ export interface ConflictMetadata {
 
 export class ConflictResolver {
   /**
+   * Resolves a single conflict with explicit resolution strategy per §5.4.5.
+   * This method properly uses the resolution parameter to determine merge behavior.
+   *
+   * @param serverValue - The server-side value
+   * @param localValue - The local-side value
+   * @param resolution - Resolution strategy: "server_wins", "local_wins", or "merge"
+   * @param serverMetadata - Optional vector clock metadata for server value
+   * @param localMetadata - Optional vector clock metadata for local value
+   * @returns The resolved value based on the chosen strategy
+   */
+  public resolveConflict<T>(
+    serverValue: T,
+    localValue: T,
+    resolution: ConflictResolutionStrategy = "server_wins",
+    serverMetadata?: ConflictMetadata,
+    localMetadata?: ConflictMetadata,
+  ): T {
+    // R16-42 fix: Properly use resolution parameter to determine merge behavior
+    return this.resolve(serverValue, localValue, resolution, serverMetadata, localMetadata);
+  }
+
+  /**
    * Resolves conflicts using CRDT semantics with vector clocks per §5.4.5.
    * - "server_wins": Last-writer-wins based on Lamport timestamp
    * - "local_wins": Always prefer local value

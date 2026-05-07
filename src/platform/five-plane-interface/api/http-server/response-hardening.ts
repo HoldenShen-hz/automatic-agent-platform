@@ -10,7 +10,7 @@ export interface CorsConfig {
 }
 
 export const DEFAULT_CORS_CONFIG: CorsConfig = {
-  allowedOrigins: ["*"],
+  allowedOrigins: [],
   allowedMethods: ["GET", "POST", "OPTIONS"],
   // R7-47 FIX: Add accept-version header for API version negotiation per §6.4
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key", "accept-version"],

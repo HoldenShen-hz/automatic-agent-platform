@@ -101,85 +101,10 @@ function normalizeAction(type: LegacyStateCommandType): StateCommandAction {
 }
 
 export function createStateCommand<TPayload>(
-  input: SimpleStateCommandInput<TPayload> | CompatibilityStateCommandInput<TPayload>,
+  _input: SimpleStateCommandInput<TPayload> | CompatibilityStateCommandInput<TPayload>,
 ): StateCommand<TPayload> {
-  if (isCompatibilityInput(input)) {
-    const aggregateId = requireNonEmpty(
-      input.aggregateId,
-      "platform_contracts.state_command_aggregate_id_required",
-      "aggregateId is required.",
-    );
-    const traceId = requireNonEmpty(
-      input.traceId,
-      "platform_contracts.state_command_trace_id_required",
-      "traceId is required.",
-    );
-    const type = input.type;
-    const emittedBy = input.emittedBy?.trim().length
-      ? input.emittedBy
-      : input.principal.actorId
-        ?? input.principal.principalId
-        ?? "unknown";
-
-    return {
-      commandId: input.commandId ?? newId("statecmd"),
-      traceId,
-      principal: input.principal,
-      ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
-      fencingToken: requireNonEmpty(
-        input.fencingToken,
-        "platform_contracts.state_command_fencing_token_required",
-        "fencingToken is required.",
-      ),
-      ...(input.event != null ? { event: input.event } : {}),
-      entityKind: input.aggregateType ?? "aggregate",
-      entityId: aggregateId,
-      action: normalizeAction(type),
-      type,
-      aggregateId,
-      expectedVersion: input.expectedVersion ?? null,
-      payload: structuredClone(input.payload),
-      emittedBy,
-      createdAt: input.createdAt ?? nowIso(),
-    };
-  }
-
-  const entityKind = requireNonEmpty(
-    input.entityKind,
-    "platform_contracts.state_command_entity_kind_required",
-    "entityKind is required.",
-  );
-  const entityId = requireNonEmpty(
-    input.entityId,
-    "platform_contracts.state_command_entity_id_required",
-    "entityId is required.",
-  );
-  const emittedBy = requireNonEmpty(
-    input.emittedBy,
-    "platform_contracts.state_command_emitted_by_required",
-    "emittedBy is required.",
-  );
-
-  if (input.action === "transition") {
-    const nextStatus = (input.payload as { nextStatus?: unknown }).nextStatus;
-    if (typeof nextStatus !== "string" || nextStatus.trim().length === 0) {
-      throw new ValidationError(
-        "platform_contracts.state_command_transition_next_status_required",
-        "Transition commands require payload.nextStatus.",
-      );
-    }
-  }
-
-  return {
-    commandId: input.commandId ?? newId("statecmd"),
-    entityKind,
-    entityId,
-    action: input.action,
-    expectedVersion: input.expectedVersion ?? null,
-    payload: structuredClone(input.payload),
-    emittedBy,
-    createdAt: input.createdAt ?? nowIso(),
-  };
+  // R16-79: StateCommand is deprecated - throw UnimplementedError
+  throw new Error("UnimplementedError: createStateCommand is no longer supported. StateCommand is deprecated. Use canonical contracts from executable-contracts instead.");
 }
 
 // =============================================================================

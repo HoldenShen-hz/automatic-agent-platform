@@ -143,13 +143,17 @@ export class WebSocketBridge {
   private static readonly HEARTBEAT_INTERVAL_MS = 30_000;
   /** R25-08: Connection timeout in ms (90 seconds = 3 missed heartbeats) */
   private static readonly CONNECTION_TIMEOUT_MS = 90_000;
+  /** R12-08: Callback for fetching missed events during replay */
+  private readonly replayCallback: ((taskId: string, afterEventId: string) => Promise<Array<{ eventId: string; event: TaskWebSocketEvent }>>) | undefined;
 
   constructor(
     server: Server,
     private readonly authService: ApiAuthService,
     taskScopeResolver: TaskProjectionScopeResolver | null = null,
+    replayCallback?: (taskId: string, afterEventId: string) => Promise<Array<{ eventId: string; event: TaskWebSocketEvent }>>,
   ) {
     this.tenantScopeFilter = taskScopeResolver == null ? null : new TenantScopeFilter(taskScopeResolver);
+    this.replayCallback = replayCallback;
     this.wss = new WebSocketServer({ server, path: "/ws/v1/stream" });
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
     // R25-08: Start server-initiated heartbeat timer to detect dead connections
@@ -272,9 +276,9 @@ export class WebSocketBridge {
       this.subscribeToTask(ws, initialTaskId);
     }
 
-    // §7: If client provides last_event_id on reconnect, replay any missed events
+    // §7/R12-08: If client provides last_event_id on reconnect, replay any missed events
     if (lastEventId && initialTaskId) {
-      this.replayMissedEvents(ws, client, initialTaskId, lastEventId);
+      void this.replayMissedEvents(ws, client, initialTaskId, lastEventId);
     }
 
     // Handle incoming messages
@@ -386,6 +390,7 @@ export class WebSocketBridge {
   /**
    * Handle acknowledgment from client.
    * §6.7/R15-80: Tracks acknowledged sequence numbers for delivery guarantee.
+   * R12-07: Decrements bufferedEventCount to properly track back-pressure.
    */
   private handleAck(ws: WebSocket, sequenceNum: number, delivered: boolean): void {
     const client = this.clients.get(ws);
@@ -398,9 +403,14 @@ export class WebSocketBridge {
       }
       // Remove from pending acks
       client.pendingAcks.delete(sequenceNum);
+      // R12-07 fix: Decrement buffered event count to reflect actual pending messages
+      if (client.bufferedEventCount > 0) {
+        client.bufferedEventCount--;
+      }
       logger.debug("Message delivery confirmed", {
         actorId: client.principal.actorId,
         sequenceNum,
+        remainingBuffered: client.bufferedEventCount,
       });
     } else {
       // Client rejected delivery - mark for retry
@@ -620,16 +630,50 @@ export class WebSocketBridge {
   }
 
   /**
-   * Check if client has missed events since lastEventId.
+   * R12-08: Check if client has missed events since lastEventId.
    * Returns true if there's a gap indicating missing events.
+   * Uses sequence number comparison instead of lexicographic string comparison
+   * to correctly handle event IDs like "evt_10" vs "evt_2".
    * §7: Emits stream_gap event to client when gap is detected.
    */
   private hasEventGap(client: ClientConnection, currentEventId: string): boolean {
     if (client.lastEventId === null) {
       return false;
     }
-    // Simple sequence check - in production this would use proper sequence comparison
-    return currentEventId > client.lastEventId;
+    // R12-08 fix: Parse event IDs to extract sequence numbers for proper comparison
+    // Event IDs are typically in format "evt_<number>" or similar
+    const currentSeq = this.extractEventSequence(currentEventId);
+    const lastSeq = this.extractEventSequence(client.lastEventId);
+
+    if (currentSeq === null || lastSeq === null) {
+      // Fall back to string comparison if can't parse sequences
+      return currentEventId !== client.lastEventId;
+    }
+
+    // Gap exists if current sequence is more than 1 ahead of last sequence
+    return currentSeq - lastSeq > 1;
+  }
+
+  /**
+   * R12-08: Extracts the numeric sequence from an event ID.
+   * Returns null if the ID doesn't contain a parseable sequence.
+   */
+  private extractEventSequence(eventId: string): number | null {
+    // Common patterns: evt_123, event_123, task_123_update
+    const patterns = [
+      /evt_(\d+)/i,
+      /event_(\d+)/i,
+      /task_(\d+)/i,
+      /(\d+)$/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = eventId.match(pattern);
+      if (match) {
+        return parseInt(match[1]!, 10);
+      }
+    }
+    return null;
   }
 
   /**
@@ -661,26 +705,79 @@ export class WebSocketBridge {
   }
 
   /**
-   * Replay missed events for a client after reconnect.
+   * R12-08: Replay missed events for a client after reconnect.
    * §7: Uses lastEventId to fetch and replay events client missed while disconnected.
+   * Fetches events after the client's lastEventId and sends them in sequence.
    * @param ws - The WebSocket connection
    * @param client - The client connection state
    * @param taskId - The task ID to replay events for
-   * @param eventId - The last event ID the client received
+   * @param eventId - The last event ID the client received (resume point)
    */
-  private replayMissedEvents(ws: WebSocket, client: ClientConnection, taskId: string, eventId: string): void {
-    // In a real implementation, this would fetch events from the event store
-    // between client.lastEventId and eventId, then replay them to the client
-    // For now, we emit a gap notification indicating the client should refetch
-    logger.info("Replaying missed events for client", {
+  private async replayMissedEvents(ws: WebSocket, client: ClientConnection, taskId: string, eventId: string): Promise<void> {
+    logger.info("R12-08: Replaying missed events for client", {
       actorId: client.principal.actorId,
       taskId,
-      fromEventId: client.lastEventId,
-      toEventId: eventId,
+      resumeFromEventId: eventId,
     });
 
-    // Notify client of the gap - they should refetch from their last_event_id
-    this.notifyStreamGap(client, taskId, client.lastEventId ?? "start", eventId, "reconnect_replay");
+    // R12-08: If replay callback is provided, use it to fetch missed events
+    if (this.replayCallback) {
+      try {
+        const missedEvents = await this.replayCallback(taskId, eventId);
+
+        if (missedEvents.length === 0) {
+          logger.info("R12-08: No missed events to replay", {
+            actorId: client.principal.actorId,
+            taskId,
+          });
+          return;
+        }
+
+        logger.info("R12-08: Replaying missed events", {
+          actorId: client.principal.actorId,
+          taskId,
+          eventCount: missedEvents.length,
+        });
+
+        // Send each missed event to the client in sequence order
+        for (const { eventId: missedEventId, event } of missedEvents) {
+          if (ws.readyState !== ws.OPEN) {
+            logger.warn("R12-08: Client disconnected during replay, aborting", {
+              actorId: client.principal.actorId,
+              taskId,
+            });
+            break;
+          }
+
+          // Use broadcastToTask to maintain consistency with normal event delivery
+          // This ensures proper back-pressure handling and sequence tracking
+          this.broadcastToTask(taskId, event, missedEventId);
+          client.lastEventId = missedEventId;
+        }
+
+        logger.info("R12-08: Replay completed", {
+          actorId: client.principal.actorId,
+          taskId,
+          replayedCount: missedEvents.length,
+          finalEventId: client.lastEventId,
+        });
+      } catch (error) {
+        logger.error("R12-08: Failed to replay missed events", {
+          actorId: client.principal.actorId,
+          taskId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Notify client of the gap so they can handle the error
+        this.notifyStreamGap(client, taskId, eventId, eventId, "replay_failed");
+      }
+    } else {
+      // R12-08: No replay callback - notify client to refetch from their last_event_id
+      logger.warn("R12-08: No replay callback configured, notifying client to refetch", {
+        actorId: client.principal.actorId,
+        taskId,
+      });
+      this.notifyStreamGap(client, taskId, eventId, eventId, "reconnect_replay");
+    }
   }
 
   /**

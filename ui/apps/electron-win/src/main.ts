@@ -68,7 +68,8 @@ export const electronBridgeCapabilities = {
 // R17-43: Electron App Initialization with BrowserWindow
 // ─────────────────────────────────────────────────────────────────────────────
 
-let mainWindow: BrowserWindow | null = null;
+// R17-43: Export BrowserWindow instance for external access
+export let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
 interface WindowCreateOptions {

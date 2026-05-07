@@ -69,7 +69,9 @@ export function evaluateQuota(policy: QuotaPolicy, requestedUnits: number): Quot
   return {
     exceeded,
     warning: projected > softLimit,
-    usesBurst: projected > hardLimit && projected <= burstLimit,
+    // R24-07 FIX: usesBurst indicates burst capacity consumption (softLimit < projected <= hardLimit),
+    // not exceeding hardLimit. The burst zone is between soft and hard limits.
+    usesBurst: projected > softLimit && projected <= hardLimit,
     remainingUnits: Math.max(0, hardLimit - projected),
   };
 }

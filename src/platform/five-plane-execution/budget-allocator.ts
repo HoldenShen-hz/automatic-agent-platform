@@ -1,6 +1,6 @@
 import {
+  createBudgetReservation,
   createBudgetSettlement,
-  reserveBudgetHardCap,
   type ArtifactRef,
   type BudgetLedger,
   type BudgetReservation,
@@ -118,12 +118,19 @@ export interface BudgetSettlementResult {
   readonly reservation: RuntimeTransitionResult<BudgetReservation>;
   readonly settlement: BudgetSettlement;
   readonly ledger: BudgetLedger;
+  readonly hierarchyLedgers?: readonly BudgetLedger[];
 }
 
 export interface BudgetReleaseResult {
   readonly reservation: RuntimeTransitionResult<BudgetReservation>;
   readonly settlement: BudgetSettlement;
   readonly ledger: BudgetLedger;
+  readonly hierarchyLedgers?: readonly BudgetLedger[];
+}
+
+export interface HierarchicalBudgetLedgerInput {
+  readonly ledger: BudgetLedger;
+  readonly expectedVersion: number;
 }
 
 export interface BudgetAllocatorEvents {
@@ -304,6 +311,91 @@ export class BudgetAllocator {
     this.events?.emitAutoThrottleEvent?.(event);
   }
 
+  private computeActiveCommittedAmount(ledger: BudgetLedger): number {
+    return ledger.reservedAmount + ledger.settledAmount - ledger.releasedAmount;
+  }
+
+  private assertLedgerVersion(
+    ledger: BudgetLedger,
+    expectedVersion: number,
+    code: string,
+    message: string,
+  ): void {
+    if (ledger.version !== expectedVersion) {
+      throw new ValidationError(code, message, {
+        details: {
+          expectedVersion,
+          currentVersion: ledger.version,
+          budgetLedgerId: ledger.budgetLedgerId,
+        },
+      });
+    }
+  }
+
+  private reserveLedgerAmount(
+    ledger: BudgetLedger,
+    amount: number,
+    tierLimit: number,
+  ): BudgetLedger {
+    const effectiveHardCap = Math.min(ledger.hardCap, tierLimit);
+    const activeCommittedAmount = this.computeActiveCommittedAmount(ledger);
+    if (activeCommittedAmount + amount > effectiveHardCap) {
+      throw new ValidationError(
+        "budget_reservation.hard_cap_exceeded",
+        "Budget reservation exceeds the effective hard cap.",
+        {
+          details: {
+            budgetLedgerId: ledger.budgetLedgerId,
+            activeCommittedAmount,
+            amount,
+            effectiveHardCap,
+            configuredHardCap: ledger.hardCap,
+            tierLimit,
+          },
+        },
+      );
+    }
+
+    const nextReservedAmount = ledger.reservedAmount + amount;
+    const nextActiveAmount = nextReservedAmount + ledger.settledAmount - ledger.releasedAmount;
+    const nextStatus = nextActiveAmount >= effectiveHardCap
+      ? "hard_cap_reached"
+      : (ledger.softCap != null && nextActiveAmount >= ledger.softCap ? "soft_cap_reached" : ledger.status);
+
+    return {
+      ...ledger,
+      reservedAmount: nextReservedAmount,
+      status: nextStatus,
+      version: ledger.version + 1,
+    };
+  }
+
+  private settleLedgerAmount(
+    ledger: BudgetLedger,
+    reservedAmount: number,
+    actualAmount: number,
+  ): BudgetLedger {
+    return {
+      ...ledger,
+      reservedAmount: Math.max(0, ledger.reservedAmount - reservedAmount),
+      settledAmount: ledger.settledAmount + actualAmount,
+      releasedAmount: ledger.releasedAmount + Math.max(0, reservedAmount - actualAmount),
+      version: ledger.version + 1,
+    };
+  }
+
+  private releaseLedgerAmount(
+    ledger: BudgetLedger,
+    reservedAmount: number,
+  ): BudgetLedger {
+    return {
+      ...ledger,
+      reservedAmount: Math.max(0, ledger.reservedAmount - reservedAmount),
+      releasedAmount: ledger.releasedAmount + reservedAmount,
+      version: ledger.version + 1,
+    };
+  }
+
   /**
    * Compute effective amount considering auto-throttle.
    * §18.2-18.3: Auto-throttle reduces allocation when engaged
@@ -391,17 +483,23 @@ export class BudgetAllocator {
     readonly resourceKind: BudgetResourceKind;
     readonly expiresAt: string;
     readonly expectedVersion: number;
+    readonly hierarchyLedgers?: readonly HierarchicalBudgetLedgerInput[];
     readonly nodeRunId?: string;
     readonly context: BudgetAllocatorContext;
   }): BudgetReservationResult {
     const context = this.normalizeContext(input.context);
-
-    // Validate CAS against expected version before proceeding
-    if (input.ledger.version !== input.expectedVersion) {
-      throw new ValidationError(
+    this.assertLedgerVersion(
+      input.ledger,
+      input.expectedVersion,
+      "budget_reservation.version_cas_failed",
+      "Budget reservation requires the current ledger version.",
+    );
+    for (const ancestor of input.hierarchyLedgers ?? []) {
+      this.assertLedgerVersion(
+        ancestor.ledger,
+        ancestor.expectedVersion,
         "budget_reservation.version_cas_failed",
-        "Budget reservation requires the current ledger version.",
-        { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
+        "Hierarchical budget reservation requires the current ledger version.",
       );
     }
 
@@ -413,54 +511,39 @@ export class BudgetAllocator {
       input.amount,
     );
 
-    // Compute new ledger state (deterministic, same as reserveBudgetHardCap)
-    const activeCommittedAmount = input.ledger.reservedAmount + input.ledger.settledAmount - input.ledger.releasedAmount;
-    const newStatus = activeCommittedAmount + effectiveAmount >= input.ledger.hardCap ? "hard_cap_reached" : input.ledger.status;
-
-    // Route through state machine for proper CAS + event emission per §25.9
-    const ledgerForReservation =
-      newStatus === input.ledger.status
-        ? input.ledger
-        : this.stateMachine.transition({
-            commandId: newId("cmd"),
-            entityType: "BudgetLedger",
-            entityId: input.ledger.budgetLedgerId,
-            principal: context.emittedBy,
-            aggregateType: "BudgetLedger",
-            aggregate: input.ledger,
-            fromStatus: input.ledger.status,
-            toStatus: newStatus,
-            tenantId: context.tenantId,
-            traceId: context.traceId,
-            reasonCode: "budget.reserved",
-            emittedBy: context.emittedBy,
-            ...(context.leaseId !== undefined ? { leaseId: context.leaseId } : {}),
-            ...(context.fencingToken !== undefined ? { fencingToken: context.fencingToken } : {}),
-            auditRef: `audit://budget-ledgers/${input.ledger.budgetLedgerId}/reserve`,
-          }).aggregate;
-
-    // Create reservation through state machine for event emission
-    const reservationResult = reserveBudgetHardCap({
-      ledger: ledgerForReservation,
+    const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
+      this.reserveLedgerAmount(entry.ledger, effectiveAmount, entry.ledger.hardCap)
+    );
+    const ledgerForReservation = this.reserveLedgerAmount(
+      input.ledger,
+      effectiveAmount,
+      context.tierLimit,
+    );
+    const reservation = createBudgetReservation({
+      budgetLedgerId: input.ledger.budgetLedgerId,
+      harnessRunId: input.ledger.harnessRunId,
       amount: effectiveAmount,
       resourceKind: input.resourceKind,
       expiresAt: input.expiresAt,
-      expectedVersion: ledgerForReservation.version,
       ...(input.nodeRunId !== undefined ? { nodeRunId: input.nodeRunId } : {}),
     });
 
     // §18.2-18.3: Watermark alert check after reservation
-    this.checkWatermarkAlert(context, reservationResult.ledger, input.ledger.harnessRunId);
+    this.checkWatermarkAlert(context, ledgerForReservation, input.ledger.harnessRunId);
 
     // §18.2-18.3: Auto-throttle check after reservation
-    this.checkAutoThrottle(context, reservationResult.ledger, input.ledger.harnessRunId);
+    this.checkAutoThrottle(context, ledgerForReservation, input.ledger.harnessRunId);
 
     // §18.3: Initialize streaming settle state if enabled
     if (context.streamingSettle?.enabled) {
-      this.processStreamingSettle(context, reservationResult.reservation, 0);
+      this.processStreamingSettle(context, reservation, 0);
     }
 
-    return reservationResult;
+    return {
+      ledger: ledgerForReservation,
+      reservation,
+      ...(hierarchyLedgers.length > 0 ? { hierarchyLedgers } : {}),
+    };
   }
 
   public settle(input: {
@@ -469,18 +552,22 @@ export class BudgetAllocator {
     readonly actualAmount: number;
     readonly evidenceRefs?: readonly ArtifactRef[];
     readonly expectedVersion: number;
+    readonly hierarchyLedgers?: readonly HierarchicalBudgetLedgerInput[];
     readonly context: BudgetAllocatorContext;
   }): BudgetSettlementResult {
     const context = this.normalizeContext(input.context);
-
-    // Validate ledger hasn't regressed (CAS check on the reserved version, not settle)
-    // settle/release only read the ledger; they don't write to it, so no version bump needed here.
-    // We check that ledger version >= expectedVersion to catch regressions (not to enforce CAS).
-    if (input.ledger.version < input.expectedVersion) {
-      throw new ValidationError(
+    this.assertLedgerVersion(
+      input.ledger,
+      input.expectedVersion,
+      "budget_settlement.version_cas_failed",
+      "Budget settlement requires the current ledger version.",
+    );
+    for (const ancestor of input.hierarchyLedgers ?? []) {
+      this.assertLedgerVersion(
+        ancestor.ledger,
+        ancestor.expectedVersion,
         "budget_settlement.version_cas_failed",
-        "Budget settlement version regression detected.",
-        { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
+        "Hierarchical budget settlement requires the current ledger version.",
       );
     }
 
@@ -490,10 +577,43 @@ export class BudgetAllocator {
       settlementKind: "final",
       evidenceRefs: input.evidenceRefs ?? [],
     });
+
+    if (input.actualAmount > input.reservation.amount) {
+      throw new ValidationError(
+        "budget_settlement.actual_amount_exceeds_reservation",
+        "Budget settlement actual amount exceeds the reserved amount.",
+        {
+          details: {
+            reservationId: input.reservation.budgetReservationId,
+            reservedAmount: input.reservation.amount,
+            actualAmount: input.actualAmount,
+          },
+        },
+      );
+    }
+
     const hardCapSatisfied =
       input.reservation.status === "reserved" &&
-      input.actualAmount <= input.reservation.amount &&
       input.ledger.settledAmount + input.actualAmount <= input.ledger.hardCap;
+
+    // Preserve the domain-specific budget error contract instead of letting the
+    // generic state-machine precondition failure mask the root cause.
+    if (!hardCapSatisfied) {
+      throw new ValidationError(
+        "budget.settle.hard_cap_not_satisfied",
+        "Budget hard cap is not satisfied at settlement time.",
+        {
+          details: {
+            reservationId: input.reservation.budgetReservationId,
+            hardCapSatisfied,
+            ledgerHardCap: input.ledger.hardCap,
+            currentSettledAmount: input.ledger.settledAmount,
+            actualAmount: input.actualAmount,
+          },
+        },
+      );
+    }
+
     const reservation = this.stateMachine.transition({
       commandId: newId("cmd"),
       entityType: "BudgetReservation",
@@ -523,48 +643,25 @@ export class BudgetAllocator {
       this.streamingStates.delete(input.reservation.budgetReservationId);
     }
 
-    // §26: Budget hard cap must be enforced at settlement time
-    // If hardCapSatisfied is false, the state machine transition above would have thrown
-    // Here we additionally guard the ledger update to ensure hard cap enforcement
-    if (!hardCapSatisfied) {
-      throw new ValidationError(
-        "budget.settle.hard_cap_not_satisfied",
-        "Budget hard cap is not satisfied at settlement time.",
-        {
-          details: {
-            reservationId: input.reservation.budgetReservationId,
-            hardCapSatisfied,
-            ledgerHardCap: input.ledger.hardCap,
-            currentSettledAmount: input.ledger.settledAmount,
-            actualAmount: input.actualAmount,
-          },
-        },
-      );
-    }
-
     // Root cause: once a ledger reached soft/hard cap, settle() attempted a no-op
     // BudgetLedger transition (`hard_cap_reached -> hard_cap_reached`) only to get
     // a version bump, but RuntimeStateMachine correctly rejects no-op transitions.
     // The settlement itself is already captured by the BudgetReservation transition,
     // so when the ledger status does not change we only need a deterministic version bump.
-    const ledgerAfterSettle = {
-      aggregate: {
-        ...input.ledger,
-        version: input.ledger.version + 1,
-      } as BudgetLedger,
-    };
-
-    const finalLedger: BudgetLedger = {
-      ...ledgerAfterSettle.aggregate,
-      reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
-      settledAmount: input.ledger.settledAmount + input.actualAmount,
-      releasedAmount: input.ledger.releasedAmount + Math.max(0, input.reservation.amount - input.actualAmount),
-    };
+    const finalLedger = this.settleLedgerAmount(
+      input.ledger,
+      input.reservation.amount,
+      input.actualAmount,
+    );
+    const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
+      this.settleLedgerAmount(entry.ledger, input.reservation.amount, input.actualAmount)
+    );
 
     return {
       reservation,
       settlement,
       ledger: finalLedger,
+      ...(hierarchyLedgers.length > 0 ? { hierarchyLedgers } : {}),
     };
   }
 
@@ -573,18 +670,22 @@ export class BudgetAllocator {
     readonly reservation: BudgetReservation;
     readonly reasonCode?: string;
     readonly expectedVersion: number;
+    readonly hierarchyLedgers?: readonly HierarchicalBudgetLedgerInput[];
     readonly context: BudgetAllocatorContext;
   }): BudgetReleaseResult {
     const context = this.normalizeContext(input.context);
-
-    // Validate ledger hasn't regressed (CAS check on the reserved version, not release)
-    // release only reads the ledger; it doesn't write to it, so no version bump needed here.
-    // We check that ledger version >= expectedVersion to catch regressions (not to enforce CAS).
-    if (input.ledger.version < input.expectedVersion) {
-      throw new ValidationError(
+    this.assertLedgerVersion(
+      input.ledger,
+      input.expectedVersion,
+      "budget_release.version_cas_failed",
+      "Budget release requires the current ledger version.",
+    );
+    for (const ancestor of input.hierarchyLedgers ?? []) {
+      this.assertLedgerVersion(
+        ancestor.ledger,
+        ancestor.expectedVersion,
         "budget_release.version_cas_failed",
-        "Budget release version regression detected.",
-        { details: { expectedVersion: input.expectedVersion, currentVersion: input.ledger.version } },
+        "Hierarchical budget release requires the current ledger version.",
       );
     }
 
@@ -619,15 +720,15 @@ export class BudgetAllocator {
       this.throttleState.delete(input.ledger.harnessRunId);
     }
 
+    const hierarchyLedgers = (input.hierarchyLedgers ?? []).map((entry) =>
+      this.releaseLedgerAmount(entry.ledger, input.reservation.amount)
+    );
+
     return {
       reservation,
       settlement,
-      ledger: {
-        ...input.ledger,
-        reservedAmount: Math.max(0, input.ledger.reservedAmount - input.reservation.amount),
-        releasedAmount: input.ledger.releasedAmount + input.reservation.amount,
-        version: input.ledger.version + 1,
-      },
+      ledger: this.releaseLedgerAmount(input.ledger, input.reservation.amount),
+      ...(hierarchyLedgers.length > 0 ? { hierarchyLedgers } : {}),
     };
   }
 

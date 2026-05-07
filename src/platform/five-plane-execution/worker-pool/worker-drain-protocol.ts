@@ -195,9 +195,9 @@ interface WorkerDrainProtocolState {
  */
 export class WorkerDrainProtocol {
   private readonly config: WorkerDrainConfig;
-  private readonly checkpointCoordinator?: WorkerDrainCheckpointCoordinator;
-  private readonly leaseManager?: WorkerDrainLeaseManager;
-  private readonly recoveryNotifier?: WorkerDrainRecoveryNotifier;
+  private readonly checkpointCoordinator: WorkerDrainCheckpointCoordinator | undefined;
+  private readonly leaseManager: WorkerDrainLeaseManager | undefined;
+  private readonly recoveryNotifier: WorkerDrainRecoveryNotifier | undefined;
   // R20-03: Stateful drain tracking - keyed by workerId
   private readonly drainState = new Map<string, WorkerDrainProtocolState>();
 

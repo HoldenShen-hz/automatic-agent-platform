@@ -7,6 +7,10 @@ import {
 } from "../contracts/executable-contracts/index.js";
 import { newId } from "../contracts/types/ids.js";
 import {
+  ReconciliationWorker,
+  type ReconciliationProbeResult,
+} from "./reconciliation-worker.js";
+import {
   RuntimeStateMachine,
   type RuntimeTransitionResult,
 } from "./runtime-state-machine.js";
@@ -14,6 +18,7 @@ import {
 export interface SideEffectManagerOptions {
   readonly stateMachine?: RuntimeStateMachine;
   readonly preCommitValidator?: SideEffectPreCommitValidator;
+  readonly reconciliationWorker?: ReconciliationWorker;
 }
 
 export interface SideEffectManagerContext {
@@ -35,13 +40,25 @@ export interface SideEffectPreCommitValidator {
   validate(request: SideEffectPreCommitValidationRequest): void;
 }
 
+export interface SideEffectSweepProbePayload extends ReconciliationProbeResult {
+  readonly probeKind: string;
+}
+
+export interface SideEffectSweepResult {
+  readonly originalSideEffect: SideEffectRecord;
+  readonly reconciliation: ReconciliationRecord;
+  readonly transition: RuntimeTransitionResult<SideEffectRecord>;
+}
+
 export class SideEffectManager {
   private readonly stateMachine: RuntimeStateMachine;
-  private readonly preCommitValidator?: SideEffectPreCommitValidator;
+  private readonly preCommitValidator: SideEffectPreCommitValidator | undefined;
+  private readonly reconciliationWorker: ReconciliationWorker;
 
   public constructor(options: SideEffectManagerOptions = {}) {
     this.stateMachine = options.stateMachine ?? new RuntimeStateMachine();
-    this.preCommitValidator = options.preCommitValidator ?? undefined;
+    this.preCommitValidator = options.preCommitValidator;
+    this.reconciliationWorker = options.reconciliationWorker ?? new ReconciliationWorker();
   }
 
   public registerProposal(
@@ -166,6 +183,44 @@ export class SideEffectManager {
       ...context,
       reasonCode: `compensation.${compensation.status}`,
     });
+  }
+
+  public async sweepReconciliation(input: {
+    readonly sideEffects: readonly SideEffectRecord[];
+    readonly probe: (sideEffect: SideEffectRecord) => Promise<SideEffectSweepProbePayload>;
+    readonly context: SideEffectManagerContext;
+  }): Promise<readonly SideEffectSweepResult[]> {
+    const candidates = input.sideEffects.filter((sideEffect) =>
+      sideEffect.status === "ambiguous"
+      || sideEffect.status === "reconciling"
+      || sideEffect.status === "confirming"
+      || sideEffect.status === "committed"
+    );
+
+    const results: SideEffectSweepResult[] = [];
+    for (const sideEffect of candidates) {
+      const probeResult = await input.probe(sideEffect);
+      const nextAction = this.reconciliationWorker.determineNextAction(
+        probeResult.result,
+        sideEffect.riskClass,
+      );
+      const reconciliation = this.reconciliationWorker.createReconciliationRecord(
+        sideEffect.sideEffectId,
+        probeResult.probeKind,
+        probeResult.observedState,
+        probeResult.result,
+        nextAction,
+        probeResult.evidenceRefs,
+      );
+      const transition = this.applyReconciliation(sideEffect, reconciliation, input.context);
+      results.push({
+        originalSideEffect: sideEffect,
+        reconciliation,
+        transition,
+      });
+    }
+
+    return results;
   }
 
   private transitionSideEffect(

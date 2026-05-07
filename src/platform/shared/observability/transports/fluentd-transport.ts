@@ -136,13 +136,14 @@ export class FluentdTransport implements LogTransport {
     if (!socket) {
       return Promise.resolve();
     }
-    if (!socket.writable) {
-      return Promise.resolve();
-    }
     // R27-01 FIX: The "drain" event only fires when a previous write() returned false
     // (buffer full). If the socket is currently writable, drain will never fire and
     // we would deadlock waiting for it. Since drain only matters after a write that
     // returned false, if we're currently writable we can resolve immediately.
+    if (socket.writable) {
+      return Promise.resolve();
+    }
+    // Socket is not writable (experiencing backpressure), must wait for drain
     return new Promise((resolve) => {
       const onDrain = () => {
         clearTimeout(timeout);
@@ -153,9 +154,6 @@ export class FluentdTransport implements LogTransport {
         socket.removeListener?.("drain", onDrain);
         resolve();
       }, 5000);
-      if (typeof timeout.unref === "function") {
-        timeout.unref();
-      }
       socket.once?.("drain", onDrain);
     });
   }

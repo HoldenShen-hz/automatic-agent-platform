@@ -261,7 +261,7 @@ export class KnowledgeRetrievalService {
       chunkId: chunkRecord.chunk.chunkId,
       documentId: chunkRecord.record.document.documentId,
       score: finalScore,
-      matchType: directMatch ? "keyword" : semanticSimilarity >= SEMANTIC_MATCH_THRESHOLD ? "semantic" : graphBoost > 0 ? "structural" : "semantic",
+      matchType: directMatch ? "keyword" : graphBoost > 0 ? "structural" : semanticSimilarity >= SEMANTIC_MATCH_THRESHOLD ? "semantic" : "semantic",
       snippet: chunkRecord.chunk.summary,
       namespace: chunkRecord.chunk.namespace,
       knowledgeRef,

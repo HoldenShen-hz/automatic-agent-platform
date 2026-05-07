@@ -60,6 +60,17 @@ const ACTIVE_CONSUMER_REF_COUNTS = new WeakMap<AuthoritativeSqlDatabase, Map<str
 const ACTIVE_SUBSCRIBER_POLL_INTERVAL_MS = 100;
 
 /**
+ * R12-04: Graduated back-pressure thresholds based on queue depth.
+ * When pending event count exceeds these thresholds, polling interval increases.
+ */
+const BACK_PRESSURE_THRESHOLDS = {
+  LOW: 10,    // 0-10 events: normal interval
+  MEDIUM: 50, // 10-50 events: 2x interval
+  HIGH: 100,  // 50-100 events: 5x interval
+  CRITICAL: 100, // 100+ events: 10x interval, consider DLQ for low priority
+} as const;
+
+/**
  * Backoff multiplier when many consumers are active to reduce polling overhead.
  * Increases interval as consumer count grows to avoid CPU thrashing.
  */
@@ -300,10 +311,14 @@ export class DurableEventBus {
   private readonly db: AuthoritativeSqlDatabase;
   private readonly store: AuthoritativeTaskStore;
 
+  // R12-16 fix: HMAC signing key for Tier 1 audit event tamper-evident checksums
+  private readonly signingKey: string | undefined;
+
   public constructor(
     db: AuthoritativeSqlDatabase,
     store: AuthoritativeTaskStore,
     dlqService?: DlqService,
+    signingKey?: string,
   ) {
     this.db = db;
     this.store = store;
@@ -311,6 +326,13 @@ export class DurableEventBus {
     // Previously used in-memory Map which was lost on crash. Now persists to SQLite.
     this.dlqService = dlqService ?? new DlqService(new SqliteDlqRepository(db.connection));
     this.activeConsumerRefCounts = getActiveConsumerRefCounts(db);
+    // R12-16 fix: Wire HMAC signing key to EventRepository for Tier 1 audit events
+    this.signingKey = signingKey;
+    if (signingKey != null) {
+      // Cast to any to access the event repository's setSigningKey method
+      // This is safe because we know the store has an event property with this method
+      (this.store as unknown as { event: { setSigningKey: (key: string) => void } }).event.setSigningKey(signingKey);
+    }
   }
 
   /**

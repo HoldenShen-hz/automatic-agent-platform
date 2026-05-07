@@ -327,6 +327,45 @@ test("completeCompensation emits platform event", () => {
   assert.equal(result.event.aggregateType, "SideEffectRecord");
 });
 
+test("SideEffectManager sweepReconciliation probes ambiguous effects and confirms them", async () => {
+  const manager = new SideEffectManager();
+  const sideEffect = createTestSideEffect({ status: "ambiguous" });
+  const context = createTestContext();
+
+  const results = await manager.sweepReconciliation({
+    sideEffects: [sideEffect],
+    async probe(current) {
+      assert.equal(current.sideEffectId, sideEffect.sideEffectId);
+      return {
+        probeKind: "external_get",
+        observedState: { status: "confirmed" },
+        result: "confirmed",
+        evidenceRefs: [],
+      };
+    },
+    context,
+  });
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0]?.reconciliation.nextAction, "mark_confirmed");
+  assert.equal(results[0]?.transition.aggregate.status, "confirmed");
+});
+
+test("SideEffectManager sweepReconciliation skips non-reconcilable side effects", async () => {
+  const manager = new SideEffectManager();
+  const confirmed = createTestSideEffect({ status: "confirmed" });
+
+  const results = await manager.sweepReconciliation({
+    sideEffects: [confirmed],
+    async probe() {
+      throw new Error("probe should not be called");
+    },
+    context: createTestContext(),
+  });
+
+  assert.deepEqual(results, []);
+});
+
 // ---------------------------------------------------------------------------
 // Tests: Side Effect Safety
 // ---------------------------------------------------------------------------

@@ -158,8 +158,18 @@ export class OperatorConsoleBackendService {
       }
       return tenant.tenantId === operator.tenantId;
     });
+    // R14-23: Priority sorting - critical incidents first, then warning, then info, then by createdAt descending
+    const severityPriority: Record<ConsoleIncidentSummary["severity"], number> = {
+      critical: 0,
+      warning: 1,
+      info: 2,
+    };
     const incidentTimeline = this.filterByOperatorScope(this.sources.listIncidents?.() ?? [], operator)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .sort((left, right) => {
+        const severityDiff = severityPriority[left.severity] - severityPriority[right.severity];
+        if (severityDiff !== 0) return severityDiff;
+        return right.createdAt.localeCompare(left.createdAt);
+      })
       .slice(0, 50);
 
     return {
