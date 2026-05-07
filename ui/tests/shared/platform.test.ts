@@ -129,4 +129,54 @@ describe("shared platform adapter", () => {
     expect(await capabilities.offlineStore.get("/drafts/note.txt")).toBe("hello");
     expect(adapter.getDebugState().windowPath).toBe("/mission-control/dashboard");
   });
+
+  it("surfaces notifications, biometric probing, and WebAuthn through the capability view", async () => {
+    const adapter = createWebPlatformAdapter();
+    const capabilities = createPlatformAdapterCapabilityView(adapter);
+    const requestPermission = async () => "granted" as NotificationPermission;
+    const notificationInstances: Array<{ title: string; body?: string }> = [];
+
+    class FakeNotification {
+      public static permission: NotificationPermission = "default";
+      public static async requestPermission(): Promise<NotificationPermission> {
+        FakeNotification.permission = await requestPermission();
+        return FakeNotification.permission;
+      }
+
+      public constructor(title: string, options?: NotificationOptions) {
+        notificationInstances.push({ title, body: options?.body });
+      }
+    }
+
+    const fakePublicKeyCredential = {
+      isUserVerifyingPlatformAuthenticatorAvailable: async () => true,
+    } as typeof PublicKeyCredential;
+    const originalCredentials = navigator.credentials;
+    Object.defineProperty(globalThis, "Notification", {
+      configurable: true,
+      value: FakeNotification,
+    });
+    Object.defineProperty(globalThis, "PublicKeyCredential", {
+      configurable: true,
+      value: fakePublicKeyCredential,
+    });
+    Object.defineProperty(navigator, "credentials", {
+      configurable: true,
+      value: {
+        create: async () => null,
+        get: async () => null,
+      },
+    });
+
+    expect(await capabilities.notifications.requestPermission()).toBe("granted");
+    await capabilities.notifications.show("Incident acknowledged", { body: "owner: ops" });
+    expect(notificationInstances).toEqual([{ title: "Incident acknowledged", body: "owner: ops" }]);
+    expect(await capabilities.biometric.isAvailable()).toBe(true);
+    expect(await capabilities.webAuthn.isSupported()).toBe(true);
+
+    Object.defineProperty(navigator, "credentials", {
+      configurable: true,
+      value: originalCredentials,
+    });
+  });
 });
