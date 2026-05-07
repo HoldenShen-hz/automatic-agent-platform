@@ -1,3 +1,4 @@
+import type { PlatformNotificationOptions } from "@aa/shared-types";
 import { DefaultPlatformAdapter, type PlatformAdapterFactoryOptions } from "./base-platform-adapter";
 
 export class WebPlatformAdapter extends DefaultPlatformAdapter {
@@ -95,5 +96,52 @@ export class WebPlatformAdapter extends DefaultPlatformAdapter {
       document.documentElement.dataset.aaScreenSecurity = enabled ? "enabled" : "disabled";
     }
     this.setScreenSecurityState(enabled);
+  }
+
+  public override async requestNotificationPermission(): Promise<NotificationPermission> {
+    if (typeof Notification === "undefined") {
+      return "denied";
+    }
+    return Notification.requestPermission();
+  }
+
+  public override async showNotification(title: string, options?: PlatformNotificationOptions): Promise<void> {
+    const permission = typeof Notification === "undefined"
+      ? "denied"
+      : (Notification.permission === "granted" ? "granted" : await this.requestNotificationPermission());
+    if (permission === "granted" && typeof Notification !== "undefined") {
+      new Notification(title, options);
+    }
+    await super.showNotification(title, options);
+  }
+
+  public override async isBiometricAvailable(): Promise<boolean> {
+    const platformAuthenticator = globalThis.PublicKeyCredential as typeof PublicKeyCredential & {
+      isUserVerifyingPlatformAuthenticatorAvailable?: () => Promise<boolean>;
+    };
+    if (typeof platformAuthenticator?.isUserVerifyingPlatformAuthenticatorAvailable !== "function") {
+      return false;
+    }
+    return platformAuthenticator.isUserVerifyingPlatformAuthenticatorAvailable();
+  }
+
+  public override async isWebAuthnSupported(): Promise<boolean> {
+    return typeof globalThis.PublicKeyCredential !== "undefined" && typeof globalThis.navigator?.credentials !== "undefined";
+  }
+
+  public override async createWebAuthnCredential(options: PublicKeyCredentialCreationOptions): Promise<PublicKeyCredential | null> {
+    if (!await this.isWebAuthnSupported()) {
+      return null;
+    }
+    const credential = await globalThis.navigator.credentials.create({ publicKey: options });
+    return credential instanceof PublicKeyCredential ? credential : null;
+  }
+
+  public override async getWebAuthnAssertion(options: PublicKeyCredentialRequestOptions): Promise<PublicKeyCredential | null> {
+    if (!await this.isWebAuthnSupported()) {
+      return null;
+    }
+    const credential = await globalThis.navigator.credentials.get({ publicKey: options });
+    return credential instanceof PublicKeyCredential ? credential : null;
   }
 }

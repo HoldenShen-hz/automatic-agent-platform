@@ -61,9 +61,11 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
   const approve = useCallback(async (): Promise<void> => {
     if (selectedApproval == null) return;
     setPendingAction(true);
+    const previousApprovals = approvals;
+    const previousSelectedId = selectedId;
+    const previousActionHistory = actionHistory;
+    const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
     try {
-      await approveApproval(client, selectedApproval.approvalId);
-      const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
       setApprovals(nextApprovals);
       resolveNextSelection(nextApprovals);
       setActionHistory((history) => [
@@ -73,17 +75,25 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
         },
         ...history,
       ]);
+      await approveApproval(client, selectedApproval.approvalId);
+    } catch (error) {
+      setApprovals(previousApprovals);
+      setSelectedId(previousSelectedId);
+      setActionHistory(previousActionHistory);
+      throw error;
     } finally {
       setPendingAction(false);
     }
-  }, [client, selectedApproval, approvals]);
+  }, [actionHistory, approvals, client, selectedApproval, selectedId]);
 
   const reject = useCallback(async (): Promise<void> => {
     if (selectedApproval == null) return;
     setPendingAction(true);
+    const previousApprovals = approvals;
+    const previousSelectedId = selectedId;
+    const previousActionHistory = actionHistory;
+    const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
     try {
-      await rejectApproval(client, selectedApproval.approvalId);
-      const nextApprovals = approvals.filter((approval) => approval.approvalId !== selectedApproval.approvalId);
       setApprovals(nextApprovals);
       resolveNextSelection(nextApprovals);
       setActionHistory((history) => [
@@ -93,10 +103,16 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
         },
         ...history,
       ]);
+      await rejectApproval(client, selectedApproval.approvalId);
+    } catch (error) {
+      setApprovals(previousApprovals);
+      setSelectedId(previousSelectedId);
+      setActionHistory(previousActionHistory);
+      throw error;
     } finally {
       setPendingAction(false);
     }
-  }, [client, selectedApproval, approvals]);
+  }, [actionHistory, approvals, client, selectedApproval, selectedId]);
 
   const delegate = useCallback(async (target: string): Promise<void> => {
     if (selectedApproval == null) return;

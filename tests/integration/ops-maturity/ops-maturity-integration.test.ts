@@ -198,7 +198,11 @@ test("EdgeRuntimeSyncService applies central-wins when cloud digest differs from
 
 test("buildEdgeExecutionPlan creates ordered execution plan with priority", () => {
   const plan = buildEdgeExecutionPlan(["task_1", "task_2", "task_3"], "high");
-  assert.deepEqual(plan.orderedTaskIds, ["task_1", "task_2", "task_3"]);
+  assert.deepEqual(plan.planGraphBundle.graph.nodes.map((n) => n.nodeId), [
+    "edge_node_task_1",
+    "edge_node_task_2",
+    "edge_node_task_3",
+  ]);
   assert.equal(plan.syncRequired, true);
   assert.equal(plan.priority, "high");
   const planDefault = buildEdgeExecutionPlan(["task_a"]);

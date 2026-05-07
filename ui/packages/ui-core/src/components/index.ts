@@ -746,13 +746,13 @@ export function StatusPill({ status }: { status: ImplementationStatus }): ReactE
 /**
  * ListCard with ARIA role="list" for accessibility
  */
-export function ListCard({ items }: { items: readonly { title: string; description: string }[] }): ReactElement {
+export function ListCard({ items }: { items: readonly { id?: string; title: string; description: string }[] }): ReactElement {
   return createElement(
     "div",
     { role: "list", style: { display: "grid", gap: 10 } },
-    ...items.map((item) => createElement(
+    ...items.map((item, index) => createElement(
       "article",
-      { key: item.title, role: "listitem", "aria-label": `${item.title}: ${item.description}` },
+      { key: item.id ?? `${item.title}-${index}`, role: "listitem", "aria-label": `${item.title}: ${item.description}` },
       createElement("div", { style: createPanelStyle() },
         createElement("div", { style: { color: designTokens.semantic.color.text, fontWeight: 600 } }, item.title),
         createElement("div", { style: { color: designTokens.semantic.color.textSubtle, marginTop: 6 } }, item.description),
@@ -818,6 +818,7 @@ export interface FeatureWorkbenchAction {
   readonly label: string;
   readonly tone?: "accent" | "danger" | "neutral";
   readonly buildActivity?: (item: FeatureWorkbenchItem | null) => { title: string; description: string };
+  readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
 }
 
 export interface FeatureWorkbenchPanelItem {
@@ -832,6 +833,7 @@ export interface FeatureWorkbenchPanelAction {
   readonly label: string;
   readonly tone?: "accent" | "danger" | "neutral";
   readonly activityDescription?: string;
+  readonly onTrigger?: (item: FeatureWorkbenchPanelItem | null) => void | Promise<void>;
 }
 
 export function FeatureWorkbench(
@@ -874,6 +876,7 @@ export function FeatureWorkbench(
   const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? null;
 
   function triggerAction(action: FeatureWorkbenchAction): void {
+    void action.onTrigger?.(selectedItem);
     const activity = action.buildActivity?.(selectedItem) ?? {
       title: `${action.label} 已执行`,
       description: selectedItem == null ? "系统级动作已记录。" : `${selectedItem.title} 已进入 ${action.label} 流程。`,
@@ -1020,6 +1023,18 @@ export function FeatureWorkbenchPanel(
     id: action.id,
     label: action.label,
     ...(action.tone == null ? {} : { tone: action.tone }),
+    ...(action.onTrigger == null ? {} : {
+      onTrigger: (item) => action.onTrigger?.(
+        item == null
+          ? null
+          : {
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            ...(item.detailRows == null ? {} : { detailRows: item.detailRows }),
+          },
+      ),
+    }),
     buildActivity: (item) => ({
       title: item == null ? action.label : `${action.label} · ${item.title}`,
       description: action.activityDescription

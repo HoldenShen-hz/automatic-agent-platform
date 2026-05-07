@@ -191,7 +191,7 @@ test("ChannelGatewayRetryExecutor autoStart begins immediately", async () => {
         deadLettered: 0,
         skippedRateLimited: 0,
       };
-    }),
+    },
   };
 
   // autoStart: true should call runOnce immediately and start polling
@@ -220,7 +220,7 @@ test("ChannelGatewayRetryExecutor uses custom poll interval", async () => {
         deadLettered: 0,
         skippedRateLimited: 0,
       };
-    }),
+    },
   };
 
   const executor = new ChannelGatewayRetryExecutor(mockGatewayService as any, {
@@ -254,7 +254,7 @@ test("ChannelGatewayRetryExecutor uses custom batch size", () => {
         deadLettered: 0,
         skippedRateLimited: 0,
       };
-    }),
+    },
   };
 
   const executor = new ChannelGatewayRetryExecutor(mockGatewayService as any, {
@@ -393,7 +393,7 @@ test("ChannelGatewayRetryExecutor completedAt is after startedAt", async () => {
         deadLettered: 0,
         skippedRateLimited: 0,
       };
-    }),
+    },
   };
 
   const executor = new ChannelGatewayRetryExecutor(mockGatewayService as any);

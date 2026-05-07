@@ -1,5 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const webVitalsHandlers: Partial<Record<"LCP" | "FCP" | "CLS" | "INP", (metric: {
+  name: string;
+  value: number;
+  rating: "good" | "needs-improvement" | "poor";
+  delta: number;
+  id: string;
+  entries: unknown[];
+}) => void>> = {};
+
+vi.mock("web-vitals", () => ({
+  onLCP: (callback: typeof webVitalsHandlers.LCP) => {
+    webVitalsHandlers.LCP = callback;
+  },
+  onFCP: (callback: typeof webVitalsHandlers.FCP) => {
+    webVitalsHandlers.FCP = callback;
+  },
+  onCLS: (callback: typeof webVitalsHandlers.CLS) => {
+    webVitalsHandlers.CLS = callback;
+  },
+  onINP: (callback: typeof webVitalsHandlers.INP) => {
+    webVitalsHandlers.INP = callback;
+  },
+}));
 import {
+  startWebVitalsCollection,
   TelemetrySink,
   InMemoryTelemetryExporter,
   OtlpHttpTelemetryExporter,
@@ -223,6 +248,26 @@ describe("TelemetrySink", () => {
 
       expect(exporter.list().length).toBe(35);
     });
+  });
+});
+
+describe("startWebVitalsCollection", () => {
+  it("records FCP/LCP/CLS/INP into telemetry once the web-vitals hooks fire", async () => {
+    const sink = new TelemetrySink([]);
+    startWebVitalsCollection(sink);
+    await vi.dynamicImportSettled();
+
+    webVitalsHandlers.FCP?.({ name: "FCP", value: 1200, rating: "good", delta: 1200, id: "fcp-1", entries: [] });
+    webVitalsHandlers.LCP?.({ name: "LCP", value: 2100, rating: "good", delta: 2100, id: "lcp-1", entries: [] });
+    webVitalsHandlers.CLS?.({ name: "CLS", value: 0.03, rating: "good", delta: 0.03, id: "cls-1", entries: [] });
+    webVitalsHandlers.INP?.({ name: "INP", value: 110, rating: "good", delta: 110, id: "inp-1", entries: [] });
+
+    expect(sink.list().map((event) => event.name)).toEqual([
+      "web_vitals.FCP",
+      "web_vitals.LCP",
+      "web_vitals.CLS",
+      "web_vitals.INP",
+    ]);
   });
 });
 

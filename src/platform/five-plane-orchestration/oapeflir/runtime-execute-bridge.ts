@@ -466,6 +466,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       dbPath: this.dbPath,
       planGraphBundle: plan,
       ...(context.tokenBudget != null ? { contextBudgetTokens: context.tokenBudget } : {}),
+      ...(context.parentContext != null ? { parentContext: context.parentContext } : {}),
     };
     const orchResult = await this.runtimePlanExecutor(orchInput);
 

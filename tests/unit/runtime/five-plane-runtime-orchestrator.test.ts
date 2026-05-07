@@ -8,8 +8,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { FivePlaneRuntimeOrchestrator } from "../../../../src/platform/five-plane-runtime-orchestrator.js";
-import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
+import { FivePlaneRuntimeOrchestrator } from "../../../src/platform/five-plane-runtime-orchestrator.js";
+import { CONTROL_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/control-plane/control-plane-bootstrap.js";
+import { INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/interface/interface-plane-bootstrap.js";
+import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
+import { X1_FABRIC_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/five-plane-runtime-bootstrap.js";
 
 // ---------------------------------------------------------------------------
 // Test Setup
@@ -90,15 +93,15 @@ test("prepare registers steps with correct bootstrapServiceId", () => {
 
   const interfaceStep = stepMap.get("interface");
   assert.ok(interfaceStep);
-  assert.ok(interfaceStep.bootstrapServiceId.includes("interface"));
+  assert.equal(interfaceStep.bootstrapServiceId, INTERFACE_PLANE_BOOTSTRAP_SERVICE_ID);
 
   const x1FabricStep = stepMap.get("x1-fabric");
   assert.ok(x1FabricStep);
-  assert.ok(x1FabricStep.bootstrapServiceId.includes("x1-fabric"));
+  assert.equal(x1FabricStep.bootstrapServiceId, X1_FABRIC_BOOTSTRAP_SERVICE_ID);
 
   const controlPlaneStep = stepMap.get("control-plane");
   assert.ok(controlPlaneStep);
-  assert.ok(controlPlaneStep.bootstrapServiceId.includes("control-plane"));
+  assert.equal(controlPlaneStep.bootstrapServiceId, CONTROL_PLANE_BOOTSTRAP_SERVICE_ID);
 });
 
 test("prepare calculates totalCapabilityCount correctly", () => {

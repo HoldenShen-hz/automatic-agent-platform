@@ -41,9 +41,24 @@ export function AlertsWebView(): ReactElement {
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
-          { id: "alerts-ack", label: "确认告警", tone: "accent" },
-          { id: "alerts-dismiss", label: "关闭告警", tone: "neutral" },
-          { id: "alerts-escalate", label: "升级为事件", tone: "danger" },
+          {
+            id: "alerts-ack",
+            label: "确认告警",
+            tone: "accent",
+            onTrigger: (item) => item == null ? undefined : vm.acknowledgeAlert(item.id ?? ""),
+          },
+          {
+            id: "alerts-mitigate",
+            label: "开始处置",
+            tone: "neutral",
+            onTrigger: (item) => item == null ? undefined : vm.startMitigation(item.id ?? ""),
+          },
+          {
+            id: "alerts-resolve",
+            label: "解决告警",
+            tone: "danger",
+            onTrigger: (item) => item == null ? undefined : vm.resolveAlert(item.id ?? ""),
+          },
         ]}
       />
     </FeatureScaffold>

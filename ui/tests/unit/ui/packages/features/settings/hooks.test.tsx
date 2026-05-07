@@ -62,6 +62,11 @@ describe("useSettingsVm", () => {
       expect(result.current.saveState).toBe("saved");
       expect(result.current.activityItems[0]?.title).toBe("Configuration saved");
     });
+    expect(mockUpdatePreferences).toHaveBeenCalledWith(
+      mockClient,
+      { theme: "light", locale: "zh-CN" },
+      "etag-1",
+    );
 
     preferencesData = {
       theme: "high-contrast",

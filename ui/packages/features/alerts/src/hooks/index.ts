@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuthState, useIncidentsQuery, useWsClient } from "@aa/shared-state";
+import { acknowledgeIncident, resolveIncident, startIncidentMitigation } from "@aa/shared-api-client";
+import { useAuthState, useIncidentsQuery, useRestClient, useWsClient } from "@aa/shared-state";
 import type { IncidentDTO } from "@aa/shared-types";
 import type { WSEventEnvelope } from "@aa/shared-api-client";
 
@@ -17,6 +18,9 @@ export interface AlertsVm {
   readonly filter: AlertFilter;
   readonly setFilter: (filter: Partial<AlertFilter>) => void;
   readonly dismissAlert: (id: string) => void;
+  readonly acknowledgeAlert: (id: string) => Promise<void>;
+  readonly startMitigation: (id: string) => Promise<void>;
+  readonly resolveAlert: (id: string) => Promise<void>;
 }
 
 const SEVERITY_PRIORITY: Record<IncidentSeverity, number> = {
@@ -90,6 +94,7 @@ export function mapAlertsToVm(incidents: readonly IncidentDTO[]): AlertsVm {
 
 export function useAlertsVm(): AlertsVm {
   const auth = useAuthState();
+  const client = useRestClient();
   const { data: incidents = [] } = useIncidentsQuery();
   const wsClient = useWsClient();
   const queryClient = useQueryClient();
@@ -106,5 +111,28 @@ export function useAlertsVm(): AlertsVm {
   }, [wsClient, queryClient]);
 
   const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
-  return mapAlertsToVm(scopedIncidents);
+  const vm = mapAlertsToVm(scopedIncidents);
+
+  const acknowledgeAlert = useCallback(async (id: string): Promise<void> => {
+    await acknowledgeIncident(client, id, auth.userId);
+    await queryClient.invalidateQueries({ queryKey: ["incidents"] });
+  }, [auth.userId, client, queryClient]);
+
+  const startMitigation = useCallback(async (id: string): Promise<void> => {
+    await startIncidentMitigation(client, id);
+    await queryClient.invalidateQueries({ queryKey: ["incidents"] });
+  }, [client, queryClient]);
+
+  const resolveAlert = useCallback(async (id: string): Promise<void> => {
+    await resolveIncident(client, id);
+    vm.dismissAlert(id);
+    await queryClient.invalidateQueries({ queryKey: ["incidents"] });
+  }, [client, queryClient, vm]);
+
+  return {
+    ...vm,
+    acknowledgeAlert,
+    startMitigation,
+    resolveAlert,
+  };
 }

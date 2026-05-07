@@ -71,6 +71,7 @@ import { createBudgetLedger, createHarnessRun, createRunVersionLock } from "../.
 import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query-helper.js";
 import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { BudgetTier } from "../budget-allocator.js";
+import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -253,6 +254,34 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     });
     const now = nowIso();
 
+    // R4-25 (INV-BUDGET-001): Compute approvalResult BEFORE budget reservation and LLM call
+    // This is evaluated early to ensure reserve-before-execute: if approval required, we skip
+    // budget reservation and LLM call to avoid wasting resources on tasks that may be blocked
+    const approvalContext: ApprovalPolicyContext = {
+      decisionId: newId("approval"),
+      taskId,
+      executionId,
+      sessionId,
+      subjectType: "agent",
+      subjectId: "agent_general_executor",
+      action: "invoke_tool",
+      riskCategory: (() => {
+          // R4-32 (INV-APPROVAL): Derive actual risk category from tool metadata
+          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.stepId ?? "todo_write";
+          const riskLevels: Record<string, "low" | "medium" | "high" | "critical"> = {
+            web_fetch: "medium", web_search: "medium", git: "high", spawn_agent: "high",
+            batch_tool: "medium", todo_write: "low", repo_map: "low", question: "low",
+          };
+          const riskLevel = riskLevels[toolName] ?? "medium";
+          return mapToolRiskToPolicyCategory(riskLevel);
+        })(),
+      mode: "auto",
+      stage: "execute",
+      estimatedCostUsd: 1,
+      metadata: { roleId: step.roleId, stepId: step.stepId },
+    };
+    const approvalResult = approvalEngine.evaluate(approvalContext);
+
     // Try to get model call provider and make real LLM call
     let llmResult: LlmModelCallResult | null = null;
     let stepData: Record<string, unknown>;
@@ -264,7 +293,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
         result: `Single-agent happy path finished for: ${input.request}`,
         ...input.stepOutputOverride,
       };
-    } else {
+    } else if (!approvalResult.requiresApproval) {
       // R4-25 (INV-BUDGET-001): Reserve budget BEFORE LLM call (reserve-before-execute pattern)
       // This must happen before initializeModelCallProvider since model calls may happen immediately
       const defaultBudgetPolicy: BudgetPolicy = {
@@ -291,7 +320,7 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
             ledger: budgetLedger,
             policy: defaultBudgetPolicy,
           },
-          task.estimatedCostUsd ?? 0,
+          0, // placeholder; task not yet created at this point
           "token",
         );
         budgetReservationId = budgetSession.sessionId;
@@ -419,32 +448,10 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       updatedAt: now,
     };
 
-    // R4-32 (INV-APPROVAL): Evaluate risk-proportional approval before creating execution
-    const approvalContext: ApprovalPolicyContext = {
-      decisionId: newId("approval"),
-      taskId,
-      executionId,
-      sessionId,
-      subjectType: "agent",
-      subjectId: "agent_general_executor",
-      action: "invoke_tool",
-      riskCategory: (() => {
-          // R4-32 (INV-APPROVAL): Derive actual risk category from tool metadata
-          const toolName = (step as unknown as { toolName?: string }).toolName ?? step.stepId ?? "todo_write";
-          const riskLevels: Record<string, "low" | "medium" | "high" | "critical"> = {
-            web_fetch: "medium", web_search: "medium", git: "high", spawn_agent: "high",
-            batch_tool: "medium", todo_write: "low", repo_map: "low", question: "low",
-          };
-          const riskLevel = riskLevels[toolName] ?? "medium";
-          return mapToolRiskToPolicyCategory(riskLevel);
-        })(),
-      mode: "auto",
-      stage: "execute",
-      estimatedCostUsd: 1,
-      metadata: { roleId: step.roleId, stepId: step.stepId },
-    };
-    const approvalResult = approvalEngine.evaluate(approvalContext);
-
+    // R4-32 (INV-APPROVAL): approvalResult is computed in outer scope for reserve-before-execute
+    // approvalResult.requiresApproval gates budget reservation and LLM call
+    // R4-32 (INV-APPROVAL): Use risk-proportional approval from PolicyEngine
+    // approvalResult.requiresApproval is boolean - convert to 0/1 for DB
     const execution: ExecutionRecord = {
       id: executionId,
       taskId,
@@ -573,6 +580,10 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
       traceId,
       createdAt: now,
     };
+
+    // R4-28 (INV-STATE-001): Assert leader authority before emitting events in transaction.
+    // Only the leader node can append events to ensure HA consistency.
+    assertLeaderAuthoritative("system", "single_task_happy_path_event_emission");
 
     db.transaction(() => {
       // R4-27 (INV-RUN-001): Insert harness_run record inside transaction for atomicity

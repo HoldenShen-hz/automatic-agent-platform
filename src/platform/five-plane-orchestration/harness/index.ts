@@ -155,6 +155,7 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     throw new Error("harness.constraint_pack.missing_output_policy");
   }
   const budgetEnvelope = input.budgetEnvelope ?? input.budget;
+  const legacyBudget = input.budget;
 
   const partial: {
     policyIds: readonly string[];
@@ -220,6 +221,15 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
     if ("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null) {
       partial.budget.max_output_tokens = budgetEnvelope.maxOutputTokens;
     }
+    if (legacyBudget?.max_model_tokens != null) {
+      partial.budget.max_model_tokens = legacyBudget.max_model_tokens;
+    }
+    if (legacyBudget?.max_context_tokens != null) {
+      partial.budget.max_context_tokens = legacyBudget.max_context_tokens;
+    }
+    if (legacyBudget?.max_output_tokens != null) {
+      partial.budget.max_output_tokens = legacyBudget.max_output_tokens;
+    }
     partial.budgetEnvelope = {
       maxSteps: budgetEnvelope.maxSteps,
       maxCost: budgetEnvelope.maxCost,
@@ -235,6 +245,15 @@ export function normalizeConstraintPack(input: ConstraintPack): ConstraintPack {
         : {}),
       ...("maxOutputTokens" in budgetEnvelope && budgetEnvelope.maxOutputTokens != null
         ? { maxOutputTokens: budgetEnvelope.maxOutputTokens }
+        : {}),
+      ...(legacyBudget?.max_model_tokens != null
+        ? { maxModelTokens: legacyBudget.max_model_tokens }
+        : {}),
+      ...(legacyBudget?.max_context_tokens != null
+        ? { maxContextTokens: legacyBudget.max_context_tokens }
+        : {}),
+      ...(legacyBudget?.max_output_tokens != null
+        ? { maxOutputTokens: legacyBudget.max_output_tokens }
         : {}),
     };
   }

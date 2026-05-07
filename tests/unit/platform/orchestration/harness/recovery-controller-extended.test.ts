@@ -245,7 +245,11 @@ test("RecoveryController.handleFailure with worker_crash sets correct retry reas
 test("RecoveryController.handleFailure with tool_timeout uses loop controller backoff", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
+  const customLoop = new HarnessLoopController(createConstraintPack(), {}, {
+    retryAttempt: 1,
+    lastRetryAt: Date.now() - 5_000,
+  });
+  const controller = new RecoveryController(durableService, runtime, customLoop);
 
   const run = createRun();
   const result = controller.handleFailure(run, "tool_timeout");
@@ -277,7 +281,11 @@ test("RecoveryController.handleFailure computes exponential backoff delay", () =
 test("RecoveryController.handleFailure with tool_timeout records iteration in loop controller", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
-  const controller = new RecoveryController(durableService, runtime);
+  const customLoop = new HarnessLoopController(createConstraintPack(), {}, {
+    retryAttempt: 1,
+    lastRetryAt: Date.now() - 5_000,
+  });
+  const controller = new RecoveryController(durableService, runtime, customLoop);
 
   const run = createRun();
   const result = controller.handleFailure(run, "tool_timeout");
@@ -294,7 +302,11 @@ test("RecoveryController.handleFailure with tool_timeout records iteration in lo
 test("RecoveryController uses injected loop controller when provided", () => {
   const durableService = new DurableHarnessService();
   const runtime = new HarnessRuntimeService({ durableService });
-  const customLoop = new HarnessLoopController(createConstraintPack(), {}, { iteration: 10 });
+  const customLoop = new HarnessLoopController(createConstraintPack(), {}, {
+    iteration: 0,
+    retryAttempt: 1,
+    lastRetryAt: Date.now() - 5_000,
+  });
 
   const controller = new RecoveryController(durableService, runtime, customLoop);
 
@@ -312,8 +324,18 @@ test("RecoveryController creates loop controller on-demand from run state", () =
   const controller = new RecoveryController(durableService, runtime);
 
   const run = createRun({
+    sleepLease: {
+      sleepLeaseId: "lease-1",
+      runId: "rc-unit-run",
+      reason: "prior_retry",
+      createdAt: new Date(Date.now() - 5_000).toISOString(),
+      resumeAt: new Date(Date.now() - 1_000).toISOString(),
+      retryAttempt: 1,
+      resumableFromStep: null,
+      expiresAt: null,
+    },
     loopMetrics: {
-      iterationCount: 5,
+      iterationCount: 0,
       replanCount: 2,
       totalCost: 10,
       durationMs: 5000,

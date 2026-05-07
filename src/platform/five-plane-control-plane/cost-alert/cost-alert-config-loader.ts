@@ -133,3 +133,31 @@ export function loadCostAlertConfig(
 export function clearCostAlertConfigCache(): void {
   cachedConfig = null;
 }
+
+export class CostAlertConfigLoader {
+  public loadDefault(): CostAlertConfig {
+    clearCostAlertConfigCache();
+    return loadCostAlertConfig();
+  }
+
+  public validateBudgetPolicy(policy: {
+    scope: string;
+    budgetLimitUsd?: number;
+    warningThreshold: number;
+    criticalThreshold: number;
+  }): boolean {
+    if (!["platform", "tenant", "pack", "step"].includes(policy.scope)) {
+      return false;
+    }
+    if (policy.budgetLimitUsd != null && policy.budgetLimitUsd <= 0) {
+      return false;
+    }
+    if (policy.warningThreshold < 0 || policy.warningThreshold > 1) {
+      return false;
+    }
+    if (policy.criticalThreshold < 0 || policy.criticalThreshold > 1) {
+      return false;
+    }
+    return policy.warningThreshold < policy.criticalThreshold;
+  }
+}

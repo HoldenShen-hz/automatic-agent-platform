@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
-import { WorkflowStateError } from "../../../../src/platform/contracts/errors.js";
+import { RuntimeStateMachine } from "../../../src/platform/five-plane-execution/runtime-state-machine.js";
+import { WorkflowStateError } from "../../../src/platform/contracts/errors.js";
 import type {
   HarnessRun,
   HarnessRunStatus,
@@ -19,7 +19,7 @@ import type {
   SideEffectStatus,
   BudgetLedger,
   BudgetReservation,
-} from "../../../../src/platform/contracts/executable-contracts/index.js";
+} from "../../../src/platform/contracts/executable-contracts/index.js";
 
 // ---------------------------------------------------------------------------
 // Test Helpers
@@ -287,6 +287,8 @@ test("NodeRun valid transition: created -> ready", () => {
     tenantId: "tenant-1",
     reasonCode: "test",
     emittedBy: "test-emitter",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
   });
 
   assert.equal(result.aggregate.status, "ready");
@@ -432,6 +434,7 @@ test("SideEffectRecord valid transition: proposed -> approved", () => {
     emittedBy: "test-emitter",
     leaseId: "lease-1",
     fencingToken: "fence-1",
+    auditRef: "audit-1",
     sideEffectSafety: {
       idempotencyKey: "key-1",
       preCommitPolicyProofRef: "proof-1",
@@ -622,6 +625,7 @@ test("BudgetReservation valid transition: reserved -> settled", () => {
     tenantId: "tenant-1",
     reasonCode: "test",
     emittedBy: "test-emitter",
+    fencingToken: "fence-1",
   });
 
   assert.equal(result.aggregate.status, "settled");
@@ -644,6 +648,7 @@ test("BudgetReservation valid transition: reserved -> released", () => {
     tenantId: "tenant-1",
     reasonCode: "test",
     emittedBy: "test-emitter",
+    fencingToken: "fence-1",
   });
 
   assert.equal(result.aggregate.status, "released");
@@ -754,6 +759,8 @@ test("HarnessRun transition with allowed policy guard", () => {
     fromStatus: "created",
     toStatus: "admitted",
     runVersionLockId: "lock-1",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
     policyGuard: {
       allowed: true,
       policyProofRef: "proof-1",
@@ -818,6 +825,8 @@ test("HarnessRun transition with satisfied budget precondition", () => {
     fromStatus: "created",
     toStatus: "admitted",
     runVersionLockId: "lock-1",
+    leaseId: "lease-1",
+    fencingToken: "fence-1",
     budgetPrecondition: {
       reservationId: "res-1",
       hardCapSatisfied: true,

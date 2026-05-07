@@ -5,12 +5,10 @@ import { StructuredLogger } from "../../../../../src/platform/shared/observabili
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 import {
   decorateAuthoritativeTaskStore,
-  getAuthoritativeTaskStoreDecoratorMetricsSnapshot,
-  resetAuthoritativeTaskStoreDecoratorMetrics,
 } from "../../../../../src/platform/state-evidence/truth/repositories/authoritative-task-store-decorator.js";
 
 test.beforeEach(() => {
-  resetAuthoritativeTaskStoreDecoratorMetrics();
+  // Per-instance metrics are used now; nothing global to reset here.
 });
 
 test("authoritative task store decorator retries SQLITE_BUSY failures and returns the underlying result", () => {
@@ -33,7 +31,7 @@ test("authoritative task store decorator retries SQLITE_BUSY failures and return
 
   assert.deepEqual((decorated as unknown as { listTasks(): string[] }).listTasks(), ["task-1"]);
   assert.equal(attempts, 2);
-  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  const metrics = decorated.getMetricsSnapshot();
   assert.equal(metrics.listTasks?.calls, 1);
   assert.equal(metrics.listTasks?.retries, 1);
   assert.equal(metrics.listTasks?.successes, 1);
@@ -55,7 +53,7 @@ test("authoritative task store decorator records failed operations", () => {
   const entry = logger.recent(1)[0];
   assert.equal(entry?.message, "authoritative_task_store.operation_failed");
   assert.equal(entry?.data?.operation, "listTasks");
-  const metrics = getAuthoritativeTaskStoreDecoratorMetricsSnapshot();
+  const metrics = decorated.getMetricsSnapshot();
   assert.equal(metrics.listTasks?.calls, 1);
   assert.equal(metrics.listTasks?.failures, 1);
   assert.equal(metrics.listTasks?.successes, 0);

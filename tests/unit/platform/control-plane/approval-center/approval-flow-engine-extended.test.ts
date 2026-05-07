@@ -304,14 +304,14 @@ test("ApprovalFlowEngine submitVote allows changing vote", () => {
   assert.strictEqual(result.quorumStatus.rejectionsReceived, 1);
 });
 
-test("ApprovalFlowEngine submitVote handles delegation source", () => {
+test("ApprovalFlowEngine submitVote handles delegation source", async () => {
   const engine = new ApprovalFlowEngine();
   const request = createMockApprovalRequest();
 
   const flow = engine.createFlow(createSinglePartyFlowConfig(), request);
 
   // First delegate
-  engine.delegateApproval(flow.flowId, "admin", "delegate-user");
+  await engine.delegateApproval(flow.flowId, "admin", "delegate-user");
 
   // Vote with delegation source
   const result = engine.submitVote(flow.flowId, "delegate-user", VoteType.APPROVE);

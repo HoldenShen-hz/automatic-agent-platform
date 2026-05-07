@@ -8,6 +8,7 @@ import type { RESTClient, WSClient } from "@aa/shared-api-client";
 import type { TokenManager } from "@aa/shared-auth";
 import { PlatformAdapterProvider, createWebPlatformAdapter } from "@aa/shared-platform";
 import type { PlatformAdapter } from "@aa/shared-types";
+import type { WebRuntimeBanner } from "./runtime";
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
@@ -20,6 +21,7 @@ export interface WebAppShellProps {
   readonly initialEntries?: readonly string[];
   /** Auth context for RBAC - should come from auth store per §5.1.1 */
   readonly authContext?: AuthContext;
+  readonly startupBanner?: WebRuntimeBanner;
 }
 
 export interface AuthContext {
@@ -77,7 +79,9 @@ function AppRouter(
   return <BrowserRouter>{children}</BrowserRouter>;
 }
 
-function AppFrame({ features, authContext }: { features: readonly FeatureModule[]; authContext: AuthContext | null }): ReactElement {
+function AppFrame(
+  { features, authContext, startupBanner }: { features: readonly FeatureModule[]; authContext: AuthContext | null; startupBanner?: WebRuntimeBanner },
+): ReactElement {
   const systemStatus = useSystemStatus();
   const groupedFeatures = Object.entries(
     features.reduce<Record<string, FeatureModule[]>>((groups, feature) => {
@@ -118,6 +122,22 @@ function AppFrame({ features, authContext }: { features: readonly FeatureModule[
         </nav>
       </aside>
       <main style={{ padding: 24 }}>
+        {startupBanner == null ? null : (
+          <section
+            role="alert"
+            style={{
+              marginBottom: 16,
+              padding: "12px 16px",
+              borderRadius: 12,
+              border: `1px solid ${startupBanner.tone === "error" ? designTokens.color.border : designTokens.color.accent}`,
+              background: startupBanner.tone === "error" ? "#2b1717" : "#12201a",
+              color: designTokens.color.text,
+            }}
+          >
+            <strong style={{ display: "block", marginBottom: 4 }}>{startupBanner.title}</strong>
+            <span>{startupBanner.message}</span>
+          </section>
+        )}
         <SystemStatusBar status={systemStatus} />
         <Routes>
         {/* §4.4.1 L2-L5 nested drill-down routes */}
@@ -188,7 +208,9 @@ class AppErrorBoundary extends React.Component<
   }
 }
 
-export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, platformAdapter, router = "browser", initialEntries, authContext }: WebAppShellProps): ReactElement {
+export function WebAppShell(
+  { features, client, tokenManager, wsClient, wsUrl, platformAdapter, router = "browser", initialEntries, authContext, startupBanner }: WebAppShellProps,
+): ReactElement {
   const resolvedPlatformAdapter = React.useMemo(
     () => platformAdapter ?? createWebPlatformAdapter(),
     [platformAdapter],
@@ -207,7 +229,7 @@ export function WebAppShell({ features, client, tokenManager, wsClient, wsUrl, p
       <UiRuntimeProvider {...runtimeProps}>
         <AppErrorBoundary>
           <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
-            <AppFrame features={features} authContext={authContext ?? null} />
+            <AppFrame features={features} authContext={authContext ?? null} startupBanner={startupBanner} />
           </AppRouter>
         </AppErrorBoundary>
       </UiRuntimeProvider>

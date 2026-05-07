@@ -5,195 +5,165 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { CostAlertConfigLoader } from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-config-loader.js";
 import {
-  CostAlertService,
-  type CostAccumulator,
-  type CostEvaluationResult,
-  type CostThresholdExceededEvent,
-  type BudgetPolicy,
-  type BudgetScope,
   CostAlertLevel,
+  CostAlertService,
+  type BudgetPolicy,
+  type CostAlertConfig,
+  type CostThresholdExceededEvent,
 } from "../../../../src/platform/five-plane-control-plane/cost-alert/index.js";
+import type { AuthoritativeSqlDatabase } from "../../../../src/platform/state-evidence/truth/authoritative-sql-database.js";
+import type { AuthoritativeTaskStore } from "../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
 
-import {
-  CostAlertConfigLoader,
-} from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-config-loader.js";
+function createNoopStore(): AuthoritativeTaskStore {
+  return {
+    event: {
+      insertEvent(): void {},
+    },
+    artifact: {
+      insertArtifact(): void {},
+    },
+  } as unknown as AuthoritativeTaskStore;
+}
 
-import type {
-  CostAlertConfig,
-  StepUsageRecord,
-} from "../../../../src/platform/five-plane-control-plane/cost-alert/cost-alert-types.js";
+function createService(config: Partial<CostAlertConfig> = {}): CostAlertService {
+  return new CostAlertService(
+    {} as unknown as AuthoritativeSqlDatabase,
+    createNoopStore(),
+    config,
+  );
+}
+
+function createPlatformBudgetPolicy(limitCostUsd: number): BudgetPolicy {
+  return {
+    scope: "platform",
+    scopeId: "platform-root",
+    period: "monthly",
+    limitCostUsd,
+    warningThreshold: 0.8,
+    actionsOnWarning: ["sev3_alert"],
+    actionsOnBreach: ["workflow_pause"],
+  };
+}
 
 // ============================================================================
 // Cost Alert Service Tests
 // ============================================================================
 
 test("CostAlertService evaluates cost under budget", () => {
-  const config: Partial<CostAlertConfig> = {
+  const service = createService({
     enabled: true,
-    platformBudgetPolicy: {
-      scope: "platform" as BudgetScope,
-      budgetLimitUsd: 1000,
-      warningThreshold: 0.8,
-      criticalThreshold: 0.95,
-    },
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
+    platformBudgetPolicy: createPlatformBudgetPolicy(1000),
+  });
 
   const result = service.evaluateCost({
     scope: "platform",
-    scopeId: null,
-    stepId: "step_001",
-    costUsd: 100,
-    timestamp: new Date().toISOString(),
+    scopeId: "platform-root",
+    projectedCostUsd: 100,
   });
 
-  assert.equal(result.withinBudget, true);
-  assert.equal(result.level, CostAlertLevel.OK);
-  assert.equal(result.budgetRemainingUsd, 900);
+  assert.equal(result.allowed, true);
+  assert.equal(result.alertLevel, CostAlertLevel.OK);
+  assert.equal(result.remainingBudgetUsd, 900);
 });
 
 test("CostAlertService triggers warning at 80% threshold", () => {
-  const config: Partial<CostAlertConfig> = {
+  const service = createService({
     enabled: true,
-    platformBudgetPolicy: {
-      scope: "platform" as BudgetScope,
-      budgetLimitUsd: 1000,
-      warningThreshold: 0.8,
-      criticalThreshold: 0.95,
-    },
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
+    platformBudgetPolicy: createPlatformBudgetPolicy(1000),
+  });
 
   const result = service.evaluateCost({
     scope: "platform",
-    scopeId: null,
-    stepId: "step_002",
-    costUsd: 850,
-    timestamp: new Date().toISOString(),
+    scopeId: "platform-root",
+    projectedCostUsd: 850,
   });
 
-  assert.equal(result.withinBudget, true);
-  assert.equal(result.level, CostAlertLevel.WARNING);
-  assert.ok(result.budgetRemainingUsd < 200);
+  assert.equal(result.allowed, true);
+  assert.equal(result.alertLevel, CostAlertLevel.WARNING);
+  assert.ok((result.remainingBudgetUsd ?? 0) < 200);
 });
 
 test("CostAlertService triggers critical at 95% threshold", () => {
-  const config: Partial<CostAlertConfig> = {
+  const service = createService({
     enabled: true,
-    platformBudgetPolicy: {
-      scope: "platform" as BudgetScope,
-      budgetLimitUsd: 1000,
-      warningThreshold: 0.8,
-      criticalThreshold: 0.95,
-    },
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
+    platformBudgetPolicy: createPlatformBudgetPolicy(1000),
+  });
 
   const result = service.evaluateCost({
     scope: "platform",
-    scopeId: null,
-    stepId: "step_003",
-    costUsd: 960,
-    timestamp: new Date().toISOString(),
+    scopeId: "platform-root",
+    projectedCostUsd: 960,
   });
 
-  assert.equal(result.withinBudget, true);
-  assert.equal(result.level, CostAlertLevel.CRITICAL);
+  assert.equal(result.allowed, false);
+  assert.equal(result.alertLevel, CostAlertLevel.CRITICAL);
 });
 
 test("CostAlertService blocks when budget exceeded", () => {
-  const config: Partial<CostAlertConfig> = {
+  const service = createService({
     enabled: true,
-    platformBudgetPolicy: {
-      scope: "platform" as BudgetScope,
-      budgetLimitUsd: 1000,
-      warningThreshold: 0.8,
-      criticalThreshold: 0.95,
-    },
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
+    platformBudgetPolicy: createPlatformBudgetPolicy(1000),
+  });
 
   const result = service.evaluateCost({
     scope: "platform",
-    scopeId: null,
-    stepId: "step_004",
-    costUsd: 1100,
-    timestamp: new Date().toISOString(),
+    scopeId: "platform-root",
+    projectedCostUsd: 1100,
   });
 
-  assert.equal(result.withinBudget, false);
-  assert.equal(result.level, CostAlertLevel.EXCEEDED);
+  assert.equal(result.allowed, false);
+  assert.equal(result.alertLevel, CostAlertLevel.EXCEEDED);
 });
 
-test("CostAlertService records step usage", () => {
-  const config: Partial<CostAlertConfig> = {
+test("CostAlertService records cost into accumulator", () => {
+  const service = createService({
     enabled: true,
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
-
-  service.recordStepUsage({
-    stepId: "step_005",
-    costUsd: 50,
-    modelId: "claude-3-5-sonnet",
-    inputTokens: 1000,
-    outputTokens: 500,
-    timestamp: new Date().toISOString(),
+    platformBudgetPolicy: createPlatformBudgetPolicy(1000),
   });
 
-  const accumulator = service.getAccumulator("step", "step_005");
+  service.recordCost({
+    scope: "platform",
+    scopeId: "platform-root",
+    actualCostUsd: 50,
+    tokens: 1500,
+    tenantId: "tenant-1",
+    stepId: "step_005",
+    provider: "anthropic",
+    model: "claude-3-5-sonnet",
+    promptTokens: 1000,
+    completionTokens: 500,
+  });
+
+  const accumulator = service.getAccumulator("platform", "platform-root");
 
   assert.ok(accumulator !== null);
-  assert.equal(accumulator.totalCostUsd, 50);
+  assert.equal(accumulator.accumulatedCostUsd, 50);
+  assert.equal(accumulator.accumulatedTokens, 1500);
 });
 
-test("CostAlertService calculates tier 1 cost", () => {
-  const config: Partial<CostAlertConfig> = {
+test("CostAlertService emits critical threshold event on recordCost", async () => {
+  const service = createService({
     enabled: true,
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
-
-  const tier1Cost = service.calculateTier1Cost({
-    inputTokens: 10000,
-    outputTokens: 5000,
-    modelId: "claude-3-5-sonnet",
+    platformBudgetPolicy: createPlatformBudgetPolicy(100),
   });
 
-  assert.ok(tier1Cost > 0);
-});
-
-test("CostAlertService emits threshold exceeded event", (t, done) => {
-  const config: Partial<CostAlertConfig> = {
-    enabled: true,
-    platformBudgetPolicy: {
-      scope: "platform" as BudgetScope,
-      budgetLimitUsd: 100,
-      warningThreshold: 0.8,
-      criticalThreshold: 0.95,
-    },
-  };
-
-  const service = new CostAlertService(config as CostAlertConfig);
-
-  service.on("cost.threshold.exceeded", (event: CostThresholdExceededEvent) => {
-    assert.equal(event.scope, "platform");
-    assert.equal(event.level, CostAlertLevel.CRITICAL);
-    done();
+  const event = await new Promise<CostThresholdExceededEvent>((resolve) => {
+    service.once("cost.threshold.exceeded", resolve);
+    service.recordCost({
+      scope: "platform",
+      scopeId: "platform-root",
+      actualCostUsd: 96,
+      tokens: 2000,
+      tenantId: "tenant-1",
+      stepId: "step_006",
+    });
   });
 
-  service.evaluateCost({
-    scope: "platform",
-    scopeId: null,
-    stepId: "step_006",
-    costUsd: 100,
-    timestamp: new Date().toISOString(),
-  });
+  assert.equal(event.scope, "platform");
+  assert.equal(event.alertLevel, CostAlertLevel.CRITICAL);
+  assert.equal(event.eventTier, "tier_2");
 });
 
 // ============================================================================

@@ -10,6 +10,12 @@ export type FeatureGroup = "Mission Control" | "Operations" | "Governance" | "Ad
 export type FeatureKind = "implemented" | "planned";
 export type DrillDepth = 1 | 2 | 3 | 4 | 5;
 
+export interface PlatformNotificationOptions {
+  readonly body?: string;
+  readonly tag?: string;
+  readonly requireInteraction?: boolean;
+}
+
 export interface PlatformAdapter {
   readonly platform: PlatformId;
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
@@ -69,6 +75,18 @@ export interface PlatformAdapterCapabilityView {
   };
   readonly screenSecurity: {
     setEnabled(enabled: boolean): Promise<void>;
+  };
+  readonly notifications: {
+    requestPermission(): Promise<NotificationPermission>;
+    show(title: string, options?: PlatformNotificationOptions): Promise<void>;
+  };
+  readonly biometric: {
+    isAvailable(): Promise<boolean>;
+  };
+  readonly webAuthn: {
+    isSupported(): Promise<boolean>;
+    createCredential(options: PublicKeyCredentialCreationOptions): Promise<PublicKeyCredential | null>;
+    getAssertion(options: PublicKeyCredentialRequestOptions): Promise<PublicKeyCredential | null>;
   };
 }
 

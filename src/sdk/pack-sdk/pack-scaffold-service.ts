@@ -17,16 +17,32 @@ export type PackTemplate = "minimal" | "standard" | "full";
  * allowing path traversal and content injection attacks via malicious packId/name/domain.
  */
 function sanitizeTemplateValue(value: string, fieldName: string): string {
-  // Allow only alphanumeric, hyphens, underscores, and dots
-  const safe = value.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const normalized = fieldName === "name" ? value.trim() : value;
+  const allowedPattern = fieldName === "name"
+    ? /^[a-zA-Z0-9._ -]+$/
+    : /^[a-zA-Z0-9._-]+$/;
+  const safe = fieldName === "name"
+    ? normalized.replace(/[^a-zA-Z0-9._ -]/g, "_")
+    : normalized.replace(/[^a-zA-Z0-9._-]/g, "_");
   if (safe !== value) {
     throw new ValidationError(
       "pack_scaffold.invalid_template_value",
-      `Template value for ${fieldName} contains invalid characters. Use alphanumeric, hyphens, underscores, and dots only.`,
+      fieldName === "name"
+        ? `Template value for ${fieldName} contains invalid characters. Use alphanumeric, spaces, hyphens, underscores, and dots only.`
+        : `Template value for ${fieldName} contains invalid characters. Use alphanumeric, hyphens, underscores, and dots only.`,
       { details: { fieldName, value, sanitized: safe } },
     );
   }
-  return safe;
+  if (!allowedPattern.test(normalized)) {
+    throw new ValidationError(
+      "pack_scaffold.invalid_template_value",
+      fieldName === "name"
+        ? `Template value for ${fieldName} contains invalid characters. Use alphanumeric, spaces, hyphens, underscores, and dots only.`
+        : `Template value for ${fieldName} contains invalid characters. Use alphanumeric, hyphens, underscores, and dots only.`,
+      { details: { fieldName, value, sanitized: safe } },
+    );
+  }
+  return normalized;
 }
 
 export interface ScaffoldConfig {

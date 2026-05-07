@@ -109,8 +109,8 @@ test("RecoveryController.handleFailure with tool_timeout triggers recovery then 
   const result = controller.handleFailure(run, "tool_timeout");
 
   assert.equal(result.status, "paused");
-  assert.equal(result.pauseReason, "sleep");
-  assert.ok(result.sleepLease != null);
+  assert.equal(result.pauseReason, "hitl");
+  assert.ok(result.hitlRequest != null);
 });
 
 test("RecoveryController.handleFailure with worker_crash triggers recovery checkpoint", () => {

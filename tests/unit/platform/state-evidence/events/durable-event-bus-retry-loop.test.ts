@@ -9,13 +9,11 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { join } from "node:path";
 
-import { DurableEventBus } from "../../../../../../src/platform/state-evidence/events/durable-event-bus.js";
-import { SqliteDatabase } from "../../../../../../src/platform/state-evidence/truth/sqlite/sqlite-database.js";
-import { AuthoritativeTaskStore } from "../../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
-import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
-import { seedTaskAndExecution } from "../../../../../helpers/seed.js";
+import { DurableEventBus } from "../../../../../src/platform/state-evidence/events/durable-event-bus.js";
+import { AuthoritativeTaskStore } from "../../../../../src/platform/state-evidence/truth/authoritative-task-store.js";
+import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.js";
+import { seedTaskAndExecution } from "../../../../helpers/seed.js";
 
 /**
  * Issue #2033: Retry loop bug analysis
@@ -34,15 +32,12 @@ import { seedTaskAndExecution } from "../../../../../helpers/seed.js";
  */
 
 test("durable-event-bus retry loop: exactly 3 attempts when MAX_DELIVERY_RETRIES is 3", async () => {
-  const workspace = createTempWorkspace("aa-retry-loop-");
-  let db: SqliteDatabase | undefined;
+  const context = initHaCoordinatorForTests();
 
   try {
-    db = new SqliteDatabase(join(workspace, "retry-loop.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
-    seedTaskAndExecution(db, store, { taskId: "task-retry", executionId: "exec-retry", traceId: "trace-retry" });
+    const store = new AuthoritativeTaskStore(context.db);
+    const bus = new DurableEventBus(context.db, store);
+    seedTaskAndExecution(context.db, store, { taskId: "task-retry", executionId: "exec-retry", traceId: "trace-retry" });
 
     let attemptCount = 0;
 
@@ -67,21 +62,17 @@ test("durable-event-bus retry loop: exactly 3 attempts when MAX_DELIVERY_RETRIES
 
     bus.dispose();
   } finally {
-    db?.close();
-    cleanupPath(workspace);
+    context.cleanup();
   }
 });
 
 test("durable-event-bus retry loop: first attempt fails, second succeeds", async () => {
-  const workspace = createTempWorkspace("aa-retry-first-fail-");
-  let db: SqliteDatabase | undefined;
+  const context = initHaCoordinatorForTests();
 
   try {
-    db = new SqliteDatabase(join(workspace, "retry-first-fail.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
-    seedTaskAndExecution(db, store, { taskId: "task-first-fail", executionId: "exec-first-fail", traceId: "trace-first-fail" });
+    const store = new AuthoritativeTaskStore(context.db);
+    const bus = new DurableEventBus(context.db, store);
+    seedTaskAndExecution(context.db, store, { taskId: "task-first-fail", executionId: "exec-first-fail", traceId: "trace-first-fail" });
 
     let attemptCount = 0;
     const delivered: string[] = [];
@@ -111,21 +102,17 @@ test("durable-event-bus retry loop: first attempt fails, second succeeds", async
 
     bus.dispose();
   } finally {
-    db?.close();
-    cleanupPath(workspace);
+    context.cleanup();
   }
 });
 
 test("durable-event-bus retry loop: all 3 attempts fail triggers dead-letter", async () => {
-  const workspace = createTempWorkspace("aa-retry-all-fail-");
-  let db: SqliteDatabase | undefined;
+  const context = initHaCoordinatorForTests();
 
   try {
-    db = new SqliteDatabase(join(workspace, "retry-all-fail.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
-    seedTaskAndExecution(db, store, { taskId: "task-all-fail", executionId: "exec-all-fail", traceId: "trace-all-fail" });
+    const store = new AuthoritativeTaskStore(context.db);
+    const bus = new DurableEventBus(context.db, store);
+    seedTaskAndExecution(context.db, store, { taskId: "task-all-fail", executionId: "exec-all-fail", traceId: "trace-all-fail" });
 
     let attemptCount = 0;
 
@@ -155,21 +142,17 @@ test("durable-event-bus retry loop: all 3 attempts fail triggers dead-letter", a
 
     bus.dispose();
   } finally {
-    db?.close();
-    cleanupPath(workspace);
+    context.cleanup();
   }
 });
 
 test("durable-event-bus retry loop: backoff delay increases between attempts", async () => {
-  const workspace = createTempWorkspace("aa-retry-backoff-");
-  let db: SqliteDatabase | undefined;
+  const context = initHaCoordinatorForTests();
 
   try {
-    db = new SqliteDatabase(join(workspace, "retry-backoff.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
-    seedTaskAndExecution(db, store, { taskId: "task-backoff", executionId: "exec-backoff", traceId: "trace-backoff" });
+    const store = new AuthoritativeTaskStore(context.db);
+    const bus = new DurableEventBus(context.db, store);
+    seedTaskAndExecution(context.db, store, { taskId: "task-backoff", executionId: "exec-backoff", traceId: "trace-backoff" });
 
     const attemptTimestamps: number[] = [];
 
@@ -202,21 +185,17 @@ test("durable-event-bus retry loop: backoff delay increases between attempts", a
 
     bus.dispose();
   } finally {
-    db?.close();
-    cleanupPath(workspace);
+    context.cleanup();
   }
 });
 
 test("durable-event-bus retry loop: successful delivery does not dead-letter", async () => {
-  const workspace = createTempWorkspace("aa-retry-success-");
-  let db: SqliteDatabase | undefined;
+  const context = initHaCoordinatorForTests();
 
   try {
-    db = new SqliteDatabase(join(workspace, "retry-success.db"));
-    db.migrate();
-    const store = new AuthoritativeTaskStore(db);
-    const bus = new DurableEventBus(db, store);
-    seedTaskAndExecution(db, store, { taskId: "task-success", executionId: "exec-success", traceId: "trace-success" });
+    const store = new AuthoritativeTaskStore(context.db);
+    const bus = new DurableEventBus(context.db, store);
+    seedTaskAndExecution(context.db, store, { taskId: "task-success", executionId: "exec-success", traceId: "trace-success" });
 
     let attemptCount = 0;
 
@@ -242,7 +221,6 @@ test("durable-event-bus retry loop: successful delivery does not dead-letter", a
 
     bus.dispose();
   } finally {
-    db?.close();
-    cleanupPath(workspace);
+    context.cleanup();
   }
 });

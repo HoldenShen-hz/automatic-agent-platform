@@ -166,56 +166,80 @@ export function useTaskCockpitVm(): TaskCockpitVm {
   const claimTask = useCallback(async (operator: string): Promise<void> => {
     if (selectedTask == null) return;
     setPendingAction(true);
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
+    const previousTimelineEvents = timelineEvents;
     try {
-      await updateTask(client, selectedTask.id, { owner: operator, status: "running" });
       updateSelected(
         (task) => ({ ...task, owner: operator, status: "running" }),
         `Takeover · ${selectedTask.title}`,
         `${operator} claimed the task and resumed ownership.`,
       );
       addTimelineEvent("recovery", `Takeover · ${selectedTask.title}`, `${operator} claimed the task.`);
+      await updateTask(client, selectedTask.id, { owner: operator, status: "running" });
+    } catch (error) {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+      setTimelineEvents(previousTimelineEvents);
+      throw error;
     } finally {
       setPendingAction(false);
     }
-  }, [client, selectedTask]);
+  }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
 
   const resumeTask = useCallback(async (mode: "normal" | "supervised"): Promise<void> => {
     if (selectedTask == null) return;
     setPendingAction(true);
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
+    const previousTimelineEvents = timelineEvents;
     try {
-      await updateTask(client, selectedTask.id, {
-        status: "running",
-        currentStep: mode === "supervised" ? "supervised-resume" : "resume",
-      });
       updateSelected(
         (task) => ({ ...task, status: "running", currentStep: mode === "supervised" ? "supervised-resume" : "resume" }),
         `Resume · ${selectedTask.title}`,
         `${mode} mode resume was requested through HITL.`,
       );
       addTimelineEvent("recovery", `Resume · ${selectedTask.title}`, `${mode} mode resume requested.`);
+      await updateTask(client, selectedTask.id, {
+        status: "running",
+        currentStep: mode === "supervised" ? "supervised-resume" : "resume",
+      });
+    } catch (error) {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+      setTimelineEvents(previousTimelineEvents);
+      throw error;
     } finally {
       setPendingAction(false);
     }
-  }, [client, selectedTask]);
+  }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
 
   const escalateTask = useCallback(async (target: string): Promise<void> => {
     if (selectedTask == null) return;
     setPendingAction(true);
+    const previousTasks = tasks;
+    const previousTimelineItems = timelineItems;
+    const previousTimelineEvents = timelineEvents;
     try {
-      await updateTask(client, selectedTask.id, {
-        status: "blocked",
-        currentStep: `escalated:${target}`,
-      });
       updateSelected(
         (task) => ({ ...task, status: "blocked", currentStep: `escalated:${target}` }),
         `Escalated · ${selectedTask.title}`,
         `Task was escalated to ${target} for review.`,
       );
       addTimelineEvent("transition", `Escalated · ${selectedTask.title}`, `Task escalated to ${target}.`);
+      await updateTask(client, selectedTask.id, {
+        status: "blocked",
+        currentStep: `escalated:${target}`,
+      });
+    } catch (error) {
+      setTasks(previousTasks);
+      setTimelineItems(previousTimelineItems);
+      setTimelineEvents(previousTimelineEvents);
+      throw error;
     } finally {
       setPendingAction(false);
     }
-  }, [client, selectedTask]);
+  }, [client, selectedTask, tasks, timelineEvents, timelineItems]);
 
   // L3 StepOutputViewer helpers
   const selectedStep = steps.find((s) => s.id === selectedStepId) ?? null;

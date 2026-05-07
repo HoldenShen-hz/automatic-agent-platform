@@ -625,7 +625,7 @@ export function validatePluginCompatibility(manifest: PluginManifest): { compati
   }
 
   // Check trustLevel is valid
-  const validTrustLevels = ["internal", "trusted", "community", "unverified"];
+  const validTrustLevels = ["internal", "trusted", "community", "unverified", "verified", "untrusted"];
   if (!validTrustLevels.includes(manifest.trustLevel)) {
     return { compatible: false, reason: `Invalid trustLevel: ${manifest.trustLevel}` };
   }

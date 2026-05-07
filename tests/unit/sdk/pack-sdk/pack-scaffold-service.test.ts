@@ -12,7 +12,7 @@ import { join } from "node:path";
 import {
   PackScaffoldService,
   type ScaffoldConfig,
-} from "../../../../../src/sdk/pack-sdk/pack-scaffold-service.js";
+} from "../../../../src/sdk/pack-sdk/pack-scaffold-service.js";
 
 test("PackScaffoldService.listTemplates returns all template types", () => {
   const service = new PackScaffoldService();

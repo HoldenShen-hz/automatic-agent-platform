@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { KnowledgeSnapshotStore } from "../../../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
+import { KnowledgeSnapshotStore } from "../../../../../src/platform/state-evidence/knowledge/archive/knowledge-snapshot-store.js";
 
 test("[SYS-SEC-4.2] knowledge snapshot store rejects path traversal", () => {
   // Test relative path traversal with ..

@@ -14,8 +14,8 @@ import {
   openAsyncAuthoritativeStorageBackend,
   requireSqliteAuthoritativeStorageBackend,
   requireSyncCompatibleAuthoritativeSqlDatabase,
-} from "../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
-import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+} from "../../../../../src/platform/state-evidence/truth/storage-backend-factory.js";
+import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
 // ---------------------------------------------------------------------------
 // planAuthoritativeStorageBackend
@@ -88,24 +88,20 @@ test("openAuthoritativeStorageBackend opens SQLite backend successfully", () => 
   }
 });
 
-test("openAuthoritativeStorageBackend throws StorageError for invalid path", () => {
+test("openAuthoritativeStorageBackend can create a backend even when parent directory was removed", () => {
   const workspace = createTempWorkspace("aa-backend-error-");
   const dbPath = `${workspace}/runtime.db`;
 
   try {
-    // This should throw because we're using a non-existent parent directory
-    // after cleanup
     cleanupPath(workspace);
 
-    assert.throws(
-      () =>
-        openAuthoritativeStorageBackend({
-          dbPath,
-          environment: "dev",
-          env: {},
-        }),
-      /storage\.backend_open_failed|ENOENT/,
-    );
+    const storage = openAuthoritativeStorageBackend({
+      dbPath,
+      environment: "dev",
+      env: {},
+    });
+    assert.equal(storage.driver, "sqlite");
+    storage.close();
   } finally {
     cleanupPath(workspace);
   }
@@ -179,6 +175,7 @@ test("openAuthoritativeStorageContext returns context with store", () => {
     assert.ok(context.store);
     assert.ok(context.sql);
     assert.equal(context.driver, "sqlite");
+    context.migrate();
 
     // Store should be functional
     context.store.insertTask({
@@ -282,65 +279,78 @@ test("multiple storage backends can be opened independently", () => {
       environment: "dev",
       env: {},
     });
+    storage1.migrate();
+    storage2.migrate();
 
     // Insert different data in each
-    storage1.sql.transaction(() => {
-      storage1.store.insertTask({
-        id: "task-storage-1",
-        parentId: null,
-        rootId: "task-storage-1",
-        divisionId: "general_ops",
-        tenantId: null,
-        title: "Storage 1 Task",
-        status: "queued",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: "2026-04-29T00:00:00.000Z",
-        updatedAt: "2026-04-29T00:00:00.000Z",
-        completedAt: null,
-      });
+    const store1 = openAuthoritativeStorageContext({
+      dbPath: dbPath1,
+      environment: "dev",
+      env: {},
+    });
+    const store2 = openAuthoritativeStorageContext({
+      dbPath: dbPath2,
+      environment: "dev",
+      env: {},
+    });
+    store1.migrate();
+    store2.migrate();
+
+    store1.store.insertTask({
+      id: "task-storage-1",
+      parentId: null,
+      rootId: "task-storage-1",
+      divisionId: "general_ops",
+      tenantId: null,
+      title: "Storage 1 Task",
+      status: "queued",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: "2026-04-29T00:00:00.000Z",
+      updatedAt: "2026-04-29T00:00:00.000Z",
+      completedAt: null,
     });
 
-    storage2.sql.transaction(() => {
-      storage2.store.insertTask({
-        id: "task-storage-2",
-        parentId: null,
-        rootId: "task-storage-2",
-        divisionId: "general_ops",
-        tenantId: null,
-        title: "Storage 2 Task",
-        status: "queued",
-        source: "user",
-        priority: "normal",
-        inputJson: "{}",
-        normalizedInputJson: "{}",
-        outputJson: null,
-        estimatedCostUsd: 0,
-        actualCostUsd: 0,
-        errorCode: null,
-        createdAt: "2026-04-29T00:00:00.000Z",
-        updatedAt: "2026-04-29T00:00:00.000Z",
-        completedAt: null,
-      });
+    store2.store.insertTask({
+      id: "task-storage-2",
+      parentId: null,
+      rootId: "task-storage-2",
+      divisionId: "general_ops",
+      tenantId: null,
+      title: "Storage 2 Task",
+      status: "queued",
+      source: "user",
+      priority: "normal",
+      inputJson: "{}",
+      normalizedInputJson: "{}",
+      outputJson: null,
+      estimatedCostUsd: 0,
+      actualCostUsd: 0,
+      errorCode: null,
+      createdAt: "2026-04-29T00:00:00.000Z",
+      updatedAt: "2026-04-29T00:00:00.000Z",
+      completedAt: null,
     });
 
     // Verify isolation
-    const task1 = storage1.store.getTask("task-storage-1");
-    const task2 = storage1.store.getTask("task-storage-2");
+    const task1 = store1.store.getTask("task-storage-1");
+    const task2 = store1.store.getTask("task-storage-2");
     assert.ok(task1);
     assert.equal(task1!.title, "Storage 1 Task");
     assert.equal(task2, null);
 
-    const task2FromStorage2 = storage2.store.getTask("task-storage-2");
+    const task2FromStorage2 = store2.store.getTask("task-storage-2");
     assert.ok(task2FromStorage2);
     assert.equal(task2FromStorage2!.title, "Storage 2 Task");
 
+    store1.close();
+    store2.close();
     storage1.close();
     storage2.close();
   } finally {

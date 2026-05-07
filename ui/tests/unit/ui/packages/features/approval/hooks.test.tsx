@@ -79,4 +79,22 @@ describe("useApprovalCenterVm", () => {
       expect(result.current.actionHistory[0]?.title).toContain("Requested Context");
     });
   });
+
+  it("restores the approval queue when an optimistic approve call fails", async () => {
+    mockApproveApproval.mockRejectedValueOnce(new Error("approval-write-failed"));
+    const { result } = renderHook(() => useApprovalCenterVm());
+
+    let error: Error | null = null;
+    await act(async () => {
+      try {
+        await result.current.approve();
+      } catch (err) {
+        error = err as Error;
+      }
+    });
+
+    expect(error?.message).toMatch(/approval-write-failed/);
+    expect(result.current.approvals.map((approval) => approval.approvalId)).toEqual(["approval-1", "approval-2"]);
+    expect(result.current.selectedId).toBe("approval-1");
+  });
 });

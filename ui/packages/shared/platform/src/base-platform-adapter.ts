@@ -1,9 +1,18 @@
-import type { PlatformAdapter, PlatformAdapterCapabilityView, PlatformId } from "@aa/shared-types";
+import type { PlatformAdapter, PlatformAdapterCapabilityView, PlatformId, PlatformNotificationOptions } from "@aa/shared-types";
 
 interface StoredProcessHandle {
   readonly pid: number;
   readonly command: string;
   readonly args: readonly string[];
+}
+
+interface ExtendedCapabilityAdapter extends PlatformAdapter {
+  requestNotificationPermission?(): Promise<NotificationPermission>;
+  showNotification?(title: string, options?: PlatformNotificationOptions): Promise<void>;
+  isBiometricAvailable?(): Promise<boolean>;
+  isWebAuthnSupported?(): Promise<boolean>;
+  createWebAuthnCredential?(options: PublicKeyCredentialCreationOptions): Promise<PublicKeyCredential | null>;
+  getWebAuthnAssertion?(options: PublicKeyCredentialRequestOptions): Promise<PublicKeyCredential | null>;
 }
 
 export interface PlatformAdapterFactoryOptions {
@@ -137,6 +146,30 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
     this.screenSecurityEnabled = enabled;
   }
 
+  public async requestNotificationPermission(): Promise<NotificationPermission> {
+    return "default";
+  }
+
+  public async showNotification(title: string, options?: PlatformNotificationOptions): Promise<void> {
+    this.files.set("__notification__", JSON.stringify({ title, ...(options ?? {}) }));
+  }
+
+  public async isBiometricAvailable(): Promise<boolean> {
+    return false;
+  }
+
+  public async isWebAuthnSupported(): Promise<boolean> {
+    return false;
+  }
+
+  public async createWebAuthnCredential(_options: PublicKeyCredentialCreationOptions): Promise<PublicKeyCredential | null> {
+    return null;
+  }
+
+  public async getWebAuthnAssertion(_options: PublicKeyCredentialRequestOptions): Promise<PublicKeyCredential | null> {
+    return null;
+  }
+
   public get capabilities(): PlatformAdapterCapabilityView {
     return createPlatformAdapterCapabilityView(this);
   }
@@ -183,6 +216,7 @@ export class DefaultPlatformAdapter implements PlatformAdapter {
 }
 
 export function createPlatformAdapterCapabilityView(adapter: PlatformAdapter): PlatformAdapterCapabilityView {
+  const extendedAdapter = adapter as ExtendedCapabilityAdapter;
   return {
     secureStorage: {
       get: (key) => adapter.readSecureValue(key),
@@ -221,6 +255,18 @@ export function createPlatformAdapterCapabilityView(adapter: PlatformAdapter): P
     },
     screenSecurity: {
       setEnabled: (enabled) => adapter.enableScreenSecurity(enabled),
+    },
+    notifications: {
+      requestPermission: () => extendedAdapter.requestNotificationPermission?.() ?? Promise.resolve("default"),
+      show: (title, options) => extendedAdapter.showNotification?.(title, options) ?? Promise.resolve(),
+    },
+    biometric: {
+      isAvailable: () => extendedAdapter.isBiometricAvailable?.() ?? Promise.resolve(false),
+    },
+    webAuthn: {
+      isSupported: () => extendedAdapter.isWebAuthnSupported?.() ?? Promise.resolve(false),
+      createCredential: (options) => extendedAdapter.createWebAuthnCredential?.(options) ?? Promise.resolve(null),
+      getAssertion: (options) => extendedAdapter.getWebAuthnAssertion?.(options) ?? Promise.resolve(null),
     },
   };
 }

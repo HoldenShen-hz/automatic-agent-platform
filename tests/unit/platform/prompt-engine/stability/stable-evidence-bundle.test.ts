@@ -14,7 +14,7 @@ import {
   writeJson,
   type StableEvidenceProfile,
   type StableEvidenceBundleOptions,
-} from "../../../../src/platform/shared/stability/stable-evidence-bundle-support.js";
+} from "../../../../../src/platform/shared/stability/stable-evidence-bundle-support.js";
 
 test("STABLE_EVIDENCE_PROFILES contains smoke profile", () => {
   assert.ok(STABLE_EVIDENCE_PROFILES.smoke, "smoke profile should exist");

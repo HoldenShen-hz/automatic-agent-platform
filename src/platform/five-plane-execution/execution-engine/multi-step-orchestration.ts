@@ -50,6 +50,7 @@ import { execute as executeQuery } from "../../state-evidence/truth/sqlite/query
 import { BudgetExecutionSessionManager, BudgetExecutionState, BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 import { BudgetTier } from "../budget-allocator.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { assertLeaderAuthoritative } from "../../five-plane-execution/ha/ha-coordinator-service-inner.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -496,6 +497,10 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
         createdAt: now,
         updatedAt: now,
       };
+
+      // R4-28 (INV-STATE-001): Assert leader authority before emitting events in transaction.
+      // Only the leader node can append events to ensure HA consistency.
+      assertLeaderAuthoritative("system", "multi_step_orchestration_event_emission");
 
       db.transaction(() => {
         // R4-27 (INV-RUN-001): Insert harness_run record inside transaction for atomicity

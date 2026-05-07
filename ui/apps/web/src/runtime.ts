@@ -3,6 +3,7 @@ import {
   DefaultRESTClient,
   HttpTransport,
   InMemoryWSClient,
+  fetchContractVersion,
   createAuthInterceptor,
   createContractVersionInterceptor,
   createCsrfInterceptor,
@@ -32,6 +33,14 @@ export interface WebRuntimeClients {
   readonly tokenManager: TokenManager;
   readonly wsUrl?: string;
 }
+
+export interface WebRuntimeBanner {
+  readonly tone: "warning" | "error";
+  readonly title: string;
+  readonly message: string;
+}
+
+export const SUPPORTED_CONTRACT_VERSIONS = ["v1"] as const;
 
 /**
  * Creates web runtime configuration from environment variables per §5.1.2.
@@ -93,6 +102,24 @@ export function createWebRuntimeClients(config: WebRuntimeConfig): WebRuntimeCli
     tokenManager,
     ...(config.wsUrl == null ? {} : { wsUrl: config.wsUrl }),
   };
+}
+
+export async function checkWebContractVersion(client: RESTClient): Promise<WebRuntimeBanner | null> {
+  try {
+    const contractInfo = await fetchContractVersion(client);
+    const negotiatedVersion = contractInfo.contractVersion.trim();
+    const hasCompatibleVersion = SUPPORTED_CONTRACT_VERSIONS.some((version) => contractInfo.supportedVersions.includes(version));
+    if (SUPPORTED_CONTRACT_VERSIONS.includes(negotiatedVersion as typeof SUPPORTED_CONTRACT_VERSIONS[number]) && hasCompatibleVersion) {
+      return null;
+    }
+    return {
+      tone: "warning",
+      title: "Contract version mismatch",
+      message: `Server contract ${negotiatedVersion} is outside the client-supported set ${SUPPORTED_CONTRACT_VERSIONS.join(", ")}.`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

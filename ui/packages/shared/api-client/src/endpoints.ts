@@ -61,6 +61,7 @@ export const endpointCatalog = {
   approvalsReject: { id: "approvals.reject", path: "/approvals/:approvalId/reject", method: "POST", apiLayer: "C", planned: false },
   approvalsDelegate: { id: "approvals.delegate", path: "/approvals/:approvalId/delegate", method: "POST", apiLayer: "C", planned: false },
   incidents: { id: "incidents.list", path: "/incidents", method: "GET", apiLayer: "C", planned: false },
+  incidentsUpdate: { id: "incidents.update", path: "/incidents/:incidentId", method: "PATCH", apiLayer: "C", planned: false },
   workers: { id: "workers.list", path: "/admin/workers", method: "GET", apiLayer: "B", planned: false },
   queues: { id: "queues.list", path: "/admin/queues", method: "GET", apiLayer: "B", planned: false },
   agents: { id: "agents.list", path: "/agents", method: "GET", apiLayer: "C", planned: false },
@@ -244,6 +245,39 @@ export async function fetchIncidents(client: RESTClient, pagination?: Pagination
   return client.get<readonly IncidentDTO[]>(`${endpointCatalog.incidents.path}${buildQueryString(pagination)}`);
 }
 
+export async function updateIncident(
+  client: RESTClient,
+  incidentId: string,
+  body: { status: "acknowledged" | "mitigating" | "resolved"; owner?: string },
+): Promise<{ ok: true; body?: unknown }> {
+  return client.patch<{ ok: true; body?: unknown }>(
+    resolvePath(endpointCatalog.incidentsUpdate.path, { incidentId }),
+    body,
+  );
+}
+
+export async function acknowledgeIncident(
+  client: RESTClient,
+  incidentId: string,
+  owner: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return updateIncident(client, incidentId, { status: "acknowledged", owner });
+}
+
+export async function startIncidentMitigation(
+  client: RESTClient,
+  incidentId: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return updateIncident(client, incidentId, { status: "mitigating" });
+}
+
+export async function resolveIncident(
+  client: RESTClient,
+  incidentId: string,
+): Promise<{ ok: true; body?: unknown }> {
+  return updateIncident(client, incidentId, { status: "resolved" });
+}
+
 export async function fetchWorkers(client: RESTClient): Promise<readonly WorkerDTO[]> {
   return client.get<readonly WorkerDTO[]>(endpointCatalog.workers.path);
 }
@@ -345,11 +379,13 @@ export async function fetchPreferences(client: RESTClient): Promise<UserPreferen
 export async function updatePreferences(
   client: RESTClient,
   body: Partial<UserPreferenceDTO>,
-  _etag?: string,
+  etag?: string,
 ): Promise<{ ok: true; body?: unknown }> {
-  // Note: Full ETag support requires transport layer support for extra headers
-  // For now, we send the update without If-Match; the server will handle conflicts
-  return client.patch<{ ok: true; body?: unknown }>(endpointCatalog.preferencesUpdate.path, body);
+  return client.patch<{ ok: true; body?: unknown }>(
+    endpointCatalog.preferencesUpdate.path,
+    body,
+    etag == null ? undefined : { "If-Match": etag },
+  );
 }
 
 // §1.8 contract version negotiation

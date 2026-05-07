@@ -504,7 +504,7 @@ test("EscalationManager getActiveDelegationForApproval returns undefined for exp
   const manager = new EscalationManager();
 
   // Create a delegation
-  manager.createDelegation("approver-1", "approver-2", "approval-with-delegation", 1); // 1ms TTL
+  await manager.createDelegation("approver-1", "approver-2", "approval-with-delegation", 1); // 1ms TTL
 
   // Wait for expiration
   await new Promise((resolve) => setTimeout(resolve, 10));

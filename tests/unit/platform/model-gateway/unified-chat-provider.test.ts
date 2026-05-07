@@ -72,7 +72,7 @@ test("UnifiedChatProvider throws for unknown model without configured provider",
 
   await assert.rejects(
     async () => {
-      provider.createChatCompletion({
+      await provider.createChatCompletion({
         model: "completely-unknown-model-xyz",
         messages: [{ role: "user", content: "hello" }],
         maxTokens: 100,

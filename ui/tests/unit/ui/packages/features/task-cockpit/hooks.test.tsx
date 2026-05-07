@@ -68,4 +68,27 @@ describe("useTaskCockpitVm", () => {
       expect(result.current.timelineItems[0]?.title).toContain("Escalated");
     });
   });
+
+  it("rolls back optimistic task mutations when the backend call fails", async () => {
+    mockUpdateTask.mockRejectedValueOnce(new Error("network-failed"));
+    const { result } = renderHook(() => useTaskCockpitVm());
+
+    act(() => {
+      result.current.selectTask("task-1");
+    });
+
+    let error: Error | null = null;
+    await act(async () => {
+      try {
+        await result.current.claimTask("platform-sre");
+      } catch (err) {
+        error = err as Error;
+      }
+    });
+
+    expect(error?.message).toMatch(/network-failed/);
+    expect(result.current.selectedTask?.owner).toBe("growth-ops");
+    expect(result.current.selectedTask?.status).toBe("blocked");
+    expect(result.current.timelineItems).toHaveLength(0);
+  });
 });

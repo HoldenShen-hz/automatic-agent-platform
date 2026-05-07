@@ -16,8 +16,12 @@ import {
   performBootstrapHealthCheck,
   FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID,
   X1_FABRIC_BOOTSTRAP_SERVICE_ID,
-} from "../../../../src/platform/five-plane-runtime-bootstrap.js";
-import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
+} from "../../../src/platform/five-plane-runtime-bootstrap.js";
+import { COMPLIANCE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/compliance/compliance-bootstrap.js";
+import { CONTROL_PLANE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/control-plane/control-plane-bootstrap.js";
+import { MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/model-gateway/model-gateway-bootstrap.js";
+import { PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/prompt-engine/prompt-engine-bootstrap.js";
+import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
 // ---------------------------------------------------------------------------
 // Test Setup
@@ -48,9 +52,9 @@ test("buildX1FabricBootstrap returns X1FabricBootstrap structure", () => {
 test("buildX1FabricBootstrap includes expected service IDs", () => {
   const bootstrap = buildX1FabricBootstrap();
 
-  assert.ok(bootstrap.registeredServiceIds.includes("plane.model-gateway.bootstrap"));
-  assert.ok(bootstrap.registeredServiceIds.includes("plane.prompt-engine.bootstrap"));
-  assert.ok(bootstrap.registeredServiceIds.includes("plane.compliance.bootstrap"));
+  assert.ok(bootstrap.registeredServiceIds.includes(MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID));
+  assert.ok(bootstrap.registeredServiceIds.includes(PROMPT_ENGINE_BOOTSTRAP_SERVICE_ID));
+  assert.ok(bootstrap.registeredServiceIds.includes(COMPLIANCE_BOOTSTRAP_SERVICE_ID));
   assert.ok(bootstrap.registeredServiceIds.includes(X1_FABRIC_BOOTSTRAP_SERVICE_ID));
 });
 
@@ -155,7 +159,7 @@ test("performBootstrapHealthCheck includes all five plane bootstrap services", (
 
   const expectedServices = [
     "plane.interface.bootstrap",
-    "plane.control-plane.bootstrap",
+    CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
     "plane.orchestration.bootstrap",
     "plane.execution.bootstrap",
     "plane.state-evidence.bootstrap",

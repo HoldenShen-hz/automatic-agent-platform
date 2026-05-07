@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { AdminSdk } from "../../../../../src/sdk/admin-sdk/index.js";
+import { AdminSdk } from "../../../../src/sdk/admin-sdk/index.js";
 
 const TEST_PRINCIPAL = { principalId: "p_admin", tenantId: "t_tenant", roles: ["admin"] };
 
