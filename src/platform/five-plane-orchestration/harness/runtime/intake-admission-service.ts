@@ -353,10 +353,24 @@ export class IntakeAdmissionService {
     // R6-1: If clarification session exists and is still pending, return with clarification needed
     // Per §5.3, ClarificationSession stage must gate the creation of ConfirmedTaskSpec
     if (clarificationSession != null && clarificationSession.stage === "pending_clarification") {
+      // Create a placeholder harnessRun for persistence - will be replaced after confirmation
+      const pendingHarnessRun = createHarnessRun({
+        tenantId: input.tenantId,
+        traceId: input.traceId,
+        riskLevel: input.riskPreview.riskClass,
+        ownership: { ownerId: input.principal.principalId, ownerType: "principal" as const },
+        domainId: input.domainId,
+        confirmedTaskSpecId: `pending:${input.idempotencyKey}`,
+        requestEnvelopeId: `pending:${input.idempotencyKey}`,
+        requestHash: `request:${input.idempotencyKey}`,
+        constraintPackRef: input.constraintPackRef,
+        versionLockId: `pending:${input.idempotencyKey}`,
+        budgetLedgerId: `pending:${input.idempotencyKey}`,
+      });
       this.clarificationRepository.save({
         session: clarificationSession,
         taskDraft,
-        harnessRun,
+        harnessRun: pendingHarnessRun,
         budgetIntent: input.budgetIntent,
       });
       // Emit clarification_needed event - cannot proceed without user confirmation

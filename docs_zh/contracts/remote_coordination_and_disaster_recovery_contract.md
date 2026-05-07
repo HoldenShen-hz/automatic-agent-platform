@@ -80,6 +80,22 @@
 - metadata store 主从切换
 - queue / lease repair
 
+### 5.1 一致性对象
+
+```typescript
+interface DisasterRecoveryConsistencyPolicy {
+  policyId: string;
+  scope: "truth" | "event" | "artifact";
+  consistencyMode: "single_writer_strict" | "quorum_commit" | "eventual_replay";
+  failureBehavior: "read_only" | "fail_close" | "guarded_failover";
+}
+```
+
+规则：
+
+- 每类恢复范围都必须声明 `consistencyMode` 与 `failureBehavior`，不能只写原则性 bullet。
+- `truth` 默认 `single_writer_strict + fail_close`；未完成 owner 切换前不得双写。
+
 ## 6. 关键不变量
 
 - 远程 worker 失联后，旧租约不得继续写回 authoritative state。

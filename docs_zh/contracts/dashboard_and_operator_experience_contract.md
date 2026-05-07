@@ -50,14 +50,20 @@
 - `current_step`
 - `completed_steps`
 - `recommended_templates`
+- `draft_plan_graph_ref?`
 
 `WorkflowBuilderDraft` 最小字段：
 
 - `draft_id`
 - `workflow_id?`
-- `steps`
+- `plan_graph_draft`
 - `validation_findings`
 - `owner_user_id`
+
+规则：
+
+- `WorkflowBuilderDraft.plan_graph_draft` 是 canonical 结构；UI 可以投影成步骤列表，但不得把列表回写成 truth。
+- `GuidedOnboardingSession` 若预生成流程草稿，必须引用 `draft_plan_graph_ref` 而不是内嵌线性 `steps[]`。
 
 ## 6. 运行规则
 
@@ -78,4 +84,3 @@
 - R16-86: 本 contract 定义看板与注意力队列，但未明确 dashboard 数据源必须锚定 v4.3 canonical entity。修复：正文现明确 `AttentionItem` 的 drill-down 引用必须能映射到 `HarnessRun` / `NodeRun`，看板展示不得直接拼装 `TaskRecord` / `WorkflowState` 作为 truth source；OAPEFLIR stage/iteration 视图只作为投影，不得作为运行时状态。
 
 强制规则：`OperatorDashboard` / `PlatformOpsDashboard` 的执行状态聚合必须使用 `HarnessRun.status` + `NodeRun[]`；`AttentionItem.action_options` 必须携带可解析的 `harness_run_id` / `node_run_id` 作用域；旧 `workflow_run` / `TaskRecord` 只作为 legacy projection 查询兼容，不得作为新 dashboard 实现入口。
-

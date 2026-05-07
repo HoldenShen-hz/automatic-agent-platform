@@ -424,6 +424,7 @@ export interface BudgetExecutionSession {
   readonly harnessRunId: string;
   readonly ledger: BudgetLedger;
   readonly reservation: BudgetReservationResult["reservation"];
+  readonly fencingToken: string;
   readonly state: BudgetExecutionState;
   readonly createdAt: string;
   readonly estimatedCostUsd: number;
@@ -479,6 +480,7 @@ export class BudgetExecutionSessionManager {
     resourceKind: BudgetResourceKind = "token",
   ): BudgetExecutionSession {
     const sessionId = newId("budget_session");
+    const fencingToken = `fencing:${context.harnessRunId}:${sessionId}`;
 
     // Atomic reserve using CAS version check
     const reservationResult = this.allocator.reserve({
@@ -491,6 +493,7 @@ export class BudgetExecutionSessionManager {
         tenantId: context.tenantId,
         traceId: context.traceId,
         emittedBy: context.emittedBy,
+        fencingToken,
         tier: BudgetTier.STEP,
         tierLimit: context.policy.maxTaskCostUsd,
         watermarkAlert: {
@@ -521,6 +524,7 @@ export class BudgetExecutionSessionManager {
       harnessRunId: context.harnessRunId,
       ledger: reservationResult.ledger,
       reservation: reservationResult.reservation,
+      fencingToken,
       state: BudgetExecutionState.RESERVED,
       createdAt: nowIso(),
       estimatedCostUsd,
@@ -614,6 +618,7 @@ export class BudgetExecutionSessionManager {
         tenantId: session.ledger.tenantId,
         traceId: session.harnessRunId,
         emittedBy: "BudgetExecutionSessionManager",
+        fencingToken: session.fencingToken,
         tier: BudgetTier.STEP,
         tierLimit: session.estimatedCostUsd,
         watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },
@@ -686,6 +691,7 @@ export class BudgetExecutionSessionManager {
         tenantId: session.ledger.tenantId,
         traceId: session.harnessRunId,
         emittedBy: "BudgetExecutionSessionManager",
+        fencingToken: session.fencingToken,
         tier: BudgetTier.STEP,
         tierLimit: session.estimatedCostUsd,
         watermarkAlert: { warningThreshold: 0.8, criticalThreshold: 0.95, hardCapThreshold: 1.0 },

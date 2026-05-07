@@ -72,7 +72,12 @@
 - token 使用量（projection 自 `attemptMetrics` 与 `costMetrics`）
 - 成本偏差（costMetrics.averageActualCostUsdPerTask）
 - 审批触发频率（approvalMetrics.taskTriggerRate）
-- 错误分布（taskMetrics.failedCount + executionMetrics.retryRate）
+- 错误分布（projection 自 `nodeRunMetrics.failedCount` 与 `attemptMetrics.retryAttemptCount`）
+
+规则：
+
+- `taskMetrics.*`、`executionMetrics.*` 这类 legacy alias 仅允许作为 projection 名称存在，必须能映射到 `HarnessRun / NodeRun / Attempt` 维度。
+- 新增指标 contract 不得再引入无维度约束的 `executionMetrics` 聚合别名。
 
 ### 4.3 OAPEFLIR Loop Observability
 

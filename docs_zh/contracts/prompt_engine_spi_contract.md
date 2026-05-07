@@ -15,6 +15,7 @@
 ```typescript
 interface PromptDefinition {
   promptId: string;
+  tenantId: string;
   version: string;
   owner: string;
   domainId: string | null;
@@ -25,6 +26,10 @@ interface PromptDefinition {
   reviewStatus: "draft" | "reviewed" | "approved" | "deprecated";
 }
 ```
+
+规则补充：
+
+- `tenantId` 为必填隔离键；共享 prompt 也必须通过显式共享命名空间表达，不能省略租户语义。
 
 ## 3. Registry SPI
 

@@ -98,6 +98,7 @@ interface MockRepositoryState {
   executionStatuses: Map<string, { status: ExecutionStatus; startedAt: string | null; finishedAt: string | null; lastErrorCode: string | null; updatedAt: string }>;
   approvalDecisions: Map<string, { status: ApprovalStatus; responseJson: string | null; respondedAt: string | null }>;
   tier1Events: Tier1Event[];
+  platformFactEvents: unknown[];
   taskOutputs: Map<string, string>;
 }
 
@@ -130,6 +131,7 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
     executionStatuses: new Map(),
     approvalDecisions: new Map(),
     tier1Events: [],
+    platformFactEvents: [],
     taskOutputs: new Map(),
   };
 
@@ -454,7 +456,8 @@ function createMockRepository(initialTaskStatus?: TaskStatus, initialWorkflowSta
       return 0;
     },
 
-    appendPlatformFactEvent(_event: unknown): { id: string; taskId: string | null; sessionId: string | null; executionId: string | null; eventType: string; eventTier: string; payloadJson: string; traceId: string; createdAt: string } {
+    appendPlatformFactEvent(event: unknown): { id: string; taskId: string | null; sessionId: string | null; executionId: string | null; eventType: string; eventTier: string; payloadJson: string; traceId: string; createdAt: string } {
+      mockState.platformFactEvents.push(event);
       return {
         id: `event-${Date.now()}`,
         taskId: null,
@@ -978,6 +981,7 @@ test("ApprovalTransitionService - successful transition to approved", () => {
   assert.equal(repository.updateApprovalDecisionCasCalls.length, 1);
   assert.equal(repository.updateApprovalDecisionCasCalls[0]?.approvalId, "approval-1");
   assert.equal(repository.updateApprovalDecisionCasCalls[0]?.expectedStatus, "requested");
+  assert.equal(repository.mockState.platformFactEvents.length, 1);
 });
 
 test("ApprovalTransitionService - CAS failure throws error on concurrent modification", () => {
@@ -1092,6 +1096,44 @@ test("TransitionService - transitions workflow status via facade", () => {
   });
 
   assert.equal(repository.mockState.workflowStates.get("task-1")?.status, "paused");
+});
+
+test("TransitionService - terminal transition emits platform facts for every legacy projection", () => {
+  const db = createMockDatabase();
+  const mockStore = {} as AuthoritativeTaskStore;
+  const repository = createMockRepository();
+  const now = new Date().toISOString();
+  repository.mockState.taskStatuses.set("task-1", { status: "in_progress", updatedAt: now });
+  repository.mockState.workflowStates.set("task-1", { status: "running", currentStepIndex: 0, updatedAt: now });
+  repository.mockState.sessionStatuses.set("session-1", { status: "streaming", updatedAt: now });
+  repository.mockState.executionStatuses.set("exec-1", {
+    status: "executing",
+    startedAt: now,
+    finishedAt: null,
+    lastErrorCode: null,
+    updatedAt: now,
+  });
+
+  const service = new TransitionService(db, mockStore, repository);
+
+  service.transitionTaskTerminalState({
+    taskId: "task-1",
+    sessionId: "session-1",
+    executionId: "exec-1",
+    terminalStatus: "done",
+    currentTaskStatus: "in_progress",
+    currentWorkflowStatus: "running",
+    currentSessionStatus: "streaming",
+    currentExecutionStatus: "executing",
+    taskOutputJson: "{\"ok\":true}",
+    context: makeContext(),
+  });
+
+  assert.equal(repository.mockState.platformFactEvents.length, 4);
+  assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "done");
+  assert.equal(repository.mockState.workflowStates.get("task-1")?.status, "completed");
+  assert.equal(repository.mockState.sessionStatuses.get("session-1")?.status, "completed");
+  assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "succeeded");
 });
 
 test("TransitionService - transitions session status via facade", () => {

@@ -23,7 +23,7 @@ Intake → Extraction → Archive → Index → Query
 |------|------|------|
 | Intake | `KnowledgeIngestionPipeline` | 接收原始文档，格式校验 |
 | Extraction | `KnowledgeExtractor` | 语义抽取、分块、摘要 |
-| Archive | `KnowledgeArchive` | 冷数据持久化（SQLite） |
+| Archive | `KnowledgeArchive` | 冷数据持久化（实现可插拔；SQLite 仅允许作为 MVP / 本地模式） |
 | Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | 三种索引维护 |
 | Query | `KnowledgeQueryService` | Quick/Standard/Deep 三级查询 |
 
@@ -119,7 +119,7 @@ interface SemanticVectorStore {
 }
 ```
 
-**当前状态**：使用 SHA-256 hash 伪向量（`local-hash-v1:` 前缀）。
+**当前状态**：可在本地/MVP 模式下使用 SHA-256 hash 伪向量（`local-hash-v1:` 前缀）；生产知识平面必须接到可持久化、可扩展的向量后端。
 
 ### 4.3 ASTIndex
 

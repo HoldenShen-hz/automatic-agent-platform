@@ -57,7 +57,8 @@
 - `description`
 - `applicable_roles`
 - `required_tools`
-- `steps`
+- `plan_graph_ref`
+- `entry_node_ids`
 - `version`
 - `model_profile_name?`
 - `activation_conditions?`
@@ -68,6 +69,7 @@
 约束：
 
 - skill 只能编排已授权工具，不能隐式扩权。
+- skill 的执行结构必须引用 `PlanGraph`/entry nodes，不得把线性 `steps[]` 当作 canonical 执行模型。
 - 若 step 声明 `model_overrides`，override 目标工具也必须已在允许集合内。
 - 未满足 `activation_conditions` / `activation_paths` 的 skill 可以保留在 registry 中，但默认不进入模型可见面。
 

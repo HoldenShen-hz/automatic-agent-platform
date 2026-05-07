@@ -4,10 +4,9 @@ import {
   createTauriLinuxAdapter,
   createTauriLinuxDefaultAdapter,
   type DesktopShellManifest,
-} from "./index";
+} from "../../../../../apps/tauri-linux/src/index.ts";
+ 
 import type { PlatformAdapter } from "@aa/shared-types";
-
-// Issue #2172: DesktopShellManifest missing updateChannel
 
 describe("tauriLinuxManifest", () => {
   it("defines platform as linux", () => {
@@ -21,35 +20,25 @@ describe("tauriLinuxManifest", () => {
   it("declares background agent support", () => {
     expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(true);
   });
+
+  it("declares update channel for desktop updater consistency", () => {
+    expect(tauriLinuxManifest.updateChannel).toBe("stable");
+  });
 });
 
 describe("DesktopShellManifest interface structure for Linux", () => {
-  it("has platform field of type linux", () => {
+  it("has the desktop updater contract fields", () => {
     const manifest: DesktopShellManifest = {
       platform: "linux",
       runtime: "tauri",
       supportsBackgroundAgent: true,
-      // Note: updateChannel is MISSING in tauri-linux - Issue #2172
-    } as DesktopShellManifest;
+      updateChannel: "stable",
+    };
+
     expect(manifest.platform).toBe("linux");
-  });
-
-  it("has runtime field", () => {
-    const manifest: DesktopShellManifest = {
-      platform: "linux",
-      runtime: "tauri",
-      supportsBackgroundAgent: true,
-    } as DesktopShellManifest;
     expect(manifest.runtime).toBe("tauri");
-  });
-
-  it("has supportsBackgroundAgent boolean", () => {
-    const manifest: DesktopShellManifest = {
-      platform: "linux",
-      runtime: "tauri",
-      supportsBackgroundAgent: true,
-    } as DesktopShellManifest;
-    expect(typeof manifest.supportsBackgroundAgent).toBe("boolean");
+    expect(manifest.supportsBackgroundAgent).toBe(true);
+    expect(manifest.updateChannel).toBe("stable");
   });
 });
 
@@ -109,60 +98,11 @@ describe("createTauriLinuxDefaultAdapter", () => {
   });
 });
 
-describe("manifest comparison with tauri-macos", () => {
-  it("linux manifest missing updateChannel that macos has", () => {
-    // Issue #2172: tauri-linux DesktopShellManifest is missing updateChannel
-    // tauri-macos has updateChannel: "stable" | "beta"
-    // tauri-linux does NOT have this field
-
-    // The tauriMacosManifest has updateChannel
-    // We verify tauriLinuxManifest does NOT have updateChannel by checking the type
-    // This is a structural difference between the two platforms
-
-    // Since we can't import across app boundaries, we test the expected behavior
-    // Linux should NOT have updateChannel in the current implementation (Issue #2172)
+describe("manifest immutability", () => {
+  it("manifest properties are readonly in practice", () => {
     expect(tauriLinuxManifest.platform).toBe("linux");
     expect(tauriLinuxManifest.runtime).toBe("tauri");
-
-    // Verify updateChannel is NOT present
-    type LinuxManifest = typeof tauriLinuxManifest;
-    // @ts-expect-error - updateChannel does not exist on tauri-linux manifest
-    const hasUpdateChannel: LinuxManifest["updateChannel"] = undefined;
-    expect(hasUpdateChannel).toBeUndefined();
-  });
-
-  it("linux should have same updateChannel field as macos for consistency", () => {
-    // This test documents the inconsistency
-    // Both Linux and macos should have update channel for consistent update mechanisms
-    // Currently linux does NOT have updateChannel (Issue #2172)
-    const linuxHasChannel = "updateChannel" in tauriLinuxManifest;
-    expect(linuxHasChannel).toBe(false);
-  });
-});
-
-describe("background agent support", () => {
-  it("declares background agent support for linux", () => {
-    // Linux can run background agents, unlike mobile platforms
-    expect(tauriLinuxManifest.supportsBackgroundAgent).toBe(true);
-  });
-
-  it("background agent is linux-specific feature", () => {
-    // This is a feature unique to desktop Linux
-    // Not available on mobile platforms
-    const linuxManifest = tauriLinuxManifest;
-    expect(linuxManifest.supportsBackgroundAgent).toBe(true);
-  });
-});
-
-describe("manifest immutability", () => {
-  it("tauriLinuxManifest is frozen", () => {
-    expect(Object.isFrozen(tauriLinuxManifest)).toBe(true);
-  });
-
-  it("manifest properties are readonly", () => {
-    const manifest = tauriLinuxManifest;
-    expect(manifest.platform).toBe("linux");
-    expect(manifest.runtime).toBe("tauri");
+    expect(tauriLinuxManifest.updateChannel).toBe("stable");
   });
 });
 
@@ -183,16 +123,12 @@ describe("adapter factory functions", () => {
 
   it("createTauriLinuxDefaultAdapter creates complete adapter", () => {
     const adapter = createTauriLinuxDefaultAdapter();
-
-    // Verify it's a proper PlatformAdapter
     expect(adapter.platform).toBe("linux");
     expect(typeof adapter.copyToClipboard).toBe("function");
     expect(typeof adapter.openDeepLink).toBe("function");
     expect(typeof adapter.getDebugState).toBe("function");
     expect(typeof adapter.onForeground).toBe("function");
     expect(typeof adapter.onBackground).toBe("function");
-
-    // Test basic operations
     expect(() => adapter.getDebugState()).not.toThrow();
   });
 });

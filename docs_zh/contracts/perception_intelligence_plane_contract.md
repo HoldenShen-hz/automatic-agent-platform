@@ -68,14 +68,21 @@
 
 `ExecutionAssessment` 是 Execute 阶段完成后的四维评估：
 
-- `execution_id`
+- `harness_run_id`
+- `node_run_id`
 - `correctness_score`：feedback.signals 中 failure category 比例（0-1）
-- `completeness_score`：node_runs completed / total node_runs（0-1）
+- `node_run_total`
+- `node_run_completed_count`
+- `completeness_score`：`node_run_completed_count / node_run_total`（0-1）
 - `efficiency_score`：实际 tokens / 预期 budget 比值（0-1）
 - `safety_score`：tool permission denial / sandbox violation signals（0-1）
 - `overall_score`：加权平均 (correctness:0.3, completeness:0.3, efficiency:0.2, safety:0.2)
 - `verdict`：`pass (≥0.7) | marginal (0.5-0.7) | fail (<0.5)`
 - `generated_at`
+
+规则：
+
+- `ExecutionAssessment` 必须锚定 `harness_run_id / node_run_id`，不得再以 `execution_id + steps[]` 充当 canonical 关联模型。
 
 Verdict 为 `fail` 时自动触发 Replan。
 

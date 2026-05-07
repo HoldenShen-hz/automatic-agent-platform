@@ -635,33 +635,31 @@ test("BudgetLedger valid transition: soft_cap_reached -> hard_cap_reached", () =
   assert.equal(result.aggregate.status, "hard_cap_reached");
 });
 
-test("BudgetLedger invalid transition: open -> hard_cap_reached (skip soft)", () => {
+test("BudgetLedger valid transition: open -> hard_cap_reached", () => {
   const sm = new RuntimeStateMachine();
   const ledger = createTestBudgetLedger({ status: "open" });
   const leaseId = createTestLeaseId();
   const fencingToken = createTestFencingToken();
 
-  assert.throws(
-    () =>
-      sm.transition({
-        commandId: newId("cmd"),
-        entityType: "BudgetLedger",
-        entityId: ledger.budgetLedgerId,
-        principal: "test_operator",
-        aggregateType: "BudgetLedger",
-        aggregate: ledger,
-        fromStatus: "open",
-        toStatus: "hard_cap_reached",
-        tenantId: ledger.tenantId,
-        traceId: newId("trace"),
-        reasonCode: "test",
-        emittedBy: "test",
-        leaseId,
-        fencingToken,
-        auditRef: "audit://test",
-      }),
-    WorkflowStateError,
-  );
+  const result = sm.transition({
+    commandId: newId("cmd"),
+    entityType: "BudgetLedger",
+    entityId: ledger.budgetLedgerId,
+    principal: "test_operator",
+    aggregateType: "BudgetLedger",
+    aggregate: ledger,
+    fromStatus: "open",
+    toStatus: "hard_cap_reached",
+    tenantId: ledger.tenantId,
+    traceId: newId("trace"),
+    reasonCode: "test",
+    emittedBy: "test",
+    leaseId,
+    fencingToken,
+    auditRef: "audit://test",
+  });
+
+  assert.equal(result.aggregate.status, "hard_cap_reached");
 });
 
 test("BudgetLedger budget-modifying transition requires lease and fencing", () => {

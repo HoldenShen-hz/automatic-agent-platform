@@ -38,6 +38,7 @@ export interface ModelCallProviderConfig {
     windowMs: number;
   } | null;
   distributedRateLimiter?: DistributedRateLimiterLike | null;
+  budgetPolicy?: Partial<BudgetPolicy>;
   // R4-25 (INV-BUDGET-001): Accept external budgetLedger and harnessRunId instead of creating isolated ones
   budgetLedger?: BudgetLedger;
   harnessRunId?: string;
@@ -90,6 +91,7 @@ export class ModelCallProviderService {
   private readonly budgetGuard: BudgetGuard;
   private readonly budgetAllocator: BudgetAllocator;
   private readonly budgetLedger: BudgetLedger;
+  private readonly budgetPolicyOverrides: Partial<BudgetPolicy>;
   // R8-01 FIX: Use BudgetExecutionSessionManager for atomic reserve→execute→settle
   private readonly budgetSessionManager: BudgetExecutionSessionManager;
   private disposed = false;
@@ -121,6 +123,7 @@ export class ModelCallProviderService {
     this.callGovernance = createModelCallGovernance(config, process.env);
     this.budgetGuard = new BudgetGuard();
     this.budgetAllocator = new BudgetAllocator();
+    this.budgetPolicyOverrides = config.budgetPolicy ?? {};
     // R8-01: Initialize BudgetExecutionSessionManager
     this.budgetSessionManager = new BudgetExecutionSessionManager({ allocator: this.budgetAllocator });
     // R4-25 (INV-BUDGET-001): Use external budgetLedger if provided, otherwise create isolated one
@@ -181,6 +184,8 @@ export class ModelCallProviderService {
     const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
     const policy = this.getDefaultBudgetPolicy();
     const traceId = request.traceId ?? newId("trace");
+    this.enforceStepConstraints(policy, request);
+    const executionWindow = this.createBudgetExecutionWindow(request.abortSignal, policy.maxDurationMs);
 
     // R8-01: Use BudgetExecutionSessionManager for atomic reserve→execute→settle
     // This prevents concurrent requests from overspending due to race conditions
@@ -214,7 +219,7 @@ export class ModelCallProviderService {
         traceId,
         tenantId: request.tenantId ?? null,
         costTag: request.costTag ?? "default",
-        ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
+        abortSignal: executionWindow.signal,
         ...(request.tools !== undefined ? { tools: request.tools } : {}),
       };
       if (request.system !== undefined) {
@@ -225,6 +230,7 @@ export class ModelCallProviderService {
       }
 
       const result = await this.executeGovernedCompletion(buildModelGovernanceKey(request.model), req);
+      this.assertDurationWithinBudget(executionWindow.startedAt, policy.maxDurationMs);
 
       // R8-01: Step 2 - Settle with actual cost based on token usage
       const actualCost = this.calculateActualCost(result.usage.totalTokens, request.model);
@@ -232,14 +238,19 @@ export class ModelCallProviderService {
 
       return result;
     } catch (error) {
+      const surfacedError = executionWindow.didTimeout()
+        ? this.createBudgetConstraintError("maxDurationMs", policy.maxDurationMs)
+        : error;
       // R8-01: Step 3 - Release reservation on failure
       if (session) {
         this.budgetSessionManager.release(
           session.sessionId,
-          error instanceof Error ? error.message : "model_call_failed",
+          surfacedError instanceof Error ? surfacedError.message : "model_call_failed",
         );
       }
-      throw error;
+      throw surfacedError;
+    } finally {
+      executionWindow.dispose();
     }
   }
 
@@ -257,6 +268,8 @@ export class ModelCallProviderService {
     const estimatedCostUsd = this.estimateLlmCallCost(request.maxTokens, request.model);
     const policy = this.getDefaultBudgetPolicy();
     const traceId = request.traceId ?? newId("trace");
+    this.enforceStepConstraints(policy, request);
+    const executionWindow = this.createBudgetExecutionWindow(request.abortSignal, policy.maxDurationMs);
 
     // R8-01: Use BudgetExecutionSessionManager for atomic reserve→execute→settle
     // This prevents concurrent requests from overspending due to race conditions
@@ -289,7 +302,7 @@ export class ModelCallProviderService {
         traceId,
         tenantId: request.tenantId ?? null,
         costTag: request.costTag ?? "default",
-        ...(request.abortSignal !== undefined ? { abortSignal: request.abortSignal } : {}),
+        abortSignal: executionWindow.signal,
         ...(request.tools !== undefined ? { tools: request.tools } : {}),
       };
       if (request.system !== undefined) {
@@ -317,18 +330,24 @@ export class ModelCallProviderService {
           throw this.toGovernanceError(governanceKey, result.error?.code ?? "governance.unknown_error", result.error?.message ?? "Model call governance rejected request.", result.error?.retryable ?? true, result.error?.retryAfterMs);
         }
       }
+      this.assertDurationWithinBudget(executionWindow.startedAt, policy.maxDurationMs);
 
       // R8-01: Step 2 - Settle with estimated cost (streaming can't predict actual tokens upfront)
       this.budgetSessionManager.settle(session.sessionId, estimatedCostUsd);
     } catch (error) {
+      const surfacedError = executionWindow.didTimeout()
+        ? this.createBudgetConstraintError("maxDurationMs", policy.maxDurationMs)
+        : error;
       // R8-01: Step 3 - Release reservation on failure
       if (session) {
         this.budgetSessionManager.release(
           session.sessionId,
-          error instanceof Error ? error.message : "streaming_model_call_failed",
+          surfacedError instanceof Error ? surfacedError.message : "streaming_model_call_failed",
         );
       }
-      throw error;
+      throw surfacedError;
+    } finally {
+      executionWindow.dispose();
     }
   }
 
@@ -418,7 +437,92 @@ export class ModelCallProviderService {
       maxDurationMs: 600000,
       warnAtRatio: 0.8,
       mode: "auto",
+      ...this.budgetPolicyOverrides,
     };
+  }
+
+  private enforceStepConstraints(policy: BudgetPolicy, request: LlmModelCallRequest): void {
+    const result = this.budgetGuard.evaluateStepConstraints({
+      policy,
+      executionState: {
+        currentSteps: 0,
+        elapsedDurationMs: 0,
+        currentModelTokens: this.estimatePromptTokens(request),
+      },
+      nextStepCostTokens: request.maxTokens,
+    });
+    if (!result.allowed && result.violatedConstraint != null) {
+      const limit = policy[result.violatedConstraint];
+      throw this.createBudgetConstraintError(result.violatedConstraint, typeof limit === "number" ? limit : null);
+    }
+  }
+
+  private createBudgetConstraintError(
+    constraint: "maxSteps" | "maxDurationMs" | "maxModelTokens",
+    limit: number | null,
+  ): ProviderError {
+    const limitSuffix = limit != null ? ` (limit: ${limit})` : "";
+    return new ProviderError(
+      `budget.${constraint}_exceeded`,
+      `Budget constraint ${constraint} exceeded${limitSuffix}`,
+      { retryable: false },
+    );
+  }
+
+  private createBudgetExecutionWindow(upstreamSignal: AbortSignal | undefined, maxDurationMs: number): {
+    readonly signal: AbortSignal;
+    readonly startedAt: number;
+    readonly didTimeout: () => boolean;
+    readonly dispose: () => void;
+  } {
+    const controller = new AbortController();
+    const startedAt = Date.now();
+    let timedOut = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const abortFromUpstream = () => {
+      controller.abort(upstreamSignal?.reason ?? new Error("model_call.aborted"));
+    };
+
+    if (upstreamSignal?.aborted) {
+      abortFromUpstream();
+    } else if (upstreamSignal != null) {
+      upstreamSignal.addEventListener("abort", abortFromUpstream, { once: true });
+    }
+
+    if (Number.isFinite(maxDurationMs) && maxDurationMs >= 0) {
+      timeoutHandle = setTimeout(() => {
+        timedOut = true;
+        controller.abort(new Error("budget.maxDurationMs_exceeded"));
+      }, maxDurationMs);
+    }
+
+    return {
+      signal: controller.signal,
+      startedAt,
+      didTimeout: () => timedOut,
+      dispose: () => {
+        if (timeoutHandle != null) {
+          clearTimeout(timeoutHandle);
+        }
+        if (upstreamSignal != null) {
+          upstreamSignal.removeEventListener("abort", abortFromUpstream);
+        }
+      },
+    };
+  }
+
+  private assertDurationWithinBudget(startedAt: number, maxDurationMs: number): void {
+    if (Number.isFinite(maxDurationMs) && maxDurationMs >= 0 && Date.now() - startedAt > maxDurationMs) {
+      throw this.createBudgetConstraintError("maxDurationMs", maxDurationMs);
+    }
+  }
+
+  private estimatePromptTokens(request: LlmModelCallRequest): number {
+    const messageChars = request.messages.reduce((total, message) => total + estimateSerializedLength(message.content), 0);
+    const systemChars = request.system?.length ?? 0;
+    const toolChars = request.tools?.reduce((total, tool) => total + JSON.stringify(tool).length, 0) ?? 0;
+    return Math.ceil((messageChars + systemChars + toolChars) / 4);
   }
 
   private estimateLlmCallCost(maxTokens: number, model: string): number {
@@ -467,6 +571,19 @@ export class ModelCallProviderService {
       ...(retryAfterMs != null ? { details: { governanceKey: key, retryAfterMs } } : { details: { governanceKey: key } }),
     });
   }
+}
+
+function estimateSerializedLength(value: unknown): number {
+  if (typeof value === "string") {
+    return value.length;
+  }
+  if (Array.isArray(value)) {
+    return value.reduce((total, item) => total + estimateSerializedLength(item), 0);
+  }
+  if (value != null && typeof value === "object") {
+    return JSON.stringify(value).length;
+  }
+  return 0;
 }
 
 function buildModelGovernanceKey(model: string): string {

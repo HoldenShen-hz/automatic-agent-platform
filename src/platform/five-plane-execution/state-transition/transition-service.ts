@@ -82,10 +82,9 @@ import {
 import { injectTraceContext, toAuditContextTraceContext } from "../../shared/observability/trace-context.js";
 import { newId } from "../../contracts/types/ids.js";
 import { StateTransitionMachine } from "./state-transition-machine.js";
-import type {
-  RuntimeStateAggregate,
-  RuntimeTransitionCommand,
-  RuntimeStateAggregateType,
+import {
+  RuntimeStateMachine,
+  type LegacyRuntimeEntityKind,
 } from "../../five-plane-execution/runtime-state-machine.js";
 import { createPlatformFactEvent, type JsonValue } from "../../contracts/executable-contracts/index.js";
 import { assertLeaderAuthoritative } from "../ha/ha-coordinator-service-inner.js";
@@ -96,6 +95,7 @@ import { assertLeaderAuthoritative } from "../ha/ha-coordinator-service-inner.js
  * PlatformFactEvent and RuntimeTruthRepository (INV-STATE-001).
  */
 const CANONICAL_ENTITY_PREFIXES = ["hrn_", "ndr_", "ser_", "bdl_", "bdr_"] as const;
+const legacyRuntimeStateMachine = new RuntimeStateMachine();
 
 /**
  * Error thrown when attempting to transition a canonical five-plane entity
@@ -392,15 +392,18 @@ export class TaskTransitionService {
     const traceContext = buildEventTraceContext(command, command.entityId);
 
     // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
-    const platformEvent = buildLegacyTransitionPlatformFactEvent(
-      "Task",
-      command.entityId,
-      "platform.task.status_changed",
-      command.traceId,
-      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
-      command.occurredAt,
-      command.entityId,
-    );
+    const platformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Task",
+      aggregateId: command.entityId,
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      occurredAt: command.occurredAt,
+      correlationId: command.entityId,
+      tenantId: current?.tenantId ?? "global",
+      reasonCode: command.reasonCode,
+      emittedBy: "TaskTransitionService",
+      principal: command.actorId,
+    });
     this.repository.appendPlatformFactEvent(platformEvent);
 
     // RT-01: CAS on status. If another transaction already moved the task
@@ -573,15 +576,17 @@ export class WorkflowTransitionService {
 
     // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
     const traceContext = buildEventTraceContext(command, command.entityId);
-    const platformEvent = buildLegacyTransitionPlatformFactEvent(
-      "Workflow",
-      command.entityId,
-      "platform.workflow.status_changed",
-      command.traceId,
-      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
-      command.occurredAt,
-      command.entityId,
-    );
+    const platformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Workflow",
+      aggregateId: command.entityId,
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      occurredAt: command.occurredAt,
+      correlationId: command.entityId,
+      reasonCode: command.reasonCode,
+      emittedBy: "WorkflowTransitionService",
+      principal: command.actorId,
+    });
     this.repository.appendPlatformFactEvent(platformEvent);
 
     const affected = this.repository.updateWorkflowStateCas(
@@ -660,15 +665,17 @@ export class SessionTransitionService {
     const traceContext = buildEventTraceContext(command, command.entityId);
 
     // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
-    const platformEvent = buildLegacyTransitionPlatformFactEvent(
-      "Session",
-      command.entityId,
-      "platform.session.status_changed",
-      command.traceId,
-      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
-      command.occurredAt,
-      command.entityId,
-    );
+    const platformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Session",
+      aggregateId: command.entityId,
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      occurredAt: command.occurredAt,
+      correlationId: command.entityId,
+      reasonCode: command.reasonCode,
+      emittedBy: "SessionTransitionService",
+      principal: command.actorId,
+    });
     this.repository.appendPlatformFactEvent(platformEvent);
 
     // RT-01: CAS on status. If another transaction already moved the session
@@ -766,15 +773,17 @@ export class ExecutionTransitionService {
     const traceContext = buildEventTraceContext(command, command.entityId);
 
     // R4-28: Append PlatformFactEvent BEFORE state mutation - event is source of truth
-    const platformEvent = buildLegacyTransitionPlatformFactEvent(
-      "Execution",
-      command.entityId,
-      "platform.execution.status_changed",
-      command.traceId,
-      injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
-      command.occurredAt,
-      command.entityId,
-    );
+    const platformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Execution",
+      aggregateId: command.entityId,
+      traceId: command.traceId,
+      payload: injectTraceContext(buildStatusTransitionEventPayload(command), traceContext),
+      occurredAt: command.occurredAt,
+      correlationId: command.entityId,
+      reasonCode: command.reasonCode,
+      emittedBy: "ExecutionTransitionService",
+      principal: command.actorId,
+    });
     this.repository.appendPlatformFactEvent(platformEvent);
 
     // RT-01: CAS on status. If another transaction already moved the execution
@@ -831,7 +840,34 @@ export class ApprovalTransitionService {
    * the response JSON containing the decision details, and the response timestamp.
    */
   public apply(command: ApprovalStatusTransitionCommand): void {
+    const current = this.repository.getApproval(command.entityId);
+    if (current != null && current.status !== command.fromStatus) {
+      throw new Error(
+        `approval.transition_cas_failed:${command.entityId}:${command.fromStatus}->${current.status}`,
+      );
+    }
+    if (current != null && current.status === command.toStatus) {
+      return;
+    }
     approvalStateMachine.assertTransition(command.fromStatus, command.toStatus);
+    const traceContext = buildEventTraceContext(command, command.entityId);
+    const platformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Approval",
+      aggregateId: command.entityId,
+      traceId: command.traceId,
+      payload: injectTraceContext({
+        fromStatus: command.fromStatus,
+        toStatus: command.toStatus,
+        reasonCode: command.reasonCode,
+        occurredAt: command.occurredAt,
+      }, traceContext),
+      occurredAt: command.occurredAt,
+      correlationId: command.entityId,
+      reasonCode: command.reasonCode,
+      emittedBy: "ApprovalTransitionService",
+      principal: command.actorId,
+    });
+    this.repository.appendPlatformFactEvent(platformEvent);
     // RT-01: CAS on status. If another transaction already moved the approval
     // out of fromStatus, the UPDATE matches zero rows and we must refuse to
     // complete the transition.
@@ -942,21 +978,75 @@ class TaskTerminalTransitionService {
 
     // R4-28 (INV-STATE-001): Append PlatformFactEvent BEFORE state mutations - event is source of truth
     // This establishes the terminal transition as a PlatformFactEvent before any derived table updates
-    const taskPlatformEvent = buildLegacyTransitionPlatformFactEvent(
-      "Task",
-      input.taskId,
-      "platform.task.status_changed",
-      input.context.traceId,
-      injectTraceContext({
+    const taskPlatformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Task",
+      aggregateId: input.taskId,
+      traceId: input.context.traceId,
+      payload: injectTraceContext({
         fromStatus: freshTaskStatus,
         toStatus: input.terminalStatus,
         reasonCode: input.context.reasonCode,
         occurredAt: input.context.occurredAt,
       }, traceContext),
-      input.context.occurredAt,
-      input.taskId,
-    );
+      occurredAt: input.context.occurredAt,
+      correlationId: input.taskId,
+      tenantId: currentTask?.tenantId ?? "global",
+      reasonCode: input.context.reasonCode,
+      emittedBy: "TaskTerminalTransitionService",
+      principal: input.context.actorId,
+    });
+    const workflowPlatformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Workflow",
+      aggregateId: input.taskId,
+      traceId: input.context.traceId,
+      payload: injectTraceContext({
+        fromStatus: freshWorkflowStatus,
+        toStatus: workflowTerminal,
+        reasonCode: input.context.reasonCode,
+        occurredAt: input.context.occurredAt,
+      }, traceContext),
+      occurredAt: input.context.occurredAt,
+      correlationId: input.taskId,
+      reasonCode: input.context.reasonCode,
+      emittedBy: "TaskTerminalTransitionService",
+      principal: input.context.actorId,
+    });
+    const sessionPlatformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Session",
+      aggregateId: input.sessionId,
+      traceId: input.context.traceId,
+      payload: injectTraceContext({
+        fromStatus: freshSessionStatus,
+        toStatus: sessionTerminal,
+        reasonCode: input.context.reasonCode,
+        occurredAt: input.context.occurredAt,
+      }, traceContext),
+      occurredAt: input.context.occurredAt,
+      correlationId: input.taskId,
+      reasonCode: input.context.reasonCode,
+      emittedBy: "TaskTerminalTransitionService",
+      principal: input.context.actorId,
+    });
+    const executionPlatformEvent = buildLegacyTransitionPlatformFactEvent({
+      aggregateType: "Execution",
+      aggregateId: input.executionId,
+      traceId: input.context.traceId,
+      payload: injectTraceContext({
+        fromStatus: freshExecutionStatus,
+        toStatus: executionTerminal,
+        reasonCode: input.context.reasonCode,
+        occurredAt: input.context.occurredAt,
+      }, traceContext),
+      occurredAt: input.context.occurredAt,
+      correlationId: input.taskId,
+      reasonCode: input.context.reasonCode,
+      emittedBy: "TaskTerminalTransitionService",
+      principal: input.context.actorId,
+    });
     this.repository.appendPlatformFactEvent(taskPlatformEvent);
+    this.repository.appendPlatformFactEvent(workflowPlatformEvent);
+    this.repository.appendPlatformFactEvent(sessionPlatformEvent);
+    this.repository.appendPlatformFactEvent(executionPlatformEvent);
 
     // R9-02: updateTaskOutputCas uses updated_at as fencing token (§25.3) to prevent
     // TOCTOU races. Only updates if the task's updated_at matches expectedTaskUpdatedAt
@@ -1420,27 +1510,35 @@ function buildEventTraceContext(context: TransitionAuditContext, taskId: string)
  * @param correlationId - Optional correlation ID for linking related events
  * @returns A PlatformFactEvent ready to be appended to the event store
  */
-function buildLegacyTransitionPlatformFactEvent(
-  aggregateType: string,
-  aggregateId: string,
-  eventType: `platform.${string}`,
-  traceId: string,
-  payload: Record<string, unknown>,
-  occurredAt: string,
-  correlationId?: string,
-): ReturnType<typeof createPlatformFactEvent> {
-  return createPlatformFactEvent({
-    eventType,
-    aggregateType,
-    aggregateId,
-    aggregateSeq: 1, // Legacy entities don't use sequencing; starts at 1
-    tenantId: "global", // Legacy entities use global tenant
-    runId: aggregateId, // Use entity ID as runId for legacy entities
-    traceId,
-    payload: payload as unknown as JsonValue,
-    occurredAt,
-    ...(correlationId != null ? { correlationId } : {}),
-  });
+function buildLegacyTransitionPlatformFactEvent(input: {
+  aggregateType: LegacyRuntimeEntityKind;
+  aggregateId: string;
+  traceId: string;
+  payload: Record<string, unknown>;
+  occurredAt: string;
+  correlationId?: string;
+  tenantId?: string;
+  reasonCode?: string | null;
+  emittedBy?: string;
+  principal?: string;
+  auditRef?: string;
+}): ReturnType<typeof createPlatformFactEvent> {
+  return legacyRuntimeStateMachine.transitionLegacy({
+    commandId: newId("cmd"),
+    entityKind: input.aggregateType,
+    entityId: input.aggregateId,
+    principal: input.principal ?? "legacy-transition-service",
+    fromStatus: String(input.payload.fromStatus ?? ""),
+    toStatus: String(input.payload.toStatus ?? ""),
+    tenantId: input.tenantId ?? "global",
+    traceId: input.traceId,
+    reasonCode: input.reasonCode ?? String(input.payload.reasonCode ?? "legacy.status_changed"),
+    emittedBy: input.emittedBy ?? "TransitionService",
+    auditRef: input.auditRef ?? `audit://legacy/${input.aggregateType.toLowerCase()}/${input.aggregateId}/status`,
+    occurredAt: input.occurredAt,
+    correlationId: input.correlationId,
+    payload: input.payload,
+  }).event;
 }
 
 function resolveExistingExecutionId(db: AuthoritativeSqlDatabase, executionId: string | null): string | null {

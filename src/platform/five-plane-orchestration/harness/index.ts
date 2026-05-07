@@ -1200,10 +1200,10 @@ export class HarnessRuntimeService {
     } else if (input.guardrailSuggestedAction === "retry_same_plan") {
       action = "retry_same_plan";
       reasonCodes.push("harness.guardrail_retry_same_plan");
-    } else if (evaluatorScore < 0.5) {
+    } else if ((input.evaluatorScore ?? 0.5) < 0.5) {
       action = "replan";
       reasonCodes.push("harness.eval_below_replan_threshold");
-    } else if (evaluatorScore < 0.75) {
+    } else if ((input.evaluatorScore ?? 0.5) < 0.75) {
       action = "retry_same_plan";
       reasonCodes.push("harness.eval_below_accept_threshold");
     } else {

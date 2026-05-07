@@ -415,6 +415,7 @@ export class ModelRoutingService {
     const riskLevel = normalizeRiskLevel(request.riskLevel);
     const requiredCapabilities = normalizeRequiredCapabilities(request.requiredCapabilities);
     const targetTierOrder = buildTargetTierOrder(routeClass, riskLevel);
+    const latencySloTargetMs = getLatencySloTarget(routeClass, riskLevel);
     const turnId = normalizeTurnId(request.turnId);
     const fallbackLease = normalizeFallbackLease(request.fallbackLease);
     const governanceSnapshot = normalizeGovernanceSnapshot(request.governanceSnapshot);
@@ -448,6 +449,22 @@ export class ModelRoutingService {
         }
         if (getGovernanceStatus(profileName) === "disabled") {
           filteredOut.push(`${profileName}:governance_disabled`);
+          return false;
+        }
+        if (request.data_residency != null && !checkDataResidency(profileName, request.data_residency, this.registry)) {
+          filteredOut.push(`${profileName}:data_residency_mismatch`);
+          return false;
+        }
+        if (request.pii_input_detected === true && !supportsBooleanConstraint(profile, provider, "piiSafe")) {
+          filteredOut.push(`${profileName}:pii_input_unsafe`);
+          return false;
+        }
+        if (request.model_training_opt_out === true && !supportsBooleanConstraint(profile, provider, "trainingOptOutSupported")) {
+          filteredOut.push(`${profileName}:training_opt_out_unsupported`);
+          return false;
+        }
+        if (request.judge_independence === true && !supportsBooleanConstraint(profile, provider, "judgeIndependent")) {
+          filteredOut.push(`${profileName}:judge_independence_unsupported`);
           return false;
         }
         return true;
@@ -654,7 +671,13 @@ export class ModelRoutingService {
         const costFiltered = maxInputPer1kUsd == null
           ? withinTier
           : withinTier.filter((candidate) => candidate.profile.pricing.inputPer1kUsd <= maxInputPer1kUsd);
-        const source = costFiltered;
+        const latencyFiltered = costFiltered.filter(
+          (candidate) => getLatencyP99(candidate.profileName, this.registry) <= latencySloTargetMs,
+        );
+        const source = latencyFiltered.length > 0 ? latencyFiltered : costFiltered;
+        if (costFiltered.length > 0 && latencyFiltered.length === 0) {
+          filteredOut.push(`${tier}:latency_slo_exceeded`);
+        }
         if (maxInputPer1kUsd != null && withinTier.length > 0 && costFiltered.length === 0) {
           costCapFallbackTriggered = true;
           costFallbackCandidate ??= withinTier[0] ?? null;
@@ -746,7 +769,7 @@ export class ModelRoutingService {
         selectedProfileName: chosen.profileName,
         selectedProvider: chosen.profile.provider,
         routeReason,
-        latencySloTargetMs: getLatencySloTarget(routeClass, riskLevel),
+        latencySloTargetMs,
         latencyP99Ms: getLatencyP99(chosen.profileName, this.registry),
         dataResidencyConstraint: request.data_residency ?? null,
         dataResidencyMet: checkDataResidency(chosen.profileName, request.data_residency, this.registry),
@@ -853,4 +876,19 @@ function checkDataResidency(
   }
 
   return false;
+}
+
+function supportsBooleanConstraint(
+  profile: ModelProfileMetadata,
+  provider: ModelMetadataRegistry["providers"][string] | undefined,
+  key: "piiSafe" | "trainingOptOutSupported" | "judgeIndependent",
+): boolean {
+  const profileValue = (profile as ModelProfileMetadata & Partial<Record<typeof key, boolean>>)[key];
+  if (typeof profileValue === "boolean") {
+    return profileValue;
+  }
+  const providerValue = provider == null
+    ? undefined
+    : (provider as typeof provider & Partial<Record<typeof key, boolean>>)[key];
+  return providerValue === true;
 }

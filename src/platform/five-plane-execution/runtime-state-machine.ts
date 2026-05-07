@@ -13,6 +13,13 @@ import {
   type SideEffectRecord,
   type SideEffectStatus,
 } from "../contracts/executable-contracts/index.js";
+import type {
+  ApprovalStatus,
+  ExecutionStatus,
+  SessionStatus,
+  TaskStatus,
+  WorkflowStatus,
+} from "../contracts/types/status.js";
 
 export type RuntimeStateAggregate = HarnessRun | NodeRun | SideEffectRecord | BudgetLedger | BudgetReservation;
 
@@ -82,7 +89,92 @@ export interface RuntimeTransitionResult<TAggregate extends RuntimeStateAggregat
   readonly event: PlatformFactEvent;
 }
 
+export type LegacyRuntimeEntityKind = "Task" | "Workflow" | "Session" | "Execution" | "Approval";
+
+export interface LegacyRuntimeAggregate {
+  readonly legacyEntityKind: LegacyRuntimeEntityKind;
+  readonly legacyEntityId: string;
+  readonly status: string;
+  readonly currentSeq: number;
+  readonly updatedAt: string;
+  readonly terminalReason?: string;
+}
+
+export interface LegacyRuntimeTransitionCommand {
+  readonly commandId: string;
+  readonly entityKind: LegacyRuntimeEntityKind;
+  readonly entityId: string;
+  readonly principal: string;
+  readonly fromStatus: string;
+  readonly toStatus: string;
+  readonly currentSeq?: number;
+  readonly tenantId: string;
+  readonly traceId: string;
+  readonly reasonCode: string;
+  readonly emittedBy: string;
+  readonly auditRef?: string;
+  readonly occurredAt?: string;
+  readonly correlationId?: string;
+  readonly payload?: Record<string, unknown>;
+}
+
 type TransitionTable<TStatus extends string> = Record<TStatus, readonly TStatus[]>;
+
+const LEGACY_TASK_TRANSITIONS: TransitionTable<TaskStatus> = {
+  queued: ["pending", "in_progress", "cancelled"],
+  pending: ["in_progress", "cancelled"],
+  in_progress: ["awaiting_decision", "done", "failed", "cancelled"],
+  awaiting_decision: ["in_progress", "failed", "cancelled"],
+  done: [],
+  failed: [],
+  cancelled: [],
+};
+
+const LEGACY_WORKFLOW_TRANSITIONS: TransitionTable<WorkflowStatus> = {
+  running: ["paused", "completed", "failed", "cancelling", "cancelled"],
+  paused: ["resuming", "failed", "cancelled"],
+  resuming: ["running", "failed", "cancelled"],
+  completed: [],
+  failed: [],
+  cancelling: ["cancelled"],
+  cancelled: [],
+};
+
+const LEGACY_SESSION_TRANSITIONS: TransitionTable<SessionStatus> = {
+  open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
+  streaming: ["awaiting_user", "completed", "failed", "cancelled", "open", "paused"],
+  awaiting_user: ["streaming", "completed", "failed", "cancelled"],
+  paused: ["streaming", "open", "completed", "failed", "cancelled"],
+  completed: [],
+  failed: [],
+  cancelled: [],
+};
+
+const LEGACY_EXECUTION_TRANSITIONS: TransitionTable<ExecutionStatus> = {
+  created: ["queued", "prechecking", "executing", "dispatching", "ready", "cancelled", "failed"],
+  queued: ["dispatching", "prechecking", "executing", "cancelled", "failed"],
+  dispatching: ["prechecking", "executing", "paused", "recovering", "cancelled", "failed"],
+  prechecking: ["executing", "blocked", "paused", "recovering", "cancelled", "failed"],
+  executing: ["blocked", "succeeded", "failed", "cancelled", "paused", "recovering"],
+  paused: ["resuming", "recovering", "timed_out", "failed", "cancelled"],
+  resuming: ["executing", "failed", "cancelled"],
+  ready: ["executing", "failed", "cancelled"],
+  recovering: ["ready", "executing", "failed", "cancelled", "timed_out"],
+  timed_out: ["resuming", "failed", "cancelled"],
+  blocked: ["prechecking", "executing", "cancelled", "failed", "superseded"],
+  succeeded: [],
+  failed: [],
+  cancelled: [],
+  superseded: [],
+};
+
+const LEGACY_APPROVAL_TRANSITIONS: TransitionTable<ApprovalStatus> = {
+  requested: ["approved", "rejected", "expired", "cancelled"],
+  approved: [],
+  rejected: [],
+  expired: [],
+  cancelled: [],
+};
 
 const HARNESS_RUN_TRANSITIONS: TransitionTable<HarnessRunStatus> = {
   created: ["admitted", "failed", "aborted"],
@@ -192,6 +284,49 @@ export class RuntimeStateMachine {
 
     return { aggregate, event };
   }
+
+  public transitionLegacy(
+    command: LegacyRuntimeTransitionCommand,
+  ): RuntimeTransitionResult<LegacyRuntimeAggregate> {
+    assertLegacyTransitionAllowed(command.entityKind, command.fromStatus, command.toStatus);
+    assertLegacyAuditRef(command.entityKind, command.toStatus, command.auditRef);
+
+    const occurredAt = command.occurredAt ?? new Date(Date.now()).toISOString();
+    const aggregate: LegacyRuntimeAggregate = {
+      legacyEntityKind: command.entityKind,
+      legacyEntityId: command.entityId,
+      status: command.toStatus,
+      currentSeq: (command.currentSeq ?? 0) + 1,
+      updatedAt: occurredAt,
+      ...(
+        isLegacyTerminalStatus(command.entityKind, command.toStatus)
+          ? { terminalReason: command.reasonCode }
+          : {}
+      ),
+    };
+    const event = createPlatformFactEvent({
+      eventType: `platform.${toLegacyEventNamespace(command.entityKind)}.status_changed`,
+      aggregateType: command.entityKind,
+      aggregateId: command.entityId,
+      aggregateSeq: aggregate.currentSeq,
+      tenantId: command.tenantId,
+      runId: command.entityId,
+      traceId: command.traceId,
+      payload: {
+        aggregateType: command.entityKind,
+        fromStatus: command.fromStatus,
+        toStatus: command.toStatus,
+        reasonCode: command.reasonCode,
+        emittedBy: command.emittedBy,
+        ...(command.auditRef != null ? { auditRef: command.auditRef } : {}),
+        ...(command.payload ?? {}),
+      } as JsonValue,
+      occurredAt,
+      ...(command.correlationId != null ? { correlationId: command.correlationId } : {}),
+    });
+
+    return { aggregate, event };
+  }
 }
 
 export function isTruthConsumerEvent(event: EventEnvelope): boolean {
@@ -228,6 +363,49 @@ function assertTransitionAllowed(
       "runtime_state_machine.invalid_transition",
       `Invalid ${aggregateType} transition: ${fromStatus} -> ${toStatus}`,
       { details: { aggregateType, fromStatus, toStatus } },
+    );
+  }
+}
+
+function assertLegacyTransitionAllowed(
+  entityKind: LegacyRuntimeEntityKind,
+  fromStatus: string,
+  toStatus: string,
+): void {
+  if (fromStatus === toStatus) {
+    throw new WorkflowStateError(
+      "runtime_state_machine.noop_transition_denied",
+      `No-op ${entityKind} transition is not allowed: ${fromStatus} -> ${toStatus}`,
+      { details: { entityKind, fromStatus, toStatus } },
+    );
+  }
+  const allowed = getLegacyTransitionTable(entityKind)[fromStatus] ?? [];
+  if (!allowed.includes(toStatus)) {
+    throw new WorkflowStateError(
+      "runtime_state_machine.invalid_transition",
+      `Invalid ${entityKind} transition: ${fromStatus} -> ${toStatus}`,
+      { details: { entityKind, fromStatus, toStatus } },
+    );
+  }
+}
+
+function assertLegacyAuditRef(
+  entityKind: LegacyRuntimeEntityKind,
+  toStatus: string,
+  auditRef: string | undefined,
+): void {
+  const requiresAudit =
+    entityKind === "Task" ||
+    toStatus === "failed" ||
+    toStatus === "cancelled" ||
+    toStatus === "completed" ||
+    toStatus === "succeeded" ||
+    toStatus === "rejected";
+  if (requiresAudit && (auditRef == null || auditRef.trim().length === 0)) {
+    throw new WorkflowStateError(
+      "runtime_state_machine.audit_ref_required",
+      `Audit ref is required for ${entityKind} -> ${toStatus} legacy transitions.`,
+      { details: { entityKind, toStatus } },
     );
   }
 }
@@ -591,6 +769,21 @@ function getTransitionTable(aggregateType: RuntimeStateAggregateType): Record<st
   }
 }
 
+function getLegacyTransitionTable(entityKind: LegacyRuntimeEntityKind): Record<string, readonly string[]> {
+  switch (entityKind) {
+    case "Task":
+      return LEGACY_TASK_TRANSITIONS;
+    case "Workflow":
+      return LEGACY_WORKFLOW_TRANSITIONS;
+    case "Session":
+      return LEGACY_SESSION_TRANSITIONS;
+    case "Execution":
+      return LEGACY_EXECUTION_TRANSITIONS;
+    case "Approval":
+      return LEGACY_APPROVAL_TRANSITIONS;
+  }
+}
+
 function getAggregateId(aggregateType: RuntimeStateAggregateType, aggregate: RuntimeStateAggregate): string {
   switch (aggregateType) {
     case "HarnessRun":
@@ -628,6 +821,36 @@ function toEventNamespace(aggregateType: RuntimeStateAggregateType): string {
       return "budget_ledger";
     case "BudgetReservation":
       return "budget_reservation";
+  }
+}
+
+function toLegacyEventNamespace(entityKind: LegacyRuntimeEntityKind): string {
+  switch (entityKind) {
+    case "Task":
+      return "task";
+    case "Workflow":
+      return "workflow";
+    case "Session":
+      return "session";
+    case "Execution":
+      return "execution";
+    case "Approval":
+      return "approval";
+  }
+}
+
+function isLegacyTerminalStatus(entityKind: LegacyRuntimeEntityKind, status: string): boolean {
+  switch (entityKind) {
+    case "Task":
+      return status === "done" || status === "failed" || status === "cancelled";
+    case "Workflow":
+      return status === "completed" || status === "failed" || status === "cancelled";
+    case "Session":
+      return status === "completed" || status === "failed" || status === "cancelled";
+    case "Execution":
+      return status === "succeeded" || status === "failed" || status === "cancelled" || status === "superseded";
+    case "Approval":
+      return status === "approved" || status === "rejected" || status === "expired" || status === "cancelled";
   }
 }
 
