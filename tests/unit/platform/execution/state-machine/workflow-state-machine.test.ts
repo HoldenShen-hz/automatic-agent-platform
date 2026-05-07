@@ -230,12 +230,16 @@ test("WorkflowStateMachine: rejects transitions from cancelled", () => {
 // No-op transitions
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: allows no-op transition on same state", () => {
+test("WorkflowStateMachine: rejects no-op transition on same state", () => {
   const machine = createWorkflowStateMachine();
   const states = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
 
   for (const state of states) {
-    machine.assertTransition(state, state);
+    assert.throws(
+      () => machine.assertTransition(state, state),
+      WorkflowStateError,
+      `Noop transition ${state} -> ${state} should be rejected`,
+    );
   }
 });
 

@@ -136,20 +136,29 @@ test("SessionStateMachine: rejects no-op transition on streaming", () => {
 
 test("SessionStateMachine: rejects no-op transition on completed", () => {
   const machine = createSessionStateMachine();
-  // Self-transition on terminal state is allowed (no-op is safe for terminal states)
-  machine.assertTransition("completed", "completed");
+  // Noop transitions on terminal states are not allowed
+  assert.throws(
+    () => machine.assertTransition("completed", "completed"),
+    WorkflowStateError,
+  );
 });
 
 test("SessionStateMachine: rejects no-op transition on failed", () => {
   const machine = createSessionStateMachine();
-  // Self-transition on terminal state is allowed (no-op is safe for terminal states)
-  machine.assertTransition("failed", "failed");
+  // Noop transitions on terminal states are not allowed
+  assert.throws(
+    () => machine.assertTransition("failed", "failed"),
+    WorkflowStateError,
+  );
 });
 
 test("SessionStateMachine: rejects no-op transition on cancelled", () => {
   const machine = createSessionStateMachine();
-  // Self-transition on terminal state is allowed (no-op is safe for terminal states)
-  machine.assertTransition("cancelled", "cancelled");
+  // Noop transitions on terminal states are not allowed
+  assert.throws(
+    () => machine.assertTransition("cancelled", "cancelled"),
+    WorkflowStateError,
+  );
 });
 
 // ---------------------------------------------------------------------------

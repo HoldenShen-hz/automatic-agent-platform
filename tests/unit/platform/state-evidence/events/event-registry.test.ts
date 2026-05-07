@@ -8,6 +8,7 @@ import {
   getEventSchema,
   getEventReplayMetadata,
   validateEventPayload,
+  getPayloadValidatorSource,
   type EventSchemaDefinition,
   type KnownEventType,
 } from "../../../../../src/platform/state-evidence/events/event-registry.js";
@@ -201,11 +202,20 @@ test("validateEventPayload throws ValidationError for unknown event type", () =>
   );
 });
 
-test("validateEventPayload uses generic schema for events without specific validator", () => {
-  // perf:test_event uses genericEventPayloadSchema (Record<string, unknown>)
-  const result = validateEventPayload("perf:test_event", { anyField: "anyValue", num: 123 });
-  assert.equal(result.anyField, "anyValue");
-  assert.equal(result.num, 123);
+test("registered tier_2 events do not use generic payload validators", () => {
+  for (const [eventType, schema] of Object.entries(EVENT_SCHEMA_REGISTRY)) {
+    if (schema.tier !== "tier_2") {
+      continue;
+    }
+    assert.notEqual(getPayloadValidatorSource(eventType), "generic", `${eventType} should not use generic validator`);
+  }
+});
+
+test("unknown event types are rejected instead of using generic payload validators", () => {
+  assert.throws(
+    () => validateEventPayload("perf:test_event", { anyField: "anyValue", num: 123 }),
+    (error: any) => error.code === "event.schema_missing",
+  );
 });
 
 test("validateEventPayload uses family validators for tier_2 dispatch and worker events", () => {

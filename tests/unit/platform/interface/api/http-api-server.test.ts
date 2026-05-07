@@ -1839,6 +1839,32 @@ test("GET /metrics returns 503 when exporter not configured", async () => {
   }
 });
 
+test("rate limiter is enforced in the HttpApiServer request pipeline", async () => {
+  const { server } = createTestServer({
+    rateLimiter: {
+      checkAndConsume: async () => ({
+        allowed: false,
+        remaining: 0,
+        retryAfterMs: 2500,
+      }),
+      maxCalls: 10,
+    } as ConstructorParameters<typeof HttpApiServer>[0]["rateLimiter"],
+  });
+
+  try {
+    const address = await server.start({ host: "127.0.0.1", port: 0 });
+    const response = await fetch(`${address.baseUrl}/healthz`);
+
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get("x-ratelimit-remaining"), "0");
+    assert.equal(response.headers.get("retry-after"), "3");
+    const body = await response.json() as { error: { code: string } };
+    assert.equal(body.error.code, "api.rate_limit_exceeded");
+  } finally {
+    await server.stop();
+  }
+});
+
 test("API responses include production security headers and CORS metadata", async () => {
   const { server } = createTestServer();
 

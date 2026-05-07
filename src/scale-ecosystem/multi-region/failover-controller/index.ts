@@ -46,6 +46,12 @@ export interface RegionFailoverInput {
   readonly primaryErrorRate?: number;
   readonly maxAcceptableErrorRate?: number;
   readonly preferredRegionId?: string | null;
+  readonly candidateRegionSignals?: Readonly<Record<string, {
+    readonly healthy?: boolean;
+    readonly latencyMs?: number;
+    readonly errorRate?: number;
+    readonly priority?: number;
+  }>>;
 }
 
 export interface RegionFailoverDecision {
@@ -273,6 +279,57 @@ export class RegionFailoverController {
   }
 
   /**
+   * Select the best failover candidate using circuit-breaker state first,
+   * then optional candidate health/latency/error signals, with input order
+   * only as a deterministic final tie-breaker.
+   */
+  private selectTargetRegion(input: RegionFailoverInput): string | null {
+    type RankedCandidate = {
+      regionId: string;
+      score: number;
+      order: number;
+    };
+
+    const rankedCandidates: RankedCandidate[] = [];
+    for (const [order, regionId] of input.candidateRegionIds.entries()) {
+      const breakerState = this.circuitBreaker.getState(regionId).state;
+      if (breakerState === "open") {
+        continue;
+      }
+
+      const signals = input.candidateRegionSignals?.[regionId];
+      if (signals?.healthy === false) {
+        continue;
+      }
+
+      let score = 0;
+      if (input.preferredRegionId === regionId) {
+        score += 10_000;
+      }
+      score += breakerState === "closed" ? 500 : 250;
+      score += signals?.healthy === true ? 200 : 0;
+      score += signals?.priority ?? 0;
+      if (signals?.latencyMs != null) {
+        score += Math.max(0, 200 - Math.min(signals.latencyMs, 20_000) / 100);
+      }
+      if (signals?.errorRate != null) {
+        score += Math.max(0, 100 - Math.min(signals.errorRate, 1) * 100);
+      }
+
+      rankedCandidates.push({ regionId, score, order });
+    }
+
+    rankedCandidates.sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+      return left.order - right.order;
+    });
+
+    return rankedCandidates[0]?.regionId ?? null;
+  }
+
+  /**
    * §52.3: Processes failover decision with proper epoch promotion and demotion.
    *
    * When failover is needed:
@@ -315,14 +372,7 @@ export class RegionFailoverController {
       };
     }
 
-    // Determine target region
-    // §187-2202: Blind pick of candidates[0] without health/lag validation is not allowed
-    // Root cause: Picking candidates[0] without health validation can lead to failover to unhealthy region
-    // Fix: Only select from candidates if preferredRegionId is provided and validated
-    // For production, use RegionFailoverOrchestrator.selectFailoverTarget which has health data
-    const targetRegionId = input.preferredRegionId && input.candidateRegionIds.includes(input.preferredRegionId)
-      ? input.preferredRegionId
-      : null; // No blind selection - require explicit preferredRegionId or use orchestrator
+    const targetRegionId = this.selectTargetRegion(input);
 
     if (targetRegionId === null) {
       return {

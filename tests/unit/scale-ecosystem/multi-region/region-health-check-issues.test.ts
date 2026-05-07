@@ -14,7 +14,7 @@ import {
   RegionFailoverOrchestrator,
   type RegionHealthCheckConfig,
   type RegionHealthCheckResult,
-} from "../../../../../src/scale-ecosystem/multi-region/region-health-check-service.js";
+} from "../../../../src/scale-ecosystem/multi-region/region-health-check-service.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2193: Latency degraded check uses > instead of >=
@@ -220,7 +220,7 @@ test("region-health-2199: mix of degraded and unhealthy counts differently", asy
 // Issue #2200: Serial health check O(N*T)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region-health-2200: checkAllRegions performs serial health checks", async () => {
+test("region-health-2200: checkAllRegions fan-outs health checks in parallel", async () => {
   const service = new RegionHealthCheckService();
 
   // Register multiple regions
@@ -248,23 +248,28 @@ test("region-health-2200: checkAllRegions performs serial health checks", async 
     });
   }
 
-  // Issue #2200: checkAllRegions checks each region serially
-  // With N regions and T timeout each, total time is O(N*T)
-  // Should be parallelizable for better performance
+  (service as unknown as {
+    checkRegion: (regionId: string) => Promise<RegionHealthCheckResult>;
+  }).checkRegion = async (regionId) => {
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    return {
+      regionId,
+      status: "healthy",
+      checkedAt: new Date().toISOString(),
+      latencyMs: 40,
+      metrics: [],
+    };
+  };
 
   const startTime = Date.now();
   const results = await service.checkAllRegions();
   const elapsedMs = Date.now() - startTime;
 
-  // All regions should be checked
   assert.equal(results.length, 5);
-
-  // BUG: Serial execution means time grows linearly with region count
-  // Expected: Could be much faster with parallel execution
-  // Actual: Takes at least N * timeout_ms
+  assert.ok(elapsedMs < 120);
 });
 
-test("region-health-2200: serial health checks are slow with high latency endpoints", async () => {
+test("region-health-2200: total latency is bounded by the slowest region, not by sum of regions", async () => {
   const service = new RegionHealthCheckService();
 
   // Register regions with high latency
@@ -296,15 +301,24 @@ test("region-health-2200: serial health checks are slow with high latency endpoi
     },
   });
 
-  // Issue #2200: With serial execution, this takes 10+ seconds
-  // With parallel, could be ~5 seconds
+  (service as unknown as {
+    checkRegion: (regionId: string) => Promise<RegionHealthCheckResult>;
+  }).checkRegion = async (regionId) => {
+    await new Promise((resolve) => setTimeout(resolve, regionId === "high-lat-1" ? 60 : 50));
+    return {
+      regionId,
+      status: "healthy",
+      checkedAt: new Date().toISOString(),
+      latencyMs: regionId === "high-lat-1" ? 60 : 50,
+      metrics: [],
+    };
+  };
 
   const startTime = Date.now();
   await service.checkAllRegions();
   const elapsedMs = Date.now() - startTime;
 
-  // Serial execution is the bug - should be parallel
-  // The actual time depends on network, but with serial it grows with count
+  assert.ok(elapsedMs < 100);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

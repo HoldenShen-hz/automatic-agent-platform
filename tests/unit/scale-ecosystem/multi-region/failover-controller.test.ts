@@ -54,7 +54,7 @@ test("resolveRegionFailover ignores preferred region when not in candidates", ()
   };
   const decision = resolveRegionFailover(input);
   assert.equal(decision.shouldFailover, true);
-  assert.equal(decision.targetRegionId, "eu-west"); // First candidate
+  assert.equal(decision.targetRegionId, "eu-west");
 });
 
 test("resolveRegionFailover triggers failover on latency breach", () => {
@@ -81,13 +81,26 @@ test("resolveRegionFailover triggers failover on error rate breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover uses first candidate when preferred not available", () => {
+test("resolveRegionFailover falls back deterministically when candidates have no extra signals", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a", "region-b", "region-c"],
   };
   const decision = resolveRegionFailover(input);
   assert.equal(decision.targetRegionId, "region-a");
+});
+
+test("resolveRegionFailover prefers healthy lower-latency candidate when signals are provided", () => {
+  const input: RegionFailoverInput = {
+    primaryHealthy: false,
+    candidateRegionIds: ["region-a", "region-b"],
+    candidateRegionSignals: {
+      "region-a": { healthy: true, latencyMs: 400, errorRate: 0.02 },
+      "region-b": { healthy: true, latencyMs: 80, errorRate: 0.01 },
+    },
+  };
+  const decision = resolveRegionFailover(input);
+  assert.equal(decision.targetRegionId, "region-b");
 });
 
 test("resolveRegionFailover handles degraded primary", () => {

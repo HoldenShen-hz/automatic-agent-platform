@@ -986,6 +986,32 @@ function getFamilyPayloadValidator(type: string): z.ZodType<Record<string, unkno
   return genericEventPayloadSchema;
 }
 
+function resolvePayloadValidator(type: string): {
+  validator: z.ZodType<Record<string, unknown>>;
+  source: "specific" | "family" | "generic";
+} {
+  const specificValidator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType];
+  if (specificValidator != null) {
+    return { validator: specificValidator, source: "specific" };
+  }
+  if (type.startsWith("dispatch:")) {
+    return { validator: dispatchEventPayloadSchema, source: "family" };
+  }
+  if (type.startsWith("worker:")) {
+    return { validator: workerEventPayloadSchema, source: "family" };
+  }
+  if (type.startsWith("takeover:")) {
+    return { validator: takeoverEventPayloadSchema, source: "family" };
+  }
+  if (type.startsWith("recovery:")) {
+    return { validator: recoveryEventPayloadSchema, source: "family" };
+  }
+  if (type.startsWith("skill:")) {
+    return { validator: skillEventPayloadSchema, source: "family" };
+  }
+  return { validator: genericEventPayloadSchema, source: "generic" };
+}
+
 /**
  * Processed event schema registry with defaults applied.
  * Adds payloadSchemaRef and compatibilityPolicy if not provided.
@@ -1464,8 +1490,20 @@ export function getEventReplayMetadata(type: string): EventReplayMetadata {
  * at least serialize to an object record.
  */
 export function validateEventPayload(type: string, payload: unknown): Record<string, unknown> {
-  getEventSchema(type);
-  const validator = EVENT_PAYLOAD_VALIDATORS[type as KnownEventType] ?? getFamilyPayloadValidator(type);
+  const schema = getEventSchema(type);
+  const { validator, source } = resolvePayloadValidator(type);
+  if (source === "generic" && schema.tier !== "tier_3") {
+    throw new ValidationError(
+      "event.payload_validator_missing",
+      `Missing strict payload validator for event type: ${type}`,
+      {
+        details: {
+          eventType: type,
+          eventTier: schema.tier,
+        },
+      },
+    );
+  }
   const result = validator.safeParse(payload);
 
   if (!result.success) {
@@ -1481,6 +1519,15 @@ export function validateEventPayload(type: string, payload: unknown): Record<str
   }
 
   return result.data;
+}
+
+export function getPayloadValidatorSource(type: string): "specific" | "family" | "generic" {
+  if (!hasEventSchema(type)) {
+    throw new ValidationError("event.schema_missing", `event.schema_missing: Event schema not found for type: ${type}`, {
+      details: { eventType: type },
+    });
+  }
+  return resolvePayloadValidator(type).source;
 }
 
 /**

@@ -20,11 +20,14 @@ test("fetchUserInfo throws instead of simulating a user when mock fallback is di
   });
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = (async () => ({
-    ok: false,
-    status: 503,
-    json: async () => ({}),
-  })) as typeof fetch;
+  // Mock fetch that returns a failing response - properly returns a Promise
+  globalThis.fetch = (async () => {
+    return {
+      ok: false,
+      status: 503,
+      json: async () => ({}),
+    };
+  }) as unknown as typeof fetch;
 
   try {
     await assert.rejects(

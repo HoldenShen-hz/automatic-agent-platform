@@ -129,6 +129,92 @@ function toExecutionStep(workflowDivisionId: string, step: MinimalWorkflowStep):
   };
 }
 
+function buildWorkflowValidationError(
+  workflowId: string,
+  code: string,
+  details: Record<string, unknown>,
+): StorageError {
+  return new StorageError(
+    code,
+    code,
+    {
+      statusCode: 400,
+      retryable: false,
+      details: {
+        workflowId,
+        ...details,
+      },
+    },
+  );
+}
+
+function validateWorkflowGraph(workflow: MinimalWorkflowDefinition, executionSteps: readonly PlannedExecutionStep[]): void {
+  const stepIds = new Set<string>();
+  const inDegree = new Map<string, number>();
+  const adjacency = new Map<string, string[]>();
+
+  for (const step of executionSteps) {
+    if (stepIds.has(step.stepId)) {
+      throw buildWorkflowValidationError(
+        workflow.workflowId,
+        "workflow.duplicate_step_id",
+        { stepId: step.stepId },
+      );
+    }
+    stepIds.add(step.stepId);
+    inDegree.set(step.stepId, 0);
+    adjacency.set(step.stepId, []);
+  }
+
+  for (const step of executionSteps) {
+    for (const dependencyStepId of step.dependsOnStepIds) {
+      if (!stepIds.has(dependencyStepId)) {
+        throw buildWorkflowValidationError(
+          workflow.workflowId,
+          "workflow.missing_dependency",
+          {
+            stepId: step.stepId,
+            dependencyStepId,
+          },
+        );
+      }
+      adjacency.get(dependencyStepId)?.push(step.stepId);
+      inDegree.set(step.stepId, (inDegree.get(step.stepId) ?? 0) + 1);
+    }
+  }
+
+  const queue: string[] = [];
+  for (const [stepId, degree] of inDegree.entries()) {
+    if (degree === 0) {
+      queue.push(stepId);
+    }
+  }
+
+  let visitedCount = 0;
+  while (queue.length > 0) {
+    const currentStepId = queue.shift()!;
+    visitedCount += 1;
+    for (const downstreamStepId of adjacency.get(currentStepId) ?? []) {
+      const nextDegree = (inDegree.get(downstreamStepId) ?? 0) - 1;
+      inDegree.set(downstreamStepId, nextDegree);
+      if (nextDegree === 0) {
+        queue.push(downstreamStepId);
+      }
+    }
+  }
+
+  if (visitedCount !== executionSteps.length) {
+    const cyclicStepIds = executionSteps
+      .map((step) => step.stepId)
+      .filter((stepId) => (inDegree.get(stepId) ?? 0) > 0);
+    throw buildWorkflowValidationError(
+      workflow.workflowId,
+      "workflow.cyclic_dependency",
+      { cyclicStepIds },
+    );
+  }
+}
+
 /**
  * Creates execution plans from workflow definitions.
  *
@@ -141,6 +227,10 @@ function toExecutionStep(workflowDivisionId: string, step: MinimalWorkflowStep):
  * The resulting PlannedWorkflow can be passed directly to the execution runtime.
  */
 export class WorkflowPlanner {
+  public constructor(
+    private readonly definitionResolver: (workflowId: string) => MinimalWorkflowDefinition | null = getWorkflowDefinition,
+  ) {}
+
   /**
    * Creates an execution plan for a workflow.
    *
@@ -150,7 +240,7 @@ export class WorkflowPlanner {
    */
   public plan(input: WorkflowPlannerInput): PlannedWorkflow {
     // Retrieve the workflow definition from the global registry
-    const workflow = getWorkflowDefinition(input.workflowId);
+    const workflow = this.definitionResolver(input.workflowId);
     if (!workflow) {
       throw new StorageError(`workflow.not_found:${input.workflowId}`, `workflow.not_found:${input.workflowId}`, {
         statusCode: 404,
@@ -161,6 +251,7 @@ export class WorkflowPlanner {
 
     // Transform all workflow steps into execution steps
     const executionSteps = workflow.steps.map((step) => toExecutionStep(workflow.divisionId, step));
+    validateWorkflowGraph(workflow, executionSteps);
 
     // Build dependency edges: for each step, create edges from its dependencies to itself
     const dependencyEdges = executionSteps.flatMap((step) =>

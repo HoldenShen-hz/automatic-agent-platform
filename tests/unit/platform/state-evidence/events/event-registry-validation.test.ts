@@ -12,6 +12,7 @@ import {
   validateEventPayload,
   getEventReplayMetadata,
   EVENT_SCHEMA_REGISTRY,
+  getPayloadValidatorSource,
 } from "../../../../../src/platform/state-evidence/events/event-registry.js";
 
 test("validateEventPayload accepts valid task:status_changed payload", () => {
@@ -199,15 +200,33 @@ test("validateEventPayload accepts domain:registered payload", () => {
   assert.equal(result.capabilityCount, 3);
 });
 
-test("validateEventPayload uses generic schema for unregistered events", () => {
-  // Events without specific Zod validators fall back to genericEventPayloadSchema
-  const result = validateEventPayload("perf:test_event", {
-    customField: "value",
-    numberField: 42,
-  });
+test("registered tier_1 and tier_2 events do not fall back to generic payload validators", () => {
+  for (const [eventType, schema] of Object.entries(EVENT_SCHEMA_REGISTRY)) {
+    if (schema.tier === "tier_3") {
+      continue;
+    }
+    assert.notEqual(
+      getPayloadValidatorSource(eventType),
+      "generic",
+      `${eventType} should have a specific or family payload validator`,
+    );
+  }
+});
 
-  assert.equal(result.customField, "value");
-  assert.equal(result.numberField, 42);
+test("validateEventPayload rejects unknown event types instead of accepting generic payloads", () => {
+  assert.throws(() => {
+    validateEventPayload("perf:test_event", {
+      customField: "value",
+      numberField: 42,
+    });
+  });
+});
+
+test("tier_3 events may still use generic object payload validation", () => {
+  const result = validateEventPayload("stream:chunk_emitted", {
+    chunk: "partial",
+  });
+  assert.equal(result.chunk, "partial");
 });
 
 test("validateEventPayload accepts skill:cache_hit payload", () => {

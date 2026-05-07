@@ -223,29 +223,44 @@ test("ApprovalStateMachine: all terminal states cannot transition to any other s
 // No-op transitions
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: allows no-op transition on same state for requested", () => {
+test("ApprovalStateMachine: rejects no-op transition on same state for requested", () => {
   const machine = createApprovalStateMachine();
-  machine.assertTransition("requested", "requested");
+  assert.throws(
+    () => machine.assertTransition("requested", "requested"),
+    WorkflowStateError,
+  );
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for approved", () => {
+test("ApprovalStateMachine: rejects no-op transition on same state for approved", () => {
   const machine = createApprovalStateMachine();
-  machine.assertTransition("approved", "approved");
+  assert.throws(
+    () => machine.assertTransition("approved", "approved"),
+    WorkflowStateError,
+  );
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for rejected", () => {
+test("ApprovalStateMachine: rejects no-op transition on same state for rejected", () => {
   const machine = createApprovalStateMachine();
-  machine.assertTransition("rejected", "rejected");
+  assert.throws(
+    () => machine.assertTransition("rejected", "rejected"),
+    WorkflowStateError,
+  );
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for expired", () => {
+test("ApprovalStateMachine: rejects no-op transition on same state for expired", () => {
   const machine = createApprovalStateMachine();
-  machine.assertTransition("expired", "expired");
+  assert.throws(
+    () => machine.assertTransition("expired", "expired"),
+    WorkflowStateError,
+  );
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for cancelled", () => {
+test("ApprovalStateMachine: rejects no-op transition on same state for cancelled", () => {
   const machine = createApprovalStateMachine();
-  machine.assertTransition("cancelled", "cancelled");
+  assert.throws(
+    () => machine.assertTransition("cancelled", "cancelled"),
+    WorkflowStateError,
+  );
 });
 
 // ---------------------------------------------------------------------------

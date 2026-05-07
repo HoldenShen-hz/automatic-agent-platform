@@ -78,6 +78,16 @@ test("normalizeCorsConfig ignores empty arrays", () => {
   assert.deepEqual(result.allowedOrigins, DEFAULT_CORS_CONFIG.allowedOrigins);
 });
 
+test("normalizeCorsConfig rejects wildcard origin when credentials are enabled", () => {
+  assert.throws(
+    () => normalizeCorsConfig({
+      allowedOrigins: ["*"],
+      credentials: true,
+    }),
+    /api\.cors\.invalid_wildcard_credentials/,
+  );
+});
+
 test("isOriginAllowed returns false for undefined origin", () => {
   const result = isOriginAllowed(undefined, DEFAULT_CORS_CONFIG);
   assert.equal(result, false);

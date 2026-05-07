@@ -13,31 +13,27 @@ import test from "node:test";
 import {
   RegionFailoverController,
   type RegionFailoverInput,
-} from "../../../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
+} from "../../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #2202: Failover blindly picks candidates[0]
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("failover-controller-2202: picks first candidate without health check", () => {
+test("failover-controller-2202: uses candidate signals instead of blindly picking index 0", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a", "region-b", "region-c"],
-    // No health information provided
-    // No latency information provided
+    candidateRegionSignals: {
+      "region-a": { healthy: true, latencyMs: 400, errorRate: 0.03 },
+      "region-b": { healthy: true, latencyMs: 50, errorRate: 0.01 },
+      "region-c": { healthy: false, latencyMs: 20, errorRate: 0.5 },
+    },
   };
 
   const decision = controller.resolveRegionFailover(input);
-
-  // Issue #2202: Blindly picks candidates[0]
-  assert.equal(decision.targetRegionId, "region-a");
-
-  // BUG: This is wrong because:
-  // 1. No health check is performed
-  // 2. No latency comparison
-  // 3. Just picks first in array
+  assert.equal(decision.targetRegionId, "region-b");
 });
 
 test("failover-controller-2202: preferredRegionId overrides blind pick", () => {
@@ -55,8 +51,11 @@ test("failover-controller-2202: preferredRegionId overrides blind pick", () => {
   assert.equal(decision.targetRegionId, "region-b");
 });
 
-test("failover-controller-2202: without preferredRegionId, still picks first", () => {
+test("failover-controller-2202: skips candidates whose circuit breaker is open", () => {
   const controller = new RegionFailoverController();
+  controller.recordFailure("first");
+  controller.recordFailure("first");
+  controller.recordFailure("first");
 
   const input: RegionFailoverInput = {
     primaryHealthy: false,
@@ -64,9 +63,7 @@ test("failover-controller-2202: without preferredRegionId, still picks first", (
   };
 
   const decision = controller.resolveRegionFailover(input);
-
-  // BUG: Still picks first even without preferredRegionId
-  assert.equal(decision.targetRegionId, "first");
+  assert.equal(decision.targetRegionId, "second");
 });
 
 test("failover-controller-2202: best practice is to select healthiest region", () => {
@@ -82,16 +79,18 @@ test("failover-controller-2202: best practice is to select healthiest region", (
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["unhealthy-region", "healthy-region", "degraded-region"],
-    // Should select "healthy-region" but picks "unhealthy-region" first
+    candidateRegionSignals: {
+      "unhealthy-region": { healthy: false, latencyMs: 20, errorRate: 0.8 },
+      "healthy-region": { healthy: true, latencyMs: 70, errorRate: 0.01 },
+      "degraded-region": { healthy: true, latencyMs: 250, errorRate: 0.04 },
+    },
   };
 
   const decision = controller.resolveRegionFailover(input);
-
-  // BUG: Picks unhealthy-region because it's first
-  assert.equal(decision.targetRegionId, "unhealthy-region");
+  assert.equal(decision.targetRegionId, "healthy-region");
 });
 
-test("failover-controller-2202: latency information is ignored", () => {
+test("failover-controller-2202: latency information participates in ranking", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -99,51 +98,59 @@ test("failover-controller-2202: latency information is ignored", () => {
     candidateRegionIds: ["high-latency", "low-latency"],
     primaryLatencyMs: 200,
     maxAcceptableLatencyMs: 100,
-    // Should consider candidate latencies but doesn't
+    candidateRegionSignals: {
+      "high-latency": { healthy: true, latencyMs: 400, errorRate: 0.02 },
+      "low-latency": { healthy: true, latencyMs: 25, errorRate: 0.02 },
+    },
   };
 
   const decision = controller.resolveRegionFailover(input);
-
-  // BUG: Ignores that low-latency would be better
-  assert.equal(decision.targetRegionId, "high-latency");
+  assert.equal(decision.targetRegionId, "low-latency");
 });
 
-test("failover-controller-2202: ordered candidates affects outcome", () => {
+test("failover-controller-2202: ordered candidates no longer affects outcome when signals differ", () => {
   const controller = new RegionFailoverController();
 
   // Same regions, different order
   const input1: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["best", "worst"],
+    candidateRegionSignals: {
+      best: { healthy: true, latencyMs: 40, errorRate: 0.01 },
+      worst: { healthy: true, latencyMs: 400, errorRate: 0.2 },
+    },
   };
 
   const input2: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["worst", "best"],
+    candidateRegionSignals: {
+      best: { healthy: true, latencyMs: 40, errorRate: 0.01 },
+      worst: { healthy: true, latencyMs: 400, errorRate: 0.2 },
+    },
   };
 
   const decision1 = controller.resolveRegionFailover(input1);
   const decision2 = controller.resolveRegionFailover(input2);
-
-  // BUG: Order of candidates affects the result
-  // This is incorrect - should always pick best regardless of order
   assert.equal(decision1.targetRegionId, "best");
-  assert.equal(decision2.targetRegionId, "worst"); // Wrong choice!
+  assert.equal(decision2.targetRegionId, "best");
 });
 
-test("failover-controller-2202: with preferredRegionId not in candidates, falls back to first", () => {
+test("failover-controller-2202: with preferredRegionId not in candidates, falls back to best eligible candidate", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a", "region-b"],
     preferredRegionId: "not-in-list", // Not in candidates
+    candidateRegionSignals: {
+      "region-a": { healthy: true, latencyMs: 300, errorRate: 0.04 },
+      "region-b": { healthy: true, latencyMs: 50, errorRate: 0.01 },
+    },
   };
 
   const decision = controller.resolveRegionFailover(input);
-
-  // Falls back to first candidate when preferred is not available
-  assert.equal(decision.targetRegionId, "region-a");
+  assert.equal(decision.targetRegionId, "region-b");
 });
 
 test("failover-controller-2202: empty candidates returns null", () => {

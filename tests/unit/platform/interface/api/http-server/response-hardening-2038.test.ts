@@ -134,21 +134,14 @@ test("ISSUE #2038: decorateResponseHeaders does NOT add CORS headers when origin
   assert.equal(result.headers["access-control-allow-credentials"], undefined);
 });
 
-test("ISSUE #2038: normalizeCorsConfig does NOT throw for wildcard+credentials (documents current behavior)", () => {
-  // The normalizeCorsConfig function does NOT currently reject this anti-pattern.
-  // It passes the configuration through. The rejection happens at RUNTIME.
-  // This documents the current behavior - the fix should add config-time rejection.
-  const config = normalizeCorsConfig({
-    allowedOrigins: ["*"],
-    credentials: true,
-  });
-
-  // Configuration is allowed (no throw)
-  assert.deepEqual(config.allowedOrigins, ["*"]);
-  assert.equal(config.credentials, true);
-
-  // But runtime check rejects it
-  assert.equal(isOriginAllowed("https://example.com", config), false);
+test("ISSUE #2038: normalizeCorsConfig rejects wildcard+credentials at config time", () => {
+  assert.throws(
+    () => normalizeCorsConfig({
+      allowedOrigins: ["*"],
+      credentials: true,
+    }),
+    /api\.cors\.invalid_wildcard_credentials/,
+  );
 });
 
 test("ISSUE #2038: buildPreflightHeaders returns empty when origin not allowed", () => {
