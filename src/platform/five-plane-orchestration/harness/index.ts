@@ -962,7 +962,7 @@ export class HarnessRuntimeService {
       throw new Error(`harness.hitl.request_not_found_for_run:${run.runId}`);
     }
     this.hydrateHitlRuntime(run.hitlRequest);
-    const resolved = this.hitlRuntime.resolve(run.hitlRequest.requestId, resolution, actorId);
+    const { request: resolved, record: hrr } = this.hitlRuntime.resolve(run.hitlRequest.requestId, resolution, actorId);
     // R4-47: Emit resume OperationalDirective when HITL review is approved
     if (resolution === "approved") {
       this.emitOperationalDirective("resume", "harness_runtime_service", "hitl_review_resolved:approved", {
@@ -983,7 +983,7 @@ export class HarnessRuntimeService {
           eventId: newId("timeline"),
           runId: run.runId,
           type: "hitl_resolved",
-          payload: { resolution, actorId },
+          payload: { resolution, actorId, humanResponsibilityRecordId: hrr.recordId },
           recordedAt: nowIso(),
         },
       ],
@@ -1178,6 +1178,27 @@ export class HarnessRuntimeService {
     evidenceRefs?: readonly string[];
     sideEffectRefs?: readonly string[];
     deciderRef?: string;
+    /** §45.25: Frozen evaluator state captured at decision time */
+    frozenEvaluator?: Readonly<{ score: number; reasoning: string }>;
+    /** §45.25: Frozen risk state captured at decision time */
+    frozenRisk?: Readonly<{ currentScore: number; maxScore: number; escalationThreshold: number }>;
+    /** §45.25: Frozen hitl state captured at decision time */
+    frozenHitl?: Readonly<{ pending: boolean; requestId: string | null }>;
+    /** §45.25: Frozen node state captured at decision time */
+    frozenNode?: Readonly<{ nodeId: string; nodeType: string; status: string }>;
+    /** §45.25: Frozen sideEffect state captured at decision time */
+    frozenSideEffect?: Readonly<{ mayCommit: boolean; reversible: boolean }>;
+    /** §45.25: Frozen budget state captured at decision time */
+    frozenBudget?: Readonly<{ remainingSteps: number; remainingCost: number; remainingDurationMs: number }>;
+    /** §45.25: Frozen policy state captured at decision time */
+    frozenPolicy?: Readonly<{ policyIds: readonly string[]; constraintPackRef: string }>;
+    /** §45.25: Frozen guardrail assessment captured at decision time */
+    frozenGuardrail?: Readonly<{
+      passed: boolean;
+      requiresHuman: boolean;
+      suggestedAction: string;
+      findings: readonly { code: string; message: string }[];
+    }> | null;
   }): HarnessDecision {
     const evaluatorScore = input.evaluatorScore ?? 0.5;
     let action: HarnessDecisionAction = "accept";
@@ -1219,6 +1240,7 @@ export class HarnessRuntimeService {
     }
 
     const decisionKind = this.mapDecisionKind(action);
+    // §45.25: Freeze all decision state at decision time before LLM-as-Judge evaluation
     const decisionInputBundle = createCanonicalDecisionInputBundle({
       harnessRunId: input.harnessRunId ?? "harness_run:compat",
       ...(input.nodeRunId != null ? { nodeRunId: input.nodeRunId } : {}),
@@ -1226,6 +1248,15 @@ export class HarnessRuntimeService {
       riskClass: this.resolveRiskClass(input.riskScore),
       evidenceRefs: this.asArtifactRefs(input.evidenceRefs ?? []),
       sideEffectRefs: input.sideEffectRefs ?? [],
+      // §45.25: Pass frozen state fields
+      ...(input.frozenEvaluator != null ? { evaluator: input.frozenEvaluator } : {}),
+      ...(input.frozenRisk != null ? { risk: input.frozenRisk } : {}),
+      ...(input.frozenHitl != null ? { hitl: input.frozenHitl } : {}),
+      ...(input.frozenNode != null ? { node: input.frozenNode } : {}),
+      ...(input.frozenSideEffect != null ? { sideEffect: input.frozenSideEffect } : {}),
+      ...(input.frozenBudget != null ? { budget: input.frozenBudget } : {}),
+      ...(input.frozenPolicy != null ? { policy: input.frozenPolicy } : {}),
+      ...(input.frozenGuardrail != null ? { guardrail: input.frozenGuardrail } : {}),
     });
     const harnessDecisionId = newId("harness_decision");
     const canonicalDecision = createCanonicalHarnessDecision({

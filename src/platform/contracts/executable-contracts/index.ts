@@ -678,6 +678,55 @@ export interface DecisionInputBundle {
   readonly policyFindings: readonly PolicyFinding[];
   readonly budgetSnapshotRef?: ArtifactRef;
   readonly sideEffectRefs: readonly string[];
+  /** @deprecated compatibility alias; use decisionInputBundleId */
+  readonly bundleId?: string;
+  /** §45.25: Frozen evaluator state captured at decision time */
+  readonly evaluator: Readonly<{
+    readonly score: number;
+    readonly reasoning: string;
+  }>;
+  /** §45.25: Frozen policy state captured at decision time */
+  readonly policy: Readonly<{
+    readonly policyIds: readonly string[];
+    readonly constraintPackRef: string;
+  }>;
+  /** §45.25: Frozen budget state captured at decision time */
+  readonly budget: Readonly<{
+    readonly remainingSteps: number;
+    readonly remainingCost: number;
+    readonly remainingDurationMs: number;
+  }>;
+  /** §45.25: Frozen risk state captured at decision time */
+  readonly risk: Readonly<{
+    readonly currentScore: number;
+    readonly maxScore: number;
+    readonly escalationThreshold: number;
+  }>;
+  /** §45.25: Frozen node state captured at decision time */
+  readonly node: Readonly<{
+    readonly nodeId: string;
+    readonly nodeType: string;
+    readonly status: string;
+  }>;
+  /** §45.25: Frozen sideEffect state captured at decision time */
+  readonly sideEffect: Readonly<{
+    readonly mayCommit: boolean;
+    readonly reversible: boolean;
+  }>;
+  /** §45.25: Frozen hitl state captured at decision time */
+  readonly hitl: Readonly<{
+    readonly pending: boolean;
+    readonly requestId: string | null;
+  }>;
+  /** §45.25: Frozen guardrail assessment captured at decision time */
+  readonly guardrail: Readonly<{
+    readonly passed: boolean;
+    readonly requiresHuman: boolean;
+    readonly suggestedAction: string;
+    readonly findings: readonly { readonly code: string; readonly message: string }[];
+  }> | null;
+  /** @deprecated compatibility alias; use createdAt */
+  readonly capturedAt?: string;
   readonly createdAt: string;
 }
 
@@ -1569,8 +1618,54 @@ export function createDecisionInputBundle(input: {
   policyFindings?: readonly PolicyFinding[];
   budgetSnapshotRef?: ArtifactRef;
   sideEffectRefs?: readonly string[];
+  /** §45.25: Frozen evaluator state captured at decision time */
+  evaluator?: Readonly<{
+    readonly score: number;
+    readonly reasoning: string;
+  }>;
+  /** §45.25: Frozen policy state captured at decision time */
+  policy?: Readonly<{
+    readonly policyIds: readonly string[];
+    readonly constraintPackRef: string;
+  }>;
+  /** §45.25: Frozen budget state captured at decision time */
+  budget?: Readonly<{
+    readonly remainingSteps: number;
+    readonly remainingCost: number;
+    readonly remainingDurationMs: number;
+  }>;
+  /** §45.25: Frozen risk state captured at decision time */
+  risk?: Readonly<{
+    readonly currentScore: number;
+    readonly maxScore: number;
+    readonly escalationThreshold: number;
+  }>;
+  /** §45.25: Frozen node state captured at decision time */
+  node?: Readonly<{
+    readonly nodeId: string;
+    readonly nodeType: string;
+    readonly status: string;
+  }>;
+  /** §45.25: Frozen sideEffect state captured at decision time */
+  sideEffect?: Readonly<{
+    readonly mayCommit: boolean;
+    readonly reversible: boolean;
+  }>;
+  /** §45.25: Frozen hitl state captured at decision time */
+  hitl?: Readonly<{
+    readonly pending: boolean;
+    readonly requestId: string | null;
+  }>;
+  /** §45.25: Frozen guardrail assessment captured at decision time */
+  guardrail?: Readonly<{
+    readonly passed: boolean;
+    readonly requiresHuman: boolean;
+    readonly suggestedAction: string;
+    readonly findings: readonly { readonly code: string; readonly message: string }[];
+  }> | null;
   createdAt?: string;
 }): DecisionInputBundle {
+  const createdAt = input.createdAt ?? nowIso();
   return {
     decisionInputBundleId: input.decisionInputBundleId ?? newId("dib"),
     harnessRunId: input.harnessRunId,
@@ -1582,7 +1677,15 @@ export function createDecisionInputBundle(input: {
     policyFindings: input.policyFindings ?? [],
     ...(input.budgetSnapshotRef != null ? { budgetSnapshotRef: input.budgetSnapshotRef } : {}),
     sideEffectRefs: input.sideEffectRefs ?? [],
-    createdAt: input.createdAt ?? nowIso(),
+    ...(input.evaluator != null ? { evaluator: input.evaluator } : {}),
+    ...(input.policy != null ? { policy: input.policy } : {}),
+    ...(input.budget != null ? { budget: input.budget } : {}),
+    ...(input.risk != null ? { risk: input.risk } : {}),
+    ...(input.node != null ? { node: input.node } : {}),
+    ...(input.sideEffect != null ? { sideEffect: input.sideEffect } : {}),
+    ...(input.hitl != null ? { hitl: input.hitl } : {}),
+    ...(input.guardrail != null ? { guardrail: input.guardrail } : {}),
+    createdAt,
   };
 }
 
