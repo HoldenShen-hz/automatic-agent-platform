@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createWebRuntimeConfig, startWebRuntimeTelemetry } from "../../../../apps/web/src/runtime";
+import { createWebRuntimeConfig, startWebRuntimeTelemetry } from "../../../../../apps/web/src/runtime";
 
 describe("web runtime telemetry bootstrap", () => {
   it("captures OTLP telemetry configuration from environment variables", () => {
