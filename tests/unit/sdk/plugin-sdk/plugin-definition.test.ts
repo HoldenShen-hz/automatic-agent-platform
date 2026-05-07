@@ -4,44 +4,44 @@ import { createSign } from "node:crypto";
 
 import { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluator, validatePluginDefinition, getSigningKeyRegistry, setSbomScanner, verifySbomRef, type SbomScanner } from "../../../../src/sdk/plugin-sdk/plugin-definition.js";
 
-test("definePlugin throws when pluginId is missing", () => {
-  assert.throws(
-    () => definePlugin({ pluginId: "", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
+test("definePlugin throws when pluginId is missing", async () => {
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
     /Plugin ID is required/,
   );
 });
 
-test("definePlugin throws when name is missing", () => {
-  assert.throws(
-    () => definePlugin({ pluginId: "test", name: "", version: "1.0.0", type: "tool", capabilities: [] }),
+test("definePlugin throws when name is missing", async () => {
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "test", name: "", version: "1.0.0", type: "tool", capabilities: [] }),
     /Plugin name is required/,
   );
 });
 
-test("definePlugin throws when version is missing", () => {
-  assert.throws(
-    () => definePlugin({ pluginId: "test", name: "Test", version: "", type: "tool", capabilities: [] }),
+test("definePlugin throws when version is missing", async () => {
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "test", name: "Test", version: "", type: "tool", capabilities: [] }),
     /Plugin version is required/,
   );
 });
 
-test("definePlugin throws when type is missing", () => {
-  assert.throws(
-    () => definePlugin({ pluginId: "test", name: "Test", version: "1.0.0", type: undefined as unknown as "tool", capabilities: [] }),
+test("definePlugin throws when type is missing", async () => {
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "test", name: "Test", version: "1.0.0", type: undefined as unknown as "tool", capabilities: [] }),
     /Plugin type is required/,
   );
 });
 
-test("definePlugin throws when capabilities are empty", () => {
-  assert.throws(
-    () => definePlugin({ pluginId: "test", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
+test("definePlugin throws when capabilities are empty", async () => {
+  await assert.rejects(
+    async () => definePlugin({ pluginId: "test", name: "Test", version: "1.0.0", type: "tool", capabilities: [] }),
     /at least one capability/,
   );
 });
 
-test("definePlugin throws when capability name is empty", () => {
-  assert.throws(
-    () => definePlugin({
+test("definePlugin throws when capability name is empty", async () => {
+  await assert.rejects(
+    async () => definePlugin({
       pluginId: "test",
       name: "Test",
       version: "1.0.0",
@@ -52,9 +52,9 @@ test("definePlugin throws when capability name is empty", () => {
   );
 });
 
-test("definePlugin throws when capability inputSchema is missing", () => {
-  assert.throws(
-    () => definePlugin({
+test("definePlugin throws when capability inputSchema is missing", async () => {
+  await assert.rejects(
+    async () => definePlugin({
       pluginId: "test",
       name: "Test",
       version: "1.0.0",
@@ -65,9 +65,9 @@ test("definePlugin throws when capability inputSchema is missing", () => {
   );
 });
 
-test("definePlugin throws when capability outputSchema is missing", () => {
-  assert.throws(
-    () => definePlugin({
+test("definePlugin throws when capability outputSchema is missing", async () => {
+  await assert.rejects(
+    async () => definePlugin({
       pluginId: "test",
       name: "Test",
       version: "1.0.0",
@@ -78,12 +78,16 @@ test("definePlugin throws when capability outputSchema is missing", () => {
   );
 });
 
-test("definePlugin creates valid plugin definition", () => {
-  const result = definePlugin({
+test("definePlugin creates valid plugin definition", async () => {
+  const result = await definePlugin({
     pluginId: "my-pack.query-tool",
     name: "Query Tool",
     version: "1.0.0",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute a query",
@@ -100,12 +104,16 @@ test("definePlugin creates valid plugin definition", () => {
   assert.equal(result.resourceLimits.maxMemoryMb, 512);
 });
 
-test("definePlugin applies custom resource limits", () => {
-  const result = definePlugin({
+test("definePlugin applies custom resource limits", async () => {
+  const result = await definePlugin({
     pluginId: "test",
     name: "Test",
     version: "1.0.0",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "cap",
       description: "test",
@@ -124,12 +132,16 @@ test("definePlugin applies custom resource limits", () => {
   assert.equal(result.resourceLimits.maxDurationMs, 60000);
 });
 
-test("definePlugin applies custom security config", () => {
-  const result = definePlugin({
+test("definePlugin applies custom security config", async () => {
+  const result = await definePlugin({
     pluginId: "test",
     name: "Test",
     version: "1.0.0",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "cap",
       description: "test",
@@ -146,12 +158,16 @@ test("definePlugin applies custom security config", () => {
   assert.deepEqual(result.security.egressDomains, ["api.example.com"]);
 });
 
-test("definePlugin trims pluginId, name, version, and description", () => {
-  const result = definePlugin({
+test("definePlugin trims pluginId, name, version, and description", async () => {
+  const result = await definePlugin({
     pluginId: "  test  ",
     name: "  Test  ",
     version: "  1.0.0  ",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     description: "  desc  ",
     capabilities: [{
       name: "  cap  ",
@@ -169,11 +185,15 @@ test("definePlugin trims pluginId, name, version, and description", () => {
   assert.equal(result.capabilities[0]!.name, "  cap  ");
 });
 
-test("defineTool creates tool plugin", () => {
-  const result = defineTool({
+test("defineTool creates tool plugin", async () => {
+  const result = await defineTool({
     pluginId: "my-pack.tool",
     name: "My Tool",
     version: "1.0.0",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -185,11 +205,15 @@ test("defineTool creates tool plugin", () => {
   assert.equal(result.type, "tool");
 });
 
-test("defineAdapter creates adapter plugin", () => {
-  const result = defineAdapter({
+test("defineAdapter creates adapter plugin", async () => {
+  const result = await defineAdapter({
     pluginId: "my-pack.adapter",
     name: "My Adapter",
     version: "1.0.0",
+    spiTypes: ["adapter"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "adapt",
       description: "Adapt",
@@ -201,11 +225,15 @@ test("defineAdapter creates adapter plugin", () => {
   assert.equal(result.type, "adapter");
 });
 
-test("defineRetriever creates retriever plugin", () => {
-  const result = defineRetriever({
+test("defineRetriever creates retriever plugin", async () => {
+  const result = await defineRetriever({
     pluginId: "my-pack.retriever",
     name: "My Retriever",
     version: "1.0.0",
+    spiTypes: ["retriever"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "retrieve",
       description: "Retrieve",
@@ -217,11 +245,15 @@ test("defineRetriever creates retriever plugin", () => {
   assert.equal(result.type, "retriever");
 });
 
-test("defineEvaluator creates evaluator plugin", () => {
-  const result = defineEvaluator({
+test("defineEvaluator creates evaluator plugin", async () => {
+  const result = await defineEvaluator({
     pluginId: "my-pack.evaluator",
     name: "My Evaluator",
     version: "1.0.0",
+    spiTypes: ["evaluator"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "evaluate",
       description: "Evaluate",
@@ -233,12 +265,16 @@ test("defineEvaluator creates evaluator plugin", () => {
   assert.equal(result.type, "evaluator");
 });
 
-test("validatePluginDefinition validates and returns same definition", () => {
-  const original = definePlugin({
+test("validatePluginDefinition validates and returns same definition", async () => {
+  const original = await definePlugin({
     pluginId: "my-pack.tool",
     name: "My Tool",
     version: "1.0.0",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -247,19 +283,23 @@ test("validatePluginDefinition validates and returns same definition", () => {
     }],
   });
 
-  const validated = validatePluginDefinition(original);
+  const validated = await validatePluginDefinition(original);
 
   assert.equal(validated.pluginId, original.pluginId);
   assert.equal(validated.name, original.name);
   assert.equal(validated.version, original.version);
 });
 
-test("validatePluginDefinition uses default description when missing", () => {
+test("validatePluginDefinition uses default description when missing", async () => {
   const original = {
     pluginId: "my-pack.tool",
     name: "My Tool",
     version: "1.0.0",
     type: "tool" as const,
+    spiTypes: ["tool"] as string[],
+    domainIds: [] as string[],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{
       name: "execute",
       description: "Execute",
@@ -271,7 +311,7 @@ test("validatePluginDefinition uses default description when missing", () => {
     security: { sandboxTier: "process" as const, egressDomains: [] },
   };
 
-  const validated = validatePluginDefinition(original);
+  const validated = await validatePluginDefinition(original);
 
   assert.equal(validated.description, "Plugin description");
 });
@@ -425,12 +465,15 @@ test("verifySbomRef uses custom scanner when set", async () => {
 });
 
 test("definePlugin deduplicates spiTypes", async () => {
-  const plugin = definePlugin({
+  const plugin = await definePlugin({
     pluginId: "test.plugin",
     name: "Test",
     version: "1.0.0",
     type: "tool",
     spiTypes: ["tool", "tool", "validator", "tool"],
+    domainIds: [],
+    sbomRef: null,
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "test", description: "Test", inputSchema: {}, outputSchema: {} }],
   });
 
@@ -440,12 +483,15 @@ test("definePlugin deduplicates spiTypes", async () => {
 });
 
 test("definePlugin handles sbomRef with whitespace", async () => {
-  const plugin = definePlugin({
+  const plugin = await definePlugin({
     pluginId: "test.plugin",
     name: "Test",
     version: "1.0.0",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
     sbomRef: "  https://example.com/sbom.json  ",
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "test", description: "Test", inputSchema: {}, outputSchema: {} }],
   });
 
@@ -453,12 +499,15 @@ test("definePlugin handles sbomRef with whitespace", async () => {
 });
 
 test("definePlugin converts empty string sbomRef to null", async () => {
-  const plugin = definePlugin({
+  const plugin = await definePlugin({
     pluginId: "test.plugin",
     name: "Test",
     version: "1.0.0",
     type: "tool",
+    spiTypes: ["tool"],
+    domainIds: [],
     sbomRef: "",
+    signing: { keyId: "test-key", signature: "test-signature", algorithm: "ed25519" },
     capabilities: [{ name: "test", description: "Test", inputSchema: {}, outputSchema: {} }],
   });
 
@@ -468,22 +517,22 @@ test("definePlugin converts empty string sbomRef to null", async () => {
 test("definePlugin signing with invalid keyId throws", async () => {
   // This test verifies that definePlugin validates signing info
   // The signing verification fails because the keyId is not registered
-  const plugin = definePlugin({
-    pluginId: "test.plugin",
-    name: "Test",
-    version: "1.0.0",
-    type: "tool",
-    capabilities: [{ name: "test", description: "Test", inputSchema: {}, outputSchema: {} }],
-    signing: {
-      keyId: "nonexistent_key",
-      signature: "invalid_signature",
-      algorithm: "ed25519",
-    },
-  });
-
-  // Since the key doesn't exist in registry, verification will fail
-  // But the signature check itself might pass if we mock it differently
-  // Here we just verify the plugin was created with signing info
-  assert.ok(plugin.signing, "Plugin should have signing info");
-  assert.equal(plugin.signing?.keyId, "nonexistent_key");
+  await assert.rejects(
+    async () => definePlugin({
+      pluginId: "test.plugin",
+      name: "Test",
+      version: "1.0.0",
+      type: "tool",
+      spiTypes: ["tool"],
+      domainIds: [],
+      sbomRef: null,
+      signing: {
+        keyId: "nonexistent_key",
+        signature: "invalid_signature",
+        algorithm: "ed25519",
+      },
+      capabilities: [{ name: "test", description: "Test", inputSchema: {}, outputSchema: {} }],
+    }),
+    /signature_verification_failed|unknown_key_id/i,
+  );
 });

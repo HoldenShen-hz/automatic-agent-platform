@@ -461,12 +461,10 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
   async executePlan(plan: PlanGraphBundle, context: ExecutionContext): Promise<ExecutionResult> {
     // R16-76: Reject legacy Plan type at runtime - only PlanGraphBundle is accepted
     assertIsPlanGraphBundle(plan, "RuntimeExecuteBridge.executePlan");
-    const request = serialiseOapeflirPlan(plan.graph.nodes);
 
     const orchInput: RuntimePlanExecutionInput = {
       dbPath: this.dbPath,
-      title: `OAPEFLIR plan ${plan.planGraphBundleId}`,
-      request,
+      planGraphBundle: plan,
       ...(context.tokenBudget != null ? { contextBudgetTokens: context.tokenBudget } : {}),
     };
     const orchResult = await this.runtimePlanExecutor(orchInput);

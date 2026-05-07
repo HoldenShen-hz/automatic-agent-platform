@@ -13,7 +13,7 @@ test("BasicEvaluator validate checks required fields", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { name: "test" } },
+    machineOutput: { payload: { name: "test" }, outputRef: "output-1" },
     contract: { requiredFields: ["name", "email"] },
   });
 
@@ -26,7 +26,7 @@ test("BasicEvaluator validate passes when all required fields present", async ()
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { name: "test", email: "test@example.com" } },
+    machineOutput: { payload: { name: "test", email: "test@example.com" }, outputRef: "output-2" },
     contract: { requiredFields: ["name", "email"] },
   });
 
@@ -38,7 +38,7 @@ test("BasicEvaluator validate with empty requiredFields (issue #2016)", async ()
 
   // Issue #2016: When requiredFields is empty, type validation is skipped
   const result = await evaluator.validate({
-    machineOutput: { payload: { name: "test" } },
+    machineOutput: { payload: { name: "test" }, outputRef: "output-3" },
     contract: { requiredFields: [] },
   });
 
@@ -56,7 +56,7 @@ test("BasicEvaluator validate with fieldTypes and empty requiredFields (issue #2
   // But issue #2016 says type validation is skipped
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { count: "not-a-number" } },
+    machineOutput: { payload: { count: "not-a-number" }, outputRef: "output-4" },
     contract: {
       requiredFields: [], // Empty - causes type validation to be skipped
       fieldTypes: { count: "number" }
@@ -78,7 +78,7 @@ test("BasicEvaluator validate null value type check (issue #2017)", async () => 
   // But in the context of validation, null should be treated as null/not an object
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { data: null } },
+    machineOutput: { payload: { data: null }, outputRef: "output-5" },
     contract: {
       requiredFields: ["data"],
       fieldTypes: { data: "object" }
@@ -94,7 +94,7 @@ test("BasicEvaluator validate array type check", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { items: [1, 2, 3] } },
+    machineOutput: { payload: { items: [1, 2, 3] }, outputRef: "output-6" },
     contract: {
       requiredFields: ["items"],
       fieldTypes: { items: "array" }
@@ -108,7 +108,7 @@ test("BasicEvaluator validate number type check", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { count: 42 } },
+    machineOutput: { payload: { count: 42 }, outputRef: "output-7" },
     contract: {
       requiredFields: ["count"],
       fieldTypes: { count: "number" }
@@ -122,7 +122,7 @@ test("BasicEvaluator validate string type check", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { name: "test" } },
+    machineOutput: { payload: { name: "test" }, outputRef: "output-8" },
     contract: {
       requiredFields: ["name"],
       fieldTypes: { name: "string" }
@@ -136,7 +136,7 @@ test("BasicEvaluator validate boolean type check", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { active: true } },
+    machineOutput: { payload: { active: true }, outputRef: "output-9" },
     contract: {
       requiredFields: ["active"],
       fieldTypes: { active: "boolean" }
@@ -150,7 +150,7 @@ test("BasicEvaluator validate mismatched type produces error", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { count: "not-a-number" } },
+    machineOutput: { payload: { count: "not-a-number" }, outputRef: "output-10" },
     contract: {
       requiredFields: ["count"],
       fieldTypes: { count: "number" }
@@ -165,7 +165,7 @@ test("BasicEvaluator evaluate calculates quality score", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await (evaluator as any).evaluate({
-    machineOutput: { payload: { name: "test", value: 42 } },
+    machineOutput: { payload: { name: "test", value: 42 }, outputRef: "output-11" },
     contract: {
       requiredFields: ["name"],
       targetValues: { name: "test", value: 42 },
@@ -183,7 +183,7 @@ test("BasicEvaluator evaluate with missing fields produces low completeness", as
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await (evaluator as any).evaluate({
-    machineOutput: { payload: { name: "test" } },
+    machineOutput: { payload: { name: "test" }, outputRef: "output-12" },
     contract: {
       requiredFields: ["name", "email", "phone"],
       targetValues: {},
@@ -199,7 +199,7 @@ test("BasicEvaluator produceHarnessDecision returns decision", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await (evaluator as any).produceHarnessDecision({
-    machineOutput: { payload: { name: "test" } },
+    machineOutput: { payload: { name: "test" }, outputRef: "output-13" },
     contract: {
       requiredFields: ["name"],
       targetValues: { name: "test" },
@@ -217,7 +217,7 @@ test("BasicEvaluator evaluate handles targetValues deviation", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await (evaluator as any).evaluate({
-    machineOutput: { payload: { name: "completely_different" } },
+    machineOutput: { payload: { name: "completely_different" }, outputRef: "output-14" },
     contract: {
       requiredFields: [],
       targetValues: { name: "expected_value" },
@@ -233,7 +233,7 @@ test("BasicEvaluator evaluate with empty targetValues", async () => {
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await (evaluator as any).evaluate({
-    machineOutput: { payload: { name: "test" } },
+    machineOutput: { payload: { name: "test" }, outputRef: "output-15" },
     contract: {
       requiredFields: [],
       targetValues: {},
@@ -249,7 +249,7 @@ test("BasicEvaluator validate provides suggestions for missing fields", async ()
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: {} },
+    machineOutput: { payload: {}, outputRef: "output-16" },
     contract: {
       requiredFields: ["name", "email"],
       fieldTypes: {}
@@ -264,31 +264,31 @@ test("BasicEvaluator validate provides suggestions for type mismatches", async (
   const evaluator = createBasicEvaluatorPlugin();
 
   const result = await evaluator.validate({
-    machineOutput: { payload: { count: "not a number" } },
+    machineOutput: { payload: { count: "not a number" }, outputRef: "output-17" },
     contract: {
       requiredFields: ["count"],
       fieldTypes: { count: "number" }
     },
   });
 
-  assert.ok(result.suggestions.some(s => s.includes("Normalize")));
+  assert.ok(result.suggestions?.some(s => s.includes("Normalize")));
 });
 
 test("BasicEvaluator healthCheck returns true", async () => {
   const evaluator = createBasicEvaluatorPlugin();
-  await evaluator.initialize();
-  const healthy = await evaluator.healthCheck();
+  await (evaluator as any).initialize();
+  const healthy = await (evaluator as any).healthCheck();
   assert.equal(healthy, true);
 });
 
 test("BasicEvaluator initialize returns undefined", async () => {
   const evaluator = createBasicEvaluatorPlugin();
-  const result = await evaluator.initialize();
+  const result = await (evaluator as any).initialize();
   assert.equal(result, undefined);
 });
 
 test("BasicEvaluator shutdown returns undefined", async () => {
   const evaluator = createBasicEvaluatorPlugin();
-  const result = await evaluator.shutdown();
+  const result = await (evaluator as any).shutdown();
   assert.equal(result, undefined);
 });

@@ -14,6 +14,7 @@ test("SdkWorkbenchService.buildSnapshot creates snapshot with all inputs", () =>
       baseUrl: "https://api.example.com",
       apiVersion: "v1",
       tenantId: "tenant-123",
+      principal: { principalId: "admin", tenantId: "tenant-123", roles: ["admin"] },
     },
     plugins: [
       {
@@ -55,6 +56,7 @@ test("SdkWorkbenchService.buildSnapshot detects missing contracts", () => {
     client: {
       baseUrl: "https://api.example.com",
       apiVersion: "v1",
+      principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] },
     },
     plugins: [],
     packs: [
@@ -144,7 +146,7 @@ test("SdkWorkbenchService.buildPublishReadiness throws for empty workspace", () 
   assert.throws(
     () =>
       service.buildPublishReadiness({
-        client: { baseUrl: "https://api.example.com", apiVersion: "v1" },
+        client: { baseUrl: "https://api.example.com", apiVersion: "v1", principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] } },
         plugins: [],
         packs: [],
         availableContracts: [],
@@ -156,7 +158,7 @@ test("SdkWorkbenchService.buildPublishReadiness throws for empty workspace", () 
 test("SdkWorkbenchService.buildPublishReadiness returns findings for unresolved capabilities", () => {
   const service = new SdkWorkbenchService();
   const report = service.buildPublishReadiness({
-    client: { baseUrl: "https://api.example.com", apiVersion: "v1" },
+    client: { baseUrl: "https://api.example.com", apiVersion: "v1", principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] } },
     plugins: [
       {
         pluginId: "approve-plugin",
@@ -190,7 +192,7 @@ test("SdkWorkbenchService.buildPublishReadiness returns findings for unresolved 
 test("SdkWorkbenchService.buildPublishReadiness returns preview URLs", () => {
   const service = new SdkWorkbenchService();
   const report = service.buildPublishReadiness({
-    client: { baseUrl: "https://api.example.com", apiVersion: "v1" },
+    client: { baseUrl: "https://api.example.com", apiVersion: "v1", principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] } },
     plugins: [],
     packs: [
       {
@@ -217,6 +219,7 @@ test("SdkWorkbenchService.listWorkbenchShortcuts returns shortcut list", () => {
   const shortcuts = service.listWorkbenchShortcuts({
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
+    principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] },
   });
 
   assert.ok(shortcuts.length > 0);

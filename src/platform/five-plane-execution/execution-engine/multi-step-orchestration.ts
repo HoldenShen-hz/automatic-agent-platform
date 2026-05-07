@@ -275,7 +275,31 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
 
   let plannedWorkflow: ReturnType<WorkflowPlanner["plan"]>;
   let routing: IntakeRouteDecision;
-  if (isOapeflirPlanRequest(input.request)) {
+  let validatedPlanGraphBundle:
+    import("../../contracts/executable-contracts/index.js").PlanGraphBundle;
+  if (input.planGraphBundle != null) {
+    const guardResult = entryGuard.assertPlanGraphBundleOnly(input.planGraphBundle);
+    validatedPlanGraphBundle = guardResult.planGraphBundle;
+    plannedWorkflow = buildOapeflirPlannedWorkflow(
+      [...validatedPlanGraphBundle.graph.nodes] as PlanNode[],
+      validatedPlanGraphBundle.planGraphBundleId,
+    );
+    routing = {
+      workflowId: plannedWorkflow.workflow.workflowId,
+      divisionId: plannedWorkflow.workflow.divisionId,
+      routeReason: "plan_graph_bundle",
+      routeTrace: ["plan_graph_bundle:provided"],
+      requiresOrchestration: true,
+      classification: { intent: "create" as const, confidence: 1.0, continuation: "new_task" as const, matchedRules: ["plan_graph_bundle"] as string[] },
+      confirmedTaskSpecId: `plan_graph_bundle:${validatedPlanGraphBundle.planGraphBundleId}`,
+      capabilityMatch: {
+        capableWorkerFound: true,
+        targetDivisionId: plannedWorkflow.workflow.divisionId,
+        requiredCapabilities: [],
+        eligibleWorkerCount: Math.max(1, validatedPlanGraphBundle.graph.nodes.length),
+      },
+    };
+  } else if (isOapeflirPlanRequest(input.request)) {
     const oapeflirSteps = deserializeOapeflirPlan(input.request);
     plannedWorkflow = buildOapeflirPlannedWorkflow(oapeflirSteps, input.title);
     routing = {
@@ -327,12 +351,15 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
 
   // R4-26 (INV-GRAPH-001): Create PlanGraphBundle as only P3→P4 contract
   // R4-27 (INV-RUN-001): Enforce HarnessRuntime is only execution entry via RuntimeEntryGuard
-  const harnessRunId = newId("harness_run");
-  const planGraphBundle = minimalWorkflowToPlanGraphBundle(plannedWorkflow.workflow, harnessRunId);
-  const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
-  const validatedPlanGraphBundle = guardResult.planGraphBundle;
+  if (input.planGraphBundle == null) {
+    const harnessRunId = newId("harness_run");
+    const planGraphBundle = minimalWorkflowToPlanGraphBundle(plannedWorkflow.workflow, harnessRunId);
+    const guardResult = entryGuard.assertPlanGraphBundleOnly(planGraphBundle);
+    validatedPlanGraphBundle = guardResult.planGraphBundle;
+  }
   // R4-26 (INV-GRAPH-001): Use validatedPlanGraphBundle - the harnessRunId is now available for budget tracking
-  const harnessRunIdFromBundle = validatedPlanGraphBundle.harnessRunId;
+  // Note: validatedPlanGraphBundle is guaranteed to be assigned by this point (assigned at line 282 or 358)
+  const harnessRunIdFromBundle = validatedPlanGraphBundle!.harnessRunId;
   const tenantId = "tenant:local";
   // R4-33: Set harnessRunId on tool registry for correlating SideEffectRecords
   setToolRegistryHarnessRunId(harnessRunIdFromBundle);
@@ -359,7 +386,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
   // The HACoordinator integration is deferred to runtime initialization
   // R4-36 is addressed at the dispatch level where leader election is checked
 
-  const taskId = validatedPlanGraphBundle.planGraphBundleId;
+  const taskId = validatedPlanGraphBundle!.planGraphBundleId;
   const sessionId = newId("sess");
 
   // R4-27 (INV-RUN-001): Create and persist HarnessRun entity as the actual execution entry point
@@ -373,7 +400,7 @@ export async function runMultiStepOrchestration(input: MultiStepToolExecutionInp
     confirmedTaskSpecId: `pending:${taskId}`,
     requestEnvelopeId: `pending:${taskId}`,
     requestHash: `request:${taskId}`,
-    constraintPackRef: validatedPlanGraphBundle.budgetPlanRef ?? `workflow:${plannedWorkflow.workflow.workflowId}`,
+    constraintPackRef: validatedPlanGraphBundle!.budgetPlanRef ?? `workflow:${plannedWorkflow.workflow.workflowId}`,
     versionLockId: `pending:${harnessRunIdFromBundle}`,
     budgetLedgerId: budgetLedger.budgetLedgerId,
     harnessRunId: harnessRunIdFromBundle,

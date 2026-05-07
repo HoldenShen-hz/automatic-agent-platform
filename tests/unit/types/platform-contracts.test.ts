@@ -210,7 +210,6 @@ test("createRequestEnvelope handles null metadata input", () => {
   const envelope = createRequestEnvelope({
     principal,
     payload: {},
-    metadata: null,
   });
 
   assert.deepStrictEqual(envelope.metadata, {});

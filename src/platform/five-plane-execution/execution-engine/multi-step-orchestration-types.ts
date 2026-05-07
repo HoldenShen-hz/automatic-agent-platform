@@ -4,7 +4,7 @@ import type { IntakeRouteDecision } from "../../orchestration/routing/intake-rou
 import type { WorkflowPlanner } from "../../orchestration/routing/workflow-planner.js";
 import type { AdmissionBackpressureSnapshot, AdmissionPolicy } from "../dispatcher/admission-controller.js";
 import type { ContextCompactionResult } from "./context-compaction-service.js";
-import type { BudgetLedger } from "../../contracts/executable-contracts/index.js";
+import type { BudgetLedger, PlanGraphBundle } from "../../contracts/executable-contracts/index.js";
 
 export interface StepFailurePlan {
   errorCode: string;
@@ -16,6 +16,12 @@ export interface MultiStepToolExecutionInput {
   dbPath: string;
   title: string;
   request: string;
+  /**
+   * Canonical P3→P4 execution contract per INV-GRAPH-001.
+   * When provided, the runtime must consume this bundle directly instead of
+   * rebuilding a fresh graph from title/request text.
+   */
+  planGraphBundle?: PlanGraphBundle;
   // R4-25 (INV-BUDGET-001): Budget tracking - harnessRunId from validated PlanGraphBundle
   harnessRunId?: string;
   budgetLedger?: BudgetLedger;

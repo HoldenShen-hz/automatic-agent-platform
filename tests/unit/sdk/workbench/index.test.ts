@@ -16,6 +16,7 @@ const testClientConfig: ApiClientConfig = {
   apiVersion: "v1",
   tenantId: "test-tenant",
   bearerToken: "test-token",
+  principal: { principalId: "admin", tenantId: "test-tenant", roles: ["admin"] },
 };
 
 function createTestPlugin(overrides: Partial<PluginManifest> = {}): PluginManifest {
@@ -26,7 +27,7 @@ function createTestPlugin(overrides: Partial<PluginManifest> = {}): PluginManife
     owner: "test-owner",
     spiTypes: ["tool"],
     capabilityIds: ["test.capability"],
-    publicSdkSurface: "test-plugin",
+    publicSdkSurface: ["test-plugin"],
     ...overrides,
   } as PluginManifest;
 }
@@ -79,6 +80,7 @@ test("SdkWorkbenchService.buildSnapshot handles null tenantId", () => {
     baseUrl: "https://api.example.com",
     apiVersion: "v1",
     bearerToken: "test-token",
+    principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] },
   };
 
   const snapshot = service.buildSnapshot({

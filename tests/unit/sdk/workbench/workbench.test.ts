@@ -10,6 +10,7 @@ const mockClient: ApiClientConfig = {
   baseUrl: "https://api.example.com",
   apiVersion: "v1",
   bearerToken: "test-token",
+  principal: { principalId: "admin", tenantId: "t1", roles: ["admin"] },
 };
 
 const mockPlugin: PluginManifest = {
@@ -19,8 +20,8 @@ const mockPlugin: PluginManifest = {
   owner: "test-owner",
   spiTypes: ["tool"],
   capabilityIds: ["query.execute", "search.execute"],
-  publicSdkSurface: "test-plugin-query",
-};
+  publicSdkSurface: ["test-plugin-query"],
+} as PluginManifest;
 
 const mockPack: BusinessPackManifest = {
   packId: "test-pack",
@@ -84,8 +85,8 @@ test("SdkWorkbenchService.createInstallPlan handles multiple plugins", () => {
     owner: "test-owner",
     spiTypes: ["adapter"],
     capabilityIds: ["data.transform"],
-    publicSdkSurface: "test-plugin-transform",
-  };
+    publicSdkSurface: ["test-plugin-transform"],
+  } as PluginManifest;
 
   const plan = service.createInstallPlan({
     pack: mockPack,

@@ -27,6 +27,7 @@ const mockPrincipal = {
   subject: "user_123",
   tenantId: "tenant_abc",
   roles: ["admin"],
+  principalId: "user_123",
 };
 
 const TEST_PACK_SIGNING = {
@@ -363,6 +364,7 @@ test("PackLifecycleOrchestrationService handles testing with all passing criteri
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -393,6 +395,7 @@ test("PackLifecycleOrchestrationService handles testing with some failing criter
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -424,6 +427,7 @@ test("PackLifecycleOrchestrationService handles testing with coverage exactly 80
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -454,6 +458,7 @@ test("PackLifecycleOrchestrationService handles testing with failing eval", () =
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -484,6 +489,7 @@ test("PackLifecycleOrchestrationService handles testing with failing staging", (
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -514,6 +520,7 @@ test("PackLifecycleOrchestrationService handles certification with security revi
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],
@@ -554,6 +561,7 @@ test("PackLifecycleOrchestrationService handles certification with risk review f
       capabilities: [
         { capabilityKey: "test.cap", maturity: "ga", requiredContracts: [] },
       ],
+      domainId: "testing",
     }),
     owner: "test@example.com",
     evalDatasetIds: ["dataset-1"],

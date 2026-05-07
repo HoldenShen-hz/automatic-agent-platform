@@ -108,8 +108,7 @@ export interface ExecutionResult {
  */
 export interface RuntimePlanExecutionInput {
   readonly dbPath: string;
-  readonly title: string;
-  readonly request: string;
+  readonly planGraphBundle: PlanGraphBundle;
   readonly contextBudgetTokens?: number;
   /** §13.7: Parent context for subgraph/child-run execution */
   readonly parentContext?: ParentContext;
