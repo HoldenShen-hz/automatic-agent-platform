@@ -596,15 +596,15 @@ test("DelegationManagerService.getDelegation retrieves delegation", async () => 
   };
 
   const handle = await manager.delegate(parent, spec);
-  const delegation = manager.getDelegation(handle.delegationId);
+  const delegation = await manager.getDelegation(handle.delegationId);
 
   assert.ok(delegation !== null);
   assert.equal(delegation!.delegationId, handle.delegationId);
 });
 
-test("DelegationManagerService.getDelegation returns null for unknown id", () => {
+test("DelegationManagerService.getDelegation returns null for unknown id", async () => {
   const manager = createDelegationManager();
-  assert.equal(manager.getDelegation("unknown-dlg"), null);
+  assert.equal(await manager.getDelegation("unknown-dlg"), null);
 });
 
 test("DelegationManagerService.complete marks delegation as completed", async () => {
@@ -641,7 +641,7 @@ test("DelegationManagerService.complete marks delegation as completed", async ()
   const handle = await manager.delegate(parent, spec);
   await manager.complete(handle.delegationId);
 
-  const delegation = manager.getDelegation(handle.delegationId);
+  const delegation = await manager.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "completed");
 });
 
@@ -690,7 +690,7 @@ test("DelegationManagerService.fail marks delegation as failed", async () => {
   const handle = await manager.delegate(parent, spec);
   await manager.fail(handle.delegationId, "Something went wrong");
 
-  const delegation = manager.getDelegation(handle.delegationId);
+  const delegation = await manager.getDelegation(handle.delegationId);
   assert.equal(delegation!.status, "failed");
 });
 
@@ -727,7 +727,7 @@ test("DelegationManagerService.getActiveDelegations returns active delegations",
 
   await manager.delegate(parent, spec);
 
-  const active = manager.getActiveDelegations("parent-1");
+  const active = await manager.getActiveDelegations("parent-1");
   assert.equal(active.length, 1);
   assert.equal(active[0]!.parentAgentId, "parent-1");
 });

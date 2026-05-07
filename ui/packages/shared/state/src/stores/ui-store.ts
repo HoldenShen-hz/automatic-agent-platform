@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { persist } from "zustand/middleware";
+import { withPersistDevtoolsDraft } from "./middleware";
 
 /**
  * UIStore state per §5.1.1 - complete UI state including theme, sidebar, and NL panel.
@@ -25,7 +25,8 @@ export interface UiStoreState {
 
 export function createUiStore() {
   return createStore<UiStoreState>()(
-    persist(
+    withPersistDevtoolsDraft(
+      "aa-ui-store",
       (set) => ({
         activeRoute: "/",
         activeFeature: "dashboard",
@@ -34,28 +35,41 @@ export function createUiStore() {
         nlPanelOpen: false,
         commandPaletteOpen: false,
         setActiveRoute(activeRoute) {
-          set({ activeRoute });
+          set((draft) => {
+            draft.activeRoute = activeRoute;
+          });
         },
         setActiveFeature(activeFeature) {
-          set({ activeFeature });
+          set((draft) => {
+            draft.activeFeature = activeFeature;
+          });
         },
         setTheme(theme) {
-          set({ theme });
+          set((draft) => {
+            draft.theme = theme;
+          });
         },
         toggleSidebar() {
-          set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+          set((draft) => {
+            draft.sidebarCollapsed = !draft.sidebarCollapsed;
+          });
         },
         setSidebarCollapsed(sidebarCollapsed) {
-          set({ sidebarCollapsed });
+          set((draft) => {
+            draft.sidebarCollapsed = sidebarCollapsed;
+          });
         },
         setNlPanelOpen(nlPanelOpen) {
-          set({ nlPanelOpen });
+          set((draft) => {
+            draft.nlPanelOpen = nlPanelOpen;
+          });
         },
         setCommandPaletteOpen(commandPaletteOpen) {
-          set({ commandPaletteOpen });
+          set((draft) => {
+            draft.commandPaletteOpen = commandPaletteOpen;
+          });
         },
       }),
-      { name: "aa-ui-store" },
     ),
   );
 }

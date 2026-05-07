@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { persist } from "zustand/middleware";
+import { withPersistDevtoolsDraft } from "./middleware";
 
 /**
  * SyncStore state per §5.1.1 - complete sync state including online status and conflicts.
@@ -32,7 +32,8 @@ export interface ConflictInfo {
 
 export function createSyncStore() {
   return createStore<SyncStoreState>()(
-    persist(
+    withPersistDevtoolsDraft(
+      "aa-sync-store",
       (set) => ({
         online: typeof navigator !== "undefined" ? navigator.onLine : true,
         pendingMutations: 0,
@@ -40,30 +41,44 @@ export function createSyncStore() {
         syncStatus: "idle",
         conflicts: [],
         setOnline(online) {
-          set({ online, syncStatus: online ? "idle" : "offline" });
+          set((draft) => {
+            draft.online = online;
+            draft.syncStatus = online ? "idle" : "offline";
+          });
         },
         setPendingMutations(pendingMutations) {
-          set({ pendingMutations });
+          set((draft) => {
+            draft.pendingMutations = pendingMutations;
+          });
         },
         markFlushed(lastFlushedAt) {
-          set({ pendingMutations: 0, lastFlushedAt, syncStatus: "idle" });
+          set((draft) => {
+            draft.pendingMutations = 0;
+            draft.lastFlushedAt = lastFlushedAt;
+            draft.syncStatus = "idle";
+          });
         },
         setSyncStatus(syncStatus) {
-          set({ syncStatus });
+          set((draft) => {
+            draft.syncStatus = syncStatus;
+          });
         },
         addConflict(conflict) {
-          set((state) => ({ conflicts: [...state.conflicts, conflict] }));
+          set((draft) => {
+            draft.conflicts = [...draft.conflicts, conflict];
+          });
         },
         resolveConflict(conflictId, _resolution) {
-          set((state) => ({
-            conflicts: state.conflicts.filter((c: ConflictInfo) => c.id !== conflictId),
-          }));
+          set((draft) => {
+            draft.conflicts = draft.conflicts.filter((conflict) => conflict.id !== conflictId);
+          });
         },
         retrySync() {
-          set({ syncStatus: "syncing" });
+          set((draft) => {
+            draft.syncStatus = "syncing";
+          });
         },
       }),
-      { name: "aa-sync-store" },
     ),
   );
 }

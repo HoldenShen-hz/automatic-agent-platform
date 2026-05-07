@@ -178,10 +178,10 @@ test("DelegationManagerService rejects terminal-to-terminal status rewrites", as
   );
 });
 
-test("DelegationManagerService returns null for non-existent delegation", () => {
+test("DelegationManagerService returns null for non-existent delegation", async () => {
   const service = createDelegationManager();
 
-  const result = service.getDelegation("non-existent-id");
+  const result = await service.getDelegation("non-existent-id");
   assert.equal(result, null);
 });
 

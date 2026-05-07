@@ -42,7 +42,7 @@ test("delegation permissions are narrowed by resource intersection, not replacem
   const service = new DelegationManagerService();
 
   const handle = await service.delegate(createParent(), createSpec());
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation !== null);
   assert.deepEqual(delegation.permissions.resources, ["repo:beta"]);
@@ -52,7 +52,7 @@ test("delegation permissions are narrowed by action intersection", async () => {
   const service = new DelegationManagerService();
 
   const handle = await service.delegate(createParent(), createSpec());
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.ok(delegation !== null);
   assert.deepEqual(delegation.permissions.actions, ["read"]);

@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { createJSONStorage } from "zustand/middleware";
+import { withPersistDevtoolsDraft } from "./middleware";
 
 /**
  * AuthStore state per §5.1.1 - complete auth context including tokens and tenant info.
@@ -33,7 +34,8 @@ export interface AuthSessionData {
 
 export function createAuthStore() {
   return createStore<AuthStoreState>()(
-    persist(
+    withPersistDevtoolsDraft(
+      "aa-auth-store",
       (set) => ({
         authenticated: false,
         locale: "zh-CN",
@@ -44,39 +46,45 @@ export function createAuthStore() {
         accessToken: null,
         refreshToken: null,
         login(session) {
-          set({
-            authenticated: true,
-            userId: session.userId,
-            tenantId: session.tenantId,
-            roles: session.roles,
-            permissions: session.permissions,
-            accessToken: session.accessToken,
-            refreshToken: session.refreshToken,
+          set((draft) => {
+            draft.authenticated = true;
+            draft.userId = session.userId;
+            draft.tenantId = session.tenantId;
+            draft.roles = [...session.roles];
+            draft.permissions = [...session.permissions];
+            draft.accessToken = session.accessToken;
+            draft.refreshToken = session.refreshToken;
           });
         },
         logout() {
-          set({
-            authenticated: false,
-            userId: null,
-            tenantId: null,
-            roles: [],
-            permissions: [],
-            accessToken: null,
-            refreshToken: null,
+          set((draft) => {
+            draft.authenticated = false;
+            draft.userId = null;
+            draft.tenantId = null;
+            draft.roles = [];
+            draft.permissions = [];
+            draft.accessToken = null;
+            draft.refreshToken = null;
           });
         },
         setLocale(locale) {
-          set({ locale });
+          set((draft) => {
+            draft.locale = locale;
+          });
         },
         switchTenant(tenantId) {
-          set({ tenantId });
+          set((draft) => {
+            draft.tenantId = tenantId;
+          });
         },
         updateTokens(accessToken, refreshToken) {
-          set({ accessToken, refreshToken });
+          set((draft) => {
+            draft.accessToken = accessToken;
+            draft.refreshToken = refreshToken;
+          });
         },
       }),
       {
-        name: "aa-auth-store",
         storage: createJSONStorage(() => (typeof window === "undefined" ? {
           getItem: () => null,
           setItem: () => undefined,

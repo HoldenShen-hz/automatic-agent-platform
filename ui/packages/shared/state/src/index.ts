@@ -61,7 +61,7 @@ export type { NotificationStoreState, Notification, NotificationKind } from "./s
 export { createNotificationStore } from "./stores/notification-store";
 export type { ThemeStoreState, ThemeMode, ColorScheme } from "./stores/theme-store";
 export { createThemeStore } from "./stores/theme-store";
-export { createQueryClientFactory } from "./query-client";
+export { CACHE_TIER_STALE_TIME, createQueryClientFactory, createTieredQueryClientFactory } from "./query-client";
 export type { QueryCachePersister, PersistQueryClientOptions } from "./query-cache-persistence";
 export {
   createIndexedDbQueryCachePersister,

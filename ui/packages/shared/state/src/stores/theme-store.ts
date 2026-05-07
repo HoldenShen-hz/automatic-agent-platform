@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { persist } from "zustand/middleware";
+import { withPersistDevtoolsDraft } from "./middleware";
 
 export type ThemeMode = "light" | "dark" | "high-contrast" | "system";
 export type ResolvedThemeName = "light" | "dark" | "high-contrast";
@@ -30,20 +30,20 @@ function resolveColorScheme(mode: ThemeMode): "light" | "dark" {
 
 export function createThemeStore() {
   return createStore<ThemeStoreState>()(
-    persist(
+    withPersistDevtoolsDraft(
+      "aa-theme-store",
       (set) => ({
         themeMode: "system",
         resolvedThemeName: resolveThemeName("system"),
         resolvedColorScheme: resolveColorScheme("system"),
         setThemeMode(themeMode) {
-          set({
-            themeMode,
-            resolvedThemeName: resolveThemeName(themeMode),
-            resolvedColorScheme: resolveColorScheme(themeMode),
+          set((draft) => {
+            draft.themeMode = themeMode;
+            draft.resolvedThemeName = resolveThemeName(themeMode);
+            draft.resolvedColorScheme = resolveColorScheme(themeMode);
           });
         },
       }),
-      { name: "aa-theme-store" },
     ),
   );
 }

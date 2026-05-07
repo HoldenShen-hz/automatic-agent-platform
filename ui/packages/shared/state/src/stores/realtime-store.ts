@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { persist } from "zustand/middleware";
+import { withPersistDevtoolsDraft } from "./middleware";
 
 /**
  * RealtimeStore state per §5.1.1 - complete realtime state including subscriptions and incidents.
@@ -32,7 +32,8 @@ export interface RealtimeStoreState {
 
 export function createRealtimeStore() {
   return createStore<RealtimeStoreState>()(
-    persist(
+    withPersistDevtoolsDraft(
+      "aa-realtime-store",
       (set) => ({
         wsStatus: "disconnected",
         panicActivated: false,
@@ -42,42 +43,55 @@ export function createRealtimeStore() {
         pendingApprovalCount: 0,
         activeIncidents: [],
         setWsStatus(wsStatus) {
-          set({ wsStatus });
+          set((draft) => {
+            draft.wsStatus = wsStatus;
+          });
         },
         triggerPanic() {
-          set({ panicActivated: true });
+          set((draft) => {
+            draft.panicActivated = true;
+          });
         },
         setOfflineQueueSize(offlineQueueSize) {
-          set({ offlineQueueSize });
+          set((draft) => {
+            draft.offlineQueueSize = offlineQueueSize;
+          });
         },
         setSyncStatus(syncStatus) {
-          set({ syncStatus });
+          set((draft) => {
+            draft.syncStatus = syncStatus;
+          });
         },
         subscribe(channel) {
-          set((state) => ({
-            activeSubscriptions: [...state.activeSubscriptions, channel],
-          }));
+          set((draft) => {
+            if (!draft.activeSubscriptions.includes(channel)) {
+              draft.activeSubscriptions = [...draft.activeSubscriptions, channel];
+            }
+          });
         },
         unsubscribe(channel) {
-          set((state) => ({
-            activeSubscriptions: state.activeSubscriptions.filter((c: string) => c !== channel),
-          }));
+          set((draft) => {
+            draft.activeSubscriptions = draft.activeSubscriptions.filter((entry) => entry !== channel);
+          });
         },
         setPendingApprovalCount(pendingApprovalCount) {
-          set({ pendingApprovalCount });
+          set((draft) => {
+            draft.pendingApprovalCount = pendingApprovalCount;
+          });
         },
         addActiveIncident(incidentId) {
-          set((state) => ({
-            activeIncidents: [...state.activeIncidents, incidentId],
-          }));
+          set((draft) => {
+            if (!draft.activeIncidents.includes(incidentId)) {
+              draft.activeIncidents = [...draft.activeIncidents, incidentId];
+            }
+          });
         },
         removeActiveIncident(incidentId) {
-          set((state) => ({
-            activeIncidents: state.activeIncidents.filter((id: string) => id !== incidentId),
-          }));
+          set((draft) => {
+            draft.activeIncidents = draft.activeIncidents.filter((id) => id !== incidentId);
+          });
         },
       }),
-      { name: "aa-realtime-store" },
     ),
   );
 }

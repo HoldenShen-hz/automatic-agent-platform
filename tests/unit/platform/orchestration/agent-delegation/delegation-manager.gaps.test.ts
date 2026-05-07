@@ -71,7 +71,7 @@ test("DelegationManagerService permission narrowing with empty child actions", a
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   // With empty child actions, parent actions should be used
   assert.ok(delegation?.permissions.actions.length > 0);
@@ -95,7 +95,7 @@ test("DelegationManagerService permission narrowing with empty parent actions", 
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   // Intersection of empty parent and child should be empty
   assert.ok(Array.isArray(delegation?.permissions.actions));
@@ -125,7 +125,7 @@ test("DelegationManagerService permission narrowing takes more restrictive durat
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   // Should take the more restrictive value (30000)
   assert.equal(delegation?.permissions.constraints.maxDurationMs, 30000);
@@ -155,7 +155,7 @@ test("DelegationManagerService permission narrowing takes more restrictive token
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   // Should take the more restrictive value (50000)
   assert.equal(delegation?.permissions.constraints.maxTokens, 50000);
@@ -186,7 +186,7 @@ test("DelegationManagerService permission narrowing merges constraints", async (
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   assert.equal(delegation?.permissions.constraints.maxDurationMs, 30000);
   assert.ok(delegation?.permissions.constraints.allowedDomains?.includes("api.example.com"));
@@ -204,7 +204,7 @@ test("DelegationManagerService permission narrowing uses parent resources when c
   });
 
   const handle = await service.delegate(parent, spec);
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
 
   // Should use parent resources
   assert.ok(delegation?.permissions.resources.length > 0);
@@ -267,7 +267,7 @@ test("DelegationManagerService getActiveDelegations excludes completed", async (
 
   await service.complete(handle1.delegationId);
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
 
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
@@ -282,7 +282,7 @@ test("DelegationManagerService getActiveDelegations excludes failed", async () =
 
   await service.fail(handle1.delegationId, "test error");
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
 
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
@@ -297,7 +297,7 @@ test("DelegationManagerService getActiveDelegations excludes cancelled", async (
 
   await service.cancel(handle1.delegationId);
 
-  const active = service.getActiveDelegations("parent-agent");
+  const active = await service.getActiveDelegations("parent-agent");
 
   assert.equal(active.length, 1);
   assert.equal(active[0]?.delegationId, handle2.delegationId);
@@ -306,7 +306,7 @@ test("DelegationManagerService getActiveDelegations excludes cancelled", async (
 test("DelegationManagerService getActiveDelegations returns empty for unknown agent", async () => {
   const service = createDelegationManager();
 
-  const active = service.getActiveDelegations("unknown-agent");
+  const active = await service.getActiveDelegations("unknown-agent");
 
   assert.equal(active.length, 0);
 });
@@ -323,7 +323,7 @@ test("DelegationManagerService uses defaultTimeout when spec timeout is zero", a
   const handle = await service.delegate(parent, spec);
 
   // Should use defaultTimeout of 120000ms (2 minutes)
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn > 100000); // At least 100 seconds
 });
@@ -336,7 +336,7 @@ test("DelegationManagerService uses spec timeout when positive", async () => {
   const handle = await service.delegate(parent, spec);
 
   // Should use spec timeout of 10000ms
-  const delegation = service.getDelegation(handle.delegationId);
+  const delegation = await service.getDelegation(handle.delegationId);
   const expiresIn = new Date(delegation!.expiresAt).getTime() - Date.now();
   assert.ok(expiresIn < 20000); // Less than 20 seconds
 });

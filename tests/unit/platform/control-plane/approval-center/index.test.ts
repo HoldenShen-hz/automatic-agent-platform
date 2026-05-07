@@ -204,9 +204,9 @@ test("EscalationManager canEscalate returns correct value", () => {
   assert.equal(manager.canEscalate(2, 3), true);
 });
 
-test("EscalationManager createDelegation creates valid delegation", () => {
+test("EscalationManager createDelegation creates valid delegation", async () => {
   const manager = new EscalationManager();
-  const delegation = manager.createDelegation("user_1", "user_2", "approval_1");
+  const delegation = await manager.createDelegation("user_1", "user_2", "approval_1");
   assert.equal(delegation.fromApprover, "user_1");
   assert.equal(delegation.toApprover, "user_2");
   assert.equal(delegation.originalApprovalId, "approval_1");
@@ -215,9 +215,9 @@ test("EscalationManager createDelegation creates valid delegation", () => {
   assert.ok(delegation.expiresAt);
 });
 
-test("EscalationManager createDelegation throws for self-delegation", () => {
+test("EscalationManager createDelegation throws for self-delegation", async () => {
   const manager = new EscalationManager();
-  assert.throws(() => manager.createDelegation("user_1", "user_1", "approval_1"), /Cannot delegate to yourself/);
+  await assert.rejects(() => manager.createDelegation("user_1", "user_1", "approval_1"), /Cannot delegate to yourself/);
 });
 
 test("EscalationManager isDelegationExpired detects expired", () => {
@@ -236,9 +236,9 @@ test("EscalationManager isDelegationExpired detects expired", () => {
   assert.equal(manager.isDelegationExpired(delegation), true);
 });
 
-test("EscalationManager getDelegation returns stored delegation", () => {
+test("EscalationManager getDelegation returns stored delegation", async () => {
   const manager = new EscalationManager();
-  const created = manager.createDelegation("user_1", "user_2", "approval_1");
+  const created = await manager.createDelegation("user_1", "user_2", "approval_1");
   const retrieved = manager.getDelegation(created.delegationId);
   assert.ok(retrieved);
   assert.equal(retrieved!.delegationId, created.delegationId);

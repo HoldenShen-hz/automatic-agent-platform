@@ -23,8 +23,8 @@ function makeConstraintPack(overrides: Partial<ConstraintPack> = {}): Constraint
     approvalMode: "none",
     autonomyMode: "semi_auto",
     tool_policy: { allowedTools: ["read_file", "write_file"] },
-    riskPolicy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
-    outputPolicy: { requiredEvidence: [], redactSensitiveData: false },
+    risk_policy: { maxRiskScore: 0.8, escalationThreshold: 0.7 },
+    output_policy: { requiredEvidence: [], redactSensitiveData: false },
     budget: { maxSteps: 10, maxCost: 1.0, maxDurationMs: 60000 },
     ...overrides,
   };

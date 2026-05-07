@@ -15,10 +15,6 @@ export const KnowledgeBoundarySchema = z.object({
 export type KnowledgeBoundary = z.infer<typeof KnowledgeBoundarySchema>;
 
 export function canAccessKnowledgeBoundary(boundary: KnowledgeBoundary, requesterOrgNodeId: string): boolean {
-  // R27-68 fix: Check defaultVisibility - public boundaries allow access to any requester
-  if (boundary.defaultVisibility === "public") {
-    return true;
-  }
   const allowedOrgNodeIds = boundary.allowedOrgNodeIds ?? [];
   if (boundary.ownerOrgNodeId === requesterOrgNodeId) {
     return true;

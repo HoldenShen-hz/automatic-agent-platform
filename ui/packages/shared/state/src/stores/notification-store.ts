@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { persist } from "zustand/middleware";
+import { withPersistDevtoolsDraft } from "./middleware";
 
 export type NotificationKind = "info" | "success" | "warning" | "error";
 
@@ -28,7 +28,8 @@ function generateId(): string {
 
 export function createNotificationStore() {
   return createStore<NotificationStoreState>()(
-    persist(
+    withPersistDevtoolsDraft(
+      "aa-notification-store",
       (set) => ({
         notifications: [],
         unreadCount: 0,
@@ -39,44 +40,45 @@ export function createNotificationStore() {
             createdAt: new Date().toISOString(),
             read: false,
           };
-          set((state) => ({
-            notifications: [newNotification, ...state.notifications],
-            unreadCount: state.unreadCount + 1,
-          }));
+          set((draft) => {
+            draft.notifications = [newNotification, ...draft.notifications];
+            draft.unreadCount += 1;
+          });
         },
         markRead(id) {
-          set((state) => {
-            const notification = state.notifications.find((n: Notification) => n.id === id);
-            if (!notification || notification.read) {
-              return state;
+          set((draft) => {
+            const notification = draft.notifications.find((entry) => entry.id === id);
+            if (notification == null || notification.read) {
+              return;
             }
-            return {
-              notifications: state.notifications.map((n: Notification) => (n.id === id ? { ...n, read: true } : n)),
-              unreadCount: Math.max(0, state.unreadCount - 1),
-            };
+            notification.read = true;
+            draft.unreadCount = Math.max(0, draft.unreadCount - 1);
           });
         },
         markAllRead() {
-          set((state) => ({
-            notifications: state.notifications.map((n: Notification) => ({ ...n, read: true })),
-            unreadCount: 0,
-          }));
+          set((draft) => {
+            for (const notification of draft.notifications) {
+              notification.read = true;
+            }
+            draft.unreadCount = 0;
+          });
         },
         dismissNotification(id) {
-          set((state) => {
-            const notification = state.notifications.find((n: Notification) => n.id === id);
-            const newNotifications = state.notifications.filter((n: Notification) => n.id !== id);
-            return {
-              notifications: newNotifications,
-              unreadCount: notification && !notification.read ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
-            };
+          set((draft) => {
+            const notification = draft.notifications.find((entry) => entry.id === id);
+            draft.notifications = draft.notifications.filter((entry) => entry.id !== id);
+            if (notification != null && !notification.read) {
+              draft.unreadCount = Math.max(0, draft.unreadCount - 1);
+            }
           });
         },
         clearAll() {
-          set({ notifications: [], unreadCount: 0 });
+          set((draft) => {
+            draft.notifications = [];
+            draft.unreadCount = 0;
+          });
         },
       }),
-      { name: "aa-notification-store" },
     ),
   );
 }
