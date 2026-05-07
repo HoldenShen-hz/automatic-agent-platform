@@ -293,12 +293,14 @@ export class PlanGraphHarnessRuntime {
       throw new ValidationError("plan_graph_harness_runtime.no_ready_node", "No ready node is available for execution.");
     }
 
+    const fencingToken = `${node.nodeId}-fence`;
     let nodeRun = createNodeRun({
       harnessRunId: input.harnessRun.harnessRunId,
       planGraphBundleId: input.planGraphBundle.planGraphBundleId,
       graphVersion: input.planGraphBundle.graphVersion,
       nodeId: node.nodeId,
       currentSeq: 0,
+      fencingToken,
     });
     const events: PlatformFactEvent[] = [];
     events.push(this.scheduler.decisionEvent({
@@ -309,7 +311,6 @@ export class PlanGraphHarnessRuntime {
       emittedBy: input.context.emittedBy,
     }));
     const leaseId = `${node.nodeId}-lease`;
-    const fencingToken = `${node.nodeId}-fence`;
     const transitions: readonly NodeRun["status"][] = ["ready", "leased", "running"];
     for (const toStatus of transitions) {
       const result = this.stateMachine.transition({

@@ -287,6 +287,7 @@ export class DurableEventBus {
   /** Partition-aware subscriber registry with consumer group isolation */
   private readonly subscriberRegistry = new PartitionAwareSubscriberRegistry();
   private readonly deliveryChains = new Map<string, Promise<void>>();
+  private readonly volatileDispatchKeys = new Set<string>();
   private readonly pollingTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly activeConsumerRefCounts: Map<string, number>;
   private fanOutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -366,6 +367,7 @@ export class DurableEventBus {
     }
     this.subscriberRegistry.clear();
     this.deliveryChains.clear();
+    this.volatileDispatchKeys.clear();
     if (this.fanOutTimer !== null) {
       clearTimeout(this.fanOutTimer);
       this.fanOutTimer = null;
@@ -1072,6 +1074,11 @@ export class DurableEventBus {
     for (const consumerId of consumerIds) {
       const handler = this.subscriberRegistry.getHandler(consumerId);
       if (!handler) continue;
+      const dispatchKey = this.buildVolatileDispatchKey(event.id, consumerId);
+      if (this.volatileDispatchKeys.has(dispatchKey)) {
+        continue;
+      }
+      this.volatileDispatchKeys.add(dispatchKey);
 
       const prior = this.deliveryChains.get(consumerId) ?? Promise.resolve();
       const next = prior.then(async () => {
@@ -1103,11 +1110,16 @@ export class DurableEventBus {
       );
       this.deliveryChains.set(consumerId, chain);
       void chain.finally(() => {
+        this.volatileDispatchKeys.delete(dispatchKey);
         if (this.deliveryChains.get(consumerId) === chain) {
           this.deliveryChains.delete(consumerId);
         }
       });
     }
+  }
+
+  private buildVolatileDispatchKey(eventId: string, consumerId: string): string {
+    return `${eventId}:${consumerId}`;
   }
 
   private enqueueVolatileDeadLetter(event: EventRecord, consumerId: string, errorMessage: string): void {

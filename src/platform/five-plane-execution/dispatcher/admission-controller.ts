@@ -134,17 +134,14 @@ export class AdmissionController {
     };
 
     // R6-3: §14.2 Extended snapshot with scheduling factors
-    // Risk class distribution
-    const riskClassDistribution: Record<string, number> = {};
-    const tasks = this.store.task.listTasks();
-    for (const task of tasks) {
-      // riskClass not available on TaskRecord - use "unknown" as placeholder
-      const rc = "unknown";
-      riskClassDistribution[rc] = (riskClassDistribution[rc] ?? 0) + 1;
-    }
+    // Risk class distribution - riskClass not available on TaskRecord, use placeholder
+    const riskClassDistribution: Record<string, number> = {
+      unknown: this.store.task.countQueuedTasks(),
+    };
 
     // Tenant usage (simplified - would need real tenant tracking)
     const tenantUsage: Record<string, number> = {};
+    const tasks = this.store.task.listTasks();
     for (const task of tasks) {
       const tid = task.tenantId ?? "unknown";
       tenantUsage[tid] = (tenantUsage[tid] ?? 0) + 1;

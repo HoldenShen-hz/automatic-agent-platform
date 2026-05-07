@@ -967,14 +967,21 @@ class TaskTerminalTransitionService {
     // (idempotent success) rather than throwing a noop transition error.
     // This handles cases where concurrent transitions or race conditions result
     // in the entity already being terminal when we attempt to transition.
-    if (freshTaskStatus === input.terminalStatus && freshWorkflowStatus === workflowTerminal && freshSessionStatus === sessionTerminal && freshExecutionStatus === executionTerminal) {
+    // R9-02: Check if execution is already in its terminal state.
+    // If so, skip the execution transition since it was already handled by the step loop.
+    // This prevents a noop transition error when execution is already terminal but
+    // task/workflow/session are still transitioning.
+    const executionAlreadyTerminal = freshExecutionStatus === executionTerminal;
+    if (freshTaskStatus === input.terminalStatus && freshWorkflowStatus === workflowTerminal && freshSessionStatus === sessionTerminal && executionAlreadyTerminal) {
       // All entities already in terminal state - noop success
       return;
     }
     taskStateMachine.assertTransition(freshTaskStatus, input.terminalStatus);
     workflowStateMachine.assertTransition(freshWorkflowStatus, workflowTerminal);
     sessionStateMachine.assertTransition(freshSessionStatus, sessionTerminal);
-    executionStateMachine.assertTransition(freshExecutionStatus, executionTerminal);
+    if (!executionAlreadyTerminal) {
+      executionStateMachine.assertTransition(freshExecutionStatus, executionTerminal);
+    }
 
     // R4-28 (INV-STATE-001): Append PlatformFactEvent BEFORE state mutations - event is source of truth
     // This establishes the terminal transition as a PlatformFactEvent before any derived table updates
@@ -1027,26 +1034,30 @@ class TaskTerminalTransitionService {
       emittedBy: "TaskTerminalTransitionService",
       principal: input.context.actorId ?? "system",
     });
-    const executionPlatformEvent = buildLegacyTransitionPlatformFactEvent({
-      aggregateType: "Execution",
-      aggregateId: input.executionId,
-      traceId: input.context.traceId,
-      payload: injectTraceContext({
-        fromStatus: freshExecutionStatus,
-        toStatus: executionTerminal,
-        reasonCode: input.context.reasonCode,
-        occurredAt: input.context.occurredAt,
-      }, traceContext),
-      occurredAt: input.context.occurredAt,
-      correlationId: input.taskId,
-      reasonCode: input.context.reasonCode,
-      emittedBy: "TaskTerminalTransitionService",
-      principal: input.context.actorId ?? "system",
-    });
+    const executionPlatformEvent = !executionAlreadyTerminal
+      ? buildLegacyTransitionPlatformFactEvent({
+          aggregateType: "Execution",
+          aggregateId: input.executionId,
+          traceId: input.context.traceId,
+          payload: injectTraceContext({
+            fromStatus: freshExecutionStatus,
+            toStatus: executionTerminal,
+            reasonCode: input.context.reasonCode,
+            occurredAt: input.context.occurredAt,
+          }, traceContext),
+          occurredAt: input.context.occurredAt,
+          correlationId: input.taskId,
+          reasonCode: input.context.reasonCode,
+          emittedBy: "TaskTerminalTransitionService",
+          principal: input.context.actorId ?? "system",
+        })
+      : null;
     this.repository.appendPlatformFactEvent(taskPlatformEvent);
     this.repository.appendPlatformFactEvent(workflowPlatformEvent);
     this.repository.appendPlatformFactEvent(sessionPlatformEvent);
-    this.repository.appendPlatformFactEvent(executionPlatformEvent);
+    if (executionPlatformEvent) {
+      this.repository.appendPlatformFactEvent(executionPlatformEvent);
+    }
 
     // R9-02: updateTaskOutputCas uses updated_at as fencing token (§25.3) to prevent
     // TOCTOU races. Only updates if the task's updated_at matches expectedTaskUpdatedAt
@@ -1106,19 +1117,23 @@ class TaskTerminalTransitionService {
       );
     }
     // R9-02: updateExecutionStatusCas uses status check (no explicit version in executions table)
-    const executionAffected = this.repository.updateExecutionStatusCas(
-      input.executionId,
-      freshExecutionStatus,
-      executionTerminal,
-      input.context.occurredAt,
-      null,
-      input.context.occurredAt,
-      input.terminalStatus === "failed" ? input.context.reasonCode : null,
-    );
-    if (executionAffected === 0) {
-      throw new Error(
-        `execution.transition_cas_failed:${input.executionId}:${freshExecutionStatus}->${executionTerminal}:status_changed`,
+    // Skip if execution is already terminal (already handled by step loop)
+    let executionAffected = 1; // Default to success if skipping
+    if (!executionAlreadyTerminal) {
+      executionAffected = this.repository.updateExecutionStatusCas(
+        input.executionId,
+        freshExecutionStatus,
+        executionTerminal,
+        input.context.occurredAt,
+        null,
+        input.context.occurredAt,
+        input.terminalStatus === "failed" ? input.context.reasonCode : null,
       );
+      if (executionAffected === 0) {
+        throw new Error(
+          `execution.transition_cas_failed:${input.executionId}:${freshExecutionStatus}->${executionTerminal}:status_changed`,
+        );
+      }
     }
     this.repository.createTier1StatusEvent({
       taskId: input.taskId,

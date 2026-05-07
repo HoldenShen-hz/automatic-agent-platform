@@ -138,8 +138,8 @@ test("MockExecuteBridge.executePlan returns results for multiple steps", async (
   assert.equal(result.planId, "plan_test");
   assert.equal(result.results.length, 3);
   assert.ok(result.allSucceeded);
-  assert.equal(result.skippedStepIds.length, 0);
-  assert.equal(result.failedStepIds.length, 0);
+  assert.equal(result.skippedNodeRunIds.length, 0);
+  assert.equal(result.failedNodeRunIds.length, 0);
 });
 
 test("MockExecuteBridge.executePlan calculates totals correctly", async () => {
@@ -163,6 +163,7 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
     planId: "plan_transform",
     results: [
       {
+        nodeRunId: "step_1",
         stepId: "step_1",
         status: "succeeded" as const,
         durationMs: 100,
@@ -178,13 +179,14 @@ test("MockExecuteBridge.toDualChannelStepOutputs transforms results", async () =
     totalDurationMs: 100,
     totalTokenCost: 200,
     allSucceeded: true,
-    skippedStepIds: [],
-    failedStepIds: [],
+    skippedNodeRunIds: [],
+    failedNodeRunIds: [],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
 
   assert.equal(outputs.length, 1);
+  assert.equal(outputs[0]?.nodeRunId, "step_1");
   assert.equal(outputs[0]?.stepId, "step_1");
   assert.equal(outputs[0]?.planRef, "plan_transform");
   assert.equal(outputs[0]?.userFacingResult.summary, "Step 1 completed");
@@ -220,8 +222,7 @@ test("RuntimeExecuteBridge delegates through injected runtime executor and maps 
   let capturedInput:
     | {
         dbPath: string;
-        title: string;
-        request: string;
+        planGraphBundle: PlanGraphBundle;
         contextBudgetTokens?: number;
       }
     | undefined;
@@ -271,12 +272,12 @@ test("RuntimeExecuteBridge delegates through injected runtime executor and maps 
 
   assert.deepEqual(capturedInput, {
     dbPath: "/tmp/runtime-execute-bridge.db",
-    title: "OAPEFLIR plan plan_runtime",
-    request: serialiseOapeflirPlan(plan.graph.nodes),
+    planGraphBundle: plan,
     contextBudgetTokens: 2048,
   });
   assert.equal(result.planId, "plan_runtime");
   assert.equal(result.results.length, 1);
+  assert.equal(result.results[0]!.nodeRunId, "step_runtime_1");
   assert.equal(result.results[0]!.stepId, "step_runtime_1");
   assert.equal(result.results[0]!.summary, "Runtime execution completed");
   assert.deepEqual(result.results[0]!.outputs, { result: "ok" });
@@ -328,6 +329,7 @@ test("mapStepOutputRecord parses dataJson successfully", () => {
 
   const result = mapStepOutputRecord(record);
 
+  assert.equal(result.nodeRunId, "step_1");
   assert.equal(result.stepId, "step_1");
   assert.equal(result.status, "succeeded");
   assert.deepEqual(result.outputs, { key: "value", count: 42 });
@@ -361,6 +363,30 @@ test("mapStepOutputRecord handles invalid dataJson gracefully", () => {
   assert.deepEqual(result.outputs, {});
   assert.deepEqual(result.artifacts, []);
   assert.equal(result.validationPassed, false);
+});
+
+test("mapStepOutputRecord prefers nodeRunId over legacy stepId", () => {
+  const record: StepOutputRecord = {
+    id: "sor_node_run",
+    nodeRunId: "node_run_primary",
+    stepId: "legacy_step_alias",
+    taskId: "task_1",
+    roleId: "agent",
+    status: "failed",
+    dataJson: "{}",
+    artifactsJson: null,
+    summary: null,
+    durationMs: 25,
+    tokenCost: 40,
+    validationJson: null,
+    producedAt: "2026-04-01T00:00:00.000Z",
+  };
+
+  const result = mapStepOutputRecord(record);
+
+  assert.equal(result.nodeRunId, "node_run_primary");
+  assert.equal(result.stepId, "legacy_step_alias");
+  assert.equal(result.summary, "Step node_run_primary failed");
 });
 
 test("mapStepOutputRecord handles invalid artifactsJson gracefully", () => {
@@ -572,6 +598,7 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
     planId: "plan_transform_test",
     results: [
       {
+        nodeRunId: "step_1",
         stepId: "step_1",
         status: "succeeded" as const,
         durationMs: 100,
@@ -584,6 +611,7 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
         validationPassed: true,
       },
       {
+        nodeRunId: "step_2",
         stepId: "step_2",
         status: "failed" as const,
         durationMs: 50,
@@ -599,8 +627,8 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
     totalDurationMs: 150,
     totalTokenCost: 300,
     allSucceeded: false,
-    skippedStepIds: [],
-    failedStepIds: ["step_2"],
+    skippedNodeRunIds: [],
+    failedNodeRunIds: ["step_2"],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
@@ -608,6 +636,7 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
   assert.equal(outputs.length, 2);
 
   // First step - succeeded
+  assert.equal(outputs[0]!.nodeRunId, "step_1");
   assert.equal(outputs[0]!.stepId, "step_1");
   assert.equal(outputs[0]!.planRef, "plan_transform_test");
   assert.equal(outputs[0]!.userFacingResult.summary, "Step 1 completed");
@@ -620,6 +649,7 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs transforms ExecutionResult",
   assert.equal(outputs[0]!.systemTelemetry.validationPassed, true);
 
   // Second step - failed
+  assert.equal(outputs[1]!.nodeRunId, "step_2");
   assert.equal(outputs[1]!.stepId, "step_2");
   assert.equal(outputs[1]!.userFacingResult.summary, "Step 2 failed");
   assert.equal(outputs[1]!.systemTelemetry.validationPassed, false);
@@ -633,8 +663,8 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs handles empty results", () =
     totalDurationMs: 0,
     totalTokenCost: 0,
     allSucceeded: true,
-    skippedStepIds: [],
-    failedStepIds: [],
+    skippedNodeRunIds: [],
+    failedNodeRunIds: [],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
@@ -913,6 +943,7 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs maps failed step status corr
     planId: "plan_failed",
     results: [
       {
+        nodeRunId: "step_fail",
         stepId: "step_fail",
         status: "failed" as const,
         durationMs: 75,
@@ -928,13 +959,14 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs maps failed step status corr
     totalDurationMs: 75,
     totalTokenCost: 150,
     allSucceeded: false,
-    skippedStepIds: [],
-    failedStepIds: ["step_fail"],
+    skippedNodeRunIds: [],
+    failedNodeRunIds: ["step_fail"],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
 
   assert.equal(outputs.length, 1);
+  assert.equal(outputs[0]!.nodeRunId, "step_fail");
   assert.equal(outputs[0]!.stepId, "step_fail");
   assert.equal(outputs[0]!.userFacingResult.summary, "Step failed due to error");
   assert.equal(outputs[0]!.systemTelemetry.retryCount, 2);
@@ -947,6 +979,7 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs maps skipped step status cor
     planId: "plan_skipped",
     results: [
       {
+        nodeRunId: "step_skip",
         stepId: "step_skip",
         status: "skipped" as const,
         durationMs: 0,
@@ -962,13 +995,14 @@ test("RuntimeExecuteBridge.toDualChannelStepOutputs maps skipped step status cor
     totalDurationMs: 0,
     totalTokenCost: 0,
     allSucceeded: false,
-    skippedStepIds: ["step_skip"],
-    failedStepIds: [],
+    skippedNodeRunIds: ["step_skip"],
+    failedNodeRunIds: [],
   };
 
   const outputs = bridge.toDualChannelStepOutputs(executionResult);
 
   assert.equal(outputs.length, 1);
+  assert.equal(outputs[0]!.nodeRunId, "step_skip");
   assert.equal(outputs[0]!.stepId, "step_skip");
   assert.equal(outputs[0]!.systemTelemetry.durationMs, 0);
   assert.equal(outputs[0]!.systemTelemetry.tokensUsed, 0);
@@ -996,8 +1030,8 @@ test("MockExecuteBridge.executePlan result has correct structure for aggregation
   assert.equal(typeof result.totalDurationMs, "number");
   assert.equal(typeof result.totalTokenCost, "number");
   assert.equal(typeof result.allSucceeded, "boolean");
-  assert.equal(typeof result.skippedStepIds, "object");
-  assert.equal(typeof result.failedStepIds, "object");
+  assert.equal(typeof result.skippedNodeRunIds, "object");
+  assert.equal(typeof result.failedNodeRunIds, "object");
 });
 
 test("MockExecuteBridge.executeStep returns result matching StepResult interface", async () => {
@@ -1234,6 +1268,6 @@ test("MockExecuteBridge.executePlan marks allSucceeded false when steps have mix
 
   // Mock always succeeds all steps
   assert.ok(result.allSucceeded);
-  assert.equal(result.failedStepIds.length, 0);
-  assert.equal(result.skippedStepIds.length, 0);
+  assert.equal(result.failedNodeRunIds.length, 0);
+  assert.equal(result.skippedNodeRunIds.length, 0);
 });

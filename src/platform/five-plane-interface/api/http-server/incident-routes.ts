@@ -13,7 +13,6 @@
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } from "./utils.js";
-import { globalIdempotencyMiddleware } from "../middleware/sanitize.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { IncidentFacadeService, IncidentCase, IncidentSeverity } from "../facade-interfaces.js";
 import { z } from "zod";
@@ -51,15 +50,6 @@ const updateIncidentSchema = z.object({
 export interface IncidentRouteDeps {
   authService: ApiAuthService | null;
   incidentService: IncidentFacadeService;
-}
-
-function readRequiredIdempotencyKey(headers: Record<string, string | undefined>): string {
-  const raw = headers["x-idempotency-key"];
-  const idempotencyKey = typeof raw === "string" ? raw.trim() : "";
-  if (idempotencyKey.length === 0) {
-    throw new ApiError(400, "api.idempotency_key_required", "Incident creation requires x-idempotency-key.");
-  }
-  return idempotencyKey;
 }
 
 // ─── Route Factory ─────────────────────────────────────────────────────────
@@ -120,12 +110,7 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
 
-        const idempotencyKey = readRequiredIdempotencyKey(ctx.request.headers);
-        const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
-        if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
-          return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
-        }
-
+        // Idempotency key is enforced at the server level via middleware
         const payload = readValidatedJsonBody(ctx.request.body, createIncidentSchema.parse);
         const tenantId = resolveTenantScope(principal, undefined);
 
@@ -135,8 +120,6 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
           title: payload.title,
           ...(payload.linkedEvidenceRefs !== undefined ? { linkedEvidenceRefs: payload.linkedEvidenceRefs } : {}),
         });
-
-        globalIdempotencyMiddleware.complete(idempotencyKey, incident);
 
         return buildJsonResponse(ctx.requestId, 201, incident);
       },

@@ -186,8 +186,8 @@ test("assertTransition rejects invalid transitions from created", () => {
   assert.throws(() => machine.assertTransition("created", "paused"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("created", "recovering"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("created", "timed_out"), WorkflowStateError);
-  assert.throws(() => machine.assertTransition("created", "ready"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("created", "resuming"), WorkflowStateError);
+  // Note: created -> ready is valid (ready is a pre-execution state)
 });
 
 test("assertTransition rejects invalid transitions from queued", () => {
@@ -245,6 +245,7 @@ test("assertTransition rejects invalid transitions from recovering", () => {
   assert.throws(() => machine.assertTransition("recovering", "paused"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("recovering", "queued"), WorkflowStateError);
   assert.throws(() => machine.assertTransition("recovering", "dispatching"), WorkflowStateError);
+  // Note: recovering -> ready is valid (ready is a pre-execution state)
 });
 
 test("assertTransition rejects invalid transitions from timed_out", () => {

@@ -513,8 +513,11 @@ export class HttpApiServer {
         const tenantId = principal?.tenantId ?? undefined;
         const idempotencyKey: string | undefined = request.headers["idempotency-key"] ?? request.headers["Idempotency-Key"];
         const requestBody = request.body;
+        // Extract pathname for path-based idempotency exemptions
+        const pathname = parseUrl(request.url ?? "/", true).pathname ?? "/";
         const idempotencyDecision = await this.idempotencyKeyMiddleware.check({
           method: requestMethod,
+          path: pathname,
           idempotencyKey: idempotencyKey ?? null,
           tenantId: tenantId ?? null,
           body: requestBody,

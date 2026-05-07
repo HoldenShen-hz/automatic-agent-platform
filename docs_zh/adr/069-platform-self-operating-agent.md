@@ -28,6 +28,15 @@ interface SelfOpsAgent {
   authorization: OpsAuthorization;
   boundaries: OpsBoundary;
 }
+
+interface OpsActionProposal {
+  proposal_id: string;
+  action_type: string;
+  scope: { tenantId?: string; harnessRunId?: string; nodeRunId?: string; workerId?: string };
+  target_runtime_mode: "full_auto" | "supervised_auto" | "read_only" | "no_write" | "no_external_call" | "no_rollout" | "manual_only" | "incident_mode";
+  evidence_refs: string[];
+  governance_gate: "auto" | "approval_required" | "break_glass";
+}
 ```
 
 ### OpsCapability
@@ -41,6 +50,8 @@ interface SelfOpsAgent {
 | rotate_secrets | 密钥即将过期 | 通过 RuntimeStateMachine.transition(OperationalDirective) 轮换密钥 |
 
 所有直接执行操作需通过 RuntimeStateMachine.transition(OperationalDirective) + HarnessRuntime + PlanGraphBundle 上下文，确保操作可审计、可回滚。依据 §5.3，所有状态变更必须走 canonical 控制路径。
+
+所有自运维动作必须先形成 `OpsActionProposal`，再由治理门禁决定 `auto / approval_required / break_glass` 路径。
 
 ### 权限边界
 

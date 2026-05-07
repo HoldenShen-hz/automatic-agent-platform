@@ -26,3 +26,4 @@ export * from "./feedback.js";
 export * from "./governance.js";
 export * from "./health.js";
 export * from "./cost.js";
+export * from "./domain/index.js";

@@ -22,16 +22,21 @@
 
 ## 4. 成熟度等级
 
-`OpsMaturityLevel` 必须与 canonical runtime modes 对齐，采用 8 级模型（对应 §42.1 自治等级）：
+`OpsMaturityLevel` 必须直接复用 canonical `UnifiedRuntimeMode`，不得再发明一套近似枚举：
 
-- `manual_only` (0) - 仅人工操作
-- `suggestion` (1) - 仅提供建议
-- `supervised` (2) - 人工监督执行
-- `semi_auto` (3) - 半自动执行
-- `trusted_auto` (4) - 受信任自动执行
-- `full_auto` (5) - 完全自动执行
-- `high_auto` (6) - 高等风险自动执行
-- `unrestricted_auto` (7) - 无限制自动执行
+- `full_auto`
+- `supervised_auto`
+- `read_only`
+- `no_write`
+- `no_external_call`
+- `no_rollout`
+- `manual_only`
+- `incident_mode`
+
+说明：
+
+- `OpsMaturityLevel` 不是 interaction autonomy ladder；它表达的是平台运行时允许的操作边界。
+- 若 UI / agent 侧存在 `suggestion / supervised / semi_auto / full_auto / frozen`，必须先映射到 `UnifiedRuntimeMode` 再驱动 self-ops 执行面。
 
 ## 5. 规则
 
@@ -44,4 +49,3 @@
 - unit：proposal validation、guardrail checks、maturity gating
 - integration：health monitor -> proposal -> approval / execute
 - contract：未批准的高风险运维动作不得自动生效
-

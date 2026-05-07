@@ -108,6 +108,25 @@ export class IdempotencyKeyMiddleware {
   }
 
   /**
+   * Paths that do not require idempotency key enforcement.
+   * Auth routes are inherently idempotent (token exchange).
+   * Webhook routes are called by external systems that cannot provide idempotency keys.
+   */
+  private static readonly EXEMPT_PATHS = new Set([
+    "/auth/token",
+    "/v1/auth/token",
+    "/v1/billing/webhooks/reconcile",
+    "/v1/gateway/webhooks/receive",
+  ]);
+
+  /**
+   * Check if a path is exempt from idempotency key enforcement.
+   */
+  private isPathExempt(path: string): boolean {
+    return IdempotencyKeyMiddleware.EXEMPT_PATHS.has(path);
+  }
+
+  /**
    * Check and enforce idempotency key for a request.
    *
    * @param options - Request options
@@ -115,12 +134,18 @@ export class IdempotencyKeyMiddleware {
    */
   public async check(options: {
     method: string;
+    path?: string;
     idempotencyKey?: string | null;
     tenantId?: string | null;
     body?: unknown;
   }): Promise<IdempotencyDecision> {
-    const { method, idempotencyKey, tenantId } = options;
+    const { method, path, idempotencyKey, tenantId } = options;
     const isWriteOp = this.isWriteOperation(method);
+
+    // Skip idempotency enforcement for exempt paths (auth, webhooks)
+    if (isWriteOp && path && this.isPathExempt(path)) {
+      return { allowed: true, isDuplicate: false };
+    }
 
     // For write operations, enforce idempotency key
     if (isWriteOp) {

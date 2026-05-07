@@ -1193,7 +1193,10 @@ export function createNodeRun(input: {
     sideEffects: input.sideEffects ?? [],
     compensation: input.compensation ?? [],
     ...(input.leaseId != null ? { leaseId: input.leaseId } : {}),
-    fencingToken: input.fencingToken ?? `fence:${nodeRunId}:${input.currentSeq ?? 0}`,
+    // Use nodeId (not nodeRunId) for default fencingToken to match harness runtime's token format.
+    // The harness runtime computes fencingToken as `${node.nodeId}-fence`, so using input.nodeId
+    // here ensures the default token matches when the harness runtime doesn't explicitly provide one.
+    fencingToken: input.fencingToken ?? `${input.nodeId}-fence`,
     currentSeq: input.currentSeq ?? 0,
     createdAt: timestamp,
     updatedAt: input.updatedAt ?? timestamp,

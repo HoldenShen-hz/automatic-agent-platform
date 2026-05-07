@@ -122,6 +122,7 @@ interface MinimalWorkflowInput {
  * Maps a `StepOutputRecord` from the supervisor to an OAPEFLIR `StepResult`.
  */
 export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
+  const canonicalNodeRunId = record.nodeRunId ?? record.stepId;
   let outputs: Record<string, unknown> = {};
   try {
     outputs = JSON.parse(record.dataJson);
@@ -139,12 +140,12 @@ export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
   }
 
   return {
-    nodeRunId: record.stepId,
+    nodeRunId: canonicalNodeRunId,
     stepId: record.stepId,
     status: record.status === "succeeded" ? "succeeded" : record.status === "skipped" ? "skipped" : "failed",
     durationMs: record.durationMs,
     tokenCost: record.tokenCost,
-    summary: record.summary ?? `Step ${record.stepId} ${record.status}`,
+    summary: record.summary ?? `Step ${canonicalNodeRunId} ${record.status}`,
     outputs,
     artifacts,
     modelId: "runtime", // Supervisor doesn't track per-step model; record at plan level
@@ -214,7 +215,12 @@ function tryGetExecutionRecordStepOutputs(snapshot: unknown): StepOutputRecord[]
   // Verify array elements are likely StepOutputRecord-like objects
   return stepOutputs.filter(
     (item): item is StepOutputRecord =>
-      item != null && typeof item === "object" && typeof (item as Record<string, unknown>).stepId === "string",
+      item != null
+      && typeof item === "object"
+      && (
+        typeof (item as Record<string, unknown>).nodeRunId === "string"
+        || typeof (item as Record<string, unknown>).stepId === "string"
+      ),
   );
 }
 

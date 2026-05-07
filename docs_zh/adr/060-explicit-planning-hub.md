@@ -55,16 +55,13 @@ interface PlanGraphBundle {
 
 ### 4. Plan→Execute 兼容桥接
 
-运行时唯一 canonical handoff 仍然是 `PlanGraphBundle -> HarnessRuntime / NodeAttemptReceipt`。如需做适配，可在边界层保留兼容桥接接口：
+运行时唯一 canonical handoff 仍然是 `PlanGraphBundle -> HarnessRuntime / NodeAttemptReceipt`。实现层可以存在本地 adapter / bridge，但它们只能作为 compatibility seam，不构成独立 contract 对象：
 
-```typescript
-interface RuntimeExecuteBridge {
-  executePlan(plan: PlanGraphBundle): Promise<NodeAttemptReceipt>;
-  validatePlanInput(plan: PlanGraphBundle): PlanValidationResult;
-}
-```
+- adapter 只能接收 `PlanGraphBundle`
+- adapter 只能产出 `NodeAttemptReceipt` 或其显式 projection
+- adapter 名称、类名、函数名都不得被 ADR 误写成新的 P3→P4 权威 contract
 
-`RuntimeExecuteBridge` 仅允许作为 compatibility seam，不得替代 `PlanGraphBundle` 作为 P3→P4 的权威 contract。
+换言之，`RuntimeExecuteBridge` 之类名称如果出现在实现层，只能表示局部适配器，而不是 spec/ADR 级 canonical object。
 
 ### 5. 8 种规划策略
 

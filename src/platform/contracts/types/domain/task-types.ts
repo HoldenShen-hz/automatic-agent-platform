@@ -144,6 +144,12 @@ export interface WorkflowStateRecord {
 export interface StepOutputRecord {
   id: string;
   taskId: string;
+  /**
+   * Canonical execution correlation key.
+   * Prefer this field for new code; legacy stores may only populate stepId.
+   */
+  nodeRunId?: string;
+  /** @deprecated Use nodeRunId for canonical correlation. */
   stepId: string;
   roleId: string;
   status: "succeeded" | "failed" | "partial_success" | "skipped";

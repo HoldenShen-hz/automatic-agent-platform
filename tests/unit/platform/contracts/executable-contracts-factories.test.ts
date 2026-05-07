@@ -505,7 +505,8 @@ test("executable-contracts: createNodeRun backfills canonical side effect and fe
 
   assert.deepEqual(nodeRun.sideEffects, []);
   assert.deepEqual(nodeRun.compensation, []);
-  assert.equal(nodeRun.fencingToken, `fence:${nodeRun.nodeRunId}:0`);
+  // Default fencingToken matches harness runtime's format: ${node.nodeId}-fence
+  assert.equal(nodeRun.fencingToken, `node-1-fence`);
 });
 
 // =============================================================================

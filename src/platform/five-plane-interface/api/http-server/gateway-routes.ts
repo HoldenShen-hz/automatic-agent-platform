@@ -14,7 +14,6 @@ import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
 import { parseGatewaySendPayload, parseGatewayWebhookPayload } from "./schemas.js";
 import { buildJsonResponse, requirePrincipal, readLimit, readQueryParam } from "./utils.js";
-import { globalIdempotencyMiddleware } from "../middleware/sanitize.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import type { GatewayTargetDirectoryService } from "../../channel-gateway/gateway-target-directory-service.js";
 import type { ChannelGatewayService } from "../../channel-gateway/channel-gateway-service.js";
@@ -94,15 +93,8 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
       handler: async (ctx) => {
         requirePrincipal(ctx.request, deps.authService, "operator");
 
-        const idempotencyKeyHeader = ctx.request.headers["x-idempotency-key"];
-        const idempotencyKey = typeof idempotencyKeyHeader === "string" ? idempotencyKeyHeader.trim() : "";
-        if (idempotencyKey.length === 0) {
-          throw new ApiError(400, "api.idempotency_key_required", "POST /v1/gateway/messages/send requires x-idempotency-key.");
-        }
-        const idempotencyCheck = globalIdempotencyMiddleware.check(idempotencyKey);
-        if (idempotencyCheck.isDuplicate && idempotencyCheck.result !== undefined) {
-          return buildJsonResponse(ctx.requestId, 200, idempotencyCheck.result);
-        }
+        // Idempotency key is enforced at the server level via middleware (see EXEMPT_PATHS)
+        // This route requires idempotency key - it is NOT in the exempt list
 
         const channelGatewayService = deps.channelGatewayService;
         if (channelGatewayService == null) {
@@ -120,9 +112,6 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
           requestUrl: receipt.requestUrl,
           providerMessageId: receipt.providerMessageId,
         };
-
-        // Record idempotency key result if key was provided
-        globalIdempotencyMiddleware.complete(idempotencyKey, responseData);
 
         return buildJsonResponse(ctx.requestId, 201, responseData);
       },

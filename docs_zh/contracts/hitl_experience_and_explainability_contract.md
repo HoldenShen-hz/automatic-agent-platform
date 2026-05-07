@@ -61,13 +61,14 @@ Decision 呈现最小结构：
 
 ## 4. 人工接管动作
 
-- 手动改上下文
-- 手动替换步骤输出
-- 手动重试指定 step
-- 手动指定 worker
-- 手动降级运行模式
-- 结束任务并归档原因
-- 标记任务不可恢复
+- 手动修正 `HarnessRun` 上下文快照或补充 `context_artifact_ref`
+- 手动为某个 `NodeRun` 注入 `override_artifact_ref`
+- 手动重试指定 `NodeAttempt`
+- 手动跳过指定 `NodeRun`
+- 手动指定 worker / execution lane
+- 手动降级 `UnifiedRuntimeMode`
+- 结束 `HarnessRun` 并归档原因
+- 标记 `HarnessRun` / `NodeRun` 不可恢复
 
 ## 5. 可解释性对象
 

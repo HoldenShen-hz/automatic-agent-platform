@@ -49,7 +49,7 @@ test("evaluate rejects when risk class task count exceeds limit", () => {
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
   // 3rd critical task should be rejected
-  const decision = controller.evaluate({ priority: "normal", riskClass: "critical" });
+  const decision = controller.evaluate({ priority: "normal", riskClass: "critical", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "reject");
   assert.equal(decision.reasonCode, "admission.reject_risk_class_isolation");
@@ -60,7 +60,7 @@ test("evaluate allows when risk class task count is below limit", () => {
   const store = createMockStore({ tasks });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
-  const decision = controller.evaluate({ priority: "normal", riskClass: "critical" });
+  const decision = controller.evaluate({ priority: "normal", riskClass: "critical", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
   assert.equal(decision.reasonCode, "admission.ok");
@@ -71,7 +71,7 @@ test("evaluate allows unknown risk class without limit check", () => {
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
   // No limit defined for "unknown" risk class
-  const decision = controller.evaluate({ priority: "normal", riskClass: "unknown" });
+  const decision = controller.evaluate({ priority: "normal", riskClass: "unknown", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
 });
@@ -86,7 +86,7 @@ test("evaluate skips risk class isolation when policy disabled", () => {
   const controller = new AdmissionController(store, policy);
 
   // Should not reject even though we're over the default limit of 5
-  const decision = controller.evaluate({ priority: "normal", riskClass: "high" });
+  const decision = controller.evaluate({ priority: "normal", riskClass: "high", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
 });
@@ -101,7 +101,7 @@ test("evaluate uses per-risk-class limits from policy", () => {
   const controller = new AdmissionController(store, policy);
 
   // 6th high task should be rejected (limit is 3)
-  const decision = controller.evaluate({ priority: "normal", riskClass: "high" });
+  const decision = controller.evaluate({ priority: "normal", riskClass: "high", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "reject");
   assert.equal(decision.reasonCode, "admission.reject_risk_class_isolation");
@@ -118,7 +118,7 @@ test("evaluate rejects when tenant task quota exceeded", () => {
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
   // 51st task for tenant-A should be rejected
-  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-A" });
+  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-A", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "reject");
   assert.equal(decision.reasonCode, "admission.reject_tenant_quota");
@@ -129,7 +129,7 @@ test("evaluate allows when tenant task count is below quota", () => {
   const store = createMockStore({ tasks });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
-  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-A" });
+  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-A", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
 });
@@ -140,7 +140,7 @@ test("evaluate allows different tenant even when one tenant is at quota", () => 
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
   // tenant-B should still be allowed
-  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-B" });
+  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-B", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
   assert.equal(decision.reasonCode, "admission.ok");
@@ -155,7 +155,7 @@ test("evaluate skips tenant quota when policy disabled", () => {
   };
   const controller = new AdmissionController(store, policy);
 
-  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-X" });
+  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-X", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
 });
@@ -170,7 +170,7 @@ test("evaluate respects custom tenant task quota", () => {
   const controller = new AdmissionController(store, policy);
 
   // 11th task should be rejected (quota is 5)
-  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-Y" });
+  const decision = controller.evaluate({ priority: "normal", tenantId: "tenant-Y", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "reject");
   assert.equal(decision.reasonCode, "admission.reject_tenant_quota");
@@ -187,7 +187,7 @@ test("evaluate rejects when requested sandbox type has zero availability", () =>
   // "strict" sandbox has availability of 2 in default policy
   // We need to test the rejection path - but the default availability is positive
   // So we test the case where availability would be 0
-  const decision = controller.evaluate({ priority: "normal", sandboxType: "strict" });
+  const decision = controller.evaluate({ priority: "normal", sandboxType: "strict", budgetReservationId: "budget-res-123" });
 
   // strict has 2 available by default, so this should be allow
   assert.equal(decision.decision, "allow");
@@ -197,7 +197,7 @@ test("evaluate allows when sandbox type has availability", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
-  const decision = controller.evaluate({ priority: "normal", sandboxType: "standard" });
+  const decision = controller.evaluate({ priority: "normal", sandboxType: "standard", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
   assert.equal(decision.reasonCode, "admission.ok");
@@ -212,7 +212,7 @@ test("evaluate skips sandbox matching when policy disabled", () => {
   const controller = new AdmissionController(store, policy);
 
   // Even with no availability check, should be allowed
-  const decision = controller.evaluate({ priority: "normal", sandboxType: "nonexistent" });
+  const decision = controller.evaluate({ priority: "normal", sandboxType: "nonexistent", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "allow");
 });
@@ -222,7 +222,7 @@ test("evaluate rejects unknown sandbox type when matching enabled", () => {
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
   // "nonexistent" is not in sandboxAvailability, so availability is 0
-  const decision = controller.evaluate({ priority: "normal", sandboxType: "nonexistent" });
+  const decision = controller.evaluate({ priority: "normal", sandboxType: "nonexistent", budgetReservationId: "budget-res-123" });
 
   assert.equal(decision.decision, "reject");
   assert.equal(decision.reasonCode, "admission.reject_sandbox_matching");
@@ -240,6 +240,7 @@ test("evaluate rejects when required capability has zero capacity", () => {
   const decision = controller.evaluate({
     priority: "normal",
     requiredCapabilities: ["privileged"],
+    budgetReservationId: "budget-res-123",
   });
 
   assert.equal(decision.decision, "allow");
@@ -252,6 +253,7 @@ test("evaluate allows when required capability has capacity", () => {
   const decision = controller.evaluate({
     priority: "normal",
     requiredCapabilities: ["default"],
+    budgetReservationId: "budget-res-123",
   });
 
   assert.equal(decision.decision, "allow");
@@ -266,6 +268,7 @@ test("evaluate rejects when any required capability has zero capacity", () => {
   const decision = controller.evaluate({
     priority: "normal",
     requiredCapabilities: ["nonexistent"],
+    budgetReservationId: "budget-res-123",
   });
 
   assert.equal(decision.decision, "reject");
@@ -279,6 +282,7 @@ test("evaluate allows when all required capabilities have capacity", () => {
   const decision = controller.evaluate({
     priority: "normal",
     requiredCapabilities: ["default", "sandboxed"],
+    budgetReservationId: "budget-res-123",
   });
 
   assert.equal(decision.decision, "allow");
@@ -297,6 +301,7 @@ test("evaluate skips capability class gate when policy disabled", () => {
   const decision = controller.evaluate({
     priority: "normal",
     requiredCapabilities: ["nonexistent"],
+    budgetReservationId: "budget-res-123",
   });
 
   assert.equal(decision.decision, "allow");
@@ -318,6 +323,7 @@ test("evaluate checks all scheduling factors in correct priority order", () => {
     tenantId: "tenant-X",
     sandboxType: "standard",
     requiredCapabilities: ["default"],
+    budgetReservationId: "budget-res-123",
   });
 
   assert.equal(decision.decision, "reject");
@@ -364,6 +370,7 @@ test("evaluate with all scheduling factors disabled allows requests that would o
     tenantId: "tenant-Z",
     sandboxType: "nonexistent",
     requiredCapabilities: ["nonexistent"],
+    budgetReservationId: "budget-res-123",
   });
 
   // All factors disabled, so should allow even with exotic inputs

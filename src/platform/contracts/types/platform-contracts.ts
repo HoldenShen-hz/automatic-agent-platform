@@ -11,24 +11,11 @@
  * ContractEnvelope, SideEffectRecord, RequestEnvelope, EventEnvelope, etc.) are exported from
  * executable-contracts/ directly or via the contracts/index.ts barrel.
  *
- * Legacy type stubs (RequestEnvelopeLegacy, SideEffectExpectation) are retained here
- * for backward compatibility until migration is complete.
+ * Legacy compatibility types that still need to exist are named with explicit Legacy suffixes
+ * so they cannot be confused with canonical executable contracts.
  */
 
 import { newId, nowIso } from "./ids.js";
-export {
-  createControlDirective,
-  type ControlDirective,
-  type ControlDirectiveKind as ControlDirectiveType,
-} from "../control-directive/index.js";
-export { createExecutionPlan, type ExecutionPlan } from "../execution-plan/index.js";
-export { createExecutionReceipt, type ExecutionReceipt } from "../execution-receipt/index.js";
-export {
-  createStateCommand,
-  type StateCommand,
-  type StateCommandAction as StateCommandType,
-} from "../state-command/index.js";
-export type { RequestEnvelope, SideEffectRecord } from "../executable-contracts/index.js";
 
 // =============================================================================
 // Platform-Level Contract Types
@@ -59,31 +46,6 @@ export interface RequestEnvelopeLegacy<TPayload = unknown> {
   readonly timestamp: string;
   readonly payload: TPayload;
   readonly metadata: Readonly<Record<string, string>>;
-}
-
-/**
- * @deprecated SideEffectExpectation is deprecated per §5.3.
- * Use SideEffectRecord from executable-contracts (canonical with 16 states per §14.5/§14.11).
- * This interface is retained for legacy adapter compatibility only.
- */
-export interface SideEffectExpectation {
-  readonly effectId: string;
-  readonly category: "read" | "write" | "notification" | "artifact" | "external_api";
-  readonly targetRef: string;
-  readonly requiredReceipt: boolean;
-  readonly reversible: boolean;
-}
-
-export interface ExecutionPlanBudget {
-  readonly maxSteps: number;
-  readonly maxDurationMs: number;
-  readonly maxCost: number;
-}
-
-export interface ExecutionReceiptErrorDetail {
-  readonly code: string;
-  readonly message: string;
-  readonly retryable: boolean;
 }
 
 export interface EvidenceRecord {

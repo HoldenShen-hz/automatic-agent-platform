@@ -693,7 +693,7 @@ export const CONTRACT_JSON_SCHEMAS: Record<CanonicalContractName, ContractJsonSc
     title: name,
     type: "object",
     required: REQUIRED_FIELDS[name],
-    additionalProperties: true,
+    additionalProperties: false,
   }));
 
 export const EXECUTABLE_CONTRACT_PACKAGE: Record<CanonicalContractName, ExecutableContractDescriptor> =

@@ -71,40 +71,29 @@ interface ApiClient {
 
 ## 9. MissionControlService Typed Endpoints (R7-40 fix)
 
-`MissionControlService` 是 UI 层调用 platform API 的主入口，以下是 canonical 端点签名：
+`MissionControlService` 是 UI 层调用 platform API 的 typed façade。canonical 入口必须先按 `HarnessRun / NodeRun / PlanGraph` 建模；`taskId` 只允许作为 projection alias 查询键。
 
 ```typescript
-// 获取 Dashboard 快照（包含 UI spec §4.7.7 要求的 10+ 字段）
-getSnapshot(tenantId?: string | null): MissionControlSnapshot;
+interface MissionControlService {
+  getSnapshot(tenantId?: string | null): MissionControlSnapshot;
+  getTaskCockpitByHarnessRunId(harnessRunId: string, tenantId?: string | null): TaskCockpitView;
+  getWorkflowCockpitByHarnessRunId(harnessRunId: string, tenantId?: string | null): WorkflowCockpitView;
+  getStabilityPanel(limit?: number, tenantId?: string | null): StabilityPanelView;
+  getAdminTakeoverConsoleByHarnessRunId(harnessRunId: string, tenantId?: string | null): AdminTakeoverConsoleView;
+  listWorkflowCockpits(limit?: number, tenantId?: string | null): WorkflowInspectSummary[];
+  listApprovalQueue(limit?: number, tenantId?: string | null): ApprovalRecord[];
+  getHealthReportAsync(): Promise<HealthStatusReport>;
+}
 
-// 获取 Task Cockpit 视图
-getTaskCockpit(taskId: string, tenantId?: string | null): {
-  snapshot: TaskSnapshot;
-  inspect: TaskInspectView;
-  timeline: Timeline;
-};
-
-// 获取 Workflow Cockpit 视图（含 PlanGraph DAG 结构）
-getWorkflowCockpit(taskId: string, tenantId?: string | null): WorkflowCockpitView;
-
-// 获取 Stability Panel 视图
-getStabilityPanel(limit?: number, tenantId?: string | null): StabilityPanelView;
-
-// 获取 Admin Takeover Console 视图（含 harness_run_id/node_run_id）
-getAdminTakeoverConsole(taskId: string, tenantId?: string | null): AdminTakeoverConsoleView;
-
-// 列出 Workflow Cockpit 摘要
-listWorkflowCockpits(limit?: number, tenantId?: string | null): WorkflowInspectSummary[];
-
-// 列出 Approval Queue
-listApprovalQueue(limit?: number, tenantId?: string | null): ApprovalRecord[];
-
-// 异步获取 Health 报告
-getHealthReportAsync(): Promise<HealthStatusReport>;
+interface MissionControlProjectionAliases {
+  getTaskCockpitByTaskId(taskId: string, tenantId?: string | null): TaskCockpitView;
+  getWorkflowCockpitByTaskId(taskId: string, tenantId?: string | null): WorkflowCockpitView;
+}
 ```
 
 规则：
 
-- `MissionControlService` 必须使用 canonical 命名（`harness_run_id`、`node_run_id`、`plan_graph`）而非 legacy 命名（`task_id`、`workflow_id`、`steps`）。
+- `MissionControlService` 的权威对象必须使用 canonical 命名（`harness_run_id`、`node_run_id`、`plan_graph`）而非 legacy 命名（`task_id`、`workflow_id`、`steps`）。
+- `ByTaskId` 入口只允许作为 projection alias，不得把 `taskId` 升格成 runtime truth 主键。
 - 所有端点必须返回 UI spec 规定的完整字段集，不得截断。
 - 端点错误必须携带结构化的 `code` / `statusCode` / `retryable` 元数据。

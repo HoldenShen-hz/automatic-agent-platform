@@ -41,7 +41,7 @@
 | `max_node_runs` | `number` | 允许完成的 node 数上限 |
 | `max_duration_ms` | `number` | 总运行时长上限 |
 | `warn_at_ratio` | `number` | 预警阈值 |
-| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no_write \| no_external_call \| no_release \| manual_only \| incident_mode` | 预算生效时的运行模式（4 states 对齐 sandbox_and_auth_contract §3） |
+| `runtime_mode` | `full_auto \| supervised_auto \| read_only \| no_write \| no_external_call \| no_rollout \| manual_only \| incident_mode` | 预算生效时的运行模式（8-state unified runtime mode，对齐 `sandbox_and_auth_contract`） |
 
 兼容说明：
 
@@ -155,6 +155,6 @@
 
 以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中记录的 contract 偏差。本文档历史段落如与本节冲突，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-41: 本文原先把 `BudgetPolicy` 缩减成 `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd` 三个财务阈值，根因是成本合同沿用了报表/账单口径，没有随着 v4.3 runtime budget guard 升级为多维预算约束。修复：正文现把 canonical `BudgetPolicy` 改为 `max_cost_usd / max_model_tokens / max_context_tokens / max_output_tokens / max_steps / max_duration_ms`，旧日/月统计只保留为 billing projection guardrail。
+- T-41: 本文原先把 `BudgetPolicy` 缩减成 `max_task_cost_usd / max_daily_cost_usd / max_monthly_cost_usd` 三个财务阈值，根因是成本合同沿用了报表/账单口径，没有随着 v4.3 runtime budget guard 升级为多维预算约束。修复：正文现把 canonical `BudgetPolicy` 改为 `max_cost_usd / max_model_tokens / max_context_tokens / max_output_tokens / max_node_runs / max_duration_ms`，旧日/月统计只保留为 billing projection guardrail。
 
 强制规则：状态迁移必须通过 `RuntimeStateMachine.transition(command)`；执行计划必须使用 `PlanGraphBundle`；执行结果必须使用 `NodeAttemptReceipt`；truth event 只能使用 `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；预算必须使用 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

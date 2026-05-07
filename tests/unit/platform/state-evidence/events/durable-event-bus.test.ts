@@ -165,6 +165,50 @@ test("durable event bus dead-letters volatile tier2 delivery failures", async ()
   }
 });
 
+test("durable event bus dedupes duplicate volatile dispatch for the same event and consumer", async () => {
+  const { db, cleanup } = initHaCoordinatorForTests();
+
+  try {
+    const store = new AuthoritativeTaskStore(db);
+    const bus = new DurableEventBus(db, store);
+    seedTaskAndExecution(db, store, { taskId: "task-volatile-dedupe", executionId: "exec-volatile-dedupe", traceId: "trace-volatile-dedupe" });
+
+    let deliveries = 0;
+    let releaseDelivery: (() => void) | null = null;
+    const deliveryGate = new Promise<void>((resolve) => {
+      releaseDelivery = resolve;
+    });
+
+    bus.subscribe("inspect_projection", async () => {
+      deliveries += 1;
+      await deliveryGate;
+    });
+
+    const event = bus.publish({
+      eventType: "dispatch:ticket_created",
+      taskId: "task-volatile-dedupe",
+      executionId: "exec-volatile-dedupe",
+      traceId: "trace-volatile-dedupe",
+      payload: {
+        taskId: "task-volatile-dedupe",
+        ticketId: "ticket-volatile-dedupe",
+        status: "created",
+      },
+    });
+
+    (bus as unknown as { dispatchVolatile: (input: typeof event) => void }).dispatchVolatile(event);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    releaseDelivery?.();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert.equal(deliveries, 1);
+
+    bus.dispose();
+  } finally {
+    cleanup();
+  }
+});
+
 test("durable event bus continues delivering later pending events after an earlier one dead-letters", async () => {
   const { db, cleanup } = initHaCoordinatorForTests();
 
